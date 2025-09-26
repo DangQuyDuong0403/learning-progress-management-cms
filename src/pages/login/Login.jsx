@@ -13,7 +13,7 @@ export default function Login() {
 
 	const handleSubmit = (e) => {
 		e.preventDefault();
-		
+
 		if (username === 'admin' && password === '123456') {
 			const fakeResponse = {
 				user: { id: 1, name: 'Admin', role: 'MANAGER' },
@@ -39,22 +39,33 @@ export default function Login() {
 				<div className='position-relative overflow-hidden min-vh-100 d-flex align-items-center justify-content-center'>
 					<div className='d-flex align-items-center justify-content-center w-100'>
 						<div className='row justify-content-center w-100'>
-							<div className='col-md-8 col-lg-6 col-xxl-3'>
-								<div className='card mb-0 kids-card'>
+							<div
+								className='card mb-0 kids-card'
+								style={{
+									minWidth: 420,
+									maxWidth: 520,
+									margin: '0 auto',
+									padding: 0,
+									borderRadius: 32,
+									boxShadow: '0 20px 60px rgba(30, 20, 90, 0.25)',
+								}}>
+								<div
+									className='card-body'
+									style={{ padding: '1.5rem 1.5rem 1rem 1.5rem' }}>
 									<div className='card-body'>
 										{/* <div className='text-nowrap logo-img text-center d-block py-3 w-100'>
 											<img src='img/logo.png' alt='' />
 										</div> */}
 										<h5 className='text-center kids-heading mb-1'>
-											Phi hành gia nhí
+											Child astronaut
 										</h5>
 										<p className='text-center kids-subtitle mb-4'>
-											Cùng bay vào không gian học tập!
+											Let's fly into the learning space!
 										</p>
 										<form onSubmit={handleSubmit}>
 											<div className='mb-3'>
 												<label htmlFor='loginUsername' className='form-label'>
-													Tên đăng nhập
+													Username
 												</label>
 												<div className='input-group'>
 													<span className='input-group-text'>
@@ -76,7 +87,7 @@ export default function Login() {
 														type='text'
 														className='form-control'
 														id='loginUsername'
-														placeholder='nhap.ten@vidu.com'
+														placeholder='Username'
 														value={username}
 														onChange={(e) => setUsername(e.target.value)}
 														aria-describedby='emailHelp'
@@ -85,7 +96,7 @@ export default function Login() {
 											</div>
 											<div className='mb-4'>
 												<label htmlFor='loginPassword' className='form-label'>
-													Mật khẩu
+													Password
 												</label>
 												<div className='input-group'>
 													<span className='input-group-text'>
@@ -132,13 +143,13 @@ export default function Login() {
 													<label
 														className='form-check-label text-dark'
 														htmlFor='flexCheckChecked'>
-														Ghi nhớ thiết bị này
+														Remember me
 													</label>
 												</div>
 												<a
 													className='fw-bold forgot-password'
 													href='/forgot-password'>
-													Quên mật khẩu?
+													Forgot Password? 
 												</a>
 											</div>
 											<div className='text-center'>
@@ -146,7 +157,7 @@ export default function Login() {
 													type='submit'
 													className='btn btn-space w-90 mb-4 rounded-3'
 													style={{ color: 'white' }}>
-													Đăng nhập
+													Sign in
 												</button>
 											</div>
 										</form>
@@ -156,7 +167,12 @@ export default function Login() {
 						</div>
 					</div>
 					<img className='rocket-bg' src='img/astro.png' alt='rocket' />
-
+					<img className='planet-1' src='img/planet-1.png' alt='plant-1' />
+					<img className='planet-2' src='img/planet-2.png' alt='plant-2' />
+					<img className='planet-3' src='img/planet-3.png' alt='plant-3' />
+					<img className='planet-4' src='img/planet-4.png' alt='plant-4' />
+					<img className='planet-5' src='img/planet-5.png' alt='plant-5' />
+					<img className='planet-6' src='img/planet-6.png' alt='plant-6' />
 					<svg
 						className='planet'
 						viewBox='0 0 120 120'
