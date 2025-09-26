@@ -82,7 +82,7 @@ export default function ResetPassword() {
       
       // Chuyển về trang login sau 2 giây
       setTimeout(() => {
-        navigate("/login");
+        navigate("/login-student");
       }, 2000);
       
       setIsLoading(false);
@@ -90,7 +90,7 @@ export default function ResetPassword() {
   };
 
   const handleBackToLogin = () => {
-    navigate("/login");
+    navigate("/login-student");
   };
 
   const passwordValidation = validatePassword(formData.newPassword);

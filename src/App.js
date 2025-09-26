@@ -2,15 +2,17 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-d
 import { useSelector } from "react-redux";
 import CONFIG_ROUTER from "./routers/configRouter";
 import PrivateRoute from "./routers/PrivateRoute";
-
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 export default function App() {
   const isAuthenticated = useSelector((state) => state.auth.isAuthenticated);
 
   return (
+    <>
     <Router>
       <Routes>
         {/* redirect "/" -> "/login" */}
-        <Route path="/" element={<Navigate to="/login" replace />} />
+        <Route path="/" element={<Navigate to="/choose-login" replace />} />
 
         {CONFIG_ROUTER.map(({ path, component: Component, key, private: isPrivate }) =>
           isPrivate ? (
@@ -29,5 +31,7 @@ export default function App() {
         )}
       </Routes>
     </Router>
+     <ToastContainer position="top-right" autoClose={2000} hideProgressBar={false} newestOnTop closeOnClick pauseOnFocusLoss draggable pauseOnHover />
+    </>
   );
 }

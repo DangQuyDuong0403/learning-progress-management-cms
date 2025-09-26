@@ -1,9 +1,13 @@
 // src/routes/configRoute.js
 import ROUTER_PAGE from '../constants/router';
+import ChooseLogin from '../pages/login/ChooseLogin';
 import ForgotPassword from '../pages/login/ForgotPassword';
-import Login from '../pages/login/Login';
+import Login from '../pages/login/LoginStudent';
 import OTPVerification from '../pages/login/OTPVerification';
 import ResetPassword from '../pages/login/ResetPassword';
+import LoginTeacher from '../pages/login/LoginTeacher';
+import Profile from '../pages/profile/Profile';
+import ProfileStudent from '../pages/profile/ProfileStudent';
 
 const CONFIG_ROUTER = [
 	//   {
@@ -20,9 +24,9 @@ const CONFIG_ROUTER = [
 		show: false, // không hiện trên menu
 		component: Login,
 		// icon: <LogIn size={18} />,
-		path: ROUTER_PAGE.LOGIN,
+		path: ROUTER_PAGE.LOGIN_STUDENT,
 		exact: true,
-		key: 'LOGIN',
+		key: 'LOGIN_STUDENT',
 	},
 	{
 		show: false, // không hiện trên menu
@@ -47,6 +51,38 @@ const CONFIG_ROUTER = [
 		path: ROUTER_PAGE.RESET_PASSWORD,
 		exact: true,
 		key: 'RESET_PASSWORD',
+	},
+	{
+		show: false, // không hiện trên menu
+		component: ChooseLogin,
+		// icon: <LogIn size={18} />,
+		path: ROUTER_PAGE.CHOOSE_LOGIN,
+		exact: true,
+		key: 'CHOOSE_LOGIN',
+	},
+	{
+		show: false, // không hiện trên menu
+		component: LoginTeacher,
+		// icon: <LogIn size={18} />,
+		path: ROUTER_PAGE.LOGIN_TEACHER,
+		exact: true,
+		key: 'LOGIN_TEACHER',
+	},
+	{
+		show: false, // không hiện trên menu
+		component: Profile,
+		// icon: <LogIn size={18} />,
+		path: ROUTER_PAGE.PROFILE,
+		exact: true,
+		key: 'PROFILE',
+	},
+	{
+		show: false, // không hiện trên menu
+		component: ProfileStudent,
+		// icon: <LogIn size={18} />,
+		path: ROUTER_PAGE.PROFILE_STUDENT,
+		exact: true,
+		key: 'PROFILE_STUDENT',
 	},
 ];
 

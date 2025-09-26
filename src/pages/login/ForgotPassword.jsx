@@ -22,7 +22,7 @@ export default function ForgotPassword() {
   };
 
   const handleBackToLogin = () => {
-    navigate("/login");
+    navigate("/login-student");
   };
 
   return (
