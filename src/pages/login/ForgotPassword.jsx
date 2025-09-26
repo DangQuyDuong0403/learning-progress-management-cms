@@ -24,7 +24,7 @@ export default function ForgotPassword() {
 	};
 
   const handleBackToLogin = () => {
-    navigate("/login-student");
+    navigate(-1);
   };
 
 	return (
