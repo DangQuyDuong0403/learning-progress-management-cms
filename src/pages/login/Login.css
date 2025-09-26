@@ -590,3 +590,63 @@ a:hover {
 		box-shadow: 0 0 6px rgba(255, 255, 255, 0.9);
 	}
 }
+
+.recover-option {
+	cursor: pointer;
+	flex: 1;
+	min-width: 180px;
+	max-width: 200px;
+	transition: all 0.3s ease;
+}
+
+.recover-card {
+	background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+	border-radius: 16px;
+	padding: 24px 16px;
+	text-align: center;
+	border: 2px solid transparent;
+	box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+	transition: all 0.3s ease;
+}
+
+.recover-icon {
+	width: 64px;
+	height: 64px;
+	margin: 0 auto 16px;
+	border-radius: 50%;
+	background: rgba(94, 23, 235, 0.1);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 28px;
+}
+
+.recover-card h6 {
+	margin: 0;
+	font-weight: 600;
+	font-size: 16px;
+	color: #333;
+}
+
+.recover-card p {
+	margin: 8px 0 0;
+	font-size: 12px;
+	color: #666;
+}
+
+/* Hover effect */
+.recover-option:hover .recover-card {
+	background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+	border: 2px solid #5e17eb;
+	box-shadow: 0 8px 25px rgba(94, 23, 235, 0.3);
+	transform: scale(1.05);
+}
+
+.recover-option:hover .recover-icon {
+	background: rgba(255, 255, 255, 0.2);
+}
+
+.recover-option:hover .recover-card h6,
+.recover-option:hover .recover-card p {
+	color: #fff;
+}

@@ -3,11 +3,16 @@ import { useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { loginSuccess } from '../../redux/auth';
 import { toast } from 'react-toastify';
+import { Input, Modal, Radio } from 'antd';
+import { UserOutlined, LockOutlined } from '@ant-design/icons';
 import './Login.css';
 
 export default function Login() {
 	const [username, setUsername] = useState('');
 	const [password, setPassword] = useState('');
+	const [showPassword, setShowPassword] = useState(false);
+	const [forgotVisible, setForgotVisible] = useState(false);
+	const [forgotMethod, setForgotMethod] = useState('email');
 	const dispatch = useDispatch();
 	const navigate = useNavigate();
 
@@ -24,6 +29,11 @@ export default function Login() {
 		} else {
 			toast.error('Sai tài khoản hoặc mật khẩu!');
 		}
+	};
+
+	const handleForgotOk = () => {
+		setForgotVisible(false);
+		navigate(`/forgot-password-${forgotMethod}`);
 	};
 
 	return (
@@ -67,69 +77,29 @@ export default function Login() {
 												<label htmlFor='loginUsername' className='form-label'>
 													Username
 												</label>
-												<div className='input-group'>
-													<span className='input-group-text'>
-														<svg
-															className='ti ti-user'
-															width='20'
-															height='20'
-															viewBox='0 0 24 24'
-															fill='none'
-															stroke='currentColor'
-															strokeWidth='2'
-															strokeLinecap='round'
-															strokeLinejoin='round'>
-															<path d='M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2'></path>
-															<circle cx='12' cy='7' r='4'></circle>
-														</svg>
-													</span>
-													<input
-														type='text'
-														className='form-control'
-														id='loginUsername'
-														placeholder='Username'
-														value={username}
-														onChange={(e) => setUsername(e.target.value)}
-														aria-describedby='emailHelp'
-													/>
-												</div>
+												<Input
+													id='loginUsername'
+													placeholder='Username'
+													value={username}
+													onChange={(e) => setUsername(e.target.value)}
+													prefix={<UserOutlined />}
+													size='large'
+													style={{ borderRadius: '8px' }}
+												/>
 											</div>
 											<div className='mb-4'>
 												<label htmlFor='loginPassword' className='form-label'>
 													Password
 												</label>
-												<div className='input-group'>
-													<span className='input-group-text'>
-														<svg
-															className='ti ti-lock'
-															width='20'
-															height='20'
-															viewBox='0 0 24 24'
-															fill='none'
-															stroke='currentColor'
-															strokeWidth='2'
-															strokeLinecap='round'
-															strokeLinejoin='round'>
-															<rect
-																x='3'
-																y='11'
-																width='18'
-																height='11'
-																rx='2'
-																ry='2'></rect>
-															<circle cx='12' cy='16' r='1'></circle>
-															<path d='m7 11V7a5 5 0 0 1 10 0v4'></path>
-														</svg>
-													</span>
-													<input
-														type='password'
-														className='form-control'
-														id='loginPassword'
-														placeholder='••••••••'
-														value={password}
-														onChange={(e) => setPassword(e.target.value)}
-													/>
-												</div>
+												<Input.Password
+													id='loginPassword'
+													placeholder='Password'
+													value={password}
+													onChange={(e) => setPassword(e.target.value)}
+													prefix={<LockOutlined />}
+													size='large'
+													style={{ borderRadius: '8px' }}
+												/>
 											</div>
 											<div className='d-flex align-items-center justify-content-between mb-4'>
 												<div className='form-check'>
@@ -146,11 +116,12 @@ export default function Login() {
 														Remember me
 													</label>
 												</div>
-												<a
+												<span
 													className='fw-bold forgot-password'
-													href='/forgot-password'>
-													Forgot Password? 
-												</a>
+													style={{ cursor: 'pointer', color: '#1677ff' }}
+													onClick={() => setForgotVisible(true)}>
+													Forgot Password?
+												</span>
 											</div>
 											<div className='text-center'>
 												<button
@@ -166,6 +137,97 @@ export default function Login() {
 							</div>
 						</div>
 					</div>
+					{/* Modal chọn cách quên mật khẩu */}
+					<Modal
+						title={
+							<div style={{ textAlign: 'center', padding: '8px 0' }}>
+								<h4
+									style={{
+										margin: 0,
+										fontWeight: 600,
+										background:
+											'linear-gradient(90deg, #5e17eb 0%, #4dd0ff 100%)',
+										WebkitBackgroundClip: 'text',
+										WebkitTextFillColor: 'transparent',
+										backgroundClip: 'text',
+									}}>
+									Password recovery
+								</h4>
+							</div>
+						}
+						open={forgotVisible}
+						footer={null}
+						onCancel={() => setForgotVisible(false)}
+						centered
+						width={480}
+						style={{ borderRadius: '16px' }}>
+						<div style={{ padding: '8px 0' }}>
+							<p
+								style={{
+									textAlign: 'center',
+									marginBottom: '24px',
+									color: '#666',
+									fontSize: '16px',
+									fontWeight: 500,
+								}}>
+								Choose the password recovery method that works for you
+							</p>
+
+							<div
+								style={{
+									display: 'flex',
+									gap: '20px',
+									justifyContent: 'center',
+									flexWrap: 'wrap',
+								}}>
+								{/* Email Option */}
+								<div
+									onClick={() => {
+										setForgotMethod('email');
+										handleForgotOk();
+									}}
+									className='recover-option'>
+									<div className='recover-card'>
+										<div className='recover-icon'>📧</div>
+										<h6>Via email</h6>
+										<p>Send OTP code via email</p>
+									</div>
+								</div>
+
+								{/* Phone Option */}
+								<div
+									onClick={() => {
+										setForgotMethod('phone');
+										handleForgotOk();
+									}}
+									className='recover-option'>
+									<div className='recover-card'>
+										<div className='recover-icon'>📱</div>
+										<h6>Via Phone Number</h6>
+										<p>Send OTP code via SMS</p>
+									</div>
+								</div>
+							</div>
+
+							{/* Footer */}
+							<div
+								style={{
+									textAlign: 'center',
+									marginTop: '24px',
+									padding: '16px 0',
+									borderTop: '1px solid #f0f0f0',
+								}}>
+								<p
+									style={{
+										margin: 0,
+										color: '#999',
+										fontSize: '12px',
+									}}>
+									Choose the method you can access most easily
+								</p>
+							</div>
+						</div>
+					</Modal>
 					<img className='rocket-bg' src='img/astro.png' alt='rocket' />
 					<img className='planet-1' src='img/planet-1.png' alt='plant-1' />
 					<img className='planet-2' src='img/planet-2.png' alt='plant-2' />

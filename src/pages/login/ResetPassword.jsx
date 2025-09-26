@@ -1,15 +1,13 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Input } from 'antd';
+import { LockOutlined, SafetyOutlined } from '@ant-design/icons';
 import './Login.css';
 
 export default function ResetPassword() {
 	const [formData, setFormData] = useState({
 		newPassword: '',
 		confirmPassword: '',
-	});
-	const [showPassword, setShowPassword] = useState({
-		newPassword: false,
-		confirmPassword: false,
 	});
 	const [message, setMessage] = useState(null);
 	const [isLoading, setIsLoading] = useState(false);
@@ -22,12 +20,6 @@ export default function ResetPassword() {
 		}));
 	};
 
-	const togglePasswordVisibility = (field) => {
-		setShowPassword((prev) => ({
-			...prev,
-			[field]: !prev[field],
-		}));
-	};
 
 	const validatePassword = (password) => {
 		const minLength = 6;
@@ -91,7 +83,7 @@ export default function ResetPassword() {
 
 			// Chuyển về trang login sau 2 giây
 			setTimeout(() => {
-				navigate('/login');
+				navigate('/login-student');
 			}, 2000);
 
 			setIsLoading(false);
@@ -99,7 +91,7 @@ export default function ResetPassword() {
 	};
 
 	const handleBackToLogin = () => {
-		navigate('/login');
+		navigate('/login-student');
 	};
 
 	const passwordValidation = validatePassword(formData.newPassword);
@@ -142,73 +134,18 @@ export default function ResetPassword() {
 												<label htmlFor='newPassword' className='form-label'>
 													New password
 												</label>
-												<div className='input-group'>
-													<span className='input-group-text'>
-														<svg
-															className='ti ti-lock'
-															width='20'
-															height='20'
-															viewBox='0 0 24 24'
-															fill='none'
-															stroke='currentColor'
-															strokeWidth='2'
-															strokeLinecap='round'
-															strokeLinejoin='round'>
-															<rect
-																x='3'
-																y='11'
-																width='18'
-																height='11'
-																rx='2'
-																ry='2'></rect>
-															<circle cx='12' cy='16' r='1'></circle>
-															<path d='m7 11V7a5 5 0 0 1 10 0v4'></path>
-														</svg>
-													</span>
-													<input
-														type={
-															showPassword.newPassword ? 'text' : 'password'
-														}
-														className='form-control'
-														id='newPassword'
-														placeholder='Enter new password...'
-														value={formData.newPassword}
-														onChange={(e) =>
-															handleInputChange('newPassword', e.target.value)
-														}
-														required
-													/>
-													<button
-														type='button'
-														className='input-group-text'
-														onClick={() =>
-															togglePasswordVisibility('newPassword')
-														}
-														style={{ cursor: 'pointer', borderLeft: '0' }}>
-														<svg
-															className='ti'
-															width='20'
-															height='20'
-															viewBox='0 0 24 24'
-															fill='none'
-															stroke='currentColor'
-															strokeWidth='2'
-															strokeLinecap='round'
-															strokeLinejoin='round'>
-															{showPassword.newPassword ? (
-																<>
-																	<path d='M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24' />
-																	<line x1='1' y1='1' x2='23' y2='23' />
-																</>
-															) : (
-																<>
-																	<path d='M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z' />
-																	<circle cx='12' cy='12' r='3' />
-																</>
-															)}
-														</svg>
-													</button>
-												</div>
+												<Input.Password
+													id='newPassword'
+													placeholder='Enter new password...'
+													value={formData.newPassword}
+													onChange={(e) =>
+														handleInputChange('newPassword', e.target.value)
+													}
+													prefix={<LockOutlined />}
+													size='large'
+													style={{ borderRadius: '8px' }}
+													required
+												/>
 
 												{/* Password requirements */}
 												{formData.newPassword && (
@@ -261,77 +198,21 @@ export default function ResetPassword() {
 												<label htmlFor='confirmPassword' className='form-label'>
 													Confirm password
 												</label>
-												<div className='input-group'>
-													<span className='input-group-text'>
-														<svg
-															className='ti ti-lock-check'
-															width='20'
-															height='20'
-															viewBox='0 0 24 24'
-															fill='none'
-															stroke='currentColor'
-															strokeWidth='2'
-															strokeLinecap='round'
-															strokeLinejoin='round'>
-															<rect
-																width='18'
-																height='11'
-																x='3'
-																y='11'
-																rx='2'
-																ry='2'
-															/>
-															<path d='m7 11V7a5 5 0 0 1 9.9-1' />
-															<path d='m8 15 2 2 4-4' />
-														</svg>
-													</span>
-													<input
-														type={
-															showPassword.confirmPassword ? 'text' : 'password'
-														}
-														className='form-control'
-														id='confirmPassword'
-														placeholder='Re-enter new password...'
-														value={formData.confirmPassword}
-														onChange={(e) =>
-															handleInputChange(
-																'confirmPassword',
-																e.target.value
-															)
-														}
-														required
-													/>
-													<button
-														type='button'
-														className='input-group-text'
-														onClick={() =>
-															togglePasswordVisibility('confirmPassword')
-														}
-														style={{ cursor: 'pointer', borderLeft: '0' }}>
-														<svg
-															className='ti'
-															width='20'
-															height='20'
-															viewBox='0 0 24 24'
-															fill='none'
-															stroke='currentColor'
-															strokeWidth='2'
-															strokeLinecap='round'
-															strokeLinejoin='round'>
-															{showPassword.confirmPassword ? (
-																<>
-																	<path d='M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24' />
-																	<line x1='1' y1='1' x2='23' y2='23' />
-																</>
-															) : (
-																<>
-																	<path d='M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z' />
-																	<circle cx='12' cy='12' r='3' />
-																</>
-															)}
-														</svg>
-													</button>
-												</div>
+												<Input.Password
+													id='confirmPassword'
+													placeholder='Re-enter new password...'
+													value={formData.confirmPassword}
+													onChange={(e) =>
+														handleInputChange(
+															'confirmPassword',
+															e.target.value
+														)
+													}
+													prefix={<SafetyOutlined />}
+													size='large'
+													style={{ borderRadius: '8px' }}
+													required
+												/>
 
 												{/* Password match indicator */}
 												{formData.confirmPassword && (

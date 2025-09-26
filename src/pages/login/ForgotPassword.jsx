@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Input } from 'antd';
+import { MailOutlined } from '@ant-design/icons';
 import './Login.css'; // import Login CSS instead
 
 export default function ForgotPassword() {
@@ -21,9 +23,9 @@ export default function ForgotPassword() {
 		}
 	};
 
-	const handleBackToLogin = () => {
-		navigate('/login');
-	};
+  const handleBackToLogin = () => {
+    navigate("/login-student");
+  };
 
 	return (
 		<div className='kids-space'>
@@ -63,37 +65,17 @@ export default function ForgotPassword() {
 												<label htmlFor='forgotEmail' className='form-label'>
 													Email
 												</label>
-												<div className='input-group'>
-													<span className='input-group-text'>
-														<svg
-															className='ti ti-mail'
-															width='20'
-															height='20'
-															viewBox='0 0 24 24'
-															fill='none'
-															stroke='currentColor'
-															strokeWidth='2'
-															strokeLinecap='round'
-															strokeLinejoin='round'>
-															<rect
-																width='20'
-																height='16'
-																x='2'
-																y='4'
-																rx='2'></rect>
-															<path d='m22 7-10 5L2 7'></path>
-														</svg>
-													</span>
-													<input
-														type='email'
-														className='form-control'
-														id='forgotEmail'
-														placeholder='Email'
-														value={email}
-														onChange={(e) => setEmail(e.target.value)}
-														required
-													/>
-												</div>
+												<Input
+													id='forgotEmail'
+													type='email'
+													placeholder='Email'
+													value={email}
+													onChange={(e) => setEmail(e.target.value)}
+													prefix={<MailOutlined />}
+													size='large'
+													style={{ borderRadius: '8px' }}
+													required
+												/>
 											</div>
 
 											{message && (

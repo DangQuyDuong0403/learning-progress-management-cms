@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Input } from 'antd';
 import './Login.css';
 
 export default function OTPVerification() {
@@ -77,7 +78,7 @@ export default function OTPVerification() {
 	};
 
 	const handleBackToForgotPassword = () => {
-		navigate('/forgot-password');
+		navigate('/forgot-password-email');
 	};
 
 	return (
@@ -120,13 +121,13 @@ export default function OTPVerification() {
 												</label>
 												<div className='d-flex justify-content-center gap-2 mb-3'>
 													{otp.map((digit, index) => (
-														<input
+														<Input
 															key={index}
 															id={`otp-${index}`}
 															type='text'
 															inputMode='numeric'
 															pattern='[0-9]*'
-															className='form-control text-center'
+															className='text-center'
 															style={{
 																width: '45px',
 																height: '45px',
