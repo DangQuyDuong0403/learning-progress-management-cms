@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import CONFIG_ROUTER from "../routes/configRoute";
+import CONFIG_ROUTER from "../routers/configRouter";
 
 export default function Sidebar() {
   return (
