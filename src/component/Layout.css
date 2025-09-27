@@ -1,0 +1,88 @@
+/* Layout Styles */
+.sidebar-header {
+  padding: 16px;
+  border-bottom: 1px solid #303030;
+  margin-bottom: 8px;
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.logo-img {
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+}
+
+.logo-text {
+  color: #fff;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+/* Sidebar Menu Styles */
+.sidebar-menu {
+  border-right: none !important;
+  background: transparent !important;
+}
+
+.sidebar-menu .ant-menu-item {
+  margin: 4px 8px !important;
+  border-radius: 6px !important;
+  height: 40px !important;
+  line-height: 40px !important;
+  color: rgba(255, 255, 255, 0.85) !important;
+}
+
+.sidebar-menu .ant-menu-item:hover {
+  background-color: rgba(255, 255, 255, 0.1) !important;
+  color: #fff !important;
+}
+
+.sidebar-menu .ant-menu-item-selected {
+  background-color: #1890ff !important;
+  color: #fff !important;
+}
+
+.sidebar-menu .ant-menu-item-selected::after {
+  display: none !important;
+}
+
+.sidebar-menu .ant-menu-item .anticon {
+  font-size: 16px;
+  margin-right: 12px;
+}
+
+.sidebar-menu .ant-menu-item a {
+  color: inherit !important;
+}
+
+.sidebar-menu .ant-menu-item a:hover {
+  color: inherit !important;
+}
+
+/* Content Area */
+.ant-layout-content {
+  background: #f5f5f5;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .ant-layout-sider {
+    position: fixed !important;
+    z-index: 1000;
+  }
+  
+  .ant-layout {
+    margin-left: 0 !important;
+  }
+}
