@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Collapse, Checkbox } from "antd";
 import {
   Table,
@@ -27,34 +28,6 @@ import "./RoleList.css";
 import { spaceToast } from "../../../../component/SpaceToastify";
 
 const { Option } = Select;
-
-const roleOptions = [
-  { key: "admin", label: "Admin" },
-  { key: "manager", label: "Manager" },
-  { key: "teacher", label: "Teacher" },
-  { key: "teacher_assistant", label: "Teacher Assistant" },
-  { key: "student", label: "Student" },
-  { key: "test_taker", label: "Test Taker" },
-];
-
-const permissionGroups = [
-  {
-    group: "Quản lí người dùng",
-    permissions: [
-      "Tạo tài khoản mới",
-      "Cập nhật tài khoản",
-      "Active/Deactivate tài khoản",
-    ],
-  },
-  {
-    group: "Quản lí bài tập",
-    permissions: [
-      "Tạo bài tập mới",
-      "Cập nhật bài tập",
-      "Active/Deactivate bài tập",
-    ],
-  },
-];
 
 const mockRoles = [
   {
@@ -96,6 +69,7 @@ const mockRoles = [
 ];
 
 const RoleList = () => {
+  const { t } = useTranslation();
   const [roles, setRoles] = useState(mockRoles);
   const [searchText, setSearchText] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -109,6 +83,79 @@ const RoleList = () => {
     content: '',
     onConfirm: null
   });
+
+  // Role options with translations
+  const roleOptions = [
+    { key: "admin", label: t('roleManagement.admin') },
+    { key: "manager", label: t('roleManagement.manager') },
+    { key: "teacher", label: t('roleManagement.teacher') },
+    { key: "teacher_assistant", label: t('roleManagement.teacherAssistant') },
+    { key: "student", label: t('roleManagement.student') },
+    { key: "test_taker", label: t('roleManagement.testTaker') },
+  ];
+
+  // Permission groups with translations
+  const permissionGroups = [
+    {
+      group: t('roleManagement.userManagementGroup'),
+      permissions: [
+        t('roleManagement.createNewAccount'),
+        t('roleManagement.updateAccount'),
+        t('roleManagement.activateDeactivateAccount'),
+      ],
+    },
+    {
+      group: t('roleManagement.exerciseManagementGroup'),
+      permissions: [
+        t('roleManagement.createNewExercise'),
+        t('roleManagement.updateExercise'),
+        t('roleManagement.activateDeactivateExercise'),
+      ],
+    },
+  ];
+
+  // Function to translate role names
+  const translateRole = (role) => {
+    const roleTranslations = {
+      "Admin": t('roleManagement.admin'),
+      "Manager": t('roleManagement.manager'),
+      "Teacher": t('roleManagement.teacher'),
+      "Teacher Assistant": t('roleManagement.teacherAssistant'),
+      "Student": t('roleManagement.student'),
+      "Test Taker": t('roleManagement.testTaker'),
+    };
+    
+    return roleTranslations[role] || role;
+  };
+
+  // Function to translate permissions
+  const translatePermission = (permission) => {
+    const permissionTranslations = {
+      // Original Vietnamese permissions (from mockRoles)
+      "Quản lý hệ thống": t('roleManagement.systemManagement'),
+      "Quản lý tài khoản": t('roleManagement.accountManagement'),
+      "Chỉnh sửa quyền": t('roleManagement.editPermissions'),
+      "Quản lý lớp học": t('roleManagement.classManagement'),
+      "Quản lý giáo viên": t('roleManagement.teacherManagement'),
+      "Quản lý học sinh": t('roleManagement.studentManagement'),
+      "Tạo đề kiểm tra": t('roleManagement.createExamQuestions'),
+      "Hỗ trợ giáo viên": t('roleManagement.teacherSupport'),
+      "Quản lý bài tập": t('roleManagement.assignmentManagement'),
+      "Làm bài kiểm tra": t('roleManagement.takeExam'),
+      "Xem điểm": t('roleManagement.viewScores'),
+      "Làm bài kiểm tra thử": t('roleManagement.takePracticeExam'),
+      
+      // New translated permissions (from permissionGroups)
+      [t('roleManagement.createNewAccount')]: t('roleManagement.createNewAccount'),
+      [t('roleManagement.updateAccount')]: t('roleManagement.updateAccount'),
+      [t('roleManagement.activateDeactivateAccount')]: t('roleManagement.activateDeactivateAccount'),
+      [t('roleManagement.createNewExercise')]: t('roleManagement.createNewExercise'),
+      [t('roleManagement.updateExercise')]: t('roleManagement.updateExercise'),
+      [t('roleManagement.activateDeactivateExercise')]: t('roleManagement.activateDeactivateExercise'),
+    };
+    
+    return permissionTranslations[permission] || permission;
+  };
 
   // Search/filter
   const filteredRoles = roles.filter((role) => {
@@ -125,62 +172,62 @@ const RoleList = () => {
   // Table columns
   const columns = [
     {
-      title: "Role",
+      title: t('roleManagement.role'),
       dataIndex: "role",
       key: "role",
       render: (role) => (
         <Tag color="blue" style={{ fontWeight: 600 }}>
-          {role}
+          {translateRole(role)}
         </Tag>
       ),
       sorter: (a, b) => a.role.localeCompare(b.role),
     },
     {
-      title: "Hoạt động",
+      title: t('roleManagement.active'),
       dataIndex: "active",
       key: "active",
       render: (active) =>
         active ? (
-          <Tag color="green">Hoạt động</Tag>
+          <Tag color="green">{t('roleManagement.active')}</Tag>
         ) : (
-          <Tag color="red">Không hoạt động</Tag>
+          <Tag color="red">{t('roleManagement.inactive')}</Tag>
         ),
       filters: [
-        { text: "Hoạt động", value: true },
-        { text: "Không hoạt động", value: false },
+        { text: t('roleManagement.active'), value: true },
+        { text: t('roleManagement.inactive'), value: false },
       ],
       onFilter: (value, record) => record.active === value,
     },
     {
-      title: "Quyền",
+      title: t('roleManagement.permissions'),
       dataIndex: "permissions",
       key: "permissions",
       render: (permissions) =>
         permissions.map((p, idx) => (
           <Tag key={idx} color="purple">
-            {p}
+            {translatePermission(p)}
           </Tag>
         )),
     },
     {
-      title: "Thao tác",
+      title: t('roleManagement.actions'),
       key: "actions",
       width: 140,
       render: (_, record) => (
         <Space size="small">
-          <Tooltip title="Chỉnh sửa">
+          <Tooltip title={t('roleManagement.edit')}>
             <Button
               type="text"
-              icon={<EditOutlined style={{ fontSize: '18px' }} />}
+              icon={<EditOutlined style={{ fontSize: '25px' }} />}
               size="small"
               onClick={() => handleEditRole(record)}
               style={{ padding: '8px 12px' }}
             />
           </Tooltip>
-          <Tooltip title={record.active ? "Vô hiệu hóa" : "Kích hoạt"}>
+          <Tooltip title={record.active ? t('roleManagement.deactivate') : t('roleManagement.activate')}>
             <Button
               type="text"
-              icon={record.active ? <StopOutlined style={{ fontSize: '18px' }} /> : <CheckOutlined style={{ fontSize: '18px' }} />}
+              icon={record.active ? <StopOutlined style={{ fontSize: '25px' }} /> : <CheckOutlined style={{ fontSize: '25px' }} />}
               size="small"
               onClick={() => handleToggleStatus(record.id)}
               style={{
@@ -215,12 +262,12 @@ const RoleList = () => {
     const role = roles.find(r => r.id === id);
     if (role) {
       const newStatus = !role.active;
-      const actionText = newStatus ? 'kích hoạt' : 'vô hiệu hóa';
+      const actionText = newStatus ? t('roleManagement.activate') : t('roleManagement.deactivate');
       
       setConfirmModal({
         visible: true,
-        title: "Thay đổi trạng thái",
-        content: `Bạn có chắc chắn muốn ${actionText} vai trò "${role.role}"?`,
+        title: t('roleManagement.changeStatus'),
+        content: `${t('roleManagement.confirmStatusChange')} ${actionText} ${t('roleManagement.role')} "${translateRole(role.role)}"?`,
         onConfirm: () => {
           setRoles(roles.map(r => 
             r.id === id ? { ...r, active: newStatus } : r
@@ -229,9 +276,9 @@ const RoleList = () => {
           
           // Show success toast
           if (newStatus) {
-            spaceToast.success(`Đã kích hoạt vai trò "${role.role}" thành công!`);
+            spaceToast.success(`${t('roleManagement.activateRoleSuccess')} "${translateRole(role.role)}" ${t('roleManagement.success')}`);
           } else {
-            spaceToast.success(`Đã vô hiệu hóa vai trò "${role.role}" thành công!`);
+            spaceToast.success(`${t('roleManagement.deactivateRoleSuccess')} "${translateRole(role.role)}" ${t('roleManagement.success')}`);
           }
         }
       });
@@ -254,7 +301,7 @@ const RoleList = () => {
               : role
           )
         );
-        spaceToast.success(`Đã cập nhật vai trò "${values.role}" thành công!`);
+        spaceToast.success(`${t('roleManagement.updateRoleSuccess')} "${translateRole(values.role)}" ${t('roleManagement.success')}`);
       } else {
         const newRole = {
           id: Date.now(),
@@ -262,7 +309,7 @@ const RoleList = () => {
           permissions,
         };
         setRoles([newRole, ...roles]);
-        spaceToast.success(`Đã thêm vai trò "${values.role}" thành công!`);
+        spaceToast.success(`${t('roleManagement.addRoleSuccess')} "${translateRole(values.role)}" ${t('roleManagement.success')}`);
       }
       setIsModalVisible(false);
       form.resetFields();
@@ -294,10 +341,10 @@ const RoleList = () => {
                   fontWeight: 700,
                 }}
               >
-                Role management
+                {t('roleManagement.title')}
               </h2>
               <p style={{ margin: "4px 0 0 0", color: "#666" }}>
-                Tổng cộng: {filteredRoles.length} vai trò
+                {t('roleManagement.totalRoles')}: {filteredRoles.length} {t('roleManagement.roles')}
               </p>
             </Col>
             <Col>
@@ -307,13 +354,13 @@ const RoleList = () => {
                   icon={<PlusOutlined />}
                   onClick={handleAddRole}
                 >
-                  Thêm vai trò
+                  {t('roleManagement.addRole')}
                 </Button>
                 <Button
                   icon={<ReloadOutlined />}
                   onClick={() => setRoles(mockRoles)}
                 >
-                  Làm mới
+                  {t('roleManagement.refresh')}
                 </Button>
               </Space>
             </Col>
@@ -324,7 +371,7 @@ const RoleList = () => {
           <Row gutter={[16, 16]} align="middle">
             <Col xs={24} sm={12} md={8} lg={6}>
               <Input
-                placeholder="Tìm kiếm vai trò..."
+                placeholder={t('roleManagement.searchPlaceholder')}
                 prefix={<SearchOutlined />}
                 value={searchText}
                 onChange={(e) => setSearchText(e.target.value)}
@@ -333,14 +380,14 @@ const RoleList = () => {
             </Col>
             <Col xs={24} sm={12} md={8} lg={6}>
               <Select
-                placeholder="Lọc theo trạng thái"
+                placeholder={t('roleManagement.filterByStatus')}
                 value={statusFilter}
                 onChange={setStatusFilter}
                 style={{ width: "100%" }}
               >
-                <Option value="all">Tất cả trạng thái</Option>
-                <Option value="active">Hoạt động</Option>
-                <Option value="inactive">Không hoạt động</Option>
+                <Option value="all">{t('roleManagement.allStatuses')}</Option>
+                <Option value="active">{t('roleManagement.active')}</Option>
+                <Option value="inactive">{t('roleManagement.inactive')}</Option>
               </Select>
             </Col>
           </Row>
@@ -357,30 +404,30 @@ const RoleList = () => {
               showSizeChanger: true,
               showQuickJumper: true,
               showTotal: (total, range) =>
-                `${range[0]}-${range[1]} của ${total} vai trò`,
+                `${range[0]}-${range[1]} ${t('roleManagement.paginationText')} ${total} ${t('roleManagement.rolesText')}`,
             }}
             scroll={{ x: 800 }}
           />
         </Card>
 
         <Modal
-          title={editingRole ? "Chỉnh sửa vai trò" : "Thêm vai trò mới"}
+          title={editingRole ? t('roleManagement.editRole') : t('roleManagement.addNewRole')}
           open={isModalVisible}
           onOk={handleModalOk}
           onCancel={handleModalCancel}
           width={600}
-          okText={editingRole ? "Lưu" : "Thêm mới"}
-          cancelText="Hủy bỏ"
+          okText={editingRole ? t('common.save') : t('roleManagement.addRole')}
+          cancelText={t('common.cancel')}
         >
           <Form form={form} layout="vertical">
             <Form.Item
-              label="Tên vai trò"
+              label={t('roleManagement.roleName')}
               name="role"
               rules={[
-                { required: true, message: "Vui lòng nhập tên vai trò!" },
+                { required: true, message: t('roleManagement.roleRequired') },
               ]}
             >
-              <Select placeholder="Chọn vai trò">
+              <Select placeholder={t('roleManagement.selectRole')}>
                 {roleOptions.map((opt) => (
                   <Option key={opt.key} value={opt.label}>
                     {opt.label}
@@ -389,26 +436,28 @@ const RoleList = () => {
               </Select>
             </Form.Item>
             <Form.Item
-              label="Hoạt động"
+              label={t('roleManagement.active')}
               name="active"
-              rules={[{ required: true, message: "Vui lòng chọn trạng thái!" }]}
+              rules={[{ required: true, message: t('roleManagement.statusRequired') }]}
             >
-              <Select placeholder="Chọn trạng thái">
-                <Option value={true}>Hoạt động</Option>
-                <Option value={false}>Không hoạt động</Option>
+              <Select placeholder={t('roleManagement.selectStatus')}>
+                <Option value={true}>{t('roleManagement.active')}</Option>
+                <Option value={false}>{t('roleManagement.inactive')}</Option>
               </Select>
             </Form.Item>
             <div style={{ marginBottom: 16 }}>
               <label
                 style={{ fontWeight: 500, marginBottom: 8, display: "block" }}
               >
-                Quyền
+                {t('roleManagement.permissions')}
               </label>
               <Collapse defaultActiveKey={[permissionGroups[0].group]}>
                 {permissionGroups.map((group, idx) => (
                   <Collapse.Panel
                     header={
-                      <span style={{ fontWeight: 600 }}>{group.group}</span>
+                      <span style={{ fontWeight: 600 }}>
+                        {group.group}
+                      </span>
                     }
                     key={group.group}
                   >
@@ -435,7 +484,7 @@ const RoleList = () => {
                     >
                       {group.permissions.map((perm) => (
                         <Checkbox key={perm} value={perm}>
-                          {perm}
+                          {translatePermission(perm)}
                         </Checkbox>
                       ))}
                     </Checkbox.Group>
@@ -452,8 +501,8 @@ const RoleList = () => {
           open={confirmModal.visible}
           onOk={confirmModal.onConfirm}
           onCancel={handleConfirmCancel}
-          okText="Xác nhận"
-          cancelText="Hủy"
+          okText={t('common.confirm')}
+          cancelText={t('common.cancel')}
         >
           <p>{confirmModal.content}</p>
         </Modal>

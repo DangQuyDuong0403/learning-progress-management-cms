@@ -19,6 +19,8 @@ const ROUTER_PAGE = {
 	ADMIN_STUDENTS: '/admin/students',
 	ADMIN_TEACHERS: '/admin/teachers',
 	ADMIN_REPORTS: '/admin/reports',
+	// Spinner Demo
+	SPINNER_DEMO: '/spinner-demo',
 };
 
 export default ROUTER_PAGE;

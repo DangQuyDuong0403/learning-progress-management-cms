@@ -54,7 +54,6 @@ const LanguageSwitcher = () => {
     >
       <Button
         type="text"
-        icon={<GlobalOutlined />}
         className="language-switcher-btn"
         style={{
           color: 'rgba(255, 255, 255, 0.85)',
