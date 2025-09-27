@@ -8,7 +8,14 @@ export default function Header() {
     <header className="app-header">
       <nav className="navbar navbar-expand-lg navbar-light">
         <div className="navbar-brand">
-          <h1 className="profile-title">Profile</h1>
+          <h1 className="profile-title">
+            {
+            window.location.pathname === '/profile' ? 'Profile' : 
+            window.location.pathname === '/admin/accounts' ? 'Admin' : 
+            window.location.pathname === '/admin/roles' ? 'Admin' :
+            ''
+            }
+          </h1>
         </div>
         <div className="navbar-collapse justify-content-end px-0" id="navbarNav">
           <ul className="navbar-nav flex-row ms-auto align-items-center justify-content-end" style={{ gap: '1.5rem' }}>

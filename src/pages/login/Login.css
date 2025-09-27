@@ -104,13 +104,15 @@
 
 @media (min-width: 992px) {
 	.col-lg-6 {
-		width: 50%;
+		width: 60%;
+		max-width: none; /* bỏ giới hạn khi lên laptop trở lên */
 	}
 }
 
 @media (min-width: 1400px) {
 	.col-xxl-3 {
-		width: 25%;
+		width: 60%;
+		max-width: none;
 	}
 }
 
@@ -375,6 +377,66 @@ a:hover {
 	animation: float 4s ease-in-out infinite;
 }
 
+.planet-1 {
+	position: absolute;
+	left: 10%;
+	bottom: 2%;
+	width: 120px;
+	opacity: 0.5;
+	pointer-events: none;
+	animation: float 4s ease-in-out infinite;
+}
+
+.planet-2 {
+	position: absolute;
+	left: 2%;
+	bottom: 10%;
+	width: 120px;
+	opacity: 0.5;
+	pointer-events: none;
+	animation: float 4s ease-in-out infinite;
+}
+
+.planet-3 {
+	position: absolute;
+	right: 2%;
+	bottom: 20%;
+	width: 120px;
+	opacity: 0.5;
+	pointer-events: none;
+	animation: float 4s ease-in-out infinite;
+}
+
+.planet-4 {
+	position: absolute;
+	left: 15%;
+	bottom: 45%;
+	width: 120px;
+	opacity: 0.5;
+	pointer-events: none;
+	animation: float 4s ease-in-out infinite;
+}
+
+.planet-5 {
+	position: absolute;
+	right: 10%;
+	bottom: 35%;
+	width: 120px;
+	opacity: 0.5;
+	pointer-events: none;
+	animation: float 4s ease-in-out infinite;
+}
+
+.planet-6 {
+	position: absolute;
+	right: 40%;
+	top: 10%;
+	width: 80px;
+	opacity: 0.5;
+	pointer-events: none;
+	animation: float 4s ease-in-out infinite;
+}
+
 .planet,
 .moon {
 	position: absolute;
@@ -527,4 +589,64 @@ a:hover {
 		opacity: 1;
 		box-shadow: 0 0 6px rgba(255, 255, 255, 0.9);
 	}
+}
+
+.recover-option {
+	cursor: pointer;
+	flex: 1;
+	min-width: 180px;
+	max-width: 200px;
+	transition: all 0.3s ease;
+}
+
+.recover-card {
+	background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+	border-radius: 16px;
+	padding: 24px 16px;
+	text-align: center;
+	border: 2px solid transparent;
+	box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+	transition: all 0.3s ease;
+}
+
+.recover-icon {
+	width: 64px;
+	height: 64px;
+	margin: 0 auto 16px;
+	border-radius: 50%;
+	background: rgba(94, 23, 235, 0.1);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 28px;
+}
+
+.recover-card h6 {
+	margin: 0;
+	font-weight: 600;
+	font-size: 16px;
+	color: #333;
+}
+
+.recover-card p {
+	margin: 8px 0 0;
+	font-size: 12px;
+	color: #666;
+}
+
+/* Hover effect */
+.recover-option:hover .recover-card {
+	background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+	border: 2px solid #5e17eb;
+	box-shadow: 0 8px 25px rgba(94, 23, 235, 0.3);
+	transform: scale(1.05);
+}
+
+.recover-option:hover .recover-icon {
+	background: rgba(255, 255, 255, 0.2);
+}
+
+.recover-option:hover .recover-card h6,
+.recover-option:hover .recover-card p {
+	color: #fff;
 }

@@ -9,6 +9,8 @@ import LoginTeacher from '../pages/login/LoginTeacher';
 import Profile from '../pages/profile/Profile';
 import ProfileStudent from '../pages/profile/ProfileStudent';
 import ChangePassword from '../pages/profile/ChangePassword';
+import AccountList from '../pages/management/managementAdmin/account/AccountList';
+// import AdminDashboard from '../pages/management/managementAdmin/AdminDashboard';
 
 const CONFIG_ROUTER = [
 	//   {
@@ -33,7 +35,15 @@ const CONFIG_ROUTER = [
 		show: false, // không hiện trên menu
 		component: ForgotPassword,
 		// icon: <LogIn size={18} />,
-		path: ROUTER_PAGE.FORGOT_PASSWORD,
+		path: ROUTER_PAGE.FORGOT_PASSWORD_EMAIL,
+		exact: true,
+		key: 'FORGOT_PASSWORD',
+	},
+	{
+		show: false, // không hiện trên menu
+		component: ForgotPassword,
+		// icon: <LogIn size={18} />,
+		path: ROUTER_PAGE.FORGOT_PASSWORD_PHONE,
 		exact: true,
 		key: 'FORGOT_PASSWORD',
 	},
@@ -94,6 +104,29 @@ const CONFIG_ROUTER = [
 		key: 'CHANGE_PASSWORD',
 	},
 	
+	// Admin Management Routes
+	// {
+	// 	show: true,
+	// 	component: AdminDashboard,
+	// 	// icon: <DashboardOutlined />,
+	// 	path: ROUTER_PAGE.ADMIN_DASHBOARD,
+	// 	menuName: 'Dashboard',
+	// 	exact: true,
+	// 	key: 'ADMIN_DASHBOARD',
+	// 	private: true,
+	// 	role: 'admin',
+	// },
+	{
+		show: true,
+		component: AccountList,
+		// icon: <UserOutlined />,
+		path: ROUTER_PAGE.ADMIN_ACCOUNTS,
+		menuName: 'Quản lý tài khoản',
+		exact: true,
+		key: 'ADMIN_ACCOUNTS',
+		private: true,
+		role: 'admin',
+	},
 ];
 
 export default CONFIG_ROUTER;

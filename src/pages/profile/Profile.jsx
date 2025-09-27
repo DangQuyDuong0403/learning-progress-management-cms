@@ -3,18 +3,16 @@ import { toast } from 'react-toastify';
 import Header from '../../component/Header';
 import Sidebar from '../../component/Sidebar';
 import './Profile.css';
+import Layout from '../../component/Layout';
 
 export default function Profile() {
   // Password visibility state
-  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
-  const [showNewPassword, setShowNewPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
   const lastNameRef = useRef();
   const firstNameRef = useRef();
   const emailRef = useRef();
   const birthDateRef = useRef();
-  const newPasswordRef = useRef();
-  const confirmPasswordRef = useRef();
+
 
   function validateName(name) {
     // Only letters (including Vietnamese), spaces, at least 2 chars
@@ -65,30 +63,14 @@ export default function Profile() {
     // ...submit logic here
   };
 
-  // Password change handler
-  const handleChangePassword = (e) => {
-    e.preventDefault();
-    const newPassword = newPasswordRef.current.value;
-    const confirmPassword = confirmPasswordRef.current.value;
-    if (!newPassword || !confirmPassword) {
-      toast.error('Password fields cannot be empty!');
-      return;
-    }
-    if (newPassword !== confirmPassword) {
-      toast.error('New Password and Confirm New Password do not match!');
-      return;
-    }
-    toast.success('Password changed successfully!');
-    // ...submit logic here
-  };
+  
 
   return (
+     <Layout>
     <div className="profile-container">
-      <Header />
+     
       <div className="main-layout">
-        <div className="sidebar-container">
-          <Sidebar />
-        </div>
+       
         <div className="content-area">
           <div className="profile-content">
             <div className="profile-cards">
@@ -199,6 +181,7 @@ export default function Profile() {
             </div>
           </div>
         </div>
+        </Layout>
       );
     }
                         <div className="password-strength-bar"></div>

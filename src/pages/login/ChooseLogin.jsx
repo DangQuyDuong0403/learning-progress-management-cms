@@ -52,6 +52,12 @@ export default function ChooseLogin() {
       </div>
       {/* Background decorative elements */}
       <img className="rocket-bg" src="/img/astro.png" alt="rocket" style={{ position: 'absolute', right: '2%', bottom: '2%', width: 120, opacity: 0.9, pointerEvents: 'none', animation: 'float 4s ease-in-out infinite' }} />
+          <img className='planet-1' src='img/planet-1.png' alt='plant-1' />
+					<img className='planet-2' src='img/planet-2.png' alt='plant-2' />
+					<img className='planet-3' src='img/planet-3.png' alt='plant-3' />
+					<img className='planet-4' src='img/planet-4.png' alt='plant-4' />
+					<img className='planet-5' src='img/planet-5.png' alt='plant-5' />
+					<img className='planet-6' src='img/planet-6.png' alt='plant-6' />
       {/* Decorative planet */}
       <svg className="planet" viewBox="0 0 120 120" style={{ position: 'absolute', top: '8%', left: '6%', width: 130, opacity: 0.5, pointerEvents: 'none', animation: 'float 6s ease-in-out infinite', animationDelay: '.4s' }}>
         <defs>

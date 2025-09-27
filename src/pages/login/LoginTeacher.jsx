@@ -3,12 +3,13 @@ import { useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { loginSuccess } from '../../redux/auth';
 import { toast } from 'react-toastify';
+import { Input } from 'antd';
+import { UserOutlined, LockOutlined } from '@ant-design/icons';
 import './Login.css';
 
 export default function LoginTeacher() {
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
-    const [showPassword, setShowPassword] = useState(false);
     const dispatch = useDispatch();
     const navigate = useNavigate();
 
@@ -42,7 +43,7 @@ export default function LoginTeacher() {
             dispatch(loginSuccess(fakeResponse));
             toast.success('Login successful!');
             setTimeout(() => {
-                navigate('/home');
+                navigate('/admin/accounts');
             }, 1000);
         } else {
             toast.error('Wrong username or password!');
@@ -69,84 +70,31 @@ export default function LoginTeacher() {
                                         <form onSubmit={handleSubmit}>
                                             <div className='mb-3'>
                                                 <label htmlFor='loginUsername' className='form-label' style={{ fontWeight: 600 }}>
-                                                    User name
+                                                    Username
                                                 </label>
-                                                <div className='input-group'>
-                                                    <span className='input-group-text'>
-                                                        <svg
-                                                            className='ti ti-user'
-                                                            width='20'
-                                                            height='20'
-                                                            viewBox='0 0 24 24'
-                                                            fill='none'
-                                                            stroke='currentColor'
-                                                            strokeWidth='2'
-                                                            strokeLinecap='round'
-                                                            strokeLinejoin='round'>
-                                                            <path d='M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2'></path>
-                                                            <circle cx='12' cy='7' r='4'></circle>
-                                                        </svg>
-                                                    </span>
-                                                    <input
-                                                        type='text'
-                                                        className='form-control'
-                                                        id='loginUsername'
-                                                        placeholder='Username'
-                                                        value={username}
-                                                        onChange={(e) => setUsername(e.target.value)}
-                                                        aria-describedby='emailHelp'
-                                                        style={{ fontSize: 16 }}
-                                                    />
-                                                </div>
+                                                <Input
+                                                    id='loginUsername'
+                                                    placeholder='Username'
+                                                    value={username}
+                                                    onChange={(e) => setUsername(e.target.value)}
+                                                    prefix={<UserOutlined />}
+                                                    size='large'
+                                                    style={{ borderRadius: '8px', fontSize: 16 }}
+                                                />
                                             </div>
                                             <div className='mb-4'>
                                                 <label htmlFor='loginPassword' className='form-label' style={{ fontWeight: 600 }}>
                                                     Password
                                                 </label>
-                                                <div className='input-group' style={{ position: 'relative' }}>
-                                                    <span className='input-group-text'>
-                                                        <svg
-                                                            className='ti ti-lock'
-                                                            width='20'
-                                                            height='20'
-                                                            viewBox='0 0 24 24'
-                                                            fill='none'
-                                                            stroke='currentColor'
-                                                            strokeWidth='2'
-                                                            strokeLinecap='round'
-                                                            strokeLinejoin='round'>
-                                                            <rect
-                                                                x='3'
-                                                                y='11'
-                                                                width='18'
-                                                                height='11'
-                                                                rx='2'
-                                                                ry='2'></rect>
-                                                            <circle cx='12' cy='16' r='1'></circle>
-                                                            <path d='m7 11V7a5 5 0 0 1 10 0v4'></path>
-                                                        </svg>
-                                                    </span>
-                                                    <input
-                                                        type={showPassword ? 'text' : 'password'}
-                                                        className='form-control'
-                                                        id='loginPassword'
-                                                        placeholder='Password'
-                                                        value={password}
-                                                        onChange={(e) => setPassword(e.target.value)}
-                                                        style={{ fontSize: 16 }}
-                                                    />
-                                                    <span
-                                                        style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', cursor: 'pointer', zIndex: 2 }}
-                                                        onClick={() => setShowPassword(v => !v)}
-                                                        aria-label={showPassword ? 'Hide password' : 'Show password'}
-                                                    >
-                                                        {showPassword ? (
-                                                            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17.94 17.94A10.06 10.06 0 0 1 12 20c-5 0-9.27-3.11-11-8 1.09-2.86 3.05-5.13 5.66-6.44"/><path d="M1 1l22 22"/><path d="M9.53 9.53A3.5 3.5 0 0 0 12 15.5c1.93 0 3.5-1.57 3.5-3.5a3.5 3.5 0 0 0-5.97-2.47"/></svg>
-                                                        ) : (
-                                                            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><ellipse cx="12" cy="12" rx="10" ry="7"/><circle cx="12" cy="12" r="3"/></svg>
-                                                        )}
-                                                    </span>
-                                                </div>
+                                                <Input.Password
+                                                    id='loginPassword'
+                                                    placeholder='Password'
+                                                    value={password}
+                                                    onChange={(e) => setPassword(e.target.value)}
+                                                    prefix={<LockOutlined />}
+                                                    size='large'
+                                                    style={{ borderRadius: '8px', fontSize: 16 }}
+                                                />
                                             </div>
                                             <div className='d-flex align-items-center justify-content-between mb-4'>
                                                 <div className='form-check'>
@@ -160,12 +108,12 @@ export default function LoginTeacher() {
                                                     <label
                                                         className='form-check-label text-dark'
                                                         htmlFor='flexCheckChecked'>
-                                                        Remember this device
+                                                        Remember me
                                                     </label>
                                                 </div>
                                                 <a
                                                     className='fw-bold forgot-password'
-                                                    href='/forgot-password'>
+                                                    href='/forgot-password-email'>
                                                     Forgot your password?
                                                 </a>
                                             </div>
@@ -184,7 +132,12 @@ export default function LoginTeacher() {
                         </div>
                     </div>
                     <img className='rocket-bg' src='img/astro.png' alt='rocket' />
-
+                    <img className='planet-1' src='img/planet-1.png' alt='plant-1' />
+					<img className='planet-2' src='img/planet-2.png' alt='plant-2' />
+					<img className='planet-3' src='img/planet-3.png' alt='plant-3' />
+					<img className='planet-4' src='img/planet-4.png' alt='plant-4' />
+					<img className='planet-5' src='img/planet-5.png' alt='plant-5' />
+					<img className='planet-6' src='img/planet-6.png' alt='plant-6' />
                     <svg
                         className='planet'
                         viewBox='0 0 120 120'

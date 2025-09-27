@@ -3,67 +3,17 @@ import { toast } from 'react-toastify';
 import Header from '../../component/Header';
 import Sidebar from '../../component/Sidebar';
 import './Profile.css';
+import Layout from '../../component/Layout';
 
 export default function ChangePassword() {
   // Password visibility state
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const lastNameRef = useRef();
-  const firstNameRef = useRef();
-  const emailRef = useRef();
-  const birthDateRef = useRef();
+
   const newPasswordRef = useRef();
   const confirmPasswordRef = useRef();
 
-  function validateName(name) {
-    // Only letters (including Vietnamese), spaces, at least 2 chars
-    return /^[A-Za-zÀ-ỹà-ỹ\s]{2,}$/u.test(name);
-  }
-
-  function validateEmail(email) {
-    // Simple email regex
-    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-  }
-
-  function isFutureDate(dateStr) {
-    if (!dateStr) return false;
-    const today = new Date();
-    today.setHours(0,0,0,0);
-    const inputDate = new Date(dateStr);
-    return inputDate > today;
-  }
-
-  const handleUpdate = (e) => {
-    e.preventDefault();
-    const lastName = lastNameRef.current.value.trim();
-    const firstName = firstNameRef.current.value.trim();
-    const email = emailRef.current.value.trim();
-    const birthDate = birthDateRef.current.value;
-
-    if (!lastName || !firstName || !email || !birthDate) {
-      toast.error('Fields cannot be empty!');
-      return;
-    }
-    if (!validateName(lastName)) {
-      toast.error('Last name must be at least 2 letters, no numbers or special characters!');
-      return;
-    }
-    if (!validateName(firstName)) {
-      toast.error('First name must be at least 2 letters, no numbers or special characters!');
-      return;
-    }
-    if (!validateEmail(email)) {
-      toast.error('Invalid email format!');
-      return;
-    }
-    if (isFutureDate(birthDate)) {
-      toast.error('Date of birth cannot be in the future!');
-      return;
-    }
-    toast.success('Profile updated successfully!');
-    // ...submit logic here
-  };
 
   // Password change handler
   const handleChangePassword = (e) => {
@@ -83,12 +33,11 @@ export default function ChangePassword() {
   };
 
   return (
+    <Layout>
     <div className="profile-container">
-      <Header />
+    
       <div className="main-layout">
-        <div className="sidebar-container">
-          <Sidebar />
-        </div>
+      
         <div className="content-area">
           <div className="profile-content">
             <div className="profile-cards">
@@ -197,6 +146,7 @@ export default function ChangePassword() {
             </div>
           </div>
         </div>
+        </Layout>
       );
     }
                         <div className="password-strength-bar"></div>
