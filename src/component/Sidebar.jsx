@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link, useLocation } from "react-router-dom";
 import { Menu } from 'antd';
+import { useTranslation } from 'react-i18next';
 import {
   UserOutlined,
   TeamOutlined,
@@ -11,8 +12,9 @@ import {
 } from '@ant-design/icons';
 import CONFIG_ROUTER from "../routers/configRouter";
 
-export default function Sidebar() {
+export default function Sidebar({ collapsed }) {
   const location = useLocation();
+  const { t } = useTranslation();
 
   // Map route keys to icons
   const getIcon = (key) => {
@@ -27,31 +29,53 @@ export default function Sidebar() {
     return iconMap[key] || <UserOutlined />;
   };
 
+  // Find the current selected menu item based on pathname
+  const getSelectedKey = () => {
+    const currentRoute = CONFIG_ROUTER.find(route => route.path === location.pathname);
+    return currentRoute ? [currentRoute.key] : [];
+  };
+
+  // Get translated menu name
+  const getMenuName = (key) => {
+    const menuNameMap = {
+      'ADMIN_ACCOUNTS': t('sidebar.accountsManagement'),
+      'ADMIN_ROLES': t('sidebar.rolesManagement'),
+      'ADMIN_COURSES': t('sidebar.coursesManagement'),
+      'ADMIN_REPORTS': t('sidebar.reportsManagement'),
+      'ADMIN_DASHBOARD': t('sidebar.dashboard'),
+      'ADMIN_SETTINGS': t('sidebar.settings'),
+    };
+    return menuNameMap[key] || key;
+  };
+
   // Create menu items from routes
   const menuItems = CONFIG_ROUTER
     .filter((route) => route.show)
     .map((route) => ({
       key: route.key,
       icon: getIcon(route.key),
-      label: (
+      label: collapsed ? null : (
         <Link to={route.path} style={{ textDecoration: 'none' }}>
-          {route.menuName}
+          {getMenuName(route.key)}
         </Link>
       ),
+      title: collapsed ? getMenuName(route.key) : undefined,
       path: route.path,
     }));
 
   return (
     <Menu
       mode="inline"
-      selectedKeys={[location.pathname]}
+      selectedKeys={getSelectedKey()}
       items={menuItems}
       style={{
         border: 'none',
         background: 'transparent',
-        marginTop: '16px'
+        marginTop: '16px',
+        marginBottom: collapsed ? '60px' : '16px'
       }}
       className="sidebar-menu"
+      inlineCollapsed={collapsed}
     />
   );
 }

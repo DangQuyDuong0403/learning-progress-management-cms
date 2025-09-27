@@ -10,6 +10,7 @@ import Profile from '../pages/profile/Profile';
 import ProfileStudent from '../pages/profile/ProfileStudent';
 import ChangePassword from '../pages/profile/ChangePassword';
 import AccountList from '../pages/management/managementAdmin/account/AccountList';
+import RoleList from '../pages/management/managementAdmin/role/RoleList';
 // import AdminDashboard from '../pages/management/managementAdmin/AdminDashboard';
 
 const CONFIG_ROUTER = [
@@ -121,9 +122,20 @@ const CONFIG_ROUTER = [
 		component: AccountList,
 		// icon: <UserOutlined />,
 		path: ROUTER_PAGE.ADMIN_ACCOUNTS,
-		menuName: 'Quản lý tài khoản',
+		menuName: 'Accounts management',
 		exact: true,
 		key: 'ADMIN_ACCOUNTS',
+		private: true,
+		role: 'admin',
+	},
+	{
+		show: true,
+		component: RoleList,
+		// icon: <UserOutlined />,
+		path: ROUTER_PAGE.ADMIN_ROLES,
+		menuName: 'Roles management',
+		exact: true,
+		key: 'ADMIN_ROLES',
 		private: true,
 		role: 'admin',
 	},

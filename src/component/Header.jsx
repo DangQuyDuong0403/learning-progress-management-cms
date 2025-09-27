@@ -1,24 +1,41 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
+import LanguageSwitcher from './LanguageSwitcher';
 import './Header.css';
 
 export default function Header() {
   const navigate = useNavigate();
+  const { t } = useTranslation();
+
+  const getPageTitle = () => {
+    const path = window.location.pathname;
+    switch (path) {
+      case '/profile':
+        return t('profile.title');
+      case '/admin/accounts':
+        return t('accountManagement.title');
+      case '/admin/roles':
+        return t('roleManagement.title');
+      default:
+        return '';
+    }
+  };
+
   return (
     <header className="app-header">
       <nav className="navbar navbar-expand-lg navbar-light">
         <div className="navbar-brand">
           <h1 className="profile-title">
-            {
-            window.location.pathname === '/profile' ? 'Profile' : 
-            window.location.pathname === '/admin/accounts' ? 'Admin' : 
-            window.location.pathname === '/admin/roles' ? 'Admin' :
-            ''
-            }
+            {getPageTitle()}
           </h1>
         </div>
         <div className="navbar-collapse justify-content-end px-0" id="navbarNav">
           <ul className="navbar-nav flex-row ms-auto align-items-center justify-content-end" style={{ gap: '1.5rem' }}>
+            {/* Language Switcher */}
+            <li className="nav-item">
+              <LanguageSwitcher />
+            </li>
             {/* Bell icon with dropdown */}
             <li className="nav-item dropdown">
               <button

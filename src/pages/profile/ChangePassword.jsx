@@ -1,11 +1,14 @@
 import React, { useRef, useState } from 'react';
 import { toast } from 'react-toastify';
+import { useTranslation } from 'react-i18next';
 import Header from '../../component/Header';
 import Sidebar from '../../component/Sidebar';
 import './Profile.css';
 import Layout from '../../component/Layout';
 
 export default function ChangePassword() {
+  const { t } = useTranslation();
+  
   // Password visibility state
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
@@ -21,20 +24,28 @@ export default function ChangePassword() {
     const newPassword = newPasswordRef.current.value;
     const confirmPassword = confirmPasswordRef.current.value;
     if (!newPassword || !confirmPassword) {
-      toast.error('Password fields cannot be empty!');
+      toast.error(t('messages.required'));
       return;
     }
     if (newPassword !== confirmPassword) {
-      toast.error('New Password and Confirm New Password do not match!');
+      toast.error(t('messages.passwordMismatch'));
       return;
     }
-    toast.success('Password changed successfully!');
+    toast.success(t('messages.updateSuccess'));
     // ...submit logic here
   };
 
   return (
     <Layout>
     <div className="profile-container">
+      {/* Floating Planets */}
+      <img src="/img/planet-1.png" alt="Planet" className="planet-1" />
+      <img src="/img/planet-2.png" alt="Planet" className="planet-2" />
+      <img src="/img/planet-3.png" alt="Planet" className="planet-3" />
+      <img src="/img/planet-4.png" alt="Planet" className="planet-4" />
+      <img src="/img/planet-5.png" alt="Planet" className="planet-5" />
+      <img src="/img/planet-6.png" alt="Planet" className="planet-6" />
+  
     
       <div className="main-layout">
       
@@ -54,14 +65,14 @@ export default function ChangePassword() {
                           color: '#fff'
                         }}
                       >
-                        Change Password
+                        {t('profile.changePassword')}
                       </h3>
                       <i className="ti ti-lock"></i>
                     </div>
                     <div className="card-content">
                       <div className="password-form">
                         <div className="form-group">
-                          <label htmlFor="currentPassword">Current Password</label>
+                          <label htmlFor="currentPassword">{t('profile.currentPassword')}</label>
                           <div className="password-input-container">
                             <input 
                               type={showCurrentPassword ? "text" : "password"}
@@ -84,7 +95,7 @@ export default function ChangePassword() {
                           </div>
                         </div>
                         <div className="form-group">
-                          <label htmlFor="newPassword">New Password</label>
+                          <label htmlFor="newPassword">{t('profile.newPassword')}</label>
                           <div className="password-input-container">
                             <input 
                               type={showNewPassword ? "text" : "password"}
@@ -111,7 +122,7 @@ export default function ChangePassword() {
                           </div> */}
                         </div>
                         <div className="form-group">
-                          <label htmlFor="confirmPassword">Confirm New Password</label>
+                          <label htmlFor="confirmPassword">{t('profile.confirmPassword')}</label>
                           <div className="password-input-container">
                             <input 
                               type={showConfirmPassword ? "text" : "password"}
@@ -136,8 +147,8 @@ export default function ChangePassword() {
                         </div>
                       </div>
                       <div className="form-actions">
-                        <button className="btn btn-secondary">Cancel</button>
-                        <button className="btn btn-primary" onClick={handleChangePassword}>Change Password</button>
+                        <button className="btn btn-secondary">{t('common.cancel')}</button>
+                        <button className="btn btn-primary" onClick={handleChangePassword}>{t('profile.changePassword')}</button>
                       </div>
                     </div>
                   </div>
