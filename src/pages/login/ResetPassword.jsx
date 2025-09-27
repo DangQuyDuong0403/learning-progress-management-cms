@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Input } from 'antd';
+import { Input, Button } from 'antd';
 import { LockOutlined, SafetyOutlined } from '@ant-design/icons';
+import { useTranslation } from 'react-i18next';
+import LanguageToggle from '../../component/LanguageToggle';
 import './Login.css';
 
 export default function ResetPassword() {
@@ -12,6 +14,7 @@ export default function ResetPassword() {
 	const [message, setMessage] = useState(null);
 	const [isLoading, setIsLoading] = useState(false);
 	const navigate = useNavigate();
+	const { i18n, t } = useTranslation();
 
 	const handleInputChange = (field, value) => {
 		setFormData((prev) => ({
@@ -98,6 +101,11 @@ export default function ResetPassword() {
 
 	return (
 		<div className='kids-space'>
+			{/* Language Toggle - Top Right */}
+			<div style={{ position: 'absolute', top: '20px', right: '20px', zIndex: 1000 }}>
+				<LanguageToggle />
+			</div>
+			
 			<div
 				className='page-wrapper'
 				id='main-wrapper'
@@ -123,6 +131,7 @@ export default function ResetPassword() {
 									<div
 										className='card-body'
 										style={{ padding: '1.5rem 1.5rem 1rem 1.5rem' }}>
+										
 										<h5 className='text-center kids-heading mb-1'>
 											Reset password
 										</h5>
@@ -274,7 +283,7 @@ export default function ResetPassword() {
 													className='fw-bold forgot-password'
 													onClick={handleBackToLogin}
 													style={{ cursor: 'pointer' }}>
-													Return to login
+													{t('common.back')} to {t('login.signIn')}
 												</a>
 											</div>
 										</form>
