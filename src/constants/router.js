@@ -10,6 +10,7 @@ const ROUTER_PAGE = {
 	LOGIN_TEACHER: '/login-teacher',
 	PROFILE : '/profile',
 	PROFILE_STUDENT : '/profile-student',
+	CHANGE_PASSWORD : '/change-password',
 	// Admin Management Routes
 	ADMIN_DASHBOARD: '/admin/dashboard',
 	ADMIN_ACCOUNTS: '/admin/accounts',
@@ -18,6 +19,8 @@ const ROUTER_PAGE = {
 	ADMIN_STUDENTS: '/admin/students',
 	ADMIN_TEACHERS: '/admin/teachers',
 	ADMIN_REPORTS: '/admin/reports',
+	// Spinner Demo
+	SPINNER_DEMO: '/spinner-demo',
 };
 
 export default ROUTER_PAGE;

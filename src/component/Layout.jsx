@@ -1,7 +1,6 @@
-import React from 'react';
-import { Layout as AntLayout, Menu, Avatar, Dropdown, Button } from 'antd';
-import { UserOutlined, LogoutOutlined, SettingOutlined } from '@ant-design/icons';
-import { Link, useLocation } from 'react-router-dom';
+import React, { useState } from 'react';
+import { Layout as AntLayout, Button } from 'antd';
+import { MenuFoldOutlined, MenuUnfoldOutlined } from '@ant-design/icons';
 import Sidebar from './Sidebar';
 import './Layout.css';
 import Header from './Header';
@@ -10,29 +9,19 @@ const { Sider, Content } = AntLayout;
 
 
 const Layout = ({ children }) => {
-  const location = useLocation();
+  const [collapsed, setCollapsed] = useState(false);
 
-  // Menu dropdown cho user profile
-  const userMenu = (
-    <Menu>
-      <Menu.Item key="profile" icon={<UserOutlined />}>
-        <Link to="/profile">Thông tin cá nhân</Link>
-      </Menu.Item>
-      <Menu.Item key="settings" icon={<SettingOutlined />}>
-        Cài đặt
-      </Menu.Item>
-      <Menu.Divider />
-      <Menu.Item key="logout" icon={<LogoutOutlined />}>
-        Đăng xuất
-      </Menu.Item>
-    </Menu>
-  );
+  const toggleCollapsed = () => {
+    setCollapsed(!collapsed);
+  };
 
   return (
     <AntLayout style={{ minHeight: '100vh' }}>
       {/* Sidebar */}
       <Sider
         width={250}
+        collapsedWidth={80}
+        collapsed={collapsed}
         theme="dark"
         style={{
           overflow: 'auto',
@@ -46,14 +35,24 @@ const Layout = ({ children }) => {
         <div className="sidebar-header">
           <div className="logo">
             <img src="/img/logo.png" alt="Logo" className="logo-img" />
-            <span className="logo-text">Learning CMS</span>
+            {!collapsed && <span className="logo-text">Learning CMS</span>}
           </div>
         </div>
-        <Sidebar />
+        <Sidebar collapsed={collapsed} />
+        
+        {/* Toggle Button */}
+        <div className="sidebar-toggle">
+          <Button
+            type="text"
+            icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
+            onClick={toggleCollapsed}
+            className="toggle-button"
+          />
+        </div>
       </Sider>
 
       {/* Main Content Area */}
-      <AntLayout style={{ marginLeft: 250 }}>
+      <AntLayout style={{ marginLeft: collapsed ? 80 : 250 }}>
         {/* Header */}
         <Header/>
 
@@ -74,15 +73,6 @@ const Layout = ({ children }) => {
   );
 };
 
-// Helper function để lấy title theo route
-const getPageTitle = (pathname) => {
-  const titleMap = {
-    '/admin/accounts': 'Quản lý tài khoản',
-    '/admin/roles': 'Quản lý vai trò',
-    '/admin/dashboard': 'Dashboard',
-  };
-  
-  return titleMap[pathname] || 'Quản lý hệ thống';
-};
 
 export default Layout;
+

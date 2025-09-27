@@ -1,17 +1,41 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
+import LanguageSwitcher from './LanguageSwitcher';
 import './Header.css';
 
 export default function Header() {
   const navigate = useNavigate();
+  const { t } = useTranslation();
+
+  const getPageTitle = () => {
+    const path = window.location.pathname;
+    switch (path) {
+      case '/profile':
+        return t('profile.title');
+      case '/admin/accounts':
+        return t('accountManagement.title');
+      case '/admin/roles':
+        return t('roleManagement.title');
+      default:
+        return '';
+    }
+  };
+
   return (
     <header className="app-header">
       <nav className="navbar navbar-expand-lg navbar-light">
         <div className="navbar-brand">
-          <h1 className="profile-title">Profile</h1>
+          <h1 className="profile-title">
+            {getPageTitle()}
+          </h1>
         </div>
         <div className="navbar-collapse justify-content-end px-0" id="navbarNav">
           <ul className="navbar-nav flex-row ms-auto align-items-center justify-content-end" style={{ gap: '1.5rem' }}>
+            {/* Language Switcher */}
+            <li className="nav-item">
+              <LanguageSwitcher />
+            </li>
             {/* Bell icon with dropdown */}
             <li className="nav-item dropdown">
               <button
@@ -27,16 +51,16 @@ export default function Header() {
               </button>
               <div className="dropdown-menu dropdown-menu-end dropdown-menu-animate-up" aria-labelledby="notificationDropdown" style={{ minWidth: 350, maxHeight: 500, overflowY: 'auto' }}>
                 <div className="notification-header">
-                  <h5>Thông báo</h5>
+                  <h5>{t('header.notifications')}</h5>
                   <div className="notification-tabs">
-                    <span className="tab active">Tất cả</span>
-                    <span className="tab">Chưa đọc</span>
+                    <span className="tab active">{t('header.allNotifications')}</span>
+                    <span className="tab">{t('header.unreadNotifications')}</span>
                   </div>
                 </div>
                 <div className="notification-section">
                   <div className="section-header">
-                    <span>Hôm nay</span>
-                    <button className="see-all">Xem tất cả</button>
+                    <span>{t('header.today')}</span>
+                    <button className="see-all">{t('header.viewAll')}</button>
                   </div>
                   <div className="notification-list">
                     <div className="notification-item">
@@ -48,9 +72,9 @@ export default function Header() {
                       </div>
                       <div className="notification-content">
                         <p className="notification-text">
-                          <strong>Hệ thống</strong> đã đăng một sự kiện sắp diễn ra: "Bảo trì hệ thống vào 22:00"
+                          <strong>{t('header.systemRole')}</strong> {t('header.systemPostedEvent')} "{t('header.systemMaintenanceEvent')}"
                         </p>
-                        <span className="notification-time">2 giờ</span>
+                        <span className="notification-time">2 {t('header.hoursAgo')}</span>
                       </div>
                       <div className="notification-dot"></div>
                     </div>
@@ -64,9 +88,9 @@ export default function Header() {
                       </div>
                       <div className="notification-content">
                         <p className="notification-text">
-                          <strong>Admin</strong> đã gửi tin nhắn mới: "Chào mừng bạn đến với hệ thống!"
+                          <strong>{t('header.adminRole')}</strong> {t('header.adminSentMessage')} "{t('header.welcomeMessage')}"
                         </p>
-                        <span className="notification-time">4 giờ</span>
+                        <span className="notification-time">4 {t('header.hoursAgo')}</span>
                       </div>
                       <div className="notification-dot"></div>
                     </div>
@@ -75,7 +99,7 @@ export default function Header() {
                 
                 <div className="notification-section">
                   <div className="section-header">
-                    <span>Trước đó</span>
+                    <span>{t('header.earlier')}</span>
                   </div>
                   <div className="notification-list">
                     <div className="notification-item">
@@ -87,9 +111,9 @@ export default function Header() {
                       </div>
                       <div className="notification-content">
                         <p className="notification-text">
-                          <strong>Hệ thống</strong> đã cập nhật: "Phiên bản mới đã được phát hành"
+                          <strong>{t('header.systemRole')}</strong> {t('header.systemUpdated')} "{t('header.newVersionReleased')}"
                         </p>
-                        <span className="notification-time">1 ngày</span>
+                        <span className="notification-time">1 {t('header.daysAgo')}</span>
                       </div>
                     </div>
                     
@@ -102,9 +126,9 @@ export default function Header() {
                       </div>
                       <div className="notification-content">
                         <p className="notification-text">
-                          <strong>Hỗ trợ</strong> đã trả lời ticket của bạn: "Vấn đề đã được giải quyết"
+                          <strong>{t('header.supportRole')}</strong> {t('header.supportReplied')} "{t('header.issueResolved')}"
                         </p>
-                        <span className="notification-time">2 ngày</span>
+                        <span className="notification-time">2 {t('header.daysAgo')}</span>
                       </div>
                     </div>
                   </div>
@@ -116,10 +140,53 @@ export default function Header() {
                Admin
              </li>
             {/* Profile icon */}
-            <li className="nav-item">
-              <button className="nav-link btn btn-link" style={{ padding: 0, border: 'none', background: 'none', boxShadow: 'none' }} onClick={() => navigate('/profile')}>
+            <li className="nav-item dropdown">
+              <button
+                className="nav-link btn btn-link dropdown-toggle"
+                id="profileDropdown"
+                data-bs-toggle="dropdown"
+                aria-expanded="false"
+                style={{ padding: 0, border: 'none', background: 'none', boxShadow: 'none' }}
+                type="button"
+              >
                 <img src="/img/avatar_1.png" alt="Profile" width="35" height="35" className="rounded-circle" />
               </button>
+              <ul className="dropdown-menu dropdown-menu-end profile-dropdown-menu" aria-labelledby="profileDropdown" style={{ minWidth: 280, padding: 0 }}>
+                <li className="profile-dropdown-header" style={{ padding: '1rem 1.5rem', borderBottom: '1px solid #e6f2fa', background: '#fff', color: '#0b1b4b', textAlign: 'left' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <img src="/img/avatar_1.png" alt="Profile" width="48" height="48" className="rounded-circle" style={{ border: '2px solid #4dd0ff' }} />
+                    <div>
+                      <div style={{ fontWeight: 700, fontSize: 16, color: '#0b1b4b' }}>Đức Anh Nguyen</div>
+                    
+                    </div>
+                  </div>
+                  <button className="btn w-100 mt-3" style={{ fontWeight: 600, fontSize: 15, borderRadius: 8, background: 'linear-gradient(90deg, #5e17eb 0%, #4dd0ff 100%)', color: '#fff', border: 'none' }} onClick={() => navigate('/profile')}>
+                    <i className="ti ti-user" style={{ marginRight: 8 }}></i>{t('header.viewProfile')}
+                  </button>
+                </li>
+                <li><hr className="dropdown-divider" style={{ margin: 0, borderColor: '#e6f2fa' }} /></li>
+                <li>
+                  <button className="dropdown-item d-flex align-items-center" type="button" onClick={() => navigate('/change-password')} style={{ color: '#0b1b4b', fontWeight: 500 }}>
+                    <i className="ti ti-settings" style={{ marginRight: 12, fontSize: 18, color: '#5e17eb' }}></i>
+                    {t('header.changePassword')}
+                  </button>
+                </li>
+                <li>
+                  <button className="dropdown-item d-flex align-items-center" type="button" onClick={() => navigate('/setting')} style={{ color: '#0b1b4b', fontWeight: 500 }}>
+                    <i className="ti ti-help-circle" style={{ marginRight: 12, fontSize: 18, color: '#4dd0ff' }}></i>
+                    {t('header.settings')}
+                  </button>
+                </li>
+                
+              
+                <li><hr className="dropdown-divider" style={{ margin: 0, borderColor: '#e6f2fa' }} /></li>
+                <li>
+                  <button className="dropdown-item d-flex align-items-center" type="button" onClick={() => navigate('/login-teacher')} style={{ color: '#ff4757', fontWeight: 600 }}>
+                    <i className="ti ti-logout" style={{ marginRight: 12, fontSize: 18, color: '#ff4757' }}></i>
+                    {t('header.logOut')}
+                  </button>
+                </li>
+              </ul>
             </li>
           </ul>
         </div>

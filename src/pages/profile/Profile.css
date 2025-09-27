@@ -1,16 +1,68 @@
+/* Form Row for side-by-side fields */
+.form-row {
+  display: flex;
+  gap: 1rem;
+  width: 100%;
+}
+
+@media (max-width: 600px) {
+  .form-row {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+}
 /* Profile Page Styles - Đồng bộ với theme Camkey */
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@200;300;400;500;600;700;800&display=swap');
 @import url('https://cdnjs.cloudflare.com/ajax/libs/tabler-icons/1.35.0/tabler-icons.min.css');
 
 .profile-container {
-  min-height: 100vh;
-  background: linear-gradient(135deg, #f8faff 0%, #f1f5ff 100%);
   font-family: 'Plus Jakarta Sans', system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+    min-height: 10vh;
+  
+  background: radial-gradient(
+    circle at 20% 20%,
+    rgba(255, 255, 255, 0.15) 0 2px,
+    transparent 3px
+  )
+    0 0/80px 80px,
+    radial-gradient(
+      circle at 70% 40%,
+      rgba(255, 255, 255, 0.1) 0 2px,
+      transparent 3px
+    )
+    0 0/100px 100px,
+    linear-gradient(135deg, #0b1b4b 0%, #381770 50%, #5e17eb 100%);
+  position: relative;
+}
+
+/* Space Background Effects - Subtle stars */
+.profile-container::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: 
+    radial-gradient(1px 1px at 20px 30px, rgba(255, 255, 255, 0.6), transparent),
+    radial-gradient(1px 1px at 40px 70px, rgba(77, 208, 255, 0.4), transparent),
+    radial-gradient(1px 1px at 90px 40px, rgba(255, 255, 255, 0.3), transparent),
+    radial-gradient(1px 1px at 130px 80px, rgba(94, 23, 235, 0.4), transparent),
+    radial-gradient(1px 1px at 160px 30px, rgba(255, 255, 255, 0.5), transparent);
+  background-repeat: repeat;
+  background-size: 300px 150px;
+  animation: twinkle 12s linear infinite;
+  opacity: 0.4;
+  pointer-events: none;
+  z-index: 1;
 }
 
 .main-layout {
   display: flex;
-  min-height: calc(100vh - 70px);
+  height: calc(100vh - 70px);
+  min-height: 0;
+  position: relative;
+  z-index: 2;
 }
 
 .sidebar-container {
@@ -22,13 +74,16 @@
 
 .content-area {
   flex: 1;
-  padding: 2rem;
+  padding: 0.5rem;
   overflow-y: auto;
+  min-width: 0;
+  max-height: calc(100vh - 70px);
 }
 
 .profile-content {
-  max-width: 1200px;
+  max-width: 900px;
   margin: 0 auto;
+  width: 100%;
 }
 
 .profile-header {
@@ -39,26 +94,24 @@
 .profile-title {
   font-size: 2.5rem;
   font-weight: 700;
-  background: linear-gradient(90deg, #5e17eb 0%, #4dd0ff 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: #fff;
   margin-bottom: 0.5rem;
   letter-spacing: 0.5px;
+  text-shadow: 0 2px 8px rgba(30, 20, 90, 0.18);
 }
 
 .profile-subtitle {
   font-size: 1.1rem;
-  color: #64748b;
+  color: #b9c6ff;
   font-weight: 500;
 }
 
 .profile-cards {
   display: flex;
   flex-direction: column;
-  gap: 2rem;
-  margin-top: 2rem;
-  max-width: 1000px;
+  gap: 1rem;
+  margin-top: 2.5rem;
+  max-width: 100%;
   margin-left: auto;
   margin-right: auto;
 }
@@ -66,34 +119,38 @@
 .profile-card {
   background: #ffffff;
   border-radius: 16px;
-  box-shadow: 0 10px 40px rgba(30, 20, 90, 0.1);
-  border: 1px solid rgba(77, 208, 255, 0.1);
-  overflow: hidden;
+  box-shadow: 0 6px 24px rgba(30, 20, 90, 0.12);
+  border: 1.5px solid #4dd0ff;
+  overflow: auto;
   transition: all 0.3s ease;
+  width: 100%;
+  min-width: 0;
+  max-height: 100%;
 }
 
 .profile-card:hover {
   transform: translateY(-5px);
-  box-shadow: 0 20px 60px rgba(30, 20, 90, 0.15);
+  box-shadow: 0 20px 60px rgba(77, 208, 255, 0.18);
 }
 
 .card-header {
-  background: linear-gradient(135deg, #f1f5ff 0%, #e4e8ff 100%);
-  padding: 2rem 1.5rem;
+  background: linear-gradient(90deg, #5e17eb 0%, #4dd0ff 100%);
+  padding: 0.75rem 0.5rem;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-bottom: 1px solid rgba(77, 208, 255, 0.1);
+  border-bottom: 1.5px solid #4dd0ff;
   position: relative;
 }
 
 .card-header h3 {
   font-size: 1.75rem;
   font-weight: 700;
-  color: #0b1b4b;
+  color: #fff;
   margin: 0;
   text-align: center;
   letter-spacing: 0.5px;
+  text-shadow: 0 2px 8px rgba(30, 20, 90, 0.12);
 }
 
 .card-header i {
@@ -106,7 +163,7 @@
 }
 
 .card-content {
-  padding: 1.5rem;
+  padding: 0.5rem;
 }
 
 /* Personal Info Card Layout */
@@ -156,14 +213,14 @@
 .profile-full-name {
   font-size: 1.5rem;
   font-weight: 700;
-  color: #0b1b4b;
+  color: #381770;
   margin: 0 0 0.5rem 0;
   letter-spacing: 0.5px;
 }
 
 .profile-role {
   font-size: 1rem;
-  color: #64748b;
+  color: #5e17eb;
   font-weight: 500;
   margin: 0;
 }
@@ -629,6 +686,119 @@
   .btn {
     width: 100%;
     padding: 0.875rem 1.5rem;
+  }
+}
+
+/* Floating Planets - Smaller and more balanced */
+.planet-1 {
+  position: absolute;
+  left: 8%;
+  bottom: 5%;
+  width: 60px;
+  opacity: 0.4;
+  pointer-events: none;
+  animation: float 4s ease-in-out infinite;
+  z-index: 1;
+}
+
+.planet-2 {
+  position: absolute;
+  left: 1%;
+  bottom: 15%;
+  width: 50px;
+  opacity: 0.4;
+  pointer-events: none;
+  animation: float 4s ease-in-out infinite;
+  z-index: 1;
+}
+
+.planet-3 {
+  position: absolute;
+  right: 3%;
+  bottom: 25%;
+  width: 70px;
+  opacity: 0.4;
+  pointer-events: none;
+  animation: float 4s ease-in-out infinite;
+  z-index: 1;
+}
+
+.planet-4 {
+  position: absolute;
+  left: 12%;
+  bottom: 50%;
+  width: 45px;
+  opacity: 0.3;
+  pointer-events: none;
+  animation: float 4s ease-in-out infinite;
+  z-index: 1;
+}
+
+.planet-5 {
+  position: absolute;
+  right: 8%;
+  bottom: 40%;
+  width: 55px;
+  opacity: 0.3;
+  pointer-events: none;
+  animation: float 4s ease-in-out infinite;
+  z-index: 1;
+}
+
+.planet-6 {
+  position: absolute;
+  right: 35%;
+  top: 15%;
+  width: 40px;
+  opacity: 0.3;
+  pointer-events: none;
+  animation: float 4s ease-in-out infinite;
+  z-index: 1;
+}
+
+.rocket-bg {
+  position: absolute;
+  right: 3%;
+  bottom: 8%;
+  width: 60px;
+  opacity: 0.7;
+  pointer-events: none;
+  animation: float 4s ease-in-out infinite;
+  z-index: 1;
+}
+
+/* Space Animations - Gentler movements */
+@keyframes twinkle {
+  0%, 100% { 
+    opacity: 0.4; 
+    transform: translateY(0px) translateX(0px); 
+  }
+  25% { 
+    opacity: 0.6; 
+    transform: translateY(-3px) translateX(2px); 
+  }
+  50% { 
+    opacity: 0.7; 
+    transform: translateY(-2px) translateX(-2px); 
+  }
+  75% { 
+    opacity: 0.5; 
+    transform: translateY(-4px) translateX(3px); 
+  }
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+  25% {
+    transform: translateY(-5px) rotate(0.5deg);
+  }
+  50% {
+    transform: translateY(-3px) rotate(-0.5deg);
+  }
+  75% {
+    transform: translateY(-7px) rotate(0.3deg);
   }
 }
 

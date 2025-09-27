@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import {
   Table,
   Button,
   Input,
   Space,
   Tag,
-  Popconfirm,
   message,
   Card,
   Row,
@@ -14,8 +14,8 @@ import {
   Tooltip,
   Modal,
   Form,
-  Avatar
-} from 'antd';
+  Avatar,
+} from "antd";
 import {
   PlusOutlined,
   EditOutlined,
@@ -27,94 +27,104 @@ import {
   UserOutlined,
   MailOutlined,
   PhoneOutlined,
-  EyeOutlined
-} from '@ant-design/icons';
-import Layout from '../../../../component/Layout';
-import './AccountList.css';
+  CheckOutlined,
+  StopOutlined,
+} from "@ant-design/icons";
+import Layout from "../../../../component/Layout";
+import LoadingWithEffect from "../../../../component/spinner/LoadingWithEffect";
+import "./AccountList.css";
+import { spaceToast } from "../../../../component/SpaceToastify";
 
 const { Option } = Select;
 const { TextArea } = Input;
 
+// Mock data - thay thế bằng API call thực tế
+const mockAccounts = [
+  {
+    id: 1,
+    username: "admin001",
+    email: "admin001@example.com",
+    fullName: "Nguyễn Văn Admin",
+    phone: "0123456789",
+    role: "Admin",
+    status: "active",
+    createdAt: "2024-01-15",
+    lastLogin: "2024-01-20 10:30:00",
+    avatar: null,
+  },
+  {
+    id: 2,
+    username: "teacher001",
+    email: "teacher001@example.com",
+    fullName: "Trần Thị Giáo Viên",
+    phone: "0987654321",
+    role: "Teacher",
+    status: "active",
+    createdAt: "2024-01-16",
+    lastLogin: "2024-01-19 15:45:00",
+    avatar: null,
+  },
+  {
+    id: 3,
+    username: "student001",
+    email: "student001@example.com",
+    fullName: "Lê Văn Học Sinh",
+    phone: "0369852147",
+    role: "Student",
+    status: "inactive",
+    createdAt: "2024-01-17",
+    lastLogin: "2024-01-18 09:20:00",
+    avatar: null,
+  },
+  {
+    id: 4,
+    username: "manager001",
+    email: "manager001@example.com",
+    fullName: "Phạm Thị Quản Lý",
+    phone: "0741852963",
+    role: "Manager",
+    status: "active",
+    createdAt: "2024-01-18",
+    lastLogin: "2024-01-20 14:15:00",
+    avatar: null,
+  },
+];
+
 const AccountList = () => {
+  const { t } = useTranslation();
   const [loading, setLoading] = useState(false);
   const [accounts, setAccounts] = useState([]);
   const [selectedRowKeys, setSelectedRowKeys] = useState([]);
-  const [searchText, setSearchText] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
-  const [roleFilter, setRoleFilter] = useState('all');
+  const [searchText, setSearchText] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [roleFilter, setRoleFilter] = useState("all");
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [editingAccount, setEditingAccount] = useState(null);
   const [form] = Form.useForm();
+  const [confirmModal, setConfirmModal] = useState({
+    visible: false,
+    title: '',
+    content: '',
+    onConfirm: null
+  });
 
-  // Mock data - thay thế bằng API call thực tế
-  const mockAccounts = [
-    {
-      id: 1,
-      username: 'admin001',
-      email: 'admin001@example.com',
-      fullName: 'Nguyễn Văn Admin',
-      phone: '0123456789',
-      role: 'Admin',
-      status: 'active',
-      createdAt: '2024-01-15',
-      lastLogin: '2024-01-20 10:30:00',
-      avatar: null
-    },
-    {
-      id: 2,
-      username: 'teacher001',
-      email: 'teacher001@example.com',
-      fullName: 'Trần Thị Giáo Viên',
-      phone: '0987654321',
-      role: 'Teacher',
-      status: 'active',
-      createdAt: '2024-01-16',
-      lastLogin: '2024-01-19 15:45:00',
-      avatar: null
-    },
-    {
-      id: 3,
-      username: 'student001',
-      email: 'student001@example.com',
-      fullName: 'Lê Văn Học Sinh',
-      phone: '0369852147',
-      role: 'Student',
-      status: 'inactive',
-      createdAt: '2024-01-17',
-      lastLogin: '2024-01-18 09:20:00',
-      avatar: null
-    },
-    {
-      id: 4,
-      username: 'manager001',
-      email: 'manager001@example.com',
-      fullName: 'Phạm Thị Quản Lý',
-      phone: '0741852963',
-      role: 'Manager',
-      status: 'active',
-      createdAt: '2024-01-18',
-      lastLogin: '2024-01-20 14:15:00',
-      avatar: null
-    }
-  ];
-
-  useEffect(() => {
-    fetchAccounts();
-  }, []);
-
-  const fetchAccounts = async () => {
+  const fetchAccounts = useCallback(async () => {
     setLoading(true);
     try {
       // Simulate API call
       setTimeout(() => {
         setAccounts(mockAccounts);
         setLoading(false);
-      }, 1000);
+      }, 3000);
     } catch (error) {
-      message.error('Lỗi khi tải danh sách tài khoản');
+      message.error(t('accountManagement.loadAccountsError'));
       setLoading(false);
     }
-  };
+  }, [t]);
+
+  useEffect(() => {
+    fetchAccounts();
+  }, [fetchAccounts]);
 
   const handleSearch = (value) => {
     setSearchText(value);
@@ -140,59 +150,86 @@ const AccountList = () => {
     setIsModalVisible(true);
   };
 
-  const handleDeleteAccount = async (id) => {
-    try {
-      // API call để xóa tài khoản
-      setAccounts(accounts.filter(account => account.id !== id));
-      message.success('Xóa tài khoản thành công');
-    } catch (error) {
-      message.error('Lỗi khi xóa tài khoản');
+  const handleToggleStatus = (id) => {
+    const account = accounts.find(a => a.id === id);
+    if (account) {
+      const newStatus = account.status === 'active' ? 'inactive' : 'active';
+      const actionText = newStatus === 'active' ? t('accountManagement.active') : t('accountManagement.inactive');
+      
+      setConfirmModal({
+        visible: true,
+        title: t('accountManagement.changeStatus'),
+        content: `${t('accountManagement.confirmStatusChange')} ${actionText} ${t('accountManagement.account')} "${account.username}"?`,
+        onConfirm: () => {
+          setAccounts(accounts.map(a => 
+            a.id === id ? { ...a, status: newStatus } : a
+          ));
+          setConfirmModal({ visible: false, title: '', content: '', onConfirm: null });
+          
+          // Show success message
+          if (newStatus === 'active') {
+            spaceToast.success(`${t('accountManagement.activateAccountSuccess')} "${account.username}" ${t('accountManagement.success')}`);
+          } else {
+            spaceToast.success(`${t('accountManagement.deactivateAccountSuccess')} "${account.username}" ${t('accountManagement.success')}`);
+          }
+        }
+      });
     }
+  };
+
+  const handleConfirmCancel = () => {
+    setConfirmModal({ visible: false, title: '', content: '', onConfirm: null });
   };
 
   const handleBatchDelete = () => {
     if (selectedRowKeys.length === 0) {
-      message.warning('Vui lòng chọn tài khoản cần xóa');
+      message.warning(t('accountManagement.selectAccountsToDelete'));
       return;
     }
-    
+
     Modal.confirm({
-      title: 'Xác nhận xóa',
-      content: `Bạn có chắc chắn muốn xóa ${selectedRowKeys.length} tài khoản đã chọn?`,
+      title: t('accountManagement.confirmDelete'),
+      content: `${t('accountManagement.confirmDeleteMessage')} ${selectedRowKeys.length} ${t('accountManagement.selectedAccounts')}`,
       onOk: () => {
-        setAccounts(accounts.filter(account => !selectedRowKeys.includes(account.id)));
+        setAccounts(
+          accounts.filter((account) => !selectedRowKeys.includes(account.id))
+        );
         setSelectedRowKeys([]);
-        message.success('Xóa tài khoản thành công');
-      }
+        message.success(t('accountManagement.deleteAccountSuccess'));
+      },
     });
   };
 
   const handleModalOk = async () => {
     try {
       const values = await form.validateFields();
-      
+
       if (editingAccount) {
         // Update existing account
-        setAccounts(accounts.map(account => 
-          account.id === editingAccount.id ? { ...account, ...values } : account
-        ));
-        message.success('Cập nhật tài khoản thành công');
+        setAccounts(
+          accounts.map((account) =>
+            account.id === editingAccount.id
+              ? { ...account, ...values }
+              : account
+          )
+        );
+        message.success(t('accountManagement.updateAccountSuccess'));
       } else {
         // Add new account
         const newAccount = {
           id: Date.now(),
           ...values,
-          createdAt: new Date().toISOString().split('T')[0],
-          lastLogin: null
+          createdAt: new Date().toISOString().split("T")[0],
+          lastLogin: null,
         };
         setAccounts([newAccount, ...accounts]);
-        message.success('Thêm tài khoản thành công');
+        message.success(t('accountManagement.addAccountSuccess'));
       }
-      
+
       setIsModalVisible(false);
       form.resetFields();
     } catch (error) {
-      message.error('Vui lòng kiểm tra lại thông tin');
+      message.error(t('accountManagement.checkInfoError'));
     }
   };
 
@@ -203,162 +240,160 @@ const AccountList = () => {
 
   const getStatusTag = (status) => {
     const statusConfig = {
-      active: { color: 'green', text: 'Hoạt động' },
-      inactive: { color: 'red', text: 'Không hoạt động' },
-      pending: { color: 'orange', text: 'Chờ duyệt' }
+      active: { color: "green", text: t('accountManagement.active') },
+      inactive: { color: "red", text: t('accountManagement.inactive') },
+      pending: { color: "orange", text: t('accountManagement.pending') },
     };
-    
+
     const config = statusConfig[status] || statusConfig.inactive;
     return <Tag color={config.color}>{config.text}</Tag>;
   };
 
   const getRoleTag = (role) => {
     const roleConfig = {
-      Admin: { color: 'purple' },
-      Teacher: { color: 'blue' },
-      Student: { color: 'cyan' },
-      Manager: { color: 'gold' }
+      Admin: { color: "purple" },
+      Teacher: { color: "blue" },
+      Student: { color: "cyan" },
+      Manager: { color: "gold" },
+    };
+
+    const config = roleConfig[role] || { color: "default" };
+    const roleTranslations = {
+      Admin: t('accountManagement.admin'),
+      Teacher: t('accountManagement.teacher'),
+      Student: t('accountManagement.student'),
+      Manager: t('accountManagement.manager'),
     };
     
-    const config = roleConfig[role] || { color: 'default' };
-    return <Tag color={config.color}>{role}</Tag>;
+    return <Tag color={config.color}>{roleTranslations[role] || role}</Tag>;
   };
 
   // Filter data based on search and filters
-  const filteredAccounts = accounts.filter(account => {
-    const matchesSearch = searchText === '' || 
+  const filteredAccounts = accounts.filter((account) => {
+    const matchesSearch =
+      searchText === "" ||
       account.username.toLowerCase().includes(searchText.toLowerCase()) ||
       account.email.toLowerCase().includes(searchText.toLowerCase()) ||
       account.fullName.toLowerCase().includes(searchText.toLowerCase());
-    
-    const matchesStatus = statusFilter === 'all' || account.status === statusFilter;
-    const matchesRole = roleFilter === 'all' || account.role === roleFilter;
-    
+
+    const matchesStatus =
+      statusFilter === "all" || account.status === statusFilter;
+    const matchesRole = roleFilter === "all" || account.role === roleFilter;
+
     return matchesSearch && matchesStatus && matchesRole;
   });
 
   const columns = [
     {
-      title: 'Avatar',
-      dataIndex: 'avatar',
-      key: 'avatar',
+      title: t('accountManagement.avatar'),
+      dataIndex: "avatar",
+      key: "avatar",
       width: 80,
       render: (avatar, record) => (
-        <Avatar 
-          size={40} 
-          icon={<UserOutlined />} 
+        <Avatar
+          size={40}
+          icon={<UserOutlined />}
           src={avatar}
-          style={{ backgroundColor: '#1890ff' }}
+          style={{ backgroundColor: "#1890ff" }}
         />
-      )
+      ),
     },
     {
-      title: 'Tên đăng nhập',
-      dataIndex: 'username',
-      key: 'username',
+      title: t('accountManagement.username'),
+      dataIndex: "username",
+      key: "username",
       sorter: (a, b) => a.username.localeCompare(b.username),
     },
     {
-      title: 'Họ và tên',
-      dataIndex: 'fullName',
-      key: 'fullName',
+      title: t('accountManagement.fullName'),
+      dataIndex: "fullName",
+      key: "fullName",
       sorter: (a, b) => a.fullName.localeCompare(b.fullName),
     },
     {
-      title: 'Email',
-      dataIndex: 'email',
-      key: 'email',
+      title: t('accountManagement.email'),
+      dataIndex: "email",
+      key: "email",
       render: (email) => (
         <Space>
           <MailOutlined />
           {email}
         </Space>
-      )
+      ),
     },
     {
-      title: 'Số điện thoại',
-      dataIndex: 'phone',
-      key: 'phone',
+      title: t('accountManagement.phone'),
+      dataIndex: "phone",
+      key: "phone",
       render: (phone) => (
         <Space>
           <PhoneOutlined />
           {phone}
         </Space>
-      )
+      ),
     },
     {
-      title: 'Vai trò',
-      dataIndex: 'role',
-      key: 'role',
+      title: t('accountManagement.role'),
+      dataIndex: "role",
+      key: "role",
       render: (role) => getRoleTag(role),
       filters: [
-        { text: 'Admin', value: 'Admin' },
-        { text: 'Teacher', value: 'Teacher' },
-        { text: 'Student', value: 'Student' },
-        { text: 'Manager', value: 'Manager' }
+        { text: t('accountManagement.admin'), value: "Admin" },
+        { text: t('accountManagement.teacher'), value: "Teacher" },
+        { text: t('accountManagement.student'), value: "Student" },
+        { text: t('accountManagement.manager'), value: "Manager" },
       ],
       onFilter: (value, record) => record.role === value,
     },
     {
-      title: 'Trạng thái',
-      dataIndex: 'status',
-      key: 'status',
+      title: t('accountManagement.status'),
+      dataIndex: "status",
+      key: "status",
       render: (status) => getStatusTag(status),
       filters: [
-        { text: 'Hoạt động', value: 'active' },
-        { text: 'Không hoạt động', value: 'inactive' },
-        { text: 'Chờ duyệt', value: 'pending' }
+        { text: t('accountManagement.active'), value: "active" },
+        { text: t('accountManagement.inactive'), value: "inactive" },
+        { text: t('accountManagement.pending'), value: "pending" },
       ],
       onFilter: (value, record) => record.status === value,
     },
     {
-      title: 'Ngày tạo',
-      dataIndex: 'createdAt',
-      key: 'createdAt',
+      title: t('accountManagement.createdAt'),
+      dataIndex: "createdAt",
+      key: "createdAt",
       sorter: (a, b) => new Date(a.createdAt) - new Date(b.createdAt),
     },
     {
-      title: 'Đăng nhập cuối',
-      dataIndex: 'lastLogin',
-      key: 'lastLogin',
-      render: (lastLogin) => lastLogin || 'Chưa đăng nhập',
+      title: t('accountManagement.lastLogin'),
+      dataIndex: "lastLogin",
+      key: "lastLogin",
+      render: (lastLogin) => lastLogin || t('accountManagement.neverLoggedIn'),
     },
     {
-      title: 'Thao tác',
-      key: 'actions',
-      width: 150,
+      title: t('accountManagement.actions'),
+      key: "actions",
+      width: 180,
       render: (_, record) => (
         <Space size="small">
-          {/* <Tooltip title="Xem chi tiết">
-            <Button 
-              type="text" 
-              icon={<EyeOutlined />} 
-              size="small"
-            />
-          </Tooltip> */}
-          <Tooltip title="Chỉnh sửa">
-            <Button 
-              type="text" 
-              icon={<EditOutlined />} 
+          <Tooltip title={t('accountManagement.edit')}>
+            <Button
+              type="text"
+              icon={<EditOutlined style={{ fontSize: '25px' }} />}
               size="small"
               onClick={() => handleEditAccount(record)}
             />
           </Tooltip>
-          <Tooltip title="Xóa">
-            {/* <Popconfirm
-              title="Xác nhận xóa"
-              description="Bạn có chắc chắn muốn xóa tài khoản này?"
-              onConfirm={() => handleDeleteAccount(record.id)}
-              okText="Xóa"
-              cancelText="Hủy"
-            >
-              <Button 
-                type="text" 
-                danger 
-                icon={<DeleteOutlined />} 
-                size="small"
-              />
-            </Popconfirm> */}
+          <Tooltip title={record.status === 'active' ? t('accountManagement.deactivate') : t('accountManagement.activate')}>
+            <Button
+              type="text"
+              icon={record.status === 'active' ? <StopOutlined style={{ fontSize: '25px' }} /> : <CheckOutlined style={{ fontSize: '25px' }} />}
+              size="small"
+              onClick={() => handleToggleStatus(record.id)}
+              style={{
+                color: record.status === 'active' ? '#ff4d4f' : '#52c41a',
+                padding: '4px 8px'
+              }}
+            />
           </Tooltip>
         </Space>
       ),
@@ -377,26 +412,33 @@ const AccountList = () => {
         <Card className="header-card">
           <Row justify="space-between" align="middle">
             <Col>
-              <h2 style={{ margin: 0, color: '#1890ff' }}>Quản lý tài khoản</h2>
-              <p style={{ margin: '4px 0 0 0', color: '#666' }}>
-                Tổng cộng: {filteredAccounts.length} tài khoản
+              <h2
+                style={{
+                  margin: 0,
+                  background:
+                    "linear-gradient(90deg, #5e17eb 0%, #4dd0ff 100%)",
+                  WebkitBackgroundClip: "text",
+                  WebkitTextFillColor: "transparent",
+                  fontWeight: 700,
+                }}
+              >
+                {t('accountManagement.title')}
+              </h2>
+              <p style={{ margin: "4px 0 0 0", color: "#666" }}>
+                {t('accountManagement.totalAccounts')}: {filteredAccounts.length} {t('accountManagement.accounts')}
               </p>
             </Col>
             <Col>
               <Space>
-                <Button 
-                  type="primary" 
+                <Button
+                  type="primary"
                   icon={<PlusOutlined />}
                   onClick={handleAddAccount}
                 >
-                  Thêm tài khoản
+                  {t('accountManagement.addAccount')}
                 </Button>
-                <Button icon={<ExportOutlined />}>
-                  Xuất Excel
-                </Button>
-                <Button icon={<ImportOutlined />}>
-                  Nhập Excel
-                </Button>
+                <Button icon={<ExportOutlined />}>{t('accountManagement.exportExcel')}</Button>
+                <Button icon={<ImportOutlined />}>{t('accountManagement.importExcel')}</Button>
               </Space>
             </Col>
           </Row>
@@ -407,7 +449,7 @@ const AccountList = () => {
           <Row gutter={[16, 16]} align="middle">
             <Col xs={24} sm={12} md={8} lg={6}>
               <Input
-                placeholder="Tìm kiếm theo tên, email..."
+                placeholder={t('accountManagement.searchPlaceholder')}
                 prefix={<SearchOutlined />}
                 value={searchText}
                 onChange={(e) => handleSearch(e.target.value)}
@@ -416,47 +458,46 @@ const AccountList = () => {
             </Col>
             <Col xs={24} sm={12} md={8} lg={6}>
               <Select
-                placeholder="Lọc theo trạng thái"
+                placeholder={t('accountManagement.filterByStatus')}
                 value={statusFilter}
                 onChange={handleStatusFilter}
-                style={{ width: '100%' }}
+                style={{ width: "100%" }}
               >
-                <Option value="all">Tất cả trạng thái</Option>
-                <Option value="active">Hoạt động</Option>
-                <Option value="inactive">Không hoạt động</Option>
-                <Option value="pending">Chờ duyệt</Option>
+                <Option value="all">{t('accountManagement.allStatuses')}</Option>
+                <Option value="active">{t('accountManagement.active')}</Option>
+                <Option value="inactive">{t('accountManagement.inactive')}</Option>
+                <Option value="pending">{t('accountManagement.pending')}</Option>
               </Select>
             </Col>
             <Col xs={24} sm={12} md={8} lg={6}>
               <Select
-                placeholder="Lọc theo vai trò"
+                placeholder={t('accountManagement.filterByRole')}
                 value={roleFilter}
                 onChange={handleRoleFilter}
-                style={{ width: '100%' }}
+                style={{ width: "100%" }}
               >
-                <Option value="all">Tất cả vai trò</Option>
-                <Option value="Admin">Admin</Option>
-                <Option value="Teacher">Teacher</Option>
-                <Option value="Student">Student</Option>
-                <Option value="Manager">Manager</Option>
+                <Option value="all">{t('accountManagement.allRoles')}</Option>
+                <Option value="Admin">{t('accountManagement.admin')}</Option>
+                <Option value="Teacher">{t('accountManagement.teacher')}</Option>
+                <Option value="Student">{t('accountManagement.student')}</Option>
+                <Option value="Manager">{t('accountManagement.manager')}</Option>
               </Select>
             </Col>
             <Col xs={24} sm={12} md={8} lg={6}>
               <Space>
-                <Button 
+                <Button
                   icon={<ReloadOutlined />}
                   onClick={fetchAccounts}
-                  loading={loading}
                 >
-                  Làm mới
+                  {t('accountManagement.refresh')}
                 </Button>
                 {selectedRowKeys.length > 0 && (
-                  <Button 
-                    danger 
+                  <Button
+                    danger
                     icon={<DeleteOutlined />}
                     onClick={handleBatchDelete}
                   >
-                    Xóa ({selectedRowKeys.length})
+                    {t('accountManagement.deleteSelected')} ({selectedRowKeys.length})
                   </Button>
                 )}
               </Space>
@@ -466,65 +507,69 @@ const AccountList = () => {
 
         {/* Table */}
         <Card>
-          <Table
-            columns={columns}
-            dataSource={filteredAccounts}
-            rowKey="id"
-            loading={loading}
-            rowSelection={rowSelection}
-            pagination={{
-              total: filteredAccounts.length,
-              pageSize: 10,
-              showSizeChanger: true,
-              showQuickJumper: true,
-              showTotal: (total, range) => 
-                `${range[0]}-${range[1]} của ${total} tài khoản`,
-            }}
-            scroll={{ x: 1200 }}
-          />
+          <LoadingWithEffect loading={loading} message={t('accountManagement.loadingAccounts')}>
+            <Table
+              columns={columns}
+              dataSource={filteredAccounts}
+              rowKey="id"
+              rowSelection={rowSelection}
+              pagination={{
+                total: filteredAccounts.length,
+                pageSize: 10,
+                showSizeChanger: true,
+                showQuickJumper: true,
+                showTotal: (total, range) =>
+                  `${range[0]}-${range[1]} ${t('accountManagement.paginationText')} ${total} ${t('accountManagement.accountsText')}`,
+              }}
+              scroll={{ x: 1200 }}
+            />
+          </LoadingWithEffect>
         </Card>
 
         {/* Add/Edit Modal */}
         <Modal
-          title={editingAccount ? 'Chỉnh sửa tài khoản' : 'Thêm tài khoản mới'}
+          title={editingAccount ? t('accountManagement.editAccount') : t('accountManagement.addNewAccount')}
           open={isModalVisible}
           onOk={handleModalOk}
           onCancel={handleModalCancel}
           width={600}
-          okText="Lưu"
-          cancelText="Hủy"
+          okText={t('common.save')}
+          cancelText={t('common.cancel')}
         >
           <Form
             form={form}
             layout="vertical"
             initialValues={{
-              status: 'active',
-              role: 'Student'
+              status: "active",
+              role: "Student",
             }}
           >
             <Row gutter={16}>
               <Col span={12}>
                 <Form.Item
-                  label="Tên đăng nhập"
+                  label={t('accountManagement.username')}
                   name="username"
                   rules={[
-                    { required: true, message: 'Vui lòng nhập tên đăng nhập!' },
-                    { min: 3, message: 'Tên đăng nhập phải có ít nhất 3 ký tự!' }
+                    { required: true, message: t('accountManagement.usernameRequired') },
+                    {
+                      min: 3,
+                      message: t('accountManagement.usernameMinLength'),
+                    },
                   ]}
                 >
-                  <Input placeholder="Nhập tên đăng nhập" />
+                  <Input placeholder={t('accountManagement.usernamePlaceholder')} />
                 </Form.Item>
               </Col>
               <Col span={12}>
                 <Form.Item
-                  label="Email"
+                  label={t('accountManagement.email')}
                   name="email"
                   rules={[
-                    { required: true, message: 'Vui lòng nhập email!' },
-                    { type: 'email', message: 'Email không hợp lệ!' }
+                    { required: true, message: t('accountManagement.emailRequired') },
+                    { type: "email", message: t('accountManagement.emailInvalid') },
                   ]}
                 >
-                  <Input placeholder="Nhập email" />
+                  <Input placeholder={t('accountManagement.emailPlaceholder')} />
                 </Form.Item>
               </Col>
             </Row>
@@ -532,23 +577,28 @@ const AccountList = () => {
             <Row gutter={16}>
               <Col span={12}>
                 <Form.Item
-                  label="Họ và tên"
+                  label={t('accountManagement.fullName')}
                   name="fullName"
-                  rules={[{ required: true, message: 'Vui lòng nhập họ và tên!' }]}
+                  rules={[
+                    { required: true, message: t('accountManagement.fullNameRequired') },
+                  ]}
                 >
-                  <Input placeholder="Nhập họ và tên" />
+                  <Input placeholder={t('accountManagement.fullNamePlaceholder')} />
                 </Form.Item>
               </Col>
               <Col span={12}>
                 <Form.Item
-                  label="Số điện thoại"
+                  label={t('accountManagement.phone')}
                   name="phone"
                   rules={[
-                    { required: true, message: 'Vui lòng nhập số điện thoại!' },
-                    { pattern: /^[0-9]{10,11}$/, message: 'Số điện thoại không hợp lệ!' }
+                    { required: true, message: t('accountManagement.phoneRequired') },
+                    {
+                      pattern: /^[0-9]{10,11}$/,
+                      message: t('accountManagement.phoneInvalid'),
+                    },
                   ]}
                 >
-                  <Input placeholder="Nhập số điện thoại" />
+                  <Input placeholder={t('accountManagement.phonePlaceholder')} />
                 </Form.Item>
               </Col>
             </Row>
@@ -556,28 +606,32 @@ const AccountList = () => {
             <Row gutter={16}>
               <Col span={12}>
                 <Form.Item
-                  label="Vai trò"
+                  label={t('accountManagement.role')}
                   name="role"
-                  rules={[{ required: true, message: 'Vui lòng chọn vai trò!' }]}
+                  rules={[
+                    { required: true, message: t('accountManagement.roleRequired') },
+                  ]}
                 >
-                  <Select placeholder="Chọn vai trò">
-                    <Option value="Admin">Admin</Option>
-                    <Option value="Teacher">Teacher</Option>
-                    <Option value="Student">Student</Option>
-                    <Option value="Manager">Manager</Option>
+                  <Select placeholder={t('accountManagement.selectRole')}>
+                    <Option value="Admin">{t('accountManagement.admin')}</Option>
+                    <Option value="Teacher">{t('accountManagement.teacher')}</Option>
+                    <Option value="Student">{t('accountManagement.student')}</Option>
+                    <Option value="Manager">{t('accountManagement.manager')}</Option>
                   </Select>
                 </Form.Item>
               </Col>
               <Col span={12}>
                 <Form.Item
-                  label="Trạng thái"
+                  label={t('accountManagement.status')}
                   name="status"
-                  rules={[{ required: true, message: 'Vui lòng chọn trạng thái!' }]}
+                  rules={[
+                    { required: true, message: t('accountManagement.statusRequired') },
+                  ]}
                 >
-                  <Select placeholder="Chọn trạng thái">
-                    <Option value="active">Hoạt động</Option>
-                    <Option value="inactive">Không hoạt động</Option>
-                    <Option value="pending">Chờ duyệt</Option>
+                  <Select placeholder={t('accountManagement.selectStatus')}>
+                    <Option value="active">{t('accountManagement.active')}</Option>
+                    <Option value="inactive">{t('accountManagement.inactive')}</Option>
+                    <Option value="pending">{t('accountManagement.pending')}</Option>
                   </Select>
                 </Form.Item>
               </Col>
@@ -585,24 +639,33 @@ const AccountList = () => {
 
             {!editingAccount && (
               <Form.Item
-                label="Mật khẩu"
+                label={t('accountManagement.password')}
                 name="password"
                 rules={[
-                  { required: true, message: 'Vui lòng nhập mật khẩu!' },
-                  { min: 6, message: 'Mật khẩu phải có ít nhất 6 ký tự!' }
+                  { required: true, message: t('accountManagement.passwordRequired') },
+                  { min: 6, message: t('accountManagement.passwordMinLength') },
                 ]}
               >
-                <Input.Password placeholder="Nhập mật khẩu" />
+                <Input.Password placeholder={t('accountManagement.passwordPlaceholder')} />
               </Form.Item>
             )}
 
-            <Form.Item
-              label="Ghi chú"
-              name="note"
-            >
-              <TextArea rows={3} placeholder="Nhập ghi chú (tùy chọn)" />
+            <Form.Item label={t('accountManagement.note')} name="note">
+              <TextArea rows={3} placeholder={t('accountManagement.notePlaceholder')} />
             </Form.Item>
           </Form>
+        </Modal>
+
+        {/* Confirmation Modal */}
+        <Modal
+          title={confirmModal.title}
+          open={confirmModal.visible}
+          onOk={confirmModal.onConfirm}
+          onCancel={handleConfirmCancel}
+          okText={t('common.confirm')}
+          cancelText={t('common.cancel')}
+        >
+          <p>{confirmModal.content}</p>
         </Modal>
       </div>
     </Layout>

@@ -2,8 +2,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-d
 import { useSelector } from "react-redux";
 import CONFIG_ROUTER from "./routers/configRouter";
 import PrivateRoute from "./routers/PrivateRoute";
-import { ToastContainer } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
+import  SpaceToastify  from "../src/component/SpaceToastify";
 export default function App() {
   const isAuthenticated = useSelector((state) => state.auth.isAuthenticated);
 
@@ -31,7 +30,7 @@ export default function App() {
         )}
       </Routes>
     </Router>
-     <ToastContainer position="top-right" autoClose={2000} hideProgressBar={false} newestOnTop closeOnClick pauseOnFocusLoss draggable pauseOnHover />
+     <SpaceToastify />
     </>
   );
 }
