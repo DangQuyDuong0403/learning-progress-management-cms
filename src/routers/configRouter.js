@@ -8,6 +8,7 @@ import ResetPassword from '../pages/login/ResetPassword';
 import LoginTeacher from '../pages/login/LoginTeacher';
 import Profile from '../pages/profile/Profile';
 import ProfileStudent from '../pages/profile/ProfileStudent';
+import ChangePassword from '../pages/profile/ChangePassword';
 import AccountList from '../pages/management/managementAdmin/account/AccountList';
 // import AdminDashboard from '../pages/management/managementAdmin/AdminDashboard';
 
@@ -94,6 +95,15 @@ const CONFIG_ROUTER = [
 		exact: true,
 		key: 'PROFILE_STUDENT',
 	},
+	{
+		show: false, // không hiện trên menu
+		component: ChangePassword,
+		// icon: <LogIn size={18} />,
+		path: ROUTER_PAGE.CHANGE_PASSWORD,
+		exact: true,
+		key: 'CHANGE_PASSWORD',
+	},
+	
 	// Admin Management Routes
 	// {
 	// 	show: true,

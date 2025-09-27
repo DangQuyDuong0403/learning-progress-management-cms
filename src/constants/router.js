@@ -10,6 +10,7 @@ const ROUTER_PAGE = {
 	LOGIN_TEACHER: '/login-teacher',
 	PROFILE : '/profile',
 	PROFILE_STUDENT : '/profile-student',
+	CHANGE_PASSWORD : '/change-password',
 	// Admin Management Routes
 	ADMIN_DASHBOARD: '/admin/dashboard',
 	ADMIN_ACCOUNTS: '/admin/accounts',

@@ -1,11 +1,19 @@
+/* Fix: Remove border/shadow from notification bell icon */
+.navbar-nav .nav-item.dropdown .nav-link img[src*="notification_icon"] {
+  border: none !important;
+  box-shadow: none !important;
+  background: none !important;
+  padding: 0;
+}
 /* Header Styles - Đồng bộ với theme Camkey */
 .app-header {
-  background: #ffffff;
-  box-shadow: 0 2px 20px rgba(30, 20, 90, 0.1);
-  border-bottom: 1px solid rgba(77, 208, 255, 0.2);
+  background: linear-gradient(135deg, rgba(11, 27, 75, 0.95) 0%, rgba(56, 23, 112, 0.9) 50%, rgba(94, 23, 235, 0.85) 100%);
+  box-shadow: 0 4px 30px rgba(30, 20, 90, 0.3), 0 0 50px rgba(77, 208, 255, 0.2);
+  border-bottom: 2px solid rgba(77, 208, 255, 0.3);
   position: sticky;
   top: 0;
   z-index: 1000;
+  backdrop-filter: blur(10px);
 }
 
 .navbar {
@@ -22,23 +30,26 @@
 }
 
 .navbar-nav .nav-link {
-  color: #0b1b4b !important;
+  color: #ffffff !important;
   font-weight: 500;
   transition: all 0.3s ease;
   padding: 0.5rem 1rem;
   border-radius: 8px;
   margin: 0 0.25rem;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
 }
 
 .navbar-nav .nav-link:hover {
-  background: rgba(77, 208, 255, 0.1);
-  color: #5e17eb !important;
+  background: rgba(255, 255, 255, 0.15);
+  color: #ffffff !important;
   transform: translateY(-1px);
+  box-shadow: 0 4px 15px rgba(77, 208, 255, 0.3);
 }
 
 .navbar-nav .nav-link i {
   font-size: 1.2rem;
-  color: #5e17eb;
+  color: #4dd0ff;
+  text-shadow: 0 0 10px rgba(77, 208, 255, 0.5);
 }
 
 /* Notification Bell */
@@ -50,17 +61,24 @@
 }
 
 .navbar-nav .nav-item.dropdown .nav-link:hover {
-  background: rgba(77, 208, 255, 0.1);
+  background: rgba(255, 255, 255, 0.15);
   transform: scale(1.1);
+  box-shadow: 0 4px 15px rgba(77, 208, 255, 0.3);
 }
 
-.navbar-nav .nav-item.dropdown .nav-link img {
-  filter: brightness(0) saturate(100%) invert(27%) sepia(51%) saturate(2878%) hue-rotate(346deg) brightness(104%) contrast(97%);
+/* Apply filter only to notification icon */
+.navbar-nav .nav-item.dropdown .nav-link img[src*="notification_icon"] {
+  filter: brightness(0) saturate(100%) invert(100%) sepia(100%) saturate(1000%) hue-rotate(180deg);
   transition: all 0.3s ease;
+  box-shadow: 0 0 15px rgba(255, 255, 255, 0.8);
+  width: 32px !important;
+  height: 32px !important;
 }
 
-.navbar-nav .nav-item.dropdown .nav-link:hover img {
-  filter: brightness(0) saturate(100%) invert(27%) sepia(51%) saturate(2878%) hue-rotate(346deg) brightness(104%) contrast(97%) sepia(1) saturate(5) hue-rotate(180deg);
+.navbar-nav .nav-item.dropdown .nav-link:hover img[src*="notification_icon"] {
+  filter: brightness(0) saturate(100%) invert(100%) sepia(100%) saturate(1000%) hue-rotate(180deg);
+  transform: scale(1.1);
+  box-shadow: 0 0 20px rgba(255, 255, 255, 1);
 }
 
 .notification {
@@ -69,7 +87,7 @@
   right: 2px;
   width: 10px;
   height: 10px;
-  background: #ff4757 !important;
+  background: #ff475600 !important;
   border: 2px solid #ffffff;
   animation: pulse 2s infinite;
 }
@@ -310,21 +328,46 @@
   transform: scale(1.05);
 }
 
+/* Ensure profile avatar shows normally without filters */
+.navbar-nav .nav-item.dropdown .nav-link img[src*="avatar_1"] {
+  filter: none !important;
+}
+
+.navbar-nav .nav-item.dropdown .nav-link:hover img[src*="avatar_1"] {
+  filter: none !important;
+}
+
+/* Profile Dropdown Specific */
+.navbar-nav .nav-item.dropdown .nav-link {
+  position: relative;
+}
+
+.navbar-nav .nav-item.dropdown .nav-link:hover {
+  background: rgba(77, 208, 255, 0.1);
+  transform: scale(1.05);
+}
+
 /* Admin Name Styling */
 .navbar-nav .nav-item.d-flex {
-  color: #0b1b4b !important;
+  color: #ffffff !important;
   font-weight: 600;
   font-size: 1.1rem;
   letter-spacing: 0.5px;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
 }
 
 /* Profile Title Styling */
 .profile-title {
-  color: #0b1b4b !important;
+  background: linear-gradient(90deg, rgb(150, 150, 200) 0%, rgb(77, 208, 255) 50%, rgb(150, 150, 200) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
   font-weight: 700;
   font-size: 1.5rem;
   letter-spacing: 0.5px;
   margin: 0;
+  text-shadow: 0 0 10px rgba(255, 255, 255, 0.2);
+  filter: drop-shadow(0 0 5px rgba(77, 208, 255, 0.3));
 }
 
 /* Logout Button */

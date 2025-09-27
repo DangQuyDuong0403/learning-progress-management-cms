@@ -43,7 +43,7 @@ export default function LoginTeacher() {
             dispatch(loginSuccess(fakeResponse));
             toast.success('Login successful!');
             setTimeout(() => {
-                navigate('/home');
+                navigate('/admin/accounts');
             }, 1000);
         } else {
             toast.error('Wrong username or password!');
