@@ -6,8 +6,10 @@ import Login from '../pages/login/LoginStudent';
 import OTPVerification from '../pages/login/OTPVerification';
 import ResetPassword from '../pages/login/ResetPassword';
 import LoginTeacher from '../pages/login/LoginTeacher';
-// import Profile from '../pages/profile/Profile';
-// import ProfileStudent from '../pages/profile/ProfileStudent';
+import Profile from '../pages/profile/Profile';
+import ProfileStudent from '../pages/profile/ProfileStudent';
+import AccountList from '../pages/management/managementAdmin/account/AccountList';
+// import AdminDashboard from '../pages/management/managementAdmin/AdminDashboard';
 
 const CONFIG_ROUTER = [
 	//   {
@@ -76,22 +78,45 @@ const CONFIG_ROUTER = [
 		exact: true,
 		key: 'LOGIN_TEACHER',
 	},
+	{
+		show: false, // không hiện trên menu
+		component: Profile,
+		// icon: <LogIn size={18} />,
+		path: ROUTER_PAGE.PROFILE,
+		exact: true,
+		key: 'PROFILE',
+	},
+	{
+		show: false, // không hiện trên menu
+		component: ProfileStudent,
+		// icon: <LogIn size={18} />,
+		path: ROUTER_PAGE.PROFILE_STUDENT,
+		exact: true,
+		key: 'PROFILE_STUDENT',
+	},
+	// Admin Management Routes
 	// {
-	// 	show: false, // không hiện trên menu
-	// 	component: Profile,
-	// 	// icon: <LogIn size={18} />,
-	// 	path: ROUTER_PAGE.PROFILE,
+	// 	show: true,
+	// 	component: AdminDashboard,
+	// 	// icon: <DashboardOutlined />,
+	// 	path: ROUTER_PAGE.ADMIN_DASHBOARD,
+	// 	menuName: 'Dashboard',
 	// 	exact: true,
-	// 	key: 'PROFILE',
+	// 	key: 'ADMIN_DASHBOARD',
+	// 	private: true,
+	// 	role: 'admin',
 	// },
-	// {
-	// 	show: false, // không hiện trên menu
-	// 	component: ProfileStudent,
-	// 	// icon: <LogIn size={18} />,
-	// 	path: ROUTER_PAGE.PROFILE_STUDENT,
-	// 	exact: true,
-	// 	key: 'PROFILE_STUDENT',
-	// },
+	{
+		show: true,
+		component: AccountList,
+		// icon: <UserOutlined />,
+		path: ROUTER_PAGE.ADMIN_ACCOUNTS,
+		menuName: 'Quản lý tài khoản',
+		exact: true,
+		key: 'ADMIN_ACCOUNTS',
+		private: true,
+		role: 'admin',
+	},
 ];
 
 export default CONFIG_ROUTER;
