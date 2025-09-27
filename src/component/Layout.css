@@ -38,9 +38,11 @@
 .sidebar-menu .ant-menu-item {
   margin: 8px 8px !important;
   border-radius: 6px !important;
-  height: 48px !important;
-  line-height: 48px !important;
+  height: 56px !important;
+  line-height: 56px !important;
   color: rgba(255, 255, 255, 0.85) !important;
+  font-size: 16px !important;
+  font-weight: 500 !important;
 }
 
 .sidebar-menu .ant-menu-item:hover {
@@ -66,8 +68,8 @@
 }
 
 .sidebar-menu .ant-menu-item .anticon {
-  font-size: 16px;
-  margin-right: 12px;
+  font-size: 20px;
+  margin-right: 16px;
 }
 
 .sidebar-menu .ant-menu-item a {
@@ -126,13 +128,13 @@
 .ant-layout-sider-collapsed .sidebar-menu .ant-menu-item {
   padding: 0 24px !important;
   text-align: center !important;
-  height: 48px !important;
-  line-height: 48px !important;
+  height: 56px !important;
+  line-height: 56px !important;
 }
 
 .ant-layout-sider-collapsed .sidebar-menu .ant-menu-item .anticon {
   margin-right: 0 !important;
-  font-size: 18px !important;
+  font-size: 22px !important;
 }
 
 /* Tooltip for collapsed menu items */

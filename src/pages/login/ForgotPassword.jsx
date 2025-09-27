@@ -1,13 +1,16 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Input } from 'antd';
+import { Input, Button } from 'antd';
 import { MailOutlined } from '@ant-design/icons';
+import { useTranslation } from 'react-i18next';
+import LanguageToggle from '../../component/LanguageToggle';
 import './Login.css'; // import Login CSS instead
 
 export default function ForgotPassword() {
 	const [email, setEmail] = useState('');
 	const [message, setMessage] = useState(null);
 	const navigate = useNavigate();
+	const { i18n, t } = useTranslation();
 
 	const handleSubmit = (e) => {
 		e.preventDefault();
@@ -29,6 +32,11 @@ export default function ForgotPassword() {
 
 	return (
 		<div className='kids-space'>
+			{/* Language Toggle - Top Right */}
+			<div style={{ position: 'absolute', top: '20px', right: '20px', zIndex: 1000 }}>
+				<LanguageToggle />
+			</div>
+			
 			<div
 				className='page-wrapper'
 				id='main-wrapper'
@@ -54,8 +62,9 @@ export default function ForgotPassword() {
 									<div
 										className='card-body'
 										style={{ padding: '1.5rem 1.5rem 1rem 1.5rem' }}>
+										
 										<h5 className='text-center kids-heading mb-1'>
-											Forgot password
+											{t('login.forgotPassword')}
 										</h5>
 										<p className='text-center kids-subtitle mb-4'>
 											Enter email to receive OTP to reset password
@@ -63,12 +72,12 @@ export default function ForgotPassword() {
 										<form onSubmit={handleSubmit}>
 											<div className='mb-3'>
 												<label htmlFor='forgotEmail' className='form-label'>
-													Email
+													{t('common.email')}
 												</label>
 												<Input
 													id='forgotEmail'
 													type='email'
-													placeholder='Email'
+													placeholder={t('common.email')}
 													value={email}
 													onChange={(e) => setEmail(e.target.value)}
 													prefix={<MailOutlined />}
@@ -114,7 +123,7 @@ export default function ForgotPassword() {
 													className='fw-bold forgot-password'
 													onClick={handleBackToLogin}
 													style={{ cursor: 'pointer' }}>
-													Return to sign in
+													{t('common.back')} to {t('login.signIn')}
 												</a>
 											</div>
 										</form>

@@ -19,7 +19,7 @@ const Layout = ({ children }) => {
     <AntLayout style={{ minHeight: '100vh' }}>
       {/* Sidebar */}
       <Sider
-        width={250}
+        width={300}
         collapsedWidth={80}
         collapsed={collapsed}
         theme="dark"
@@ -52,7 +52,7 @@ const Layout = ({ children }) => {
       </Sider>
 
       {/* Main Content Area */}
-      <AntLayout style={{ marginLeft: collapsed ? 80 : 250 }}>
+      <AntLayout style={{ marginLeft: collapsed ? 80 : 300 }}>
         {/* Header */}
         <Header/>
 

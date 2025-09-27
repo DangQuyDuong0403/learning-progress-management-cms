@@ -1,9 +1,12 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
+import LanguageToggle from '../../component/LanguageToggle';
 import './Login.css'; // Tận dụng lại nền và hiệu ứng từ Login.css
 
 export default function ChooseLogin() {
   const navigate = useNavigate();
+  const { i18n, t } = useTranslation();
 
   const selectRole = (role) => {
     localStorage.setItem('selectedRole', role);
@@ -17,9 +20,14 @@ export default function ChooseLogin() {
   return (
     <div className="kids-space" style={{ minHeight: '100vh' }}>
       <div className="main-content" style={{ paddingTop: 120, minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+        {/* Language Toggle - Top Right */}
+        <div style={{ position: 'absolute', top: '20px', right: '20px', zIndex: 1000 }}>
+          <LanguageToggle />
+        </div>
+        
         <div className="container">
           <h1 className="page-title" style={{fontSize: 48,fontWeight: 700,background: 'linear-gradient(90deg, #5e17eb 0%, #4dd0ff 100%)',WebkitBackgroundClip: 'text',WebkitTextFillColor: 'transparent',backgroundClip: 'text', textFillColor: 'transparent',textAlign: 'center',marginBottom: 16,letterSpacing: 0.5 }}>
-            Welcome to Camkey
+            {t('login.chooseRole')}
           </h1>
           <p className="page-subtitle" style={{ fontSize: 20, color: '#4dd0ff', textAlign: 'center', marginBottom: 60, fontWeight: 500 }}>Choose role to continue</p>
           <div className="role-cards" style={{ display: 'flex', gap: 40, justifyContent: 'center',justifySelf: 'center',flexWrap: 'wrap', maxWidth: 1000, width: '100%' }}>
@@ -33,7 +41,7 @@ export default function ChooseLogin() {
                   style={{ width: '100%', height: '100%', objectFit: 'contain' }}
                 />
               </div>
-              <button className="role-button" style={roleButtonStyle}>I am student</button>
+              <button className="role-button" style={roleButtonStyle}>{t('login.student')}</button>
             </div>
             {/* Teacher Card */}
             <div className="role-card" style={roleCardStyle} onClick={() => selectRole('teacher')}>
@@ -44,7 +52,7 @@ export default function ChooseLogin() {
                   style={{ width: '100%', height: '100%', objectFit: 'contain' }}
                 />
               </div>
-              <button className="role-button" style={roleButtonStyle}>I am teacher</button>
+              <button className="role-button" style={roleButtonStyle}>{t('login.teacher')}</button>
             </div>
           
           </div>

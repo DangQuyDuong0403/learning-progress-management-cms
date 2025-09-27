@@ -21,7 +21,7 @@ const TableSpinner = ({ message = "Đang tải...", isCompleted = false, onAnima
         <div className="table-spinner-content">
           {/* Trái đất nhỏ */}
           <div  className="table-earth">
-            <img style={{ width: '150px', height: '150px' }} src="/img/planet-1.png" alt="Planet" />
+            <img style={{ width: '100px', height: '100px' }} src="/img/planet-5.png" alt="Planet" />
           </div>
           
           {/* 3 UFO bay xung quanh */}
