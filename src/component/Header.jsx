@@ -116,10 +116,53 @@ export default function Header() {
                Admin
              </li>
             {/* Profile icon */}
-            <li className="nav-item">
-              <button className="nav-link btn btn-link" style={{ padding: 0, border: 'none', background: 'none', boxShadow: 'none' }} onClick={() => navigate('/profile')}>
+            <li className="nav-item dropdown">
+              <button
+                className="nav-link btn btn-link dropdown-toggle"
+                id="profileDropdown"
+                data-bs-toggle="dropdown"
+                aria-expanded="false"
+                style={{ padding: 0, border: 'none', background: 'none', boxShadow: 'none' }}
+                type="button"
+              >
                 <img src="/img/avatar_1.png" alt="Profile" width="35" height="35" className="rounded-circle" />
               </button>
+              <ul className="dropdown-menu dropdown-menu-end profile-dropdown-menu" aria-labelledby="profileDropdown" style={{ minWidth: 280, padding: 0 }}>
+                <li className="profile-dropdown-header" style={{ padding: '1rem 1.5rem', borderBottom: '1px solid #e6f2fa', background: '#fff', color: '#0b1b4b', textAlign: 'left' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <img src="/img/avatar_1.png" alt="Profile" width="48" height="48" className="rounded-circle" style={{ border: '2px solid #4dd0ff' }} />
+                    <div>
+                      <div style={{ fontWeight: 700, fontSize: 16, color: '#0b1b4b' }}>Đức Anh Nguyen</div>
+                    
+                    </div>
+                  </div>
+                  <button className="btn w-100 mt-3" style={{ fontWeight: 600, fontSize: 15, borderRadius: 8, background: 'linear-gradient(90deg, #5e17eb 0%, #4dd0ff 100%)', color: '#fff', border: 'none' }} onClick={() => navigate('/profile')}>
+                    <i className="ti ti-user" style={{ marginRight: 8 }}></i>View profile
+                  </button>
+                </li>
+                <li><hr className="dropdown-divider" style={{ margin: 0, borderColor: '#e6f2fa' }} /></li>
+                <li>
+                  <button className="dropdown-item d-flex align-items-center" type="button" onClick={() => navigate('/change-password')} style={{ color: '#0b1b4b', fontWeight: 500 }}>
+                    <i className="ti ti-settings" style={{ marginRight: 12, fontSize: 18, color: '#5e17eb' }}></i>
+                    Change password
+                  </button>
+                </li>
+                <li>
+                  <button className="dropdown-item d-flex align-items-center" type="button" onClick={() => navigate('/setting')} style={{ color: '#0b1b4b', fontWeight: 500 }}>
+                    <i className="ti ti-help-circle" style={{ marginRight: 12, fontSize: 18, color: '#4dd0ff' }}></i>
+                    Setting
+                  </button>
+                </li>
+                
+              
+                <li><hr className="dropdown-divider" style={{ margin: 0, borderColor: '#e6f2fa' }} /></li>
+                <li>
+                  <button className="dropdown-item d-flex align-items-center" type="button" onClick={() => navigate('/login-teacher')} style={{ color: '#ff4757', fontWeight: 600 }}>
+                    <i className="ti ti-logout" style={{ marginRight: 12, fontSize: 18, color: '#ff4757' }}></i>
+                    Log out
+                  </button>
+                </li>
+              </ul>
             </li>
           </ul>
         </div>

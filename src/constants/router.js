@@ -9,6 +9,7 @@ const ROUTER_PAGE = {
 	LOGIN_TEACHER: '/login-teacher',
 	PROFILE : '/profile',
 	PROFILE_STUDENT : '/profile-student',
+	CHANGE_PASSWORD : '/change-password',
 };
 
 export default ROUTER_PAGE;

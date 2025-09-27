@@ -91,7 +91,7 @@ export default function LoginTeacher() {
                                                         type='text'
                                                         className='form-control'
                                                         id='loginUsername'
-                                                        placeholder='input email'
+                                                        placeholder='Username'
                                                         value={username}
                                                         onChange={(e) => setUsername(e.target.value)}
                                                         aria-describedby='emailHelp'
@@ -130,7 +130,7 @@ export default function LoginTeacher() {
                                                         type={showPassword ? 'text' : 'password'}
                                                         className='form-control'
                                                         id='loginPassword'
-                                                        placeholder='Input password'
+                                                        placeholder='Password'
                                                         value={password}
                                                         onChange={(e) => setPassword(e.target.value)}
                                                         style={{ fontSize: 16 }}
