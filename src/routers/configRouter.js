@@ -14,7 +14,7 @@ import RoleList from '../pages/management/managementAdmin/role/RoleList';
 import LevelList from '../pages/management/managementAdmin/level/LevelList';
 import SpinnerDemo from '../pages/SpinnerDemo';
 // import AdminDashboard from '../pages/management/managementAdmin/AdminDashboard';
-  
+
 const CONFIG_ROUTER = [
 	//   {
 	//     show: true,
