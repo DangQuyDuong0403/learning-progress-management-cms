@@ -166,13 +166,13 @@ export default function Header() {
                          color: '#000',
                          marginBottom: '2px'
                        }}>
-                         Trần Thư
+                         Nguyen Duc Anh
                        </div>
                        <div style={{ 
                          fontSize: '14px', 
                          color: '#666'
                        }}>
-                         thuttmhe171462@fpt.edu.vn
+                         anhndhe171462@fpt.edu.vn
                        </div>
                      </div>
                    </div>

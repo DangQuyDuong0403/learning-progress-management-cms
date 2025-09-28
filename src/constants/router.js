@@ -21,6 +21,12 @@ const ROUTER_PAGE = {
 	ADMIN_REPORTS: '/admin/reports',
 	// Spinner Demo
 	SPINNER_DEMO: '/spinner-demo',
+	// Manager Management Routes
+	MANAGER_CLASSES: '/manager/classes',
+	//MANAGER_CLASS_DETAIL: '/manager/classes/:id',
+	MANAGER_CLASS_STUDENTS: '/manager/classes/student/:id',
+	MANAGER_CLASS_TEACHERS: '/manager/classes/teachers/:id',
+	MANAGER_CLASS_ACTIVITIES: '/manager/classes/activities/:id',
 };
 
 export default ROUTER_PAGE;

@@ -12,6 +12,10 @@ import ChangePassword from '../pages/profile/ChangePassword';
 import AccountList from '../pages/management/managementAdmin/account/AccountList';
 import RoleList from '../pages/management/managementAdmin/role/RoleList';
 import SpinnerDemo from '../pages/SpinnerDemo';
+import ClassList from '../pages/management/ManagementManager/Class/ClassList';
+import ClassDetail from '../pages/management/ManagementManager/Class/ClassDetail';
+import ClassTeachers from '../pages/management/ManagementManager/Class/ClassTeachers';
+import ClassActivities from '../pages/management/ManagementManager/Class/ClassActivities';
 // import AdminDashboard from '../pages/management/managementAdmin/AdminDashboard';
 
 const CONFIG_ROUTER = [
@@ -141,6 +145,62 @@ const CONFIG_ROUTER = [
 		role: 'admin',
 	},
 	{
+		show: true,
+		component: ClassList,
+		// icon: <UserOutlined />,
+		path: ROUTER_PAGE.MANAGER_CLASSES,
+		menuName: 'classes management',
+		exact: true,
+		key: 'MANAGER_CLASSES',
+		private: true,
+		role: 'admin',
+	},
+	// {
+	// 	show: false,
+	// 	component: ClassDetail,
+	// 	// icon: <UserOutlined />,
+	// 	path: ROUTER_PAGE.MANAGER_CLASS_DETAIL,
+	// 	menuName: 'class detail',
+	// 	exact: true,
+	// 	key: 'MANAGER_CLASS_DETAIL',
+	// 	private: true,
+	// 	role: 'admin',
+	// },
+	{
+		show: false,
+		component: ClassDetail,
+		// icon: <UserOutlined />,
+		path: ROUTER_PAGE.MANAGER_CLASS_STUDENTS,
+		menuName: 'class students',
+		exact: true,
+		key: 'MANAGER_CLASS_STUDENTS',
+		private: true,
+		role: 'admin',
+	},
+	{
+		show: false,
+		component: ClassTeachers,
+		// icon: <UserOutlined />,
+		path: ROUTER_PAGE.MANAGER_CLASS_TEACHERS,
+		menuName: 'class teachers',
+		exact: true,
+		key: 'MANAGER_CLASS_TEACHERS',
+		private: true,
+		role: 'admin',
+	},
+	{
+		show: false,
+		component: ClassActivities,
+		// icon: <UserOutlined />,
+		path: ROUTER_PAGE.MANAGER_CLASS_ACTIVITIES,
+		menuName: 'class activities',
+		exact: true,
+		key: 'MANAGER_CLASS_ACTIVITIES',
+		private: true,
+		role: 'admin',
+	},
+	
+	{
 		show: false,
 		component: SpinnerDemo,
 		// icon: <SpinnerOutlined />,
@@ -150,6 +210,7 @@ const CONFIG_ROUTER = [
 		key: 'SPINNER_DEMO',
 		private: false, // Có thể truy cập mà không cần đăng nhập
 	},
+	
 ];
 
 export default CONFIG_ROUTER;

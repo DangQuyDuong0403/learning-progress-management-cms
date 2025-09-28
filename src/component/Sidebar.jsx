@@ -44,6 +44,7 @@ export default function Sidebar({ collapsed }) {
       'ADMIN_REPORTS': t('sidebar.reportsManagement'),
       'ADMIN_DASHBOARD': t('sidebar.dashboard'),
       'ADMIN_SETTINGS': t('sidebar.settings'),
+      'MANAGER_CLASSES': t('sidebar.classesManagement'),
     };
     return menuNameMap[key] || key;
   };
