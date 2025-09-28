@@ -7,12 +7,12 @@ import {
 	message,
 	Input,
 	Select,
-	Popconfirm,
 	Tag,
 	Card,
 	Row,
 	Col,
 	Statistic,
+	Tooltip,
 } from 'antd';
 import {
 	PlusOutlined,
@@ -28,11 +28,9 @@ import LevelForm from './LevelForm';
 import './LevelList.css';
 import {
 	fetchLevels,
-	deleteLevel,
-	updateLevelStatus,
+	deleteLevel as deleteLevelAction,
 } from '../../../../redux/level';
 import Layout from '../../../../component/Layout';
-
 
 const { Search } = Input;
 const { Option } = Select;
@@ -40,13 +38,14 @@ const { Option } = Select;
 const LevelList = () => {
 	const { t } = useTranslation();
 	const dispatch = useDispatch();
-	const { levels, loading, error } = useSelector((state) => state.level);
+	const { levels, loading } = useSelector((state) => state.level);
 
 	const [isModalVisible, setIsModalVisible] = useState(false);
+	const [isDeleteModalVisible, setIsDeleteModalVisible] = useState(false);
 	const [editingLevel, setEditingLevel] = useState(null);
+	const [deleteLevel, setDeleteLevel] = useState(null);
 	const [searchText, setSearchText] = useState('');
 	const [statusFilter, setStatusFilter] = useState('all');
-	const [selectedRowKeys, setSelectedRowKeys] = useState([]);
 
 	useEffect(() => {
 		dispatch(fetchLevels());
@@ -62,22 +61,25 @@ const LevelList = () => {
 		setIsModalVisible(true);
 	};
 
-	const handleDelete = async (id) => {
+	const handleDeleteClick = (level) => {
+		setDeleteLevel(level);
+		setIsDeleteModalVisible(true);
+	};
+
+	const handleDelete = async () => {
 		try {
-			await dispatch(deleteLevel(id));
+			await dispatch(deleteLevelAction(deleteLevel.id));
 			message.success(t('levelManagement.deleteLevelSuccess'));
+			setIsDeleteModalVisible(false);
+			setDeleteLevel(null);
 		} catch (error) {
 			message.error(t('levelManagement.deleteLevelError'));
 		}
 	};
 
-	const handleStatusChange = async (id, status) => {
-		try {
-			await dispatch(updateLevelStatus({ id, status }));
-			message.success(t('levelManagement.updateLevelSuccess'));
-		} catch (error) {
-			message.error(t('levelManagement.updateLevelError'));
-		}
+	const handleDeleteModalClose = () => {
+		setIsDeleteModalVisible(false);
+		setDeleteLevel(null);
 	};
 
 	const handleModalClose = () => {
@@ -154,9 +156,7 @@ const LevelList = () => {
 			key: 'status',
 			width: 100,
 			render: (status, record) => (
-				<Tag color={status === 'active' ? 'green' : 'red'}>
-					{status}
-				</Tag>
+				<Tag color={status === 'active' ? 'green' : 'red'}>{status}</Tag>
 			),
 		},
 		{
@@ -179,36 +179,24 @@ const LevelList = () => {
 			width: 150,
 			render: (_, record) => (
 				<Space size='small'>
-					<Button
-						type='primary'
-						size='small'
-						icon={<EditOutlined />}
-						onClick={() => handleEdit(record)}>
-						{t('common.edit')}
-					</Button>
-					<Popconfirm
-						title={t('levelManagement.confirmDelete')}
-						description={t('levelManagement.confirmDeleteMessage')}
-						onConfirm={() => handleDelete(record.id)}
-						okText={t('common.yes')}
-						cancelText={t('common.no')}>
+					<Tooltip title={t('accountManagement.edit')}>
 						<Button
-							type='primary'
-							danger
+							type='text'
+							icon={<EditOutlined style={{ fontSize: '25px' }} />}
 							size='small'
-							icon={<DeleteOutlined />}>
-							{t('common.delete')}
-						</Button>
-					</Popconfirm>
+							onClick={() => handleEdit(record)}
+						/>
+					</Tooltip>
+					<Button
+						type='text'
+						size='small'
+						icon={<DeleteOutlined style={{ fontSize: '25px' }} />}
+						onClick={() => handleDeleteClick(record)}>
+					</Button>
 				</Space>
 			),
 		},
 	];
-
-	const rowSelection = {
-		selectedRowKeys,
-		onChange: setSelectedRowKeys,
-	};
 
 	return (
 		<Layout>
@@ -350,6 +338,23 @@ const LevelList = () => {
 					width={600}
 					destroyOnClose>
 					<LevelForm level={editingLevel} onClose={handleModalClose} />
+				</Modal>
+
+				{/* Delete Confirmation Modal */}
+				<Modal
+					title={t('levelManagement.confirmDelete')}
+					open={isDeleteModalVisible}
+					onOk={handleDelete}
+					onCancel={handleDeleteModalClose}
+					okText={t('common.yes')}
+					cancelText={t('common.no')}
+					okButtonProps={{ danger: true }}>
+					<p>{t('levelManagement.confirmDeleteMessage')}</p>
+					{deleteLevel && (
+						<p>
+							<strong>{deleteLevel.name}</strong>
+						</p>
+					)}
 				</Modal>
 			</div>
 		</Layout>

@@ -11,10 +11,11 @@ import ProfileStudent from '../pages/profile/ProfileStudent';
 import ChangePassword from '../pages/profile/ChangePassword';
 import AccountList from '../pages/management/managementAdmin/account/AccountList';
 import RoleList from '../pages/management/managementAdmin/role/RoleList';
-import LevelList from '../pages/management/managementAdmin/level/LevelList';
+import LevelList from '../pages/management/managementManager/level/LevelList';
+import SyllabusList from '../pages/management/managementManager/syllabus/SyllabusList';
 import SpinnerDemo from '../pages/SpinnerDemo';
 // import AdminDashboard from '../pages/management/managementAdmin/AdminDashboard';
-
+  
 const CONFIG_ROUTER = [
 	//   {
 	//     show: true,
@@ -151,6 +152,17 @@ const CONFIG_ROUTER = [
 		key: 'ADMIN_LEVELS',
 		private: true,
 		role: 'admin',
+	},
+	{
+		show: true,
+		component: SyllabusList,
+		// icon: <FileTextOutlined />,
+		path: ROUTER_PAGE.MANAGER_SYLLABUSES,
+		menuName: 'Syllabus management',
+		exact: true,
+		key: 'MANAGER_SYLLABUSES',
+		private: true,
+		role: 'manager',
 	},
 	{
 		show: false,

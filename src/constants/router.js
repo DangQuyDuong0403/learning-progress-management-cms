@@ -20,6 +20,11 @@ const ROUTER_PAGE = {
 	ADMIN_STUDENTS: '/admin/students',
 	ADMIN_TEACHERS: '/admin/teachers',
 	ADMIN_REPORTS: '/admin/reports',
+	// Manager Management Routes
+	MANAGER_DASHBOARD: '/manager/dashboard',
+	MANAGER_SYLLABUSES: '/manager/syllabuses',
+	MANAGER_LEVELS: '/manager/levels',
+	MANAGER_COURSES: '/manager/courses',
 	// Spinner Demo
 	SPINNER_DEMO: '/spinner-demo',
 };
