@@ -21,6 +21,7 @@ export default function Sidebar({ collapsed }) {
     const iconMap = {
       'ADMIN_ACCOUNTS': <UserOutlined />,
       'ADMIN_ROLES': <TeamOutlined />,
+      'ADMIN_LEVELS': <BookOutlined />,
       'ADMIN_COURSES': <BookOutlined />,
       'ADMIN_REPORTS': <BarChartOutlined />,
       'ADMIN_DASHBOARD': <DashboardOutlined />,
@@ -40,6 +41,7 @@ export default function Sidebar({ collapsed }) {
     const menuNameMap = {
       'ADMIN_ACCOUNTS': t('sidebar.accountsManagement'),
       'ADMIN_ROLES': t('sidebar.rolesManagement'),
+      'ADMIN_LEVELS': t('sidebar.levelsManagement'),
       'ADMIN_COURSES': t('sidebar.coursesManagement'),
       'ADMIN_REPORTS': t('sidebar.reportsManagement'),
       'ADMIN_DASHBOARD': t('sidebar.dashboard'),
