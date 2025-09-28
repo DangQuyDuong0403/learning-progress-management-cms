@@ -19,9 +19,7 @@ import {
   UserOutlined,
   PlusOutlined,
   SearchOutlined,
-  EyeOutlined,
   DeleteOutlined,
-  ReloadOutlined,
   ImportOutlined,
   ExportOutlined,
   DownloadOutlined,
@@ -146,10 +144,6 @@ const ClassDetail = () => {
     setIsModalVisible(true);
   };
 
-  const handleViewStudent = (student) => {
-    // Navigate to student detail page or show student info
-    spaceToast.info(`${t('classDetail.viewDetails')}: ${student.name}`);
-  };
 
   const handleStudentSearch = (value) => {
     setStudentSearchValue(value);
@@ -408,16 +402,10 @@ const ClassDetail = () => {
       key: "actions",
       render: (_, record) => (
         <Space>
+        
           <Button
             type="text"
-            icon={<EyeOutlined />}
-            onClick={() => handleViewStudent(record)}
-            style={{ color: "#1890ff" }}
-            title={t('classDetail.viewDetails')}
-          />
-          <Button
-            type="text"
-            icon={<DeleteOutlined />}
+            icon={<DeleteOutlined style={{ fontSize: '18px' }} />}
             onClick={() => handleDeleteStudent(record)}
             style={{ color: "#ff4d4f" }}
             title={t('classDetail.removeFromClass')}
@@ -446,7 +434,7 @@ const ClassDetail = () => {
             <div className="header-left">
               <Button
                 icon={<ArrowLeftOutlined />}
-                onClick={() => navigate(-1)}
+                onClick={() => navigate('/manager/classes')}
                 className="back-button"
               >
                 {t('common.back')}
@@ -462,13 +450,21 @@ const ClassDetail = () => {
             
             <div className="header-right">
               <Space>
-                <Button
-                  icon={<ReloadOutlined />}
-                  onClick={fetchStudents}
-                  className="refresh-button"
-                >
-                  {t('classDetail.refresh')}
-                </Button>
+                 {/* Chapters/Lessons Button */}
+          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+            <Button
+              type="primary"
+              size="large"
+              onClick={() => navigate(`/manager/classes/chapters-lessons/${id}`)}
+              style={{
+                borderRadius: '8px',
+                fontWeight: '500',
+                boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)'
+              }}
+            >
+              {t('classDetail.chaptersLessons')}
+            </Button>
+          </div>
                 <Button
                   icon={<ImportOutlined />}
                   onClick={handleImport}
@@ -516,6 +512,8 @@ const ClassDetail = () => {
               <span>{t('classDetail.activities')}</span>
             </div>
           </div>
+
+         
 
           {/* Filters */}
           <div className="filters-section">

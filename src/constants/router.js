@@ -33,6 +33,14 @@ const ROUTER_PAGE = {
 	MANAGER_CLASS_STUDENTS: '/manager/classes/student/:id',
 	MANAGER_CLASS_TEACHERS: '/manager/classes/teachers/:id',
 	MANAGER_CLASS_ACTIVITIES: '/manager/classes/activities/:id',
+	MANAGER_CLASS_CHAPTERS_LESSONS: '/manager/classes/chapters-lessons/:id',
+	// Teacher Management Routes
+	TEACHER_CLASSES: '/teacher/classes',
+	TEACHER_CLASS_DASHBOARD: '/teacher/classes/dashboard/:id',
+	TEACHER_CLASS_STUDENTS: '/teacher/classes/student/:id',
+	TEACHER_CLASS_TEACHERS: '/teacher/classes/teachers/:id',
+	TEACHER_CLASS_ACTIVITIES: '/teacher/classes/activities/:id',
+	TEACHER_CLASS_CHAPTERS_LESSONS: '/teacher/classes/chapters-lessons/:id',
 };
 
 export default ROUTER_PAGE;

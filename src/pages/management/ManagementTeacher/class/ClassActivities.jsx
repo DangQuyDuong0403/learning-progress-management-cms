@@ -3,15 +3,9 @@ import {
   Button,
   Card,
   Space,
-  Modal,
-  Form,
-  DatePicker,
-  Select,
-  Input,
 } from "antd";
 import {
   ArrowLeftOutlined,
-  PlusOutlined,
   ReloadOutlined,
 } from "@ant-design/icons";
 import Layout from "../../../../component/Layout";
@@ -20,7 +14,6 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { spaceToast } from "../../../../component/SpaceToastify";
 
-const { Option } = Select;
 
 // Mock data for activities (timeline format)
 const mockActivities = [
@@ -112,6 +105,8 @@ const ClassActivities = () => {
 
 
 
+
+
   if (loading) {
     return (
       <Layout>
@@ -131,7 +126,7 @@ const ClassActivities = () => {
             <div className="header-left">
               <Button
                 icon={<ArrowLeftOutlined style={{ fontSize: '18px' }} />}
-                onClick={() => navigate('/manager/classes')}
+                onClick={() => navigate('/teacher/classes')}
                 className="back-button"
               >
                 {t('common.back')}
@@ -151,7 +146,7 @@ const ClassActivities = () => {
             <Button
               type="primary"
               size="large"
-              onClick={() => navigate(`/manager/classes/chapters-lessons/${id}`)}
+              onClick={() => navigate(`/teacher/classes/chapters-lessons/${id}`)}
               style={{
                 borderRadius: '8px',
                 fontWeight: '500',
@@ -179,13 +174,19 @@ const ClassActivities = () => {
           <div className="nav-tabs">
             <div 
               className="nav-tab"
-              onClick={() => navigate(`/manager/classes/student/${id}`)}
+              onClick={() => navigate(`/teacher/classes/dashboard/${id}`)}
+            >
+              <span>{t('classDashboard.dashboard')}</span>
+            </div>
+            <div 
+              className="nav-tab"
+              onClick={() => navigate(`/teacher/classes/student/${id}`)}
             >
               <span>{t('classActivities.students')}</span>
             </div>
             <div 
               className="nav-tab"
-              onClick={() => navigate(`/manager/classes/teachers/${id}`)}
+              onClick={() => navigate(`/teacher/classes/teachers/${id}`)}
             >
               <span>{t('classActivities.teachers')}</span>
             </div>

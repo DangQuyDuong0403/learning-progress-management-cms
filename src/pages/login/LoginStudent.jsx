@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { loginSuccess } from '../../redux/auth';
-import { toast } from 'react-toastify';
+import { spaceToast } from '../../component/SpaceToastify';
 import { Input, Modal, Button } from 'antd';
 import { UserOutlined, LockOutlined, ArrowLeftOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
@@ -29,7 +29,7 @@ export default function Login() {
 			dispatch(loginSuccess(fakeResponse));
 			navigate('/home');
 		} else {
-			toast.error('Sai tài khoản hoặc mật khẩu!');
+			spaceToast.error('Sai tài khoản hoặc mật khẩu!');
 		}
 	};
 

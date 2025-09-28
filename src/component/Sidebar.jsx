@@ -2,6 +2,7 @@ import React from 'react';
 import { Link, useLocation } from "react-router-dom";
 import { Menu } from 'antd';
 import { useTranslation } from 'react-i18next';
+import { useSelector } from 'react-redux';
 import {
   UserOutlined,
   TeamOutlined,
@@ -15,6 +16,7 @@ import CONFIG_ROUTER from "../routers/configRouter";
 export default function Sidebar({ collapsed }) {
   const location = useLocation();
   const { t } = useTranslation();
+  const { user } = useSelector((state) => state.auth);
 
   // Map route keys to icons
   const getIcon = (key) => {
@@ -53,13 +55,17 @@ export default function Sidebar({ collapsed }) {
       'MANAGER_SYLLABUSES': t('sidebar.syllabusManagement'),
       'MANAGER_LEVELS': t('sidebar.levelsManagement'),
       'MANAGER_COURSES': t('sidebar.coursesManagement'),
+      'TEACHER_CLASSES': t('sidebar.classesManagement'),
     };
     return menuNameMap[key] || key;
   };
 
-  // Create menu items from routes
+  // Create menu items from routes based on user role
   const menuItems = CONFIG_ROUTER
-    .filter((route) => route.show)
+    .filter((route) => {
+      // Show routes that are visible and match user role
+      return route.show && (!route.role || route.role === user?.role?.toLowerCase());
+    })
     .map((route) => ({
       key: route.key,
       icon: getIcon(route.key),

@@ -143,7 +143,7 @@ const ClassList = () => {
       setTimeout(() => {
         setClasses(mockClasses);
         setLoading(false);
-      }, 2000);
+      }, 1000);
     } catch (error) {
       message.error("Error loading classes list");
       setLoading(false);

@@ -376,7 +376,7 @@ const ClassTeachers = () => {
         <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
           <Avatar
             size={40}
-            icon={<UserOutlined />}
+            icon={<UserOutlined style={{ fontSize: '18px' }} />}
             style={{
               backgroundColor: classData?.color || "#00d4ff",
             }}
@@ -398,12 +398,6 @@ const ClassTeachers = () => {
       title: t('classTeachers.phoneNumber'),
       dataIndex: "phone",
       key: "phone",
-      render: (text) => <span style={{ fontSize: "14px" }}>{text}</span>,
-    },
-    {
-      title: t('classTeachers.specialization'),
-      dataIndex: "specialization",
-      key: "specialization",
       render: (text) => <span style={{ fontSize: "14px" }}>{text}</span>,
     },
     {
@@ -429,7 +423,7 @@ const ClassTeachers = () => {
         <Space>
           <Button
             type="text"
-            icon={<DeleteOutlined />}
+            icon={<DeleteOutlined style={{ fontSize: '18px' }} />}
             onClick={() => handleDeleteTeacher(record)}
             style={{ color: "#ff4d4f" }}
             title={t('classTeachers.delete')}
@@ -457,8 +451,8 @@ const ClassTeachers = () => {
           <div className="header-content">
             <div className="header-left">
               <Button
-                icon={<ArrowLeftOutlined />}
-                onClick={() => navigate(-1)}
+                icon={<ArrowLeftOutlined style={{ fontSize: '18px' }} />}
+                onClick={() => navigate('/manager/classes')}
                 className="back-button"
               >
                 {t('common.back')}
@@ -473,15 +467,30 @@ const ClassTeachers = () => {
             
             <div className="header-right">
               <Space>
+                    {/* Chapters/Lessons Button */}
+          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+            <Button
+              type="primary"
+              size="large"
+              onClick={() => navigate(`/manager/classes/chapters-lessons/${id}`)}
+              style={{
+                borderRadius: '8px',
+                fontWeight: '500',
+                boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)'
+              }}
+            >
+              {t('classDetail.chaptersLessons')}
+            </Button>
+          </div>
                 <Button
-                  icon={<ReloadOutlined />}
+                  icon={<ReloadOutlined style={{ fontSize: '18px' }} />}
                   onClick={fetchTeachers}
                   className="refresh-button"
                 >
                   {t('classTeachers.refresh')}
                 </Button>
                 <Button
-                  icon={<UploadOutlined />}
+                  icon={<UploadOutlined style={{ fontSize: '18px' }} />}
                   onClick={handleImportFile}
                   className="import-button"
                 >
@@ -489,7 +498,7 @@ const ClassTeachers = () => {
                 </Button>
                 <Button
                   type="primary"
-                  icon={<PlusOutlined />}
+                  icon={<PlusOutlined style={{ fontSize: '18px' }} />}
                   onClick={handleAddTeacher}
                   className="add-teacher-button"
                 >
@@ -519,6 +528,7 @@ const ClassTeachers = () => {
             >
               <span>{t('classTeachers.activities')}</span>
             </div>
+         
           </div>
 
           {/* Filters */}
@@ -728,7 +738,7 @@ const ClassTeachers = () => {
              accept=".xlsx,.xls,.csv"
              maxCount={1}
            >
-             <Button icon={<UploadOutlined />} style={{ width: '100%' }}>
+             <Button icon={<UploadOutlined style={{ fontSize: '18px' }} />} style={{ width: '100%' }}>
                {t('classTeachers.selectFileToUpload')}
              </Button>
            </Upload>
