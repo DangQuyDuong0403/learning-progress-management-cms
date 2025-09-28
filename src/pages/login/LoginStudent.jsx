@@ -3,18 +3,20 @@ import { useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { loginSuccess } from '../../redux/auth';
 import { toast } from 'react-toastify';
-import { Input, Modal, Radio } from 'antd';
-import { UserOutlined, LockOutlined } from '@ant-design/icons';
+import { Input, Modal, Button } from 'antd';
+import { UserOutlined, LockOutlined, ArrowLeftOutlined } from '@ant-design/icons';
+import { useTranslation } from 'react-i18next';
+import LanguageToggle from '../../component/LanguageToggle';
 import './Login.css';
 
 export default function Login() {
 	const [username, setUsername] = useState('');
 	const [password, setPassword] = useState('');
-	const [showPassword, setShowPassword] = useState(false);
 	const [forgotVisible, setForgotVisible] = useState(false);
 	const [forgotMethod, setForgotMethod] = useState('email');
 	const dispatch = useDispatch();
 	const navigate = useNavigate();
+	const { t } = useTranslation();
 
 	const handleSubmit = (e) => {
 		e.preventDefault();
@@ -36,8 +38,17 @@ export default function Login() {
 		navigate(`/forgot-password-${forgotMethod}`);
 	};
 
+	const handleBackToChoose = () => {
+		navigate('/choose-login');
+	};
+
 	return (
 		<div className='kids-space'>
+			{/* Language Toggle - Top Right */}
+			<div style={{ position: 'absolute', top: '20px', right: '20px', zIndex: 1000 }}>
+				<LanguageToggle />
+			</div>
+			
 			<div
 				className='page-wrapper'
 				id='main-wrapper'
@@ -52,8 +63,8 @@ export default function Login() {
 							<div
 								className='card mb-0 kids-card'
 								style={{
-									minWidth: 420,
-									maxWidth: 520,
+									minWidth: 520,
+									maxWidth: 720,
 									margin: '0 auto',
 									padding: 0,
 									borderRadius: 32,
@@ -61,8 +72,27 @@ export default function Login() {
 								}}>
 								<div
 									className='card-body'
-									style={{ padding: '1.5rem 1.5rem 1rem 1.5rem' }}>
+									style={{ padding: '2.5rem 2.5rem 2rem 2.5rem' }}>
 									<div className='card-body'>
+										{/* Back Button */}
+										<div className='d-flex justify-content-start mb-3'>
+											<Button
+												type='text'
+												icon={<ArrowLeftOutlined />}
+												onClick={handleBackToChoose}
+												style={{
+													color: '#1677ff',
+													fontWeight: 600,
+													padding: '4px 8px',
+													height: 'auto',
+													borderRadius: '6px',
+													display: 'flex',
+													alignItems: 'center',
+													gap: '6px'
+												}}>
+												{t('common.back')} to Choose Role
+											</Button>
+										</div>
 										{/* <div className='text-nowrap logo-img text-center d-block py-3 w-100'>
 											<img src='img/logo.png' alt='' />
 										</div> */}
@@ -75,11 +105,11 @@ export default function Login() {
 										<form onSubmit={handleSubmit}>
 											<div className='mb-3'>
 												<label htmlFor='loginUsername' className='form-label'>
-													Username
+													{t('login.username')}
 												</label>
 												<Input
 													id='loginUsername'
-													placeholder='Username'
+													placeholder={t('login.username')}
 													value={username}
 													onChange={(e) => setUsername(e.target.value)}
 													prefix={<UserOutlined />}
@@ -89,11 +119,11 @@ export default function Login() {
 											</div>
 											<div className='mb-4'>
 												<label htmlFor='loginPassword' className='form-label'>
-													Password
+													{t('login.password')}
 												</label>
 												<Input.Password
 													id='loginPassword'
-													placeholder='Password'
+													placeholder={t('login.password')}
 													value={password}
 													onChange={(e) => setPassword(e.target.value)}
 													prefix={<LockOutlined />}
@@ -113,14 +143,14 @@ export default function Login() {
 													<label
 														className='form-check-label text-dark'
 														htmlFor='flexCheckChecked'>
-														Remember me
+														{t('login.rememberMe')}
 													</label>
 												</div>
 												<span
 													className='fw-bold forgot-password'
 													style={{ cursor: 'pointer', color: '#1677ff' }}
 													onClick={() => setForgotVisible(true)}>
-													Forgot Password?
+													{t('login.forgotPassword')}
 												</span>
 											</div>
 											<div className='text-center'>
@@ -128,7 +158,7 @@ export default function Login() {
 													type='submit'
 													className='btn btn-space w-90 mb-4 rounded-3'
 													style={{ color: 'white' }}>
-													Sign in
+													{t('login.signIn')}
 												</button>
 											</div>
 										</form>

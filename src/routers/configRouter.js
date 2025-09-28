@@ -10,6 +10,8 @@ import Profile from '../pages/profile/Profile';
 import ProfileStudent from '../pages/profile/ProfileStudent';
 import ChangePassword from '../pages/profile/ChangePassword';
 import AccountList from '../pages/management/managementAdmin/account/AccountList';
+import RoleList from '../pages/management/managementAdmin/role/RoleList';
+import SpinnerDemo from '../pages/SpinnerDemo';
 // import AdminDashboard from '../pages/management/managementAdmin/AdminDashboard';
 
 const CONFIG_ROUTER = [
@@ -121,11 +123,32 @@ const CONFIG_ROUTER = [
 		component: AccountList,
 		// icon: <UserOutlined />,
 		path: ROUTER_PAGE.ADMIN_ACCOUNTS,
-		menuName: 'Quản lý tài khoản',
+		menuName: 'Accounts management',
 		exact: true,
 		key: 'ADMIN_ACCOUNTS',
 		private: true,
 		role: 'admin',
+	},
+	{
+		show: true,
+		component: RoleList,
+		// icon: <UserOutlined />,
+		path: ROUTER_PAGE.ADMIN_ROLES,
+		menuName: 'Roles management',
+		exact: true,
+		key: 'ADMIN_ROLES',
+		private: true,
+		role: 'admin',
+	},
+	{
+		show: false,
+		component: SpinnerDemo,
+		// icon: <SpinnerOutlined />,
+		path: ROUTER_PAGE.SPINNER_DEMO,
+		menuName: 'Spinner Demo',
+		exact: true,
+		key: 'SPINNER_DEMO',
+		private: false, // Có thể truy cập mà không cần đăng nhập
 	},
 ];
 

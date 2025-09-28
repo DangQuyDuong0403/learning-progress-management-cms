@@ -3,8 +3,10 @@ import { useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { loginSuccess } from '../../redux/auth';
 import { toast } from 'react-toastify';
-import { Input } from 'antd';
-import { UserOutlined, LockOutlined } from '@ant-design/icons';
+import { Input, Button } from 'antd';
+import { UserOutlined, LockOutlined, ArrowLeftOutlined } from '@ant-design/icons';
+import { useTranslation } from 'react-i18next';
+import LanguageToggle from '../../component/LanguageToggle';
 import './Login.css';
 
 export default function LoginTeacher() {
@@ -12,6 +14,7 @@ export default function LoginTeacher() {
     const [password, setPassword] = useState('');
     const dispatch = useDispatch();
     const navigate = useNavigate();
+    const { t } = useTranslation();
 
     const handleSubmit = (e) => {
         e.preventDefault();
@@ -50,8 +53,17 @@ export default function LoginTeacher() {
         }
     };
 
+    const handleBackToChoose = () => {
+        navigate('/choose-login');
+    };
+
     return (
         <div className='kids-space'>
+            {/* Language Toggle - Top Right */}
+            <div style={{ position: 'absolute', top: '20px', right: '20px', zIndex: 1000 }}>
+                <LanguageToggle />
+            </div>
+            
             <div
                 className='page-wrapper'
                 id='main-wrapper'
@@ -64,17 +76,36 @@ export default function LoginTeacher() {
                     <div className='d-flex align-items-center justify-content-center w-100'>
                         <div className='row justify-content-center w-100'>
                             <div className='col-md-10 col-lg-8 col-xxl-5'>
-                                <div className='card mb-0 kids-card' style={{ minWidth: 420, maxWidth: 520, margin: '0 auto', padding: 0, borderRadius: 32, boxShadow: '0 20px 60px rgba(30, 20, 90, 0.25)' }}>
+                                <div className='card mb-0 kids-card' style={{ minWidth: 520, maxWidth: 720, margin: '0 auto', padding: 0, borderRadius: 32, boxShadow: '0 20px 60px rgba(30, 20, 90, 0.25)' }}>
                                     <div className='card-body' style={{ padding: '2.5rem 2.5rem 2rem 2.5rem' }}>
+                                        {/* Back Button */}
+                                        <div className='d-flex justify-content-start mb-3'>
+                                            <Button
+                                                type='text'
+                                                icon={<ArrowLeftOutlined />}
+                                                onClick={handleBackToChoose}
+                                                style={{
+                                                    color: '#1677ff',
+                                                    fontWeight: 600,
+                                                    padding: '4px 8px',
+                                                    height: 'auto',
+                                                    borderRadius: '6px',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: '6px'
+                                                }}>
+                                                {t('common.back')} to Choose Role
+                                            </Button>
+                                        </div>
                                         <h3 className='text-center kids-heading mb-2' style={{ fontSize: 30, fontWeight: 800, background: 'linear-gradient(90deg, #5e17eb 0%, #4dd0ff 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text', textFillColor: 'transparent', letterSpacing: 0.5 }}>Log in to the management system</h3>
                                         <form onSubmit={handleSubmit}>
                                             <div className='mb-3'>
                                                 <label htmlFor='loginUsername' className='form-label' style={{ fontWeight: 600 }}>
-                                                    Username
+                                                    {t('login.username')}
                                                 </label>
                                                 <Input
                                                     id='loginUsername'
-                                                    placeholder='Username'
+                                                    placeholder={t('login.username')}
                                                     value={username}
                                                     onChange={(e) => setUsername(e.target.value)}
                                                     prefix={<UserOutlined />}
@@ -84,11 +115,11 @@ export default function LoginTeacher() {
                                             </div>
                                             <div className='mb-4'>
                                                 <label htmlFor='loginPassword' className='form-label' style={{ fontWeight: 600 }}>
-                                                    Password
+                                                    {t('login.password')}
                                                 </label>
                                                 <Input.Password
                                                     id='loginPassword'
-                                                    placeholder='Password'
+                                                    placeholder={t('login.password')}
                                                     value={password}
                                                     onChange={(e) => setPassword(e.target.value)}
                                                     prefix={<LockOutlined />}
@@ -108,13 +139,13 @@ export default function LoginTeacher() {
                                                     <label
                                                         className='form-check-label text-dark'
                                                         htmlFor='flexCheckChecked'>
-                                                        Remember me
+                                                        {t('login.rememberMe')}
                                                     </label>
                                                 </div>
                                                 <a
                                                     className='fw-bold forgot-password'
                                                     href='/forgot-password-email'>
-                                                    Forgot your password?
+                                                    {t('login.forgotPassword')}
                                                 </a>
                                             </div>
                                             <div className='text-center'>
@@ -122,7 +153,7 @@ export default function LoginTeacher() {
                                                     type='submit'
                                                     className='btn btn-space w-100 mb-4 rounded-3'
                                                     style={{ color: 'white', fontWeight: 700, fontSize: 18, padding: '14px 0' }}>
-                                                    Sign in
+                                                    {t('login.signIn')}
                                                 </button>
                                             </div>
                                         </form>

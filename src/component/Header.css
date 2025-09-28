@@ -366,6 +366,7 @@
   font-size: 1.5rem;
   letter-spacing: 0.5px;
   margin: 0;
+  margin-left: 24px;
   text-shadow: 0 0 10px rgba(255, 255, 255, 0.2);
   filter: drop-shadow(0 0 5px rgba(77, 208, 255, 0.3));
 }

@@ -1,13 +1,12 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef } from 'react';
 import { toast } from 'react-toastify';
-import Header from '../../component/Header';
-import Sidebar from '../../component/Sidebar';
+import { useTranslation } from 'react-i18next';
 import './Profile.css';
 import Layout from '../../component/Layout';
 
 export default function Profile() {
-  // Password visibility state
-
+  const { t } = useTranslation();
+  
   const lastNameRef = useRef();
   const firstNameRef = useRef();
   const emailRef = useRef();
@@ -40,7 +39,7 @@ export default function Profile() {
     const birthDate = birthDateRef.current.value;
 
     if (!lastName || !firstName || !email || !birthDate) {
-      toast.error('Fields cannot be empty!');
+      toast.error(t('messages.required'));
       return;
     }
     if (!validateName(lastName)) {
@@ -52,14 +51,14 @@ export default function Profile() {
       return;
     }
     if (!validateEmail(email)) {
-      toast.error('Invalid email format!');
+      toast.error(t('messages.invalidEmail'));
       return;
     }
     if (isFutureDate(birthDate)) {
       toast.error('Date of birth cannot be in the future!');
       return;
     }
-    toast.success('Profile updated successfully!');
+    toast.success(t('messages.updateSuccess'));
     // ...submit logic here
   };
 
@@ -68,6 +67,14 @@ export default function Profile() {
   return (
      <Layout>
     <div className="profile-container">
+      {/* Floating Planets */}
+      <img src="/img/planet-1.png" alt="Planet" className="planet-1" />
+      <img src="/img/planet-2.png" alt="Planet" className="planet-2" />
+      <img src="/img/planet-3.png" alt="Planet" className="planet-3" />
+      <img src="/img/planet-4.png" alt="Planet" className="planet-4" />
+      <img src="/img/planet-5.png" alt="Planet" className="planet-5" />
+      <img src="/img/planet-6.png" alt="Planet" className="planet-6" />
+     
      
       <div className="main-layout">
        
@@ -86,7 +93,7 @@ export default function Profile() {
                           color: '#fff'
                         }}
                       >
-                        Personal Information
+                        {t('profile.personalInfo')}
                       </h3>
                       <i className="ti ti-user"></i>
                     </div>
@@ -109,7 +116,7 @@ export default function Profile() {
                         <div className="profile-right">
                           <div className="form-row">
                             <div className="form-group" style={{ flex: 1 }}>
-                              <label htmlFor="lastName">Last Name</label>
+                              <label htmlFor="lastName">{t('common.lastName')}</label>
                               <input 
                                 type="text" 
                                 id="lastName" 
@@ -119,7 +126,7 @@ export default function Profile() {
                               />
                             </div>
                             <div className="form-group" style={{ flex: 1, marginLeft: '1rem' }}>
-                              <label htmlFor="firstName">First Name</label>
+                              <label htmlFor="firstName">{t('common.firstName')}</label>
                               <input 
                                 type="text" 
                                 id="firstName" 
@@ -130,7 +137,7 @@ export default function Profile() {
                             </div>
                           </div>
                           <div className="form-group">
-                            <label htmlFor="email">Email</label>
+                            <label htmlFor="email">{t('common.email')}</label>
                             <input 
                               type="email" 
                               id="email" 
@@ -140,22 +147,22 @@ export default function Profile() {
                             />
                           </div>
                           <div className="form-group">
-                            <label>Gender</label>
+                            <label>{t('common.gender')}</label>
                             <div className="radio-group">
                               <label className="radio-label">
                                 <input type="radio" name="gender" value="male" defaultChecked />
                                 <span className="radio-custom"></span>
-                                Male
+                                {t('common.male')}
                               </label>
                               <label className="radio-label">
                                 <input type="radio" name="gender" value="female" />
                                 <span className="radio-custom"></span>
-                                Female
+                                {t('common.female')}
                               </label>
                             </div>
                           </div>
                           <div className="form-group">
-                            <label htmlFor="birthDate">Date of Birth</label>
+                            <label htmlFor="birthDate">{t('common.dateOfBirth')}</label>
                             <div className="date-input-container">
                               <input 
                                 type="date" 
@@ -170,8 +177,8 @@ export default function Profile() {
                         </div>
                       </div>
                       <div className="form-actions">
-                        <button className="btn btn-secondary">Back</button>
-                        <button className="btn btn-primary" onClick={handleUpdate}>Update</button>
+                        <button className="btn btn-secondary">{t('common.back')}</button>
+                        <button className="btn btn-primary" onClick={handleUpdate}>{t('common.update')}</button>
                       </div>
                     </div>
                   </div>

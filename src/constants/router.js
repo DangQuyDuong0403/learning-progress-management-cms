@@ -14,11 +14,13 @@ const ROUTER_PAGE = {
 	// Admin Management Routes
 	ADMIN_DASHBOARD: '/admin/dashboard',
 	ADMIN_ACCOUNTS: '/admin/accounts',
-	ADMIN_ROLES: '/admin/roles',
+	ADMIN_ROLES: '/admin/roles', 
 	ADMIN_COURSES: '/admin/courses',
 	ADMIN_STUDENTS: '/admin/students',
 	ADMIN_TEACHERS: '/admin/teachers',
 	ADMIN_REPORTS: '/admin/reports',
+	// Spinner Demo
+	SPINNER_DEMO: '/spinner-demo',
 };
 
 export default ROUTER_PAGE;

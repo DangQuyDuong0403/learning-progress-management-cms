@@ -1,1 +1,514 @@
-//role
+import React, { useState } from "react";
+import { useTranslation } from "react-i18next";
+import { Collapse, Checkbox } from "antd";
+import {
+  Table,
+  Button,
+  Input,
+  Space,
+  Tag,
+  Modal,
+  Form,
+  Select,
+  Tooltip,
+  Card,
+  Row,
+  Col,
+} from "antd";
+import {
+  EditOutlined,
+  PlusOutlined,
+  SearchOutlined,
+  ReloadOutlined,
+  CheckOutlined,
+  StopOutlined,
+} from "@ant-design/icons";
+import Layout from "../../../../component/Layout";
+import "./RoleList.css";
+import { spaceToast } from "../../../../component/SpaceToastify";
+
+const { Option } = Select;
+
+const mockRoles = [
+  {
+    id: 1,
+    role: "Admin",
+    active: true,
+    permissions: ["Quản lý hệ thống", "Quản lý tài khoản", "Chỉnh sửa quyền"],
+  },
+  {
+    id: 2,
+    role: "Manager",
+    active: true,
+    permissions: ["Quản lý lớp học", "Quản lý giáo viên"],
+  },
+  {
+    id: 3,
+    role: "Teacher",
+    active: true,
+    permissions: ["Quản lý học sinh", "Tạo đề kiểm tra"],
+  },
+  {
+    id: 4,
+    role: "Teacher Assistant",
+    active: false,
+    permissions: ["Hỗ trợ giáo viên", "Quản lý bài tập"],
+  },
+  {
+    id: 5,
+    role: "Student",
+    active: true,
+    permissions: ["Làm bài kiểm tra", "Xem điểm"],
+  },
+  {
+    id: 6,
+    role: "Test Taker",
+    active: false,
+    permissions: ["Làm bài kiểm tra thử"],
+  },
+];
+
+const RoleList = () => {
+  const { t } = useTranslation();
+  const [roles, setRoles] = useState(mockRoles);
+  const [searchText, setSearchText] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [isModalVisible, setIsModalVisible] = useState(false);
+  const [editingRole, setEditingRole] = useState(null);
+  const [form] = Form.useForm();
+  const [checkedPermissions, setCheckedPermissions] = useState([]);
+  const [confirmModal, setConfirmModal] = useState({
+    visible: false,
+    title: '',
+    content: '',
+    onConfirm: null
+  });
+
+  // Role options with translations
+  const roleOptions = [
+    { key: "admin", label: t('roleManagement.admin') },
+    { key: "manager", label: t('roleManagement.manager') },
+    { key: "teacher", label: t('roleManagement.teacher') },
+    { key: "teacher_assistant", label: t('roleManagement.teacherAssistant') },
+    { key: "student", label: t('roleManagement.student') },
+    { key: "test_taker", label: t('roleManagement.testTaker') },
+  ];
+
+  // Permission groups with translations
+  const permissionGroups = [
+    {
+      group: t('roleManagement.userManagementGroup'),
+      permissions: [
+        t('roleManagement.createNewAccount'),
+        t('roleManagement.updateAccount'),
+        t('roleManagement.activateDeactivateAccount'),
+      ],
+    },
+    {
+      group: t('roleManagement.exerciseManagementGroup'),
+      permissions: [
+        t('roleManagement.createNewExercise'),
+        t('roleManagement.updateExercise'),
+        t('roleManagement.activateDeactivateExercise'),
+      ],
+    },
+  ];
+
+  // Function to translate role names
+  const translateRole = (role) => {
+    const roleTranslations = {
+      "Admin": t('roleManagement.admin'),
+      "Manager": t('roleManagement.manager'),
+      "Teacher": t('roleManagement.teacher'),
+      "Teacher Assistant": t('roleManagement.teacherAssistant'),
+      "Student": t('roleManagement.student'),
+      "Test Taker": t('roleManagement.testTaker'),
+    };
+    
+    return roleTranslations[role] || role;
+  };
+
+  // Function to translate permissions
+  const translatePermission = (permission) => {
+    const permissionTranslations = {
+      // Original Vietnamese permissions (from mockRoles)
+      "Quản lý hệ thống": t('roleManagement.systemManagement'),
+      "Quản lý tài khoản": t('roleManagement.accountManagement'),
+      "Chỉnh sửa quyền": t('roleManagement.editPermissions'),
+      "Quản lý lớp học": t('roleManagement.classManagement'),
+      "Quản lý giáo viên": t('roleManagement.teacherManagement'),
+      "Quản lý học sinh": t('roleManagement.studentManagement'),
+      "Tạo đề kiểm tra": t('roleManagement.createExamQuestions'),
+      "Hỗ trợ giáo viên": t('roleManagement.teacherSupport'),
+      "Quản lý bài tập": t('roleManagement.assignmentManagement'),
+      "Làm bài kiểm tra": t('roleManagement.takeExam'),
+      "Xem điểm": t('roleManagement.viewScores'),
+      "Làm bài kiểm tra thử": t('roleManagement.takePracticeExam'),
+      
+      // New translated permissions (from permissionGroups)
+      [t('roleManagement.createNewAccount')]: t('roleManagement.createNewAccount'),
+      [t('roleManagement.updateAccount')]: t('roleManagement.updateAccount'),
+      [t('roleManagement.activateDeactivateAccount')]: t('roleManagement.activateDeactivateAccount'),
+      [t('roleManagement.createNewExercise')]: t('roleManagement.createNewExercise'),
+      [t('roleManagement.updateExercise')]: t('roleManagement.updateExercise'),
+      [t('roleManagement.activateDeactivateExercise')]: t('roleManagement.activateDeactivateExercise'),
+    };
+    
+    return permissionTranslations[permission] || permission;
+  };
+
+  // Search/filter
+  const filteredRoles = roles.filter((role) => {
+    const matchesSearch = role.role
+      .toLowerCase()
+      .includes(searchText.toLowerCase());
+    const matchesStatus =
+      statusFilter === "all" ||
+      (statusFilter === "active" && role.active) ||
+      (statusFilter === "inactive" && !role.active);
+    return matchesSearch && matchesStatus;
+  });
+
+  // Table columns
+  const columns = [
+    {
+      title: t('roleManagement.role'),
+      dataIndex: "role",
+      key: "role",
+      render: (role) => (
+        <Tag color="blue" style={{ fontWeight: 600 }}>
+          {translateRole(role)}
+        </Tag>
+      ),
+      sorter: (a, b) => a.role.localeCompare(b.role),
+    },
+    {
+      title: t('roleManagement.active'),
+      dataIndex: "active",
+      key: "active",
+      render: (active) =>
+        active ? (
+          <Tag color="green">{t('roleManagement.active')}</Tag>
+        ) : (
+          <Tag color="red">{t('roleManagement.inactive')}</Tag>
+        ),
+      filters: [
+        { text: t('roleManagement.active'), value: true },
+        { text: t('roleManagement.inactive'), value: false },
+      ],
+      onFilter: (value, record) => record.active === value,
+    },
+    {
+      title: t('roleManagement.permissions'),
+      dataIndex: "permissions",
+      key: "permissions",
+      render: (permissions) =>
+        permissions.map((p, idx) => (
+          <Tag key={idx} color="purple">
+            {translatePermission(p)}
+          </Tag>
+        )),
+    },
+    {
+      title: t('roleManagement.actions'),
+      key: "actions",
+      width: 140,
+      render: (_, record) => (
+        <Space size="small">
+          <Tooltip title={t('roleManagement.edit')}>
+            <Button
+              type="text"
+              icon={<EditOutlined style={{ fontSize: '25px' }} />}
+              size="small"
+              onClick={() => handleEditRole(record)}
+              style={{ padding: '8px 12px' }}
+            />
+          </Tooltip>
+          <Tooltip title={record.active ? t('roleManagement.deactivate') : t('roleManagement.activate')}>
+            <Button
+              type="text"
+              icon={record.active ? <StopOutlined style={{ fontSize: '25px' }} /> : <CheckOutlined style={{ fontSize: '25px' }} />}
+              size="small"
+              onClick={() => handleToggleStatus(record.id)}
+              style={{
+                color: record.active ? '#ff4d4f' : '#52c41a',
+                padding: '8px 12px'
+              }}
+            />
+          </Tooltip>
+        </Space>
+      ),
+    },
+  ];
+
+  // Add/Edit
+  const handleAddRole = () => {
+    setEditingRole(null);
+    form.resetFields();
+    setIsModalVisible(true);
+  };
+
+  const handleEditRole = (record) => {
+    setEditingRole(record);
+    form.setFieldsValue({
+      role: record.role,
+      active: record.active,
+    });
+    setCheckedPermissions(record.permissions || []);
+    setIsModalVisible(true);
+  };
+
+  const handleToggleStatus = (id) => {
+    const role = roles.find(r => r.id === id);
+    if (role) {
+      const newStatus = !role.active;
+      const actionText = newStatus ? t('roleManagement.activate') : t('roleManagement.deactivate');
+      
+      setConfirmModal({
+        visible: true,
+        title: t('roleManagement.changeStatus'),
+        content: `${t('roleManagement.confirmStatusChange')} ${actionText} ${t('roleManagement.role')} "${translateRole(role.role)}"?`,
+        onConfirm: () => {
+          setRoles(roles.map(r => 
+            r.id === id ? { ...r, active: newStatus } : r
+          ));
+          setConfirmModal({ visible: false, title: '', content: '', onConfirm: null });
+          
+          // Show success toast
+          if (newStatus) {
+            spaceToast.success(`${t('roleManagement.activateRoleSuccess')} "${translateRole(role.role)}" ${t('roleManagement.success')}`);
+          } else {
+            spaceToast.success(`${t('roleManagement.deactivateRoleSuccess')} "${translateRole(role.role)}" ${t('roleManagement.success')}`);
+          }
+        }
+      });
+    }
+  };
+
+  const handleConfirmCancel = () => {
+    setConfirmModal({ visible: false, title: '', content: '', onConfirm: null });
+  };
+
+  const handleModalOk = async () => {
+    try {
+      const values = await form.validateFields();
+      const permissions = checkedPermissions;
+      if (editingRole) {
+        setRoles(
+          roles.map((role) =>
+            role.id === editingRole.id
+              ? { ...role, ...values, permissions }
+              : role
+          )
+        );
+        spaceToast.success(`${t('roleManagement.updateRoleSuccess')} "${translateRole(values.role)}" ${t('roleManagement.success')}`);
+      } else {
+        const newRole = {
+          id: Date.now(),
+          ...values,
+          permissions,
+        };
+        setRoles([newRole, ...roles]);
+        spaceToast.success(`${t('roleManagement.addRoleSuccess')} "${translateRole(values.role)}" ${t('roleManagement.success')}`);
+      }
+      setIsModalVisible(false);
+      form.resetFields();
+      setCheckedPermissions([]);
+    } catch {
+      // Do nothing
+    }
+  };
+
+  const handleModalCancel = () => {
+    setIsModalVisible(false);
+    form.resetFields();
+    setCheckedPermissions([]);
+  };
+
+  return (
+    <Layout>
+      <div className="account-list-container">
+        <Card className="header-card">
+          <Row justify="space-between" align="middle">
+            <Col>
+              <h2
+                style={{
+                  margin: 0,
+                  background:
+                    "linear-gradient(90deg, #5e17eb 0%, #4dd0ff 100%)",
+                  WebkitBackgroundClip: "text",
+                  WebkitTextFillColor: "transparent",
+                  fontWeight: 700,
+                }}
+              >
+                {t('roleManagement.title')}
+              </h2>
+              <p style={{ margin: "4px 0 0 0", color: "#666" }}>
+                {t('roleManagement.totalRoles')}: {filteredRoles.length} {t('roleManagement.roles')}
+              </p>
+            </Col>
+            <Col>
+              <Space>
+                <Button
+                  type="primary"
+                  icon={<PlusOutlined />}
+                  onClick={handleAddRole}
+                >
+                  {t('roleManagement.addRole')}
+                </Button>
+                <Button
+                  icon={<ReloadOutlined />}
+                  onClick={() => setRoles(mockRoles)}
+                >
+                  {t('roleManagement.refresh')}
+                </Button>
+              </Space>
+            </Col>
+          </Row>
+        </Card>
+
+        <Card className="filter-card">
+          <Row gutter={[16, 16]} align="middle">
+            <Col xs={24} sm={12} md={8} lg={6}>
+              <Input
+                placeholder={t('roleManagement.searchPlaceholder')}
+                prefix={<SearchOutlined />}
+                value={searchText}
+                onChange={(e) => setSearchText(e.target.value)}
+                allowClear
+              />
+            </Col>
+            <Col xs={24} sm={12} md={8} lg={6}>
+              <Select
+                placeholder={t('roleManagement.filterByStatus')}
+                value={statusFilter}
+                onChange={setStatusFilter}
+                style={{ width: "100%" }}
+              >
+                <Option value="all">{t('roleManagement.allStatuses')}</Option>
+                <Option value="active">{t('roleManagement.active')}</Option>
+                <Option value="inactive">{t('roleManagement.inactive')}</Option>
+              </Select>
+            </Col>
+          </Row>
+        </Card>
+
+        <Card>
+          <Table
+            columns={columns}
+            dataSource={filteredRoles}
+            rowKey="id"
+            pagination={{
+              total: filteredRoles.length,
+              pageSize: 10,
+              showSizeChanger: true,
+              showQuickJumper: true,
+              showTotal: (total, range) =>
+                `${range[0]}-${range[1]} ${t('roleManagement.paginationText')} ${total} ${t('roleManagement.rolesText')}`,
+            }}
+            scroll={{ x: 800 }}
+          />
+        </Card>
+
+        <Modal
+          title={editingRole ? t('roleManagement.editRole') : t('roleManagement.addNewRole')}
+          open={isModalVisible}
+          onOk={handleModalOk}
+          onCancel={handleModalCancel}
+          width={600}
+          okText={editingRole ? t('common.save') : t('roleManagement.addRole')}
+          cancelText={t('common.cancel')}
+        >
+          <Form form={form} layout="vertical">
+            <Form.Item
+              label={t('roleManagement.roleName')}
+              name="role"
+              rules={[
+                { required: true, message: t('roleManagement.roleRequired') },
+              ]}
+            >
+              <Select placeholder={t('roleManagement.selectRole')}>
+                {roleOptions.map((opt) => (
+                  <Option key={opt.key} value={opt.label}>
+                    {opt.label}
+                  </Option>
+                ))}
+              </Select>
+            </Form.Item>
+            <Form.Item
+              label={t('roleManagement.active')}
+              name="active"
+              rules={[{ required: true, message: t('roleManagement.statusRequired') }]}
+            >
+              <Select placeholder={t('roleManagement.selectStatus')}>
+                <Option value={true}>{t('roleManagement.active')}</Option>
+                <Option value={false}>{t('roleManagement.inactive')}</Option>
+              </Select>
+            </Form.Item>
+            <div style={{ marginBottom: 16 }}>
+              <label
+                style={{ fontWeight: 500, marginBottom: 8, display: "block" }}
+              >
+                {t('roleManagement.permissions')}
+              </label>
+              <Collapse defaultActiveKey={[permissionGroups[0].group]}>
+                {permissionGroups.map((group, idx) => (
+                  <Collapse.Panel
+                    header={
+                      <span style={{ fontWeight: 600 }}>
+                        {group.group}
+                      </span>
+                    }
+                    key={group.group}
+                  >
+                    <Checkbox.Group
+                      style={{
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: 8,
+                      }}
+                      value={checkedPermissions.filter((p) =>
+                        group.permissions.includes(p)
+                      )}
+                      onChange={(checked) => {
+                        // checked: các quyền vừa được chọn trong nhóm này
+                        // checkedPermissions: toàn bộ quyền đã chọn ở các nhóm khác
+                        const otherPermissions = checkedPermissions.filter(
+                          (p) => !group.permissions.includes(p)
+                        );
+                        setCheckedPermissions([
+                          ...otherPermissions,
+                          ...checked,
+                        ]);
+                      }}
+                    >
+                      {group.permissions.map((perm) => (
+                        <Checkbox key={perm} value={perm}>
+                          {translatePermission(perm)}
+                        </Checkbox>
+                      ))}
+                    </Checkbox.Group>
+                  </Collapse.Panel>
+                ))}
+              </Collapse>
+            </div>
+          </Form>
+        </Modal>
+
+        {/* Confirmation Modal */}
+        <Modal
+          title={confirmModal.title}
+          open={confirmModal.visible}
+          onOk={confirmModal.onConfirm}
+          onCancel={handleConfirmCancel}
+          okText={t('common.confirm')}
+          cancelText={t('common.cancel')}
+        >
+          <p>{confirmModal.content}</p>
+        </Modal>
+      </div>
+    </Layout>
+  );
+};
+
+export default RoleList;
