@@ -21,10 +21,14 @@ export default function Sidebar({ collapsed }) {
     const iconMap = {
       'ADMIN_ACCOUNTS': <UserOutlined />,
       'ADMIN_ROLES': <TeamOutlined />,
+      'ADMIN_LEVELS': <BookOutlined />,
       'ADMIN_COURSES': <BookOutlined />,
       'ADMIN_REPORTS': <BarChartOutlined />,
       'ADMIN_DASHBOARD': <DashboardOutlined />,
       'ADMIN_SETTINGS': <SettingOutlined />,
+      'MANAGER_SYLLABUSES': <BookOutlined />,
+      'MANAGER_LEVELS': <BookOutlined />,
+      'MANAGER_COURSES': <BookOutlined />,
     };
     return iconMap[key] || <UserOutlined />;
   };
@@ -40,11 +44,15 @@ export default function Sidebar({ collapsed }) {
     const menuNameMap = {
       'ADMIN_ACCOUNTS': t('sidebar.accountsManagement'),
       'ADMIN_ROLES': t('sidebar.rolesManagement'),
+      'ADMIN_LEVELS': t('sidebar.levelsManagement'),
       'ADMIN_COURSES': t('sidebar.coursesManagement'),
       'ADMIN_REPORTS': t('sidebar.reportsManagement'),
       'ADMIN_DASHBOARD': t('sidebar.dashboard'),
       'ADMIN_SETTINGS': t('sidebar.settings'),
       'MANAGER_CLASSES': t('sidebar.classesManagement'),
+      'MANAGER_SYLLABUSES': t('sidebar.syllabusManagement'),
+      'MANAGER_LEVELS': t('sidebar.levelsManagement'),
+      'MANAGER_COURSES': t('sidebar.coursesManagement'),
     };
     return menuNameMap[key] || key;
   };

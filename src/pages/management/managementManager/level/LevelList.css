@@ -1,0 +1,264 @@
+.level-list-container {
+  padding: 0;
+}
+
+.level-list-header {
+  margin-bottom: 24px;
+}
+
+.level-list-header h2 {
+  margin: 0;
+  color: #1890ff;
+  font-size: 24px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+}
+
+.level-list-container .ant-card {
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.level-list-container .ant-table-thead > tr > th {
+  background-color: #fafafa;
+  font-weight: 600;
+  color: #262626;
+}
+
+.level-list-container .ant-table-tbody > tr:hover > td {
+  background-color: #f5f5f5;
+}
+
+.level-list-container .ant-btn {
+  border-radius: 6px;
+  font-weight: 500;
+}
+
+.level-list-container .ant-btn-primary {
+  background-color: #1890ff;
+  border-color: #1890ff;
+}
+
+.level-list-container .ant-btn-primary:hover {
+  background-color: #40a9ff;
+  border-color: #40a9ff;
+}
+
+.level-list-container .ant-btn-danger {
+  background-color: #ff4d4f;
+  border-color: #ff4d4f;
+}
+
+.level-list-container .ant-btn-danger:hover {
+  background-color: #ff7875;
+  border-color: #ff7875;
+}
+
+.level-list-container .ant-input {
+  border-radius: 6px;
+}
+
+.level-list-container .ant-select {
+  border-radius: 6px;
+}
+
+.level-list-container .ant-tag {
+  border-radius: 4px;
+  font-weight: 500;
+}
+
+.level-list-container .ant-statistic-title {
+  color: #8c8c8c;
+  font-size: 14px;
+}
+
+.level-list-container .ant-statistic-content {
+  color: #262626;
+  font-weight: 600;
+}
+
+.level-list-container .ant-pagination {
+  margin-top: 16px;
+  text-align: right;
+}
+
+.level-list-container .ant-modal-header {
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.level-list-container .ant-modal-title {
+  font-weight: 600;
+  color: #262626;
+}
+
+.level-list-container .ant-form-item-label > label {
+  font-weight: 500;
+  color: #262626;
+}
+
+.level-list-container .ant-input,
+.level-list-container .ant-select-selector,
+.level-list-container .ant-input-number {
+  border-radius: 6px;
+}
+
+.level-list-container .ant-input:focus,
+.level-list-container .ant-select-focused .ant-select-selector,
+.level-list-container .ant-input-number:focus {
+  border-color: #40a9ff;
+  box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2);
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .level-list-container .ant-table {
+    font-size: 12px;
+  }
+  
+  .level-list-container .ant-btn {
+    padding: 4px 8px;
+    font-size: 12px;
+  }
+  
+  .level-list-container .ant-card {
+    margin-bottom: 16px;
+  }
+  
+  .level-list-header h2 {
+    font-size: 20px;
+  }
+}
+
+/* Loading state */
+.level-list-container .ant-spin-nested-loading {
+  min-height: 200px;
+}
+
+/* Empty state */
+.level-list-container .ant-empty {
+  padding: 40px 0;
+}
+
+/* Search and filter section */
+.level-list-container .ant-input-search .ant-input-search-button {
+  border-radius: 0 6px 6px 0;
+}
+
+.level-list-container .ant-select-single:not(.ant-select-customize-input) .ant-select-selector {
+  border-radius: 6px;
+}
+
+/* Table actions */
+.level-list-container .ant-table-tbody > tr > td .ant-space {
+  flex-wrap: wrap;
+}
+
+.level-list-container .ant-table-tbody > tr > td .ant-btn {
+  margin-bottom: 4px;
+}
+
+/* Status tags */
+.level-list-container .ant-tag-green {
+  background-color: #f6ffed;
+  border-color: #b7eb8f;
+  color: #52c41a;
+}
+
+.level-list-container .ant-tag-red {
+  background-color: #fff2f0;
+  border-color: #ffccc7;
+  color: #ff4d4f;
+}
+
+.level-list-container .ant-tag-orange {
+  background-color: #fff7e6;
+  border-color: #ffd591;
+  color: #fa8c16;
+}
+
+.level-list-container .ant-tag-blue {
+  background-color: #e6f7ff;
+  border-color: #91d5ff;
+  color: #1890ff;
+}
+
+/* Form styles */
+.level-list-container .ant-form-vertical .ant-form-item-label {
+  padding-bottom: 4px;
+}
+
+.level-list-container .ant-form-item {
+  margin-bottom: 16px;
+}
+
+.level-list-container .ant-input-number-group-addon {
+  background-color: #fafafa;
+  border-color: #d9d9d9;
+  color: #8c8c8c;
+}
+
+/* Modal styles */
+.level-list-container .ant-modal-content {
+  border-radius: 8px;
+}
+
+.level-list-container .ant-modal-header {
+  border-radius: 8px 8px 0 0;
+}
+
+.level-list-container .ant-modal-body {
+  padding: 24px;
+}
+
+.level-list-container .ant-modal-footer {
+  border-top: 1px solid #f0f0f0;
+  padding: 12px 24px;
+}
+
+/* Statistics cards */
+.level-list-container .ant-statistic-content-value {
+  font-size: 24px;
+  line-height: 32px;
+}
+
+.level-list-container .ant-statistic-content-prefix {
+  margin-right: 8px;
+}
+
+/* Pagination */
+.level-list-container .ant-pagination-item {
+  border-radius: 4px;
+}
+
+.level-list-container .ant-pagination-item-active {
+  background-color: #1890ff;
+  border-color: #1890ff;
+}
+
+.level-list-container .ant-pagination-item-active a {
+  color: #fff;
+}
+
+.level-list-container .ant-pagination-prev,
+.level-list-container .ant-pagination-next {
+  border-radius: 4px;
+}
+
+/* Confirmation modal */
+.level-list-container .ant-popover-inner {
+  border-radius: 6px;
+}
+
+.level-list-container .ant-popover-inner-content {
+  padding: 12px 16px;
+}
+
+.level-list-container .ant-popover-buttons {
+  margin-top: 12px;
+}
+
+.level-list-container .ant-popover-buttons .ant-btn {
+  border-radius: 4px;
+  margin-left: 8px;
+}

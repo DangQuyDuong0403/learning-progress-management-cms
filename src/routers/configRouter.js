@@ -11,13 +11,15 @@ import ProfileStudent from '../pages/profile/ProfileStudent';
 import ChangePassword from '../pages/profile/ChangePassword';
 import AccountList from '../pages/management/managementAdmin/account/AccountList';
 import RoleList from '../pages/management/managementAdmin/role/RoleList';
+import LevelList from '../pages/management/ManagementManager/level/LevelList';
+import SyllabusList from '../pages/management/ManagementManager/syllabus/SyllabusList';
 import SpinnerDemo from '../pages/SpinnerDemo';
 import ClassList from '../pages/management/ManagementManager/Class/ClassList';
 import ClassDetail from '../pages/management/ManagementManager/Class/ClassDetail';
 import ClassTeachers from '../pages/management/ManagementManager/Class/ClassTeachers';
 import ClassActivities from '../pages/management/ManagementManager/Class/ClassActivities';
 // import AdminDashboard from '../pages/management/managementAdmin/AdminDashboard';
-
+  
 const CONFIG_ROUTER = [
 	//   {
 	//     show: true,
@@ -175,6 +177,17 @@ const CONFIG_ROUTER = [
 		exact: true,
 		key: 'MANAGER_CLASS_STUDENTS',
 		private: true,
+		role: 'manager',
+	},
+	{
+		show: true,
+		component: LevelList,
+		// icon: <BookOutlined />,
+		path: ROUTER_PAGE.ADMIN_LEVELS,
+		menuName: 'Levels management',
+		exact: true,
+		key: 'ADMIN_LEVELS',
+		private: true,
 		role: 'admin',
 	},
 	{
@@ -200,6 +213,17 @@ const CONFIG_ROUTER = [
 		role: 'admin',
 	},
 	
+	{
+		show: true,
+		component: SyllabusList,
+		// icon: <FileTextOutlined />,
+		path: ROUTER_PAGE.MANAGER_SYLLABUSES,
+		menuName: 'Syllabus management',
+		exact: true,
+		key: 'MANAGER_SYLLABUSES',
+		private: true,
+		role: 'manager',
+	},
 	{
 		show: false,
 		component: SpinnerDemo,
