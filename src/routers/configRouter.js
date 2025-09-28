@@ -196,7 +196,7 @@ const CONFIG_ROUTER = [
 		exact: true,
 		key: 'ADMIN_LEVELS',
 		private: true,
-		role: 'admin',
+		role: 'manager',
 	},
 	{
 		show: false,
