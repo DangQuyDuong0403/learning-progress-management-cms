@@ -122,7 +122,7 @@ const ClassList = () => {
   };
 
   const handleCardClick = (classItem) => {
-    navigate(`/teacher/classes/student/${classItem.id}`);
+    navigate(`/teacher/classes/menu/${classItem.id}`);
   };
 
   const getStatusTag = (status) => {
@@ -173,13 +173,6 @@ const ClassList = () => {
                 {t('classManagement.myClasses')}
               </h2>
             </Col>
-            <Col>
-              <Space>
-                <Button icon={<ExportOutlined />}>
-                  {t('classManagement.exportClasses')}
-                </Button>
-              </Space>
-            </Col>
           </Row>
         </Card>
 
@@ -214,6 +207,11 @@ const ClassList = () => {
                 onClick={fetchClasses}
               >
                 {t('classManagement.refresh')}
+              </Button>
+            </Col>
+            <Col xs={24} sm={12} md={8} lg={6} style={{ textAlign: 'right' }}>
+              <Button icon={<ExportOutlined />}>
+                {t('classManagement.exportClasses')}
               </Button>
             </Col>
           </Row>

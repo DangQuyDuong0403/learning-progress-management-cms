@@ -29,6 +29,7 @@ const ROUTER_PAGE = {
 	SPINNER_DEMO: '/spinner-demo',
 	// Manager Management Routes
 	MANAGER_CLASSES: '/manager/classes',
+	MANAGER_CLASS_MENU: '/manager/classes/menu/:id',
 	//MANAGER_CLASS_DETAIL: '/manager/classes/:id',
 	MANAGER_CLASS_STUDENTS: '/manager/classes/student/:id',
 	MANAGER_CLASS_TEACHERS: '/manager/classes/teachers/:id',
@@ -36,6 +37,7 @@ const ROUTER_PAGE = {
 	MANAGER_CLASS_CHAPTERS_LESSONS: '/manager/classes/chapters-lessons/:id',
 	// Teacher Management Routes
 	TEACHER_CLASSES: '/teacher/classes',
+	TEACHER_CLASS_MENU: '/teacher/classes/menu/:id',
 	TEACHER_CLASS_DASHBOARD: '/teacher/classes/dashboard/:id',
 	TEACHER_CLASS_STUDENTS: '/teacher/classes/student/:id',
 	TEACHER_CLASS_TEACHERS: '/teacher/classes/teachers/:id',

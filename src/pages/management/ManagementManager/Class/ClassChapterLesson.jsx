@@ -336,7 +336,7 @@ const ClassChapterLesson = () => {
 						<div className="header-left">
 							<Button
 								icon={<ArrowLeftOutlined />}
-								onClick={() => navigate(`/manager/classes/student/${id}`)}
+								onClick={() => navigate(`/manager/classes/menu/${id}`)}
 								className="back-button"
 							>
 								{t('common.back')}
@@ -354,21 +354,6 @@ const ClassChapterLesson = () => {
 						
 						<div className="header-right">
 							<Space>
-								<Button
-									icon={<ReloadOutlined />}
-									onClick={handleRefresh}
-									className="refresh-button"
-								>
-									{t('classChapterLesson.refresh')}
-								</Button>
-								<Button
-									type="primary"
-									icon={<PlusOutlined />}
-									onClick={handleAddChapter}
-									className="add-button"
-								>
-									{t('classChapterLesson.addChapter')}
-								</Button>
 							</Space>
 						</div>
 					</div>
@@ -406,43 +391,65 @@ const ClassChapterLesson = () => {
 					</Col>
 				</Row>
 
+				{/* Control Bar */}
+				<Card style={{ marginBottom: '24px', borderRadius: '12px' }}>
+					<Row gutter={16} align="middle" justify="space-between">
+						<Col>
+							<Search
+								placeholder={t('classChapterLesson.searchChapters')}
+								style={{ width: 300 }}
+								value={searchText}
+								onChange={(e) => setSearchText(e.target.value)}
+								prefix={<SearchOutlined />}
+								allowClear
+							/>
+						</Col>
+						<Col>
+							<Space>
+								<Button
+									icon={<ReloadOutlined />}
+									onClick={handleRefresh}
+									style={{ borderRadius: '8px' }}
+								>
+									{t('classChapterLesson.refresh')}
+								</Button>
+								<Button
+									type="primary"
+									icon={<PlusOutlined />}
+									onClick={handleAddChapter}
+									style={{ 
+										borderRadius: '8px',
+										background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+										border: 'none'
+									}}
+								>
+									{t('classChapterLesson.addChapter')}
+								</Button>
+							</Space>
+						</Col>
+					</Row>
+				</Card>
+
 				{/* Chapters Content */}
 				<Card className="main-content-card">
-					{/* Search Bar */}
-					<Card style={{ marginBottom: '16px' }}>
-						<Row gutter={16} align="middle">
-							<Col flex="auto">
-								<Search
-									placeholder={t('classChapterLesson.searchChapters')}
-									style={{ width: 300 }}
-									value={searchText}
-									onChange={(e) => setSearchText(e.target.value)}
-									prefix={<SearchOutlined />}
-								/>
-							</Col>
-						</Row>
-					</Card>
-
 					{/* Chapters Table */}
-					<Card>
-						<Table
-							columns={chapterColumns}
-							dataSource={filteredChapters}
-							rowKey="id"
-							loading={false}
-							pagination={{
-								total: filteredChapters.length,
-								pageSize: 10,
-								showSizeChanger: true,
-								showQuickJumper: true,
-								showTotal: (total, range) =>
-									`${range[0]}-${range[1]} ${t(
-										'classChapterLesson.paginationText'
-									)} ${total} ${t('classChapterLesson.chapters')}`,
-							}}
-							scroll={{ x: 800 }}
-						/>
-					</Card>
+					<Table
+						columns={chapterColumns}
+						dataSource={filteredChapters}
+						rowKey="id"
+						loading={false}
+						pagination={{
+							total: filteredChapters.length,
+							pageSize: 10,
+							showSizeChanger: true,
+							showQuickJumper: true,
+							showTotal: (total, range) =>
+								`${range[0]}-${range[1]} ${t(
+									'classChapterLesson.paginationText'
+								)} ${total} ${t('classChapterLesson.chapters')}`,
+						}}
+						scroll={{ x: 800 }}
+					/>
 				</Card>
 
 				{/* Chapter Modal */}

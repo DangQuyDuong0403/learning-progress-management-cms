@@ -13,6 +13,7 @@ import {
   Dropdown,
   Tag,
   DatePicker,
+  ColorPicker,
 } from "antd";
 import {
   PlusOutlined,
@@ -24,6 +25,9 @@ import {
   DeleteOutlined,
   ExportOutlined,
   ImportOutlined,
+  TeamOutlined,
+  CalendarOutlined,
+  BookOutlined,
 } from "@ant-design/icons";
 import Layout from "../../../../component/Layout";
 import LoadingWithEffect from "../../../../component/spinner/LoadingWithEffect";
@@ -46,10 +50,8 @@ const mockClasses = [
     createdAt: "2024-01-15",
     description: "Basic English course for beginners",
     teacher: "Nguyễn Văn A",
-    syllabus: "Basic English",
+    level: "Beginner",
     ageRange: "6-8",
-    schoolYearStart: "2024-09-01",
-    schoolYearEnd: "2025-06-30",
   },
   {
     id: 2,
@@ -60,10 +62,8 @@ const mockClasses = [
     createdAt: "2024-01-16",
     description: "Intermediate English course",
     teacher: "Trần Thị B",
-    syllabus: "Intermediate English",
+    level: "Intermediate",
     ageRange: "8-10",
-    schoolYearStart: "2024-09-01",
-    schoolYearEnd: "2025-06-30",
   },
   {
     id: 3,
@@ -74,10 +74,8 @@ const mockClasses = [
     createdAt: "2024-01-17",
     description: "Advanced English course",
     teacher: "Lê Văn C",
-    syllabus: "Advanced English",
+    level: "Advanced",
     ageRange: "10-12",
-    schoolYearStart: "2024-09-01",
-    schoolYearEnd: "2025-06-30",
   },
   {
     id: 4,
@@ -88,20 +86,18 @@ const mockClasses = [
     createdAt: "2024-01-18",
     description: "English conversation club",
     teacher: "Phạm Thị D",
-    syllabus: "Conversation English",
+    level: "Upper Intermediate",
     ageRange: "12-14",
-    schoolYearStart: "2024-09-01",
-    schoolYearEnd: "2025-06-30",
   },
 ];
 
-// Mock syllabus options
-const syllabusOptions = [
-  { value: "Basic English", label: "Basic English" },
-  { value: "Intermediate English", label: "Intermediate English" },
-  { value: "Advanced English", label: "Advanced English" },
-  { value: "Conversation English", label: "Conversation English" },
-  { value: "Business English", label: "Business English" },
+// Mock level options
+const levelOptions = [
+  { value: "Beginner", label: "Beginner" },
+  { value: "Elementary", label: "Elementary" },
+  { value: "Intermediate", label: "Intermediate" },
+  { value: "Upper Intermediate", label: "Upper Intermediate" },
+  { value: "Advanced", label: "Advanced" },
   { value: "IELTS Preparation", label: "IELTS Preparation" },
   { value: "TOEFL Preparation", label: "TOEFL Preparation" },
 ];
@@ -172,8 +168,7 @@ const ClassList = () => {
     setEditingClass(classItem);
     form.setFieldsValue({
       ...classItem,
-      schoolYearStart: dayjs(classItem.schoolYearStart),
-      schoolYearEnd: dayjs(classItem.schoolYearEnd),
+      color: classItem.color,
     });
     setIsModalVisible(true);
   };
@@ -206,11 +201,10 @@ const ClassList = () => {
     try {
       const values = await form.validateFields();
 
-      // Convert dayjs objects to string format
+      // Handle color conversion
       const processedValues = {
         ...values,
-        schoolYearStart: values.schoolYearStart.format('YYYY-MM-DD'),
-        schoolYearEnd: values.schoolYearEnd.format('YYYY-MM-DD'),
+        color: typeof values.color === 'string' ? values.color : values.color?.toHexString(),
       };
 
       if (editingClass) {
@@ -249,14 +243,14 @@ const ClassList = () => {
   };
 
   const handleCardClick = (classItem) => {
-    navigate(`/manager/classes/student/${classItem.id}`);
+    navigate(`/manager/classes/menu/${classItem.id}`);
   };
 
   const getStatusTag = (status) => {
     const statusConfig = {
-      active: { color: "green", text: "Active" },
-      inactive: { color: "red", text: "Inactive" },
-      pending: { color: "orange", text: "Pending" },
+      active: { color: "green", text: t('classManagement.active') },
+      inactive: { color: "red", text: t('classManagement.inactive') },
+      pending: { color: "orange", text: t('classManagement.pending') },
     };
 
     const config = statusConfig[status] || statusConfig.inactive;
@@ -312,12 +306,47 @@ const ClassList = () => {
                   textShadow: "0 0 30px rgba(0, 212, 255, 0.3)",
                 }}
               >
-                {t('classManagement.myClasses')}
+                Class
               </h2>
             </Col>
-            <Col>
+          </Row>
+        </Card>
+
+        {/* Filters */}
+        <Card className="filter-card">
+          <Row gutter={[16, 16]} align="middle">
+            <Col xs={24} sm={12} md={6} lg={4}>
+              <Input
+                placeholder={t('classManagement.searchClasses')}
+                prefix={<SearchOutlined />}
+                value={searchText}
+                onChange={(e) => handleSearch(e.target.value)}
+                allowClear
+              />
+            </Col>
+            <Col xs={24} sm={12} md={6} lg={4}>
+              <Select
+                placeholder={t('classManagement.filterByStatus')}
+                value={statusFilter}
+                onChange={handleStatusFilter}
+                style={{ width: "100%" }}
+              >
+                <Option value="all">{t('classManagement.allStatus')}</Option>
+                <Option value="active">{t('classManagement.active')}</Option>
+                <Option value="inactive">{t('classManagement.inactive')}</Option>
+                <Option value="pending">{t('classManagement.pending')}</Option>
+              </Select>
+            </Col>
+            <Col xs={24} sm={12} md={6} lg={4}>
+              <Button
+                icon={<ReloadOutlined />}
+                onClick={fetchClasses}
+              >
+                {t('classManagement.refresh')}
+              </Button>
+            </Col>
+            <Col xs={24} sm={24} md={6} lg={12} style={{ textAlign: 'right' }}>
               <Space>
-               
                 <Dropdown
                   menu={{
                     items: [
@@ -356,42 +385,6 @@ const ClassList = () => {
                    {t('classManagement.createClass')}
                 </Button>
               </Space>
-            </Col>
-          </Row>
-        </Card>
-
-        {/* Filters */}
-        <Card className="filter-card">
-          <Row gutter={[16, 16]} align="middle">
-            <Col xs={24} sm={12} md={8} lg={6}>
-              <Input
-                placeholder={t('classManagement.searchClasses')}
-                prefix={<SearchOutlined />}
-                value={searchText}
-                onChange={(e) => handleSearch(e.target.value)}
-                allowClear
-              />
-            </Col>
-            <Col xs={24} sm={12} md={8} lg={6}>
-              <Select
-                placeholder="Filter by status"
-                value={statusFilter}
-                onChange={handleStatusFilter}
-                style={{ width: "100%" }}
-              >
-                <Option value="all">All Status</Option>
-                <Option value="active">Active</Option>
-                <Option value="inactive">Inactive</Option>
-                <Option value="pending">Pending</Option>
-              </Select>
-            </Col>
-            <Col xs={24} sm={12} md={8} lg={6}>
-              <Button
-                icon={<ReloadOutlined />}
-                onClick={fetchClasses}
-              >
-                {t('classManagement.refresh')}
-              </Button>
             </Col>
           </Row>
         </Card>
@@ -445,12 +438,22 @@ const ClassList = () => {
                         </div>
                         
                         <div className="class-meta">
-                          <span className="teacher">Teacher: {classItem.teacher}</span>
-                          <span className="age-range">Age Range: {classItem.ageRange}</span>
-                          <span className="school-year">
-                            Start: {dayjs(classItem.schoolYearStart).format('DD/MM/YYYY')} - {dayjs(classItem.schoolYearEnd).format('DD/MM/YYYY')}
+                          <span className="teacher">
+                            <TeamOutlined style={{ color: '#059669' }} />
+                            Teacher: {classItem.teacher}
                           </span>
-                          <span className="created-date">{classItem.createdAt}</span>
+                          <span className="age-range">
+                            <BookOutlined style={{ color: '#059669' }} />
+                            Level: {classItem.level}
+                          </span>
+                          <span className="age-range">
+                            <UserOutlined style={{ color: '#059669' }} />
+                            Age Range: {classItem.ageRange}
+                          </span>
+                          <span className="created-date">
+                            <CalendarOutlined style={{ color: '#64748b' }} />
+                            Created: {classItem.createdAt}
+                          </span>
                         </div>
                       </div>
                     </Card>
@@ -483,8 +486,7 @@ const ClassList = () => {
             layout="vertical"
             initialValues={{
               status: "active",
-              schoolYearStart: dayjs("2024-09-01"),
-              schoolYearEnd: dayjs("2025-06-30"),
+              color: "#00d4ff",
             }}
           >
             <Form.Item
@@ -507,19 +509,19 @@ const ClassList = () => {
             </Form.Item>
 
             <Form.Item
-              label={t('classManagement.syllabus')}
-              name="syllabus"
+              label={t('classManagement.level')}
+              name="level"
               rules={[
-                { required: true, message: t('classManagement.syllabusRequired') },
+                { required: true, message: t('classManagement.levelRequired') },
               ]}
             >
               <Select 
-                placeholder={t('classManagement.selectSyllabus')}
+                placeholder={t('classManagement.selectLevel')}
                 style={{
                   fontSize: "15px",
                 }}
               >
-                {syllabusOptions.map(option => (
+                {levelOptions.map(option => (
                   <Option key={option.value} value={option.value}>
                     {option.label}
                   </Option>
@@ -548,37 +550,21 @@ const ClassList = () => {
               </Select>
             </Form.Item>
 
-            <Form.Item
-              label={t('classManagement.schoolYearStart')}
-              name="schoolYearStart"
-              rules={[
-                { required: true, message: t('classManagement.schoolYearStartRequired') },
-              ]}
-            >
-              <DatePicker 
-                placeholder={t('classManagement.selectStartDate')}
-                style={{
-                  fontSize: "15px",
-                  width: "100%",
-                }}
-                format="DD/MM/YYYY"
-              />
-            </Form.Item>
 
             <Form.Item
-              label={t('classManagement.schoolYearEnd')}
-              name="schoolYearEnd"
+              label={t('classManagement.classColor')}
+              name="color"
               rules={[
-                { required: true, message: t('classManagement.schoolYearEndRequired') },
+                { required: true, message: t('classManagement.classColorRequired') },
               ]}
             >
-              <DatePicker 
-                placeholder={t('classManagement.selectEndDate')}
+              <ColorPicker 
+                placeholder={t('classManagement.selectClassColor')}
                 style={{
                   fontSize: "15px",
-                  width: "100%",
                 }}
-                format="DD/MM/YYYY"
+                showText
+                format="hex"
               />
             </Form.Item>
 

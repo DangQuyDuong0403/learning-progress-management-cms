@@ -298,13 +298,13 @@ const ClassDashboard = () => {
         <Card className="header-card">
           <div className="header-content">
             <div className="header-left">
-              <Button
-                icon={<ArrowLeftOutlined />}
-                onClick={() => navigate('/teacher/classes')}
-                className="back-button"
-              >
-                {t('common.back')}
-              </Button>
+               <Button
+                 icon={<ArrowLeftOutlined />}
+                 onClick={() => navigate(`/teacher/classes/menu/${id}`)}
+                 className="back-button"
+               >
+                 {t('common.back')}
+               </Button>
             </div>
             
             <div className="header-center">
@@ -315,18 +315,6 @@ const ClassDashboard = () => {
             
             <div className="header-right">
               <Space>
-                <Button
-                  type="primary"
-                  size="large"
-                  onClick={() => navigate(`/teacher/classes/chapters-lessons/${id}`)}
-                  style={{
-                    borderRadius: '8px',
-                    fontWeight: '500',
-                    boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)'
-                  }}
-                >
-                  {t('classDetail.chaptersLessons')}
-                </Button>
               </Space>
             </div>
           </div>
@@ -334,76 +322,52 @@ const ClassDashboard = () => {
 
         {/* Main Content Card */}
         <Card className="main-content-card">
-          {/* Navigation Tabs */}
-          <div className="nav-tabs">
-            <div className="nav-tab active">
-              <span>{t('classDashboard.dashboard')}</span>
-            </div>
-            <div 
-              className="nav-tab"
-              onClick={() => navigate(`/teacher/classes/student/${id}`)}
-            >
-              <span>{t('classDetail.students')}</span>
-            </div>
-            <div 
-              className="nav-tab"
-              onClick={() => navigate(`/teacher/classes/teachers/${id}`)}
-            >
-              <span>{t('classDetail.teachers')}</span>
-            </div>
-            <div 
-              className="nav-tab"
-              onClick={() => navigate(`/teacher/classes/activities/${id}`)}
-            >
-              <span>{t('classDetail.activities')}</span>
-            </div>
-          </div>
-
-          {/* Statistics Cards */}
-          <Row gutter={[16, 16]} style={{ marginBottom: '24px' }}>
-            <Col xs={24} sm={12} md={6}>
-              <Card>
-                <Statistic
-                  title={t('classDashboard.totalStudents')}
-                  value={totalStudents}
-                  prefix={<UserOutlined />}
-                  valueStyle={{ color: classData?.color || "#00d4ff" }}
-                />
-              </Card>
-            </Col>
-            <Col xs={24} sm={12} md={6}>
-              <Card>
-                <Statistic
-                  title={t('classDashboard.averageScore')}
-                  value={averageClassScore}
-                  suffix="/100"
-                  prefix={<TrophyOutlined />}
-                  valueStyle={{ color: "#52c41a" }}
-                />
-              </Card>
-            </Col>
-            <Col xs={24} sm={12} md={6}>
-              <Card>
-                <Statistic
-                  title={t('classDashboard.testsCompleted')}
-                  value={completionRate}
-                  suffix="%"
-                  prefix={<BookOutlined />}
-                  valueStyle={{ color: "#1890ff" }}
-                />
-              </Card>
-            </Col>
-            <Col xs={24} sm={12} md={6}>
-              <Card>
-                <Statistic
-                  title={t('classDashboard.topPerformers')}
-                  value={studentPerformance.filter(s => s.grade.startsWith('A')).length}
-                  prefix={<BarChartOutlined />}
-                  valueStyle={{ color: "#722ed1" }}
-                />
-              </Card>
-            </Col>
-          </Row>
+          <div style={{ padding: '24px' }}>
+             {/* Statistics Cards */}
+             <Row gutter={[16, 16]} style={{ marginBottom: '24px' }}>
+             <Col xs={24} sm={12} md={6}>
+               <Card style={{ padding: '20px', textAlign: 'center' }}>
+                 <Statistic
+                   title={t('classDashboard.totalStudents')}
+                   value={totalStudents}
+                   prefix={<UserOutlined />}
+                   valueStyle={{ color: classData?.color || "#00d4ff" }}
+                 />
+               </Card>
+             </Col>
+             <Col xs={24} sm={12} md={6}>
+               <Card style={{ padding: '20px', textAlign: 'center' }}>
+                 <Statistic
+                   title={t('classDashboard.averageScore')}
+                   value={averageClassScore}
+                   suffix="/100"
+                   prefix={<TrophyOutlined />}
+                   valueStyle={{ color: "#52c41a" }}
+                 />
+               </Card>
+             </Col>
+             <Col xs={24} sm={12} md={6}>
+               <Card style={{ padding: '20px', textAlign: 'center' }}>
+                 <Statistic
+                   title={t('classDashboard.testsCompleted')}
+                   value={completionRate}
+                   suffix="%"
+                   prefix={<BookOutlined />}
+                   valueStyle={{ color: "#1890ff" }}
+                 />
+               </Card>
+             </Col>
+             <Col xs={24} sm={12} md={6}>
+               <Card style={{ padding: '20px', textAlign: 'center' }}>
+                 <Statistic
+                   title={t('classDashboard.topPerformers')}
+                   value={studentPerformance.filter(s => s.grade.startsWith('A')).length}
+                   prefix={<BarChartOutlined />}
+                   valueStyle={{ color: "#722ed1" }}
+                 />
+               </Card>
+             </Col>
+           </Row>
 
           {/* Charts Section */}
           <Row gutter={[16, 16]} style={{ marginBottom: '24px' }}>
@@ -434,26 +398,26 @@ const ClassDashboard = () => {
               </Card>
             </Col>
 
-            {/* Grade Distribution Chart */}
-            <Col xs={24} lg={12}>
-              <Card title={t('classDashboard.gradeDistribution')} style={{ height: '400px' }}>
-                <div style={{ padding: '20px 0' }}>
-                  {mockGradeDistribution.map((grade, index) => (
-                    <div key={index} style={{ marginBottom: '16px', display: 'flex', alignItems: 'center' }}>
-                      <div style={{ 
-                        width: '20px', 
-                        height: '20px', 
-                        backgroundColor: grade.color, 
-                        borderRadius: '4px',
-                        marginRight: '12px'
-                      }} />
-                      <span style={{ flex: 1, fontWeight: '500' }}>{grade.name}</span>
-                      <span style={{ fontWeight: '600', color: grade.color }}>{grade.value} students</span>
-                    </div>
-                  ))}
-                </div>
-              </Card>
-            </Col>
+             {/* Grade Distribution Chart */}
+             <Col xs={24} lg={12}>
+               <Card title={t('classDashboard.gradeDistribution')} style={{ height: '400px' }}>
+                 <div style={{ padding: '20px 24px' }}>
+                   {mockGradeDistribution.map((grade, index) => (
+                     <div key={index} style={{ marginBottom: '16px', display: 'flex', alignItems: 'center' }}>
+                       <div style={{ 
+                         width: '20px', 
+                         height: '20px', 
+                         backgroundColor: grade.color, 
+                         borderRadius: '4px',
+                         marginRight: '12px'
+                       }} />
+                       <span style={{ flex: 1, fontWeight: '500' }}>{grade.name}</span>
+                       <span style={{ fontWeight: '600', color: grade.color }}>{grade.value} students</span>
+                     </div>
+                   ))}
+                 </div>
+               </Card>
+             </Col>
           </Row>
 
           {/* Monthly Progress Chart */}
@@ -485,22 +449,23 @@ const ClassDashboard = () => {
             </Col>
           </Row>
 
-          {/* Student Performance Table */}
-          <Card title={t('classDashboard.studentPerformance')}>
-            <Table
-              columns={studentColumns}
-              dataSource={studentPerformance}
-              rowKey="id"
-              pagination={{
-                pageSize: 10,
-                showSizeChanger: true,
-                showQuickJumper: true,
-                showTotal: (total, range) =>
-                  `${range[0]}-${range[1]} of ${total} ${t('classDashboard.students')}`,
-              }}
-              scroll={{ x: 800 }}
-            />
-          </Card>
+            {/* Student Performance Table */}
+            <Card title={t('classDashboard.studentPerformance')}>
+              <Table
+                columns={studentColumns}
+                dataSource={studentPerformance}
+                rowKey="id"
+                pagination={{
+                  pageSize: 10,
+                  showSizeChanger: true,
+                  showQuickJumper: true,
+                  showTotal: (total, range) =>
+                    `${range[0]}-${range[1]} of ${total} ${t('classDashboard.students')}`,
+                }}
+                scroll={{ x: 800 }}
+              />
+            </Card>
+          </div>
         </Card>
       </div>
     </Layout>

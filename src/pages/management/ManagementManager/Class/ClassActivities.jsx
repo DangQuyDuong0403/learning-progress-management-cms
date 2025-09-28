@@ -1,26 +1,19 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   Button,
   Card,
   Space,
-  Modal,
-  Form,
-  DatePicker,
-  Select,
-  Input,
 } from "antd";
 import {
   ArrowLeftOutlined,
-  PlusOutlined,
   ReloadOutlined,
 } from "@ant-design/icons";
 import Layout from "../../../../component/Layout";
 import LoadingWithEffect from "../../../../component/spinner/LoadingWithEffect";
+import "./ClassActivities.css";
 import { useParams, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { spaceToast } from "../../../../component/SpaceToastify";
-
-const { Option } = Select;
 
 // Mock data for activities (timeline format)
 const mockActivities = [
@@ -78,12 +71,7 @@ const ClassActivities = () => {
   const [activities, setActivities] = useState([]);
   const [classData, setClassData] = useState(null);
 
-  useEffect(() => {
-    fetchClassData();
-    fetchActivities();
-  }, [id]);
-
-  const fetchClassData = async () => {
+  const fetchClassData = useCallback(async () => {
     setLoading(true);
     try {
       // Simulate API call
@@ -95,9 +83,9 @@ const ClassActivities = () => {
       spaceToast.error(t('classActivities.loadingClassInfo'));
       setLoading(false);
     }
-  };
+  }, [t]);
 
-  const fetchActivities = async () => {
+  const fetchActivities = useCallback(async () => {
     try {
       // Simulate API call
       setTimeout(() => {
@@ -106,7 +94,12 @@ const ClassActivities = () => {
     } catch (error) {
       spaceToast.error(t('classActivities.loadingActivities'));
     }
-  };
+  }, [t]);
+
+  useEffect(() => {
+    fetchClassData();
+    fetchActivities();
+  }, [id, fetchClassData, fetchActivities]);
 
 
 
@@ -131,7 +124,7 @@ const ClassActivities = () => {
             <div className="header-left">
               <Button
                 icon={<ArrowLeftOutlined style={{ fontSize: '18px' }} />}
-                onClick={() => navigate('/manager/classes')}
+                onClick={() => navigate(`/manager/classes/menu/${id}`)}
                 className="back-button"
               >
                 {t('common.back')}
@@ -146,21 +139,6 @@ const ClassActivities = () => {
             
             <div className="header-right">
               <Space>
-                    {/* Chapters/Lessons Button */}
-          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-            <Button
-              type="primary"
-              size="large"
-              onClick={() => navigate(`/manager/classes/chapters-lessons/${id}`)}
-              style={{
-                borderRadius: '8px',
-                fontWeight: '500',
-                boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)'
-              }}
-            >
-              {t('classDetail.chaptersLessons')}
-            </Button>
-          </div>
                 <Button
                   icon={<ReloadOutlined style={{ fontSize: '18px' }} />}
                   onClick={fetchActivities}
@@ -175,27 +153,6 @@ const ClassActivities = () => {
 
         {/* Main Content Card */}
         <Card className="main-content-card">
-          {/* Navigation Tabs */}
-          <div className="nav-tabs">
-            <div 
-              className="nav-tab"
-              onClick={() => navigate(`/manager/classes/student/${id}`)}
-            >
-              <span>{t('classActivities.students')}</span>
-            </div>
-            <div 
-              className="nav-tab"
-              onClick={() => navigate(`/manager/classes/teachers/${id}`)}
-            >
-              <span>{t('classActivities.teachers')}</span>
-            </div>
-            <div className="nav-tab active">
-              <span>{t('classActivities.activities')} ({activities.length})</span>
-            </div>
-           
-          </div>
-
-
           {/* Activities Timeline */}
           <div className="timeline-section">
             <LoadingWithEffect loading={loading} message={t('classActivities.loadingActivities')}>
