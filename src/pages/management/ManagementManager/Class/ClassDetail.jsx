@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   Button,
   Card,
@@ -106,12 +106,7 @@ const ClassDetail = () => {
   const [isExportModalVisible, setIsExportModalVisible] = useState(false);
   const [importFile, setImportFile] = useState(null);
 
-  useEffect(() => {
-    fetchClassData();
-    fetchStudents();
-  }, [id]);
-
-  const fetchClassData = async () => {
+  const fetchClassData = useCallback(async () => {
     setLoading(true);
     try {
       // Simulate API call
@@ -123,9 +118,9 @@ const ClassDetail = () => {
       spaceToast.error(t('classDetail.loadingClassInfo'));
       setLoading(false);
     }
-  };
+  }, [t]);
 
-  const fetchStudents = async () => {
+  const fetchStudents = useCallback(async () => {
     try {
       // Simulate API call
       setTimeout(() => {
@@ -134,7 +129,12 @@ const ClassDetail = () => {
     } catch (error) {
       spaceToast.error(t('classDetail.loadingStudents'));
     }
-  };
+  }, [t]);
+
+  useEffect(() => {
+    fetchClassData();
+    fetchStudents();
+  }, [id, fetchClassData, fetchStudents]);
 
   const handleAddStudent = () => {
     setStudentSearchValue("");
@@ -434,7 +434,7 @@ const ClassDetail = () => {
             <div className="header-left">
               <Button
                 icon={<ArrowLeftOutlined />}
-                onClick={() => navigate('/manager/classes')}
+                onClick={() => navigate(`/manager/classes/menu/${id}`)}
                 className="back-button"
               >
                 {t('common.back')}
@@ -450,21 +450,6 @@ const ClassDetail = () => {
             
             <div className="header-right">
               <Space>
-                 {/* Chapters/Lessons Button */}
-          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-            <Button
-              type="primary"
-              size="large"
-              onClick={() => navigate(`/manager/classes/chapters-lessons/${id}`)}
-              style={{
-                borderRadius: '8px',
-                fontWeight: '500',
-                boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)'
-              }}
-            >
-              {t('classDetail.chaptersLessons')}
-            </Button>
-          </div>
                 <Button
                   icon={<ImportOutlined />}
                   onClick={handleImport}
@@ -494,27 +479,6 @@ const ClassDetail = () => {
 
         {/* Main Content Card */}
         <Card className="main-content-card">
-          {/* Navigation Tabs */}
-          <div className="nav-tabs">
-            <div className="nav-tab active">
-              <span>{t('classDetail.students')} ({filteredStudents.length})</span>
-            </div>
-            <div 
-              className="nav-tab"
-              onClick={() => navigate(`/manager/classes/teachers/${id}`)}
-            >
-              <span>{t('classDetail.teachers')}</span>
-            </div>
-            <div 
-              className="nav-tab"
-              onClick={() => navigate(`/manager/classes/activities/${id}`)}
-            >
-              <span>{t('classDetail.activities')}</span>
-            </div>
-          </div>
-
-         
-
           {/* Filters */}
           <div className="filters-section">
             <Row gutter={[16, 16]} align="middle">

@@ -15,12 +15,14 @@ import LevelList from '../pages/management/ManagementManager/level/LevelList';
 import SyllabusList from '../pages/management/ManagementManager/syllabus/SyllabusList';
 import SpinnerDemo from '../pages/SpinnerDemo';
 import ClassList from '../pages/management/ManagementManager/Class/ClassList';
+import ClassMenu from '../pages/management/ManagementManager/Class/ClassMenu';
 import ClassDetail from '../pages/management/ManagementManager/Class/ClassDetail';
 import ClassTeachers from '../pages/management/ManagementManager/Class/ClassTeachers';
 import ClassActivities from '../pages/management/ManagementManager/Class/ClassActivities';
 import ClassChapterLesson from '../pages/management/ManagementManager/Class/ClassChapterLesson';
 // Teacher Class Components
 import TeacherClassList from '../pages/management/ManagementTeacher/class/ClassList';
+import TeacherClassMenu from '../pages/management/ManagementTeacher/class/ClassMenu';
 import TeacherClassDetail from '../pages/management/ManagementTeacher/class/ClassDetail';
 import TeacherClassDashboard from '../pages/management/ManagementTeacher/class/ClassDashboard';
 import TeacherClassTeachers from '../pages/management/ManagementTeacher/class/ClassTeachers';
@@ -165,6 +167,17 @@ const CONFIG_ROUTER = [
 		private: true,
 		role: 'manager',
 	},
+	{
+		show: false,
+		component: ClassMenu,
+		// icon: <UserOutlined />,
+		path: ROUTER_PAGE.MANAGER_CLASS_MENU,
+		menuName: 'class menu',
+		exact: true,
+		key: 'MANAGER_CLASS_MENU',
+		private: true,
+		role: 'manager',
+	},
 	// {
 	// 	show: false,
 	// 	component: ClassDetail,
@@ -263,6 +276,17 @@ const CONFIG_ROUTER = [
 		menuName: 'My Classes',
 		exact: true,
 		key: 'TEACHER_CLASSES',
+		private: true,
+		role: 'teacher',
+	},
+	{
+		show: false,
+		component: TeacherClassMenu,
+		// icon: <UserOutlined />,
+		path: ROUTER_PAGE.TEACHER_CLASS_MENU,
+		menuName: 'class menu',
+		exact: true,
+		key: 'TEACHER_CLASS_MENU',
 		private: true,
 		role: 'teacher',
 	},

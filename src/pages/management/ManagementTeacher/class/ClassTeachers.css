@@ -1,4 +1,4 @@
-/* Class Detail Container */
+/* Class Teachers Container */
 .class-detail-container {
   padding: 0;
   background: linear-gradient(135deg, #0c0c1d 0%, #1a1a2e 25%, #16213e 50%, #0f3460 75%, #533483 100%);
@@ -99,43 +99,13 @@
   letter-spacing: -0.5px;
 }
 
-.class-info-detail {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 24px;
-  flex-wrap: wrap;
-}
-
-.teacher-info {
-  display: flex;
-  align-items: center;
-  font-size: 16px;
-  color: #059669;
-  font-weight: 500;
-  background: #f0fdf4;
-  padding: 8px 16px;
-  border-radius: 12px;
-  border: 1px solid #bbf7d0;
-}
-
-.student-count {
-  font-size: 16px;
-  color: #2563eb;
-  font-weight: 500;
-  background: #eff6ff;
-  padding: 8px 16px;
-  border-radius: 12px;
-  border: 1px solid #bfdbfe;
-}
-
 .refresh-button {
   height: 40px;
   border-radius: 10px;
   font-weight: 500;
 }
 
-.add-student-button {
+.add-teacher-button {
   background: linear-gradient(135deg, #00d4ff 0%, #9c88ff 100%);
   border-color: transparent;
   height: 40px;
@@ -146,7 +116,7 @@
   transition: all 0.3s ease;
 }
 
-.add-student-button:hover {
+.add-teacher-button:hover {
   background: linear-gradient(135deg, #00b8e6 0%, #8a7aff 100%);
   border-color: transparent;
   transform: translateY(-2px);
@@ -169,44 +139,6 @@
   padding: 0;
   border-radius: 20px;
   overflow: hidden;
-}
-
-/* Navigation Tabs */
-.nav-tabs {
-  display: flex;
-  border-bottom: 1px solid #e2e8f0;
-  background: #f8fafc;
-  border-radius: 20px 20px 0 0;
-  overflow: hidden;
-}
-
-.nav-tab {
-  flex: 1;
-  padding: 16px 24px;
-  text-align: center;
-  cursor: pointer;
-  border-bottom: 3px solid transparent;
-  transition: all 0.3s ease;
-  font-weight: 500;
-  color: #64748b;
-}
-
-.nav-tab:hover {
-  background: #f1f5f9;
-  color: #1e293b;
-}
-
-.nav-tab.active {
-  color: #00d4ff;
-  border-bottom-color: #00d4ff;
-  background: #ffffff;
-  font-weight: 600;
-  position: relative;
-  z-index: 1;
-}
-
-.nav-tab span {
-  font-size: 15px;
 }
 
 /* Filters Section */
@@ -413,11 +345,6 @@
     justify-content: center;
   }
   
-  .class-info {
-    flex-direction: column;
-    gap: 12px;
-  }
-  
   .class-title {
     font-size: 24px;
   }
@@ -428,14 +355,6 @@
   
   .table-section {
     padding: 20px 24px;
-  }
-  
-  .nav-tab {
-    padding: 12px 16px;
-  }
-  
-  .nav-tab span {
-    font-size: 14px;
   }
 }
 
@@ -450,14 +369,6 @@
   
   .table-section {
     padding: 16px 20px;
-  }
-  
-  .nav-tab {
-    padding: 10px 12px;
-  }
-  
-  .nav-tab span {
-    font-size: 13px;
   }
   
   .ant-table-tbody > tr > td {

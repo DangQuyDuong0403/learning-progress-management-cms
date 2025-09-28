@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   Button,
   Card,
@@ -25,6 +25,7 @@ import {
 } from "@ant-design/icons";
 import Layout from "../../../../component/Layout";
 import LoadingWithEffect from "../../../../component/spinner/LoadingWithEffect";
+import "./ClassTeachers.css";
 import { useParams, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { spaceToast } from "../../../../component/SpaceToastify";
@@ -156,12 +157,7 @@ const ClassTeachers = () => {
   const [isImportModalVisible, setIsImportModalVisible] = useState(false);
   const [fileList, setFileList] = useState([]);
 
-  useEffect(() => {
-    fetchClassData();
-    fetchTeachers();
-  }, [id]);
-
-  const fetchClassData = async () => {
+  const fetchClassData = useCallback(async () => {
     setLoading(true);
     try {
       // Simulate API call
@@ -173,9 +169,9 @@ const ClassTeachers = () => {
       spaceToast.error(t('classTeachers.loadingClassInfo'));
       setLoading(false);
     }
-  };
+  }, [t]);
 
-  const fetchTeachers = async () => {
+  const fetchTeachers = useCallback(async () => {
     try {
       // Simulate API call
       setTimeout(() => {
@@ -184,7 +180,12 @@ const ClassTeachers = () => {
     } catch (error) {
       spaceToast.error(t('classTeachers.loadingTeachers'));
     }
-  };
+  }, [t]);
+
+  useEffect(() => {
+    fetchClassData();
+    fetchTeachers();
+  }, [id, fetchClassData, fetchTeachers]);
 
   const handleAddTeacher = () => {
     form.resetFields();
@@ -452,7 +453,7 @@ const ClassTeachers = () => {
             <div className="header-left">
               <Button
                 icon={<ArrowLeftOutlined style={{ fontSize: '18px' }} />}
-                onClick={() => navigate('/manager/classes')}
+                onClick={() => navigate(`/manager/classes/menu/${id}`)}
                 className="back-button"
               >
                 {t('common.back')}
@@ -467,21 +468,6 @@ const ClassTeachers = () => {
             
             <div className="header-right">
               <Space>
-                    {/* Chapters/Lessons Button */}
-          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-            <Button
-              type="primary"
-              size="large"
-              onClick={() => navigate(`/manager/classes/chapters-lessons/${id}`)}
-              style={{
-                borderRadius: '8px',
-                fontWeight: '500',
-                boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)'
-              }}
-            >
-              {t('classDetail.chaptersLessons')}
-            </Button>
-          </div>
                 <Button
                   icon={<ReloadOutlined style={{ fontSize: '18px' }} />}
                   onClick={fetchTeachers}
@@ -511,26 +497,6 @@ const ClassTeachers = () => {
 
         {/* Main Content Card */}
         <Card className="main-content-card">
-          {/* Navigation Tabs */}
-          <div className="nav-tabs">
-            <div 
-              className="nav-tab"
-              onClick={() => navigate(`/manager/classes/student/${id}`)}
-            >
-              <span>{t('classTeachers.students')}</span>
-            </div>
-            <div className="nav-tab active">
-              <span>{t('classTeachers.teachers')} ({filteredTeachers.length})</span>
-            </div>
-            <div 
-              className="nav-tab"
-              onClick={() => navigate(`/manager/classes/activities/${id}`)}
-            >
-              <span>{t('classTeachers.activities')}</span>
-            </div>
-         
-          </div>
-
           {/* Filters */}
           <div className="filters-section">
             <Row gutter={[16, 16]} align="middle">

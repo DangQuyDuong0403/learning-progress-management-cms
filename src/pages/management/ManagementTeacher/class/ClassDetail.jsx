@@ -11,16 +11,19 @@ import {
   Input,
   Select,
   Modal,
+  Upload,
   Radio,
-  Form,
 } from "antd";
 import {
   ArrowLeftOutlined,
   UserOutlined,
+  PlusOutlined,
   SearchOutlined,
+  DeleteOutlined,
+  ImportOutlined,
   ExportOutlined,
-  EyeOutlined,
-  KeyOutlined,
+  DownloadOutlined,
+  UploadOutlined,
 } from "@ant-design/icons";
 import Layout from "../../../../component/Layout";
 import LoadingWithEffect from "../../../../component/spinner/LoadingWithEffect";
@@ -62,6 +65,15 @@ const mockStudents = [
   },
 ];
 
+// Mock data for all available students (for autocomplete)
+const mockAllStudents = [
+  { id: 10, code: "HE176502", name: "Nguyễn Đức Anh", email: "anhndhe176502@fpt.edu.vn" },
+  { id: 11, code: "HE176501", name: "Nguyễn Đức Anh", email: "anhndhe176501@fpt.edu.vn" },
+  { id: 12, code: "HE176503", name: "Trần Văn Bình", email: "binhtvhe176503@fpt.edu.vn" },
+  { id: 13, code: "HE176504", name: "Lê Thị Cường", email: "cuonglthe176504@fpt.edu.vn" },
+  { id: 14, code: "HE176505", name: "Phạm Văn Dũng", email: "dungpvhe176505@fpt.edu.vn" },
+  { id: 15, code: "HE176506", name: "Hoàng Thị Em", email: "emhthe176506@fpt.edu.vn" },
+];
 
 // Mock class data
 const mockClassData = {
@@ -83,11 +95,16 @@ const ClassDetail = () => {
   const [classData, setClassData] = useState(null);
   const [searchText, setSearchText] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [isModalVisible, setIsModalVisible] = useState(false);
+  const [studentSearchValue, setStudentSearchValue] = useState("");
+  const [suggestions, setSuggestions] = useState([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [selectedStudents, setSelectedStudents] = useState([]);
+  const [isDeleteModalVisible, setIsDeleteModalVisible] = useState(false);
+  const [studentToDelete, setStudentToDelete] = useState(null);
+  const [isImportModalVisible, setIsImportModalVisible] = useState(false);
   const [isExportModalVisible, setIsExportModalVisible] = useState(false);
-  const [isStudentModalVisible, setIsStudentModalVisible] = useState(false);
-  const [isPasswordModalVisible, setIsPasswordModalVisible] = useState(false);
-  const [selectedStudent, setSelectedStudent] = useState(null);
-  const [form] = Form.useForm();
+  const [importFile, setImportFile] = useState(null);
 
   const fetchClassData = useCallback(async () => {
     setLoading(true);
@@ -119,8 +136,96 @@ const ClassDetail = () => {
     fetchStudents();
   }, [id, fetchClassData, fetchStudents]);
 
+  const handleAddStudent = () => {
+    setStudentSearchValue("");
+    setSuggestions([]);
+    setShowSuggestions(false);
+    setSelectedStudents([]);
+    setIsModalVisible(true);
+  };
+
+
+  const handleStudentSearch = (value) => {
+    setStudentSearchValue(value);
+    if (value.length > 0) {
+      const filtered = mockAllStudents.filter(student => 
+        student.name.toLowerCase().includes(value.toLowerCase()) ||
+        student.code.toLowerCase().includes(value.toLowerCase())
+      );
+      setSuggestions(filtered);
+      setShowSuggestions(true);
+    } else {
+      setSuggestions([]);
+      setShowSuggestions(false);
+    }
+  };
+
+  const handleSelectStudent = (student) => {
+    console.log("Student selected:", student);
+    
+    // Check if student is already selected
+    const isAlreadySelected = selectedStudents.some(s => s.id === student.id);
+    if (isAlreadySelected) {
+      spaceToast.warning(t('classDetail.alreadyInClass'));
+      return;
+    }
+    
+    // Add to selected students
+    setSelectedStudents([...selectedStudents, student]);
+    setStudentSearchValue("");
+    setShowSuggestions(false);
+  };
+
+  const handleRemoveSelectedStudent = (studentId) => {
+    setSelectedStudents(selectedStudents.filter(s => s.id !== studentId));
+  };
+
+  const handleDeleteStudent = (student) => {
+    console.log("Delete button clicked for student:", student);
+    setStudentToDelete(student);
+    setIsDeleteModalVisible(true);
+  };
+
+  const handleConfirmDelete = () => {
+    if (studentToDelete) {
+      console.log("Confirm delete for student:", studentToDelete);
+      const updatedStudents = students.filter(s => s.id !== studentToDelete.id);
+      console.log("Updated students:", updatedStudents);
+      setStudents(updatedStudents);
+      spaceToast.success(`${t('classDetail.deleteSuccess')} "${studentToDelete.name}" ${t('classDetail.fromClass')}`);
+      setIsDeleteModalVisible(false);
+      setStudentToDelete(null);
+    }
+  };
+
+  const handleCancelDelete = () => {
+    console.log("Delete cancelled");
+    setIsDeleteModalVisible(false);
+    setStudentToDelete(null);
+  };
+
+  const handleImport = () => {
+    setIsImportModalVisible(true);
+  };
+
   const handleExport = () => {
     setIsExportModalVisible(true);
+  };
+
+  const handleImportModalOk = () => {
+    if (importFile) {
+      // Simulate import process
+      spaceToast.success(t('classDetail.importSuccess'));
+      setIsImportModalVisible(false);
+      setImportFile(null);
+    } else {
+      spaceToast.error(t('classDetail.selectFileToImportError'));
+    }
+  };
+
+  const handleImportModalCancel = () => {
+    setIsImportModalVisible(false);
+    setImportFile(null);
   };
 
   const handleExportModalOk = (exportType) => {
@@ -133,43 +238,80 @@ const ClassDetail = () => {
     setIsExportModalVisible(false);
   };
 
-  const handleEditStudent = (student) => {
-    setSelectedStudent(student);
-    setIsStudentModalVisible(true);
-  };
-
-  const handleChangePassword = (student) => {
-    setSelectedStudent(student);
-    form.resetFields();
-    setIsPasswordModalVisible(true);
-  };
-
-  const handleStudentModalCancel = () => {
-    setIsStudentModalVisible(false);
-    setSelectedStudent(null);
-  };
-
-  const handlePasswordModalCancel = () => {
-    setIsPasswordModalVisible(false);
-    setSelectedStudent(null);
-    form.resetFields();
-  };
-
-  const handlePasswordChange = async () => {
-    try {
-      const values = await form.validateFields();
-      
-      // Simulate password change API call
-      console.log("Changing password for student:", selectedStudent.name, values);
-      spaceToast.success(t('classDetail.passwordChangedSuccess'));
-      setIsPasswordModalVisible(false);
-      setSelectedStudent(null);
-      form.resetFields();
-    } catch (error) {
-      spaceToast.error(t('classDetail.passwordChangeError'));
+  const handleFileUpload = (info) => {
+    if (info.file.status === 'done') {
+      setImportFile(info.file);
+      spaceToast.success(`${info.file.name} has been selected for import`);
+    } else if (info.file.status === 'error') {
+      spaceToast.error(`${info.file.name} upload failed`);
     }
   };
 
+  const handleModalOk = async () => {
+    try {
+      console.log("Add students clicked");
+      console.log("selectedStudents:", selectedStudents);
+      
+      if (selectedStudents.length === 0) {
+        spaceToast.error(t('classDetail.selectAtLeastOne'));
+        return;
+      }
+
+      const newStudents = [];
+      const existingStudents = [];
+      
+      selectedStudents.forEach(selectedStudent => {
+        console.log("Checking student:", selectedStudent);
+        console.log("Current students in class:", students);
+        
+        // Check if student already exists in class
+        const exists = students.some(s => s.id === selectedStudent.id);
+        console.log("Student exists:", exists);
+        
+        if (exists) {
+          existingStudents.push(selectedStudent.name);
+        } else {
+          // Add new student to class
+          const newStudent = {
+            id: selectedStudent.id,
+            name: selectedStudent.name,
+            email: selectedStudent.email,
+            phone: "0123456789", // Default phone
+            status: "active",
+            joinDate: new Date().toISOString().split("T")[0],
+            gender: "male", // Default gender
+          };
+          newStudents.push(newStudent);
+        }
+      });
+
+      if (newStudents.length > 0) {
+        setStudents([...newStudents, ...students]);
+        spaceToast.success(`${t('classDetail.addStudentsSuccess')} ${newStudents.length} ${t('classDetail.studentsToClass')}`);
+      }
+
+      if (existingStudents.length > 0) {
+        spaceToast.warning(`${t('classDetail.alreadyInClass')} ${existingStudents.join(", ")}`);
+      }
+
+      setIsModalVisible(false);
+      setStudentSearchValue("");
+      setSuggestions([]);
+      setShowSuggestions(false);
+      setSelectedStudents([]);
+    } catch (error) {
+      console.error("Error adding students:", error);
+      spaceToast.error(t('classDetail.checkInfoError'));
+    }
+  };
+
+  const handleModalCancel = () => {
+    setIsModalVisible(false);
+    setStudentSearchValue("");
+    setSuggestions([]);
+    setShowSuggestions(false);
+    setSelectedStudents([]);
+  };
 
   const getStatusTag = (status) => {
     const statusConfig = {
@@ -258,15 +400,15 @@ const ClassDetail = () => {
     {
       title: t('classDetail.actions'),
       key: "actions",
-      width: 120,
       render: (_, record) => (
         <Space>
+        
           <Button
             type="text"
-            icon={<EyeOutlined style={{ fontSize: '18px' }} />}
-            onClick={() => handleEditStudent(record)}
-            style={{ color: "#1890ff" }}
-            title={t('classDetail.viewStudentInfo')}
+            icon={<DeleteOutlined style={{ fontSize: '18px' }} />}
+            onClick={() => handleDeleteStudent(record)}
+            style={{ color: "#ff4d4f" }}
+            title={t('classDetail.removeFromClass')}
           />
         </Space>
       ),
@@ -292,7 +434,7 @@ const ClassDetail = () => {
             <div className="header-left">
               <Button
                 icon={<ArrowLeftOutlined />}
-                onClick={() => navigate('/teacher/classes')}
+                onClick={() => navigate(`/teacher/classes/menu/${id}`)}
                 className="back-button"
               >
                 {t('common.back')}
@@ -308,28 +450,6 @@ const ClassDetail = () => {
             
             <div className="header-right">
               <Space>
-                 {/* Chapters/Lessons Button */}
-          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-            <Button
-              type="primary"
-              size="large"
-              onClick={() => navigate(`/teacher/classes/chapters-lessons/${id}`)}
-              style={{
-                borderRadius: '8px',
-                fontWeight: '500',
-                boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)'
-              }}
-            >
-              {t('classDetail.chaptersLessons')}
-            </Button>
-          </div>
-                <Button
-                  icon={<ExportOutlined />}
-                  onClick={handleExport}
-                  className="export-button"
-                >
-                  {t('classDetail.export')}
-                </Button>
               </Space>
             </div>
           </div>
@@ -337,33 +457,6 @@ const ClassDetail = () => {
 
         {/* Main Content Card */}
         <Card className="main-content-card">
-          {/* Navigation Tabs */}
-          <div className="nav-tabs">
-            <div 
-              className="nav-tab"
-              onClick={() => navigate(`/teacher/classes/dashboard/${id}`)}
-            >
-              <span>{t('classDashboard.dashboard')}</span>
-            </div>
-            <div className="nav-tab active">
-              <span>{t('classDetail.students')} ({filteredStudents.length})</span>
-            </div>
-            <div 
-              className="nav-tab"
-              onClick={() => navigate(`/teacher/classes/teachers/${id}`)}
-            >
-              <span>{t('classDetail.teachers')}</span>
-            </div>
-            <div 
-              className="nav-tab"
-              onClick={() => navigate(`/teacher/classes/activities/${id}`)}
-            >
-              <span>{t('classDetail.activities')}</span>
-            </div>
-          </div>
-
-         
-
           {/* Filters */}
           <div className="filters-section">
             <Row gutter={[16, 16]} align="middle">
@@ -412,6 +505,201 @@ const ClassDetail = () => {
           </div>
         </Card>
 
+        {/* Add Student Modal */}
+        <Modal
+          title={`${t('classDetail.addStudentsToClass')} (${selectedStudents.length} ${t('classDetail.selectedStudents')})`}
+          open={isModalVisible}
+          onOk={handleModalOk}
+          onCancel={handleModalCancel}
+          width={600}
+          okText={`${t('classDetail.addStudents')} ${selectedStudents.length} ${t('classDetail.studentsAdded')}`}
+          cancelText={t('common.cancel')}
+        >
+          <div style={{ position: 'relative' }}>
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ 
+                display: 'block', 
+                marginBottom: '8px', 
+                fontWeight: '500',
+                color: '#1e293b'
+              }}>
+                {t('classDetail.searchAndSelectStudents')}
+              </label>
+              <Input
+                value={studentSearchValue}
+                onChange={(e) => handleStudentSearch(e.target.value)}
+                placeholder={t('classDetail.typeStudentNameOrCode')}
+                style={{
+                  fontSize: "15px",
+                  padding: "12px 16px",
+                  borderRadius: "10px",
+                  border: "2px solid #e2e8f0",
+                  transition: "all 0.3s ease",
+                }}
+                allowClear
+              />
+            </div>
+
+            {/* Selected Students List */}
+            {selectedStudents.length > 0 && (
+              <div style={{ marginBottom: '16px' }}>
+                <label style={{ 
+                  display: 'block', 
+                  marginBottom: '8px', 
+                  fontWeight: '500',
+                  color: '#1e293b'
+                }}>
+                  {t('classDetail.selectedStudentsList')} ({selectedStudents.length})
+                </label>
+                <div style={{
+                  maxHeight: '150px',
+                  overflowY: 'auto',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: '8px',
+                  padding: '8px'
+                }}>
+                  {selectedStudents.map((student) => (
+                    <div
+                      key={student.id}
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        padding: '8px 12px',
+                        marginBottom: '4px',
+                        backgroundColor: '#f8fafc',
+                        borderRadius: '6px',
+                        border: '1px solid #e2e8f0'
+                      }}
+                    >
+                      <div>
+                        <div style={{ fontWeight: '500', color: '#1e293b' }}>
+                          {student.code} - {student.name}
+                        </div>
+                        <div style={{ fontSize: '12px', color: '#64748b' }}>
+                          {student.email}
+                        </div>
+                      </div>
+                      <Button
+                        type="text"
+                        size="small"
+                        danger
+                        onClick={() => handleRemoveSelectedStudent(student.id)}
+                        style={{ color: '#ef4444' }}
+                      >
+                        {t('classDetail.remove')}
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Suggestions Dropdown */}
+            {showSuggestions && suggestions.length > 0 && (
+              <div style={{
+                position: 'absolute',
+                top: '100%',
+                left: 0,
+                right: 0,
+                backgroundColor: 'white',
+                border: '1px solid #e2e8f0',
+                borderRadius: '8px',
+                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+                zIndex: 1000,
+                maxHeight: '200px',
+                overflowY: 'auto'
+              }}>
+                {suggestions.map((student) => (
+                  <div
+                    key={student.id}
+                    onClick={() => handleSelectStudent(student)}
+                    style={{
+                      padding: '12px 16px',
+                      cursor: 'pointer',
+                      borderBottom: '1px solid #f1f5f9',
+                      transition: 'background-color 0.2s',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.target.style.backgroundColor = '#f8fafc';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.target.style.backgroundColor = 'white';
+                    }}
+                  >
+                    <div style={{ fontWeight: '500', color: '#1e293b' }}>
+                      {student.code} - {student.name}
+                    </div>
+                    <div style={{ fontSize: '13px', color: '#64748b' }}>
+                      {student.email}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </Modal>
+
+        {/* Import Modal */}
+        <Modal
+          title={t('classDetail.importStudentsList')}
+          open={isImportModalVisible}
+          onOk={handleImportModalOk}
+          onCancel={handleImportModalCancel}
+          okText={t('classDetail.import')}
+          cancelText={t('common.cancel')}
+          width={600}
+        >
+          <div style={{ marginBottom: '16px' }}>
+            <p style={{ fontSize: '14px', color: '#666', marginBottom: '12px' }}>
+              {t('classDetail.selectFileToImport')}
+            </p>
+            
+            <Upload.Dragger
+              name="file"
+              multiple={false}
+              accept=".xlsx,.xls,.csv"
+              beforeUpload={() => false} // Prevent auto upload
+              onChange={handleFileUpload}
+              onDrop={(e) => {
+                console.log('Dropped files', e.dataTransfer.files);
+              }}
+              style={{
+                border: '2px dashed #d9d9d9',
+                borderRadius: '6px',
+                backgroundColor: '#fafafa',
+              }}
+            >
+              <p className="ant-upload-drag-icon">
+                <UploadOutlined style={{ fontSize: '48px', color: '#1890ff' }} />
+              </p>
+              <p className="ant-upload-text" style={{ fontSize: '16px', fontWeight: '500' }}>
+                Click or drag file here to upload
+              </p>
+              <p className="ant-upload-hint" style={{ fontSize: '14px', color: '#666' }}>
+                Support Excel (.xlsx, .xls) and CSV (.csv) files
+              </p>
+            </Upload.Dragger>
+          </div>
+
+          <div style={{ 
+            padding: '12px', 
+            backgroundColor: '#f6f8fa', 
+            borderRadius: '6px',
+            border: '1px solid #e1e4e8'
+          }}>
+            <div style={{ fontSize: '14px', color: '#24292e', marginBottom: '8px' }}>
+              <strong>{t('classDetail.fileFormatInstructions')}:</strong>
+            </div>
+            <div style={{ fontSize: '13px', color: '#586069' }}>
+              <div>• {t('classDetail.column1')}</div>
+              <div>• {t('classDetail.column2')}</div>
+              <div>• {t('classDetail.column3')}</div>
+              <div>• {t('classDetail.column4')}</div>
+              <div>• {t('classDetail.column5')}</div>
+            </div>
+          </div>
+        </Modal>
 
         {/* Export Modal */}
         <Modal
@@ -449,7 +737,7 @@ const ClassDetail = () => {
               <div style={{ marginBottom: '12px' }}>
                 <Radio value="pdf">
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <ExportOutlined style={{ color: '#ff4d4f' }} />
+                    <DownloadOutlined style={{ color: '#ff4d4f' }} />
                     <span>{t('classDetail.pdf')}</span>
                   </div>
                 </Radio>
@@ -492,175 +780,19 @@ const ClassDetail = () => {
           </div>
         </Modal>
 
-        {/* Student Information Modal */}
+        {/* Delete Confirmation Modal */}
         <Modal
-          title={`${t('classDetail.studentInfo')} - ${selectedStudent?.name}`}
-          open={isStudentModalVisible}
-          onCancel={handleStudentModalCancel}
-          footer={[
-            <Button key="changePassword" type="primary" icon={<KeyOutlined />} onClick={() => {
-              setIsStudentModalVisible(false);
-              handleChangePassword(selectedStudent);
-            }}>
-              {t('classDetail.changePassword')}
-            </Button>,
-            <Button key="close" onClick={handleStudentModalCancel}>
-              {t('common.close')}
-            </Button>
-          ]}
-          width={600}
-        >
-          {selectedStudent && (
-            <div>
-              <div style={{ 
-                display: 'flex', 
-                alignItems: 'center', 
-                gap: '16px', 
-                marginBottom: '24px',
-                padding: '16px',
-                backgroundColor: '#f6f8fa',
-                borderRadius: '8px'
-              }}>
-                <Avatar
-                  size={64}
-                  icon={<UserOutlined />}
-                  style={{
-                    backgroundColor: classData?.color || "#00d4ff",
-                  }}
-                />
-                <div>
-                  <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600' }}>
-                    {selectedStudent.name}
-                  </h3>
-                  <p style={{ margin: 0, color: '#666', fontSize: '14px' }}>
-                    {selectedStudent.email}
-                  </p>
-                </div>
-              </div>
-
-              <Row gutter={[16, 16]}>
-                <Col span={12}>
-                  <div style={{ marginBottom: '16px' }}>
-                    <label style={{ fontWeight: '600', color: '#333', display: 'block', marginBottom: '4px' }}>
-                      {t('classDetail.fullName')}
-                    </label>
-                    <Input value={selectedStudent.name} disabled style={{ backgroundColor: '#f5f5f5' }} />
-                  </div>
-                </Col>
-                <Col span={12}>
-                  <div style={{ marginBottom: '16px' }}>
-                    <label style={{ fontWeight: '600', color: '#333', display: 'block', marginBottom: '4px' }}>
-                      {t('classDetail.email')}
-                    </label>
-                    <Input value={selectedStudent.email} disabled style={{ backgroundColor: '#f5f5f5' }} />
-                  </div>
-                </Col>
-                <Col span={12}>
-                  <div style={{ marginBottom: '16px' }}>
-                    <label style={{ fontWeight: '600', color: '#333', display: 'block', marginBottom: '4px' }}>
-                      {t('classDetail.phoneNumber')}
-                    </label>
-                    <Input value={selectedStudent.phone} disabled style={{ backgroundColor: '#f5f5f5' }} />
-                  </div>
-                </Col>
-                <Col span={12}>
-                  <div style={{ marginBottom: '16px' }}>
-                    <label style={{ fontWeight: '600', color: '#333', display: 'block', marginBottom: '4px' }}>
-                      {t('classDetail.gender')}
-                    </label>
-                    <div style={{ padding: '8px 12px', backgroundColor: '#f5f5f5', borderRadius: '6px' }}>
-                      {getGenderTag(selectedStudent.gender)}
-                    </div>
-                  </div>
-                </Col>
-                <Col span={12}>
-                  <div style={{ marginBottom: '16px' }}>
-                    <label style={{ fontWeight: '600', color: '#333', display: 'block', marginBottom: '4px' }}>
-                      {t('classDetail.status')}
-                    </label>
-                    <div style={{ padding: '8px 12px', backgroundColor: '#f5f5f5', borderRadius: '6px' }}>
-                      {getStatusTag(selectedStudent.status)}
-                    </div>
-                  </div>
-                </Col>
-                <Col span={12}>
-                  <div style={{ marginBottom: '16px' }}>
-                    <label style={{ fontWeight: '600', color: '#333', display: 'block', marginBottom: '4px' }}>
-                      {t('classDetail.joinDate')}
-                    </label>
-                    <Input 
-                      value={new Date(selectedStudent.joinDate).toLocaleDateString("vi-VN")} 
-                      disabled 
-                      style={{ backgroundColor: '#f5f5f5' }} 
-                    />
-                  </div>
-                </Col>
-              </Row>
-            </div>
-          )}
-        </Modal>
-
-        {/* Change Password Modal */}
-        <Modal
-          title={`${t('classDetail.changePassword')} - ${selectedStudent?.name}`}
-          open={isPasswordModalVisible}
-          onOk={handlePasswordChange}
-          onCancel={handlePasswordModalCancel}
-          okText={t('classDetail.changePassword')}
+          title={t('classDetail.confirmDelete')}
+          open={isDeleteModalVisible}
+          onOk={handleConfirmDelete}
+          onCancel={handleCancelDelete}
+          okText={t('common.delete')}
           cancelText={t('common.cancel')}
-          width={500}
+          okType="danger"
+          centered
         >
-          <Form
-            form={form}
-            layout="vertical"
-            autoComplete="off"
-          >
-            <Form.Item
-              label={t('classDetail.newPassword')}
-              name="newPassword"
-              rules={[
-                { required: true, message: t('classDetail.newPasswordRequired') },
-                { min: 6, message: t('classDetail.passwordMinLength') }
-              ]}
-            >
-              <Input.Password 
-                placeholder={t('classDetail.enterNewPassword')}
-                style={{
-                  fontSize: "15px",
-                  padding: "12px 16px",
-                  borderRadius: "8px",
-                }}
-              />
-            </Form.Item>
-
-            <Form.Item
-              label={t('classDetail.confirmPassword')}
-              name="confirmPassword"
-              dependencies={['newPassword']}
-              rules={[
-                { required: true, message: t('classDetail.confirmPasswordRequired') },
-                ({ getFieldValue }) => ({
-                  validator(_, value) {
-                    if (!value || getFieldValue('newPassword') === value) {
-                      return Promise.resolve();
-                    }
-                    return Promise.reject(new Error(t('classDetail.passwordsDoNotMatch')));
-                  },
-                }),
-              ]}
-            >
-              <Input.Password 
-                placeholder={t('classDetail.confirmNewPassword')}
-                style={{
-                  fontSize: "15px",
-                  padding: "12px 16px",
-                  borderRadius: "8px",
-                }}
-              />
-            </Form.Item>
-          </Form>
+          <p>{t('classDetail.confirmDeleteMessage')} "{studentToDelete?.name}"?</p>
         </Modal>
-
       </div>
     </Layout>
   );
