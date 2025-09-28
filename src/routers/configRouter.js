@@ -13,7 +13,7 @@ import AccountList from '../pages/management/managementAdmin/account/AccountList
 import RoleList from '../pages/management/managementAdmin/role/RoleList';
 import SpinnerDemo from '../pages/SpinnerDemo';
 // import AdminDashboard from '../pages/management/managementAdmin/AdminDashboard';
-
+ 
 const CONFIG_ROUTER = [
 	//   {
 	//     show: true,
