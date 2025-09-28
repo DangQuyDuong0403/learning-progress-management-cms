@@ -1,0 +1,314 @@
+import React, { useState, useEffect } from "react";
+import {
+  Button,
+  Card,
+  Space,
+} from "antd";
+import {
+  ArrowLeftOutlined,
+  ReloadOutlined,
+} from "@ant-design/icons";
+import Layout from "../../../../component/Layout";
+import LoadingWithEffect from "../../../../component/spinner/LoadingWithEffect";
+import { useParams, useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
+import { spaceToast } from "../../../../component/SpaceToastify";
+
+
+// Mock data for activities (timeline format)
+const mockActivities = [
+  {
+    id: 1,
+    action: "added two new students, Thư and Dương to the class",
+    actor: "Phạm Quang Minh",
+    timestamp: "9h - 20/08/2025",
+    type: "student_add",
+  },
+  {
+    id: 2,
+    action: "added new lesson 3 in chapter 1",
+    actor: "Phạm Quang Minh",
+    timestamp: "9h - 20/08/2025",
+    type: "lesson_add",
+  },
+  {
+    id: 3,
+    action: "added two new students, Thư and Dương to the class",
+    actor: "Phạm Quang Minh",
+    timestamp: "9h - 20/08/2025",
+    type: "student_add",
+  },
+  {
+    id: 4,
+    action: "added new lesson 3 in chapter 1",
+    actor: "Phạm Quang Minh",
+    timestamp: "9h - 20/08/2025",
+    type: "lesson_add",
+  },
+  {
+    id: 5,
+    action: "added new lesson 3 in chapter 1",
+    actor: "Phạm Quang Minh",
+    timestamp: "9h - 20/08/2025",
+    type: "lesson_add",
+  },
+];
+
+// Mock class data
+const mockClassData = {
+  id: 1,
+  name: "Rising star 1",
+  color: "#00d4ff",
+  status: "active",
+  createdAt: "2024-01-15",
+};
+
+const ClassActivities = () => {
+  const { t } = useTranslation();
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const [loading, setLoading] = useState(false);
+  const [activities, setActivities] = useState([]);
+  const [classData, setClassData] = useState(null);
+
+  useEffect(() => {
+    fetchClassData();
+    fetchActivities();
+  }, [id]);
+
+  const fetchClassData = async () => {
+    setLoading(true);
+    try {
+      // Simulate API call
+      setTimeout(() => {
+        setClassData(mockClassData);
+        setLoading(false);
+      }, 500);
+    } catch (error) {
+      spaceToast.error(t('classActivities.loadingClassInfo'));
+      setLoading(false);
+    }
+  };
+
+  const fetchActivities = async () => {
+    try {
+      // Simulate API call
+      setTimeout(() => {
+        setActivities(mockActivities);
+      }, 500);
+    } catch (error) {
+      spaceToast.error(t('classActivities.loadingActivities'));
+    }
+  };
+
+
+
+
+
+
+
+  if (loading) {
+    return (
+      <Layout>
+        <div className="class-detail-container">
+          <LoadingWithEffect loading={true} message={t('classActivities.loadingClassInfo')} />
+        </div>
+      </Layout>
+    );
+  }
+
+  return (
+    <Layout>
+      <div className="class-detail-container">
+        {/* Header */}
+        <Card className="header-card">
+          <div className="header-content">
+            <div className="header-left">
+              <Button
+                icon={<ArrowLeftOutlined style={{ fontSize: '18px' }} />}
+                onClick={() => navigate('/teacher/classes')}
+                className="back-button"
+              >
+                {t('common.back')}
+              </Button>
+            </div>
+            
+            <div className="header-center">
+              <h2 className="class-title">
+                {classData?.name}
+              </h2>
+            </div>
+            
+            <div className="header-right">
+              <Space>
+                    {/* Chapters/Lessons Button */}
+          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+            <Button
+              type="primary"
+              size="large"
+              onClick={() => navigate(`/teacher/classes/chapters-lessons/${id}`)}
+              style={{
+                borderRadius: '8px',
+                fontWeight: '500',
+                boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)'
+              }}
+            >
+              {t('classDetail.chaptersLessons')}
+            </Button>
+          </div>
+                <Button
+                  icon={<ReloadOutlined style={{ fontSize: '18px' }} />}
+                  onClick={fetchActivities}
+                  className="refresh-button"
+                >
+                  {t('classActivities.refresh')}
+                </Button>
+              </Space>
+            </div>
+          </div>
+        </Card>
+
+        {/* Main Content Card */}
+        <Card className="main-content-card">
+          {/* Navigation Tabs */}
+          <div className="nav-tabs">
+            <div 
+              className="nav-tab"
+              onClick={() => navigate(`/teacher/classes/dashboard/${id}`)}
+            >
+              <span>{t('classDashboard.dashboard')}</span>
+            </div>
+            <div 
+              className="nav-tab"
+              onClick={() => navigate(`/teacher/classes/student/${id}`)}
+            >
+              <span>{t('classActivities.students')}</span>
+            </div>
+            <div 
+              className="nav-tab"
+              onClick={() => navigate(`/teacher/classes/teachers/${id}`)}
+            >
+              <span>{t('classActivities.teachers')}</span>
+            </div>
+            <div className="nav-tab active">
+              <span>{t('classActivities.activities')} ({activities.length})</span>
+            </div>
+           
+          </div>
+
+
+          {/* Activities Timeline */}
+          <div className="timeline-section">
+            <LoadingWithEffect loading={loading} message={t('classActivities.loadingActivities')}>
+              <div style={{ 
+                maxHeight: '600px', 
+                overflowY: 'auto',
+                padding: '20px 0'
+              }}>
+                {activities.map((activity, index) => (
+                  <div
+                    key={activity.id}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'flex-start',
+                      marginBottom: '24px',
+                      position: 'relative',
+                    }}
+                  >
+                    {/* Timeline line */}
+                    {index < activities.length - 1 && (
+                      <div
+                        style={{
+                          position: 'absolute',
+                          left: '12px',
+                          top: '24px',
+                          width: '2px',
+                          height: 'calc(100% + 24px)',
+                          backgroundColor: '#e1e4e8',
+                        }}
+                      />
+                    )}
+                    
+                    {/* Timeline dot */}
+                    <div
+                      style={{
+                        width: '24px',
+                        height: '24px',
+                        borderRadius: '50%',
+                        backgroundColor: activity.type === 'student_add' ? '#10b981' : 
+                                        activity.type === 'lesson_add' ? '#3b82f6' : 
+                                        activity.type === 'teacher_add' ? '#8b5cf6' : '#f59e0b',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        marginRight: '20px',
+                        flexShrink: 0,
+                        zIndex: 1,
+                        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+                      }}
+                    >
+                      <div
+                        style={{
+                          width: '8px',
+                          height: '8px',
+                          borderRadius: '50%',
+                          backgroundColor: 'white',
+                        }}
+                      />
+                    </div>
+                    
+                    {/* Activity content */}
+                    <div style={{ flex: 1, minWidth: 0, paddingLeft: '8px' }}>
+                      <div style={{ 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        gap: '8px',
+                        marginBottom: '4px'
+                      }}>
+                        <span style={{ 
+                          fontSize: '14px', 
+                          fontWeight: '600',
+                          color: '#24292e'
+                        }}>
+                          {activity.actor}
+                        </span>
+                        <span style={{ 
+                          fontSize: '14px', 
+                          color: '#586069'
+                        }}>
+                          {activity.action}
+                        </span>
+                      </div>
+                      
+                      <div style={{ 
+                        fontSize: '12px', 
+                        color: '#8b949e',
+                        marginLeft: '0'
+                      }}>
+                        {activity.timestamp}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                
+                {activities.length === 0 && (
+                  <div style={{
+                    textAlign: 'center',
+                    padding: '40px',
+                    color: '#8b949e',
+                    fontSize: '14px'
+                  }}>
+                    {t('classActivities.noActivitiesFound')}
+                  </div>
+                )}
+              </div>
+            </LoadingWithEffect>
+          </div>
+        </Card>
+
+      </div>
+    </Layout>
+  );
+};
+
+export default ClassActivities;

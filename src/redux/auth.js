@@ -2,12 +2,12 @@
 import { createSlice } from '@reduxjs/toolkit';
 
 //check nếu có user và token trong localStorage
-// const storedUser = localStorage.getItem('user');
+const storedUser = localStorage.getItem('user');
 const storedToken = localStorage.getItem('token');
 
 const initialState = {
-	user: null,
-	token: null,
+	user: storedUser ? JSON.parse(storedUser) : null,
+	token: storedToken,
 	isAuthenticated: !!storedToken, // true nếu có token
 };
 

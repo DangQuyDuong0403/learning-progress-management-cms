@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { loginSuccess } from '../../redux/auth';
-import { toast } from 'react-toastify';
+import { spaceToast } from '../../component/SpaceToastify';
 import { Input, Button } from 'antd';
 import { UserOutlined, LockOutlined, ArrowLeftOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
@@ -20,13 +20,13 @@ export default function LoginTeacher() {
         e.preventDefault();
         // Validation: empty fields
         if (!username || !password) {
-            toast.error("Fields cannot be empty!");
+            spaceToast.error("Fields cannot be empty!");
             return;
         }
         // Validation: email format
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!emailRegex.test(username)) {
-            toast.error("Invalid email format!");
+            spaceToast.error("Invalid email format!");
             return;
         }
         // Fake login logic for demo
@@ -40,16 +40,27 @@ export default function LoginTeacher() {
             else if (username === 'manager@gmail.com') role = 'MANAGER';
             else if (username === 'teacher@gmail.com') role = 'TEACHER';
             const fakeResponse = {
-                user: { id: 1, name: username, role },
+                user: { id: 1, name: username, email: username, role },
                 token: 'fake-jwt-token-123',
             };
             dispatch(loginSuccess(fakeResponse));
-            toast.success('Login successful!');
+            spaceToast.success('Login successful!');
+            
+            // Redirect based on role
+            let redirectPath = '/choose-login';
+            if (role === 'ADMIN') {
+                redirectPath = '/admin/accounts';
+            } else if (role === 'MANAGER') {
+                redirectPath = '/manager/syllabuses';
+            } else if (role === 'TEACHER') {
+                redirectPath = '/teacher/classes';
+            }
+            
             setTimeout(() => {
-                navigate('/admin/accounts');
+                navigate(redirectPath);
             }, 1000);
         } else {
-            toast.error('Wrong username or password!');
+            spaceToast.error('Wrong username or password!');
         }
     };
 

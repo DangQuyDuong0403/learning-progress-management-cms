@@ -1,12 +1,21 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { useSelector, useDispatch } from 'react-redux';
+import { logout } from '../redux/auth';
 import LanguageToggle from './LanguageToggle';
 import './Header.css';
 
 export default function Header() {
   const navigate = useNavigate();
   const { t } = useTranslation();
+  const { user } = useSelector((state) => state.auth);
+  const dispatch = useDispatch();
+
+  const handleLogout = () => {
+    dispatch(logout());
+    navigate('/choose-login');
+  };
 
  
 
@@ -121,9 +130,11 @@ export default function Header() {
                 </div>
               </div>
             </li>
-             {/* Admin name */}
+             {/* User name based on role */}
              <li className="nav-item d-flex align-items-center">
-               Admin
+               {user?.role === 'ADMIN' ? 'Admin' : 
+                user?.role === 'MANAGER' ? 'Manager' : 
+                user?.role === 'TEACHER' ? 'Teacher' : 'User'}
              </li>
             {/* Profile icon */}
             <li className="nav-item dropdown">
@@ -166,13 +177,13 @@ export default function Header() {
                          color: '#000',
                          marginBottom: '2px'
                        }}>
-                         Trần Thư
+                         {user?.name || 'User'}
                        </div>
                        <div style={{ 
                          fontSize: '14px', 
                          color: '#666'
                        }}>
-                         thuttmhe171462@fpt.edu.vn
+                         {user?.email || user?.name || 'user@example.com'}
                        </div>
                      </div>
                    </div>
@@ -285,7 +296,7 @@ export default function Header() {
 
                    {/* Logout */}
                    <button 
-                     onClick={() => navigate('/login-teacher')}
+                     onClick={handleLogout}
                      style={{
                        width: '100%',
                        padding: '12px 20px',
