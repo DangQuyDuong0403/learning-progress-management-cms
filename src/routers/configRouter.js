@@ -11,6 +11,7 @@ import ProfileStudent from '../pages/profile/ProfileStudent';
 import ChangePassword from '../pages/profile/ChangePassword';
 import AccountList from '../pages/management/managementAdmin/account/AccountList';
 import RoleList from '../pages/management/managementAdmin/role/RoleList';
+import LevelList from '../pages/management/managementAdmin/level/LevelList';
 import SpinnerDemo from '../pages/SpinnerDemo';
 // import AdminDashboard from '../pages/management/managementAdmin/AdminDashboard';
   
@@ -137,6 +138,17 @@ const CONFIG_ROUTER = [
 		menuName: 'Roles management',
 		exact: true,
 		key: 'ADMIN_ROLES',
+		private: true,
+		role: 'admin',
+	},
+	{
+		show: true,
+		component: LevelList,
+		// icon: <BookOutlined />,
+		path: ROUTER_PAGE.ADMIN_LEVELS,
+		menuName: 'Levels management',
+		exact: true,
+		key: 'ADMIN_LEVELS',
 		private: true,
 		role: 'admin',
 	},
