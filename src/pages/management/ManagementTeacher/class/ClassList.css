@@ -156,7 +156,7 @@
 }
 
 .class-name {
-  font-size: 22px;
+  font-size: 32px;
   font-weight: 800;
   color: #1e293b;
   margin: 0 0 14px 0;
@@ -419,7 +419,7 @@
   }
   
   .class-name {
-    font-size: 18px;
+    font-size: 26px;
   }
 }
 
@@ -456,7 +456,7 @@
   }
   
   .class-name {
-    font-size: 16px;
+    font-size: 22px;
   }
   
   .student-count {
@@ -492,7 +492,7 @@
   }
   
   .class-name {
-    font-size: 16px;
+    font-size: 20px;
     margin-bottom: 12px;
   }
   
