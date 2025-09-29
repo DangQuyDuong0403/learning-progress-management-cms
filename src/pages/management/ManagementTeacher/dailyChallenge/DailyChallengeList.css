@@ -1,0 +1,194 @@
+.daily-challenge-list-container {
+  padding: 0;
+}
+
+.header-card {
+  margin-bottom: 24px;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.filter-card {
+  margin-bottom: 24px;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.table-card {
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+
+.daily-challenge-table {
+  margin-top: 16px;
+}
+
+.daily-challenge-table .challenge-title {
+  font-weight: 600;
+  color: #1890ff;
+  margin-bottom: 4px;
+}
+
+.daily-challenge-table .challenge-description {
+  font-size: 12px;
+  color: #666;
+  max-width: 300px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.daily-challenge-table .ant-table-thead > tr > th {
+  background: #f5f7fa;
+  border-bottom: 2px solid #e8eaed;
+  font-weight: 600;
+  color: #202124;
+}
+
+.daily-challenge-table .ant-table-tbody > tr > td {
+  border-bottom: 1px solid #e8eaed;
+  vertical-align: middle;
+}
+
+.daily-challenge-table .ant-table-tbody > tr:hover > td {
+  background: #f8f9fa;
+}
+
+.daily-challenge-table .ant-table-tbody > tr > td:nth-child(1) {
+  max-width: 350px;
+}
+
+.daily-challenge-table .ant-table-tbody > tr > td:nth-child(2) {
+  text-align: center;
+}
+
+.daily-challenge-table .ant-table-tbody > tr > td:nth-child(3) {
+  text-align: center;
+}
+
+.daily-challenge-table .ant-table-tbody > tr > td:nth-child(4),
+.daily-challenge-table .ant-table-tbody > tr > td:nth-child(5),
+.daily-challenge-table .ant-table-tbody > tr > td:nth-child(6),
+.daily-challenge-table .ant-table-tbody > tr > td:nth-child(7) {
+  text-align: center;
+}
+
+.daily-challenge-table .ant-table-tbody > tr > td:nth-child(8) {
+  text-align: center;
+}
+
+.daily-challenge-table .ant-table-tbody > tr > td:nth-child(9) {
+  text-align: center;
+}
+
+.filter-card .ant-btn {
+  border-radius: 8px;
+}
+
+.filter-card .ant-input {
+  border-radius: 8px;
+}
+
+.filter-card .ant-select-selector {
+  border-radius: 8px !important;
+}
+
+.header-card .ant-btn {
+  border-radius: 8px;
+  height: 40px;
+  padding: 0 20px;
+  font-weight: 600;
+}
+
+/* Tag styles */
+.ant-tag {
+  border-radius: 6px;
+  font-weight: 500;
+  padding: 2px 8px;
+  margin: 2px;
+}
+
+/* Button styles in table */
+.daily-challenge-table .ant-btn {
+  border-radius: 6px;
+  margin: 0 2px;
+}
+
+.daily-challenge-table .ant-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+/* Pagination styles */
+.ant-pagination {
+  margin-top: 16px;
+}
+
+.ant-pagination .ant-pagination-item {
+  border-radius: 6px;
+}
+
+.ant-pagination .ant-pagination-item-active {
+  border-color: #1890ff;
+  background: #1890ff;
+}
+
+.ant-pagination .ant-pagination-item-active a {
+  color: white;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .daily-challenge-table .ant-table-thead > tr > th {
+    font-size: 12px;
+    padding: 8px 4px;
+  }
+  
+  .daily-challenge-table .ant-table-tbody > tr > td {
+    font-size: 12px;
+    padding: 8px 4px;
+  }
+  
+  .daily-challenge-table .challenge-title {
+    font-size: 14px;
+  }
+  
+  .daily-challenge-table .challenge-description {
+    font-size: 11px;
+  }
+  
+}
+
+@media (max-width: 576px) {
+  .header-card .ant-btn {
+    width: 100%;
+    margin-top: 16px;
+  }
+  
+  .daily-challenge-table .ant-table-tbody > tr > td {
+    padding: 6px 2px;
+    font-size: 11px;
+  }
+  
+  .daily-challenge-table .challenge-description {
+    max-width: 150px;
+  }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .daily-challenge-table .ant-table-thead > tr > th {
+    background: #1f1f1f;
+    color: #e8eaed;
+    border-bottom-color: #333;
+  }
+  
+  .daily-challenge-table .ant-table-tbody > tr:hover > td {
+    background: #2a2a2a;
+  }
+  
+  .daily-challenge-table .challenge-description {
+    color: #999;
+  }
+}

@@ -43,6 +43,13 @@ const ROUTER_PAGE = {
 	TEACHER_CLASS_TEACHERS: '/teacher/classes/teachers/:id',
 	TEACHER_CLASS_ACTIVITIES: '/teacher/classes/activities/:id',
 	TEACHER_CLASS_CHAPTERS_LESSONS: '/teacher/classes/chapters-lessons/:id',
+	TEACHER_DAILY_CHALLENGES: '/teacher/daily-challenges',
+	TEACHER_DAILY_CHALLENGE_DETAIL: '/teacher/daily-challenges/detail/:id',
+	TEACHER_DAILY_CHALLENGE_CREATE: '/teacher/daily-challenges/create',
+	TEACHER_DAILY_CHALLENGE_EDIT: '/teacher/daily-challenges/edit/:id',
+	TEACHER_DAILY_CHALLENGE_FORM: '/teacher/daily-challenges/form',
+	TEACHER_DAILY_CHALLENGES_FORM: '/teacher/daily-challenges/forms',
+	TEACHER_CREATE_GRAMMAR_VOCAB_CHALLENGE: '/teacher/daily-challenges/create/grammar-vocabulary',
 };
 
 export default ROUTER_PAGE;
