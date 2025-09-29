@@ -2,14 +2,10 @@ import React, { useState, useEffect } from "react";
 import {
   Modal,
   Form,
-  Select,
-  Input,
-  InputNumber,
   Button,
   Card,
   Row,
   Col,
-  Radio,
   Space,
   Typography,
   Divider,
@@ -26,63 +22,8 @@ import { useNavigate } from "react-router-dom";
 import { spaceToast } from "../../../../component/SpaceToastify";
 import ROUTER_PAGE from "../../../../constants/router";
 
-const { Option } = Select;
 const { Title, Text } = Typography;
-const { TextArea } = Input;
 
-// Mock data cho chapters và lessons
-const mockChapters = [
-  {
-    id: 1,
-    name: "Chapter 1: Basic Grammar",
-    syllabusId: 1,
-    lessons: [
-      { id: 1, name: "Lesson 1.1: Present Simple Tense", chapterId: 1 },
-      { id: 2, name: "Lesson 1.2: Present Continuous Tense", chapterId: 1 },
-      { id: 3, name: "Lesson 1.3: Past Simple Tense", chapterId: 1 },
-    ],
-  },
-  {
-    id: 2,
-    name: "Chapter 2: Reading Skills",
-    syllabusId: 1,
-    lessons: [
-      { id: 4, name: "Lesson 2.1: Reading Comprehension Basic", chapterId: 2 },
-      { id: 5, name: "Lesson 2.2: Reading Strategies", chapterId: 2 },
-      { id: 6, name: "Lesson 2.3: Critical Reading", chapterId: 2 },
-    ],
-  },
-  {
-    id: 3,
-    name: "Chapter 3: Writing Practice",
-    syllabusId: 1,
-    lessons: [
-      { id: 7, name: "Lesson 3.1: Essay Structure", chapterId: 3 },
-      { id: 8, name: "Lesson 3.2: Paragraph Writing", chapterId: 3 },
-      { id: 9, name: "Lesson 3.3: Creative Writing", chapterId: 3 },
-    ],
-  },
-  {
-    id: 4,
-    name: "Chapter 4: Listening Skills",
-    syllabusId: 1,
-    lessons: [
-      { id: 10, name: "Lesson 4.1: Basic Listening", chapterId: 4 },
-      { id: 11, name: "Lesson 4.2: Advanced Listening", chapterId: 4 },
-      { id: 12, name: "Lesson 4.3: Listening Strategies", chapterId: 4 },
-    ],
-  },
-  {
-    id: 5,
-    name: "Chapter 5: Speaking Practice",
-    syllabusId: 1,
-    lessons: [
-      { id: 13, name: "Lesson 5.1: Pronunciation", chapterId: 5 },
-      { id: 14, name: "Lesson 5.2: Conversation Skills", chapterId: 5 },
-      { id: 15, name: "Lesson 5.3: Presentation Skills", chapterId: 5 },
-    ],
-  },
-];
 
 const challengeTypes = [
   {
@@ -134,18 +75,12 @@ const CreateDailyChallengeModal = ({
   const [selectedChallengeType, setSelectedChallengeType] = useState(null);
   const [selectedChapter, setSelectedChapter] = useState(null);
   const [selectedLesson, setSelectedLesson] = useState(null);
-  const [availableLessons, setAvailableLessons] = useState([]);
 
   useEffect(() => {
     if (selectedChapter) {
-      const chapter = mockChapters.find(ch => ch.id === selectedChapter);
-      if (chapter) {
-        setAvailableLessons(chapter.lessons);
-        setSelectedLesson(null); // Reset lesson selection
-        form.setFieldsValue({ lessonId: null });
-      }
+      setSelectedLesson(null); // Reset lesson selection
+      form.setFieldsValue({ lessonId: null });
     } else {
-      setAvailableLessons([]);
       setSelectedLesson(null);
     }
   }, [selectedChapter, form]);
@@ -175,7 +110,6 @@ const CreateDailyChallengeModal = ({
       setSelectedChallengeType(null);
       setSelectedChapter(null);
       setSelectedLesson(null);
-      setAvailableLessons([]);
       onCreateSuccess(challengeData);
     } catch (error) {
       spaceToast.error(t('dailyChallenge.createChallengeError'));
@@ -194,6 +128,13 @@ const CreateDailyChallengeModal = ({
       return;
     }
     
+    // If Reading is selected, navigate to the reading challenge page
+    if (typeId === 2 || type.type === "Reading") {
+      onCancel(); // Close the modal first
+      navigate(ROUTER_PAGE.TEACHER_CREATE_READING_CHALLENGE);
+      return;
+    }
+    
     setSelectedChallengeType(type);
   };
 
@@ -202,7 +143,6 @@ const CreateDailyChallengeModal = ({
     setSelectedChallengeType(null);
     setSelectedChapter(null);
     setSelectedLesson(null);
-    setAvailableLessons([]);
     onCancel();
   };
 

@@ -30,6 +30,7 @@ import TeacherClassActivities from '../pages/management/ManagementTeacher/class/
 import TeacherClassChapterLesson from '../pages/management/ManagementTeacher/class/ClassChapterLesson';
 import DailyChallengeList from '../pages/management/ManagementTeacher/dailyChallenge/DailyChallengeList';
 import CreateGrammarVocabularyChallenge from '../pages/management/ManagementTeacher/dailyChallenge/CreateGrammarVocabularyChallenge';
+import CreateReadingChallenge from '../pages/management/ManagementTeacher/dailyChallenge/CreateReadingChallenge';
 // import AdminDashboard from '../pages/management/managementAdmin/AdminDashboard';
   
 const CONFIG_ROUTER = [
@@ -365,6 +366,16 @@ const CONFIG_ROUTER = [
 		menuName: 'Create Grammar & Vocabulary Challenge',
 		exact: true,
 		key: 'TEACHER_CREATE_GRAMMAR_VOCAB_CHALLENGE',
+		private: true,
+		role: 'teacher',
+	},
+	{
+		show: false,
+		component: CreateReadingChallenge,
+		path: ROUTER_PAGE.TEACHER_CREATE_READING_CHALLENGE,
+		menuName: 'Create Reading Challenge',
+		exact: true,
+		key: 'TEACHER_CREATE_READING_CHALLENGE',
 		private: true,
 		role: 'teacher',
 	},
