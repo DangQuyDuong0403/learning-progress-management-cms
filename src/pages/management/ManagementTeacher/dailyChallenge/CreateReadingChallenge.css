@@ -1,0 +1,319 @@
+.create-reading-challenge-container {
+  padding: 24px;
+  background: #f5f5f5;
+  min-height: 100vh;
+}
+
+.header-card {
+  margin-bottom: 24px;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.main-content-container {
+  height: calc(100vh - 200px);
+}
+
+/* Left Section - Passage */
+.passage-section {
+  padding-right: 12px;
+}
+
+.passage-card {
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  height: 100%;
+}
+
+.passage-tabs {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.passage-tabs-left {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.discard-btn {
+  color: #ff4d4f;
+  border-color: #ff4d4f;
+}
+
+.discard-btn:hover {
+  color: #ff7875;
+  border-color: #ff7875;
+}
+
+.passage-tab {
+  border-radius: 8px;
+  font-weight: 500;
+}
+
+.add-passage-btn {
+  border-radius: 8px;
+  border-style: dashed;
+}
+
+.passage-content {
+  padding: 24px 0;
+  height: calc(100% - 80px);
+  display: flex;
+  flex-direction: column;
+}
+
+.passage-option-card {
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border: 2px solid transparent;
+}
+
+.passage-option-card:hover {
+  border-color: #1890ff;
+  box-shadow: 0 4px 12px rgba(24, 144, 255, 0.15);
+}
+
+.text-editor-full {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.text-editor-header {
+  margin-bottom: 16px;
+  display: flex;
+  justify-content: flex-start;
+}
+
+.back-to-options-btn {
+  color: #1890ff;
+  border-color: #1890ff;
+  font-weight: 500;
+}
+
+.back-to-options-btn:hover {
+  color: #40a9ff;
+  border-color: #40a9ff;
+}
+
+.text-editor-full .ant-input {
+  border-radius: 8px;
+  border: 1px solid #d9d9d9;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  flex: 1;
+  resize: none;
+}
+
+.text-editor-full .ant-input:focus {
+  border-color: #1890ff;
+  box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2);
+}
+
+/* Right Section - Questions */
+.question-section {
+  padding-left: 12px;
+}
+
+.question-card {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  height: 100%;
+  color: white;
+}
+
+.question-card .ant-card-body {
+  color: white;
+}
+
+
+.ai-generation {
+  margin-bottom: 24px;
+}
+
+.ai-prompt-card {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  margin-bottom: 16px;
+  backdrop-filter: blur(10px);
+}
+
+.ai-prompt-card .ant-card-body {
+  padding: 16px;
+}
+
+.ai-prompt-card .ant-typography {
+  color: rgba(255, 255, 255, 0.9);
+  margin: 0;
+}
+
+.ai-generate-btn {
+  width: 100%;
+  height: 48px;
+  border-radius: 8px;
+  font-weight: 600;
+  background: linear-gradient(45deg, #ff6b6b, #feca57);
+  border: none;
+  box-shadow: 0 4px 15px rgba(255, 107, 107, 0.3);
+}
+
+.ai-generate-btn:hover {
+  background: linear-gradient(45deg, #ff5252, #ffb74d);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(255, 107, 107, 0.4);
+}
+
+.ai-generate-btn:disabled {
+  background: rgba(255, 255, 255, 0.3);
+  color: rgba(255, 255, 255, 0.6);
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.add-question-section {
+  margin-bottom: 24px;
+}
+
+.question-type-selection {
+  margin-bottom: 16px;
+}
+
+.question-type-selection .ant-select {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 8px;
+}
+
+.question-type-selection .ant-select .ant-select-selector {
+  background: rgba(255, 255, 255, 0.1) !important;
+  border: none !important;
+  color: white;
+}
+
+.question-type-selection .ant-select .ant-select-selection-placeholder {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.question-type-selection .ant-select .ant-select-selection-item {
+  color: white;
+}
+
+.question-type-selection .ant-select .ant-select-arrow {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.question-type-selection .ant-select:hover .ant-select-selector {
+  background: rgba(255, 255, 255, 0.15) !important;
+  border-color: rgba(255, 255, 255, 0.4) !important;
+}
+
+.question-type-selection .ant-select-focused .ant-select-selector {
+  background: rgba(255, 255, 255, 0.15) !important;
+  border-color: rgba(255, 255, 255, 0.5) !important;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.2) !important;
+}
+
+.add-question-btn {
+  width: 100%;
+  height: 48px;
+  border-radius: 8px;
+  font-weight: 600;
+  background: rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: white;
+}
+
+.add-question-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.3);
+  border-color: rgba(255, 255, 255, 0.5);
+  color: white;
+}
+
+.add-question-btn:disabled {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
+  color: rgba(255, 255, 255, 0.4);
+  cursor: not-allowed;
+}
+
+.questions-list {
+  margin-top: 24px;
+}
+
+.questions-list .ant-typography {
+  color: white;
+  margin-bottom: 16px;
+  font-weight: 600;
+}
+
+.question-item {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  margin-bottom: 8px;
+  backdrop-filter: blur(10px);
+}
+
+.question-item .ant-card-body {
+  padding: 12px 16px;
+}
+
+.question-item .ant-typography {
+  color: white;
+  margin: 0;
+}
+
+.question-item .ant-btn {
+  color: #ff4d4f;
+  border-color: #ff4d4f;
+}
+
+.question-item .ant-btn:hover {
+  color: #ff7875;
+  border-color: #ff7875;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .main-content-container .ant-col {
+    margin-bottom: 24px;
+  }
+  
+  .passage-section {
+    padding-right: 0;
+  }
+  
+  .question-section {
+    padding-left: 0;
+  }
+  
+  .passage-tabs {
+    justify-content: center;
+  }
+}
+
+/* Custom Scrollbar */
+.question-types-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.question-types-list::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+}
+
+.question-types-list::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 3px;
+}
+
+.question-types-list::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.5);
+}

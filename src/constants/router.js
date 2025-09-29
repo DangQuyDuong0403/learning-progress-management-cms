@@ -50,6 +50,7 @@ const ROUTER_PAGE = {
 	TEACHER_DAILY_CHALLENGE_FORM: '/teacher/daily-challenges/form',
 	TEACHER_DAILY_CHALLENGES_FORM: '/teacher/daily-challenges/forms',
 	TEACHER_CREATE_GRAMMAR_VOCAB_CHALLENGE: '/teacher/daily-challenges/create/grammar-vocabulary',
+	TEACHER_CREATE_READING_CHALLENGE: '/teacher/daily-challenges/create/reading',
 };
 
 export default ROUTER_PAGE;
