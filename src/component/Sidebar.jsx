@@ -9,7 +9,8 @@ import {
   BookOutlined,
   BarChartOutlined,
   SettingOutlined,
-  DashboardOutlined
+  DashboardOutlined,
+  TrophyOutlined
 } from '@ant-design/icons';
 import CONFIG_ROUTER from "../routers/configRouter";
 
@@ -31,6 +32,7 @@ export default function Sidebar({ collapsed }) {
       'MANAGER_SYLLABUSES': <BookOutlined />,
       'MANAGER_LEVELS': <BookOutlined />,
       'MANAGER_COURSES': <BookOutlined />,
+      'TEACHER_DAILY_CHALLENGES': <TrophyOutlined />,
     };
     return iconMap[key] || <UserOutlined />;
   };
@@ -56,6 +58,7 @@ export default function Sidebar({ collapsed }) {
       'MANAGER_LEVELS': t('sidebar.levelsManagement'),
       'MANAGER_COURSES': t('sidebar.coursesManagement'),
       'TEACHER_CLASSES': t('sidebar.classesManagement'),
+      'TEACHER_DAILY_CHALLENGES': t('sidebar.dailyChallengeManagement'),
     };
     return menuNameMap[key] || key;
   };

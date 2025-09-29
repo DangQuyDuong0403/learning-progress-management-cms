@@ -28,6 +28,8 @@ import TeacherClassDashboard from '../pages/management/ManagementTeacher/class/C
 import TeacherClassTeachers from '../pages/management/ManagementTeacher/class/ClassTeachers';
 import TeacherClassActivities from '../pages/management/ManagementTeacher/class/ClassActivities';
 import TeacherClassChapterLesson from '../pages/management/ManagementTeacher/class/ClassChapterLesson';
+import DailyChallengeList from '../pages/management/ManagementTeacher/dailyChallenge/DailyChallengeList';
+import CreateGrammarVocabularyChallenge from '../pages/management/ManagementTeacher/dailyChallenge/CreateGrammarVocabularyChallenge';
 // import AdminDashboard from '../pages/management/managementAdmin/AdminDashboard';
   
 const CONFIG_ROUTER = [
@@ -342,6 +344,27 @@ const CONFIG_ROUTER = [
 		menuName: 'class chapters lessons',
 		exact: true,
 		key: 'TEACHER_CLASS_CHAPTERS_LESSONS',
+		private: true,
+		role: 'teacher',
+	},
+	// Daily Challenge Routes for Teacher
+	{
+		show: true,
+		component: DailyChallengeList,
+		path: ROUTER_PAGE.TEACHER_DAILY_CHALLENGES,
+		menuName: 'Daily Challenge Management',
+		exact: true,
+		key: 'TEACHER_DAILY_CHALLENGES',
+		private: true,
+		role: 'teacher',
+	},
+	{
+		show: false,
+		component: CreateGrammarVocabularyChallenge,
+		path: ROUTER_PAGE.TEACHER_CREATE_GRAMMAR_VOCAB_CHALLENGE,
+		menuName: 'Create Grammar & Vocabulary Challenge',
+		exact: true,
+		key: 'TEACHER_CREATE_GRAMMAR_VOCAB_CHALLENGE',
 		private: true,
 		role: 'teacher',
 	},
