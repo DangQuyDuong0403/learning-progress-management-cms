@@ -96,7 +96,6 @@ export default function ChangePassword() {
                         </div>
                       </div>
                       <div className="form-actions">
-                        <button className="btn btn-secondary">{t('common.cancel')}</button>
                         <button className="btn btn-primary" onClick={handleChangePassword}>{t('profile.changePassword')}</button>
                       </div>
                     </div>

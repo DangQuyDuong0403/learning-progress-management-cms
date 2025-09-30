@@ -46,7 +46,12 @@ const LevelList = () => {
 	const [deleteLevel, setDeleteLevel] = useState(null);
 	const [searchText, setSearchText] = useState('');
 	const [statusFilter, setStatusFilter] = useState('all');
-
+	const [confirmModal, setConfirmModal] = useState({
+		visible: false,
+		title: '',
+		content: '',
+		onConfirm: null
+	  });
 	useEffect(() => {
 		dispatch(fetchLevels());
 	}, [dispatch]);
@@ -191,8 +196,7 @@ const LevelList = () => {
 						type='text'
 						size='small'
 						icon={<DeleteOutlined style={{ fontSize: '25px' }} />}
-						onClick={() => handleDeleteClick(record)}>
-					</Button>
+						onClick={() => handleDeleteClick(record)}></Button>
 				</Space>
 			),
 		},
@@ -208,7 +212,7 @@ const LevelList = () => {
 					</h2>
 				</div>
 
-				{/* Statistics Cards */}
+				{/* Statistics Cards
 				<Row gutter={16} style={{ marginBottom: '24px' }}>
 					<Col span={6}>
 						<Card>
@@ -256,7 +260,7 @@ const LevelList = () => {
 							/>
 						</Card>
 					</Col>
-				</Row>
+				</Row> */}
 
 				{/* Action Bar */}
 				<Card style={{ marginBottom: '16px' }}>
@@ -335,27 +339,96 @@ const LevelList = () => {
 					open={isModalVisible}
 					onCancel={handleModalClose}
 					footer={null}
-					width={600}
-					destroyOnClose>
+					width={800}
+					destroyOnClose
+					style={{ top: 20 }}
+					bodyStyle={{
+						maxHeight: '70vh',
+						overflowY: 'auto',
+						padding: '24px',
+					}}>
 					<LevelForm level={editingLevel} onClose={handleModalClose} />
 				</Modal>
 
 				{/* Delete Confirmation Modal */}
 				<Modal
-					title={t('levelManagement.confirmDelete')}
+					title={
+						<div style={{ 
+							fontSize: '20px', 
+							fontWeight: '600', 
+							color: '#1890ff',
+							textAlign: 'center',
+							padding: '10px 0'
+						}}>
+							{t('levelManagement.confirmDelete')}
+						</div>
+					}
 					open={isDeleteModalVisible}
 					onOk={handleDelete}
 					onCancel={handleDeleteModalClose}
-					okText={t('common.yes')}
-					cancelText={t('common.no')}
-					okButtonProps={{ danger: true }}>
-					<p>{t('levelManagement.confirmDeleteMessage')}</p>
-					{deleteLevel && (
-						<p>
-							<strong>{deleteLevel.name}</strong>
+					okText={t('common.confirm')}
+					cancelText={t('common.cancel')}
+					width={500}
+					centered
+					bodyStyle={{
+						padding: '30px 40px',
+						fontSize: '16px',
+						lineHeight: '1.6',
+						textAlign: 'center'
+					}}
+					okButtonProps={{
+						style: {
+							backgroundColor: '#ff4d4f',
+							borderColor: '#ff4d4f',
+							height: '40px',
+							fontSize: '16px',
+							fontWeight: '500',
+							minWidth: '100px'
+						}
+					}}
+					cancelButtonProps={{
+						style: {
+							height: '40px',
+							fontSize: '16px',
+							fontWeight: '500',
+							minWidth: '100px'
+						}
+					}}
+				>
+					<div style={{
+						display: 'flex',
+						flexDirection: 'column',
+						alignItems: 'center',
+						gap: '20px'
+					}}>
+						<div style={{
+							fontSize: '48px',
+							color: '#ff4d4f',
+							marginBottom: '10px'
+						}}>
+							⚠️
+						</div>
+						<p style={{
+							fontSize: '18px',
+							color: '#333',
+							margin: 0,
+							fontWeight: '500'
+						}}>
+							{t('levelManagement.confirmDeleteMessage')}
 						</p>
-					)}
+						{deleteLevel && (
+							<p style={{
+								fontSize: '16px',
+								color: '#666',
+								margin: 0,
+								fontWeight: '600'
+							}}>
+								<strong>{deleteLevel.name}</strong>
+							</p>
+						)}
+					</div>
 				</Modal>
+				
 			</div>
 		</Layout>
 	);

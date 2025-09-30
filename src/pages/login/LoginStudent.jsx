@@ -97,7 +97,7 @@ export default function Login() {
 											<img src='img/logo.png' alt='' />
 										</div> */}
 										<h5 className='text-center kids-heading mb-1'>
-											Child astronaut
+											Camkey
 										</h5>
 										<p className='text-center kids-subtitle mb-4'>
 											Let's fly into the learning space!

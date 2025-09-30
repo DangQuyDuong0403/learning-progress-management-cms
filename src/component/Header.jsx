@@ -44,7 +44,7 @@ export default function Header() {
                  <img src="/img/notification_icon.png" alt="Notifications" style={{ width: 28, height: 28 }} />
                 <div className="notification bg-primary rounded-circle"></div>
               </button>
-              <div className="dropdown-menu dropdown-menu-end dropdown-menu-animate-up" aria-labelledby="notificationDropdown" style={{ minWidth: 350, maxHeight: 500, overflowY: 'auto' }}>
+              <div className="dropdown-menu dropdown-menu-end dropdown-menu-animate-up" aria-labelledby="notificationDropdown" style={{ minWidth: 350, maxHeight: 500, overflowY: 'auto', zIndex: 10001, position: 'absolute' }}>
                 <div className="notification-header">
                   <h5>{t('header.notifications')}</h5>
                   <div className="notification-tabs">
@@ -155,7 +155,9 @@ export default function Header() {
                    borderRadius: '12px',
                    boxShadow: '0 8px 32px rgba(0, 0, 0, 0.12)',
                    border: 'none',
-                   overflow: 'hidden'
+                   overflow: 'hidden',
+                   zIndex: 10001,
+                   position: 'absolute'
                  }}>
                  {/* Profile Header */}
                  <li style={{ padding: '20px', borderBottom: '1px solid #f0f0f0' }}>
