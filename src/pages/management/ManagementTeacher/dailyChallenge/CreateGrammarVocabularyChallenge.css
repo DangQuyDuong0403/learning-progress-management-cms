@@ -308,33 +308,14 @@
   color: #595959;
 }
 
-/* Drag & Drop styles */
-.question-type-item.draggable {
-  cursor: grab;
+/* Click styles */
+.question-type-item.clickable {
+  cursor: pointer;
   user-select: none;
 }
 
-.question-type-item.draggable:active {
-  cursor: grabbing;
-}
-
-.question-type-item.draggable.dragging {
-  opacity: 0.5;
-  transform: rotate(5deg);
-}
-
-.preview-content.drag-over {
-  border: 2px dashed #7228d9;
-  background: rgba(114, 40, 217, 0.1);
-}
-
-.preview-content.drag-over::before {
-  content: "Drop here to add question";
-  display: block;
-  text-align: center;
-  color: #7228d9;
-  font-weight: bold;
-  margin-bottom: 16px;
+.question-type-item.clickable:active {
+  transform: scale(0.98);
 }
 
 /* Question Preview Styles */

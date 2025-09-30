@@ -19,11 +19,20 @@ import {
   EyeOutlined,
   PlusOutlined,
   DeleteOutlined,
-  DragOutlined,
 } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
 import Layout from "../../../../component/Layout";
 import "./CreateGrammarVocabularyChallenge.css";
+import {
+  MultipleChoiceModal,
+  MultipleSelectModal,
+  TrueFalseModal,
+  FillBlankModal,
+  DropdownModal,
+  DragDropModal,
+  ReorderModal,
+  RewriteModal,
+} from "./questionModals";
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -75,13 +84,11 @@ const QUESTION_TYPES = questionTypes;
 const MOCK_CHAPTERS = mockChapters;
 
 // Memoized QuestionTypeItem component - defined outside to prevent re-creation
-const QuestionTypeItem = memo(({ questionType, onDragStart }) => (
+const QuestionTypeItem = memo(({ questionType, onClick }) => (
   <div
-    className="question-type-item draggable"
-    draggable
-    onDragStart={(e) => onDragStart(e, questionType)}
+    className="question-type-item clickable"
+    onClick={() => onClick(questionType)}
   >
-    <DragOutlined style={{ marginRight: 8, opacity: 0.6 }} />
     <Text className="question-type-name">{questionType.name}</Text>
   </div>
 ));
@@ -95,8 +102,11 @@ const CreateGrammarVocabularyChallenge = () => {
   const [availableLessons, setAvailableLessons] = useState([]);
   const [questions, setQuestions]               = useState([]);
   const [currentEditingQuestion, setCurrentEditingQuestion] = useState(null);
-  const [dragOverPreview, setDragOverPreview]   = useState(false);
   const [dropdowns, setDropdowns]               = useState({}); // Store dropdown data for each question
+  
+  // Modal states
+  const [modalVisible, setModalVisible]         = useState(false);
+  const [currentModalType, setCurrentModalType] = useState(null);
 
   useEffect(() => {
     if (selectedChapter) {
@@ -131,58 +141,22 @@ const CreateGrammarVocabularyChallenge = () => {
     message.info("Preview functionality coming soon!");
   };
 
-  // Drag & Drop handlers - memoized to prevent re-renders
-  const handleDragStart = useCallback((e, questionType) => {
-    e.dataTransfer.setData("questionType", JSON.stringify(questionType));
-    e.dataTransfer.effectAllowed = "move";
+  // Modal handlers
+  const handleQuestionTypeClick = useCallback((questionType) => {
+    setCurrentModalType(questionType.type);
+    setModalVisible(true);
   }, []);
 
-  const handleDragOver = useCallback((e) => {
-    e.preventDefault();
-    setDragOverPreview(true);
+  const handleModalSave = useCallback((questionData) => {
+    setQuestions(prev => [...prev, questionData]);
+    setModalVisible(false);
+    setCurrentModalType(null);
+    message.success(`${questionData.title} question added successfully!`);
   }, []);
 
-  const handleDragLeave = useCallback((e) => {
-    e.preventDefault();
-    setDragOverPreview(false);
-  }, []);
-
-  const handleDrop = useCallback((e) => {
-    e.preventDefault();
-    setDragOverPreview(false);
-    
-    try {
-      const questionTypeData = JSON.parse(e.dataTransfer.getData("questionType"));
-      
-      if (!questionTypeData || !questionTypeData.type) {
-        console.error("Invalid question type data:", questionTypeData);
-        return;
-      }
-      
-      // Tạo câu hỏi mới
-      const newQuestion = {
-        id: Date.now(),
-        type: questionTypeData.type,
-        title: questionTypeData.name,
-        question: "",
-        options: questionTypeData.type === "multiple-choice" || questionTypeData.type === "multiple-select" 
-          ? [{ id: 1, text: "", isCorrect: false }, { id: 2, text: "", isCorrect: false }, { id: 3, text: "", isCorrect: false }, { id: 4, text: "", isCorrect: false }]
-          : [],
-        correctAnswer: questionTypeData.type === "true-false" ? null : "",
-      };
-
-      setQuestions(prev => [...prev, newQuestion]);
-      
-      // Use setTimeout to avoid potential state update conflicts
-      setTimeout(() => {
-        setCurrentEditingQuestion(newQuestion);
-        message.success(`${questionTypeData.name} question added to preview!`);
-      }, 0);
-      
-    } catch (error) {
-      console.error("Error handling drop:", error);
-      message.error("Error adding question. Please try again.");
-    }
+  const handleModalCancel = useCallback(() => {
+    setModalVisible(false);
+    setCurrentModalType(null);
   }, []);
 
   // Question management - memoized to prevent re-renders
@@ -475,12 +449,7 @@ const CreateGrammarVocabularyChallenge = () => {
                 className="preview-card"
                 style={{ height: "100%" }}
               >
-                <div 
-                  className={`preview-content ${dragOverPreview ? 'drag-over' : ''}`}
-                  onDragOver={handleDragOver}
-                  onDragLeave={handleDragLeave}
-                  onDrop={handleDrop}
-                >
+                <div className="preview-content">
                   {questions.length > 0 ? (
                     <div className="questions-list">
                       {questions.map((question, index) => (
@@ -580,7 +549,7 @@ const CreateGrammarVocabularyChallenge = () => {
                   ) : (
                     <div className="preview-placeholder">
                       <Text type="secondary">
-                        Drag question types here to add questions. Current questions will appear below.
+                        Click on question types to add questions. Current questions will appear below.
                       </Text>
                     </div>
                   )}
@@ -600,7 +569,7 @@ const CreateGrammarVocabularyChallenge = () => {
                      <QuestionTypeItem
                        key={`question-type-${questionType.id}`}
                        questionType={questionType}
-                       onDragStart={handleDragStart}
+                       onClick={handleQuestionTypeClick}
                      />
                    ))}
                  </div>
@@ -805,6 +774,55 @@ const CreateGrammarVocabularyChallenge = () => {
           </Row>
         </div>
       </div>
+
+      {/* Question Modals */}
+      <MultipleChoiceModal
+        visible={modalVisible && currentModalType === "multiple-choice"}
+        onCancel={handleModalCancel}
+        onSave={handleModalSave}
+      />
+      
+      <MultipleSelectModal
+        visible={modalVisible && currentModalType === "multiple-select"}
+        onCancel={handleModalCancel}
+        onSave={handleModalSave}
+      />
+      
+      <TrueFalseModal
+        visible={modalVisible && currentModalType === "true-false"}
+        onCancel={handleModalCancel}
+        onSave={handleModalSave}
+      />
+      
+      <FillBlankModal
+        visible={modalVisible && currentModalType === "fill-blank"}
+        onCancel={handleModalCancel}
+        onSave={handleModalSave}
+      />
+      
+      <DropdownModal
+        visible={modalVisible && currentModalType === "dropdown"}
+        onCancel={handleModalCancel}
+        onSave={handleModalSave}
+      />
+      
+      <DragDropModal
+        visible={modalVisible && currentModalType === "drag-drop"}
+        onCancel={handleModalCancel}
+        onSave={handleModalSave}
+      />
+      
+      <ReorderModal
+        visible={modalVisible && currentModalType === "reorder"}
+        onCancel={handleModalCancel}
+        onSave={handleModalSave}
+      />
+      
+      <RewriteModal
+        visible={modalVisible && currentModalType === "rewrite"}
+        onCancel={handleModalCancel}
+        onSave={handleModalSave}
+      />
     </Layout>
   );
 };
