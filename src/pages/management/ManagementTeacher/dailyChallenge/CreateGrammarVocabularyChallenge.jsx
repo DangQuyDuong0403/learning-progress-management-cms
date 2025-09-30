@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, memo } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
   Input,
   Select,
@@ -9,9 +9,7 @@ import {
   Space,
   Typography,
   message,
-  Form,
-  Radio,
-  Checkbox,
+  Modal,
 } from "antd";
 import {
   ArrowLeftOutlined,
@@ -19,6 +17,7 @@ import {
   EyeOutlined,
   PlusOutlined,
   DeleteOutlined,
+  SearchOutlined,
 } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
 import Layout from "../../../../component/Layout";
@@ -33,6 +32,7 @@ import {
   ReorderModal,
   RewriteModal,
 } from "./questionModals";
+import "./CreateGrammarVocabularyChallenge1.css";
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -83,15 +83,147 @@ const questionTypes = [
 const QUESTION_TYPES = questionTypes;
 const MOCK_CHAPTERS = mockChapters;
 
-// Memoized QuestionTypeItem component - defined outside to prevent re-creation
-const QuestionTypeItem = memo(({ questionType, onClick }) => (
-  <div
-    className="question-type-item clickable"
-    onClick={() => onClick(questionType)}
-  >
-    <Text className="question-type-name">{questionType.name}</Text>
-  </div>
-));
+// Draggable Question Item Component
+const DraggableQuestionItem = ({ question, index, onDelete, onMove }) => {
+  const ref = useRef(null);
+  const [isDragging, setIsDragging] = useState(false);
+
+  const handleMouseDown = (e) => {
+    if (e.target.closest('.question-drag-handle')) {
+      setIsDragging(true);
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+    }
+  };
+
+  const handleMouseMove = useCallback((e) => {
+    if (!isDragging) return;
+    
+    const questionItems = document.querySelectorAll('.question-item');
+    const currentRect = ref.current.getBoundingClientRect();
+    const currentCenter = currentRect.top + currentRect.height / 2;
+    
+    let newIndex = index;
+    questionItems.forEach((item, i) => {
+      if (i !== index) {
+        const rect = item.getBoundingClientRect();
+        const center = rect.top + rect.height / 2;
+        if (e.clientY < center && e.clientY > currentCenter) {
+          newIndex = i;
+        }
+      }
+    });
+    
+    if (newIndex !== index) {
+      onMove(index, newIndex);
+    }
+  }, [isDragging, index, onMove]);
+
+  const handleMouseUp = useCallback(() => {
+    setIsDragging(false);
+    document.removeEventListener('mousemove', handleMouseMove);
+    document.removeEventListener('mouseup', handleMouseUp);
+  }, [handleMouseMove]);
+
+  useEffect(() => {
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [handleMouseMove, handleMouseUp]);
+
+  return (
+    <div 
+      ref={ref}
+      className={`question-item ${isDragging ? 'dragging' : ''}`}
+      onMouseDown={handleMouseDown}
+    >
+      <div className="question-controls">
+        <div className="question-drag-handle">
+          <span className="drag-icon">⋮⋮</span>
+        </div>
+        <Select 
+          value={question.type} 
+          style={{ width: 150 }}
+          size="small"
+        >
+          {QUESTION_TYPES.map(type => (
+            <Option key={type.type} value={type.type}>
+              ✓ {index + 1}. {type.name}
+            </Option>
+          ))}
+        </Select>
+        <Select 
+          value="30" 
+          style={{ width: 100 }}
+          size="small"
+        >
+          <Option value="30">30 giây</Option>
+          <Option value="60">1 phút</Option>
+          <Option value="120">2 phút</Option>
+        </Select>
+        <Select 
+          value={question.points || 1} 
+          style={{ width: 100 }}
+          size="small"
+        >
+          <Option value={1}>1 điểm</Option>
+          <Option value={2}>2 điểm</Option>
+          <Option value={3}>3 điểm</Option>
+        </Select>
+        <div className="question-actions">
+          <Button 
+            type="text" 
+            size="small"
+            icon={<PlusOutlined />}
+            title="Copy"
+          />
+          <Button 
+            type="text" 
+            size="small"
+            icon={<PlusOutlined />}
+            title="Paste"
+          />
+          <Button 
+            type="text" 
+            size="small"
+            icon={<PlusOutlined />}
+          >
+            Chỉnh sửa
+          </Button>
+          <Button 
+            type="text" 
+            danger 
+            size="small"
+            icon={<DeleteOutlined />}
+            onClick={() => onDelete(question.id)}
+          />
+        </div>
+      </div>
+      
+      <div className="question-content">
+        <div className="question-text">
+          {question.question || "aaa"}
+        </div>
+        
+        {(question.type === "multiple-choice" || question.type === "multiple-select") && question.options && (
+          <div className="answer-options">
+            <Text strong style={{ display: "block", marginBottom: 8 }}>Lựa chọn trả lời:</Text>
+            {question.options.map((option, optIndex) => (
+              <div key={option.id} className={`option-item ${option.isCorrect ? 'correct' : 'incorrect'}`}>
+                <span className="option-indicator">
+                  {option.isCorrect ? '✓' : 'x'}
+                </span>
+                <span className="option-text">{option.text || 'aa'}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
 
 const CreateGrammarVocabularyChallenge = () => {
   const navigate = useNavigate();
@@ -101,12 +233,12 @@ const CreateGrammarVocabularyChallenge = () => {
   const [selectedLesson, setSelectedLesson]     = useState(null);
   const [availableLessons, setAvailableLessons] = useState([]);
   const [questions, setQuestions]               = useState([]);
-  const [currentEditingQuestion, setCurrentEditingQuestion] = useState(null);
-  const [dropdowns, setDropdowns]               = useState({}); // Store dropdown data for each question
   
   // Modal states
   const [modalVisible, setModalVisible]         = useState(false);
   const [currentModalType, setCurrentModalType] = useState(null);
+  const [questionTypeModalVisible, setQuestionTypeModalVisible] = useState(false);
+  const [previewVisible, setPreviewVisible]     = useState(false);
 
   useEffect(() => {
     if (selectedChapter) {
@@ -138,13 +270,22 @@ const CreateGrammarVocabularyChallenge = () => {
       message.error("Please fill in all required fields before preview");
       return;
     }
-    message.info("Preview functionality coming soon!");
+    if (questions.length === 0) {
+      message.error("Please add at least one question before preview");
+      return;
+    }
+    setPreviewVisible(true);
   };
 
   // Modal handlers
   const handleQuestionTypeClick = useCallback((questionType) => {
     setCurrentModalType(questionType.type);
     setModalVisible(true);
+    setQuestionTypeModalVisible(false);
+  }, []);
+
+  const handleAddQuestionClick = useCallback(() => {
+    setQuestionTypeModalVisible(true);
   }, []);
 
   const handleModalSave = useCallback((questionData) => {
@@ -159,196 +300,30 @@ const CreateGrammarVocabularyChallenge = () => {
     setCurrentModalType(null);
   }, []);
 
-  // Question management - memoized to prevent re-renders
-  const updateQuestion = useCallback((questionId, updates) => {
-    setQuestions(prev => prev.map(q => q.id === questionId ? { ...q, ...updates } : q));
-    setCurrentEditingQuestion(prev => {
-      if (prev && prev.id === questionId) {
-        return { ...prev, ...updates };
-      }
-      return prev;
-    });
+  const handleQuestionTypeModalCancel = useCallback(() => {
+    setQuestionTypeModalVisible(false);
   }, []);
 
+  // Question management
   const deleteQuestion = useCallback((questionId) => {
     setQuestions(prev => prev.filter(q => q.id !== questionId));
-    setCurrentEditingQuestion(prev => {
-      if (prev && prev.id === questionId) {
-        return null;
-      }
-      return prev;
-    });
   }, []);
 
-  const addOption = useCallback((questionId) => {
+  // Drag and drop functionality
+  const moveQuestion = useCallback((dragIndex, hoverIndex) => {
     setQuestions(prev => {
-      return prev.map(question => {
-        if (question.id === questionId) {
-          const newOption = { 
-            id: Math.max(...question.options.map(o => o.id), 0) + 1, 
-            text: "", 
-            isCorrect: false 
-          };
-          return { ...question, options: [...question.options, newOption] };
-        }
-        return question;
-      });
-    });
-    setCurrentEditingQuestion(prev => {
-      if (prev && prev.id === questionId) {
-        const newOption = { 
-          id: Math.max(...prev.options.map(o => o.id), 0) + 1, 
-          text: "", 
-          isCorrect: false 
-        };
-        return { ...prev, options: [...prev.options, newOption] };
-      }
-      return prev;
+      const draggedQuestion = prev[dragIndex];
+      const newQuestions = [...prev];
+      newQuestions.splice(dragIndex, 1);
+      newQuestions.splice(hoverIndex, 0, draggedQuestion);
+      return newQuestions;
     });
   }, []);
 
-  const removeOption = useCallback((questionId, optionId) => {
-    setQuestions(prev => prev.map(question => {
-      if (question.id === questionId) {
-        return { ...question, options: question.options.filter(o => o.id !== optionId) };
-      }
-      return question;
-    }));
-    setCurrentEditingQuestion(prev => {
-      if (prev && prev.id === questionId) {
-        return { ...prev, options: prev.options.filter(o => o.id !== optionId) };
-      }
-      return prev;
-    });
+  // Preview handlers
+  const handlePreviewCancel = useCallback(() => {
+    setPreviewVisible(false);
   }, []);
-
-  const updateOption = useCallback((questionId, optionId, updates) => {
-    setQuestions(prev => prev.map(question => {
-      if (question.id === questionId) {
-        return {
-          ...question,
-          options: question.options.map(o => 
-            o.id === optionId ? { ...o, ...updates } : o
-          )
-        };
-      }
-      return question;
-    }));
-    setCurrentEditingQuestion(prev => {
-      if (prev && prev.id === questionId) {
-        return {
-          ...prev,
-          options: prev.options.map(o => 
-            o.id === optionId ? { ...o, ...updates } : o
-          )
-        };
-      }
-      return prev;
-    });
-  }, []);
-
-  // Dropdown management functions
-  const addDropdownToQuestion = useCallback((questionId) => {
-    const dropdownId = `dropdown_${Date.now()}`;
-    const newDropdown = {
-      id: dropdownId,
-      options: ['Option 1', 'Option 2', 'Option 3'],
-      correctAnswer: 0, // Index of correct option
-      placeholder: 'Select option'
-    };
-    
-    setDropdowns(prev => ({
-      ...prev,
-      [questionId]: {
-        ...prev[questionId],
-        [dropdownId]: newDropdown
-      }
-    }));
-
-    // Insert dropdown placeholder into question text
-    const currentQuestion = questions.find(q => q.id === questionId);
-    if (currentQuestion) {
-      const updatedQuestion = currentQuestion.question + ` {${dropdownId}}`;
-      updateQuestion(questionId, { question: updatedQuestion });
-    }
-  }, [questions, updateQuestion]);
-
-  const updateDropdownOption = useCallback((questionId, dropdownId, optionIndex, value) => {
-    setDropdowns(prev => ({
-      ...prev,
-      [questionId]: {
-        ...prev[questionId],
-        [dropdownId]: {
-          ...prev[questionId][dropdownId],
-          options: prev[questionId][dropdownId].options.map((opt, idx) => 
-            idx === optionIndex ? value : opt
-          )
-        }
-      }
-    }));
-  }, []);
-
-  const addDropdownOption = useCallback((questionId, dropdownId) => {
-    setDropdowns(prev => ({
-      ...prev,
-      [questionId]: {
-        ...prev[questionId],
-        [dropdownId]: {
-          ...prev[questionId][dropdownId],
-          options: [...prev[questionId][dropdownId].options, `Option ${prev[questionId][dropdownId].options.length + 1}`]
-        }
-      }
-    }));
-  }, []);
-
-  const removeDropdownOption = useCallback((questionId, dropdownId, optionIndex) => {
-    setDropdowns(prev => ({
-      ...prev,
-      [questionId]: {
-        ...prev[questionId],
-        [dropdownId]: {
-          ...prev[questionId][dropdownId],
-          options: prev[questionId][dropdownId].options.filter((_, idx) => idx !== optionIndex),
-          correctAnswer: prev[questionId][dropdownId].correctAnswer >= optionIndex 
-            ? Math.max(0, prev[questionId][dropdownId].correctAnswer - 1)
-            : prev[questionId][dropdownId].correctAnswer
-        }
-      }
-    }));
-  }, []);
-
-  const setDropdownCorrectAnswer = useCallback((questionId, dropdownId, correctIndex) => {
-    setDropdowns(prev => ({
-      ...prev,
-      [questionId]: {
-        ...prev[questionId],
-        [dropdownId]: {
-          ...prev[questionId][dropdownId],
-          correctAnswer: correctIndex
-        }
-      }
-    }));
-  }, []);
-
-  // Function to render question text with dropdowns
-  const renderQuestionWithDropdowns = (question) => {
-    if (!question.question || !dropdowns[question.id]) {
-      return question.question;
-    }
-
-    let questionText = question.question;
-    const questionDropdowns = dropdowns[question.id];
-
-    // Replace dropdown placeholders with dropdown components
-    Object.keys(questionDropdowns).forEach(dropdownId => {
-      const dropdown = questionDropdowns[dropdownId];
-      const dropdownPattern = new RegExp(`\\{${dropdownId}\\}`, 'g');
-      const dropdownText = `dropdown(${dropdown.options.join(', ')})`;
-      questionText = questionText.replace(dropdownPattern, dropdownText);
-    });
-
-    return questionText;
-  };
 
   return (
     <Layout>
@@ -388,7 +363,7 @@ const CreateGrammarVocabularyChallenge = () => {
         {/* Configuration Section */}
         <Card className="config-card">
           <Row gutter={24} align="middle">
-            <Col span={8}>
+            <Col span={6}>
               <Space direction="vertical" style={{ width: "100%" }}>
                 <Text strong>Challenge Name:</Text>
                 <Input
@@ -399,7 +374,7 @@ const CreateGrammarVocabularyChallenge = () => {
                 />
               </Space>
             </Col>
-            <Col span={8}>
+            <Col span={6}>
               <Space direction="vertical" style={{ width: "100%" }}>
                 <Text strong>Chapter:</Text>
                 <Select
@@ -417,7 +392,7 @@ const CreateGrammarVocabularyChallenge = () => {
                  </Select>
               </Space>
             </Col>
-            <Col span={8}>
+            <Col span={6}>
               <Space direction="vertical" style={{ width: "100%" }}>
                 <Text strong>Lesson:</Text>
                 <Select
@@ -436,344 +411,149 @@ const CreateGrammarVocabularyChallenge = () => {
                 </Select>
               </Space>
             </Col>
+            <Col span={6}>
+              <Space direction="vertical" style={{ width: "100%" }}>
+                <Text strong>Time Limit (minutes):</Text>
+                <Input
+                  placeholder="30"
+                  type="number"
+                  size="large"
+                />
+              </Space>
+            </Col>
           </Row>
         </Card>
 
-        {/* Main Content */}
-        <div className="main-content-container">
-          <Row gutter={24} style={{ height: "calc(100vh - 300px)" }}>
-            {/* Preview Panel (Left) */}
-            <Col span={8}>
-              <Card 
-                title="Preview" 
-                className="preview-card"
-                style={{ height: "100%" }}
-              >
-                <div className="preview-content">
-                  {questions.length > 0 ? (
-                    <div className="questions-list">
-                      {questions.map((question, index) => (
-                        <div key={question.id} className="question-preview-item">
-                          <div className="question-header">
-                            <Text strong>Question {index + 1}: {question.title}</Text>
-                            <Space>
-                               <Button 
-                                 type="text" 
-                                 size="small"
-                                 onClick={() => setCurrentEditingQuestion(question)}
-                               >
-                                 Edit
-                               </Button>
-                              <Button 
-                                type="text" 
-                                danger 
-                                size="small"
-                                icon={<DeleteOutlined />}
-                                onClick={() => deleteQuestion(question.id)}
-                              >
-                                Delete
-                              </Button>
-                            </Space>
-                          </div>
-                          <div className="question-content">
-                             <div className="question-text">
-                               {question.question ? (
-                                 <div className="question-display">
-                                   {question.type === "fill-blank" ? (
-                                     <div className="fill-blank-preview-container">
-                                       <div className="question-content">
-                                         <Text strong style={{ display: "block", marginBottom: 16, fontSize: 16 }}>
-                                           {question.question}
-                                         </Text>
-                                       </div>
-                                       
-                                       {/* Student Input Section */}
-                                       <div className="student-input-section">
-                                         <div className="input-label">
-                                           <Text style={{ fontSize: 12, color: '#666', marginBottom: 8 }}>
-                                             Student view: Type your answer
-                                           </Text>
-                                         </div>
-                                         <Input 
-                                           placeholder="Enter answer"
-                                           size="large"
-                                         />
-                                       </div>
-                                     </div>
-                                   ) : (
-                                     <div className="question-content">
-                                       <Text strong style={{ display: "block", marginBottom: 12 }}>
-                                         {renderQuestionWithDropdowns(question)}
-                                       </Text>
-                                     </div>
-                                   )}
-                                 </div>
-                               ) : (
-                                 <Text type="secondary">Click Edit to add question content</Text>
-                               )}
-                             </div>
-                            
-                            {/* Display answer options for multiple choice questions */}
-                            {(question.type === "multiple-choice" || question.type === "multiple-select") && question.options.length > 0 && (
-                              <div className="answer-options-preview">
-                                {question.options.map((option, index) => (
-                                  <div key={option.id} className="option-preview-row">
-                                    <div className={`option-preview ${option.isCorrect ? 'correct-option' : ''}`}>
-                                      <span className="option-label">{String.fromCharCode(65 + index)}.</span>
-                                      <span className="option-text">{option.text || `Option ${String.fromCharCode(65 + index)}`}</span>
-                                      {option.isCorrect && (
-                                        <span className="correct-indicator">✓</span>
-                                      )}
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-                            
-                            {/* Display correct answer for other question types */}
-                            {question.type === "true-false" && question.correctAnswer && (
-                              <div className="correct-answer-preview">
-                                <Text>Correct Answer: <Text strong>{question.correctAnswer}</Text></Text>
-                              </div>
-                            )}
-                            
-                            {(question.type === "fill-blank" || question.type === "rewrite" || question.type === "free-input") && question.correctAnswer && (
-                              <div className="correct-answer-preview">
-                                <Text>Correct Answer: <Text strong>{question.correctAnswer}</Text></Text>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="preview-placeholder">
-                      <Text type="secondary">
-                        Click on question types to add questions. Current questions will appear below.
-                      </Text>
-                    </div>
-                  )}
-                </div>
-              </Card>
+        {/* Search Existing Questions Section */}
+        <Card className="search-card">
+          <Row gutter={24} align="middle">
+            <Col span={12}>
+              <Space direction="vertical" style={{ width: "100%" }}>
+                <Text strong>Tìm kiếm câu hỏi đã tạo:</Text>
+                <Input
+                  placeholder="Nhập tên chủ đề hoặc nội dung câu hỏi"
+                  size="large"
+                  suffix={
+                    <Button type="primary" icon={<SearchOutlined />}>
+                      Tìm kiếm
+                    </Button>
+                  }
+                />
+              </Space>
             </Col>
-
-            {/* Question Types Panel (Center) */}
-            <Col span={8}>
-              <Card 
-                title="Question Types" 
-                className="question-types-card"
-                style={{ height: "100%" }}
-              >
-                 <div className="question-types-list">
-                   {QUESTION_TYPES.map((questionType) => (
-                     <QuestionTypeItem
-                       key={`question-type-${questionType.id}`}
-                       questionType={questionType}
-                       onClick={handleQuestionTypeClick}
-                     />
-                   ))}
-                 </div>
-              </Card>
-            </Col>
-
-            {/* Question Editor Panel (Right) */}
-            <Col span={8}>
-              <Card 
-                title="Question Editor" 
-                className="draw-card"
-                style={{ height: "100%" }}
-              >
-                <div className="draw-container">
-                  {currentEditingQuestion ? (
-                    <div className="question-editor">
-                      <div className="editor-header">
-                        <Text strong>Editing: {currentEditingQuestion.title}</Text>
-                        <Button 
-                          type="text" 
-                          onClick={() => setCurrentEditingQuestion(null)}
-                        >
-                          Close
-                        </Button>
-                      </div>
-                      
-                       <Form layout="vertical" className="question-form">
-                         <Form.Item label="Question Text">
-                           <Input.TextArea
-                             placeholder={currentEditingQuestion.type === "fill-blank" ? "Enter your question (e.g., The apple is ____)" : "Enter your question here..."}
-                             value={currentEditingQuestion.question}
-                             onChange={(e) => updateQuestion(currentEditingQuestion.id, { question: e.target.value })}
-                             rows={3}
-                           />
-                           {currentEditingQuestion.type === "dropdown" && (
-                             <div style={{ marginTop: 8, display: 'flex', gap: 8 }}>
-                               <Button 
-                                 type="dashed" 
-                                 size="small"
-                                 onClick={() => addDropdownToQuestion(currentEditingQuestion.id)}
-                                 style={{ fontSize: '12px' }}
-                               >
-                                 + Add Dropdown
-                               </Button>
-                             </div>
-                           )}
-                         </Form.Item>
-
-                        {(currentEditingQuestion.type === "multiple-choice" || 
-                          currentEditingQuestion.type === "multiple-select") && (
-                          <>
-                            <Form.Item label="Answer Options">
-                              {currentEditingQuestion.options.map((option, index) => (
-                                <div key={option.id} className="option-row">
-                                  <Input
-                                    placeholder={`Option ${String.fromCharCode(65 + index)}`}
-                                    value={option.text}
-                                    onChange={(e) => updateOption(currentEditingQuestion.id, option.id, { text: e.target.value })}
-                                    style={{ flex: 1 }}
-                                  />
-                                  {currentEditingQuestion.type === "multiple-choice" ? (
-                                    <Radio
-                                      checked={option.isCorrect}
-                                      onChange={() => {
-                                        // Uncheck all others first
-                                        const updatedOptions = currentEditingQuestion.options.map(o => ({
-                                          ...o,
-                                          isCorrect: false
-                                        }));
-                                        // Check current option
-                                        const finalOptions = updatedOptions.map(o => 
-                                          o.id === option.id ? { ...o, isCorrect: true } : o
-                                        );
-                                        updateQuestion(currentEditingQuestion.id, { options: finalOptions });
-                                      }}
-                                      value={option.id}
-                                    >
-                                      Correct
-                                    </Radio>
-                                  ) : (
-                                    <Checkbox
-                                      checked={option.isCorrect}
-                                      onChange={(e) => updateOption(currentEditingQuestion.id, option.id, { isCorrect: e.target.checked })}
-                                    >
-                                      Correct
-                                    </Checkbox>
-                                  )}
-                                  <Button
-                                    type="text"
-                                    danger
-                                    icon={<DeleteOutlined />}
-                                    onClick={() => removeOption(currentEditingQuestion.id, option.id)}
-                                    disabled={currentEditingQuestion.options.length <= 2}
-                                  />
-                                </div>
-                              ))}
-                            </Form.Item>
-                            <Button 
-                              type="dashed" 
-                              onClick={() => addOption(currentEditingQuestion.id)}
-                              icon={<PlusOutlined />}
-                              style={{ width: "100%" }}
-                            >
-                              Add Option
-                            </Button>
-                          </>
-                        )}
-
-                        {currentEditingQuestion.type === "true-false" && (
-                          <Form.Item label="Correct Answer">
-                            <Radio.Group
-                              value={currentEditingQuestion.correctAnswer}
-                              onChange={(e) => updateQuestion(currentEditingQuestion.id, { correctAnswer: e.target.value })}
-                            >
-                              <Radio value="true">True</Radio>
-                              <Radio value="false">False</Radio>
-                            </Radio.Group>
-                          </Form.Item>
-                        )}
-
-                         {currentEditingQuestion.type === "fill-blank" && (
-                           <Form.Item label="Correct Answer">
-                             <Input
-                               placeholder="Enter the correct answer (e.g., red)"
-                               value={currentEditingQuestion.correctAnswer}
-                               onChange={(e) => updateQuestion(currentEditingQuestion.id, { correctAnswer: e.target.value })}
-                               maxLength={50}
-                             />
-                           </Form.Item>
-                         )}
-                         
-                         {(currentEditingQuestion.type === "rewrite" || 
-                           currentEditingQuestion.type === "free-input") && (
-                           <Form.Item label="Correct Answer">
-                             <Input.TextArea
-                               placeholder="Enter the correct answer..."
-                               value={currentEditingQuestion.correctAnswer}
-                               onChange={(e) => updateQuestion(currentEditingQuestion.id, { correctAnswer: e.target.value })}
-                               rows={2}
-                             />
-                           </Form.Item>
-                         )}
-
-                         {/* Dropdown Management Section */}
-                         {dropdowns[currentEditingQuestion.id] && Object.keys(dropdowns[currentEditingQuestion.id]).length > 0 && (
-                           <Form.Item label="Dropdown Options">
-                             {Object.entries(dropdowns[currentEditingQuestion.id]).map(([dropdownId, dropdown]) => (
-                               <div key={dropdownId} className="dropdown-manager">
-                                 <div className="dropdown-header">
-                                   <Text strong>Dropdown: {dropdownId}</Text>
-                                 </div>
-                                 <div className="dropdown-options">
-                                   {dropdown.options.map((option, index) => (
-                                     <div key={index} className="dropdown-option-row">
-                                       <Input
-                                         placeholder={`Option ${index + 1}`}
-                                         value={option}
-                                         onChange={(e) => updateDropdownOption(currentEditingQuestion.id, dropdownId, index, e.target.value)}
-                                         style={{ flex: 1 }}
-                                       />
-                                       <Radio
-                                         checked={dropdown.correctAnswer === index}
-                                         onChange={() => setDropdownCorrectAnswer(currentEditingQuestion.id, dropdownId, index)}
-                                         style={{ marginLeft: 8 }}
-                                       >
-                                         Correct
-                                       </Radio>
-                                       <Button
-                                         type="text"
-                                         danger
-                                         icon={<DeleteOutlined />}
-                                         onClick={() => removeDropdownOption(currentEditingQuestion.id, dropdownId, index)}
-                                         disabled={dropdown.options.length <= 2}
-                                       />
-                                     </div>
-                                   ))}
-                                   <Button 
-                                     type="dashed" 
-                                     onClick={() => addDropdownOption(currentEditingQuestion.id, dropdownId)}
-                                     icon={<PlusOutlined />}
-                                     style={{ width: "100%", marginTop: 8 }}
-                                   >
-                                     Add Option
-                                   </Button>
-                                 </div>
-                               </div>
-                             ))}
-                           </Form.Item>
-                         )}
-                      </Form>
-                    </div>
-                  ) : (
-                    <div className="draw-placeholder">
-                      <Text type="secondary">
-                        Select a question from Preview to edit its details here.
-                      </Text>
-                    </div>
-                  )}
-                </div>
-              </Card>
+            <Col span={12}>
+              <Space direction="vertical" style={{ width: "100%" }}>
+                <Text strong>Cài đặt đề thi:</Text>
+                <Space>
+                  {/* <Button type="default" size="large">
+                    Cài đặt thời gian
+                  </Button>
+                  <Button type="default" size="large">
+                    Cài đặt điểm số
+                  </Button> */}
+                  <Button type="default" size="large">
+                    Cài đặt khác
+                  </Button>
+                </Space>
+              </Space>
             </Col>
           </Row>
-        </div>
+        </Card>
+
+        {/* Questions Section */}
+        <Card className="questions-card">
+          <div className="questions-header">
+            <div className="questions-title">
+              <Text strong style={{ fontSize: 18 }}>
+                {questions.length} câu hỏi ({questions.reduce((total, q) => total + (q.points || 1), 0)} điểm)
+              </Text>
+            </div>
+            <div className="questions-actions">
+              <Button 
+                type="primary" 
+                icon={<PlusOutlined />}
+                onClick={handleAddQuestionClick}
+                size="large"
+              >
+                 Thêm câu hỏi
+              </Button>
+            </div>
+          </div>
+          
+          <div className="questions-list">
+            {questions.length > 0 ? (
+              questions.map((question, index) => (
+                <DraggableQuestionItem
+                  key={question.id}
+                  question={question}
+                  index={index}
+                  onDelete={deleteQuestion}
+                  onMove={moveQuestion}
+                />
+              ))
+            ) : (
+              <div className="empty-questions">
+                <Text type="secondary">Chưa có câu hỏi nào. Nhấn "Thêm câu hỏi" để bắt đầu.</Text>
+              </div>
+            )}
+          </div>
+          
+          {questions.length > 0 && (
+            <div className="questions-footer">
+              <Button 
+                type="primary" 
+                icon={<PlusOutlined />}
+                onClick={handleAddQuestionClick}
+                size="large"
+              >
+                 Thêm câu hỏi
+              </Button>
+            </div>
+          )}
+        </Card>
       </div>
+
+      {/* Question Type Selection Modal */}
+      <Modal
+        title="Chọn loại câu hỏi"
+        open={questionTypeModalVisible}
+        onCancel={handleQuestionTypeModalCancel}
+        footer={null}
+        width={800}
+        className="question-type-modal"
+      >
+        <div className="question-types-grid">
+          {QUESTION_TYPES.map((questionType) => (
+            <div
+              key={questionType.id}
+              className="question-type-card"
+              onClick={() => handleQuestionTypeClick(questionType)}
+            >
+              <div className="question-type-icon">
+                {questionType.type === "multiple-choice" && "📝"}
+                {questionType.type === "multiple-select" && "☑️"}
+                {questionType.type === "true-false" && "✅"}
+                {questionType.type === "fill-blank" && "✏️"}
+                {questionType.type === "dropdown" && "📋"}
+                {questionType.type === "drag-drop" && "🔄"}
+                {questionType.type === "reorder" && "🔀"}
+                {questionType.type === "rewrite" && "✍️"}
+              </div>
+              <div className="question-type-name">{questionType.name}</div>
+              <div className="question-type-description">
+                {questionType.type === "multiple-choice" && "Chọn một đáp án đúng"}
+                {questionType.type === "multiple-select" && "Chọn nhiều đáp án đúng"}
+                {questionType.type === "true-false" && "Đúng hoặc Sai"}
+                {questionType.type === "fill-blank" && "Điền vào chỗ trống"}
+                {questionType.type === "dropdown" && "Chọn từ danh sách"}
+                {questionType.type === "drag-drop" && "Kéo thả để sắp xếp"}
+                {questionType.type === "reorder" && "Sắp xếp lại thứ tự"}
+                {questionType.type === "rewrite" && "Viết lại câu"}
+              </div>
+            </div>
+          ))}
+        </div>
+      </Modal>
 
       {/* Question Modals */}
       <MultipleChoiceModal
@@ -823,6 +603,104 @@ const CreateGrammarVocabularyChallenge = () => {
         onCancel={handleModalCancel}
         onSave={handleModalSave}
       />
+
+      {/* Preview Modal */}
+      <Modal
+        title="Preview Challenge"
+        open={previewVisible}
+        onCancel={handlePreviewCancel}
+        footer={[
+          <Button key="close" onClick={handlePreviewCancel}>
+            Close
+          </Button>
+        ]}
+        width={800}
+        className="preview-modal"
+      >
+        <div className="preview-content">
+          <div className="preview-header">
+            <Title level={3} style={{ margin: 0, color: "#7228d9" }}>
+              {challengeName}
+            </Title>
+            <Text type="secondary">
+              {MOCK_CHAPTERS.find(ch => ch.id === selectedChapter)?.name} - 
+              {availableLessons.find(lesson => lesson.id === selectedLesson)?.name}
+            </Text>
+          </div>
+          
+          <div className="preview-questions">
+            {questions.map((question, index) => (
+              <div key={question.id} className="preview-question">
+                <div className="preview-question-header">
+                  <Text strong style={{ fontSize: 16 }}>
+                    Câu hỏi {index + 1}: {question.title || question.type}
+                  </Text>
+                  <Text type="secondary" style={{ fontSize: 12 }}>
+                    ({question.points || 1} điểm)
+                  </Text>
+                </div>
+                
+                <div className="preview-question-content">
+                  <div className="preview-question-text">
+                    {question.question || "Câu hỏi mẫu"}
+                  </div>
+                  
+                  {question.type === "multiple-choice" && question.options && (
+                    <div className="preview-options">
+                      {question.options.map((option, optIndex) => (
+                        <div key={option.id} className="preview-option">
+                          <span className="option-letter">{String.fromCharCode(65 + optIndex)}.</span>
+                          <span className="option-text">{option.text || `Option ${optIndex + 1}`}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  
+                  {question.type === "multiple-select" && question.options && (
+                    <div className="preview-options">
+                      {question.options.map((option, optIndex) => (
+                        <div key={option.id} className="preview-option">
+                          <span className="option-checkbox">☐</span>
+                          <span className="option-text">{option.text || `Option ${optIndex + 1}`}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  
+                  {question.type === "true-false" && (
+                    <div className="preview-options">
+                      <div className="preview-option">
+                        <span className="option-radio">○</span>
+                        <span className="option-text">True</span>
+                      </div>
+                      <div className="preview-option">
+                        <span className="option-radio">○</span>
+                        <span className="option-text">False</span>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {question.type === "fill-blank" && (
+                    <div className="preview-fill-blank">
+                      <Input placeholder="Nhập câu trả lời..." style={{ width: 200 }} />
+                    </div>
+                  )}
+                  
+                  {(question.type === "rewrite" || question.type === "free-input") && (
+                    <div className="preview-text-area">
+                      <Input.TextArea 
+                        placeholder="Nhập câu trả lời..." 
+                        rows={3}
+                        style={{ width: '100%' }}
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </Modal>
     </Layout>
   );
 };

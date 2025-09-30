@@ -11,6 +11,8 @@ import {
   Select,
   message,
   Divider,
+  Dropdown,
+  Menu,
 } from "antd";
 import {
   ArrowLeftOutlined,
@@ -21,15 +23,28 @@ import {
   UploadOutlined,
   DeleteOutlined,
   LoadingOutlined,
+  DownOutlined,
+  HolderOutlined,
 } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
 import Layout from "../../../../component/Layout";
 import { extractTextFromPDF, isValidPDF } from "../../../../utils/pdfUtils";
+import {
+  MultipleChoiceModal,
+  MultipleSelectModal,
+  TrueFalseModal,
+  FillBlankModal,
+  DropdownModal,
+  DragDropModal,
+  ReorderModal,
+  RewriteModal,
+} from "./questionModals";
 import "./CreateReadingChallenge.css";
 
 const { Title, Text } = Typography;
 const { TextArea } = Input;
 const { Option } = Select;
+
 
 // Mock data cho chapters và lessons
 const mockChapters = [
@@ -62,15 +77,6 @@ const mockChapters = [
   },
 ];
 
-const questionTypes = [
-  { id: 1, name: "Multiple choice", type: "multiple-choice" },
-  { id: 2, name: "Multiple select", type: "multiple-select" },
-  { id: 3, name: "True or false", type: "true-false" },
-  { id: 4, name: "Fill in the blank", type: "fill-blank" },
-  { id: 5, name: "Dropdown", type: "dropdown" },
-  { id: 6, name: "Drag and drop", type: "drag-drop" },
-  { id: 7, name: "Reorder", type: "reorder" },
-];
 
 const CreateReadingChallenge = () => {
   const navigate = useNavigate();
@@ -83,11 +89,14 @@ const CreateReadingChallenge = () => {
     { id: 1, title: "Passage 1", content: "", type: null }
   ]);
   const [activePassage, setActivePassage] = useState(1);
-  const [questions, setQuestions] = useState([]);
   const [passageContent, setPassageContent] = useState("");
-  const [selectedQuestionType, setSelectedQuestionType] = useState(null);
   const [isProcessingPDF, setIsProcessingPDF] = useState(false);
   const [uploadedFileName, setUploadedFileName] = useState("");
+  
+  // Question management state
+  const [questions, setQuestions] = useState([]);
+  const [activeModal, setActiveModal] = useState(null);
+  const [editingQuestion, setEditingQuestion] = useState(null);
 
   // useEffect để cập nhật lessons khi chapter thay đổi
   React.useEffect(() => {
@@ -202,32 +211,62 @@ const CreateReadingChallenge = () => {
     return false; // Prevent default upload
   };
 
-
-  const handleAddQuestion = () => {
-    if (!selectedQuestionType) {
-      message.warning("Please select a question type first");
-      return;
-    }
-
-    const newQuestion = {
-      id: Date.now(),
-      type: selectedQuestionType.type,
-      title: selectedQuestionType.name,
-      question: "",
-      options: selectedQuestionType.type === "multiple-choice" || selectedQuestionType.type === "multiple-select" 
-        ? [
-            { id: 1, text: "", isCorrect: false },
-            { id: 2, text: "", isCorrect: false },
-            { id: 3, text: "", isCorrect: false },
-            { id: 4, text: "", isCorrect: false }
-          ]
-        : [],
-      correctAnswer: selectedQuestionType.type === "true-false" ? null : "",
-    };
-    setQuestions([...questions, newQuestion]);
-    message.success(`${selectedQuestionType.name} question added!`);
-    setSelectedQuestionType(null); // Reset selection after adding
+  // Question management handlers
+  const handleAddQuestion = (questionType) => {
+    setActiveModal(questionType);
+    setEditingQuestion(null);
   };
+
+  const handleEditQuestion = (question) => {
+    setEditingQuestion(question);
+    setActiveModal(question.type);
+  };
+
+  const handleDeleteQuestion = (questionId) => {
+    setQuestions(questions.filter(q => q.id !== questionId));
+    message.success("Question deleted successfully!");
+  };
+
+  const handleSaveQuestion = (questionData) => {
+    if (editingQuestion) {
+      // Update existing question
+      setQuestions(questions.map(q => 
+        q.id === editingQuestion.id ? { ...questionData, id: editingQuestion.id } : q
+      ));
+      message.success("Question updated successfully!");
+    } else {
+      // Add new question
+      const newQuestion = {
+        ...questionData,
+        id: Date.now(),
+      };
+      setQuestions([...questions, newQuestion]);
+      message.success("Question added successfully!");
+    }
+    setActiveModal(null);
+    setEditingQuestion(null);
+  };
+
+  const handleCancelModal = () => {
+    setActiveModal(null);
+    setEditingQuestion(null);
+  };
+
+  const getQuestionTypeLabel = (type) => {
+    const typeMap = {
+      'multiple-choice': 'MCQ',
+      'multiple-select': 'MULTISELECT',
+      'true-false': 'TRUE/FALSE',
+      'fill-blank': 'FILLBLANK',
+      'dropdown': 'DROPDOWN',
+      'drag-drop': 'DRAGNDROP',
+      'reorder': 'REORDER',
+      'rewrite': 'REWRITE'
+    };
+    return typeMap[type] || type.toUpperCase();
+  };
+
+
 
 
   const currentPassage = passages.find(p => p.id === activePassage);
@@ -323,8 +362,8 @@ const CreateReadingChallenge = () => {
 
         {/* Main Content */}
         <div className="main-content-container">
-          <Row gutter={0} style={{ height: "calc(100vh - 380px)" }}>
-            {/* Left Section - Passage Creation */}
+          <Row gutter={24} style={{ height: "calc(100vh - 380px)" }}>
+            {/* Passage Creation - Left Side (2/3) */}
             <Col span={16} className="passage-section">
               <Card className="passage-card" style={{ height: "100%" }}>
                 {/* Passage Tabs with Discard Button */}
@@ -445,73 +484,167 @@ const CreateReadingChallenge = () => {
               </Card>
             </Col>
 
-            {/* Right Section - Question Creation */}
-            <Col span={8} className="question-section">
-              <Card className="question-card" style={{ height: "100%" }}>
-
-
-                {/* Add Question */}
-                <div className="add-question-section">
-                  {/* Question Type Selection */}
-                  <div className="question-type-selection">
-                    <Text strong style={{ color: 'white', marginBottom: 12, display: 'block' }}>
-                      Select Question Type:
-                    </Text>
-                    <Select
-                      placeholder="Choose question type"
-                      value={selectedQuestionType?.id}
-                      onChange={(value) => {
-                        const type = questionTypes.find(t => t.id === value);
-                        setSelectedQuestionType(type);
-                      }}
-                      style={{ width: '100%', marginBottom: 16 }}
-                      size="large"
-                    >
-                      {questionTypes.map((type) => (
-                        <Option key={type.id} value={type.id}>
-                          {type.name}
-                        </Option>
-                      ))}
-                    </Select>
-                  </div>
-
-                  {/* Add Question Button */}
-                  <Button 
-                    type="primary" 
-                    icon={<PlusOutlined />}
-                    size="large"
-                    className="add-question-btn"
-                    onClick={handleAddQuestion}
-                    disabled={!selectedQuestionType}
-                  >
-                    Add a Question
-                  </Button>
+            {/* Questions Section - Right Side (1/3) */}
+            <Col span={8} className="questions-section">
+              <div className="questions-container" style={{ height: "100%" }}>
+                {/* Question Type Section - Top 1/3 */}
+                <div className="question-type-section">
+                  <Card className="question-type-card">
+                    <div className="question-type-header">
+                      <Title level={4} style={{ margin: 0, color: "#4dd0ff" }}>
+                        Question Type
+                      </Title>
+                    </div>
+                    <div className="add-question-section">
+                      <Dropdown
+                        overlay={
+                          <Menu className="question-type-menu">
+                            <Menu.Item key="multiple-choice" onClick={() => handleAddQuestion('multiple-choice')}>
+                              Multiple Choice
+                            </Menu.Item>
+                            <Menu.Item key="multiple-select" onClick={() => handleAddQuestion('multiple-select')}>
+                              Multiple Select
+                            </Menu.Item>
+                            <Menu.Item key="true-false" onClick={() => handleAddQuestion('true-false')}>
+                              True or False
+                            </Menu.Item>
+                            <Menu.Item key="fill-blank" onClick={() => handleAddQuestion('fill-blank')}>
+                              Fill in the Blank
+                            </Menu.Item>
+                            <Menu.Item key="dropdown" onClick={() => handleAddQuestion('dropdown')}>
+                              Dropdown
+                            </Menu.Item>
+                            <Menu.Item key="drag-drop" onClick={() => handleAddQuestion('drag-drop')}>
+                              Drag and Drop
+                            </Menu.Item>
+                            <Menu.Item key="reorder" onClick={() => handleAddQuestion('reorder')}>
+                              Reorder
+                            </Menu.Item>
+                            <Menu.Item key="rewrite" onClick={() => handleAddQuestion('rewrite')}>
+                              Rewrite
+                            </Menu.Item>
+                          </Menu>
+                        }
+                        trigger={['click']}
+                      >
+                        <Button className="add-question-btn">
+                          <PlusOutlined />
+                          Add a Question
+                          <DownOutlined />
+                        </Button>
+                      </Dropdown>
+                    </div>
+                  </Card>
                 </div>
 
-                {/* Questions List */}
-                {questions.length > 0 && (
-                  <div className="questions-list">
-                    <Divider />
-                    <Text strong>Added Questions:</Text>
-                    {questions.map((question, index) => (
-                      <Card key={question.id} size="small" className="question-item">
-                        <Space justify="space-between" style={{ width: "100%" }}>
-                          <Text>Question {index + 1}: {question.title}</Text>
-                          <Button 
-                            type="text" 
-                            danger 
-                            icon={<DeleteOutlined />}
-                            size="small"
-                          />
-                        </Space>
-                      </Card>
-                    ))}
-                  </div>
-                )}
-              </Card>
+                {/* Questions List Section - Bottom 2/3 */}
+                <div className="questions-list-section">
+                  <Card className="questions-card">
+                    <div className="questions-header">
+                      <Title level={4} style={{ margin: 0, color: "#4dd0ff" }}>
+                        Questions ({questions.length})
+                      </Title>
+                    </div>
+                    
+                    <div className="questions-list">
+                      {questions.length === 0 ? (
+                        <div className="empty-questions">
+                          <div className="empty-icon">🚀</div>
+                          <div className="empty-text">No questions added yet</div>
+                          <div className="empty-subtext">Click "Add a Question" above to get started</div>
+                        </div>
+                      ) : (
+                        questions.map((question, index) => (
+                          <div key={question.id} className="question-item">
+                            <div className="question-handle">
+                              <HolderOutlined style={{ color: "#b9c6ff", cursor: "grab" }} />
+                            </div>
+                            <div onClick={() => handleEditQuestion(question)} style={{ flex: 1, cursor: "pointer" }}>
+                              <div className="question-type">
+                                Q{index + 1}: {getQuestionTypeLabel(question.type)}
+                              </div>
+                              <div className="question-text">
+                                {question.question || "the question is"}
+                              </div>
+                            </div>
+                            <div className="question-actions">
+                              <Button
+                                type="text"
+                                danger
+                                icon={<DeleteOutlined />}
+                                onClick={() => handleDeleteQuestion(question.id)}
+                                style={{ color: "#ff6b6b" }}
+                              />
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </Card>
+                </div>
+              </div>
             </Col>
+
           </Row>
         </div>
+
+        {/* Question Modals */}
+        <MultipleChoiceModal
+          visible={activeModal === 'multiple-choice'}
+          onCancel={handleCancelModal}
+          onSave={handleSaveQuestion}
+          questionData={editingQuestion}
+        />
+        
+        <MultipleSelectModal
+          visible={activeModal === 'multiple-select'}
+          onCancel={handleCancelModal}
+          onSave={handleSaveQuestion}
+          questionData={editingQuestion}
+        />
+        
+        <TrueFalseModal
+          visible={activeModal === 'true-false'}
+          onCancel={handleCancelModal}
+          onSave={handleSaveQuestion}
+          questionData={editingQuestion}
+        />
+        
+        <FillBlankModal
+          visible={activeModal === 'fill-blank'}
+          onCancel={handleCancelModal}
+          onSave={handleSaveQuestion}
+          questionData={editingQuestion}
+        />
+        
+        <DropdownModal
+          visible={activeModal === 'dropdown'}
+          onCancel={handleCancelModal}
+          onSave={handleSaveQuestion}
+          questionData={editingQuestion}
+        />
+        
+        <DragDropModal
+          visible={activeModal === 'drag-drop'}
+          onCancel={handleCancelModal}
+          onSave={handleSaveQuestion}
+          questionData={editingQuestion}
+        />
+        
+        <ReorderModal
+          visible={activeModal === 'reorder'}
+          onCancel={handleCancelModal}
+          onSave={handleSaveQuestion}
+          questionData={editingQuestion}
+        />
+        
+        <RewriteModal
+          visible={activeModal === 'rewrite'}
+          onCancel={handleCancelModal}
+          onSave={handleSaveQuestion}
+          questionData={editingQuestion}
+        />
+
       </div>
     </Layout>
   );
