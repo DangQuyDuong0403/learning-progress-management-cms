@@ -22,7 +22,7 @@ import {
 } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
 import Layout from "../../../../component/Layout";
-import "./CreateGrammarVocabularyChallenge.css";
+import "./CreateGrammarVocabularyChallenge1.css";
 import {
   MultipleChoiceModal,
   MultipleSelectModal,

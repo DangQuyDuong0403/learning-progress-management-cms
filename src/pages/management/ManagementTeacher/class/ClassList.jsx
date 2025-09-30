@@ -239,6 +239,15 @@ const ClassList = () => {
                         <h3 
                           className="class-name clickable-name"
                           onClick={() => handleCardClick(classItem)}
+                          style={{
+                            background: "linear-gradient(90deg, #5e17eb 0%, #4dd0ff 100%)",
+                            WebkitBackgroundClip: "text",
+                            WebkitTextFillColor: "transparent",
+                            backgroundClip: "text",
+                            fontWeight: 700,
+                            fontSize: "24px",
+                            letterSpacing: "0.3px"
+                          }}
                         >
                           {classItem.name}
                         </h3>
