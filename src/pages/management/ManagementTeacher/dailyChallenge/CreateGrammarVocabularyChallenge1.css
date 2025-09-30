@@ -587,6 +587,16 @@
   color: #595959;
 }
 
+<<<<<<< HEAD:src/pages/management/ManagementTeacher/dailyChallenge/CreateGrammarVocabularyChallenge.css
+/* Click styles */
+.question-type-item.clickable {
+  cursor: pointer;
+  user-select: none;
+}
+
+.question-type-item.clickable:active {
+  transform: scale(0.98);
+=======
 /* Scrollbar styling for preview and script editor */
 .preview-container::-webkit-scrollbar,
 .script-editor-container::-webkit-scrollbar {
@@ -614,6 +624,7 @@
 .script-textarea::placeholder {
   color: #999;
   font-style: italic;
+>>>>>>> 3600c1c83a548f3f47c6c2c8e1a15d687181e1dd:src/pages/management/ManagementTeacher/dailyChallenge/CreateGrammarVocabularyChallenge1.css
 }
 
 .script-instructions strong {
