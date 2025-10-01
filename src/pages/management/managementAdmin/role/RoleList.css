@@ -213,3 +213,34 @@
 .role-test_taker {
   color: #a0a0a0;
 }
+
+/* Placeholder Styles */
+.ant-input::placeholder {
+  color: #bfbfbf;
+  font-style: italic;
+  opacity: 0.8;
+}
+
+.ant-input::-webkit-input-placeholder {
+  color: #bfbfbf;
+  font-style: italic;
+  opacity: 0.8;
+}
+
+.ant-input::-moz-placeholder {
+  color: #bfbfbf;
+  font-style: italic;
+  opacity: 0.8;
+}
+
+.ant-input:-ms-input-placeholder {
+  color: #bfbfbf;
+  font-style: italic;
+  opacity: 0.8;
+}
+
+.ant-select-selection-placeholder {
+  color: #bfbfbf;
+  font-style: italic;
+  opacity: 0.8;
+}

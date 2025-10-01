@@ -1,11 +1,13 @@
 import React, { useRef } from 'react';
 import { toast } from 'react-toastify';
 import { useTranslation } from 'react-i18next';
+import { useSelector } from 'react-redux';
 import './Profile.css';
 import Layout from '../../component/Layout';
 
 export default function Profile() {
   const { t } = useTranslation();
+  const { user } = useSelector((state) => state.auth);
   
   const lastNameRef = useRef();
   const firstNameRef = useRef();
@@ -107,8 +109,8 @@ export default function Profile() {
                             </div>
                           </div>
                           <div className="profile-name-section">
-                            <h4 className="profile-full-name">Nguyen Duc Anh</h4>
-                            <p className="profile-role">Admin</p>
+                            <h4 className="profile-full-name">{user?.fullName || 'Nguyen Duc Anh'}</h4>
+                            <p className="profile-role">{user?.role || 'Admin'}</p>
                           
                           </div>
                         </div>
@@ -177,7 +179,6 @@ export default function Profile() {
                         </div>
                       </div>
                       <div className="form-actions">
-                        <button className="btn btn-secondary">{t('common.back')}</button>
                         <button className="btn btn-primary" onClick={handleUpdate}>{t('common.update')}</button>
                       </div>
                     </div>

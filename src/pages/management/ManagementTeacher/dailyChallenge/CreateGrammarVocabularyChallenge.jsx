@@ -21,7 +21,6 @@ import {
 } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
 import Layout from "../../../../component/Layout";
-import "./CreateGrammarVocabularyChallenge1.css";
 import {
   MultipleChoiceModal,
   MultipleSelectModal,
@@ -135,12 +134,12 @@ const DraggableQuestionItem = ({ question, index, onDelete, onMove }) => {
   return (
     <div 
       ref={ref}
-      className={`question-item ${isDragging ? 'dragging' : ''}`}
+      className={`gvc-question-item ${isDragging ? 'dragging' : ''}`}
       onMouseDown={handleMouseDown}
     >
-      <div className="question-controls">
-        <div className="question-drag-handle">
-          <span className="drag-icon">⋮⋮</span>
+      <div className="gvc-question-controls">
+        <div className="gvc-question-drag-handle">
+          <span className="gvc-drag-icon">⋮⋮</span>
         </div>
         <Select 
           value={question.type} 
@@ -171,7 +170,7 @@ const DraggableQuestionItem = ({ question, index, onDelete, onMove }) => {
           <Option value={2}>2 điểm</Option>
           <Option value={3}>3 điểm</Option>
         </Select>
-        <div className="question-actions">
+        <div className="gvc-question-actions">
           <Button 
             type="text" 
             size="small"
@@ -201,20 +200,20 @@ const DraggableQuestionItem = ({ question, index, onDelete, onMove }) => {
         </div>
       </div>
       
-      <div className="question-content">
-        <div className="question-text">
+      <div className="gvc-question-content">
+        <div className="gvc-question-text">
           {question.question || "aaa"}
         </div>
         
         {(question.type === "multiple-choice" || question.type === "multiple-select") && question.options && (
-          <div className="answer-options">
+          <div className="gvc-answer-options">
             <Text strong style={{ display: "block", marginBottom: 8 }}>Lựa chọn trả lời:</Text>
             {question.options.map((option, optIndex) => (
-              <div key={option.id} className={`option-item ${option.isCorrect ? 'correct' : 'incorrect'}`}>
-                <span className="option-indicator">
+              <div key={option.id} className={`gvc-option-item ${option.isCorrect ? 'correct' : 'incorrect'}`}>
+                <span className="gvc-option-indicator">
                   {option.isCorrect ? '✓' : 'x'}
                 </span>
-                <span className="option-text">{option.text || 'aa'}</span>
+                <span className="gvc-option-text">{option.text || 'aa'}</span>
               </div>
             ))}
           </div>
@@ -327,9 +326,9 @@ const CreateGrammarVocabularyChallenge = () => {
 
   return (
     <Layout>
-      <div className="create-challenge-container">
+      <div className="gvc-create-challenge-container">
         {/* Header */}
-        <Card className="header-card">
+        <Card className="gvc-header-card">
           <Row justify="space-between">
             <Col>
               <Space align="center">
@@ -361,7 +360,7 @@ const CreateGrammarVocabularyChallenge = () => {
         </Card>
 
         {/* Configuration Section */}
-        <Card className="config-card">
+        <Card className="gvc-config-card">
           <Row gutter={24} align="middle">
             <Col span={6}>
               <Space direction="vertical" style={{ width: "100%" }}>
@@ -425,7 +424,7 @@ const CreateGrammarVocabularyChallenge = () => {
         </Card>
 
         {/* Search Existing Questions Section */}
-        <Card className="search-card">
+        <Card className="gvc-search-card">
           <Row gutter={24} align="middle">
             <Col span={12}>
               <Space direction="vertical" style={{ width: "100%" }}>
@@ -461,14 +460,14 @@ const CreateGrammarVocabularyChallenge = () => {
         </Card>
 
         {/* Questions Section */}
-        <Card className="questions-card">
-          <div className="questions-header">
-            <div className="questions-title">
+        <Card className="gvc-questions-card">
+          <div className="gvc-questions-header">
+            <div className="gvc-questions-title">
               <Text strong style={{ fontSize: 18 }}>
                 {questions.length} câu hỏi ({questions.reduce((total, q) => total + (q.points || 1), 0)} điểm)
               </Text>
             </div>
-            <div className="questions-actions">
+            <div className="gvc-questions-actions">
               <Button 
                 type="primary" 
                 icon={<PlusOutlined />}
@@ -480,7 +479,7 @@ const CreateGrammarVocabularyChallenge = () => {
             </div>
           </div>
           
-          <div className="questions-list">
+          <div className="gvc-questions-list">
             {questions.length > 0 ? (
               questions.map((question, index) => (
                 <DraggableQuestionItem
@@ -492,14 +491,14 @@ const CreateGrammarVocabularyChallenge = () => {
                 />
               ))
             ) : (
-              <div className="empty-questions">
+              <div className="gvc-empty-questions">
                 <Text type="secondary">Chưa có câu hỏi nào. Nhấn "Thêm câu hỏi" để bắt đầu.</Text>
               </div>
             )}
           </div>
           
           {questions.length > 0 && (
-            <div className="questions-footer">
+            <div className="gvc-questions-footer">
               <Button 
                 type="primary" 
                 icon={<PlusOutlined />}
@@ -520,16 +519,16 @@ const CreateGrammarVocabularyChallenge = () => {
         onCancel={handleQuestionTypeModalCancel}
         footer={null}
         width={800}
-        className="question-type-modal"
+        className="gvc-question-type-modal"
       >
-        <div className="question-types-grid">
+        <div className="gvc-question-types-grid">
           {QUESTION_TYPES.map((questionType) => (
             <div
               key={questionType.id}
-              className="question-type-card"
+              className="gvc-question-type-card"
               onClick={() => handleQuestionTypeClick(questionType)}
             >
-              <div className="question-type-icon">
+              <div className="gvc-question-type-icon">
                 {questionType.type === "multiple-choice" && "📝"}
                 {questionType.type === "multiple-select" && "☑️"}
                 {questionType.type === "true-false" && "✅"}
@@ -539,8 +538,8 @@ const CreateGrammarVocabularyChallenge = () => {
                 {questionType.type === "reorder" && "🔀"}
                 {questionType.type === "rewrite" && "✍️"}
               </div>
-              <div className="question-type-name">{questionType.name}</div>
-              <div className="question-type-description">
+              <div className="gvc-question-type-name">{questionType.name}</div>
+              <div className="gvc-question-type-description">
                 {questionType.type === "multiple-choice" && "Chọn một đáp án đúng"}
                 {questionType.type === "multiple-select" && "Chọn nhiều đáp án đúng"}
                 {questionType.type === "true-false" && "Đúng hoặc Sai"}
@@ -615,10 +614,10 @@ const CreateGrammarVocabularyChallenge = () => {
           </Button>
         ]}
         width={800}
-        className="preview-modal"
+        className="gvc-preview-modal"
       >
-        <div className="preview-content">
-          <div className="preview-header">
+        <div className="gvc-preview-content">
+          <div className="gvc-preview-header">
             <Title level={3} style={{ margin: 0, color: "#7228d9" }}>
               {challengeName}
             </Title>
@@ -628,10 +627,10 @@ const CreateGrammarVocabularyChallenge = () => {
             </Text>
           </div>
           
-          <div className="preview-questions">
+          <div className="gvc-preview-questions">
             {questions.map((question, index) => (
-              <div key={question.id} className="preview-question">
-                <div className="preview-question-header">
+              <div key={question.id} className="gvc-preview-question">
+                <div className="gvc-preview-question-header">
                   <Text strong style={{ fontSize: 16 }}>
                     Câu hỏi {index + 1}: {question.title || question.type}
                   </Text>
@@ -640,54 +639,54 @@ const CreateGrammarVocabularyChallenge = () => {
                   </Text>
                 </div>
                 
-                <div className="preview-question-content">
-                  <div className="preview-question-text">
+                <div className="gvc-preview-question-content">
+                  <div className="gvc-preview-question-text">
                     {question.question || "Câu hỏi mẫu"}
                   </div>
                   
                   {question.type === "multiple-choice" && question.options && (
-                    <div className="preview-options">
+                    <div className="gvc-preview-options">
                       {question.options.map((option, optIndex) => (
-                        <div key={option.id} className="preview-option">
-                          <span className="option-letter">{String.fromCharCode(65 + optIndex)}.</span>
-                          <span className="option-text">{option.text || `Option ${optIndex + 1}`}</span>
+                        <div key={option.id} className="gvc-preview-option">
+                          <span className="gvc-option-letter">{String.fromCharCode(65 + optIndex)}.</span>
+                          <span className="gvc-option-text">{option.text || `Option ${optIndex + 1}`}</span>
                         </div>
                       ))}
                     </div>
                   )}
                   
                   {question.type === "multiple-select" && question.options && (
-                    <div className="preview-options">
+                    <div className="gvc-preview-options">
                       {question.options.map((option, optIndex) => (
-                        <div key={option.id} className="preview-option">
-                          <span className="option-checkbox">☐</span>
-                          <span className="option-text">{option.text || `Option ${optIndex + 1}`}</span>
+                        <div key={option.id} className="gvc-preview-option">
+                          <span className="gvc-option-checkbox">☐</span>
+                          <span className="gvc-option-text">{option.text || `Option ${optIndex + 1}`}</span>
                         </div>
                       ))}
                     </div>
                   )}
                   
                   {question.type === "true-false" && (
-                    <div className="preview-options">
-                      <div className="preview-option">
-                        <span className="option-radio">○</span>
-                        <span className="option-text">True</span>
+                    <div className="gvc-preview-options">
+                      <div className="gvc-preview-option">
+                        <span className="gvc-option-radio">○</span>
+                        <span className="gvc-option-text">True</span>
                       </div>
-                      <div className="preview-option">
-                        <span className="option-radio">○</span>
-                        <span className="option-text">False</span>
+                      <div className="gvc-preview-option">
+                        <span className="gvc-option-radio">○</span>
+                        <span className="gvc-option-text">False</span>
                       </div>
                     </div>
                   )}
                   
                   {question.type === "fill-blank" && (
-                    <div className="preview-fill-blank">
+                    <div className="gvc-preview-fill-blank">
                       <Input placeholder="Nhập câu trả lời..." style={{ width: 200 }} />
                     </div>
                   )}
                   
                   {(question.type === "rewrite" || question.type === "free-input") && (
-                    <div className="preview-text-area">
+                    <div className="gvc-preview-text-area">
                       <Input.TextArea 
                         placeholder="Nhập câu trả lời..." 
                         rows={3}
