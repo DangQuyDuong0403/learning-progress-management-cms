@@ -34,16 +34,16 @@
   },
   "sidebar": {
     "title": "Learning CMS",
-    "accountsManagement": "Accounts Management",
-    "rolesManagement": "Roles Management",
-    "levelsManagement": "Levels Management",
-    "syllabusManagement": "Syllabus Management",
-    "coursesManagement": "Courses Management",
-    "reportsManagement": "Reports Management",
+    "accountsManagement": "Accounts",
+    "rolesManagement": "Roles",
+    "levelsManagement": "Levels",
+    "syllabusManagement": "Syllabus",
+    "coursesManagement": "Courses",
+    "reportsManagement": "Reports",
     "dashboard": "Dashboard",
     "settings": "Settings",
-    "classesManagement": "Classes Management",
-    "dailyChallengeManagement": "Daily Challenge Management"
+    "classesManagement": "Classes",
+    "dailyChallengeManagement": "Daily Challenge"
   },
   "header": {
     "profile": "Profile",
