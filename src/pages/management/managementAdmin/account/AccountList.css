@@ -11,8 +11,8 @@
 
 /* ===== MAIN CONTENT PANEL ===== */
 .main-content-panel {
-  background: rgba(45, 27, 105, 0.3);
-  backdrop-filter: blur(8px);
+  background: rgba(45, 27, 105, 0.75);
+  backdrop-filter: blur(15px);
   border-radius: 16px;
   padding: 24px;
   margin: 24px;
@@ -23,7 +23,7 @@
 }
 
 .space-theme .main-content-panel {
-  background: rgba(45, 27, 105, 0.3);
+  background: rgba(45, 27, 105, 0.75);
   border: 1px solid rgba(77, 208, 255, 0.3);
   box-shadow: 0 8px 32px rgba(77, 208, 255, 0.15);
 }
