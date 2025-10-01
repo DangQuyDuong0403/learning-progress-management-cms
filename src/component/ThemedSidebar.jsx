@@ -11,7 +11,8 @@ import {
   BarChartOutlined,
   SettingOutlined,
   DashboardOutlined,
-  TrophyOutlined
+  TrophyOutlined,
+  SecurityScanOutlined
 } from '@ant-design/icons';
 import CONFIG_ROUTER from "../routers/configRouter";
 
@@ -35,6 +36,7 @@ export default function ThemedSidebar({ collapsed }) {
       'MANAGER_LEVELS': <BookOutlined />,
       'MANAGER_COURSES': <BookOutlined />,
       'TEACHER_DAILY_CHALLENGES': <TrophyOutlined />,
+      'SECURITY': <SecurityScanOutlined />,
     };
     return iconMap[key] || <UserOutlined />;
   };
@@ -61,6 +63,7 @@ export default function ThemedSidebar({ collapsed }) {
       'MANAGER_COURSES': t('sidebar.coursesManagement'),
       'TEACHER_CLASSES': t('sidebar.classesManagement'),
       'TEACHER_DAILY_CHALLENGES': t('sidebar.dailyChallengeManagement'),
+      'SECURITY': 'Security',
     };
     return menuNameMap[key] || key;
   };
@@ -84,18 +87,36 @@ export default function ThemedSidebar({ collapsed }) {
     }));
 
   return (
-    <Menu
-      mode="inline"
-      selectedKeys={getSelectedKey()}
-      items={menuItems}
-      style={{
-        border: 'none',
-        background: 'transparent',
-        marginTop: '16px',
-        marginBottom: collapsed ? '60px' : '16px'
-      }}
-      className={`themed-sidebar-menu ${theme}-sidebar-menu`}
-      inlineCollapsed={collapsed}
-    />
+    <div className={`themed-sidebar-container ${theme}-sidebar-container`}>
+      <Menu
+        mode="inline"
+        selectedKeys={getSelectedKey()}
+        items={menuItems}
+        style={{
+          border: 'none',
+          background: 'transparent',
+          marginTop: '16px',
+          marginBottom: collapsed ? '60px' : '16px'
+        }}
+        className={`themed-sidebar-menu ${theme}-sidebar-menu`}
+        inlineCollapsed={collapsed}
+      />
+      
+      {/* Moon Icon */}
+      {!collapsed && (
+        <div className={`moon-icon ${theme}-moon-icon`}>
+          <div className="moon-face">🌙</div>
+        </div>
+      )}
+      
+      {/* Background Elements */}
+      {!collapsed && (
+        <div className={`sidebar-bg-elements ${theme}-bg-elements`}>
+          <div className="bg-planet">🪐</div>
+          <div className="bg-satellite">🛰️</div>
+          <div className="bg-meteor">☄️</div>
+        </div>
+      )}
+    </div>
   );
 }

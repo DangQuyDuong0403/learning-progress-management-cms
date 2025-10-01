@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useSelector, useDispatch } from 'react-redux';
 import { Button, Switch, Tooltip } from 'antd';
-import { SunOutlined, MoonOutlined } from '@ant-design/icons';
+import { SunOutlined, MoonOutlined, SettingOutlined } from '@ant-design/icons';
 import { logout } from '../redux/auth';
 import { useTheme } from '../contexts/ThemeContext';
 import LanguageToggle from './LanguageToggle';
@@ -26,7 +26,10 @@ export default function ThemedHeader() {
       <nav className="themed-navbar">
         <div className="themed-navbar-content">
           <div className="themed-navbar-brand">
-            {/* Empty brand for now */}
+            <div className="brand-logo">
+              <div className="rocket-icon">🚀</div>
+              <span className="brand-text">CAMKEY</span>
+            </div>
           </div>
           
           <div className="themed-navbar-actions">
@@ -184,105 +187,32 @@ export default function ThemedHeader() {
                 </span>
               </li>
 
-              {/* Profile Dropdown */}
-              <li className="themed-nav-item dropdown">
-                <button
-                  className="themed-nav-link"
-                  id="profileDropdown"
-                  data-bs-toggle="dropdown"
-                  aria-expanded="false"
-                  type="button"
-                >
+              {/* User Name */}
+              <li className="themed-nav-item">
+                <span className={`user-name ${theme}-user-name`}>
+                  {user?.name || 'Minh Thu'}
+                </span>
+              </li>
+
+              {/* User Avatar */}
+              <li className="themed-nav-item">
+                <div className={`user-avatar ${theme}-user-avatar`}>
                   <img 
                     src="/img/avatar_1.png" 
                     alt="Profile" 
-                    className={`profile-avatar ${theme}-profile-avatar`}
+                    className="avatar-image"
                   />
-                </button>
-                <ul 
-                  className={`dropdown-menu dropdown-menu-end ${theme}-profile-dropdown`}
-                  aria-labelledby="profileDropdown"
+                </div>
+              </li>
+
+              {/* Settings Icon */}
+              <li className="themed-nav-item">
+                <button
+                  className="themed-nav-link settings-button"
+                  onClick={() => navigate('/settings')}
                 >
-                  {/* Profile Header */}
-                  <li className="profile-header">
-                    <div className="profile-info">
-                      <img 
-                        src="/img/avatar_1.png" 
-                        alt="Profile" 
-                        className="profile-avatar-large"
-                      />
-                      <div>
-                        <div className="profile-name">
-                          {user?.name || 'User'}
-                        </div>
-                        <div className="profile-email">
-                          {user?.email || user?.name || 'user@example.com'}
-                        </div>
-                      </div>
-                    </div>
-                  </li>
-
-                  {/* Menu Items */}
-                  <li className="profile-menu">
-                    {/* View Profile */}
-                    <button 
-                      onClick={() => navigate('/profile')}
-                      className="profile-menu-item"
-                    >
-                      <div className="menu-icon">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                          <circle cx="12" cy="7" r="4"></circle>
-                        </svg>
-                      </div>
-                      {t('header.viewProfile')}
-                    </button>
-
-                    {/* Change Password */}
-                    <button 
-                      onClick={() => navigate('/change-password')}
-                      className="profile-menu-item"
-                    >
-                      <div className="menu-icon">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
-                          <circle cx="12" cy="16" r="1"></circle>
-                          <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
-                        </svg>
-                      </div>
-                      {t('header.changePassword')}
-                    </button>
-
-                    {/* Settings */}
-                    <button 
-                      onClick={() => navigate('/settings')}
-                      className="profile-menu-item"
-                    >
-                      <div className="menu-icon">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <circle cx="12" cy="12" r="3"></circle>
-                          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
-                        </svg>
-                      </div>
-                      {t('header.settings')}
-                    </button>
-
-                    {/* Logout */}
-                    <button 
-                      onClick={handleLogout}
-                      className="profile-menu-item logout-item"
-                    >
-                      <div className="menu-icon">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
-                          <polyline points="16,17 21,12 16,7"></polyline>
-                          <line x1="21" y1="12" x2="9" y2="12"></line>
-                        </svg>
-                      </div>
-                      {t('header.logOut')}
-                    </button>
-                  </li>
-                </ul>
+                  <SettingOutlined className={`settings-icon ${theme}-settings-icon`} />
+                </button>
               </li>
             </ul>
           </div>
