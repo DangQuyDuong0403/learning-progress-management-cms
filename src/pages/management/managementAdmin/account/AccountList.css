@@ -40,6 +40,23 @@
   z-index: -1;
 }
 
+/* Sun theme main content panel */
+.sun-theme .main-content-panel {
+  position: relative;
+  background: rgba(255, 255, 255, 0.05); /* Rất trong suốt để nhìn xuyên qua */
+  backdrop-filter: blur(1px); /* Blur nhẹ để tạo hiệu ứng glass */
+  border-radius: 16px;
+  padding: 24px;
+  margin: 24px;
+  /* Không dùng opacity để tránh làm mờ nội dung bên trong */
+  
+  /* Hiệu ứng viền + bóng */
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  
+  z-index: 2;
+}
+
 /* ===== PANEL HEADER ===== */
 .panel-header {
   display: flex;
@@ -57,20 +74,20 @@
 .search-input {
   width: 100%;
   height: 40px;
-  border-radius: 8px;
-  border: 1px solid rgba(77, 208, 255, 0.3);
-  background: rgba(255, 255, 255, 0.1);
-  color: #fff;
+  border-radius: 20px;
+  border: 1px solid #000;
+  background: #fefffe;
+  color: #666;
   backdrop-filter: blur(10px);
 }
 
 .search-input::placeholder {
-  color: rgba(255, 255, 255, 0.6);
+  color: #999;
 }
 
 .search-input:focus {
-  border-color: rgba(77, 208, 255, 0.6);
-  box-shadow: 0 0 0 2px rgba(77, 208, 255, 0.2);
+  border-color: #000;
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.2);
 }
 
 .space-theme .search-input {
@@ -125,6 +142,17 @@
 .space-theme .table-section {
   background: rgba(26, 26, 46, 0.6);
   border: 1px solid rgba(77, 208, 255, 0.3);
+}
+
+/* Sun theme table section */
+.sun-theme .table-section {
+  position: relative;
+  background: rgba(255, 255, 255, 0.05); /* Rất trong suốt để nhìn xuyên qua */
+  backdrop-filter: blur(1px); /* Blur nhẹ để tạo hiệu ứng glass */
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  z-index: 2;
 }
 
 /* ===== TABLE STYLES ===== */
@@ -388,4 +416,13 @@
 
 .role-manager {
   color: #faad14;
+}
+
+/* Action button icons */
+.account-table .ant-btn .anticon {
+  color: #000 !important;
+}
+
+.account-table .ant-btn:hover .anticon {
+  color: #000 !important;
 }

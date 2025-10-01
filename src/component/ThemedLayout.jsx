@@ -25,7 +25,7 @@ const ThemedLayout = ({ children }) => {
         width: '100vw',
         maxWidth: '100vw',
         overflow: 'hidden',
-        backgroundImage: "url('/img/bg-management.png')",
+        backgroundImage: theme === 'sun' ? "url('/img/bg-light.png')" : "url('/img/bg-management.png')",
         backgroundSize: 'cover',
         backgroundPosition: 'center',
         backgroundAttachment: 'fixed',
@@ -55,14 +55,18 @@ const ThemedLayout = ({ children }) => {
       >
         <div className="themed-sidebar-header">
           <div className="themed-logo">
-            <img 
-              src={theme === 'sun' ? "/img/logo.png" : "/img/logo.png"} 
-              alt="Logo" 
-              className="themed-logo-img" 
-            />
+            {theme === 'dark' ? (
+              <span className="themed-logo-icon">🚀</span>
+            ) : (
+              <img 
+                src="/img/sun-logo.png" 
+                alt="Logo" 
+                className="themed-logo-img" 
+              />
+            )}
             {!collapsed && (
               <span className={`themed-logo-text ${theme}-logo-text`}>
-                Learning CMS
+               CAMKEY
               </span>
             )}
           </div>
@@ -114,6 +118,28 @@ const ThemedLayout = ({ children }) => {
           }}
         >
           {children}
+          
+          {/* Sun Decoration Icon - Only for Sun Theme */}
+          {theme === 'sun' && (
+            <div className="sun-decoration-icon">
+              <img 
+                src="/img/icon-sun1.png" 
+                alt="Sun Decoration" 
+                className="sun-icon-image" 
+              />
+            </div>
+          )}
+
+          {/* Astronaut Decoration Icon - Only for Sun Theme */}
+          {theme === 'sun' && (
+            <div className="astronaut-decoration-icon">
+              <img 
+                src="/img/astronut-11.png" 
+                alt="Astronaut Decoration" 
+                className="astronaut-icon-image" 
+              />
+            </div>
+          )}
         </Content>
       </AntLayout>
     </AntLayout>
