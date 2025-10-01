@@ -30,7 +30,7 @@ import {
   CheckOutlined,
   StopOutlined,
 } from "@ant-design/icons";
-import Layout from "../../../../component/Layout";
+import ThemedLayout from "../../../../component/ThemedLayout";
 import LoadingWithEffect from "../../../../component/spinner/LoadingWithEffect";
 import "./AccountList.css";
 import { spaceToast } from "../../../../component/SpaceToastify";
@@ -392,7 +392,7 @@ const AccountList = () => {
   };
 
   return (
-    <Layout>
+    <ThemedLayout>
       <div className="account-list-container">
         {/* Header */}
         <Card className="header-card">
@@ -704,7 +704,7 @@ const AccountList = () => {
           </div>
         </Modal>
       </div>
-    </Layout>
+    </ThemedLayout>
   );
 };
 
