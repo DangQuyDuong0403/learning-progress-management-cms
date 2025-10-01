@@ -72,7 +72,7 @@ export default function Sidebar({ collapsed }) {
     .map((route) => ({
       key: route.key,
       icon: getIcon(route.key),
-      label: collapsed ? null : (
+      label: (
         <Link to={route.path} style={{ textDecoration: 'none' }}>
           {getMenuName(route.key)}
         </Link>

@@ -497,14 +497,72 @@ const RoleList = () => {
 
         {/* Confirmation Modal */}
         <Modal
-          title={confirmModal.title}
+          title={
+            <div style={{ 
+              fontSize: '20px', 
+              fontWeight: '600', 
+              color: '#1890ff',
+              textAlign: 'center',
+              padding: '10px 0'
+            }}>
+              {confirmModal.title}
+            </div>
+          }
           open={confirmModal.visible}
           onOk={confirmModal.onConfirm}
           onCancel={handleConfirmCancel}
           okText={t('common.confirm')}
           cancelText={t('common.cancel')}
+          width={500}
+          centered
+          bodyStyle={{
+            padding: '30px 40px',
+            fontSize: '16px',
+            lineHeight: '1.6',
+            textAlign: 'center'
+          }}
+          okButtonProps={{
+            style: {
+              backgroundColor: '#ff4d4f',
+              borderColor: '#ff4d4f',
+              height: '40px',
+              fontSize: '16px',
+              fontWeight: '500',
+              minWidth: '100px'
+            }
+          }}
+          cancelButtonProps={{
+            style: {
+              height: '40px',
+              fontSize: '16px',
+              fontWeight: '500',
+              minWidth: '100px'
+            }
+          }}
         >
-          <p>{confirmModal.content}</p>
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: '20px'
+          }}>
+            <div style={{
+              fontSize: '48px',
+              color: '#ff4d4f',
+              marginBottom: '10px'
+            }}>
+              ⚠️
+            </div>
+            <p style={{
+              fontSize: '18px',
+              color: '#333',
+              margin: 0,
+              fontWeight: '500'
+            }}>
+              {confirmModal.content}
+            </p>
+       
+          </div>
         </Modal>
       </div>
     </Layout>

@@ -20,7 +20,7 @@ import {
 } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
 import Layout from "../../../../component/Layout";
-import "./CreateGrammarVocabularyChallenge.css";
+import "./CreateGrammarVocabularyChallenge1.css";
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -672,7 +672,7 @@ Gõ @ để chọn đề từ học liệu<br/>
   const previewContent = useMemo(() => {
     if (parsedContent.parts.length === 0) {
       return (
-        <div className="preview-placeholder">
+        <div className="gvc-preview-placeholder">
           <Text type="secondary">
             Start typing your script to see the preview here...
           </Text>
@@ -681,7 +681,7 @@ Gõ @ để chọn đề từ học liệu<br/>
     }
 
     return (
-      <div className="preview-content">
+      <div className="gvc-preview-content">
         {parsedContent.parts.map((part, partIndex) => (
           <div key={part.id} className="part-container">
             {!part.isStandalone && part.title && (
@@ -689,12 +689,12 @@ Gõ @ để chọn đề từ học liệu<br/>
             )}
             {part.questions.map((question, questionIndex) => (
               <div key={question.id} className="question-container">
-                <div className="question-header">
+                <div className="gvc-question-header">
                   <Text strong className="question-title">{question.title}</Text>
                 </div>
                 
                 {question.content && (
-                  <div className="question-content">
+                  <div className="gvc-question-content">
                     <Text>{question.content}</Text>
                   </div>
                 )}
@@ -720,13 +720,13 @@ Gõ @ để chọn đề từ học liệu<br/>
                     {question.options.map((option, optionIndex) => (
                       <div 
                         key={option.id} 
-                        className={`option-item ${option.isCorrect ? 'correct-option' : ''} clickable-option`}
+                        className={`gvc-option-item ${option.isCorrect ? 'correct-option' : ''} clickable-option`}
                         onClick={() => handleOptionClick(option.label, question.id)}
                         style={{ cursor: 'pointer' }}
                         title={option.isCorrect ? `Đáp án ${option.label} đã được chọn` : `Click để chọn đáp án ${option.label}`}
                       >
-                        <span className="option-label">{option.label}.</span>
-                        <span className="option-text">{option.text}</span>
+                        <span className="gvc-option-label">{option.label}.</span>
+                        <span className="gvc-option-text">{option.text}</span>
                         {option.isCorrect && <span className="correct-indicator">✓</span>}
                       </div>
                     ))}
@@ -756,9 +756,9 @@ Gõ @ để chọn đề từ học liệu<br/>
 
   return (
     <Layout>
-      <div className="create-challenge-container">
+      <div className="gvc-create-challenge-container">
         {/* Header */}
-        <Card className="header-card">
+        <Card className="gvc-header-card">
           <Row justify="space-between">
             <Col>
               <Space align="center">
@@ -790,7 +790,7 @@ Gõ @ để chọn đề từ học liệu<br/>
         </Card>
 
         {/* Configuration Section */}
-        <Card className="config-card">
+        <Card className="gvc-config-card">
           <Row gutter={24} align="middle">
             <Col span={8}>
               <Space direction="vertical" style={{ width: "100%" }}>
@@ -844,13 +844,13 @@ Gõ @ để chọn đề từ học liệu<br/>
         </Card>
 
         {/* Main Content */}
-        <div className="main-content-container">
+        <div className="gvc-main-content-container">
           <Row gutter={24} style={{ height: "calc(100vh - 300px)" }}>
             {/* Preview Panel (Left) */}
               <Col span={12}>
               <Card 
                 title="Preview" 
-                className="preview-card"
+                className="gvc-preview-card"
                 style={{ height: "100%" }}
                 >
                 <div className="preview-container">

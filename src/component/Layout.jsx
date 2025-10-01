@@ -16,7 +16,13 @@ const Layout = ({ children }) => {
   };
 
   return (
-    <AntLayout style={{ minHeight: '100vh' }}>
+    <AntLayout style={{ 
+      minHeight: '100vh',
+      maxHeight: '100vh',
+      width: '100vw',
+      maxWidth: '100vw',
+      overflow: 'hidden'
+    }}>
       {/* Sidebar */}
       <Sider
         width={300}
@@ -24,12 +30,17 @@ const Layout = ({ children }) => {
         collapsed={collapsed}
         theme="dark"
         style={{
-          overflow: 'auto',
+          overflow: 'hidden',
           height: '100vh',
           position: 'fixed',
           left: 0,
           top: 0,
           bottom: 0,
+          scrollbarWidth: 'none',
+          msOverflowStyle: 'none',
+          width: collapsed ? 80 : 300,
+          maxWidth: collapsed ? 80 : 300,
+          minWidth: collapsed ? 80 : 300,
         }}
       >
         <div className="sidebar-header">
@@ -40,21 +51,30 @@ const Layout = ({ children }) => {
         </div>
         <Sidebar collapsed={collapsed} />
         
-        {/* Toggle Button */}
-        <div className="sidebar-toggle">
+        {/* Toggle Button - Inside sidebar with absolute positioning */}
+        {/* <div className="sidebar-toggle">
           <Button
             type="text"
             icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
             onClick={toggleCollapsed}
             className="toggle-button"
           />
-        </div>
+        </div> */}
       </Sider>
 
       {/* Main Content Area */}
-      <AntLayout style={{ marginLeft: collapsed ? 80 : 300 }}>
+      <AntLayout style={{ 
+        marginLeft: collapsed ? 80 : 300,
+        width: `calc(100vw - ${collapsed ? 80 : 300}px)`,
+        maxWidth: `calc(100vw - ${collapsed ? 80 : 300}px)`,
+        overflow: 'hidden',
+        position: 'relative',
+        zIndex: 1
+      }}>
         {/* Header */}
-        <Header/>
+        <div style={{ position: 'relative', zIndex: 10000 }}>
+          <Header/>
+        </div>
 
         {/* Content */}
         <Content
@@ -64,6 +84,12 @@ const Layout = ({ children }) => {
             background: '#fff',
             borderRadius: '8px',
             minHeight: 'calc(100vh - 112px)',
+            maxHeight: 'calc(100vh - 112px)',
+            overflow: 'auto',
+            width: '100%',
+            maxWidth: '100%',
+            position: 'relative',
+            zIndex: 1
           }}
         >
           {children}

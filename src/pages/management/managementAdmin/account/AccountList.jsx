@@ -115,7 +115,7 @@ const AccountList = () => {
       setTimeout(() => {
         setAccounts(mockAccounts);
         setLoading(false);
-      }, 3000);
+      }, 1000);
     } catch (error) {
       message.error(t('accountManagement.loadAccountsError'));
       setLoading(false);
@@ -284,20 +284,6 @@ const AccountList = () => {
   });
 
   const columns = [
-    {
-      title: t('accountManagement.avatar'),
-      dataIndex: "avatar",
-      key: "avatar",
-      width: 80,
-      render: (avatar, record) => (
-        <Avatar
-          size={40}
-          icon={<UserOutlined />}
-          src={avatar}
-          style={{ backgroundColor: "#1890ff" }}
-        />
-      ),
-    },
     {
       title: t('accountManagement.username'),
       dataIndex: "username",
@@ -491,15 +477,7 @@ const AccountList = () => {
                 >
                   {t('accountManagement.refresh')}
                 </Button>
-                {selectedRowKeys.length > 0 && (
-                  <Button
-                    danger
-                    icon={<DeleteOutlined />}
-                    onClick={handleBatchDelete}
-                  >
-                    {t('accountManagement.deleteSelected')} ({selectedRowKeys.length})
-                  </Button>
-                )}
+              
               </Space>
             </Col>
           </Row>
@@ -512,7 +490,7 @@ const AccountList = () => {
               columns={columns}
               dataSource={filteredAccounts}
               rowKey="id"
-              rowSelection={rowSelection}
+              // rowSelection={rowSelection}
               pagination={{
                 total: filteredAccounts.length,
                 pageSize: 10,
@@ -658,14 +636,72 @@ const AccountList = () => {
 
         {/* Confirmation Modal */}
         <Modal
-          title={confirmModal.title}
+          title={
+            <div style={{ 
+              fontSize: '20px', 
+              fontWeight: '600', 
+              color: '#1890ff',
+              textAlign: 'center',
+              padding: '10px 0'
+            }}>
+              {confirmModal.title}
+            </div>
+          }
           open={confirmModal.visible}
           onOk={confirmModal.onConfirm}
           onCancel={handleConfirmCancel}
           okText={t('common.confirm')}
           cancelText={t('common.cancel')}
+          width={500}
+          centered
+          bodyStyle={{
+            padding: '30px 40px',
+            fontSize: '16px',
+            lineHeight: '1.6',
+            textAlign: 'center'
+          }}
+          okButtonProps={{
+            style: {
+              backgroundColor: '#ff4d4f',
+              borderColor: '#ff4d4f',
+              height: '40px',
+              fontSize: '16px',
+              fontWeight: '500',
+              minWidth: '100px'
+            }
+          }}
+          cancelButtonProps={{
+            style: {
+              height: '40px',
+              fontSize: '16px',
+              fontWeight: '500',
+              minWidth: '100px'
+            }
+          }}
         >
-          <p>{confirmModal.content}</p>
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: '20px'
+          }}>
+            <div style={{
+              fontSize: '48px',
+              color: '#ff4d4f',
+              marginBottom: '10px'
+            }}>
+              ⚠️
+            </div>
+            <p style={{
+              fontSize: '18px',
+              color: '#333',
+              margin: 0,
+              fontWeight: '500'
+            }}>
+              {confirmModal.content}
+            </p>
+       
+          </div>
         </Modal>
       </div>
     </Layout>
