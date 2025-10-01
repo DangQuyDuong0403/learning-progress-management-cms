@@ -11,16 +11,16 @@ import ProfileStudent from '../pages/profile/ProfileStudent';
 import ChangePassword from '../pages/profile/ChangePassword';
 import AccountList from '../pages/management/managementAdmin/account/AccountList';
 import RoleList from '../pages/management/managementAdmin/role/RoleList';
-import LevelList from '../pages/management/ManagementManager/level/LevelList';
-import SyllabusList from '../pages/management/ManagementManager/syllabus/SyllabusList';
+import LevelList from '../pages/management/managementManager/level/LevelList';
+import SyllabusList from '../pages/management/managementManager/syllabus/SyllabusList';
 import SpinnerDemo from '../pages/SpinnerDemo';
 //manager
-import ClassList from '../pages/management/ManagementManager/Class/ClassList';
-import ClassMenu from '../pages/management/ManagementManager/Class/ClassMenu';
-import ClassDetail from '../pages/management/ManagementManager/Class/ClassDetail';
-import ClassTeachers from '../pages/management/ManagementManager/Class/ClassTeachers';
-import ClassActivities from '../pages/management/ManagementManager/Class/ClassActivities';
-import ClassChapterLesson from '../pages/management/ManagementManager/Class/ClassChapterLesson';
+import ClassList from '../pages/management/managementManager/Class/ClassList';
+import ClassMenu from '../pages/management/managementManager/Class/ClassMenu';
+import ClassDetail from '../pages/management/managementManager/Class/ClassDetail';
+import ClassTeachers from '../pages/management/managementManager/Class/ClassTeachers';
+import ClassActivities from '../pages/management/managementManager/Class/ClassActivities';
+import ClassChapterLesson from '../pages/management/managementManager/Class/ClassChapterLesson';
 // Teacher Class Components
 import TeacherClassList from '../pages/management/ManagementTeacher/class/ClassList';
 import TeacherClassMenu from '../pages/management/ManagementTeacher/class/ClassMenu';
