@@ -29,8 +29,7 @@ const ThemedLayout = ({ children }) => {
         backgroundSize: 'cover',
         backgroundPosition: 'center',
         backgroundAttachment: 'fixed',
-        backgroundRepeat: 'no-repeat',
-        filter: 'blur(2px)'
+        backgroundRepeat: 'no-repeat'
       }}
     >
       {/* Themed Sidebar */}
