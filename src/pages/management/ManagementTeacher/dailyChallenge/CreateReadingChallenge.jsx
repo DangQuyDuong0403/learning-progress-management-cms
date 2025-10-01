@@ -37,7 +37,6 @@ import {
   DropdownModal,
   DragDropModal,
   ReorderModal,
-  RewriteModal,
 } from "./questionModals";
 import "./CreateReadingChallenge.css";
 
@@ -261,7 +260,7 @@ const CreateReadingChallenge = () => {
       'dropdown': 'DROPDOWN',
       'drag-drop': 'DRAGNDROP',
       'reorder': 'REORDER',
-      'rewrite': 'REWRITE'
+    
     };
     return typeMap[type] || type.toUpperCase();
   };
@@ -520,9 +519,7 @@ const CreateReadingChallenge = () => {
                             <Menu.Item key="reorder" onClick={() => handleAddQuestion('reorder')}>
                               Reorder
                             </Menu.Item>
-                            <Menu.Item key="rewrite" onClick={() => handleAddQuestion('rewrite')}>
-                              Rewrite
-                            </Menu.Item>
+                            
                           </Menu>
                         }
                         trigger={['click']}
@@ -638,12 +635,7 @@ const CreateReadingChallenge = () => {
           questionData={editingQuestion}
         />
         
-        <RewriteModal
-          visible={activeModal === 'rewrite'}
-          onCancel={handleCancelModal}
-          onSave={handleSaveQuestion}
-          questionData={editingQuestion}
-        />
+     
 
       </div>
     </Layout>
