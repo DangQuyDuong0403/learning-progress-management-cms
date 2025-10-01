@@ -24,7 +24,13 @@ const ThemedLayout = ({ children }) => {
         maxHeight: '100vh',
         width: '100vw',
         maxWidth: '100vw',
-        overflow: 'hidden'
+        overflow: 'hidden',
+        backgroundImage: "url('/img/bg-management.png')",
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundAttachment: 'fixed',
+        backgroundRepeat: 'no-repeat',
+        filter: 'blur(2px)'
       }}
     >
       {/* Themed Sidebar */}

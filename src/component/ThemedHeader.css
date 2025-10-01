@@ -1,8 +1,8 @@
 /* ===== THEMED HEADER BASE STYLES ===== */
 .themed-header {
-  background: rgba(255, 255, 255, 0.95);
+  background: rgba(109, 95, 143, 0.3);
   backdrop-filter: blur(10px);
-  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+  border-bottom: 1px solid rgba(109, 95, 143, 0.2);
   padding: 0 24px;
   height: 64px;
   display: flex;
@@ -10,6 +10,85 @@
   transition: all 0.3s ease;
   position: relative;
   z-index: 1000;
+}
+
+/* ===== BRAND LOGO STYLES ===== */
+.brand-logo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.rocket-icon {
+  font-size: 24px;
+  filter: drop-shadow(0 0 5px rgba(255, 255, 255, 0.5));
+}
+
+.brand-text {
+  font-size: 20px;
+  font-weight: 700;
+  color: #fff;
+  text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+  letter-spacing: 1px;
+}
+
+/* ===== USER NAME STYLES ===== */
+.user-name {
+  font-size: 16px;
+  font-weight: 500;
+  color: #fff;
+  text-shadow: 0 0 5px rgba(255, 255, 255, 0.3);
+}
+
+/* ===== USER AVATAR STYLES ===== */
+.user-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 2px solid rgba(77, 208, 255, 0.3);
+  overflow: hidden;
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+.user-avatar:hover {
+  border-color: rgba(77, 208, 255, 0.6);
+  box-shadow: 0 0 15px rgba(77, 208, 255, 0.4);
+  transform: scale(1.05);
+}
+
+.avatar-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* ===== SETTINGS BUTTON STYLES ===== */
+.settings-button {
+  padding: 8px;
+  border: none;
+  background: none;
+  border-radius: 50%;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.settings-button:hover {
+  background: rgba(77, 208, 255, 0.1);
+  transform: rotate(90deg);
+}
+
+.settings-icon {
+  font-size: 20px;
+  color: #fff;
+  filter: drop-shadow(0 0 5px rgba(255, 255, 255, 0.5));
+  transition: all 0.3s ease;
+}
+
+.settings-button:hover .settings-icon {
+  filter: drop-shadow(0 0 10px rgba(77, 208, 255, 0.8));
 }
 
 .themed-navbar {
@@ -91,10 +170,10 @@
 
 /* ===== SUN THEME HEADER STYLES ===== */
 .sun-theme .themed-header {
-  background: linear-gradient(135deg, rgba(255, 248, 225, 0.95) 0%, rgba(255, 243, 196, 0.95) 50%, rgba(255, 236, 179, 0.95) 100%);
+  background: rgba(109, 95, 143, 0.3);
   backdrop-filter: blur(10px);
-  border-bottom: 1px solid rgba(255, 193, 7, 0.2);
-  box-shadow: 0 2px 8px rgba(255, 193, 7, 0.1);
+  border-bottom: 1px solid rgba(109, 95, 143, 0.2);
+  box-shadow: 0 2px 8px rgba(109, 95, 143, 0.1);
 }
 
 .sun-theme .notification-icon {
@@ -136,10 +215,43 @@
 
 /* ===== SPACE THEME HEADER STYLES ===== */
 .space-theme .themed-header {
-  background: linear-gradient(135deg, rgba(10, 10, 46, 0.95) 0%, rgba(22, 33, 62, 0.95) 50%, rgba(15, 52, 96, 0.95) 100%);
+  background: rgba(109, 95, 143, 0.3);
   backdrop-filter: blur(10px);
-  border-bottom: 1px solid rgba(77, 208, 255, 0.2);
-  box-shadow: 0 2px 8px rgba(77, 208, 255, 0.1);
+  border-bottom: 1px solid rgba(109, 95, 143, 0.2);
+  box-shadow: 0 2px 8px rgba(109, 95, 143, 0.1);
+}
+
+.space-theme .rocket-icon {
+  filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.8));
+}
+
+.space-theme .brand-text {
+  color: #fff;
+  text-shadow: 0 0 15px rgba(255, 255, 255, 0.8);
+}
+
+.space-theme .space-user-name {
+  color: #fff;
+  text-shadow: 0 0 8px rgba(255, 255, 255, 0.5);
+}
+
+.space-theme .space-user-avatar {
+  border: 2px solid rgba(77, 208, 255, 0.4);
+  box-shadow: 0 0 10px rgba(77, 208, 255, 0.3);
+}
+
+.space-theme .space-user-avatar:hover {
+  border-color: rgba(77, 208, 255, 0.8);
+  box-shadow: 0 0 20px rgba(77, 208, 255, 0.6);
+}
+
+.space-theme .space-settings-icon {
+  color: #fff;
+  filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.8));
+}
+
+.space-theme .settings-button:hover .space-settings-icon {
+  filter: drop-shadow(0 0 15px rgba(77, 208, 255, 1));
 }
 
 .space-theme .notification-icon {
@@ -181,27 +293,39 @@
 
 /* ===== NOTIFICATION DROPDOWN STYLES ===== */
 .sun-theme .sun-dropdown-menu {
-  background: rgba(255, 248, 225, 0.98);
+  background: rgba(109, 95, 143, 0.4);
   backdrop-filter: blur(15px);
-  border: 1px solid rgba(255, 193, 7, 0.2);
-  box-shadow: 0 8px 32px rgba(255, 193, 7, 0.15);
-  color: #333;
+  border: 1px solid rgba(109, 95, 143, 0.3);
+  box-shadow: 0 8px 32px rgba(109, 95, 143, 0.2);
+  color: #fff;
+  border-radius: 12px;
+  padding: 0;
+  min-width: 380px;
+  max-width: 420px;
+  max-height: 500px;
+  overflow: hidden;
 }
 
 .space-theme .space-dropdown-menu {
-  background: rgba(10, 10, 46, 0.98);
+  background: rgba(109, 95, 143, 0.4);
   backdrop-filter: blur(15px);
-  border: 1px solid rgba(77, 208, 255, 0.2);
-  box-shadow: 0 8px 32px rgba(77, 208, 255, 0.15);
+  border: 1px solid rgba(109, 95, 143, 0.3);
+  box-shadow: 0 8px 32px rgba(109, 95, 143, 0.2);
   color: #fff;
+  border-radius: 12px;
+  padding: 0;
+  min-width: 380px;
+  max-width: 420px;
+  max-height: 500px;
+  overflow: hidden;
 }
 
 /* ===== PROFILE DROPDOWN STYLES ===== */
 .sun-theme .sun-profile-dropdown {
-  background: rgba(255, 248, 225, 0.98);
+  background: rgba(109, 95, 143, 0.4);
   backdrop-filter: blur(15px);
-  border: 1px solid rgba(255, 193, 7, 0.2);
-  box-shadow: 0 8px 32px rgba(255, 193, 7, 0.15);
+  border: 1px solid rgba(109, 95, 143, 0.3);
+  box-shadow: 0 8px 32px rgba(109, 95, 143, 0.2);
   border-radius: 12px;
   padding: 0;
   overflow: hidden;
@@ -209,10 +333,10 @@
 }
 
 .space-theme .space-profile-dropdown {
-  background: rgba(10, 10, 46, 0.98);
+  background: rgba(109, 95, 143, 0.4);
   backdrop-filter: blur(15px);
-  border: 1px solid rgba(77, 208, 255, 0.2);
-  box-shadow: 0 8px 32px rgba(77, 208, 255, 0.15);
+  border: 1px solid rgba(109, 95, 143, 0.3);
+  box-shadow: 0 8px 32px rgba(109, 95, 143, 0.2);
   border-radius: 12px;
   padding: 0;
   overflow: hidden;
@@ -352,18 +476,21 @@
 
 /* ===== NOTIFICATION DROPDOWN CONTENT ===== */
 .notification-header {
-  padding: 20px;
+  padding: 20px 24px;
   border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+  background: rgba(255, 255, 255, 0.05);
 }
 
 .space-theme .notification-header {
   border-bottom: 1px solid rgba(77, 208, 255, 0.2);
+  background: rgba(77, 208, 255, 0.05);
 }
 
 .notification-header h5 {
-  margin: 0 0 12px 0;
+  margin: 0 0 16px 0;
   font-size: 18px;
   font-weight: 600;
+  text-align: center;
 }
 
 .sun-theme .notification-header h5 {
@@ -376,15 +503,18 @@
 
 .notification-tabs {
   display: flex;
-  gap: 16px;
+  gap: 8px;
+  justify-content: center;
 }
 
 .notification-tabs .tab {
-  padding: 6px 12px;
-  border-radius: 6px;
-  font-size: 12px;
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.3s ease;
+  border: 1px solid transparent;
 }
 
 .sun-theme .notification-tabs .tab {
@@ -393,8 +523,10 @@
 }
 
 .sun-theme .notification-tabs .tab.active {
-  background: rgba(255, 193, 7, 0.2);
+  background: rgba(255, 193, 7, 0.3);
   color: #d84315;
+  border-color: rgba(255, 193, 7, 0.4);
+  box-shadow: 0 2px 8px rgba(255, 193, 7, 0.2);
 }
 
 .space-theme .notification-tabs .tab {
@@ -403,21 +535,25 @@
 }
 
 .space-theme .notification-tabs .tab.active {
-  background: rgba(77, 208, 255, 0.2);
+  background: rgba(77, 208, 255, 0.3);
   color: #4dd0ff;
+  border-color: rgba(77, 208, 255, 0.4);
+  box-shadow: 0 2px 8px rgba(77, 208, 255, 0.2);
 }
 
 .notification-section {
-  padding: 16px 20px;
+  padding: 16px 24px;
 }
 
 .section-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 12px;
-  font-size: 12px;
+  margin-bottom: 16px;
+  font-size: 13px;
   font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .sun-theme .section-header {
@@ -432,71 +568,108 @@
   background: none;
   border: none;
   font-size: 12px;
+  font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.3s ease;
+  padding: 4px 8px;
+  border-radius: 4px;
 }
 
 .sun-theme .see-all {
   color: #ff6b35;
 }
 
+.sun-theme .see-all:hover {
+  background: rgba(255, 107, 53, 0.1);
+  color: #e65100;
+}
+
 .space-theme .see-all {
   color: #4dd0ff;
+}
+
+.space-theme .see-all:hover {
+  background: rgba(77, 208, 255, 0.1);
+  color: #29b6f6;
 }
 
 .notification-list {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 8px;
 }
 
 .notification-item {
   display: flex;
   align-items: flex-start;
   gap: 12px;
-  padding: 12px;
-  border-radius: 8px;
-  transition: all 0.2s ease;
+  padding: 16px;
+  border-radius: 12px;
+  transition: all 0.3s ease;
+  position: relative;
+  border: 1px solid transparent;
 }
 
 .sun-theme .notification-item {
-  background: rgba(255, 193, 7, 0.05);
+  background: rgba(109, 95, 143, 0.1);
+  border-color: rgba(109, 95, 143, 0.2);
 }
 
 .sun-theme .notification-item:hover {
-  background: rgba(255, 193, 7, 0.1);
+  background: rgba(109, 95, 143, 0.2);
+  border-color: rgba(109, 95, 143, 0.3);
+  transform: none;
+  box-shadow: 0 4px 12px rgba(109, 95, 143, 0.15);
 }
 
 .space-theme .notification-item {
-  background: rgba(77, 208, 255, 0.05);
+  background: rgba(109, 95, 143, 0.1);
+  border-color: rgba(109, 95, 143, 0.2);
 }
 
 .space-theme .notification-item:hover {
-  background: rgba(77, 208, 255, 0.1);
+  background: rgba(109, 95, 143, 0.2);
+  border-color: rgba(109, 95, 143, 0.3);
+  transform: none;
+  box-shadow: 0 4px 12px rgba(109, 95, 143, 0.15);
 }
 
 .notification-avatar {
   position: relative;
   flex-shrink: 0;
+  width: 40px;
+  height: 40px;
 }
 
 .notification-avatar img {
-  width: 32px;
-  height: 32px;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid rgba(255, 255, 255, 0.1);
+}
+
+.space-theme .notification-avatar img {
+  border-color: rgba(77, 208, 255, 0.2);
 }
 
 .notification-icon {
   position: absolute;
   bottom: -2px;
   right: -2px;
-  width: 16px;
-  height: 16px;
+  width: 18px;
+  height: 18px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 8px;
+  font-size: 10px;
+  border: 2px solid rgba(255, 255, 255, 0.9);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.space-theme .notification-icon {
+  border-color: rgba(26, 26, 46, 0.9);
 }
 
 .notification-icon.event {
@@ -522,12 +695,14 @@
 .notification-content {
   flex: 1;
   min-width: 0;
+  padding-top: 2px;
 }
 
 .notification-text {
-  margin: 0 0 4px 0;
+  margin: 0 0 8px 0;
   font-size: 14px;
-  line-height: 1.4;
+  line-height: 1.5;
+  font-weight: 400;
 }
 
 .sun-theme .notification-text {
@@ -540,7 +715,8 @@
 
 .notification-time {
   font-size: 12px;
-  opacity: 0.7;
+  font-weight: 500;
+  opacity: 0.8;
 }
 
 .sun-theme .notification-time {
@@ -548,15 +724,33 @@
 }
 
 .space-theme .notification-time {
-  color: rgba(255, 255, 255, 0.6);
+  color: rgba(255, 255, 255, 0.7);
 }
 
 .notification-dot {
-  width: 8px;
-  height: 8px;
+  width: 10px;
+  height: 10px;
   border-radius: 50%;
   flex-shrink: 0;
-  margin-top: 4px;
+  margin-top: 6px;
+  background: #ff4757;
+  box-shadow: 0 0 6px rgba(255, 71, 87, 0.6);
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.2);
+    opacity: 0.7;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
 }
 
 /* ===== RESPONSIVE ===== */
@@ -572,5 +766,31 @@
   .sun-theme .sun-profile-dropdown,
   .space-theme .space-profile-dropdown {
     min-width: 260px;
+  }
+  
+  .sun-theme .sun-dropdown-menu,
+  .space-theme .space-dropdown-menu {
+    min-width: 320px;
+    max-width: 350px;
+  }
+  
+  .notification-item {
+    padding: 12px;
+  }
+  
+  .notification-avatar {
+    width: 36px;
+    height: 36px;
+  }
+  
+  .notification-avatar img {
+    width: 36px;
+    height: 36px;
+  }
+  
+  .notification-icon {
+    width: 16px;
+    height: 16px;
+    font-size: 9px;
   }
 }

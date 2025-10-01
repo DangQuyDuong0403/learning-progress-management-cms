@@ -29,9 +29,11 @@ import {
   PhoneOutlined,
   CheckOutlined,
   StopOutlined,
+  DownloadOutlined,
 } from "@ant-design/icons";
 import ThemedLayout from "../../../../component/ThemedLayout";
 import LoadingWithEffect from "../../../../component/spinner/LoadingWithEffect";
+import { useTheme } from "../../../../contexts/ThemeContext";
 import "./AccountList.css";
 import { spaceToast } from "../../../../component/SpaceToastify";
 
@@ -92,6 +94,7 @@ const mockAccounts = [
 
 const AccountList = () => {
   const { t } = useTranslation();
+  const { theme } = useTheme();
   const [loading, setLoading] = useState(false);
   const [accounts, setAccounts] = useState([]);
   const [selectedRowKeys, setSelectedRowKeys] = useState([]);
@@ -393,116 +396,60 @@ const AccountList = () => {
 
   return (
     <ThemedLayout>
-      <div className="account-list-container">
-        {/* Header */}
-        <Card className="header-card">
-          <Row justify="space-between" align="middle">
-            <Col>
-              <h2
-                style={{
-                  margin: 0,
-                  background:
-                    "linear-gradient(90deg, #5e17eb 0%, #4dd0ff 100%)",
-                  WebkitBackgroundClip: "text",
-                  WebkitTextFillColor: "transparent",
-                  fontWeight: 700,
-                }}
-              >
-                {t('accountManagement.title')}
-              </h2>
-              <p style={{ margin: "4px 0 0 0", color: "#666" }}>
-                {t('accountManagement.totalAccounts')}: {filteredAccounts.length} {t('accountManagement.accounts')}
-              </p>
-            </Col>
-            <Col>
-              <Space>
-                <Button
-                  type="primary"
-                  icon={<PlusOutlined />}
-                  onClick={handleAddAccount}
-                >
-                  {t('accountManagement.addAccount')}
-                </Button>
-                <Button icon={<ExportOutlined />}>{t('accountManagement.exportExcel')}</Button>
-                <Button icon={<ImportOutlined />}>{t('accountManagement.importExcel')}</Button>
-              </Space>
-            </Col>
-          </Row>
-        </Card>
-
-        {/* Filters */}
-        <Card className="filter-card">
-          <Row gutter={[16, 16]} align="middle">
-            <Col xs={24} sm={12} md={8} lg={6}>
+        {/* Main Content Panel */}
+        <div className={`main-content-panel ${theme}-main-panel`}>
+          {/* Header Section */}
+          <div className={`panel-header ${theme}-panel-header`}>
+            <div className="search-section">
               <Input
-                placeholder={t('accountManagement.searchPlaceholder')}
+                placeholder="Search..."
                 prefix={<SearchOutlined />}
                 value={searchText}
                 onChange={(e) => handleSearch(e.target.value)}
+                className={`search-input ${theme}-search-input`}
                 allowClear
               />
-            </Col>
-            <Col xs={24} sm={12} md={8} lg={6}>
-              <Select
-                placeholder={t('accountManagement.filterByStatus')}
-                value={statusFilter}
-                onChange={handleStatusFilter}
-                style={{ width: "100%" }}
+            </div>
+            <div className="action-buttons">
+              <Button 
+                icon={<DownloadOutlined />}
+                className={`export-button ${theme}-export-button`}
               >
-                <Option value="all">{t('accountManagement.allStatuses')}</Option>
-                <Option value="active">{t('accountManagement.active')}</Option>
-                <Option value="inactive">{t('accountManagement.inactive')}</Option>
-                <Option value="pending">{t('accountManagement.pending')}</Option>
-              </Select>
-            </Col>
-            <Col xs={24} sm={12} md={8} lg={6}>
-              <Select
-                placeholder={t('accountManagement.filterByRole')}
-                value={roleFilter}
-                onChange={handleRoleFilter}
-                style={{ width: "100%" }}
+                Export Data
+              </Button>
+              <Button 
+                icon={<PlusOutlined />}
+                className={`create-button ${theme}-create-button`}
+                onClick={handleAddAccount}
               >
-                <Option value="all">{t('accountManagement.allRoles')}</Option>
-                <Option value="Admin">{t('accountManagement.admin')}</Option>
-                <Option value="Teacher">{t('accountManagement.teacher')}</Option>
-                <Option value="Student">{t('accountManagement.student')}</Option>
-                <Option value="Manager">{t('accountManagement.manager')}</Option>
-              </Select>
-            </Col>
-            <Col xs={24} sm={12} md={8} lg={6}>
-              <Space>
-                <Button
-                  icon={<ReloadOutlined />}
-                  onClick={fetchAccounts}
-                >
-                  {t('accountManagement.refresh')}
-                </Button>
-              
-              </Space>
-            </Col>
-          </Row>
-        </Card>
+                Create Account
+              </Button>
+            </div>
+          </div>
 
-        {/* Table */}
-        <Card>
-          <LoadingWithEffect loading={loading} message={t('accountManagement.loadingAccounts')}>
-            <Table
-              columns={columns}
-              dataSource={filteredAccounts}
-              rowKey="id"
-              // rowSelection={rowSelection}
-              pagination={{
-                total: filteredAccounts.length,
-                pageSize: 10,
-                showSizeChanger: true,
-                showQuickJumper: true,
-                showTotal: (total, range) =>
-                  `${range[0]}-${range[1]} ${t('accountManagement.paginationText')} ${total} ${t('accountManagement.accountsText')}`,
-              }}
-              scroll={{ x: 1200 }}
-            />
-          </LoadingWithEffect>
-        </Card>
+          {/* Table Section */}
+          <div className={`table-section ${theme}-table-section`}>
+            <LoadingWithEffect loading={loading} message={t('accountManagement.loadingAccounts')}>
+              <Table
+                columns={columns}
+                dataSource={filteredAccounts}
+                rowKey="id"
+                pagination={{
+                  total: filteredAccounts.length,
+                  pageSize: 10,
+                  showSizeChanger: true,
+                  showQuickJumper: true,
+                  showTotal: (total, range) =>
+                    `${range[0]}-${range[1]} of ${total}`,
+                  className: `${theme}-pagination`
+                }}
+                scroll={{ x: 1200 }}
+                className={`account-table ${theme}-account-table`}
+              />
+            </LoadingWithEffect>
+          </div>
+        </div>
+
 
         {/* Add/Edit Modal */}
         <Modal
@@ -703,7 +650,6 @@ const AccountList = () => {
        
           </div>
         </Modal>
-      </div>
     </ThemedLayout>
   );
 };
