@@ -97,6 +97,11 @@ const ThemedLayout = ({ children }) => {
           <ThemedHeader />
         </div>
 
+        {/* Background Elements */}
+        <div className="bg-element-1"></div>
+        <div className="bg-element-2"></div>
+        <div className="bg-element-3"></div>
+
         {/* Content */}
         <Content
           className={`themed-content ${theme}-content`}
