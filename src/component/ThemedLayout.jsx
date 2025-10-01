@@ -25,7 +25,7 @@ const ThemedLayout = ({ children }) => {
         width: '100vw',
         maxWidth: '100vw',
         overflow: 'hidden',
-        backgroundImage: theme === 'sun' ? "url('/img/bg-light.png')" : "url('/img/bg-management.png')",
+        backgroundImage: theme === 'sun' ? "url('/img/sun-logo2.png')" : "url('/img/bg-management.png')",
         backgroundSize: 'cover',
         backgroundPosition: 'center',
         backgroundAttachment: 'fixed',

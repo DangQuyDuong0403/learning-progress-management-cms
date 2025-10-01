@@ -103,7 +103,6 @@
 	border: none;
 	box-shadow: none;
 }
-
 /* Ảnh img-bg-1.png - căn giữa */
 .space-theme .themed-main-layout::before {
 	content: '';
