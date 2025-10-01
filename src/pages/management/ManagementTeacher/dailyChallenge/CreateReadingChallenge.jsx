@@ -273,9 +273,9 @@ const CreateReadingChallenge = () => {
 
   return (
     <Layout>
-      <div className="create-reading-challenge-container">
+      <div className="rc-create-reading-challenge-container">
         {/* Header */}
-        <Card className="header-card">
+        <Card className="rc-header-card">
           <Row justify="space-between">
             <Col>
               <Space align="center">
@@ -307,7 +307,7 @@ const CreateReadingChallenge = () => {
         </Card>
 
         {/* Configuration Section */}
-        <Card className="config-card">
+        <Card className="rc-config-card">
           <Row gutter={24} align="middle">
             <Col span={8}>
               <Space direction="vertical" style={{ width: "100%" }}>
@@ -361,20 +361,20 @@ const CreateReadingChallenge = () => {
         </Card>
 
         {/* Main Content */}
-        <div className="main-content-container">
+        <div className="rc-main-content-container">
           <Row gutter={24} style={{ height: "calc(100vh - 380px)" }}>
             {/* Passage Creation - Left Side (2/3) */}
-            <Col span={16} className="passage-section">
-              <Card className="passage-card" style={{ height: "100%" }}>
+            <Col span={16} className="rc-passage-section">
+              <Card className="rc-passage-card" style={{ height: "100%" }}>
                 {/* Passage Tabs with Discard Button */}
-                <div className="passage-tabs">
-                  <div className="passage-tabs-left">
+                <div className="rc-passage-tabs">
+                  <div className="rc-passage-tabs-left">
                     {passages.map((passage) => (
                       <Button
                         key={passage.id}
                         type={activePassage === passage.id ? "primary" : "text"}
                         onClick={() => setActivePassage(passage.id)}
-                        className="passage-tab"
+                        className="rc-passage-tab"
                       >
                         {passage.title}
                       </Button>
@@ -383,7 +383,7 @@ const CreateReadingChallenge = () => {
                       type="dashed"
                       icon={<PlusOutlined />}
                       onClick={handleAddPassage}
-                      className="add-passage-btn"
+                      className="rc-add-passage-btn"
                     >
                       Add passage set
                     </Button>
@@ -392,7 +392,7 @@ const CreateReadingChallenge = () => {
                     type="text" 
                     danger 
                     icon={<DeleteOutlined />}
-                    className="discard-btn"
+                    className="rc-discard-btn"
                     onClick={handleDiscardPassage}
                     disabled={passages.length <= 1}
                   >
@@ -403,11 +403,11 @@ const CreateReadingChallenge = () => {
                 <Divider />
 
                  {/* Passage Content */}
-                 <div className="passage-content">
+                 <div className="rc-passage-content">
                    {currentPassage?.type === "manual" ? (
                      /* Text Editor - Full space when manual is selected */
-                     <div className="text-editor-full">
-                       <div className="text-editor-header">
+                     <div className="rc-text-editor-full">
+                       <div className="rc-text-editor-header">
                          <Button 
                            type="text" 
                            icon={<ArrowLeftOutlined />}
@@ -416,7 +416,7 @@ const CreateReadingChallenge = () => {
                                p.id === activePassage ? { ...p, type: null } : p
                              ));
                            }}
-                           className="back-to-options-btn"
+                           className="rc-back-to-options-btn"
                          >
                            Back to options
                          </Button>
@@ -440,7 +440,7 @@ const CreateReadingChallenge = () => {
                          {/* Manual Text & Media */}
                          <Card 
                            hoverable 
-                           className="passage-option-card"
+                           className="rc-passage-option-card"
                            onClick={() => {
                              setPassages(passages.map(p => 
                                p.id === activePassage ? { ...p, type: "manual" } : p
@@ -456,7 +456,7 @@ const CreateReadingChallenge = () => {
                          {/* PDF Upload */}
                          <Card 
                            hoverable 
-                           className="passage-option-card"
+                           className="rc-passage-option-card"
                            style={{ opacity: isProcessingPDF ? 0.6 : 1 }}
                          >
                            <Upload
@@ -485,20 +485,20 @@ const CreateReadingChallenge = () => {
             </Col>
 
             {/* Questions Section - Right Side (1/3) */}
-            <Col span={8} className="questions-section">
-              <div className="questions-container" style={{ height: "100%" }}>
+            <Col span={8} className="rc-questions-section">
+              <div className="rc-questions-container" style={{ height: "100%" }}>
                 {/* Question Type Section - Top 1/3 */}
-                <div className="question-type-section">
-                  <Card className="question-type-card">
-                    <div className="question-type-header">
+                <div className="rc-question-type-section">
+                  <Card className="rc-question-type-card">
+                    <div className="rc-question-type-header">
                       <Title level={4} style={{ margin: 0, color: "#4dd0ff" }}>
                         Question Type
                       </Title>
                     </div>
-                    <div className="add-question-section">
+                    <div className="rc-add-question-section">
                       <Dropdown
                         overlay={
-                          <Menu className="question-type-menu">
+                          <Menu className="rc-question-type-menu">
                             <Menu.Item key="multiple-choice" onClick={() => handleAddQuestion('multiple-choice')}>
                               Multiple Choice
                             </Menu.Item>
@@ -527,7 +527,7 @@ const CreateReadingChallenge = () => {
                         }
                         trigger={['click']}
                       >
-                        <Button className="add-question-btn">
+                        <Button className="rc-add-question-btn">
                           <PlusOutlined />
                           Add a Question
                           <DownOutlined />
@@ -538,36 +538,36 @@ const CreateReadingChallenge = () => {
                 </div>
 
                 {/* Questions List Section - Bottom 2/3 */}
-                <div className="questions-list-section">
-                  <Card className="questions-card">
-                    <div className="questions-header">
+                <div className="rc-questions-list-section">
+                  <Card className="rc-questions-card">
+                    <div className="rc-questions-header">
                       <Title level={4} style={{ margin: 0, color: "#4dd0ff" }}>
                         Questions ({questions.length})
                       </Title>
                     </div>
                     
-                    <div className="questions-list">
+                    <div className="rc-questions-list">
                       {questions.length === 0 ? (
-                        <div className="empty-questions">
-                          <div className="empty-icon">🚀</div>
-                          <div className="empty-text">No questions added yet</div>
-                          <div className="empty-subtext">Click "Add a Question" above to get started</div>
+                        <div className="rc-empty-questions">
+                          <div className="rc-empty-icon">🚀</div>
+                          <div className="rc-empty-text">No questions added yet</div>
+                          <div className="rc-empty-subtext">Click "Add a Question" above to get started</div>
                         </div>
                       ) : (
                         questions.map((question, index) => (
-                          <div key={question.id} className="question-item">
-                            <div className="question-handle">
+                          <div key={question.id} className="rc-question-item">
+                            <div className="rc-question-handle">
                               <HolderOutlined style={{ color: "#b9c6ff", cursor: "grab" }} />
                             </div>
                             <div onClick={() => handleEditQuestion(question)} style={{ flex: 1, cursor: "pointer" }}>
-                              <div className="question-type">
+                              <div className="rc-question-type">
                                 Q{index + 1}: {getQuestionTypeLabel(question.type)}
                               </div>
-                              <div className="question-text">
+                              <div className="rc-question-text">
                                 {question.question || "the question is"}
                               </div>
                             </div>
-                            <div className="question-actions">
+                            <div className="rc-question-actions">
                               <Button
                                 type="text"
                                 danger
