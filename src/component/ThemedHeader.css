@@ -1,6 +1,6 @@
 /* ===== THEMED HEADER BASE STYLES ===== */
 .themed-header {
-  background: rgba(109, 95, 143, 0.3);
+  background: transparent;
   backdrop-filter: blur(10px);
   border-bottom: 1px solid rgba(109, 95, 143, 0.2);
   padding: 0 24px;
@@ -170,7 +170,7 @@
 
 /* ===== SUN THEME HEADER STYLES ===== */
 .sun-theme .themed-header {
-  background: rgba(109, 95, 143, 0.3);
+  background: transparent;
   backdrop-filter: blur(10px);
   border-bottom: 1px solid rgba(109, 95, 143, 0.2);
   box-shadow: 0 2px 8px rgba(109, 95, 143, 0.1);
@@ -194,9 +194,9 @@
 }
 
 .sun-theme .sun-user-role {
-  color: #d84315;
+  color: #1e40af;
   font-weight: 600;
-  text-shadow: 0 0 3px rgba(255, 193, 7, 0.3);
+  text-shadow: none;
 }
 
 .sun-theme .sun-profile-avatar {
@@ -215,7 +215,7 @@
 
 /* ===== SPACE THEME HEADER STYLES ===== */
 .space-theme .themed-header {
-  background: rgba(109, 95, 143, 0.3);
+  background: transparent;
   backdrop-filter: blur(10px);
   border-bottom: 1px solid rgba(109, 95, 143, 0.2);
   box-shadow: 0 2px 8px rgba(109, 95, 143, 0.1);
@@ -293,12 +293,12 @@
 
 /* ===== NOTIFICATION DROPDOWN STYLES ===== */
 .sun-theme .sun-dropdown-menu {
-  background: rgba(109, 95, 143, 0.4);
-  backdrop-filter: blur(15px);
-  border: 1px solid rgba(109, 95, 143, 0.3);
-  box-shadow: 0 8px 32px rgba(109, 95, 143, 0.2);
-  color: #fff;
-  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.98);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(30, 64, 175, 0.2);
+  box-shadow: 0 12px 40px rgba(30, 64, 175, 0.15);
+  color: #333;
+  border-radius: 16px;
   padding: 0;
   min-width: 380px;
   max-width: 420px;
@@ -307,10 +307,10 @@
 }
 
 .space-theme .space-dropdown-menu {
-  background: rgba(109, 95, 143, 0.4);
+  background: rgba(26, 26, 46, 0.98);
   backdrop-filter: blur(15px);
-  border: 1px solid rgba(109, 95, 143, 0.3);
-  box-shadow: 0 8px 32px rgba(109, 95, 143, 0.2);
+  border: 1px solid rgba(77, 208, 255, 0.3);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
   color: #fff;
   border-radius: 12px;
   padding: 0;
@@ -477,13 +477,18 @@
 /* ===== NOTIFICATION DROPDOWN CONTENT ===== */
 .notification-header {
   padding: 20px 24px;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
-  background: rgba(255, 255, 255, 0.05);
+  border-bottom: 1px solid rgba(77, 208, 255, 0.2);
+  background: rgba(26, 26, 46, 0.4);
+}
+
+.sun-theme .notification-header {
+  border-bottom: 1px solid rgba(30, 64, 175, 0.2);
+  background: rgba(30, 64, 175, 0.05);
 }
 
 .space-theme .notification-header {
   border-bottom: 1px solid rgba(77, 208, 255, 0.2);
-  background: rgba(77, 208, 255, 0.05);
+  background: rgba(26, 26, 46, 0.4);
 }
 
 .notification-header h5 {
@@ -494,7 +499,9 @@
 }
 
 .sun-theme .notification-header h5 {
-  color: #d84315;
+  color: #1e40af;
+  font-weight: 700;
+  text-shadow: 0 1px 2px rgba(30, 64, 175, 0.1);
 }
 
 .space-theme .notification-header h5 {
@@ -518,15 +525,17 @@
 }
 
 .sun-theme .notification-tabs .tab {
-  color: #666;
-  background: rgba(255, 193, 7, 0.1);
+  color: #3b82f6;
+  background: rgba(30, 64, 175, 0.1);
+  border: 1px solid rgba(30, 64, 175, 0.2);
 }
 
 .sun-theme .notification-tabs .tab.active {
-  background: rgba(255, 193, 7, 0.3);
-  color: #d84315;
-  border-color: rgba(255, 193, 7, 0.4);
-  box-shadow: 0 2px 8px rgba(255, 193, 7, 0.2);
+  background: linear-gradient(135deg, #85abea 0%, #3b82f6 100%);
+  color: #ffffff;
+  border-color: rgba(30, 64, 175, 0.3);
+  box-shadow: 0 4px 12px rgba(30, 64, 175, 0.25);
+  font-weight: 600;
 }
 
 .space-theme .notification-tabs .tab {
@@ -543,6 +552,11 @@
 
 .notification-section {
   padding: 16px 24px;
+  background: rgba(26, 26, 46, 0.2);
+}
+
+.sun-theme .notification-section {
+  background: rgba(30, 64, 175, 0.05);
 }
 
 .section-header {
@@ -557,7 +571,9 @@
 }
 
 .sun-theme .section-header {
-  color: #d84315;
+  color: #1e40af;
+  font-weight: 700;
+  text-shadow: 0 1px 2px rgba(30, 64, 175, 0.1);
 }
 
 .space-theme .section-header {
@@ -576,12 +592,14 @@
 }
 
 .sun-theme .see-all {
-  color: #ff6b35;
+  color: #3b82f6;
+  font-weight: 600;
 }
 
 .sun-theme .see-all:hover {
-  background: rgba(255, 107, 53, 0.1);
-  color: #e65100;
+  background: rgba(30, 64, 175, 0.1);
+  color: #1e40af;
+  transform: translateY(-1px);
 }
 
 .space-theme .see-all {
@@ -611,27 +629,28 @@
 }
 
 .sun-theme .notification-item {
-  background: rgba(109, 95, 143, 0.1);
-  border-color: rgba(109, 95, 143, 0.2);
+  background: rgba(255, 255, 255, 0.9);
+  border-color: rgba(30, 64, 175, 0.2);
+  backdrop-filter: blur(10px);
 }
 
 .sun-theme .notification-item:hover {
-  background: rgba(109, 95, 143, 0.2);
-  border-color: rgba(109, 95, 143, 0.3);
-  transform: none;
-  box-shadow: 0 4px 12px rgba(109, 95, 143, 0.15);
+  background: rgba(255, 255, 255, 0.95);
+  border-color: rgba(30, 64, 175, 0.3);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(30, 64, 175, 0.15);
 }
 
 .space-theme .notification-item {
-  background: rgba(109, 95, 143, 0.1);
-  border-color: rgba(109, 95, 143, 0.2);
+  background: rgba(26, 26, 46, 0.6);
+  border-color: rgba(77, 208, 255, 0.2);
 }
 
 .space-theme .notification-item:hover {
-  background: rgba(109, 95, 143, 0.2);
-  border-color: rgba(109, 95, 143, 0.3);
+  background: rgba(26, 26, 46, 0.8);
+  border-color: rgba(77, 208, 255, 0.4);
   transform: none;
-  box-shadow: 0 4px 12px rgba(109, 95, 143, 0.15);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
 .notification-avatar {
@@ -706,7 +725,13 @@
 }
 
 .sun-theme .notification-text {
-  color: #333;
+  color: #1e40af;
+  font-weight: 500;
+}
+
+.sun-theme .notification-text strong {
+  color: #3b82f6;
+  font-weight: 600;
 }
 
 .space-theme .notification-text {
@@ -720,7 +745,8 @@
 }
 
 .sun-theme .notification-time {
-  color: #666;
+  color: #3b82f6;
+  font-weight: 500;
 }
 
 .space-theme .notification-time {
