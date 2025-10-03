@@ -442,3 +442,13 @@
 .account-table .ant-btn:hover .anticon {
   color: #000 !important;
 }
+
+/* Space theme specific button opacity */
+.space-theme .export-button,
+.space-theme .import-button {
+	
+	background: rgba(109, 95, 143, 0.2) ;
+	order: 1px solid rgba(109, 95, 143, 0.3) ;
+	color: #fff 
+}
+
