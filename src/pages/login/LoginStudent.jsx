@@ -7,6 +7,9 @@ import { Input, Modal, Button } from 'antd';
 import { UserOutlined, LockOutlined, ArrowLeftOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import LanguageToggle from '../../component/LanguageToggle';
+import ThemeToggleSwitch from '../../component/ThemeToggleSwitch';
+import { useTheme } from '../../contexts/ThemeContext';
+import ThemedLayoutFullScreen from '../../component/ThemedLayoutFullScreen';
 import './Login.css';
 
 export default function Login() {
@@ -17,6 +20,7 @@ export default function Login() {
 	const dispatch = useDispatch();
 	const navigate = useNavigate();
 	const { t } = useTranslation();
+	const { isSunTheme } = useTheme();
 
 	const handleSubmit = (e) => {
 		e.preventDefault();
@@ -43,305 +47,305 @@ export default function Login() {
 	};
 
 	return (
-		<div className='kids-space'>
-			{/* Language Toggle - Top Right */}
-			<div style={{ position: 'absolute', top: '20px', right: '20px', zIndex: 1000 }}>
-				<LanguageToggle />
-			</div>
-			
-			<div
-				className='page-wrapper'
-				id='main-wrapper'
-				data-layout='vertical'
-				data-navbarbg='skin6'
-				data-sidebartype='full'
-				data-sidebar-position='fixed'
-				data-header-position='fixed'>
-				<div className='position-relative overflow-hidden min-vh-100 d-flex align-items-center justify-content-center'>
-					<div className='d-flex align-items-center justify-content-center w-100'>
-						<div className='row justify-content-center w-100'>
+		<ThemedLayoutFullScreen>
+			<div className="main-content" style={{ paddingTop: 120, minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+				{/* Theme Toggle - Top Right */}
+				<div className={`login-theme-toggle-container ${isSunTheme ? 'sun-theme' : 'space-theme'}`} style={{ position: 'absolute', top: '20px', right: '20px' }}>
+					<ThemeToggleSwitch />
+					<LanguageToggle />
+				</div>
+				
+				{/* Logo CAMKEY - Top Left */}
+				<div style={{ position: 'absolute', top: '20px', left: '20px', zIndex: 1000 }}>
+					<div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+						{isSunTheme ? (
+							<img 
+								src="/img/sun-logo.png" 
+								alt="CAMKEY Logo" 
+								style={{ 
+									width: '48px', 
+									height: '48px', 
+									filter: 'drop-shadow(0 0 15px rgba(255, 215, 0, 0.8))'
+								}} 
+							/>
+						) : (
+							<span style={{ color: '#7DD3FC', fontSize: '36px', textShadow: '0 0 15px rgba(125, 211, 252, 0.8)' }}>🚀</span>
+						)}
+						<span style={{ 
+							fontSize: '28px', 
+							fontWeight: 700, 
+							color: isSunTheme ? '#3b82f6' : '#fff',
+							textShadow: isSunTheme ? '0 0 5px rgba(59, 130, 246, 0.5)' : '0 0 15px rgba(255, 255, 255, 0.8)'
+						}}>
+							CAMKEY
+						</span>
+					</div>
+				</div>
+
+				<div className='d-flex align-items-center justify-content-center w-100'>
+					<div className='row justify-content-center w-100'>
+						<div
+							className='card mb-0'
+							style={getLoginCardStyle(isSunTheme)}>
 							<div
-								className='card mb-0 kids-card'
-								style={{
-									minWidth: 520,
-									maxWidth: 720,
-									margin: '0 auto',
-									padding: 0,
-									borderRadius: 32,
-									boxShadow: '0 20px 60px rgba(30, 20, 90, 0.25)',
-								}}>
-								<div
-									className='card-body'
-									style={{ padding: '2.5rem 2.5rem 2rem 2.5rem' }}>
-									<div className='card-body'>
-										{/* Back Button */}
-										<div className='d-flex justify-content-start mb-3'>
-											<Button
-												type='text'
-												icon={<ArrowLeftOutlined />}
-												onClick={handleBackToChoose}
-												style={{
-													color: '#1677ff',
-													fontWeight: 600,
-													padding: '4px 8px',
-													height: 'auto',
-													borderRadius: '6px',
-													display: 'flex',
-													alignItems: 'center',
-													gap: '6px'
-												}}>
-												{t('common.back')} to Choose Role
-											</Button>
-										</div>
-										{/* <div className='text-nowrap logo-img text-center d-block py-3 w-100'>
-											<img src='img/logo.png' alt='' />
-										</div> */}
-										<h5 className='text-center kids-heading mb-1'>
-											Camkey
-										</h5>
-										<p className='text-center kids-subtitle mb-4'>
-											Let's fly into the learning space!
-										</p>
-										<form onSubmit={handleSubmit}>
-											<div className='mb-3'>
-												<label htmlFor='loginUsername' className='form-label'>
-													{t('login.username')}
-												</label>
-												<Input
-													id='loginUsername'
-													placeholder={t('login.username')}
-													value={username}
-													onChange={(e) => setUsername(e.target.value)}
-													prefix={<UserOutlined />}
-													size='large'
-													style={{ borderRadius: '8px' }}
-												/>
-											</div>
-											<div className='mb-4'>
-												<label htmlFor='loginPassword' className='form-label'>
-													{t('login.password')}
-												</label>
-												<Input.Password
-													id='loginPassword'
-													placeholder={t('login.password')}
-													value={password}
-													onChange={(e) => setPassword(e.target.value)}
-													prefix={<LockOutlined />}
-													size='large'
-													style={{ borderRadius: '8px' }}
-												/>
-											</div>
-											<div className='d-flex align-items-center justify-content-between mb-4'>
-												<div className='form-check'>
-													<input
-														className='form-check-input primary'
-														type='checkbox'
-														value=''
-														id='flexCheckChecked'
-														defaultChecked
-													/>
-													<label
-														className='form-check-label text-dark'
-														htmlFor='flexCheckChecked'>
-														{t('login.rememberMe')}
-													</label>
-												</div>
-												<span
-													className='fw-bold forgot-password'
-													style={{ cursor: 'pointer', color: '#1677ff' }}
-													onClick={() => setForgotVisible(true)}>
-													{t('login.forgotPassword')}
-												</span>
-											</div>
-											<div className='text-center'>
-												<button
-													type='submit'
-													className='btn btn-space w-90 mb-4 rounded-3'
-													style={{ color: 'white' }}>
-													{t('login.signIn')}
-												</button>
-											</div>
-										</form>
+								className='card-body'
+								style={{ padding: '2.5rem 2.5rem 2rem 2.5rem' }}>
+								<div className='card-body'>
+									{/* Back Button */}
+									<div className='d-flex justify-content-start mb-3'>
+										<Button
+											type='text'
+											icon={<ArrowLeftOutlined style={{ color: isSunTheme ? '#3b82f6' : '#c8c8f7' }} />}
+											onClick={handleBackToChoose}
+											style={{
+												color: isSunTheme ? '#3b82f6' : '#c8c8f7',
+												fontWeight: 600,
+												padding: '4px 8px',
+												height: 'auto',
+												borderRadius: '6px',
+												display: 'flex',
+												alignItems: 'center',
+												gap: '6px'
+											}}>
+											{t('common.back')}
+										</Button>
 									</div>
+									<h5 className='text-center mb-1' style={getHeadingStyle(isSunTheme)}>
+										Camkey
+									</h5>
+									<p className='text-center mb-4' style={getSubtitleStyle(isSunTheme)}>
+										Let's fly into the learning space!
+									</p>
+									<form onSubmit={handleSubmit}>
+										<div className='mb-3'>
+											<label htmlFor='loginUsername' className='form-label' style={getLabelStyle(isSunTheme)}>
+												{t('login.username')}
+											</label>
+											<Input
+												id='loginUsername'
+												value={username}
+												onChange={(e) => setUsername(e.target.value)}
+												prefix={<UserOutlined />}
+												size='large'
+												style={getInputStyle(isSunTheme)}
+											/>
+										</div>
+										<div className='mb-4'>
+											<label htmlFor='loginPassword' className='form-label' style={getLabelStyle(isSunTheme)}>
+												{t('login.password')}
+											</label>
+											<Input.Password
+												id='loginPassword'
+												value={password}
+												onChange={(e) => setPassword(e.target.value)}
+												prefix={<LockOutlined />}
+												size='large'
+												style={getInputStyle(isSunTheme)}
+												styles={{
+													suffix: {
+														color: isSunTheme ? '#6b7280' : '#ffffff'
+													}
+												}}
+											/>
+										</div>
+										<div className='d-flex align-items-center justify-content-between mb-4'>
+											<div className='form-check'>
+												<input
+													className='form-check-input primary'
+													type='checkbox'
+													value=''
+													id='flexCheckChecked'
+													defaultChecked
+													style={{
+														accentColor: isSunTheme ? '#1677ff' : '#c8c8f7'
+													}}
+												/>
+												<label
+													className='form-check-label'
+													htmlFor='flexCheckChecked'
+													style={getLabelStyle(isSunTheme)}>
+													{t('login.rememberMe')}
+												</label>
+											</div>
+											<span
+												className='fw-bold forgot-password'
+												style={{ 
+													cursor: 'pointer', 
+													color: isSunTheme ? '#3b82f6' : '#c8c8f7' 
+												}}
+												onClick={() => setForgotVisible(true)}>
+												{t('login.forgotPassword')}
+											</span>
+										</div>
+										<div className='text-center'>
+											<button
+												type='submit'
+												className='btn w-90 mb-4 rounded-3'
+												style={getSubmitButtonStyle(isSunTheme)}>
+												{t('login.signIn')}
+											</button>
+										</div>
+									</form>
 								</div>
 							</div>
 						</div>
 					</div>
-					{/* Modal chọn cách quên mật khẩu */}
-					<Modal
-						title={
-							<div style={{ textAlign: 'center', padding: '8px 0' }}>
-								<h4
-									style={{
-										margin: 0,
-										fontWeight: 600,
-										background:
-											'linear-gradient(90deg, #5e17eb 0%, #4dd0ff 100%)',
-										WebkitBackgroundClip: 'text',
-										WebkitTextFillColor: 'transparent',
-										backgroundClip: 'text',
-									}}>
-									Password recovery
-								</h4>
+				</div>
+
+				{/* Modal chọn cách quên mật khẩu */}
+				<Modal
+					title={
+						<div style={{ textAlign: 'center', padding: '8px 0' }}>
+							<h4
+								style={{
+									margin: 0,
+									fontWeight: 600,
+									background: isSunTheme 
+										? 'linear-gradient(90deg, #3b82f6 0%, #1d4ed8 100%)'
+										: 'linear-gradient(90deg, #5e17eb 0%, #4dd0ff 100%)',
+									WebkitBackgroundClip: 'text',
+									WebkitTextFillColor: 'transparent',
+									backgroundClip: 'text',
+								}}>
+								Password recovery
+							</h4>
+						</div>
+					}
+					open={forgotVisible}
+					footer={null}
+					onCancel={() => setForgotVisible(false)}
+					centered
+					width={480}
+					style={{ borderRadius: '16px' }}>
+					<div style={{ padding: '8px 0' }}>
+						<p
+							style={{
+								textAlign: 'center',
+								marginBottom: '24px',
+								color: isSunTheme ? '#374151' : '#666',
+								fontSize: '16px',
+								fontWeight: 500,
+							}}>
+							Choose the password recovery method that works for you
+						</p>
+
+						<div
+							style={{
+								display: 'flex',
+								gap: '20px',
+								justifyContent: 'center',
+								flexWrap: 'wrap',
+							}}>
+							{/* Email Option */}
+							<div
+								onClick={() => {
+									setForgotMethod('email');
+									handleForgotOk();
+								}}
+								className='recover-option'>
+								<div className='recover-card'>
+									<div className='recover-icon'>📧</div>
+									<h6>Via email</h6>
+									<p>Send OTP code via email</p>
+								</div>
 							</div>
-						}
-						open={forgotVisible}
-						footer={null}
-						onCancel={() => setForgotVisible(false)}
-						centered
-						width={480}
-						style={{ borderRadius: '16px' }}>
-						<div style={{ padding: '8px 0' }}>
+
+							{/* Phone Option */}
+							<div
+								onClick={() => {
+									setForgotMethod('phone');
+									handleForgotOk();
+								}}
+								className='recover-option'>
+								<div className='recover-card'>
+									<div className='recover-icon'>📱</div>
+									<h6>Via Phone Number</h6>
+									<p>Send OTP code via SMS</p>
+								</div>
+							</div>
+						</div>
+
+						{/* Footer */}
+						<div
+							style={{
+								textAlign: 'center',
+								marginTop: '24px',
+								padding: '16px 0',
+								borderTop: isSunTheme ? '1px solid #e5e7eb' : '1px solid #f0f0f0',
+							}}>
 							<p
 								style={{
-									textAlign: 'center',
-									marginBottom: '24px',
-									color: '#666',
-									fontSize: '16px',
-									fontWeight: 500,
+									margin: 0,
+									color: isSunTheme ? '#6b7280' : '#999',
+									fontSize: '12px',
 								}}>
-								Choose the password recovery method that works for you
+								Choose the method you can access most easily
 							</p>
-
-							<div
-								style={{
-									display: 'flex',
-									gap: '20px',
-									justifyContent: 'center',
-									flexWrap: 'wrap',
-								}}>
-								{/* Email Option */}
-								<div
-									onClick={() => {
-										setForgotMethod('email');
-										handleForgotOk();
-									}}
-									className='recover-option'>
-									<div className='recover-card'>
-										<div className='recover-icon'>📧</div>
-										<h6>Via email</h6>
-										<p>Send OTP code via email</p>
-									</div>
-								</div>
-
-								{/* Phone Option */}
-								<div
-									onClick={() => {
-										setForgotMethod('phone');
-										handleForgotOk();
-									}}
-									className='recover-option'>
-									<div className='recover-card'>
-										<div className='recover-icon'>📱</div>
-										<h6>Via Phone Number</h6>
-										<p>Send OTP code via SMS</p>
-									</div>
-								</div>
-							</div>
-
-							{/* Footer */}
-							<div
-								style={{
-									textAlign: 'center',
-									marginTop: '24px',
-									padding: '16px 0',
-									borderTop: '1px solid #f0f0f0',
-								}}>
-								<p
-									style={{
-										margin: 0,
-										color: '#999',
-										fontSize: '12px',
-									}}>
-									Choose the method you can access most easily
-								</p>
-							</div>
 						</div>
-					</Modal>
-					<img className='rocket-bg' src='img/astro.png' alt='rocket' />
-					<img className='planet-1' src='img/planet-1.png' alt='plant-1' />
-					<img className='planet-2' src='img/planet-2.png' alt='plant-2' />
-					<img className='planet-3' src='img/planet-3.png' alt='plant-3' />
-					<img className='planet-4' src='img/planet-4.png' alt='plant-4' />
-					<img className='planet-5' src='img/planet-5.png' alt='plant-5' />
-					<img className='planet-6' src='img/planet-6.png' alt='plant-6' />
-					<svg
-						className='planet'
-						viewBox='0 0 120 120'
-						xmlns='http://www.w3.org/2000/svg'
-						aria-hidden='true'>
-						<defs>
-							<linearGradient id='pGrad' x1='0' x2='1' y1='0' y2='1'>
-								<stop offset='0%' stopColor='#ff7ad9' />
-								<stop offset='100%' stopColor='#ffd36e' />
-							</linearGradient>
-						</defs>
-						<circle cx='60' cy='60' r='34' fill='url(#pGrad)' />
-						<ellipse
-							cx='60'
-							cy='70'
-							rx='54'
-							ry='14'
-							fill='none'
-							stroke='#ffe8a3'
-							strokeWidth='6'
-						/>
-						<ellipse
-							cx='60'
-							cy='70'
-							rx='54'
-							ry='14'
-							fill='none'
-							stroke='#ffb3e6'
-							strokeWidth='3'
-						/>
-					</svg>
-
-					<div className='twinkle' aria-hidden='true'>
-						<span className='star star-1'></span>
-						<span className='star star-2'></span>
-						<span className='star star-3'></span>
-						<span className='star star-4'></span>
-						<span className='star star-5'></span>
-						<span className='star star-6'></span>
-						<span className='star star-7'></span>
-						<span className='star star-8'></span>
-						<span className='star star-9'></span>
-						<span className='star star-10'></span>
-						<span className='star star-11'></span>
-						<span className='star star-12'></span>
-						<span className='star star-13'></span>
-						<span className='star star-14'></span>
-						<span className='star star-15'></span>
-						<span className='star star-16'></span>
-						<span className='star star-17'></span>
-						<span className='star star-18'></span>
 					</div>
-
-					<svg
-						className='moon'
-						viewBox='0 0 100 100'
-						xmlns='http://www.w3.org/2000/svg'
-						aria-hidden='true'>
-						<defs>
-							<linearGradient id='mGrad' x1='0' x2='1' y1='0' y2='1'>
-								<stop offset='0%' stopColor='#d9e6ff' />
-								<stop offset='100%' stopColor='#ffffff' />
-							</linearGradient>
-						</defs>
-						<circle
-							cx='50'
-							cy='50'
-							r='30'
-							fill='url(#mGrad)'
-							stroke='#e5e8ff'
-						/>
-						<circle cx='62' cy='40' r='5' fill='#ccd6ff' />
-						<circle cx='42' cy='58' r='6' fill='#ccd6ff' />
-						<circle cx='56' cy='64' r='3' fill='#ccd6ff' />
-					</svg>
-				</div>
+				</Modal>
 			</div>
-		</div>
+		</ThemedLayoutFullScreen>
 	);
 }
+
+// Dynamic styles that change based on theme
+const getLoginCardStyle = (isSunTheme) => ({
+	background: isSunTheme ? 'rgba(255, 255, 255, 0.4)' : 'rgba(109, 95, 143, 0.4)',
+	backdropFilter: isSunTheme ? 'blur(1px)' : 'blur(5px)',
+	borderRadius: 32,
+	boxShadow: isSunTheme 
+		? '0 20px 60px rgba(0, 0, 0, 0.15)' 
+		: '0 20px 60px rgba(77, 208, 255, 0.25)',
+	border: isSunTheme 
+		? '1px solid #3b82f6' 
+		: '1px solid #131326',
+	minWidth: 520,
+	maxWidth: 720,
+	margin: '0 auto',
+	padding: 0,
+});
+
+const getHeadingStyle = (isSunTheme) => ({
+	fontSize: '36px',
+	fontWeight: 700,
+	color: isSunTheme ? '#3b82f6' : '#fff',
+	textShadow: isSunTheme ? 'none' : '0 0 10px rgba(77, 208, 255, 0.5)',
+	marginBottom: '8px',
+});
+
+const getSubtitleStyle = (isSunTheme) => ({
+	fontSize: '20px',
+	color: isSunTheme ? '#6b7280' : '#cbd5e1',
+	marginBottom: '32px',
+});
+
+const getLabelStyle = (isSunTheme) => ({
+	color: isSunTheme ? '#3b82f6' : '#c8c8f7',
+	fontWeight: 600,
+	marginBottom: '8px',
+});
+
+const getInputStyle = (isSunTheme) => ({
+	borderRadius: '8px',
+	background: isSunTheme ? '#e9f7fa' : '#afa0d3',
+	border: isSunTheme ? '1px solid #3b82f6' : '1px solid #131326',
+	color: isSunTheme ? '#374151' : '#ffffff',
+});
+
+const getSubmitButtonStyle = (isSunTheme) => ({
+	background: isSunTheme 
+		? 'linear-gradient(135deg, #ffffff, #8bb0f9, #1d0161)' 
+		: 'linear-gradient(135deg, #ffffff, #aa8bf9, #1d0161)',
+	border: 'none',
+	color: 'black',
+	fontWeight: 600,
+	fontSize: '16px',
+	padding: '12px 24px',
+	width: '90%',
+	borderRadius: '12px',
+	boxShadow: isSunTheme 
+		? '0 8px 25px rgba(139, 176, 249, 0.3)' 
+		: '0 8px 25px rgba(170, 139, 249, 0.3)',
+	transition: 'all 0.3s ease',
+});
