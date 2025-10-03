@@ -175,7 +175,20 @@
     "account": "account",
     "activateAccountSuccess": "Activated account",
     "deactivateAccountSuccess": "Deactivated account",
-    "success": "successfully!"
+    "success": "successfully!",
+    "importAccounts": "Import Accounts",
+    "import": "Import",
+    "importInstructions": "Instructions for importing accounts from file",
+    "clickOrDragFile": "Click or drag file to this area",
+    "supportedFormats": "Supported formats",
+    "fileFormat": "File format",
+    "fileFormatDescription": "File must contain data columns in the correct format below:",
+    "requiredColumns": "Required columns:",
+    "optionalColumns": "Optional columns:",
+    "fileSelected": "File selected",
+    "selectFileToImport": "Please select a file to import",
+    "importSuccess": "Import successful",
+    "importError": "Error importing file"
   },
   "roleManagement": {
     "title": "Role Management",

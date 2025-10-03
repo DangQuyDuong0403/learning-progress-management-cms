@@ -175,7 +175,20 @@
     "account": "tài khoản",
     "activateAccountSuccess": "Đã kích hoạt tài khoản",
     "deactivateAccountSuccess": "Đã vô hiệu hóa tài khoản",
-    "success": "thành công!"
+    "success": "thành công!",
+    "importAccounts": "Nhập tài khoản",
+    "import": "Nhập",
+    "importInstructions": "Hướng dẫn nhập tài khoản từ file",
+    "clickOrDragFile": "Nhấp hoặc kéo thả file vào đây",
+    "supportedFormats": "Định dạng hỗ trợ",
+    "fileFormat": "Định dạng file",
+    "fileFormatDescription": "File phải chứa các cột dữ liệu theo đúng định dạng bên dưới:",
+    "requiredColumns": "Các cột bắt buộc:",
+    "optionalColumns": "Các cột tùy chọn:",
+    "fileSelected": "Đã chọn file",
+    "selectFileToImport": "Vui lòng chọn file để nhập",
+    "importSuccess": "Nhập thành công",
+    "importError": "Lỗi khi nhập file"
   },
   "roleManagement": {
     "title": "Quản lý vai trò",

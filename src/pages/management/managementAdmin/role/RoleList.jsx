@@ -23,7 +23,9 @@ import {
   CheckOutlined,
   StopOutlined,
 } from "@ant-design/icons";
-import Layout from "../../../../component/Layout";
+import ThemedLayout from "../../../../component/ThemedLayout";
+import LoadingWithEffect from "../../../../component/spinner/LoadingWithEffect";
+import { useTheme } from "../../../../contexts/ThemeContext";
 import "./RoleList.css";
 import { spaceToast } from "../../../../component/SpaceToastify";
 
@@ -70,6 +72,8 @@ const mockRoles = [
 
 const RoleList = () => {
   const { t } = useTranslation();
+  const { theme } = useTheme();
+  const [loading, setLoading] = useState(false);
   const [roles, setRoles] = useState(mockRoles);
   const [searchText, setSearchText] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -326,89 +330,61 @@ const RoleList = () => {
   };
 
   return (
-    <Layout>
-      <div className="account-list-container">
-        <Card className="header-card">
-          <Row justify="space-between" align="middle">
-            <Col>
-              <h2
-                style={{
-                  margin: 0,
-                  background:
-                    "linear-gradient(90deg, #5e17eb 0%, #4dd0ff 100%)",
-                  WebkitBackgroundClip: "text",
-                  WebkitTextFillColor: "transparent",
-                  fontWeight: 700,
-                }}
-              >
-                {t('roleManagement.title')}
-              </h2>
-              <p style={{ margin: "4px 0 0 0", color: "#666" }}>
-                {t('roleManagement.totalRoles')}: {filteredRoles.length} {t('roleManagement.roles')}
-              </p>
-            </Col>
-            <Col>
-              <Space>
-                <Button
-                  type="primary"
-                  icon={<PlusOutlined />}
-                  onClick={handleAddRole}
-                >
-                  {t('roleManagement.addRole')}
-                </Button>
-                <Button
-                  icon={<ReloadOutlined />}
-                  onClick={() => setRoles(mockRoles)}
-                >
-                  {t('roleManagement.refresh')}
-                </Button>
-              </Space>
-            </Col>
-          </Row>
-        </Card>
-
-        <Card className="filter-card">
-          <Row gutter={[16, 16]} align="middle">
-            <Col xs={24} sm={12} md={8} lg={6}>
+    <ThemedLayout>
+        {/* Main Content Panel */}
+        <div className={`main-content-panel ${theme}-main-panel`}>
+          {/* Header Section */}
+          <div className={`panel-header ${theme}-panel-header`}>
+            <div className="search-section">
               <Input
-                placeholder={t('roleManagement.searchPlaceholder')}
+                placeholder="Search..."
                 prefix={<SearchOutlined />}
                 value={searchText}
                 onChange={(e) => setSearchText(e.target.value)}
+                className={`search-input ${theme}-search-input`}
                 allowClear
               />
-            </Col>
-            <Col xs={24} sm={12} md={8} lg={6}>
-              <Select
-                placeholder={t('roleManagement.filterByStatus')}
-                value={statusFilter}
-                onChange={setStatusFilter}
-                style={{ width: "100%" }}
+            </div>
+            <div className="action-buttons">
+              <Button 
+                icon={<ReloadOutlined />}
+                className={`export-button ${theme}-export-button`}
+                onClick={() => setRoles(mockRoles)}
               >
-                <Option value="all">{t('roleManagement.allStatuses')}</Option>
-                <Option value="active">{t('roleManagement.active')}</Option>
-                <Option value="inactive">{t('roleManagement.inactive')}</Option>
-              </Select>
-            </Col>
-          </Row>
-        </Card>
+                Refresh
+              </Button>
+              <Button 
+                icon={<PlusOutlined />}
+                className={`create-button ${theme}-create-button`}
+                onClick={handleAddRole}
+              >
+                Create Role
+              </Button>
+            </div>
+          </div>
 
-        <Card>
-          <Table
-            columns={columns}
-            dataSource={filteredRoles}
-            rowKey="id"
-            pagination={{
-              total: filteredRoles.length,
-              pageSize: 10,
-              showSizeChanger: true,
-              showQuickJumper: true,
-              showTotal: (total, range) =>
-                `${range[0]}-${range[1]} ${t('roleManagement.paginationText')} ${total} ${t('roleManagement.rolesText')}`,
-            }}
-            scroll={{ x: 800 }}
-          />
-        </Card>
+          {/* Table Section */}
+          <div className={`table-section ${theme}-table-section`}>
+            <LoadingWithEffect loading={loading} message={t('roleManagement.loadingRoles')}>
+              <Table
+                columns={columns}
+                dataSource={filteredRoles}
+                rowKey="id"
+                pagination={{
+                  total: filteredRoles.length,
+                  pageSize: 10,
+                  showSizeChanger: true,
+                  showQuickJumper: true,
+                  showTotal: (total, range) =>
+                    `${range[0]}-${range[1]} of ${total}`,
+                  className: `${theme}-pagination`
+                }}
+                scroll={{ x: 800 }}
+                className={`role-table ${theme}-role-table`}
+              />
+            </LoadingWithEffect>
+          </div>
+        </div>
 
         <Modal
           title={editingRole ? t('roleManagement.editRole') : t('roleManagement.addNewRole')}
@@ -564,8 +540,7 @@ const RoleList = () => {
        
           </div>
         </Modal>
-      </div>
-    </Layout>
+    </ThemedLayout>
   );
 };
 
