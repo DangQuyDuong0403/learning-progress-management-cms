@@ -101,6 +101,17 @@
 	transition: all 0.3s ease;
 }
 
+.import-button {
+	height: 40px;
+	border-radius: 8px;
+	font-weight: 500;
+	border: 1px solid rgba(82, 196, 26, 0.3);
+	background: linear-gradient(135deg, #ffffff, #52c41a, #389e0d);
+	color: #fff;
+	backdrop-filter: blur(10px);
+	transition: all 0.3s ease;
+}
+
 .create-button {
 	height: 40px;
 	border-radius: 8px;
@@ -117,6 +128,14 @@
 	border-color: rgba(77, 208, 255, 0.6);
 	transform: translateY(-2px);
 	box-shadow: 0 4px 12px rgba(77, 208, 255, 0.3);
+}
+
+.import-button:hover {
+	background: linear-gradient(135deg, #ffffff, #52c41a, #389e0d);
+	border-color: rgba(82, 196, 26, 0.6);
+	transform: translateY(-2px);
+	box-shadow: 0 4px 12px rgba(82, 196, 26, 0.4);
+	filter: brightness(1.1);
 }
 
 .create-button:hover {

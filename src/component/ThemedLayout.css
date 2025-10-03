@@ -3,6 +3,25 @@
 	transition: all 0.3s ease;
 }
 
+/* ===== FLOATING ANIMATION FOR SPACE THEME ===== */
+@keyframes floatingUpDown {
+	0%, 100% {
+		transform: translateY(0px);
+	}
+	50% {
+		transform: translateY(-20px);
+	}
+}
+
+@keyframes floatingUpDownCentered {
+	0%, 100% {
+		transform: translate(-50%, -50%) translateY(0px);
+	}
+	50% {
+		transform: translate(-50%, -50%) translateY(-20px);
+	}
+}
+
 .themed-sidebar-header {
 	padding: 16px;
 	border-bottom: 1px solid rgba(255, 255, 255, 0.1);
@@ -118,6 +137,7 @@
 	background-repeat: no-repeat;
 	z-index: 1;
 	pointer-events: none;
+	animation: floatingUpDownCentered 6s ease-in-out infinite;
 }
 
 /* Ảnh img-bg.png - góc trên trái */
@@ -134,22 +154,24 @@
 	background-repeat: no-repeat;
 	z-index: 0;
 	pointer-events: none;
+	animation: floatingUpDown 8s ease-in-out infinite reverse;
 }
 
 /* Ảnh img-bg-2.png - góc trên phải */
 .space-theme .themed-main-layout .bg-element-1 {
 	content: '';
 	position: absolute;
-	top: 5%;
-	right: 5%;
-	width: 250px; /* Custom size */
-	height: 250px;
+	top: 0;
+	right: 0;
+	width: 200px; /* Custom size */
+	height: 200px;
 	background-image: url('/public/img/img-bg-2.png');
 	background-size: contain;
 	background-position: center;
 	background-repeat: no-repeat;
 	z-index: 1;
 	pointer-events: none;
+	animation: floatingUpDown 7s ease-in-out infinite;
 }
 
 /* Ảnh img-bg-3.png - góc dưới trái */
@@ -166,13 +188,14 @@
 	background-repeat: no-repeat;
 	z-index: 1;
 	pointer-events: none;
+	animation: floatingUpDown 9s ease-in-out infinite reverse;
 }
-/* Ảnh img-bg-3.png - góc dưới trái */
+/* Ảnh astro.png - góc dưới trái */
 .space-theme .themed-main-layout .bg-element-3 {
 	content: '';
 	position: absolute;
 	bottom: 5%;
-	left: 40%;
+	right: 5%;
 	width: 150px; /* Custom size */
 	height: 150px;
 	background-image: url('/public/img/astro.png');
@@ -181,6 +204,7 @@
 	background-repeat: no-repeat;
 	z-index: 1;
 	pointer-events: none;
+	animation: floatingUpDown 5s ease-in-out infinite;
 }
 
 /* Ảnh img-bg.png - góc trên trái */
@@ -197,6 +221,7 @@
 	background-repeat: no-repeat;
 	z-index: 1;
 	pointer-events: none;
+	animation: floatingUpDown 6.5s ease-in-out infinite reverse;
 }
 
 /* Ảnh img-bg-1.png - căn giữa */
@@ -206,14 +231,15 @@
 	top: 50%;
 	left: 50%;
 	transform: translate(-50%, -50%);
-	width: 700px; /* Custom size */
-	height: 700px;
+	width: 800px; /* Custom size */
+	height: 800px;
 	background-image: url('/public/img/img-bg-1.png');
 	background-size: contain;
 	background-position: center;
 	background-repeat: no-repeat;
 	z-index: 1;
 	pointer-events: none;
+	animation: floatingUpDownCentered 7.5s ease-in-out infinite;
 }
 
 /* ===== SPACE THEME STYLES ===== */
@@ -593,30 +619,30 @@
 }
 
 .themed-content .ant-table-thead > tr > th {
-	background: rgba(109, 95, 143, 0.1) !important;
+	background: rgba(103, 85, 146, 0.5) !important;
 	border-bottom: 1px solid rgba(109, 95, 143, 0.2) !important;
 	color: #fff !important;
 	font-weight: 600;
 }
 
 .themed-content .ant-table-tbody > tr > td {
-	background: rgba(109, 95, 143, 0.05) !important;
+	background: rgba(109, 95, 143, 0.4) !important;
 	border-bottom: 1px solid rgba(109, 95, 143, 0.1) !important;
 	color: #fff !important;
 }
 
 .themed-content .ant-table-tbody > tr:hover > td {
-	background: rgba(109, 95, 143, 0.1) !important;
+	background: rgba(109, 95, 143, 0.4) !important;
 }
 
 /* Override Ant Design table styles with higher specificity */
 .themed-content .ant-table .ant-table-tbody > tr > td {
-	background: rgba(109, 95, 143, 0.05) !important;
+	background: rgba(109, 95, 143, 0.4) !important;
 	color: #fff !important;
 }
 
 .themed-content .ant-table .ant-table-tbody > tr:hover > td {
-	background: rgba(109, 95, 143, 0.1) !important;
+	background: rgba(109, 95, 143, 0.4) !important;
 }
 
 .themed-content .ant-card {
@@ -676,15 +702,15 @@
 }
 
 .themed-content .ant-btn {
-	background: rgba(109, 95, 143, 0.2) !important;
-	border: 1px solid rgba(109, 95, 143, 0.3) !important;
-	color: #fff !important;
+	background: rgba(109, 95, 143, 0.2) ;
+	border: 1px solid rgba(109, 95, 143, 0.3) ;
+	color: #fff ;
 }
 
 .themed-content .ant-btn:hover {
-	background: rgba(109, 95, 143, 0.3) !important;
-	border-color: rgba(109, 95, 143, 0.5) !important;
-	color: #fff !important;
+	background: rgba(109, 95, 143, 0.3) ;
+	border-color: rgba(109, 95, 143, 0.5);
+	color: #fff ;
 }
 
 .themed-content .ant-btn-primary {
@@ -712,6 +738,20 @@
 	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
+.sun-theme .themed-content .import-button {
+	background: #dcf8ff !important;
+	border: 1px solid rgba(0, 0, 0, 0.1) !important;
+	color: #000 !important;
+}
+
+.sun-theme .themed-content .import-button:hover {
+	background: #c8f0ff !important;
+	border-color: rgba(0, 0, 0, 0.2) !important;
+	color: #000 !important;
+	transform: translateY(-2px);
+	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
 .sun-theme .themed-content .create-button {
 	background: linear-gradient(135deg, #ffffff, #8bb0f9, #1d0161) !important;
 	border: none !important;
@@ -723,6 +763,24 @@
 	color: #000 !important;
 	transform: translateY(-2px);
 	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Space theme create button */
+.space-theme .themed-content .create-button {
+	background: linear-gradient(135deg, #ffffff, #aa8bf9, #1d0161) !important;
+	border: none !important;
+	color: #000 !important;
+	border-radius: 8px !important;
+	font-weight: 600 !important;
+	box-shadow: 0 2px 8px rgba(170, 139, 249, 0.3) !important;
+	transition: all 0.3s ease !important;
+}
+
+.space-theme .themed-content .create-button:hover {
+	background: linear-gradient(135deg, #f8f8f8, #9d7df0, #0a0040) !important;
+	color: #000 !important;
+	transform: translateY(-2px);
+	box-shadow: 0 4px 16px rgba(170, 139, 249, 0.4) !important;
 }
 
 /* Sun theme action buttons (edit, deactivate) */

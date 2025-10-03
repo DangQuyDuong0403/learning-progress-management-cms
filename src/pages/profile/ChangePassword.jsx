@@ -3,10 +3,12 @@ import { toast } from 'react-toastify';
 import { useTranslation } from 'react-i18next';
 import { Input } from 'antd';
 import './Profile.css';
-import Layout from '../../component/Layout';
+import ThemedLayout from '../../component/ThemedLayout';
+import { useTheme } from '../../contexts/ThemeContext';
 
 export default function ChangePassword() {
   const { t } = useTranslation();
+  const { theme } = useTheme();
   
   const newPasswordRef = useRef();
   const confirmPasswordRef = useRef();
@@ -30,16 +32,8 @@ export default function ChangePassword() {
   };
 
   return (
-    <Layout>
-    <div className="profile-container">
-      {/* Floating Planets */}
-      <img src="/img/planet-1.png" alt="Planet" className="planet-1" />
-      <img src="/img/planet-2.png" alt="Planet" className="planet-2" />
-      <img src="/img/planet-3.png" alt="Planet" className="planet-3" />
-      <img src="/img/planet-4.png" alt="Planet" className="planet-4" />
-      <img src="/img/planet-5.png" alt="Planet" className="planet-5" />
-      <img src="/img/planet-6.png" alt="Planet" className="planet-6" />
-  
+    <ThemedLayout>
+    <div className={`profile-container ${theme}-profile-container`}>
     
       <div className="main-layout">
       
@@ -48,8 +42,8 @@ export default function ChangePassword() {
             <div className="profile-cards">
                  
                   {/* Change Password Card */}
-                  <div className="profile-card password-card">
-                    <div className="card-header">
+                  <div className={`profile-card password-card ${theme}-profile-card`}>
+                    <div className={`card-header ${theme}-card-header`}>
                       <h3
                         style={{
                           fontWeight: 700,
@@ -66,37 +60,40 @@ export default function ChangePassword() {
                     <div className="card-content">
                       <div className="password-form">
                         <div className="form-group">
-                          <label htmlFor="currentPassword">{t('profile.currentPassword')}</label>
+                          <label htmlFor="currentPassword" className={`form-label ${theme}-form-label`}>{t('profile.currentPassword')}</label>
                           <Input.Password
                             id="currentPassword"
                             placeholder="Enter current password"
                             size="large"
+                            className={`${theme}-password-input`}
                             style={{ borderRadius: '8px' }}
                           />
                         </div>
                         <div className="form-group">
-                          <label htmlFor="newPassword">{t('profile.newPassword')}</label>
+                          <label htmlFor="newPassword" className={`form-label ${theme}-form-label`}>{t('profile.newPassword')}</label>
                           <Input.Password
                             id="newPassword"
                             placeholder="Enter new password"
                             ref={newPasswordRef}
                             size="large"
+                            className={`${theme}-password-input`}
                             style={{ borderRadius: '8px' }}
                           />
                         </div>
                         <div className="form-group">
-                          <label htmlFor="confirmPassword">{t('profile.confirmPassword')}</label>
+                          <label htmlFor="confirmPassword" className={`form-label ${theme}-form-label`}>{t('profile.confirmPassword')}</label>
                           <Input.Password
                             id="confirmPassword"
                             placeholder="Re-enter new password"
                             ref={confirmPasswordRef}
                             size="large"
+                            className={`${theme}-password-input`}
                             style={{ borderRadius: '8px' }}
                           />
                         </div>
                       </div>
                       <div className="form-actions">
-                        <button className="btn btn-primary" onClick={handleChangePassword}>{t('profile.changePassword')}</button>
+                        <button className={`btn btn-primary ${theme}-btn-primary`} onClick={handleChangePassword}>{t('profile.changePassword')}</button>
                       </div>
                     </div>
                   </div>
@@ -105,6 +102,6 @@ export default function ChangePassword() {
             </div>
           </div>
         </div>
-        </Layout>
+        </ThemedLayout>
       );
     }

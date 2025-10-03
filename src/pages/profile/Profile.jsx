@@ -3,11 +3,13 @@ import { toast } from 'react-toastify';
 import { useTranslation } from 'react-i18next';
 import { useSelector } from 'react-redux';
 import './Profile.css';
-import Layout from '../../component/Layout';
+import ThemedLayout from '../../component/ThemedLayout';
+import { useTheme } from '../../contexts/ThemeContext';
 
 export default function Profile() {
   const { t } = useTranslation();
   const { user } = useSelector((state) => state.auth);
+  const { theme } = useTheme();
   
   const lastNameRef = useRef();
   const firstNameRef = useRef();
@@ -67,15 +69,9 @@ export default function Profile() {
   
 
   return (
-     <Layout>
-    <div className="profile-container">
-      {/* Floating Planets */}
-      <img src="/img/planet-1.png" alt="Planet" className="planet-1" />
-      <img src="/img/planet-2.png" alt="Planet" className="planet-2" />
-      <img src="/img/planet-3.png" alt="Planet" className="planet-3" />
-      <img src="/img/planet-4.png" alt="Planet" className="planet-4" />
-      <img src="/img/planet-5.png" alt="Planet" className="planet-5" />
-      <img src="/img/planet-6.png" alt="Planet" className="planet-6" />
+     <ThemedLayout>
+    <div className={`profile-container ${theme}-profile-container`}>
+
      
      
       <div className="main-layout">
@@ -84,8 +80,8 @@ export default function Profile() {
           <div className="profile-content">
             <div className="profile-cards">
                   {/* Personal Information Card */}
-                  <div className="profile-card personal-info-card">
-                    <div className="card-header">
+                  <div className={`profile-card personal-info-card ${theme}-profile-card`}>
+                    <div className={`card-header ${theme}-card-header`}>
                       <h3
                         style={{
                           fontWeight: 700,
@@ -118,58 +114,56 @@ export default function Profile() {
                         <div className="profile-right">
                           <div className="form-row">
                             <div className="form-group" style={{ flex: 1 }}>
-                              <label htmlFor="lastName">{t('common.lastName')}</label>
+                              <label htmlFor="lastName" className={`form-label ${theme}-form-label`}>{t('common.lastName')}</label>
                               <input 
                                 type="text" 
                                 id="lastName" 
-                                className="form-input" 
+                                className={`form-input ${theme}-form-input`} 
                                 defaultValue="Nguyen Duc"
                                 ref={lastNameRef}
                               />
                             </div>
                             <div className="form-group" style={{ flex: 1, marginLeft: '1rem' }}>
-                              <label htmlFor="firstName">{t('common.firstName')}</label>
+                              <label htmlFor="firstName" className={`form-label ${theme}-form-label`}>{t('common.firstName')}</label>
                               <input 
                                 type="text" 
                                 id="firstName" 
-                                className="form-input" 
+                                className={`form-input ${theme}-form-input`} 
                                 defaultValue="Anh"
                                 ref={firstNameRef}
                               />
                             </div>
                           </div>
                           <div className="form-group">
-                            <label htmlFor="email">{t('common.email')}</label>
+                            <label htmlFor="email" className={`form-label ${theme}-form-label`}>{t('common.email')}</label>
                             <input 
                               type="email" 
                               id="email" 
-                              className="form-input" 
+                              className={`form-input ${theme}-form-input`} 
                               defaultValue="anhtony2003@gmail.com"
                               ref={emailRef}
                             />
                           </div>
                           <div className="form-group">
-                            <label>{t('common.gender')}</label>
+                            <label className={`form-label ${theme}-form-label`}>{t('common.gender')}</label>
                             <div className="radio-group">
-                              <label className="radio-label">
-                                <input type="radio" name="gender" value="male" defaultChecked />
-                                <span className="radio-custom"></span>
+                              <label className={`radio-label ${theme}-radio-label`}>
+                                <span className={`radio-custom ${theme}-radio-custom`}></span>
                                 {t('common.male')}
                               </label>
-                              <label className="radio-label">
-                                <input type="radio" name="gender" value="female" />
-                                <span className="radio-custom"></span>
+                              <label className={`radio-label ${theme}-radio-label`}>
+                                <span className={`radio-custom ${theme}-radio-custom`}></span>
                                 {t('common.female')}
                               </label>
                             </div>
                           </div>
                           <div className="form-group">
-                            <label htmlFor="birthDate">{t('common.dateOfBirth')}</label>
+                            <label htmlFor="birthDate" className={`form-label ${theme}-form-label`}>{t('common.dateOfBirth')}</label>
                             <div className="date-input-container">
                               <input 
                                 type="date" 
                                 id="birthDate" 
-                                className="form-input" 
+                                className={`form-input ${theme}-form-input`} 
                                 defaultValue="2003-05-16"
                                 ref={birthDateRef}
                               />
@@ -179,7 +173,7 @@ export default function Profile() {
                         </div>
                       </div>
                       <div className="form-actions">
-                        <button className="btn btn-primary" onClick={handleUpdate}>{t('common.update')}</button>
+                        <button className={`btn btn-primary ${theme}-btn-primary`} onClick={handleUpdate}>{t('common.update')}</button>
                       </div>
                     </div>
                   </div>
@@ -189,7 +183,6 @@ export default function Profile() {
             </div>
           </div>
         </div>
-        </Layout>
+        </ThemedLayout>
       );
     }
-                        <div className="password-strength-bar"></div>

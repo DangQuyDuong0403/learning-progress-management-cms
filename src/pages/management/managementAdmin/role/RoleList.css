@@ -1,246 +1,225 @@
 /* Role List Styles */
-.role-list-container {
-  padding: 0;
+
+/* ===== MAIN CONTENT PANEL ===== */
+.main-content-panel {
+	background: rgba(45, 27, 105, 0.75);
+	backdrop-filter: none;
+	border-radius: 16px;
+	padding: 24px;
+	margin: 24px;
+	box-shadow: 0 8px 32px rgba(77, 208, 255, 0.15);
+	border: 1px solid rgba(77, 208, 255, 0.3);
+	position: relative;
+	z-index: 2;
 }
 
-.header-card {
-  margin-bottom: 16px;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+.space-theme .main-content-panel {
+	position: relative;
+	background: rgba(110, 92, 172, 0.05); /* Rất trong suốt để nhìn xuyên qua */
+	backdrop-filter: blur(1px); /* Blur nhẹ để tạo hiệu ứng glass */
+	border-radius: 16px;
+	padding: 24px;
+	margin: 24px;
+	/* Không dùng opacity để tránh làm mờ nội dung bên trong */
+
+	/* Hiệu ứng viền + bóng */
+	border: 1px solid rgba(77, 208, 255, 0.3);
+	box-shadow: 0 8px 32px rgba(77, 208, 255, 0.15);
+
+	z-index: 2;
 }
 
-.header-card .ant-card-body {
-  padding: 20px 24px;
-}
-
-.filter-card {
-  margin-bottom: 16px;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-
-.filter-card .ant-card-body {
-  padding: 16px 24px;
-}
-
-/* Table Card */
-.ant-table-wrapper .ant-card {
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-
-/* Table Styles */
-.ant-table-thead > tr > th {
-  background: #fafafa;
-  font-weight: 600;
-  color: #262626;
-}
-
-.ant-table-tbody > tr:hover > td {
-  background: #f5f5f5;
-}
-
-/* Tag Styles */
-.ant-tag {
-  border-radius: 4px;
-  font-size: 12px;
-  font-weight: 500;
-  padding: 2px 8px;
-  border: none;
-}
-
-/* Button Styles */
-
-.ant-btn-primary {
-  background: linear-gradient(90deg, #5e17eb 0%, #7a5cff 50%, #4dd0ff 100%) !important;
-  border: none !important;
-  color: #fff !important;
-  border-radius: 8px;
-  height: 36px;
-  font-weight: 600;
-  box-shadow: 0 5px 15px rgba(94, 23, 235, 0.08);
-}
-
-.ant-btn-primary:hover, .ant-btn-primary:focus {
-  background: linear-gradient(90deg, #4dd0ff 0%, #5e17eb 100%) !important;
-  color: #fff !important;
-  box-shadow: 0 5px 15px rgba(94, 23, 235, 0.18);
-}
-
-.ant-btn {
-  border-radius: 8px;
-  font-weight: 600;
-}
-
-.ant-btn {
-  border-radius: 6px;
-  height: 32px;
-  font-weight: 500;
-}
-
-/* Input Styles */
-.ant-input,
-.ant-select-selector {
-  border-radius: 6px;
-  border: 1px solid #d9d9d9;
-}
-
-.ant-input:focus,
-.ant-select-focused .ant-select-selector {
-  border-color: #1890ff;
-  box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2);
-}
-
-/* Modal Styles */
-.ant-modal-header {
-  border-bottom: 1px solid #f0f0f0;
-  padding: 16px 24px;
-}
-
-.ant-modal-title {
-  font-size: 16px;
-  font-weight: 600;
-  color: #262626;
-}
-
-.ant-modal-body {
+/* Sun theme main content panel */
+.sun-theme .main-content-panel {
+  position: relative;
+  background: rgba(255, 255, 255, 0.05); /* Rất trong suốt để nhìn xuyên qua */
+  backdrop-filter: blur(1px); /* Blur nhẹ để tạo hiệu ứng glass */
+  border-radius: 16px;
   padding: 24px;
-}
-
-.ant-modal-footer {
-  border-top: 1px solid #f0f0f0;
-  padding: 12px 24px;
-}
-
-/* Form Styles */
-.ant-form-item-label > label {
-  font-weight: 500;
-  color: #262626;
-}
-
-/* Responsive */
-@media (max-width: 768px) {
-  .header-card .ant-row {
-    flex-direction: column;
-    gap: 16px;
-  }
+  margin: 24px;
+  /* Không dùng opacity để tránh làm mờ nội dung bên trong */
   
-  .filter-card .ant-col {
-    margin-bottom: 12px;
-  }
+  /* Hiệu ứng viền + bóng */
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
   
-  .ant-table-wrapper {
-    overflow-x: auto;
-  }
+  z-index: 2;
 }
 
-/* Loading States */
-.ant-spin-container {
-  min-height: 200px;
+/* ===== PANEL HEADER ===== */
+.panel-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	margin-bottom: 24px;
+	gap: 16px;
 }
 
-/* Empty State */
-.ant-empty {
-  padding: 40px 0;
+.search-section {
+	flex: 1;
+	max-width: 300px;
 }
 
-/* Pagination */
-.ant-pagination {
-  margin-top: 16px;
-  text-align: right;
+.search-input {
+  width: 100%;
+  height: 40px;
+  border-radius: 20px;
+  border: 1px solid #000;
+  background: #fefffe;
+  color: #666;
+  backdrop-filter: blur(10px);
 }
 
-.ant-pagination-item {
-  border-radius: 4px;
+.search-input::placeholder {
+  color: #999;
 }
 
-.ant-pagination-item-active {
-  background: #1890ff;
-  border-color: #1890ff;
+.search-input:focus {
+  border-color: #000;
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.2);
 }
 
-/* Tooltip */
-.ant-tooltip-inner {
-  background: #262626;
-  border-radius: 4px;
-  font-size: 12px;
+.space-theme .search-input {
+	background: rgba(255, 255, 255, 0.1);
+	border: 1px solid rgba(77, 208, 255, 0.3);
+	color: #fff;
 }
 
-/* Popconfirm */
-.ant-popover-inner {
-  border-radius: 6px;
+.action-buttons {
+	display: flex;
+	gap: 12px;
 }
 
-.ant-popover-buttons .ant-btn {
-  border-radius: 4px;
-  height: 28px;
+.export-button {
+	height: 40px;
+	border-radius: 8px;
+	font-weight: 500;
+	border: 1px solid rgba(77, 208, 255, 0.3);
+	background: rgba(45, 27, 105, 0.8);
+	color: #fff;
+	backdrop-filter: blur(10px);
+	transition: all 0.3s ease;
 }
 
-/* Status Colors */
-.status-active {
-  color: #52c41a;
+.create-button {
+	height: 40px;
+	border-radius: 8px;
+	font-weight: 500;
+	border: 1px solid rgba(170, 139, 249, 0.3);
+	background: linear-gradient(135deg, #ffffff, #aa8bf9, #1d0161);
+	color: #fff;
+	backdrop-filter: blur(10px);
+	transition: all 0.3s ease;
 }
 
-.status-inactive {
-  color: #ff4d4f;
+.export-button:hover {
+	background: rgba(77, 208, 255, 0.2);
+	border-color: rgba(77, 208, 255, 0.6);
+	transform: translateY(-2px);
+	box-shadow: 0 4px 12px rgba(77, 208, 255, 0.3);
 }
 
-.status-pending {
-  color: #faad14;
+.create-button:hover {
+	background: linear-gradient(135deg, #ffffff, #aa8bf9, #1d0161);
+	border-color: rgba(170, 139, 249, 0.6);
+	transform: translateY(-2px);
+	box-shadow: 0 4px 12px rgba(170, 139, 249, 0.4);
+	filter: brightness(1.1);
 }
 
-/* Role Colors */
-.role-admin {
-  color: #722ed1;
+/* ===== TABLE SECTION ===== */
+.table-section {
+	background: rgba(26, 26, 46, 0.6);
+	border-radius: 12px;
+	overflow: hidden;
+	border: 1px solid rgba(77, 208, 255, 0.3);
+	backdrop-filter: blur(10px);
 }
 
-.role-teacher {
-  color: #1890ff;
+.space-theme .table-section {
+	background: rgba(26, 26, 46, 0.6);
+	border: 1px solid rgba(77, 208, 255, 0.3);
 }
 
-.role-student {
-  color: #13c2c2;
+/* Sun theme table section */
+.sun-theme .table-section {
+  position: relative;
+  background: rgba(255, 255, 255, 0.05); /* Rất trong suốt để nhìn xuyên qua */
+  backdrop-filter: blur(1px); /* Blur nhẹ để tạo hiệu ứng glass */
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  z-index: 2;
 }
 
-.role-manager {
-  color: #faad14;
+/* ===== TABLE STYLES ===== */
+.role-table {
+	background: transparent;
 }
 
-.role-teacher_assistant {
-  color: #ff85a1;
+.space-theme .role-table .ant-table {
+	background: transparent;
+	color: #fff;
 }
 
-.role-test_taker {
-  color: #a0a0a0;
+.space-theme .role-table .ant-table-thead > tr > th {
+	background: rgba(45, 27, 105, 0.6);
+	color: #fff;
+	font-weight: 600;
+	border-bottom: 1px solid rgba(77, 208, 255, 0.3);
+	backdrop-filter: blur(10px);
 }
 
-/* Placeholder Styles */
-.ant-input::placeholder {
-  color: #bfbfbf;
-  font-style: italic;
-  opacity: 0.8;
+.space-theme .role-table .ant-table-tbody > tr > td {
+	background: rgba(26, 26, 46, 0.4);
+	color: #fff;
+	border-bottom: 1px solid rgba(77, 208, 255, 0.2);
+	backdrop-filter: blur(5px);
 }
 
-.ant-input::-webkit-input-placeholder {
-  color: #bfbfbf;
-  font-style: italic;
-  opacity: 0.8;
+.space-theme .role-table .ant-table-tbody > tr:hover > td {
+	background: rgba(77, 208, 255, 0.1);
 }
 
-.ant-input::-moz-placeholder {
-  color: #bfbfbf;
-  font-style: italic;
-  opacity: 0.8;
+/* ===== PAGINATION ===== */
+.space-theme .ant-pagination {
+	color: #fff;
 }
 
-.ant-input:-ms-input-placeholder {
-  color: #bfbfbf;
-  font-style: italic;
-  opacity: 0.8;
+.space-theme .ant-pagination .ant-pagination-item {
+	background: rgba(45, 27, 105, 0.8);
+	border: 1px solid rgba(77, 208, 255, 0.3);
+	color: #fff;
 }
 
-.ant-select-selection-placeholder {
-  color: #bfbfbf;
-  font-style: italic;
-  opacity: 0.8;
+.space-theme .ant-pagination .ant-pagination-item:hover {
+	background: rgba(77, 208, 255, 0.2);
+	border-color: rgba(77, 208, 255, 0.6);
+}
+
+.space-theme .ant-pagination .ant-pagination-item-active {
+	background: rgba(77, 208, 255, 0.3);
+	border-color: rgba(77, 208, 255, 0.6);
+}
+
+.space-theme .ant-pagination .ant-pagination-prev,
+.space-theme .ant-pagination .ant-pagination-next {
+	background: rgba(45, 27, 105, 0.8);
+	border: 1px solid rgba(77, 208, 255, 0.3);
+	color: #fff;
+}
+
+.space-theme .ant-pagination .ant-pagination-prev:hover,
+.space-theme .ant-pagination .ant-pagination-next:hover {
+	background: rgba(77, 208, 255, 0.2);
+	border-color: rgba(77, 208, 255, 0.6);
+}
+
+/* Action button icons */
+.role-table .ant-btn .anticon {
+  color: #000 !important;
+}
+
+.role-table .ant-btn:hover .anticon {
+  color: #000 !important;
 }

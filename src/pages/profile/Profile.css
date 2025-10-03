@@ -15,49 +15,23 @@
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@200;300;400;500;600;700;800&display=swap');
 @import url('https://cdnjs.cloudflare.com/ajax/libs/tabler-icons/1.35.0/tabler-icons.min.css');
 
-.profile-container {
+/* ===== SPACE THEME STYLES ===== */
+.space-theme .profile-container {
   font-family: 'Plus Jakarta Sans', system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
-    min-height: 10vh;
-    width: 99%;
-    height: 790px;
-  
-  background: radial-gradient(
-    circle at 20% 20%,
-    rgba(255, 255, 255, 0.15) 0 2px,
-    transparent 3px
-  )
-    0 0/80px 80px,
-    radial-gradient(
-      circle at 70% 40%,
-      rgba(255, 255, 255, 0.1) 0 2px,
-      transparent 3px
-    )
-    0 0/100px 100px,
-    linear-gradient(135deg, #0b1b4b 0%, #381770 50%, #5e17eb 100%);
-  position: relative;
+  min-height: 10vh;
+  width: 99%;
+  height: 790px;
 }
 
-/* Space Background Effects - Subtle stars */
-.profile-container::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: 
-    radial-gradient(1px 1px at 20px 30px, rgba(255, 255, 255, 0.6), transparent),
-    radial-gradient(1px 1px at 40px 70px, rgba(77, 208, 255, 0.4), transparent),
-    radial-gradient(1px 1px at 90px 40px, rgba(255, 255, 255, 0.3), transparent),
-    radial-gradient(1px 1px at 130px 80px, rgba(94, 23, 235, 0.4), transparent),
-    radial-gradient(1px 1px at 160px 30px, rgba(255, 255, 255, 0.5), transparent);
-  background-repeat: repeat;
-  background-size: 300px 150px;
-  animation: twinkle 12s linear infinite;
-  opacity: 0.4;
-  pointer-events: none;
-  z-index: 1;
+/* ===== SUN THEME STYLES ===== */
+.sun-theme .profile-container {
+  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+  min-height: 10vh;
+  width: 99%;
+  height: 790px;
+  
 }
+
 
 .main-layout {
   display: flex;
@@ -118,30 +92,65 @@
   margin-right: auto;
 }
 
-.profile-card {
-  background: #ffffff;
+/* ===== SPACE THEME PROFILE CARD ===== */
+.space-theme .profile-card {
+  background: rgba(26, 26, 46, 0.6);
   border-radius: 16px;
-  box-shadow: 0 6px 24px rgba(30, 20, 90, 0.12);
-  border: 1.5px solid #4dd0ff;
+  box-shadow: 0 8px 32px rgba(77, 208, 255, 0.15);
+  border: 1px solid rgba(77, 208, 255, 0.3);
   overflow: auto;
   transition: all 0.3s ease;
   width: 100%;
   min-width: 0;
   max-height: 100%;
+  backdrop-filter: blur(10px);
 }
 
-.profile-card:hover {
+.space-theme .profile-card:hover {
   transform: translateY(-5px);
-  box-shadow: 0 20px 60px rgba(77, 208, 255, 0.18);
+  box-shadow: 0 20px 60px rgba(77, 208, 255, 0.25);
+  border-color: rgba(77, 208, 255, 0.5);
 }
 
-.card-header {
-  background: linear-gradient(90deg, #5e17eb 0%, #4dd0ff 100%);
+/* ===== SUN THEME PROFILE CARD ===== */
+.sun-theme .profile-card {
+  background: rgba(255, 255, 255, 0.8);
+  border-radius: 16px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  overflow: auto;
+  transition: all 0.3s ease;
+  width: 100%;
+  min-width: 0;
+  max-height: 100%;
+  backdrop-filter: blur(10px);
+}
+
+.sun-theme .profile-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+  border-color: rgba(0, 0, 0, 0.2);
+}
+
+/* ===== SPACE THEME CARD HEADER ===== */
+.space-theme .card-header {
+  background: #6D5F8F;
   padding: 0.75rem 0.5rem;
   display: flex;
   align-items: center;
   justify-content: center;
   border-bottom: 1.5px solid #4dd0ff;
+  position: relative;
+}
+
+/* ===== SUN THEME CARD HEADER ===== */
+.sun-theme .card-header {
+  background: #C2E6FF;
+  padding: 0.75rem 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-bottom: 1.5px solid #f59e0b;
   position: relative;
 }
 
@@ -179,7 +188,10 @@
   display: flex;
   flex-direction: column;
   align-items: center;
+  margin-left: 20px;
   min-width: 200px;
+  justify-self: center;
+  align-self: center;
 }
 
 .profile-picture-container {
@@ -215,7 +227,7 @@
 .profile-full-name {
   font-size: 1.5rem;
   font-weight: 700;
-  color: #381770;
+  color: #929294;
   margin: 0 0 0.5rem 0;
   letter-spacing: 0.5px;
 }
@@ -242,16 +254,52 @@
   margin-bottom: 0;
 }
 
-.form-group label {
+/* ===== SPACE THEME FORM LABELS ===== */
+.space-theme .form-label {
+  font-weight: 600;
+  color: #fff;
+  font-size: 0.9rem;
+  margin-bottom: 0.25rem;
+}
+
+/* ===== SUN THEME FORM LABELS ===== */
+.sun-theme .form-label {
   font-weight: 600;
   color: #0b1b4b;
   font-size: 0.9rem;
   margin-bottom: 0.25rem;
 }
 
-.form-input {
+/* ===== SPACE THEME FORM INPUTS ===== */
+.space-theme .form-input {
   padding: 0.75rem 1rem;
-  border: 2px solid #e4e8ff;
+  border: 2px solid rgba(77, 208, 255, 0.3);
+  border-radius: 8px;
+  font-size: 0.9rem;
+  color: #fff;
+  background: rgba(26, 26, 46, 0.4);
+  transition: all 0.3s ease;
+  font-family: inherit;
+  width: 100%;
+  box-sizing: border-box;
+  backdrop-filter: blur(10px);
+}
+
+.space-theme .form-input:focus {
+  outline: none;
+  border-color: #4dd0ff;
+  box-shadow: 0 0 0 3px rgba(77, 208, 255, 0.2);
+  background: rgba(26, 26, 46, 0.6);
+}
+
+.space-theme .form-input::placeholder {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+/* ===== SUN THEME FORM INPUTS ===== */
+.sun-theme .form-input {
+  padding: 0.75rem 1rem;
+  border: 2px solid rgba(0, 0, 0, 0.1);
   border-radius: 8px;
   font-size: 0.9rem;
   color: #0b1b4b;
@@ -262,10 +310,15 @@
   box-sizing: border-box;
 }
 
-.form-input:focus {
+.sun-theme .form-input:focus {
   outline: none;
-  border-color: #4dd0ff;
-  box-shadow: 0 0 0 3px rgba(77, 208, 255, 0.1);
+  border-color: #f59e0b;
+  box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.1);
+  background: #ffffff;
+}
+
+.sun-theme .form-input::placeholder {
+  color: #94a3b8;
 }
 
 .form-input::placeholder {
@@ -292,7 +345,44 @@
   margin-top: 0.5rem;
 }
 
-.radio-label {
+/* ===== SPACE THEME RADIO BUTTONS ===== */
+.space-theme .radio-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  font-weight: 500;
+  color: #fff;
+}
+
+.space-theme .radio-custom {
+  width: 18px;
+  height: 18px;
+  border: 2px solid rgba(77, 208, 255, 0.3);
+  border-radius: 50%;
+  position: relative;
+  transition: all 0.3s ease;
+}
+
+.space-theme .radio-label input[type="radio"]:checked + .radio-custom {
+  border-color: #4dd0ff;
+  background: #4dd0ff;
+}
+
+.space-theme .radio-label input[type="radio"]:checked + .radio-custom::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 8px;
+  height: 8px;
+  background: #ffffff;
+  border-radius: 50%;
+}
+
+/* ===== SUN THEME RADIO BUTTONS ===== */
+.sun-theme .radio-label {
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -301,25 +391,21 @@
   color: #0b1b4b;
 }
 
-.radio-label input[type="radio"] {
-  display: none;
-}
-
-.radio-custom {
+.sun-theme .radio-custom {
   width: 18px;
   height: 18px;
-  border: 2px solid #e4e8ff;
+  border: 2px solid rgba(0, 0, 0, 0.1);
   border-radius: 50%;
   position: relative;
   transition: all 0.3s ease;
 }
 
-.radio-label input[type="radio"]:checked + .radio-custom {
-  border-color: #4dd0ff;
-  background: #4dd0ff;
+.sun-theme .radio-label input[type="radio"]:checked + .radio-custom {
+  border-color: #f59e0b;
+  background: #f59e0b;
 }
 
-.radio-label input[type="radio"]:checked + .radio-custom::after {
+.sun-theme .radio-label input[type="radio"]:checked + .radio-custom::after {
   content: '';
   position: absolute;
   top: 50%;
@@ -454,14 +540,102 @@
   font-family: inherit;
 }
 
-.btn-primary {
-  background: linear-gradient(90deg, #5e17eb 0%, #7a5cff 50%, #4dd0ff 100%);
-  color: #ffffff;
+/* ===== SPACE THEME BUTTONS ===== */
+.space-theme .btn-primary {
+	background: rgba(123, 121, 129, 0.2) ;
+	border: 1px solid rgba(109, 95, 143, 0.3) ;
+	color: #fff ;
 }
 
-.btn-primary:hover {
+.space-theme .btn-primary:hover {
+	background: rgba(109, 95, 143, 0.3) ;
+	border-color: rgba(109, 95, 143, 0.5);
   transform: translateY(-2px);
-  box-shadow: 0 5px 15px rgba(94, 23, 235, 0.3);
+	color: #fff ;
+}
+
+/* ===== SUN THEME BUTTONS ===== */
+.sun-theme .btn-primary {
+	background: #dcf8ff !important;
+	border: 1px solid rgba(0, 0, 0, 0.1) !important;
+	color: #000 !important;
+}
+
+.sun-theme .btn-primary:hover {
+	background: #c8f0ff !important;
+	border-color: rgba(0, 0, 0, 0.2) !important;
+	color: #000 !important;
+	transform: translateY(-2px);
+	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* ===== SPACE THEME PASSWORD INPUTS ===== */
+.space-theme .password-input .ant-input {
+  background: rgba(26, 26, 46, 0.4) !important;
+  border: 2px solid rgba(77, 208, 255, 0.3) !important;
+  color: #fff !important;
+  backdrop-filter: blur(10px);
+}
+
+.space-theme .password-input .ant-input:focus {
+  background: rgba(26, 26, 46, 0.6) !important;
+  border-color: #4dd0ff !important;
+  box-shadow: 0 0 0 3px rgba(77, 208, 255, 0.2) !important;
+}
+
+.space-theme .password-input .ant-input::placeholder {
+  color: rgba(255, 255, 255, 0.6) !important;
+}
+
+/* Override Ant Design Password Input for Space Theme */
+.space-theme .ant-input-password {
+  background: rgba(26, 26, 46, 0.4) !important;
+  border: 2px solid rgba(77, 208, 255, 0.3) !important;
+  color: #fff !important;
+  backdrop-filter: blur(10px);
+}
+
+.space-theme .ant-input-password .ant-input {
+  background: transparent !important;
+  border: none !important;
+  color: #fff !important;
+  box-shadow: none !important;
+}
+
+.space-theme .ant-input-password:focus,
+.space-theme .ant-input-password:focus-within {
+  background: rgba(26, 26, 46, 0.6) !important;
+  border-color: #4dd0ff !important;
+  box-shadow: 0 0 0 3px rgba(77, 208, 255, 0.2) !important;
+}
+
+.space-theme .ant-input-password .ant-input::placeholder {
+  color: rgba(255, 255, 255, 0.6) !important;
+}
+
+.space-theme .ant-input-password .ant-input-password-icon {
+  color: rgba(255, 255, 255, 0.8) !important;
+}
+
+.space-theme .ant-input-password .ant-input-password-icon:hover {
+  color: #fff !important;
+}
+
+/* ===== SUN THEME PASSWORD INPUTS ===== */
+.sun-theme .password-input .ant-input {
+  background: #ffffff !important;
+  border: 2px solid rgba(0, 0, 0, 0.1) !important;
+  color: #0b1b4b !important;
+}
+
+.sun-theme .password-input .ant-input:focus {
+  background: #ffffff !important;
+  border-color: #f59e0b !important;
+  box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.1) !important;
+}
+
+.sun-theme .password-input .ant-input::placeholder {
+  color: #94a3b8 !important;
 }
 
 .btn-secondary {
