@@ -128,11 +128,15 @@ const ThemedLayoutFullScreen = ({ children }) => {
 
         {/* Astronaut Decoration Icon - Only for Sun Theme */}
         {theme === 'sun' && (
-          <div className="astronaut-decoration-icon">
+          <div style={{ position: 'absolute', bottom: '20px', right: '20px', zIndex: 1000 }}>
             <img 
               src="/img/astronut-11.png" 
               alt="Astronaut Decoration" 
-              className="astronaut-icon-image" 
+              style={{ 
+                width: '120px', 
+                height: 'auto',
+                filter: 'drop-shadow(0 0 20px rgba(125, 211, 252, 0.6))'
+              }} 
             />
           </div>
         )}
@@ -140,13 +144,10 @@ const ThemedLayoutFullScreen = ({ children }) => {
         {/* Space Theme Decorations */}
         {theme === 'space' && (
           <>
-           
-            
-            {/* Astronaut rocket */}
+            {/* Spaceship - Bottom Right */}
             <img 
-              className="astronaut-rocket" 
-              src="/img/astro.png" 
-              alt="astronaut rocket" 
+              src="/img/spaceship-1.png" 
+              alt="Spaceship" 
               style={{ 
                 position: 'absolute', 
                 right: '2%', 

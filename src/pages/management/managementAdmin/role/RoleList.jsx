@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { Collapse, Checkbox } from "antd";
 import {
@@ -11,9 +11,6 @@ import {
   Form,
   Select,
   Tooltip,
-  Card,
-  Row,
-  Col,
 } from "antd";
 import {
   EditOutlined,
@@ -73,10 +70,10 @@ const mockRoles = [
 const RoleList = () => {
   const { t } = useTranslation();
   const { theme } = useTheme();
-  const [loading, setLoading] = useState(false);
-  const [roles, setRoles] = useState(mockRoles);
+  const [loading, setLoading] = useState(true);
+  const [roles, setRoles] = useState([]);
   const [searchText, setSearchText] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [statusFilter] = useState("all");
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [editingRole, setEditingRole] = useState(null);
   const [form] = Form.useForm();
@@ -87,6 +84,24 @@ const RoleList = () => {
     content: '',
     onConfirm: null
   });
+
+  const fetchRoles = useCallback(async () => {
+    setLoading(true);
+    try {
+      // Simulate API call
+      setTimeout(() => {
+        setRoles(mockRoles);
+        setLoading(false);
+      }, 1000);
+    } catch (error) {
+      spaceToast.error(t('roleManagement.loadRolesError'));
+      setLoading(false);
+    }
+  }, [t]);
+
+  useEffect(() => {
+    fetchRoles();
+  }, [fetchRoles]);
 
   // Role options with translations
   const roleOptions = [
@@ -349,7 +364,7 @@ const RoleList = () => {
               <Button 
                 icon={<ReloadOutlined />}
                 className={`export-button ${theme}-export-button`}
-                onClick={() => setRoles(mockRoles)}
+                onClick={fetchRoles}
               >
                 Refresh
               </Button>
@@ -365,7 +380,9 @@ const RoleList = () => {
 
           {/* Table Section */}
           <div className={`table-section ${theme}-table-section`}>
-            <LoadingWithEffect loading={loading} message={t('roleManagement.loadingRoles')}>
+            <LoadingWithEffect
+              loading={loading}
+              message={t('roleManagement.loadingRoles')}>
               <Table
                 columns={columns}
                 dataSource={filteredRoles}
