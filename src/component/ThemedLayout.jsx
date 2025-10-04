@@ -56,7 +56,11 @@ const ThemedLayout = ({ children }) => {
         <div className="themed-sidebar-header">
           <div className="themed-logo">
             {theme === 'space' ? (
-              <span className="themed-logo-icon" style={{fontSize: '29px'}}>🚀</span>
+              <img 
+                src="/img/astro.png" 
+                alt="Logo" 
+                className="themed-logo-img" 
+              />
             ) : (
               <img 
                 src="/img/sun-logo.png" 
@@ -66,7 +70,7 @@ const ThemedLayout = ({ children }) => {
             )}
             {!collapsed && (
               <span className={`themed-logo-text ${theme}-logo-text`}>
-               CAMKEY
+               Camkey
               </span>
             )}
           </div>

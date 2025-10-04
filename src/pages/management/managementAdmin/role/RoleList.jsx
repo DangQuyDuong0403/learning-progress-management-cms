@@ -195,9 +195,9 @@ const RoleList = () => {
       dataIndex: "role",
       key: "role",
       render: (role) => (
-        <Tag color="blue" style={{ fontWeight: 600 }}>
+        <span className="role-name-text">
           {translateRole(role)}
-        </Tag>
+        </span>
       ),
       sorter: (a, b) => a.role.localeCompare(b.role),
     },
@@ -221,12 +221,13 @@ const RoleList = () => {
       title: t('roleManagement.permissions'),
       dataIndex: "permissions",
       key: "permissions",
-      render: (permissions) =>
-        permissions.map((p, idx) => (
-          <Tag key={idx} color="purple">
-            {translatePermission(p)}
-          </Tag>
-        )),
+       render: (permissions) =>
+         permissions.map((p, idx) => (
+           <span key={idx} className="permission-text" style={{ display: 'inline-block', marginRight: '8px' }}>
+             {translatePermission(p)}
+             {idx < permissions.length - 1 && ', '}
+           </span>
+         )),
     },
     {
       title: t('roleManagement.actions'),
@@ -446,7 +447,7 @@ const RoleList = () => {
             </Form.Item>
             <div style={{ marginBottom: 16 }}>
               <label
-                style={{ fontWeight: 500, marginBottom: 8, display: "block" }}
+                style={{ fontWeight: 500, marginBottom: 8, display: "block", color: '#000' }}
               >
                 {t('roleManagement.permissions')}
               </label>
@@ -454,7 +455,7 @@ const RoleList = () => {
                 {permissionGroups.map((group, idx) => (
                   <Collapse.Panel
                     header={
-                      <span style={{ fontWeight: 600 }}>
+                      <span style={{ fontWeight: 600, color: '#000' }}>
                         {group.group}
                       </span>
                     }
@@ -482,7 +483,7 @@ const RoleList = () => {
                       }}
                     >
                       {group.permissions.map((perm) => (
-                        <Checkbox key={perm} value={perm}>
+                        <Checkbox key={perm} value={perm} style={{ color: '#000' }}>
                           {translatePermission(perm)}
                         </Checkbox>
                       ))}
