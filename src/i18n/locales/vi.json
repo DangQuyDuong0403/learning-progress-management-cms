@@ -79,7 +79,7 @@
     "forgotPassword": "Quên mật khẩu?",
     "signIn": "Đăng nhập",
     "signUp": "Đăng ký",
-    "chooseRole": "Chọn vai trò",
+    "chooseRole": "Chọn vai trò để tiếp tục",
     "student": "Học sinh",
     "teacher": "Giáo viên",
     "admin": "Quản trị viên"
@@ -252,7 +252,9 @@
     "activateDeactivateAccount": "Active/Deactivate tài khoản",
     "createNewExercise": "Tạo bài tập mới",
     "updateExercise": "Cập nhật bài tập",
-    "activateDeactivateExercise": "Active/Deactivate bài tập"
+    "activateDeactivateExercise": "Active/Deactivate bài tập",
+    "loadingRoles": "Đang tải danh sách vai trò...",
+    "loadRolesError": "Lỗi khi tải danh sách vai trò"
   },
   "classManagement": {
     "title": "Quản lý lớp học",

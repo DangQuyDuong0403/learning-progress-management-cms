@@ -32,25 +32,33 @@ export default function ChooseLogin() {
         
         {/* Logo CAMKEY - Top Left */}
         <div style={{ position: 'absolute', top: '20px', left: '20px', zIndex: 1000 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
             {isSunTheme ? (
               <img 
                 src="/img/sun-logo.png" 
                 alt="CAMKEY Logo" 
                 style={{ 
-                  width: '48px', 
-                  height: '48px', 
+                  width: '80px', 
+                  height: '80px', 
                   filter: 'drop-shadow(0 0 15px rgba(255, 215, 0, 0.8))'
                 }} 
               />
-            ) : (
-              <span style={{ color: '#7DD3FC', fontSize: '36px', textShadow: '0 0 15px rgba(125, 211, 252, 0.8)' }}>🚀</span>
-            )}
+             ) : (
+               <img 
+                 src="/img/astro.png" 
+                 alt="CAMKEY Logo" 
+                 style={{ 
+                   width: '80px', 
+                   height: '80px', 
+                   filter: 'drop-shadow(0 0 15px rgba(125, 211, 252, 0.8))'
+                 }} 
+               />
+             )}
             <span style={{ 
-              fontSize: '28px', 
+              fontSize: '36px', 
               fontWeight: 700, 
-              color: isSunTheme ? '#3b82f6' : '#fff',
-              textShadow: isSunTheme ? '0 0 5px rgba(59, 130, 246, 0.5)' : '0 0 15px rgba(255, 255, 255, 0.8)'
+              color: isSunTheme ? '#1E40AF' : '#FFFFFF',
+              textShadow: isSunTheme ? '0 0 5px rgba(30, 64, 175, 0.3)' : '0 0 15px rgba(255, 255, 255, 0.8)'
             }}>
               CAMKEY
             </span>
@@ -70,15 +78,15 @@ export default function ChooseLogin() {
             {t('login.chooseRole')}
           </h1>      
         </div>
-          <div className="role-cards" style={{ display: 'flex', gap: 40, justifyContent: 'center',justifySelf: 'center',flexWrap: 'wrap', maxWidth: 1000, width: '100%', marginTop: '40px' }}>
+          <div className="role-cards" style={{ display: 'flex', gap: 80, justifyContent: 'center',justifySelf: 'center',flexWrap: 'wrap', maxWidth: 1000, width: '100%', marginTop: '40px' }}>
            
             {/* Student Card */}
             <div className="role-card" style={getRoleCardStyle(isSunTheme)} onClick={() => selectRole('student')}>
               <div className="role-illustration student-illustration" style={getRoleIllustrationStyle(isSunTheme)}>
                 <img 
                   src="/img/student-illustration.svg" 
-                  alt="Student illus  tration" 
-                  style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                  alt="Student illustration" 
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                 />
               </div>
               <button className="role-button" style={getRoleButtonStyle(isSunTheme)}>{t('login.student')}</button>
@@ -89,7 +97,7 @@ export default function ChooseLogin() {
                 <img 
                   src="/img/teacher-illustration.svg" 
                   alt="Teacher illustration" 
-                  style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                 />
               </div>
               <button className="role-button" style={getRoleButtonStyle(isSunTheme)}>{t('login.teacher')}</button>
@@ -103,7 +111,7 @@ export default function ChooseLogin() {
 
 // Dynamic styles that change based on theme
 const getRoleCardStyle = (isSunTheme) => ({
-  background: isSunTheme ? '#EDF1FF' : 'rgba(109, 95, 143, 0.4)',
+  background: isSunTheme ? '#EDF1FF' : 'rgba(109, 95, 143, 0.7)',
   backdropFilter: isSunTheme ? 'blur(1px)' : 'blur(5px)',
   borderRadius: 24,
   padding: '60px 50px',
@@ -113,16 +121,14 @@ const getRoleCardStyle = (isSunTheme) => ({
   textAlign: 'center',
   transition: 'transform 0.3s ease, box-shadow 0.3s ease',
   cursor: 'pointer',
-  border: isSunTheme 
-    ? '2px solid #3B82F6' 
-    : '2px solid #131326',
+
   width: 450,
   marginBottom: 24,
 });
 
 const getRoleIllustrationStyle = (isSunTheme) => ({
-  width: 280,
-  height: 200,
+  width: '80%',
+  height: 250,
   margin: '0 auto 30px',
   background: isSunTheme 
     ? 'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)' 
@@ -136,20 +142,21 @@ const getRoleIllustrationStyle = (isSunTheme) => ({
   border: isSunTheme 
     ? '1px solid rgba(0, 0, 0, 0.05)' 
     : '1px solid rgba(77, 208, 255, 0.2)',
+  padding: 0,
 });
 
 const getRoleButtonStyle = (isSunTheme) => ({
   background: isSunTheme 
-    ? 'linear-gradient(135deg, #ffffff, #8bb0f9, #1d0161)' 
-    : 'linear-gradient(135deg, #ffffff, #aa8bf9, #1d0161)',
+    ? 'linear-gradient(135deg, #FFFFFF 10%, #DFEDFF 34%, #C3DEFE 66%, #9CC8FE 100%)'
+    : 'linear-gradient(135deg, #D9D9D9 0%, #CAC0E3 42%, #BAA5EE 66%, #AA8BF9 100%)',
   border: 'none',
-  color: isSunTheme ? '#000000' : '#000000',
+  color: '#000000',
   padding: '16px 32px', // Tăng padding
   borderRadius: 12,
   fontWeight: 700, // Tăng font weight
   fontSize: 18, // Tăng font size từ 16 lên 18
   fontFamily: "'Plus Jakarta Sans', sans-serif",
-  textShadow: isSunTheme ? '0 1px 2px rgba(0, 0, 0, 0.1)' : '0 1px 2px rgba(0, 0, 0, 0.2)',
+  textShadow: '0 1px 2px rgba(0, 0, 0, 0.1)',
   letterSpacing: '0.5px', // Thêm letter spacing
   transition: 'all 0.3s ease',
   width: '100%',

@@ -63,19 +63,28 @@ export default function Login() {
 								src="/img/sun-logo.png" 
 								alt="CAMKEY Logo" 
 								style={{ 
-									width: '48px', 
-									height: '48px', 
+									width: '100px', 
+									height: '100px', 
 									filter: 'drop-shadow(0 0 15px rgba(255, 215, 0, 0.8))'
 								}} 
 							/>
 						) : (
-							<span style={{ color: '#7DD3FC', fontSize: '36px', textShadow: '0 0 15px rgba(125, 211, 252, 0.8)' }}>🚀</span>
+							<img 
+								src="/img/astro.png" 
+								alt="CAMKEY Logo" 
+								style={{ 
+									width: '100px', 
+									height: '100px', 
+									filter: 'drop-shadow(0 0 15px rgba(125, 211, 252, 0.8))'
+								}} 
+							/>
 						)}
 						<span style={{ 
 							fontSize: '28px', 
 							fontWeight: 700, 
-							color: isSunTheme ? '#3b82f6' : '#fff',
-							textShadow: isSunTheme ? '0 0 5px rgba(59, 130, 246, 0.5)' : '0 0 15px rgba(255, 255, 255, 0.8)'
+							fontFamily: 'Bungee, cursive',
+							color: isSunTheme ? '#1E40AF' : '#cbd5e1',
+							textShadow: isSunTheme ? '0 0 5px rgba(30, 64, 175, 0.5)' : '0 0 8px rgba(203, 213, 225, 0.4)'
 						}}>
 							CAMKEY
 						</span>
@@ -89,66 +98,74 @@ export default function Login() {
 							style={getLoginCardStyle(isSunTheme)}>
 							<div
 								className='card-body'
-								style={{ padding: '2.5rem 2.5rem 2rem 2.5rem' }}>
+								style={{ padding: '1.5rem 2.5rem 1.5rem 2.5rem' }}>
 								<div className='card-body'>
-									{/* Back Button */}
-									<div className='d-flex justify-content-start mb-3'>
+									{/* Back Button and Login Title */}
+									<div className='d-flex align-items-center justify-content-center mb-4' style={{ position: 'relative' }}>
 										<Button
 											type='text'
-											icon={<ArrowLeftOutlined style={{ color: isSunTheme ? '#3b82f6' : '#c8c8f7' }} />}
+											icon={<ArrowLeftOutlined style={{ 
+												color: isSunTheme ? '#3b82f6' : '#ffffff', 
+												fontSize: '24px',
+												fontWeight: 'bold'
+											}} />}
 											onClick={handleBackToChoose}
 											style={{
-												color: isSunTheme ? '#3b82f6' : '#c8c8f7',
+												color: isSunTheme ? '#3b82f6' : '#ffffff',
 												fontWeight: 600,
-												padding: '4px 8px',
+												fontSize: '18px',
+												padding: '8px 12px',
 												height: 'auto',
 												borderRadius: '6px',
 												display: 'flex',
 												alignItems: 'center',
-												gap: '6px'
+												gap: '8px',
+												flexShrink: 0,
+												position: 'absolute',
+												left: '0'
 											}}>
-											{t('common.back')}
 										</Button>
+										<h5 className='mb-0' style={getHeadingStyle(isSunTheme)}>
+											Login
+										</h5>
 									</div>
-									<h5 className='text-center mb-1' style={getHeadingStyle(isSunTheme)}>
-										Camkey
-									</h5>
-									<p className='text-center mb-4' style={getSubtitleStyle(isSunTheme)}>
-										Let's fly into the learning space!
-									</p>
 									<form onSubmit={handleSubmit}>
 										<div className='mb-3'>
 											<label htmlFor='loginUsername' className='form-label' style={getLabelStyle(isSunTheme)}>
 												{t('login.username')}
 											</label>
-											<Input
-												id='loginUsername'
-												value={username}
-												onChange={(e) => setUsername(e.target.value)}
-												prefix={<UserOutlined />}
-												size='large'
-												style={getInputStyle(isSunTheme)}
-											/>
+											<div style={{ textAlign: 'center' }}>
+												<Input
+													id='loginUsername'
+													value={username}
+													onChange={(e) => setUsername(e.target.value)}
+													prefix={<UserOutlined />}
+													size='large'
+													style={getInputStyle(isSunTheme)}
+												/>
+											</div>
 										</div>
 										<div className='mb-4'>
 											<label htmlFor='loginPassword' className='form-label' style={getLabelStyle(isSunTheme)}>
 												{t('login.password')}
 											</label>
-											<Input.Password
-												id='loginPassword'
-												value={password}
-												onChange={(e) => setPassword(e.target.value)}
-												prefix={<LockOutlined />}
-												size='large'
-												style={getInputStyle(isSunTheme)}
-												styles={{
-													suffix: {
-														color: isSunTheme ? '#6b7280' : '#ffffff'
-													}
-												}}
-											/>
+											<div style={{ textAlign: 'center' }}>
+												<Input.Password
+													id='loginPassword'
+													value={password}
+													onChange={(e) => setPassword(e.target.value)}
+													prefix={<LockOutlined />}
+													size='large'
+													style={getInputStyle(isSunTheme)}
+													styles={{
+														suffix: {
+															color: isSunTheme ? '#6b7280' : '#ffffff'
+														}
+													}}
+												/>
+											</div>
 										</div>
-										<div className='d-flex align-items-center justify-content-between mb-4'>
+										<div className='d-flex align-items-center mb-4'>
 											<div className='form-check'>
 												<input
 													className='form-check-input primary'
@@ -164,18 +181,9 @@ export default function Login() {
 													className='form-check-label'
 													htmlFor='flexCheckChecked'
 													style={getLabelStyle(isSunTheme)}>
-													{t('login.rememberMe')}
+													Remember me ?
 												</label>
 											</div>
-											<span
-												className='fw-bold forgot-password'
-												style={{ 
-													cursor: 'pointer', 
-													color: isSunTheme ? '#3b82f6' : '#c8c8f7' 
-												}}
-												onClick={() => setForgotVisible(true)}>
-												{t('login.forgotPassword')}
-											</span>
 										</div>
 										<div className='text-center'>
 											<button
@@ -184,6 +192,19 @@ export default function Login() {
 												style={getSubmitButtonStyle(isSunTheme)}>
 												{t('login.signIn')}
 											</button>
+										</div>
+										<div style={{ textAlign: 'right', marginTop: '16px' }}>
+											<span
+												className='forgot-password'
+												style={{ 
+													cursor: 'pointer', 
+													color: isSunTheme ? '#3b82f6' : '#C8C8F7',
+													fontSize: '18px',
+													fontWeight: 400
+												}}
+												onClick={() => setForgotVisible(true)}>
+												{t('login.forgotPassword')}
+											</span>
 										</div>
 									</form>
 								</div>
@@ -291,56 +312,54 @@ export default function Login() {
 
 // Dynamic styles that change based on theme
 const getLoginCardStyle = (isSunTheme) => ({
-	background: isSunTheme ? 'rgba(255, 255, 255, 0.4)' : 'rgba(109, 95, 143, 0.4)',
+	background: isSunTheme ? '#EDF1FF' : 'rgba(109, 95, 143, 0.7)',
 	backdropFilter: isSunTheme ? 'blur(1px)' : 'blur(5px)',
 	borderRadius: 32,
 	boxShadow: isSunTheme 
 		? '0 20px 60px rgba(0, 0, 0, 0.15)' 
 		: '0 20px 60px rgba(77, 208, 255, 0.25)',
-	border: isSunTheme 
-		? '1px solid #3b82f6' 
-		: '1px solid #131326',
-	minWidth: 520,
-	maxWidth: 720,
+	border: isSunTheme ? '2px solid #3B82F6' : 'none',
+	minWidth: 400,
+	maxWidth: 600,
 	margin: '0 auto',
 	padding: 0,
 });
 
 const getHeadingStyle = (isSunTheme) => ({
-	fontSize: '36px',
+	fontSize: '48px',
 	fontWeight: 700,
 	color: isSunTheme ? '#3b82f6' : '#fff',
 	textShadow: isSunTheme ? 'none' : '0 0 10px rgba(77, 208, 255, 0.5)',
 	marginBottom: '8px',
 });
 
-const getSubtitleStyle = (isSunTheme) => ({
-	fontSize: '20px',
-	color: isSunTheme ? '#6b7280' : '#cbd5e1',
-	marginBottom: '32px',
-});
 
 const getLabelStyle = (isSunTheme) => ({
-	color: isSunTheme ? '#3b82f6' : '#c8c8f7',
-	fontWeight: 600,
+	color: isSunTheme ? '#3b82f6' : '#ffffff',
+	fontWeight: 400,
+	fontSize: '18px',
 	marginBottom: '8px',
 });
 
 const getInputStyle = (isSunTheme) => ({
-	borderRadius: '8px',
-	background: isSunTheme ? '#e9f7fa' : '#afa0d3',
-	border: isSunTheme ? '1px solid #3b82f6' : '1px solid #131326',
+	borderRadius: '59px',
+	background: isSunTheme ? '#ffffff' : '#afa0d3',
+	border: isSunTheme ? '2px solid #3B82F6' : 'none',
 	color: isSunTheme ? '#374151' : '#ffffff',
+	fontSize: '16px',
+	width: '90%',
+	margin: '0 auto',
+	height: '45px',
 });
 
 const getSubmitButtonStyle = (isSunTheme) => ({
 	background: isSunTheme 
-		? 'linear-gradient(135deg, #ffffff, #8bb0f9, #1d0161)' 
-		: 'linear-gradient(135deg, #ffffff, #aa8bf9, #1d0161)',
+		? 'linear-gradient(135deg, #FFFFFF 10%, #DFEDFF 34%, #C3DEFE 66%, #9CC8FE 100%)' 
+		: 'linear-gradient(135deg, #D9D9D9 0%, #CAC0E3 42%, #BAA5EE 66%, #AA8BF9 100%)',
 	border: 'none',
 	color: 'black',
 	fontWeight: 600,
-	fontSize: '16px',
+	fontSize: '20px',
 	padding: '12px 24px',
 	width: '90%',
 	borderRadius: '12px',
