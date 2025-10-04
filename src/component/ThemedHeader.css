@@ -4,7 +4,7 @@
   backdrop-filter: blur(10px);
   border-bottom: 1px solid rgba(109, 95, 143, 0.2);
   padding: 0 24px;
-  height: 64px;
+  height: 76px;
   display: flex;
   align-items: center;
   transition: all 0.3s ease;
@@ -179,18 +179,19 @@
 .sun-theme .notification-icon {
   width: 28px;
   height: 28px;
-  filter: drop-shadow(0 0 3px rgba(255, 193, 7, 0.5));
+  filter: brightness(1.5) drop-shadow(0 0 8px rgba(255, 193, 7, 0.8));
   transition: all 0.3s ease;
 }
 
 .sun-theme .notification-icon:hover {
-  filter: drop-shadow(0 0 6px rgba(255, 193, 7, 0.8));
+  filter: brightness(1.8) drop-shadow(0 0 12px rgba(255, 193, 7, 1));
   transform: scale(1.1);
 }
 
 .sun-theme .sun-notification-dot {
   background: linear-gradient(135deg, #ff6b35 0%, #f7931e 100%);
-  box-shadow: 0 0 6px rgba(255, 107, 53, 0.6);
+  box-shadow: 0 0 12px rgba(255, 107, 53, 0.9);
+  filter: brightness(1.3);
 }
 
 .sun-theme .sun-user-role {
@@ -257,18 +258,19 @@
 .space-theme .notification-icon {
   width: 28px;
   height: 28px;
-  filter: drop-shadow(0 0 3px rgba(77, 208, 255, 0.5));
+  filter: brightness(0) saturate(100%) invert(48%) sepia(79%) saturate(100%) hue-rotate(262deg) brightness(118%) contrast(119%) drop-shadow(0 0 10px rgb(160, 147, 190));
   transition: all 0.3s ease;
 }
 
 .space-theme .notification-icon:hover {
-  filter: drop-shadow(0 0 6px rgba(77, 208, 255, 0.8));
+  filter: brightness(0) saturate(100%) invert(48%) sepia(79%) saturate(100%) hue-rotate(262deg) brightness(140%) contrast(130%) drop-shadow(0 0 15px rgb(104, 97, 124));
   transform: scale(1.1);
 }
 
 .space-theme .space-notification-dot {
-  background: linear-gradient(135deg, #4dd0ff 0%, #7209b7 100%);
-  box-shadow: 0 0 6px rgba(77, 208, 255, 0.6);
+  background: linear-gradient(135deg, #b7a3e9 20%, #9345c7 80%);
+  box-shadow: 0 0 15px rgb(114, 64, 243);
+  filter: brightness(1.8) contrast(1.2);
 }
 
 .space-theme .space-user-role {

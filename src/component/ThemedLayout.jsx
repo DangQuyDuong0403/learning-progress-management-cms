@@ -55,8 +55,8 @@ const ThemedLayout = ({ children }) => {
       >
         <div className="themed-sidebar-header">
           <div className="themed-logo">
-            {theme === 'dark' ? (
-              <span className="themed-logo-icon">🚀</span>
+            {theme === 'space' ? (
+              <span className="themed-logo-icon" style={{fontSize: '29px'}}>🚀</span>
             ) : (
               <img 
                 src="/img/sun-logo.png" 

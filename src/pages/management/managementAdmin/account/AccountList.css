@@ -15,7 +15,7 @@
 
 .space-theme .main-content-panel {
 	position: relative;
-	background: rgba(110, 92, 172, 0.05); /* Rất trong suốt để nhìn xuyên qua */
+	background: rgba(110, 92, 172, 0.4) !important; /* Rất trong suốt để nhìn xuyên qua */
 	backdrop-filter: blur(1px); /* Blur nhẹ để tạo hiệu ứng glass */
 	border-radius: 16px;
 	padding: 24px;
@@ -31,19 +31,19 @@
 
 /* Sun theme main content panel */
 .sun-theme .main-content-panel {
-  position: relative;
-  background: rgba(255, 255, 255, 0.05); /* Rất trong suốt để nhìn xuyên qua */
-  backdrop-filter: blur(1px); /* Blur nhẹ để tạo hiệu ứng glass */
-  border-radius: 16px;
-  padding: 24px;
-  margin: 24px;
-  /* Không dùng opacity để tránh làm mờ nội dung bên trong */
-  
-  /* Hiệu ứng viền + bóng */
-  border: 1px solid rgba(0, 0, 0, 0.1);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-  
-  z-index: 2;
+	position: relative;
+	background: rgba(255, 255, 255, 0.4) !important; /* Rất trong suốt để nhìn xuyên qua */
+	backdrop-filter: blur(1px); /* Blur nhẹ để tạo hiệu ứng glass */
+	border-radius: 16px;
+	padding: 24px;
+	margin: 24px;
+	/* Không dùng opacity để tránh làm mờ nội dung bên trong */
+
+	/* Hiệu ứng viền + bóng */
+	border: 1px solid rgba(0, 0, 0, 0.1);
+	box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+
+	z-index: 2;
 }
 
 /* ===== PANEL HEADER ===== */
@@ -61,28 +61,35 @@
 }
 
 .search-input {
-  width: 100%;
-  height: 40px;
-  border-radius: 20px;
-  border: 1px solid #000;
-  background: #fefffe;
-  color: #666;
-  backdrop-filter: blur(10px);
-}
-
-.search-input::placeholder {
-  color: #999;
-}
-
-.search-input:focus {
-  border-color: #000;
-  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.2);
+	width: 100%;
+	height: 40px;
+	border-radius: 20px;
+	border: 1px solid rgb(47, 27, 105);
+	color: #fff;
 }
 
 .space-theme .search-input {
-	background: rgba(255, 255, 255, 0.1);
-	border: 1px solid rgba(77, 208, 255, 0.3);
-	color: #fff;
+	background: #413075;
+	border: 1px solid #604B9E;
+	outline: none !important;
+	box-shadow: none !important;
+	backdrop-filter: none ;
+}
+
+.space-theme .search-input .ant-input {
+	background: transparent ;
+	border: none ;
+	outline: none ;
+	box-shadow: none ;
+	color: #fff ;
+}
+
+.space-theme .search-input .ant-input:focus {
+	background: transparent ;
+	border: none ;
+	outline: none ;
+	box-shadow: none ;
+	color: #fff ;
 }
 
 .action-buttons {
@@ -148,27 +155,27 @@
 
 /* ===== TABLE SECTION ===== */
 .table-section {
-	background: rgba(26, 26, 46, 0.6);
+	background: rgba(26, 26, 46, 0.7);
 	border-radius: 12px;
 	overflow: hidden;
-	border: 1px solid rgba(77, 208, 255, 0.3);
+	border: 1px solid rgba(77, 208, 255, 0.7);
 	backdrop-filter: blur(10px);
 }
 
 .space-theme .table-section {
-	background: rgba(26, 26, 46, 0.6);
-	border: 1px solid rgba(77, 208, 255, 0.3);
+	background: rgba(26, 26, 46, 0.7);
+	border: 1px solid rgba(77, 208, 255, 0.7);
 }
 
 /* Sun theme table section */
 .sun-theme .table-section {
-  position: relative;
-  background: rgba(255, 255, 255, 0.05); /* Rất trong suốt để nhìn xuyên qua */
-  backdrop-filter: blur(1px); /* Blur nhẹ để tạo hiệu ứng glass */
-  border-radius: 12px;
-  overflow: hidden;
-  border: 1px solid rgba(0, 0, 0, 0.1);
-  z-index: 2;
+	position: relative;
+	background: rgba(255, 255, 255, 0.7); /* Rất trong suốt để nhìn xuyên qua */
+	backdrop-filter: blur(1px); /* Blur nhẹ để tạo hiệu ứng gla ss */
+	border-radius: 12px;
+	overflow: hidden;
+	border: 1px solid rgba(0, 0, 0, 0.1);
+	z-index: 2;
 }
 
 /* ===== TABLE STYLES ===== */
@@ -182,7 +189,7 @@
 }
 
 .space-theme .account-table .ant-table-thead > tr > th {
-	background: rgba(45, 27, 105, 0.6);
+	background: rgba(45, 27, 105, 0.7);
 	color: #fff;
 	font-weight: 600;
 	border-bottom: 1px solid rgba(77, 208, 255, 0.3);
@@ -436,19 +443,17 @@
 
 /* Action button icons */
 .account-table .ant-btn .anticon {
-  color: #000 !important;
+	color: #000 ;
 }
 
 .account-table .ant-btn:hover .anticon {
-  color: #000 !important;
+	color: #000;
 }
 
 /* Space theme specific button opacity */
 .space-theme .export-button,
 .space-theme .import-button {
-	
-	background: rgba(109, 95, 143, 0.2) ;
-	order: 1px solid rgba(109, 95, 143, 0.3) ;
-	color: #fff 
+	background: rgba(109, 95, 143, 0.2);
+	order: 1px solid rgba(109, 95, 143, 0.3);
+	color: #fff;
 }
-
