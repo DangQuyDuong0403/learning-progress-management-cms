@@ -219,7 +219,16 @@ export default function LoginTeacher() {
                                                     {t('login.signIn')}
                                                 </button>
                                             </div>
-                                            <div style={{ textAlign: 'right', marginTop: '16px' }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '16px' }}>
+                                                <span
+                                                    style={{ 
+                                                        color: isSunTheme ? '#3b82f6' : '#C8C8F7',
+                                                        fontSize: '14px',
+                                                        fontWeight: 400,
+                                                        opacity: 0.8
+                                                    }}>
+                                                    For teacher
+                                                </span>
                                                 <span
                                                     className='forgot-password'
                                                     style={{ 

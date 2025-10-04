@@ -114,7 +114,7 @@ export default function ForgotPassword() {
                                             }}>
                                         </Button>
                                         <h5 className='mb-0' style={getHeadingStyle(isSunTheme)}>
-                                            Forgot Password
+                                            Forgot password
                                         </h5>
                                     </div>
 									<form onSubmit={handleSubmit}>
