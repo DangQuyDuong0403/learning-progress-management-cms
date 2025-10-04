@@ -79,7 +79,7 @@
     "forgotPassword": "Forgot Password?",
     "signIn": "Sign In",
     "signUp": "Sign Up",
-    "chooseRole": "Choose Role",
+    "chooseRole": "Choose role to continue",
     "student": "Student",
     "teacher": "Teacher",
     "admin": "Administrator"
@@ -252,7 +252,9 @@
     "activateDeactivateAccount": "Activate/Deactivate account",
     "createNewExercise": "Create new exercise",
     "updateExercise": "Update exercise",
-    "activateDeactivateExercise": "Activate/Deactivate exercise"
+    "activateDeactivateExercise": "Activate/Deactivate exercise",
+    "loadingRoles": "Loading roles list...",
+    "loadRolesError": "Error loading roles list"
   },
   "classManagement": {
     "title": "Class Management",

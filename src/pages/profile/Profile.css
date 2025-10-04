@@ -164,6 +164,11 @@
   text-shadow: 0 2px 8px rgba(30, 20, 90, 0.12);
 }
 
+/* Light theme card header title */
+.sun-theme .card-header h3 {
+  color: #3b82f6;
+}
+
 .card-header i {
   font-size: 1.75rem;
   color: #4dd0ff;
@@ -355,6 +360,10 @@
   color: #fff;
 }
 
+.space-theme .radio-label input[type="radio"] {
+  display: none;
+}
+
 .space-theme .radio-custom {
   width: 18px;
   height: 18px;
@@ -389,6 +398,10 @@
   cursor: pointer;
   font-weight: 500;
   color: #0b1b4b;
+}
+
+.sun-theme .radio-label input[type="radio"] {
+  display: none;
 }
 
 .sun-theme .radio-custom {
@@ -542,16 +555,16 @@
 
 /* ===== SPACE THEME BUTTONS ===== */
 .space-theme .btn-primary {
-	background: rgba(123, 121, 129, 0.2) ;
+	background: linear-gradient(135deg, #ffffff, #8bb0f9, #1d0161) ;
 	border: 1px solid rgba(109, 95, 143, 0.3) ;
-	color: #fff ;
+	color: #000 ;
 }
 
 .space-theme .btn-primary:hover {
-	background: rgba(109, 95, 143, 0.3) ;
+	background: linear-gradient(135deg, #ffffff, #8bb0f9, #1d0161) ;
 	border-color: rgba(109, 95, 143, 0.5);
   transform: translateY(-2px);
-	color: #fff ;
+	color: #000 ;
 }
 
 /* ===== SUN THEME BUTTONS ===== */
@@ -589,8 +602,7 @@
 
 /* Override Ant Design Password Input for Space Theme */
 .space-theme .ant-input-password {
-  background: rgba(26, 26, 46, 0.4) !important;
-  border: 2px solid rgba(77, 208, 255, 0.3) !important;
+  background: #afa0d3 !important;
   color: #fff !important;
   backdrop-filter: blur(10px);
 }
@@ -604,8 +616,8 @@
 
 .space-theme .ant-input-password:focus,
 .space-theme .ant-input-password:focus-within {
-  background: rgba(26, 26, 46, 0.6) !important;
-  border-color: #4dd0ff !important;
+  background: #afa0d3 !important;
+  border-color: #131326 !important;
   box-shadow: 0 0 0 3px rgba(77, 208, 255, 0.2) !important;
 }
 

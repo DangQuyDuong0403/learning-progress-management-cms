@@ -422,7 +422,8 @@ const AccountList = () => {
 			render: (lastLogin) => lastLogin || t('accountManagement.neverLoggedIn'),
 		},
 		{
-			title: t('accountManagement.actions'),
+			
+		title: t('accountManagement.actions'),
 			key: 'actions',
 			width: 180,
 			render: (_, record) => (

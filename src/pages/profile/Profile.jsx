@@ -88,7 +88,7 @@ export default function Profile() {
                           fontSize: '1.5rem',
                           letterSpacing: '0.5px',
                           margin: 0,
-                          color: '#fff'
+                         
                         }}
                       >
                         {t('profile.personalInfo')}
@@ -148,10 +148,12 @@ export default function Profile() {
                             <label className={`form-label ${theme}-form-label`}>{t('common.gender')}</label>
                             <div className="radio-group">
                               <label className={`radio-label ${theme}-radio-label`}>
+                                <input type="radio" name="gender" value="male" defaultChecked />
                                 <span className={`radio-custom ${theme}-radio-custom`}></span>
                                 {t('common.male')}
                               </label>
                               <label className={`radio-label ${theme}-radio-label`}>
+                                <input type="radio" name="gender" value="female" />
                                 <span className={`radio-custom ${theme}-radio-custom`}></span>
                                 {t('common.female')}
                               </label>

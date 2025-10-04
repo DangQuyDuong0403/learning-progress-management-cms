@@ -2,11 +2,15 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import LanguageToggle from '../../component/LanguageToggle';
+import ThemeToggleSwitch from '../../component/ThemeToggleSwitch';
+import { useTheme } from '../../contexts/ThemeContext';
+import ThemedLayoutFullScreen from '../../component/ThemedLayoutFullScreen';
 import './Login.css'; // Tận dụng lại nền và hiệu ứng từ Login.css
 
 export default function ChooseLogin() {
   const navigate = useNavigate();
-  const { i18n, t } = useTranslation();
+  const { t } = useTranslation();
+  const { isSunTheme } = useTheme();
 
   const selectRole = (role) => {
     localStorage.setItem('selectedRole', role);
@@ -18,159 +22,143 @@ export default function ChooseLogin() {
   };
 
   return (
-    <div className="kids-space" style={{ minHeight: '100vh' }}>
+    <ThemedLayoutFullScreen>
       <div className="main-content" style={{ paddingTop: 120, minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-        {/* Language Toggle - Top Right */}
-        <div style={{ position: 'absolute', top: '20px', right: '20px', zIndex: 1000 }}>
+        {/* Theme Toggle - Top Right */}
+        <div className={`login-theme-toggle-container ${isSunTheme ? 'sun-theme' : 'space-theme'}`} style={{ position: 'absolute', top: '20px', right: '20px' }}>
+          <ThemeToggleSwitch />
           <LanguageToggle />
         </div>
         
+        {/* Logo CAMKEY - Top Left */}
+        <div style={{ position: 'absolute', top: '20px', left: '20px', zIndex: 1000 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+            {isSunTheme ? (
+              <img 
+                src="/img/sun-logo.png" 
+                alt="CAMKEY Logo" 
+                style={{ 
+                  width: '80px', 
+                  height: '80px', 
+                  filter: 'drop-shadow(0 0 15px rgba(255, 215, 0, 0.8))'
+                }} 
+              />
+             ) : (
+               <img 
+                 src="/img/astro.png" 
+                 alt="CAMKEY Logo" 
+                 style={{ 
+                   width: '80px', 
+                   height: '80px', 
+                   filter: 'drop-shadow(0 0 15px rgba(125, 211, 252, 0.8))'
+                 }} 
+               />
+             )}
+            <span style={{ 
+              fontSize: '36px', 
+              fontWeight: 700, 
+              color: isSunTheme ? '#1E40AF' : '#FFFFFF',
+              textShadow: isSunTheme ? '0 0 5px rgba(30, 64, 175, 0.3)' : '0 0 15px rgba(255, 255, 255, 0.8)'
+            }}>
+              CAMKEY
+            </span>
+          </div>
+        </div>
+
         <div className="container">
-          <h1 className="page-title" style={{fontSize: 48,fontWeight: 700,background: 'linear-gradient(90deg, #5e17eb 0%, #4dd0ff 100%)',WebkitBackgroundClip: 'text',WebkitTextFillColor: 'transparent',backgroundClip: 'text', textFillColor: 'transparent',textAlign: 'center',marginBottom: 16,letterSpacing: 0.5 }}>
+          <h1 className="page-title" style={{
+            fontSize: 48,
+            fontWeight: 700,
+            color: isSunTheme ? '#3b82f6' : '#fff',
+            textAlign: 'center',
+            marginBottom: 16,
+            letterSpacing: 0.5,
+            textShadow: isSunTheme ? 'none' : '0 0 20px rgba(77, 208, 255, 0.5)'
+          }}>
             {t('login.chooseRole')}
-          </h1>
-          <p className="page-subtitle" style={{ fontSize: 20, color: '#4dd0ff', textAlign: 'center', marginBottom: 60, fontWeight: 500 }}>Choose role to continue</p>
-          <div className="role-cards" style={{ display: 'flex', gap: 40, justifyContent: 'center',justifySelf: 'center',flexWrap: 'wrap', maxWidth: 1000, width: '100%' }}>
+          </h1>      
+        </div>
+          <div className="role-cards" style={{ display: 'flex', gap: 80, justifyContent: 'center',justifySelf: 'center',flexWrap: 'wrap', maxWidth: 1000, width: '100%', marginTop: '40px' }}>
            
             {/* Student Card */}
-            <div className="role-card" style={roleCardStyle} onClick={() => selectRole('student')}>
-              <div className="role-illustration student-illustration" style={roleIllustrationStyle}>
+            <div className="role-card" style={getRoleCardStyle(isSunTheme)} onClick={() => selectRole('student')}>
+              <div className="role-illustration student-illustration" style={getRoleIllustrationStyle(isSunTheme)}>
                 <img 
                   src="/img/student-illustration.svg" 
                   alt="Student illustration" 
-                  style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                 />
               </div>
-              <button className="role-button" style={roleButtonStyle}>{t('login.student')}</button>
+              <button className="role-button" style={getRoleButtonStyle(isSunTheme)}>{t('login.student')}</button>
             </div>
             {/* Teacher Card */}
-            <div className="role-card" style={roleCardStyle} onClick={() => selectRole('teacher')}>
-              <div className="role-illustration teacher-illustration" style={roleIllustrationStyle}>
+            <div className="role-card" style={getRoleCardStyle(isSunTheme)} onClick={() => selectRole('teacher')}>
+              <div className="role-illustration teacher-illustration" style={getRoleIllustrationStyle(isSunTheme)}>
                 <img 
                   src="/img/teacher-illustration.svg" 
                   alt="Teacher illustration" 
-                  style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                 />
               </div>
-              <button className="role-button" style={roleButtonStyle}>{t('login.teacher')}</button>
+              <button className="role-button" style={getRoleButtonStyle(isSunTheme)}>{t('login.teacher')}</button>
             </div>
           
           </div>
         </div>
-      </div>
-      {/* Background decorative elements */}
-      <img className="rocket-bg" src="/img/astro.png" alt="rocket" style={{ position: 'absolute', right: '2%', bottom: '2%', width: 120, opacity: 0.9, pointerEvents: 'none', animation: 'float 4s ease-in-out infinite' }} />
-          <img className='planet-1' src='img/planet-1.png' alt='plant-1' />
-					<img className='planet-2' src='img/planet-2.png' alt='plant-2' />
-					<img className='planet-3' src='img/planet-3.png' alt='plant-3' />
-					<img className='planet-4' src='img/planet-4.png' alt='plant-4' />
-					<img className='planet-5' src='img/planet-5.png' alt='plant-5' />
-					<img className='planet-6' src='img/planet-6.png' alt='plant-6' />
-      {/* Decorative planet */}
-      <svg className="planet" viewBox="0 0 120 120" style={{ position: 'absolute', top: '8%', left: '6%', width: 130, opacity: 0.5, pointerEvents: 'none', animation: 'float 6s ease-in-out infinite', animationDelay: '.4s' }}>
-        <defs>
-          <linearGradient id="pGrad" x1="0" x2="1" y1="0" y2="1">
-            <stop offset="0%" stopColor="#ff7ad9" />
-            <stop offset="100%" stopColor="#ffd36e" />
-          </linearGradient>
-        </defs>
-        <circle cx="60" cy="60" r="34" fill="url(#pGrad)" />
-        <ellipse cx="60" cy="70" rx="54" ry="14" fill="none" stroke="#ffe8a3" strokeWidth="6" />
-        <ellipse cx="60" cy="70" rx="54" ry="14" fill="none" stroke="#ffb3e6" strokeWidth="3" />
-      </svg>
-      {/* Twinkle stars */}
-      <div className="twinkle" aria-hidden="true">
-        {Array.from({ length: 18 }).map((_, i) => (
-          <span
-            key={i}
-            className={`star star-${i + 1}`}
-            style={{
-              position: 'absolute',
-              width: 3,
-              height: 3,
-              background: '#fff',
-              borderRadius: '50%',
-              opacity: 0.2,
-              animation: 'twinkle 2.6s ease-in-out infinite',
-              ...twinklePositions[i]
-            }}
-          />
-        ))}
-      </div>
-      {/* Decorative moon */}
-      <svg className="moon" viewBox="0 0 100 100" style={{ position: 'absolute', top: '22%', right: '12%', width: 90, opacity: 0.5, pointerEvents: 'none', animation: 'float 6s ease-in-out infinite', animationDelay: '1.2s' }}>
-        <defs>
-          <linearGradient id="mGrad" x1="0" x2="1" y1="0" y2="1">
-            <stop offset="0%" stopColor="#d9e6ff" />
-            <stop offset="100%" stopColor="#ffffff" />
-          </linearGradient>
-        </defs>
-        <circle cx="50" cy="50" r="30" fill="url(#mGrad)" stroke="#e5e8ff" />
-        <circle cx="62" cy="40" r="5" fill="#ccd6ff" />
-        <circle cx="42" cy="58" r="6" fill="#ccd6ff" />
-        <circle cx="56" cy="64" r="3" fill="#ccd6ff" />
-      </svg>
-    </div>
+    </ThemedLayoutFullScreen>
   );
 }
 
-// Inline styles for illustration
-const roleCardStyle = {
-  background: 'white',
+// Dynamic styles that change based on theme
+const getRoleCardStyle = (isSunTheme) => ({
+  background: isSunTheme ? '#EDF1FF' : 'rgba(109, 95, 143, 0.7)',
+  backdropFilter: isSunTheme ? 'blur(1px)' : 'blur(5px)',
   borderRadius: 24,
-  padding: '50px 40px',
-  boxShadow: '0 15px 50px rgba(30, 20, 90, 0.15)',
+  padding: '60px 50px',
+  boxShadow: isSunTheme 
+    ? '0 15px 50px rgba(0, 0, 0, 0.1)' 
+    : '0 15px 50px rgba(77, 208, 255, 0.15)',
   textAlign: 'center',
   transition: 'transform 0.3s ease, box-shadow 0.3s ease',
   cursor: 'pointer',
-  border: '2px solid transparent',
-  width: 400,
-  marginBottom: 24,
-};
 
-const roleIllustrationStyle = {
-  width: 250,
-  height: 180,
+  width: 450,
+  marginBottom: 24,
+});
+
+const getRoleIllustrationStyle = (isSunTheme) => ({
+  width: '80%',
+  height: 250,
   margin: '0 auto 30px',
-  background: 'linear-gradient(135deg, #f1f5ff 0%, #e4e8ff 100%)',
+  background: isSunTheme 
+    ? 'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)' 
+    : 'linear-gradient(135deg, rgba(77, 208, 255, 0.1) 0%, rgba(77, 208, 255, 0.2) 100%)',
   borderRadius: 16,
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
   position: 'relative',
   overflow: 'hidden',
-};
+  border: isSunTheme 
+    ? '1px solid rgba(0, 0, 0, 0.05)' 
+    : '1px solid rgba(77, 208, 255, 0.2)',
+  padding: 0,
+});
 
-const roleButtonStyle = {
-  background: 'linear-gradient(90deg, #5e17eb 0%, #7a5cff 50%, #4dd0ff 100%)',
+const getRoleButtonStyle = (isSunTheme) => ({
+  background: isSunTheme 
+    ? 'linear-gradient(135deg, #FFFFFF 10%, #DFEDFF 34%, #C3DEFE 66%, #9CC8FE 100%)'
+    : 'linear-gradient(135deg, #D9D9D9 0%, #CAC0E3 42%, #BAA5EE 66%, #AA8BF9 100%)',
   border: 'none',
-  color: 'white',
-  padding: '16px 32px',
+  color: '#000000',
+  padding: '16px 32px', // Tăng padding
   borderRadius: 12,
-  fontWeight: 600,
-  fontSize: 16,
+  fontWeight: 700, // Tăng font weight
+  fontSize: 18, // Tăng font size từ 16 lên 18
+  fontFamily: "'Plus Jakarta Sans', sans-serif",
+  textShadow: '0 1px 2px rgba(0, 0, 0, 0.1)',
+  letterSpacing: '0.5px', // Thêm letter spacing
   transition: 'all 0.3s ease',
   width: '100%',
   marginTop: 16,
-};
-
-const twinklePositions = [
-  { left: '3%', top: '10%', animationDelay: '.1s' },
-  { left: '12%', top: '28%', animationDelay: '.8s' },
-  { left: '22%', top: '6%', animationDelay: '1.6s' },
-  { left: '30%', top: '18%', animationDelay: '2.1s' },
-  { left: '38%', top: '9%', animationDelay: '1.1s' },
-  { left: '46%', top: '26%', animationDelay: '.5s' },
-  { left: '55%', top: '12%', animationDelay: '2.3s' },
-  { left: '63%', top: '22%', animationDelay: '1.4s' },
-  { left: '72%', top: '8%', animationDelay: '.3s' },
-  { left: '80%', top: '20%', animationDelay: '1.9s' },
-  { left: '88%', top: '6%', animationDelay: '.7s' },
-  { left: '6%', top: '44%', animationDelay: '1.2s' },
-  { left: '18%', top: '58%', animationDelay: '.9s' },
-  { left: '36%', top: '48%', animationDelay: '1.8s' },
-  { left: '50%', top: '56%', animationDelay: '.2s' },
-  { left: '64%', top: '44%', animationDelay: '1.3s' },
-  { left: '78%', top: '52%', animationDelay: '.6s' },
-  { left: '92%', top: '42%', animationDelay: '1.7s' },
-];
+});
