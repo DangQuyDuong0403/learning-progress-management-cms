@@ -174,12 +174,29 @@
 	animation: floatingUpDown 7s ease-in-out infinite;
 }
 
+/* Ảnh img-bg-3.png - góc dưới trái - đè lên sidebar */
+.space-theme .bg-element-2-overlay {
+	content: '';
+	position: fixed;
+	bottom: 5%;
+	left: 2%;
+	width: 250px; /* Custom size */
+	height: 250px;
+	background-image: url('/public/img/img-bg-3.png');
+	background-size: contain;
+	background-position: center;
+	background-repeat: no-repeat;
+	z-index: 9999;
+	pointer-events: none;
+	animation: floatingUpDown 9s ease-in-out infinite reverse;
+}
+
 /* Ảnh img-bg-3.png - góc dưới trái */
 .space-theme .themed-main-layout .bg-element-2 {
 	content: '';
 	position: absolute;
 	bottom: 5%;
-	left: 5%;
+	left: -10%;
 	width: 250px; /* Custom size */
 	height: 250px;
 	background-image: url('/public/img/img-bg-3.png');
@@ -877,6 +894,26 @@
 
 .sun-theme .themed-content .ant-input::placeholder {
 	color: #999 !important;
+}
+
+/* Space theme search input - transparent */
+.space-theme .themed-content .ant-input {
+	background: rgba(109, 95, 143, 0.1) !important;
+	border: 1px solid rgba(109, 95, 143, 0.3) !important;
+	color: #fff !important;
+	border-radius: 20px !important;
+	backdrop-filter: blur(10px) !important;
+}
+
+.space-theme .themed-content .ant-input:focus {
+	background: rgba(109, 95, 143, 0.15) !important;
+	border: 1px solid rgba(109, 95, 143, 0.5) !important;
+	box-shadow: 0 0 0 2px rgba(109, 95, 143, 0.2) !important;
+	color: #fff !important;
+}
+
+.space-theme .themed-content .ant-input::placeholder {
+	color: rgba(255, 255, 255, 0.7) !important;
 }
 
 .themed-content .ant-pagination .ant-pagination-item {

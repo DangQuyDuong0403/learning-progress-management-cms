@@ -103,10 +103,13 @@ const ThemedLayout = ({ children }) => {
 
         {/* Background Elements */}
         <div className="bg-element-1"></div>
-        <div className="bg-element-2"></div>
+        {/* <div className="bg-element-2"></div> */}
         <div className="bg-element-3"></div>
         <div className="bg-element-4"></div>
         <div className="bg-element-5"></div>
+        
+        {/* Overlay Element for Space Theme - Overlays Sidebar */}
+        {theme === 'space' && <div className="bg-element-2-overlay"></div>}
 
         {/* Content */}
         <Content
