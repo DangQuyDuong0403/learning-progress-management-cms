@@ -180,7 +180,7 @@ export default function ResetPassword() {
                                             }}>
                                         </Button>
                                         <h5 className='mb-0' style={getHeadingStyle(isSunTheme)}>
-                                            Reset Password
+                                            Reset password
                                         </h5>
                                     </div>
 									<form onSubmit={handleSubmit}>
