@@ -26,11 +26,11 @@ import {
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useParams, useNavigate } from 'react-router-dom';
-import Layout from '../../../../component/Layout';
+import Layout from '../../../../component/Layout'; 
 import LoadingWithEffect from '../../../../component/spinner/LoadingWithEffect';
 import { spaceToast } from '../../../../component/SpaceToastify';
-import ChapterForm from '../../ManagementManager/syllabus/ChapterForm';
-import LessonList from '../../ManagementManager/syllabus/LessonList';
+import ChapterForm from '../../managementManager/syllabus/ChapterForm';
+import LessonList from '../../managementManager/syllabus/LessonList';
 const { Search } = Input;
 
 // Mock class data

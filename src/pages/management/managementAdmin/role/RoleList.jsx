@@ -404,7 +404,17 @@ const RoleList = () => {
         </div>
 
         <Modal
-          title={editingRole ? t('roleManagement.editRole') : t('roleManagement.addNewRole')}
+          title={
+            <div style={{ 
+              fontSize: '26px', 
+              fontWeight: '600', 
+              color: '#000000ff',
+              textAlign: 'center',
+              padding: '10px 0'
+            }}>
+              {editingRole ? t('roleManagement.editRole') : t('roleManagement.addNewRole')}
+            </div>
+          }
           open={isModalVisible}
           onOk={handleModalOk}
           onCancel={handleModalCancel}
@@ -414,11 +424,17 @@ const RoleList = () => {
         >
           <Form form={form} layout="vertical">
             <Form.Item
-              label={t('roleManagement.roleName')}
+              label={
+                <span>
+                  {t('roleManagement.roleName')}
+                  <span style={{ color: 'red', marginLeft: '4px' }}>*</span>
+                </span>
+              }
               name="role"
               rules={[
                 { required: true, message: t('roleManagement.roleRequired') },
               ]}
+              required={false}
             >
               <Select placeholder={t('roleManagement.selectRole')}>
                 {roleOptions.map((opt) => (
@@ -426,16 +442,6 @@ const RoleList = () => {
                     {opt.label}
                   </Option>
                 ))}
-              </Select>
-            </Form.Item>
-            <Form.Item
-              label={t('roleManagement.active')}
-              name="active"
-              rules={[{ required: true, message: t('roleManagement.statusRequired') }]}
-            >
-              <Select placeholder={t('roleManagement.selectStatus')}>
-                <Option value={true}>{t('roleManagement.active')}</Option>
-                <Option value={false}>{t('roleManagement.inactive')}</Option>
               </Select>
             </Form.Item>
             <div style={{ marginBottom: 16 }}>

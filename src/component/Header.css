@@ -153,17 +153,17 @@
 
 /* Apply filter only to notification icon */
 .navbar-nav .nav-item.dropdown .nav-link img[src*="notification_icon"] {
-  filter: brightness(0) saturate(100%) invert(100%) sepia(100%) saturate(1000%) hue-rotate(180deg);
+  filter: brightness(0) saturate(100%) invert(48%) sepia(79%) saturate(2476%) hue-rotate(262deg) brightness(118%) contrast(119%);
   transition: all 0.3s ease;
-  box-shadow: 0 0 15px rgba(255, 255, 255, 0.8);
+  box-shadow: 0 0 20px rgba(170, 139, 249, 1);
   width: 32px !important;
   height: 32px !important;
 }
 
 .navbar-nav .nav-item.dropdown .nav-link:hover img[src*="notification_icon"] {
-  filter: brightness(0) saturate(100%) invert(100%) sepia(100%) saturate(1000%) hue-rotate(180deg);
+  filter: brightness(0) saturate(100%) invert(48%) sepia(79%) saturate(2476%) hue-rotate(262deg) brightness(140%) contrast(130%);
   transform: scale(1.1);
-  box-shadow: 0 0 20px rgba(255, 255, 255, 1);
+  box-shadow: 0 0 25px rgba(170, 139, 249, 1);
 }
 
 .notification {
@@ -172,7 +172,7 @@
   right: 2px;
   width: 10px;
   height: 10px;
-  background: #ff475600 !important;
+  background: #c39df3cb !important;
   border: 2px solid #ffffff;
   animation: pulse 2s infinite;
 }

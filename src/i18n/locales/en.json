@@ -192,7 +192,7 @@
   },
   "roleManagement": {
     "title": "Role Management",
-    "addRole": "Add Role",
+    "addRole": "Save",
     "editRole": "Edit Role",
     "deleteRole": "Delete Role",
     "roleList": "Role List",

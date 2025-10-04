@@ -422,8 +422,7 @@ const AccountList = () => {
 			render: (lastLogin) => lastLogin || t('accountManagement.neverLoggedIn'),
 		},
 		{
-			
-		title: t('accountManagement.actions'),
+			title: t('accountManagement.actions'),
 			key: 'actions',
 			width: 180,
 			render: (_, record) => (
@@ -529,9 +528,18 @@ const AccountList = () => {
 			{/* Add/Edit Modal */}
 			<Modal
 				title={
-					editingAccount
-						? t('accountManagement.editAccount')
-						: t('accountManagement.addNewAccount')
+					<div
+						style={{
+							fontSize: '26px',
+							fontWeight: '600',
+							color: '#000000ff',
+							textAlign: 'center',
+							padding: '10px 0',
+						}}>
+						{editingAccount
+							? t('accountManagement.editAccount')
+							: t('accountManagement.addNewAccount')}
+					</div>
 				}
 				open={isModalVisible}
 				onOk={handleModalOk}
@@ -549,7 +557,12 @@ const AccountList = () => {
 					<Row gutter={16}>
 						<Col span={12}>
 							<Form.Item
-								label={t('accountManagement.username')}
+								label={
+									<span>
+										{t('accountManagement.username')}
+										<span style={{ color: 'red', marginLeft: '4px' }}>*</span>
+									</span>
+								}
 								name='username'
 								rules={[
 									{
@@ -560,7 +573,8 @@ const AccountList = () => {
 										min: 3,
 										message: t('accountManagement.usernameMinLength'),
 									},
-								]}>
+								]}
+								required={false}>
 								<Input
 									placeholder={t('accountManagement.usernamePlaceholder')}
 								/>
@@ -568,7 +582,12 @@ const AccountList = () => {
 						</Col>
 						<Col span={12}>
 							<Form.Item
-								label={t('accountManagement.email')}
+								label={
+									<span>
+										{t('accountManagement.email')}
+										<span style={{ color: 'red', marginLeft: '4px' }}>*</span>
+									</span>
+								}
 								name='email'
 								rules={[
 									{
@@ -579,7 +598,8 @@ const AccountList = () => {
 										type: 'email',
 										message: t('accountManagement.emailInvalid'),
 									},
-								]}>
+								]}
+								required={false}>
 								<Input placeholder={t('accountManagement.emailPlaceholder')} />
 							</Form.Item>
 						</Col>
@@ -588,14 +608,20 @@ const AccountList = () => {
 					<Row gutter={16}>
 						<Col span={12}>
 							<Form.Item
-								label={t('accountManagement.fullName')}
+								label={
+									<span>
+										{t('accountManagement.fullName')}
+										<span style={{ color: 'red', marginLeft: '4px' }}>*</span>
+									</span>
+								}
 								name='fullName'
 								rules={[
 									{
 										required: true,
 										message: t('accountManagement.fullNameRequired'),
 									},
-								]}>
+								]}
+								required={false}>
 								<Input
 									placeholder={t('accountManagement.fullNamePlaceholder')}
 								/>
@@ -603,7 +629,12 @@ const AccountList = () => {
 						</Col>
 						<Col span={12}>
 							<Form.Item
-								label={t('accountManagement.phone')}
+								label={
+									<span>
+										{t('accountManagement.phone')}
+										<span style={{ color: 'red', marginLeft: '4px' }}>*</span>
+									</span>
+								}
 								name='phone'
 								rules={[
 									{
@@ -614,7 +645,8 @@ const AccountList = () => {
 										pattern: /^[0-9]{10,11}$/,
 										message: t('accountManagement.phoneInvalid'),
 									},
-								]}>
+								]}
+								required={false}>
 								<Input placeholder={t('accountManagement.phonePlaceholder')} />
 							</Form.Item>
 						</Col>
@@ -623,14 +655,20 @@ const AccountList = () => {
 					<Row gutter={16}>
 						<Col span={12}>
 							<Form.Item
-								label={t('accountManagement.role')}
+								label={
+									<span>
+										{t('accountManagement.role')}
+										<span style={{ color: 'red', marginLeft: '4px' }}>*</span>
+									</span>
+								}
 								name='role'
 								rules={[
 									{
 										required: true,
 										message: t('accountManagement.roleRequired'),
 									},
-								]}>
+								]}
+								required={false}>
 								<Select placeholder={t('accountManagement.selectRole')}>
 									<Option value='Admin'>{t('accountManagement.admin')}</Option>
 									<Option value='Teacher'>
@@ -647,14 +685,20 @@ const AccountList = () => {
 						</Col>
 						<Col span={12}>
 							<Form.Item
-								label={t('accountManagement.status')}
+								label={
+									<span>
+										{t('accountManagement.status')}
+										<span style={{ color: 'red', marginLeft: '4px' }}>*</span>
+									</span>
+								}
 								name='status'
 								rules={[
 									{
 										required: true,
 										message: t('accountManagement.statusRequired'),
 									},
-								]}>
+								]}
+								required={false}>
 								<Select placeholder={t('accountManagement.selectStatus')}>
 									<Option value='active'>
 										{t('accountManagement.active')}
@@ -672,7 +716,12 @@ const AccountList = () => {
 
 					{!editingAccount && (
 						<Form.Item
-							label={t('accountManagement.password')}
+							label={
+								<span>
+									{t('accountManagement.password')}
+									<span style={{ color: 'red', marginLeft: '4px' }}>*</span>
+								</span>
+							}
 							name='password'
 							rules={[
 								{
@@ -680,7 +729,8 @@ const AccountList = () => {
 									message: t('accountManagement.passwordRequired'),
 								},
 								{ min: 6, message: t('accountManagement.passwordMinLength') },
-							]}>
+							]}
+							required={false}>
 							<Input.Password
 								placeholder={t('accountManagement.passwordPlaceholder')}
 							/>
@@ -701,9 +751,9 @@ const AccountList = () => {
 				title={
 					<div
 						style={{
-							fontSize: '20px',
+							fontSize: '26px',
 							fontWeight: '600',
-							color: '#1890ff',
+							color: '#000000ff',
 							textAlign: 'center',
 							padding: '10px 0',
 						}}>
