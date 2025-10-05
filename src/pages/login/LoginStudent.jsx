@@ -3,6 +3,7 @@ import { useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { loginSuccess } from '../../redux/auth';
 import { spaceToast } from '../../component/SpaceToastify';
+import authApi from '../../apis/backend/auth';
 import { Input, Button } from 'antd';
 import { UserOutlined, LockOutlined, ArrowLeftOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
@@ -18,23 +19,53 @@ export default function Login() {
 	const [password, setPassword] = useState('');
 	const [forgotVisible, setForgotVisible] = useState(false);
 	const [forgotMethod, setForgotMethod] = useState('email');
+	const [loading, setLoading] = useState(false);
 	const dispatch = useDispatch();
 	const navigate = useNavigate();
 	const { t } = useTranslation();
 	const { isSunTheme } = useTheme();
 
-	const handleSubmit = (e) => {
+	const handleSubmit = async (e) => {
 		e.preventDefault();
 
-		if (username === 'admin' && password === '123456') {
-			const fakeResponse = {
-				user: { id: 1, name: 'Admin', role: 'MANAGER' },
-				token: 'fake-jwt-token-123',
-			};
-			dispatch(loginSuccess(fakeResponse));
-			navigate('/home');
-		} else {
-			spaceToast.error('Sai tài khoản hoặc mật khẩu!');
+		// Validation: empty fields
+		if (!username || !password) {
+			spaceToast.error("Fields cannot be empty!");
+			return;
+		}
+
+		setLoading(true);
+		
+		try {
+			// Gọi API login cho student
+			const response = await authApi.loginForStudent({
+				username,
+				password
+			});
+
+			// Dispatch login success với data từ API
+			dispatch(loginSuccess(response));
+			spaceToast.success('Login successful!');
+			
+			// Redirect to student dashboard
+			setTimeout(() => {
+				navigate('/student/dashboard');
+			}, 1000);
+			
+		} catch (error) {
+			console.error('Login error:', error);
+			
+			// Xử lý lỗi từ API
+			if (error.response) {
+				const errorMessage = error.response.data?.message || 'Login failed!';
+				spaceToast.error(errorMessage);
+			} else if (error.request) {
+				spaceToast.error('Network error. Please check your connection!');
+			} else {
+				spaceToast.error('Something went wrong!');
+			}
+		} finally {
+			setLoading(false);
 		}
 	};
 
@@ -200,8 +231,9 @@ export default function Login() {
 											<button
 												type='submit'
 												className='btn w-90 mb-4 rounded-3'
-												style={getSubmitButtonStyle(isSunTheme)}>
-												{t('login.signIn')}
+												style={getSubmitButtonStyle(isSunTheme)}
+												disabled={loading}>
+												{loading ? 'Signing in...' : t('login.signIn')}
 											</button>
 										</div>
 										<div style={{ textAlign: 'end', marginTop: '16px' }}>

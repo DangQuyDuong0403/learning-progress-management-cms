@@ -16,20 +16,25 @@ const authSlice = createSlice({
 	initialState,
 	reducers: {
 		loginSuccess: (state, action) => {
-			state.user = action.payload.user;
-			state.token = action.payload.token;
+			const { accessToken, refreshToken, username, role } = action.payload;
+			state.user = { username, role };
+			state.token = accessToken;
+			state.refreshToken = refreshToken;
 			state.isAuthenticated = true;
-			// lưu user và token vào localStr hoặc có thể lưu = sessionStr
-			localStorage.setItem('user', JSON.stringify(action.payload.user));
-			localStorage.setItem('token', action.payload.token);
+			// lưu user và token vào localStorage
+			localStorage.setItem('user', JSON.stringify({ username, role }));
+			localStorage.setItem('token', accessToken);
+			localStorage.setItem('refreshToken', refreshToken);
 		},
 		logout: (state) => {
 			state.user = null;
 			state.token = null;
+			state.refreshToken = null;
 			state.isAuthenticated = false;
 			// Xoá khỏi localStorage
 			localStorage.removeItem('user');
 			localStorage.removeItem('token');
+			localStorage.removeItem('refreshToken');
 		},
 	},
 });

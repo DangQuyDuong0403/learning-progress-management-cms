@@ -3,6 +3,7 @@ import { useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { loginSuccess } from '../../redux/auth';
 import { spaceToast } from '../../component/SpaceToastify';
+import authApi from '../../apis/backend/auth';
 import { Input, Button } from 'antd';
 import { UserOutlined, LockOutlined, ArrowLeftOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
@@ -17,56 +18,69 @@ export default function LoginTeacher() {
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [forgotVisible, setForgotVisible] = useState(false);
+    const [loading, setLoading] = useState(false);
     const dispatch = useDispatch();
     const navigate = useNavigate();
     const { t } = useTranslation();
     const { isSunTheme } = useTheme();
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
+        
         // Validation: empty fields
         if (!username || !password) {
             spaceToast.error("Fields cannot be empty!");
             return;
         }
+        
         // Validation: email format
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(username)) {
-            spaceToast.error("Invalid email format!");
-            return;
-        }
-        // Fake login logic for demo
-        if (
-            (username === 'admin@gmail.com' && password === '123456') ||
-            (username === 'manager@gmail.com' && password === '123456') ||
-            (username === 'teacher@gmail.com' && password === '123456')
-        ) {
-            let role = '';
-            if (username === 'admin@gmail.com') role = 'ADMIN';
-            else if (username === 'manager@gmail.com') role = 'MANAGER';
-            else if (username === 'teacher@gmail.com') role = 'TEACHER';
-            const fakeResponse = {
-                user: { id: 1, name: username, email: username, role },
-                token: 'fake-jwt-token-123',
-            };
-            dispatch(loginSuccess(fakeResponse));
+        // const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        // if (!emailRegex.test(username)) {
+        //     spaceToast.error("Invalid email format!");
+        //     return;
+        // }
+
+        setLoading(true);
+        
+        try {
+            // Gọi API login cho teacher
+            const response = await authApi.loginForTeacher({
+                username,
+                password
+            });
+
+            // Dispatch login success với data từ API
+            dispatch(loginSuccess(response));
             spaceToast.success('Login successful!');
             
             // Redirect based on role
             let redirectPath = '/choose-login';
-            if (role === 'ADMIN') {
+            if (response.role === 'Admin') {
                 redirectPath = '/admin/accounts';
-            } else if (role === 'MANAGER') {
+            } else if (response.role === 'Manager') {
                 redirectPath = '/manager/syllabuses';
-            } else if (role === 'TEACHER') {
+            } else if (response.role === 'Teacher') {
                 redirectPath = '/teacher/classes';
             }
             
             setTimeout(() => {
                 navigate(redirectPath);
             }, 1000);
-        } else {
-            spaceToast.error('Wrong username or password!');
+            
+        } catch (error) {
+            console.error('Login error:', error);
+            
+            // Xử lý lỗi từ API
+            if (error.response) {
+                const errorMessage = error.response.data?.message || 'Login failed!';
+                spaceToast.error(errorMessage);
+            } else if (error.request) {
+                spaceToast.error('Network error. Please check your connection!');
+            } else {
+                spaceToast.error('Something went wrong!');
+            }
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -232,8 +246,9 @@ export default function LoginTeacher() {
                                                 <button
                                                     type='submit'
                                                     className='btn w-90 mb-4 rounded-3'
-                                                    style={getSubmitButtonStyle(isSunTheme)}>
-                                                    {t('login.signIn')}
+                                                    style={getSubmitButtonStyle(isSunTheme)}
+                                                    disabled={loading}>
+                                                    {loading ? 'Signing in...' : t('login.signIn')}
                                                 </button>
                                             </div>
                                             <div style={{textAlign: 'end', marginTop: '16px' }}>
