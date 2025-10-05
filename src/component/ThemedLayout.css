@@ -452,11 +452,11 @@
 }
 
 .sun-theme .themed-sidebar-menu .ant-menu-item-selected {
-	background: #85abea !important;
-	color: #1e40af !important;
+	background: #344c8d !important;
+	color: #ffffff !important;
 	font-weight: 600 !important;
-	box-shadow: 0 4px 12px rgba(109, 95, 143, 0.2) !important;
-	border-color: rgba(109, 95, 143, 0.4);
+	box-shadow: 0 4px 12px rgba(30, 58, 138, 0.3) !important;
+	border-color: rgba(30, 58, 138, 0.5);
 	transform: none !important;
 }
 
@@ -495,12 +495,12 @@
 
 .sun-theme .themed-sidebar-menu .ant-menu-item .anticon {
 	filter: drop-shadow(0 0 5px rgba(59, 130, 246, 0.4));
-	color: #3b82f6 !important;
+	color: #2f5da7 !important;
 }
 
 .sun-theme .themed-sidebar-menu .ant-menu-item-selected .anticon {
-	filter: drop-shadow(0 0 5px rgba(30, 64, 175, 0.4));
-	color: #1e40af !important;
+	filter: drop-shadow(0 0 5px rgba(255, 255, 255, 0.4));
+	color: #ffffff !important;
 }
 
 .space-theme .themed-sidebar-menu .ant-menu-item .anticon {
@@ -652,24 +652,37 @@
 	font-weight: 600;
 }
 
-.themed-content .ant-table-tbody > tr > td {
-	background: rgba(109, 95, 143, 0.7) !important;
-	border-bottom: 1px solid rgba(109, 95, 143, 0.1) !important;
-	color: #fff !important;
+/* Space theme table header icons - white */
+.space-theme .themed-content .ant-table-thead > tr > th .anticon {
+	color: #ffffff !important;
 }
 
-.themed-content .ant-table-tbody > tr:hover > td {
-	background: rgba(109, 95, 143, 0.7) !important;
+.space-theme .themed-content .ant-table-thead > tr > th .ant-table-column-sorter {
+	color: #ffffff !important;
+}
+
+.space-theme .themed-content .ant-table-thead > tr > th .ant-table-filter-trigger {
+	color: #ffffff !important;
+}
+
+.space-theme .themed-content .ant-table-tbody > tr > td {
+	background: #f6ebffd1 !important;
+	border-bottom: 1px solid rgba(109, 95, 143, 0.1) !important;
+	color: #000 !important;
+}
+
+.space-theme .themed-content .ant-table-tbody > tr:hover > td {
+	background: #e8d5ffd1 !important;
 }
 
 /* Override Ant Design table styles with higher specificity */
-.themed-content .ant-table .ant-table-tbody > tr > td {
-	background: rgba(109, 95, 143, 0.7) !important;
-	color: #fff !important;
+.space-theme .themed-content .ant-table .ant-table-tbody > tr > td {
+	background: #f6ebffd1 !important;
+	color: #000 !important;
 }
 
-.themed-content .ant-table .ant-table-tbody > tr:hover > td {
-	background: rgba(109, 95, 143, 0.7) !important;
+.space-theme .themed-content .ant-table .ant-table-tbody > tr:hover > td {
+	background: #e8d5ffd1 !important;
 }
 
 .themed-content .ant-card {
@@ -812,7 +825,7 @@
 
 /* Sun theme action buttons (edit, deactivate) */
 .sun-theme .themed-content .ant-btn .anticon {
-	color: #ffffff !important;
+	color: #000000 !important;
 }
 
 .sun-theme .themed-content .ant-btn:has(.anticon-edit):hover .anticon {
@@ -840,11 +853,11 @@
 
 /* Sun theme edit buttons - green for edit action */
 .space-theme .themed-content .ant-btn:has(.anticon-edit) .anticon {
-	color: #af8fdb !important;
+	color: #412070 !important;
 }
 
 .space-theme .themed-content .ant-btn:has(.anticon-edit):hover .anticon {
-	color: #af8fdb !important;
+	color: #412070 !important;
 }
 
 /* Sun theme deactivate buttons - red for deactivate action (StopOutlined) */
@@ -872,7 +885,20 @@
 }
 
 .space-theme .themed-content .anticon {
-	color: #fff !important;
+	color: #000 !important;
+}
+
+/* Space theme button icons - white for main buttons */
+.space-theme .themed-content .export-button .anticon,
+.space-theme .themed-content .import-button .anticon,
+.space-theme .themed-content .create-button .anticon {
+	color: #ffffff !important;
+}
+
+.space-theme .themed-content .export-button:hover .anticon,
+.space-theme .themed-content .import-button:hover .anticon,
+.space-theme .themed-content .create-button:hover .anticon {
+	color: #ffffff !important;
 }
 
 /* Sun theme table background */
