@@ -70,7 +70,7 @@ export default function Profile() {
 
   return (
      <ThemedLayout>
-    <div className={`profile-container ${theme}-profile-container`}>
+    <div className={`profile-container profile-page ${theme}-profile-container`}>
 
      
      

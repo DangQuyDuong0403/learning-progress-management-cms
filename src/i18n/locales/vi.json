@@ -82,7 +82,21 @@
     "chooseRole": "Chọn vai trò để tiếp tục",
     "student": "Học sinh",
     "teacher": "Giáo viên",
+    "forTeacher": "Dành cho giáo viên",
+    "forStudent": "Dành cho học sinh",
     "admin": "Quản trị viên"
+  },
+  "forgotPassword": {
+    "title": "Khôi phục mật khẩu",
+    "description": "Chọn phương thức khôi phục mật khẩu phù hợp với bạn",
+    "viaEmail": "Qua email",
+    "emailDescription": "Gửi mã OTP qua email",
+    "viaPhone": "Yêu cầu giáo viên gửi mật khẩu cố định",
+    "phoneDescription": "Nhờ giáo viên cung cấp mật khẩu mặc định",
+    "footerNote": "Chọn phương thức bạn có thể truy cập dễ dàng nhất",
+    "pageTitle": "Quên mật khẩu",
+    "send": "Gửi",
+    "emailNotFound": "Email không tồn tại trong hệ thống!"
   },
   "profile": {
     "title": "Thông tin cá nhân",
