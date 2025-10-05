@@ -68,8 +68,34 @@ export default function ThemedSidebar({ collapsed }) {
     return menuNameMap[key] || key;
   };
 
+  // Create static menu items (Dashboard only)
+  const staticMenuItems = [
+    {
+      key: 'DASHBOARD',
+      icon: <DashboardOutlined />,
+      label: (
+        <Link to="/dashboard" style={{ textDecoration: 'none' }}>
+          {t('sidebar.dashboard')}
+        </Link>
+      ),
+      title: collapsed ? t('sidebar.dashboard') : undefined,
+    }
+  ];
+
+  // Create settings menu item (separate for positioning)
+  const settingsMenuItem = {
+    key: 'SETTINGS',
+    icon: <SettingOutlined />,
+    label: (
+      <Link to="/settings" style={{ textDecoration: 'none' }}>
+        {t('sidebar.settings')}
+      </Link>
+    ),
+    title: collapsed ? t('sidebar.settings') : undefined,
+  };
+
   // Create menu items from routes based on user role
-  const menuItems = CONFIG_ROUTER
+  const routeMenuItems = CONFIG_ROUTER
     .filter((route) => {
       // Show routes that are visible and match user role
       return route.show && (!route.role || route.role === user?.role?.toLowerCase());
@@ -85,6 +111,9 @@ export default function ThemedSidebar({ collapsed }) {
       title: collapsed ? getMenuName(route.key) : undefined,
       path: route.path,
     }));
+
+  // Combine static, route menu items, and settings at the end
+  const menuItems = [...staticMenuItems, ...routeMenuItems, settingsMenuItem];
 
   return (
     <div className={`themed-sidebar-container ${theme}-sidebar-container`}>
@@ -102,12 +131,6 @@ export default function ThemedSidebar({ collapsed }) {
         inlineCollapsed={collapsed}
       />
       
-      {/* Moon Icon */}
-      {!collapsed && (
-        <div className={`moon-icon ${theme}-moon-icon`}>
-          <div className="moon-face">🌙</div>
-        </div>
-      )}
       
       {/* Background Elements */}
       {!collapsed && (

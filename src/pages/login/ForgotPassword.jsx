@@ -25,7 +25,7 @@ export default function ForgotPassword() {
 		} else {
 			setMessage({
 				type: 'error',
-				text: 'Email không tồn tại trong hệ thống!',
+				text: t('forgotPassword.emailNotFound'),
 			});
 		}
 	};
@@ -51,8 +51,8 @@ export default function ForgotPassword() {
 								src="/img/sun-logo.png" 
 								alt="CAMKEY Logo" 
 								style={{ 
-									width: '48px', 
-									height: '48px', 
+									width: '100px', 
+									height: '100px', 
 									filter: 'drop-shadow(0 0 15px rgba(255, 215, 0, 0.8))'
 								}} 
 							/>
@@ -68,11 +68,10 @@ export default function ForgotPassword() {
                             />
                         )}
                         <span style={{ 
-                            fontSize: '28px', 
+                            fontSize: '40px', 
                             fontWeight: 700, 
-                            fontFamily: 'Bungee, cursive',
-                            color: isSunTheme ? '#1E40AF' : '#cbd5e1',
-                            textShadow: isSunTheme ? '0 0 5px rgba(30, 64, 175, 0.5)' : '0 0 8px rgba(203, 213, 225, 0.4)'
+                            color: isSunTheme ? '#1E40AF' : '#FFFFFF',
+                            textShadow: isSunTheme ? '0 0 5px rgba(30, 64, 175, 0.3)' : '0 0 15px rgba(255, 255, 255, 0.8)'
                         }}>
 							CAMKEY
 						</span>
@@ -114,15 +113,15 @@ export default function ForgotPassword() {
                                             }}>
                                         </Button>
                                         <h5 className='mb-0' style={getHeadingStyle(isSunTheme)}>
-                                            Forgot password
+                                            {t('forgotPassword.pageTitle')}
                                         </h5>
                                     </div>
 									<form onSubmit={handleSubmit}>
                                         <div className='mb-5'>
-                                            <label htmlFor='forgotEmail' className='form-label' style={getLabelStyle(isSunTheme)}>
-                                                {t('common.email')}
-                                            </label>
-                                            <div style={{ textAlign: 'center' }}>
+                                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                                                <label htmlFor='forgotEmail' className='form-label' style={{...getLabelStyle(isSunTheme), width: '90%', textAlign: 'left'}}>
+                                                    {t('common.email')}
+                                                </label>
                                                 <Input
                                                     id='forgotEmail'
                                                     type='email'
@@ -163,7 +162,7 @@ export default function ForgotPassword() {
                                                 type='submit'
                                                 className='btn w-90 mb-4 rounded-3'
                                                 style={getSubmitButtonStyle(isSunTheme)}>
-                                                Send
+                                                {t('forgotPassword.send')}
                                             </button>
 										</div>
 									</form>
@@ -210,9 +209,9 @@ const getLabelStyle = (isSunTheme) => ({
 
 const getInputStyle = (isSunTheme) => ({
 	borderRadius: '59px',
-	background: isSunTheme ? '#ffffff' : '#afa0d3',
+	background: isSunTheme ? '#ffffff' : '#ffffff',
 	border: isSunTheme ? '2px solid #3B82F6' : 'none',
-	color: isSunTheme ? '#374151' : '#ffffff',
+	color: isSunTheme ? '#374151' : 'black',
 	fontSize: '16px',
 	width: '90%',
 	margin: '0 auto',

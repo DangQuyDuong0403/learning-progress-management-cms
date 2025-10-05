@@ -10,11 +10,13 @@ import LanguageToggle from '../../component/LanguageToggle';
 import ThemeToggleSwitch from '../../component/ThemeToggleSwitch';
 import { useTheme } from '../../contexts/ThemeContext';
 import ThemedLayoutFullScreen from '../../component/ThemedLayoutFullScreen';
+import ForgotPasswordModal from './ForgotPasswordModal';
 import './Login.css';
 
 export default function LoginTeacher() {
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
+    const [forgotVisible, setForgotVisible] = useState(false);
     const dispatch = useDispatch();
     const navigate = useNavigate();
     const { t } = useTranslation();
@@ -72,6 +74,10 @@ export default function LoginTeacher() {
         navigate('/choose-login');
     };
 
+    const handleForgotMethodSelect = (method) => {
+        navigate(`/forgot-password-${method}`);
+    };
+
     return (
         <ThemedLayoutFullScreen>
             <div className="main-content" style={{ paddingTop: 120, minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
@@ -106,11 +112,10 @@ export default function LoginTeacher() {
                             />
                         )}
                         <span style={{ 
-                            fontSize: '28px', 
-                            fontWeight: 700, 
-                            fontFamily: 'Bungee, cursive',
-                            color: isSunTheme ? '#1E40AF' : '#cbd5e1',
-                            textShadow: isSunTheme ? '0 0 5px rgba(30, 64, 175, 0.5)' : '0 0 8px rgba(203, 213, 225, 0.4)'
+                            fontSize: '40px', 
+                            fontWeight: 700,                           
+                            color: isSunTheme ? '#1E40AF' : '#FFFFFF',
+                            textShadow: isSunTheme ? '0 0 5px rgba(30, 64, 175, 0.3)' : '0 0 15px rgba(255, 255, 255, 0.8)'
                         }}>
                             CAMKEY
                         </span>
@@ -152,15 +157,27 @@ export default function LoginTeacher() {
                                             }}>
                                         </Button>
                                         <h5 className='mb-0' style={getHeadingStyle(isSunTheme)}>
-                                            Login
+                                            {t('login.title')}
                                         </h5>
+                                    </div>
+                                    {/* For teacher text below Login */}
+                                    <div className='text-center mb-3'>
+                                        <span
+                                            style={{ 
+                                                color: isSunTheme ? '#3b82f6' : '#C8C8F7',
+                                                fontSize: '20px',
+                                                fontWeight: 400,
+                                                opacity: 0.8
+                                            }}>
+                                            {t('login.forTeacher')}
+                                        </span>
                                     </div>
                                         <form onSubmit={handleSubmit}>
                                             <div className='mb-3'>
-                                                <label htmlFor='loginUsername' className='form-label' style={getLabelStyle(isSunTheme)}>
-                                                    {t('login.username')}
-                                                </label>
-                                                <div style={{ textAlign: 'center' }}>
+                                                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                                                    <label htmlFor='loginUsername' className='form-label' style={{...getLabelStyle(isSunTheme), width: '90%', textAlign: 'left'}}>
+                                                        {t('login.username')}
+                                                    </label>
                                                     <Input
                                                         id='loginUsername'
                                                         value={username}
@@ -172,10 +189,10 @@ export default function LoginTeacher() {
                                                 </div>
                                             </div>
                                             <div className='mb-4'>
-                                                <label htmlFor='loginPassword' className='form-label' style={getLabelStyle(isSunTheme)}>
-                                                    {t('login.password')}
-                                                </label>
-                                                <div style={{ textAlign: 'center' }}>
+                                                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                                                    <label htmlFor='loginPassword' className='form-label' style={{...getLabelStyle(isSunTheme), width: '90%', textAlign: 'left'}}>
+                                                        {t('login.password')}
+                                                    </label>
                                                     <Input.Password
                                                         id='loginPassword'
                                                         value={password}
@@ -207,7 +224,7 @@ export default function LoginTeacher() {
                                                         className='form-check-label'
                                                         htmlFor='flexCheckChecked'
                                                         style={getLabelStyle(isSunTheme)}>
-                                                        Remember me ?
+                                                        {t('login.rememberMe')} ?
                                                     </label>
                                                 </div>
                                             </div>
@@ -219,16 +236,8 @@ export default function LoginTeacher() {
                                                     {t('login.signIn')}
                                                 </button>
                                             </div>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '16px' }}>
-                                                <span
-                                                    style={{ 
-                                                        color: isSunTheme ? '#3b82f6' : '#C8C8F7',
-                                                        fontSize: '14px',
-                                                        fontWeight: 400,
-                                                        opacity: 0.8
-                                                    }}>
-                                                    For teacher
-                                                </span>
+                                            <div style={{textAlign: 'end', marginTop: '16px' }}>
+                                               
                                                 <span
                                                     className='forgot-password'
                                                     style={{ 
@@ -237,7 +246,7 @@ export default function LoginTeacher() {
                                                         fontSize: '18px',
                                                         fontWeight: 400
                                                     }}
-                                                    onClick={() => window.location.href = '/forgot-password-email'}>
+                                                    onClick={() => setForgotVisible(true)}>
                                                     {t('login.forgotPassword')}
                                                 </span>
                                             </div>
@@ -247,6 +256,13 @@ export default function LoginTeacher() {
                         </div>
                     </div>
                 </div>
+
+                {/* Modal chọn cách quên mật khẩu */}
+                <ForgotPasswordModal
+                    visible={forgotVisible}
+                    onCancel={() => setForgotVisible(false)}
+                    onMethodSelect={handleForgotMethodSelect}
+                />
             </div>
         </ThemedLayoutFullScreen>
     );
@@ -284,9 +300,9 @@ const getLabelStyle = (isSunTheme) => ({
 
 const getInputStyle = (isSunTheme) => ({
     borderRadius: '59px',
-    background: isSunTheme ? '#ffffff' : '#afa0d3',
+    background: isSunTheme ? '#ffffff' : '#ffffff',
     border: isSunTheme ? '2px solid #3B82F6' : 'none',
-    color: isSunTheme ? '#374151' : '#ffffff',
+    color: isSunTheme ? '#374151' : 'black',
     fontSize: '16px',
     width: '90%',
     margin: '0 auto',

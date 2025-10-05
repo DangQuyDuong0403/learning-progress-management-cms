@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Input, Button } from 'antd';
 import { LockOutlined, SafetyOutlined, ArrowLeftOutlined } from '@ant-design/icons';
+import { useTranslation } from 'react-i18next';
 import LanguageToggle from '../../component/LanguageToggle';
 import ThemeToggleSwitch from '../../component/ThemeToggleSwitch';
 import { useTheme } from '../../contexts/ThemeContext';
@@ -14,9 +15,9 @@ export default function ResetPassword() {
 		confirmPassword: '',
 	});
 	const [message, setMessage] = useState(null);
-	const [isLoading, setIsLoading] = useState(false);
 	const navigate = useNavigate();
 	const { isSunTheme } = useTheme();
+	const { t } = useTranslation();
 
 	const handleInputChange = (field, value) => {
 		setFormData((prev) => ({
@@ -41,20 +42,19 @@ export default function ResetPassword() {
 			errors: {
 				length:
 					password.length < minLength
-						? `Mật khẩu phải có ít nhất ${minLength} ký tự`
+						? t('resetPassword.passwordMinLengthError')
 						: null,
-				uppercase: !hasUpperCase ? 'Mật khẩu phải có ít nhất 1 chữ hoa' : null,
+				uppercase: !hasUpperCase ? t('resetPassword.passwordUppercaseError') : null,
 				lowercase: !hasLowerCase
-					? 'Mật khẩu phải có ít nhất 1 chữ thường'
+					? t('resetPassword.passwordLowercaseError')
 					: null,
-				numbers: !hasNumbers ? 'Mật khẩu phải có ít nhất 1 số' : null,
+				numbers: !hasNumbers ? t('resetPassword.passwordNumbersError') : null,
 			},
 		};
 	};
 
 	const handleSubmit = async (e) => {
 		e.preventDefault();
-		setIsLoading(true);
 		setMessage(null);
 
 		// Validate password
@@ -62,9 +62,8 @@ export default function ResetPassword() {
 		if (!passwordValidation.isValid) {
 			setMessage({
 				type: 'error',
-				text: 'Mật khẩu không đáp ứng yêu cầu bảo mật!',
+				text: t('resetPassword.passwordNotMeetRequirements'),
 			});
-			setIsLoading(false);
 			return;
 		}
 
@@ -72,9 +71,8 @@ export default function ResetPassword() {
 		if (formData.newPassword !== formData.confirmPassword) {
 			setMessage({
 				type: 'error',
-				text: 'Mật khẩu xác nhận không khớp!',
+				text: t('resetPassword.confirmPasswordNotMatch'),
 			});
-			setIsLoading(false);
 			return;
 		}
 
@@ -82,15 +80,13 @@ export default function ResetPassword() {
 		setTimeout(() => {
 			setMessage({
 				type: 'success',
-				text: 'Đặt lại mật khẩu thành công! Bạn có thể đăng nhập với mật khẩu mới.',
+				text: t('resetPassword.resetSuccess'),
 			});
 
 			// Chuyển về trang login sau 2 giây
 			setTimeout(() => {
 				navigate('/login-student');
 			}, 2000);
-
-			setIsLoading(false);
 		}, 1500);
 	};
 
@@ -117,8 +113,8 @@ export default function ResetPassword() {
 								src="/img/sun-logo.png" 
 								alt="CAMKEY Logo" 
 								style={{ 
-									width: '48px', 
-									height: '48px', 
+									width: '100px', 
+									height: '100px', 
 									filter: 'drop-shadow(0 0 15px rgba(255, 215, 0, 0.8))'
 								}} 
 							/>
@@ -134,11 +130,10 @@ export default function ResetPassword() {
                             />
                         )}
                         <span style={{ 
-                            fontSize: '28px', 
+                            fontSize: '40px', 
                             fontWeight: 700, 
-                            fontFamily: 'Bungee, cursive',
-                            color: isSunTheme ? '#1E40AF' : '#cbd5e1',
-                            textShadow: isSunTheme ? '0 0 5px rgba(30, 64, 175, 0.5)' : '0 0 8px rgba(203, 213, 225, 0.4)'
+                            color: isSunTheme ? '#1E40AF' : '#FFFFFF',
+                            textShadow: isSunTheme ? '0 0 5px rgba(30, 64, 175, 0.3)' : '0 0 15px rgba(255, 255, 255, 0.8)'
                         }}>
 							CAMKEY
 						</span>
@@ -180,15 +175,15 @@ export default function ResetPassword() {
                                             }}>
                                         </Button>
                                         <h5 className='mb-0' style={getHeadingStyle(isSunTheme)}>
-                                            Reset password
+                                            {t('resetPassword.title')}
                                         </h5>
                                     </div>
 									<form onSubmit={handleSubmit}>
                                         <div className='mb-3'>
-                                            <label htmlFor='newPassword' className='form-label' style={getLabelStyle(isSunTheme)}>
-                                                New password
-                                            </label>
-                                            <div style={{ textAlign: 'center' }}>
+                                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                                                <label htmlFor='newPassword' className='form-label' style={{...getLabelStyle(isSunTheme), width: '90%', textAlign: 'left'}}>
+                                                    {t('resetPassword.newPassword')}
+                                                </label>
                                                 <Input.Password
                                                     id='newPassword'
                                                     value={formData.newPassword}
@@ -218,7 +213,7 @@ export default function ResetPassword() {
 															}`}>
 															•{' '}
 															{passwordValidation.errors.length ||
-																'✓ Độ dài tối thiểu 6 ký tự'}
+																`✓ ${t('resetPassword.minLength')}`}
 														</div>
 														<div
 															className={`mb-1 ${
@@ -228,7 +223,7 @@ export default function ResetPassword() {
 															}`}>
 															•{' '}
 															{passwordValidation.errors.uppercase ||
-																'✓ Có ít nhất 1 chữ hoa'}
+																`✓ ${t('resetPassword.hasUppercase')}`}
 														</div>
 														<div
 															className={`mb-1 ${
@@ -238,7 +233,7 @@ export default function ResetPassword() {
 															}`}>
 															•{' '}
 															{passwordValidation.errors.lowercase ||
-																'✓ Có ít nhất 1 chữ thường'}
+																`✓ ${t('resetPassword.hasLowercase')}`}
 														</div>
 														<div
 															className={`mb-1 ${
@@ -248,17 +243,17 @@ export default function ResetPassword() {
 															}`}>
 															•{' '}
 															{passwordValidation.errors.numbers ||
-																'✓ Có ít nhất 1 số'}
+																`✓ ${t('resetPassword.hasNumbers')}`}
 														</div>
 													</div>
 												)}
 											</div>
 
                                         <div className='mb-4'>
-                                            <label htmlFor='confirmPassword' className='form-label' style={getLabelStyle(isSunTheme)}>
-                                                Confirm password
-                                            </label>
-                                            <div style={{ textAlign: 'center' }}>
+                                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                                                <label htmlFor='confirmPassword' className='form-label' style={{...getLabelStyle(isSunTheme), width: '90%', textAlign: 'left'}}>
+                                                    {t('resetPassword.confirmPassword')}
+                                                </label>
                                                 <Input.Password
                                                     id='confirmPassword'
                                                     value={formData.confirmPassword}
@@ -292,8 +287,8 @@ export default function ResetPassword() {
 															}`}>
 															•{' '}
 															{formData.newPassword === formData.confirmPassword
-																? '✓ Mật khẩu khớp'
-																: '✗ Mật khẩu không khớp'}
+																? `✓ ${t('resetPassword.passwordMatch')}`
+																: `✗ ${t('resetPassword.passwordNotMatch')}`}
 														</div>
 													</div>
 												)}
@@ -321,19 +316,15 @@ export default function ResetPassword() {
 												</div>
 											)}
 
-                                    <div className='text-center'>
-                                        <button
-                                            type='submit'
-                                            className='btn w-90 mb-4 rounded-3'
-                                            style={getSubmitButtonStyle(isSunTheme)}
-                                            disabled={
-                                                isLoading ||
-                                                !passwordValidation.isValid ||
-                                                formData.newPassword !== formData.confirmPassword
-                                            }>
-                                            {isLoading ? 'Loading...' : 'Change Password'}
-                                        </button>
-                                    </div>
+                                  
+									<div className='text-center'>
+											<button
+												type='submit'
+												className='btn w-90 mb-4 rounded-3'
+												style={getSubmitButtonStyle(isSunTheme)}>
+												{t('resetPassword.changePassword')}
+											</button>
+										</div>
 									</form>
 								</div>
 							</div>
@@ -378,9 +369,9 @@ const getLabelStyle = (isSunTheme) => ({
 
 const getInputStyle = (isSunTheme) => ({
 	borderRadius: '59px',
-	background: isSunTheme ? '#ffffff' : '#afa0d3',
+	background: isSunTheme ? '#ffffff' : '#ffffff',
 	border: isSunTheme ? '2px solid #3B82F6' : 'none',
-	color: isSunTheme ? '#374151' : '#ffffff',
+	color: isSunTheme ? '#374151' : 'black',
 	fontSize: '16px',
 	width: '90%',
 	margin: '0 auto',

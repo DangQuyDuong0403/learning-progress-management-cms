@@ -116,7 +116,7 @@
 .themed-navbar-nav {
   display: flex;
   align-items: center;
-  gap: 1.5rem;
+  gap: 2rem;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -197,6 +197,7 @@
 .sun-theme .sun-user-role {
   color: #1e40af;
   font-weight: 600;
+  font-size: 18px;
   text-shadow: none;
 }
 
@@ -274,9 +275,10 @@
 }
 
 .space-theme .space-user-role {
-  color: #4dd0ff;
+  color: #fff;
   font-weight: 600;
-  text-shadow: 0 0 3px rgba(77, 208, 255, 0.3);
+  font-size: 18px;
+  text-shadow: 0 0 3px rgba(255, 255, 255, 0.3);
 }
 
 .space-theme .space-profile-avatar {

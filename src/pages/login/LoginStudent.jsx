@@ -3,13 +3,14 @@ import { useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { loginSuccess } from '../../redux/auth';
 import { spaceToast } from '../../component/SpaceToastify';
-import { Input, Modal, Button } from 'antd';
+import { Input, Button } from 'antd';
 import { UserOutlined, LockOutlined, ArrowLeftOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import LanguageToggle from '../../component/LanguageToggle';
 import ThemeToggleSwitch from '../../component/ThemeToggleSwitch';
 import { useTheme } from '../../contexts/ThemeContext';
 import ThemedLayoutFullScreen from '../../component/ThemedLayoutFullScreen';
+import ForgotPasswordModal from './ForgotPasswordModal';
 import './Login.css';
 
 export default function Login() {
@@ -37,9 +38,8 @@ export default function Login() {
 		}
 	};
 
-	const handleForgotOk = () => {
-		setForgotVisible(false);
-		navigate(`/forgot-password-${forgotMethod}`);
+	const handleForgotMethodSelect = (method) => {
+		navigate(`/forgot-password-${method}`);
 	};
 
 	const handleBackToChoose = () => {
@@ -80,11 +80,10 @@ export default function Login() {
 							/>
 						)}
 						<span style={{ 
-							fontSize: '28px', 
+							fontSize: '40px', 
 							fontWeight: 700, 
-							fontFamily: 'Bungee, cursive',
-							color: isSunTheme ? '#1E40AF' : '#cbd5e1',
-							textShadow: isSunTheme ? '0 0 5px rgba(30, 64, 175, 0.5)' : '0 0 8px rgba(203, 213, 225, 0.4)'
+							color: isSunTheme ? '#1E40AF' : '#FFFFFF',
+                            textShadow: isSunTheme ? '0 0 5px rgba(30, 64, 175, 0.3)' : '0 0 15px rgba(255, 255, 255, 0.8)'
 						}}>
 							CAMKEY
 						</span>
@@ -126,15 +125,27 @@ export default function Login() {
 											}}>
 										</Button>
 										<h5 className='mb-0' style={getHeadingStyle(isSunTheme)}>
-											Login
+											{t('login.title')}
 										</h5>
+									</div>
+									{/* For student text below Login */}
+									<div className='text-center mb-3'>
+										<span
+											style={{ 
+												color: isSunTheme ? '#3b82f6' : '#C8C8F7',
+												fontSize: '20px',
+												fontWeight: 400,
+												opacity: 0.8
+											}}>
+											{t('login.forStudent')}
+										</span>
 									</div>
 									<form onSubmit={handleSubmit}>
 										<div className='mb-3'>
-											<label htmlFor='loginUsername' className='form-label' style={getLabelStyle(isSunTheme)}>
-												{t('login.username')}
-											</label>
-											<div style={{ textAlign: 'center' }}>
+											<div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+												<label htmlFor='loginUsername' className='form-label' style={{...getLabelStyle(isSunTheme), width: '90%', textAlign: 'left'}}>
+													{t('login.username')}
+												</label>
 												<Input
 													id='loginUsername'
 													value={username}
@@ -146,10 +157,10 @@ export default function Login() {
 											</div>
 										</div>
 										<div className='mb-4'>
-											<label htmlFor='loginPassword' className='form-label' style={getLabelStyle(isSunTheme)}>
-												{t('login.password')}
-											</label>
-											<div style={{ textAlign: 'center' }}>
+											<div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+												<label htmlFor='loginPassword' className='form-label' style={{...getLabelStyle(isSunTheme), width: '90%', textAlign: 'left'}}>
+													{t('login.password')}
+												</label>
 												<Input.Password
 													id='loginPassword'
 													value={password}
@@ -181,7 +192,7 @@ export default function Login() {
 													className='form-check-label'
 													htmlFor='flexCheckChecked'
 													style={getLabelStyle(isSunTheme)}>
-													Remember me ?
+													{t('login.rememberMe')} ?
 												</label>
 											</div>
 										</div>
@@ -193,16 +204,7 @@ export default function Login() {
 												{t('login.signIn')}
 											</button>
 										</div>
-										<div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '16px' }}>
-											<span
-												style={{ 
-													color: isSunTheme ? '#3b82f6' : '#C8C8F7',
-													fontSize: '14px',
-													fontWeight: 400,
-													opacity: 0.8
-												}}>
-												For student
-											</span>
+										<div style={{ textAlign: 'end', marginTop: '16px' }}>
 											<span
 												className='forgot-password'
 												style={{ 
@@ -223,97 +225,11 @@ export default function Login() {
 				</div>
 
 				{/* Modal chọn cách quên mật khẩu */}
-				<Modal
-					title={
-						<div style={{ textAlign: 'center', padding: '8px 0' }}>
-							<h4
-								style={{
-									margin: 0,
-									fontWeight: 600,
-									background: isSunTheme 
-										? 'linear-gradient(90deg, #3b82f6 0%, #1d4ed8 100%)'
-										: 'linear-gradient(90deg, #5e17eb 0%, #4dd0ff 100%)',
-									WebkitBackgroundClip: 'text',
-									WebkitTextFillColor: 'transparent',
-									backgroundClip: 'text',
-								}}>
-								Password recovery
-							</h4>
-						</div>
-					}
-					open={forgotVisible}
-					footer={null}
+				<ForgotPasswordModal
+					visible={forgotVisible}
 					onCancel={() => setForgotVisible(false)}
-					centered
-					width={480}
-					style={{ borderRadius: '16px' }}>
-					<div style={{ padding: '8px 0' }}>
-						<p
-							style={{
-								textAlign: 'center',
-								marginBottom: '24px',
-								color: isSunTheme ? '#374151' : '#666',
-								fontSize: '16px',
-								fontWeight: 500,
-							}}>
-							Choose the password recovery method that works for you
-						</p>
-
-						<div
-							style={{
-								display: 'flex',
-								gap: '20px',
-								justifyContent: 'center',
-								flexWrap: 'wrap',
-							}}>
-							{/* Email Option */}
-							<div
-								onClick={() => {
-									setForgotMethod('email');
-									handleForgotOk();
-								}}
-								className='recover-option'>
-								<div className='recover-card'>
-									<div className='recover-icon'>📧</div>
-									<h6>Via email</h6>
-									<p>Send OTP code via email</p>
-								</div>
-							</div>
-
-							{/* Phone Option */}
-							<div
-								onClick={() => {
-									setForgotMethod('phone');
-									handleForgotOk();
-								}}
-								className='recover-option'>
-								<div className='recover-card'>
-									<div className='recover-icon'>📱</div>
-									<h6>Via Phone Number</h6>
-									<p>Send OTP code via SMS</p>
-								</div>
-							</div>
-						</div>
-
-						{/* Footer */}
-						<div
-							style={{
-								textAlign: 'center',
-								marginTop: '24px',
-								padding: '16px 0',
-								borderTop: isSunTheme ? '1px solid #e5e7eb' : '1px solid #f0f0f0',
-							}}>
-							<p
-								style={{
-									margin: 0,
-									color: isSunTheme ? '#6b7280' : '#999',
-									fontSize: '12px',
-								}}>
-								Choose the method you can access most easily
-							</p>
-						</div>
-					</div>
-				</Modal>
+					onMethodSelect={handleForgotMethodSelect}
+				/>
 			</div>
 		</ThemedLayoutFullScreen>
 	);
@@ -352,9 +268,9 @@ const getLabelStyle = (isSunTheme) => ({
 
 const getInputStyle = (isSunTheme) => ({
 	borderRadius: '59px',
-	background: isSunTheme ? '#ffffff' : '#afa0d3',
+	background: isSunTheme ? '#ffffff' : '#ffffff',
 	border: isSunTheme ? '2px solid #3B82F6' : 'none',
-	color: isSunTheme ? '#374151' : '#ffffff',
+	color: isSunTheme ? '#374151' : 'black',
 	fontSize: '16px',
 	width: '90%',
 	margin: '0 auto',

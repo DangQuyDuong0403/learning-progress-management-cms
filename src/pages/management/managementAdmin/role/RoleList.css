@@ -66,7 +66,7 @@
 }
 
 .space-theme .search-input {
-	background: #413075 !important;
+	background: #C5C5C5 !important;
 	border: 1px solid #604B9E !important;
 	outline: none !important;
 	box-shadow: none !important;
@@ -78,7 +78,7 @@
 	border: none !important;
 	outline: none !important;
 	box-shadow: none !important;
-	color: #fff !important;
+	color: #000 !important;
 }
 
 .space-theme .search-input .ant-input:focus {
@@ -86,7 +86,7 @@
 	border: none !important;
 	outline: none !important;
 	box-shadow: none !important;
-	color: #fff !important;
+	color: #000 !important;
 }
 
 .action-buttons {
@@ -217,6 +217,24 @@
 .space-theme .ant-pagination .ant-pagination-next:hover {
 	background: rgba(77, 208, 255, 0.2);
 	border-color: rgba(77, 208, 255, 0.6);
+}
+
+/* Role name text */
+.role-name-text {
+  color: #000;
+}
+
+.space-theme .role-name-text {
+  color: #fff !important;
+}
+
+/* Permission text */
+.permission-text {
+  color: #000;
+}
+
+.space-theme .permission-text {
+  color: #fff !important;
 }
 
 /* Action button icons */

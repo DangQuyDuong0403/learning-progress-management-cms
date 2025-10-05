@@ -82,7 +82,21 @@
     "chooseRole": "Choose role to continue",
     "student": "Student",
     "teacher": "Teacher",
+    "forTeacher": "For teacher",
+    "forStudent": "For student",
     "admin": "Administrator"
+  },
+  "forgotPassword": {
+    "title": "Password recovery",
+    "description": "Choose the password recovery method that works for you",
+    "viaEmail": "Via email",
+    "emailDescription": "Send OTP code via email",
+    "viaPhone": "Request teacher to send default password",
+    "phoneDescription": "Ask teacher to provide default password",
+    "footerNote": "Choose the method you can access most easily",
+    "pageTitle": "Forgot password",
+    "send": "Send",
+    "emailNotFound": "Email does not exist in the system!"
   },
   "profile": {
     "title": "Personal Information",
@@ -214,7 +228,7 @@
     "deactivate": "Deactivate",
     "changeStatus": "Change status",
     "confirmStatusChange": "Are you sure you want to",
-    "role": "role",
+    "role": "Role",
     "addNewRole": "Add new role",
     "selectRole": "Select role",
     "selectStatus": "Select status",
@@ -896,6 +910,26 @@
     "cancel": "Cancel",
     "createChallengeSuccess": "Challenge created successfully",
     "createChallengeError": "Error creating challenge"
+  },
+  "resetPassword": {
+    "title": "Reset password",
+    "newPassword": "New password",
+    "confirmPassword": "Confirm password",
+    "changePassword": "Change password",
+    "passwordRequirements": "Password requirements",
+    "minLength": "Minimum length 6 characters",
+    "hasUppercase": "At least 1 uppercase letter",
+    "hasLowercase": "At least 1 lowercase letter",
+    "hasNumbers": "At least 1 number",
+    "passwordMatch": "Passwords match",
+    "passwordNotMatch": "Passwords do not match",
+    "passwordNotMeetRequirements": "Password does not meet security requirements!",
+    "confirmPasswordNotMatch": "Confirm password does not match!",
+    "resetSuccess": "Password reset successful! You can login with your new password.",
+    "passwordMinLengthError": "Password must be at least 6 characters",
+    "passwordUppercaseError": "Password must have at least 1 uppercase letter",
+    "passwordLowercaseError": "Password must have at least 1 lowercase letter",
+    "passwordNumbersError": "Password must have at least 1 number"
   },
   "messages": {
     "loginSuccess": "Login successful!",
