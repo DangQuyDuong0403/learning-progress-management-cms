@@ -82,7 +82,21 @@
     "chooseRole": "Choose role to continue",
     "student": "Student",
     "teacher": "Teacher",
+    "forTeacher": "For teacher",
+    "forStudent": "For student",
     "admin": "Administrator"
+  },
+  "forgotPassword": {
+    "title": "Password recovery",
+    "description": "Choose the password recovery method that works for you",
+    "viaEmail": "Via email",
+    "emailDescription": "Send OTP code via email",
+    "viaPhone": "Request teacher to send default password",
+    "phoneDescription": "Ask teacher to provide default password",
+    "footerNote": "Choose the method you can access most easily",
+    "pageTitle": "Forgot password",
+    "send": "Send",
+    "emailNotFound": "Email does not exist in the system!"
   },
   "profile": {
     "title": "Personal Information",

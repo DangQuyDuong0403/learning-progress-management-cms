@@ -600,36 +600,36 @@
   color: rgba(255, 255, 255, 0.6) !important;
 }
 
-/* Override Ant Design Password Input for Space Theme */
-.space-theme .ant-input-password {
+/* Override Ant Design Password Input for Space Theme - Profile Page Only */
+.profile-page .space-theme .ant-input-password {
   background: #afa0d3 !important;
   color: #fff !important;
   backdrop-filter: blur(10px);
 }
 
-.space-theme .ant-input-password .ant-input {
+.profile-page .space-theme .ant-input-password .ant-input {
   background: transparent !important;
   border: none !important;
   color: #fff !important;
   box-shadow: none !important;
 }
 
-.space-theme .ant-input-password:focus,
-.space-theme .ant-input-password:focus-within {
+.profile-page .space-theme .ant-input-password:focus,
+.profile-page .space-theme .ant-input-password:focus-within {
   background: #afa0d3 !important;
   border-color: #131326 !important;
   box-shadow: 0 0 0 3px rgba(77, 208, 255, 0.2) !important;
 }
 
-.space-theme .ant-input-password .ant-input::placeholder {
+.profile-page .space-theme .ant-input-password .ant-input::placeholder {
   color: rgba(255, 255, 255, 0.6) !important;
 }
 
-.space-theme .ant-input-password .ant-input-password-icon {
+.profile-page .space-theme .ant-input-password .ant-input-password-icon {
   color: rgba(255, 255, 255, 0.8) !important;
 }
 
-.space-theme .ant-input-password .ant-input-password-icon:hover {
+.profile-page .space-theme .ant-input-password .ant-input-password-icon:hover {
   color: #fff !important;
 }
 

@@ -113,8 +113,8 @@ export default function ResetPassword() {
 								src="/img/sun-logo.png" 
 								alt="CAMKEY Logo" 
 								style={{ 
-									width: '48px', 
-									height: '48px', 
+									width: '100px', 
+									height: '100px', 
 									filter: 'drop-shadow(0 0 15px rgba(255, 215, 0, 0.8))'
 								}} 
 							/>
@@ -130,11 +130,10 @@ export default function ResetPassword() {
                             />
                         )}
                         <span style={{ 
-                            fontSize: '28px', 
+                            fontSize: '40px', 
                             fontWeight: 700, 
-                            fontFamily: 'Bungee, cursive',
-                            color: isSunTheme ? '#1E40AF' : '#cbd5e1',
-                            textShadow: isSunTheme ? '0 0 5px rgba(30, 64, 175, 0.5)' : '0 0 8px rgba(203, 213, 225, 0.4)'
+                            color: isSunTheme ? '#1E40AF' : '#FFFFFF',
+                            textShadow: isSunTheme ? '0 0 5px rgba(30, 64, 175, 0.3)' : '0 0 15px rgba(255, 255, 255, 0.8)'
                         }}>
 							CAMKEY
 						</span>
@@ -181,10 +180,10 @@ export default function ResetPassword() {
                                     </div>
 									<form onSubmit={handleSubmit}>
                                         <div className='mb-3'>
-                                            <label htmlFor='newPassword' className='form-label' style={getLabelStyle(isSunTheme)}>
-                                                {t('resetPassword.newPassword')}
-                                            </label>
-                                            <div style={{ textAlign: 'center' }}>
+                                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                                                <label htmlFor='newPassword' className='form-label' style={{...getLabelStyle(isSunTheme), width: '90%', textAlign: 'left'}}>
+                                                    {t('resetPassword.newPassword')}
+                                                </label>
                                                 <Input.Password
                                                     id='newPassword'
                                                     value={formData.newPassword}
@@ -251,10 +250,10 @@ export default function ResetPassword() {
 											</div>
 
                                         <div className='mb-4'>
-                                            <label htmlFor='confirmPassword' className='form-label' style={getLabelStyle(isSunTheme)}>
-                                                {t('resetPassword.confirmPassword')}
-                                            </label>
-                                            <div style={{ textAlign: 'center' }}>
+                                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                                                <label htmlFor='confirmPassword' className='form-label' style={{...getLabelStyle(isSunTheme), width: '90%', textAlign: 'left'}}>
+                                                    {t('resetPassword.confirmPassword')}
+                                                </label>
                                                 <Input.Password
                                                     id='confirmPassword'
                                                     value={formData.confirmPassword}
@@ -370,9 +369,9 @@ const getLabelStyle = (isSunTheme) => ({
 
 const getInputStyle = (isSunTheme) => ({
 	borderRadius: '59px',
-	background: isSunTheme ? '#ffffff' : '#afa0d3',
+	background: isSunTheme ? '#ffffff' : '#ffffff',
 	border: isSunTheme ? '2px solid #3B82F6' : 'none',
-	color: isSunTheme ? '#374151' : '#ffffff',
+	color: isSunTheme ? '#374151' : 'black',
 	fontSize: '16px',
 	width: '90%',
 	margin: '0 auto',
