@@ -34,7 +34,7 @@ import {
 	deleteSyllabus,
 	updateSyllabusStatus,
 } from '../../../../redux/syllabus';
-import Layout from '../../../../component/Layout';
+import ThemedLayout from '../../../../component/ThemedLayout';
 
 const { Search } = Input;
 const { Option } = Select;
@@ -249,7 +249,7 @@ const SyllabusList = () => {
 	];
 
 	return (
-		<Layout>
+		<ThemedLayout>
 			<div className="syllabus-list-container">
 			<div className="syllabus-list-header">
 				<h2>
@@ -426,7 +426,7 @@ const SyllabusList = () => {
 				)}
 			</Modal>
 			</div>
-		</Layout>
+		</ThemedLayout>
 	);
 };
 

@@ -29,7 +29,7 @@ import {
   CalendarOutlined,
   BookOutlined,
 } from "@ant-design/icons";
-import Layout from "../../../../component/Layout";
+import ThemedLayout from "../../../../component/ThemedLayout";
 import LoadingWithEffect from "../../../../component/spinner/LoadingWithEffect";
 import "./ClassList.css";
 import { spaceToast } from "../../../../component/SpaceToastify";
@@ -287,7 +287,7 @@ const ClassList = () => {
   ];
 
   return (
-    <Layout>
+    <ThemedLayout>
       <div className="class-list-container">
         {/* Header */}
         <Card className="header-card">
@@ -610,7 +610,7 @@ const ClassList = () => {
           <p>{confirmModal.content}</p>
         </Modal>
       </div>
-    </Layout>
+    </ThemedLayout>
   );
 };
 

@@ -133,26 +133,24 @@ const ThemedLayout = ({ children }) => {
         >
           {children}
           
-          {/* Sun Decoration Icon - Only for Sun Theme */}
+          {/* Sun Theme Background Decorations - Only for Sun Theme */}
           {theme === 'sun' && (
-            <div className="sun-decoration-icon">
-              <img 
-                src="/img/icon-sun1.png" 
-                alt="Sun Decoration" 
-                className="sun-icon-image" 
-              />
-            </div>
-          )}
-
-          {/* Astronaut Decoration Icon - Only for Sun Theme */}
-          {theme === 'sun' && (
-            <div className="astronaut-decoration-icon">
-              <img 
-                src="/img/astronut-11.png" 
-                alt="Astronaut Decoration" 
-                className="astronaut-icon-image" 
-              />
-            </div>
+            <>
+              <div className="sun-decoration-icon">
+                <img 
+                  src="/img/icon-sun1.png" 
+                  alt="Sun Decoration" 
+                  className="sun-icon-image" 
+                />
+              </div>
+              <div className="astronaut-decoration-icon">
+                <img 
+                  src="/img/astronut-11.png" 
+                  alt="Astronaut Decoration" 
+                  className="astronaut-icon-image" 
+                />
+              </div>
+            </>
           )}
         </Content>
       </AntLayout>

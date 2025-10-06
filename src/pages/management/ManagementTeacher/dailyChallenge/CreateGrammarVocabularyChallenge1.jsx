@@ -19,7 +19,7 @@ import {
   QuestionCircleOutlined,
 } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
-import Layout from "../../../../component/Layout";
+import ThemedLayout from "../../../../component/ThemedLayout";
 import "./CreateGrammarVocabularyChallenge1.css";
 
 const { Title, Text } = Typography;
@@ -755,7 +755,7 @@ Gõ @ để chọn đề từ học liệu<br/>
   }, [parsedContent, handleOptionClick]);
 
   return (
-    <Layout>
+    <ThemedLayout>
       <div className="gvc-create-challenge-container">
         {/* Header */}
         <Card className="gvc-header-card">
@@ -935,7 +935,7 @@ Gõ @ để chọn đề từ học liệu<br/>
             </Row>
         </div>
       </div>
-    </Layout>
+    </ThemedLayout>
   );
 };
 

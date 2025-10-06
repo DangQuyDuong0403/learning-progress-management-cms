@@ -8,7 +8,7 @@ import {
   ArrowLeftOutlined,
   ReloadOutlined,
 } from "@ant-design/icons";
-import Layout from "../../../../component/Layout";
+import ThemedLayout from "../../../../component/ThemedLayout";
 import LoadingWithEffect from "../../../../component/spinner/LoadingWithEffect";
 import "./ClassActivities.css";
 import { useParams, useNavigate } from "react-router-dom";
@@ -106,16 +106,16 @@ const ClassActivities = () => {
 
   if (loading) {
     return (
-      <Layout>
+      <ThemedLayout>
         <div className="class-detail-container">
           <LoadingWithEffect loading={true} message={t('classActivities.loadingClassInfo')} />
         </div>
-      </Layout>
+      </ThemedLayout>
     );
   }
 
   return (
-    <Layout>
+    <ThemedLayout>
       <div className="class-detail-container">
         {/* Header */}
         <Card className="header-card">
@@ -255,7 +255,7 @@ const ClassActivities = () => {
         </Card>
 
       </div>
-    </Layout>
+    </ThemedLayout>
   );
 };
 
