@@ -9,18 +9,19 @@ import LoginTeacher from '../pages/login/LoginTeacher.jsx';
 import Profile from '../pages/profile/Profile.jsx';
 import ProfileStudent from '../pages/profile/ProfileStudent.jsx';
 import ChangePassword from '../pages/profile/ChangePassword.jsx';
+import Settings from '../pages/settings/Settings.jsx';
 import AccountList from '../pages/management/managementAdmin/account/AccountList.jsx';
 import RoleList from '../pages/management/managementAdmin/role/RoleList.jsx';
-import LevelList from '../pages/management/managementManager/level/LevelList.jsx';
-import SyllabusList from '../pages/management/managementManager/syllabus/SyllabusList.jsx';
+import LevelList from '../pages/management/ManagementManager/level/LevelList.jsx';
+import SyllabusList from '../pages/management/ManagementManager/syllabus/SyllabusList.jsx';
 import SpinnerDemo from '../pages/SpinnerDemo.jsx';
 //manager
-import ClassList from '../pages/management/managementManager/Class/ClassList.jsx';
-import ClassMenu from '../pages/management/managementManager/Class/ClassMenu.jsx';
-import ClassDetail from '../pages/management/managementManager/Class/ClassDetail.jsx';
-import ClassTeachers from '../pages/management/managementManager/Class/ClassTeachers.jsx';
-import ClassActivities from '../pages/management/managementManager/Class/ClassActivities.jsx';
-import ClassChapterLesson from '../pages/management/managementManager/Class/ClassChapterLesson.jsx';
+import ClassList from '../pages/management/ManagementManager/Class/ClassList.jsx';
+import ClassMenu from '../pages/management/ManagementManager/Class/ClassMenu.jsx';
+import ClassDetail from '../pages/management/ManagementManager/Class/ClassDetail.jsx';
+import ClassTeachers from '../pages/management/ManagementManager/Class/ClassTeachers.jsx';
+import ClassActivities from '../pages/management/ManagementManager/Class/ClassActivities.jsx';
+import ClassChapterLesson from '../pages/management/ManagementManager/Class/ClassChapterLesson.jsx';
 // Teacher Class Components
 import TeacherClassList from '../pages/management/ManagementTeacher/class/ClassList.jsx';
 import TeacherClassMenu from '../pages/management/ManagementTeacher/class/ClassMenu.jsx';
@@ -125,6 +126,14 @@ const CONFIG_ROUTER = [
 		exact: true,
 		key: 'CHANGE_PASSWORD',
 	},
+	{
+		show: false, // không hiện trên menu
+		component: Settings,
+		// icon: <LogIn size={18} />,
+		path: ROUTER_PAGE.SETTINGS,
+		exact: true,
+		key: 'SETTINGS',
+	},
 	
 	// Admin Management Routes
 	// {
@@ -146,8 +155,8 @@ const CONFIG_ROUTER = [
 		menuName: 'Accounts management',
 		exact: true,
 		key: 'ADMIN_ACCOUNTS',
-		// private: true,
-		// role: 'admin',
+	//	private: true,
+		role: 'admin',
 	},
 	{
 		show: true,
@@ -157,7 +166,7 @@ const CONFIG_ROUTER = [
 		menuName: 'Roles management',
 		exact: true,
 		key: 'ADMIN_ROLES',
-		private: true,
+		private: false,
 		role: 'admin',
 	},
 	{

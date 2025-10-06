@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useDispatch, useSelector } from 'react-redux';
 import { Input, Button } from 'antd';
 import { MailOutlined, ArrowLeftOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
@@ -7,27 +8,45 @@ import LanguageToggle from '../../component/LanguageToggle';
 import ThemeToggleSwitch from '../../component/ThemeToggleSwitch';
 import { useTheme } from '../../contexts/ThemeContext';
 import ThemedLayoutFullScreen from '../../component/ThemedLayoutFullScreen';
+import { forgotPassword, clearForgotPasswordState } from '../../redux/auth';
+import { spaceToast } from '../../component/SpaceToastify';
 import './Login.css'; // import Login CSS instead
 
 export default function ForgotPassword() {
 	const [email, setEmail] = useState('');
-	const [message, setMessage] = useState(null);
 	const navigate = useNavigate();
+	const dispatch = useDispatch();
 	const { t } = useTranslation();
 	const { isSunTheme } = useTheme();
+	
+	// Redux state
+	const { forgotPasswordLoading, forgotPasswordError, forgotPasswordSuccess } = useSelector(state => state.auth);
+
+	// Clear state when component mounts
+	useEffect(() => {
+		dispatch(clearForgotPasswordState());
+	}, [dispatch]);
+
+	// Handle success/error messages
+	useEffect(() => {
+		if (forgotPasswordSuccess) {
+			spaceToast.success(t('forgotPassword.emailSent'));
+		} else if (forgotPasswordError) {
+			spaceToast.error(forgotPasswordError.message || t('forgotPassword.emailNotFound'));
+		}
+	}, [forgotPasswordSuccess, forgotPasswordError, t]);
 
 	const handleSubmit = (e) => {
 		e.preventDefault();
-
-		if (email === 'admin@example.com') {
-			// Chuyển đến trang OTP sau khi gửi email thành công
-			navigate('/otp-verification');
-		} else {
-			setMessage({
-				type: 'error',
-				text: t('forgotPassword.emailNotFound'),
-			});
+		
+		// Validate email
+		if (!email) {
+			spaceToast.error(t('common.emailRequired'));
+			return;
 		}
+
+		// Dispatch forgot password action
+		dispatch(forgotPassword(email));
 	};
 
   const handleBackToLogin = () => {
@@ -135,34 +154,14 @@ export default function ForgotPassword() {
                                             </div>
                                         </div>
 
-											{message && (
-												<div
-													className={`mb-4 p-3 rounded-3 ${
-														message.type === 'success'
-															? 'alert-success'
-															: 'alert-danger'
-													}`}
-													style={{
-														backgroundColor:
-															message.type === 'success'
-																? '#dcfce7'
-																: '#fee2e2',
-														color:
-															message.type === 'success'
-																? '#166534'
-																: '#991b1b',
-														border: 'none',
-													}}>
-													{message.text}
-												</div>
-											)}
 
 										<div className='text-center'>
                                             <button
                                                 type='submit'
                                                 className='btn w-90 mb-4 rounded-3'
-                                                style={getSubmitButtonStyle(isSunTheme)}>
-                                                {t('forgotPassword.send')}
+                                                style={getSubmitButtonStyle(isSunTheme)}
+                                                disabled={forgotPasswordLoading}>
+                                                {forgotPasswordLoading ? t('common.loading') : t('forgotPassword.send')}
                                             </button>
 										</div>
 									</form>
