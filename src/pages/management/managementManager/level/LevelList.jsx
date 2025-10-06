@@ -21,6 +21,8 @@ import {
 	SearchOutlined,
 	ReloadOutlined,
 	BookOutlined,
+	DownloadOutlined,
+	UploadOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useDispatch, useSelector } from 'react-redux';
@@ -30,13 +32,17 @@ import {
 	fetchLevels,
 	deleteLevel as deleteLevelAction,
 } from '../../../../redux/level';
-import Layout from '../../../../component/Layout';
+import ThemedLayout from '../../../../component/ThemedLayout';
+import LoadingWithEffect from '../../../../component/spinner/LoadingWithEffect';
+import { useTheme } from '../../../../contexts/ThemeContext';
+import { spaceToast } from '../../../../component/SpaceToastify';
 
 const { Search } = Input;
 const { Option } = Select;
 
 const LevelList = () => {
 	const { t } = useTranslation();
+	const { theme } = useTheme();
 	const dispatch = useDispatch();
 	const { levels, loading } = useSelector((state) => state.level);
 
@@ -74,11 +80,11 @@ const LevelList = () => {
 	const handleDelete = async () => {
 		try {
 			await dispatch(deleteLevelAction(deleteLevel.id));
-			message.success(t('levelManagement.deleteLevelSuccess'));
+			spaceToast.success(t('levelManagement.deleteLevelSuccess'));
 			setIsDeleteModalVisible(false);
 			setDeleteLevel(null);
 		} catch (error) {
-			message.error(t('levelManagement.deleteLevelError'));
+			spaceToast.error(t('levelManagement.deleteLevelError'));
 		}
 	};
 
@@ -203,131 +209,76 @@ const LevelList = () => {
 	];
 
 	return (
-		<Layout>
-			<div className='level-list-container'>
-				<div className='level-list-header'>
-					<h2>
-						<BookOutlined style={{ marginRight: '8px' }} />
-						{t('levelManagement.title')}
-					</h2>
+		<ThemedLayout>
+			{/* Main Content Panel */}
+			<div className={`main-content-panel ${theme}-main-panel`}>
+				{/* Header Section */}
+				<div className={`panel-header ${theme}-panel-header`}>
+					<div className='search-section'>
+						<Input
+							placeholder={t('levelManagement.searchPlaceholder')}
+							prefix={<SearchOutlined />}
+							value={searchText}
+							onChange={(e) => setSearchText(e.target.value)}
+							className={`search-input ${theme}-search-input`}
+							allowClear
+						/>
+						<Select
+							style={{ width: 150, marginLeft: 12 }}
+							value={statusFilter}
+							onChange={setStatusFilter}
+							placeholder={t('levelManagement.filterByStatus')}
+							className={`filter-select ${theme}-filter-select`}>
+							<Option value='all'>
+								{t('levelManagement.allStatuses')}
+							</Option>
+							<Option value='active'>{t('levelManagement.active')}</Option>
+							<Option value='inactive'>
+								{t('levelManagement.inactive')}
+							</Option>
+						</Select>
+					</div>
+					<div className='action-buttons'>
+						<Button
+							icon={<ReloadOutlined />}
+							onClick={handleRefresh}
+							loading={loading}
+							className={`refresh-button ${theme}-refresh-button`}>
+							{t('levelManagement.refresh')}
+						</Button>
+						<Button
+							icon={<PlusOutlined />}
+							className={`create-button ${theme}-create-button`}
+							onClick={handleAdd}>
+							{t('levelManagement.addLevel')}
+						</Button>
+					</div>
 				</div>
 
-				{/* Statistics Cards
-				<Row gutter={16} style={{ marginBottom: '24px' }}>
-					<Col span={6}>
-						<Card>
-							<Statistic
-								title={t('levelManagement.totalLevels')}
-								value={totalLevels}
-								prefix={<BookOutlined />}
-							/>
-						</Card>
-					</Col>
-					<Col span={6}>
-						<Card>
-							<Statistic
-								title={t('levelManagement.activeLevels')}
-								value={activeLevels}
-								valueStyle={{ color: '#3f8600' }}
-								prefix={<BookOutlined />}
-							/>
-						</Card>
-					</Col>
-					<Col span={6}>
-						<Card>
-							<Statistic
-								title={t('levelManagement.inactiveLevels')}
-								value={inactiveLevels}
-								valueStyle={{ color: '#cf1322' }}
-								prefix={<BookOutlined />}
-							/>
-						</Card>
-					</Col>
-					<Col span={6}>
-						<Card>
-							<Statistic
-								title={t('levelManagement.averageDuration')}
-								value={
-									levels.length > 0
-										? Math.round(
-												levels.reduce((sum, level) => sum + level.duration, 0) /
-													levels.length
-										  )
-										: 0
-								}
-								suffix={t('levelManagement.weeks')}
-								prefix={<BookOutlined />}
-							/>
-						</Card>
-					</Col>
-				</Row> */}
-
-				{/* Action Bar */}
-				<Card style={{ marginBottom: '16px' }}>
-					<Row gutter={16} align='middle'>
-						<Col flex='auto'>
-							<Space size='middle'>
-								<Search
-									placeholder={t('levelManagement.searchPlaceholder')}
-									style={{ width: 300 }}
-									value={searchText}
-									onChange={(e) => setSearchText(e.target.value)}
-									prefix={<SearchOutlined />}
-								/>
-								<Select
-									style={{ width: 150 }}
-									value={statusFilter}
-									onChange={setStatusFilter}
-									placeholder={t('levelManagement.filterByStatus')}>
-									<Option value='all'>
-										{t('levelManagement.allStatuses')}
-									</Option>
-									<Option value='active'>{t('levelManagement.active')}</Option>
-									<Option value='inactive'>
-										{t('levelManagement.inactive')}
-									</Option>
-								</Select>
-							</Space>
-						</Col>
-						<Col>
-							<Space>
-								<Button
-									icon={<ReloadOutlined />}
-									onClick={handleRefresh}
-									loading={loading}>
-									{t('levelManagement.refresh')}
-								</Button>
-								<Button
-									type='primary'
-									icon={<PlusOutlined />}
-									onClick={handleAdd}>
-									{t('levelManagement.addLevel')}
-								</Button>
-							</Space>
-						</Col>
-					</Row>
-				</Card>
-
-				{/* Table */}
-				<Card>
-					<Table
-						columns={columns}
-						dataSource={filteredLevels}
-						rowKey='id'
+				{/* Table Section */}
+				<div className={`table-section ${theme}-table-section`}>
+					<LoadingWithEffect
 						loading={loading}
-						pagination={{
-							total: filteredLevels.length,
-							pageSize: 10,
-							showSizeChanger: true,
-							showQuickJumper: true,
-							showTotal: (total, range) =>
-								`${range[0]}-${range[1]} ${t(
-									'levelManagement.paginationText'
-								)} ${total} ${t('levelManagement.levels')}`,
-						}}
-						scroll={{ x: 800 }}
-					/>
-				</Card>
+						message={t('levelManagement.loadingLevels')}>
+						<Table
+							columns={columns}
+							dataSource={filteredLevels}
+							rowKey='id'
+							pagination={{
+								total: filteredLevels.length,
+								pageSize: 10,
+								showSizeChanger: true,
+								showQuickJumper: true,
+								showTotal: (total, range) =>
+									`${range[0]}-${range[1]} of ${total}`,
+								className: `${theme}-pagination`,
+							}}
+							scroll={{ x: 1200 }}
+							className={`level-table ${theme}-level-table`}
+						/>
+					</LoadingWithEffect>
+				</div>
+			</div>
 
 				{/* Modal */}
 				<Modal
@@ -428,9 +379,7 @@ const LevelList = () => {
 						)}
 					</div>
 				</Modal>
-				
-			</div>
-		</Layout>
+		</ThemedLayout>
 	);
 };
 
