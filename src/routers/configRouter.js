@@ -16,6 +16,8 @@ import LevelList from '../pages/management/ManagementManager/level/LevelList.jsx
 import SyllabusList from '../pages/management/ManagementManager/syllabus/SyllabusList.jsx';
 import StudentList from '../pages/management/ManagementManager/Student/StudentList.jsx';
 import StudentLearningProgressOverview from '../pages/management/ManagementManager/Student/StudentLearningProgressOverview.jsx';
+import TeacherList from '../pages/management/ManagementManager/teacher/TeacherList.jsx';
+import TeacherProfile from '../pages/management/ManagementManager/teacher/TeacherProfile.jsx';
 import SpinnerDemo from '../pages/SpinnerDemo.jsx';
 //manager
 import ClassList from '../pages/management/ManagementManager/Class/ClassList.jsx';
@@ -227,6 +229,27 @@ const CONFIG_ROUTER = [
 		// role: 'manager',
 	},
 	{
+		show: true,
+		component: TeacherList,
+		// icon: <UserOutlined />,
+		path: ROUTER_PAGE.MANAGER_TEACHERS,
+		menuName: 'Teachers management',
+		exact: true,
+		key: 'MANAGER_TEACHERS',
+		// private: true,
+		// role: 'manager',
+	},
+	{
+		show: false,
+		component: TeacherProfile,
+		path: ROUTER_PAGE.MANAGER_TEACHER_PROFILE,
+		menuName: 'Teacher Profile',
+		exact: true,
+		key: 'MANAGER_TEACHER_PROFILE',
+		// private: true,
+		// role: 'manager',
+	},
+	{
 		show: false,
 		component: ClassTeachers,
 		// icon: <UserOutlined />,
@@ -280,7 +303,7 @@ const CONFIG_ROUTER = [
 		exact: true,
 		key: 'MANAGER_STUDENTS',
 		private: false,
-		role: 'manager',
+	//	role: 'manager',
 	},
 	{
 		show: false,

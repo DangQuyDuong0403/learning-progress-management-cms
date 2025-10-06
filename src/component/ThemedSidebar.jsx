@@ -65,6 +65,7 @@ export default function ThemedSidebar({ collapsed }) {
       'MANAGER_STUDENTS': t('sidebar.studentsManagement'),
       'TEACHER_CLASSES': t('sidebar.classesManagement'),
       'TEACHER_DAILY_CHALLENGES': t('sidebar.dailyChallengeManagement'),
+      'MANAGER_TEACHERS': t('sidebar.teacherManagement'),
       'SECURITY': 'Security',
     };
     return menuNameMap[key] || key;
