@@ -11,6 +11,7 @@ const ROUTER_PAGE = {
 	PROFILE : '/profile',
 	PROFILE_STUDENT : '/profile-student',
 	CHANGE_PASSWORD : '/change-password',
+	SETTINGS: '/settings',
 	// Admin Management Routes
 	ADMIN_DASHBOARD: '/admin/dashboard',
 	ADMIN_ACCOUNTS: '/admin/accounts',
@@ -27,6 +28,9 @@ const ROUTER_PAGE = {
 	MANAGER_TEACHER_PROFILE: '/manager/teachers/profile/:teacherId',
 	MANAGER_TEACHER_EDIT: '/manager/teachers/edit/:teacherId',
 	MANAGER_COURSES: '/manager/courses',
+	MANAGER_STUDENTS: '/manager/students',
+	MANAGER_STUDENT_PROFILE: '/manager/student/:id/profile',
+	MANAGER_STUDENT_PROGRESS: '/manager/student/:id/progress',
 	// Spinner Demo
 	SPINNER_DEMO: '/spinner-demo',
 	// Manager Management Routes

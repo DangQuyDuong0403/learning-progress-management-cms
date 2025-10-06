@@ -1,0 +1,575 @@
+/* Student Learning Progress Overview Styles */
+
+/* ===== MAIN CONTENT PANEL ===== */
+.main-content-panel {
+	background: rgba(45, 27, 105, 0.75);
+	backdrop-filter: none;
+	border-radius: 16px;
+	padding: 24px;
+	margin: 24px;
+	box-shadow: 0 8px 32px rgba(77, 208, 255, 0.15);
+	border: 1px solid rgba(77, 208, 255, 0.3);
+	position: relative;
+	z-index: 2;
+}
+
+.space-theme .main-content-panel {
+	position: relative;
+	background: rgba(110, 92, 172, 0.05); /* Rất trong suốt để nhìn xuyên qua */
+	backdrop-filter: blur(1px); /* Blur nhẹ để tạo hiệu ứng glass */
+	border-radius: 16px;
+	padding: 24px;
+	margin: 24px;
+	/* Không dùng opacity để tránh làm mờ nội dung bên trong */
+
+	/* Hiệu ứng viền + bóng */
+	border: 1px solid rgba(77, 208, 255, 0.3);
+	box-shadow: 0 8px 32px rgba(77, 208, 255, 0.15);
+
+	z-index: 2;
+}
+
+/* Sun theme main content panel */
+.sun-theme .main-content-panel {
+  position: relative;
+  background: rgba(255, 255, 255, 0.05); /* Rất trong suốt để nhìn xuyên qua */
+  backdrop-filter: blur(1px); /* Blur nhẹ để tạo hiệu ứng glass */
+  border-radius: 16px;
+  padding: 24px;
+  margin: 24px;
+  /* Không dùng opacity để tránh làm mờ nội dung bên trong */
+  
+  /* Hiệu ứng viền + bóng */
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  
+  z-index: 2;
+}
+
+/* ===== PANEL HEADER ===== */
+.panel-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	margin-bottom: 24px;
+	gap: 16px;
+}
+
+.header-left {
+	display: flex;
+	align-items: center;
+	gap: 16px;
+}
+
+.back-button {
+	height: 40px;
+	border-radius: 8px;
+	font-weight: 500;
+	border: 1px solid rgba(77, 208, 255, 0.3);
+	background: rgba(45, 27, 105, 0.8);
+	color: #fff;
+	backdrop-filter: blur(10px);
+	transition: all 0.3s ease;
+}
+
+.back-button:hover {
+	background: rgba(77, 208, 255, 0.2);
+	border-color: rgba(77, 208, 255, 0.6);
+	transform: translateY(-2px);
+	box-shadow: 0 4px 12px rgba(77, 208, 255, 0.3);
+}
+
+.sun-theme .back-button {
+	background: #66AEFF;
+	border: 1px solid #66AEFF;
+	color: #000;
+}
+
+.sun-theme .back-button:hover {
+	background: #3C99FF;
+	border-color: #3C99FF;
+	color: #000;
+}
+
+.student-info {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+}
+
+.student-name {
+	color: #fff;
+	margin: 0 !important;
+	font-size: 32px;
+	font-weight: 600;
+}
+
+.space-theme .student-name {
+	color: #000 !important;
+}
+
+
+.sun-theme .student-name {
+	color: #333 !important;
+}
+
+.student-code {
+	color: rgba(255, 255, 255, 0.8);
+	font-size: 18px;
+}
+
+.space-theme .student-code {
+	color: #000 !important;
+}
+
+.sun-theme .student-code {
+	color: rgba(0, 0, 0, 0.6) !important;
+}
+
+/* ===== STATISTICS SECTION ===== */
+.stats-section {
+	margin-bottom: 32px;
+}
+
+.student-progress-stat-card {
+	background: #f6ebffd1;
+	border-radius: 12px;
+	padding: 20px;
+	border: 1px solid rgba(77, 208, 255, 0.3);
+	backdrop-filter: blur(10px);
+	display: flex;
+	align-items: center;
+	gap: 16px;
+	transition: all 0.3s ease;
+}
+
+.space-theme .student-progress-stat-card {
+	background: #f6ebffd1;
+	border: 1px solid rgba(77, 208, 255, 0.3);
+}
+
+.sun-theme .student-progress-stat-card {
+	background: #E6F5FF;
+	border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.student-progress-stat-card:hover {
+	transform: translateY(-2px);
+	box-shadow: 0 4px 12px rgba(77, 208, 255, 0.2);
+}
+
+.stat-icon {
+	font-size: 32px;
+	color: #4dd0ff;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 60px;
+	height: 60px;
+	background: rgba(77, 208, 255, 0.1);
+	border-radius: 12px;
+	border: 1px solid rgba(77, 208, 255, 0.3);
+}
+
+.sun-theme .stat-icon {
+	color: #1890ff;
+	background: rgba(24, 144, 255, 0.1);
+	border: 1px solid rgba(24, 144, 255, 0.3);
+}
+
+.stat-content {
+	flex: 1;
+}
+
+.stat-number {
+	font-size: 32px;
+	font-weight: 700;
+	color: #fff;
+	margin-bottom: 4px;
+}
+
+.space-theme .stat-number {
+	color: #000 !important;
+}
+
+.sun-theme .stat-number {
+	color: #333 !important;
+}
+
+.stat-label {
+	font-size: 16px;
+	color: rgba(255, 255, 255, 0.8);
+	font-weight: 500;
+}
+
+.space-theme .stat-label {
+	color: rgba(0, 0, 0, 0.7) !important;
+}
+
+.sun-theme .stat-label {
+	color: rgba(0, 0, 0, 0.6) !important;
+}
+
+/* ===== FILTERS SECTION ===== */
+.filters-section {
+	margin-bottom: 24px;
+	padding: 20px;
+	background: rgba(26, 26, 46, 0.4);
+	border-radius: 12px;
+	border: 1px solid rgba(77, 208, 255, 0.2);
+	backdrop-filter: blur(5px);
+}
+
+.space-theme .filters-section {
+	background: rgba(26, 26, 46, 0.4);
+	border: 1px solid rgba(77, 208, 255, 0.2);
+}
+
+.sun-theme .filters-section {
+	background: rgba(255, 255, 255, 0.03);
+	border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.search-input {
+	width: 100%;
+	height: 40px;
+}
+
+.space-theme .search-input {
+	background: #C5C5C5 !important;
+	border: 1px solid #604B9E !important;
+	outline: none !important;
+	box-shadow: none !important;
+	backdrop-filter: none !important;
+}
+
+.space-theme .search-input .ant-input {
+	background: transparent !important;
+	border: none !important;
+	outline: none !important;
+	box-shadow: none !important;
+	color: #000 !important;
+}
+
+.space-theme .search-input .ant-input:focus {
+	background: transparent !important;
+	border: none !important;
+	outline: none !important;
+	box-shadow: none !important;
+	color: #000 !important;
+}
+
+.date-picker {
+	width: 100%;
+	height: 40px;
+}
+
+.space-theme .date-picker {
+	background: #C5C5C5 !important;
+	border: 1px solid #604B9E !important;
+}
+
+.space-theme .date-picker .ant-picker-input > input {
+	color: #000 !important;
+}
+
+.status-filter,
+.chapter-filter {
+	height: 40px;
+}
+
+.space-theme .status-filter .ant-select-selector,
+.space-theme .chapter-filter .ant-select-selector {
+	background: #C5C5C5 !important;
+	border: 1px solid #604B9E !important;
+	color: #000 !important;
+}
+
+.space-theme .status-filter .ant-select-selection-item,
+.space-theme .chapter-filter .ant-select-selection-item {
+	color: #000 !important;
+}
+
+/* ===== SESSIONS SECTION ===== */
+.sessions-section {
+	background: rgba(26, 26, 46, 0.6);
+	border-radius: 12px;
+	overflow: hidden;
+	border: 1px solid rgba(77, 208, 255, 0.3);
+	backdrop-filter: blur(10px);
+	padding: 24px;
+}
+
+.space-theme .sessions-section {
+	background: rgba(26, 26, 46, 0.6);
+	border: 1px solid rgba(77, 208, 255, 0.3);
+}
+
+.sun-theme .sessions-section {
+	background: rgba(255, 255, 255, 0.05);
+	border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.sessions-list {
+	display: flex;
+	flex-direction: column;
+	gap: 16px;
+}
+
+.session-card {
+	background: rgba(45, 27, 105, 0.4);
+	border-radius: 12px;
+	padding: 20px;
+	border: 1px solid rgba(77, 208, 255, 0.2);
+	backdrop-filter: blur(5px);
+	transition: all 0.3s ease;
+}
+
+.space-theme .session-card {
+	background: #f6ebffd1;
+	border: 1px solid rgba(77, 208, 255, 0.2);
+}
+
+.sun-theme .session-card {
+	background: #E6F5FF;
+	border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.session-card:hover {
+	transform: translateY(-2px);
+	box-shadow: 0 4px 12px rgba(77, 208, 255, 0.15);
+	border-color: rgba(77, 208, 255, 0.4);
+}
+
+.session-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	margin-bottom: 16px;
+	flex-wrap: wrap;
+	gap: 12px;
+}
+
+.session-date,
+.session-time {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	color: #fff;
+	font-size: 16px;
+}
+
+.space-theme .session-date,
+.space-theme .session-time {
+	color: #000 !important;
+}
+
+.sun-theme .session-date,
+.sun-theme .session-time {
+	color: #333 !important;
+}
+
+.session-date .anticon,
+.session-time .anticon {
+	color: #4dd0ff;
+	font-size: 16px;
+}
+
+.sun-theme .session-date .anticon,
+.sun-theme .session-time .anticon {
+	color: #1890ff;
+}
+
+.duration {
+	color: rgba(255, 255, 255, 0.7);
+	font-size: 12px;
+}
+
+.space-theme .duration {
+	color: rgba(0, 0, 0, 0.6) !important;
+}
+
+.sun-theme .duration {
+	color: rgba(0, 0, 0, 0.5) !important;
+}
+
+.session-status {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.session-content {
+	display: flex;
+	flex-direction: column;
+	gap: 16px;
+}
+
+.lesson-info {
+	margin-bottom: 8px;
+}
+
+.lesson-title {
+	color: #fff;
+	margin: 0 !important;
+	font-size: 20px;
+	font-weight: 600;
+}
+
+.space-theme .lesson-title {
+	color: #000 !important;
+}
+
+.sun-theme .lesson-title {
+	color: #333 !important;
+}
+
+.chapter-text {
+	color: rgba(255, 255, 255, 0.8);
+	font-size: 16px;
+	font-weight: 500;
+}
+
+.space-theme .chapter-text {
+	color: rgba(0, 0, 0, 0.7) !important;
+}
+
+.sun-theme .chapter-text {
+	color: rgba(0, 0, 0, 0.6) !important;
+}
+
+.session-details {
+	margin-bottom: 12px;
+}
+
+.detail-item {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	color: #fff;
+	font-size: 16px;
+}
+
+.space-theme .detail-item {
+	color: #000 !important;
+}
+
+.sun-theme .detail-item {
+	color: #333 !important;
+}
+
+.detail-item .anticon {
+	font-size: 16px;
+}
+
+
+/* ===== ICON STYLES ===== */
+/* Override space-theme svg color for this component */
+.space-theme .session-card .anticon,
+.space-theme .stat-icon .anticon,
+.space-theme .session-date .anticon,
+.space-theme .session-time .anticon,
+.space-theme .detail-item .anticon {
+	color: #000 !important;
+}
+
+.space-theme .session-card svg,
+.space-theme .stat-icon svg,
+.space-theme .session-date svg,
+.space-theme .session-time svg,
+.space-theme .detail-item svg {
+	color: #000 !important;
+	fill: #000 !important;
+}
+
+/* Specific icon colors for different contexts */
+.space-theme .stat-icon {
+	color: #000 !important;
+	background: rgba(0, 0, 0, 0.1);
+	border: 1px solid rgba(0, 0, 0, 0.3);
+}
+
+.space-theme .session-date .anticon,
+.space-theme .session-time .anticon {
+	color: #000 !important;
+}
+
+.space-theme .detail-item .anticon {
+	color: #000 !important;
+}
+
+/* Status icons specific colors */
+.space-theme .session-status .anticon {
+	color: inherit !important; /* Keep original status colors */
+}
+
+/* ===== RESPONSIVE DESIGN ===== */
+@media (max-width: 768px) {
+	.main-content-panel {
+		margin: 16px;
+		padding: 16px;
+	}
+
+	.header-left {
+		flex-direction: column;
+		align-items: flex-start;
+		gap: 12px;
+	}
+
+	.student-name {
+		font-size: 28px !important;
+	}
+
+	.session-header {
+		flex-direction: column;
+		align-items: flex-start;
+		gap: 8px;
+	}
+
+	.session-status {
+		align-self: flex-end;
+	}
+
+	.stat-card {
+		flex-direction: column;
+		text-align: center;
+		gap: 12px;
+	}
+
+	.stat-icon {
+		width: 50px;
+		height: 50px;
+		font-size: 24px;
+	}
+
+	.stat-number {
+		font-size: 28px;
+	}
+
+	.filters-section {
+		padding: 16px;
+	}
+
+	.sessions-section {
+		padding: 16px;
+	}
+
+	.session-card {
+		padding: 16px;
+	}
+}
+
+@media (max-width: 480px) {
+	.student-info {
+		text-align: center;
+	}
+
+	.lesson-title {
+		font-size: 18px !important;
+	}
+
+	.session-details .ant-row {
+		flex-direction: column;
+		gap: 8px;
+	}
+}

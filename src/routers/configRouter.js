@@ -9,20 +9,24 @@ import LoginTeacher from '../pages/login/LoginTeacher.jsx';
 import Profile from '../pages/profile/Profile.jsx';
 import ProfileStudent from '../pages/profile/ProfileStudent.jsx';
 import ChangePassword from '../pages/profile/ChangePassword.jsx';
+import Settings from '../pages/settings/Settings.jsx';
 import AccountList from '../pages/management/managementAdmin/account/AccountList.jsx';
 import RoleList from '../pages/management/managementAdmin/role/RoleList.jsx';
-import LevelList from '../pages/management/managementManager/level/LevelList.jsx';
-import SyllabusList from '../pages/management/managementManager/syllabus/SyllabusList.jsx';
-import TeacherList from '../pages/management/managementManager/teacher/TeacherList.jsx';
-import TeacherProfile from '../pages/management/managementManager/teacher/TeacherProfile.jsx';
+import LevelList from '../pages/management/ManagementManager/level/LevelList.jsx';
+import SyllabusList from '../pages/management/ManagementManager/syllabus/SyllabusList.jsx';
+import StudentList from '../pages/management/ManagementManager/Student/StudentList.jsx';
+import StudentProfile from '../pages/management/ManagementManager/Student/StudentProfile.jsx';
+import StudentLearningProgressOverview from '../pages/management/ManagementManager/Student/StudentLearningProgressOverview.jsx';
+import TeacherList from '../pages/management/ManagementManager/teacher/TeacherList.jsx';
+import TeacherProfile from '../pages/management/ManagementManager/teacher/TeacherProfile.jsx';
 import SpinnerDemo from '../pages/SpinnerDemo.jsx';
 //manager
-import ClassList from '../pages/management/managementManager/Class/ClassList.jsx';
-import ClassMenu from '../pages/management/managementManager/Class/ClassMenu.jsx';
-import ClassDetail from '../pages/management/managementManager/Class/ClassDetail.jsx';
-import ClassTeachers from '../pages/management/managementManager/Class/ClassTeachers.jsx';
-import ClassActivities from '../pages/management/managementManager/Class/ClassActivities.jsx';
-import ClassChapterLesson from '../pages/management/managementManager/Class/ClassChapterLesson.jsx';
+import ClassList from '../pages/management/ManagementManager/Class/ClassList.jsx';
+import ClassMenu from '../pages/management/ManagementManager/Class/ClassMenu.jsx';
+import ClassDetail from '../pages/management/ManagementManager/Class/ClassDetail.jsx';
+import ClassTeachers from '../pages/management/ManagementManager/Class/ClassTeachers.jsx';
+import ClassActivities from '../pages/management/ManagementManager/Class/ClassActivities.jsx';
+import ClassChapterLesson from '../pages/management/ManagementManager/Class/ClassChapterLesson.jsx';
 // Teacher Class Components
 import TeacherClassList from '../pages/management/ManagementTeacher/class/ClassList.jsx';
 import TeacherClassMenu from '../pages/management/ManagementTeacher/class/ClassMenu.jsx';
@@ -127,6 +131,14 @@ const CONFIG_ROUTER = [
 		exact: true,
 		key: 'CHANGE_PASSWORD',
 	},
+	{
+		show: false, // không hiện trên menu
+		component: Settings,
+		// icon: <LogIn size={18} />,
+		path: ROUTER_PAGE.SETTINGS,
+		exact: true,
+		key: 'SETTINGS',
+	},
 	
 	// Admin Management Routes
 	// {
@@ -148,8 +160,8 @@ const CONFIG_ROUTER = [
 		menuName: 'Accounts management',
 		exact: true,
 		key: 'ADMIN_ACCOUNTS',
-		// private: true,
-		// role: 'admin',
+	//	private: true,
+		role: 'admin',
 	},
 	{
 		show: true,
@@ -159,7 +171,7 @@ const CONFIG_ROUTER = [
 		menuName: 'Roles management',
 		exact: true,
 		key: 'ADMIN_ROLES',
-		private: true,
+		private: false,
 		role: 'admin',
 	},
 	{
@@ -281,6 +293,39 @@ const CONFIG_ROUTER = [
 		exact: true,
 		key: 'MANAGER_SYLLABUSES',
 		private: true,
+		role: 'manager',
+	},
+	{
+		show: true,
+		component: StudentList,
+		// icon: <UserOutlined />,
+		path: ROUTER_PAGE.MANAGER_STUDENTS,
+		menuName: 'Student management',
+		exact: true,
+		key: 'MANAGER_STUDENTS',
+		private: false,
+	//	role: 'manager',
+	},
+	{
+		show: false,
+		component: StudentProfile,
+		// icon: <UserOutlined />,
+		path: ROUTER_PAGE.MANAGER_STUDENT_PROFILE,
+		menuName: 'Student Profile',
+		exact: true,
+		key: 'MANAGER_STUDENT_PROFILE',
+		private: false,
+		role: 'manager',
+	},
+	{
+		show: false,
+		component: StudentLearningProgressOverview,
+		// icon: <UserOutlined />,
+		path: ROUTER_PAGE.MANAGER_STUDENT_PROGRESS,
+		menuName: 'Student Learning Progress Overview',
+		exact: true,
+		key: 'MANAGER_STUDENT_PROGRESS',
+		private: false,
 		role: 'manager',
 	},
 	{
