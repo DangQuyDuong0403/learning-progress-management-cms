@@ -72,7 +72,7 @@ export default function LoginTeacher() {
             
             // Xử lý lỗi từ API
             if (error.response) {
-                const errorMessage = error.response.data?.message || 'Login failed!';
+                const errorMessage = error.response.data.error || 'Login failed!';
                 spaceToast.error(errorMessage);
             } else if (error.request) {
                 spaceToast.error('Network error. Please check your connection!');

@@ -11,6 +11,7 @@ const ROUTER_PAGE = {
 	PROFILE : '/profile',
 	PROFILE_STUDENT : '/profile-student',
 	CHANGE_PASSWORD : '/change-password',
+	SETTINGS: '/settings',
 	// Admin Management Routes
 	ADMIN_DASHBOARD: '/admin/dashboard',
 	ADMIN_ACCOUNTS: '/admin/accounts',
