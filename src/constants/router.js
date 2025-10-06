@@ -16,7 +16,6 @@ const ROUTER_PAGE = {
 	ADMIN_DASHBOARD: '/admin/dashboard',
 	ADMIN_ACCOUNTS: '/admin/accounts',
 	ADMIN_ROLES: '/admin/roles', 
-	ADMIN_LEVELS: '/admin/levels',
 	ADMIN_COURSES: '/admin/courses',
 	ADMIN_STUDENTS: '/admin/students',
 	ADMIN_TEACHERS: '/admin/teachers',

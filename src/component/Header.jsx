@@ -10,12 +10,14 @@ export default function Header() {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const { user } = useSelector((state) => state.auth);
+  
   const dispatch = useDispatch();
 
   const handleLogout = () => {
     dispatch(logout());
     navigate('/choose-login');
   };
+
 
  
 
