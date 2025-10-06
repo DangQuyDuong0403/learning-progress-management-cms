@@ -939,7 +939,7 @@
 .space-theme .themed-content .export-button .anticon,
 .space-theme .themed-content .import-button .anticon,
 .space-theme .themed-content .create-button .anticon {
-	color: #ffffff !important;
+	color: #ffffff;
 }
 
 .space-theme .themed-content .export-button:hover .anticon,

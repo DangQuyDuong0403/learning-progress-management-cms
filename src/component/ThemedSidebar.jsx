@@ -35,6 +35,7 @@ export default function ThemedSidebar({ collapsed }) {
       'MANAGER_SYLLABUSES': <BookOutlined />,
       'MANAGER_LEVELS': <BookOutlined />,
       'MANAGER_COURSES': <BookOutlined />,
+      'MANAGER_STUDENTS': <UserOutlined />,
       'TEACHER_DAILY_CHALLENGES': <TrophyOutlined />,
       'SECURITY': <SecurityScanOutlined />,
     };
@@ -61,6 +62,7 @@ export default function ThemedSidebar({ collapsed }) {
       'MANAGER_SYLLABUSES': t('sidebar.syllabusManagement'),
       'MANAGER_LEVELS': t('sidebar.levelsManagement'),
       'MANAGER_COURSES': t('sidebar.coursesManagement'),
+      'MANAGER_STUDENTS': t('sidebar.studentsManagement'),
       'TEACHER_CLASSES': t('sidebar.classesManagement'),
       'TEACHER_DAILY_CHALLENGES': t('sidebar.dailyChallengeManagement'),
       'SECURITY': 'Security',

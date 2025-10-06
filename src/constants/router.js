@@ -25,6 +25,8 @@ const ROUTER_PAGE = {
 	MANAGER_SYLLABUSES: '/manager/syllabuses',
 	MANAGER_LEVELS: '/manager/levels',
 	MANAGER_COURSES: '/manager/courses',
+	MANAGER_STUDENTS: '/manager/students',
+	MANAGER_STUDENT_PROGRESS: '/manager/student/:id',
 	// Spinner Demo
 	SPINNER_DEMO: '/spinner-demo',
 	// Manager Management Routes

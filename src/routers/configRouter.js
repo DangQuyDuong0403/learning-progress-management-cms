@@ -14,6 +14,8 @@ import AccountList from '../pages/management/managementAdmin/account/AccountList
 import RoleList from '../pages/management/managementAdmin/role/RoleList.jsx';
 import LevelList from '../pages/management/ManagementManager/level/LevelList.jsx';
 import SyllabusList from '../pages/management/ManagementManager/syllabus/SyllabusList.jsx';
+import StudentList from '../pages/management/ManagementManager/Student/StudentList.jsx';
+import StudentLearningProgressOverview from '../pages/management/ManagementManager/Student/StudentLearningProgressOverview.jsx';
 import SpinnerDemo from '../pages/SpinnerDemo.jsx';
 //manager
 import ClassList from '../pages/management/ManagementManager/Class/ClassList.jsx';
@@ -267,6 +269,28 @@ const CONFIG_ROUTER = [
 		exact: true,
 		key: 'MANAGER_SYLLABUSES',
 		private: true,
+		role: 'manager',
+	},
+	{
+		show: true,
+		component: StudentList,
+		// icon: <UserOutlined />,
+		path: ROUTER_PAGE.MANAGER_STUDENTS,
+		menuName: 'Student management',
+		exact: true,
+		key: 'MANAGER_STUDENTS',
+		private: false,
+		role: 'manager',
+	},
+	{
+		show: false,
+		component: StudentLearningProgressOverview,
+		// icon: <UserOutlined />,
+		path: ROUTER_PAGE.MANAGER_STUDENT_PROGRESS,
+		menuName: 'Student Learning Progress Overview',
+		exact: true,
+		key: 'MANAGER_STUDENT_PROGRESS',
+		private: false,
 		role: 'manager',
 	},
 	{
