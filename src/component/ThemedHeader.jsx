@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { useSelector, useDispatch } from 'react-redux';
 import { Button, Switch, Tooltip } from 'antd';
 import { SunOutlined, MoonOutlined, SettingOutlined } from '@ant-design/icons';
-import { logout } from '../redux/auth';
+import { logout, loginSuccess } from '../redux/auth';
 import { useTheme } from '../contexts/ThemeContext';
 import LanguageToggle from './LanguageToggle';
 import './ThemedHeader.css';
@@ -12,9 +12,18 @@ import './ThemedHeader.css';
 export default function ThemedHeader() {
   const navigate = useNavigate();
   const { t } = useTranslation();
-  const { user } = useSelector((state) => state.auth);
+  const authState = useSelector((state) => state.auth);
+  const { user, token, isAuthenticated } = authState;
   const dispatch = useDispatch();
   const { theme, toggleTheme, isSunTheme } = useTheme();
+
+  console.log("=== THEMED HEADER REDUX DEBUG ===");
+  console.log("Full auth state:", authState);
+  console.log("user:", user);
+  console.log("user role:", user?.role);
+  console.log("token:", token);
+  console.log("isAuthenticated:", isAuthenticated);
+  
 
   const handleLogout = () => {
     dispatch(logout());
@@ -178,9 +187,9 @@ export default function ThemedHeader() {
               {/* User Role Display */}
               <li className="themed-nav-item">
                 <span className={`user-role ${theme}-user-role`}>
-                  {user?.role === 'ADMIN' ? 'Admin' : 
-                   user?.role === 'MANAGER' ? 'Manager' : 
-                   user?.role === 'TEACHER' ? 'Teacher' : 'User'}
+                  {user?.role === 'Admin' ? 'Admin' : 
+                   user?.role === 'Manager' ? 'Manager' : 
+                   user?.role === 'Teacher' ? 'Teacher' : 'User'}
                 </span>
               </li>
 

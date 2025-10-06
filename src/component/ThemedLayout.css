@@ -425,12 +425,13 @@
 
 /* Sun theme menu items */
 .sun-theme .themed-sidebar-menu .ant-menu-item {
-	color: #71B3FF !important;
-	background: rgba(109, 95, 143, 0.1) !important;
+	color: #4398f8 !important;
+	background: rgba(131, 117, 165, 0.1) !important;
+	font-size: 25px !important;
 }
 
 .sun-theme .themed-sidebar-menu .ant-menu-item:hover {
-	background: #85abea !important;
+	background: #b5cef7 !important;
 	color: #1181FF !important;
 	transform: none !important;
 	box-shadow: 0 4px 12px rgba(109, 95, 143, 0.15) !important;
@@ -438,8 +439,8 @@
 }
 
 .sun-theme .themed-sidebar-menu .ant-menu-item-selected {
-	background: #344c8d !important;
-	color: #ffffff !important;
+	background: #C2E6FF !important;
+	color: #1f6ac1 !important;
 	font-weight: 600 !important;
 	box-shadow: 0 4px 12px rgba(30, 58, 138, 0.3) !important;
 	border-color: rgba(30, 58, 138, 0.5);
@@ -631,11 +632,24 @@
 	overflow: hidden;
 }
 
+/* Global table font size settings */
+.themed-content .ant-table-thead > tr > th,
+.ant-table-thead > tr > th {
+	font-size: 20px !important;
+	font-weight: 600 !important;
+}
+
+.themed-content .ant-table-tbody > tr > td,
+.ant-table-tbody > tr > td {
+	font-size: 18px !important;
+}
+
 .themed-content .ant-table-thead > tr > th {
 	background: rgba(103, 85, 146, 0.8) !important;
 	border-bottom: 1px solid rgba(109, 95, 143, 0.2) !important;
 	color: #fff !important;
 	font-weight: 600;
+	font-size: 20px ;
 }
 
 /* Space theme table header icons - white */
@@ -655,6 +669,7 @@
 	background: #f6ebffd1 !important;
 	border-bottom: 1px solid rgba(109, 95, 143, 0.1) !important;
 	color: #000 !important;
+	font-size: 18px ;
 }
 
 .space-theme .themed-content .ant-table-tbody > tr:hover > td {
@@ -665,6 +680,7 @@
 .space-theme .themed-content .ant-table .ant-table-tbody > tr > td {
 	background: #f6ebffd1 !important;
 	color: #000 !important;
+	font-size: 18px !important;
 }
 
 .space-theme .themed-content .ant-table .ant-table-tbody > tr:hover > td {
@@ -965,6 +981,7 @@
 	color: #000 !important;
 	backdrop-filter: blur(15px) !important;
 	border: 1px solid rgba(255, 255, 255, 0.3) !important;
+	font-size: 20px ;
 }
 
 .sun-theme .themed-content .ant-table-tbody > tr > td {
@@ -972,6 +989,7 @@
 	color: #000 !important;
 	backdrop-filter: blur(15px) !important;
 	border: 1px solid rgba(255, 255, 255, 0.2) !important;
+	font-size: 18px ;
 }
 
 .sun-theme .themed-content .ant-table-tbody > tr:hover > td {
@@ -993,6 +1011,7 @@
 	color: #000 !important;
 	backdrop-filter: blur(15px) !important;
 	border: 1px solid rgba(255, 255, 255, 0.2) !important;
+	font-size: 18px;
 }
 
 .sun-theme .themed-content .ant-table .ant-table-tbody > tr:hover > td {
