@@ -1003,13 +1003,13 @@
 	transition: all 0.3s ease;
 }
 
-.space-theme .back-button {
+.space-theme .back-button:not(.student-profile .back-button) {
 	background: rgba(109, 95, 143, 0.2);
 	border: 1px solid rgba(109, 95, 143, 0.3);
 	color: #fff;
 }
 
-.space-theme .back-button:hover {
+.space-theme .back-button:not(.student-profile .back-button):hover {
 	background: rgba(109, 95, 143, 0.3);
 	border-color: rgba(109, 95, 143, 0.5);
 	color: #fff;
@@ -1033,13 +1033,13 @@
 	transition: all 0.3s ease;
 }
 
-.space-theme .edit-button {
+.space-theme .edit-button:not(.student-profile .edit-button) {
 	background: linear-gradient(135deg, #66aeff, #3c99ff);
 	border: none;
 	color: #fff;
 }
 
-.space-theme .edit-button:hover {
+.space-theme .edit-button:not(.student-profile .edit-button):hover {
 	background: linear-gradient(135deg, #5a9eff, #2b89ff);
 	color: #fff;
 	transform: translateY(-2px);
@@ -1049,15 +1049,15 @@
 .sun-theme .edit-button {
 	background: linear-gradient(135deg, #66aeff, #3c99ff);
 	border: none;
-	color: #fff;
+	color: black;
 }
 .sun-theme .edit-button svg {
-	color: #fff;
+	color: black;
 }
 
 .sun-theme .edit-button:hover {
 	background: linear-gradient(135deg, #5a9eff, #2b89ff);
-	color: #fff;
+	color: black;
 	transform: translateY(-2px);
 	box-shadow: 0 4px 12px rgba(102, 174, 255, 0.4);
 }
@@ -1156,9 +1156,6 @@
 .space-theme .achievements-card .ant-card-head-title {
 	color: #fff !important;
 	font-weight: 600;
-}
-.space-theme svg{
-	color: #fff;
 }
 
 .space-theme .achievements-card .achievement-item {

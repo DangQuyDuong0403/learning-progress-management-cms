@@ -215,7 +215,7 @@ const StudentLearningProgressOverview = () => {
   const completedSessions = sessions.filter(s => s.status === "completed").length;
 
   const handleBack = () => {
-    navigate("/manager/students");
+    navigate(`/manager/student/${id}/profile`, { state: { student: student } });
   };
 
   const getStatusIcon = (status) => {
@@ -261,7 +261,7 @@ const StudentLearningProgressOverview = () => {
         <div className={`stats-section ${theme}-stats-section`}>
           <Row gutter={[16, 16]}>
             <Col xs={24} sm={12} md={12}>
-              <div className={`stat-card ${theme}-stat-card`}>
+              <div className={`student-progress-stat-card ${theme}-student-progress-stat-card`}>
                 <div className="stat-icon">
                   <BookOutlined />
                 </div>
@@ -272,7 +272,7 @@ const StudentLearningProgressOverview = () => {
               </div>
             </Col>
             <Col xs={24} sm={12} md={12}>
-              <div className={`stat-card ${theme}-stat-card`}>
+              <div className={`student-progress-stat-card ${theme}-student-progress-stat-card`}>
                 <div className="stat-icon">
                   <CheckCircleOutlined />
                 </div>

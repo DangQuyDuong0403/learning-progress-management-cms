@@ -29,7 +29,8 @@ const ROUTER_PAGE = {
 	MANAGER_TEACHER_EDIT: '/manager/teachers/edit/:teacherId',
 	MANAGER_COURSES: '/manager/courses',
 	MANAGER_STUDENTS: '/manager/students',
-	MANAGER_STUDENT_PROGRESS: '/manager/student/:id',
+	MANAGER_STUDENT_PROFILE: '/manager/student/:id/profile',
+	MANAGER_STUDENT_PROGRESS: '/manager/student/:id/progress',
 	// Spinner Demo
 	SPINNER_DEMO: '/spinner-demo',
 	// Manager Management Routes

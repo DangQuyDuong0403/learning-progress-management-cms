@@ -15,6 +15,7 @@ import RoleList from '../pages/management/managementAdmin/role/RoleList.jsx';
 import LevelList from '../pages/management/ManagementManager/level/LevelList.jsx';
 import SyllabusList from '../pages/management/ManagementManager/syllabus/SyllabusList.jsx';
 import StudentList from '../pages/management/ManagementManager/Student/StudentList.jsx';
+import StudentProfile from '../pages/management/ManagementManager/Student/StudentProfile.jsx';
 import StudentLearningProgressOverview from '../pages/management/ManagementManager/Student/StudentLearningProgressOverview.jsx';
 import TeacherList from '../pages/management/ManagementManager/teacher/TeacherList.jsx';
 import TeacherProfile from '../pages/management/ManagementManager/teacher/TeacherProfile.jsx';
@@ -304,6 +305,17 @@ const CONFIG_ROUTER = [
 		key: 'MANAGER_STUDENTS',
 		private: false,
 	//	role: 'manager',
+	},
+	{
+		show: false,
+		component: StudentProfile,
+		// icon: <UserOutlined />,
+		path: ROUTER_PAGE.MANAGER_STUDENT_PROFILE,
+		menuName: 'Student Profile',
+		exact: true,
+		key: 'MANAGER_STUDENT_PROFILE',
+		private: false,
+		role: 'manager',
 	},
 	{
 		show: false,

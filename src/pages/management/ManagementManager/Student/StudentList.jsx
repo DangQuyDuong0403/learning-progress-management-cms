@@ -19,7 +19,6 @@ import {
   Radio,
 } from "antd";
 import {
-  EditOutlined,
   PlusOutlined,
   SearchOutlined,
   CheckOutlined,
@@ -35,6 +34,7 @@ import { useTheme } from "../../../../contexts/ThemeContext";
 import "./StudentList.css";
 import { spaceToast } from "../../../../component/SpaceToastify";
 import { useNavigate } from "react-router-dom";
+import AssignStudentToClass from "./AssignStudentToClass";
 
 const { Option } = Select;
 const { Title, Text } = Typography;
@@ -99,20 +99,6 @@ const mockStudents = [
   },
   {
     id: 5,
-    studentCode: "STU005",
-    fullName: "Hoàng Văn Em",
-    email: "hoangvanem@example.com",
-    phone: "0777888999",
-    class: "Lớp 12A1",
-    level: "Intermediate",
-    status: "pending",
-    lastActivity: "2024-12-10",
-    avatar: null,
-    dateOfBirth: "2003-09-25",
-    gender: "male",
-  },
-  {
-    id: 6,
     studentCode: "STU006",
     fullName: "Vũ Thị Phương",
     email: "vuthiphuong@example.com",
@@ -139,6 +125,8 @@ const StudentList = () => {
   const [levelFilter] = useState("all");
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [editingStudent, setEditingStudent] = useState(null);
+  const [isAssignModalVisible, setIsAssignModalVisible] = useState(false);
+  const [assigningStudent, setAssigningStudent] = useState(null);
   const [form] = Form.useForm();
   const [confirmModal, setConfirmModal] = useState({
     visible: false,
@@ -296,13 +284,16 @@ const StudentList = () => {
               }}
             />
           </Tooltip>
-          <Tooltip title={t('studentManagement.edit')}>
+          <Tooltip title={t('studentManagement.assignToClass')}>
             <Button
               type="text"
-              icon={<EditOutlined style={{ fontSize: '25px' }} />}
+              icon={<PlusOutlined style={{ fontSize: '25px' }} />}
               size="small"
-              onClick={() => handleEditStudent(record)}
-              style={{ padding: '8px 12px' }}
+              onClick={() => handleAssignToClass(record)}
+              style={{ 
+                color: '#52c41a',
+                padding: '8px 12px'
+              }}
             />
           </Tooltip>
           <Tooltip title={record.status === 'active' ? t('studentManagement.deactivate') : t('studentManagement.activate')}>
@@ -332,23 +323,14 @@ const StudentList = () => {
     setIsModalVisible(true);
   };
 
-  const handleEditStudent = (record) => {
-    setEditingStudent(record);
-    form.setFieldsValue({
-      studentCode: record.studentCode,
-      fullName: record.fullName,
-      email: record.email,
-      phone: record.phone,
-      class: record.class,
-      level: record.level,
-      status: record.status,
-      username: record.username || '',
-      password: '',
-      avatar: record.avatar,
-      dateOfBirth: record.dateOfBirth ? new Date(record.dateOfBirth) : null,
-      gender: record.gender || 'male'
-    });
-    setIsModalVisible(true);
+  const handleAssignToClass = (record) => {
+    setAssigningStudent(record);
+    setIsAssignModalVisible(true);
+  };
+
+  const handleAssignModalClose = () => {
+    setIsAssignModalVisible(false);
+    setAssigningStudent(null);
   };
 
   const handleToggleStatus = (id) => {
@@ -417,7 +399,7 @@ const StudentList = () => {
 
   // Handle view student profile
   const handleViewProfile = (record) => {
-    navigate(`/manager/student/${record.id}`, { state: { student: record } });
+    navigate(`/manager/student/${record.id}/profile`, { state: { student: record } });
   };
 
   // Handle import students
@@ -998,6 +980,23 @@ STU003,Le Van Cuong,levancuong@example.com,0111222333,Lớp 11B1,Advanced,active
               </div>
             )}
           </div>
+        </Modal>
+
+        {/* Assign Student to Class Modal */}
+        <Modal
+          title={t('studentManagement.assignStudentToClass')}
+          open={isAssignModalVisible}
+          onCancel={handleAssignModalClose}
+          footer={null}
+          width={1200}
+          destroyOnClose
+          style={{ top: 20 }}
+          bodyStyle={{
+            maxHeight: '70vh',
+            overflowY: 'auto',
+            padding: '24px',
+          }}>
+          <AssignStudentToClass student={assigningStudent} onClose={handleAssignModalClose} />
         </Modal>
     </ThemedLayout>
   );

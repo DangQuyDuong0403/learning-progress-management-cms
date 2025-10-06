@@ -105,8 +105,9 @@
 }
 
 .space-theme .student-name {
-	color: #fff !important;
+	color: #000 !important;
 }
+
 
 .sun-theme .student-name {
 	color: #333 !important;
@@ -118,7 +119,7 @@
 }
 
 .space-theme .student-code {
-	color: #fff !important;
+	color: #000 !important;
 }
 
 .sun-theme .student-code {
@@ -130,8 +131,8 @@
 	margin-bottom: 32px;
 }
 
-.stat-card {
-	background: rgba(26, 26, 46, 0.6);
+.student-progress-stat-card {
+	background: #f6ebffd1;
 	border-radius: 12px;
 	padding: 20px;
 	border: 1px solid rgba(77, 208, 255, 0.3);
@@ -142,17 +143,17 @@
 	transition: all 0.3s ease;
 }
 
-.space-theme .stat-card {
+.space-theme .student-progress-stat-card {
 	background: #f6ebffd1;
 	border: 1px solid rgba(77, 208, 255, 0.3);
 }
 
-.sun-theme .stat-card {
+.sun-theme .student-progress-stat-card {
 	background: #E6F5FF;
 	border: 1px solid rgba(0, 0, 0, 0.1);
 }
 
-.stat-card:hover {
+.student-progress-stat-card:hover {
 	transform: translateY(-2px);
 	box-shadow: 0 4px 12px rgba(77, 208, 255, 0.2);
 }
@@ -461,6 +462,46 @@
 	font-size: 16px;
 }
 
+
+/* ===== ICON STYLES ===== */
+/* Override space-theme svg color for this component */
+.space-theme .session-card .anticon,
+.space-theme .stat-icon .anticon,
+.space-theme .session-date .anticon,
+.space-theme .session-time .anticon,
+.space-theme .detail-item .anticon {
+	color: #000 !important;
+}
+
+.space-theme .session-card svg,
+.space-theme .stat-icon svg,
+.space-theme .session-date svg,
+.space-theme .session-time svg,
+.space-theme .detail-item svg {
+	color: #000 !important;
+	fill: #000 !important;
+}
+
+/* Specific icon colors for different contexts */
+.space-theme .stat-icon {
+	color: #000 !important;
+	background: rgba(0, 0, 0, 0.1);
+	border: 1px solid rgba(0, 0, 0, 0.3);
+}
+
+.space-theme .session-date .anticon,
+.space-theme .session-time .anticon {
+	color: #000 !important;
+}
+
+.space-theme .detail-item .anticon {
+	color: #000 !important;
+}
+
+/* Status icons specific colors */
+.space-theme .session-status .anticon {
+	color: inherit !important; /* Keep original status colors */
+}
 
 /* ===== RESPONSIVE DESIGN ===== */
 @media (max-width: 768px) {
