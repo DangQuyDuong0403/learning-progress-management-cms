@@ -23,6 +23,9 @@ const ROUTER_PAGE = {
 	MANAGER_DASHBOARD: '/manager/dashboard',
 	MANAGER_SYLLABUSES: '/manager/syllabuses',
 	MANAGER_LEVELS: '/manager/levels',
+	MANAGER_TEACHERS: '/manager/teachers',
+	MANAGER_TEACHER_PROFILE: '/manager/teachers/profile/:teacherId',
+	MANAGER_TEACHER_EDIT: '/manager/teachers/edit/:teacherId',
 	MANAGER_COURSES: '/manager/courses',
 	// Spinner Demo
 	SPINNER_DEMO: '/spinner-demo',

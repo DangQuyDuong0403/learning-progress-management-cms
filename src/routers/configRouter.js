@@ -13,6 +13,8 @@ import AccountList from '../pages/management/managementAdmin/account/AccountList
 import RoleList from '../pages/management/managementAdmin/role/RoleList.jsx';
 import LevelList from '../pages/management/managementManager/level/LevelList.jsx';
 import SyllabusList from '../pages/management/managementManager/syllabus/SyllabusList.jsx';
+import TeacherList from '../pages/management/managementManager/teacher/TeacherList.jsx';
+import TeacherProfile from '../pages/management/managementManager/teacher/TeacherProfile.jsx';
 import SpinnerDemo from '../pages/SpinnerDemo.jsx';
 //manager
 import ClassList from '../pages/management/managementManager/Class/ClassList.jsx';
@@ -212,6 +214,27 @@ const CONFIG_ROUTER = [
 		menuName: 'Levels management',
 		exact: true,
 		key: 'ADMIN_LEVELS',
+		// private: true,
+		// role: 'manager',
+	},
+	{
+		show: true,
+		component: TeacherList,
+		// icon: <UserOutlined />,
+		path: ROUTER_PAGE.MANAGER_TEACHERS,
+		menuName: 'Teachers management',
+		exact: true,
+		key: 'MANAGER_TEACHERS',
+		// private: true,
+		// role: 'manager',
+	},
+	{
+		show: false,
+		component: TeacherProfile,
+		path: ROUTER_PAGE.MANAGER_TEACHER_PROFILE,
+		menuName: 'Teacher Profile',
+		exact: true,
+		key: 'MANAGER_TEACHER_PROFILE',
 		// private: true,
 		// role: 'manager',
 	},
