@@ -26,7 +26,7 @@ import {
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useParams, useNavigate } from 'react-router-dom';
-import Layout from '../../../../component/Layout';
+import ThemedLayout from '../../../../component/ThemedLayout';
 import LoadingWithEffect from '../../../../component/spinner/LoadingWithEffect';
 import { spaceToast } from '../../../../component/SpaceToastify';
 import ChapterForm from '../syllabus/ChapterForm';
@@ -319,16 +319,16 @@ const ClassChapterLesson = () => {
 
 	if (isLoading) {
 		return (
-			<Layout>
+			<ThemedLayout>
 				<div className="class-chapter-lesson-container">
 					<LoadingWithEffect loading={true} message={t('classChapterLesson.loadingClassInfo')} />
 				</div>
-			</Layout>
+			</ThemedLayout>
 		);
 	}
 
 	return (
-		<Layout>
+		<ThemedLayout>
 			<div className="class-chapter-lesson-container">
 				{/* Header */}
 				<Card className="header-card">
@@ -511,7 +511,7 @@ const ClassChapterLesson = () => {
 					)}
 				</Modal>
 			</div>
-		</Layout>
+		</ThemedLayout>
 	);
 };
 

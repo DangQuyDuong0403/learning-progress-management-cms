@@ -21,7 +21,7 @@ import {
   LineChartOutlined,
 } from "@ant-design/icons";
 // Removed recharts import to avoid dependency issues
-import Layout from "../../../../component/Layout";
+import ThemedLayout from "../../../../component/ThemedLayout";
 import LoadingWithEffect from "../../../../component/spinner/LoadingWithEffect";
 import "./ClassDetail.css";
 import { useParams, useNavigate } from "react-router-dom";
@@ -283,16 +283,16 @@ const ClassDashboard = () => {
 
   if (loading) {
     return (
-      <Layout>
+      <ThemedLayout>
         <div className="class-detail-container">
           <LoadingWithEffect loading={true} message={t('classDashboard.loadingClassInfo')} />
         </div>
-      </Layout>
+      </ThemedLayout>
     );
   }
 
   return (
-    <Layout>
+    <ThemedLayout>
       <div className="class-detail-container">
         {/* Header */}
         <Card className="header-card">
@@ -468,7 +468,7 @@ const ClassDashboard = () => {
           </div>
         </Card>
       </div>
-    </Layout>
+    </ThemedLayout>
   );
 };
 

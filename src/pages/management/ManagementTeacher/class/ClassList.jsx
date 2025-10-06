@@ -16,7 +16,7 @@ import {
   ExportOutlined,
   ImportOutlined,
 } from "@ant-design/icons";
-import Layout from "../../../../component/Layout";
+import ThemedLayout from "../../../../component/ThemedLayout";
 import LoadingWithEffect from "../../../../component/spinner/LoadingWithEffect";
 import "./ClassList.css";
 import { spaceToast } from "../../../../component/SpaceToastify";
@@ -151,7 +151,7 @@ const ClassList = () => {
 
 
   return (
-    <Layout>
+    <ThemedLayout>
       <div className="class-list-container">
         {/* Header */}
         <Card className="header-card">
@@ -285,7 +285,7 @@ const ClassList = () => {
         </div>
 
       </div>
-    </Layout>
+    </ThemedLayout>
   );
 };
 

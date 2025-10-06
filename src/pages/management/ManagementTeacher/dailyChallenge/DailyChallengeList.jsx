@@ -19,7 +19,7 @@ import {
   DeleteOutlined,
   EyeOutlined,
 } from "@ant-design/icons";
-import Layout from "../../../../component/Layout";
+import ThemedLayout from "../../../../component/ThemedLayout";
 import LoadingWithEffect from "../../../../component/spinner/LoadingWithEffect";
 import CreateDailyChallengeModal from "./CreateDailyChallengeModal";
 import "./DailyChallengeList.css";
@@ -277,7 +277,7 @@ const DailyChallengeList = () => {
   ];
 
   return (
-    <Layout>
+    <ThemedLayout>
       <div className="daily-challenge-list-container">
         {/* Header */}
         <Card className="header-card">
@@ -399,7 +399,7 @@ const DailyChallengeList = () => {
           onCreateSuccess={handleCreateSuccess}
         />
       </div>
-    </Layout>
+    </ThemedLayout>
   );
 };
 

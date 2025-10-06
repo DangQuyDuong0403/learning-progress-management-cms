@@ -20,7 +20,7 @@ import {
   SearchOutlined,
 } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
-import Layout from "../../../../component/Layout";
+import ThemedLayout from "../../../../component/ThemedLayout";
 import {
   MultipleChoiceModal,
   MultipleSelectModal,
@@ -325,7 +325,7 @@ const CreateGrammarVocabularyChallenge = () => {
   }, []);
 
   return (
-    <Layout>
+    <ThemedLayout>
       <div className="gvc-create-challenge-container">
         {/* Header */}
         <Card className="gvc-header-card">
@@ -700,7 +700,7 @@ const CreateGrammarVocabularyChallenge = () => {
           </div>
         </div>
       </Modal>
-    </Layout>
+    </ThemedLayout>
   );
 };
 
