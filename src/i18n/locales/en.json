@@ -28,6 +28,8 @@
     "firstName": "First Name",
     "email": "Email",
     "emailRequired": "Please enter email!",
+    "username": "Username",
+    "usernameRequired": "Please enter username!",
     "gender": "Gender",
     "male": "Male",
     "female": "Female",
@@ -92,15 +94,15 @@
   "forgotPassword": {
     "title": "Password recovery",
     "description": "Choose the password recovery method that works for you",
-    "viaEmail": "Via email",
-    "emailDescription": "Send OTP code via email",
+    "viaUsername": "Via username",
+    "usernameDescription": "Send reset link via email using username",
     "viaPhone": "Request teacher to send default password",
     "phoneDescription": "Ask teacher to provide default password",
     "footerNote": "Choose the method you can access most easily",
     "pageTitle": "Forgot password",
     "send": "Send",
-    "emailNotFound": "Email does not exist in the system!",
-    "emailSent": "Reset password email has been sent successfully!"
+    "usernameNotFound": "Username does not exist in the system!",
+    "resetLinkSent": "Password reset link has been sent successfully!"
   },
   "profile": {
     "title": "Personal Information",

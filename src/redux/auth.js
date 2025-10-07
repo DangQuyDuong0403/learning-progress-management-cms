@@ -8,10 +8,10 @@ const storedToken = localStorage.getItem('token');
 
 // Async thunk for forgot password
 export const forgotPassword = createAsyncThunk(
-	'auth/forgotPassword',
-	async (email, { rejectWithValue }) => {
+	'/auth/forgotPassword',
+	async (username, { rejectWithValue }) => {
 		try {
-			const response = await authApi.forgotPassword({ email });
+			const response = await authApi.forgotPassword({ username });
 			return response;
 		} catch (error) {
 			return rejectWithValue(error.response.data.error || error.message);
@@ -21,7 +21,7 @@ export const forgotPassword = createAsyncThunk(
 
 // Async thunk for refresh token
 export const refreshToken = createAsyncThunk(
-	'auth/refreshToken',
+	'/auth/refreshToken',
 	async (refreshTokenValue, { rejectWithValue }) => {
 		try {
 			const response = await authApi.refreshToken(refreshTokenValue);
@@ -34,7 +34,7 @@ export const refreshToken = createAsyncThunk(
 
 // Async thunk for logout
 export const logoutApi = createAsyncThunk(
-	'auth/logoutApi',
+	'/auth/logoutApi',
 	async (refreshTokenValue, { rejectWithValue }) => {
 		try {
 			const response = await authApi.logout(refreshTokenValue);

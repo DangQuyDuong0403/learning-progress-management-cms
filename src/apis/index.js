@@ -15,6 +15,8 @@ const axiosClient = axios.create({
 axiosClient.interceptors.request.use(
 	(config) => {
 		const token = localStorage.getItem('token');
+		console.log('Request interceptor - URL:', config.url);
+		console.log('Request interceptor - Token exists:', !!token);
 		if (token) {
 			config.headers.Authorization = `Bearer ${token}`;
 		}
@@ -45,6 +47,9 @@ axiosClient.interceptors.response.use(
 	async (error) => {
 		const originalRequest = error.config;
 
+		console.log('Interceptor - Error status:', error.response?.status);
+		console.log('Interceptor - Error response:', error.response);
+		
 		if (error.response?.status === 401 && !originalRequest._retry) {
 			if (isRefreshing) {
 				// Nếu đang refresh token, thêm request vào queue
@@ -79,21 +84,23 @@ axiosClient.interceptors.response.use(
 					return axiosClient(originalRequest);
 				} catch (refreshError) {
 					// Refresh token không hợp lệ, đăng xuất
+					console.log('Interceptor - Refresh token failed, redirecting to choose-login');
 					processQueue(refreshError, null);
 					localStorage.removeItem('token');
 					localStorage.removeItem('user');
 					localStorage.removeItem('refreshToken');
-					window.location.href = '/choose-login';
+					// window.location.href = '/choose-login'; // Tạm thời disable
 					return Promise.reject(refreshError);
 				} finally {
 					isRefreshing = false;
 				}
 			} else {
 				// Không có refresh token, đăng xuất
+				console.log('Interceptor - No refresh token, redirecting to choose-login');
 				localStorage.removeItem('token');
 				localStorage.removeItem('user');
 				localStorage.removeItem('refreshToken');
-				window.location.href = '/choose-login';
+				// window.location.href = '/choose-login'; // Tạm thời disable
 				return Promise.reject(error);
 			}
 		}

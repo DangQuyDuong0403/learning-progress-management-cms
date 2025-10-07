@@ -18,7 +18,6 @@ export default function Login() {
 	const [username, setUsername] = useState('');
 	const [password, setPassword] = useState('');
 	const [forgotVisible, setForgotVisible] = useState(false);
-	const [forgotMethod, setForgotMethod] = useState('email');
 	const [loading, setLoading] = useState(false);
 	const dispatch = useDispatch();
 	const navigate = useNavigate();
@@ -37,14 +36,18 @@ export default function Login() {
 		setLoading(true);
 		
 		try {
-			// Gọi API login cho student
-			const response = await authApi.loginForStudent({
+			// Lấy loginRole từ localStorage
+			const loginRole = localStorage.getItem('loginRole') || 'student';
+			
+			// Gọi API login với 3 trường
+			const response = await authApi.login({
 				username,
-				password
+				password,
+				loginRole
 			});
 
 			// Dispatch login success với data từ API
-			dispatch(loginSuccess(response));
+			dispatch(loginSuccess(response.data));
 			spaceToast.success('Login successful!');
 			
 			// Redirect to student dashboard
@@ -69,8 +72,8 @@ export default function Login() {
 		}
 	};
 
-	const handleForgotMethodSelect = (method) => {
-		navigate(`/forgot-password-${method}`);
+	const handleForgotMethodSelect = () => {
+		navigate('/forgot-password-email');
 	};
 
 	const handleBackToChoose = () => {

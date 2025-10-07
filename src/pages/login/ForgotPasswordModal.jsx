@@ -56,13 +56,13 @@ export default function ForgotPasswordModal({ visible, onCancel, onMethodSelect 
                         justifyContent: 'center',
                         flexWrap: 'wrap',
                     }}>
-                    {/* Email Option */}
+                    {/* Username Option */}
                     <div
                         onClick={() => handleMethodSelect('email')}
                         className='recover-option'>
                         <div className='recover-card'>
-                            <div className='recover-icon'>📧</div>
-                            <h6>{t('forgotPassword.viaEmail')}</h6>
+                            <div className='recover-icon'>👤</div>
+                            <h6>{t('forgotPassword.viaUsername')}</h6>
                           
                         </div>
                     </div>

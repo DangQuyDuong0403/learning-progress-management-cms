@@ -6,7 +6,11 @@ import PrivateRoute from "./routers/PrivateRoute";
 import  SpaceToastify  from "../src/component/SpaceToastify";
 export default function App() {
   const isAuthenticated = useSelector((state) => state.auth.isAuthenticated);
-
+  const authState = useSelector((state) => state.auth);
+  
+  console.log('App.js - isAuthenticated:', isAuthenticated);
+  console.log('App.js - authState:', authState);
+  console.log('App.js - process.env.REACT_APP_API_URL:', process.env.REACT_APP_API_URL);
   return (
     <ThemeProvider>
       <Router>

@@ -14,6 +14,7 @@ export default function ChooseLogin() {
 
   const selectRole = (role) => {
     localStorage.setItem('selectedRole', role);
+    localStorage.setItem('loginRole', role);
     if (role === 'student') {
       navigate('/login-student');
     } else if (role === 'teacher') {
