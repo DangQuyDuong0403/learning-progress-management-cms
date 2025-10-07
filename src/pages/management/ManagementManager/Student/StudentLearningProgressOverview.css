@@ -503,6 +503,135 @@
 	color: inherit !important; /* Keep original status colors */
 }
 
+/* ===== CHARTS SECTION ===== */
+.charts-section {
+	margin-bottom: 32px;
+}
+
+.chart-card {
+	background: rgba(45, 27, 105, 0.4);
+	border-radius: 12px;
+	border: 1px solid rgba(77, 208, 255, 0.2);
+	backdrop-filter: blur(5px);
+	transition: all 0.3s ease;
+}
+
+.space-theme .chart-card {
+	background: #f6ebffd1;
+	border: 1px solid rgba(77, 208, 255, 0.2);
+}
+
+.sun-theme .chart-card {
+	background: #E6F5FF;
+	border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.chart-card:hover {
+	transform: translateY(-2px);
+	box-shadow: 0 4px 12px rgba(77, 208, 255, 0.15);
+	border-color: rgba(77, 208, 255, 0.4);
+}
+
+.chart-card .ant-card-head {
+	background: transparent;
+	border-bottom: 1px solid rgba(77, 208, 255, 0.2);
+}
+
+.space-theme .chart-card .ant-card-head {
+	border-bottom: 1px solid rgba(77, 208, 255, 0.2);
+}
+
+.sun-theme .chart-card .ant-card-head {
+	border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.chart-card .ant-card-head-title {
+	color: #fff;
+	font-size: 18px;
+	font-weight: 600;
+}
+
+.space-theme .chart-card .ant-card-head-title {
+	color: #000 !important;
+}
+
+.sun-theme .chart-card .ant-card-head-title {
+	color: #333 !important;
+}
+
+.chart-card .ant-card-body {
+	padding: 16px;
+}
+
+/* Chart container styling */
+.chart-card .g2-tooltip {
+	background: rgba(45, 27, 105, 0.95) !important;
+	border: 1px solid rgba(77, 208, 255, 0.3) !important;
+	border-radius: 8px !important;
+	backdrop-filter: blur(10px) !important;
+}
+
+.space-theme .chart-card .g2-tooltip {
+	background: rgba(246, 235, 255, 0.95) !important;
+	border: 1px solid rgba(77, 208, 255, 0.3) !important;
+}
+
+.sun-theme .chart-card .g2-tooltip {
+	background: rgba(230, 245, 255, 0.95) !important;
+	border: 1px solid rgba(0, 0, 0, 0.1) !important;
+}
+
+/* ===== STAT CARDS ===== */
+.stat-card {
+	background: rgba(45, 27, 105, 0.4);
+	border-radius: 12px;
+	border: 1px solid rgba(77, 208, 255, 0.2);
+	backdrop-filter: blur(5px);
+	transition: all 0.3s ease;
+}
+
+.space-theme .stat-card {
+	background: #f6ebffd1;
+	border: 1px solid rgba(77, 208, 255, 0.2);
+}
+
+.sun-theme .stat-card {
+	background: #E6F5FF;
+	border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.stat-card:hover {
+	transform: translateY(-2px);
+	box-shadow: 0 4px 12px rgba(77, 208, 255, 0.15);
+	border-color: rgba(77, 208, 255, 0.4);
+}
+
+.stat-card .ant-statistic-title {
+	color: rgba(255, 255, 255, 0.8);
+	font-size: 14px;
+	font-weight: 500;
+}
+
+.space-theme .stat-card .ant-statistic-title {
+	color: rgba(0, 0, 0, 0.7) !important;
+}
+
+.sun-theme .stat-card .ant-statistic-title {
+	color: rgba(0, 0, 0, 0.6) !important;
+}
+
+.stat-card .ant-statistic-content {
+	color: #fff;
+}
+
+.space-theme .stat-card .ant-statistic-content {
+	color: #000 !important;
+}
+
+.sun-theme .stat-card .ant-statistic-content {
+	color: #333 !important;
+}
+
 /* ===== RESPONSIVE DESIGN ===== */
 @media (max-width: 768px) {
 	.main-content-panel {
@@ -556,6 +685,14 @@
 
 	.session-card {
 		padding: 16px;
+	}
+
+	.chart-card {
+		margin-bottom: 16px;
+	}
+
+	.chart-card .ant-card-body {
+		padding: 12px;
 	}
 }
 

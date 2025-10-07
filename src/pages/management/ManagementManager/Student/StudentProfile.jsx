@@ -5,9 +5,6 @@ import {
 	Col,
 	Button,
 	Avatar,
-	Tag,
-	Table,
-	Timeline,
 	Space,
 	Modal,
 	Form,
@@ -21,10 +18,6 @@ import {
 	ArrowLeftOutlined,
 	EditOutlined,
 	UserOutlined,
-	CalendarOutlined,
-	BookOutlined,
-	TrophyOutlined,
-	ClockCircleOutlined,
 	UploadOutlined,
 	KeyOutlined,
 	BarChartOutlined,
@@ -66,20 +59,19 @@ const StudentProfile = () => {
 		joinDate: '2024-01-15',
 		username: 'student001',
 		lastActivity: '2024-12-21',
+		// Parent information
+		fatherName: 'Nguyễn Văn Bình',
+		motherName: 'Trần Thị Mai',
+		fatherPhone: '0987654321',
+		motherPhone: '0987654322',
+		fatherEmail: 'nguyenvanbinh@example.com',
+		motherEmail: 'tranthimai@example.com',
+		fatherOccupation: 'Kỹ sư',
+		motherOccupation: 'Giáo viên',
+		fatherAddress: '123 Đường ABC, Quận 1, TP.HCM',
+		motherAddress: '456 Đường XYZ, Quận 2, TP.HCM',
 	});
 
-	// Mock data - 1 học sinh chỉ có 1 lớp
-	const [currentClass] = useState({
-		id: '1',
-		name: 'Lớp 10A1',
-		teacher: 'Ms. Sarah Johnson',
-		students: 35,
-		startDate: '2024-01-15',
-		status: 'active',
-		subject: 'English',
-		schedule: 'Thứ 2, 4, 6 - 9:00-10:30',
-		room: 'Phòng 201',
-	});
 
 	useEffect(() => {
 		fetchStudentProfile();
@@ -104,6 +96,17 @@ const StudentProfile = () => {
 		editForm.setFieldsValue({
 			...student,
 			dateOfBirth: student.dateOfBirth ? dayjs(student.dateOfBirth) : null,
+			// Parent information
+			fatherName: student.fatherName,
+			motherName: student.motherName,
+			fatherPhone: student.fatherPhone,
+			motherPhone: student.motherPhone,
+			fatherEmail: student.fatherEmail,
+			motherEmail: student.motherEmail,
+			fatherOccupation: student.fatherOccupation,
+			motherOccupation: student.motherOccupation,
+			fatherAddress: student.fatherAddress,
+			motherAddress: student.motherAddress,
 		});
 		setAvatarUrl(student.avatar);
 	};
@@ -403,6 +406,77 @@ const StudentProfile = () => {
 							</Col>
 						</Row>
 					</Card>
+
+					{/* Parent Information */}
+					<Card
+						title={
+							<Space>
+								<UserOutlined />
+								{t('studentManagement.parentInformation')}
+							</Space>
+						}
+						className={`parent-card ${theme}-parent-card`}
+						style={{ marginBottom: 24 }}>
+						<Row gutter={[16, 16]}>
+							{/* Father Information */}
+							<Col xs={24} sm={12} md={12}>
+								<div className="parent-section">
+									
+									<div className="parent-info-grid">
+										<div className="parent-info-item">
+											<strong>{t('studentManagement.fatherName')}:</strong>
+											<span>{student.fatherName}</span>
+										</div>
+										<div className="parent-info-item">
+											<strong>{t('studentManagement.fatherPhone')}:</strong>
+											<span>{student.fatherPhone}</span>
+										</div>
+										<div className="parent-info-item">
+											<strong>{t('studentManagement.fatherEmail')}:</strong>
+											<span>{student.fatherEmail}</span>
+										</div>
+										<div className="parent-info-item">
+											<strong>{t('studentManagement.fatherOccupation')}:</strong>
+											<span>{student.fatherOccupation}</span>
+										</div>
+										<div className="parent-info-item">
+											<strong>{t('studentManagement.fatherAddress')}:</strong>
+											<span>{student.fatherAddress}</span>
+										</div>
+									</div>
+								</div>
+							</Col>
+							
+							{/* Mother Information */}
+							<Col xs={24} sm={12} md={12}>
+								<div className="parent-section">
+									
+									<div className="parent-info-grid">
+										<div className="parent-info-item">
+											<strong>{t('studentManagement.motherName')}:</strong>
+											<span>{student.motherName}</span>
+										</div>
+										<div className="parent-info-item">
+											<strong>{t('studentManagement.motherPhone')}:</strong>
+											<span>{student.motherPhone}</span>
+										</div>
+										<div className="parent-info-item">
+											<strong>{t('studentManagement.motherEmail')}:</strong>
+											<span>{student.motherEmail}</span>
+										</div>
+										<div className="parent-info-item">
+											<strong>{t('studentManagement.motherOccupation')}:</strong>
+											<span>{student.motherOccupation}</span>
+										</div>
+										<div className="parent-info-item">
+											<strong>{t('studentManagement.motherAddress')}:</strong>
+											<span>{student.motherAddress}</span>
+										</div>
+									</div>
+								</div>
+							</Col>
+						</Row>
+					</Card>
 				</div>
 
 				{/* Edit Modal */}
@@ -583,6 +657,172 @@ const StudentProfile = () => {
 								</Form.Item>
 							</Col>
 						</Row>
+
+						{/* Parent Information Section */}
+						<div style={{ marginTop: 32, marginBottom: 24 }}>
+							<h3 className={`section-title ${theme}-section-title`} style={{ 
+								fontSize: '18px', 
+								fontWeight: '600', 
+								marginBottom: '20px',
+								color: theme === 'space' ? '#4dd0ff' : '#1890ff'
+							}}>
+								{t('studentManagement.parentInformation')}
+							</h3>
+							
+							{/* Father Information */}
+							<Row gutter={24} style={{ marginBottom: 20 }}>
+								<Col span={24}>
+									<h4 className={`parent-section-title ${theme}-parent-section-title`} style={{
+										fontSize: '16px',
+										fontWeight: '500',
+										marginBottom: '16px',
+										color: theme === 'space' ? '#4dd0ff' : '#1890ff'
+									}}>
+										{t('studentManagement.fatherName')}
+									</h4>
+								</Col>
+								<Col span={12}>
+									<Form.Item
+										name="fatherName"
+										label={t('studentManagement.fatherName')}
+										rules={[{ required: true, message: t('studentManagement.fatherNameRequired') }]}
+									>
+										<Input 
+											placeholder={t('studentManagement.enterFatherName')}
+											className={`form-input ${theme}-form-input`}
+										/>
+									</Form.Item>
+								</Col>
+								<Col span={12}>
+									<Form.Item
+										name="fatherPhone"
+										label={t('studentManagement.fatherPhone')}
+										rules={[{ required: true, message: t('studentManagement.fatherPhoneRequired') }]}
+									>
+										<Input 
+											placeholder={t('studentManagement.enterFatherPhone')}
+											className={`form-input ${theme}-form-input`}
+										/>
+									</Form.Item>
+								</Col>
+								<Col span={12}>
+									<Form.Item
+										name="fatherEmail"
+										label={t('studentManagement.fatherEmail')}
+										rules={[
+											{ required: true, message: t('studentManagement.fatherEmailRequired') },
+											{ type: 'email', message: t('studentManagement.emailInvalid') }
+										]}
+									>
+										<Input 
+											placeholder={t('studentManagement.enterFatherEmail')}
+											className={`form-input ${theme}-form-input`}
+										/>
+									</Form.Item>
+								</Col>
+								<Col span={12}>
+									<Form.Item
+										name="fatherOccupation"
+										label={t('studentManagement.fatherOccupation')}
+										rules={[{ required: true, message: t('studentManagement.fatherOccupationRequired') }]}
+									>
+										<Input 
+											placeholder={t('studentManagement.enterFatherOccupation')}
+											className={`form-input ${theme}-form-input`}
+										/>
+									</Form.Item>
+								</Col>
+								<Col span={24}>
+									<Form.Item
+										name="fatherAddress"
+										label={t('studentManagement.fatherAddress')}
+										rules={[{ required: true, message: t('studentManagement.fatherAddressRequired') }]}
+									>
+										<Input 
+											placeholder={t('studentManagement.enterFatherAddress')}
+											className={`form-input ${theme}-form-input`}
+										/>
+									</Form.Item>
+								</Col>
+							</Row>
+
+							{/* Mother Information */}
+							<Row gutter={24}>
+								<Col span={24}>
+									<h4 className={`parent-section-title ${theme}-parent-section-title`} style={{
+										fontSize: '16px',
+										fontWeight: '500',
+										marginBottom: '16px',
+										color: theme === 'space' ? '#4dd0ff' : '#1890ff'
+									}}>
+										{t('studentManagement.motherName')}
+									</h4>
+								</Col>
+								<Col span={12}>
+									<Form.Item
+										name="motherName"
+										label={t('studentManagement.motherName')}
+										rules={[{ required: true, message: t('studentManagement.motherNameRequired') }]}
+									>
+										<Input 
+											placeholder={t('studentManagement.enterMotherName')}
+											className={`form-input ${theme}-form-input`}
+										/>
+									</Form.Item>
+								</Col>
+								<Col span={12}>
+									<Form.Item
+										name="motherPhone"
+										label={t('studentManagement.motherPhone')}
+										rules={[{ required: true, message: t('studentManagement.motherPhoneRequired') }]}
+									>
+										<Input 
+											placeholder={t('studentManagement.enterMotherPhone')}
+											className={`form-input ${theme}-form-input`}
+										/>
+									</Form.Item>
+								</Col>
+								<Col span={12}>
+									<Form.Item
+										name="motherEmail"
+										label={t('studentManagement.motherEmail')}
+										rules={[
+											{ required: true, message: t('studentManagement.motherEmailRequired') },
+											{ type: 'email', message: t('studentManagement.emailInvalid') }
+										]}
+									>
+										<Input 
+											placeholder={t('studentManagement.enterMotherEmail')}
+											className={`form-input ${theme}-form-input`}
+										/>
+									</Form.Item>
+								</Col>
+								<Col span={12}>
+									<Form.Item
+										name="motherOccupation"
+										label={t('studentManagement.motherOccupation')}
+										rules={[{ required: true, message: t('studentManagement.motherOccupationRequired') }]}
+									>
+										<Input 
+											placeholder={t('studentManagement.enterMotherOccupation')}
+											className={`form-input ${theme}-form-input`}
+										/>
+									</Form.Item>
+								</Col>
+								<Col span={24}>
+									<Form.Item
+										name="motherAddress"
+										label={t('studentManagement.motherAddress')}
+										rules={[{ required: true, message: t('studentManagement.motherAddressRequired') }]}
+									>
+										<Input 
+											placeholder={t('studentManagement.enterMotherAddress')}
+											className={`form-input ${theme}-form-input`}
+										/>
+									</Form.Item>
+								</Col>
+							</Row>
+						</div>
 
 						{/* Action Buttons */}
 						<Row gutter={16} style={{ marginTop: 32 }}>
