@@ -61,6 +61,7 @@ jobs:
         with:
           app-name: 'learning-progress-management-cms-staging'
           slot-name: 'Production'
-          package: .
+          package: ./build
 
           
+
