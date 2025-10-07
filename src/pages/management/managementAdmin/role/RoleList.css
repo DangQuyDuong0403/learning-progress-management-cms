@@ -225,7 +225,7 @@
 }
 
 .space-theme .role-name-text {
-  color: #fff !important;
+  color: #000000 !important;
 }
 
 /* Permission text */
@@ -234,7 +234,7 @@
 }
 
 .space-theme .permission-text {
-  color: #fff !important;
+  color: #000000 !important;
 }
 
 /* Action button icons */

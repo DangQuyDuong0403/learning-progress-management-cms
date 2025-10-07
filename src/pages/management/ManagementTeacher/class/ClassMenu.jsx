@@ -13,7 +13,7 @@ import {
   HistoryOutlined,
   BookOutlined,
 } from "@ant-design/icons";
-import Layout from "../../../../component/Layout";
+import ThemedLayout from "../../../../component/ThemedLayout";
 import LoadingWithEffect from "../../../../component/spinner/LoadingWithEffect";
 import "./ClassMenu.css";
 import { useParams, useNavigate } from "react-router-dom";
@@ -106,16 +106,16 @@ const ClassMenu = () => {
 
   if (loading) {
     return (
-      <Layout>
+      <ThemedLayout>
         <div className="class-menu-container">
           <LoadingWithEffect loading={true} message={t('classMenu.loadingClassInfo')} />
         </div>
-      </Layout>
+      </ThemedLayout>
     );
   }
 
   return (
-    <Layout>
+    <ThemedLayout>
       <div className="class-menu-container">
         {/* Header */}
         <Card className="header-card">
@@ -210,7 +210,7 @@ const ClassMenu = () => {
         </div>
 
       </div>
-    </Layout>
+    </ThemedLayout>
   );
 };
 

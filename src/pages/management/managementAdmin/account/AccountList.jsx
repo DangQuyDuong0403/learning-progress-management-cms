@@ -331,7 +331,7 @@ const AccountList = () => {
 			Manager: t('accountManagement.manager'),
 		};
 
-		return <Tag color={config.color}>{roleTranslations[role] || role}</Tag>;
+		return roleTranslations[role] || role;
 	};
 
 	// Filter data based on search and filters
@@ -466,7 +466,7 @@ const AccountList = () => {
 	return (
 		<ThemedLayout>
 			{/* Main Content Panel */}
-			<div className={`main-content-panel ${theme}-main-panel`}>
+			<div className={`account-page main-content-panel ${theme}-main-panel`}>
 				{/* Header Section */}
 				<div className={`panel-header ${theme}-panel-header`}>
 					<div className='search-section'>
@@ -478,6 +478,7 @@ const AccountList = () => {
 							className={`search-input ${theme}-search-input`}
 							allowClear
 						/>
+						<div style={{width: 500}}></div>
 					</div>
 					<div className='action-buttons'>
 						<Button

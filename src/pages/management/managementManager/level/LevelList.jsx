@@ -56,8 +56,8 @@ const LevelList = () => {
 		visible: false,
 		title: '',
 		content: '',
-		onConfirm: null
-	  });
+		onConfirm: null,
+	});
 	useEffect(() => {
 		dispatch(fetchLevels());
 	}, [dispatch]);
@@ -148,18 +148,7 @@ const LevelList = () => {
 			dataIndex: 'difficulty',
 			key: 'difficulty',
 			width: 120,
-			render: (difficulty) => (
-				<Tag
-					color={
-						difficulty === 'beginner'
-							? 'green'
-							: difficulty === 'intermediate'
-							? 'orange'
-							: 'red'
-					}>
-					{difficulty}
-				</Tag>
-			),
+			render: (difficulty) => `${difficulty}`,
 		},
 		{
 			title: t('levelManagement.status'),
@@ -229,13 +218,9 @@ const LevelList = () => {
 							onChange={setStatusFilter}
 							placeholder={t('levelManagement.filterByStatus')}
 							className={`filter-select ${theme}-filter-select`}>
-							<Option value='all'>
-								{t('levelManagement.allStatuses')}
-							</Option>
+							<Option value='all'>{t('levelManagement.allStatuses')}</Option>
 							<Option value='active'>{t('levelManagement.active')}</Option>
-							<Option value='inactive'>
-								{t('levelManagement.inactive')}
-							</Option>
+							<Option value='inactive'>{t('levelManagement.inactive')}</Option>
 						</Select>
 					</div>
 					<div className='action-buttons'>
@@ -280,105 +265,109 @@ const LevelList = () => {
 				</div>
 			</div>
 
-				{/* Modal */}
-				<Modal
-					title={
-						editingLevel
-							? t('levelManagement.editLevel')
-							: t('levelManagement.addLevel')
-					}
-					open={isModalVisible}
-					onCancel={handleModalClose}
-					footer={null}
-					width={800}
-					destroyOnClose
-					style={{ top: 20 }}
-					bodyStyle={{
-						maxHeight: '70vh',
-						overflowY: 'auto',
-						padding: '24px',
-					}}>
-					<LevelForm level={editingLevel} onClose={handleModalClose} />
-				</Modal>
+			{/* Modal */}
+			<Modal
+				title={
+					editingLevel
+						? t('levelManagement.editLevel')
+						: t('levelManagement.addLevel')
+				}
+				open={isModalVisible}
+				onCancel={handleModalClose}
+				footer={null}
+				width={800}
+				destroyOnClose
+				style={{ top: 20 }}
+				bodyStyle={{
+					maxHeight: '70vh',
+					overflowY: 'auto',
+					padding: '24px',
+				}}>
+				<LevelForm level={editingLevel} onClose={handleModalClose} />
+			</Modal>
 
-				{/* Delete Confirmation Modal */}
-				<Modal
-					title={
-						<div style={{ 
-							fontSize: '20px', 
-							fontWeight: '600', 
+			{/* Delete Confirmation Modal */}
+			<Modal
+				title={
+					<div
+						style={{
+							fontSize: '20px',
+							fontWeight: '600',
 							color: '#1890ff',
 							textAlign: 'center',
-							padding: '10px 0'
+							padding: '10px 0',
 						}}>
-							{t('levelManagement.confirmDelete')}
-						</div>
-					}
-					open={isDeleteModalVisible}
-					onOk={handleDelete}
-					onCancel={handleDeleteModalClose}
-					okText={t('common.confirm')}
-					cancelText={t('common.cancel')}
-					width={500}
-					centered
-					bodyStyle={{
-						padding: '30px 40px',
+						{t('levelManagement.confirmDelete')}
+					</div>
+				}
+				open={isDeleteModalVisible}
+				onOk={handleDelete}
+				onCancel={handleDeleteModalClose}
+				okText={t('common.confirm')}
+				cancelText={t('common.cancel')}
+				width={500}
+				centered
+				bodyStyle={{
+					padding: '30px 40px',
+					fontSize: '16px',
+					lineHeight: '1.6',
+					textAlign: 'center',
+				}}
+				okButtonProps={{
+					style: {
+						backgroundColor: '#ff4d4f',
+						borderColor: '#ff4d4f',
+						height: '40px',
 						fontSize: '16px',
-						lineHeight: '1.6',
-						textAlign: 'center'
-					}}
-					okButtonProps={{
-						style: {
-							backgroundColor: '#ff4d4f',
-							borderColor: '#ff4d4f',
-							height: '40px',
-							fontSize: '16px',
-							fontWeight: '500',
-							minWidth: '100px'
-						}
-					}}
-					cancelButtonProps={{
-						style: {
-							height: '40px',
-							fontSize: '16px',
-							fontWeight: '500',
-							minWidth: '100px'
-						}
-					}}
-				>
-					<div style={{
+						fontWeight: '500',
+						minWidth: '100px',
+					},
+				}}
+				cancelButtonProps={{
+					style: {
+						height: '40px',
+						fontSize: '16px',
+						fontWeight: '500',
+						minWidth: '100px',
+					},
+				}}>
+				<div
+					style={{
 						display: 'flex',
 						flexDirection: 'column',
 						alignItems: 'center',
-						gap: '20px'
+						gap: '20px',
 					}}>
-						<div style={{
+					<div
+						style={{
 							fontSize: '48px',
 							color: '#ff4d4f',
-							marginBottom: '10px'
+							marginBottom: '10px',
 						}}>
-							⚠️
-						</div>
-						<p style={{
+						⚠️
+					</div>
+					<p
+						style={{
 							fontSize: '18px',
 							color: '#333',
 							margin: 0,
-							fontWeight: '500'
+							fontWeight: '500',
 						}}>
-							{t('levelManagement.confirmDeleteMessage')}
-						</p>
-						{deleteLevel && (
-							<p style={{
+						{t('levelManagement.confirmDeleteMessage')}
+					</p>
+					{deleteLevel && (
+						<p
+							style={{
 								fontSize: '16px',
 								color: '#666',
 								margin: 0,
-								fontWeight: '600'
+								fontWeight: '600',
 							}}>
-								<strong>{deleteLevel.name}</strong>
-							</p>
-						)}
-					</div>
-				</Modal>
+							<strong>{deleteLevel.name}</strong>
+						</p>
+					)}
+				</div>
+			</Modal>
 		</ThemedLayout>
 	);
 };

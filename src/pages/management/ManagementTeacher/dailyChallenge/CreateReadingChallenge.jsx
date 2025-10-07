@@ -27,7 +27,7 @@ import {
   HolderOutlined,
 } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
-import Layout from "../../../../component/Layout";
+import ThemedLayout from "../../../../component/ThemedLayout";
 import { extractTextFromPDF, isValidPDF } from "../../../../utils/pdfUtils";
 import {
   MultipleChoiceModal,
@@ -271,7 +271,7 @@ const CreateReadingChallenge = () => {
   const currentPassage = passages.find(p => p.id === activePassage);
 
   return (
-    <Layout>
+    <ThemedLayout>
       <div className="rc-create-reading-challenge-container">
         {/* Header */}
         <Card className="rc-header-card">
@@ -638,7 +638,7 @@ const CreateReadingChallenge = () => {
      
 
       </div>
-    </Layout>
+    </ThemedLayout>
   );
 };
 

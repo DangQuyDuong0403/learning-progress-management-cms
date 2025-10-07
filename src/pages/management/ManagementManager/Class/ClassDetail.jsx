@@ -25,7 +25,7 @@ import {
   DownloadOutlined,
   UploadOutlined,
 } from "@ant-design/icons";
-import Layout from "../../../../component/Layout";
+import ThemedLayout from "../../../../component/ThemedLayout";
 import LoadingWithEffect from "../../../../component/spinner/LoadingWithEffect";
 import "./ClassDetail.css";
 import { useParams, useNavigate } from "react-router-dom";
@@ -417,16 +417,16 @@ const ClassDetail = () => {
 
   if (loading) {
     return (
-      <Layout>
+      <ThemedLayout>
         <div className="class-detail-container">
           <LoadingWithEffect loading={true} message={t('classDetail.loadingClassInfo')} />
         </div>
-      </Layout>
+      </ThemedLayout>
     );
   }
 
   return (
-    <Layout>
+    <ThemedLayout>
       <div className="class-detail-container">
         {/* Header */}
         <Card className="header-card">
@@ -816,7 +816,7 @@ const ClassDetail = () => {
           <p>{t('classDetail.confirmDeleteMessage')} "{studentToDelete?.name}"?</p>
         </Modal>
       </div>
-    </Layout>
+    </ThemedLayout>
   );
 };
 

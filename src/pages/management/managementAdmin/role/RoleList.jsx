@@ -360,6 +360,7 @@ const RoleList = () => {
                 className={`search-input ${theme}-search-input`}
                 allowClear
               />
+              <div style={{width: 500}}></div>
             </div>
             <div className="action-buttons">
               <Button 

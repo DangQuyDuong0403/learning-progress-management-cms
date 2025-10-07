@@ -323,13 +323,13 @@
 }
 
 /* Action button icons */
-.student-table .ant-btn .anticon {
+/* .student-table .ant-btn .anticon {
   color: #000 !important;
 }
 
 .student-table .ant-btn:hover .anticon {
   color: #000 !important;
-}
+} */
 
 
 
@@ -1048,7 +1048,7 @@ div.student-profile .space-theme .edit-button:hover {
   
   .action-buttons {
     justify-content: center;
-  }
+  } 
   
   .main-content-panel {
     margin: 16px;
@@ -1096,4 +1096,10 @@ div.student-profile .space-theme .edit-button:hover {
   background: linear-gradient(135deg, #ACA5C0, #6D5F8F) !important;
   border-color: #8377A0 !important;
   color: #000 !important;
+}
+
+.space-theme .themed-content .export-button .anticon,
+.space-theme .themed-content .import-button .anticon,
+.space-theme .themed-content .create-button .anticon {
+	color: #000000;
 }

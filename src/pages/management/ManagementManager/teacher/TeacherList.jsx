@@ -1,14 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import {
-	Table,
-	Button,
-	Space,
-	Modal,
-	Input,
-	Select,
-	Tag,
-	Tooltip,
-} from 'antd';
+import { Table, Button, Space, Modal, Input, Select, Tag, Tooltip } from 'antd';
 import {
 	PlusOutlined,
 	EditOutlined,
@@ -33,7 +24,7 @@ const TeacherList = () => {
 	const { t } = useTranslation();
 	const { theme } = useTheme();
 	const navigate = useNavigate();
-	
+
 	// Mock data for teachers - replace with actual API calls
 	const [teachers, setTeachers] = useState([
 		{
@@ -98,7 +89,7 @@ const TeacherList = () => {
 	};
 
 	const deleteTeacherAction = async (teacherId) => {
-		setTeachers(teachers.filter(teacher => teacher.id !== teacherId));
+		setTeachers(teachers.filter((teacher) => teacher.id !== teacherId));
 	};
 
 	useEffect(() => {
@@ -168,8 +159,7 @@ const TeacherList = () => {
 			teacher.specialization.toLowerCase().includes(searchText.toLowerCase());
 		const matchesStatus =
 			statusFilter === 'all' || teacher.status === statusFilter;
-		const matchesRole =
-			roleFilter === 'all' || teacher.role === roleFilter;
+		const matchesRole = roleFilter === 'all' || teacher.role === roleFilter;
 		return matchesSearch && matchesStatus && matchesRole;
 	});
 
@@ -217,10 +207,10 @@ const TeacherList = () => {
 			key: 'role',
 			width: 120,
 			render: (role) => (
-				<Tag
-					color={role === 'teacher' ? 'blue' : 'green'}
-				>
-					{role === 'teacher' ? t('teacherManagement.teacher') : t('teacherManagement.teacherAssistant')}
+				<Tag color={role === 'teacher' ? 'blue' : 'green'}>
+					{role === 'teacher'
+						? t('teacherManagement.teacher')
+						: t('teacherManagement.teacherAssistant')}
 				</Tag>
 			),
 		},
@@ -242,11 +232,7 @@ const TeacherList = () => {
 			dataIndex: 'classesCount',
 			key: 'classesCount',
 			width: 100,
-			render: (count) => (
-				<Tag color={count > 0 ? 'green' : 'default'}>
-					{count} {t('teacherManagement.classes')}
-				</Tag>
-			),
+			render: (count) => `${count} ${t('teacherManagement.classes')}`,
 		},
 		{
 			title: t('teacherManagement.status'),
@@ -307,7 +293,7 @@ const TeacherList = () => {
 	return (
 		<ThemedLayout>
 			{/* Main Content Panel */}
-			<div className={`main-content-panel ${theme}-main-panel`}>
+			<div className={`teacher-page main-content-panel ${theme}-main-panel`}>
 				{/* Header Section */}
 				<div className={`panel-header ${theme}-panel-header`}>
 					<div className='search-section'>
@@ -320,14 +306,13 @@ const TeacherList = () => {
 							allowClear
 						/>
 						<Select
-							style={{ width: 150, marginLeft: 12 }}ư
+							style={{ width: 150, marginLeft: 12 }}
+							ư
 							value={statusFilter}
 							onChange={setStatusFilter}
 							placeholder={t('teacherManagement.filterByStatus')}
 							className={`filter-select ${theme}-filter-select`}>
-							<Option value='all'>
-								{t('teacherManagement.allStatuses')}
-							</Option>
+							<Option value='all'>{t('teacherManagement.allStatuses')}</Option>
 							<Option value='active'>{t('teacherManagement.active')}</Option>
 							<Option value='inactive'>
 								{t('teacherManagement.inactive')}
@@ -339,9 +324,7 @@ const TeacherList = () => {
 							onChange={setRoleFilter}
 							placeholder={t('teacherManagement.filterByRole')}
 							className={`filter-select ${theme}-filter-select`}>
-							<Option value='all'>
-								{t('teacherManagement.allRoles')}
-							</Option>
+							<Option value='all'>{t('teacherManagement.allRoles')}</Option>
 							<Option value='teacher'>{t('teacherManagement.teacher')}</Option>
 							<Option value='teacher_assistant'>
 								{t('teacherManagement.teacherAssistant')}
@@ -364,9 +347,6 @@ const TeacherList = () => {
 						</Button>
 					</div>
 				</div>
-
-			
-	
 
 				{/* Table Section */}
 				<div className={`table-section ${theme}-table-section`}>
@@ -428,19 +408,23 @@ const TeacherList = () => {
 					overflowY: 'auto',
 					padding: '24px',
 				}}>
-				<AssignTeacherToClass teacher={assigningTeacher} onClose={handleAssignModalClose} />
+				<AssignTeacherToClass
+					teacher={assigningTeacher}
+					onClose={handleAssignModalClose}
+				/>
 			</Modal>
 
 			{/* Delete Confirmation Modal */}
 			<Modal
 				title={
-					<div style={{ 
-						fontSize: '20px', 
-						fontWeight: '600', 
-						color: '#1890ff',
-						textAlign: 'center',
-						padding: '10px 0'
-					}}>
+					<div
+						style={{
+							fontSize: '20px',
+							fontWeight: '600',
+							color: '#1890ff',
+							textAlign: 'center',
+							padding: '10px 0',
+						}}>
 						{t('teacherManagement.confirmDelete')}
 					</div>
 				}
@@ -455,7 +439,7 @@ const TeacherList = () => {
 					padding: '30px 40px',
 					fontSize: '16px',
 					lineHeight: '1.6',
-					textAlign: 'center'
+					textAlign: 'center',
 				}}
 				okButtonProps={{
 					style: {
@@ -464,46 +448,49 @@ const TeacherList = () => {
 						height: '40px',
 						fontSize: '16px',
 						fontWeight: '500',
-						minWidth: '100px'
-					}
+						minWidth: '100px',
+					},
 				}}
 				cancelButtonProps={{
 					style: {
 						height: '40px',
 						fontSize: '16px',
 						fontWeight: '500',
-						minWidth: '100px'
-					}
-				}}
-			>
-				<div style={{
-					display: 'flex',
-					flexDirection: 'column',
-					alignItems: 'center',
-					gap: '20px'
+						minWidth: '100px',
+					},
 				}}>
-					<div style={{
-						fontSize: '48px',
-						color: '#ff4d4f',
-						marginBottom: '10px'
+				<div
+					style={{
+						display: 'flex',
+						flexDirection: 'column',
+						alignItems: 'center',
+						gap: '20px',
 					}}>
+					<div
+						style={{
+							fontSize: '48px',
+							color: '#ff4d4f',
+							marginBottom: '10px',
+						}}>
 						⚠️
 					</div>
-					<p style={{
-						fontSize: '18px',
-						color: '#333',
-						margin: 0,
-						fontWeight: '500'
-					}}>
+					<p
+						style={{
+							fontSize: '18px',
+							color: '#333',
+							margin: 0,
+							fontWeight: '500',
+						}}>
 						{t('teacherManagement.confirmDeleteMessage')}
 					</p>
 					{deleteTeacher && (
-						<p style={{
-							fontSize: '16px',
-							color: '#666',
-							margin: 0,
-							fontWeight: '600'
-						}}>
+						<p
+							style={{
+								fontSize: '16px',
+								color: '#666',
+								margin: 0,
+								fontWeight: '600',
+							}}>
 							<strong>{deleteTeacher.name}</strong>
 						</p>
 					)}

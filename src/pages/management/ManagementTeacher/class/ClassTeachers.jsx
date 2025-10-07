@@ -23,7 +23,7 @@ import {
   ReloadOutlined,
   UploadOutlined,
 } from "@ant-design/icons";
-import Layout from "../../../../component/Layout";
+import ThemedLayout from "../../../../component/ThemedLayout";
 import LoadingWithEffect from "../../../../component/spinner/LoadingWithEffect";
 import "./ClassTeachers.css";
 import { useParams, useNavigate } from "react-router-dom";
@@ -436,16 +436,16 @@ const ClassTeachers = () => {
 
   if (loading) {
     return (
-      <Layout>
+      <ThemedLayout>
         <div className="class-detail-container">
           <LoadingWithEffect loading={true} message={t('classTeachers.loadingClassInfo')} />
         </div>
-      </Layout>
+      </ThemedLayout>
     );
   }
 
   return (
-    <Layout>
+    <ThemedLayout>
       <div className="class-detail-container">
         {/* Header */}
         <Card className="header-card">
@@ -701,7 +701,7 @@ const ClassTeachers = () => {
            )}
          </Modal>
        </div>
-     </Layout>
+     </ThemedLayout>
    );
  };
 
