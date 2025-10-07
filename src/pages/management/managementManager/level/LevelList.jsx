@@ -210,6 +210,7 @@ const LevelList = () => {
 							value={searchText}
 							onChange={(e) => setSearchText(e.target.value)}
 							className={`search-input ${theme}-search-input`}
+							style={{ minWidth: '350px', maxWidth: '500px' }}
 							allowClear
 						/>
 						<Select
@@ -222,6 +223,9 @@ const LevelList = () => {
 							<Option value='active'>{t('levelManagement.active')}</Option>
 							<Option value='inactive'>{t('levelManagement.inactive')}</Option>
 						</Select>
+						
+						{/* Spacer để đẩy action buttons về bên phải */}
+						<div style={{ flex: '1' }}></div>
 					</div>
 					<div className='action-buttons'>
 						<Button

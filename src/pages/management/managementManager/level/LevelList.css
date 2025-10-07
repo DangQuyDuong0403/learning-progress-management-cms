@@ -58,13 +58,14 @@
 .search-section {
 	display: flex;
 	align-items: center;
-	flex: 1;
-	max-width: 500px;
+	flex: 3;
 	gap: 12px;
 }
 
 .search-input {
-	width: 100%;
+	flex: 1;
+	min-width: 300px;
+	max-width: 600px;
 	height: 40px;
 	border-radius: 20px;
 	border: 1px solid rgb(47, 27, 105);

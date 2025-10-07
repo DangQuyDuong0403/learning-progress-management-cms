@@ -33,63 +33,13 @@ import LoadingWithEffect from '../../../../component/spinner/LoadingWithEffect';
 import { useTheme } from '../../../../contexts/ThemeContext';
 import './AccountList.css';
 import { spaceToast } from '../../../../component/SpaceToastify';
+import accountManagementApi from '../../../../apis/backend/accountManagement';
 
 const { Option } = Select;
 const { TextArea } = Input;
 const { Title, Text } = Typography;
 const { Dragger } = Upload;
 
-// Mock data - thay thế bằng API call thực tế
-const mockAccounts = [
-	{
-		id: 1,
-		username: 'admin001',
-		email: 'admin001@example.com',
-		fullName: 'Nguyễn Văn Admin',
-		phone: '0123456789',
-		role: 'Admin',
-		status: 'active',
-		createdAt: '2024-01-15',
-		lastLogin: '2024-01-20 10:30:00',
-		avatar: null,
-	},
-	{
-		id: 2,
-		username: 'teacher001',
-		email: 'teacher001@example.com',
-		fullName: 'Trần Thị Giáo Viên',
-		phone: '0987654321',
-		role: 'Teacher',
-		status: 'active',
-		createdAt: '2024-01-16',
-		lastLogin: '2024-01-19 15:45:00',
-		avatar: null,
-	},
-	{
-		id: 3,
-		username: 'student001',
-		email: 'student001@example.com',
-		fullName: 'Lê Văn Học Sinh',
-		phone: '0369852147',
-		role: 'Student',
-		status: 'inactive',
-		createdAt: '2024-01-17',
-		lastLogin: '2024-01-18 09:20:00',
-		avatar: null,
-	},
-	{
-		id: 4,
-		username: 'manager001',
-		email: 'manager001@example.com',
-		fullName: 'Phạm Thị Quản Lý',
-		phone: '0741852963',
-		role: 'Manager',
-		status: 'active',
-		createdAt: '2024-01-18',
-		lastLogin: '2024-01-20 14:15:00',
-		avatar: null,
-	},
-];
 
 const AccountList = () => {
 	const { t } = useTranslation();
@@ -97,8 +47,11 @@ const AccountList = () => {
 	const [loading, setLoading] = useState(false);
 	const [accounts, setAccounts] = useState([]);
 	const [searchText, setSearchText] = useState('');
-	const [statusFilter] = useState('all');
-	const [roleFilter] = useState('all');
+	const [statusFilter, setStatusFilter] = useState('all');
+	const [roleFilter, setRoleFilter] = useState('all');
+	const [searchTimeout, setSearchTimeout] = useState(null);
+	const [sortBy, setSortBy] = useState('createdAt');
+	const [sortDir, setSortDir] = useState('asc');
 	const [isModalVisible, setIsModalVisible] = useState(false);
 	const [editingAccount, setEditingAccount] = useState(null);
 	const [form] = Form.useForm();
@@ -113,27 +66,133 @@ const AccountList = () => {
 		fileList: [],
 		uploading: false,
 	});
+	// Pagination state
+	const [pagination, setPagination] = useState({
+		current: 1,
+		pageSize: 10,
+		total: 0,
+		showSizeChanger: true,
+		showQuickJumper: true,
+		showTotal: (total, range) => `${range[0]}-${range[1]} of ${total}`,
+	});
 
-	const fetchAccounts = useCallback(async () => {
+	const fetchAccounts = useCallback(async (page = 1, size = 10, search = '', roleFilter = 'all', statusFilter = 'all', sortField = 'createdAt', sortDirection = 'asc') => {
 		setLoading(true);
 		try {
-			// Simulate API call
-			setTimeout(() => {
-				setAccounts(mockAccounts);
-				setLoading(false);
-			}, 1000);
+			const params = {
+				page: page - 1, // API uses 0-based indexing
+				size: size,
+				sortBy: sortField,
+				sortDir: sortDirection,
+			};
+			
+			// Add search parameter if provided (API uses 'text' parameter)
+			if (search && search.trim()) {
+				params.text = search.trim();
+			}
+
+			// Add roleName filter if not 'all' (API expects array of strings)
+			if (roleFilter && roleFilter !== 'all') {
+				params.roleName = [roleFilter];
+			}
+
+			// Add status filter if not 'all' (API expects array of strings)
+			if (statusFilter && statusFilter !== 'all') {
+				params.status = [statusFilter];
+			}
+
+			const response = await accountManagementApi.getAccounts({
+				params: params,
+			});
+
+			// Map API response to component format
+			const mappedAccounts = response.data.map((account) => ({
+				id: account.id,
+				username: account.userName,
+				email: account.email,
+				fullName: account.fullName,
+				phone: account.phone || 'N/A', // API doesn't include phone, so we'll show N/A
+				role: account.roleName,
+				status: account.status, // Keep status in uppercase format (ACTIVE/INACTIVE)
+				createdAt: new Date(account.createAt).toLocaleDateString(),
+				lastLogin: account.lastLogin || null,
+				avatar: null,
+				mustChangePassword: account.mustChangePassword,
+				requestResetPasswordByTeacher: account.requestResetPasswordByTeacher,
+			}));
+
+			setAccounts(mappedAccounts);
+			setPagination(prev => ({
+				...prev,
+				current: page,
+				pageSize: size,
+				total: response.totalElements,
+			}));
+			setLoading(false);
 		} catch (error) {
+			console.error('Error fetching accounts:', error);
 			message.error(t('accountManagement.loadAccountsError'));
 			setLoading(false);
 		}
 	}, [t]);
 
 	useEffect(() => {
-		fetchAccounts();
-	}, [fetchAccounts]);
+		fetchAccounts(1, pagination.pageSize, searchText, roleFilter, statusFilter, sortBy, sortDir);
+	}, [fetchAccounts, searchText, roleFilter, statusFilter, sortBy, sortDir, pagination.pageSize]);
+
+	// Cleanup timeout on unmount
+	useEffect(() => {
+		return () => {
+			if (searchTimeout) {
+				clearTimeout(searchTimeout);
+			}
+		};
+	}, [searchTimeout]);
 
 	const handleSearch = (value) => {
 		setSearchText(value);
+		
+		// Clear existing timeout
+		if (searchTimeout) {
+			clearTimeout(searchTimeout);
+		}
+		
+		// Set new timeout for 1 second delay
+		const newTimeout = setTimeout(() => {
+			// Reset to first page when searching
+			fetchAccounts(1, pagination.pageSize, value, roleFilter, statusFilter, sortBy, sortDir);
+		}, 1000);
+		
+		setSearchTimeout(newTimeout);
+	};
+
+	const handleRoleFilterChange = (value) => {
+		setRoleFilter(value);
+		// Reset to first page when filtering
+		fetchAccounts(1, pagination.pageSize, searchText, value, statusFilter, sortBy, sortDir);
+	};
+
+	const handleStatusFilterChange = (value) => {
+		setStatusFilter(value);
+		// Reset to first page when filtering
+		fetchAccounts(1, pagination.pageSize, searchText, roleFilter, value, sortBy, sortDir);
+	};
+
+	const handleTableChange = (pagination, filters, sorter) => {
+		// Handle sorting
+		if (sorter && sorter.field) {
+			const newSortBy = sorter.field;
+			const newSortDir = sorter.order === 'ascend' ? 'asc' : 'desc';
+			
+			setSortBy(newSortBy);
+			setSortDir(newSortDir);
+			
+			// Fetch data with new sorting
+			fetchAccounts(pagination.current, pagination.pageSize, searchText, roleFilter, statusFilter, newSortBy, newSortDir);
+		} else {
+			// Handle pagination without sorting change
+			fetchAccounts(pagination.current, pagination.pageSize, searchText, roleFilter, statusFilter, sortBy, sortDir);
+		}
 	};
 
 	const handleAddAccount = () => {
@@ -151,9 +210,9 @@ const AccountList = () => {
 	const handleToggleStatus = (id) => {
 		const account = accounts.find((a) => a.id === id);
 		if (account) {
-			const newStatus = account.status === 'active' ? 'inactive' : 'active';
+			const newStatus = account.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
 			const actionText =
-				newStatus === 'active'
+				newStatus === 'ACTIVE'
 					? t('accountManagement.active')
 					: t('accountManagement.inactive');
 
@@ -165,30 +224,46 @@ const AccountList = () => {
 				)} ${actionText} ${t('accountManagement.account')} "${
 					account.username
 				}"?`,
-				onConfirm: () => {
-					setAccounts(
-						accounts.map((a) => (a.id === id ? { ...a, status: newStatus } : a))
-					);
-					setConfirmModal({
-						visible: false,
-						title: '',
-						content: '',
-						onConfirm: null,
-					});
+				onConfirm: async () => {
+					try {
+						// Call API to update status
+						await accountManagementApi.updateAccountStatus(id, newStatus);
+						
+						// Update local state
+						setAccounts(
+							accounts.map((a) => (a.id === id ? { ...a, status: newStatus } : a))
+						);
+						
+						setConfirmModal({
+							visible: false,
+							title: '',
+							content: '',
+							onConfirm: null,
+						});
 
-					// Show success message
-					if (newStatus === 'active') {
-						spaceToast.success(
-							`${t('accountManagement.activateAccountSuccess')} "${
-								account.username
-							}" ${t('accountManagement.success')}`
-						);
-					} else {
-						spaceToast.success(
-							`${t('accountManagement.deactivateAccountSuccess')} "${
-								account.username
-							}" ${t('accountManagement.success')}`
-						);
+						// Show success message
+						if (newStatus === 'ACTIVE') {
+							spaceToast.success(
+								`${t('accountManagement.activateAccountSuccess')} "${
+									account.username
+								}" ${t('accountManagement.success')}`
+							);
+						} else {
+							spaceToast.success(
+								`${t('accountManagement.deactivateAccountSuccess')} "${
+									account.username
+								}" ${t('accountManagement.success')}`
+							);
+						}
+					} catch (error) {
+						console.error('Error updating account status:', error);
+						message.error(t('accountManagement.updateStatusError'));
+						setConfirmModal({
+							visible: false,
+							title: '',
+							content: '',
+							onConfirm: null,
+						});
 					}
 				},
 			});
@@ -306,61 +381,53 @@ const AccountList = () => {
 
 	const getStatusTag = (status) => {
 		const statusConfig = {
-			active: { color: 'green', text: t('accountManagement.active') },
-			inactive: { color: 'red', text: t('accountManagement.inactive') },
-			pending: { color: 'orange', text: t('accountManagement.pending') },
+			ACTIVE: { color: 'green', text: t('accountManagement.active') },
+			INACTIVE: { color: 'red', text: t('accountManagement.inactive') },
 		};
 
-		const config = statusConfig[status] || statusConfig.inactive;
+		const config = statusConfig[status] || statusConfig.INACTIVE;
 		return <Tag color={config.color}>{config.text}</Tag>;
 	};
 
 	const getRoleTag = (role) => {
-		const roleConfig = {
-			Admin: { color: 'purple' },
-			Teacher: { color: 'blue' },
-			Student: { color: 'cyan' },
-			Manager: { color: 'gold' },
-		};
-
-		const config = roleConfig[role] || { color: 'default' };
 		const roleTranslations = {
-			Admin: t('accountManagement.admin'),
-			Teacher: t('accountManagement.teacher'),
-			Student: t('accountManagement.student'),
-			Manager: t('accountManagement.manager'),
+			ADMIN: t('accountManagement.admin'),
+			TEACHER: t('accountManagement.teacher'),
+			STUDENT: t('accountManagement.student'),
+			MANAGER: t('accountManagement.manager'),
+			TEACHING_ASSISTANT: t('accountManagement.teacherAssistant'),
+			TEST_TAKER: t('accountManagement.testTaker'),
 		};
 
 		return roleTranslations[role] || role;
 	};
-
-	// Filter data based on search and filters
-	const filteredAccounts = accounts.filter((account) => {
-		const matchesSearch =
-			searchText === '' ||
-			account.username.toLowerCase().includes(searchText.toLowerCase()) ||
-			account.email.toLowerCase().includes(searchText.toLowerCase()) ||
-			account.fullName.toLowerCase().includes(searchText.toLowerCase());
-
-		const matchesStatus =
-			statusFilter === 'all' || account.status === statusFilter;
-		const matchesRole = roleFilter === 'all' || account.role === roleFilter;
-
-		return matchesSearch && matchesStatus && matchesRole;
-	});
+	console.log(theme);
+	
+	// No need for client-side filtering since API handles filtering
 
 	const columns = [
+		{
+			title: 'No',
+			key: 'index',
+			width: 60,
+			render: (_, __, index) => {
+				// Calculate index based on current page and page size
+				const currentPage = pagination.current || 1;
+				const pageSize = pagination.pageSize || 10;
+				return (currentPage - 1) * pageSize + index + 1;
+			},
+		},
 		{
 			title: t('accountManagement.username'),
 			dataIndex: 'username',
 			key: 'username',
-			sorter: (a, b) => a.username.localeCompare(b.username),
+			sorter: true,
 		},
 		{
 			title: t('accountManagement.fullName'),
 			dataIndex: 'fullName',
 			key: 'fullName',
-			sorter: (a, b) => a.fullName.localeCompare(b.fullName),
+			sorter: true,
 		},
 		{
 			title: t('accountManagement.email'),
@@ -389,37 +456,19 @@ const AccountList = () => {
 			dataIndex: 'role',
 			key: 'role',
 			render: (role) => getRoleTag(role),
-			filters: [
-				{ text: t('accountManagement.admin'), value: 'Admin' },
-				{ text: t('accountManagement.teacher'), value: 'Teacher' },
-				{ text: t('accountManagement.student'), value: 'Student' },
-				{ text: t('accountManagement.manager'), value: 'Manager' },
-			],
-			onFilter: (value, record) => record.role === value,
 		},
 		{
 			title: t('accountManagement.status'),
 			dataIndex: 'status',
 			key: 'status',
 			render: (status) => getStatusTag(status),
-			filters: [
-				{ text: t('accountManagement.active'), value: 'active' },
-				{ text: t('accountManagement.inactive'), value: 'inactive' },
-				{ text: t('accountManagement.pending'), value: 'pending' },
-			],
-			onFilter: (value, record) => record.status === value,
 		},
 		{
 			title: t('accountManagement.createdAt'),
 			dataIndex: 'createdAt',
 			key: 'createdAt',
-			sorter: (a, b) => new Date(a.createdAt) - new Date(b.createdAt),
-		},
-		{
-			title: t('accountManagement.lastLogin'),
-			dataIndex: 'lastLogin',
-			key: 'lastLogin',
-			render: (lastLogin) => lastLogin || t('accountManagement.neverLoggedIn'),
+			sorter: true,
+			defaultSortOrder: 'ascend',
 		},
 		{
 			title: t('accountManagement.actions'),
@@ -437,14 +486,14 @@ const AccountList = () => {
 					</Tooltip>
 					<Tooltip
 						title={
-							record.status === 'active'
+							record.status === 'ACTIVE'
 								? t('accountManagement.deactivate')
 								: t('accountManagement.activate')
 						}>
 						<Button
 							type='text'
 							icon={
-								record.status === 'active' ? (
+								record.status === 'ACTIVE' ? (
 									<StopOutlined style={{ fontSize: '25px' }} />
 								) : (
 									<CheckOutlined style={{ fontSize: '25px' }} />
@@ -453,7 +502,7 @@ const AccountList = () => {
 							size='small'
 							onClick={() => handleToggleStatus(record.id)}
 							style={{
-								color: record.status === 'active' ? '#ff4d4f' : '#52c41a',
+								color: record.status === 'ACTIVE' ? '#ff4d4f' : '#52c41a',
 								padding: '4px 8px',
 							}}
 						/>
@@ -466,7 +515,7 @@ const AccountList = () => {
 	return (
 		<ThemedLayout>
 			{/* Main Content Panel */}
-			<div className={`account-page main-content-panel ${theme}-main-panel`}>
+			<div className={`account-page ${theme}-theme main-content-panel`}>
 				{/* Header Section */}
 				<div className={`panel-header ${theme}-panel-header`}>
 					<div className='search-section'>
@@ -476,9 +525,42 @@ const AccountList = () => {
 							value={searchText}
 							onChange={(e) => handleSearch(e.target.value)}
 							className={`search-input ${theme}-search-input`}
+							style={{ flex: '1', minWidth: '250px', maxWidth: '400px', width: '350px' }}
 							allowClear
 						/>
-						<div style={{width: 500}}></div>
+						
+						{/* Role Filter */}
+						<Select
+							placeholder={t('accountManagement.filterByRole')}
+							value={roleFilter}
+							onChange={handleRoleFilterChange}
+							className={`filter-select ${theme}-filter-select`}
+							style={{ width: 150, marginLeft: '12px' }}
+							allowClear>
+							<Option value='all'>{t('accountManagement.allRoles')}</Option>
+							<Option value='ADMIN'>{t('accountManagement.admin')}</Option>
+							<Option value='TEACHER'>{t('accountManagement.teacher')}</Option>
+							<Option value='STUDENT'>{t('accountManagement.student')}</Option>
+							<Option value='MANAGER'>{t('accountManagement.manager')}</Option>
+							<Option value='TEACHING_ASSISTANT'>{t('accountManagement.teacherAssistant')}</Option>
+							<Option value='TEST_TAKER'>{t('accountManagement.testTaker')}</Option>
+						</Select>
+
+						{/* Status Filter */}
+						<Select
+							placeholder={t('accountManagement.filterByStatus')}
+							value={statusFilter}
+							onChange={handleStatusFilterChange}
+							className={`filter-select ${theme}-filter-select`}
+							style={{ width: 150, marginLeft: '12px' }}
+							allowClear>
+							<Option value='all'>{t('accountManagement.allStatuses')}</Option>
+							<Option value='ACTIVE'>{t('accountManagement.active')}</Option>
+							<Option value='INACTIVE'>{t('accountManagement.inactive')}</Option>
+						</Select>
+
+						{/* Spacer để đẩy action buttons về bên phải */}
+						<div style={{ flex: '1' }}></div>
 					</div>
 					<div className='action-buttons'>
 						<Button
@@ -508,17 +590,13 @@ const AccountList = () => {
 						message={t('accountManagement.loadingAccounts')}>
 						<Table
 							columns={columns}
-							dataSource={filteredAccounts}
+							dataSource={accounts}
 							rowKey='id'
 							pagination={{
-								total: filteredAccounts.length,
-								pageSize: 10,
-								showSizeChanger: true,
-								showQuickJumper: true,
-								showTotal: (total, range) =>
-									`${range[0]}-${range[1]} of ${total}`,
+								...pagination,
 								className: `${theme}-pagination`,
 							}}
+							onChange={handleTableChange}
 							scroll={{ x: 1200 }}
 							className={`account-table ${theme}-account-table`}
 						/>
@@ -552,8 +630,8 @@ const AccountList = () => {
 					form={form}
 					layout='vertical'
 					initialValues={{
-						status: 'active',
-						role: 'Student',
+						status: 'ACTIVE',
+						role: 'STUDENT',
 					}}>
 					<Row gutter={16}>
 						<Col span={12}>
@@ -671,14 +749,14 @@ const AccountList = () => {
 								]}
 								required={false}>
 								<Select placeholder={t('accountManagement.selectRole')}>
-									<Option value='Admin'>{t('accountManagement.admin')}</Option>
-									<Option value='Teacher'>
+									<Option value='ADMIN'>{t('accountManagement.admin')}</Option>
+									<Option value='TEACHER'>
 										{t('accountManagement.teacher')}
 									</Option>
-									<Option value='Student'>
+									<Option value='STUDENT'>
 										{t('accountManagement.student')}
 									</Option>
-									<Option value='Manager'>
+									<Option value='MANAGER'>
 										{t('accountManagement.manager')}
 									</Option>
 								</Select>
@@ -701,14 +779,11 @@ const AccountList = () => {
 								]}
 								required={false}>
 								<Select placeholder={t('accountManagement.selectStatus')}>
-									<Option value='active'>
+									<Option value='ACTIVE'>
 										{t('accountManagement.active')}
 									</Option>
-									<Option value='inactive'>
+									<Option value='INACTIVE'>
 										{t('accountManagement.inactive')}
-									</Option>
-									<Option value='pending'>
-										{t('accountManagement.pending')}
 									</Option>
 								</Select>
 							</Form.Item>
