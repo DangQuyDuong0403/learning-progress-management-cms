@@ -33,7 +33,12 @@
     "gender": "Gender",
     "male": "Male",
     "female": "Female",
-    "dateOfBirth": "Date of Birth"
+    "dateOfBirth": "Date of Birth",
+    "phoneNumber": "Phone Number",
+    "address": "Address",
+    "avatar": "Avatar",
+    "personalInformation": "Personal Information",
+    "contactInformation": "Contact Information"
   },
   "sidebar": {
     "title": "Learning CMS",

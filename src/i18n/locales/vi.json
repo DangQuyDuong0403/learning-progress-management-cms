@@ -33,7 +33,12 @@
     "gender": "Giới tính",
     "male": "Nam",
     "female": "Nữ",
-    "dateOfBirth": "Ngày sinh"
+    "dateOfBirth": "Ngày sinh",
+    "phoneNumber": "Số điện thoại",
+    "address": "Địa chỉ",
+    "avatar": "Ảnh đại diện",
+    "personalInformation": "Thông tin cá nhân",
+    "contactInformation": "Thông tin liên hệ"
   },
   "sidebar": {
     "title": "Learning CMS",
@@ -425,7 +430,6 @@
     "nameMinLength": "Tên phải có ít nhất 2 ký tự!",
     "phoneRequired": "Vui lòng nhập số điện thoại!",
     "phoneInvalid": "Số điện thoại không hợp lệ!",
-    "classRequired": "Vui lòng chọn lớp!",
     "levelRequired": "Vui lòng chọn cấp độ!",
     "genderRequired": "Vui lòng chọn giới tính!",
     "selectGender": "Chọn giới tính",
@@ -1244,11 +1248,9 @@
     "assignTeacherSuccess": "Phân công giáo viên vào lớp thành công",
     "assignTeacherError": "Lỗi khi phân công giáo viên vào lớp",
     "assignToSelectedClasses": "Phân công vào các lớp đã chọn",
-    "teacherInfo": "Thông tin giáo viên",
     "availableClasses": "Các lớp có sẵn",
     "selectedClasses": "Các lớp đã chọn",
     "searchClasses": "Tìm kiếm lớp...",
-    "className": "Tên lớp",
     "currentTeacher": "Giáo viên hiện tại",
     "noTeacher": "Chưa có giáo viên",
     "students": "Học sinh",

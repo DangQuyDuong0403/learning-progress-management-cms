@@ -29,7 +29,15 @@ const authApi = {
 	logout: (refreshToken) => axiosClient.post(`/auth/logout?refreshToken=${refreshToken}`),
 
 	// Lấy thông tin user hiện tại
-	// getProfile: () => axiosClient.get('/auth/me'),
+	getUserProfile: () => axiosClient.get('/user/profile'),
+
+	// Đổi mật khẩu
+	changePassword: (data) => axiosClient.post('/auth/change-password', data, {
+		headers: {
+			'Content-Type': 'application/json',
+			'accept': '*/*',
+		}
+	}),
 };
 
 export default authApi;

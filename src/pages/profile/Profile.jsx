@@ -1,20 +1,37 @@
-import React, { useRef } from 'react';
+import React, { useRef, useEffect } from 'react';
 import { toast } from 'react-toastify';
 import { useTranslation } from 'react-i18next';
-import { useSelector } from 'react-redux';
+import { useSelector, useDispatch } from 'react-redux';
 import './Profile.css';
 import ThemedLayout from '../../component/ThemedLayout';
 import { useTheme } from '../../contexts/ThemeContext';
+import { getUserProfile } from '../../redux/auth';
 
 export default function Profile() {
   const { t } = useTranslation();
-  const { user } = useSelector((state) => state.auth);
+  const { user, profileData, profileLoading, profileError } = useSelector((state) => state.auth);
   const { theme } = useTheme();
+  const dispatch = useDispatch();
   
+  const usernameRef = useRef();
   const lastNameRef = useRef();
   const firstNameRef = useRef();
   const emailRef = useRef();
+  const phoneRef = useRef();
+  const addressRef = useRef();
   const birthDateRef = useRef();
+
+  // Fetch user profile data on component mount
+  useEffect(() => {
+    dispatch(getUserProfile());
+  }, [dispatch]);
+
+  // Handle profile error
+  useEffect(() => {
+    if (profileError) {
+      toast.error('Failed to load profile data');
+    }
+  }, [profileError]);
 
 
   function validateName(name) {
@@ -37,12 +54,15 @@ export default function Profile() {
 
   const handleUpdate = (e) => {
     e.preventDefault();
+    const username = usernameRef.current.value.trim();
     const lastName = lastNameRef.current.value.trim();
     const firstName = firstNameRef.current.value.trim();
     const email = emailRef.current.value.trim();
+    const phone = phoneRef.current.value.trim();
+    const address = addressRef.current.value.trim();
     const birthDate = birthDateRef.current.value;
 
-    if (!lastName || !firstName || !email || !birthDate) {
+    if (!username || !lastName || !firstName || !email || !phone || !address || !birthDate) {
       toast.error(t('messages.required'));
       return;
     }
@@ -68,6 +88,26 @@ export default function Profile() {
 
   
 
+  // Show loading spinner while fetching profile data
+  if (profileLoading) {
+    return (
+      <ThemedLayout>
+        <div className={`profile-container profile-page ${theme}-profile-container`}>
+          <div className="loading-container" style={{ 
+            display: 'flex', 
+            justifyContent: 'center', 
+            alignItems: 'center', 
+            height: '50vh' 
+          }}>
+            <div className="spinner-border text-primary" role="status">
+              <span className="sr-only">Loading...</span>
+            </div>
+          </div>
+        </div>
+      </ThemedLayout>
+    );
+  }
+
   return (
      <ThemedLayout>
     <div className={`profile-container profile-page ${theme}-profile-container`}>
@@ -79,108 +119,193 @@ export default function Profile() {
         <div className="content-area">
           <div className="profile-content">
             <div className="profile-cards">
-                  {/* Personal Information Card */}
-                  <div className={`profile-card personal-info-card ${theme}-profile-card`}>
-                    <div className={`card-header ${theme}-card-header`}>
-                      <h3
-                        style={{
-                          fontWeight: 700,
-                          fontSize: '1.5rem',
-                          letterSpacing: '0.5px',
-                          margin: 0,
-                         
-                        }}
-                      >
-                        {t('profile.personalInfo')}
-                      </h3>
-                      <i className="ti ti-user"></i>
-                    </div>
-                    <div className="card-content">
-                      <div className="profile-info-layout">
-                        {/* Left side - Profile Picture and Name */}
-                        <div className="profile-left">
-                          <div className="profile-picture-container">
-                            <div className="profile-picture-placeholder">
-                              <img src="/img/avatar_1.png" alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} />
-                            </div>
-                          </div>
-                          <div className="profile-name-section">
-                            <h4 className="profile-full-name">{user?.fullName || 'Nguyen Duc Anh'}</h4>
-                            <p className="profile-role">{user?.role || 'Admin'}</p>
-                          
-                          </div>
-                        </div>
-                        {/* Right side - Form Fields */}
-                        <div className="profile-right">
-                          <div className="form-row">
-                            <div className="form-group" style={{ flex: 1 }}>
-                              <label htmlFor="lastName" className={`form-label ${theme}-form-label`}>{t('common.lastName')}</label>
-                              <input 
-                                type="text" 
-                                id="lastName" 
-                                className={`form-input ${theme}-form-input`} 
-                                defaultValue="Nguyen Duc"
-                                ref={lastNameRef}
-                              />
-                            </div>
-                            <div className="form-group" style={{ flex: 1, marginLeft: '1rem' }}>
-                              <label htmlFor="firstName" className={`form-label ${theme}-form-label`}>{t('common.firstName')}</label>
-                              <input 
-                                type="text" 
-                                id="firstName" 
-                                className={`form-input ${theme}-form-input`} 
-                                defaultValue="Anh"
-                                ref={firstNameRef}
-                              />
-                            </div>
-                          </div>
-                          <div className="form-group">
-                            <label htmlFor="email" className={`form-label ${theme}-form-label`}>{t('common.email')}</label>
-                            <input 
-                              type="email" 
-                              id="email" 
-                              className={`form-input ${theme}-form-input`} 
-                              defaultValue="anhtony2003@gmail.com"
-                              ref={emailRef}
-                            />
-                          </div>
-                          <div className="form-group">
-                            <label className={`form-label ${theme}-form-label`}>{t('common.gender')}</label>
-                            <div className="radio-group">
-                              <label className={`radio-label ${theme}-radio-label`}>
-                                <input type="radio" name="gender" value="male" defaultChecked />
-                                <span className={`radio-custom ${theme}-radio-custom`}></span>
-                                {t('common.male')}
-                              </label>
-                              <label className={`radio-label ${theme}-radio-label`}>
-                                <input type="radio" name="gender" value="female" />
-                                <span className={`radio-custom ${theme}-radio-custom`}></span>
-                                {t('common.female')}
-                              </label>
-                            </div>
-                          </div>
-                          <div className="form-group">
-                            <label htmlFor="birthDate" className={`form-label ${theme}-form-label`}>{t('common.dateOfBirth')}</label>
-                            <div className="date-input-container">
-                              <input 
-                                type="date" 
-                                id="birthDate" 
-                                className={`form-input ${theme}-form-input`} 
-                                defaultValue="2003-05-16"
-                                ref={birthDateRef}
-                              />
-                              <i className="ti ti-calendar date-icon"></i>
-                            </div>
-                          </div>
+              {/* Update Button */}
+              <div className="form-actions-container">
+                <button className={`btn btn-primary ${theme}-btn-primary`} onClick={handleUpdate}>
+                  {t('common.update')}
+                </button>
+              </div>
+
+              {/* Personal Information Card */}
+              <div className={`profile-card personal-info-card ${theme}-profile-card`}>
+                <div className={`card-header ${theme}-card-header`}>
+                  <h3
+                    style={{
+                      fontWeight: 700,
+                      fontSize: '1.5rem',
+                      letterSpacing: '0.5px',
+                      margin: 0,
+                    }}
+                  >
+                    {t('common.personalInformation')}
+                  </h3>
+                  <i className="ti ti-user"></i>
+                </div>
+                <div className="card-content">
+                  <div className="profile-info-layout">
+                    {/* Left side - Profile Picture and Name */}
+                    <div className="profile-left">
+                      <div className="profile-picture-container">
+                        <div className="profile-picture-placeholder">
+                          <img 
+                            src={profileData?.avatarUrl || "/img/avatar_1.png"} 
+                            alt="Profile" 
+                            style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} 
+                          />
                         </div>
                       </div>
-                      <div className="form-actions">
-                        <button className={`btn btn-primary ${theme}-btn-primary`} onClick={handleUpdate}>{t('common.update')}</button>
+                      <div className="profile-name-section">
+                        <h4 className="profile-full-name">
+                          {profileData ? `${profileData.lastName} ${profileData.firstName}` : (user?.fullName || 'Nguyen Duc Anh')}
+                        </h4>
+                        <p className="profile-role">{profileData?.role || user?.role || 'Admin'}</p>
+                      </div>
+                    </div>
+                    
+                    {/* Right side - Personal Info Form Fields */}
+                    <div className="profile-right">
+                      {/* Username Field */}
+                      <div className="form-group">
+                        <label htmlFor="username" className={`form-label ${theme}-form-label`}>{t('common.username')}</label>
+                        <input 
+                          type="text" 
+                          id="username" 
+                          className={`form-input ${theme}-form-input`} 
+                          defaultValue={profileData?.username || "test1"}
+                          ref={usernameRef}
+                        />
+                      </div>
+
+                      {/* Name Fields Row */}
+                      <div className="form-row">
+                        <div className="form-group" style={{ flex: 1 }}>
+                          <label htmlFor="lastName" className={`form-label ${theme}-form-label`}>{t('common.lastName')}</label>
+                          <input 
+                            type="text" 
+                            id="lastName" 
+                            className={`form-input ${theme}-form-input`} 
+                            defaultValue={profileData?.lastName || "Nguyen Duc"}
+                            ref={lastNameRef}
+                          />
+                        </div>
+                        <div className="form-group" style={{ flex: 1, marginLeft: '1rem' }}>
+                          <label htmlFor="firstName" className={`form-label ${theme}-form-label`}>{t('common.firstName')}</label>
+                          <input 
+                            type="text" 
+                            id="firstName" 
+                            className={`form-input ${theme}-form-input`} 
+                            defaultValue={profileData?.firstName || "Anh"}
+                            ref={firstNameRef}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Gender and Date of Birth Row */}
+                      <div className="form-row">
+                        <div className="form-group" style={{ flex: 1 }}>
+                          <label className={`form-label ${theme}-form-label`}>{t('common.gender')}</label>
+                          <div className="radio-group">
+                            <label className={`radio-label ${theme}-radio-label`}>
+                              <input 
+                                type="radio" 
+                                name="gender" 
+                                value="Male" 
+                                defaultChecked={profileData?.gender === "Male"} 
+                              />
+                              <span className={`radio-custom ${theme}-radio-custom`}></span>
+                              {t('common.male')}
+                            </label>
+                            <label className={`radio-label ${theme}-radio-label`}>
+                              <input 
+                                type="radio" 
+                                name="gender" 
+                                value="Female" 
+                                defaultChecked={profileData?.gender === "Female"} 
+                              />
+                              <span className={`radio-custom ${theme}-radio-custom`}></span>
+                              {t('common.female')}
+                            </label>
+                          </div>
+                        </div>
+                        <div className="form-group" style={{ flex: 1, marginLeft: '1rem' }}>
+                          <label htmlFor="birthDate" className={`form-label ${theme}-form-label`}>{t('common.dateOfBirth')}</label>
+                          <div className="date-input-container">
+                            <input 
+                              type="date" 
+                              id="birthDate" 
+                              className={`form-input ${theme}-form-input`} 
+                              defaultValue={
+                                profileData?.dateOfBirth 
+                                  ? new Date(profileData.dateOfBirth).toISOString().split('T')[0]
+                                  : "2003-05-16"
+                              }
+                              ref={birthDateRef}
+                            />
+                            <i className="ti ti-calendar date-icon"></i>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </div>
-                
                 </div>
+              </div>
+
+              {/* Contact Information Card */}
+              <div className={`profile-card contact-info-card ${theme}-profile-card`}>
+                <div className={`card-header ${theme}-card-header`}>
+                  <h3
+                    style={{
+                      fontWeight: 700,
+                      fontSize: '1.5rem',
+                      letterSpacing: '0.5px',
+                      margin: 0,
+                    }}
+                  >
+                    {t('common.contactInformation')}
+                  </h3>
+                  <i className="ti ti-mail"></i>
+                </div>
+                <div className="card-content">
+                  <div className="contact-info-layout">
+                    {/* Email Field */}
+                    <div className="form-group">
+                      <label htmlFor="email" className={`form-label ${theme}-form-label`}>{t('common.email')}</label>
+                      <input 
+                        type="email" 
+                        id="email" 
+                        className={`form-input ${theme}-form-input`} 
+                        defaultValue={profileData?.email || "anhtony2003@gmail.com"}
+                        ref={emailRef}
+                      />
+                    </div>
+
+                    {/* Phone Number Field */}
+                    <div className="form-group">
+                      <label htmlFor="phone" className={`form-label ${theme}-form-label`}>{t('common.phoneNumber')}</label>
+                      <input 
+                        type="tel" 
+                        id="phone" 
+                        className={`form-input ${theme}-form-input`} 
+                        defaultValue={profileData?.phoneNumber || "0987654321"}
+                        ref={phoneRef}
+                      />
+                    </div>
+
+                    {/* Address Field */}
+                    <div className="form-group">
+                      <label htmlFor="address" className={`form-label ${theme}-form-label`}>{t('common.address')}</label>
+                      <input 
+                        type="text" 
+                        id="address" 
+                        className={`form-input ${theme}-form-input`} 
+                        defaultValue={profileData?.address || "fsd"}
+                        ref={addressRef}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
               </div>
             </div>
           </div>

@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useDispatch, useSelector } from 'react-redux';
 import {
 	Card,
 	Button,
@@ -18,6 +19,7 @@ import {
 import ThemedLayout from '../../component/ThemedLayout';
 import { useTheme } from '../../contexts/ThemeContext';
 import { spaceToast } from '../../component/SpaceToastify';
+import { changePassword, clearChangePasswordState } from '../../redux/auth';
 import './Settings.css';
 
 const { Text } = Typography;
@@ -25,34 +27,54 @@ const { Text } = Typography;
 const Settings = () => {
 	const { t, i18n } = useTranslation();
 	const { theme, toggleTheme } = useTheme();
+	const dispatch = useDispatch();
 	const [passwordForm] = Form.useForm();
 	
+	// Redux state
+	const { 
+		changePasswordLoading, 
+		changePasswordError, 
+		changePasswordSuccess 
+	} = useSelector((state) => state.auth);
 
 	const [modals, setModals] = useState({
 		password: false,
 		delete: false,
 	});
 
-	const [loading, setLoading] = useState(false);
 	const [isTransitioning, setIsTransitioning] = useState(false);
 	const [transitionDirection, setTransitionDirection] = useState('right'); // 'right' for sun->space, 'left' for space->sun
+
+	// Handle change password success/error
+	useEffect(() => {
+		if (changePasswordSuccess) {
+			spaceToast.success(t('settings.passwordChangedSuccess'));
+			setModals(prev => ({ ...prev, password: false }));
+			passwordForm.resetFields();
+			dispatch(clearChangePasswordState());
+		}
+		if (changePasswordError) {
+			message.error(changePasswordError || t('settings.passwordChangeError'));
+			dispatch(clearChangePasswordState());
+		}
+	}, [changePasswordSuccess, changePasswordError, dispatch, t, passwordForm]);
 
 	// Password change functionality
 	const handlePasswordChange = async () => {
 		try {
-			await passwordForm.validateFields();
-			setLoading(true);
+			const values = await passwordForm.validateFields();
 			
-			// Simulate API call
-			await new Promise(resolve => setTimeout(resolve, 1000));
+			// Prepare data for API call
+			const passwordData = {
+				oldPassword: values.currentPassword,
+				newPassword: values.newPassword,
+				confirmPassword: values.confirmPassword
+			};
 			
-			spaceToast.success(t('settings.passwordChangedSuccess'));
-			setModals(prev => ({ ...prev, password: false }));
-			passwordForm.resetFields();
+			dispatch(changePassword(passwordData));
 		} catch (error) {
-			message.error(t('settings.passwordChangeError'));
-		} finally {
-			setLoading(false);
+			// Form validation error
+			console.error('Form validation error:', error);
 		}
 	};
 
@@ -92,6 +114,7 @@ const Settings = () => {
 		setModals(prev => ({ ...prev, [modalName]: false }));
 		if (modalName === 'password') {
 			passwordForm.resetFields();
+			dispatch(clearChangePasswordState());
 		}
 	};
 
@@ -207,7 +230,7 @@ const Settings = () => {
 				onCancel={() => closeModal('password')}
 				okText={t('common.save')}
 				cancelText={t('common.cancel')}
-				confirmLoading={loading}
+				confirmLoading={changePasswordLoading}
 				width={500}
 				className={`settings-modal ${theme}-settings-modal`}
 			>
