@@ -1,7 +1,7 @@
 /* Teacher List Styles - Space Theme */
 
 /* ===== MAIN CONTENT PANEL ===== */
-.main-content-panel {
+.teacher-page .main-content-panel {
 	background: rgba(45, 27, 105, 0.75);
 	backdrop-filter: none;
 	border-radius: 16px;
@@ -13,7 +13,7 @@
 	z-index: 2;
 }
 
-.space-theme .main-content-panel {
+.teacher-page.space-theme .main-content-panel {
 	position: relative;
 	background: rgba(
 		110,
@@ -35,7 +35,7 @@
 }
 
 /* Sun theme main content panel */
-.sun-theme .main-content-panel {
+.teacher-page.sun-theme .main-content-panel {
 	position: relative;
 	background: rgba(
 		255,
@@ -57,7 +57,7 @@
 }
 
 /* ===== PANEL HEADER ===== */
-.panel-header {
+.teacher-page .panel-header {
 	display: flex;
 	justify-content: space-between;
 	align-items: center;
@@ -65,7 +65,7 @@
 	gap: 16px;
 }
 
-.search-section {
+.teacher-page .search-section {
 	display: flex;
 	align-items: center;
 	flex: 1;
@@ -73,7 +73,7 @@
 	gap: 12px;
 }
 
-.search-input {
+.teacher-page .search-input {
 	width: 100%;
 	height: 40px;
 	border-radius: 20px;
@@ -81,7 +81,7 @@
 	color: #000;
 }
 
-.space-theme .search-input {
+.teacher-page.space-theme .search-input {
 	background: #413075;
 	border: 1px solid #604b9e;
 	outline: none !important;
@@ -89,7 +89,7 @@
 	backdrop-filter: none;
 }
 
-.space-theme .search-input .ant-input {
+.teacher-page.space-theme .search-input .ant-input {
 	background: transparent;
 	border: none;
 	outline: none;
@@ -97,7 +97,7 @@
 	color: #fff;
 }
 
-.space-theme .search-input .ant-input:focus {
+.teacher-page.space-theme .search-input .ant-input:focus {
 	background: transparent;
 	border: none;
 	outline: none;
@@ -105,7 +105,7 @@
 	color: #fff;
 }
 
-.filter-select {
+.teacher-page .filter-select {
 	height: 40px;
 }
 
@@ -124,13 +124,13 @@
 	color: #fff !important;
 }
 
-.action-buttons {
+.teacher-page .action-buttons {
 	display: flex;
 	gap: 12px;
 }
 
 /* ===== BUTTON STYLES ===== */
-.export-button {
+.teacher-page .export-button {
 	height: 40px;
 	border-radius: 8px;
 	font-weight: 500;
@@ -141,7 +141,7 @@
 	transition: all 0.3s ease;
 }
 
-.import-button {
+.teacher-page .import-button {
 	height: 40px;
 	border-radius: 8px;
 	font-weight: 500;
@@ -152,18 +152,18 @@
 	transition: all 0.3s ease;
 }
 
-.refresh-button {
+.teacher-page .refresh-button {
 	height: 40px;
 	border-radius: 8px;
 	font-weight: 500;
-	border: 1px solid rgba(102, 174, 255, 0.3);
-	background: linear-gradient(135deg, #ffffff, #b6d8fe 77%, #94c2f5);
-	color: #000000;
+	border: 1px solid rgba(77, 208, 255, 0.3);
+	background: #6B4C93;
+	color: #ffffff;
 	backdrop-filter: blur(10px);
 	transition: all 0.3s ease;
 }
 
-.create-button {
+.teacher-page .create-button {
 	height: 40px;
 	border-radius: 8px;
 	font-weight: 500;
@@ -174,14 +174,14 @@
 	transition: all 0.3s ease;
 }
 
-.export-button:hover {
+.teacher-page .export-button:hover {
 	background: rgba(77, 208, 255, 0.2);
 	border-color: rgba(77, 208, 255, 0.6);
 	transform: translateY(-2px);
 	box-shadow: 0 4px 12px rgba(77, 208, 255, 0.3);
 }
 
-.import-button:hover {
+.teacher-page .import-button:hover {
 	background: linear-gradient(135deg, #66aeff, #3c99ff);
 	border-color: rgba(102, 174, 255, 0.6);
 	transform: translateY(-2px);
@@ -189,16 +189,16 @@
 	filter: brightness(1.1);
 }
 
-.refresh-button:hover {
-	background: #ffffff;
-	border-color: rgba(24, 144, 255, 0.6);
-	color: #1890ff;
+.teacher-page .refresh-button:hover {
+	background: #5A3F7A;
+	border-color: rgba(77, 208, 255, 0.6);
+	color: #ffffff;
 	transform: translateY(-2px);
-	box-shadow: 0 4px 12px rgba(24, 144, 255, 0.4);
+	box-shadow: 0 4px 12px rgba(107, 76, 147, 0.4);
 	filter: brightness(1.1);
 }
 
-.create-button:hover {
+.teacher-page .create-button:hover {
 	background: linear-gradient(135deg, #66aeff, #3c99ff);
 	border-color: rgba(102, 174, 255, 0.6);
 	transform: translateY(-2px);
@@ -550,44 +550,49 @@
 }
 
 /* ===== ACTION BUTTON ICONS ===== */
-.teacher-table .ant-btn .anticon {
+.teacher-page .teacher-table .ant-btn .anticon {
 	color: #000;
 }
 /* .space-theme .teacher-table .ant-btn .anticon {
 	color: #ffffff;
 } */
 
-.space-theme .refresh-button .anticon {
+.teacher-page.space-theme .refresh-button .anticon {
 	color: #ffffff !important;
 }
 
-.refresh-button:hover .anticon {
-	color: #1890ff !important;
+.teacher-page .refresh-button:hover .anticon {
+	color: #ffffff !important;
 }
 
-.space-theme .refresh-button:hover .anticon {
-	color: #1890ff !important;
+.teacher-page.space-theme .refresh-button:hover .anticon {
+	color: #ffffff !important;
 }
 
-.space-theme .create-button .anticon {
+.teacher-page.space-theme .create-button .anticon {
 	color: #000000 !important;
 }
 
-.space-theme .create-button svg {
+.teacher-page.space-theme .create-button svg {
 	color: #000000;
 	fill: #000000;
 }
 
-.teacher-table .ant-btn:hover .anticon {
+.teacher-page .teacher-table .ant-btn:hover .anticon {
 	color: #000;
 }
 
 /* Space theme specific button opacity */
-.space-theme .export-button,
-.space-theme .import-button,
-.space-theme .refresh-button {
+.teacher-page.space-theme .export-button,
+.teacher-page.space-theme .import-button {
 	background: rgba(109, 95, 143, 0.2);
 	border: 1px solid rgba(109, 95, 143, 0.3);
+	color: #fff;
+}
+
+.teacher-page.space-theme .refresh-button {
+	background: #6B4C93;
+	border: 1px solid rgba(77, 208, 255, 0.3);
 	color: #fff;
 }
 
@@ -933,8 +938,6 @@
 	backdrop-filter: blur(10px);
 }
 
-
-
 .space-theme .teacher-info-card:hover {
 	transform: translateY(-2px);
 	box-shadow: 0 8px 24px rgba(77, 208, 255, 0.2);
@@ -1076,6 +1079,7 @@
 	backdrop-filter: blur(10px);
 }
 
+
 .space-theme .profile-card:hover {
 	transform: translateY(-2px);
 	box-shadow: 0 8px 24px rgba(77, 208, 255, 0.2);
@@ -1122,6 +1126,26 @@
 	border: 1px solid rgba(0, 0, 0, 0.1) !important;
 }
 
+.space-theme .classes-card .ant-card-head {
+	background: transparent !important;
+	border-bottom: 1px solid rgba(77, 208, 255, 0.3) !important;
+}
+
+.space-theme .classes-card .ant-card-head-title {
+	color: #fff !important;
+	font-weight: 600; 
+}
+
+.sun-theme .classes-card .ant-card-head {
+	background: transparent !important;
+	border-bottom: 1px solid rgba(0, 0, 0, 0.1) !important;
+}
+
+.sun-theme .classes-card .ant-card-head-title {
+	color: #000 !important;
+	font-weight: 600; 
+}
+
 .activities-card {
 	border-radius: 12px;
 	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
@@ -1135,6 +1159,26 @@
 .sun-theme .activities-card {
 	background: rgba(255, 255, 255, 0.7) !important;
 	border: 1px solid rgba(0, 0, 0, 0.1) !important;
+}
+
+.space-theme .activities-card .ant-card-head {
+	background: transparent !important;
+	border-bottom: 1px solid rgba(77, 208, 255, 0.3) !important;
+}
+
+.space-theme .activities-card .ant-card-head-title {
+	color: #fff !important;
+	font-weight: 600; 
+}
+
+.sun-theme .activities-card .ant-card-head {
+	background: transparent !important;
+	border-bottom: 1px solid rgba(0, 0, 0, 0.1) !important;
+}
+
+.sun-theme .activities-card .ant-card-head-title {
+	color: #000 !important;
+	font-weight: 600; 
 }
 
 .achievements-card {
@@ -1159,6 +1203,17 @@
 	color: #fff !important;
 	font-weight: 600; 
 }
+
+.sun-theme .achievements-card .ant-card-head {
+	background: transparent !important;
+	border-bottom: 1px solid rgba(0, 0, 0, 0.1) !important;
+}
+
+.sun-theme .achievements-card .ant-card-head-title {
+	color: #000 !important;
+	font-weight: 600; 
+}
+
 
 .space-theme .achievements-card .achievement-item {
 	color: #fff;
@@ -1208,11 +1263,7 @@
 	border: 1px solid rgba(0, 0, 0, 0.1) !important;
 
 }
-/* Card title icons - black color for both themes */
-.space-theme .themed-content .ant-card-head-title .anticon {
-	color: #000000 !important;
-}
 
-.sun-theme .themed-content .ant-card-head-title .anticon {
-	color: #000000 !important;
+.teacher-page.space-theme .themed-content .anticon {
+	color: #000000;
 }

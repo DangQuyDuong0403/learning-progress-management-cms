@@ -466,7 +466,7 @@ const AccountList = () => {
 	return (
 		<ThemedLayout>
 			{/* Main Content Panel */}
-			<div className={`main-content-panel ${theme}-main-panel`}>
+			<div className={`account-page main-content-panel ${theme}-main-panel`}>
 				{/* Header Section */}
 				<div className={`panel-header ${theme}-panel-header`}>
 					<div className='search-section'>
