@@ -1,0 +1,165 @@
+import React from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
+import LanguageToggle from '../../component/LanguageToggle';
+import ThemeToggleSwitch from '../../component/ThemeToggleSwitch';
+import { useTheme } from '../../contexts/ThemeContext';
+import ThemedLayoutFullScreen from '../../component/ThemedLayoutFullScreen';
+import './Login.css'; // Tận dụng lại nền và hiệu ứng từ Login.css
+
+export default function ChooseLogin() {
+  const navigate = useNavigate();
+  const { t } = useTranslation();
+  const { isSunTheme } = useTheme();
+
+  const selectRole = (role) => {
+    localStorage.setItem('selectedRole', role);
+    localStorage.setItem('loginRole', role);
+    if (role === 'student') {
+      navigate('/login-student');
+    } else if (role === 'teacher') {
+      navigate('/login-teacher');
+    }
+  };
+
+  return (
+    <ThemedLayoutFullScreen>
+      <div className="main-content" style={{ paddingTop: 120, minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+        {/* Theme Toggle - Top Right */}
+        <div className={`login-theme-toggle-container ${isSunTheme ? 'sun-theme' : 'space-theme'}`} style={{ position: 'absolute', top: '20px', right: '20px' }}>
+          <ThemeToggleSwitch />
+          <LanguageToggle />
+        </div>
+        
+        {/* Logo CAMKEY - Top Left */}
+        <div style={{ position: 'absolute', top: '20px', left: '20px', zIndex: 1000 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+            {isSunTheme ? (
+              <img 
+                src="/img/sun-logo.png" 
+                alt="CAMKEY Logo" 
+                style={{ 
+                  width: '100px', 
+                  height: '100px', 
+                  filter: 'drop-shadow(0 0 15px rgba(255, 215, 0, 0.8))'
+                }} 
+              />
+             ) : (
+               <img 
+                 src="/img/astro.png" 
+                 alt="CAMKEY Logo" 
+                 style={{ 
+                   width: '100px', 
+                   height: '100px', 
+                   filter: 'drop-shadow(0 0 15px rgba(125, 211, 252, 0.8))'
+                 }} 
+               />
+             )}
+            <span style={{ 
+              fontSize: '40px', 
+              fontWeight: 700, 
+              color: isSunTheme ? '#1E40AF' : '#FFFFFF',
+              textShadow: isSunTheme ? '0 0 5px rgba(30, 64, 175, 0.3)' : '0 0 15px rgba(255, 255, 255, 0.8)'
+            }}>
+              CAMKEY
+            </span>
+          </div>
+        </div>
+
+        <div className="container">
+          <h1 className="page-title" style={{
+            fontSize: 48,
+            fontWeight: 700,
+            color: isSunTheme ? '#3b82f6' : '#fff',
+            textAlign: 'center',
+            marginBottom: 16,
+            letterSpacing: 0.5,
+            textShadow: isSunTheme ? 'none' : '0 0 20px rgba(77, 208, 255, 0.5)'
+          }}>
+            {t('login.chooseRole')}
+          </h1>      
+        </div>
+          <div className="role-cards" style={{ display: 'flex', gap: 80, justifyContent: 'center',justifySelf: 'center',flexWrap: 'wrap', maxWidth: 1000, width: '100%', marginTop: '40px' }}>
+           
+            {/* Student Card */}
+            <div className="role-card" style={getRoleCardStyle(isSunTheme)} onClick={() => selectRole('student')}>
+              <div className="role-illustration student-illustration" style={getRoleIllustrationStyle(isSunTheme)}>
+                <img 
+                  src="/img/student-illustration.svg" 
+                  alt="Student illustration" 
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                />
+              </div>
+              <button className="role-button" style={getRoleButtonStyle(isSunTheme)}>{t('login.student')}</button>
+            </div>
+            {/* Teacher Card */}
+            <div className="role-card" style={getRoleCardStyle(isSunTheme)} onClick={() => selectRole('teacher')}>
+              <div className="role-illustration teacher-illustration" style={getRoleIllustrationStyle(isSunTheme)}>
+                <img 
+                  src="/img/teacher-illustration.svg" 
+                  alt="Teacher illustration" 
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                />
+              </div>
+              <button className="role-button" style={getRoleButtonStyle(isSunTheme)}>{t('login.teacher')}</button>
+            </div>
+          
+          </div>
+        </div>
+    </ThemedLayoutFullScreen>
+  );
+}
+
+// Dynamic styles that change based on theme
+const getRoleCardStyle = (isSunTheme) => ({
+  background: isSunTheme ? '#EDF1FF' : 'rgba(109, 95, 143, 0.7)',
+  backdropFilter: isSunTheme ? 'blur(1px)' : 'blur(5px)',
+  borderRadius: 24,
+  padding: '60px 50px',
+  boxShadow: isSunTheme 
+    ? '0 15px 50px rgba(0, 0, 0, 0.1)' 
+    : '0 15px 50px rgba(77, 208, 255, 0.15)',
+  textAlign: 'center',
+  transition: 'transform 0.3s ease, box-shadow 0.3s ease',
+  cursor: 'pointer',
+
+  width: 450,
+  marginBottom: 24,
+});
+
+const getRoleIllustrationStyle = (isSunTheme) => ({
+  width: '80%',
+  height: 250,
+  margin: '0 auto 30px',
+  background: isSunTheme 
+    ? 'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)' 
+    : 'linear-gradient(135deg, rgba(77, 208, 255, 0.1) 0%, rgba(77, 208, 255, 0.2) 100%)',
+  borderRadius: 16,
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  position: 'relative',
+  overflow: 'hidden',
+  border: isSunTheme 
+    ? '1px solid rgba(0, 0, 0, 0.05)' 
+    : '1px solid rgba(77, 208, 255, 0.2)',
+  padding: 0,
+});
+
+const getRoleButtonStyle = (isSunTheme) => ({
+  background: isSunTheme 
+    ? 'linear-gradient(135deg, #FFFFFF 10%, #DFEDFF 34%, #C3DEFE 66%, #9CC8FE 100%)'
+    : 'linear-gradient(135deg, #D9D9D9 0%, #CAC0E3 42%, #BAA5EE 66%, #AA8BF9 100%)',
+  border: 'none',
+  color: '#000000',
+  padding: '16px 32px', // Tăng padding
+  borderRadius: 12,
+  fontWeight: 700, // Tăng font weight
+  fontSize: 18, // Tăng font size từ 16 lên 18
+  fontFamily: "'Plus Jakarta Sans', sans-serif",
+  textShadow: '0 1px 2px rgba(0, 0, 0, 0.1)',
+  letterSpacing: '0.5px', // Thêm letter spacing
+  transition: 'all 0.3s ease',
+  width: '100%',
+  marginTop: 16,
+});

@@ -1,0 +1,133 @@
+.spinner-demo {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.demo-content {
+  background: rgba(255, 255, 255, 0.95);
+  padding: 40px;
+  border-radius: 20px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+  text-align: center;
+  max-width: 600px;
+  width: 100%;
+}
+
+.demo-content h1 {
+  color: #333;
+  margin-bottom: 20px;
+  font-size: 2.5rem;
+  font-weight: 700;
+}
+
+.demo-content p {
+  color: #666;
+  margin-bottom: 30px;
+  font-size: 1.1rem;
+  line-height: 1.6;
+}
+
+.demo-buttons {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 15px;
+  margin-bottom: 40px;
+}
+
+.demo-btn {
+  padding: 15px 25px;
+  border: none;
+  border-radius: 10px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.demo-btn:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+}
+
+.demo-btn.primary {
+  background: linear-gradient(45deg, #667eea, #764ba2);
+  color: white;
+}
+
+.demo-btn.secondary {
+  background: linear-gradient(45deg, #f093fb, #f5576c);
+  color: white;
+}
+
+.demo-btn.success {
+  background: linear-gradient(45deg, #4facfe, #00f2fe);
+  color: white;
+}
+
+.demo-btn.warning {
+  background: linear-gradient(45deg, #43e97b, #38f9d7);
+  color: white;
+}
+
+.demo-info {
+  text-align: left;
+  background: #f8f9fa;
+  padding: 25px;
+  border-radius: 15px;
+  border-left: 5px solid #667eea;
+}
+
+.demo-info h3 {
+  color: #333;
+  margin-bottom: 15px;
+  font-size: 1.3rem;
+}
+
+.demo-info ul {
+  list-style: none;
+  padding: 0;
+}
+
+.demo-info li {
+  padding: 8px 0;
+  color: #555;
+  font-size: 1rem;
+  display: flex;
+  align-items: center;
+}
+
+.demo-info li::before {
+  content: '✨';
+  margin-right: 10px;
+  font-size: 1.2rem;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .spinner-demo {
+    padding: 10px;
+  }
+  
+  .demo-content {
+    padding: 20px;
+  }
+  
+  .demo-content h1 {
+    font-size: 2rem;
+  }
+  
+  .demo-buttons {
+    grid-template-columns: 1fr;
+  }
+  
+  .demo-btn {
+    padding: 12px 20px;
+    font-size: 14px;
+  }
+}
