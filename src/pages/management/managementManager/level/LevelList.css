@@ -138,13 +138,23 @@
 	transition: all 0.3s ease;
 }
 
-.refresh-button {
+.space-theme .refresh-button {
 	height: 40px;
 	border-radius: 8px;
 	font-weight: 500;
 	border: 1px solid rgba(77, 208, 255, 0.3);
-	background: #6B4C93;
-	color: #ffffff;
+	background: linear-gradient(135deg, #FFFFFF 0%, #9F96B6 46%, #A79EBB 64%, #ACA5C0 75%, #6D5F8F 100%);
+	color: #000;
+	backdrop-filter: blur(10px);
+	transition: all 0.3s ease;
+}
+
+.sun-theme .refresh-button {
+	height: 40px;
+	border-radius: 8px;
+	font-weight: 500;
+	background: linear-gradient(135deg, #FFFFFF, #B6D8FE 77%, #94C2F5);
+	color: #000;
 	backdrop-filter: blur(10px);
 	transition: all 0.3s ease;
 }
@@ -175,14 +185,8 @@
 	filter: brightness(1.1);
 }
 
-.refresh-button:hover {
-	background: #5A3F7A;
-	border-color: rgba(77, 208, 255, 0.6);
-	color: #ffffff;
-	transform: translateY(-2px);
-	box-shadow: 0 4px 12px rgba(107, 76, 147, 0.4);
-	filter: brightness(1.1);
-}
+
+
 
 .create-button:hover {
 	background: linear-gradient(135deg, #66AEFF, #3C99FF);
@@ -416,7 +420,7 @@
 }
 
 .space-theme .refresh-button .anticon {
-	color: #ffffff !important;
+	color: #000 !important;
 }
 
 .refresh-button:hover .anticon {
@@ -449,8 +453,6 @@
 	color: #fff;
 }
 
-.space-theme .refresh-button {
-	background: #6B4C93;
-	border: 1px solid rgba(77, 208, 255, 0.3);
-	color: #fff;
-}
+
+
+

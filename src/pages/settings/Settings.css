@@ -258,18 +258,18 @@
 }
 
 .space-theme .settings-edit-btn .anticon-edit {
-	color: #fff !important;
+	color: #000 !important;
 }
 
 .space-theme .settings-edit-btn {
 	color: #000 !important;
 	border: 1px solid rgba(181, 176, 192, 0.3) !important;
-	background: #B5B0C0 !important;
+	background: linear-gradient(135deg, #FFFFFF 0%, #9F96B6 46%, #A79EBB 64%, #ACA5C0 75%, #6D5F8F 100%);
 }
 
 .space-theme .settings-edit-btn:hover {
 	color: #000 !important;
-	background: rgba(181, 176, 192, 0.8) !important;
+	background: linear-gradient(135deg, #FFFFFF 0%, #9F96B6 46%, #A79EBB 64%, #ACA5C0 75%, #6D5F8F 100%);
 	border-color: rgba(181, 176, 192, 0.6) !important;
 	transform: translateY(-1px);
 }

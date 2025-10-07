@@ -4,15 +4,14 @@ import { useParams, useNavigate, useLocation } from "react-router-dom";
 import {
   Button,
   Input,
-  Space,
   Tag,
   Row,
   Col,
   Typography,
-  Divider,
   DatePicker,
   Select,
-  Tooltip,
+  Card,
+  Statistic,
 } from "antd";
 import {
   ArrowLeftOutlined,
@@ -24,7 +23,10 @@ import {
   CheckCircleOutlined,
   CloseCircleOutlined,
   MinusCircleOutlined,
+  FireOutlined,
+  StarOutlined,
 } from "@ant-design/icons";
+import { Pie, Column, Line, Bar } from '@ant-design/charts';
 import ThemedLayout from "../../../../component/ThemedLayout";
 import LoadingWithEffect from "../../../../component/spinner/LoadingWithEffect";
 import { useTheme } from "../../../../contexts/ThemeContext";
@@ -46,6 +48,9 @@ const mockLearningSessions = [
     chapter: "Writing Skills",
     teacher: "Mr. David Wilson",
     status: "completed",
+    skill: "Writing",
+    score: 85,
+    timeSpent: 90,
   },
   {
     id: 7,
@@ -57,6 +62,9 @@ const mockLearningSessions = [
     chapter: "Listening Skills",
     teacher: "Ms. Sarah Johnson",
     status: "completed",
+    skill: "Listening",
+    score: 92,
+    timeSpent: 90,
   },
   {
     id: 6,
@@ -68,6 +76,9 @@ const mockLearningSessions = [
     chapter: "Speaking Skills",
     teacher: "Mr. David Wilson",
     status: "completed",
+    skill: "Speaking",
+    score: 78,
+    timeSpent: 90,
   },
   {
     id: 5,
@@ -79,6 +90,9 @@ const mockLearningSessions = [
     chapter: "Grammar Fundamentals",
     teacher: "Ms. Sarah Johnson",
     status: "completed",
+    skill: "Grammar",
+    score: 88,
+    timeSpent: 90,
   },
   {
     id: 4,
@@ -90,6 +104,9 @@ const mockLearningSessions = [
     chapter: "Grammar Fundamentals",
     teacher: "Ms. Sarah Johnson",
     status: "completed",
+    skill: "Grammar",
+    score: 91,
+    timeSpent: 90,
   },
   {
     id: 3,
@@ -101,6 +118,9 @@ const mockLearningSessions = [
     chapter: "Reading Skills",
     teacher: "Mr. David Wilson",
     status: "completed",
+    skill: "Reading",
+    score: 87,
+    timeSpent: 90,
   },
   {
     id: 2,
@@ -112,6 +132,9 @@ const mockLearningSessions = [
     chapter: "Grammar Fundamentals",
     teacher: "Ms. Sarah Johnson",
     status: "completed",
+    skill: "Grammar",
+    score: 89,
+    timeSpent: 90,
   },
   {
     id: 1,
@@ -123,8 +146,45 @@ const mockLearningSessions = [
     chapter: "Grammar Fundamentals",
     teacher: "Ms. Sarah Johnson",
     status: "completed",
+    skill: "Grammar",
+    score: 94,
+    timeSpent: 90,
   },
 ];
+
+// Mock data for additional statistics
+const mockProgressData = {
+  weeklyProgress: [
+    { week: 'Tuần 1', sessions: 3, avgScore: 82 },
+    { week: 'Tuần 2', sessions: 4, avgScore: 85 },
+    { week: 'Tuần 3', sessions: 2, avgScore: 88 },
+    { week: 'Tuần 4', sessions: 5, avgScore: 91 },
+  ],
+  skillDistribution: [
+    { skill: 'Grammar', count: 4, percentage: 50 },
+    { skill: 'Listening', count: 1, percentage: 12.5 },
+    { skill: 'Reading', count: 1, percentage: 12.5 },
+    { skill: 'Writing', count: 1, percentage: 12.5 },
+    { skill: 'Speaking', count: 1, percentage: 12.5 },
+  ],
+  scoreTrend: [
+    { date: '2024-12-14', score: 85 },
+    { date: '2024-12-15', score: 92 },
+    { date: '2024-12-16', score: 78 },
+    { date: '2024-12-17', score: 88 },
+    { date: '2024-12-18', score: 91 },
+    { date: '2024-12-19', score: 87 },
+    { date: '2024-12-20', score: 89 },
+    { date: '2024-12-21', score: 94 },
+  ],
+  skillScores: [
+    { skill: 'Grammar', score: 90.5 },
+    { skill: 'Listening', score: 92 },
+    { skill: 'Reading', score: 87 },
+    { skill: 'Writing', score: 85 },
+    { skill: 'Speaking', score: 78 },
+  ],
+};
 
 const StudentLearningProgressOverview = () => {
   const { t } = useTranslation();
@@ -213,6 +273,9 @@ const StudentLearningProgressOverview = () => {
   // Calculate statistics
   const totalSessions = sessions.length;
   const completedSessions = sessions.filter(s => s.status === "completed").length;
+  const averageScore = sessions.length > 0 ? 
+    (sessions.reduce((sum, s) => sum + (s.score || 0), 0) / sessions.length).toFixed(1) : 0;
+  const studyStreak = 5; // Mock streak data
 
   const handleBack = () => {
     navigate(`/manager/student/${id}/profile`, { state: { student: student } });
@@ -260,27 +323,126 @@ const StudentLearningProgressOverview = () => {
         {/* Statistics Cards */}
         <div className={`stats-section ${theme}-stats-section`}>
           <Row gutter={[16, 16]}>
-            <Col xs={24} sm={12} md={12}>
-              <div className={`student-progress-stat-card ${theme}-student-progress-stat-card`}>
-                <div className="stat-icon">
-                  <BookOutlined />
-                </div>
-                <div className="stat-content">
-                  <div className="stat-number">{totalSessions}</div>
-                  <div className="stat-label">{t('studentProgress.totalSessions')}</div>
-                </div>
-              </div>
+            <Col xs={24} sm={12} md={6}>
+              <Card className={`stat-card ${theme}-stat-card`}>
+                <Statistic
+                  title={t('studentProgress.totalSessions')}
+                  value={totalSessions}
+                  prefix={<BookOutlined style={{ color: '#1890ff' }} />}
+                  valueStyle={{ color: '#1890ff' }}
+                />
+              </Card>
             </Col>
-            <Col xs={24} sm={12} md={12}>
-              <div className={`student-progress-stat-card ${theme}-student-progress-stat-card`}>
-                <div className="stat-icon">
-                  <CheckCircleOutlined />
-                </div>
-                <div className="stat-content">
-                  <div className="stat-number">{completedSessions}</div>
-                  <div className="stat-label">{t('studentProgress.completedSessions')}</div>
-                </div>
-              </div>
+            <Col xs={24} sm={12} md={6}>
+              <Card className={`stat-card ${theme}-stat-card`}>
+                <Statistic
+                  title={t('studentProgress.completedSessions')}
+                  value={completedSessions}
+                  prefix={<CheckCircleOutlined style={{ color: '#52c41a' }} />}
+                  valueStyle={{ color: '#52c41a' }}
+                />
+              </Card>
+            </Col>
+            <Col xs={24} sm={12} md={6}>
+              <Card className={`stat-card ${theme}-stat-card`}>
+                <Statistic
+                  title={t('studentProgress.averageScore')}
+                  value={averageScore}
+                  suffix="/ 100"
+                  prefix={<StarOutlined style={{ color: '#faad14' }} />}
+                  valueStyle={{ color: '#faad14' }}
+                />
+              </Card>
+            </Col>
+            <Col xs={24} sm={12} md={6}>
+              <Card className={`stat-card ${theme}-stat-card`}>
+                <Statistic
+                  title={t('studentProgress.studyStreak')}
+                  value={studyStreak}
+                  suffix="days"
+                  prefix={<FireOutlined style={{ color: '#ff4d4f' }} />}
+                  valueStyle={{ color: '#ff4d4f' }}
+                />
+              </Card>
+            </Col>
+          </Row>
+        </div>
+
+        {/* Charts Section */}
+        <div className={`charts-section ${theme}-charts-section`}>
+          <Row gutter={[16, 16]}>
+            {/* Skill Distribution Pie Chart */}
+            <Col xs={24} lg={12}>
+              <Card 
+                title={t('studentProgress.skillDistribution')}
+                className={`chart-card ${theme}-chart-card`}
+              >
+                <Pie
+                  data={mockProgressData.skillDistribution}
+                  angleField="count"
+                  colorField="skill"
+                  radius={0.8}
+                  label={{
+                    type: 'outer',
+                    content: '{name}: {percentage}',
+                  }}
+                  interactions={[{ type: 'element-active' }]}
+                  height={300}
+                />
+              </Card>
+            </Col>
+
+            {/* Weekly Progress Bar Chart */}
+            <Col xs={24} lg={12}>
+              <Card 
+                title={t('studentProgress.weeklyProgress')}
+                className={`chart-card ${theme}-chart-card`}
+              >
+                <Column
+                  data={mockProgressData.weeklyProgress}
+                  xField="week"
+                  yField="sessions"
+                  columnStyle={{
+                    radius: [4, 4, 0, 0],
+                  }}
+                  height={300}
+                />
+              </Card>
+            </Col>
+
+            {/* Score Trend Line Chart */}
+            <Col xs={24} lg={12}>
+              <Card 
+                title={t('studentProgress.scoreTrend')}
+                className={`chart-card ${theme}-chart-card`}
+              >
+                <Line
+                  data={mockProgressData.scoreTrend}
+                  xField="date"
+                  yField="score"
+                  point={{
+                    size: 5,
+                    shape: 'diamond',
+                  }}
+                  height={300}
+                />
+              </Card>
+            </Col>
+
+            {/* Skill Scores Horizontal Bar Chart */}
+            <Col xs={24} lg={12}>
+              <Card 
+                title={t('studentProgress.skillScores')}
+                className={`chart-card ${theme}-chart-card`}
+              >
+                <Bar
+                  data={mockProgressData.skillScores}
+                  xField="score"
+                  yField="skill"
+                  seriesField="skill"
+                  height={300}
+                />
+              </Card>
             </Col>
           </Row>
         </div>
