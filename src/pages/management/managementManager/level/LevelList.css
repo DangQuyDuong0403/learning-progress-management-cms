@@ -141,9 +141,9 @@
 	height: 40px;
 	border-radius: 8px;
 	font-weight: 500;
-	border: 1px solid rgba(102, 174, 255, 0.3);
-	background: linear-gradient(135deg, #FFFFFF, #B6D8FE 77%, #94C2F5);
-	color: #000000;
+	border: 1px solid rgba(77, 208, 255, 0.3);
+	background: #6B4C93;
+	color: #ffffff;
 	backdrop-filter: blur(10px);
 	transition: all 0.3s ease;
 }
@@ -175,11 +175,11 @@
 }
 
 .refresh-button:hover {
-	background: #ffffff;
-	border-color: rgba(24, 144, 255, 0.6);
-	color: #1890ff;
+	background: #5A3F7A;
+	border-color: rgba(77, 208, 255, 0.6);
+	color: #ffffff;
 	transform: translateY(-2px);
-	box-shadow: 0 4px 12px rgba(24, 144, 255, 0.4);
+	box-shadow: 0 4px 12px rgba(107, 76, 147, 0.4);
 	filter: brightness(1.1);
 }
 
@@ -419,11 +419,11 @@
 }
 
 .refresh-button:hover .anticon {
-	color: #1890ff !important;
+	color: #ffffff !important;
 }
 
 .space-theme .refresh-button:hover .anticon {
-	color: #1890ff !important;
+	color: #ffffff !important;
 }
 
 .space-theme .create-button .anticon {
@@ -442,9 +442,14 @@
 
 /* Space theme specific button opacity */
 .space-theme .export-button,
-.space-theme .import-button,
-.space-theme .refresh-button {
+.space-theme .import-button {
 	background: rgba(109, 95, 143, 0.2);
 	border: 1px solid rgba(109, 95, 143, 0.3);
+	color: #fff;
+}
+
+.space-theme .refresh-button {
+	background: #6B4C93;
+	border: 1px solid rgba(77, 208, 255, 0.3);
 	color: #fff;
 }
