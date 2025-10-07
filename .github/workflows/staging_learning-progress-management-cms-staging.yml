@@ -11,10 +11,11 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest 
     permissions:
       contents: read #This is required for actions/checkout
-
+    env:
+      CI: false
     steps:
       - uses: actions/checkout@v4
 

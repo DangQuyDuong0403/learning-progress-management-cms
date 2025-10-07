@@ -4,7 +4,6 @@ import {
   Card,
   Row,
   Col,
-  Space,
 } from "antd";
 import {
   ArrowLeftOutlined,

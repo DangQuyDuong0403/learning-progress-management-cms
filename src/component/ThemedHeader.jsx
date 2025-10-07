@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useSelector, useDispatch } from 'react-redux';
 import { Switch, Tooltip } from 'antd';
-import { SunOutlined, MoonOutlined, SettingOutlined } from '@ant-design/icons';
+import { SunOutlined, MoonOutlined } from '@ant-design/icons';
 import { logoutApi, logout } from '../redux/auth';
 import { useTheme } from '../contexts/ThemeContext';
 import LanguageToggle from './LanguageToggle';

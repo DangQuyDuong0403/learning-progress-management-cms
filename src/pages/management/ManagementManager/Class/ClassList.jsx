@@ -12,7 +12,6 @@ import {
   Form,
   Dropdown,
   Tag,
-  DatePicker,
   ColorPicker,
 } from "antd";
 import {
@@ -35,7 +34,6 @@ import "./ClassList.css";
 import { spaceToast } from "../../../../component/SpaceToastify";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import dayjs from 'dayjs';
 
 const { Option } = Select;
 

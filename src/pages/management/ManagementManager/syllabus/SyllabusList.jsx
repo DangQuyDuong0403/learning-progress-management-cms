@@ -31,7 +31,6 @@ import ChapterList from './ChapterList';
 import './SyllabusList.css';
 import {
 	fetchSyllabuses,
-	deleteSyllabus,
 	updateSyllabusStatus,
 } from '../../../../redux/syllabus';
 import ThemedLayout from '../../../../component/ThemedLayout';
@@ -42,7 +41,7 @@ const { Option } = Select;
 const SyllabusList = () => {
 	const { t } = useTranslation();
 	const dispatch = useDispatch();
-	const { syllabuses, loading, error } = useSelector((state) => state.syllabus);
+	const { syllabuses, loading } = useSelector((state) => state.syllabus);
 
 	const [isModalVisible, setIsModalVisible] = useState(false);
 	const [isChapterModalVisible, setIsChapterModalVisible] = useState(false);
@@ -94,14 +93,6 @@ const SyllabusList = () => {
 		setIsChapterModalVisible(true);
 	};
 
-	const handleStatusChange = async (id, status) => {
-		try {
-			await dispatch(updateSyllabusStatus({ id, status }));
-			message.success(t('syllabusManagement.updateSyllabusSuccess'));
-		} catch (error) {
-			message.error(t('syllabusManagement.updateSyllabusError'));
-		}
-	};
 
 	const handleModalClose = () => {
 		setIsModalVisible(false);

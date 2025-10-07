@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Input, Button } from 'antd';
+import { Input } from 'antd';
 import { useTranslation } from 'react-i18next';
 import LanguageToggle from '../../component/LanguageToggle';
 import './Login.css';
@@ -10,7 +10,7 @@ export default function OTPVerification() {
 	const [message, setMessage] = useState(null);
 	const [isLoading, setIsLoading] = useState(false);
 	const navigate = useNavigate();
-	const { i18n, t } = useTranslation();
+	const { t } = useTranslation();
 
 	const handleOtpChange = (index, value) => {
 		// Chỉ cho phép nhập số và giới hạn 1 ký tự
@@ -193,21 +193,21 @@ export default function OTPVerification() {
 											</div>
 
 											<div className='text-center mb-3'>
-												<a
-													className='fw-bold forgot-password'
-													onClick={handleResendOtp}
-													style={{ cursor: 'pointer' }}>
-													Resend OTP code
-												</a>
+							<button
+								className='fw-bold forgot-password'
+								onClick={handleResendOtp}
+								style={{ cursor: 'pointer', background: 'none', border: 'none', padding: 0, textDecoration: 'underline' }}>
+								Resend OTP code
+							</button>
 											</div>
 
 											<div className='text-center'>
-												<a
-													className='fw-bold forgot-password'
-													onClick={handleBackToForgotPassword}
-													style={{ cursor: 'pointer' }}>
-													{t('common.back')} to {t('login.forgotPassword')}
-												</a>
+							<button
+								className='fw-bold forgot-password'
+								onClick={handleBackToForgotPassword}
+								style={{ cursor: 'pointer', background: 'none', border: 'none', padding: 0, textDecoration: 'underline' }}>
+								{t('common.back')} to {t('login.forgotPassword')}
+							</button>
 											</div>
 										</form>
 									</div>

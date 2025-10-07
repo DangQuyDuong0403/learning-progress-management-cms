@@ -17,10 +17,8 @@ import {
 import {
   ArrowLeftOutlined,
   UserOutlined,
-  PlusOutlined,
   SearchOutlined,
   DeleteOutlined,
-  ImportOutlined,
   ExportOutlined,
   DownloadOutlined,
   UploadOutlined,
@@ -136,13 +134,6 @@ const ClassDetail = () => {
     fetchStudents();
   }, [id, fetchClassData, fetchStudents]);
 
-  const handleAddStudent = () => {
-    setStudentSearchValue("");
-    setSuggestions([]);
-    setShowSuggestions(false);
-    setSelectedStudents([]);
-    setIsModalVisible(true);
-  };
 
 
   const handleStudentSearch = (value) => {
@@ -204,13 +195,7 @@ const ClassDetail = () => {
     setStudentToDelete(null);
   };
 
-  const handleImport = () => {
-    setIsImportModalVisible(true);
-  };
 
-  const handleExport = () => {
-    setIsExportModalVisible(true);
-  };
 
   const handleImportModalOk = () => {
     if (importFile) {

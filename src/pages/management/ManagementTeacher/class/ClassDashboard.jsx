@@ -17,8 +17,6 @@ import {
   TrophyOutlined,
   BookOutlined,
   BarChartOutlined,
-  PieChartOutlined,
-  LineChartOutlined,
 } from "@ant-design/icons";
 // Removed recharts import to avoid dependency issues
 import ThemedLayout from "../../../../component/ThemedLayout";
