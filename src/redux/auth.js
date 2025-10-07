@@ -8,10 +8,10 @@ const storedToken = localStorage.getItem('token');
 
 // Async thunk for forgot password
 export const forgotPassword = createAsyncThunk(
-	'auth/forgotPassword',
-	async (email, { rejectWithValue }) => {
+	'/auth/forgotPassword',
+	async (username, { rejectWithValue }) => {
 		try {
-			const response = await authApi.forgotPassword({ email });
+			const response = await authApi.forgotPassword({ username });
 			return response;
 		} catch (error) {
 			return rejectWithValue(error.response.data.error || error.message);
@@ -21,7 +21,7 @@ export const forgotPassword = createAsyncThunk(
 
 // Async thunk for refresh token
 export const refreshToken = createAsyncThunk(
-	'auth/refreshToken',
+	'/auth/refreshToken',
 	async (refreshTokenValue, { rejectWithValue }) => {
 		try {
 			const response = await authApi.refreshToken(refreshTokenValue);
@@ -34,10 +34,36 @@ export const refreshToken = createAsyncThunk(
 
 // Async thunk for logout
 export const logoutApi = createAsyncThunk(
-	'auth/logoutApi',
+	'/auth/logoutApi',
 	async (refreshTokenValue, { rejectWithValue }) => {
 		try {
 			const response = await authApi.logout(refreshTokenValue);
+			return response;
+		} catch (error) {
+			return rejectWithValue(error.response?.data || error.message);
+		}
+	}
+);
+
+// Async thunk for getting user profile
+export const getUserProfile = createAsyncThunk(
+	'/auth/getUserProfile',
+	async (_, { rejectWithValue }) => {
+		try {
+			const response = await authApi.getUserProfile();
+			return response;
+		} catch (error) {
+			return rejectWithValue(error.response?.data || error.message);
+		}
+	}
+);
+
+// Async thunk for change password
+export const changePassword = createAsyncThunk(
+	'/auth/changePassword',
+	async (data, { rejectWithValue }) => {
+		try {
+			const response = await authApi.changePassword(data);
 			return response;
 		} catch (error) {
 			return rejectWithValue(error.response?.data || error.message);
@@ -57,6 +83,12 @@ const initialState = {
 	refreshTokenError: null,
 	logoutLoading: false,
 	logoutError: null,
+	profileLoading: false,
+	profileError: null,
+	profileData: null,
+	changePasswordLoading: false,
+	changePasswordError: null,
+	changePasswordSuccess: false,
 };
 
 const authSlice = createSlice({
@@ -88,6 +120,11 @@ const authSlice = createSlice({
 			state.forgotPasswordLoading = false;
 			state.forgotPasswordError = null;
 			state.forgotPasswordSuccess = false;
+		},
+		clearChangePasswordState: (state) => {
+			state.changePasswordLoading = false;
+			state.changePasswordError = null;
+			state.changePasswordSuccess = false;
 		},
 		updateToken: (state, action) => {
 			state.token = action.payload;
@@ -163,9 +200,37 @@ const authSlice = createSlice({
 				localStorage.removeItem('user');
 				localStorage.removeItem('token');
 				localStorage.removeItem('refreshToken');
+			})
+			.addCase(getUserProfile.pending, (state) => {
+				state.profileLoading = true;
+				state.profileError = null;
+			})
+			.addCase(getUserProfile.fulfilled, (state, action) => {
+				state.profileLoading = false;
+				state.profileData = action.payload.data;
+				state.profileError = null;
+			})
+			.addCase(getUserProfile.rejected, (state, action) => {
+				state.profileLoading = false;
+				state.profileError = action.payload;
+			})
+			.addCase(changePassword.pending, (state) => {
+				state.changePasswordLoading = true;
+				state.changePasswordError = null;
+				state.changePasswordSuccess = false;
+			})
+			.addCase(changePassword.fulfilled, (state, action) => {
+				state.changePasswordLoading = false;
+				state.changePasswordSuccess = true;
+				state.changePasswordError = null;
+			})
+			.addCase(changePassword.rejected, (state, action) => {
+				state.changePasswordLoading = false;
+				state.changePasswordError = action.payload;
+				state.changePasswordSuccess = false;
 			});
 	},
 });
 
-export const { loginSuccess, logout, clearForgotPasswordState, updateToken } = authSlice.actions;
+export const { loginSuccess, logout, clearForgotPasswordState, clearChangePasswordState, updateToken } = authSlice.actions;
 export default authSlice.reducer;

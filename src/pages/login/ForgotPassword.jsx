@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { Input, Button } from 'antd';
-import { MailOutlined, ArrowLeftOutlined } from '@ant-design/icons';
+import { UserOutlined, ArrowLeftOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import LanguageToggle from '../../component/LanguageToggle';
 import ThemeToggleSwitch from '../../component/ThemeToggleSwitch';
@@ -13,7 +13,7 @@ import { spaceToast } from '../../component/SpaceToastify';
 import './Login.css'; // import Login CSS instead
 
 export default function ForgotPassword() {
-	const [email, setEmail] = useState('');
+	const [username, setUsername] = useState('');
 	const navigate = useNavigate();
 	const dispatch = useDispatch();
 	const { t } = useTranslation();
@@ -30,23 +30,23 @@ export default function ForgotPassword() {
 	// Handle success/error messages
 	useEffect(() => {
 		if (forgotPasswordSuccess) {
-			spaceToast.success(t('forgotPassword.emailSent'));
+			spaceToast.success(t('forgotPassword.resetLinkSent'));
 		} else if (forgotPasswordError) {
-			spaceToast.error(forgotPasswordError.message || t('forgotPassword.emailNotFound'));
+			spaceToast.error(forgotPasswordError.message || t('forgotPassword.usernameNotFound'));
 		}
 	}, [forgotPasswordSuccess, forgotPasswordError, t]);
 
 	const handleSubmit = (e) => {
 		e.preventDefault();
 		
-		// Validate email
-		if (!email) {
-			spaceToast.error(t('common.emailRequired'));
+		// Validate username
+		if (!username) {
+			spaceToast.error(t('common.usernameRequired'));
 			return;
 		}
 
 		// Dispatch forgot password action
-		dispatch(forgotPassword(email));
+		dispatch(forgotPassword(username));
 	};
 
   const handleBackToLogin = () => {
@@ -138,15 +138,15 @@ export default function ForgotPassword() {
 									<form onSubmit={handleSubmit}>
                                         <div className='mb-5'>
                                             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                                                <label htmlFor='forgotEmail' className='form-label' style={{...getLabelStyle(isSunTheme), width: '90%', textAlign: 'left'}}>
-                                                    {t('common.email')}
+                                                <label htmlFor='forgotUsername' className='form-label' style={{...getLabelStyle(isSunTheme), width: '90%', textAlign: 'left'}}>
+                                                    {t('common.username')}
                                                 </label>
                                                 <Input
-                                                    id='forgotEmail'
-                                                    type='email'
-                                                    value={email}
-                                                    onChange={(e) => setEmail(e.target.value)}
-                                                    prefix={<MailOutlined />}
+                                                    id='forgotUsername'
+                                                    type='text'
+                                                    value={username}
+                                                    onChange={(e) => setUsername(e.target.value)}
+                                                    prefix={<UserOutlined />}
                                                     size='large'
                                                     style={getInputStyle(isSunTheme)}
                                                     required

@@ -194,9 +194,11 @@ export default function ThemedHeader() {
               {/* User Role Display */}
               <li className="themed-nav-item">
                 <span className={`user-role ${theme}-user-role`}>
-                  {user?.role === 'Admin' ? 'Admin' : 
-                   user?.role === 'Manager' ? 'Manager' : 
-                   user?.role === 'Teacher' ? 'Teacher' : 'User'}
+                  {user?.role === 'ADMIN' ? 'Admin' : 
+                   user?.role === 'MANAGER' ? 'Manager' : 
+                   user?.role === 'TEACHER' ? 'Teacher' :
+                   user?.role === 'TEACHER_ASSITANTS' ? 'Teacher' :  
+                   'User'}
                 </span>
               </li>
 
@@ -300,74 +302,7 @@ export default function ThemedHeader() {
                       {t('header.viewProfile')}
                     </button>
 
-                    {/* Change Password */}
-                    <button 
-                      onClick={() => navigate('/change-password')}
-                      style={{
-                        width: '100%',
-                        padding: '12px 20px',
-                        border: 'none',
-                        background: 'none',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '12px',
-                        color: theme === 'sun' ? '#1e40af' : '#fff',
-                        fontSize: '14px',
-                        cursor: 'pointer',
-                        transition: 'background-color 0.2s'
-                      }}
-                      onMouseEnter={(e) => e.target.style.backgroundColor = theme === 'sun' ? 'rgba(30, 64, 175, 0.1)' : 'rgba(77, 208, 255, 0.1)'}
-                      onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
-                    >
-                      <div style={{ 
-                        width: '20px', 
-                        height: '20px', 
-                        display: 'flex', 
-                        alignItems: 'center', 
-                        justifyContent: 'center' 
-                      }}>
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
-                          <circle cx="12" cy="16" r="1"></circle>
-                          <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
-                        </svg>
-                      </div>
-                      {t('header.changePassword')}
-                    </button>
-
-                    {/* Settings */}
-                    <button 
-                      onClick={() => navigate('/settings')}
-                      style={{
-                        width: '100%',
-                        padding: '12px 20px',
-                        border: 'none',
-                        background: 'none',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '12px',
-                        color: theme === 'sun' ? '#1e40af' : '#fff',
-                        fontSize: '14px',
-                        cursor: 'pointer',
-                        transition: 'background-color 0.2s'
-                      }}
-                      onMouseEnter={(e) => e.target.style.backgroundColor = theme === 'sun' ? 'rgba(30, 64, 175, 0.1)' : 'rgba(77, 208, 255, 0.1)'}
-                      onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
-                    >
-                      <div style={{ 
-                        width: '20px', 
-                        height: '20px', 
-                        display: 'flex', 
-                        alignItems: 'center', 
-                        justifyContent: 'center' 
-                      }}>
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <circle cx="12" cy="12" r="3"></circle>
-                          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
-                        </svg>
-                      </div>
-                      {t('header.settings')}
-                    </button>
+                  
 
                     {/* Logout */}
                     <button 

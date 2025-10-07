@@ -11,6 +11,78 @@
     gap: 0.5rem;
   }
 }
+
+/* Two Card Layout Styles */
+.profile-cards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+  width: 100%;
+  margin-bottom: 2rem;
+}
+
+.contact-info-card {
+  margin-top: 0;
+}
+
+.contact-info-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.form-actions-container {
+  display: flex;
+  justify-content: center;
+  margin-top: 2rem;
+  padding: 1rem;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  backdrop-filter: blur(10px);
+}
+
+.form-actions-container .btn {
+  min-width: 200px;
+  padding: 12px 24px;
+  font-size: 1rem;
+  font-weight: 600;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+}
+
+.form-actions-container .btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+}
+
+/* Responsive Design for Two Card Layout */
+@media (max-width: 1200px) {
+  .profile-cards {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+  
+  .contact-info-card {
+    margin-top: 0;
+  }
+}
+
+@media (max-width: 768px) {
+  .profile-cards {
+    gap: 1rem;
+  }
+  
+  .form-actions-container {
+    margin-top: 1rem;
+    padding: 0.5rem;
+  }
+  
+  .form-actions-container .btn {
+    min-width: 150px;
+    padding: 10px 20px;
+    font-size: 0.9rem;
+  }
+}
 /* Profile Page Styles - Đồng bộ với theme Camkey */
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@200;300;400;500;600;700;800&display=swap');
 @import url('https://cdnjs.cloudflare.com/ajax/libs/tabler-icons/1.35.0/tabler-icons.min.css');

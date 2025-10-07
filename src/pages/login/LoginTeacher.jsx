@@ -43,25 +43,34 @@ export default function LoginTeacher() {
         setLoading(true);
         
         try {
-            // Gọi API login cho teacher
-            const response = await authApi.loginForTeacher({
+            // Lấy loginRole từ localStorage
+            const loginRole = localStorage.getItem('loginRole') || 'teacher';
+            
+            // Gọi API login với 3 trường
+            const response = await authApi.login({
                 username,
-                password
+                password,
+                loginRole
             });
 
             // Dispatch login success với data từ API
-            dispatch(loginSuccess(response));
+            dispatch(loginSuccess(response.data));
+            console.log(response);
             spaceToast.success('Login successful!');
             
             // Redirect based on role
             let redirectPath = '/choose-login';
-            if (response.role === 'Admin') {
+            console.log('LoginTeacher - Response role:', response.data.role);
+            
+            if (response.data.role === 'ADMIN') {
                 redirectPath = '/admin/accounts';
-            } else if (response.role === 'Manager') {
+            } else if (response.data.role === 'MANAGER') {
                 redirectPath = '/manager/syllabuses';
-            } else if (response.role === 'Teacher') {
+            } else if (response.data.role === 'TEACHER') {
                 redirectPath = '/teacher/classes';
             }
+            
+            console.log('LoginTeacher - Redirect path:', redirectPath);
             
             setTimeout(() => {
                 navigate(redirectPath);
