@@ -238,12 +238,12 @@
 
 
 .account-page.sun-theme .account-table .ant-table-thead > tr > th.ant-table-column-sort {
-	background: rgba(255, 255, 255, 0.9) !important;
+	background: #C2E6FF !important;
 	color: #333 !important;
 }
 
 .account-page.sun-theme .account-table .ant-table-thead > tr > th.ant-table-column-has-sorters {
-	background: rgba(255, 255, 255, 0.9) !important;
+	background: #C2E6FF !important;
 	color: #333 !important;
 }
 
@@ -344,8 +344,8 @@
 }
 
 .account-page.sun-theme .ant-table-thead > tr > th {
-	background: rgba(112, 87, 193, 0.7) !important;
-	color: #fff !important;
+	background: #C2E6FF !important;
+	color: #000000 !important;
 	font-weight: 600;
 	font-size: 16px !important;
 	border-bottom: 1px solid rgba(0, 0, 0, 0.1);
@@ -353,7 +353,7 @@
 
 .ant-table-tbody > tr > td {
 	font-size: 15px !important;
-	background: #f6ebffd1 !important;
+	/* background: #f6ebffd1 ; */
 }
 
 .ant-table-tbody > tr:hover > td {
