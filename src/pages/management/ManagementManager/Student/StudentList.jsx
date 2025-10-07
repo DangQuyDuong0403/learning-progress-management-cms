@@ -27,6 +27,7 @@ import {
   DownloadOutlined,
   UploadOutlined,
   CameraOutlined,
+  UserDeleteOutlined,
 } from "@ant-design/icons";
 import ThemedLayout from "../../../../component/ThemedLayout";
 import LoadingWithEffect from "../../../../component/spinner/LoadingWithEffect";
@@ -61,7 +62,7 @@ const mockStudents = [
     fullName: "Trần Thị Bình",
     email: "tranthibinh@example.com",
     phone: "0987654321",
-    class: "Lớp 10A2",
+    class: null,
     level: "Intermediate",
     status: "active",
     lastActivity: "2024-12-19",
@@ -89,7 +90,7 @@ const mockStudents = [
     fullName: "Phạm Thị Dung",
     email: "phamthidung@example.com",
     phone: "0444555666",
-    class: "Lớp 9C1",
+    class: null,
     level: "Beginner",
     status: "active",
     lastActivity: "2024-12-18",
@@ -110,6 +111,20 @@ const mockStudents = [
     avatar: null,
     dateOfBirth: "2005-05-18",
     gender: "female",
+  },
+  {
+    id: 6,
+    studentCode: "STU007",
+    fullName: "Hoàng Văn Đức",
+    email: "hoangvanduc@example.com",
+    phone: "0555666777",
+    class: null,
+    level: "Intermediate",
+    status: "active",
+    lastActivity: "2024-12-17",
+    avatar: null,
+    dateOfBirth: "2005-09-25",
+    gender: "male",
   },
 ];
 
@@ -231,7 +246,9 @@ const StudentList = () => {
       dataIndex: "class",
       key: "class",
       render: (class_) => (
-        <span className="class-text">{class_}</span>
+        <span className="class-text">
+          {class_ || <span style={{ color: '#999', fontStyle: 'italic' }}>Chưa có lớp</span>}
+        </span>
       ),
       filters: classOptions.map(opt => ({ text: opt.label, value: opt.key })),
       onFilter: (value, record) => record.class === value,
@@ -284,18 +301,33 @@ const StudentList = () => {
               }}
             />
           </Tooltip>
-          <Tooltip title={t('studentManagement.assignToClass')}>
-            <Button
-              type="text"
-              icon={<PlusOutlined style={{ fontSize: '25px' }} />}
-              size="small"
-              onClick={() => handleAssignToClass(record)}
-              style={{ 
-                color: '#52c41a',
-                padding: '8px 12px'
-              }}
-            />
-          </Tooltip>
+          {!record.class ? (
+            <Tooltip title={t('studentManagement.assignToClass')}>
+              <Button
+                type="text"
+                icon={<PlusOutlined style={{ fontSize: '25px' }} />}
+                size="small"
+                onClick={() => handleAssignToClass(record)}
+                style={{ 
+                  color: '#52c41a',
+                  padding: '8px 12px'
+                }}
+              />
+            </Tooltip>
+          ) : (
+            <Tooltip title={t('studentManagement.removeFromClass')}>
+              <Button
+                type="text"
+                icon={<UserDeleteOutlined style={{ fontSize: '25px' }} />}
+                size="small"
+                onClick={() => handleRemoveFromClass(record)}
+                style={{ 
+                  color: '#ff7875',
+                  padding: '8px 12px'
+                }}
+              />
+            </Tooltip>
+          )}
           <Tooltip title={record.status === 'active' ? t('studentManagement.deactivate') : t('studentManagement.activate')}>
             <Button
               type="text"
@@ -331,6 +363,21 @@ const StudentList = () => {
   const handleAssignModalClose = () => {
     setIsAssignModalVisible(false);
     setAssigningStudent(null);
+  };
+
+  const handleRemoveFromClass = (record) => {
+    setConfirmModal({
+      visible: true,
+      title: t('studentManagement.removeFromClass'),
+      content: `${t('studentManagement.confirmRemoveFromClass')} "${record.fullName}" ${t('studentManagement.fromClass')} "${record.class}"?`,
+      onConfirm: () => {
+        setStudents(students.map(s => 
+          s.id === record.id ? { ...s, class: null } : s
+        ));
+        setConfirmModal({ visible: false, title: '', content: '', onConfirm: null });
+        spaceToast.success(`${t('studentManagement.removeFromClassSuccess')} "${record.fullName}" ${t('studentManagement.fromClass')} "${record.class}" ${t('studentManagement.success')}`);
+      }
+    });
   };
 
   const handleToggleStatus = (id) => {

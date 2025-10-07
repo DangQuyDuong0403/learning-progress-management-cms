@@ -162,7 +162,9 @@
 	backdrop-filter: blur(10px);
 	transition: all 0.3s ease;
 }
-
+.ant-spin-container{
+	min-height: 200px !important;
+}
 .sun-theme .teacher-page .refresh-button {
 	height: 40px;
 	border-radius: 8px;

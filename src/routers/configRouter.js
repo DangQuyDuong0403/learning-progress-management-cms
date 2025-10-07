@@ -227,7 +227,7 @@ const CONFIG_ROUTER = [
 		exact: true,
 		key: 'ADMIN_LEVELS',
 		private: true,
-		// role: 'manager',
+		role: 'manager',
 	},
 	{
 		show: true,
@@ -238,7 +238,7 @@ const CONFIG_ROUTER = [
 		exact: true,
 		key: 'MANAGER_TEACHERS',
 		private: true,
-		// role: 'manager',
+		role: 'manager',
 	},
 	{
 		show: false,

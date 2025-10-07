@@ -190,13 +190,7 @@ const TeacherList = () => {
 						style={{ backgroundColor: '#1890ff' }}
 					/> */}
 					<div>
-						<div style={{ fontWeight: 'bold', fontSize: '16px' }}>{text}</div>
-						<div style={{ color: '#666', fontSize: '12px' }}>
-							{record.email}
-						</div>
-						<div style={{ color: '#999', fontSize: '11px' }}>
-							{record.phone}
-						</div>
+						<div style={{fontSize: '20px' }}>{text}</div>
 					</div>
 				</div>
 			),

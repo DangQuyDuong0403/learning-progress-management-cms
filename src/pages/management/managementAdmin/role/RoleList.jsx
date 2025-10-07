@@ -195,7 +195,7 @@ const RoleList = () => {
       dataIndex: "role",
       key: "role",
       render: (role) => (
-        <span className="role-name-text">
+        <span className="role-name-text" style={{ fontSize: '20px' }}>
           {translateRole(role)}
         </span>
       ),
@@ -207,9 +207,9 @@ const RoleList = () => {
       key: "active",
       render: (active) =>
         active ? (
-          <Tag color="green">{t('roleManagement.active')}</Tag>
+          <Tag color="green" style={{ fontSize: '14px' }}>{t('roleManagement.active')}</Tag>
         ) : (
-          <Tag color="red">{t('roleManagement.inactive')}</Tag>
+          <Tag color="red" style={{ fontSize: '14px' }}>{t('roleManagement.inactive')}</Tag>
         ),
       filters: [
         { text: t('roleManagement.active'), value: true },
@@ -223,7 +223,7 @@ const RoleList = () => {
       key: "permissions",
        render: (permissions) =>
          permissions.map((p, idx) => (
-           <span key={idx} className="permission-text" style={{ display: 'inline-block', marginRight: '8px' }}>
+           <span key={idx} className="permission-text" style={{ display: 'inline-block', marginRight: '8px', fontSize: '20px' }}>
              {translatePermission(p)}
              {idx < permissions.length - 1 && ', '}
            </span>
@@ -408,7 +408,7 @@ const RoleList = () => {
         <Modal
           title={
             <div style={{ 
-              fontSize: '26px', 
+              fontSize: '20px', 
               fontWeight: '600', 
               color: '#000000ff',
               textAlign: 'center',
@@ -427,7 +427,7 @@ const RoleList = () => {
           <Form form={form} layout="vertical">
             <Form.Item
               label={
-                <span>
+                <span style={{ fontSize: '20px' }}>
                   {t('roleManagement.roleName')}
                   <span style={{ color: 'red', marginLeft: '4px' }}>*</span>
                 </span>
@@ -448,7 +448,7 @@ const RoleList = () => {
             </Form.Item>
             <div style={{ marginBottom: 16 }}>
               <label
-                style={{ fontWeight: 500, marginBottom: 8, display: "block", color: '#000' }}
+                style={{ fontWeight: 500, marginBottom: 8, display: "block", color: '#000', fontSize: '20px' }}
               >
                 {t('roleManagement.permissions')}
               </label>
@@ -456,7 +456,7 @@ const RoleList = () => {
                 {permissionGroups.map((group, idx) => (
                   <Collapse.Panel
                     header={
-                      <span style={{ fontWeight: 600, color: '#000' }}>
+                      <span style={{ fontWeight: 600, color: '#000', fontSize: '20px' }}>
                         {group.group}
                       </span>
                     }
@@ -484,7 +484,7 @@ const RoleList = () => {
                       }}
                     >
                       {group.permissions.map((perm) => (
-                        <Checkbox key={perm} value={perm} style={{ color: '#000' }}>
+                        <Checkbox key={perm} value={perm} style={{ color: '#000', fontSize: '20px' }}>
                           {translatePermission(perm)}
                         </Checkbox>
                       ))}
@@ -555,7 +555,7 @@ const RoleList = () => {
               ⚠️
             </div>
             <p style={{
-              fontSize: '18px',
+              fontSize: '20px',
               color: '#333',
               margin: 0,
               fontWeight: '500'

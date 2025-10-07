@@ -1103,3 +1103,170 @@ div.student-profile .space-theme .edit-button:hover {
 .space-theme .themed-content .create-button .anticon {
 	color: #000000;
 }
+
+/* ===== PARENT INFORMATION STYLES ===== */
+.parent-card {
+	border-radius: 12px;
+	box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+	transition: all 0.3s ease;
+}
+
+.space-theme .parent-card {
+	background: rgba(110, 92, 172, 0.1);
+	border: 1px solid rgba(77, 208, 255, 0.2);
+	box-shadow: 0 4px 16px rgba(77, 208, 255, 0.1);
+}
+
+.sun-theme .parent-card {
+	background: rgba(255, 255, 255, 0.8);
+	border: 1px solid rgba(0, 0, 0, 0.1);
+	box-shadow: 0 4px 16px rgba(0, 0, 0, 0.05);
+}
+
+.space-theme .parent-card .ant-card-head {
+	background: rgba(26, 26, 46, 0.8) !important;
+}
+
+.space-theme .parent-card .ant-card-head-title {
+	color: #fff !important;
+}
+
+.sun-theme .parent-card .ant-card-head {
+	background: #C2E6FF !important;
+}
+
+.sun-theme .parent-card .ant-card-head-title {
+	color: #000 !important;
+}
+
+.parent-section {
+	margin-bottom: 20px;
+}
+
+.parent-title {
+	font-size: 18px;
+	font-weight: 600;
+	margin-bottom: 16px;
+	padding-bottom: 8px;
+	border-bottom: 2px solid;
+	border-radius: 4px;
+}
+
+.space-theme .parent-title {
+	color: #4dd0ff;
+	border-bottom-color: rgba(77, 208, 255, 0.3);
+}
+
+.sun-theme .parent-title {
+	color: #1890ff;
+	border-bottom-color: rgba(24, 144, 255, 0.3);
+}
+
+.parent-info-grid {
+	display: grid;
+	gap: 12px;
+}
+
+.parent-info-item {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	padding: 12px;
+	border-radius: 8px;
+	background: rgba(255, 255, 255, 0.9);
+	transition: all 0.3s ease;
+	border: 1px solid rgba(0, 0, 0, 0.1);
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.space-theme .parent-info-item {
+	background: rgba(255, 255, 255, 0.9);
+	border: 1px solid rgba(0, 0, 0, 0.1);
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.sun-theme .parent-info-item {
+	background: rgba(255, 255, 255, 0.9);
+	border: 1px solid rgba(0, 0, 0, 0.1);
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.parent-info-item strong {
+	font-size: 14px;
+	font-weight: 600;
+	margin-bottom: 4px;
+}
+
+.space-theme .parent-info-item strong {
+	color: #4dd0ff;
+}
+
+.sun-theme .parent-info-item strong {
+	color: #1890ff;
+}
+
+.parent-info-item span {
+	font-size: 14px;
+	color: #333;
+	word-break: break-word;
+}
+
+.space-theme .parent-info-item span {
+	color: #333;
+}
+
+.sun-theme .parent-info-item span {
+	color: #333;
+}
+
+.parent-info-item:hover {
+	transform: translateY(-2px);
+	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.space-theme .parent-info-item:hover {
+	box-shadow: 0 4px 12px rgba(77, 208, 255, 0.3);
+}
+
+.sun-theme .parent-info-item:hover {
+	box-shadow: 0 4px 12px rgba(24, 144, 255, 0.3);
+}
+
+/* Section titles in edit modal */
+.section-title {
+	font-size: 18px;
+	font-weight: 600;
+	margin-bottom: 20px;
+	padding-bottom: 8px;
+	border-bottom: 2px solid;
+	border-radius: 4px;
+}
+
+.space-theme .section-title {
+	color: #4dd0ff;
+	border-bottom-color: rgba(77, 208, 255, 0.3);
+}
+
+.sun-theme .section-title {
+	color: #1890ff;
+	border-bottom-color: rgba(24, 144, 255, 0.3);
+}
+
+.parent-section-title {
+	font-size: 16px;
+	font-weight: 500;
+	margin-bottom: 16px;
+	padding-bottom: 6px;
+	border-bottom: 1px solid;
+	border-radius: 4px;
+}
+
+.space-theme .parent-section-title {
+	color: #4dd0ff;
+	border-bottom-color: rgba(77, 208, 255, 0.2);
+}
+
+.sun-theme .parent-section-title {
+	color: #1890ff;
+	border-bottom-color: rgba(24, 144, 255, 0.2);
+}
