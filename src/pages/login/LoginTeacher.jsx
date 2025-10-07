@@ -68,6 +68,8 @@ export default function LoginTeacher() {
                 redirectPath = '/manager/syllabuses';
             } else if (response.data.role === 'TEACHER') {
                 redirectPath = '/teacher/classes';
+            } else if (response.data.role === 'TEACHING_ASSISTANT') {
+                redirectPath = '/teacher/classes';
             }
             
             console.log('LoginTeacher - Redirect path:', redirectPath);
