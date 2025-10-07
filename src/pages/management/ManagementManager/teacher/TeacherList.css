@@ -152,13 +152,23 @@
 	transition: all 0.3s ease;
 }
 
-.teacher-page .refresh-button {
+.space-theme .teacher-page .refresh-button {
 	height: 40px;
 	border-radius: 8px;
 	font-weight: 500;
 	border: 1px solid rgba(77, 208, 255, 0.3);
 	background: #6B4C93;
 	color: #ffffff;
+	backdrop-filter: blur(10px);
+	transition: all 0.3s ease;
+}
+
+.sun-theme .teacher-page .refresh-button {
+	height: 40px;
+	border-radius: 8px;
+	font-weight: 500;
+	background: linear-gradient(135deg, #66AEFF, #3C99FF);
+	color: #000;
 	backdrop-filter: blur(10px);
 	transition: all 0.3s ease;
 }
@@ -897,19 +907,19 @@
 }
 
 /* TextArea styles */
-.space-theme .ant-input {
+/* .space-theme .ant-input {
 	background: rgba(109, 95, 143, 0.1) !important;
 	border: 1px solid rgba(109, 95, 143, 0.3) !important;
 	color: #fff !important;
-}
+} */
 
-.space-theme .ant-input:focus {
+/* .space-theme .ant-input:focus {
 	background: rgba(109, 95, 143, 0.15) !important;
 	border-color: rgba(109, 95, 143, 0.5) !important;
 	box-shadow: 0 0 0 2px rgba(109, 95, 143, 0.2) !important;
-}
+} */
 
-.sun-theme .ant-input {
+/* .sun-theme .ant-input {
 	background: rgba(255, 255, 255, 0.8) !important;
 	border: 1px solid rgba(0, 0, 0, 0.1) !important;
 	color: #000 !important;
@@ -919,7 +929,7 @@
 	background: rgba(255, 255, 255, 0.9) !important;
 	border-color: rgba(0, 0, 0, 0.2) !important;
 	box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.1) !important;
-}
+} */
 
 /* ===== ASSIGN TEACHER TO CLASS STYLES ===== */
 .assign-teacher-form {

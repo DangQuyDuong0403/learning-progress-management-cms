@@ -194,9 +194,11 @@ export default function ThemedHeader() {
               {/* User Role Display */}
               <li className="themed-nav-item">
                 <span className={`user-role ${theme}-user-role`}>
-                  {user?.role === 'Admin' ? 'Admin' : 
-                   user?.role === 'Manager' ? 'Manager' : 
-                   user?.role === 'Teacher' ? 'Teacher' : 'User'}
+                  {user?.role === 'ADMIN' ? 'Admin' : 
+                   user?.role === 'MANAGER' ? 'Manager' : 
+                   user?.role === 'TEACHER' ? 'Teacher' :
+                   user?.role === 'TEACHER_ASSITANTS' ? 'Teacher' :  
+                   'User'}
                 </span>
               </li>
 
