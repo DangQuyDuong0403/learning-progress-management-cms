@@ -1,41 +1,25 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
-import { useSelector } from "react-redux";
-import { ThemeProvider } from "./contexts/ThemeContext";
-import CONFIG_ROUTER from "./routers/configRouter";
-import PrivateRoute from "./routers/PrivateRoute";
-import  SpaceToastify  from "../src/component/SpaceToastify";
-export default function App() {
-  const isAuthenticated = useSelector((state) => state.auth.isAuthenticated);
-  const authState = useSelector((state) => state.auth);
-  
-  console.log('App.js - isAuthenticated:', isAuthenticated);
-  console.log('App.js - authState:', authState);
-  console.log('App.js - process.env.REACT_APP_API_URL:', process.env.REACT_APP_API_URL);
-  return (
-    <ThemeProvider>
-      <Router>
-        <Routes>
-          {/* redirect "/" -> "/login" */}
-          <Route path="/" element={<Navigate to="/choose-login" replace />} />
+import logo from './logo.svg';
+import './App.css';
 
-          {CONFIG_ROUTER.map(({ path, component: Component, key, private: isPrivate }) =>
-            isPrivate ? (
-              <Route
-                key={key}
-                path={path}
-                element={
-                  <PrivateRoute>
-                    <Component />
-                  </PrivateRoute>
-                }
-              />
-            ) : (
-              <Route key={key} path={path} element={<Component />} />
-            )
-          )}
-        </Routes>
-      </Router>
-      <SpaceToastify />
-    </ThemeProvider>
+function App() {
+  return (
+    <div className="App">
+      <header className="App-header">
+        <img src={logo} className="App-logo" alt="logo" />
+        <p>
+          Edit <code>src/App.js</code> and save to reload.
+        </p>
+        <a
+          className="App-link"
+          href="https://reactjs.org"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Learn React
+        </a>
+      </header>
+    </div>
   );
 }
+
+export default App;
