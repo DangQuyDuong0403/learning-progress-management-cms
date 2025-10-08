@@ -62,4 +62,5 @@ jobs:
         with:
           app-name: 'deploy-new'
           slot-name: 'Production'
-          package: .
+          package: 'build'
+
