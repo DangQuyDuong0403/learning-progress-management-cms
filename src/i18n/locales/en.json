@@ -100,7 +100,7 @@
   "forgotPassword": {
     "title": "Password recovery",
     "description": "Choose the password recovery method that works for you",
-    "viaUsername": "Via username",
+    "viaEmail": "Via email",
     "usernameDescription": "Send reset link via email using username",
     "viaPhone": "Request teacher to send default password",
     "phoneDescription": "Ask teacher to provide default password",
@@ -109,6 +109,12 @@
     "send": "Send",
     "usernameNotFound": "Username does not exist in the system!",
     "resetLinkSent": "Password reset link has been sent successfully!"
+  },
+  "forgotPasswordSuccess": {
+    "title": "Email Sent Successfully!",
+    "message": "We have sent a new random default password to your email address. Please check your inbox and use this password to login.",
+    "checkEmail": "If you don't see the email, please check your spam folder. For security reasons, please change your password after logging in.",
+    "backToLogin": "Back to Login"
   },
   "profile": {
     "title": "Personal Information",
