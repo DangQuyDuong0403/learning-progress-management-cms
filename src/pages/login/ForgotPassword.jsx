@@ -30,11 +30,12 @@ export default function ForgotPassword() {
 	// Handle success/error messages
 	useEffect(() => {
 		if (forgotPasswordSuccess) {
-			spaceToast.success(t('forgotPassword.resetLinkSent'));
+			// Navigate to success page instead of showing toast
+			navigate('/forgot-password-success');
 		} else if (forgotPasswordError) {
 			spaceToast.error(forgotPasswordError.message || t('forgotPassword.usernameNotFound'));
 		}
-	}, [forgotPasswordSuccess, forgotPasswordError, t]);
+	}, [forgotPasswordSuccess, forgotPasswordError, t, navigate]);
 
 	const handleSubmit = (e) => {
 		e.preventDefault();

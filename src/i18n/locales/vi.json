@@ -100,7 +100,7 @@
   "forgotPassword": {
     "title": "Khôi phục mật khẩu",
     "description": "Chọn phương thức khôi phục mật khẩu phù hợp với bạn",
-    "viaUsername": "Qua tên đăng nhập",
+    "viaEmail": "Qua email",
     "usernameDescription": "Gửi link đặt lại qua email sử dụng tên đăng nhập",
     "viaPhone": "Yêu cầu giáo viên gửi mật khẩu cố định",
     "phoneDescription": "Nhờ giáo viên cung cấp mật khẩu mặc định",
@@ -109,6 +109,12 @@
     "send": "Gửi",
     "usernameNotFound": "Tên đăng nhập không tồn tại trong hệ thống!",
     "resetLinkSent": "Link đặt lại mật khẩu đã được gửi thành công!"
+  },
+  "forgotPasswordSuccess": {
+    "title": "Gửi Email Thành Công!",
+    "message": "Chúng tôi đã gửi mật khẩu mặc định ngẫu nhiên mới đến địa chỉ email của bạn. Vui lòng kiểm tra hộp thư và sử dụng mật khẩu này để đăng nhập.",
+    "checkEmail": "Nếu bạn không thấy email, vui lòng kiểm tra thư mục spam. Vì lý do bảo mật, vui lòng đổi mật khẩu sau khi đăng nhập.",
+    "backToLogin": "Quay Lại Đăng Nhập"
   },
   "profile": {
     "title": "Thông tin cá nhân",
