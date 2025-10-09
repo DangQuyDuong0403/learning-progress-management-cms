@@ -72,7 +72,6 @@ const AccountList = () => {
 		pageSize: 10,
 		total: 0,
 		showSizeChanger: true,
-		showQuickJumper: true,
 		showTotal: (total, range) => `${range[0]}-${range[1]} of ${total}`,
 	});
 
@@ -441,17 +440,6 @@ const AccountList = () => {
 			),
 		},
 		{
-			title: t('accountManagement.phone'),
-			dataIndex: 'phone',
-			key: 'phone',
-			render: (phone) => (
-				<Space>
-					<PhoneOutlined />
-					{phone}
-				</Space>
-			),
-		},
-		{
 			title: t('accountManagement.role'),
 			dataIndex: 'role',
 			key: 'role',
@@ -464,13 +452,6 @@ const AccountList = () => {
 			render: (status) => getStatusTag(status),
 		},
 		{
-			title: t('accountManagement.createdAt'),
-			dataIndex: 'createdAt',
-			key: 'createdAt',
-			sorter: true,
-			defaultSortOrder: 'ascend',
-		},
-		{
 			title: t('accountManagement.actions'),
 			key: 'actions',
 			width: 180,
@@ -478,6 +459,7 @@ const AccountList = () => {
 				<Space size='small'>
 					<Tooltip title={t('accountManagement.edit')}>
 						<Button
+							
 							type='text'
 							icon={<EditOutlined style={{ fontSize: '25px' }} />}
 							size='small'
@@ -563,11 +545,6 @@ const AccountList = () => {
 						<div style={{ flex: '1' }}></div>
 					</div>
 					<div className='action-buttons'>
-						<Button
-							icon={<UploadOutlined />}
-							className={`export-button ${theme}-export-button`}>
-							Export Data
-						</Button>
 						<Button
 							icon={<DownloadOutlined />}
 							className={`import-button ${theme}-import-button`}
