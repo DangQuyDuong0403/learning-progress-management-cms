@@ -11,7 +11,7 @@ import ProfileStudent from '../pages/profile/ProfileStudent.jsx';
 import ChangePassword from '../pages/profile/ChangePassword.jsx';
 import Settings from '../pages/settings/Settings.jsx';
 import AccountList from '../pages/management/managementAdmin/account/AccountList.jsx';
-import RoleList from '../pages/management/managementAdmin/role/RoleList.jsx';
+// import RoleList from '../pages/management/managementAdmin/role/RoleList.jsx';
 import LevelList from '../pages/management/ManagementManager/level/LevelList.jsx';
 import SyllabusList from '../pages/management/ManagementManager/syllabus/SyllabusList.jsx';
 import StudentList from '../pages/management/ManagementManager/Student/StudentList.jsx';
@@ -163,17 +163,17 @@ const CONFIG_ROUTER = [
 		private: true,
 		role: 'admin',
 	},
-	{
-		show: true,
-		component: RoleList,
-		// icon: <UserOutlined />,
-		path: ROUTER_PAGE.ADMIN_ROLES,
-		menuName: 'Roles management',
-		exact: true,
-		key: 'ADMIN_ROLES',
-		private: false,
-		role: 'admin',
-	},
+	// {
+	// 	show: true,
+	// 	component: RoleList,
+	// 	// icon: <UserOutlined />,
+	// 	path: ROUTER_PAGE.ADMIN_ROLES,
+	// 	menuName: 'Roles management',
+	// 	exact: true,
+	// 	key: 'ADMIN_ROLES',
+	// 	private: false,
+	// 	role: 'admin',
+	// },
 	{
 		show: true,
 		component: ClassList,
