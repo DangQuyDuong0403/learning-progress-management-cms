@@ -4,14 +4,9 @@ import {
 	Button,
 	Space,
 	Modal,
-	message,
 	Input,
 	Select,
 	Tag,
-	Card,
-	Row,
-	Col,
-	Statistic,
 	Tooltip,
 } from 'antd';
 import {
@@ -20,9 +15,6 @@ import {
 	DeleteOutlined,
 	SearchOutlined,
 	ReloadOutlined,
-	BookOutlined,
-	DownloadOutlined,
-	UploadOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useDispatch, useSelector } from 'react-redux';
@@ -37,7 +29,6 @@ import LoadingWithEffect from '../../../../component/spinner/LoadingWithEffect';
 import { useTheme } from '../../../../contexts/ThemeContext';
 import { spaceToast } from '../../../../component/SpaceToastify';
 
-const { Search } = Input;
 const { Option } = Select;
 
 const LevelList = () => {
@@ -52,12 +43,6 @@ const LevelList = () => {
 	const [deleteLevel, setDeleteLevel] = useState(null);
 	const [searchText, setSearchText] = useState('');
 	const [statusFilter, setStatusFilter] = useState('all');
-	const [confirmModal, setConfirmModal] = useState({
-		visible: false,
-		title: '',
-		content: '',
-		onConfirm: null,
-	});
 	useEffect(() => {
 		dispatch(fetchLevels());
 	}, [dispatch]);
@@ -112,14 +97,6 @@ const LevelList = () => {
 		return matchesSearch && matchesStatus;
 	});
 
-	// Calculate statistics
-	const totalLevels = levels.length;
-	const activeLevels = levels.filter(
-		(level) => level.status === 'active'
-	).length;
-	const inactiveLevels = levels.filter(
-		(level) => level.status === 'inactive'
-	).length;
 
 	const columns = [
 		{

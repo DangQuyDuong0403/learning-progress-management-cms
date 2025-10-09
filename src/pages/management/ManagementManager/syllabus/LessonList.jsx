@@ -28,7 +28,6 @@ import { useDispatch, useSelector } from 'react-redux';
 import LessonForm from './LessonForm';
 import {
 	fetchLessonsByChapter,
-	deleteLesson,
 	updateLessonStatus,
 } from '../../../../redux/syllabus';
 
@@ -82,14 +81,6 @@ const LessonList = ({ chapter, onClose }) => {
 		setDeleteLesson(null);
 	};
 
-	const handleStatusChange = async (id, status) => {
-		try {
-			await dispatch(updateLessonStatus({ id, status }));
-			message.success(t('lessonManagement.updateLessonSuccess'));
-		} catch (error) {
-			message.error(t('lessonManagement.updateLessonError'));
-		}
-	};
 
 	const handleModalClose = () => {
 		setIsModalVisible(false);

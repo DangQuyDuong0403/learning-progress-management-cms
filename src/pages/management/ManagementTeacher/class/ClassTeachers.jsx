@@ -17,10 +17,8 @@ import {
 import {
   ArrowLeftOutlined,
   UserOutlined,
-  PlusOutlined,
   SearchOutlined,
   DeleteOutlined,
-  ReloadOutlined,
   UploadOutlined,
 } from "@ant-design/icons";
 import ThemedLayout from "../../../../component/ThemedLayout";
@@ -187,14 +185,7 @@ const ClassTeachers = () => {
     fetchTeachers();
   }, [id, fetchClassData, fetchTeachers]);
 
-  const handleAddTeacher = () => {
-    form.resetFields();
-    setIsModalVisible(true);
-  };
 
-  const handleImportFile = () => {
-    setIsImportModalVisible(true);
-  };
 
   const handleImportModalOk = () => {
     if (fileList.length === 0) {

@@ -1,5 +1,6 @@
 import React from 'react';
 import { Modal } from 'antd';
+import { MailOutlined } from '@ant-design/icons';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useTranslation } from 'react-i18next';
 
@@ -56,13 +57,15 @@ export default function ForgotPasswordModal({ visible, onCancel, onMethodSelect 
                         justifyContent: 'center',
                         flexWrap: 'wrap',
                     }}>
-                    {/* Username Option */}
+                    {/* Email Option */}
                     <div
                         onClick={() => handleMethodSelect('email')}
                         className='recover-option'>
                         <div className='recover-card'>
-                            <div className='recover-icon'>👤</div>
-                            <h6>{t('forgotPassword.viaUsername')}</h6>
+                            <div className='recover-icon'>
+                                <MailOutlined style={{ fontSize: '32px', color: '#EA4335' }} />
+                            </div>
+                            <h6>{t('forgotPassword.viaEmail')}</h6>
                           
                         </div>
                     </div>

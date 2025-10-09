@@ -11,13 +11,11 @@ import LanguageToggle from '../../component/LanguageToggle';
 import ThemeToggleSwitch from '../../component/ThemeToggleSwitch';
 import { useTheme } from '../../contexts/ThemeContext';
 import ThemedLayoutFullScreen from '../../component/ThemedLayoutFullScreen';
-import ForgotPasswordModal from './ForgotPasswordModal';
 import './Login.css';
 
 export default function LoginTeacher() {
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
-    const [forgotVisible, setForgotVisible] = useState(false);
     const [loading, setLoading] = useState(false);
     const dispatch = useDispatch();
     const navigate = useNavigate();
@@ -99,8 +97,8 @@ export default function LoginTeacher() {
         navigate('/choose-login');
     };
 
-    const handleForgotMethodSelect = (method) => {
-        navigate(`/forgot-password-${method}`);
+    const handleForgotPassword = () => {
+        navigate('/forgot-password-email');
     };
 
     return (
@@ -272,7 +270,7 @@ export default function LoginTeacher() {
                                                         fontSize: '18px',
                                                         fontWeight: 400
                                                     }}
-                                                    onClick={() => setForgotVisible(true)}>
+                                                    onClick={handleForgotPassword}>
                                                     {t('login.forgotPassword')}
                                                 </span>
                                             </div>
@@ -282,13 +280,6 @@ export default function LoginTeacher() {
                         </div>
                     </div>
                 </div>
-
-                {/* Modal chọn cách quên mật khẩu */}
-                <ForgotPasswordModal
-                    visible={forgotVisible}
-                    onCancel={() => setForgotVisible(false)}
-                    onMethodSelect={handleForgotMethodSelect}
-                />
             </div>
         </ThemedLayoutFullScreen>
     );

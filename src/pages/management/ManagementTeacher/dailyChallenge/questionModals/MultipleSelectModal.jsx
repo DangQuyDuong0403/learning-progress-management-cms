@@ -4,8 +4,6 @@ import {
   Form,
   Input,
   Button,
-  Space,
-  Checkbox,
   Typography,
   message,
   Select,
@@ -27,7 +25,7 @@ import {
 } from "@ant-design/icons";
 import './MultipleChoiceModal.css';
 
-const { Text } = Typography;
+// const { Text } = Typography; // Unused
 
 const MultipleSelectModal = ({ visible, onCancel, onSave, questionData = null }) => {
   const [form] = Form.useForm();

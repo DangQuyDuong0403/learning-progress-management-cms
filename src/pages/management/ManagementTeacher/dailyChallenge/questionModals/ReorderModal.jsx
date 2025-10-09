@@ -6,8 +6,6 @@ import {
   Button,
   Typography,
   message,
-  Space,
-  Card,
   Select,
 } from "antd";
 import { 
@@ -28,7 +26,7 @@ import {
 } from "@ant-design/icons";
 import './MultipleChoiceModal.css';
 
-const { Text } = Typography;
+const { Text } = Typography; // Used in JSX
 
 const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
   const [form] = Form.useForm();

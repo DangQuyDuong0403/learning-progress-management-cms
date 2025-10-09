@@ -46,7 +46,7 @@ const TeacherForm = ({ teacher, onClose }) => {
 			// Simulate API call
 			await new Promise(resolve => setTimeout(resolve, 1000));
 			
-			const teacherData = {
+			const processedData = {
 				...values,
 				dateOfBirth: values.dateOfBirth ? values.dateOfBirth.format('YYYY-MM-DD') : null,
 				avatar: avatarUrl,

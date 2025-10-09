@@ -6,7 +6,6 @@ import {
 } from "antd";
 import {
   ArrowLeftOutlined,
-  ReloadOutlined,
 } from "@ant-design/icons";
 import ThemedLayout from "../../../../component/ThemedLayout";
 import LoadingWithEffect from "../../../../component/spinner/LoadingWithEffect";

@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { Table, Button, Space, Modal, Input, Select, Tag, Tooltip } from 'antd';
 import {
 	PlusOutlined,
-	EditOutlined,
 	DeleteOutlined,
 	SearchOutlined,
 	ReloadOutlined,
@@ -101,10 +100,6 @@ const TeacherList = () => {
 		setIsModalVisible(true);
 	};
 
-	const handleEdit = (teacher) => {
-		setEditingTeacher(teacher);
-		setIsModalVisible(true);
-	};
 
 	const handleViewProfile = (teacher) => {
 		navigate(`/manager/teachers/profile/${teacher.id}`);
