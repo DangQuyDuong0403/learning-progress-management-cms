@@ -33,6 +33,7 @@ jobs:
           output_location: "build" # Built app content directory - optional
         env:
           CI: false
+          REACT_APP_API_URL: ${{ secrets.REACT_APP_API_URL }}
           ###### End of Repository/Build Configurations ######
 
   close_pull_request_job:
@@ -46,4 +47,5 @@ jobs:
         with:
           azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_ASHY_TREE_0B0977700 }}
           action: "close"
+
 
