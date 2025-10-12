@@ -75,7 +75,7 @@ const AccountList = () => {
 		showTotal: (total, range) => `${range[0]}-${range[1]} of ${total}`,
 	});
 
-	const fetchAccounts = useCallback(async (page = 1, size = 10, search = '', roleFilter = 'all', statusFilter = 'all', sortField = 'createdAt', sortDirection = 'asc') => {
+	const fetchAccounts = useCallback(async (page = 1, size = 10, search = '', roleFilter = 'all', statusFilter = 'active', sortField = 'createdAt', sortDirection = 'asc') => {
 		setLoading(true);
 		try {
 			const params = {
