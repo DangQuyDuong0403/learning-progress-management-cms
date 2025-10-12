@@ -1,0 +1,358 @@
+.syllabus-list-container {
+	padding: 0;
+}
+
+.syllabus-list-header {
+	margin-bottom: 24px;
+}
+
+.syllabus-list-header h2 {
+	margin: 0;
+	color: #1890ff;
+	font-size: 24px;
+	font-weight: 600;
+	display: flex;
+	align-items: center;
+}
+
+.chapter-list-header {
+	margin-bottom: 24px;
+}
+
+.chapter-list-header h3 {
+	margin: 0;
+	color: #52c41a;
+	font-size: 20px;
+	font-weight: 600;
+	display: flex;
+	align-items: center;
+}
+
+.lesson-list-header {
+	margin-bottom: 24px;
+}
+
+.lesson-list-header h3 {
+	margin: 0;
+	color: #fa8c16;
+	font-size: 18px;
+	font-weight: 600;
+	display: flex;
+	align-items: center;
+}
+
+.syllabus-list-container .ant-card {
+	border-radius: 8px;
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.syllabus-list-container .ant-table-thead > tr > th {
+	background-color: #fafafa;
+	font-weight: 600;
+	color: #262626;
+}
+
+.syllabus-list-container .ant-table-tbody > tr:hover > td {
+	background-color: #f5f5f5;
+}
+
+.syllabus-list-container .ant-btn {
+	border-radius: 6px;
+	font-weight: 500;
+}
+
+.syllabus-list-container .ant-btn-primary {
+	background-color: #1890ff;
+	border-color: #1890ff;
+}
+
+.syllabus-list-container .ant-btn-primary:hover {
+	background-color: #40a9ff;
+	border-color: #40a9ff;
+}
+
+.syllabus-list-container .ant-btn-danger {
+	background-color: #ff4d4f;
+	border-color: #ff4d4f;
+}
+
+.syllabus-list-container .ant-btn-danger:hover {
+	background-color: #ff7875;
+	border-color: #ff7875;
+}
+
+.syllabus-list-container .ant-input {
+	border-radius: 6px;
+}
+
+.syllabus-list-container .ant-select {
+	border-radius: 6px;
+}
+
+.syllabus-list-container .ant-tag {
+	border-radius: 4px;
+	font-weight: 500;
+}
+
+.syllabus-list-container .ant-statistic-title {
+	color: #8c8c8c;
+	font-size: 14px;
+}
+
+.syllabus-list-container .ant-statistic-content {
+	color: #262626;
+	font-weight: 600;
+}
+
+.syllabus-list-container .ant-pagination {
+	margin-top: 16px;
+	text-align: right;
+}
+
+.syllabus-list-container .ant-modal-header {
+	border-bottom: 1px solid #f0f0f0;
+}
+
+.syllabus-list-container .ant-modal-title {
+	font-weight: 600;
+	color: #262626;
+}
+
+.syllabus-list-container .ant-form-item-label > label {
+	font-weight: 500;
+	color: #262626;
+}
+
+.syllabus-list-container .ant-input,
+.syllabus-list-container .ant-select-selector,
+.syllabus-list-container .ant-input-number {
+	border-radius: 6px;
+}
+
+.syllabus-list-container .ant-input:focus,
+.syllabus-list-container .ant-select-focused .ant-select-selector,
+.syllabus-list-container .ant-input-number:focus {
+	border-color: #40a9ff;
+	box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2);
+}
+
+/* Status tags */
+.syllabus-list-container .ant-tag-green {
+	background-color: #f6ffed;
+	border-color: #b7eb8f;
+	color: #52c41a;
+}
+
+.syllabus-list-container .ant-tag-red {
+	background-color: #fff2f0;
+	border-color: #ffccc7;
+	color: #ff4d4f;
+}
+
+.syllabus-list-container .ant-tag-orange {
+	background-color: #fff7e6;
+	border-color: #ffd591;
+	color: #fa8c16;
+}
+
+.syllabus-list-container .ant-tag-blue {
+	background-color: #e6f7ff;
+	border-color: #91d5ff;
+	color: #1890ff;
+}
+
+/* Chapter specific styles */
+.chapter-list-container .ant-tag-blue {
+	background-color: #e6f7ff;
+	border-color: #91d5ff;
+	color: #1890ff;
+}
+
+/* Lesson specific styles */
+.lesson-list-container .ant-tag-green {
+	background-color: #f6ffed;
+	border-color: #b7eb8f;
+	color: #52c41a;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+	.syllabus-list-container .ant-table {
+		font-size: 12px;
+	}
+
+	.syllabus-list-container .ant-btn {
+		padding: 4px 8px;
+		font-size: 12px;
+	}
+
+	.syllabus-list-container .ant-card {
+		margin-bottom: 16px;
+	}
+
+	.syllabus-list-header h2 {
+		font-size: 20px;
+	}
+
+	.chapter-list-header h3 {
+		font-size: 18px;
+	}
+
+	.lesson-list-header h3 {
+		font-size: 16px;
+	}
+}
+
+/* Loading state */
+.syllabus-list-container .ant-spin-nested-loading {
+	min-height: 200px;
+}
+
+/* Empty state */
+.syllabus-list-container .ant-empty {
+	padding: 40px 0;
+}
+
+/* Search and filter section */
+.syllabus-list-container .ant-input-search .ant-input-search-button {
+	border-radius: 0 6px 6px 0;
+}
+
+.syllabus-list-container .ant-select-single:not(.ant-select-customize-input)
+	.ant-select-selector {
+	border-radius: 6px;
+}
+
+/* Table actions */
+.syllabus-list-container .ant-table-tbody > tr > td .ant-space {
+	flex-wrap: wrap;
+}
+
+.syllabus-list-container .ant-table-tbody > tr > td .ant-btn {
+	margin-bottom: 4px;
+}
+
+/* Form styles */
+.syllabus-list-container .ant-form-vertical .ant-form-item-label {
+	padding-bottom: 4px;
+}
+
+.syllabus-list-container .ant-form-item {
+	margin-bottom: 16px;
+}
+
+.syllabus-list-container .ant-input-number-group-addon {
+	background-color: #fafafa;
+	border-color: #d9d9d9;
+	color: #8c8c8c;
+}
+
+/* Modal styles */
+.syllabus-list-container .ant-modal-content {
+	border-radius: 8px;
+}
+
+.syllabus-list-container .ant-modal-header {
+	border-radius: 8px 8px 0 0;
+}
+
+.syllabus-list-container .ant-modal-body {
+	padding: 24px;
+}
+
+.syllabus-list-container .ant-modal-footer {
+	border-top: 1px solid #f0f0f0;
+	padding: 12px 24px;
+}
+
+/* Statistics cards */
+.syllabus-list-container .ant-statistic-content-value {
+	font-size: 24px;
+	line-height: 32px;
+}
+
+.syllabus-list-container .ant-statistic-content-prefix {
+	margin-right: 8px;
+}
+
+/* Pagination */
+.syllabus-list-container .ant-pagination-item {
+	border-radius: 4px;
+}
+
+.syllabus-list-container .ant-pagination-item-active {
+	background-color: #1890ff;
+	border-color: #1890ff;
+}
+
+.syllabus-list-container .ant-pagination-item-active a {
+	color: #fff;
+}
+
+.syllabus-list-container .ant-pagination-prev,
+.syllabus-list-container .ant-pagination-next {
+	border-radius: 4px;
+}
+
+/* Confirmation modal */
+.syllabus-list-container .ant-popover-inner {
+	border-radius: 6px;
+}
+
+.syllabus-list-container .ant-popover-inner-content {
+	padding: 12px 16px;
+}
+
+.syllabus-list-container .ant-popover-buttons {
+	margin-top: 12px;
+}
+
+.syllabus-list-container .ant-popover-buttons .ant-btn {
+	border-radius: 4px;
+	margin-left: 8px;
+}
+
+/* Tooltip styles */
+.syllabus-list-container .ant-tooltip-inner {
+	border-radius: 6px;
+}
+
+/* Collapse styles for chapter/lesson hierarchy */
+.syllabus-list-container .ant-collapse {
+	border-radius: 8px;
+}
+
+.syllabus-list-container .ant-collapse > .ant-collapse-item {
+	border-radius: 8px;
+	margin-bottom: 8px;
+}
+
+.syllabus-list-container .ant-collapse > .ant-collapse-item > .ant-collapse-header {
+	border-radius: 8px;
+	font-weight: 600;
+}
+
+/* Icon colors */
+.syllabus-list-container .anticon {
+	color: inherit;
+}
+
+/* Custom spacing for nested components */
+.chapter-list-container,
+.lesson-list-container {
+	padding: 0;
+}
+
+/* Enhanced table styling for nested data */
+.syllabus-list-container .ant-table-tbody > tr > td {
+	vertical-align: top;
+}
+
+/* Action button groups */
+.syllabus-list-container .ant-space-horizontal {
+	gap: 8px;
+}
+
+.syllabus-list-container .ant-space-vertical {
+	gap: 12px;
+}
