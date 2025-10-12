@@ -69,7 +69,7 @@ const AccountList = () => {
 	// Pagination state
 	const [pagination, setPagination] = useState({
 		current: 1,
-		pageSize: 10,
+		pageSize: 1,
 		total: 0,
 		showSizeChanger: true,
 		showTotal: (total, range) => `${range[0]}-${range[1]} of ${total}`,
