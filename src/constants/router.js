@@ -5,6 +5,7 @@ const ROUTER_PAGE = {
 	FORGOT_PASSWORD_EMAIL: '/forgot-password-email',
 	FORGOT_PASSWORD_PHONE: '/forgot-password-phone',
 	FORGOT_PASSWORD_SUCCESS: '/forgot-password-success',
+	FORGOT_PASSWORD_FAILURE: '/forgot-password-failure',
 	OTP_VERIFICATION: '/otp-verification',
 	RESET_PASSWORD: '/reset-password',
 	CHOOSE_LOGIN: '/choose-login',

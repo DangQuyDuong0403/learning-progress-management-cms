@@ -116,6 +116,13 @@
     "checkEmail": "If you don't see the email, please check your spam folder. For security reasons, please change your password after logging in.",
     "backToLogin": "Back to Login"
   },
+  "forgotPasswordFailure": {
+    "title": "Failed to Send Email!",
+    "message": "We were unable to send the password reset email. Please check your username and try again.",
+    "reasons": "Possible reasons: Username not found, email not configured, or network error. Please contact your teacher if the problem persists.",
+    "tryAgain": "Try Again",
+    "backToLogin": "Back to Login"
+  },
   "profile": {
     "title": "Personal Information",
     "personalInfo": "Personal Information",

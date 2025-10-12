@@ -33,7 +33,8 @@ export default function ForgotPassword() {
 			// Navigate to success page instead of showing toast
 			navigate('/forgot-password-success');
 		} else if (forgotPasswordError) {
-			spaceToast.error(forgotPasswordError.message || t('forgotPassword.usernameNotFound'));
+			// Navigate to failure page instead of showing toast
+			navigate('/forgot-password-failure');
 		}
 	}, [forgotPasswordSuccess, forgotPasswordError, t, navigate]);
 

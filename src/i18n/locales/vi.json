@@ -116,6 +116,13 @@
     "checkEmail": "Nếu bạn không thấy email, vui lòng kiểm tra thư mục spam. Vì lý do bảo mật, vui lòng đổi mật khẩu sau khi đăng nhập.",
     "backToLogin": "Quay Lại Đăng Nhập"
   },
+  "forgotPasswordFailure": {
+    "title": "Gửi Email Thất Bại!",
+    "message": "Chúng tôi không thể gửi email đặt lại mật khẩu. Vui lòng kiểm tra tên đăng nhập và thử lại.",
+    "reasons": "Nguyên nhân có thể: Tên đăng nhập không tồn tại, email chưa được cấu hình, hoặc lỗi mạng. Vui lòng liên hệ giáo viên nếu vấn đề vẫn tiếp diễn.",
+    "tryAgain": "Thử Lại",
+    "backToLogin": "Quay Lại Đăng Nhập"
+  },
   "profile": {
     "title": "Thông tin cá nhân",
     "personalInfo": "Thông tin cá nhân",
