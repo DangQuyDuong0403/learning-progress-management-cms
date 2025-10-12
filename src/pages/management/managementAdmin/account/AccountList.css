@@ -164,9 +164,10 @@
 
 /* Space theme specific table section */
 .account-page.space-theme .table-section {
-	background: rgba(238, 238, 245, 0.1) !important;
-	border: 1px solid rgba(77, 208, 255, 0.7) !important;
+	background: rgba(12, 12, 14, 0.3) !important;
 	backdrop-filter: blur(10px) !important;
+	border: 1px solid rgba(77, 208, 255, 0.3) !important;
+	border-radius: 12px ;
 }
 
 /* Sun theme specific table section */
@@ -187,23 +188,23 @@
 }
 
 .account-page.space-theme .account-table .ant-table-thead > tr > th {
-	background: rgba(149, 132, 206, 0.8) !important;
+	background:rgb(75, 65, 119) !important;
 	color: #fff !important;
 	font-weight: 600;
-	font-size: 16px !important;
+	font-size: 20px !important;
 	border-bottom: 1px solid rgba(77, 208, 255, 0.3);
 	backdrop-filter: blur(10px);
 }
 
 /* Fix for sorted columns in space theme */
 .account-page.space-theme .account-table .ant-table-thead > tr > th.ant-table-column-sort {
-	background: rgba(149, 132, 206, 0.8)!important;
+	background: rgb(75, 65, 119) !important;
 	color: #fff !important;
 }
 
 /* Fix for sortable columns */
 .account-page.space-theme .account-table .ant-table-thead > tr > th.ant-table-column-has-sorters {
-	background: rgba(149, 132, 206, 0.8) !important;
+	background: rgb(75, 65, 119) !important;
 	color: #fff !important;
 }
 
@@ -261,15 +262,19 @@
 }
 
 .account-page.space-theme .account-table .ant-table-tbody > tr > td {
-	background: #f6ebffd1 !important;
-	color: #333;
-	font-size: 15px !important;
-	border-bottom: 1px solid rgba(77, 208, 255, 0.2);
+	background: rgba(86, 78, 119, 0.9) !important;
+	color: #dadada;
+	font-size: 18px !important;
 	backdrop-filter: blur(5px);
 }
 
 .account-page.space-theme .account-table .ant-table-tbody > tr:hover > td {
 	background: rgba(131, 128, 141, 0.836) !important;
+}
+
+/* Sun theme specific tbody hover */
+.account-page.sun-theme .account-table .ant-table-tbody > tr:hover > td {
+	background: rgba(194, 230, 255, 0.8) !important;
 }
 
 /* ===== PAGINATION ===== */
@@ -357,7 +362,7 @@
 }
 
 .ant-table-tbody > tr:hover > td {
-	background: rgba(112, 87, 193, 0.1) !important;
+	background: rgba(112, 87, 193, 0.8) !important;
 }
 
 /* Avatar Styles */
@@ -528,6 +533,22 @@
 	color: #000 ;
 }
 
+
+/* Space theme edit button icon */
+.account-page.space-theme .account-table .ant-btn .anticon-edit {
+	color: #050505 !important;
+}
+
+/* Space theme download button icon */
+.account-page.space-theme .import-button .anticon-download {
+	color: #fff !important;
+}
+
+/* Sun theme edit button icon */
+.account-page.sun-theme .account-table .ant-btn .anticon-edit {
+	color: #000 !important;
+}
+
 .account-page .account-table .ant-btn:hover .anticon {
 	color: #000;
 }
@@ -547,10 +568,10 @@
 }
 
 /* Space theme filter styles */
-.account-page.space-theme .filter-select {
-	background: rgba(77, 208, 255, 0.1);
-	border: 1px solid rgba(77, 208, 255, 0.3);
-	color: #4dd0ff;
+.account-page.space-theme .filter-select .ant-select-selector {
+	background: #6d5f8f !important;
+	border: 1px solid rgba(77, 208, 255, 0.3) !important;
+	color: #242424 !important;
 }
 
 .account-page.space-theme .filter-select:hover {
