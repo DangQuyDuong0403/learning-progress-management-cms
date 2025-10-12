@@ -20,19 +20,26 @@ export default function ThemedHeader() {
   const handleLogout = async () => {
     try {
       if (refreshToken) {
-        // Gọi API logout với refreshToken
-        await dispatch(logoutApi(refreshToken)).unwrap();
+        // Gọi API logout với refreshToken và timeout ngắn
+        const logoutPromise = dispatch(logoutApi(refreshToken)).unwrap();
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Logout timeout')), 5000)
+        );
+        
+        await Promise.race([logoutPromise, timeoutPromise]);
         spaceToast.success(t('messages.logoutSuccess'));
       } else {
         // Nếu không có refreshToken, chỉ xóa localStorage
         dispatch(logout());
         spaceToast.success(t('messages.logoutSuccess'));
       }
-      navigate('/choose-login');
     } catch (error) {
-      // Nếu API logout lỗi, vẫn đăng xuất local
+      // Nếu API logout lỗi hoặc timeout, vẫn đăng xuất local
+      console.log('Logout error:', error);
       dispatch(logout());
-      spaceToast.error(t('messages.logoutError'));
+      spaceToast.success(t('messages.logoutSuccess')); // Vẫn hiển thị success vì đã logout local
+    } finally {
+      // Luôn chuyển về trang login
       navigate('/choose-login');
     }
   };
@@ -307,7 +314,7 @@ export default function ThemedHeader() {
                     {/* Logout */}
                     <button 
                       onClick={handleLogout}
-                      disabled={logoutLoading}
+                  
                       style={{
                         width: '100%',
                         padding: '12px 20px',
@@ -319,12 +326,11 @@ export default function ThemedHeader() {
                         color: '#ff4757',
                         fontSize: '14px',
                         fontWeight: '500',
-                        cursor: logoutLoading ? 'not-allowed' : 'pointer',
-                        opacity: logoutLoading ? 0.6 : 1,
+                    
                         transition: 'background-color 0.2s'
                       }}
-                      onMouseEnter={(e) => !logoutLoading && (e.target.style.backgroundColor = '#ffeeee')}
-                      onMouseLeave={(e) => !logoutLoading && (e.target.style.backgroundColor = theme === 'sun' ? 'rgba(30, 64, 175, 0.1)' : 'rgba(77, 208, 255, 0.1)')}
+                      onMouseEnter={(e) => (e.target.style.backgroundColor = '#ffeeee')}
+                      onMouseLeave={(e) => (e.target.style.backgroundColor = theme === 'sun' ? 'rgba(30, 64, 175, 0.1)' : 'rgba(77, 208, 255, 0.1)')}
                     >
                       <div style={{ 
                         width: '20px', 
@@ -339,7 +345,7 @@ export default function ThemedHeader() {
                           <line x1="21" y1="12" x2="9" y2="12"></line>
                         </svg>
                       </div>
-                      {logoutLoading ? t('common.loading') : t('header.logOut')}
+                     {t('header.logOut')}
                     </button>
                   </li>
                 </ul>

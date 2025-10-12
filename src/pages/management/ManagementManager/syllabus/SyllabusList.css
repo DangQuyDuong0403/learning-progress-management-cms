@@ -19,6 +19,15 @@
 	margin-bottom: 24px;
 }
 
+/* Chapter title theme styles */
+.chapter-title.light-theme {
+	color: black !important;
+}
+
+.chapter-title.dark-theme {
+	color: white !important;
+}
+
 .chapter-list-header h3 {
 	margin: 0;
 	color: #52c41a;

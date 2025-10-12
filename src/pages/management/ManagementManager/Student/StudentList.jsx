@@ -12,7 +12,6 @@ import {
   Tooltip,
   Row,
   Col,
-  Upload,
   Typography,
   Divider,
   DatePicker,
@@ -26,122 +25,45 @@ import {
   InfoCircleOutlined,
   DownloadOutlined,
   UploadOutlined,
-  CameraOutlined,
-  UserDeleteOutlined,
 } from "@ant-design/icons";
 import ThemedLayout from "../../../../component/ThemedLayout";
 import LoadingWithEffect from "../../../../component/spinner/LoadingWithEffect";
 import { useTheme } from "../../../../contexts/ThemeContext";
 import "./StudentList.css";
 import { spaceToast } from "../../../../component/SpaceToastify";
-import { useNavigate } from "react-router-dom";
-import AssignStudentToClass from "./AssignStudentToClass";
+import authApi from "../../../../apis/backend/auth";
 
 const { Option } = Select;
 const { Title, Text } = Typography;
-const { Dragger } = Upload;
-
-const mockStudents = [
-  {
-    id: 1,
-    studentCode: "STU001",
-    fullName: "Nguyễn Văn An",
-    email: "nguyenvanan@example.com",
-    phone: "0123456789",
-    class: "Lớp 10A1",
-    level: "Beginner",
-    status: "active",
-    lastActivity: "2024-12-20",
-    avatar: null,
-    dateOfBirth: "2005-03-15",
-    gender: "male",
-  },
-  {
-    id: 2,
-    studentCode: "STU002",
-    fullName: "Trần Thị Bình",
-    email: "tranthibinh@example.com",
-    phone: "0987654321",
-    class: null,
-    level: "Intermediate",
-    status: "active",
-    lastActivity: "2024-12-19",
-    avatar: null,
-    dateOfBirth: "2005-07-22",
-    gender: "female",
-  },
-  {
-    id: 3,
-    studentCode: "STU003",
-    fullName: "Lê Văn Cường",
-    email: "levancuong@example.com",
-    phone: "0111222333",
-    class: "Lớp 11B1",
-    level: "Advanced",
-    status: "inactive",
-    lastActivity: "2024-11-15",
-    avatar: null,
-    dateOfBirth: "2004-11-08",
-    gender: "male",
-  },
-  {
-    id: 4,
-    studentCode: "STU004",
-    fullName: "Phạm Thị Dung",
-    email: "phamthidung@example.com",
-    phone: "0444555666",
-    class: null,
-    level: "Beginner",
-    status: "active",
-    lastActivity: "2024-12-18",
-    avatar: null,
-    dateOfBirth: "2006-01-12",
-    gender: "female",
-  },
-  {
-    id: 5,
-    studentCode: "STU006",
-    fullName: "Vũ Thị Phương",
-    email: "vuthiphuong@example.com",
-    phone: "0333444555",
-    class: "Lớp 10A3",
-    level: "Advanced",
-    status: "active",
-    lastActivity: "2024-12-21",
-    avatar: null,
-    dateOfBirth: "2005-05-18",
-    gender: "female",
-  },
-  {
-    id: 6,
-    studentCode: "STU007",
-    fullName: "Hoàng Văn Đức",
-    email: "hoangvanduc@example.com",
-    phone: "0555666777",
-    class: null,
-    level: "Intermediate",
-    status: "active",
-    lastActivity: "2024-12-17",
-    avatar: null,
-    dateOfBirth: "2005-09-25",
-    gender: "male",
-  },
-];
 
 const StudentList = () => {
   const { t } = useTranslation();
   const { theme } = useTheme();
-  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [students, setStudents] = useState([]);
+  
+  // Pagination state
+  const [pagination, setPagination] = useState({
+    current: 1,
+    pageSize: 10,
+    total: 0,
+    showSizeChanger: true,
+    showTotal: (total, range) => `${range[0]}-${range[1]} of ${total}`,
+  });
+  
+  // Search and filter state
   const [searchText, setSearchText] = useState("");
-  const [statusFilter] = useState("all");
-  const [classFilter] = useState("all");
-  const [levelFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState([]);
+  const [roleNameFilter, setRoleNameFilter] = useState([]);
+  const [searchTimeout, setSearchTimeout] = useState(null);
+  
+  // Sort state
+  const [sortBy, setSortBy] = useState("createdAt");
+  const [sortDir, setSortDir] = useState("asc");
+  
+  // Modal states
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [editingStudent, setEditingStudent] = useState(null);
-  const [isAssignModalVisible, setIsAssignModalVisible] = useState(false);
-  const [assigningStudent, setAssigningStudent] = useState(null);
   const [form] = Form.useForm();
   const [confirmModal, setConfirmModal] = useState({
     visible: false,
@@ -155,133 +77,173 @@ const StudentList = () => {
     uploading: false,
   });
 
-  const fetchStudents = useCallback(async () => {
+  const fetchStudents = useCallback(async (page = 1, size = 10, search = '', statusFilter = [], roleNameFilter = [], sortField = 'createdAt', sortDirection = 'asc') => {
     setLoading(true);
     try {
-      // Simulate API call
-      setTimeout(() => {
-        setStudents(mockStudents);
-        setLoading(false);
-      }, 1000);
+      const params = {
+        page: page - 1, // API uses 0-based indexing
+        size: size,
+        sortBy: sortField,
+        sortDir: sortDirection,
+      };
+
+      // Thêm search text nếu có
+      if (search && search.trim()) {
+        params.text = search.trim();
+      }
+
+      // Thêm status filter nếu có
+      if (statusFilter.length > 0) {
+        params.status = statusFilter;
+      }
+
+      // Thêm roleName filter nếu có
+      if (roleNameFilter.length > 0) {
+        params.roleName = roleNameFilter;
+      }
+
+      console.log('Fetching students with params:', params);
+      const response = await authApi.getStudents(params);
+      
+      if (response.success && response.data) {
+        // Sort students: ACTIVE status first, then INACTIVE
+        const sortedStudents = response.data.sort((a, b) => {
+          // ACTIVE status gets priority (appears first)
+          if (a.status === 'ACTIVE' && b.status === 'INACTIVE') {
+            return -1;
+          }
+          if (a.status === 'INACTIVE' && b.status === 'ACTIVE') {
+            return 1;
+          }
+          // If both have same status, maintain original order or sort by other criteria
+          return 0;
+        });
+        
+        setStudents(sortedStudents);
+        setPagination(prev => ({
+          ...prev,
+          current: page,
+          pageSize: size,
+          total: response.totalElements || response.data.length,
+        }));
+      } else {
+        setStudents([]);
+        setPagination(prev => ({
+          ...prev,
+          current: page,
+          pageSize: size,
+          total: 0,
+        }));
+      }
     } catch (error) {
+      console.error('Error fetching students:', error);
       spaceToast.error(t('studentManagement.loadStudentsError'));
+      setStudents([]);
+      setPagination(prev => ({
+        ...prev,
+        current: page,
+        pageSize: size,
+        total: 0,
+      }));
+    } finally {
       setLoading(false);
     }
   }, [t]);
 
+
   useEffect(() => {
-    fetchStudents();
-  }, [fetchStudents]);
+    fetchStudents(1, pagination.pageSize, searchText, statusFilter, roleNameFilter, sortBy, sortDir);
+  }, [fetchStudents, searchText, statusFilter, roleNameFilter, sortBy, sortDir, pagination.pageSize]);
 
-  // Class options
-  const classOptions = [
-    { key: "10A1", label: "Lớp 10A1" },
-    { key: "10A2", label: "Lớp 10A2" },
-    { key: "10A3", label: "Lớp 10A3" },
-    { key: "11B1", label: "Lớp 11B1" },
-    { key: "9C1", label: "Lớp 9C1" },
-    { key: "12A1", label: "Lớp 12A1" },
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (searchTimeout) {
+        clearTimeout(searchTimeout);
+      }
+    };
+  }, [searchTimeout]);
+
+
+  // Status options for filter
+  const statusOptions = [
+    { key: "ACTIVE", label: t('studentManagement.active') },
+    { key: "INACTIVE", label: t('studentManagement.inactive') },
   ];
 
-  // Level options
-  const levelOptions = [
-    { key: "beginner", label: t('studentManagement.beginner') },
-    { key: "intermediate", label: t('studentManagement.intermediate') },
-    { key: "advanced", label: t('studentManagement.advanced') },
+  // Role options for filter
+  const roleOptions = [
+    { key: "STUDENT", label: "Student" },
+    { key: "TEST_TAKER", label: "Test Taker" },
   ];
-
-  // Search/filter
-  const filteredStudents = students.filter((student) => {
-    const matchesSearch = 
-      student.fullName.toLowerCase().includes(searchText.toLowerCase()) ||
-      student.studentCode.toLowerCase().includes(searchText.toLowerCase()) ||
-      student.email.toLowerCase().includes(searchText.toLowerCase());
-    
-    const matchesStatus =
-      statusFilter === "all" ||
-      (statusFilter === "active" && student.status === "active") ||
-      (statusFilter === "inactive" && student.status === "inactive") ||
-      (statusFilter === "pending" && student.status === "pending");
-    
-    const matchesClass = classFilter === "all" || student.class === classFilter;
-    const matchesLevel = levelFilter === "all" || student.level === levelFilter;
-    
-    return matchesSearch && matchesStatus && matchesClass && matchesLevel;
-  });
 
   // Table columns
   const columns = [
     {
-      title: t('studentManagement.studentCode'),
-      dataIndex: "studentCode",
-      key: "studentCode",
-      render: (code) => (
-        <span className="student-code-text">
-          {code}
-        </span>
-      ),
-      sorter: (a, b) => a.studentCode.localeCompare(b.studentCode),
+      title: "STT",
+      key: "stt",
+      width: 60,
+      render: (_, __, index) => {
+        // Calculate index based on current page and page size
+        const currentPage = pagination.current || 1;
+        const pageSize = pagination.pageSize || 10;
+        return (
+          <span className="stt-text">
+            {(currentPage - 1) * pageSize + index + 1}
+          </span>
+        );
+      },
     },
     {
-      title: t('studentManagement.student'),
-      dataIndex: "fullName",
+      title: "Username",
+      dataIndex: "userName",
+      key: "userName",
+      render: (userName) => (
+        <span className="username-text">
+          {userName}
+        </span>
+      ),
+    },
+    {
+      title: "Email",
+      dataIndex: "email",
+      key: "email",
+      render: (email) => (
+        <span className="email-text">{email}</span>
+      ),
+      sorter: true,
+    },
+    {
+      title: "Full Name",
       key: "fullName",
-      render: (name) => (
-        <span className="student-name-text">{name}</span>
-      ),
-      sorter: (a, b) => a.fullName.localeCompare(b.fullName),
-    },
-    {
-      title: t('studentManagement.phone'),
-      dataIndex: "phone",
-      key: "phone",
-      render: (phone) => (
-        <span className="phone-text">
-          {phone}
+      render: (_, record) => (
+        <span className="fullname-text">
+          {`${record.firstName || ''} ${record.lastName || ''}`.trim()}
         </span>
       ),
     },
     {
-      title: t('studentManagement.class'),
-      dataIndex: "class",
-      key: "class",
-      render: (class_) => (
-        <span className="class-text">
-          {class_ || <span style={{ color: '#999', fontStyle: 'italic' }}>Chưa có lớp</span>}
+      title: "Gender",
+      dataIndex: "gender",
+      key: "gender",
+      render: (gender) => (
+        <span className="gender-text">
+          {gender === 'Male' ? t('common.male') : gender === 'Female' ? t('common.female') : gender}
         </span>
       ),
-      filters: classOptions.map(opt => ({ text: opt.label, value: opt.key })),
-      onFilter: (value, record) => record.class === value,
     },
     {
-      title: t('studentManagement.level'),
-      dataIndex: "level",
-      key: "level",
-      render: (level) => (
-        <span className="level-text">{level}</span>
-      ),
-      filters: levelOptions.map(opt => ({ text: opt.label, value: opt.key })),
-      onFilter: (value, record) => record.level === value,
-    },
-    {
-      title: t('studentManagement.status'),
+      title: "Status",
       dataIndex: "status",
       key: "status",
       render: (status) => {
         const statusConfig = {
-          active: { color: "green", text: t('studentManagement.active') },
-          inactive: { color: "red", text: t('studentManagement.inactive') },
-          pending: { color: "orange", text: t('studentManagement.pending') },
+          ACTIVE: { color: "green", text: t('studentManagement.active') },
+          INACTIVE: { color: "red", text: t('studentManagement.inactive') },
         };
-        const config = statusConfig[status] || statusConfig.inactive;
+        const config = statusConfig[status] || statusConfig.INACTIVE;
         return <Tag color={config.color}>{config.text}</Tag>;
       },
-      filters: [
-        { text: t('studentManagement.active'), value: "active" },
-        { text: t('studentManagement.inactive'), value: "inactive" },
-        { text: t('studentManagement.pending'), value: "pending" },
-      ],
-      onFilter: (value, record) => record.status === value,
     },
     {
       title: t('studentManagement.actions'),
@@ -301,41 +263,14 @@ const StudentList = () => {
               }}
             />
           </Tooltip>
-          {!record.class ? (
-            <Tooltip title={t('studentManagement.assignToClass')}>
-              <Button
-                type="text"
-                icon={<PlusOutlined style={{ fontSize: '25px' }} />}
-                size="small"
-                onClick={() => handleAssignToClass(record)}
-                style={{ 
-                  color: '#52c41a',
-                  padding: '8px 12px'
-                }}
-              />
-            </Tooltip>
-          ) : (
-            <Tooltip title={t('studentManagement.removeFromClass')}>
-              <Button
-                type="text"
-                icon={<UserDeleteOutlined style={{ fontSize: '25px' }} />}
-                size="small"
-                onClick={() => handleRemoveFromClass(record)}
-                style={{ 
-                  color: '#ff7875',
-                  padding: '8px 12px'
-                }}
-              />
-            </Tooltip>
-          )}
-          <Tooltip title={record.status === 'active' ? t('studentManagement.deactivate') : t('studentManagement.activate')}>
+          <Tooltip title={record.status === 'ACTIVE' ? t('studentManagement.deactivate') : t('studentManagement.activate')}>
             <Button
               type="text"
-              icon={record.status === 'active' ? <StopOutlined style={{ fontSize: '25px' }} /> : <CheckOutlined style={{ fontSize: '25px' }} />}
+              icon={record.status === 'ACTIVE' ? <StopOutlined style={{ fontSize: '25px' }} /> : <CheckOutlined style={{ fontSize: '25px' }} />}
               size="small"
               onClick={() => handleToggleStatus(record.id)}
               style={{
-                color: record.status === 'active' ? '#ff4d4f' : '#52c41a',
+                color: record.status === 'ACTIVE' ? '#ff4d4f' : '#52c41a',
                 padding: '8px 12px'
               }}
             />
@@ -344,6 +279,58 @@ const StudentList = () => {
       ),
     },
   ];
+
+  // Handle table change (pagination, sorting, filtering)
+  const handleTableChange = (pagination, filters, sorter) => {
+    console.log('Table change:', { pagination, filters, sorter });
+    
+    // Handle sorting
+    if (sorter && sorter.field) {
+      const newSortBy = sorter.field;
+      const newSortDir = sorter.order === 'ascend' ? 'asc' : 'desc';
+      
+      setSortBy(newSortBy);
+      setSortDir(newSortDir);
+      
+      // Fetch data with new sorting
+      fetchStudents(pagination.current, pagination.pageSize, searchText, statusFilter, roleNameFilter, newSortBy, newSortDir);
+    } else {
+      // Handle pagination without sorting change
+      fetchStudents(pagination.current, pagination.pageSize, searchText, statusFilter, roleNameFilter, sortBy, sortDir);
+    }
+  };
+
+  // Handle search input change
+  const handleSearch = (value) => {
+    setSearchText(value);
+    
+    // Clear existing timeout
+    if (searchTimeout) {
+      clearTimeout(searchTimeout);
+    }
+    
+    // Set new timeout for 1 second delay
+    const newTimeout = setTimeout(() => {
+      // Reset to first page when searching
+      fetchStudents(1, pagination.pageSize, value, statusFilter, roleNameFilter, sortBy, sortDir);
+    }, 1000);
+    
+    setSearchTimeout(newTimeout);
+  };
+
+  // Handle status filter change
+  const handleStatusFilterChange = (values) => {
+    setStatusFilter(values);
+    // Reset to first page when filtering
+    fetchStudents(1, pagination.pageSize, searchText, values, roleNameFilter, sortBy, sortDir);
+  };
+
+  // Handle role filter change
+  const handleRoleFilterChange = (values) => {
+    setRoleNameFilter(values);
+    // Reset to first page when filtering
+    fetchStudents(1, pagination.pageSize, searchText, statusFilter, values, sortBy, sortDir);
+  };
 
   // Add/Edit
   const handleAddStudent = () => {
@@ -355,52 +342,46 @@ const StudentList = () => {
     setIsModalVisible(true);
   };
 
-  const handleAssignToClass = (record) => {
-    setAssigningStudent(record);
-    setIsAssignModalVisible(true);
-  };
-
-  const handleAssignModalClose = () => {
-    setIsAssignModalVisible(false);
-    setAssigningStudent(null);
-  };
-
-  const handleRemoveFromClass = (record) => {
-    setConfirmModal({
-      visible: true,
-      title: t('studentManagement.removeFromClass'),
-      content: `${t('studentManagement.confirmRemoveFromClass')} "${record.fullName}" ${t('studentManagement.fromClass')} "${record.class}"?`,
-      onConfirm: () => {
-        setStudents(students.map(s => 
-          s.id === record.id ? { ...s, class: null } : s
-        ));
-        setConfirmModal({ visible: false, title: '', content: '', onConfirm: null });
-        spaceToast.success(`${t('studentManagement.removeFromClassSuccess')} "${record.fullName}" ${t('studentManagement.fromClass')} "${record.class}" ${t('studentManagement.success')}`);
-      }
-    });
-  };
 
   const handleToggleStatus = (id) => {
     const student = students.find(s => s.id === id);
     if (student) {
-      const newStatus = student.status === 'active' ? 'inactive' : 'active';
-      const actionText = newStatus === 'active' ? t('studentManagement.activate') : t('studentManagement.deactivate');
+      const newStatus = student.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
+      const actionText = newStatus === 'ACTIVE' ? t('studentManagement.activate') : t('studentManagement.deactivate');
+      const studentName = `${student.firstName || ''} ${student.lastName || ''}`.trim() || student.userName;
       
       setConfirmModal({
         visible: true,
         title: t('studentManagement.changeStatus'),
-        content: `${t('studentManagement.confirmStatusChange')} ${actionText} ${t('studentManagement.student')} "${student.fullName}"?`,
+        content: `${t('studentManagement.confirmStatusChange')} ${actionText} ${t('studentManagement.student')} "${studentName}"?`,
         onConfirm: () => {
-          setStudents(students.map(s => 
+          // TODO: Implement API call to update student status
+          // For now, just update local state
+          const updatedStudents = students.map(s => 
             s.id === id ? { ...s, status: newStatus } : s
-          ));
+          );
+          
+          // Re-sort after status change to maintain ACTIVE first order
+          const sortedStudents = updatedStudents.sort((a, b) => {
+            // ACTIVE status gets priority (appears first)
+            if (a.status === 'ACTIVE' && b.status === 'INACTIVE') {
+              return -1;
+            }
+            if (a.status === 'INACTIVE' && b.status === 'ACTIVE') {
+              return 1;
+            }
+            // If both have same status, maintain original order
+            return 0;
+          });
+          
+          setStudents(sortedStudents);
           setConfirmModal({ visible: false, title: '', content: '', onConfirm: null });
           
           // Show success toast
-          if (newStatus === 'active') {
-            spaceToast.success(`${t('studentManagement.activateStudentSuccess')} "${student.fullName}" ${t('studentManagement.success')}`);
+          if (newStatus === 'ACTIVE') {
+            spaceToast.success(`${t('studentManagement.activateStudentSuccess')} "${studentName}" ${t('studentManagement.success')}`);
           } else {
-            spaceToast.success(`${t('studentManagement.deactivateStudentSuccess')} "${student.fullName}" ${t('studentManagement.success')}`);
+            spaceToast.success(`${t('studentManagement.deactivateStudentSuccess')} "${studentName}" ${t('studentManagement.success')}`);
           }
         }
       });
@@ -414,23 +395,17 @@ const StudentList = () => {
   const handleModalOk = async () => {
     try {
       const values = await form.validateFields();
+      // TODO: Implement API call to create/update student
+      console.log('Student form values:', values);
+      
       if (editingStudent) {
-        setStudents(
-          students.map((student) =>
-            student.id === editingStudent.id
-              ? { ...student, ...values }
-              : student
-          )
-        );
-        spaceToast.success(`${t('studentManagement.updateStudentSuccess')} "${values.fullName}" ${t('studentManagement.success')}`);
+        // TODO: Call update student API
+        spaceToast.success(`Update student "${values.firstName} ${values.lastName}" successfully`);
       } else {
-        const newStudent = {
-          id: Date.now(),
-          ...values,
-          lastActivity: new Date().toISOString().split('T')[0],
-        };
-        setStudents([newStudent, ...students]);
-        spaceToast.success(`${t('studentManagement.addStudentSuccess')} "${values.fullName}" ${t('studentManagement.success')}`);
+        // TODO: Call create student API
+        spaceToast.success(`Add student "${values.firstName} ${values.lastName}" successfully`);
+        // Refresh the list after adding
+        fetchStudents();
       }
       setIsModalVisible(false);
       form.resetFields();
@@ -446,7 +421,9 @@ const StudentList = () => {
 
   // Handle view student profile
   const handleViewProfile = (record) => {
-    navigate(`/manager/student/${record.id}/profile`, { state: { student: record } });
+    // TODO: Implement student profile view
+    console.log('View profile for student:', record);
+    spaceToast.info('Student profile view not implemented yet');
   };
 
   // Handle import students
@@ -496,7 +473,21 @@ const StudentList = () => {
         },
       ];
 
-      setStudents([...newStudents, ...students]);
+      // Combine new students with existing ones and sort by status
+      const allStudents = [...newStudents, ...students];
+      const sortedStudents = allStudents.sort((a, b) => {
+        // ACTIVE status gets priority (appears first)
+        if (a.status === 'ACTIVE' && b.status === 'INACTIVE') {
+          return -1;
+        }
+        if (a.status === 'INACTIVE' && b.status === 'ACTIVE') {
+          return 1;
+        }
+        // If both have same status, maintain original order
+        return 0;
+      });
+      
+      setStudents(sortedStudents);
       spaceToast.success(
         `${t('studentManagement.importSuccess')} ${newStudents.length} ${t(
           'studentManagement.students'
@@ -544,15 +535,48 @@ STU003,Le Van Cuong,levancuong@example.com,0111222333,Lớp 11B1,Advanced,active
         <div className={`main-content-panel ${theme}-main-panel`}>
           {/* Header Section */}
           <div className={`panel-header ${theme}-panel-header`}>
-            <div className="search-section">
+            <div className="search-section" style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
               <Input
                 prefix={<SearchOutlined />}
                 value={searchText}
-                onChange={(e) => setSearchText(e.target.value)}
+                onChange={(e) => handleSearch(e.target.value)}
                 className={`search-input ${theme}-search-input`}
                 style={{ flex: '1', minWidth: '250px', maxWidth: '400px', width: '350px', height: '40px', fontSize: '16px' }}
+               
                 allowClear
               />
+              <Select
+                mode="multiple"
+                placeholder="Status"
+                value={statusFilter}
+                onChange={handleStatusFilterChange}
+                style={{ minWidth: '200px', color: '#000' }}
+                allowClear
+                maxTagCount={2}
+                maxTagPlaceholder="..."
+              >
+                {statusOptions.map(option => (
+                  <Option key={option.key} value={option.key} style={{ color: '#000' }}>
+                    {option.label}
+                  </Option>
+                ))}
+              </Select>
+              <Select
+                mode="multiple"
+                placeholder="Role"
+                value={roleNameFilter}
+                onChange={handleRoleFilterChange}
+                style={{ minWidth: '200px', color: '#000' }}
+                allowClear
+                maxTagCount={2}
+                maxTagPlaceholder="..."
+              >
+                {roleOptions.map(option => (
+                  <Option key={option.key} value={option.key} style={{ color: '#000' }}>
+                    {option.label}
+                  </Option>
+                ))}
+              </Select>
             </div>
             <div className="action-buttons">
               <Button 
@@ -586,17 +610,14 @@ STU003,Le Van Cuong,levancuong@example.com,0111222333,Lớp 11B1,Advanced,active
               message={t('studentManagement.loadingStudents')}>
               <Table
                 columns={columns}
-                dataSource={filteredStudents}
+                dataSource={students}
                 rowKey="id"
                 pagination={{
-                  total: filteredStudents.length,
-                  pageSize: 10,
-                  showSizeChanger: true,
-                  showQuickJumper: true,
-                  showTotal: (total, range) =>
-                    `${range[0]}-${range[1]} of ${total}`,
-                  className: `${theme}-pagination`
+                  ...pagination,
+                  className: `${theme}-pagination`,
+                  pageSizeOptions: ['5', '10', '20', '50', '100'],
                 }}
+                onChange={handleTableChange}
                 scroll={{ x: 1200 }}
                 className={`student-table ${theme}-student-table`}
               />
@@ -629,34 +650,34 @@ STU003,Le Van Cuong,levancuong@example.com,0111222333,Lớp 11B1,Advanced,active
                 <Form.Item
                   label={
                     <span>
-                      {t('studentManagement.studentCode')}
+                      First Name
                       <span style={{ color: 'red', marginLeft: '4px' }}>*</span>
                     </span>
                   }
-                  name="studentCode"
+                  name="firstName"
                   rules={[
-                    { required: true, message: t('studentManagement.studentCodeRequired') },
+                    { required: true, message: 'First name is required' },
                   ]}
                   required={false}
                 >
-                  <Input placeholder={t('studentManagement.enterStudentCode')} />
+                  <Input placeholder="Enter first name" />
                 </Form.Item>
               </Col>
               <Col span={12}>
                 <Form.Item
                   label={
                     <span>
-                      {t('studentManagement.fullName')}
+                      Last Name
                       <span style={{ color: 'red', marginLeft: '4px' }}>*</span>
                     </span>
                   }
-                  name="fullName"
+                  name="lastName"
                   rules={[
-                    { required: true, message: t('studentManagement.fullNameRequired') },
+                    { required: true, message: 'Last name is required' },
                   ]}
                   required={false}
                 >
-                  <Input placeholder={t('studentManagement.enterFullName')} />
+                  <Input placeholder="Enter last name" />
                 </Form.Item>
               </Col>
             </Row>
@@ -693,30 +714,18 @@ STU003,Le Van Cuong,levancuong@example.com,0111222333,Lớp 11B1,Advanced,active
             <Row gutter={16}>
               <Col span={12}>
                 <Form.Item
-                  label={t('studentManagement.level')}
-                  name="level"
+                  label="Phone Number"
+                  name="phoneNumber"
                 >
-                  <Select placeholder={t('studentManagement.selectLevel')}>
-                    {levelOptions.map((opt) => (
-                      <Option key={opt.key} value={opt.label}>
-                        {opt.label}
-                      </Option>
-                    ))}
-                  </Select>
+                  <Input placeholder="Enter phone number" />
                 </Form.Item>
               </Col>
               <Col span={12}>
                 <Form.Item
-                  label={t('studentManagement.class')}
-                  name="class"
+                  label="Address"
+                  name="address"
                 >
-                  <Select placeholder={t('studentManagement.selectClass')}>
-                    {classOptions.map((opt) => (
-                      <Option key={opt.key} value={opt.label}>
-                        {opt.label}
-                      </Option>
-                    ))}
-                  </Select>
+                  <Input placeholder="Enter address" />
                 </Form.Item>
               </Col>
             </Row>
@@ -727,35 +736,35 @@ STU003,Le Van Cuong,levancuong@example.com,0111222333,Lớp 11B1,Advanced,active
                   <Form.Item
                     label={
                       <span>
-                        {t('studentManagement.username')}
+                        Username
                         <span style={{ color: 'red', marginLeft: '4px' }}>*</span>
                       </span>
                     }
-                    name="username"
+                    name="userName"
                     rules={[
-                      { required: true, message: t('studentManagement.usernameRequired') },
+                      { required: true, message: 'Username is required' },
                     ]}
                     required={false}
                   >
-                    <Input placeholder={t('studentManagement.enterUsername')} />
+                    <Input placeholder="Enter username" />
                   </Form.Item>
                 </Col>
                 <Col span={12}>
                   <Form.Item
                     label={
                       <span>
-                        {t('studentManagement.password')}
+                        Password
                         <span style={{ color: 'red', marginLeft: '4px' }}>*</span>
                       </span>
                     }
                     name="password"
                     rules={[
-                      { required: true, message: t('studentManagement.passwordRequired') },
-                      { min: 6, message: t('studentManagement.passwordMinLength') },
+                      { required: true, message: 'Password is required' },
+                      { min: 6, message: 'Password must be at least 6 characters' },
                     ]}
                     required={false}
                   >
-                    <Input.Password placeholder={t('studentManagement.enterPassword')} />
+                    <Input.Password placeholder="Enter password" />
                   </Form.Item>
                 </Col>
               </Row>
@@ -764,48 +773,29 @@ STU003,Le Van Cuong,levancuong@example.com,0111222333,Lớp 11B1,Advanced,active
             <Row gutter={16}>
               <Col span={12}>
                 <Form.Item
-                  label={t('studentManagement.dateOfBirth')}
+                  label="Date of Birth"
                   name="dateOfBirth"
                 >
                   <DatePicker 
                     style={{ width: '100%' }}
-                    placeholder={t('studentManagement.selectDateOfBirth')}
+                    placeholder="Select date of birth"
                     format="YYYY-MM-DD"
                   />
                 </Form.Item>
               </Col>
               <Col span={12}>
                 <Form.Item
-                  label={t('studentManagement.gender')}
+                  label="Gender"
                   name="gender"
                 >
                   <Radio.Group>
-                    <Radio value="male">{t('common.male')}</Radio>
-                    <Radio value="female">{t('common.female')}</Radio>
+                    <Radio value="Male">Male</Radio>
+                    <Radio value="Female">Female</Radio>
                   </Radio.Group>
                 </Form.Item>
               </Col>
             </Row>
 
-            <Form.Item
-              label={t('studentManagement.profileImage')}
-              name="avatar"
-            >
-              <Upload
-                listType="picture-card"
-                maxCount={1}
-                beforeUpload={() => false}
-                showUploadList={{
-                  showPreviewIcon: true,
-                  showRemoveIcon: true,
-                }}
-              >
-                <div>
-                  <CameraOutlined />
-                  <div style={{ marginTop: 8 }}>{t('studentManagement.uploadImage')}</div>
-                </div>
-              </Upload>
-            </Form.Item>
           </Form>
         </Modal>
 
@@ -951,19 +941,14 @@ STU003,Le Van Cuong,levancuong@example.com,0111222333,Lớp 11B1,Advanced,active
               </Button>
             </div>
 
-            <Dragger
-              multiple={false}
-              accept='.xlsx,.xls,.csv'
-              fileList={importModal.fileList}
-              onChange={({ fileList }) => {
-                setImportModal((prev) => ({ ...prev, fileList }));
-              }}
-              beforeUpload={() => false} // Prevent auto upload
+            <div
               style={{
                 marginBottom: '20px',
                 border: '2px dashed #d9d9d9',
                 borderRadius: '8px',
                 background: '#fafafa',
+                padding: '40px',
+                textAlign: 'center',
               }}>
               <p
                 className='ant-upload-drag-icon'
@@ -979,7 +964,7 @@ STU003,Le Van Cuong,levancuong@example.com,0111222333,Lớp 11B1,Advanced,active
                 {t('studentManagement.supportedFormats')}: Excel (.xlsx, .xls),
                 CSV (.csv)
               </p>
-            </Dragger>
+            </div>
 
             <Divider />
 
@@ -1029,22 +1014,6 @@ STU003,Le Van Cuong,levancuong@example.com,0111222333,Lớp 11B1,Advanced,active
           </div>
         </Modal>
 
-        {/* Assign Student to Class Modal */}
-        <Modal
-          title={t('studentManagement.assignStudentToClass')}
-          open={isAssignModalVisible}
-          onCancel={handleAssignModalClose}
-          footer={null}
-          width={1200}
-          destroyOnClose
-          style={{ top: 20 }}
-          bodyStyle={{
-            maxHeight: '70vh',
-            overflowY: 'auto',
-            padding: '24px',
-          }}>
-          <AssignStudentToClass student={assigningStudent} onClose={handleAssignModalClose} />
-        </Modal>
     </ThemedLayout>
   );
 };

@@ -1025,6 +1025,8 @@
     "confirmDelete": "Xác nhận xóa",
     "confirmDeleteMessage": "Bạn có chắc chắn muốn xóa chương này?",
     "paginationText": "trong",
+    "syllabusNotFound": "Không tìm thấy giáo trình",
+    "backToSyllabuses": "Quay lại danh sách giáo trình",
     "searchPlaceholder": "Tìm kiếm chương...",
     "addNewChapter": "Thêm chương mới",
     "chapterNumberPlaceholder": "Nhập số chương",

@@ -190,9 +190,9 @@
 	content: '';
 	position: fixed;
 	bottom: 5%;
-	left: 2%;
-	width: 250px; /* Custom size */
-	height: 250px;
+	left: 5%;
+	width: 120px; /* Custom size */
+	height: 120px;
 	background-image: url('/public/img/img-bg-3.png');
 	background-size: contain;
 	background-position: center;
@@ -208,8 +208,8 @@
 	position: absolute;
 	bottom: 5%;
 	left: -10%;
-	width: 250px; /* Custom size */
-	height: 250px;
+	width: 120px; /* Custom size */
+	height: 120px;
 	background-image: url('/public/img/img-bg-3.png');
 	background-size: contain;
 	background-position: center;
@@ -382,7 +382,7 @@
 	overflow-x: hidden;
 	scrollbar-width: none;
 	-ms-overflow-style: none;
-	max-height: calc(72px * 5 + 48px); /* Limit to 5 items + margins */
+	max-height: calc(72px * 7 + 48px); /* Limit to 7 items + margins */
 }
 
 .themed-sidebar-menu::-webkit-scrollbar {

@@ -16,6 +16,7 @@ import AccountList from '../pages/management/managementAdmin/account/AccountList
 // import RoleList from '../pages/management/managementAdmin/role/RoleList.jsx';
 import LevelList from '../pages/management/ManagementManager/level/LevelList.jsx';
 import SyllabusList from '../pages/management/ManagementManager/syllabus/SyllabusList.jsx';
+import ChapterListPage from '../pages/management/ManagementManager/syllabus/ChapterListPage.jsx';
 import StudentList from '../pages/management/ManagementManager/Student/StudentList.jsx';
 import StudentProfile from '../pages/management/ManagementManager/Student/StudentProfile.jsx';
 import StudentLearningProgressOverview from '../pages/management/ManagementManager/Student/StudentLearningProgressOverview.jsx';
@@ -310,6 +311,17 @@ const CONFIG_ROUTER = [
 		menuName: 'Syllabus management',
 		exact: true,
 		key: 'MANAGER_SYLLABUSES',
+		private: true,
+		role: 'manager',
+	},
+	{
+		show: false,
+		component: ChapterListPage,
+		// icon: <FileTextOutlined />,
+		path: ROUTER_PAGE.MANAGER_SYLLABUS_CHAPTERS,
+		menuName: 'Chapter management',
+		exact: true,
+		key: 'MANAGER_SYLLABUS_CHAPTERS',
 		private: true,
 		role: 'manager',
 	},

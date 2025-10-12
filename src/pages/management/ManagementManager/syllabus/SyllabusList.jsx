@@ -12,7 +12,6 @@ import {
 	Row,
 	Col,
 	Tooltip,
-	Statistic,
 } from 'antd';
 import {
 	PlusOutlined,
@@ -30,8 +29,8 @@ import {
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useDispatch, useSelector } from 'react-redux';
+import { useNavigate } from 'react-router-dom';
 import SyllabusForm from './SyllabusForm';
-import ChapterList from './ChapterList';
 import './SyllabusList.css';
 import {
 	fetchSyllabuses,
@@ -44,14 +43,13 @@ const { Option } = Select;
 const SyllabusList = () => {
 	const { t } = useTranslation();
 	const dispatch = useDispatch();
+	const navigate = useNavigate();
 	const { syllabuses, loading } = useSelector((state) => state.syllabus);
 	const { theme } = useTheme();
 
 	const [isModalVisible, setIsModalVisible] = useState(false);
-	const [isChapterModalVisible, setIsChapterModalVisible] = useState(false);
 	const [isDeleteModalVisible, setIsDeleteModalVisible] = useState(false);
 	const [editingSyllabus, setEditingSyllabus] = useState(null);
-	const [selectedSyllabus, setSelectedSyllabus] = useState(null);
 	const [deleteSyllabus, setDeleteSyllabus] = useState(null);
 	const [searchText, setSearchText] = useState('');
 	const [statusFilter, setStatusFilter] = useState('all');
@@ -94,8 +92,7 @@ const SyllabusList = () => {
 	};
 
 	const handleViewChapters = (syllabus) => {
-		setSelectedSyllabus(syllabus);
-		setIsChapterModalVisible(true);
+		navigate(`/manager/syllabuses/${syllabus.id}/chapters`);
 	};
 
 
@@ -104,10 +101,6 @@ const SyllabusList = () => {
 		setEditingSyllabus(null);
 	};
 
-	const handleChapterModalClose = () => {
-		setIsChapterModalVisible(false);
-		setSelectedSyllabus(null);
-	};
 
 	const handleRefresh = () => {
 		dispatch(fetchSyllabuses());
@@ -298,14 +291,10 @@ const SyllabusList = () => {
 			title: t('chapterManagement.chapterName'),
 			dataIndex: 'name',
 			key: 'name',
+			width: 200,
 			sorter: (a, b) => a.name.localeCompare(b.name),
-			render: (text, record) => (
-				<div>
-					<div style={{ fontWeight: 'bold', fontSize: '16px' }}>{text}</div>
-					<div style={{ color: '#666', fontSize: '12px' }}>
-						{record.description}
-					</div>
-				</div>
+			render: (text) => (
+				<div style={{ fontSize: '20px' }}>{text}</div>
 			),
 		},
 		{
@@ -314,7 +303,7 @@ const SyllabusList = () => {
 			key: 'syllabusName',
 			width: 150,
 			render: (syllabusName) => (
-				<Tag color="purple">{syllabusName}</Tag>
+				<span style={{ }}>{syllabusName}</span>
 			),
 		},
 		{
@@ -373,14 +362,10 @@ const SyllabusList = () => {
 			title: t('lessonManagement.lessonName'),
 			dataIndex: 'name',
 			key: 'name',
+			width: 200,
 			sorter: (a, b) => a.name.localeCompare(b.name),
-			render: (text, record) => (
-				<div>
-					<div style={{ fontWeight: 'bold', fontSize: '16px' }}>{text}</div>
-					<div style={{ color: '#666', fontSize: '12px' }}>
-						{record.description}
-					</div>
-				</div>
+			render: (text) => (
+				<div style={{ fontSize: '20px' }}>{text}</div>
 			),
 		},
 		{
@@ -389,7 +374,7 @@ const SyllabusList = () => {
 			key: 'chapterName',
 			width: 120,
 			render: (chapterName) => (
-				<Tag color="blue">{chapterName}</Tag>
+				<span>{chapterName}</span>
 			),
 		},
 		{
@@ -398,7 +383,7 @@ const SyllabusList = () => {
 			key: 'syllabusName',
 			width: 120,
 			render: (syllabusName) => (
-				<Tag color="purple">{syllabusName}</Tag>
+				<span>{syllabusName}</span>
 			),
 		},
 		{
@@ -419,9 +404,7 @@ const SyllabusList = () => {
 			key: 'type',
 			width: 120,
 			render: (type) => (
-				<Tag color={type === 'theory' ? 'blue' : type === 'practice' ? 'green' : 'orange'}>
-					{t(`lessonManagement.${type}`)}
-				</Tag>
+				<span>{t(`lessonManagement.${type}`)}</span>
 			),
 		},
 		{
@@ -471,35 +454,6 @@ const SyllabusList = () => {
 		}
 	};
 
-	const getStatistics = () => {
-		switch (currentView) {
-			case 'syllabuses':
-				return {
-					total: syllabuses.length,
-					totalChapters: syllabuses.reduce((sum, s) => sum + (s.chapters?.length || 0), 0),
-					totalLessons: syllabuses.reduce((sum, s) => 
-						sum + s.chapters?.reduce((chSum, ch) => chSum + (ch.lessons?.length || 0), 0) || 0, 0)
-				};
-			case 'chapters':
-				return {
-					total: allChapters.length,
-					totalLessons: allChapters.reduce((sum, ch) => sum + (ch.lessons?.length || 0), 0),
-					averageLessons: allChapters.length > 0 ? 
-						Math.round(allChapters.reduce((sum, ch) => sum + (ch.lessons?.length || 0), 0) / allChapters.length) : 0
-				};
-			case 'lessons':
-				return {
-					total: allLessons.length,
-					totalDuration: allLessons.reduce((sum, l) => sum + l.duration, 0),
-					averageDuration: allLessons.length > 0 ? 
-						(allLessons.reduce((sum, l) => sum + l.duration, 0) / allLessons.length).toFixed(1) : 0
-				};
-			default:
-				return { total: 0, totalChapters: 0, totalLessons: 0 };
-		}
-	};
-
-	const stats = getStatistics();
 
 	return (
 		<ThemedLayout>
@@ -541,105 +495,6 @@ const SyllabusList = () => {
 					</Col>
 				</Row>
 
-				{/* Statistics Cards */}
-				{currentView === 'syllabuses' && (
-					<Row gutter={16} style={{ marginBottom: '24px' }}>
-						<Col span={8}>
-							<Card>
-								<Statistic
-									title={t('syllabusManagement.totalSyllabuses')}
-									value={stats.total}
-									prefix={<BookOutlined />}
-								/>
-							</Card>
-						</Col>
-						<Col span={8}>
-							<Card>
-								<Statistic
-									title={t('syllabusManagement.totalChapters')}
-									value={stats.totalChapters}
-									prefix={<FileTextOutlined />}
-								/>
-							</Card>
-						</Col>
-						<Col span={8}>
-							<Card>
-								<Statistic
-									title={t('syllabusManagement.totalLessons')}
-									value={stats.totalLessons}
-									prefix={<PlayCircleOutlined />}
-								/>
-							</Card>
-						</Col>
-					</Row>
-				)}
-
-				{currentView === 'chapters' && (
-					<Row gutter={16} style={{ marginBottom: '24px' }}>
-						<Col span={8}>
-							<Card>
-								<Statistic
-									title={t('chapterManagement.totalChapters')}
-									value={stats.total}
-									prefix={<FileTextOutlined />}
-								/>
-							</Card>
-						</Col>
-						<Col span={8}>
-							<Card>
-								<Statistic
-									title={t('chapterManagement.totalLessons')}
-									value={stats.totalLessons}
-									prefix={<PlayCircleOutlined />}
-								/>
-							</Card>
-						</Col>
-						<Col span={8}>
-							<Card>
-								<Statistic
-									title={t('chapterManagement.averageLessonsPerChapter')}
-									value={stats.averageLessons}
-									suffix={t('chapterManagement.lessons')}
-									prefix={<BookOutlined />}
-								/>
-							</Card>
-						</Col>
-					</Row>
-				)}
-
-				{currentView === 'lessons' && (
-					<Row gutter={16} style={{ marginBottom: '24px' }}>
-						<Col span={8}>
-							<Card>
-								<Statistic
-									title={t('lessonManagement.totalLessons')}
-									value={stats.total}
-									prefix={<PlayCircleOutlined />}
-								/>
-							</Card>
-						</Col>
-						<Col span={8}>
-							<Card>
-								<Statistic
-									title={t('lessonManagement.totalDuration')}
-									value={stats.totalDuration}
-									suffix={t('lessonManagement.hours')}
-									prefix={<ClockCircleOutlined />}
-								/>
-							</Card>
-						</Col>
-						<Col span={8}>
-							<Card>
-								<Statistic
-									title={t('lessonManagement.averageDuration')}
-									value={stats.averageDuration}
-									suffix={t('lessonManagement.hours')}
-									prefix={<BookOutlined />}
-								/>
-							</Card>
-						</Col>
-					</Row>
-				)}
 
 				{/* Action Bar */}
 				<Row gutter={16} align="middle" style={{ marginBottom: '16px' }}>
@@ -652,11 +507,6 @@ const SyllabusList = () => {
 								className="search-input"
 								style={{ minWidth: '350px', maxWidth: '500px', height: '40px', fontSize: '16px' }}
 								allowClear
-								placeholder={
-									currentView === 'syllabuses' ? t('syllabusManagement.searchPlaceholder') :
-									currentView === 'chapters' ? t('chapterManagement.searchPlaceholder') :
-									t('lessonManagement.searchPlaceholder')
-								}
 							/>
 							{currentView === 'syllabuses' && (
 								<>
@@ -760,22 +610,6 @@ const SyllabusList = () => {
 				<SyllabusForm syllabus={editingSyllabus} onClose={handleModalClose} />
 			</Modal>
 
-			{/* Chapter Modal */}
-			<Modal
-				title={`${t('syllabusManagement.chapters')} - ${selectedSyllabus?.name}`}
-				open={isChapterModalVisible}
-				onCancel={handleChapterModalClose}
-				footer={null}
-				width={1200}
-				destroyOnClose
-			>
-				{selectedSyllabus && (
-					<ChapterList
-						syllabus={selectedSyllabus}
-						onClose={handleChapterModalClose}
-					/>
-				)}
-			</Modal>
 
 			{/* Delete Confirmation Modal */}
 			<Modal
