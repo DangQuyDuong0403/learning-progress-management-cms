@@ -382,6 +382,7 @@
 	overflow-x: hidden;
 	scrollbar-width: none;
 	-ms-overflow-style: none;
+	max-height: calc(72px * 5 + 48px); /* Limit to 5 items + margins */
 }
 
 .themed-sidebar-menu::-webkit-scrollbar {
@@ -393,7 +394,7 @@
 	border-radius: 20px;
 	height: 72px;
 	line-height: 72px;
-	font-size: 20px;
+	font-size: 23px;
 	font-weight: 600;
 	position: relative;
 	overflow: hidden;

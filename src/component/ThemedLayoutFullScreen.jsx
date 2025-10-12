@@ -3,7 +3,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import './ThemedLayout.css';
 
 const ThemedLayoutFullScreen = ({ children }) => {
-  const { theme } = useTheme();
+  const { theme, isSunTheme } = useTheme();
 
   return (
     <div 
@@ -101,6 +101,41 @@ const ThemedLayoutFullScreen = ({ children }) => {
           />
         </>
       )}
+
+      {/* Logo CAMKEY - Top Left */}
+      <div style={{ position: 'absolute', top: '20px', left: '20px', zIndex: 1000 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+          {isSunTheme ? (
+            <img 
+              src="/img/sun-logo.png" 
+              alt="CAMKEY Logo" 
+              style={{ 
+                width: '100px', 
+                height: '100px', 
+                filter: 'drop-shadow(0 0 15px rgba(255, 215, 0, 0.8))'
+              }} 
+            />
+          ) : (
+            <img 
+              src="/img/astro.png" 
+              alt="CAMKEY Logo" 
+              style={{ 
+                width: '100px', 
+                height: '100px', 
+                filter: 'drop-shadow(0 0 15px rgba(125, 211, 252, 0.8))'
+              }} 
+            />
+          )}
+          <span style={{ 
+            fontSize: '40px', 
+            fontWeight: 700, 
+            color: isSunTheme ? '#1E40AF' : '#FFFFFF',
+            textShadow: isSunTheme ? '0 0 5px rgba(30, 64, 175, 0.3)' : '0 0 15px rgba(255, 255, 255, 0.8)'
+          }}>
+            CAMKEY
+          </span>
+        </div>
+      </div>
 
       {/* Main Content */}
       <div

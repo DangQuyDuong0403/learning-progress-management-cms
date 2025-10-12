@@ -43,18 +43,18 @@
   },
   "sidebar": {
     "title": "Learning CMS",
-    "accountsManagement": "Quản lý tài khoản",
-    "teacherManagement": "Quản lý giáo viên",
-    "rolesManagement": "Quản lý vai trò",
-    "levelsManagement": "Quản lý cấp độ",
-    "syllabusManagement": "Quản lý giáo trình",
-    "coursesManagement": "Quản lý khóa học",
-    "reportsManagement": "Quản lý báo cáo",
+    "accountsManagement": "Tài khoản",
+    "teacherManagement": "Giáo viên",
+    "rolesManagement": "Vai trò",
+    "levelsManagement": "Cấp độ",
+    "syllabusManagement": "Giáo trình",
+    "coursesManagement": "Khóa học",
+    "reportsManagement": "Báo cáo",
     "dashboard": "Bảng điều khiển",
     "settings": "Cài đặt",
-    "classesManagement": "Quản lý lớp học",
-    "studentsManagement": "Quản lý học sinh",
-    "dailyChallengeManagement": "Quản lý Daily Challenge"
+    "classesManagement": "Lớp học",
+    "studentsManagement": "Học sinh",
+    "dailyChallengeManagement": "Daily Challenge"
   },
   "header": {
     "profile": "Hồ sơ",
