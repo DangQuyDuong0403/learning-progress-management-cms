@@ -303,25 +303,6 @@
   margin: 0;
 }
 
-/* Pagination Styles */
-.ant-pagination {
-  margin-top: 24px;
-  text-align: center;
-}
-
-.ant-pagination-item {
-  border-radius: 8px;
-  border: 1px solid #e2e8f0;
-}
-
-.ant-pagination-item-active {
-  background: linear-gradient(135deg, #00d4ff 0%, #9c88ff 100%);
-  border-color: transparent;
-}
-
-.ant-pagination-item-active a {
-  color: white;
-}
 
 /* Responsive Design */
 @media (max-width: 768px) {

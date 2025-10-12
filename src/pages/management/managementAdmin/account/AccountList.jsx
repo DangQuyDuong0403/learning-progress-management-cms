@@ -22,7 +22,6 @@ import {
 	EditOutlined,
 	SearchOutlined,
 	MailOutlined,
-	PhoneOutlined,
 	CheckOutlined,
 	StopOutlined,
 	DownloadOutlined,
@@ -282,6 +281,28 @@ const AccountList = () => {
 		setImportModal({ visible: true, fileList: [], uploading: false });
 	};
 
+	const handleExportTemplate = () => {
+		// Create CSV template content
+		const csvContent = [
+			'username,email,fullName,phone,role,status,password,note',
+			'example_user,example@email.com,Example User,0123456789,STUDENT,ACTIVE,password123,Example note',
+			'teacher_user,teacher@email.com,Teacher User,0987654321,TEACHER,ACTIVE,password123,Teacher note'
+		].join('\n');
+
+		// Create blob and download
+		const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+		const link = document.createElement('a');
+		const url = URL.createObjectURL(blob);
+		link.setAttribute('href', url);
+		link.setAttribute('download', 'account_template.csv');
+		link.style.visibility = 'hidden';
+		document.body.appendChild(link);
+		link.click();
+		document.body.removeChild(link);
+		
+		spaceToast.success(t('accountManagement.templateDownloaded'));
+	};
+
 	const handleImportCancel = () => {
 		setImportModal({ visible: false, fileList: [], uploading: false });
 	};
@@ -502,7 +523,6 @@ const AccountList = () => {
 				<div className={`panel-header ${theme}-panel-header`}>
 					<div className='search-section'>
 						<Input
-							placeholder='Search...'
 							prefix={<SearchOutlined />}
 							value={searchText}
 							onChange={(e) => handleSearch(e.target.value)}
@@ -517,7 +537,7 @@ const AccountList = () => {
 							value={roleFilter}
 							onChange={handleRoleFilterChange}
 							className={`filter-select ${theme}-filter-select`}
-							style={{ width: 150, marginLeft: '12px' }}
+							style={{ width: 150, marginLeft: '12px', fontSize: '16px' }}
 							allowClear>
 							<Option value='all'>{t('accountManagement.allRoles')}</Option>
 							<Option value='ADMIN'>{t('accountManagement.admin')}</Option>
@@ -534,7 +554,7 @@ const AccountList = () => {
 							value={statusFilter}
 							onChange={handleStatusFilterChange}
 							className={`filter-select ${theme}-filter-select`}
-							style={{ width: 150, marginLeft: '12px' }}
+							style={{ width: 150, marginLeft: '12px', fontSize: '16px' }}
 							allowClear>
 							<Option value='all'>{t('accountManagement.allStatuses')}</Option>
 							<Option value='ACTIVE'>{t('accountManagement.active')}</Option>
@@ -547,6 +567,12 @@ const AccountList = () => {
 					<div className='action-buttons'>
 						<Button
 							icon={<DownloadOutlined />}
+							className={`export-button ${theme}-export-button`}
+							onClick={handleExportTemplate}>
+							Export Template
+						</Button>
+						<Button
+							icon={<UploadOutlined />}
 							className={`import-button ${theme}-import-button`}
 							onClick={handleImportAccount}>
 							Import Account

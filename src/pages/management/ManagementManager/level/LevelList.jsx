@@ -103,21 +103,17 @@ const LevelList = () => {
 			title: t('levelManagement.levelName'),
 			dataIndex: 'name',
 			key: 'name',
+			width: 250,
 			sorter: (a, b) => a.name.localeCompare(b.name),
 			render: (text, record) => (
-				<div>
-					<div style={{ fontWeight: 'bold', fontSize: '16px' }}>{text}</div>
-					<div style={{ color: '#666', fontSize: '12px' }}>
-						{record.description}
-					</div>
-				</div>
+				<div style={{ fontWeight: 'normal', fontSize: '20px' }}>{text}</div>
 			),
 		},
 		{
 			title: t('levelManagement.levelCode'),
 			dataIndex: 'code',
 			key: 'code',
-			width: 120,
+			width: 100,
 			sorter: (a, b) => a.code.localeCompare(b.code),
 		},
 		{
@@ -153,13 +149,13 @@ const LevelList = () => {
 		{
 			title: t('levelManagement.actions'),
 			key: 'actions',
-			width: 150,
+			width: 100,
 			render: (_, record) => (
 				<Space size='small'>
 					<Tooltip title={t('accountManagement.edit')}>
 						<Button
 							type='text'
-							icon={<EditOutlined style={{ fontSize: '25px' }} />}
+							icon={<EditOutlined style={{ fontSize: '25px', color: '#000' }} />}
 							size='small'
 							onClick={() => handleEdit(record)}
 						/>
@@ -182,23 +178,22 @@ const LevelList = () => {
 				<div className={`panel-header ${theme}-panel-header`}>
 					<div className='search-section'>
 						<Input
-							placeholder={t('levelManagement.searchPlaceholder')}
 							prefix={<SearchOutlined />}
 							value={searchText}
 							onChange={(e) => setSearchText(e.target.value)}
 							className={`search-input ${theme}-search-input`}
-							style={{ minWidth: '350px', maxWidth: '500px' }}
+							style={{ minWidth: '350px', maxWidth: '500px', height: '40px', fontSize: '16px' }}
 							allowClear
 						/>
 						<Select
-							style={{ width: 150, marginLeft: 12 }}
+							style={{ width: 150, marginLeft: 12, fontSize: '16px' }}
 							value={statusFilter}
 							onChange={setStatusFilter}
 							placeholder={t('levelManagement.filterByStatus')}
 							className={`filter-select ${theme}-filter-select`}>
-							<Option value='all'>{t('levelManagement.allStatuses')}</Option>
-							<Option value='active'>{t('levelManagement.active')}</Option>
-							<Option value='inactive'>{t('levelManagement.inactive')}</Option>
+							<Option value='all' style={{ fontSize: '16px' }}>{t('levelManagement.allStatuses')}</Option>
+							<Option value='active' style={{ fontSize: '16px' }}>{t('levelManagement.active')}</Option>
+							<Option value='inactive' style={{ fontSize: '16px' }}>{t('levelManagement.inactive')}</Option>
 						</Select>
 						
 						{/* Spacer để đẩy action buttons về bên phải */}
@@ -209,13 +204,15 @@ const LevelList = () => {
 							icon={<ReloadOutlined />}
 							onClick={handleRefresh}
 							loading={loading}
-							className={`refresh-button ${theme}-refresh-button`}>
+							className={`refresh-button ${theme}-refresh-button`}
+							style={{ height: '40px', fontSize: '16px', fontWeight: '500' }}>
 							{t('levelManagement.refresh')}
 						</Button>
 						<Button
 							icon={<PlusOutlined />}
 							className={`create-button ${theme}-create-button`}
-							onClick={handleAdd}>
+							onClick={handleAdd}
+							style={{ height: '40px', fontSize: '16px', fontWeight: '500' }}>
 							{t('levelManagement.addLevel')}
 						</Button>
 					</div>

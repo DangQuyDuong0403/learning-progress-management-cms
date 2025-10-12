@@ -353,11 +353,11 @@ const RoleList = () => {
           <div className={`panel-header ${theme}-panel-header`}>
             <div className="search-section">
               <Input
-                placeholder="Search..."
                 prefix={<SearchOutlined />}
                 value={searchText}
                 onChange={(e) => setSearchText(e.target.value)}
                 className={`search-input ${theme}-search-input`}
+                style={{ flex: '1', minWidth: '250px', maxWidth: '400px', width: '350px', height: '40px', fontSize: '16px' }}
                 allowClear
               />
             </div>

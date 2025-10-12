@@ -316,7 +316,6 @@ const DailyChallengeList = () => {
           <Row gutter={[16, 16]} align="middle">
             <Col xs={24} sm={12} md={6} lg={5}>
               <Input
-                placeholder={t('dailyChallenge.searchChallenges')}
                 prefix={<SearchOutlined />}
                 value={searchText}
                 onChange={(e) => handleSearch(e.target.value)}

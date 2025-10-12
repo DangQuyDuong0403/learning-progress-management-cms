@@ -6,6 +6,8 @@ import {
 	SearchOutlined,
 	ReloadOutlined,
 	EyeOutlined,
+	DownloadOutlined,
+	UploadOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -144,6 +146,16 @@ const TeacherList = () => {
 
 	const handleRefresh = () => {
 		fetchTeachers();
+	};
+
+	const handleExport = () => {
+		// TODO: Implement export functionality
+		spaceToast.success(t('teacherManagement.exportSuccess'));
+	};
+
+	const handleImport = () => {
+		// TODO: Implement import functionality
+		spaceToast.success(t('teacherManagement.importSuccess'));
 	};
 
 	// Filter teachers based on search, status, and role
@@ -287,16 +299,15 @@ const TeacherList = () => {
 				<div className={`panel-header ${theme}-panel-header`}>
 					<div className='search-section'>
 						<Input
-							placeholder={t('teacherManagement.searchPlaceholder')}
 							prefix={<SearchOutlined />}
 							value={searchText}
 							onChange={(e) => setSearchText(e.target.value)}
 							className={`search-input ${theme}-search-input`}
+							style={{ flex: '1', minWidth: '250px', maxWidth: '400px', width: '350px', height: '40px', fontSize: '16px' }}
 							allowClear
 						/>
 						<Select
-							style={{ width: 150, marginLeft: 12 }}
-							ư
+							style={{ width: 150, marginLeft: 12, fontSize: '16px' }}
 							value={statusFilter}
 							onChange={setStatusFilter}
 							placeholder={t('teacherManagement.filterByStatus')}
@@ -308,7 +319,7 @@ const TeacherList = () => {
 							</Option>
 						</Select>
 						<Select
-							style={{ width: 150, marginLeft: 12 }}
+							style={{ width: 150, marginLeft: 12, fontSize: '16px' }}
 							value={roleFilter}
 							onChange={setRoleFilter}
 							placeholder={t('teacherManagement.filterByRole')}
@@ -321,6 +332,18 @@ const TeacherList = () => {
 						</Select>
 					</div>
 					<div className='action-buttons'>
+						<Button
+							icon={<DownloadOutlined />}
+							className={`export-button ${theme}-export-button`}
+							onClick={handleExport}>
+							{t('teacherManagement.exportData')}
+						</Button>
+						<Button
+							icon={<UploadOutlined />}
+							className={`import-button ${theme}-import-button`}
+							onClick={handleImport}>
+							{t('teacherManagement.importTeachers')}
+						</Button>
 						<Button
 							icon={<ReloadOutlined />}
 							onClick={handleRefresh}

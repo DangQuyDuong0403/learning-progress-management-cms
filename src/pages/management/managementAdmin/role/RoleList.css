@@ -60,34 +60,6 @@
 	max-width: 300px;
 }
 
-.search-input {
-  width: 100%;
-  height: 40px;
-}
-
-.space-theme .search-input {
-	background: #C5C5C5 !important;
-	border: 1px solid #604B9E !important;
-	outline: none !important;
-	box-shadow: none !important;
-	backdrop-filter: none !important;
-}
-
-.space-theme .search-input .ant-input {
-	background: transparent !important;
-	border: none !important;
-	outline: none !important;
-	box-shadow: none !important;
-	color: #000 !important;
-}
-
-.space-theme .search-input .ant-input:focus {
-	background: transparent !important;
-	border: none !important;
-	outline: none !important;
-	box-shadow: none !important;
-	color: #000 !important;
-}
 
 .action-buttons {
 	display: flex;
@@ -164,58 +136,7 @@
 	color: #fff;
 }
 
-.space-theme .role-table .ant-table-thead > tr > th {
-	background: rgba(45, 27, 105, 0.6);
-	color: #fff;
-	font-weight: 600;
-	border-bottom: 1px solid rgba(77, 208, 255, 0.3);
-	backdrop-filter: blur(10px);
-}
 
-.space-theme .role-table .ant-table-tbody > tr > td {
-	background: rgba(26, 26, 46, 0.4);
-	color: #fff;
-	border-bottom: 1px solid rgba(77, 208, 255, 0.2);
-	backdrop-filter: blur(5px);
-}
-
-.space-theme .role-table .ant-table-tbody > tr:hover > td {
-	background: rgba(77, 208, 255, 0.1);
-}
-
-/* ===== PAGINATION ===== */
-.space-theme .ant-pagination {
-	color: #fff;
-}
-
-.space-theme .ant-pagination .ant-pagination-item {
-	background: rgba(45, 27, 105, 0.8);
-	border: 1px solid rgba(77, 208, 255, 0.3);
-	color: #fff;
-}
-
-.space-theme .ant-pagination .ant-pagination-item:hover {
-	background: rgba(77, 208, 255, 0.2);
-	border-color: rgba(77, 208, 255, 0.6);
-}
-
-.space-theme .ant-pagination .ant-pagination-item-active {
-	background: rgba(77, 208, 255, 0.3);
-	border-color: rgba(77, 208, 255, 0.6);
-}
-
-.space-theme .ant-pagination .ant-pagination-prev,
-.space-theme .ant-pagination .ant-pagination-next {
-	background: rgba(45, 27, 105, 0.8);
-	border: 1px solid rgba(77, 208, 255, 0.3);
-	color: #fff;
-}
-
-.space-theme .ant-pagination .ant-pagination-prev:hover,
-.space-theme .ant-pagination .ant-pagination-next:hover {
-	background: rgba(77, 208, 255, 0.2);
-	border-color: rgba(77, 208, 255, 0.6);
-}
 
 /* Role name text */
 .role-name-text {

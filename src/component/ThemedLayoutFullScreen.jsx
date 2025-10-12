@@ -1,9 +1,15 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../contexts/ThemeContext';
 import './ThemedLayout.css';
 
 const ThemedLayoutFullScreen = ({ children }) => {
+  const navigate = useNavigate();
   const { theme, isSunTheme } = useTheme();
+
+  const handleCamkeyClick = () => {
+    navigate('/choose-login');
+  };
 
   return (
     <div 
@@ -104,7 +110,18 @@ const ThemedLayoutFullScreen = ({ children }) => {
 
       {/* Logo CAMKEY - Top Left */}
       <div style={{ position: 'absolute', top: '20px', left: '20px', zIndex: 1000 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+        <div 
+          style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: '15px',
+            cursor: 'pointer',
+            transition: 'transform 0.2s ease'
+          }}
+          onClick={handleCamkeyClick}
+          onMouseEnter={(e) => e.target.style.transform = 'scale(1.05)'}
+          onMouseLeave={(e) => e.target.style.transform = 'scale(1)'}
+        >
           {isSunTheme ? (
             <img 
               src="/img/sun-logo.png" 
