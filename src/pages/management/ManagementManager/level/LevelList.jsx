@@ -15,6 +15,8 @@ import {
 	DeleteOutlined,
 	SearchOutlined,
 	ReloadOutlined,
+	CheckOutlined,
+	StopOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import ThemedLayout from '../../../../component/ThemedLayout';
@@ -36,7 +38,7 @@ const LevelList = () => {
 	const [editingLevel, setEditingLevel] = useState(null);
 	const [deleteLevel, setDeleteLevel] = useState(null);
 	const [searchText, setSearchText] = useState('');
-	const [statusFilter, setStatusFilter] = useState('all');
+	const [statusFilter, setStatusFilter] = useState('active');
 	const [searchTimeout, setSearchTimeout] = useState(null);
 	const [sortBy, setSortBy] = useState('orderNumber');
 	const [sortDir, setSortDir] = useState('asc');
@@ -160,38 +162,66 @@ const LevelList = () => {
 		setIsModalVisible(true);
 	};
 
-	const handleEdit = (level) => {
-		setEditingLevel(level);
-		setIsModalVisible(true);
+	const handleEdit = async (level) => {
+		try {
+			// Fetch full level details from API
+			const response = await levelManagementApi.getLevelById(level.id);
+			console.log(response);
+			
+			// Map API response to form format
+			const levelDetails = {
+				id: response.data.id,
+				levelName: response.data.levelName,
+				description: response.data.description || '',
+				difficulty: response.data.difficulty,
+				estimatedDurationWeeks: response.data.estimatedDurationWeeks,
+				status: response.data.isActive ? 'active' : 'inactive',
+				orderNumber: response.data.orderNumber,
+				promotionCriteria: response.data.promotionCriteria || '',
+				learningObjectives: response.data.learningObjectives || '',
+			};
+			
+			setEditingLevel(levelDetails);
+			setIsModalVisible(true);
+		} catch (error) {
+			console.error('Error fetching level details:', error);
+			spaceToast.error(t('levelManagement.loadLevelDetailsError'));
+			setLoading(false);
+		}
 	};
 
-	const handleDeleteClick = (level) => {
+	const handleDeactivateClick = (level) => {
 		setDeleteLevel(level);
 		setIsDeleteModalVisible(true);
 	};
 
-	const handleDelete = async () => {
+	const handleDeactivate = async () => {
 		try {
-			await levelManagementApi.deleteLevel(deleteLevel.id);
-			spaceToast.success(t('levelManagement.deleteLevelSuccess'));
+			await levelManagementApi.activateDeactivateLevel(deleteLevel.id);
+			const action = deleteLevel.status === 'active' ? 'deactivated' : 'activated';
+			spaceToast.success(t(`levelManagement.${action}LevelSuccess`));
 			setIsDeleteModalVisible(false);
 			setDeleteLevel(null);
-			// Refresh the list after deletion
+			// Refresh the list after deactivation
 			fetchLevels(pagination.current, pagination.pageSize, searchText, statusFilter, sortBy, sortDir);
 		} catch (error) {
-			console.error('Error deleting level:', error);
-			spaceToast.error(t('levelManagement.deleteLevelError'));
+			console.error('Error deactivating level:', error);
+			spaceToast.error(t('levelManagement.deactivateLevelError'));
 		}
 	};
 
-	const handleDeleteModalClose = () => {
+	const handleDeactivateModalClose = () => {
 		setIsDeleteModalVisible(false);
 		setDeleteLevel(null);
 	};
 
-	const handleModalClose = () => {
+	const handleModalClose = (shouldRefresh = false) => {
 		setIsModalVisible(false);
 		setEditingLevel(null);
+		// Refresh data if save was successful
+		if (shouldRefresh) {
+			fetchLevels(pagination.current, pagination.pageSize, searchText, statusFilter, sortBy, sortDir);
+		}
 	};
 
 	const handleRefresh = () => {
@@ -219,7 +249,7 @@ const LevelList = () => {
 			sorter: true,
 			render: (text) => (
 				<div>
-					<div style={{ fontWeight: 'bold', fontSize: '16px' }}>{text}</div>
+					<div>{text}</div>
 				</div>
 			),
 		},
@@ -260,12 +290,22 @@ const LevelList = () => {
 							onClick={() => handleEdit(record)}
 						/>
 					</Tooltip>
-					<Tooltip title={t('levelManagement.delete')}>
+					<Tooltip title={record.status === 'active' ? t('levelManagement.deactivate') : t('levelManagement.activate')}>
 						<Button
 							type='text'
 							size='small'
-							icon={<DeleteOutlined style={{ fontSize: '25px' }} />}
-							onClick={() => handleDeleteClick(record)}
+							icon={
+								record.status === 'active' ? (
+									<StopOutlined style={{ fontSize: '25px' }} />
+								) : (
+									<CheckOutlined style={{ fontSize: '25px' }} />
+								)
+							}
+							onClick={() => handleDeactivateClick(record)}
+							style={{
+								color: record.status === 'active' ? '#ff4d4f' : '#52c41a',
+								padding: '4px 8px',
+							}}
 						/>
 					</Tooltip>
 				</Space>
@@ -281,7 +321,6 @@ const LevelList = () => {
 				<div className={`panel-header ${theme}-panel-header`}>
 					<div className='search-section'>
 						<Input
-							placeholder='Search...'
 							prefix={<SearchOutlined />}
 							value={searchText}
 							onChange={(e) => handleSearch(e.target.value)}
@@ -376,12 +415,12 @@ const LevelList = () => {
 							textAlign: 'center',
 							padding: '10px 0',
 						}}>
-						{t('levelManagement.confirmDelete')}
+						{deleteLevel?.status === 'active' ? t('levelManagement.confirmDeactivate') : t('levelManagement.confirmActivate')}
 					</div>
 				}
 				open={isDeleteModalVisible}
-				onOk={handleDelete}
-				onCancel={handleDeleteModalClose}
+				onOk={handleDeactivate}
+				onCancel={handleDeactivateModalClose}
 				okText={t('common.confirm')}
 				cancelText={t('common.cancel')}
 				width={500}
@@ -432,7 +471,7 @@ const LevelList = () => {
 							margin: 0,
 							fontWeight: '500',
 						}}>
-						{t('levelManagement.confirmDeleteMessage')}
+						{deleteLevel?.status === 'active' ? t('levelManagement.confirmDeactivateMessage') : t('levelManagement.confirmActivateMessage')}
 					</p>
 					{deleteLevel && (
 						<p
@@ -442,7 +481,7 @@ const LevelList = () => {
 								margin: 0,
 								fontWeight: '600',
 							}}>
-							<strong>{deleteLevel.name}</strong>
+							<strong>{deleteLevel.levelName}</strong>
 						</p>
 					)}
 				</div>

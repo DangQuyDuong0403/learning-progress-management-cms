@@ -311,7 +311,7 @@
 	color: #000;
 }
 .space-theme .level-table .ant-btn .anticon {
-	color: #000000;
+	color: #000000 !important;
 }
 
 .space-theme .refresh-button .anticon {
@@ -331,6 +331,11 @@
 }
 
 .space-theme .create-button svg {
+	color: #000000 ;
+	fill: #000000 ;
+}
+
+.space-theme .anticon svg {
 	color: #000000 ;
 	fill: #000000 ;
 }
