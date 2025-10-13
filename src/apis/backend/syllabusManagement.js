@@ -5,6 +5,10 @@ const syllabusManagementApi = {
     createSyllabus: (data) => axiosClient.post('/syllabus', data),
     updateSyllabus: (id, data) => axiosClient.put(`/syllabus/${id}`, data),
     deleteSyllabus: (id) => axiosClient.delete(`/syllabus/${id}`),
+    getChapters: (params) => axiosClient.get('/chapter', params),
+    getChaptersBySyllabusId: (syllabusId, params) => axiosClient.get('/chapter', { 
+        params: { syllabusId, ...params } 
+    }),
 }
 
 export default syllabusManagementApi;

@@ -15,6 +15,7 @@ import Settings from '../pages/settings/Settings.jsx';
 import AccountList from '../pages/management/managementAdmin/account/AccountList.jsx';
 // import RoleList from '../pages/management/managementAdmin/role/RoleList.jsx';
 import LevelList from '../pages/management/ManagementManager/level/LevelList.jsx';
+import LevelDragEdit from '../pages/management/ManagementManager/level/LevelDragEdit.jsx';
 import SyllabusList from '../pages/management/ManagementManager/syllabus/SyllabusList.jsx';
 import ChapterListPage from '../pages/management/ManagementManager/syllabus/ChapterListPage.jsx';
 import StudentList from '../pages/management/ManagementManager/Student/StudentList.jsx';
@@ -245,6 +246,16 @@ const CONFIG_ROUTER = [
 		menuName: 'Levels management',
 		exact: true,
 		key: 'ADMIN_LEVELS',
+		private: true,
+		role: 'manager',
+	},
+	{
+		show: false,
+		component: LevelDragEdit,
+		path: ROUTER_PAGE.MANAGER_LEVEL_EDIT_POSITIONS,
+		menuName: 'Edit Level Positions',
+		exact: true,
+		key: 'MANAGER_LEVEL_EDIT_POSITIONS',
 		private: true,
 		role: 'manager',
 	},

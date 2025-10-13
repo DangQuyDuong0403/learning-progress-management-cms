@@ -10,27 +10,29 @@ import {
 	Tooltip,
 } from 'antd';
 import {
-	PlusOutlined,
 	EditOutlined,
-	DeleteOutlined,
 	SearchOutlined,
 	ReloadOutlined,
 	CheckOutlined,
 	StopOutlined,
+	DragOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import ThemedLayout from '../../../../component/ThemedLayout';
 import LoadingWithEffect from '../../../../component/spinner/LoadingWithEffect';
 import { useTheme } from '../../../../contexts/ThemeContext';
 import { spaceToast } from '../../../../component/SpaceToastify';
 import levelManagementApi from '../../../../apis/backend/levelManagement';
 import LevelForm from './LevelForm';
+import ROUTER_PAGE from '../../../../constants/router';
 
 const { Option } = Select;
 
 const LevelList = () => {
 	const { t } = useTranslation();
 	const { theme } = useTheme();
+	const navigate = useNavigate();
 	const [loading, setLoading] = useState(false);
 	const [levels, setLevels] = useState([]);
 	const [isModalVisible, setIsModalVisible] = useState(false);
@@ -157,10 +159,6 @@ const LevelList = () => {
 		}
 	};
 
-	const handleAdd = () => {
-		setEditingLevel(null);
-		setIsModalVisible(true);
-	};
 
 	const handleEdit = async (level) => {
 		try {
@@ -226,6 +224,10 @@ const LevelList = () => {
 
 	const handleRefresh = () => {
 		fetchLevels(pagination.current, pagination.pageSize, searchText, statusFilter, sortBy, sortDir);
+	};
+
+	const handleEditPositions = () => {
+		navigate(ROUTER_PAGE.MANAGER_LEVEL_EDIT_POSITIONS);
 	};
 
 
@@ -354,10 +356,29 @@ const LevelList = () => {
 							{t('levelManagement.refresh')}
 						</Button>
 						<Button
-							icon={<PlusOutlined />}
-							className={`create-button ${theme}-create-button`}
-							onClick={handleAdd}>
-							{t('levelManagement.addLevel')}
+							icon={<DragOutlined />}
+							className={`edit-positions-button ${theme}-edit-positions-button`}
+							onClick={handleEditPositions}
+							style={{
+								height: '40px',
+								borderRadius: '8px',
+								fontWeight: '500',
+								border: theme === 'space' 
+									? '1px solid rgba(77, 208, 255, 0.3)' 
+									: '1px solid rgba(24, 144, 255, 0.3)',
+								background: theme === 'space'
+									? 'rgb(75, 65, 119)'
+									: 'linear-gradient(135deg, #1890ff 0%, #40a9ff 50%, #69c0ff 100%)',
+								color: theme === 'space' ? '#fff' : '#000',
+								backdropFilter: 'blur(10px)',
+								transition: 'all 0.3s ease',
+								boxShadow: theme === 'space'
+									? '0 4px 12px rgba(76, 29, 149, 0.3)'
+									: '0 4px 12px rgba(24, 144, 255, 0.3)',
+							}}
+						
+						>
+							{t('levelManagement.editPositions')}
 						</Button>
 					</div>
 				</div>
@@ -486,6 +507,7 @@ const LevelList = () => {
 					)}
 				</div>
 			</Modal>
+
 		</ThemedLayout>
 	);
 };

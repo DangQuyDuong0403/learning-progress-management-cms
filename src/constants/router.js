@@ -27,6 +27,7 @@ const ROUTER_PAGE = {
 	MANAGER_SYLLABUSES: '/manager/syllabuses',
 	MANAGER_SYLLABUS_CHAPTERS: '/manager/syllabuses/:syllabusId/chapters',
 	MANAGER_LEVELS: '/manager/levels',
+	MANAGER_LEVEL_EDIT_POSITIONS: '/manager/level/edit-positions',
 	MANAGER_TEACHERS: '/manager/teachers',
 	MANAGER_TEACHER_PROFILE: '/manager/teachers/profile/:teacherId',
 	MANAGER_TEACHER_EDIT: '/manager/teachers/edit/:teacherId',

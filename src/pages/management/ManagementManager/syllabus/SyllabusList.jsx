@@ -399,17 +399,6 @@ const SyllabusList = () => {
 			render: (duration) => `${duration} ${t('syllabusManagement.weeks')}`,
 		},
 		{
-			title: t('syllabusManagement.status'),
-			dataIndex: 'status',
-			key: 'status',
-			width: '10%',
-			render: (status) => (
-				<Tag color={status === 'active' ? 'green' : 'red'}>
-					{t(`syllabusManagement.${status}`)}
-				</Tag>
-			),
-		},
-		{
 			title: t('syllabusManagement.actions'),
 			key: 'actions',
 			width: '15%',
@@ -629,39 +618,7 @@ const SyllabusList = () => {
 
 			{/* Main Container Card */}
 			<Card className="main-container-card">
-				{/* View Toggle Buttons */}
-				<Row gutter={16} align="middle" style={{ marginBottom: '16px' }}>
-					<Col flex="auto">
-						<Space size="middle">
-							<Button.Group>
-								<Button
-									type={currentView === 'syllabuses' ? 'primary' : 'default'}
-									icon={<BookOutlined />}
-									onClick={() => setCurrentView('syllabuses')}
-									className="view-toggle-button"
-								>
-									{t('syllabusManagement.syllabuses')}
-								</Button>
-								<Button
-									type={currentView === 'chapters' ? 'primary' : 'default'}
-									icon={<FileTextOutlined />}
-									onClick={() => setCurrentView('chapters')}
-									className="view-toggle-button"
-								>
-									{t('chapterManagement.chapters')}
-								</Button>
-								<Button
-									type={currentView === 'lessons' ? 'primary' : 'default'}
-									icon={<PlayCircleOutlined />}
-									onClick={() => setCurrentView('lessons')}
-									className="view-toggle-button"
-								>
-									{t('lessonManagement.lessons')}
-								</Button>
-							</Button.Group>
-						</Space>
-					</Col>
-				</Row>
+				
 
 
 				{/* Action Bar */}
