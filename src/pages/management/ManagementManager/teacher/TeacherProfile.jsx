@@ -96,6 +96,7 @@ const TeacherProfile = () => {
 		
 		setEditModalVisible(true);
 		editForm.setFieldsValue({
+			roleName: teacher.roleName,
 			firstName: teacher.firstName,
 			lastName: teacher.lastName,
 			email: teacher.email,
@@ -110,18 +111,18 @@ const TeacherProfile = () => {
 	const handleEditSubmit = async (values) => {
 		setEditLoading(true);
 		try {
-			// Format the data according to the API requirements
-			const teacherData = {
-				roleName: "TEACHER", // Always TEACHER for teacher profile
-				email: values.email,
-				firstName: values.firstName,
-				lastName: values.lastName,
-				avatarUrl: avatarUrl || "string", // Use current avatar or default to "string"
-				dateOfBirth: values.dateOfBirth ? values.dateOfBirth.format('YYYY-MM-DDTHH:mm:ss.SSS[Z]') : null,
-				address: values.address || null,
-				phoneNumber: values.phoneNumber || null,
-				gender: values.gender || null, // MALE, FEMALE, OTHER
-			};
+		// Format the data according to the API requirements from the image
+		const teacherData = {
+			roleName: values.roleName || "TEACHER", // Use selected role or default to TEACHER
+			email: values.email,
+			firstName: values.firstName,
+			lastName: values.lastName,
+			avatarUrl: avatarUrl || "string", // Use current avatar or default to "string"
+			dateOfBirth: values.dateOfBirth ? values.dateOfBirth.toISOString() : null, // Use ISO format like in the image
+			address: values.address || "",
+			phoneNumber: values.phoneNumber,
+			gender: values.gender || "MALE", // MALE, FEMALE, OTHER
+		};
 			
 			console.log('Updating teacher with data:', teacherData);
 			
@@ -177,12 +178,12 @@ const TeacherProfile = () => {
 
 	const classColumns = [
 		{
-			title: t('teacherManagement.className'),
+			title: "Class Name",
 			dataIndex: 'name',
 			key: 'name',
 		},
 		{
-			title: t('teacherManagement.students'),
+			title: "Students",
 			dataIndex: 'students',
 			key: 'students',
 			render: (students) => (
@@ -193,7 +194,7 @@ const TeacherProfile = () => {
 			),
 		},
 		{
-			title: t('teacherManagement.startDate'),
+			title: "Start Date",
 			dataIndex: 'startDate',
 			key: 'startDate',
 			render: (date) => (
@@ -204,14 +205,12 @@ const TeacherProfile = () => {
 			),
 		},
 		{
-			title: t('teacherManagement.status'),
+			title: "Status",
 			dataIndex: 'status',
 			key: 'status',
 			render: (status) => (
 				<Tag color={status === 'active' ? 'green' : 'red'}>
-					{status === 'active'
-						? t('teacherManagement.active')
-						: t('teacherManagement.inactive')}
+					{status === 'active' ? 'Active' : 'Inactive'}
 				</Tag>
 			),
 		},
@@ -345,7 +344,7 @@ const TeacherProfile = () => {
 													fontWeight: '500',
 												}}
 												className={`role-text ${theme}-role-text`}>
-												{teacher.roleName ? teacher.roleName.charAt(0).toUpperCase() + teacher.roleName.slice(1).toLowerCase() : 'N/A'}
+												{teacher.roleName === 'TEACHER' ? 'Teacher' : teacher.roleName === 'TEACHING_ASSISTANT' ? 'Teaching Assistant' : 'N/A'}
 											</span>
 											<span
 												style={{
@@ -356,9 +355,7 @@ const TeacherProfile = () => {
 													fontWeight: '500',
 												}}
 												className={`status-text ${theme}-status-text`}>
-												{teacher.status === 'ACTIVE'
-													? t('teacherManagement.active')
-													: t('teacherManagement.inactive')}
+												{teacher.status === 'ACTIVE' ? 'Active' : 'Inactive'}
 											</span>
 										</div>
 									</div>
@@ -382,7 +379,7 @@ const TeacherProfile = () => {
 										</p>
 										<p>
 											<strong>{t('teacherManagement.gender')}:</strong>{' '}
-											{teacher.gender ? teacher.gender.charAt(0).toUpperCase() + teacher.gender.slice(1).toLowerCase() : 'N/A'}
+											{teacher.gender === 'MALE' ? 'Male' : teacher.gender === 'FEMALE' ? 'Female' : teacher.gender === 'OTHER' ? 'Other' : 'N/A'}
 										</p>
 										<p>
 											<strong>{t('teacherManagement.address')}:</strong>{' '}
@@ -521,6 +518,43 @@ const TeacherProfile = () => {
 								<Form.Item
 									label={
 										<span>
+											{t('teacherManagement.role')}
+											<span style={{ color: 'red', marginLeft: '4px' }}>*</span>
+										</span>
+									}
+									name="roleName"
+									rules={[
+										{ required: true, message: t('teacherManagement.roleRequired') },
+									]}
+								>
+									<Select placeholder={t('teacherManagement.rolePlaceholder')}>
+										<Select.Option value="TEACHER">{t('teacherManagement.teacher')}</Select.Option>
+										<Select.Option value="TEACHING_ASSISTANT">{t('teacherManagement.teacherAssistant')}</Select.Option>
+									</Select>
+								</Form.Item>
+							</Col>
+							<Col span={12}>
+								<Form.Item
+									label={t('teacherManagement.gender')}
+									name="gender"
+									rules={[
+										{ required: true, message: t('teacherManagement.genderRequired') },
+									]}
+								>
+									<Select placeholder={t('teacherManagement.genderPlaceholder')}>
+										<Select.Option value="MALE">{t('teacherManagement.male')}</Select.Option>
+										<Select.Option value="FEMALE">{t('teacherManagement.female')}</Select.Option>
+										<Select.Option value="OTHER">{t('teacherManagement.other')}</Select.Option>
+									</Select>
+								</Form.Item>
+							</Col>
+						</Row>
+
+						<Row gutter={16}>
+							<Col span={12}>
+								<Form.Item
+									label={
+										<span>
 											{t('teacherManagement.firstName')}
 											<span style={{ color: 'red', marginLeft: '4px' }}>*</span>
 										</span>
@@ -596,18 +630,6 @@ const TeacherProfile = () => {
 										placeholder={t('teacherManagement.selectDateOfBirth')}
 										format="YYYY-MM-DD"
 									/>
-								</Form.Item>
-							</Col>
-							<Col span={12}>
-								<Form.Item
-									label={t('teacherManagement.gender')}
-									name="gender"
-								>
-									<Select placeholder={t('teacherManagement.selectGender')}>
-										<Select.Option value="MALE">{t('common.male')}</Select.Option>
-										<Select.Option value="FEMALE">{t('common.female')}</Select.Option>
-										<Select.Option value="OTHER">{t('common.other')}</Select.Option>
-									</Select>
 								</Form.Item>
 							</Col>
 						</Row>

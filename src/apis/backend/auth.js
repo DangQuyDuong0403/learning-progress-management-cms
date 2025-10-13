@@ -1,4 +1,5 @@
 import axiosClient from '../index.js';
+import axios from 'axios';
 
 const authApi = {
 	// Đăng nhập - sử dụng endpoint chung với 3 trường: username, password, loginRole
@@ -11,10 +12,31 @@ const authApi = {
 
 	// Quên mật khẩu
 	forgotPassword: (data) => {
-		const url = `/auth/reset-password?userName=${data.username}`;
-		console.log('ForgotPassword API - URL:', url);
-		console.log('ForgotPassword API - Data:', data);
-		return axiosClient.post(url, {}, {
+		const requestBody = {
+			userName: data.username,
+			domain: "http://localhost:3000",
+			path: "/reset-password"
+		};
+		console.log('ForgotPassword API - Request Body:', requestBody);
+		return axiosClient.post('/auth/reset-password', requestBody, {
+			headers: {
+				'Content-Type': 'application/json',
+				'accept': '*/*',
+			}
+		});
+	},
+
+	// Xác nhận reset mật khẩu
+	confirmResetPassword: (data) => {
+		const requestBody = {
+			token: data.token,
+			newPassword: data.newPassword
+		};
+		
+		// Sử dụng axios trực tiếp để tránh interceptor tự động thêm Authorization header
+		const baseURL = process.env.REACT_APP_API_URL;
+		
+		return axios.post(`${baseURL}/auth/confirm-reset-password`, requestBody, {
 			headers: {
 				'Content-Type': 'application/json',
 				'accept': '*/*',
@@ -33,12 +55,16 @@ const authApi = {
 	getUserProfile: () => axiosClient.get('/user/profile'),
 
 	// Đổi mật khẩu
-	changePassword: (data) => axiosClient.post('/auth/change-password', data, {
-		headers: {
-			'Content-Type': 'application/json',
-			'accept': '*/*',
-		}
-	}),
+	changePassword: (data) => {
+		console.log('ChangePassword API - Request Body:', data);
+		
+		return axiosClient.post('/auth/change-password', data, {
+			headers: {
+				'Content-Type': 'application/json',
+				'accept': '*/*',
+			}
+		});
+	},
 
 };
 

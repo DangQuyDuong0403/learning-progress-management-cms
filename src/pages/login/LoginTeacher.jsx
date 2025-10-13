@@ -54,27 +54,42 @@ export default function LoginTeacher() {
             // Dispatch login success với data từ API
             dispatch(loginSuccess(response.data));
             console.log(response);
-            spaceToast.success('Login successful!');
             
-            // Redirect based on role
-            let redirectPath = '/choose-login';
-            console.log('LoginTeacher - Response role:', response.data.role);
+            // Store tokens in localStorage
+            localStorage.setItem('accessToken', response.data.accessToken);
+            localStorage.setItem('refreshToken', response.data.refreshToken);
             
-            if (response.data.role === 'ADMIN') {
-                redirectPath = '/admin/accounts';
-            } else if (response.data.role === 'MANAGER') {
-                redirectPath = '/manager/syllabuses';
-            } else if (response.data.role === 'TEACHER') {
-                redirectPath = '/teacher/classes';
-            } else if (response.data.role === 'TEACHING_ASSISTANT') {
-                redirectPath = '/teacher/classes';
+            // Check if user must change password
+            if (response.data.mustChangePassword) {
+                // Show security message for password change
+                spaceToast.warning('For security reasons, you need to change your password immediately.');
+                // Redirect to change password page
+                setTimeout(() => {
+                    navigate('/change-password');
+                }, 2000);
+            } else {
+                // Normal login success
+                spaceToast.success('Login successful!');
+                // Redirect based on role
+                let redirectPath = '/choose-login';
+                console.log('LoginTeacher - Response role:', response.data.role);
+                
+                if (response.data.role === 'ADMIN') {
+                    redirectPath = '/admin/accounts';
+                } else if (response.data.role === 'MANAGER') {
+                    redirectPath = '/manager/syllabuses';
+                } else if (response.data.role === 'TEACHER') {
+                    redirectPath = '/teacher/classes';
+                } else if (response.data.role === 'TEACHING_ASSISTANT') {
+                    redirectPath = '/teacher/classes';
+                }
+                
+                console.log('LoginTeacher - Redirect path:', redirectPath);
+                
+                setTimeout(() => {
+                    navigate(redirectPath);
+                }, 1000);
             }
-            
-            console.log('LoginTeacher - Redirect path:', redirectPath);
-            
-            setTimeout(() => {
-                navigate(redirectPath);
-            }, 1000);
             
         } catch (error) {
             console.error('Login error:', error);

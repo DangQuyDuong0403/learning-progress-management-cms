@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import {
@@ -28,6 +28,7 @@ import {
   DownloadOutlined,
   UploadOutlined,
   InboxOutlined,
+  FilterOutlined,
 } from "@ant-design/icons";
 import ThemedLayout from "../../../../component/ThemedLayout";
 import LoadingWithEffect from "../../../../component/spinner/LoadingWithEffect";
@@ -89,6 +90,14 @@ const StudentList = () => {
     visible: false,
     student: null,
   });
+  const [filterDropdown, setFilterDropdown] = useState({
+    visible: false,
+    selectedRoles: [],
+    selectedStatuses: [],
+  });
+  
+  // Refs for click outside detection
+  const filterContainerRef = useRef(null);
 
   const fetchStudents = useCallback(async (page = 1, size = 10, search = '', statusFilter = [], roleNameFilter = [], sortField = null, sortDirection = null) => {
     setLoading(true);
@@ -172,6 +181,31 @@ const StudentList = () => {
       }
     };
   }, [searchTimeout]);
+
+  // Handle click outside to close filter dropdown
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (filterDropdown.visible && filterContainerRef.current) {
+        // Check if click is outside the filter container
+        if (!filterContainerRef.current.contains(event.target)) {
+          setFilterDropdown(prev => ({
+            ...prev,
+            visible: false,
+          }));
+        }
+      }
+    };
+
+    // Add event listener when dropdown is visible
+    if (filterDropdown.visible) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    // Cleanup event listener
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [filterDropdown.visible]);
 
 
   // Status options for filter
@@ -261,11 +295,27 @@ const StudentList = () => {
       title: "Current Class",
       dataIndex: "currentClassInfo",
       key: "currentClassInfo",
-      render: (currentClassInfo) => (
-        <span className="class-text">
-          {currentClassInfo?.name || 'N/A'}
-        </span>
-      ),
+      render: (currentClassInfo, record) => {
+        if (currentClassInfo?.name) {
+          return (
+            <span className="class-text">
+              {currentClassInfo.name}
+            </span>
+          );
+        } else {
+          return (
+            <Button
+              type="primary"
+              size="small"
+              icon={<PlusOutlined />}
+              onClick={() => handleAssignToClass(record)}
+              className={`assign-class-button ${theme}-assign-class-button`}
+            >
+              Assign to Class
+            </Button>
+          );
+        }
+      },
     },
     {
       title: "Status",
@@ -293,38 +343,11 @@ const StudentList = () => {
               size="small"
               onClick={() => handleViewProfile(record)}
               style={{ 
-                color: '#1890ff',
+                color: '#000',
                 padding: '8px 12px'
               }}
             />
           </Tooltip>
-          {record.currentClassInfo ? (
-            <Tooltip title="Remove from Class">
-              <Button
-                type="text"
-                icon={<StopOutlined style={{ fontSize: '25px' }} />}
-                size="small"
-                onClick={() => handleRemoveFromClass(record)}
-                style={{
-                  color: '#ff4d4f',
-                  padding: '8px 12px'
-                }}
-              />
-            </Tooltip>
-          ) : (
-            <Tooltip title="Assign to Class">
-              <Button
-                type="text"
-                icon={<PlusOutlined style={{ fontSize: '25px' }} />}
-                size="small"
-                onClick={() => handleAssignToClass(record)}
-                style={{
-                  color: '#52c41a',
-                  padding: '8px 12px'
-                }}
-              />
-            </Tooltip>
-          )}
           <Tooltip title={record.status === 'ACTIVE' ? t('studentManagement.deactivate') : t('studentManagement.activate')}>
             <Button
               type="text"
@@ -398,19 +421,6 @@ const StudentList = () => {
     setSearchTimeout(newTimeout);
   };
 
-  // Handle status filter change
-  const handleStatusFilterChange = (values) => {
-    setStatusFilter(values);
-    // Reset to first page when filtering
-    fetchStudents(1, pagination.pageSize, searchText, values, roleNameFilter, sortBy, sortDir);
-  };
-
-  // Handle role filter change
-  const handleRoleFilterChange = (values) => {
-    setRoleNameFilter(values);
-    // Reset to first page when filtering
-    fetchStudents(1, pagination.pageSize, searchText, statusFilter, values, sortBy, sortDir);
-  };
 
   // Add/Edit
   const handleAddStudent = () => {
@@ -553,30 +563,6 @@ const StudentList = () => {
     });
   };
 
-  // Handle remove student from class
-  const handleRemoveFromClass = (record) => {
-    const studentName = `${record.firstName || ''} ${record.lastName || ''}`.trim() || record.userName;
-    const className = record.currentClassInfo?.name || 'current class';
-    
-    setConfirmModal({
-      visible: true,
-      title: 'Remove from Class',
-      content: `Are you sure you want to remove student "${studentName}" from class "${className}"?`,
-      onConfirm: () => {
-        // TODO: Implement API call to remove student from class
-        console.log('Removing student from class:', record);
-        
-        // Update local state
-        const updatedStudents = students.map(s => 
-          s.id === record.id ? { ...s, currentClassInfo: null } : s
-        );
-        setStudents(updatedStudents);
-        setConfirmModal({ visible: false, title: '', content: '', onConfirm: null });
-        
-        spaceToast.success(`Student "${studentName}" has been removed from class "${className}"`);
-      }
-    });
-  };
 
   // Handle assign class modal close
   const handleAssignClassClose = () => {
@@ -584,6 +570,37 @@ const StudentList = () => {
       visible: false,
       student: null,
     });
+  };
+
+  // Handle filter dropdown toggle
+  const handleFilterToggle = () => {
+    setFilterDropdown(prev => ({
+      ...prev,
+      visible: !prev.visible,
+      selectedRoles: prev.visible ? prev.selectedRoles : [...roleNameFilter],
+      selectedStatuses: prev.visible ? prev.selectedStatuses : [...statusFilter],
+    }));
+  };
+
+  // Handle filter submission
+  const handleFilterSubmit = () => {
+    setRoleNameFilter(filterDropdown.selectedRoles);
+    setStatusFilter(filterDropdown.selectedStatuses);
+    setFilterDropdown(prev => ({
+      ...prev,
+      visible: false,
+    }));
+    // Reset to first page when applying filters
+    fetchStudents(1, pagination.pageSize, searchText, filterDropdown.selectedStatuses, filterDropdown.selectedRoles, sortBy, sortDir);
+  };
+
+  // Handle filter reset
+  const handleFilterReset = () => {
+    setFilterDropdown(prev => ({
+      ...prev,
+      selectedRoles: [],
+      selectedStatuses: [],
+    }));
   };
 
   // Handle import students
@@ -689,41 +706,96 @@ STU003,Le Van Cuong,levancuong@example.com,0111222333,Lớp 11B1,Advanced,active
                 onChange={(e) => handleSearch(e.target.value)}
                 className={`search-input ${theme}-search-input`}
                 style={{ flex: '1', minWidth: '250px', maxWidth: '400px', width: '350px', height: '40px', fontSize: '16px' }}
-               
                 allowClear
               />
-              <Select
-                mode="multiple"
-                placeholder="Status"
-                value={statusFilter}
-                onChange={handleStatusFilterChange}
-                style={{ minWidth: '200px', color: '#000' }}
-                allowClear
-                maxTagCount={2}
-                maxTagPlaceholder="..."
-              >
-                {statusOptions.map(option => (
-                  <Option key={option.key} value={option.key} style={{ color: '#000' }}>
-                    {option.label}
-                  </Option>
-                ))}
-              </Select>
-              <Select
-                mode="multiple"
-                placeholder="Role"
-                value={roleNameFilter}
-                onChange={handleRoleFilterChange}
-                style={{ minWidth: '200px', color: '#000' }}
-                allowClear
-                maxTagCount={2}
-                maxTagPlaceholder="..."
-              >
-                {roleOptions.map(option => (
-                  <Option key={option.key} value={option.key} style={{ color: '#000' }}>
-                    {option.label}
-                  </Option>
-                ))}
-              </Select>
+              <div ref={filterContainerRef} style={{ position: 'relative' }}>
+                <Button 
+                  icon={<FilterOutlined />}
+                  onClick={handleFilterToggle}
+                  className={`filter-button ${theme}-filter-button ${filterDropdown.visible ? 'active' : ''} ${(statusFilter.length > 0 || roleNameFilter.length > 0) ? 'has-filters' : ''}`}
+                >
+                  Filter
+                </Button>
+                
+                {/* Filter Dropdown Panel */}
+                {filterDropdown.visible && (
+                  <div className={`filter-dropdown-panel ${theme}-filter-dropdown`}>
+                    <div style={{ padding: '20px' }}>
+                      {/* Role and Status Filters in same row */}
+                      <div style={{ display: 'flex', gap: '24px', marginBottom: '24px' }}>
+                        {/* Role Filter */}
+                        <div style={{ flex: 1 }}>
+                          <Title level={5} style={{ marginBottom: '12px', color: '#1890ff', fontSize: '16px' }}>
+                            Role
+                          </Title>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                            {roleOptions.map(option => (
+                              <Button
+                                key={option.key}
+                                onClick={() => {
+                                  const newRoles = filterDropdown.selectedRoles.includes(option.key)
+                                    ? filterDropdown.selectedRoles.filter(role => role !== option.key)
+                                    : [...filterDropdown.selectedRoles, option.key];
+                                  setFilterDropdown(prev => ({ ...prev, selectedRoles: newRoles }));
+                                }}
+                                className={`filter-option ${filterDropdown.selectedRoles.includes(option.key) ? 'selected' : ''}`}
+                              >
+                                {option.label}
+                              </Button>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Status Filter */}
+                        <div style={{ flex: 1 }}>
+                          <Title level={5} style={{ marginBottom: '12px', color: '#1890ff', fontSize: '16px' }}>
+                            Status
+                          </Title>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                            {statusOptions.map(option => (
+                              <Button
+                                key={option.key}
+                                onClick={() => {
+                                  const newStatuses = filterDropdown.selectedStatuses.includes(option.key)
+                                    ? filterDropdown.selectedStatuses.filter(status => status !== option.key)
+                                    : [...filterDropdown.selectedStatuses, option.key];
+                                  setFilterDropdown(prev => ({ ...prev, selectedStatuses: newStatuses }));
+                                }}
+                                className={`filter-option ${filterDropdown.selectedStatuses.includes(option.key) ? 'selected' : ''}`}
+                              >
+                                {option.label}
+                              </Button>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Action Buttons */}
+                      <div style={{ 
+                        display: 'flex', 
+                        justifyContent: 'space-between', 
+                        marginTop: '20px',
+                        paddingTop: '16px',
+                        borderTop: '1px solid #f0f0f0'
+                      }}>
+                        <Button
+                          onClick={handleFilterReset}
+                          className="filter-reset-button"
+                        >
+                          Reset
+                        </Button>
+                        <Button
+                          type="primary"
+                          onClick={handleFilterSubmit}
+                          className="filter-submit-button"
+                        >
+                          View Results
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
             <div className="action-buttons">
               <Button 
@@ -1314,6 +1386,7 @@ STU003,Le Van Cuong,levancuong@example.com,0111222333,Lớp 11B1,Advanced,active
             />
           )}
         </Modal>
+
 
     </ThemedLayout>
   );
