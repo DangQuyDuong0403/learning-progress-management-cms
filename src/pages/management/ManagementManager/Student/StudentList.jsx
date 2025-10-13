@@ -16,6 +16,7 @@ import {
   Divider,
   DatePicker,
   Radio,
+  Upload,
 } from "antd";
 import {
   PlusOutlined,
@@ -25,6 +26,7 @@ import {
   InfoCircleOutlined,
   DownloadOutlined,
   UploadOutlined,
+  InboxOutlined,
 } from "@ant-design/icons";
 import ThemedLayout from "../../../../component/ThemedLayout";
 import LoadingWithEffect from "../../../../component/spinner/LoadingWithEffect";
@@ -32,6 +34,9 @@ import { useTheme } from "../../../../contexts/ThemeContext";
 import "./StudentList.css";
 import { spaceToast } from "../../../../component/SpaceToastify";
 import authApi from "../../../../apis/backend/auth";
+import AssignStudentToClass from "./AssignStudentToClass";
+import { useDispatch, useSelector } from "react-redux";
+import { fetchLevels } from "../../../../redux/level";
 
 const { Option } = Select;
 const { Title, Text } = Typography;
@@ -39,6 +44,8 @@ const { Title, Text } = Typography;
 const StudentList = () => {
   const { t } = useTranslation();
   const { theme } = useTheme();
+  const dispatch = useDispatch();
+  const { levels, loading: levelsLoading } = useSelector((state) => state.level);
   const [loading, setLoading] = useState(true);
   const [students, setStudents] = useState([]);
   
@@ -75,6 +82,10 @@ const StudentList = () => {
     visible: false,
     fileList: [],
     uploading: false,
+  });
+  const [assignClassModal, setAssignClassModal] = useState({
+    visible: false,
+    student: null,
   });
 
   const fetchStudents = useCallback(async (page = 1, size = 10, search = '', statusFilter = [], roleNameFilter = [], sortField = 'createdAt', sortDirection = 'asc') => {
@@ -155,6 +166,11 @@ const StudentList = () => {
     fetchStudents(1, pagination.pageSize, searchText, statusFilter, roleNameFilter, sortBy, sortDir);
   }, [fetchStudents, searchText, statusFilter, roleNameFilter, sortBy, sortDir, pagination.pageSize]);
 
+  // Fetch levels when component mounts
+  useEffect(() => {
+    dispatch(fetchLevels());
+  }, [dispatch]);
+
   // Cleanup timeout on unmount
   useEffect(() => {
     return () => {
@@ -205,15 +221,6 @@ const StudentList = () => {
       ),
     },
     {
-      title: "Email",
-      dataIndex: "email",
-      key: "email",
-      render: (email) => (
-        <span className="email-text">{email}</span>
-      ),
-      sorter: true,
-    },
-    {
       title: "Full Name",
       key: "fullName",
       render: (_, record) => (
@@ -223,12 +230,32 @@ const StudentList = () => {
       ),
     },
     {
-      title: "Gender",
-      dataIndex: "gender",
-      key: "gender",
-      render: (gender) => (
-        <span className="gender-text">
-          {gender === 'Male' ? t('common.male') : gender === 'Female' ? t('common.female') : gender}
+      title: "Role",
+      dataIndex: "roleName",
+      key: "roleName",
+      render: (roleName) => (
+        <span className="role-text">
+          {roleName || 'N/A'}
+        </span>
+      ),
+    },
+    {
+      title: "Current Level",
+      dataIndex: "currentLevelInfo",
+      key: "currentLevelInfo",
+      render: (currentLevelInfo) => (
+        <span className="level-text">
+          {currentLevelInfo?.name || 'N/A'}
+        </span>
+      ),
+    },
+    {
+      title: "Current Class",
+      dataIndex: "currentClassInfo",
+      key: "currentClassInfo",
+      render: (currentClassInfo) => (
+        <span className="class-text">
+          {currentClassInfo?.name || 'N/A'}
         </span>
       ),
     },
@@ -248,7 +275,7 @@ const StudentList = () => {
     {
       title: t('studentManagement.actions'),
       key: "actions",
-      width: 180,
+      width: 220,
       render: (_, record) => (
         <Space size="small">
           <Tooltip title={t('studentManagement.viewProfile')}>
@@ -263,6 +290,33 @@ const StudentList = () => {
               }}
             />
           </Tooltip>
+          {record.currentClassInfo ? (
+            <Tooltip title="Remove from Class">
+              <Button
+                type="text"
+                icon={<StopOutlined style={{ fontSize: '25px' }} />}
+                size="small"
+                onClick={() => handleRemoveFromClass(record)}
+                style={{
+                  color: '#ff4d4f',
+                  padding: '8px 12px'
+                }}
+              />
+            </Tooltip>
+          ) : (
+            <Tooltip title="Assign to Class">
+              <Button
+                type="text"
+                icon={<PlusOutlined style={{ fontSize: '25px' }} />}
+                size="small"
+                onClick={() => handleAssignToClass(record)}
+                style={{
+                  color: '#52c41a',
+                  padding: '8px 12px'
+                }}
+              />
+            </Tooltip>
+          )}
           <Tooltip title={record.status === 'ACTIVE' ? t('studentManagement.deactivate') : t('studentManagement.activate')}>
             <Button
               type="text"
@@ -354,34 +408,46 @@ const StudentList = () => {
         visible: true,
         title: t('studentManagement.changeStatus'),
         content: `${t('studentManagement.confirmStatusChange')} ${actionText} ${t('studentManagement.student')} "${studentName}"?`,
-        onConfirm: () => {
-          // TODO: Implement API call to update student status
-          // For now, just update local state
-          const updatedStudents = students.map(s => 
-            s.id === id ? { ...s, status: newStatus } : s
-          );
-          
-          // Re-sort after status change to maintain ACTIVE first order
-          const sortedStudents = updatedStudents.sort((a, b) => {
-            // ACTIVE status gets priority (appears first)
-            if (a.status === 'ACTIVE' && b.status === 'INACTIVE') {
-              return -1;
+        onConfirm: async () => {
+          try {
+            // Call API to update student status
+            const response = await authApi.updateStudentStatus(id, newStatus);
+            
+            if (response.success) {
+              // Update local state with API response data
+              const updatedStudents = students.map(s => 
+                s.id === id ? { ...s, status: newStatus } : s
+              );
+              
+              // Re-sort after status change to maintain ACTIVE first order
+              const sortedStudents = updatedStudents.sort((a, b) => {
+                // ACTIVE status gets priority (appears first)
+                if (a.status === 'ACTIVE' && b.status === 'INACTIVE') {
+                  return -1;
+                }
+                if (a.status === 'INACTIVE' && b.status === 'ACTIVE') {
+                  return 1;
+                }
+                // If both have same status, maintain original order
+                return 0;
+              });
+              
+              setStudents(sortedStudents);
+              setConfirmModal({ visible: false, title: '', content: '', onConfirm: null });
+              
+              // Show success toast
+              if (newStatus === 'ACTIVE') {
+                spaceToast.success(`${t('studentManagement.activateStudentSuccess')} "${studentName}" ${t('studentManagement.success')}`);
+              } else {
+                spaceToast.success(`${t('studentManagement.deactivateStudentSuccess')} "${studentName}" ${t('studentManagement.success')}`);
+              }
+            } else {
+              throw new Error(response.message || 'Failed to update student status');
             }
-            if (a.status === 'INACTIVE' && b.status === 'ACTIVE') {
-              return 1;
-            }
-            // If both have same status, maintain original order
-            return 0;
-          });
-          
-          setStudents(sortedStudents);
-          setConfirmModal({ visible: false, title: '', content: '', onConfirm: null });
-          
-          // Show success toast
-          if (newStatus === 'ACTIVE') {
-            spaceToast.success(`${t('studentManagement.activateStudentSuccess')} "${studentName}" ${t('studentManagement.success')}`);
-          } else {
-            spaceToast.success(`${t('studentManagement.deactivateStudentSuccess')} "${studentName}" ${t('studentManagement.success')}`);
+          } catch (error) {
+            console.error('Error updating student status:', error);
+            setConfirmModal({ visible: false, title: '', content: '', onConfirm: null });
+            spaceToast.error(error.response?.data?.message || error.message || t('studentManagement.updateStatusError'));
           }
         }
       });
@@ -395,14 +461,34 @@ const StudentList = () => {
   const handleModalOk = async () => {
     try {
       const values = await form.validateFields();
-      // TODO: Implement API call to create/update student
-      console.log('Student form values:', values);
+      
+      // Format the data according to CreateStudentRequest schema
+      const studentData = {
+        roleName: values.roleName,
+        email: values.email,
+        firstName: values.firstName,
+        lastName: values.lastName,
+        avatarUrl: values.avatar && values.avatar.length > 0 ? URL.createObjectURL(values.avatar[0].originFileObj) : null,
+        dateOfBirth: values.dateOfBirth ? values.dateOfBirth.format('YYYY-MM-DDTHH:mm:ss.SSS[Z]') : null,
+        address: values.address || null,
+        phoneNumber: values.phoneNumber || null,
+        gender: values.gender || null,
+        parentInfo: {
+          parentName: values.parentInfo?.parentName,
+          parentEmail: values.parentInfo?.parentEmail || null,
+          parentPhone: values.parentInfo?.parentPhone,
+          relationship: values.parentInfo?.relationship || null,
+        },
+        levelId: values.levelId,
+      };
+      
+      console.log('Student form values:', studentData);
       
       if (editingStudent) {
         // TODO: Call update student API
         spaceToast.success(`Update student "${values.firstName} ${values.lastName}" successfully`);
       } else {
-        // TODO: Call create student API
+        // TODO: Call create student API with studentData
         spaceToast.success(`Add student "${values.firstName} ${values.lastName}" successfully`);
         // Refresh the list after adding
         fetchStudents();
@@ -424,6 +510,47 @@ const StudentList = () => {
     // TODO: Implement student profile view
     console.log('View profile for student:', record);
     spaceToast.info('Student profile view not implemented yet');
+  };
+
+  // Handle assign student to class
+  const handleAssignToClass = (record) => {
+    setAssignClassModal({
+      visible: true,
+      student: record,
+    });
+  };
+
+  // Handle remove student from class
+  const handleRemoveFromClass = (record) => {
+    const studentName = `${record.firstName || ''} ${record.lastName || ''}`.trim() || record.userName;
+    const className = record.currentClassInfo?.name || 'current class';
+    
+    setConfirmModal({
+      visible: true,
+      title: 'Remove from Class',
+      content: `Are you sure you want to remove student "${studentName}" from class "${className}"?`,
+      onConfirm: () => {
+        // TODO: Implement API call to remove student from class
+        console.log('Removing student from class:', record);
+        
+        // Update local state
+        const updatedStudents = students.map(s => 
+          s.id === record.id ? { ...s, currentClassInfo: null } : s
+        );
+        setStudents(updatedStudents);
+        setConfirmModal({ visible: false, title: '', content: '', onConfirm: null });
+        
+        spaceToast.success(`Student "${studentName}" has been removed from class "${className}"`);
+      }
+    });
+  };
+
+  // Handle assign class modal close
+  const handleAssignClassClose = () => {
+    setAssignClassModal({
+      visible: false,
+      student: null,
+    });
   };
 
   // Handle import students
@@ -640,11 +767,56 @@ STU003,Le Van Cuong,levancuong@example.com,0111222333,Lớp 11B1,Advanced,active
           open={isModalVisible}
           onOk={handleModalOk}
           onCancel={handleModalCancel}
-          width={600}
+          width={800}
           okText={editingStudent ? t('common.save') : t('studentManagement.addStudent')}
           cancelText={t('common.cancel')}
         >
           <Form form={form} layout="vertical">
+            {/* Basic Information */}
+            <Title level={5} style={{ marginBottom: '16px', color: '#1890ff' }}>
+              Basic Information
+            </Title>
+            
+            <Row gutter={16}>
+              <Col span={12}>
+                <Form.Item
+                  label={
+                    <span>
+                      Role Name
+                      <span style={{ color: 'red', marginLeft: '4px' }}>*</span>
+                    </span>
+                  }
+                  name="roleName"
+                  rules={[
+                    { required: true, message: 'Role name is required' },
+                  ]}
+                >
+                  <Select placeholder="Select role">
+                    <Option value="STUDENT">Student</Option>
+                    <Option value="TEST_TAKER">Test Taker</Option>
+                  </Select>
+                </Form.Item>
+              </Col>
+              <Col span={12}>
+                <Form.Item
+                  label={
+                    <span>
+                      Email
+                      <span style={{ color: 'red', marginLeft: '4px' }}>*</span>
+                    </span>
+                  }
+                  name="email"
+                  rules={[
+                    { required: true, message: 'Email is required' },
+                    { type: 'email', message: 'Please enter a valid email' },
+                    { max: 255, message: 'Email must not exceed 255 characters' },
+                  ]}
+                >
+                  <Input placeholder="Enter email address" />
+                </Form.Item>
+              </Col>
+            </Row>
+
             <Row gutter={16}>
               <Col span={12}>
                 <Form.Item
@@ -657,8 +829,8 @@ STU003,Le Van Cuong,levancuong@example.com,0111222333,Lớp 11B1,Advanced,active
                   name="firstName"
                   rules={[
                     { required: true, message: 'First name is required' },
+                    { max: 50, message: 'First name must not exceed 50 characters' },
                   ]}
-                  required={false}
                 >
                   <Input placeholder="Enter first name" />
                 </Form.Item>
@@ -674,101 +846,13 @@ STU003,Le Van Cuong,levancuong@example.com,0111222333,Lớp 11B1,Advanced,active
                   name="lastName"
                   rules={[
                     { required: true, message: 'Last name is required' },
+                    { max: 50, message: 'Last name must not exceed 50 characters' },
                   ]}
-                  required={false}
                 >
                   <Input placeholder="Enter last name" />
                 </Form.Item>
               </Col>
             </Row>
-
-            <Row gutter={16}>
-              <Col span={12}>
-                <Form.Item
-                  label={
-                    <span>
-                      {t('studentManagement.email')}
-                      <span style={{ color: 'red', marginLeft: '4px' }}>*</span>
-                    </span>
-                  }
-                  name="email"
-                  rules={[
-                    { required: true, message: t('studentManagement.emailRequired') },
-                    { type: 'email', message: t('studentManagement.emailInvalid') },
-                  ]}
-                  required={false}
-                >
-                  <Input placeholder={t('studentManagement.enterEmail')} />
-                </Form.Item>
-              </Col>
-              <Col span={12}>
-                <Form.Item
-                  label={t('studentManagement.phone')}
-                  name="phone"
-                >
-                  <Input placeholder={t('studentManagement.enterPhone')} />
-                </Form.Item>
-              </Col>
-            </Row>
-
-            <Row gutter={16}>
-              <Col span={12}>
-                <Form.Item
-                  label="Phone Number"
-                  name="phoneNumber"
-                >
-                  <Input placeholder="Enter phone number" />
-                </Form.Item>
-              </Col>
-              <Col span={12}>
-                <Form.Item
-                  label="Address"
-                  name="address"
-                >
-                  <Input placeholder="Enter address" />
-                </Form.Item>
-              </Col>
-            </Row>
-
-            {!editingStudent && (
-              <Row gutter={16}>
-                <Col span={12}>
-                  <Form.Item
-                    label={
-                      <span>
-                        Username
-                        <span style={{ color: 'red', marginLeft: '4px' }}>*</span>
-                      </span>
-                    }
-                    name="userName"
-                    rules={[
-                      { required: true, message: 'Username is required' },
-                    ]}
-                    required={false}
-                  >
-                    <Input placeholder="Enter username" />
-                  </Form.Item>
-                </Col>
-                <Col span={12}>
-                  <Form.Item
-                    label={
-                      <span>
-                        Password
-                        <span style={{ color: 'red', marginLeft: '4px' }}>*</span>
-                      </span>
-                    }
-                    name="password"
-                    rules={[
-                      { required: true, message: 'Password is required' },
-                      { min: 6, message: 'Password must be at least 6 characters' },
-                    ]}
-                    required={false}
-                  >
-                    <Input.Password placeholder="Enter password" />
-                  </Form.Item>
-                </Col>
-              </Row>
-            )}
 
             <Row gutter={16}>
               <Col span={12}>
@@ -785,13 +869,161 @@ STU003,Le Van Cuong,levancuong@example.com,0111222333,Lớp 11B1,Advanced,active
               </Col>
               <Col span={12}>
                 <Form.Item
+                  label="Address"
+                  name="address"
+                  rules={[
+                    { max: 255, message: 'Address must not exceed 255 characters' },
+                  ]}
+                >
+                  <Input placeholder="Enter address" />
+                </Form.Item>
+              </Col>
+            </Row>
+
+            <Row gutter={16}>
+              <Col span={12}>
+                <Form.Item
+                  label="Phone Number"
+                  name="phoneNumber"
+                  rules={[
+                    { max: 20, message: 'Phone number must not exceed 20 characters' },
+                  ]}
+                >
+                  <Input placeholder="Enter phone number" />
+                </Form.Item>
+              </Col>
+              <Col span={12}>
+                <Form.Item
                   label="Gender"
                   name="gender"
+                  rules={[
+                    { max: 10, message: 'Gender must not exceed 10 characters' },
+                  ]}
                 >
                   <Radio.Group>
                     <Radio value="Male">Male</Radio>
                     <Radio value="Female">Female</Radio>
+                    <Radio value="Other">Other</Radio>
                   </Radio.Group>
+                </Form.Item>
+              </Col>
+            </Row>
+
+            <Row gutter={16}>
+              <Col span={12}>
+                <Form.Item
+                  label="Level"
+                  name="levelId"
+                  rules={[
+                    { required: true, message: 'Level is required' },
+                  ]}
+                >
+                  <Select 
+                    placeholder="Select level"
+                    loading={levelsLoading}
+                    showSearch
+                    filterOption={(input, option) =>
+                      option.children.toLowerCase().indexOf(input.toLowerCase()) >= 0
+                    }
+                  >
+                    {levels.map(level => (
+                      <Option key={level.id} value={level.id}>
+                        {level.name} ({level.code})
+                      </Option>
+                    ))}
+                  </Select>
+                </Form.Item>
+              </Col>
+            </Row>
+
+            <Row gutter={16}>
+              <Col span={24}>
+                <Form.Item
+                  label="Avatar"
+                  name="avatar"
+                  valuePropName="fileList"
+                  getValueFromEvent={(e) => {
+                    if (Array.isArray(e)) {
+                      return e;
+                    }
+                    return e && e.fileList;
+                  }}
+                >
+                  <Upload.Dragger
+                    name="avatar"
+                    listType="picture"
+                    maxCount={1}
+                    beforeUpload={() => false}
+                    accept="image/*"
+                  >
+                    <p className="ant-upload-drag-icon">
+                      <InboxOutlined />
+                    </p>
+                    <p className="ant-upload-text">Click or drag image to upload</p>
+                    <p className="ant-upload-hint">Support for single image upload</p>
+                  </Upload.Dragger>
+                </Form.Item>
+              </Col>
+            </Row>
+
+            {/* Parent Information */}
+            <Title level={5} style={{ marginTop: '24px', marginBottom: '16px', color: '#1890ff' }}>
+              Parent Information
+            </Title>
+
+            <Row gutter={16}>
+              <Col span={12}>
+                <Form.Item
+                  label={
+                    <span>
+                      Parent Name
+                      <span style={{ color: 'red', marginLeft: '4px' }}>*</span>
+                    </span>
+                  }
+                  name={['parentInfo', 'parentName']}
+                  rules={[
+                    { required: true, message: 'Parent name is required' },
+                  ]}
+                >
+                  <Input placeholder="Enter parent name" />
+                </Form.Item>
+              </Col>
+              <Col span={12}>
+                <Form.Item
+                  label="Parent Email"
+                  name={['parentInfo', 'parentEmail']}
+                  rules={[
+                    { type: 'email', message: 'Please enter a valid email' },
+                  ]}
+                >
+                  <Input placeholder="Enter parent email" />
+                </Form.Item>
+              </Col>
+            </Row>
+
+            <Row gutter={16}>
+              <Col span={12}>
+                <Form.Item
+                  label={
+                    <span>
+                      Parent Phone
+                      <span style={{ color: 'red', marginLeft: '4px' }}>*</span>
+                    </span>
+                  }
+                  name={['parentInfo', 'parentPhone']}
+                  rules={[
+                    { required: true, message: 'Parent phone is required' },
+                  ]}
+                >
+                  <Input placeholder="Enter parent phone number" />
+                </Form.Item>
+              </Col>
+              <Col span={12}>
+                <Form.Item
+                  label="Relationship"
+                  name={['parentInfo', 'relationship']}
+                >
+                  <Input placeholder="Enter relationship (e.g., Father, Mother, Guardian)" />
                 </Form.Item>
               </Col>
             </Row>
@@ -1012,6 +1244,33 @@ STU003,Le Van Cuong,levancuong@example.com,0111222333,Lớp 11B1,Advanced,active
               </div>
             )}
           </div>
+        </Modal>
+
+        {/* Assign to Class Modal */}
+        <Modal
+          title={
+            <div style={{ 
+              fontSize: '20px', 
+              fontWeight: '600', 
+              color: '#1890ff',
+              textAlign: 'center',
+              padding: '10px 0'
+            }}>
+              Assign Student to Class
+            </div>
+          }
+          open={assignClassModal.visible}
+          onCancel={handleAssignClassClose}
+          footer={null}
+          width={800}
+          centered
+        >
+          {assignClassModal.student && (
+            <AssignStudentToClass
+              student={assignClassModal.student}
+              onClose={handleAssignClassClose}
+            />
+          )}
         </Modal>
 
     </ThemedLayout>

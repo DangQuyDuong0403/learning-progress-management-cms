@@ -1,5 +1,10 @@
 /* Student List Styles */
 
+/* Hide red asterisks from required form fields */
+.ant-form-item-required::before {
+  display: none !important;
+}
+
 /* ===== MAIN CONTENT PANEL ===== */
 .main-content-panel {
 	background: rgba(45, 27, 105, 0.75);
@@ -515,10 +520,9 @@ div.student-profile .space-theme .edit-button:hover {
 /* Role and Status Text */
 .role-text,
 .status-text {
-  font-size: 16px;
+  font-size: 20px;
   padding: 6px 12px;
   border-radius: 8px;
-  font-weight: 500;
 }
 
 .space-theme .role-text {
@@ -529,9 +533,7 @@ div.student-profile .space-theme .edit-button:hover {
   color: #52c41a !important;
 }
 
-.sun-theme .role-text {
-  color: #1890ff !important;
-}
+
 
 .sun-theme .status-text {
   color: #52c41a !important;

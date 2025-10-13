@@ -68,6 +68,19 @@ const authApi = {
 			}
 		});
 	},
+
+	// Cập nhật trạng thái student (ACTIVE/INACTIVE)
+	updateStudentStatus: (userId, status) => {
+		const url = `/user/students/${userId}/status?status=${status}`;
+		console.log('UpdateStudentStatus API - URL:', url);
+		console.log('UpdateStudentStatus API - Params:', { userId, status });
+		
+		return axiosClient.patch(url, {}, {
+			headers: {
+				'accept': '*/*',
+			}
+		});
+	},
 };
 
 export default authApi;
