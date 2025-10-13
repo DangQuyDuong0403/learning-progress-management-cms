@@ -388,11 +388,11 @@ const AssignTeacherToClass = ({ teacher, onClose }) => {
 					<Row gutter={16}>
 						<Col span={24}>
 							<Input
-								placeholder={t('teacherManagement.searchClassesPlaceholder')}
 								prefix={<SearchOutlined />}
 								value={searchText}
 								onChange={(e) => setSearchText(e.target.value)}
 								className={`search-input ${theme}-search-input`}
+								style={{ height: '40px', fontSize: '16px' }}
 								allowClear
 								size="large"
 							/>

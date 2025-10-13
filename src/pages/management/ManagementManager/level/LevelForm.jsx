@@ -27,26 +27,48 @@ const LevelForm = ({ level, onClose }) => {
   
   const [form] = Form.useForm();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [durationUnit, setDurationUnit] = useState('weeks');
 
   const isEdit = !!level;
 
   useEffect(() => {
     if (level) {
-      form.setFieldsValue(level);
+      // Map API data to form fields
+      form.setFieldsValue({
+        levelName: level.levelName,
+        description: level.description,
+        difficulty: level.difficulty,
+        estimatedDurationWeeks: level.estimatedDurationWeeks,
+        status: level.status,
+        orderNumber: level.orderNumber,
+        promotionCriteria: level.promotionCriteria,
+        learningObjectives: level.learningObjectives,
+      });
     }
   }, [level, form]);
 
   const onFinish = async (values) => {
     setIsSubmitting(true);
     try {
+      // Map form values to API format (match với Swagger API)
+      const apiData = {
+        levelName: values.levelName,
+        description: values.description,
+        difficulty: values.difficulty,
+        promotionCriteria: values.promotionCriteria || '',
+        learningObjectives: values.learningObjectives || '',
+        estimatedDurationWeeks: values.estimatedDurationWeeks,
+        orderNumber: values.orderNumber,
+      };
+
       if (isEdit) {
-        await dispatch(updateLevel({ id: level.id, ...values }));
+        await dispatch(updateLevel({ id: level.id, ...apiData }));
         message.success(t('levelManagement.updateLevelSuccess'));
       } else {
-        await dispatch(createLevel(values));
+        await dispatch(createLevel(apiData));
         message.success(t('levelManagement.addLevelSuccess'));
       }
-      onClose();
+      onClose(true); // Pass true to indicate successful save
     } catch (error) {
       message.error(isEdit ? t('levelManagement.updateLevelError') : t('levelManagement.addLevelError'));
     } finally {
@@ -77,15 +99,15 @@ const LevelForm = ({ level, onClose }) => {
       onFinish={onFinish}
       initialValues={{
         status: 'active',
-        difficulty: 'beginner',
-        duration: 12,
+        difficulty: 'LE',
+        estimatedDurationWeeks: 12,
         ...level
       }}
     >
       <Row gutter={16}>
         <Col span={12}>
           <Form.Item
-            name="name"
+            name="levelName"
             label={t('levelManagement.levelName')}
             rules={[
               { required: true, message: t('levelManagement.levelNameRequired') },
@@ -100,20 +122,13 @@ const LevelForm = ({ level, onClose }) => {
         </Col>
         <Col span={12}>
           <Form.Item
-            name="code"
-            label={t('levelManagement.levelCode')}
-            rules={[
-              { required: true, message: t('levelManagement.levelCodeRequired') },
-              { 
-                pattern: /^[A-Z0-9_]+$/, 
-                message: t('levelManagement.levelCodePattern') 
-              }
-            ]}
+            name="difficulty"
+            label={t('levelManagement.difficulty')}
+            rules={[{ required: true, message: t('levelManagement.difficultyRequired') }]}
           >
             <Input 
-              placeholder={t('levelManagement.levelCodePlaceholder')}
+              placeholder="e.g., LE, ME, AE"
               size="large"
-              style={{ textTransform: 'uppercase' }}
             />
           </Form.Item>
         </Col>
@@ -123,7 +138,7 @@ const LevelForm = ({ level, onClose }) => {
         name="description"
         label={t('levelManagement.description')}
         rules={[
-          { required: true, message: t('levelManagement.descriptionRequired') },
+          { required: false, message: t('levelManagement.descriptionRequired') },
           { min: 10, message: t('levelManagement.descriptionMinLength') }
         ]}
       >
@@ -136,134 +151,61 @@ const LevelForm = ({ level, onClose }) => {
       </Form.Item>
 
       <Row gutter={16}>
-        <Col span={8}>
+        <Col span={16}>
           <Form.Item
-            name="difficulty"
-            label={t('levelManagement.difficulty')}
-            rules={[{ required: true, message: t('levelManagement.difficultyRequired') }]}
-          >
-            <Select 
-              placeholder={t('levelManagement.selectDifficulty')}
-              size="large"
-            >
-              {difficultyOptions.map(option => (
-                <Option key={option.value} value={option.value}>
-                  {option.label}
-                </Option>
-              ))}
-            </Select>
-          </Form.Item>
-        </Col>
-        <Col span={8}>
-          <Form.Item
-            name="duration"
+            name="estimatedDurationWeeks"
             label={t('levelManagement.duration')}
             rules={[
               { required: true, message: t('levelManagement.durationRequired') },
-              { type: 'number', min: 1, max: 52, message: t('levelManagement.durationRange') }
+              { type: 'number', min: 1, max: 104, message: t('levelManagement.durationRange') }
             ]}
           >
             <InputNumber 
               min={1}
-              max={52}
+              max={104}
               placeholder={t('levelManagement.durationPlaceholder')}
               style={{ width: '100%' }}
               size="large"
-              addonAfter={t('levelManagement.weeks')}
+              addonAfter={
+                <Select 
+                  value={durationUnit}
+                  onChange={setDurationUnit}
+                  style={{ width: 120 }}
+                  size="large"
+                >
+                  <Option value="days">{t('levelManagement.days')}</Option>
+                  <Option value="weeks">{t('levelManagement.weeks')}</Option>
+                  <Option value="months">{t('levelManagement.months')}</Option>
+                </Select>
+              }
             />
           </Form.Item>
         </Col>
         <Col span={8}>
-          <Form.Item
-            name="status"
-            label={t('levelManagement.status')}
-            rules={[{ required: true, message: t('levelManagement.statusRequired') }]}
-          >
-            <Select 
-              placeholder={t('levelManagement.selectStatus')}
-              size="large"
-            >
-              {statusOptions.map(option => (
-                <Option key={option.value} value={option.value}>
-                  {option.label}
-                </Option>
-              ))}
-            </Select>
-          </Form.Item>
-        </Col>
-      </Row>
-
-      <Row gutter={16}>
-        <Col span={12}>
-          <Form.Item
-            name="minAge"
-            label={t('levelManagement.minAge')}
-            rules={[
-              { type: 'number', min: 3, max: 18, message: t('levelManagement.minAgeRange') }
-            ]}
-          >
-            <InputNumber 
-              min={3}
-              max={18}
-              placeholder={t('levelManagement.minAgePlaceholder')}
-              style={{ width: '100%' }}
-              size="large"
-              addonAfter={t('levelManagement.years')}
-            />
-          </Form.Item>
-        </Col>
-        <Col span={12}>
-          <Form.Item
-            name="maxAge"
-            label={t('levelManagement.maxAge')}
-            rules={[
-              { type: 'number', min: 3, max: 18, message: t('levelManagement.maxAgeRange') }
-            ]}
-          >
-            <InputNumber 
-              min={3}
-              max={18}
-              placeholder={t('levelManagement.maxAgePlaceholder')}
-              style={{ width: '100%' }}
-              size="large"
-              addonAfter={t('levelManagement.years')}
-            />
-          </Form.Item>
+         
         </Col>
       </Row>
 
       <Form.Item
-        name="objectives"
-        label={t('levelManagement.objectives')}
+        name="learningObjectives"
+        label={t('levelManagement.learningObjectives')}
       >
         <TextArea 
           rows={4}
-          placeholder={t('levelManagement.objectivesPlaceholder')}
+          placeholder={t('levelManagement.learningObjectivesPlaceholder')}
           maxLength={1000}
           showCount
         />
       </Form.Item>
 
       <Form.Item
-        name="prerequisites"
-        label={t('levelManagement.prerequisites')}
+        name="promotionCriteria"
+        label={t('levelManagement.promotionCriteria')}
       >
         <TextArea 
           rows={3}
-          placeholder={t('levelManagement.prerequisitesPlaceholder')}
+          placeholder={t('levelManagement.promotionCriteriaPlaceholder')}
           maxLength={500}
-          showCount
-        />
-      </Form.Item>
-
-      <Form.Item
-        name="learningOutcomes"
-        label={t('levelManagement.learningOutcomes')}
-      >
-        <TextArea 
-          rows={4}
-          placeholder={t('levelManagement.learningOutcomesPlaceholder')}
-          maxLength={1000}
           showCount
         />
       </Form.Item>

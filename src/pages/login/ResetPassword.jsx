@@ -1,23 +1,36 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Input, Button } from 'antd';
-import { LockOutlined, SafetyOutlined, ArrowLeftOutlined } from '@ant-design/icons';
+import { LockOutlined, ArrowLeftOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import LanguageToggle from '../../component/LanguageToggle';
 import ThemeToggleSwitch from '../../component/ThemeToggleSwitch';
 import { useTheme } from '../../contexts/ThemeContext';
 import ThemedLayoutFullScreen from '../../component/ThemedLayoutFullScreen';
+import { spaceToast } from '../../component/SpaceToastify';
+import authApi from '../../apis/backend/auth';
 import './Login.css';
 
 export default function ResetPassword() {
 	const [formData, setFormData] = useState({
 		newPassword: '',
-		confirmPassword: '',
 	});
-	const [message, setMessage] = useState(null);
+	const [loading, setLoading] = useState(false);
+	const [searchParams] = useSearchParams();
 	const navigate = useNavigate();
 	const { isSunTheme } = useTheme();
 	const { t } = useTranslation();
+
+	// Lấy token từ URL
+	const token = searchParams.get('token');
+
+	// Kiểm tra token khi component mount
+	useEffect(() => {
+		if (!token) {
+			spaceToast.error(t('resetPassword.invalidToken'));
+			navigate('/choose-login');
+		}
+	}, [token, navigate, t]);
 
 	const handleInputChange = (field, value) => {
 		setFormData((prev) => ({
@@ -29,69 +42,72 @@ export default function ResetPassword() {
 
 	const validatePassword = (password) => {
 		const minLength = 6;
-		const hasUpperCase = /[A-Z]/.test(password);
-		const hasLowerCase = /[a-z]/.test(password);
-		const hasNumbers = /\d/.test(password);
 
 		return {
-			isValid:
-				password.length >= minLength &&
-				hasUpperCase &&
-				hasLowerCase &&
-				hasNumbers,
+			isValid: password.length >= minLength,
 			errors: {
 				length:
 					password.length < minLength
 						? t('resetPassword.passwordMinLengthError')
 						: null,
-				uppercase: !hasUpperCase ? t('resetPassword.passwordUppercaseError') : null,
-				lowercase: !hasLowerCase
-					? t('resetPassword.passwordLowercaseError')
-					: null,
-				numbers: !hasNumbers ? t('resetPassword.passwordNumbersError') : null,
 			},
 		};
 	};
 
 	const handleSubmit = async (e) => {
 		e.preventDefault();
-		setMessage(null);
+
+		// Check if password is not empty
+		if (!formData.newPassword) {
+			spaceToast.error(t('resetPassword.passwordRequired'));
+			return;
+		}
 
 		// Validate password
 		const passwordValidation = validatePassword(formData.newPassword);
 		if (!passwordValidation.isValid) {
-			setMessage({
-				type: 'error',
-				text: t('resetPassword.passwordNotMeetRequirements'),
-			});
+			spaceToast.error(t('resetPassword.passwordMinLengthError'));
 			return;
 		}
 
-		// Check if passwords match
-		if (formData.newPassword !== formData.confirmPassword) {
-			setMessage({
-				type: 'error',
-				text: t('resetPassword.confirmPasswordNotMatch'),
-			});
+		// Check if token exists
+		if (!token) {
+			spaceToast.error(t('resetPassword.invalidToken'));
 			return;
 		}
 
-		// Giả lập API call (thay thế bằng API call thực tế)
-		setTimeout(() => {
-			setMessage({
-				type: 'success',
-				text: t('resetPassword.resetSuccess'),
+		setLoading(true);
+
+		try {
+			// Gọi API confirm reset password
+			const response = await authApi.confirmResetPassword({
+				token: token,
+				newPassword: formData.newPassword
 			});
 
-			// Chuyển về trang login sau 2 giây
-			setTimeout(() => {
-				navigate('/login-student');
-			}, 2000);
-		}, 1500);
+			if (response.data.success) {
+				spaceToast.success(t('resetPassword.resetSuccess'));
+				
+				// Chuyển về trang login sau 2 giây
+				setTimeout(() => {
+					navigate('/choose-login');
+				}, 2000);
+			} else {
+				spaceToast.error(response.data.message || t('resetPassword.resetError'));
+			}
+		} catch (error) {
+			const errorMessage = error.response?.data?.message || 
+								error.response?.data?.error || 
+								error.message || 
+								t('resetPassword.resetError');
+			spaceToast.error(errorMessage);
+		} finally {
+			setLoading(false);
+		}
 	};
 
 	const handleBackToLogin = () => {
-		navigate('/login-student');
+		navigate('/choose-login');
 	};
 
 	const passwordValidation = validatePassword(formData.newPassword);
@@ -105,40 +121,6 @@ export default function ResetPassword() {
 					<LanguageToggle />
 				</div>
 				
-				{/* Logo CAMKEY - Top Left */}
-				<div style={{ position: 'absolute', top: '20px', left: '20px', zIndex: 1000 }}>
-					<div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-						{isSunTheme ? (
-							<img 
-								src="/img/sun-logo.png" 
-								alt="CAMKEY Logo" 
-								style={{ 
-									width: '100px', 
-									height: '100px', 
-									filter: 'drop-shadow(0 0 15px rgba(255, 215, 0, 0.8))'
-								}} 
-							/>
-                        ) : (
-                            <img 
-                                src="/img/astro.png" 
-                                alt="CAMKEY Logo" 
-                                style={{ 
-                                    width: '100px', 
-                                    height: '100px', 
-                                    filter: 'drop-shadow(0 0 15px rgba(125, 211, 252, 0.8))'
-                                }} 
-                            />
-                        )}
-                        <span style={{ 
-                            fontSize: '40px', 
-                            fontWeight: 700, 
-                            color: isSunTheme ? '#1E40AF' : '#FFFFFF',
-                            textShadow: isSunTheme ? '0 0 5px rgba(30, 64, 175, 0.3)' : '0 0 15px rgba(255, 255, 255, 0.8)'
-                        }}>
-							CAMKEY
-						</span>
-					</div>
-				</div>
 
 				<div className='d-flex align-items-center justify-content-center w-100'>
 					<div className='row justify-content-center w-100'>
@@ -215,114 +197,20 @@ export default function ResetPassword() {
 															{passwordValidation.errors.length ||
 																`✓ ${t('resetPassword.minLength')}`}
 														</div>
-														<div
-															className={`mb-1 ${
-																passwordValidation.errors.uppercase
-																	? 'text-danger'
-																	: 'text-success'
-															}`}>
-															•{' '}
-															{passwordValidation.errors.uppercase ||
-																`✓ ${t('resetPassword.hasUppercase')}`}
-														</div>
-														<div
-															className={`mb-1 ${
-																passwordValidation.errors.lowercase
-																	? 'text-danger'
-																	: 'text-success'
-															}`}>
-															•{' '}
-															{passwordValidation.errors.lowercase ||
-																`✓ ${t('resetPassword.hasLowercase')}`}
-														</div>
-														<div
-															className={`mb-1 ${
-																passwordValidation.errors.numbers
-																	? 'text-danger'
-																	: 'text-success'
-															}`}>
-															•{' '}
-															{passwordValidation.errors.numbers ||
-																`✓ ${t('resetPassword.hasNumbers')}`}
-														</div>
 													</div>
 												)}
 											</div>
 
-                                        <div className='mb-4'>
-                                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                                                <label htmlFor='confirmPassword' className='form-label' style={{...getLabelStyle(isSunTheme), width: '90%', textAlign: 'left'}}>
-                                                    {t('resetPassword.confirmPassword')}
-                                                </label>
-                                                <Input.Password
-                                                    id='confirmPassword'
-                                                    value={formData.confirmPassword}
-                                                    onChange={(e) =>
-                                                        handleInputChange(
-                                                            'confirmPassword',
-                                                            e.target.value
-                                                        )
-                                                    }
-                                                    prefix={<SafetyOutlined />}
-                                                    size='large'
-                                                    style={getInputStyle(isSunTheme)}
-                                                    styles={{
-                                                        suffix: {
-                                                            color: isSunTheme ? '#6b7280' : '#ffffff'
-                                                        }
-                                                    }}
-                                                    required
-                                                />
-                                            </div>
 
-												{/* Password match indicator */}
-												{formData.confirmPassword && (
-													<div className='mt-2' style={{ fontSize: '0.8rem' }}>
-														<div
-															className={`mb-1 ${
-																formData.newPassword ===
-																formData.confirmPassword
-																	? 'text-success'
-																	: 'text-danger'
-															}`}>
-															•{' '}
-															{formData.newPassword === formData.confirmPassword
-																? `✓ ${t('resetPassword.passwordMatch')}`
-																: `✗ ${t('resetPassword.passwordNotMatch')}`}
-														</div>
-													</div>
-												)}
-											</div>
-
-											{message && (
-												<div
-													className={`mb-4 p-3 rounded-3 ${
-														message.type === 'success'
-															? 'alert-success'
-															: 'alert-danger'
-													}`}
-													style={{
-														backgroundColor:
-															message.type === 'success'
-																? '#dcfce7'
-																: '#fee2e2',
-														color:
-															message.type === 'success'
-																? '#166534'
-																: '#991b1b',
-														border: 'none',
-													}}>
-													{message.text}
-												</div>
-											)}
 
                                   
 									<div className='text-center'>
 											<button
 												type='submit'
 												className='btn w-90 mb-4 rounded-3'
-												style={getSubmitButtonStyle(isSunTheme)}>
-												{t('resetPassword.changePassword')}
+												style={getSubmitButtonStyle(isSunTheme)}
+												disabled={loading}>
+												{loading ? t('common.loading') : t('resetPassword.changePassword')}
 											</button>
 										</div>
 									</form>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
 	Table,
 	Button,
@@ -10,153 +10,281 @@ import {
 	Tooltip,
 } from 'antd';
 import {
-	PlusOutlined,
 	EditOutlined,
-	DeleteOutlined,
 	SearchOutlined,
 	ReloadOutlined,
+	CheckOutlined,
+	StopOutlined,
+	DragOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
-import { useDispatch, useSelector } from 'react-redux';
-import LevelForm from './LevelForm';
-import './LevelList.css';
-import {
-	fetchLevels,
-	deleteLevel as deleteLevelAction,
-} from '../../../../redux/level';
+import { useNavigate } from 'react-router-dom';
 import ThemedLayout from '../../../../component/ThemedLayout';
 import LoadingWithEffect from '../../../../component/spinner/LoadingWithEffect';
 import { useTheme } from '../../../../contexts/ThemeContext';
 import { spaceToast } from '../../../../component/SpaceToastify';
+import levelManagementApi from '../../../../apis/backend/levelManagement';
+import LevelForm from './LevelForm';
+import ROUTER_PAGE from '../../../../constants/router';
 
 const { Option } = Select;
 
 const LevelList = () => {
 	const { t } = useTranslation();
 	const { theme } = useTheme();
-	const dispatch = useDispatch();
-	const { levels, loading } = useSelector((state) => state.level);
-
+	const navigate = useNavigate();
+	const [loading, setLoading] = useState(false);
+	const [levels, setLevels] = useState([]);
 	const [isModalVisible, setIsModalVisible] = useState(false);
 	const [isDeleteModalVisible, setIsDeleteModalVisible] = useState(false);
 	const [editingLevel, setEditingLevel] = useState(null);
 	const [deleteLevel, setDeleteLevel] = useState(null);
 	const [searchText, setSearchText] = useState('');
-	const [statusFilter, setStatusFilter] = useState('all');
+	const [statusFilter, setStatusFilter] = useState('active');
+	const [searchTimeout, setSearchTimeout] = useState(null);
+	const [sortBy, setSortBy] = useState('orderNumber');
+	const [sortDir, setSortDir] = useState('asc');
+	
+	// Pagination state
+	const [pagination, setPagination] = useState({
+		current: 1,
+		pageSize: 10,
+		total: 0,
+		showSizeChanger: true,
+		showTotal: (total, range) => `${range[0]}-${range[1]} of ${total}`,
+	});
+
+	const fetchLevels = useCallback(async (page = 1, size = 10, search = '', statusFilter = 'active', sortField = 'orderNumber', sortDirection = 'asc') => {
+		setLoading(true);
+		try {
+			const params = {
+				page: page - 1, // API uses 0-based indexing
+				size: size,
+				sortBy: sortField,
+				sortDir: sortDirection,
+			};
+			
+			// Add search parameter if provided (API uses 'text' parameter)
+			if (search && search.trim()) {
+				params.text = search.trim();
+			}
+
+			// Add status filter if not 'all' (API expects array of booleans)
+			if (statusFilter && statusFilter !== 'all') {
+				params.status = [statusFilter === 'active'];
+			}
+
+			const response = await levelManagementApi.getLevels({
+				params: params,
+			});
+
+			// Map API response to component format 
+			const mappedLevels = response.data.map((level) => ({
+				id: level.id,
+				levelName: level.levelName,
+				// code: level.difficulty,
+				difficulty: level.difficulty,
+				estimatedDurationWeeks: level.estimatedDurationWeeks,
+				status: level.isActive ? 'active' : 'inactive',
+				orderNumber: level.orderNumber,
+				createdAt: new Date().toLocaleDateString(), // API doesn't provide createdAt, using current date
+				description: '', // API doesn't provide description
+			}));
+
+			setLevels(mappedLevels);
+			setPagination(prev => ({
+				...prev,
+				current: page,
+				pageSize: size,
+				total: response.totalElements || mappedLevels.length,
+			}));
+			setLoading(false);
+		} catch (error) {
+			console.error('Error fetching levels:', error);
+			spaceToast.error(t('levelManagement.loadLevelsError'));
+			setLoading(false);
+		}
+	}, [t]);
+
 	useEffect(() => {
-		dispatch(fetchLevels());
-	}, [dispatch]);
+		fetchLevels(1, pagination.pageSize, searchText, statusFilter, sortBy, sortDir);
+	}, [fetchLevels, searchText, statusFilter, sortBy, sortDir, pagination.pageSize]);
 
-	const handleAdd = () => {
-		setEditingLevel(null);
-		setIsModalVisible(true);
+	// Cleanup timeout on unmount
+	useEffect(() => {
+		return () => {
+			if (searchTimeout) {
+				clearTimeout(searchTimeout);
+			}
+		};
+	}, [searchTimeout]);
+
+	const handleSearch = (value) => {
+		setSearchText(value);
+		
+		// Clear existing timeout
+		if (searchTimeout) {
+			clearTimeout(searchTimeout);
+		}
+		
+		// Set new timeout for 1 second delay
+		const newTimeout = setTimeout(() => {
+			// Reset to first page when searching
+			fetchLevels(1, pagination.pageSize, value, statusFilter, sortBy, sortDir);
+		}, 1000);
+		
+		setSearchTimeout(newTimeout);
 	};
 
-	const handleEdit = (level) => {
-		setEditingLevel(level);
-		setIsModalVisible(true);
+	const handleStatusFilterChange = (value) => {
+		setStatusFilter(value);
+		// Reset to first page when filtering
+		fetchLevels(1, pagination.pageSize, searchText, value, sortBy, sortDir);
 	};
 
-	const handleDeleteClick = (level) => {
+	const handleTableChange = (pagination, filters, sorter) => {
+		// Handle sorting
+		if (sorter && sorter.field) {
+			const newSortBy = sorter.field;
+			const newSortDir = sorter.order === 'ascend' ? 'asc' : 'desc';
+			
+			setSortBy(newSortBy);
+			setSortDir(newSortDir);
+			
+			// Fetch data with new sorting
+			fetchLevels(pagination.current, pagination.pageSize, searchText, statusFilter, newSortBy, newSortDir);
+		} else {
+			// Handle pagination without sorting change
+			fetchLevels(pagination.current, pagination.pageSize, searchText, statusFilter, sortBy, sortDir);
+		}
+	};
+
+
+	const handleEdit = async (level) => {
+		try {
+			// Fetch full level details from API
+			const response = await levelManagementApi.getLevelById(level.id);
+			console.log(response);
+			
+			// Map API response to form format
+			const levelDetails = {
+				id: response.data.id,
+				levelName: response.data.levelName,
+				description: response.data.description || '',
+				difficulty: response.data.difficulty,
+				estimatedDurationWeeks: response.data.estimatedDurationWeeks,
+				status: response.data.isActive ? 'active' : 'inactive',
+				orderNumber: response.data.orderNumber,
+				promotionCriteria: response.data.promotionCriteria || '',
+				learningObjectives: response.data.learningObjectives || '',
+			};
+			
+			setEditingLevel(levelDetails);
+			setIsModalVisible(true);
+		} catch (error) {
+			console.error('Error fetching level details:', error);
+			spaceToast.error(t('levelManagement.loadLevelDetailsError'));
+			setLoading(false);
+		}
+	};
+
+	const handleDeactivateClick = (level) => {
 		setDeleteLevel(level);
 		setIsDeleteModalVisible(true);
 	};
 
-	const handleDelete = async () => {
+	const handleDeactivate = async () => {
 		try {
-			await dispatch(deleteLevelAction(deleteLevel.id));
-			spaceToast.success(t('levelManagement.deleteLevelSuccess'));
+			await levelManagementApi.activateDeactivateLevel(deleteLevel.id);
+			const action = deleteLevel.status === 'active' ? 'deactivated' : 'activated';
+			spaceToast.success(t(`levelManagement.${action}LevelSuccess`));
 			setIsDeleteModalVisible(false);
 			setDeleteLevel(null);
+			// Refresh the list after deactivation
+			fetchLevels(pagination.current, pagination.pageSize, searchText, statusFilter, sortBy, sortDir);
 		} catch (error) {
-			spaceToast.error(t('levelManagement.deleteLevelError'));
+			console.error('Error deactivating level:', error);
+			spaceToast.error(t('levelManagement.deactivateLevelError'));
 		}
 	};
 
-	const handleDeleteModalClose = () => {
+	const handleDeactivateModalClose = () => {
 		setIsDeleteModalVisible(false);
 		setDeleteLevel(null);
 	};
 
-	const handleModalClose = () => {
+	const handleModalClose = (shouldRefresh = false) => {
 		setIsModalVisible(false);
 		setEditingLevel(null);
+		// Refresh data if save was successful
+		if (shouldRefresh) {
+			fetchLevels(pagination.current, pagination.pageSize, searchText, statusFilter, sortBy, sortDir);
+		}
 	};
 
 	const handleRefresh = () => {
-		dispatch(fetchLevels());
+		fetchLevels(pagination.current, pagination.pageSize, searchText, statusFilter, sortBy, sortDir);
 	};
 
-	// Filter levels based on search and status
-	const filteredLevels = levels.filter((level) => {
-		const matchesSearch =
-			level.name.toLowerCase().includes(searchText.toLowerCase()) ||
-			level.description.toLowerCase().includes(searchText.toLowerCase());
-		const matchesStatus =
-			statusFilter === 'all' || level.status === statusFilter;
-		return matchesSearch && matchesStatus;
-	});
+	const handleEditPositions = () => {
+		navigate(ROUTER_PAGE.MANAGER_LEVEL_EDIT_POSITIONS);
+	};
 
 
 	const columns = [
 		{
-			title: t('levelManagement.levelName'),
-			dataIndex: 'name',
-			key: 'name',
-			sorter: (a, b) => a.name.localeCompare(b.name),
-			render: (text, record) => (
-				<div>
-					<div style={{ fontWeight: 'bold', fontSize: '16px' }}>{text}</div>
-					<div style={{ color: '#666', fontSize: '12px' }}>
-						{record.description}
-					</div>
-				</div>
-			),
+			title: 'No',
+			key: 'index',
+			width: '5%',
+			render: (_, __, index) => {
+				// Calculate index based on current page and page size
+				const currentPage = pagination.current || 1;
+				const pageSize = pagination.pageSize || 10;
+				return (currentPage - 1) * pageSize + index + 1;
+			},
 		},
 		{
-			title: t('levelManagement.levelCode'),
-			dataIndex: 'code',
-			key: 'code',
-			width: 120,
-			sorter: (a, b) => a.code.localeCompare(b.code),
+			title: t('levelManagement.levelName'),
+			dataIndex: 'levelName',
+			key: 'levelName',
+			width: '30%',
+			sorter: true,
+			render: (text) => (
+				<div>
+					<div>{text}</div>
+				</div>
+			),
 		},
 		{
 			title: t('levelManagement.difficulty'),
 			dataIndex: 'difficulty',
 			key: 'difficulty',
-			width: 120,
-			render: (difficulty) => `${difficulty}`,
+			width: '15%',
 		},
 		{
 			title: t('levelManagement.status'),
 			dataIndex: 'status',
 			key: 'status',
-			width: 100,
-			render: (status, record) => (
+			width: '15%',
+			render: (status) => (
 				<Tag color={status === 'active' ? 'green' : 'red'}>{status}</Tag>
 			),
 		},
 		{
 			title: t('levelManagement.duration'),
-			dataIndex: 'duration',
-			key: 'duration',
-			width: 100,
-			render: (duration) => `${duration} week`,
-		},
-		{
-			title: t('levelManagement.createdAt'),
-			dataIndex: 'createdAt',
-			key: 'createdAt',
-			width: 120,
-			render: (date) => new Date(date).toLocaleDateString(),
+			dataIndex: 'estimatedDurationWeeks',
+			key: 'estimatedDurationWeeks',
+			width: '15%',
+			sorter: true,
+			render: (estimatedDurationWeeks) => `${estimatedDurationWeeks} weeks`,
 		},
 		{
 			title: t('levelManagement.actions'),
 			key: 'actions',
-			width: 150,
+			width: '20%',
 			render: (_, record) => (
 				<Space size='small'>
-					<Tooltip title={t('accountManagement.edit')}>
+					<Tooltip title={t('levelManagement.edit')}>
 						<Button
 							type='text'
 							icon={<EditOutlined style={{ fontSize: '25px' }} />}
@@ -164,11 +292,24 @@ const LevelList = () => {
 							onClick={() => handleEdit(record)}
 						/>
 					</Tooltip>
-					<Button
-						type='text'
-						size='small'
-						icon={<DeleteOutlined style={{ fontSize: '25px' }} />}
-						onClick={() => handleDeleteClick(record)}></Button>
+					<Tooltip title={record.status === 'active' ? t('levelManagement.deactivate') : t('levelManagement.activate')}>
+						<Button
+							type='text'
+							size='small'
+							icon={
+								record.status === 'active' ? (
+									<StopOutlined style={{ fontSize: '25px' }} />
+								) : (
+									<CheckOutlined style={{ fontSize: '25px' }} />
+								)
+							}
+							onClick={() => handleDeactivateClick(record)}
+							style={{
+								color: record.status === 'active' ? '#ff4d4f' : '#52c41a',
+								padding: '4px 8px',
+							}}
+						/>
+					</Tooltip>
 				</Space>
 			),
 		},
@@ -182,20 +323,22 @@ const LevelList = () => {
 				<div className={`panel-header ${theme}-panel-header`}>
 					<div className='search-section'>
 						<Input
-							placeholder={t('levelManagement.searchPlaceholder')}
 							prefix={<SearchOutlined />}
 							value={searchText}
-							onChange={(e) => setSearchText(e.target.value)}
+							onChange={(e) => handleSearch(e.target.value)}
 							className={`search-input ${theme}-search-input`}
-							style={{ minWidth: '350px', maxWidth: '500px' }}
+							style={{ flex: '1', minWidth: '250px', maxWidth: '400px', width: '350px' }}
 							allowClear
 						/>
+						
+						{/* Status Filter */}
 						<Select
-							style={{ width: 150, marginLeft: 12 }}
-							value={statusFilter}
-							onChange={setStatusFilter}
 							placeholder={t('levelManagement.filterByStatus')}
-							className={`filter-select ${theme}-filter-select`}>
+							value={statusFilter}
+							onChange={handleStatusFilterChange}
+							className={`filter-select ${theme}-filter-select`}
+							style={{ width: 130, marginLeft: '12px' }}
+							allowClear>
 							<Option value='all'>{t('levelManagement.allStatuses')}</Option>
 							<Option value='active'>{t('levelManagement.active')}</Option>
 							<Option value='inactive'>{t('levelManagement.inactive')}</Option>
@@ -213,10 +356,29 @@ const LevelList = () => {
 							{t('levelManagement.refresh')}
 						</Button>
 						<Button
-							icon={<PlusOutlined />}
-							className={`create-button ${theme}-create-button`}
-							onClick={handleAdd}>
-							{t('levelManagement.addLevel')}
+							icon={<DragOutlined />}
+							className={`edit-positions-button ${theme}-edit-positions-button`}
+							onClick={handleEditPositions}
+							style={{
+								height: '40px',
+								borderRadius: '8px',
+								fontWeight: '500',
+								border: theme === 'space' 
+									? '1px solid rgba(77, 208, 255, 0.3)' 
+									: '1px solid rgba(24, 144, 255, 0.3)',
+								background: theme === 'space'
+									? 'rgb(75, 65, 119)'
+									: 'linear-gradient(135deg, #1890ff 0%, #40a9ff 50%, #69c0ff 100%)',
+								color: theme === 'space' ? '#fff' : '#000',
+								backdropFilter: 'blur(10px)',
+								transition: 'all 0.3s ease',
+								boxShadow: theme === 'space'
+									? '0 4px 12px rgba(76, 29, 149, 0.3)'
+									: '0 4px 12px rgba(24, 144, 255, 0.3)',
+							}}
+						
+						>
+							{t('levelManagement.editPositions')}
 						</Button>
 					</div>
 				</div>
@@ -228,17 +390,13 @@ const LevelList = () => {
 						message={t('levelManagement.loadingLevels')}>
 						<Table
 							columns={columns}
-							dataSource={filteredLevels}
+							dataSource={levels}
 							rowKey='id'
 							pagination={{
-								total: filteredLevels.length,
-								pageSize: 10,
-								showSizeChanger: true,
-								showQuickJumper: true,
-								showTotal: (total, range) =>
-									`${range[0]}-${range[1]} of ${total}`,
+								...pagination,
 								className: `${theme}-pagination`,
 							}}
+							onChange={handleTableChange}
 							scroll={{ x: 1200 }}
 							className={`level-table ${theme}-level-table`}
 						/>
@@ -278,12 +436,12 @@ const LevelList = () => {
 							textAlign: 'center',
 							padding: '10px 0',
 						}}>
-						{t('levelManagement.confirmDelete')}
+						{deleteLevel?.status === 'active' ? t('levelManagement.confirmDeactivate') : t('levelManagement.confirmActivate')}
 					</div>
 				}
 				open={isDeleteModalVisible}
-				onOk={handleDelete}
-				onCancel={handleDeleteModalClose}
+				onOk={handleDeactivate}
+				onCancel={handleDeactivateModalClose}
 				okText={t('common.confirm')}
 				cancelText={t('common.cancel')}
 				width={500}
@@ -334,7 +492,7 @@ const LevelList = () => {
 							margin: 0,
 							fontWeight: '500',
 						}}>
-						{t('levelManagement.confirmDeleteMessage')}
+						{deleteLevel?.status === 'active' ? t('levelManagement.confirmDeactivateMessage') : t('levelManagement.confirmActivateMessage')}
 					</p>
 					{deleteLevel && (
 						<p
@@ -344,11 +502,12 @@ const LevelList = () => {
 								margin: 0,
 								fontWeight: '600',
 							}}>
-							<strong>{deleteLevel.name}</strong>
+							<strong>{deleteLevel.levelName}</strong>
 						</p>
 					)}
 				</div>
 			</Modal>
+
 		</ThemedLayout>
 	);
 };

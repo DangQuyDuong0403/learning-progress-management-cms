@@ -5,6 +5,7 @@ const ROUTER_PAGE = {
 	FORGOT_PASSWORD_EMAIL: '/forgot-password-email',
 	FORGOT_PASSWORD_PHONE: '/forgot-password-phone',
 	FORGOT_PASSWORD_SUCCESS: '/forgot-password-success',
+	FORGOT_PASSWORD_FAILURE: '/forgot-password-failure',
 	OTP_VERIFICATION: '/otp-verification',
 	RESET_PASSWORD: '/reset-password',
 	CHOOSE_LOGIN: '/choose-login',
@@ -24,7 +25,9 @@ const ROUTER_PAGE = {
 	// Manager Management Routes
 	MANAGER_DASHBOARD: '/manager/dashboard',
 	MANAGER_SYLLABUSES: '/manager/syllabuses',
+	MANAGER_SYLLABUS_CHAPTERS: '/manager/syllabuses/:syllabusId/chapters',
 	MANAGER_LEVELS: '/manager/levels',
+	MANAGER_LEVEL_EDIT_POSITIONS: '/manager/level/edit-positions',
 	MANAGER_TEACHERS: '/manager/teachers',
 	MANAGER_TEACHER_PROFILE: '/manager/teachers/profile/:teacherId',
 	MANAGER_TEACHER_EDIT: '/manager/teachers/edit/:teacherId',

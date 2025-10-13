@@ -3,18 +3,21 @@ import ROUTER_PAGE from '../constants/router';
 import ChooseLogin from '../pages/login/ChooseLogin.jsx';
 import ForgotPassword from '../pages/login/ForgotPassword.jsx';
 import ForgotPasswordSuccess from '../pages/login/ForgotPasswordSuccess.jsx';
+import ForgotPasswordFailure from '../pages/login/ForgotPasswordFailure.jsx';
 import Login from '../pages/login/LoginStudent.jsx';
 import OTPVerification from '../pages/login/OTPVerification.jsx';
 import ResetPassword from '../pages/login/ResetPassword.jsx';
 import LoginTeacher from '../pages/login/LoginTeacher.jsx';
 import Profile from '../pages/profile/Profile.jsx';
 import ProfileStudent from '../pages/profile/ProfileStudent.jsx';
-import ChangePassword from '../pages/profile/ChangePassword.jsx';
+import ChangePassword from '../pages/login/ChangePassword.jsx';
 import Settings from '../pages/settings/Settings.jsx';
 import AccountList from '../pages/management/managementAdmin/account/AccountList.jsx';
 // import RoleList from '../pages/management/managementAdmin/role/RoleList.jsx';
 import LevelList from '../pages/management/ManagementManager/level/LevelList.jsx';
+import LevelDragEdit from '../pages/management/ManagementManager/level/LevelDragEdit.jsx';
 import SyllabusList from '../pages/management/ManagementManager/syllabus/SyllabusList.jsx';
+import ChapterListPage from '../pages/management/ManagementManager/syllabus/ChapterListPage.jsx';
 import StudentList from '../pages/management/ManagementManager/Student/StudentList.jsx';
 import StudentProfile from '../pages/management/ManagementManager/Student/StudentProfile.jsx';
 import StudentLearningProgressOverview from '../pages/management/ManagementManager/Student/StudentLearningProgressOverview.jsx';
@@ -83,6 +86,14 @@ const CONFIG_ROUTER = [
 		path: ROUTER_PAGE.FORGOT_PASSWORD_SUCCESS,
 		exact: true,
 		key: 'FORGOT_PASSWORD_SUCCESS',
+	},
+	{
+		show: false, // không hiện trên menu
+		component: ForgotPasswordFailure,
+		// icon: <LogIn size={18} />,
+		path: ROUTER_PAGE.FORGOT_PASSWORD_FAILURE,
+		exact: true,
+		key: 'FORGOT_PASSWORD_FAILURE',
 	},
 	{
 		show: false, // không hiện trên menu
@@ -239,6 +250,16 @@ const CONFIG_ROUTER = [
 		role: 'manager',
 	},
 	{
+		show: false,
+		component: LevelDragEdit,
+		path: ROUTER_PAGE.MANAGER_LEVEL_EDIT_POSITIONS,
+		menuName: 'Edit Level Positions',
+		exact: true,
+		key: 'MANAGER_LEVEL_EDIT_POSITIONS',
+		private: true,
+		role: 'manager',
+	},
+	{
 		show: true,
 		component: TeacherList,
 		// icon: <UserOutlined />,
@@ -301,6 +322,17 @@ const CONFIG_ROUTER = [
 		menuName: 'Syllabus management',
 		exact: true,
 		key: 'MANAGER_SYLLABUSES',
+		private: true,
+		role: 'manager',
+	},
+	{
+		show: false,
+		component: ChapterListPage,
+		// icon: <FileTextOutlined />,
+		path: ROUTER_PAGE.MANAGER_SYLLABUS_CHAPTERS,
+		menuName: 'Chapter management',
+		exact: true,
+		key: 'MANAGER_SYLLABUS_CHAPTERS',
 		private: true,
 		role: 'manager',
 	},

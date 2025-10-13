@@ -367,19 +367,19 @@ const AssignStudentToClass = ({ student, onClose }) => {
 					<Col span={16}>
 						<div>
 							<h3 style={{ margin: 0, fontSize: '20px', fontWeight: 'bold' }}>
-								{student?.fullName}
+								{student?.firstName} {student?.lastName}
 							</h3>
 							<p style={{ margin: '8px 0', color: '#666' }}>
 								{student?.email}
 							</p>
 							<p style={{ margin: '8px 0', color: '#666' }}>
-								{student?.phone}
+								{student?.phoneNumber}
 							</p>
 							<Tag color="blue">
-								{student?.studentCode}
+								{student?.userName}
 							</Tag>
 							<Tag color="orange" style={{ marginLeft: 8 }}>
-								{student?.level}
+								{student?.currentLevelInfo?.name || 'N/A'}
 							</Tag>
 						</div>
 					</Col>
@@ -400,11 +400,11 @@ const AssignStudentToClass = ({ student, onClose }) => {
 					<Row gutter={16}>
 						<Col span={24}>
 							<Input
-								placeholder={t('studentManagement.searchClassesPlaceholder')}
 								prefix={<SearchOutlined />}
 								value={searchText}
 								onChange={(e) => setSearchText(e.target.value)}
 								className={`search-input ${theme}-search-input`}
+								style={{ height: '40px', fontSize: '16px' }}
 								allowClear
 								size="large"
 							/>

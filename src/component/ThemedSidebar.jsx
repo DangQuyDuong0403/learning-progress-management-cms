@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Link, useLocation } from "react-router-dom";
 import { Menu } from 'antd';
 import { useTranslation } from 'react-i18next';
@@ -21,6 +21,7 @@ export default function ThemedSidebar({ collapsed }) {
   const { t } = useTranslation();
   const { user } = useSelector((state) => state.auth);
   const { theme } = useTheme();
+  const menuRef = useRef(null);
 
   // Map route keys to icons
   const getIcon = (key) => {
@@ -118,9 +119,36 @@ export default function ThemedSidebar({ collapsed }) {
   // Combine static, route menu items, and settings at the end
   const menuItems = [...staticMenuItems, ...routeMenuItems, settingsMenuItem];
 
+  // Auto scroll to selected item when sidebar is expanded
+  useEffect(() => {
+    if (!collapsed) {
+      // Use setTimeout to ensure DOM is rendered
+      setTimeout(() => {
+        // Find the selected menu item element in the sidebar
+        const selectedElement = document.querySelector('.themed-sidebar-menu .ant-menu-item-selected');
+        const menuContainer = document.querySelector('.themed-sidebar-menu');
+        
+        if (selectedElement && menuContainer) {
+          // Calculate the position to scroll to center the selected item
+          const containerHeight = menuContainer.clientHeight;
+          const itemTop = selectedElement.offsetTop;
+          const itemHeight = selectedElement.offsetHeight;
+          
+          // Scroll to center the selected item
+          const scrollTop = itemTop - (containerHeight / 2) + (itemHeight / 2);
+          menuContainer.scrollTo({
+            top: Math.max(0, scrollTop),
+            behavior: 'smooth'
+          });
+        }
+      }, 100);
+    }
+  }, [collapsed, location.pathname]);
+
   return (
     <div className={`themed-sidebar-container ${theme}-sidebar-container`}>
       <Menu
+        ref={menuRef}
         mode="inline"
         selectedKeys={getSelectedKey()}
         items={menuItems}

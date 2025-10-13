@@ -266,7 +266,6 @@ const ChapterList = ({ syllabus, onClose }) => {
 				<Row gutter={16} align="middle">
 					<Col flex="auto">
 						<Search
-							placeholder={t('chapterManagement.searchPlaceholder')}
 							style={{ width: 300 }}
 							value={searchText}
 							onChange={(e) => setSearchText(e.target.value)}

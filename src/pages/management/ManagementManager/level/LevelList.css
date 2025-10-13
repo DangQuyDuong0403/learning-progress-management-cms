@@ -62,53 +62,6 @@
 	gap: 12px;
 }
 
-.search-input {
-	flex: 1;
-	min-width: 300px;
-	max-width: 600px;
-	height: 40px;
-	border-radius: 20px;
-	border: 1px solid rgb(47, 27, 105);
-	color: #000;
-}
-
-.space-theme .search-input {
-	background: #413075;
-	border: 1px solid #604B9E;
-	outline: none !important;
-	box-shadow: none !important;
-	backdrop-filter: none ;
-}
-
-.space-theme .search-input .ant-input {
-	background: transparent ;
-	border: none ;
-	outline: none ;
-	box-shadow: none ;
-	color: #fff ;
-}
-
-.space-theme .search-input .ant-input:focus {
-	background: transparent ;
-	border: none ;
-	outline: none ;
-	box-shadow: none ;
-	color: #fff ;
-}
-
-.filter-select {
-	height: 40px;
-}
-
-.space-theme .filter-select .ant-select-selector {
-	background: #413075 !important;
-	border: 1px solid #604B9E !important;
-	color: #fff !important;
-}
-
-.space-theme .filter-select .ant-select-selection-item {
-	color: #fff !important;
-}
 
 .action-buttons {
 	display: flex;
@@ -229,60 +182,7 @@
 	color: #fff;
 }
 
-.space-theme .level-table .ant-table-thead > tr > th {
-	background: rgba(45, 27, 105, 0.7);
-	color: #fff;
-	font-weight: 600;
-	font-size: 20px !important;
-	border-bottom: 1px solid rgba(77, 208, 255, 0.3);
-	backdrop-filter: blur(10px);
-}
 
-.space-theme .level-table .ant-table-tbody > tr > td {
-	background: rgba(26, 26, 46, 0.4);
-	color: #fff;
-	font-size: 18px !important;
-	border-bottom: 1px solid rgba(77, 208, 255, 0.2);
-	backdrop-filter: blur(5px);
-}
-
-.space-theme .level-table .ant-table-tbody > tr:hover > td {
-	background: rgba(77, 208, 255, 0.1);
-}
-
-/* ===== PAGINATION ===== */
-.space-theme .ant-pagination {
-	color: #fff;
-}
-
-.space-theme .ant-pagination .ant-pagination-item {
-	background: rgba(45, 27, 105, 0.8);
-	border: 1px solid rgba(77, 208, 255, 0.3);
-	color: #fff;
-}
-
-.space-theme .ant-pagination .ant-pagination-item:hover {
-	background: rgba(77, 208, 255, 0.2);
-	border-color: rgba(77, 208, 255, 0.6);
-}
-
-.space-theme .ant-pagination .ant-pagination-item-active {
-	background: rgba(77, 208, 255, 0.3);
-	border-color: rgba(77, 208, 255, 0.6);
-}
-
-.space-theme .ant-pagination .ant-pagination-prev,
-.space-theme .ant-pagination .ant-pagination-next {
-	background: rgba(45, 27, 105, 0.8);
-	border: 1px solid rgba(77, 208, 255, 0.3);
-	color: #fff;
-}
-
-.space-theme .ant-pagination .ant-pagination-prev:hover,
-.space-theme .ant-pagination .ant-pagination-next:hover {
-	background: rgba(77, 208, 255, 0.2);
-	border-color: rgba(77, 208, 255, 0.6);
-}
 
 /* ===== TAG STYLES ===== */
 .ant-tag {
@@ -390,9 +290,6 @@
 		flex-wrap: wrap;
 	}
 
-	.ant-table {
-		font-size: 12px;
-	}
 
 	.ant-btn {
 		padding: 4px 8px;
@@ -414,7 +311,7 @@
 	color: #000;
 }
 .space-theme .level-table .ant-btn .anticon {
-	color: #000000;
+	color: #000000 !important;
 }
 
 .space-theme .refresh-button .anticon {
@@ -438,6 +335,11 @@
 	fill: #000000 ;
 }
 
+.space-theme .anticon svg {
+	color: #000000 ;
+	fill: #000000 ;
+}
+
 
 .level-table .ant-btn:hover .anticon {
 	color: #000;
@@ -449,6 +351,65 @@
 	background: rgba(109, 95, 143, 0.2);
 	border: 1px solid rgba(109, 95, 143, 0.3);
 	color: #fff;
+}
+
+/* ===== EDIT POSITIONS BUTTON ===== */
+.space-theme .edit-positions-button {
+	height: 40px;
+	border-radius: 8px;
+	font-weight: 500;
+	border: 1px solid rgba(77, 208, 255, 0.3);
+	background: linear-gradient(135deg, #4c1d95 0%, #5b21b6 50%, #6d28d9 100%);
+	color: #fff;
+	backdrop-filter: blur(10px);
+	transition: all 0.3s ease;
+	box-shadow: 0 4px 12px rgba(76, 29, 149, 0.3);
+}
+
+.space-theme .edit-positions-button:hover {
+	background: linear-gradient(135deg, #5b21b6 0%, #6d28d9 50%, #7c3aed 100%);
+	border-color: rgba(77, 208, 255, 0.6);
+	transform: translateY(-2px);
+	box-shadow: 0 6px 16px rgba(76, 29, 149, 0.4);
+	filter: brightness(1.1);
+}
+
+.space-theme .edit-positions-button:active {
+	transform: translateY(0);
+	box-shadow: 0 2px 8px rgba(76, 29, 149, 0.3);
+}
+
+.space-theme .edit-positions-button .anticon {
+	color: #fff !important;
+}
+
+.sun-theme .edit-positions-button {
+	height: 40px;
+	border-radius: 8px;
+	font-weight: 500;
+	border: 1px solid rgba(24, 144, 255, 0.3);
+	background: linear-gradient(135deg, #1890ff 0%, #40a9ff 50%, #69c0ff 100%);
+	color: #fff;
+	backdrop-filter: blur(10px);
+	transition: all 0.3s ease;
+	box-shadow: 0 4px 12px rgba(24, 144, 255, 0.3);
+}
+
+.sun-theme .edit-positions-button:hover {
+	background: linear-gradient(135deg, #40a9ff 0%, #69c0ff 50%, #91d5ff 100%);
+	border-color: rgba(24, 144, 255, 0.6);
+	transform: translateY(-2px);
+	box-shadow: 0 6px 16px rgba(24, 144, 255, 0.4);
+	filter: brightness(1.1);
+}
+
+.sun-theme .edit-positions-button:active {
+	transform: translateY(0);
+	box-shadow: 0 2px 8px rgba(24, 144, 255, 0.3);
+}
+
+.sun-theme .edit-positions-button .anticon {
+	color: #fff !important;
 }
 
 

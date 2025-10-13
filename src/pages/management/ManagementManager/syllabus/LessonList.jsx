@@ -244,7 +244,6 @@ const LessonList = ({ chapter, onClose }) => {
 				<Row gutter={16} align="middle">
 					<Col flex="auto">
 						<Search
-							placeholder={t('lessonManagement.searchPlaceholder')}
 							style={{ width: 300 }}
 							value={searchText}
 							onChange={(e) => setSearchText(e.target.value)}

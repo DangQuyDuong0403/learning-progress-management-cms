@@ -1,5 +1,204 @@
 /* Teacher List Styles - Space Theme */
 
+/* ===== FILTER BUTTON STYLES ===== */
+.filter-button {
+	height: 40px;
+	border-radius: 8px;
+	font-weight: 500;
+	font-size: 16px;
+	border: 1px solid rgba(77, 208, 255, 0.3);
+	background: rgba(45, 27, 105, 0.8);
+	color: #fff;
+	backdrop-filter: blur(10px);
+	transition: all 0.3s ease;
+}
+
+.filter-button:hover {
+	background: rgba(77, 208, 255, 0.2);
+	border-color: rgba(77, 208, 255, 0.6);
+	transform: translateY(-2px);
+	box-shadow: 0 4px 12px rgba(77, 208, 255, 0.3);
+	filter: brightness(1.1);
+}
+
+.filter-button .ant-btn {
+	font-size: 16px !important;
+}
+
+/* Space theme filter button */
+.space-theme .filter-button {
+	background: rgb(224 217 255 / 90%);
+	border: 1px solid rgba(77, 208, 255, 0.3);
+	color: #000;
+}
+
+.space-theme .filter-button:hover {
+	background: rgb(224 217 255 / 100%);
+	border-color: rgba(77, 208, 255, 0.6);
+	box-shadow: 0 4px 12px rgba(77, 208, 255, 0.3);
+	filter: brightness(1.1);
+}
+
+/* Sun theme filter button */
+.sun-theme .filter-button {
+	background: rgba(255, 255, 255, 0.1);
+	border: 1px solid rgba(0, 0, 0, 0.2);
+	color: #000;
+}
+
+.sun-theme .filter-button:hover {
+	background: rgba(0, 0, 0, 0.1);
+	border-color: rgba(0, 0, 0, 0.3);
+	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* ===== FILTER DROPDOWN PANEL STYLES ===== */
+.filter-dropdown-panel {
+	position: absolute;
+	top: 100%;
+	left: 0;
+	right: 0;
+	background: #fff;
+	border-radius: 12px;
+	box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+	border: 1px solid rgba(0, 0, 0, 0.1);
+	z-index: 1000;
+	min-width: 500px;
+	margin-top: 8px;
+}
+
+/* Space theme filter dropdown */
+.space-theme .filter-dropdown-panel {
+	background: rgb(224 217 255 / 90%) !important;
+	backdrop-filter: blur(10px);
+	border: 1px solid rgba(77, 208, 255, 0.2);
+	box-shadow: 0 8px 32px rgba(77, 208, 255, 0.15);
+	color: #000;
+}
+
+/* Sun theme filter dropdown */
+.sun-theme .filter-dropdown-panel {
+	background: #fff;
+	border: 1px solid rgba(0, 0, 0, 0.1);
+	box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+}
+
+/* Filter option buttons */
+.filter-option {
+	border-radius: 20px !important;
+	height: 36px !important;
+	padding: 0 16px !important;
+	font-size: 14px !important;
+	font-weight: 500 !important;
+	border: 1px solid #d9d9d9 !important;
+	background: #fff !important;
+	color: #000 !important;
+	transition: all 0.3s ease !important;
+}
+
+.filter-option:hover {
+	border-color: #C2E6FF !important;
+	color: #000 !important;
+	background: #C2E6FF !important;
+	transform: translateY(-1px) !important;
+	box-shadow: 0 2px 8px rgba(194, 230, 255, 0.3) !important;
+}
+
+.filter-option.selected {
+	border: 2px solid #C2E6FF !important;
+	background: #C2E6FF !important;
+	color: #000 !important;
+}
+
+.filter-option.selected:hover {
+	background: #C2E6FF !important;
+	border-color: #C2E6FF !important;
+}
+
+/* Filter action buttons */
+.filter-reset-button {
+	height: 40px !important;
+	font-size: 16px !important;
+	font-weight: 500 !important;
+	min-width: 120px !important;
+	border-radius: 8px !important;
+	border: 1px solid #d9d9d9 !important;
+	background: #fff !important;
+	color: #000 !important;
+}
+
+.filter-reset-button:hover {
+	border-color: #40a9ff !important;
+	color: #40a9ff !important;
+	background: #f0f8ff !important;
+}
+
+.filter-submit-button {
+	height: 40px !important;
+	font-size: 16px !important;
+	font-weight: 500 !important;
+	min-width: 120px !important;
+	border-radius: 8px !important;
+	background: linear-gradient(135deg, #7228d9 0%, #9c88ff 100%) !important;
+	border: none !important;
+}
+
+.filter-submit-button:hover {
+	background: linear-gradient(135deg, #5a1fb8 0%, #8a7aff 100%) !important;
+	border: none !important;
+	transform: translateY(-1px) !important;
+	box-shadow: 0 4px 12px rgba(114, 40, 217, 0.4) !important;
+}
+
+/* Active filter button (dropdown open) */
+.space-theme .filter-button.active {
+	background: rgb(224 217 255 / 100%) !important;
+	border-color: rgba(77, 208, 255, 0.6) !important;
+	color: #000 !important;
+	box-shadow: 0 4px 12px rgba(77, 208, 255, 0.3) !important;
+	transform: translateY(-1px) !important;
+}
+
+.sun-theme .filter-button.active {
+	background: rgba(77, 208, 255, 0.2) !important;
+	border-color: rgba(77, 208, 255, 0.6) !important;
+	box-shadow: 0 4px 12px rgba(77, 208, 255, 0.3) !important;
+}
+
+/* Filter button with active filters */
+.space-theme .filter-button.has-filters {
+	background: rgb(200 190 255 / 100%) !important;
+	border-color: rgba(77, 208, 255, 0.8) !important;
+	color: #000 !important;
+	font-weight: 600 !important;
+	box-shadow: 0 2px 8px rgba(77, 208, 255, 0.5) !important;
+	transform: translateY(-1px) !important;
+}
+
+.space-theme .filter-button.has-filters:hover {
+	background: rgb(180 170 255 / 100%) !important;
+	border-color: rgba(77, 208, 255, 1) !important;
+	color: #000 !important;
+	box-shadow: 0 4px 12px rgba(77, 208, 255, 0.6) !important;
+	transform: translateY(-2px) !important;
+}
+
+/* Sun theme filter button with active filters */
+.sun-theme .filter-button.has-filters {
+	background: rgba(24, 144, 255, 0.2) !important;
+	border-color: rgba(24, 144, 255, 0.6) !important;
+	color: #1890ff !important;
+	font-weight: 600 !important;
+	box-shadow: 0 2px 8px rgba(24, 144, 255, 0.3) !important;
+}
+
+.sun-theme .filter-button.has-filters:hover {
+	background: rgba(24, 144, 255, 0.3) !important;
+	border-color: rgba(24, 144, 255, 0.8) !important;
+	color: #1890ff !important;
+	box-shadow: 0 4px 12px rgba(24, 144, 255, 0.4) !important;
+}
+
 /* ===== MAIN CONTENT PANEL ===== */
 .teacher-page .main-content-panel {
 	background: rgba(45, 27, 105, 0.75);
@@ -73,56 +272,6 @@
 	gap: 12px;
 }
 
-.teacher-page .search-input {
-	width: 100%;
-	height: 40px;
-	border-radius: 20px;
-	border: 1px solid rgb(47, 27, 105);
-	color: #000;
-}
-
-.teacher-page.space-theme .search-input {
-	background: #413075;
-	border: 1px solid #604b9e;
-	outline: none !important;
-	box-shadow: none !important;
-	backdrop-filter: none;
-}
-
-.teacher-page.space-theme .search-input .ant-input {
-	background: transparent;
-	border: none;
-	outline: none;
-	box-shadow: none;
-	color: #fff;
-}
-
-.teacher-page.space-theme .search-input .ant-input:focus {
-	background: transparent;
-	border: none;
-	outline: none;
-	box-shadow: none;
-	color: #fff;
-}
-
-.teacher-page .filter-select {
-	height: 40px;
-}
-
-.space-theme .filter-select .ant-select-selector {
-	background: #413075 !important;
-	border: 1px solid #604b9e !important;
-	width: 150px;
-	color: #fff !important;
-}
-
-.sun-theme .filter-select .ant-select-selector {
-	width: 150px;
-}
-
-.space-theme .filter-select .ant-select-selection-item {
-	color: #fff !important;
-}
 
 .teacher-page .action-buttons {
 	display: flex;
@@ -134,6 +283,7 @@
 	height: 40px;
 	border-radius: 8px;
 	font-weight: 500;
+	font-size: 16px;
 	border: 1px solid rgba(77, 208, 255, 0.3);
 	background: rgba(45, 27, 105, 0.8);
 	color: #fff;
@@ -145,6 +295,7 @@
 	height: 40px;
 	border-radius: 8px;
 	font-weight: 500;
+	font-size: 16px;
 	border: 1px solid rgba(102, 174, 255, 0.3);
 	background: linear-gradient(135deg, #66aeff, #3c99ff);
 	color: #fff;
@@ -156,6 +307,7 @@
 	height: 40px;
 	border-radius: 8px;
 	font-weight: 500;
+	font-size: 16px;
 	border: 1px solid rgba(77, 208, 255, 0.3);
 	background: #6B4C93;
 	color: #ffffff;
@@ -169,6 +321,7 @@
 	height: 40px;
 	border-radius: 8px;
 	font-weight: 500;
+	font-size: 16px;
 	background: linear-gradient(135deg, #66AEFF, #3C99FF);
 	color: #000;
 	backdrop-filter: blur(10px);
@@ -179,6 +332,7 @@
 	height: 40px;
 	border-radius: 8px;
 	font-weight: 500;
+	font-size: 16px;
 	border: 1px solid rgba(102, 174, 255, 0.3);
 	background: linear-gradient(135deg, #66aeff, #3c99ff);
 	color: #fff;
@@ -211,6 +365,47 @@
 }
 
 .teacher-page .create-button:hover {
+	background: linear-gradient(135deg, #66aeff, #3c99ff);
+	border-color: rgba(102, 174, 255, 0.6);
+	transform: translateY(-2px);
+	box-shadow: 0 4px 12px rgba(102, 174, 255, 0.4);
+	filter: brightness(1.1);
+}
+
+/* Export button styles */
+.teacher-page .export-button {
+	height: 40px;
+	border-radius: 8px;
+	font-weight: 500;
+	font-size: 16px;
+	border: 1px solid rgba(77, 208, 255, 0.3);
+	background: rgba(45, 27, 105, 0.8);
+	color: #fff;
+	backdrop-filter: blur(10px);
+	transition: all 0.3s ease;
+}
+
+.teacher-page .export-button:hover {
+	background: rgba(77, 208, 255, 0.2);
+	border-color: rgba(77, 208, 255, 0.6);
+	transform: translateY(-2px);
+	box-shadow: 0 4px 12px rgba(77, 208, 255, 0.3);
+}
+
+/* Import button styles */
+.teacher-page .import-button {
+	height: 40px;
+	border-radius: 8px;
+	font-weight: 500;
+	font-size: 16px;
+	border: 1px solid rgba(102, 174, 255, 0.3);
+	background: linear-gradient(135deg, #66aeff, #3c99ff);
+	color: #fff;
+	backdrop-filter: blur(10px);
+	transition: all 0.3s ease;
+}
+
+.teacher-page .import-button:hover {
 	background: linear-gradient(135deg, #66aeff, #3c99ff);
 	border-color: rgba(102, 174, 255, 0.6);
 	transform: translateY(-2px);
@@ -298,121 +493,8 @@
 	color: #fff;
 }
 
-.space-theme .teacher-table .ant-table-thead > tr > th {
-	background: rgba(45, 27, 105, 0.7);
-	color: #fff;
-	font-weight: 600;
-	font-size: 20px !important;
-	border-bottom: 1px solid rgba(77, 208, 255, 0.3);
-	backdrop-filter: blur(10px);
-}
 
-.space-theme .teacher-table .ant-table-tbody > tr > td {
-	background: rgba(26, 26, 46, 0.4);
-	color: #fff;
-	font-size: 18px !important;
-	border-bottom: 1px solid rgba(77, 208, 255, 0.2);
-	backdrop-filter: blur(5px);
-}
 
-.space-theme .teacher-table .ant-table-tbody > tr:hover > td {
-	background: rgba(77, 208, 255, 0.1);
-}
-
-/* Sun theme table styles */
-.sun-theme .teacher-table .ant-table {
-	background: transparent;
-	color: #000;
-}
-
-.sun-theme .teacher-table .ant-table-thead > tr > th {
-	background: rgba(194, 230, 255, 0.8);
-	color: #000;
-	font-weight: 600;
-	font-size: 20px !important;
-	border-bottom: 1px solid rgba(0, 0, 0, 0.1);
-	backdrop-filter: blur(10px);
-}
-
-.sun-theme .teacher-table .ant-table-tbody > tr > td {
-	background: rgba(230, 245, 255, 0.7);
-	color: #000;
-	font-size: 18px !important;
-	border-bottom: 1px solid rgba(0, 0, 0, 0.1);
-	backdrop-filter: blur(5px);
-}
-
-.sun-theme .teacher-table .ant-table-tbody > tr:hover > td {
-	background: rgba(194, 230, 255, 0.5);
-}
-
-/* ===== PAGINATION ===== */
-.space-theme .ant-pagination {
-	color: #fff;
-}
-
-.space-theme .ant-pagination .ant-pagination-item {
-	background: rgba(45, 27, 105, 0.8);
-	border: 1px solid rgba(77, 208, 255, 0.3);
-	color: #fff;
-}
-
-.space-theme .ant-pagination .ant-pagination-item:hover {
-	background: rgba(77, 208, 255, 0.2);
-	border-color: rgba(77, 208, 255, 0.6);
-}
-
-.space-theme .ant-pagination .ant-pagination-item-active {
-	background: rgba(77, 208, 255, 0.3);
-	border-color: rgba(77, 208, 255, 0.6);
-}
-
-.space-theme .ant-pagination .ant-pagination-prev,
-.space-theme .ant-pagination .ant-pagination-next {
-	background: rgba(45, 27, 105, 0.8);
-	border: 1px solid rgba(77, 208, 255, 0.3);
-	color: #fff;
-}
-
-.space-theme .ant-pagination .ant-pagination-prev:hover,
-.space-theme .ant-pagination .ant-pagination-next:hover {
-	background: rgba(77, 208, 255, 0.2);
-	border-color: rgba(77, 208, 255, 0.6);
-}
-
-/* Sun theme pagination */
-.sun-theme .ant-pagination {
-	color: #000;
-}
-
-.sun-theme .ant-pagination .ant-pagination-item {
-	background: rgba(164, 207, 255, 0.8);
-	border: 1px solid rgba(0, 0, 0, 0.1);
-	color: #000;
-}
-
-.sun-theme .ant-pagination .ant-pagination-item:hover {
-	background: rgba(148, 191, 255, 0.8);
-	border-color: rgba(0, 0, 0, 0.2);
-}
-
-.sun-theme .ant-pagination .ant-pagination-item-active {
-	background: rgba(132, 175, 255, 0.8);
-	border-color: #000;
-}
-
-.sun-theme .ant-pagination .ant-pagination-prev,
-.sun-theme .ant-pagination .ant-pagination-next {
-	background: rgba(164, 207, 255, 0.8);
-	border: 1px solid rgba(0, 0, 0, 0.1);
-	color: #000;
-}
-
-.sun-theme .ant-pagination .ant-pagination-prev:hover,
-.sun-theme .ant-pagination .ant-pagination-next:hover {
-	background: rgba(148, 191, 255, 0.8);
-	border-color: rgba(0, 0, 0, 0.2);
-}
 
 /* ===== TAG STYLES ===== */
 .ant-tag {
@@ -536,9 +618,6 @@
 		flex-wrap: wrap;
 	}
 
-	.ant-table {
-		font-size: 12px;
-	}
 
 	.ant-btn {
 		padding: 4px 8px;

@@ -3,11 +3,9 @@ import authApi from './backend/auth';
 
 // Tạo instance mặc định cho axios
 const axiosClient = axios.create({
-	baseURL: process.env.REACT_APP_API_URL, // URL backend
-	headers: {
-		'Content-Type': 'application/json',
-	},
-	timeout: 60000, // Giới hạn 60 giây
+	baseURL: process.env.REACT_APP_API_URL,
+	timeout: 30000, // Tăng lên 30 giây để xử lý API chậm
+	// Không set headers mặc định, chỉ gửi token khi cần
 });
 
 
@@ -15,11 +13,13 @@ const axiosClient = axios.create({
 axiosClient.interceptors.request.use(
 	(config) => {
 		const token = localStorage.getItem('token');
-		console.log('Request interceptor - URL:', config.url);
-		console.log('Request interceptor - Token exists:', !!token);
-		if (token) {
+		// Kiểm tra token hợp lệ (không phải "undefined" hoặc "null")
+		if (token && token !== 'undefined' && token !== 'null' && token.trim() !== '') {
 			config.headers.Authorization = `Bearer ${token}`;
+		} else {
+			console.warn('Invalid token detected:', token);
 		}
+		
 		return config;
 	},
 	(error) => Promise.reject(error)
@@ -43,12 +43,12 @@ const processQueue = (error, token = null) => {
 
 // Interceptor cho response — xử lý lỗi tập trung
 axiosClient.interceptors.response.use(
-	(response) => response.data, // chỉ trả data ra cho gọn
+	(response) => {
+
+		return response.data; // chỉ trả data ra cho gọn
+	},
 	async (error) => {
 		const originalRequest = error.config;
-
-		console.log('Interceptor - Error status:', error.response?.status);
-		console.log('Interceptor - Error response:', error.response);
 		
 		if (error.response?.status === 401 && !originalRequest._retry) {
 			if (isRefreshing) {
@@ -84,7 +84,6 @@ axiosClient.interceptors.response.use(
 					return axiosClient(originalRequest);
 				} catch (refreshError) {
 					// Refresh token không hợp lệ, đăng xuất
-					console.log('Interceptor - Refresh token failed, redirecting to choose-login');
 					processQueue(refreshError, null);
 					localStorage.removeItem('token');
 					localStorage.removeItem('user');
@@ -96,7 +95,6 @@ axiosClient.interceptors.response.use(
 				}
 			} else {
 				// Không có refresh token, đăng xuất
-				console.log('Interceptor - No refresh token, redirecting to choose-login');
 				localStorage.removeItem('token');
 				localStorage.removeItem('user');
 				localStorage.removeItem('refreshToken');

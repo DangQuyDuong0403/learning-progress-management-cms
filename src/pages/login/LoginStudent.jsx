@@ -48,12 +48,27 @@ export default function Login() {
 
 			// Dispatch login success với data từ API
 			dispatch(loginSuccess(response.data));
-			spaceToast.success('Login successful!');
 			
-			// Redirect to student dashboard
-			setTimeout(() => {
-				navigate('/student/dashboard');
-			}, 1000);
+			// Store tokens in localStorage
+			localStorage.setItem('accessToken', response.data.accessToken);
+			localStorage.setItem('refreshToken', response.data.refreshToken);
+			
+			// Check if user must change password
+			if (response.data.mustChangePassword) {
+				// Show security message for password change
+				spaceToast.warning('For security reasons, you need to change your password immediately.');
+				// Redirect to change password page
+				setTimeout(() => {
+					navigate('/change-password');
+				}, 2000);
+			} else {
+				// Normal login success
+				spaceToast.success('Login successful!');
+				// Redirect to student dashboard
+				setTimeout(() => {
+					navigate('/student/dashboard');
+				}, 1000);
+			}
 			
 		} catch (error) {
 			console.error('Login error:', error);
@@ -89,40 +104,6 @@ export default function Login() {
 					<LanguageToggle />
 				</div>
 				
-				{/* Logo CAMKEY - Top Left */}
-				<div style={{ position: 'absolute', top: '20px', left: '20px', zIndex: 1000 }}>
-					<div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-						{isSunTheme ? (
-							<img 
-								src="/img/sun-logo.png" 
-								alt="CAMKEY Logo" 
-								style={{ 
-									width: '100px', 
-									height: '100px', 
-									filter: 'drop-shadow(0 0 15px rgba(255, 215, 0, 0.8))'
-								}} 
-							/>
-						) : (
-							<img 
-								src="/img/astro.png" 
-								alt="CAMKEY Logo" 
-								style={{ 
-									width: '100px', 
-									height: '100px', 
-									filter: 'drop-shadow(0 0 15px rgba(125, 211, 252, 0.8))'
-								}} 
-							/>
-						)}
-						<span style={{ 
-							fontSize: '40px', 
-							fontWeight: 700, 
-							color: isSunTheme ? '#1E40AF' : '#FFFFFF',
-                            textShadow: isSunTheme ? '0 0 5px rgba(30, 64, 175, 0.3)' : '0 0 15px rgba(255, 255, 255, 0.8)'
-						}}>
-							CAMKEY
-						</span>
-					</div>
-				</div>
 
 				<div className='d-flex align-items-center justify-content-center w-100'>
 					<div className='row justify-content-center w-100'>

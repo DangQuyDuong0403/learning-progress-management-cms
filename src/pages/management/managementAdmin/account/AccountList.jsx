@@ -22,7 +22,6 @@ import {
 	EditOutlined,
 	SearchOutlined,
 	MailOutlined,
-	PhoneOutlined,
 	CheckOutlined,
 	StopOutlined,
 	DownloadOutlined,
@@ -36,7 +35,6 @@ import { spaceToast } from '../../../../component/SpaceToastify';
 import accountManagementApi from '../../../../apis/backend/accountManagement';
 
 const { Option } = Select;
-const { TextArea } = Input;
 const { Title, Text } = Typography;
 const { Dragger } = Upload;
 
@@ -47,11 +45,11 @@ const AccountList = () => {
 	const [loading, setLoading] = useState(false);
 	const [accounts, setAccounts] = useState([]);
 	const [searchText, setSearchText] = useState('');
-	const [statusFilter, setStatusFilter] = useState('all');
+	const [statusFilter, setStatusFilter] = useState('ACTIVE');
 	const [roleFilter, setRoleFilter] = useState('all');
 	const [searchTimeout, setSearchTimeout] = useState(null);
 	const [sortBy, setSortBy] = useState('createdAt');
-	const [sortDir, setSortDir] = useState('asc');
+	const [sortDir, setSortDir] = useState('desc');
 	const [isModalVisible, setIsModalVisible] = useState(false);
 	const [editingAccount, setEditingAccount] = useState(null);
 	const [form] = Form.useForm();
@@ -75,7 +73,7 @@ const AccountList = () => {
 		showTotal: (total, range) => `${range[0]}-${range[1]} of ${total}`,
 	});
 
-	const fetchAccounts = useCallback(async (page = 1, size = 10, search = '', roleFilter = 'all', statusFilter = 'all', sortField = 'createdAt', sortDirection = 'asc') => {
+	const fetchAccounts = useCallback(async (page = 1, size = 10, search = '', roleFilter = 'all', statusFilter = 'active', sortField = 'createdAt', sortDirection = 'asc') => {
 		setLoading(true);
 		try {
 			const params = {
@@ -254,9 +252,12 @@ const AccountList = () => {
 								}" ${t('accountManagement.success')}`
 							);
 						}
+						
+						// Refresh data from server
+						fetchAccounts(pagination.current, pagination.pageSize, searchText, roleFilter, statusFilter, sortBy, sortDir);
 					} catch (error) {
 						console.error('Error updating account status:', error);
-						message.error(t('accountManagement.updateStatusError'));
+						spaceToast.error(t('accountManagement.updateStatusError'));
 						setConfirmModal({
 							visible: false,
 							title: '',
@@ -280,6 +281,28 @@ const AccountList = () => {
 
 	const handleImportAccount = () => {
 		setImportModal({ visible: true, fileList: [], uploading: false });
+	};
+
+	const handleExportTemplate = () => {
+		// Create CSV template content
+		const csvContent = [
+			'username,email,fullName,phone,role,status,password,note',
+			'example_user,example@email.com,Example User,0123456789,STUDENT,ACTIVE,password123,Example note',
+			'teacher_user,teacher@email.com,Teacher User,0987654321,TEACHER,ACTIVE,password123,Teacher note'
+		].join('\n');
+
+		// Create blob and download
+		const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+		const link = document.createElement('a');
+		const url = URL.createObjectURL(blob);
+		link.setAttribute('href', url);
+		link.setAttribute('download', 'account_template.csv');
+		link.style.visibility = 'hidden';
+		document.body.appendChild(link);
+		link.click();
+		document.body.removeChild(link);
+		
+		spaceToast.success(t('accountManagement.templateDownloaded'));
 	};
 
 	const handleImportCancel = () => {
@@ -345,31 +368,56 @@ const AccountList = () => {
 			const values = await form.validateFields();
 
 			if (editingAccount) {
-				// Update existing account
-				setAccounts(
-					accounts.map((account) =>
-						account.id === editingAccount.id
-							? { ...account, ...values }
-							: account
-					)
-				);
-				message.success(t('accountManagement.updateAccountSuccess'));
-			} else {
-				// Add new account
-				const newAccount = {
-					id: Date.now(),
-					...values,
-					createdAt: new Date().toISOString().split('T')[0],
-					lastLogin: null,
+				// Update existing account - gọi API để update
+				const updateData = {
+					firstName: values.firstName,
+					lastName: values.lastName,
+					email: values.email,
+					roleName: values.roleName || 'MANAGER',
 				};
-				setAccounts([newAccount, ...accounts]);
-				message.success(t('accountManagement.addAccountSuccess'));
+				
+				console.log('Updating account with data:', updateData);
+				
+				// Gọi API update account
+				const response = await accountManagementApi.updateAccount(editingAccount.id, updateData);
+				console.log('Update account response:', response);
+				
+				// Show success toast
+				spaceToast.success(t('accountManagement.updateAccountSuccess'));
+				
+				// Refresh data from server
+				fetchAccounts(pagination.current, pagination.pageSize, searchText, roleFilter, statusFilter, sortBy, sortDir);
+			} else {
+				// Create new account - gửi API với body JSON đúng format
+				const accountData = {
+					firstName: values.firstName,
+					lastName: values.lastName,
+					email: values.email,
+					roleName: values.roleName || 'MANAGER', // Fix cứng Manager
+				};
+				
+				console.log('Creating account with data:', accountData);
+				
+				// Gọi API create account
+				const response = await accountManagementApi.createAccount(accountData);
+				console.log('Create account response:', response);
+				
+				// Show success toast
+				spaceToast.success(t('accountManagement.addAccountSuccess'));
+				
+				// Refresh data from server
+				fetchAccounts(pagination.current, pagination.pageSize, searchText, roleFilter, statusFilter, sortBy, sortDir);
 			}
 
 			setIsModalVisible(false);
 			form.resetFields();
 		} catch (error) {
-			message.error(t('accountManagement.checkInfoError'));
+			console.error('Error saving account:', error);
+			spaceToast.error(
+				editingAccount 
+					? t('accountManagement.updateAccountError') 
+					: t('accountManagement.checkInfoError')
+			);
 		}
 	};
 
@@ -421,12 +469,16 @@ const AccountList = () => {
 			dataIndex: 'username',
 			key: 'username',
 			sorter: true,
+			sortDirections: ['ascend', 'descend'],
+			defaultSortOrder: sortBy === 'username' ? (sortDir === 'asc' ? 'ascend' : 'descend') : null,
 		},
 		{
 			title: t('accountManagement.fullName'),
 			dataIndex: 'fullName',
 			key: 'fullName',
 			sorter: true,
+			sortDirections: ['ascend', 'descend'],
+			defaultSortOrder: sortBy === 'fullName' ? (sortDir === 'asc' ? 'ascend' : 'descend') : null,
 		},
 		{
 			title: t('accountManagement.email'),
@@ -502,7 +554,6 @@ const AccountList = () => {
 				<div className={`panel-header ${theme}-panel-header`}>
 					<div className='search-section'>
 						<Input
-							placeholder='Search...'
 							prefix={<SearchOutlined />}
 							value={searchText}
 							onChange={(e) => handleSearch(e.target.value)}
@@ -517,7 +568,7 @@ const AccountList = () => {
 							value={roleFilter}
 							onChange={handleRoleFilterChange}
 							className={`filter-select ${theme}-filter-select`}
-							style={{ width: 150, marginLeft: '12px' }}
+							style={{ width: 150, marginLeft: '12px', fontSize: '16px' }}
 							allowClear>
 							<Option value='all'>{t('accountManagement.allRoles')}</Option>
 							<Option value='ADMIN'>{t('accountManagement.admin')}</Option>
@@ -534,7 +585,7 @@ const AccountList = () => {
 							value={statusFilter}
 							onChange={handleStatusFilterChange}
 							className={`filter-select ${theme}-filter-select`}
-							style={{ width: 150, marginLeft: '12px' }}
+							style={{ width: 150, marginLeft: '12px', fontSize: '16px' }}
 							allowClear>
 							<Option value='all'>{t('accountManagement.allStatuses')}</Option>
 							<Option value='ACTIVE'>{t('accountManagement.active')}</Option>
@@ -547,6 +598,12 @@ const AccountList = () => {
 					<div className='action-buttons'>
 						<Button
 							icon={<DownloadOutlined />}
+							className={`export-button ${theme}-export-button`}
+							onClick={handleExportTemplate}>
+							Export Template
+						</Button>
+						<Button
+							icon={<UploadOutlined />}
 							className={`import-button ${theme}-import-button`}
 							onClick={handleImportAccount}>
 							Import Account
@@ -576,6 +633,10 @@ const AccountList = () => {
 							onChange={handleTableChange}
 							scroll={{ x: 1200 }}
 							className={`account-table ${theme}-account-table`}
+							sortDirections={['ascend', 'descend', 'ascend']}
+							showSorterTooltip={{
+								target: 'sorter-icon',
+							}}
 						/>
 					</LoadingWithEffect>
 				</div>
@@ -607,35 +668,54 @@ const AccountList = () => {
 					form={form}
 					layout='vertical'
 					initialValues={{
-						status: 'ACTIVE',
-						role: 'STUDENT',
+						roleName: 'MANAGER',
 					}}>
 					<Row gutter={16}>
 						<Col span={12}>
 							<Form.Item
 								label={
 									<span>
-										{t('accountManagement.username')}
+										{t('accountManagement.firstName')}
 										<span style={{ color: 'red', marginLeft: '4px' }}>*</span>
 									</span>
 								}
-								name='username'
+								name='firstName'
 								rules={[
 									{
 										required: true,
-										message: t('accountManagement.usernameRequired'),
-									},
-									{
-										min: 3,
-										message: t('accountManagement.usernameMinLength'),
+										message: t('accountManagement.firstNameRequired'),
 									},
 								]}
 								required={false}>
 								<Input
-									placeholder={t('accountManagement.usernamePlaceholder')}
+									placeholder={t('accountManagement.firstNamePlaceholder')}
 								/>
 							</Form.Item>
 						</Col>
+						<Col span={12}>
+							<Form.Item
+								label={
+									<span>
+										{t('accountManagement.lastName')}
+										<span style={{ color: 'red', marginLeft: '4px' }}>*</span>
+									</span>
+								}
+								name='lastName'
+								rules={[
+									{
+										required: true,
+										message: t('accountManagement.lastNameRequired'),
+									},
+								]}
+								required={false}>
+								<Input
+									placeholder={t('accountManagement.lastNamePlaceholder')}
+								/>
+							</Form.Item>
+						</Col>
+					</Row>
+
+					<Row gutter={16}>
 						<Col span={12}>
 							<Form.Item
 								label={
@@ -659,56 +739,6 @@ const AccountList = () => {
 								<Input placeholder={t('accountManagement.emailPlaceholder')} />
 							</Form.Item>
 						</Col>
-					</Row>
-
-					<Row gutter={16}>
-						<Col span={12}>
-							<Form.Item
-								label={
-									<span>
-										{t('accountManagement.fullName')}
-										<span style={{ color: 'red', marginLeft: '4px' }}>*</span>
-									</span>
-								}
-								name='fullName'
-								rules={[
-									{
-										required: true,
-										message: t('accountManagement.fullNameRequired'),
-									},
-								]}
-								required={false}>
-								<Input
-									placeholder={t('accountManagement.fullNamePlaceholder')}
-								/>
-							</Form.Item>
-						</Col>
-						<Col span={12}>
-							<Form.Item
-								label={
-									<span>
-										{t('accountManagement.phone')}
-										<span style={{ color: 'red', marginLeft: '4px' }}>*</span>
-									</span>
-								}
-								name='phone'
-								rules={[
-									{
-										required: true,
-										message: t('accountManagement.phoneRequired'),
-									},
-									{
-										pattern: /^[0-9]{10,11}$/,
-										message: t('accountManagement.phoneInvalid'),
-									},
-								]}
-								required={false}>
-								<Input placeholder={t('accountManagement.phonePlaceholder')} />
-							</Form.Item>
-						</Col>
-					</Row>
-
-					<Row gutter={16}>
 						<Col span={12}>
 							<Form.Item
 								label={
@@ -717,85 +747,20 @@ const AccountList = () => {
 										<span style={{ color: 'red', marginLeft: '4px' }}>*</span>
 									</span>
 								}
-								name='role'
-								rules={[
-									{
-										required: true,
-										message: t('accountManagement.roleRequired'),
-									},
-								]}
+								name='roleName'
 								required={false}>
-								<Select placeholder={t('accountManagement.selectRole')}>
-									<Option value='ADMIN'>{t('accountManagement.admin')}</Option>
-									<Option value='TEACHER'>
-										{t('accountManagement.teacher')}
-									</Option>
-									<Option value='STUDENT'>
-										{t('accountManagement.student')}
-									</Option>
+								<Select 
+									value='MANAGER'
+									disabled
+									style={{ color: '#666' }}
+								>
 									<Option value='MANAGER'>
 										{t('accountManagement.manager')}
 									</Option>
 								</Select>
 							</Form.Item>
 						</Col>
-						<Col span={12}>
-							<Form.Item
-								label={
-									<span>
-										{t('accountManagement.status')}
-										<span style={{ color: 'red', marginLeft: '4px' }}>*</span>
-									</span>
-								}
-								name='status'
-								rules={[
-									{
-										required: true,
-										message: t('accountManagement.statusRequired'),
-									},
-								]}
-								required={false}>
-								<Select placeholder={t('accountManagement.selectStatus')}>
-									<Option value='ACTIVE'>
-										{t('accountManagement.active')}
-									</Option>
-									<Option value='INACTIVE'>
-										{t('accountManagement.inactive')}
-									</Option>
-								</Select>
-							</Form.Item>
-						</Col>
 					</Row>
-
-					{!editingAccount && (
-						<Form.Item
-							label={
-								<span>
-									{t('accountManagement.password')}
-									<span style={{ color: 'red', marginLeft: '4px' }}>*</span>
-								</span>
-							}
-							name='password'
-							rules={[
-								{
-									required: true,
-									message: t('accountManagement.passwordRequired'),
-								},
-								{ min: 6, message: t('accountManagement.passwordMinLength') },
-							]}
-							required={false}>
-							<Input.Password
-								placeholder={t('accountManagement.passwordPlaceholder')}
-							/>
-						</Form.Item>
-					)}
-
-					<Form.Item label={t('accountManagement.note')} name='note'>
-						<TextArea
-							rows={3}
-							placeholder={t('accountManagement.notePlaceholder')}
-						/>
-					</Form.Item>
 				</Form>
 			</Modal>
 

@@ -19,6 +19,15 @@
 	margin-bottom: 24px;
 }
 
+/* Chapter title theme styles */
+.chapter-title.light-theme {
+	color: black !important;
+}
+
+.chapter-title.dark-theme {
+	color: white !important;
+}
+
 .chapter-list-header h3 {
 	margin: 0;
 	color: #52c41a;
@@ -44,21 +53,181 @@
 .syllabus-list-container .ant-card {
 	border-radius: 8px;
 	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+	background-color: #E6F5FF;
 }
 
-.syllabus-list-container .ant-table-thead > tr > th {
-	background-color: #fafafa;
-	font-weight: 600;
-	color: #262626;
+/* Main container card */
+.syllabus-list-container .main-container-card {
+	background-color: #E6F5FF;
+	border: none;
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
-.syllabus-list-container .ant-table-tbody > tr:hover > td {
-	background-color: #f5f5f5;
+/* Space theme main container card */
+.space-theme .syllabus-list-container .main-container-card {
+	background: rgba(110, 92, 172, 0.4) !important;
+	backdrop-filter: blur(1px);
+	border: 1px solid rgba(77, 208, 255, 0.3);
+	box-shadow: 0 8px 32px rgba(77, 208, 255, 0.15);
 }
+
+/* Sun theme main container card */
+.sun-theme .syllabus-list-container .main-container-card {
+	background: rgba(255, 255, 255, 0.4) !important;
+	backdrop-filter: blur(1px);
+	border: 1px solid rgba(0, 0, 0, 0.1);
+	box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+}
+
+/* Inner table card */
+.syllabus-list-container .table-card {
+	background-color: #ffffff;
+	border: none;
+	box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Space theme inner table card */
+.space-theme .syllabus-list-container .table-card {
+	background: rgba(26, 26, 46, 0.7) !important;
+	backdrop-filter: blur(1px);
+	border: 1px solid rgba(77, 208, 255, 0.3);
+	box-shadow: 0 8px 32px rgba(77, 208, 255, 0.15);
+}
+
+/* Sun theme inner table card */
+.sun-theme .syllabus-list-container .table-card {
+	background: rgba(255, 255, 255, 0.4) !important;
+	backdrop-filter: blur(1px);
+	border: 1px solid rgba(0, 0, 0, 0.1);
+	box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+}
+
 
 .syllabus-list-container .ant-btn {
 	border-radius: 6px;
 	font-weight: 500;
+}
+
+/* Refresh button styling to match level page */
+.syllabus-list-container .refresh-button {
+	height: 40px;
+	border-radius: 8px;
+	font-weight: 500;
+	font-size: 16px;
+	border: 1px solid rgba(77, 208, 255, 0.3);
+	background: linear-gradient(135deg, #FFFFFF 0%, #9F96B6 46%, #A79EBB 64%, #ACA5C0 75%, #6D5F8F 100%);
+	color: #000;
+	backdrop-filter: blur(10px);
+	transition: all 0.3s ease;
+}
+
+.syllabus-list-container .refresh-button:hover {
+	background: linear-gradient(135deg, #FFFFFF, #B6D8FE 77%, #94C2F5);
+	border-color: rgba(77, 208, 255, 0.6);
+	transform: translateY(-2px);
+	box-shadow: 0 4px 12px rgba(77, 208, 255, 0.3);
+}
+
+/* Sun theme refresh button */
+.syllabus-list-container .sun-refresh-button {
+	height: 40px;
+	border-radius: 8px;
+	font-weight: 500;
+	font-size: 16px;
+	border: 1px solid rgba(77, 208, 255, 0.3);
+	background: linear-gradient(135deg, #FFFFFF, #B6D8FE 77%, #94C2F5);
+	color: #000;
+	backdrop-filter: blur(10px);
+	transition: all 0.3s ease;
+}
+
+.syllabus-list-container .sun-refresh-button:hover {
+	background: linear-gradient(135deg, #E0E0E0, #A0C0E0 77%, #80A0D0);
+	border-color: rgba(77, 208, 255, 0.6);
+	transform: translateY(-2px);
+	box-shadow: 0 4px 12px rgba(77, 208, 255, 0.3);
+}
+
+/* Space theme refresh button */
+.syllabus-list-container .space-refresh-button {
+	height: 40px;
+	border-radius: 8px;
+	font-weight: 500;
+	font-size: 16px;
+	border: 1px solid rgba(77, 208, 255, 0.3);
+	background: linear-gradient(135deg, #FFFFFF 0%, #9F96B6 46%, #A79EBB 64%, #ACA5C0 75%, #6D5F8F 100%);
+	color: #000;
+	backdrop-filter: blur(10px);
+	transition: all 0.3s ease;
+}
+
+.syllabus-list-container .space-refresh-button:hover {
+	background: linear-gradient(135deg, #E0E0E0 0%, #8A81A1 46%, #9289A6 64%, #9790AB 75%, #584A7A 100%);
+	border-color: rgba(77, 208, 255, 0.6);
+	transform: translateY(-2px);
+	box-shadow: 0 4px 12px rgba(77, 208, 255, 0.3);
+}
+
+/* Create button styling to match level page */
+.syllabus-list-container .create-button {
+	height: 40px;
+	border-radius: 8px;
+	font-weight: 500;
+	font-size: 16px;
+	border: 1px solid rgba(102, 174, 255, 0.3);
+	background: linear-gradient(135deg, #66AEFF, #3C99FF);
+	color: #fff;
+	backdrop-filter: blur(10px);
+	transition: all 0.3s ease;
+}
+
+.syllabus-list-container .create-button:hover {
+	background: linear-gradient(135deg, #66AEFF, #3C99FF);
+	border-color: rgba(102, 174, 255, 0.6);
+	transform: translateY(-2px);
+	box-shadow: 0 4px 12px rgba(102, 174, 255, 0.4);
+	filter: brightness(1.1);
+}
+
+/* Export button styling */
+.syllabus-list-container .export-button {
+	height: 40px;
+	border-radius: 8px;
+	font-weight: 500;
+	font-size: 16px;
+	border: 1px solid rgba(77, 208, 255, 0.3);
+	background: linear-gradient(135deg, #FFFFFF 0%, #9F96B6 46%, #A79EBB 64%, #ACA5C0 75%, #6D5F8F 100%);
+	color: #000;
+	backdrop-filter: blur(10px);
+	transition: all 0.3s ease;
+}
+
+.syllabus-list-container .export-button:hover {
+	background: linear-gradient(135deg, #E0E0E0 0%, #8A81A1 46%, #9289A6 64%, #9790AB 75%, #584A7A 100%);
+	border-color: rgba(77, 208, 255, 0.6);
+	transform: translateY(-2px);
+	box-shadow: 0 4px 12px rgba(77, 208, 255, 0.3);
+}
+
+/* Import button styling */
+.syllabus-list-container .import-button {
+	height: 40px;
+	border-radius: 8px;
+	font-weight: 500;
+	font-size: 16px;
+	border: 1px solid rgba(102, 174, 255, 0.3);
+	background: linear-gradient(135deg, #66AEFF, #3C99FF);
+	color: #fff;
+	backdrop-filter: blur(10px);
+	transition: all 0.3s ease;
+}
+
+.syllabus-list-container .import-button:hover {
+	background: linear-gradient(135deg, #66AEFF, #3C99FF);
+	border-color: rgba(102, 174, 255, 0.6);
+	transform: translateY(-2px);
+	box-shadow: 0 4px 12px rgba(102, 174, 255, 0.4);
+	filter: brightness(1.1);
 }
 
 .syllabus-list-container .ant-btn-primary {
@@ -83,10 +252,81 @@
 
 .syllabus-list-container .ant-input {
 	border-radius: 6px;
+	font-size: 16px;
+}
+
+/* Search input styles - matching LevelList/ThemedLayout */
+.syllabus-list-container .search-input {
+	height: 40px;
+	border-radius: 20px;
+	border: 1px solid rgb(47, 27, 105);
+	color: #000;
+}
+
+/* Space theme search input */
+.space-theme .syllabus-list-container .search-input {
+	background: rgb(224 217 255 / 90%) !important;
+	border: 1px solid #604B9E;
+	outline: none !important;
+	box-shadow: none !important;
+	backdrop-filter: none;
+}
+
+.space-theme .syllabus-list-container .search-input .ant-input {
+	background: transparent;
+	border: none;
+	outline: none;
+	box-shadow: none;
+	color: #000;
+}
+
+.space-theme .syllabus-list-container .search-input .ant-input:focus {
+	background: transparent;
+	border: none;
+	outline: none;
+	box-shadow: none;
+	color: #000;
+}
+
+.space-theme .syllabus-list-container .search-input .ant-input::placeholder {
+	color: transparent;
+}
+
+/* Sun theme search input */
+.sun-theme .syllabus-list-container .search-input {
+	background: #fefffe;
+	border: 1px solid rgba(0, 0, 0, 0.1);
+	color: #666;
+	border-radius: 20px;
+}
+
+.sun-theme .syllabus-list-container .search-input .ant-input {
+	background: transparent;
+	border: none;
+	outline: none;
+	box-shadow: none;
+	color: #000;
+}
+
+.sun-theme .syllabus-list-container .search-input .ant-input:focus {
+	background: transparent;
+	border: none;
+	outline: none;
+	box-shadow: none;
+	color: #000;
+}
+
+.sun-theme .syllabus-list-container .search-input .ant-input::placeholder {
+	color: #999;
 }
 
 .syllabus-list-container .ant-select {
 	border-radius: 6px;
+	font-size: 16px;
+}
+
+.syllabus-list-container .ant-select-selector {
+	font-size: 16px;
 }
 
 .syllabus-list-container .ant-tag {
@@ -104,10 +344,6 @@
 	font-weight: 600;
 }
 
-.syllabus-list-container .ant-pagination {
-	margin-top: 16px;
-	text-align: right;
-}
 
 .syllabus-list-container .ant-modal-header {
 	border-bottom: 1px solid #f0f0f0;
@@ -177,9 +413,6 @@
 
 /* Responsive design */
 @media (max-width: 768px) {
-	.syllabus-list-container .ant-table {
-		font-size: 12px;
-	}
 
 	.syllabus-list-container .ant-btn {
 		padding: 4px 8px;
@@ -275,24 +508,6 @@
 	margin-right: 8px;
 }
 
-/* Pagination */
-.syllabus-list-container .ant-pagination-item {
-	border-radius: 4px;
-}
-
-.syllabus-list-container .ant-pagination-item-active {
-	background-color: #1890ff;
-	border-color: #1890ff;
-}
-
-.syllabus-list-container .ant-pagination-item-active a {
-	color: #fff;
-}
-
-.syllabus-list-container .ant-pagination-prev,
-.syllabus-list-container .ant-pagination-next {
-	border-radius: 4px;
-}
 
 /* Confirmation modal */
 .syllabus-list-container .ant-popover-inner {
@@ -337,16 +552,39 @@
 	color: inherit;
 }
 
+/* Force all action button icons to be black in both themes */
+.syllabus-list-container .ant-btn .anticon {
+	color: #000 !important;
+}
+
+.syllabus-list-container .ant-btn:hover .anticon {
+	color: #000 !important;
+}
+
+/* Sun theme action button icons - black */
+.sun-theme .syllabus-list-container .ant-btn .anticon {
+	color: #000 !important;
+}
+
+.sun-theme .syllabus-list-container .ant-btn:hover .anticon {
+	color: #000 !important;
+}
+
+/* Space theme action button icons - black */
+.space-theme .syllabus-list-container .ant-btn .anticon {
+	color: #000 !important;
+}
+
+.space-theme .syllabus-list-container .ant-btn:hover .anticon {
+	color: #000 !important;
+}
+
 /* Custom spacing for nested components */
 .chapter-list-container,
 .lesson-list-container {
 	padding: 0;
 }
 
-/* Enhanced table styling for nested data */
-.syllabus-list-container .ant-table-tbody > tr > td {
-	vertical-align: top;
-}
 
 /* Action button groups */
 .syllabus-list-container .ant-space-horizontal {
@@ -355,4 +593,153 @@
 
 .syllabus-list-container .ant-space-vertical {
 	gap: 12px;
+}
+
+/* View toggle buttons */
+.syllabus-list-container .view-toggle-button {
+	height: 40px;
+	border-radius: 8px;
+	font-weight: 500;
+	font-size: 16px;
+	border: 1px solid rgba(77, 208, 255, 0.3);
+	background: linear-gradient(135deg, #FFFFFF 0%, #9F96B6 46%, #A79EBB 64%, #ACA5C0 75%, #6D5F8F 100%);
+	color: #000;
+	backdrop-filter: blur(10px);
+	transition: all 0.3s ease;
+}
+
+.syllabus-list-container .view-toggle-button:hover {
+	background: linear-gradient(135deg, #E0E0E0 0%, #8A81A1 46%, #9289A6 64%, #9790AB 75%, #584A7A 100%);
+	border-color: rgba(77, 208, 255, 0.6);
+	transform: translateY(-2px);
+	box-shadow: 0 4px 12px rgba(77, 208, 255, 0.3);
+}
+
+.syllabus-list-container .view-toggle-button.ant-btn-primary {
+	background: linear-gradient(135deg, #66AEFF, #3C99FF);
+	color: #fff;
+	border-color: rgba(102, 174, 255, 0.6);
+}
+
+.syllabus-list-container .view-toggle-button.ant-btn-primary:hover {
+	background: linear-gradient(135deg, #66AEFF, #3C99FF);
+	border-color: rgba(102, 174, 255, 0.8);
+	transform: translateY(-2px);
+	box-shadow: 0 4px 12px rgba(102, 174, 255, 0.4);
+	filter: brightness(1.1);
+}
+
+/* Sun theme view toggle buttons */
+.sun-theme .syllabus-list-container .view-toggle-button {
+	background: linear-gradient(135deg, #FFFFFF, #B6D8FE 77%, #94C2F5);
+	border: 1px solid rgba(77, 208, 255, 0.3);
+	color: #000;
+}
+
+.sun-theme .syllabus-list-container .view-toggle-button:hover {
+	background: linear-gradient(135deg, #E0E0E0, #A0C0E0 77%, #80A0D0);
+	border-color: rgba(77, 208, 255, 0.6);
+	transform: translateY(-2px);
+	box-shadow: 0 4px 12px rgba(77, 208, 255, 0.3);
+}
+
+.sun-theme .syllabus-list-container .view-toggle-button.ant-btn-primary {
+	background: linear-gradient(135deg, #66AEFF, #3C99FF);
+	color: #fff;
+}
+
+.sun-theme .syllabus-list-container .view-toggle-button.ant-btn-primary:hover {
+	background: linear-gradient(135deg, #66AEFF, #3C99FF);
+	border-color: rgba(102, 174, 255, 0.8);
+	transform: translateY(-2px);
+	box-shadow: 0 4px 12px rgba(102, 174, 255, 0.4);
+	filter: brightness(1.1);
+}
+
+/* Space theme view toggle buttons */
+.space-theme .syllabus-list-container .view-toggle-button {
+	background: linear-gradient(135deg, #FFFFFF 0%, #9F96B6 46%, #A79EBB 64%, #ACA5C0 75%, #6D5F8F 100%);
+	border: 1px solid rgba(77, 208, 255, 0.3);
+	color: #000;
+}
+
+.space-theme .syllabus-list-container .view-toggle-button:hover {
+	background: linear-gradient(135deg, #E0E0E0 0%, #8A81A1 46%, #9289A6 64%, #9790AB 75%, #584A7A 100%);
+	border-color: rgba(77, 208, 255, 0.6);
+	transform: translateY(-2px);
+	box-shadow: 0 4px 12px rgba(77, 208, 255, 0.3);
+}
+
+.space-theme .syllabus-list-container .view-toggle-button.ant-btn-primary {
+	background: linear-gradient(135deg, #66AEFF, #3C99FF);
+	color: #fff;
+}
+
+.space-theme .syllabus-list-container .view-toggle-button.ant-btn-primary:hover {
+	background: linear-gradient(135deg, #66AEFF, #3C99FF);
+	border-color: rgba(102, 174, 255, 0.8);
+	transform: translateY(-2px);
+	box-shadow: 0 4px 12px rgba(102, 174, 255, 0.4);
+	filter: brightness(1.1);
+}
+
+/* Button group styling */
+.syllabus-list-container .ant-btn-group {
+	border-radius: 8px;
+	overflow: hidden;
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.syllabus-list-container .ant-btn-group .ant-btn {
+	border-radius: 0;
+	margin: 0;
+}
+
+.syllabus-list-container .ant-btn-group .ant-btn:first-child {
+	border-top-left-radius: 8px;
+	border-bottom-left-radius: 8px;
+}
+
+.syllabus-list-container .ant-btn-group .ant-btn:last-child {
+	border-top-right-radius: 8px;
+	border-bottom-right-radius: 8px;
+}
+
+/* Statistics cards for different views */
+.syllabus-list-container .ant-statistic {
+	text-align: center;
+}
+
+.syllabus-list-container .ant-statistic-title {
+	font-size: 14px;
+	font-weight: 500;
+	margin-bottom: 8px;
+}
+
+.syllabus-list-container .ant-statistic-content {
+	font-size: 24px;
+	font-weight: 600;
+}
+
+/* Purple tag for syllabus names */
+.syllabus-list-container .ant-tag-purple {
+	background-color: #f9f0ff;
+	border-color: #d3adf7;
+	color: #722ed1;
+}
+
+/* Enhanced table styling for different views */
+.syllabus-list-container .ant-table-thead > tr > th {
+	background-color: #fafafa;
+	font-weight: 600;
+}
+
+.space-theme .syllabus-list-container .ant-table-thead > tr > th {
+	background: rgba(26, 26, 46, 0.8);
+	color: #fff;
+}
+
+.sun-theme .syllabus-list-container .ant-table-thead > tr > th {
+	background: rgba(255, 255, 255, 0.8);
+	color: #000;
 }

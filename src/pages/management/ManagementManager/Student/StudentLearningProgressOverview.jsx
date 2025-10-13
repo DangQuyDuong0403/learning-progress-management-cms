@@ -452,11 +452,11 @@ const StudentLearningProgressOverview = () => {
           <Row gutter={[16, 16]} align="middle">
             <Col xs={24} sm={12} md={6}>
               <Input
-                placeholder={t('studentProgress.searchSessions')}
                 prefix={<SearchOutlined />}
                 value={searchText}
                 onChange={(e) => setSearchText(e.target.value)}
                 className={`search-input ${theme}-search-input`}
+                style={{ height: '40px', fontSize: '16px' }}
                 allowClear
               />
             </Col>

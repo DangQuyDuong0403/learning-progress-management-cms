@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useDispatch, useSelector } from 'react-redux';
+import { useNavigate } from 'react-router-dom';
 import {
 	Card,
 	Button,
@@ -19,7 +20,8 @@ import {
 import ThemedLayout from '../../component/ThemedLayout';
 import { useTheme } from '../../contexts/ThemeContext';
 import { spaceToast } from '../../component/SpaceToastify';
-import { changePassword, clearChangePasswordState } from '../../redux/auth';
+import { changePassword, clearChangePasswordState, logout } from '../../redux/auth';
+import authApi from '../../apis/backend/auth';
 import './Settings.css';
 
 const { Text } = Typography;
@@ -28,14 +30,11 @@ const Settings = () => {
 	const { t, i18n } = useTranslation();
 	const { theme, toggleTheme } = useTheme();
 	const dispatch = useDispatch();
+	const navigate = useNavigate();
 	const [passwordForm] = Form.useForm();
 	
-	// Redux state
-	const { 
-		changePasswordLoading, 
-		changePasswordError, 
-		changePasswordSuccess 
-	} = useSelector((state) => state.auth);
+	// Loading state for password change
+	const [changePasswordLoading, setChangePasswordLoading] = useState(false);
 
 	const [modals, setModals] = useState({
 		password: false,
@@ -45,36 +44,64 @@ const Settings = () => {
 	const [isTransitioning, setIsTransitioning] = useState(false);
 	const [transitionDirection, setTransitionDirection] = useState('right'); // 'right' for sun->space, 'left' for space->sun
 
-	// Handle change password success/error
-	useEffect(() => {
-		if (changePasswordSuccess) {
-			spaceToast.success(t('settings.passwordChangedSuccess'));
-			setModals(prev => ({ ...prev, password: false }));
-			passwordForm.resetFields();
-			dispatch(clearChangePasswordState());
-		}
-		if (changePasswordError) {
-			message.error(changePasswordError || t('settings.passwordChangeError'));
-			dispatch(clearChangePasswordState());
-		}
-	}, [changePasswordSuccess, changePasswordError, dispatch, t, passwordForm]);
 
 	// Password change functionality
 	const handlePasswordChange = async () => {
+		setChangePasswordLoading(true);
+		
 		try {
 			const values = await passwordForm.validateFields();
 			
-			// Prepare data for API call
+			// Get refresh token from localStorage
+			const refreshToken = localStorage.getItem('refreshToken');
+			
+			if (!refreshToken) {
+				message.error('Session expired. Please login again.');
+				return;
+			}
+			
+			// Prepare data for API call - include refreshToken like ChangePassword.jsx
 			const passwordData = {
 				oldPassword: values.currentPassword,
 				newPassword: values.newPassword,
-				confirmPassword: values.confirmPassword
+				confirmPassword: values.confirmPassword,
+				refreshToken: refreshToken
 			};
 			
-			dispatch(changePassword(passwordData));
+			// Call API directly like ChangePassword.jsx instead of through Redux
+			await authApi.changePassword(passwordData);
+			
+			// Success - show toast and close modal
+			spaceToast.success(t('settings.passwordChangedSuccess'));
+			setModals(prev => ({ ...prev, password: false }));
+			passwordForm.resetFields();
+			
+			// Clear tokens from localStorage and Redux state (like ChangePassword.jsx)
+			localStorage.removeItem('token');
+			localStorage.removeItem('refreshToken');
+			localStorage.removeItem('user');
+			dispatch(logout());
+			
+			// Show message that user needs to login again and redirect
+			setTimeout(() => {
+				spaceToast.info('Please login again with your new password');
+				navigate('/choose-login');
+			}, 2000);
+			
 		} catch (error) {
-			// Form validation error
-			console.error('Form validation error:', error);
+			console.error('Change password error:', error);
+			
+			// Handle API errors with toast messages
+			if (error.response) {
+				const errorMessage = error.response.data.message || t('settings.passwordChangeError');
+				message.error(errorMessage);
+			} else if (error.request) {
+				message.error('Network error. Please check your connection!');
+			} else {
+				message.error('Something went wrong!');
+			}
+		} finally {
+			setChangePasswordLoading(false);
 		}
 	};
 
@@ -114,7 +141,6 @@ const Settings = () => {
 		setModals(prev => ({ ...prev, [modalName]: false }));
 		if (modalName === 'password') {
 			passwordForm.resetFields();
-			dispatch(clearChangePasswordState());
 		}
 	};
 

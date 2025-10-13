@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
 	Table,
 	Button,
@@ -11,7 +11,6 @@ import {
 	Card,
 	Row,
 	Col,
-	Statistic,
 	Tooltip,
 } from 'antd';
 import {
@@ -23,39 +22,158 @@ import {
 	BookOutlined,
 	EyeOutlined,
 	FileTextOutlined,
+	DownloadOutlined,
+	UploadOutlined,
+	PlayCircleOutlined,
+	ClockCircleOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
-import { useDispatch, useSelector } from 'react-redux';
+import { useNavigate } from 'react-router-dom';
 import SyllabusForm from './SyllabusForm';
-import ChapterList from './ChapterList';
 import './SyllabusList.css';
-import {
-	fetchSyllabuses,
-	updateSyllabusStatus,
-} from '../../../../redux/syllabus';
 import ThemedLayout from '../../../../component/ThemedLayout';
+import { useTheme } from '../../../../contexts/ThemeContext';
+import LoadingWithEffect from '../../../../component/spinner/LoadingWithEffect';
+import { spaceToast } from '../../../../component/SpaceToastify';
+import syllabusManagementApi from '../../../../apis/backend/syllabusManagement';
+import levelManagementApi from '../../../../apis/backend/levelManagement';
 
-const { Search } = Input;
 const { Option } = Select;
 
 const SyllabusList = () => {
 	const { t } = useTranslation();
-	const dispatch = useDispatch();
-	const { syllabuses, loading } = useSelector((state) => state.syllabus);
+	const navigate = useNavigate();
+	const { theme } = useTheme();
 
-	const [isModalVisible, setIsModalVisible] = useState(false);
-	const [isChapterModalVisible, setIsChapterModalVisible] = useState(false);
-	const [isDeleteModalVisible, setIsDeleteModalVisible] = useState(false);
-	const [editingSyllabus, setEditingSyllabus] = useState(null);
-	const [selectedSyllabus, setSelectedSyllabus] = useState(null);
-	const [deleteSyllabus, setDeleteSyllabus] = useState(null);
+	// State management
+	const [loading, setLoading] = useState(false);
+	const [syllabuses, setSyllabuses] = useState([]);
+	const [levels, setLevels] = useState([]);
 	const [searchText, setSearchText] = useState('');
 	const [statusFilter, setStatusFilter] = useState('all');
 	const [levelFilter, setLevelFilter] = useState('all');
+	const [currentView, setCurrentView] = useState('syllabuses'); // 'syllabuses', 'chapters', 'lessons'
+	const [searchTimeout, setSearchTimeout] = useState(null);
+	const [sortBy, setSortBy] = useState('createdAt');
+	const [sortDir, setSortDir] = useState('desc');
+
+	// Modal states
+	const [isModalVisible, setIsModalVisible] = useState(false);
+	const [isDeleteModalVisible, setIsDeleteModalVisible] = useState(false);
+	const [editingSyllabus, setEditingSyllabus] = useState(null);
+	const [deleteSyllabus, setDeleteSyllabus] = useState(null);
+
+	// Pagination state
+	const [pagination, setPagination] = useState({
+		current: 1,
+		pageSize: 10,
+		total: 0,
+		showSizeChanger: true,
+		showTotal: (total, range) => `${range[0]}-${range[1]} of ${total}`,
+	});
+
+	// Fetch syllabuses from API
+	const fetchSyllabuses = useCallback(async (page = 1, size = 10, search = '', statusFilter = 'all', levelFilter = 'all', sortField = 'createdAt', sortDirection = 'desc') => {
+		setLoading(true);
+		try {
+			const params = {
+				page: page - 1, // API uses 0-based indexing
+				size: size,
+				sortBy: sortField,
+				sortDir: sortDirection,
+			};
+			
+			// Add search parameter if provided
+			if (search && search.trim()) {
+				params.text = search.trim();
+			}
+
+			// Add status filter if not 'all'
+			if (statusFilter && statusFilter !== 'all') {
+				params.status = [statusFilter];
+			}
+
+			// Add level filter if not 'all'
+			if (levelFilter && levelFilter !== 'all') {
+				params.levelId = [parseInt(levelFilter)];
+			}
+
+			const response = await syllabusManagementApi.getSyllabuses({
+				params: params,
+			});
+
+			// Map API response to component format
+			const mappedSyllabuses = response.data.map((syllabus) => ({
+				id: syllabus.id,
+				name: syllabus.syllabusName,
+				description: syllabus.description,
+				levelId: syllabus.levelId,
+				level: syllabus.level,
+				duration: syllabus.duration,
+				status: syllabus.status,
+				objectives: syllabus.objectives,
+				learningOutcomes: syllabus.learningOutcomes,
+				assessmentCriteria: syllabus.assessmentCriteria,
+				createdAt: syllabus.createdAt,
+				chapters: syllabus.chapters || [],
+			}));
+
+			setSyllabuses(mappedSyllabuses);
+			setPagination(prev => ({
+				...prev,
+				current: page,
+				pageSize: size,
+				total: response.totalElements || response.data.length,
+			}));
+			setLoading(false);
+		} catch (error) {
+			console.error('Error fetching syllabuses:', error);
+			message.error(t('syllabusManagement.loadSyllabusesError'));
+			setLoading(false);
+		}
+	}, [t]);
+
+	// Fetch levels for filter dropdown
+	const fetchLevels = useCallback(async () => {
+		try {
+			const params = {
+				page: 0,
+				size: 100, // Get all levels
+				sortBy: 'orderNumber',
+				sortDir: 'asc',
+			};
+			
+			// Add status filter - API expects array of booleans
+			params.status = [true]; // true for active levels
+			
+			const response = await levelManagementApi.getLevels({
+				params: params,
+			});
+			
+			// Handle different response structures
+			const levelsData = response.data?.content || response.data || [];
+			setLevels(levelsData);
+			
+			console.log('Fetched levels for filter:', levelsData);
+		} catch (error) {
+			console.error('Error fetching levels:', error);
+			setLevels([]); // Set empty array on error
+		}
+	}, []);
 
 	useEffect(() => {
-		dispatch(fetchSyllabuses());
-	}, [dispatch]);
+		fetchSyllabuses(1, pagination.pageSize, searchText, statusFilter, levelFilter, sortBy, sortDir);
+		fetchLevels(); // Load levels for filter dropdown
+	}, [fetchSyllabuses, fetchLevels, searchText, statusFilter, levelFilter, sortBy, sortDir, pagination.pageSize]);
+
+	// Cleanup timeout on unmount
+	useEffect(() => {
+		return () => {
+			if (searchTimeout) {
+				clearTimeout(searchTimeout);
+			}
+		};
+	}, [searchTimeout]);
 
 	const handleAdd = () => {
 		setEditingSyllabus(null);
@@ -74,11 +192,16 @@ const SyllabusList = () => {
 
 	const handleDelete = async () => {
 		try {
-			await dispatch(deleteSyllabus(deleteSyllabus.id));
-			message.success(t('syllabusManagement.deleteSyllabusSuccess'));
+			await syllabusManagementApi.deleteSyllabus(deleteSyllabus.id);
+			
+			// Update local state
+			setSyllabuses(syllabuses.filter(s => s.id !== deleteSyllabus.id));
+			
+			spaceToast.success(t('syllabusManagement.deleteSyllabusSuccess'));
 			setIsDeleteModalVisible(false);
 			setDeleteSyllabus(null);
 		} catch (error) {
+			console.error('Error deleting syllabus:', error);
 			message.error(t('syllabusManagement.deleteSyllabusError'));
 		}
 	};
@@ -89,8 +212,7 @@ const SyllabusList = () => {
 	};
 
 	const handleViewChapters = (syllabus) => {
-		setSelectedSyllabus(syllabus);
-		setIsChapterModalVisible(true);
+		navigate(`/manager/syllabuses/${syllabus.id}/chapters`);
 	};
 
 
@@ -99,46 +221,128 @@ const SyllabusList = () => {
 		setEditingSyllabus(null);
 	};
 
-	const handleChapterModalClose = () => {
-		setIsChapterModalVisible(false);
-		setSelectedSyllabus(null);
-	};
 
 	const handleRefresh = () => {
-		dispatch(fetchSyllabuses());
+		fetchSyllabuses(pagination.current, pagination.pageSize, searchText, statusFilter, levelFilter, sortBy, sortDir);
 	};
 
-	// Filter syllabuses based on search, status, and level
-	const filteredSyllabuses = syllabuses.filter((syllabus) => {
-		const matchesSearch =
-			syllabus.name.toLowerCase().includes(searchText.toLowerCase()) ||
-			syllabus.description.toLowerCase().includes(searchText.toLowerCase());
-		const matchesStatus =
-			statusFilter === 'all' || syllabus.status === statusFilter;
-		const matchesLevel =
-			levelFilter === 'all' || syllabus.levelId === parseInt(levelFilter);
-		return matchesSearch && matchesStatus && matchesLevel;
-	});
+	const handleSearch = (value) => {
+		setSearchText(value);
+		
+		// Clear existing timeout
+		if (searchTimeout) {
+			clearTimeout(searchTimeout);
+		}
+		
+		// Set new timeout for 1 second delay
+		const newTimeout = setTimeout(() => {
+			// Reset to first page when searching
+			fetchSyllabuses(1, pagination.pageSize, value, statusFilter, levelFilter, sortBy, sortDir);
+		}, 1000);
+		
+		setSearchTimeout(newTimeout);
+	};
 
-	// Calculate statistics
-	const totalSyllabuses = syllabuses.length;
-	const activeSyllabuses = syllabuses.filter(
-		(syllabus) => syllabus.status === 'active'
-	).length;
-	const inactiveSyllabuses = syllabuses.filter(
-		(syllabus) => syllabus.status === 'inactive'
-	).length;
-	const totalChapters = syllabuses.reduce(
-		(sum, syllabus) => sum + (syllabus.chapters?.length || 0),
-		0
+	const handleStatusFilterChange = (value) => {
+		setStatusFilter(value);
+		// Reset to first page when filtering
+		fetchSyllabuses(1, pagination.pageSize, searchText, value, levelFilter, sortBy, sortDir);
+	};
+
+	const handleLevelFilterChange = (value) => {
+		setLevelFilter(value);
+		// Reset to first page when filtering
+		fetchSyllabuses(1, pagination.pageSize, searchText, statusFilter, value, sortBy, sortDir);
+	};
+
+	const handleTableChange = (pagination, filters, sorter) => {
+		// Handle sorting
+		if (sorter && sorter.field) {
+			const newSortBy = sorter.field;
+			const newSortDir = sorter.order === 'ascend' ? 'asc' : 'desc';
+			
+			setSortBy(newSortBy);
+			setSortDir(newSortDir);
+			
+			// Fetch data with new sorting
+			fetchSyllabuses(pagination.current, pagination.pageSize, searchText, statusFilter, levelFilter, newSortBy, newSortDir);
+		} else {
+			// Handle pagination without sorting change
+			fetchSyllabuses(pagination.current, pagination.pageSize, searchText, statusFilter, levelFilter, sortBy, sortDir);
+		}
+	};
+
+	const handleExport = () => {
+		// TODO: Implement export functionality
+		message.success(t('syllabusManagement.exportSuccess'));
+	};
+
+	const handleImport = () => {
+		// TODO: Implement import functionality
+		message.success(t('syllabusManagement.importSuccess'));
+	};
+
+	// No need for client-side filtering since API handles filtering
+	const filteredSyllabuses = syllabuses;
+
+	// Get all chapters from all syllabuses
+	const allChapters = syllabuses.flatMap(syllabus => 
+		syllabus.chapters?.map(chapter => ({
+			...chapter,
+			syllabusName: syllabus.name,
+			syllabusId: syllabus.id
+		})) || []
 	);
 
-	const columns = [
+	// Get all lessons from all chapters
+	const allLessons = allChapters.flatMap(chapter => 
+		chapter.lessons?.map(lesson => ({
+			...lesson,
+			chapterName: chapter.name,
+			chapterId: chapter.id,
+			syllabusName: chapter.syllabusName,
+			syllabusId: chapter.syllabusId
+		})) || []
+	);
+
+	// Filter chapters based on search
+	const filteredChapters = allChapters.filter((chapter) => {
+		const matchesSearch =
+			chapter.name.toLowerCase().includes(searchText.toLowerCase()) ||
+			chapter.description.toLowerCase().includes(searchText.toLowerCase()) ||
+			chapter.syllabusName.toLowerCase().includes(searchText.toLowerCase());
+		return matchesSearch;
+	});
+
+	// Filter lessons based on search
+	const filteredLessons = allLessons.filter((lesson) => {
+		const matchesSearch =
+			lesson.name.toLowerCase().includes(searchText.toLowerCase()) ||
+			lesson.description.toLowerCase().includes(searchText.toLowerCase()) ||
+			lesson.chapterName.toLowerCase().includes(searchText.toLowerCase()) ||
+			lesson.syllabusName.toLowerCase().includes(searchText.toLowerCase());
+		return matchesSearch;
+	});
+
+
+	const syllabusColumns = [
+		{
+			title: 'No',
+			key: 'index',
+			width: '5%',
+			render: (_, __, index) => {
+				// Calculate index based on current page and page size
+				const currentPage = pagination.current || 1;
+				const pageSize = pagination.pageSize || 10;
+				return (currentPage - 1) * pageSize + index + 1;
+			},
+		},
 		{
 			title: t('syllabusManagement.syllabusName'),
 			dataIndex: 'name',
+			width: '20%',
 			key: 'name',
-			sorter: (a, b) => a.name.localeCompare(b.name),
+			sorter: true,
 			render: (text, record) => (
 				<div>
 					<div style={{ fontWeight: 'bold', fontSize: '16px' }}>{text}</div>
@@ -150,18 +354,24 @@ const SyllabusList = () => {
 		},
 		{
 			title: t('syllabusManagement.level'),
-			dataIndex: 'level',
-			key: 'level',
-			width: 120,
-			render: (level) => (
-				<Tag color="blue">{level?.name || 'N/A'}</Tag>
-			),
+			dataIndex: 'levelId',
+			key: 'levelId',
+			width: '20%',
+			render: (levelId) => {
+				// Find level by matching levelId with levels array
+				const level = levels.find(l => l.id === levelId);
+				return (
+					<div style={{ color: 'black', fontSize: '20px' }}>
+						{level ? `${level.levelName} (${level.difficulty})` : 'N/A'}
+					</div>
+				);
+			},
 		},
 		{
 			title: t('syllabusManagement.chapters'),
 			dataIndex: 'chapters',
 			key: 'chapters',
-			width: 100,
+			width: '10%',
 			render: (chapters) => (
 				<div style={{ textAlign: 'center' }}>
 					<FileTextOutlined style={{ marginRight: '4px' }} />
@@ -173,7 +383,7 @@ const SyllabusList = () => {
 			title: t('syllabusManagement.totalLessons'),
 			dataIndex: 'totalLessons',
 			key: 'totalLessons',
-			width: 100,
+			width: '10%',
 			render: (totalLessons, record) => (
 				<div style={{ textAlign: 'center' }}>
 					<BookOutlined style={{ marginRight: '4px' }} />
@@ -185,31 +395,13 @@ const SyllabusList = () => {
 			title: t('syllabusManagement.duration'),
 			dataIndex: 'duration',
 			key: 'duration',
-			width: 100,
+			width: '10%',
 			render: (duration) => `${duration} ${t('syllabusManagement.weeks')}`,
-		},
-		{
-			title: t('syllabusManagement.status'),
-			dataIndex: 'status',
-			key: 'status',
-			width: 100,
-			render: (status) => (
-				<Tag color={status === 'active' ? 'green' : 'red'}>
-					{t(`syllabusManagement.${status}`)}
-				</Tag>
-			),
-		},
-		{
-			title: t('syllabusManagement.createdAt'),
-			dataIndex: 'createdAt',
-			key: 'createdAt',
-			width: 120,
-			render: (date) => new Date(date).toLocaleDateString(),
 		},
 		{
 			title: t('syllabusManagement.actions'),
 			key: 'actions',
-			width: 200,
+			width: '15%',
 			render: (_, record) => (
 				<Space size="small">
 					<Tooltip title={t('syllabusManagement.viewChapters')}>
@@ -239,132 +431,311 @@ const SyllabusList = () => {
 		},
 	];
 
+	const chapterColumns = [
+		{
+			title: t('chapterManagement.chapterNumber'),
+			dataIndex: 'order',
+			key: 'order',
+			width: 80,
+			sorter: (a, b) => a.order - b.order,
+			render: (order) => (
+				<Tag color="blue" style={{ textAlign: 'center', minWidth: '30px' }}>
+					{order}
+				</Tag>
+			),
+		},
+		{
+			title: t('chapterManagement.chapterName'),
+			dataIndex: 'name',
+			key: 'name',
+			width: 200,
+			sorter: (a, b) => a.name.localeCompare(b.name),
+			render: (text) => (
+				<div style={{ fontSize: '20px' }}>{text}</div>
+			),
+		},
+		{
+			title: t('syllabusManagement.syllabusName'),
+			dataIndex: 'name',
+			key: 'name',
+			width: 150,
+			render: (syllabusName) => (
+				<span style={{ }}>{syllabusName}</span>
+			),
+		},
+		{
+			title: t('chapterManagement.lessons'),
+			dataIndex: 'lessons',
+			key: 'lessons',
+			width: 100,
+			render: (lessons) => (
+				<div style={{ textAlign: 'center' }}>
+					<PlayCircleOutlined style={{ marginRight: '4px' }} />
+					{lessons?.length || 0}
+				</div>
+			),
+		},
+		{
+			title: t('chapterManagement.duration'),
+			dataIndex: 'duration',
+			key: 'duration',
+			width: 100,
+			render: (duration) => `${duration} ${t('chapterManagement.hours')}`,
+		},
+		{
+			title: t('chapterManagement.status'),
+			dataIndex: 'status',
+			key: 'status',
+			width: 100,
+			render: (status) => (
+				<Tag color={status === 'active' ? 'green' : 'red'}>
+					{t(`chapterManagement.${status}`)}
+				</Tag>
+			),
+		},
+		{
+			title: t('chapterManagement.createdAt'),
+			dataIndex: 'createdAt',
+			key: 'createdAt',
+			width: 120,
+			render: (date) => new Date(date).toLocaleDateString(),
+		},
+	];
+
+	const lessonColumns = [
+		{
+			title: t('lessonManagement.lessonNumber'),
+			dataIndex: 'order',
+			key: 'order',
+			width: 80,
+			sorter: (a, b) => a.order - b.order,
+			render: (order) => (
+				<Tag color="green" style={{ textAlign: 'center', minWidth: '30px' }}>
+					{order}
+				</Tag>
+			),
+		},
+		{
+			title: t('lessonManagement.lessonName'),
+			dataIndex: 'name',
+			key: 'name',
+			width: 200,
+			sorter: (a, b) => a.name.localeCompare(b.name),
+			render: (text) => (
+				<div style={{ fontSize: '20px' }}>{text}</div>
+			),
+		},
+		{
+			title: t('chapterManagement.chapterName'),
+			dataIndex: 'chapterName',
+			key: 'chapterName',
+			width: 120,
+			render: (chapterName) => (
+				<span>{chapterName}</span>
+			),
+		},
+		{
+			title: t('syllabusManagement.syllabusName'),
+			dataIndex: 'syllabusName',
+			key: 'syllabusName',
+			width: 120,
+			render: (syllabusName) => (
+				<span>{syllabusName}</span>
+			),
+		},
+		{
+			title: t('lessonManagement.duration'),
+			dataIndex: 'duration',
+			key: 'duration',
+			width: 100,
+			render: (duration) => (
+				<div style={{ textAlign: 'center' }}>
+					<ClockCircleOutlined style={{ marginRight: '4px' }} />
+					{duration}h
+				</div>
+			),
+		},
+		{
+			title: t('lessonManagement.lessonType'),
+			dataIndex: 'type',
+			key: 'type',
+			width: 120,
+			render: (type) => (
+				<span>{t(`lessonManagement.${type}`)}</span>
+			),
+		},
+		{
+			title: t('lessonManagement.status'),
+			dataIndex: 'status',
+			key: 'status',
+			width: 100,
+			render: (status) => (
+				<Tag color={status === 'active' ? 'green' : 'red'}>
+					{t(`lessonManagement.${status}`)}
+				</Tag>
+			),
+		},
+		{
+			title: t('lessonManagement.createdAt'),
+			dataIndex: 'createdAt',
+			key: 'createdAt',
+			width: 120,
+			render: (date) => new Date(date).toLocaleDateString(),
+		},
+	];
+
+	// Calculate statistics based on current view
+	const getCurrentData = () => {
+		switch (currentView) {
+			case 'syllabuses':
+				return filteredSyllabuses;
+			case 'chapters':
+				return filteredChapters;
+			case 'lessons':
+				return filteredLessons;
+			default:
+				return filteredSyllabuses;
+		}
+	};
+
+	const getCurrentColumns = () => {
+		switch (currentView) {
+			case 'syllabuses':
+				return syllabusColumns;
+			case 'chapters':
+				return chapterColumns;
+			case 'lessons':
+				return lessonColumns;
+			default:
+				return syllabusColumns;
+		}
+	};
+
+
 	return (
 		<ThemedLayout>
 			<div className="syllabus-list-container">
-			<div className="syllabus-list-header">
-				<h2>
-					<BookOutlined style={{ marginRight: '8px' }} />
-					{t('syllabusManagement.title')}
-				</h2>
-			</div>
 
-			{/* Statistics Cards */}
-			<Row gutter={16} style={{ marginBottom: '24px' }}>
-				<Col span={6}>
-					<Card>
-						<Statistic
-							title={t('syllabusManagement.totalSyllabuses')}
-							value={totalSyllabuses}
-							prefix={<BookOutlined />}
-						/>
-					</Card>
-				</Col>
-				<Col span={6}>
-					<Card>
-						<Statistic
-							title={t('syllabusManagement.activeSyllabuses')}
-							value={activeSyllabuses}
-							valueStyle={{ color: '#3f8600' }}
-							prefix={<BookOutlined />}
-						/>
-					</Card>
-				</Col>
-				<Col span={6}>
-					<Card>
-						<Statistic
-							title={t('syllabusManagement.inactiveSyllabuses')}
-							value={inactiveSyllabuses}
-							valueStyle={{ color: '#cf1322' }}
-							prefix={<BookOutlined />}
-						/>
-					</Card>
-				</Col>
-				<Col span={6}>
-					<Card>
-						<Statistic
-							title={t('syllabusManagement.totalChapters')}
-							value={totalChapters}
-							suffix={t('syllabusManagement.chapters')}
-							prefix={<FileTextOutlined />}
-						/>
-					</Card>
-				</Col>
-			</Row>
+			{/* Main Container Card */}
+			<Card className="main-container-card">
+				
 
-			{/* Action Bar */}
-			<Card style={{ marginBottom: '16px' }}>
-				<Row gutter={16} align="middle">
+
+				{/* Action Bar */}
+				<Row gutter={16} align="middle" style={{ marginBottom: '16px' }}>
 					<Col flex="auto">
 						<Space size="middle">
-							<Search
-								placeholder={t('syllabusManagement.searchPlaceholder')}
-								style={{ width: 300 }}
-								value={searchText}
-								onChange={(e) => setSearchText(e.target.value)}
+							<Input
 								prefix={<SearchOutlined />}
+								value={searchText}
+								onChange={(e) => handleSearch(e.target.value)}
+								className="search-input"
+								style={{ minWidth: '350px', maxWidth: '500px', height: '40px', fontSize: '16px' }}
+								allowClear
 							/>
-							<Select
-								style={{ width: 150 }}
-								value={statusFilter}
-								onChange={setStatusFilter}
-								placeholder={t('syllabusManagement.filterByStatus')}
-							>
-								<Option value="all">{t('syllabusManagement.allStatuses')}</Option>
-								<Option value="active">{t('syllabusManagement.active')}</Option>
-								<Option value="inactive">{t('syllabusManagement.inactive')}</Option>
-							</Select>
-							<Select
-								style={{ width: 150 }}
-								value={levelFilter}
-								onChange={setLevelFilter}
-								placeholder={t('syllabusManagement.filterByLevel')}
-							>
-								<Option value="all">{t('syllabusManagement.allLevels')}</Option>
-								{/* This will be populated with actual levels from Redux */}
-							</Select>
+							{currentView === 'syllabuses' && (
+								<>
+									<Select
+										style={{ width: 150 }}
+										value={statusFilter}
+										onChange={handleStatusFilterChange}
+										placeholder={t('syllabusManagement.filterByStatus')}
+									>
+										<Option value="all">{t('syllabusManagement.allStatuses')}</Option>
+										<Option value="active">{t('syllabusManagement.active')}</Option>
+										<Option value="inactive">{t('syllabusManagement.inactive')}</Option>
+									</Select>
+									<Select
+										style={{ width: 150 }}
+										value={levelFilter}
+										onChange={handleLevelFilterChange}
+										placeholder={t('syllabusManagement.filterByLevel')}
+										showSearch
+										filterOption={(input, option) =>
+											option.children.toLowerCase().includes(input.toLowerCase())
+										}
+									>
+										<Option value="all">{t('syllabusManagement.allLevels')}</Option>
+										{levels.map((level) => (
+											<Option key={level.id} value={level.id.toString()}>
+												{level.levelName} ({level.difficulty})
+											</Option>
+										))}
+									</Select>
+								</>
+							)}
 						</Space>
 					</Col>
 					<Col>
 						<Space>
 							<Button
+								icon={<DownloadOutlined />}
+								className={`export-button ${theme}-export-button`}
+								onClick={handleExport}
+							>
+								{t('syllabusManagement.exportData')}
+							</Button>
+							<Button
+								icon={<UploadOutlined />}
+								className={`import-button ${theme}-import-button`}
+								onClick={handleImport}
+							>
+								{t('syllabusManagement.importSyllabuses')}
+							</Button>
+							<Button
 								icon={<ReloadOutlined />}
+								className={`refresh-button ${theme}-refresh-button`}
 								onClick={handleRefresh}
 								loading={loading}
 							>
 								{t('syllabusManagement.refresh')}
 							</Button>
-							<Button
-								type="primary"
-								icon={<PlusOutlined />}
-								onClick={handleAdd}
-							>
-								{t('syllabusManagement.addSyllabus')}
-							</Button>
+							{currentView === 'syllabuses' && (
+								<Button
+									icon={<PlusOutlined />}
+									className="create-button"
+									onClick={handleAdd}
+								>
+									{t('syllabusManagement.addSyllabus')}
+								</Button>
+							)}
 						</Space>
 					</Col>
 				</Row>
-			</Card>
 
-			{/* Table */}
-			<Card>
-				<Table
-					columns={columns}
-					dataSource={filteredSyllabuses}
-					rowKey="id"
-					loading={loading}
-					pagination={{
-						total: filteredSyllabuses.length,
-						pageSize: 10,
-						showSizeChanger: true,
-						showQuickJumper: true,
-						showTotal: (total, range) =>
-							`${range[0]}-${range[1]} ${t(
-								'syllabusManagement.paginationText'
-							)} ${total} ${t('syllabusManagement.syllabuses')}`,
-					}}
-					scroll={{ x: 1000 }}
-				/>
+				{/* Table Card */}
+				<Card className="table-card">
+					<LoadingWithEffect
+						loading={loading}
+						message={t('syllabusManagement.loadingSyllabuses')}>
+						<Table
+							columns={getCurrentColumns()}
+							dataSource={getCurrentData()}
+							rowKey="id"
+							loading={loading}
+							pagination={currentView === 'syllabuses' ? {
+								...pagination,
+								showQuickJumper: true,
+								showTotal: (total, range) => {
+									const itemName = t('syllabusManagement.syllabuses');
+									return `${range[0]}-${range[1]} ${t('syllabusManagement.paginationText')} ${total} ${itemName}`;
+								},
+							} : {
+								total: getCurrentData().length,
+								pageSize: 10,
+								showSizeChanger: true,
+								showQuickJumper: true,
+								showTotal: (total, range) => {
+									const itemName = currentView === 'chapters' ? t('chapterManagement.chapters') :
+													t('lessonManagement.lessons');
+									return `${range[0]}-${range[1]} ${t('syllabusManagement.paginationText')} ${total} ${itemName}`;
+								},
+							}}
+							onChange={currentView === 'syllabuses' ? handleTableChange : undefined}
+							scroll={{ x: currentView === 'lessons' ? 1200 : 1000 }}
+						/>
+					</LoadingWithEffect>
+				</Card>
 			</Card>
 
 			{/* Syllabus Modal */}
@@ -380,25 +751,13 @@ const SyllabusList = () => {
 				width={600}
 				destroyOnClose
 			>
-				<SyllabusForm syllabus={editingSyllabus} onClose={handleModalClose} />
+				<SyllabusForm 
+					syllabus={editingSyllabus} 
+					onClose={handleModalClose}
+					onSuccess={handleRefresh}
+				/>
 			</Modal>
 
-			{/* Chapter Modal */}
-			<Modal
-				title={`${t('syllabusManagement.chapters')} - ${selectedSyllabus?.name}`}
-				open={isChapterModalVisible}
-				onCancel={handleChapterModalClose}
-				footer={null}
-				width={1200}
-				destroyOnClose
-			>
-				{selectedSyllabus && (
-					<ChapterList
-						syllabus={selectedSyllabus}
-						onClose={handleChapterModalClose}
-					/>
-				)}
-			</Modal>
 
 			{/* Delete Confirmation Modal */}
 			<Modal

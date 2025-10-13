@@ -1,5 +1,5 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { CheckCircleOutlined } from '@ant-design/icons';
 import LanguageToggle from '../../component/LanguageToggle';
@@ -10,8 +10,12 @@ import './Login.css';
 
 export default function ForgotPasswordSuccess() {
 	const navigate = useNavigate();
+	const location = useLocation();
 	const { t } = useTranslation();
 	const { isSunTheme } = useTheme();
+	
+	// Get username from navigation state
+	const username = location.state?.username || 'Unknown User';
 
 	const handleBackToLogin = () => {
 		navigate('/choose-login');
@@ -26,40 +30,6 @@ export default function ForgotPasswordSuccess() {
 					<LanguageToggle />
 				</div>
 				
-				{/* Logo CAMKEY - Top Left */}
-				<div style={{ position: 'absolute', top: '20px', left: '20px', zIndex: 1000 }}>
-					<div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-						{isSunTheme ? (
-							<img 
-								src="/img/sun-logo.png" 
-								alt="CAMKEY Logo" 
-								style={{ 
-									width: '100px', 
-									height: '100px', 
-									filter: 'drop-shadow(0 0 15px rgba(255, 215, 0, 0.8))'
-								}} 
-							/>
-						) : (
-							<img 
-								src="/img/astro.png" 
-								alt="CAMKEY Logo" 
-								style={{ 
-									width: '100px', 
-									height: '100px', 
-									filter: 'drop-shadow(0 0 15px rgba(125, 211, 252, 0.8))'
-								}} 
-							/>
-						)}
-						<span style={{ 
-							fontSize: '40px', 
-							fontWeight: 700, 
-							color: isSunTheme ? '#1E40AF' : '#FFFFFF',
-							textShadow: isSunTheme ? '0 0 5px rgba(30, 64, 175, 0.3)' : '0 0 15px rgba(255, 255, 255, 0.8)'
-						}}>
-							CAMKEY
-						</span>
-					</div>
-				</div>
 				
 				<div className='d-flex align-items-center justify-content-center w-100'>
 					<div className='row justify-content-center w-100'>
@@ -84,7 +54,7 @@ export default function ForgotPasswordSuccess() {
 
 								{/* Success Message */}
 								<p style={getMessageStyle(isSunTheme)}>
-									{t('forgotPasswordSuccess.message')}
+									{t('forgotPasswordSuccess.message', { username })}
 								</p>
 
 								{/* Additional Info */}
