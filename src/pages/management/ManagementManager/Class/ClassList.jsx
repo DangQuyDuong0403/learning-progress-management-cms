@@ -315,7 +315,6 @@ const ClassList = () => {
           <Row gutter={[16, 16]} align="middle">
             <Col xs={24} sm={12} md={6} lg={4}>
               <Input
-                placeholder={t('classManagement.searchClasses')}
                 prefix={<SearchOutlined />}
                 value={searchText}
                 onChange={(e) => handleSearch(e.target.value)}

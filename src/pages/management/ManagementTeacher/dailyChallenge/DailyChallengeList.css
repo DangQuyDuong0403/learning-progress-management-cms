@@ -120,33 +120,14 @@
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
 
-/* Pagination styles */
-.ant-pagination {
-  margin-top: 16px;
-}
-
-.ant-pagination .ant-pagination-item {
-  border-radius: 6px;
-}
-
-.ant-pagination .ant-pagination-item-active {
-  border-color: #1890ff;
-  background: #1890ff;
-}
-
-.ant-pagination .ant-pagination-item-active a {
-  color: white;
-}
 
 /* Responsive design */
 @media (max-width: 768px) {
   .daily-challenge-table .ant-table-thead > tr > th {
-    font-size: 12px;
     padding: 8px 4px;
   }
   
   .daily-challenge-table .ant-table-tbody > tr > td {
-    font-size: 12px;
     padding: 8px 4px;
   }
   

@@ -65,36 +65,6 @@
 	gap: 0;
 }
 
-.account-page .search-input {
-	height: 40px;
-	border-radius: 20px;
-	border: 1px solid rgb(47, 27, 105);
-	color: #000;
-}
-
-.account-page.space-theme .search-input {
-	background: #413075;
-	border: 1px solid #604B9E;
-	outline: none !important;
-	box-shadow: none !important;
-	backdrop-filter: none ;
-}
-
-.account-page.space-theme .search-input .ant-input {
-	background: transparent ;
-	border: none ;
-	outline: none ;
-	box-shadow: none ;
-	color: #fff ;
-}
-
-.account-page.space-theme .search-input .ant-input:focus {
-	background: transparent ;
-	border: none ;
-	outline: none ;
-	box-shadow: none ;
-	color: #fff ;
-}
 
 .account-page .action-buttons {
 	display: flex;
@@ -106,8 +76,9 @@
 	height: 40px;
 	border-radius: 8px;
 	font-weight: 500;
+	font-size: 16px;
 	border: 1px solid rgba(77, 208, 255, 0.3);
-	background: rgba(45, 27, 105, 0.8);
+	background: rgba(45, 27, 105, 1);
 	color: #fff;
 	backdrop-filter: blur(10px);
 	transition: all 0.3s ease;
@@ -117,8 +88,9 @@
 	height: 40px;
 	border-radius: 8px;
 	font-weight: 500;
+	font-size: 16px;
 	border: 1px solid rgba(82, 196, 26, 0.3);
-	background: linear-gradient(135deg, #ffffff, #52c41a, #389e0d);
+	background: linear-gradient(135deg, #52c41a, #389e0d, #237804);
 	color: #fff;
 	backdrop-filter: blur(10px);
 	transition: all 0.3s ease;
@@ -128,11 +100,19 @@
 	height: 40px;
 	border-radius: 8px;
 	font-weight: 500;
+	font-size: 16px;
 	border: 1px solid rgba(170, 139, 249, 0.3);
-	background: linear-gradient(135deg, #ffffff, #aa8bf9, #1d0161);
+	background: linear-gradient(135deg, #aa8bf9, #1d0161, #0d0049);
 	color: #fff;
 	backdrop-filter: blur(10px);
 	transition: all 0.3s ease;
+}
+
+/* Sun theme create button */
+.account-page.sun-theme .create-button {
+	background: #71b3fd;
+	border: 1px solid rgba(0, 0, 0, 0.1);
+	color: black;
 }
 
 .account-page .export-button:hover {
@@ -182,135 +162,6 @@
 	background: transparent;
 }
 
-.account-page.space-theme .account-table .ant-table {
-	background: transparent;
-	color: #fff;
-}
-
-.account-page.space-theme .account-table .ant-table-thead > tr > th {
-	background:rgb(75, 65, 119) !important;
-	color: #fff !important;
-	font-weight: 600;
-	font-size: 20px !important;
-	border-bottom: 1px solid rgba(77, 208, 255, 0.3);
-	backdrop-filter: blur(10px);
-}
-
-/* Fix for sorted columns in space theme */
-.account-page.space-theme .account-table .ant-table-thead > tr > th.ant-table-column-sort {
-	background: rgb(75, 65, 119) !important;
-	color: #fff !important;
-}
-
-/* Fix for sortable columns */
-.account-page.space-theme .account-table .ant-table-thead > tr > th.ant-table-column-has-sorters {
-	background: rgb(75, 65, 119) !important;
-	color: #fff !important;
-}
-
-/* Fix for sort icons */
-.account-page.space-theme .account-table .ant-table-thead > tr > th .ant-table-column-sorter {
-	color: #fff !important;
-}
-
-/* Fix for pseudo-elements in sortable columns */
-.account-page.space-theme .account-table .ant-table-thead > tr > th .ant-table-column-sorters::after {
-	border-top-color: #fff !important;
-}
-
-.account-page.space-theme .account-table .ant-table-thead > tr > th .ant-table-column-sorters::before {
-	border-bottom-color: #fff !important;
-}
-
-
-/* Force override for any Ant Design default styles that might interfere */
-.account-page.space-theme .account-table .ant-table-thead > tr > th * {
-	color: #fff !important;
-}
-
-/* Ensure sort icons are visible in space theme */
-.account-page.space-theme .account-table .ant-table-thead > tr > th .ant-table-column-sorters {
-	color: #fff !important;
-}
-
-.account-page.space-theme .account-table .ant-table-thead > tr > th .ant-table-column-sorters .ant-table-column-sorter {
-	color: #fff !important;
-}
-
-
-.account-page.sun-theme .account-table .ant-table-thead > tr > th.ant-table-column-sort {
-	background: #C2E6FF !important;
-	color: #333 !important;
-}
-
-.account-page.sun-theme .account-table .ant-table-thead > tr > th.ant-table-column-has-sorters {
-	background: #C2E6FF !important;
-	color: #333 !important;
-}
-
-.account-page.sun-theme .account-table .ant-table-thead > tr > th .ant-table-column-sorter {
-	color: #333 !important;
-}
-
-/* Fix for pseudo-elements in sortable columns for sun theme */
-.account-page.sun-theme .account-table .ant-table-thead > tr > th .ant-table-column-sorters::after {
-	border-top-color: #333 !important;
-}
-
-.account-page.sun-theme .account-table .ant-table-thead > tr > th .ant-table-column-sorters::before {
-	border-bottom-color: #333 !important;
-}
-
-.account-page.space-theme .account-table .ant-table-tbody > tr > td {
-	background: rgb(224 217 255 / 90%) !important;
-	color: #000000;
-	font-size: 18px !important;
-	backdrop-filter: blur(5px);
-}
-
-.account-page.space-theme .account-table .ant-table-tbody > tr:hover > td {
-	background: rgba(193, 183, 224, 0.836) !important;
-}
-
-/* Sun theme specific tbody hover */
-.account-page.sun-theme .account-table .ant-table-tbody > tr:hover > td {
-	background: rgba(194, 230, 255, 0.8) !important;
-}
-
-/* ===== PAGINATION ===== */
-.account-page.space-theme .ant-pagination {
-	color: #fff;
-}
-
-.account-page.space-theme .ant-pagination .ant-pagination-item {
-	background: rgba(45, 27, 105, 0.8);
-	border: 1px solid rgba(77, 208, 255, 0.3);
-	color: #fff;
-}
-
-.account-page.space-theme .ant-pagination .ant-pagination-item:hover {
-	background: rgba(77, 208, 255, 0.2);
-	border-color: rgba(77, 208, 255, 0.6);
-}
-
-.account-page.space-theme .ant-pagination .ant-pagination-item-active {
-	background: rgba(77, 208, 255, 0.3);
-	border-color: rgba(77, 208, 255, 0.6);
-}
-
-.account-page.space-theme .ant-pagination .ant-pagination-prev,
-.account-page.space-theme .ant-pagination .ant-pagination-next {
-	background: rgba(45, 27, 105, 0.8);
-	border: 1px solid rgba(77, 208, 255, 0.3);
-	color: #fff;
-}
-
-.account-page.space-theme .ant-pagination .ant-pagination-prev:hover,
-.account-page.space-theme .ant-pagination .ant-pagination-next:hover {
-	background: rgba(77, 208, 255, 0.2);
-	border-color: rgba(77, 208, 255, 0.6);
-}
-
 .header-card {
 	margin-bottom: 16px;
 	border-radius: 8px;
@@ -338,32 +189,10 @@
 }
 
 
-/* Override default styles with higher specificity for themed tables */
-.account-page.space-theme .ant-table-thead > tr > th {
-	background: rgba(112, 87, 193, 0.7) !important;
-	color: #fff !important;
-	font-weight: 600;
-	font-size: 16px !important;
-	border-bottom: 1px solid rgba(77, 208, 255, 0.3);
-	backdrop-filter: blur(10px);
-}
 
-.account-page.sun-theme .ant-table-thead > tr > th {
-	background: #C2E6FF !important;
-	color: #000000 !important;
-	font-weight: 600;
-	font-size: 16px !important;
-	border-bottom: 1px solid rgba(0, 0, 0, 0.1);
-}
 
-.ant-table-tbody > tr > td {
-	font-size: 15px !important;
-	/* background: #f6ebffd1 ; */
-}
 
-.ant-table-tbody > tr:hover > td {
-	background: rgba(112, 87, 193, 0.8) !important;
-}
+
 
 /* Avatar Styles */
 .ant-avatar {
@@ -466,20 +295,6 @@
 	padding: 40px 0;
 }
 
-/* Pagination */
-.ant-pagination {
-	margin-top: 16px;
-	text-align: right;
-}
-
-.ant-pagination-item {
-	border-radius: 4px;
-}
-
-.ant-pagination-item-active {
-	background: #1890ff;
-	border-color: #1890ff;
-}
 
 /* Tooltip */
 .ant-tooltip-inner {
@@ -539,8 +354,14 @@
 	color: #050505 !important;
 }
 
-/* Space theme download button icon */
-.account-page.space-theme .import-button .anticon-download {
+/* Space theme button icons - white color */
+.account-page.space-theme .export-button .anticon,
+.account-page.space-theme .import-button .anticon {
+	color: #fff !important;
+}
+
+.account-page.space-theme .export-button:hover .anticon,
+.account-page.space-theme .import-button:hover .anticon {
 	color: #fff !important;
 }
 
@@ -561,68 +382,11 @@
 	color: #fff;
 }
 
-/* ===== FILTER DROPDOWNS ===== */
-.account-page .filter-select {
-	border-radius: 8px;
-	transition: all 0.3s ease;
-}
 
-/* Space theme filter styles */
-.account-page.space-theme .filter-select .ant-select-selector {
-	background: #6d5f8f !important;
-	border: 1px solid rgba(77, 208, 255, 0.3) !important;
-	color: #242424 !important;
-}
-
-.account-page.space-theme .filter-select:hover {
-	background: rgba(77, 208, 255, 0.2);
-	border-color: rgba(77, 208, 255, 0.5);
-}
-
-.account-page.space-theme .filter-select.ant-select-focused {
-	background: rgba(77, 208, 255, 0.15);
-	border-color: rgba(77, 208, 255, 0.6);
-	box-shadow: 0 0 0 2px rgba(77, 208, 255, 0.2);
-}
-
-/* Sun theme filter styles */
-.account-page.sun-theme .filter-select {
-	background: rgba(255, 255, 255, 0.1);
-	border: 1px solid rgba(0, 0, 0, 0.1);
-	color: #333;
-}
-
-.account-page.sun-theme .filter-select:hover {
-	background: rgba(255, 255, 255, 0.2);
-	border-color: rgba(0, 0, 0, 0.2);
-}
-
-.account-page.sun-theme .filter-select.ant-select-focused {
-	background: rgba(255, 255, 255, 0.15);
-	border-color: rgba(0, 0, 0, 0.3);
-	box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.1);
-}
-
-/* Filter dropdown options */
-.account-page .filter-select .ant-select-selector {
-	background: transparent !important;
-	border: none !important;
-	box-shadow: none !important;
-}
-
-.account-page .filter-select .ant-select-selection-item {
-	color: inherit;
-}
 
 /* Responsive Design for Filters */
 @media (max-width: 768px) {
 	.account-page .search-section {
 		flex-wrap: wrap;
-	}
-
-	.account-page .search-section .filter-select {
-		width: 120px !important;
-		margin-left: 8px !important;
-		margin-top: 8px;
 	}
 }

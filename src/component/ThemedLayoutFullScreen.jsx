@@ -1,9 +1,15 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../contexts/ThemeContext';
 import './ThemedLayout.css';
 
 const ThemedLayoutFullScreen = ({ children }) => {
-  const { theme } = useTheme();
+  const navigate = useNavigate();
+  const { theme, isSunTheme } = useTheme();
+
+  const handleCamkeyClick = () => {
+    navigate('/choose-login');
+  };
 
   return (
     <div 
@@ -101,6 +107,52 @@ const ThemedLayoutFullScreen = ({ children }) => {
           />
         </>
       )}
+
+      {/* Logo CAMKEY - Top Left */}
+      <div style={{ position: 'absolute', top: '20px', left: '20px', zIndex: 1000 }}>
+        <div 
+          style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: '15px',
+            cursor: 'pointer',
+            transition: 'transform 0.2s ease'
+          }}
+          onClick={handleCamkeyClick}
+          onMouseEnter={(e) => e.target.style.transform = 'scale(1.05)'}
+          onMouseLeave={(e) => e.target.style.transform = 'scale(1)'}
+        >
+          {isSunTheme ? (
+            <img 
+              src="/img/sun-logo.png" 
+              alt="CAMKEY Logo" 
+              style={{ 
+                width: '100px', 
+                height: '100px', 
+                filter: 'drop-shadow(0 0 15px rgba(255, 215, 0, 0.8))'
+              }} 
+            />
+          ) : (
+            <img 
+              src="/img/astro.png" 
+              alt="CAMKEY Logo" 
+              style={{ 
+                width: '100px', 
+                height: '100px', 
+                filter: 'drop-shadow(0 0 15px rgba(125, 211, 252, 0.8))'
+              }} 
+            />
+          )}
+          <span style={{ 
+            fontSize: '40px', 
+            fontWeight: 700, 
+            color: isSunTheme ? '#1E40AF' : '#FFFFFF',
+            textShadow: isSunTheme ? '0 0 5px rgba(30, 64, 175, 0.3)' : '0 0 15px rgba(255, 255, 255, 0.8)'
+          }}>
+            CAMKEY
+          </span>
+        </div>
+      </div>
 
       {/* Main Content */}
       <div
