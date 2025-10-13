@@ -1,7 +1,7 @@
 import axiosClient from '../index.js';
 
 const levelManagementApi = {
-	getLevels: (params) => axiosClient.get('/level', params),
+	getLevels: (config) => axiosClient.get('/level', config),
 	createLevel: (data) => axiosClient.post('/level', data),
 	deleteLevel: (id) => axiosClient.delete(`/level/${id}`),
 	getLevelById: (id) => axiosClient.get(`/level/${id}`),

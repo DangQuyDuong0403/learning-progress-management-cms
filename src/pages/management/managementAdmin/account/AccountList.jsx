@@ -35,7 +35,6 @@ import { spaceToast } from '../../../../component/SpaceToastify';
 import accountManagementApi from '../../../../apis/backend/accountManagement';
 
 const { Option } = Select;
-const { TextArea } = Input;
 const { Title, Text } = Typography;
 const { Dragger } = Upload;
 
@@ -46,11 +45,11 @@ const AccountList = () => {
 	const [loading, setLoading] = useState(false);
 	const [accounts, setAccounts] = useState([]);
 	const [searchText, setSearchText] = useState('');
-	const [statusFilter, setStatusFilter] = useState('all');
+	const [statusFilter, setStatusFilter] = useState('ACTIVE');
 	const [roleFilter, setRoleFilter] = useState('all');
 	const [searchTimeout, setSearchTimeout] = useState(null);
 	const [sortBy, setSortBy] = useState('createdAt');
-	const [sortDir, setSortDir] = useState('asc');
+	const [sortDir, setSortDir] = useState('desc');
 	const [isModalVisible, setIsModalVisible] = useState(false);
 	const [editingAccount, setEditingAccount] = useState(null);
 	const [form] = Form.useForm();
@@ -68,7 +67,7 @@ const AccountList = () => {
 	// Pagination state
 	const [pagination, setPagination] = useState({
 		current: 1,
-		pageSize: 1,
+		pageSize: 10,
 		total: 0,
 		showSizeChanger: true,
 		showTotal: (total, range) => `${range[0]}-${range[1]} of ${total}`,
@@ -253,9 +252,12 @@ const AccountList = () => {
 								}" ${t('accountManagement.success')}`
 							);
 						}
+						
+						// Refresh data from server
+						fetchAccounts(pagination.current, pagination.pageSize, searchText, roleFilter, statusFilter, sortBy, sortDir);
 					} catch (error) {
 						console.error('Error updating account status:', error);
-						message.error(t('accountManagement.updateStatusError'));
+						spaceToast.error(t('accountManagement.updateStatusError'));
 						setConfirmModal({
 							visible: false,
 							title: '',
@@ -366,15 +368,25 @@ const AccountList = () => {
 			const values = await form.validateFields();
 
 			if (editingAccount) {
-				// Update existing account - giữ logic cũ cho edit
-				setAccounts(
-					accounts.map((account) =>
-						account.id === editingAccount.id
-							? { ...account, ...values }
-							: account
-					)
-				);
-				message.success(t('accountManagement.updateAccountSuccess'));
+				// Update existing account - gọi API để update
+				const updateData = {
+					firstName: values.firstName,
+					lastName: values.lastName,
+					email: values.email,
+					roleName: values.roleName || 'MANAGER',
+				};
+				
+				console.log('Updating account with data:', updateData);
+				
+				// Gọi API update account
+				const response = await accountManagementApi.updateAccount(editingAccount.id, updateData);
+				console.log('Update account response:', response);
+				
+				// Show success toast
+				spaceToast.success(t('accountManagement.updateAccountSuccess'));
+				
+				// Refresh data from server
+				fetchAccounts(pagination.current, pagination.pageSize, searchText, roleFilter, statusFilter, sortBy, sortDir);
 			} else {
 				// Create new account - gửi API với body JSON đúng format
 				const accountData = {
@@ -390,14 +402,22 @@ const AccountList = () => {
 				const response = await accountManagementApi.createAccount(accountData);
 				console.log('Create account response:', response);
 				
-				message.success(t('accountManagement.addAccountSuccess'));
+				// Show success toast
+				spaceToast.success(t('accountManagement.addAccountSuccess'));
+				
+				// Refresh data from server
+				fetchAccounts(pagination.current, pagination.pageSize, searchText, roleFilter, statusFilter, sortBy, sortDir);
 			}
 
 			setIsModalVisible(false);
 			form.resetFields();
 		} catch (error) {
-			console.error('Error creating account:', error);
-			message.error(t('accountManagement.checkInfoError'));
+			console.error('Error saving account:', error);
+			spaceToast.error(
+				editingAccount 
+					? t('accountManagement.updateAccountError') 
+					: t('accountManagement.checkInfoError')
+			);
 		}
 	};
 
@@ -449,12 +469,16 @@ const AccountList = () => {
 			dataIndex: 'username',
 			key: 'username',
 			sorter: true,
+			sortDirections: ['ascend', 'descend'],
+			defaultSortOrder: sortBy === 'username' ? (sortDir === 'asc' ? 'ascend' : 'descend') : null,
 		},
 		{
 			title: t('accountManagement.fullName'),
 			dataIndex: 'fullName',
 			key: 'fullName',
 			sorter: true,
+			sortDirections: ['ascend', 'descend'],
+			defaultSortOrder: sortBy === 'fullName' ? (sortDir === 'asc' ? 'ascend' : 'descend') : null,
 		},
 		{
 			title: t('accountManagement.email'),
@@ -609,6 +633,10 @@ const AccountList = () => {
 							onChange={handleTableChange}
 							scroll={{ x: 1200 }}
 							className={`account-table ${theme}-account-table`}
+							sortDirections={['ascend', 'descend', 'ascend']}
+							showSorterTooltip={{
+								target: 'sorter-icon',
+							}}
 						/>
 					</LoadingWithEffect>
 				</div>
