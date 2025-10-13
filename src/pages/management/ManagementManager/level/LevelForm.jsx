@@ -58,7 +58,7 @@ const LevelForm = ({ level, onClose }) => {
         promotionCriteria: values.promotionCriteria || '',
         learningObjectives: values.learningObjectives || '',
         estimatedDurationWeeks: values.estimatedDurationWeeks,
-        orderNumber: values.orderNumber || 0,
+        orderNumber: values.orderNumber,
       };
 
       if (isEdit) {
@@ -101,7 +101,6 @@ const LevelForm = ({ level, onClose }) => {
         status: 'active',
         difficulty: 'LE',
         estimatedDurationWeeks: 12,
-        orderNumber: 1,
         ...level
       }}
     >
@@ -183,21 +182,7 @@ const LevelForm = ({ level, onClose }) => {
           </Form.Item>
         </Col>
         <Col span={8}>
-          <Form.Item
-            name="orderNumber"
-            label={t('levelManagement.orderNumber')}
-            rules={[
-              { required: true, message: 'Order number is required' },
-              { type: 'number', min: 1, message: 'Order must be at least 1' }
-            ]}
-          >
-            <InputNumber 
-              min={1}
-              placeholder="Enter order number"
-              style={{ width: '100%' }}
-              size="large"
-            />
-          </Form.Item>
+         
         </Col>
       </Row>
 

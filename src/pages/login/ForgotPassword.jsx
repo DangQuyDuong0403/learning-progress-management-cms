@@ -30,13 +30,13 @@ export default function ForgotPassword() {
 	// Handle success/error messages
 	useEffect(() => {
 		if (forgotPasswordSuccess) {
-			// Navigate to success page instead of showing toast
-			navigate('/forgot-password-success');
+			// Navigate to success page with username in state
+			navigate('/forgot-password-success', { state: { username } });
 		} else if (forgotPasswordError) {
-			// Navigate to failure page instead of showing toast
-			navigate('/forgot-password-failure');
+			// Navigate to failure page with username in state
+			navigate('/forgot-password-failure', { state: { username } });
 		}
-	}, [forgotPasswordSuccess, forgotPasswordError, t, navigate]);
+	}, [forgotPasswordSuccess, forgotPasswordError, t, navigate, username]);
 
 	const handleSubmit = (e) => {
 		e.preventDefault();

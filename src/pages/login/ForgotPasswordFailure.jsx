@@ -1,5 +1,5 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { CloseCircleOutlined } from '@ant-design/icons';
 import LanguageToggle from '../../component/LanguageToggle';
@@ -10,8 +10,12 @@ import './Login.css';
 
 export default function ForgotPasswordFailure() {
 	const navigate = useNavigate();
+	const location = useLocation();
 	const { t } = useTranslation();
 	const { isSunTheme } = useTheme();
+	
+	// Get username from navigation state
+	const username = location.state?.username || 'Unknown User';
 
 	const handleTryAgain = () => {
 		navigate('/forgot-password-email');
@@ -54,7 +58,7 @@ export default function ForgotPasswordFailure() {
 
 								{/* Error Message */}
 								<p style={getMessageStyle(isSunTheme)}>
-									{t('forgotPasswordFailure.message')}
+									{t('forgotPasswordFailure.message', { username })}
 								</p>
 
 								{/* Additional Info */}

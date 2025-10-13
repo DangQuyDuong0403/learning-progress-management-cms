@@ -4,7 +4,7 @@ import authApi from './backend/auth';
 // Tạo instance mặc định cho axios
 const axiosClient = axios.create({
 	baseURL: process.env.REACT_APP_API_URL,
-	timeout: 60000, // Giới hạn 60 giây
+	timeout: 30000, // Tăng lên 30 giây để xử lý API chậm
 	// Không set headers mặc định, chỉ gửi token khi cần
 });
 

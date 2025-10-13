@@ -88,10 +88,31 @@ export const fetchLevels = createAsyncThunk(
   'level/fetchLevels',
   async (_, { rejectWithValue }) => {
     try {
-      await delay(1000); // Simulate API call
-      return mockLevels;
+      const response = await levelManagementApi.getLevels();
+      
+      // Handle different response structures
+      if (response && response.data) {
+        // Check if it's a paginated response
+        if (response.data.content && Array.isArray(response.data.content)) {
+          return response.data.content;
+        }
+        return response.data;
+      } else if (Array.isArray(response)) {
+        return response;
+      } else {
+        // Fallback to mock data if API fails
+        await delay(500);
+        return mockLevels;
+      }
     } catch (error) {
-      return rejectWithValue(error.message);
+      console.error('Error fetching levels from API:', error);
+      // Fallback to mock data on error
+      try {
+        await delay(500);
+        return mockLevels;
+      } catch (fallbackError) {
+        return rejectWithValue(error.message || 'Failed to fetch levels');
+      }
     }
   }
 );
@@ -197,6 +218,10 @@ const levelSlice = createSlice({
       .addCase(fetchLevels.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
+        // Keep existing levels if API fails
+        if (state.levels.length === 0) {
+          state.levels = mockLevels;
+        }
       })
       
       // Create level

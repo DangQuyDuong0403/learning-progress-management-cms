@@ -353,6 +353,65 @@
 	color: #fff;
 }
 
+/* ===== EDIT POSITIONS BUTTON ===== */
+.space-theme .edit-positions-button {
+	height: 40px;
+	border-radius: 8px;
+	font-weight: 500;
+	border: 1px solid rgba(77, 208, 255, 0.3);
+	background: linear-gradient(135deg, #4c1d95 0%, #5b21b6 50%, #6d28d9 100%);
+	color: #fff;
+	backdrop-filter: blur(10px);
+	transition: all 0.3s ease;
+	box-shadow: 0 4px 12px rgba(76, 29, 149, 0.3);
+}
+
+.space-theme .edit-positions-button:hover {
+	background: linear-gradient(135deg, #5b21b6 0%, #6d28d9 50%, #7c3aed 100%);
+	border-color: rgba(77, 208, 255, 0.6);
+	transform: translateY(-2px);
+	box-shadow: 0 6px 16px rgba(76, 29, 149, 0.4);
+	filter: brightness(1.1);
+}
+
+.space-theme .edit-positions-button:active {
+	transform: translateY(0);
+	box-shadow: 0 2px 8px rgba(76, 29, 149, 0.3);
+}
+
+.space-theme .edit-positions-button .anticon {
+	color: #fff !important;
+}
+
+.sun-theme .edit-positions-button {
+	height: 40px;
+	border-radius: 8px;
+	font-weight: 500;
+	border: 1px solid rgba(24, 144, 255, 0.3);
+	background: linear-gradient(135deg, #1890ff 0%, #40a9ff 50%, #69c0ff 100%);
+	color: #fff;
+	backdrop-filter: blur(10px);
+	transition: all 0.3s ease;
+	box-shadow: 0 4px 12px rgba(24, 144, 255, 0.3);
+}
+
+.sun-theme .edit-positions-button:hover {
+	background: linear-gradient(135deg, #40a9ff 0%, #69c0ff 50%, #91d5ff 100%);
+	border-color: rgba(24, 144, 255, 0.6);
+	transform: translateY(-2px);
+	box-shadow: 0 6px 16px rgba(24, 144, 255, 0.4);
+	filter: brightness(1.1);
+}
+
+.sun-theme .edit-positions-button:active {
+	transform: translateY(0);
+	box-shadow: 0 2px 8px rgba(24, 144, 255, 0.3);
+}
+
+.sun-theme .edit-positions-button .anticon {
+	color: #fff !important;
+}
+
 
 
 

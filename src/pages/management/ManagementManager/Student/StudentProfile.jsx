@@ -11,14 +11,13 @@ import {
 	Input,
 	Select,
 	DatePicker,
-	Upload,
-	message,
+	Spin,
+	Alert,
 } from 'antd';
 import {
 	ArrowLeftOutlined,
 	EditOutlined,
 	UserOutlined,
-	UploadOutlined,
 	KeyOutlined,
 	BarChartOutlined,
 } from '@ant-design/icons';
@@ -26,64 +25,98 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useTheme } from '../../../../contexts/ThemeContext';
 import { spaceToast } from '../../../../component/SpaceToastify';
+import studentManagementApi from '../../../../apis/backend/StudentManagement';
 import dayjs from 'dayjs';
 import './StudentList.css';
 import ThemedLayout from '../../../../component/ThemedLayout';
+import { useDispatch, useSelector } from 'react-redux';
+import { fetchLevels } from '../../../../redux/level';
 
 const StudentProfile = () => {
 	const { t } = useTranslation();
 	const navigate = useNavigate();
-	const { studentId } = useParams();
+	const { id } = useParams();
 	const { theme } = useTheme();
+	const dispatch = useDispatch();
 	const [editModalVisible, setEditModalVisible] = useState(false);
 	const [resetPasswordModalVisible, setResetPasswordModalVisible] = useState(false);
 	const [editForm] = Form.useForm();
-	const [resetPasswordForm] = Form.useForm();
 	const [editLoading, setEditLoading] = useState(false);
 	const [resetPasswordLoading, setResetPasswordLoading] = useState(false);
 	const [avatarUrl, setAvatarUrl] = useState(null);
+	const [loading, setLoading] = useState(true);
+	const [error, setError] = useState(null);
 
-	// Mock data - replace with actual API call
-	const [student, setStudent] = useState({
-		id: studentId || '1',
-		studentCode: 'STU001',
-		fullName: 'Nguyễn Văn An',
-		email: 'nguyenvanan@example.com',
-		phone: '0123456789',
-		class: 'Lớp 10A1',
-		level: 'Intermediate',
-		status: 'active',
-		avatar: '/img/avatar.png',
-		dateOfBirth: '2005-03-15',
-		gender: 'male',
-		joinDate: '2024-01-15',
-		username: 'student001',
-		lastActivity: '2024-12-21',
-		// Parent information
-		fatherName: 'Nguyễn Văn Bình',
-		motherName: 'Trần Thị Mai',
-		fatherPhone: '0987654321',
-		motherPhone: '0987654322',
-		fatherEmail: 'nguyenvanbinh@example.com',
-		motherEmail: 'tranthimai@example.com',
-		fatherOccupation: 'Kỹ sư',
-		motherOccupation: 'Giáo viên',
-		fatherAddress: '123 Đường ABC, Quận 1, TP.HCM',
-		motherAddress: '456 Đường XYZ, Quận 2, TP.HCM',
-	});
+	// Student data from API
+	const [student, setStudent] = useState(null);
+
+	// Redux state for levels
+	const { levels, loading: levelsLoading } = useSelector((state) => state.level);
+
+	// Available avatar images
+	const avatarImages = [
+		'avatar1.png',
+		'avatar2.png',
+		'avatar3.png',
+		'avatar4.png',
+		'avatar5.png',
+		'avatar6.png',
+		'avatar7.png',
+		'avatar8.png',
+		'avatar9.png',
+		'avatar10.png',
+		'avatar11.png',
+		'avatar12.png',
+		'avatar13.png',
+		'avatar14.png',
+		'avatar15.png',
+		'avatar16.png',
+		'avatar17.png',
+		'avatar18.png',
+	];
+
+	// Function to get random avatar based on student ID
+	const getRandomAvatar = (studentId) => {
+		if (!studentId) return null;
+		
+		// Use student ID as seed for consistent random selection
+		const seed = parseInt(studentId.toString().slice(-3)) || 0;
+		const randomIndex = seed % avatarImages.length;
+		return `/img/student_avatar/${avatarImages[randomIndex]}`;
+	};
 
 
 	useEffect(() => {
 		fetchStudentProfile();
-	}, [studentId]);
+		dispatch(fetchLevels());
+	}, [id, dispatch]); // eslint-disable-line react-hooks/exhaustive-deps
 
 	const fetchStudentProfile = async () => {
 		try {
-			// Simulate API call
-			await new Promise((resolve) => setTimeout(resolve, 1000));
-			// In real app, fetch student data by studentId
+			setLoading(true);
+			setError(null);
+			
+			console.log('Fetching profile for student ID:', id);
+			if (!id) {
+				setError('Student ID not found in URL');
+				return;
+			}
+			
+			const response = await studentManagementApi.getStudentProfile(id);
+			
+			if (response.success && response.data) {
+				setStudent(response.data);
+				// Use random avatar based on student ID instead of API avatarUrl
+				const randomAvatar = getRandomAvatar(response.data.id);
+				setAvatarUrl(randomAvatar);
+			} else {
+				setError(response.message || 'Failed to fetch student profile');
+			}
 		} catch (error) {
 			console.error('Error fetching student profile:', error);
+			setError('An error occurred while fetching the student profile');
+		} finally {
+			setLoading(false);
 		}
 	};
 
@@ -92,43 +125,70 @@ const StudentProfile = () => {
 	};
 
 	const handleEdit = () => {
+		if (!student) return;
+		
 		setEditModalVisible(true);
+		
+		// Get current avatar filename from avatarUrl
+		const currentAvatarFilename = avatarUrl ? avatarUrl.split('/').pop() : null;
+		
 		editForm.setFieldsValue({
-			...student,
+			roleName: student.roleName,
+			firstName: student.firstName,
+			lastName: student.lastName,
+			email: student.email,
+			phoneNumber: student.phoneNumber,
 			dateOfBirth: student.dateOfBirth ? dayjs(student.dateOfBirth) : null,
+			gender: student.gender,
+			address: student.address,
+			levelId: student.currentLevelInfo?.id || null,
+			// Avatar selection
+			avatar: currentAvatarFilename,
 			// Parent information
-			fatherName: student.fatherName,
-			motherName: student.motherName,
-			fatherPhone: student.fatherPhone,
-			motherPhone: student.motherPhone,
-			fatherEmail: student.fatherEmail,
-			motherEmail: student.motherEmail,
-			fatherOccupation: student.fatherOccupation,
-			motherOccupation: student.motherOccupation,
-			fatherAddress: student.fatherAddress,
-			motherAddress: student.motherAddress,
+			parentName: student.parentInfo?.parentName,
+			parentEmail: student.parentInfo?.parentEmail,
+			parentPhone: student.parentInfo?.parentPhone,
+			relationship: student.parentInfo?.relationship,
 		});
-		setAvatarUrl(student.avatar);
 	};
 
 	const handleEditSubmit = async (values) => {
 		setEditLoading(true);
 		try {
-			// Simulate API call
-			await new Promise(resolve => setTimeout(resolve, 1000));
-			
-			const updatedStudent = {
-				...student,
-				...values,
-				dateOfBirth: values.dateOfBirth ? values.dateOfBirth.format('YYYY-MM-DD') : null,
-				avatar: avatarUrl,
+			// Format the data according to the API requirements
+			const studentData = {
+				roleName: values.roleName, // Allow editing role name
+				email: values.email,
+				firstName: values.firstName,
+				lastName: values.lastName,
+				avatarUrl: "string", // Always send "string" as per API requirement
+				dateOfBirth: values.dateOfBirth ? values.dateOfBirth.format('YYYY-MM-DDTHH:mm:ss.SSS[Z]') : null,
+				address: values.address || null,
+				phoneNumber: values.phoneNumber || null,
+				gender: values.gender || null, // MALE, FEMALE, OTHER
+				parentInfo: {
+					parentName: values.parentName || "",
+					parentEmail: values.parentEmail || null,
+					parentPhone: values.parentPhone || "",
+					relationship: values.relationship || null,
+				},
+				levelId: values.levelId,
 			};
 			
-			setStudent(updatedStudent);
-			setEditModalVisible(false);
-			spaceToast.success(t('studentManagement.updateStudentSuccess'));
+			console.log('Updating student with data:', studentData);
+			
+			const response = await studentManagementApi.updateStudentProfile(id, studentData);
+			
+			if (response.success && response.data) {
+				setStudent(response.data);
+				setEditModalVisible(false);
+				spaceToast.success(t('studentManagement.updateStudentSuccess'));
+			} else {
+				spaceToast.error(response.message || t('studentManagement.updateStudentError'));
+			}
 		} catch (error) {
-			spaceToast.error(t('studentManagement.loadStudentsError'));
+			console.error('Error updating student profile:', error);
+			spaceToast.error(error.response?.data?.message || error.message || t('studentManagement.updateStudentError'));
 		} finally {
 			setEditLoading(false);
 		}
@@ -136,70 +196,88 @@ const StudentProfile = () => {
 
 	const handleResetPassword = () => {
 		setResetPasswordModalVisible(true);
-		resetPasswordForm.resetFields();
 	};
 
-	const handleResetPasswordSubmit = async (values) => {
+	const handleResetPasswordSubmit = async () => {
 		setResetPasswordLoading(true);
 		try {
+			// TODO: Implement reset password to default API call
+			// const response = await studentManagementApi.resetPasswordToDefault(id);
+			
 			// Simulate API call
 			await new Promise(resolve => setTimeout(resolve, 1000));
 			
 			setResetPasswordModalVisible(false);
-			resetPasswordForm.resetFields();
-			spaceToast.success(t('studentManagement.passwordChangedSuccess'));
+			spaceToast.success(t('studentManagement.passwordResetToDefaultSuccess'));
 		} catch (error) {
-			spaceToast.error(t('studentManagement.passwordChangeError'));
+			spaceToast.error(t('studentManagement.passwordResetError'));
 		} finally {
 			setResetPasswordLoading(false);
 		}
 	};
 
 	const handleViewLearningProgress = () => {
+		if (!student) return;
+		
 		navigate(`/manager/student/${student.id}/progress`, { 
 			state: { student: student } 
 		});
 	};
 
-	const handleAvatarChange = (info) => {
-		if (info.file.status === 'done') {
-			// Simulate successful upload
-			const url = URL.createObjectURL(info.file.originFileObj);
-			setAvatarUrl(url);
-			message.success(t('studentManagement.avatarUploadSuccess'));
-		} else if (info.file.status === 'error') {
-			message.error(t('studentManagement.avatarUploadError'));
+	// Function to handle avatar selection from dropdown
+	const handleAvatarSelect = (selectedAvatar) => {
+		if (selectedAvatar) {
+			setAvatarUrl(`/img/student_avatar/${selectedAvatar}`);
 		}
 	};
 
-	const uploadProps = {
-		name: 'avatar',
-		listType: 'picture',
-		showUploadList: false,
-		beforeUpload: (file) => {
-			const isJpgOrPng = file.type === 'image/jpeg' || file.type === 'image/png';
-			if (!isJpgOrPng) {
-				message.error(t('studentManagement.avatarFormatError'));
-			}
-			const isLt2M = file.size / 1024 / 1024 < 2;
-			if (!isLt2M) {
-				message.error(t('studentManagement.avatarSizeError'));
-			}
-			return isJpgOrPng && isLt2M;
-		},
-		onChange: handleAvatarChange,
-	};
+	// Loading state
+	if (loading) {
+		return (
+			<ThemedLayout>
+				<div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '400px' }}>
+					<Spin size="large" tip="Loading student profile..." />
+				</div>
+			</ThemedLayout>
+		);
+	}
 
-	// Thông tin tài khoản
-	const accountInfo = {
-		username: student.username,
-		passwordLastChanged: '2024-11-15',
-		loginAttempts: 0,
-		lastLogin: '2024-12-21 14:30',
-		accountStatus: 'active',
-		emailVerified: true,
-		phoneVerified: true,
-	};
+	// Error state
+	if (error) {
+		return (
+			<ThemedLayout>
+				<div style={{ padding: '20px' }}>
+					<Alert 
+						message="Error" 
+						description={error} 
+						type="error" 
+						showIcon 
+						action={
+							<Button size="small" onClick={fetchStudentProfile}>
+								Retry
+							</Button>
+						}
+					/>
+				</div>
+			</ThemedLayout>
+		);
+	}
+
+	// No student data
+	if (!student) {
+		return (
+			<ThemedLayout>
+				<div style={{ padding: '20px' }}>
+					<Alert 
+						message="Not Found" 
+						description="Student profile not found." 
+						type="warning" 
+						showIcon 
+					/>
+				</div>
+			</ThemedLayout>
+		);
+	}
 
 	return (
 		<ThemedLayout>
@@ -244,7 +322,7 @@ const StudentProfile = () => {
 									<Avatar
 										size={120}
 										icon={<UserOutlined />}
-										src={student.avatar}
+										src={avatarUrl}
 										style={{
 											backgroundColor: '#1890ff',
 											border: `3px solid ${
@@ -282,7 +360,7 @@ const StudentProfile = () => {
 										<h2
 											className={`student-name ${theme}-student-name`}
 											style={{ margin: 0 }}>
-											{student.fullName}
+											{student.firstName} {student.lastName}
 										</h2>
 
 										<div style={{ display: 'flex', gap: '8px' }}>
@@ -295,18 +373,18 @@ const StudentProfile = () => {
 													fontWeight: '500',
 												}}
 												className={`role-text ${theme}-role-text`}>
-												{t('studentManagement.student')}
+												{student.roleName ? student.roleName.charAt(0).toUpperCase() + student.roleName.slice(1).toLowerCase() : 'N/A'}
 											</span>
 											<span
 												style={{
 													fontSize: '16px',
 													padding: '6px 12px',
 													borderRadius: '8px',
-													color: '#52c41a',
+													color: student.status === 'ACTIVE' ? '#52c41a' : '#ff4d4f',
 													fontWeight: '500',
 												}}
 												className={`status-text ${theme}-status-text`}>
-												{student.status === 'active'
+												{student.status === 'ACTIVE'
 													? t('studentManagement.active')
 													: t('studentManagement.inactive')}
 											</span>
@@ -316,7 +394,7 @@ const StudentProfile = () => {
 									<div className='student-details'>
 										<p>
 											<strong>{t('studentManagement.studentCode')}:</strong>{' '}
-											{student.studentCode}
+											{student.userName}
 										</p>
 										<p>
 											<strong>{t('studentManagement.email')}:</strong>{' '}
@@ -324,20 +402,33 @@ const StudentProfile = () => {
 										</p>
 										<p>
 											<strong>{t('studentManagement.phone')}:</strong>{' '}
-											{student.phone}
+											{student.phoneNumber}
 										</p>
 										<p>
-											<strong>{t('studentManagement.class')}:</strong>{' '}
-											{student.class}
+											<strong>{t('studentManagement.dateOfBirth')}:</strong>{' '}
+											{student.dateOfBirth ? new Date(student.dateOfBirth).toLocaleDateString('vi-VN') : 'N/A'}
 										</p>
 										<p>
-											<strong>{t('studentManagement.level')}:</strong>{' '}
-											{student.level}
+											<strong>{t('studentManagement.gender')}:</strong>{' '}
+											{student.gender ? student.gender.charAt(0).toUpperCase() + student.gender.slice(1).toLowerCase() : 'N/A'}
 										</p>
 										<p>
-											<strong>{t('studentManagement.joinDate')}:</strong>{' '}
-											{new Date(student.joinDate).toLocaleDateString('vi-VN')}
+											<strong>{t('studentManagement.address')}:</strong>{' '}
+											{student.address || 'N/A'}
 										</p>
+										{student.currentClassInfo && (
+											<p>
+												<strong>{t('studentManagement.class')}:</strong>{' '}
+												{student.currentClassInfo.name || 'N/A'}
+											</p>
+										)}
+									
+										{student.currentLevelInfo && (
+                                            <p>
+                                                <strong>{t('studentManagement.level')}:</strong>{' '}
+                                                {student.currentLevelInfo.levelName || 'N/A'}
+                                            </p>
+                                        )}
 									</div>
 								</div>
 							</Col>
@@ -359,124 +450,87 @@ const StudentProfile = () => {
 							<Col xs={24} sm={12} md={8}>
 								<div className="account-info-item">
 									<strong>{t('studentManagement.username')}:</strong>
-									<span>{accountInfo.username}</span>
-								</div>
-							</Col>
-							<Col xs={24} sm={12} md={8}>
-								<div className="account-info-item">
-									<strong>{t('studentManagement.lastLogin')}:</strong>
-									<span>{accountInfo.lastLogin}</span>
-								</div>
-							</Col>
-							<Col xs={24} sm={12} md={8}>
-								<div className="account-info-item">
-									<strong>{t('studentManagement.passwordLastChanged')}:</strong>
-									<span>{new Date(accountInfo.passwordLastChanged).toLocaleDateString('vi-VN')}</span>
-								</div>
-							</Col>
-							<Col xs={24} sm={12} md={8}>
-								<div className="account-info-item">
-									<strong>{t('studentManagement.loginAttempts')}:</strong>
-									<span>{accountInfo.loginAttempts}</span>
+									<span>{student.userName}</span>
 								</div>
 							</Col>
 							<Col xs={24} sm={12} md={8}>
 								<div className="account-info-item">
 									<strong>{t('studentManagement.accountStatus')}:</strong>
-									<span>{accountInfo.accountStatus === 'active'
+									<span>{student.status === 'ACTIVE'
 										? t('studentManagement.active')
 										: t('studentManagement.inactive')}</span>
 								</div>
 							</Col>
 							<Col xs={24} sm={12} md={8}>
 								<div className="account-info-item">
-									<strong>{t('studentManagement.emailVerified')}:</strong>
-									<span>{accountInfo.emailVerified
-										? t('studentManagement.verified')
-										: t('studentManagement.notVerified')}</span>
+									<strong>{t('studentManagement.theme')}:</strong>
+									<span>{student.theme === 'LIGHT' ? t('common.light') : t('common.dark')}</span>
 								</div>
 							</Col>
 							<Col xs={24} sm={12} md={8}>
 								<div className="account-info-item">
-									<strong>{t('studentManagement.phoneVerified')}:</strong>
-									<span>{accountInfo.phoneVerified
-										? t('studentManagement.verified')
-										: t('studentManagement.notVerified')}</span>
+									<strong>{t('studentManagement.language')}:</strong>
+									<span>{student.language === 'VI' ? t('common.vietnamese') : t('common.english')}</span>
+								</div>
+							</Col>
+							<Col xs={24} sm={12} md={8}>
+								<div className="account-info-item">
+									<strong>{t('studentManagement.mustUpdateProfile')}:</strong>
+									<span>{student.mustUpdateProfile
+										? t('common.yes')
+										: t('common.no')}</span>
+								</div>
+							</Col>
+							<Col xs={24} sm={12} md={8}>
+								<div className="account-info-item">
+									<strong>{t('studentManagement.mustChangePassword')}:</strong>
+									<span>{student.mustChangePassword
+										? t('common.yes')
+										: t('common.no')}</span>
 								</div>
 							</Col>
 						</Row>
 					</Card>
 
 					{/* Parent Information */}
-					<Card
-						title={
-							<Space>
-								<UserOutlined />
-								{t('studentManagement.parentInformation')}
-							</Space>
-						}
-						className={`parent-card ${theme}-parent-card`}
-						style={{ marginBottom: 24 }}>
-						<Row gutter={[16, 16]}>
-							{/* Father Information */}
-							<Col xs={24} sm={12} md={12}>
-								<div className="parent-section">
-									
-									<div className="parent-info-grid">
-										<div className="parent-info-item">
-											<strong>{t('studentManagement.fatherName')}:</strong>
-											<span>{student.fatherName}</span>
-										</div>
-										<div className="parent-info-item">
-											<strong>{t('studentManagement.fatherPhone')}:</strong>
-											<span>{student.fatherPhone}</span>
-										</div>
-										<div className="parent-info-item">
-											<strong>{t('studentManagement.fatherEmail')}:</strong>
-											<span>{student.fatherEmail}</span>
-										</div>
-										<div className="parent-info-item">
-											<strong>{t('studentManagement.fatherOccupation')}:</strong>
-											<span>{student.fatherOccupation}</span>
-										</div>
-										<div className="parent-info-item">
-											<strong>{t('studentManagement.fatherAddress')}:</strong>
-											<span>{student.fatherAddress}</span>
-										</div>
+					{student.parentInfo && (
+						<Card
+							title={
+								<Space>
+									<UserOutlined />
+									{t('studentManagement.parentInformation')}
+								</Space>
+							}
+							className={`parent-card ${theme}-parent-card`}
+							style={{ marginBottom: 24 }}>
+							<Row gutter={[16, 16]}>
+								<Col xs={24} sm={12} md={8}>
+									<div className="parent-info-item">
+										<strong>{t('studentManagement.parentName')}:</strong>
+										<span>{student.parentInfo.parentName}</span>
 									</div>
-								</div>
-							</Col>
-							
-							{/* Mother Information */}
-							<Col xs={24} sm={12} md={12}>
-								<div className="parent-section">
-									
-									<div className="parent-info-grid">
-										<div className="parent-info-item">
-											<strong>{t('studentManagement.motherName')}:</strong>
-											<span>{student.motherName}</span>
-										</div>
-										<div className="parent-info-item">
-											<strong>{t('studentManagement.motherPhone')}:</strong>
-											<span>{student.motherPhone}</span>
-										</div>
-										<div className="parent-info-item">
-											<strong>{t('studentManagement.motherEmail')}:</strong>
-											<span>{student.motherEmail}</span>
-										</div>
-										<div className="parent-info-item">
-											<strong>{t('studentManagement.motherOccupation')}:</strong>
-											<span>{student.motherOccupation}</span>
-										</div>
-										<div className="parent-info-item">
-											<strong>{t('studentManagement.motherAddress')}:</strong>
-											<span>{student.motherAddress}</span>
-										</div>
+								</Col>
+								<Col xs={24} sm={12} md={8}>
+									<div className="parent-info-item">
+										<strong>{t('studentManagement.parentEmail')}:</strong>
+										<span>{student.parentInfo.parentEmail}</span>
 									</div>
-								</div>
-							</Col>
-						</Row>
-					</Card>
+								</Col>
+								<Col xs={24} sm={12} md={8}>
+									<div className="parent-info-item">
+										<strong>{t('studentManagement.parentPhone')}:</strong>
+										<span>{student.parentInfo.parentPhone}</span>
+									</div>
+								</Col>
+								<Col xs={24} sm={12} md={8}>
+									<div className="parent-info-item">
+										<strong>{t('studentManagement.relationship')}:</strong>
+										<span>{student.parentInfo.relationship}</span>
+									</div>
+								</Col>
+							</Row>
+						</Card>
+					)}
 				</div>
 
 				{/* Edit Modal */}
@@ -509,14 +563,35 @@ const StudentProfile = () => {
 										}}
 									/>
 									<div>
-										<Upload {...uploadProps}>
-											<Button 
-												icon={<UploadOutlined />}
-												className={`upload-button ${theme}-upload-button`}
+										<Form.Item
+											name="avatar"
+											label={t('studentManagement.selectAvatar')}
+											rules={[{ required: true, message: t('studentManagement.avatarRequired') }]}
+										>
+											<Select
+												placeholder={t('studentManagement.selectAvatar')}
+												onChange={handleAvatarSelect}
+												className={`custom-dropdown ${theme}-custom-dropdown`}
+												showSearch
+												filterOption={(input, option) =>
+													option.children.toLowerCase().indexOf(input.toLowerCase()) >= 0
+												}
+												style={{ width: 200 }}
 											>
-												{t('studentManagement.uploadAvatar')}
-											</Button>
-										</Upload>
+												{avatarImages.map((avatar, index) => (
+													<Select.Option key={index} value={avatar}>
+														<div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+															<Avatar
+																size={24}
+																src={`/img/student_avatar/${avatar}`}
+																style={{ flexShrink: 0 }}
+															/>
+															<span>{avatar.replace('.png', '').replace('avatar', 'Avatar ')}</span>
+														</div>
+													</Select.Option>
+												))}
+											</Select>
+										</Form.Item>
 									</div>
 								</div>
 							</Col>
@@ -526,30 +601,40 @@ const StudentProfile = () => {
 						<Row gutter={24}>
 							<Col span={12}>
 								<Form.Item
-									name="fullName"
-									label={t('studentManagement.fullName')}
+									name="roleName"
+									label={
+										<span>
+											Role Name
+											<span style={{ color: 'red', marginLeft: '4px' }}>*</span>
+										</span>
+									}
 									rules={[
-										{ required: true, message: t('studentManagement.fullNameRequired') },
-										{ min: 2, message: t('studentManagement.nameMinLength') },
+										{ required: true, message: 'Role name is required' },
 									]}
 								>
-									<Input 
-										placeholder={t('studentManagement.enterFullName')}
-										className={`form-input ${theme}-form-input`}
-									/>
+									<Select placeholder="Select role">
+										<Select.Option value="STUDENT">Student</Select.Option>
+										<Select.Option value="TEST_TAKER">Test taker</Select.Option>
+									</Select>
 								</Form.Item>
 							</Col>
 							<Col span={12}>
 								<Form.Item
 									name="email"
-									label={t('studentManagement.email')}
+									label={
+										<span>
+											Email
+											<span style={{ color: 'red', marginLeft: '4px' }}>*</span>
+										</span>
+									}
 									rules={[
-										{ required: true, message: t('studentManagement.emailRequired') },
-										{ type: 'email', message: t('studentManagement.emailInvalid') },
+										{ required: true, message: 'Email is required' },
+										{ type: 'email', message: 'Please enter a valid email' },
+										{ max: 255, message: 'Email must not exceed 255 characters' },
 									]}
 								>
 									<Input 
-										placeholder={t('studentManagement.enterEmail')}
+										placeholder="Enter email address"
 										className={`form-input ${theme}-form-input`}
 									/>
 								</Form.Item>
@@ -559,7 +644,40 @@ const StudentProfile = () => {
 						<Row gutter={24}>
 							<Col span={12}>
 								<Form.Item
-									name="phone"
+									name="firstName"
+									label={t('studentManagement.firstName')}
+									rules={[
+										{ required: true, message: t('studentManagement.firstNameRequired') },
+										{ min: 2, message: t('studentManagement.nameMinLength') },
+									]}
+								>
+									<Input 
+										placeholder={t('studentManagement.enterFirstName')}
+										className={`form-input ${theme}-form-input`}
+									/>
+								</Form.Item>
+							</Col>
+							<Col span={12}>
+								<Form.Item
+									name="lastName"
+									label={t('studentManagement.lastName')}
+									rules={[
+										{ required: true, message: t('studentManagement.lastNameRequired') },
+										{ min: 2, message: t('studentManagement.nameMinLength') },
+									]}
+								>
+									<Input 
+										placeholder={t('studentManagement.enterLastName')}
+										className={`form-input ${theme}-form-input`}
+									/>
+								</Form.Item>
+							</Col>
+						</Row>
+
+						<Row gutter={24}>
+							<Col span={12}>
+								<Form.Item
+									name="phoneNumber"
 									label={t('studentManagement.phone')}
 									rules={[
 										{ required: true, message: t('studentManagement.phoneRequired') },
@@ -590,37 +708,30 @@ const StudentProfile = () => {
 						<Row gutter={24}>
 							<Col span={12}>
 								<Form.Item
-									name="class"
-									label={t('studentManagement.class')}
-									rules={[{ required: true, message: t('studentManagement.classRequired') }]}
+									name="gender"
+									label={t('studentManagement.gender')}
+									rules={[{ required: true, message: t('studentManagement.genderRequired') }]}
 								>
 									<Select 
-										placeholder={t('studentManagement.selectClass')}
+										placeholder="Select gender"
 										className={`custom-dropdown ${theme}-custom-dropdown`}
 									>
-										<Select.Option value="Lớp 10A1">Lớp 10A1</Select.Option>
-										<Select.Option value="Lớp 10A2">Lớp 10A2</Select.Option>
-										<Select.Option value="Lớp 10A3">Lớp 10A3</Select.Option>
-										<Select.Option value="Lớp 11B1">Lớp 11B1</Select.Option>
-										<Select.Option value="Lớp 9C1">Lớp 9C1</Select.Option>
-										<Select.Option value="Lớp 12A1">Lớp 12A1</Select.Option>
+										<Select.Option value="MALE">Male</Select.Option>
+										<Select.Option value="FEMALE">Female</Select.Option>
+										<Select.Option value="OTHER">Other</Select.Option>
 									</Select>
 								</Form.Item>
 							</Col>
 							<Col span={12}>
 								<Form.Item
-									name="level"
-									label={t('studentManagement.level')}
-									rules={[{ required: true, message: t('studentManagement.levelRequired') }]}
+									name="address"
+									label={t('studentManagement.address')}
+									rules={[{ required: true, message: t('studentManagement.addressRequired') }]}
 								>
-									<Select 
-										placeholder={t('studentManagement.selectLevel')}
-										className={`custom-dropdown ${theme}-custom-dropdown`}
-									>
-										<Select.Option value="Beginner">{t('studentManagement.beginner')}</Select.Option>
-										<Select.Option value="Intermediate">{t('studentManagement.intermediate')}</Select.Option>
-										<Select.Option value="Advanced">{t('studentManagement.advanced')}</Select.Option>
-									</Select>
+									<Input 
+										placeholder={t('studentManagement.enterAddress')}
+										className={`form-input ${theme}-form-input`}
+									/>
 								</Form.Item>
 							</Col>
 						</Row>
@@ -628,201 +739,111 @@ const StudentProfile = () => {
 						<Row gutter={24}>
 							<Col span={12}>
 								<Form.Item
-									name="gender"
-									label={t('studentManagement.gender')}
-									rules={[{ required: true, message: t('studentManagement.genderRequired') }]}
+									name="levelId"
+									label={t('studentManagement.level')}
+									rules={[{ required: true, message: t('studentManagement.levelRequired') }]}
 								>
 									<Select 
-										placeholder={t('studentManagement.selectGender')}
+										placeholder={t('studentManagement.selectLevel')}
 										className={`custom-dropdown ${theme}-custom-dropdown`}
+										loading={levelsLoading}
+										showSearch
+										filterOption={(input, option) =>
+											option.children.toLowerCase().indexOf(input.toLowerCase()) >= 0
+										}
+										notFoundContent={levelsLoading ? "Loading..." : "No levels found"}
 									>
-										<Select.Option value="male">{t('common.male')}</Select.Option>
-										<Select.Option value="female">{t('common.female')}</Select.Option>
-									</Select>
-								</Form.Item>
-							</Col>
-							<Col span={12}>
-								<Form.Item
-									name="status"
-									label={t('studentManagement.status')}
-									rules={[{ required: true, message: t('studentManagement.statusRequired') }]}
-								>
-									<Select 
-										placeholder={t('studentManagement.selectStatus')}
-										className={`custom-dropdown ${theme}-custom-dropdown`}
-									>
-										<Select.Option value="active">{t('studentManagement.active')}</Select.Option>
-										<Select.Option value="inactive">{t('studentManagement.inactive')}</Select.Option>
+										{levels && levels.length > 0 ? (
+											levels.map(level => {
+												// Handle different field names that might come from API
+												const levelName = level.name || level.levelName || level.title || 'Unknown Level';
+												const levelCode = level.code || level.levelCode || level.code || '';
+												
+												return (
+													<Select.Option key={level.id} value={level.id}>
+														{levelName} {levelCode ? `(${levelCode})` : ''}
+													</Select.Option>
+												);
+											})
+										) : (
+											!levelsLoading && (
+												<Select.Option disabled value="">
+													No levels available
+												</Select.Option>
+											)
+										)}
 									</Select>
 								</Form.Item>
 							</Col>
 						</Row>
 
 						{/* Parent Information Section */}
-						<div style={{ marginTop: 32, marginBottom: 24 }}>
-							<h3 className={`section-title ${theme}-section-title`} style={{ 
-								fontSize: '18px', 
-								fontWeight: '600', 
-								marginBottom: '20px',
-								color: theme === 'space' ? '#4dd0ff' : '#1890ff'
-							}}>
-								{t('studentManagement.parentInformation')}
-							</h3>
-							
-							{/* Father Information */}
-							<Row gutter={24} style={{ marginBottom: 20 }}>
-								<Col span={24}>
-									<h4 className={`parent-section-title ${theme}-parent-section-title`} style={{
-										fontSize: '16px',
-										fontWeight: '500',
-										marginBottom: '16px',
-										color: theme === 'space' ? '#4dd0ff' : '#1890ff'
-									}}>
-										{t('studentManagement.fatherName')}
-									</h4>
-								</Col>
-								<Col span={12}>
-									<Form.Item
-										name="fatherName"
-										label={t('studentManagement.fatherName')}
-										rules={[{ required: true, message: t('studentManagement.fatherNameRequired') }]}
-									>
-										<Input 
-											placeholder={t('studentManagement.enterFatherName')}
-											className={`form-input ${theme}-form-input`}
-										/>
-									</Form.Item>
-								</Col>
-								<Col span={12}>
-									<Form.Item
-										name="fatherPhone"
-										label={t('studentManagement.fatherPhone')}
-										rules={[{ required: true, message: t('studentManagement.fatherPhoneRequired') }]}
-									>
-										<Input 
-											placeholder={t('studentManagement.enterFatherPhone')}
-											className={`form-input ${theme}-form-input`}
-										/>
-									</Form.Item>
-								</Col>
-								<Col span={12}>
-									<Form.Item
-										name="fatherEmail"
-										label={t('studentManagement.fatherEmail')}
-										rules={[
-											{ required: true, message: t('studentManagement.fatherEmailRequired') },
-											{ type: 'email', message: t('studentManagement.emailInvalid') }
-										]}
-									>
-										<Input 
-											placeholder={t('studentManagement.enterFatherEmail')}
-											className={`form-input ${theme}-form-input`}
-										/>
-									</Form.Item>
-								</Col>
-								<Col span={12}>
-									<Form.Item
-										name="fatherOccupation"
-										label={t('studentManagement.fatherOccupation')}
-										rules={[{ required: true, message: t('studentManagement.fatherOccupationRequired') }]}
-									>
-										<Input 
-											placeholder={t('studentManagement.enterFatherOccupation')}
-											className={`form-input ${theme}-form-input`}
-										/>
-									</Form.Item>
-								</Col>
-								<Col span={24}>
-									<Form.Item
-										name="fatherAddress"
-										label={t('studentManagement.fatherAddress')}
-										rules={[{ required: true, message: t('studentManagement.fatherAddressRequired') }]}
-									>
-										<Input 
-											placeholder={t('studentManagement.enterFatherAddress')}
-											className={`form-input ${theme}-form-input`}
-										/>
-									</Form.Item>
-								</Col>
-							</Row>
-
-							{/* Mother Information */}
-							<Row gutter={24}>
-								<Col span={24}>
-									<h4 className={`parent-section-title ${theme}-parent-section-title`} style={{
-										fontSize: '16px',
-										fontWeight: '500',
-										marginBottom: '16px',
-										color: theme === 'space' ? '#4dd0ff' : '#1890ff'
-									}}>
-										{t('studentManagement.motherName')}
-									</h4>
-								</Col>
-								<Col span={12}>
-									<Form.Item
-										name="motherName"
-										label={t('studentManagement.motherName')}
-										rules={[{ required: true, message: t('studentManagement.motherNameRequired') }]}
-									>
-										<Input 
-											placeholder={t('studentManagement.enterMotherName')}
-											className={`form-input ${theme}-form-input`}
-										/>
-									</Form.Item>
-								</Col>
-								<Col span={12}>
-									<Form.Item
-										name="motherPhone"
-										label={t('studentManagement.motherPhone')}
-										rules={[{ required: true, message: t('studentManagement.motherPhoneRequired') }]}
-									>
-										<Input 
-											placeholder={t('studentManagement.enterMotherPhone')}
-											className={`form-input ${theme}-form-input`}
-										/>
-									</Form.Item>
-								</Col>
-								<Col span={12}>
-									<Form.Item
-										name="motherEmail"
-										label={t('studentManagement.motherEmail')}
-										rules={[
-											{ required: true, message: t('studentManagement.motherEmailRequired') },
-											{ type: 'email', message: t('studentManagement.emailInvalid') }
-										]}
-									>
-										<Input 
-											placeholder={t('studentManagement.enterMotherEmail')}
-											className={`form-input ${theme}-form-input`}
-										/>
-									</Form.Item>
-								</Col>
-								<Col span={12}>
-									<Form.Item
-										name="motherOccupation"
-										label={t('studentManagement.motherOccupation')}
-										rules={[{ required: true, message: t('studentManagement.motherOccupationRequired') }]}
-									>
-										<Input 
-											placeholder={t('studentManagement.enterMotherOccupation')}
-											className={`form-input ${theme}-form-input`}
-										/>
-									</Form.Item>
-								</Col>
-								<Col span={24}>
-									<Form.Item
-										name="motherAddress"
-										label={t('studentManagement.motherAddress')}
-										rules={[{ required: true, message: t('studentManagement.motherAddressRequired') }]}
-									>
-										<Input 
-											placeholder={t('studentManagement.enterMotherAddress')}
-											className={`form-input ${theme}-form-input`}
-										/>
-									</Form.Item>
-								</Col>
-							</Row>
-						</div>
+						{student.parentInfo && (
+							<div style={{ marginTop: 32, marginBottom: 24 }}>
+								<h3 className={`section-title ${theme}-section-title`} style={{ 
+									fontSize: '18px', 
+									fontWeight: '600', 
+									marginBottom: '20px',
+									color: theme === 'space' ? '#4dd0ff' : '#1890ff'
+								}}>
+									{t('studentManagement.parentInformation')}
+								</h3>
+								
+								<Row gutter={24}>
+									<Col span={12}>
+										<Form.Item
+											name="parentName"
+											label={t('studentManagement.parentName')}
+											rules={[{ required: true, message: t('studentManagement.parentNameRequired') }]}
+										>
+											<Input 
+												placeholder={t('studentManagement.enterParentName')}
+												className={`form-input ${theme}-form-input`}
+											/>
+										</Form.Item>
+									</Col>
+									<Col span={12}>
+										<Form.Item
+											name="parentPhone"
+											label={t('studentManagement.parentPhone')}
+											rules={[{ required: true, message: t('studentManagement.parentPhoneRequired') }]}
+										>
+											<Input 
+												placeholder={t('studentManagement.enterParentPhone')}
+												className={`form-input ${theme}-form-input`}
+											/>
+										</Form.Item>
+									</Col>
+									<Col span={12}>
+										<Form.Item
+											name="parentEmail"
+											label={t('studentManagement.parentEmail')}
+											rules={[
+												{ required: true, message: t('studentManagement.parentEmailRequired') },
+												{ type: 'email', message: t('studentManagement.emailInvalid') }
+											]}
+										>
+											<Input 
+												placeholder={t('studentManagement.enterParentEmail')}
+												className={`form-input ${theme}-form-input`}
+											/>
+										</Form.Item>
+									</Col>
+									<Col span={12}>
+										<Form.Item
+											name="relationship"
+											label={t('studentManagement.relationship')}
+											rules={[{ required: true, message: t('studentManagement.relationshipRequired') }]}
+										>
+											<Input 
+												placeholder="Enter relationship"
+												className={`form-input ${theme}-form-input`}
+											/>
+										</Form.Item>
+									</Col>
+								</Row>
+							</div>
+						)}
 
 						{/* Action Buttons */}
 						<Row gutter={16} style={{ marginTop: 32 }}>
@@ -861,7 +882,7 @@ const StudentProfile = () => {
 							textAlign: 'center',
 							padding: '10px 0'
 						}}>
-							{t('studentManagement.resetPasswordForStudent')}
+							{t('studentManagement.resetPasswordToDefault')}
 						</div>
 					}
 					open={resetPasswordModalVisible}
@@ -870,56 +891,26 @@ const StudentProfile = () => {
 					width={500}
 					centered
 				>
-					<Form
-						form={resetPasswordForm}
-						layout="vertical"
-						onFinish={handleResetPasswordSubmit}
-					>
+					<div style={{ textAlign: 'center', padding: '20px 0' }}>
 						<div style={{ marginBottom: 24 }}>
 							<p style={{ 
 								fontSize: '16px', 
 								color: '#666', 
 								textAlign: 'center',
+								marginBottom: '20px',
+								lineHeight: '1.6'
+							}}>
+								{t('studentManagement.resetPasswordToDefaultConfirmation')} <strong>{student.firstName} {student.lastName}</strong>?
+							</p>
+							<p style={{ 
+								fontSize: '14px', 
+								color: '#999', 
+								textAlign: 'center',
 								marginBottom: '20px'
 							}}>
-								{t('studentManagement.resetPasswordConfirmation')} <strong>{student.fullName}</strong>?
+								{t('studentManagement.resetPasswordToDefaultNote')}
 							</p>
 						</div>
-
-						<Form.Item
-							name="newPassword"
-							label={t('studentManagement.newPassword')}
-							rules={[
-								{ required: true, message: t('studentManagement.newPasswordRequired') },
-								{ min: 6, message: t('studentManagement.passwordMinLength') },
-							]}
-						>
-							<Input.Password 
-								placeholder={t('studentManagement.enterNewPassword')}
-								className={`form-input ${theme}-form-input`}
-							/>
-						</Form.Item>
-
-						<Form.Item
-							name="confirmPassword"
-							label={t('studentManagement.confirmPassword')}
-							rules={[
-								{ required: true, message: t('studentManagement.confirmPasswordRequired') },
-								({ getFieldValue }) => ({
-									validator(_, value) {
-										if (!value || getFieldValue('newPassword') === value) {
-											return Promise.resolve();
-										}
-										return Promise.reject(new Error(t('studentManagement.passwordsDoNotMatch')));
-									},
-								}),
-							]}
-						>
-							<Input.Password 
-								placeholder={t('studentManagement.confirmNewPassword')}
-								className={`form-input ${theme}-form-input`}
-							/>
-						</Form.Item>
 
 						{/* Action Buttons */}
 						<Row gutter={16} style={{ marginTop: 32 }}>
@@ -936,16 +927,16 @@ const StudentProfile = () => {
 							<Col span={12}>
 								<Button
 									type="primary"
-									htmlType="submit"
+									onClick={handleResetPasswordSubmit}
 									loading={resetPasswordLoading}
 									style={{ width: '100%', height: 40 }}
 									className={`submit-button ${theme}-submit-button`}
 								>
-									{t('studentManagement.resetPassword')}
+									{t('studentManagement.confirmResetPassword')}
 								</Button>
 							</Col>
 						</Row>
-					</Form>
+					</div>
 				</Modal>
 			</div>
 		</ThemedLayout>

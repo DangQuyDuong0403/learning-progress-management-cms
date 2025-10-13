@@ -8,27 +8,20 @@ import {
 	Space,
 	Row,
 	Col,
-	InputNumber,
 } from 'antd';
 import { useTranslation } from 'react-i18next';
-import { useDispatch, useSelector } from 'react-redux';
-import {
-	createSyllabus,
-	updateSyllabus,
-} from '../../../../redux/syllabus';
-import { fetchLevels } from '../../../../redux/level';
+import syllabusManagementApi from '../../../../apis/backend/syllabusManagement';
+import levelManagementApi from '../../../../apis/backend/levelManagement';
 
 const { TextArea } = Input;
 const { Option } = Select;
 
-const SyllabusForm = ({ syllabus, onClose }) => {
+const SyllabusForm = ({ syllabus, onClose, onSuccess }) => {
 	const { t } = useTranslation();
-	const dispatch = useDispatch();
-	const { loading } = useSelector((state) => state.syllabus);
-	const { levels } = useSelector((state) => state.level);
-
 	const [form] = Form.useForm();
 	const [isSubmitting, setIsSubmitting] = useState(false);
+	const [loading, setLoading] = useState(false);
+	const [levels, setLevels] = useState([]);
 
 	const isEdit = !!syllabus;
 
@@ -40,21 +33,73 @@ const SyllabusForm = ({ syllabus, onClose }) => {
 
 	useEffect(() => {
 		// Load levels when component mounts
-		dispatch(fetchLevels());
-	}, [dispatch]);
+		const fetchLevels = async () => {
+			setLoading(true);
+			try {
+				const params = {
+					page: 0,
+					size: 100, // Get all levels
+					sortBy: 'orderNumber',
+					sortDir: 'asc',
+				};
+				
+				// Add status filter - API expects array of booleans
+				params.status = [true]; // true for active levels
+				
+				const response = await levelManagementApi.getLevels({
+					params: params,
+				});
+				
+				// Handle different response structures
+				const levelsData = response.data?.content || response.data || [];
+				setLevels(levelsData);
+				
+				console.log('Fetched levels:', levelsData);
+			} catch (error) {
+				console.error('Error fetching levels:', error);
+				message.error(t('levelManagement.loadLevelsError') || 'Failed to load levels');
+				setLevels([]); // Set empty array on error
+			} finally {
+				setLoading(false);
+			}
+		};
+		fetchLevels();
+	}, [t]);
 
 	const onFinish = async (values) => {
 		setIsSubmitting(true);
 		try {
+			// Map form values to API request body format
+			const requestBody = {
+				syllabusName: values.name,
+				levelId: values.levelId,
+				description: values.description,
+				// Add other fields if needed
+				...(values.duration && { duration: values.duration }),
+				...(values.status && { status: values.status }),
+				...(values.objectives && { objectives: values.objectives }),
+				...(values.learningOutcomes && { learningOutcomes: values.learningOutcomes }),
+				...(values.assessmentCriteria && { assessmentCriteria: values.assessmentCriteria }),
+			};
+
+			console.log('Sending request body:', requestBody);
+
 			if (isEdit) {
-				await dispatch(updateSyllabus({ id: syllabus.id, ...values }));
+				await syllabusManagementApi.updateSyllabus(syllabus.id, requestBody);
 				message.success(t('syllabusManagement.updateSyllabusSuccess'));
 			} else {
-				await dispatch(createSyllabus(values));
+				await syllabusManagementApi.createSyllabus(requestBody);
 				message.success(t('syllabusManagement.addSyllabusSuccess'));
 			}
+			
+			// Call onSuccess callback to refresh the list
+			if (onSuccess) {
+				onSuccess();
+			}
+			
 			onClose();
 		} catch (error) {
+			console.error('Error saving syllabus:', error);
 			message.error(
 				isEdit
 					? t('syllabusManagement.updateSyllabusError')
@@ -70,10 +115,6 @@ const SyllabusForm = ({ syllabus, onClose }) => {
 		onClose();
 	};
 
-	const statusOptions = [
-		{ value: 'active', label: t('syllabusManagement.active') },
-		{ value: 'inactive', label: t('syllabusManagement.inactive') },
-	];
 
 	return (
 		<Form
@@ -120,16 +161,19 @@ const SyllabusForm = ({ syllabus, onClose }) => {
 						]}
 					>
 						<Select
-							placeholder={t('syllabusManagement.selectLevel')}
+							placeholder={loading ? t('common.loading') : t('syllabusManagement.selectLevel')}
 							size="large"
 							showSearch
+							loading={loading}
+							disabled={loading}
+							notFoundContent={loading ? t('common.loading') : t('syllabusManagement.noLevelsFound')}
 							filterOption={(input, option) =>
 								option.children.toLowerCase().includes(input.toLowerCase())
 							}
 						>
 							{levels.map((level) => (
 								<Option key={level.id} value={level.id}>
-									{level.name} ({level.code})
+									{level.levelName} ({level.difficulty})
 								</Option>
 							))}
 						</Select>
@@ -159,7 +203,7 @@ const SyllabusForm = ({ syllabus, onClose }) => {
 				/>
 			</Form.Item>
 
-			<Row gutter={16}>
+			{/* <Row gutter={16}>
 				<Col span={8}>
 					<Form.Item
 						name="duration"
@@ -267,7 +311,7 @@ const SyllabusForm = ({ syllabus, onClose }) => {
 					maxLength={500}
 					showCount
 				/>
-			</Form.Item>
+			</Form.Item> */}
 
 			<Form.Item style={{ marginBottom: 0, textAlign: 'right' }}>
 				<Space>
