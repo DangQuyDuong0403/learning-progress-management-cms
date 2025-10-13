@@ -1,4 +1,5 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
+import levelManagementApi from '../apis/backend/levelManagement';
 
 // Mock API functions - Replace with actual API calls
 const mockLevels = [
@@ -99,16 +100,13 @@ export const createLevel = createAsyncThunk(
   'level/createLevel',
   async (levelData, { rejectWithValue }) => {
     try {
-      await delay(800);
-      const newLevel = {
-        id: Date.now(),
-        ...levelData,
-        createdAt: new Date().toISOString(),
-      };
-      mockLevels.push(newLevel);
-      return newLevel;
+      console.log('Creating level with data:', levelData);
+      const response = await levelManagementApi.createLevel(levelData);
+      console.log('Create level response:', response);
+      return response;
     } catch (error) {
-      return rejectWithValue(error.message);
+      console.error('Error creating level:', error);
+      return rejectWithValue(error.message || 'Failed to create level');
     }
   }
 );
@@ -117,15 +115,13 @@ export const updateLevel = createAsyncThunk(
   'level/updateLevel',
   async ({ id, ...updateData }, { rejectWithValue }) => {
     try {
-      await delay(800);
-      const index = mockLevels.findIndex(level => level.id === id);
-      if (index !== -1) {
-        mockLevels[index] = { ...mockLevels[index], ...updateData };
-        return mockLevels[index];
-      }
-      throw new Error('Level not found');
+      console.log('Updating level with ID:', id, 'Data:', updateData);
+      const response = await levelManagementApi.updateLevel(id, updateData);
+      console.log('Update level response:', response);
+      return response;
     } catch (error) {
-      return rejectWithValue(error.message);
+      console.error('Error updating level:', error);
+      return rejectWithValue(error.message || 'Failed to update level');
     }
   }
 );

@@ -1,7 +1,6 @@
 import React, { useRef, useState } from 'react';
 import { toast } from 'react-toastify';
-import Header from '../../component/Header';
-import Sidebar from '../../component/Sidebar';
+import ThemedHeader from '../../component/ThemedHeader';
 import './Profile.css';
 
 export default function Profile() {
@@ -84,7 +83,7 @@ export default function Profile() {
 
   return (
     <div className="profile-container">
-      <Header />
+      <ThemedHeader />
       <div className="main-layout">
        
         <div className="content-area">

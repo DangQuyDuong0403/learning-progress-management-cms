@@ -1,8 +1,11 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Input, Button } from 'antd';
+import { Input } from 'antd';
 import { useTranslation } from 'react-i18next';
 import LanguageToggle from '../../component/LanguageToggle';
+import ThemeToggleSwitch from '../../component/ThemeToggleSwitch';
+import { useTheme } from '../../contexts/ThemeContext';
+import ThemedLayoutFullScreen from '../../component/ThemedLayoutFullScreen';
 import './Login.css';
 
 export default function OTPVerification() {
@@ -10,7 +13,8 @@ export default function OTPVerification() {
 	const [message, setMessage] = useState(null);
 	const [isLoading, setIsLoading] = useState(false);
 	const navigate = useNavigate();
-	const { i18n, t } = useTranslation();
+	const { t } = useTranslation();
+	const { isSunTheme } = useTheme();
 
 	const handleOtpChange = (index, value) => {
 		// Chỉ cho phép nhập số và giới hạn 1 ký tự
@@ -85,80 +89,57 @@ export default function OTPVerification() {
 	};
 
 	return (
-		<div className='kids-space'>
-			{/* Language Toggle - Top Right */}
-			<div style={{ position: 'absolute', top: '20px', right: '20px', zIndex: 1000 }}>
-				<LanguageToggle />
-			</div>
-			
-			<div
-				className='page-wrapper'
-				id='main-wrapper'
-				data-layout='vertical'
-				data-navbarbg='skin6'
-				data-sidebartype='full'
-				data-sidebar-position='fixed'
-				data-header-position='fixed'>
-				<div className='position-relative overflow-hidden min-vh-100 d-flex align-items-center justify-content-center'>
-					<div className='d-flex align-items-center justify-content-center w-100'>
-						<div className='row justify-content-center w-100'>
+		<ThemedLayoutFullScreen>
+			<div className="main-content" style={{ paddingTop: 120, minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+				{/* Theme Toggle - Top Right */}
+				<div className={`login-theme-toggle-container ${isSunTheme ? 'sun-theme' : 'space-theme'}`} style={{ position: 'absolute', top: '20px', right: '20px' }}>
+					<ThemeToggleSwitch />
+					<LanguageToggle />
+				</div>
+				
+				<div className='d-flex align-items-center justify-content-center w-100'>
+					<div className='row justify-content-center w-100'>
+						<div
+							className='card mb-0'
+							style={getOTPCardStyle(isSunTheme)}>
 							<div
-								className='card mb-0 kids-card'
-								style={{
-									minWidth: 420,
-									maxWidth: 520,
-									margin: '0 auto',
-									padding: 0,
-									borderRadius: 32,
-									boxShadow: '0 20px 60px rgba(30, 20, 90, 0.25)',
-								}}>
-								<div className='card mb-0 kids-card'>
-									<div
-										className='card-body'
-										style={{ padding: '1.5rem 1.5rem 1rem 1.5rem' }}>
-										
-										<h5 className='text-center kids-heading mb-1'>
-											OTP verification
-										</h5>
-										<p className='text-center kids-subtitle mb-4'>
-											Enter the 6-digit OTP code sent to your email
-										</p>
-										<form onSubmit={handleSubmit}>
-											<div className='mb-4'>
-												<label className='form-label text-center d-block'>
-													OTP code
-												</label>
-												<div className='d-flex justify-content-center gap-2 mb-3'>
-													{otp.map((digit, index) => (
-														<Input
-															key={index}
-															id={`otp-${index}`}
-															type='text'
-															inputMode='numeric'
-															pattern='[0-9]*'
-															className='text-center'
-															style={{
-																width: '45px',
-																height: '45px',
-																fontSize: '1.2rem',
-																fontWeight: 'bold',
-																border: '2px solid #e4e8ff',
-																borderRadius: '8px',
-															}}
-															value={digit}
-															onChange={(e) =>
-																handleOtpChange(
-																	index,
-																	e.target.value.replace(/\D/g, '')
-																)
-															}
-															onKeyDown={(e) => handleKeyDown(index, e)}
-															maxLength={1}
-															required
-														/>
-													))}
-												</div>
+								className='card-body'
+								style={{ padding: '1.5rem 2.5rem 1.5rem 2.5rem' }}>
+								<h5 className='mb-0' style={getHeadingStyle(isSunTheme)}>
+									OTP verification
+								</h5>
+								<p className='text-center mb-4' style={getSubtitleStyle(isSunTheme)}>
+									Enter the 6-digit OTP code sent to your email
+								</p>
+									<form onSubmit={handleSubmit}>
+										<div className='mb-4'>
+											<label className='form-label text-center d-block' style={getLabelStyle(isSunTheme)}>
+												OTP code
+											</label>
+											<div className='d-flex justify-content-center gap-2 mb-3'>
+												{otp.map((digit, index) => (
+													<Input
+														key={index}
+														id={`otp-${index}`}
+														type='text'
+														inputMode='numeric'
+														pattern='[0-9]*'
+														className='text-center'
+														style={getOTPInputStyle(isSunTheme)}
+														value={digit}
+														onChange={(e) =>
+															handleOtpChange(
+																index,
+																e.target.value.replace(/\D/g, '')
+															)
+														}
+														onKeyDown={(e) => handleKeyDown(index, e)}
+														maxLength={1}
+														required
+													/>
+												))}
 											</div>
+										</div>
 
 											{message && (
 												<div
@@ -182,125 +163,121 @@ export default function OTPVerification() {
 												</div>
 											)}
 
-											<div className='text-center mb-4'>
-												<button
-													type='submit'
-													className='btn btn-space w-90 mb-3 rounded-3'
-													style={{ color: 'white' }}
-													disabled={isLoading}>
-													{isLoading ? 'In progressing...' : 'Verify OTP'}
-												</button>
-											</div>
-
-											<div className='text-center mb-3'>
-												<a
-													className='fw-bold forgot-password'
-													onClick={handleResendOtp}
-													style={{ cursor: 'pointer' }}>
-													Resend OTP code
-												</a>
-											</div>
-
-											<div className='text-center'>
-												<a
-													className='fw-bold forgot-password'
-													onClick={handleBackToForgotPassword}
-													style={{ cursor: 'pointer' }}>
-													{t('common.back')} to {t('login.forgotPassword')}
-												</a>
-											</div>
-										</form>
+									<div className='text-center mb-4'>
+										<button
+											type='submit'
+											className='btn w-90 mb-3 rounded-3'
+											style={getSubmitButtonStyle(isSunTheme)}
+											disabled={isLoading}>
+											{isLoading ? 'In progressing...' : 'Verify OTP'}
+										</button>
 									</div>
-								</div>
+
+									<div className='text-center mb-3'>
+										<button
+											className='fw-bold forgot-password'
+											onClick={handleResendOtp}
+											style={{ 
+												cursor: 'pointer', 
+												background: 'none', 
+												border: 'none', 
+												padding: 0, 
+												textDecoration: 'underline',
+												color: isSunTheme ? '#3b82f6' : '#C8C8F7'
+											}}>
+											Resend OTP code
+										</button>
+									</div>
+
+									<div className='text-center'>
+										<button
+											className='fw-bold forgot-password'
+											onClick={handleBackToForgotPassword}
+											style={{ 
+												cursor: 'pointer', 
+												background: 'none', 
+												border: 'none', 
+												padding: 0, 
+												textDecoration: 'underline',
+												color: isSunTheme ? '#3b82f6' : '#C8C8F7'
+											}}>
+											{t('common.back')} to {t('login.forgotPassword')}
+										</button>
+									</div>
+								</form>
 							</div>
 						</div>
 					</div>
-
-					{/* Background elements from Login */}
-					<img className='rocket-bg' src='img/astro.png' alt='rocket' />
-					<img className='planet-1' src='img/planet-1.png' alt='plant-1' />
-					<img className='planet-2' src='img/planet-2.png' alt='plant-2' />
-					<img className='planet-3' src='img/planet-3.png' alt='plant-3' />
-					<img className='planet-4' src='img/planet-4.png' alt='plant-4' />
-					<img className='planet-5' src='img/planet-5.png' alt='plant-5' />
-					<img className='planet-6' src='img/planet-6.png' alt='plant-6' />
-					<svg
-						className='planet'
-						viewBox='0 0 120 120'
-						xmlns='http://www.w3.org/2000/svg'
-						aria-hidden='true'>
-						<defs>
-							<linearGradient id='pGrad' x1='0' x2='1' y1='0' y2='1'>
-								<stop offset='0%' stopColor='#ff7ad9' />
-								<stop offset='100%' stopColor='#ffd36e' />
-							</linearGradient>
-						</defs>
-						<circle cx='60' cy='60' r='34' fill='url(#pGrad)' />
-						<ellipse
-							cx='60'
-							cy='70'
-							rx='54'
-							ry='14'
-							fill='none'
-							stroke='#ffe8a3'
-							strokeWidth='6'
-						/>
-						<ellipse
-							cx='60'
-							cy='70'
-							rx='54'
-							ry='14'
-							fill='none'
-							stroke='#ffb3e6'
-							strokeWidth='3'
-						/>
-					</svg>
-
-					<div className='twinkle' aria-hidden='true'>
-						<span className='star star-1'></span>
-						<span className='star star-2'></span>
-						<span className='star star-3'></span>
-						<span className='star star-4'></span>
-						<span className='star star-5'></span>
-						<span className='star star-6'></span>
-						<span className='star star-7'></span>
-						<span className='star star-8'></span>
-						<span className='star star-9'></span>
-						<span className='star star-10'></span>
-						<span className='star star-11'></span>
-						<span className='star star-12'></span>
-						<span className='star star-13'></span>
-						<span className='star star-14'></span>
-						<span className='star star-15'></span>
-						<span className='star star-16'></span>
-						<span className='star star-17'></span>
-						<span className='star star-18'></span>
-					</div>
-
-					<svg
-						className='moon'
-						viewBox='0 0 100 100'
-						xmlns='http://www.w3.org/2000/svg'
-						aria-hidden='true'>
-						<defs>
-							<linearGradient id='mGrad' x1='0' x2='1' y1='0' y2='1'>
-								<stop offset='0%' stopColor='#d9e6ff' />
-								<stop offset='100%' stopColor='#ffffff' />
-							</linearGradient>
-						</defs>
-						<circle
-							cx='50'
-							cy='50'
-							r='30'
-							fill='url(#mGrad)'
-							stroke='#e5e8ff'
-						/>
-						<circle cx='62' cy='40' r='5' fill='#ccd6ff' />
-						<circle cx='42' cy='58' r='6' fill='#ccd6ff' />
-						<circle cx='56' cy='64' r='3' fill='#ccd6ff' />
-					</svg>
 				</div>
 			</div>
-		</div>
+		</ThemedLayoutFullScreen>
 	);
 }
+
+// Dynamic styles that change based on theme
+const getOTPCardStyle = (isSunTheme) => ({
+	background: isSunTheme ? '#EDF1FF' : 'rgba(109, 95, 143, 0.7)',
+	backdropFilter: isSunTheme ? 'blur(1px)' : 'blur(5px)',
+	borderRadius: 32,
+	boxShadow: isSunTheme 
+		? '0 20px 60px rgba(0, 0, 0, 0.15)' 
+		: '0 20px 60px rgba(77, 208, 255, 0.25)',
+	border: isSunTheme ? '2px solid #3B82F6' : 'none',
+	minWidth: 420,
+	maxWidth: 520,
+	margin: '0 auto',
+	padding: 0,
+});
+
+const getHeadingStyle = (isSunTheme) => ({
+	fontSize: '48px',
+	fontWeight: 700,
+	color: isSunTheme ? '#3b82f6' : '#fff',
+	textAlign: 'center',
+	marginBottom: '8px',
+	textShadow: isSunTheme ? 'none' : '0 0 10px rgba(77, 208, 255, 0.5)',
+});
+
+const getSubtitleStyle = (isSunTheme) => ({
+	fontSize: '18px',
+	fontWeight: 400,
+	color: isSunTheme ? '#6b7280' : '#C8C8F7',
+	textAlign: 'center',
+	marginBottom: '2rem',
+	lineHeight: '1.6',
+});
+
+const getLabelStyle = (isSunTheme) => ({
+	color: isSunTheme ? '#3b82f6' : '#ffffff',
+	fontWeight: 400,
+	fontSize: '18px',
+	marginBottom: '8px',
+});
+
+const getOTPInputStyle = (isSunTheme) => ({
+	width: '45px',
+	height: '45px',
+	fontSize: '1.2rem',
+	fontWeight: 'bold',
+	border: isSunTheme ? '2px solid #3B82F6' : '2px solid #e4e8ff',
+	borderRadius: '8px',
+	background: isSunTheme ? '#ffffff' : '#ffffff',
+	color: isSunTheme ? '#374151' : 'black',
+});
+
+const getSubmitButtonStyle = (isSunTheme) => ({
+	background: isSunTheme 
+		? 'linear-gradient(135deg, #FFFFFF 10%, #DFEDFF 34%, #C3DEFE 66%, #9CC8FE 100%)' 
+		: 'linear-gradient(135deg, #D9D9D9 0%, #CAC0E3 42%, #BAA5EE 66%, #AA8BF9 100%)',
+	border: 'none',
+	color: 'black',
+	fontWeight: 600,
+	fontSize: '20px',
+	padding: '12px 24px',
+	width: '90%',
+	borderRadius: '12px',
+	boxShadow: isSunTheme 
+		? '0 8px 25px rgba(139, 176, 249, 0.3)' 
+		: '0 8px 25px rgba(170, 139, 249, 0.3)',
+	transition: 'all 0.3s ease',
+});

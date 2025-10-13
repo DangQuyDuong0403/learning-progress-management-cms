@@ -8,7 +8,7 @@ import {
   ArrowRightOutlined 
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
-import Layout from '../../../component/Layout';
+import ThemedLayout from '../../../component/ThemedLayout';
 import ROUTER_PAGE from '../../../constants/router';
 
 const AdminDashboard = () => {
@@ -70,7 +70,7 @@ const AdminDashboard = () => {
   ];
 
   return (
-    <Layout>
+    <ThemedLayout>
       <div className="admin-dashboard">
         {/* Welcome Header */}
         <Card className="welcome-card" style={{ marginBottom: 24 }}>
@@ -157,7 +157,7 @@ const AdminDashboard = () => {
           </div>
         </Card>
       </div>
-    </Layout>
+    </ThemedLayout>
   );
 };
 

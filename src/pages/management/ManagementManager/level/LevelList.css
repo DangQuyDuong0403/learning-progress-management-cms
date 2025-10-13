@@ -1,0 +1,358 @@
+/* Level List Styles - Space Theme */
+
+/* ===== MAIN CONTENT PANEL ===== */
+.main-content-panel {
+	background: rgba(45, 27, 105, 0.75);
+	backdrop-filter: none;
+	border-radius: 16px;
+	padding: 24px;
+	margin: 24px;
+	box-shadow: 0 8px 32px rgba(77, 208, 255, 0.15);
+	border: 1px solid rgba(77, 208, 255, 0.3);
+	position: relative;
+	z-index: 2;
+}
+
+.space-theme .main-content-panel {
+	position: relative;
+	background: rgba(110, 92, 172, 0.4) !important; /* Rất trong suốt để nhìn xuyên qua */
+	backdrop-filter: blur(1px); /* Blur nhẹ để tạo hiệu ứng glass */
+	border-radius: 16px;
+	padding: 24px;
+	margin: 24px;
+	/* Không dùng opacity để tránh làm mờ nội dung bên trong */
+
+	/* Hiệu ứng viền + bóng */
+	border: 1px solid rgba(77, 208, 255, 0.3);
+	box-shadow: 0 8px 32px rgba(77, 208, 255, 0.15);
+
+	z-index: 2;
+}
+
+/* Sun theme main content panel */
+.sun-theme .main-content-panel {
+	position: relative;
+	background: rgba(255, 255, 255, 0.4) !important; /* Rất trong suốt để nhìn xuyên qua */
+	backdrop-filter: blur(1px); /* Blur nhẹ để tạo hiệu ứng glass */
+	border-radius: 16px;
+	padding: 24px;
+	margin: 24px;
+	/* Không dùng opacity để tránh làm mờ nội dung bên trong */
+
+	/* Hiệu ứng viền + bóng */
+	border: 1px solid rgba(0, 0, 0, 0.1);
+	box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+
+	z-index: 2;
+}
+
+/* ===== PANEL HEADER ===== */
+.panel-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	margin-bottom: 24px;
+	gap: 16px;
+}
+
+.search-section {
+	display: flex;
+	align-items: center;
+	flex: 3;
+	gap: 12px;
+}
+
+
+.action-buttons {
+	display: flex;
+	gap: 12px;
+}
+
+/* ===== BUTTON STYLES ===== */
+.export-button {
+	height: 40px;
+	border-radius: 8px;
+	font-weight: 500;
+	border: 1px solid rgba(77, 208, 255, 0.3);
+	background: rgba(45, 27, 105, 0.8);
+	color: #fff;
+	backdrop-filter: blur(10px);
+	transition: all 0.3s ease;
+}
+
+.import-button {
+	height: 40px;
+	border-radius: 8px;
+	font-weight: 500;
+	border: 1px solid rgba(102, 174, 255, 0.3);
+	background: linear-gradient(135deg, #66AEFF, #3C99FF);
+	color: #fff;
+	backdrop-filter: blur(10px);
+	transition: all 0.3s ease;
+}
+
+.space-theme .refresh-button {
+	height: 40px;
+	border-radius: 8px;
+	font-weight: 500;
+	border: 1px solid rgba(77, 208, 255, 0.3);
+	background: linear-gradient(135deg, #FFFFFF 0%, #9F96B6 46%, #A79EBB 64%, #ACA5C0 75%, #6D5F8F 100%);
+	color: #000;
+	backdrop-filter: blur(10px);
+	transition: all 0.3s ease;
+}
+
+.sun-theme .refresh-button {
+	height: 40px;
+	border-radius: 8px;
+	font-weight: 500;
+	background: linear-gradient(135deg, #FFFFFF, #B6D8FE 77%, #94C2F5);
+	color: #000;
+	backdrop-filter: blur(10px);
+	transition: all 0.3s ease;
+}
+
+.create-button {
+	height: 40px;
+	border-radius: 8px;
+	font-weight: 500;
+	border: 1px solid rgba(102, 174, 255, 0.3);
+	background: linear-gradient(135deg, #66AEFF, #3C99FF);
+	color: #fff;
+	backdrop-filter: blur(10px);
+	transition: all 0.3s ease;
+}
+
+.export-button:hover {
+	background: rgba(77, 208, 255, 0.2);
+	border-color: rgba(77, 208, 255, 0.6);
+	transform: translateY(-2px);
+	box-shadow: 0 4px 12px rgba(77, 208, 255, 0.3);
+}
+
+.import-button:hover {
+	background: linear-gradient(135deg, #66AEFF, #3C99FF);
+	border-color: rgba(102, 174, 255, 0.6);
+	transform: translateY(-2px);
+	box-shadow: 0 4px 12px rgba(102, 174, 255, 0.4);
+	filter: brightness(1.1);
+}
+
+
+
+
+.create-button:hover {
+	background: linear-gradient(135deg, #66AEFF, #3C99FF);
+	border-color: rgba(102, 174, 255, 0.6);
+	transform: translateY(-2px);
+	box-shadow: 0 4px 12px rgba(102, 174, 255, 0.4);
+	filter: brightness(1.1);
+}
+
+/* ===== TABLE SECTION ===== */
+.table-section {
+	background: rgba(26, 26, 46, 0.7);
+	border-radius: 12px;
+	overflow: hidden;
+	backdrop-filter: blur(10px);
+}
+
+.space-theme .table-section {
+	background: rgba(26, 26, 46, 0.7);
+}
+
+/* Sun theme table section */
+.sun-theme .table-section {
+	position: relative;
+	background: rgba(255, 255, 255, 0.7); /* Rất trong suốt để nhìn xuyên qua */
+	backdrop-filter: blur(1px); /* Blur nhẹ để tạo hiệu ứng glass */
+	border-radius: 12px;
+	overflow: hidden;
+	border: 1px solid rgba(0, 0, 0, 0.1);
+	z-index: 2;
+}
+
+/* ===== TABLE STYLES ===== */
+.level-table {
+	background: transparent;
+}
+
+.space-theme .level-table .ant-table {
+	background: transparent;
+	color: #fff;
+}
+
+
+
+/* ===== TAG STYLES ===== */
+.ant-tag {
+	border-radius: 4px;
+	font-size: 12px;
+	font-weight: 500;
+	padding: 2px 8px;
+	border: none;
+}
+
+/* Status tags */
+.ant-tag-green {
+	background-color: #f6ffed;
+	border-color: #b7eb8f;
+	color: #52c41a;
+}
+
+.ant-tag-red {
+	background-color: #fff2f0;
+	border-color: #ffccc7;
+	color: #ff4d4f;
+}
+
+.ant-tag-orange {
+	background-color: #fff7e6;
+	border-color: #ffd591;
+	color: #fa8c16;
+}
+
+.ant-tag-blue {
+	background-color: #e6f7ff;
+	border-color: #91d5ff;
+	color: #1890ff;
+}
+
+/* ===== MODAL STYLES ===== */
+.ant-modal-content {
+	border-radius: 8px;
+}
+
+.ant-modal-header {
+	border-radius: 8px 8px 0 0;
+	border-bottom: 1px solid #f0f0f0;
+	padding: 16px 24px;
+}
+
+.ant-modal-title {
+	font-size: 16px;
+	font-weight: 600;
+	color: #262626;
+}
+
+.ant-modal-body {
+	padding: 24px;
+}
+
+.ant-modal-footer {
+	border-top: 1px solid #f0f0f0;
+	padding: 12px 24px;
+}
+
+/* ===== FORM STYLES ===== */
+.ant-form-item-label > label {
+	font-weight: 500;
+	color: #262626;
+}
+
+.ant-form-vertical .ant-form-item-label {
+	padding-bottom: 4px;
+}
+
+.ant-form-item {
+	margin-bottom: 16px;
+}
+
+.ant-input,
+.ant-select-selector,
+.ant-input-number {
+	border-radius: 6px;
+}
+
+.ant-input:focus,
+.ant-select-focused .ant-select-selector,
+.ant-input-number:focus {
+	border-color: #40a9ff;
+	box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2);
+}
+
+/* ===== RESPONSIVE DESIGN ===== */
+@media (max-width: 768px) {
+	.panel-header {
+		flex-direction: column;
+		align-items: stretch;
+		gap: 16px;
+	}
+
+	.search-section {
+		max-width: none;
+		flex-direction: column;
+		gap: 12px;
+	}
+
+	.action-buttons {
+		justify-content: center;
+		flex-wrap: wrap;
+	}
+
+
+	.ant-btn {
+		padding: 4px 8px;
+		font-size: 12px;
+	}
+}
+
+/* ===== LOADING & EMPTY STATES ===== */
+.ant-spin-nested-loading {
+	min-height: 200px;
+}
+
+.ant-empty {
+	padding: 40px 0;
+}
+
+/* ===== ACTION BUTTON ICONS ===== */
+.level-table .ant-btn .anticon {
+	color: #000;
+}
+.space-theme .level-table .ant-btn .anticon {
+	color: #000000 !important;
+}
+
+.space-theme .refresh-button .anticon {
+	color: #000 !important;
+}
+
+.refresh-button:hover .anticon {
+	color: #ffffff !important;
+}
+
+.space-theme .refresh-button:hover .anticon {
+	color: #ffffff !important;
+}
+
+.space-theme .create-button .anticon {
+	color: #000000 !important;
+}
+
+.space-theme .create-button svg {
+	color: #000000 ;
+	fill: #000000 ;
+}
+
+.space-theme .anticon svg {
+	color: #000000 ;
+	fill: #000000 ;
+}
+
+
+.level-table .ant-btn:hover .anticon {
+	color: #000;
+}
+
+/* Space theme specific button opacity */
+.space-theme .export-button,
+.space-theme .import-button {
+	background: rgba(109, 95, 143, 0.2);
+	border: 1px solid rgba(109, 95, 143, 0.3);
+	color: #fff;
+}
+
+
+
+
