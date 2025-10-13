@@ -1,4 +1,5 @@
 import axiosClient from '../index.js';
+import axios from 'axios';
 
 const authApi = {
 	// Đăng nhập - sử dụng endpoint chung với 3 trường: username, password, loginRole
@@ -25,8 +26,9 @@ const authApi = {
 	// Làm mới Access Token
 	refreshToken: (refreshToken) => axiosClient.post(`/auth/refresh-token?refreshToken=${refreshToken}`),
 
-	// Đăng xuất
-	logout: (refreshToken) => axiosClient.post(`/auth/logout?refreshToken=${refreshToken}`),
+	
+		// Đăng xuất
+		logout: (refreshToken) => axiosClient.post(`/auth/logout?refreshToken=${refreshToken}`),
 
 	// Lấy thông tin user hiện tại
 	getUserProfile: () => axiosClient.get('/user/profile'),
@@ -38,6 +40,47 @@ const authApi = {
 			'accept': '*/*',
 		}
 	}),
+
+	// Lấy danh sách students với phân trang, search, filter và sort
+	getStudents: (params) => {
+		const queryParams = new URLSearchParams();
+		
+		// Thêm các tham số nếu có
+		if (params.page !== undefined) queryParams.append('page', params.page);
+		if (params.size !== undefined) queryParams.append('size', params.size);
+		if (params.text) queryParams.append('text', params.text);
+		if (params.status && params.status.length > 0) {
+			params.status.forEach(status => queryParams.append('status', status));
+		}
+		if (params.roleName && params.roleName.length > 0) {
+			params.roleName.forEach(role => queryParams.append('roleName', role));
+		}
+		if (params.sortBy) queryParams.append('sortBy', params.sortBy);
+		if (params.sortDir) queryParams.append('sortDir', params.sortDir);
+
+		const url = `/user/students${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
+		console.log('GetStudents API - URL:', url);
+		console.log('GetStudents API - Params:', params);
+		
+		return axiosClient.get(url, {
+			headers: {
+				'accept': '*/*',
+			}
+		});
+	},
+
+	// Cập nhật trạng thái student (ACTIVE/INACTIVE)
+	updateStudentStatus: (userId, status) => {
+		const url = `/user/students/${userId}/status?status=${status}`;
+		console.log('UpdateStudentStatus API - URL:', url);
+		console.log('UpdateStudentStatus API - Params:', { userId, status });
+		
+		return axiosClient.patch(url, {}, {
+			headers: {
+				'accept': '*/*',
+			}
+		});
+	},
 };
 
 export default authApi;

@@ -240,7 +240,8 @@ export const fetchChaptersBySyllabus = createAsyncThunk(
 	async (syllabusId, { rejectWithValue }) => {
 		try {
 			await delay(800);
-			const syllabus = mockSyllabuses.find(s => s.id === syllabusId);
+			const id = parseInt(syllabusId);
+			const syllabus = mockSyllabuses.find(s => s.id === id);
 			return syllabus ? syllabus.chapters || [] : [];
 		} catch (error) {
 			return rejectWithValue(error.message);

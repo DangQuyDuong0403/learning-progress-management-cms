@@ -1050,6 +1050,8 @@
     "confirmDelete": "Confirm Delete",
     "confirmDeleteMessage": "Are you sure you want to delete this chapter?",
     "paginationText": "of",
+    "syllabusNotFound": "Syllabus not found",
+    "backToSyllabuses": "Back to Syllabuses",
     "searchPlaceholder": "Search chapters...",
     "addNewChapter": "Add New Chapter",
     "chapterNumberPlaceholder": "Enter chapter number",
