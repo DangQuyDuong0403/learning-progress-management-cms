@@ -68,13 +68,13 @@ const AccountList = () => {
 	// Pagination state
 	const [pagination, setPagination] = useState({
 		current: 1,
-		pageSize: 10,
+		pageSize: 1,
 		total: 0,
 		showSizeChanger: true,
 		showTotal: (total, range) => `${range[0]}-${range[1]} of ${total}`,
 	});
 
-	const fetchAccounts = useCallback(async (page = 1, size = 10, search = '', roleFilter = 'all', statusFilter = 'all', sortField = 'createdAt', sortDirection = 'asc') => {
+	const fetchAccounts = useCallback(async (page = 1, size = 10, search = '', roleFilter = 'all', statusFilter = 'active', sortField = 'createdAt', sortDirection = 'asc') => {
 		setLoading(true);
 		try {
 			const params = {
@@ -366,7 +366,7 @@ const AccountList = () => {
 			const values = await form.validateFields();
 
 			if (editingAccount) {
-				// Update existing account
+				// Update existing account - giữ logic cũ cho edit
 				setAccounts(
 					accounts.map((account) =>
 						account.id === editingAccount.id
@@ -376,20 +376,27 @@ const AccountList = () => {
 				);
 				message.success(t('accountManagement.updateAccountSuccess'));
 			} else {
-				// Add new account
-				const newAccount = {
-					id: Date.now(),
-					...values,
-					createdAt: new Date().toISOString().split('T')[0],
-					lastLogin: null,
+				// Create new account - gửi API với body JSON đúng format
+				const accountData = {
+					firstName: values.firstName,
+					lastName: values.lastName,
+					email: values.email,
+					roleName: values.roleName || 'MANAGER', // Fix cứng Manager
 				};
-				setAccounts([newAccount, ...accounts]);
+				
+				console.log('Creating account with data:', accountData);
+				
+				// Gọi API create account
+				const response = await accountManagementApi.createAccount(accountData);
+				console.log('Create account response:', response);
+				
 				message.success(t('accountManagement.addAccountSuccess'));
 			}
 
 			setIsModalVisible(false);
 			form.resetFields();
 		} catch (error) {
+			console.error('Error creating account:', error);
 			message.error(t('accountManagement.checkInfoError'));
 		}
 	};
@@ -633,35 +640,54 @@ const AccountList = () => {
 					form={form}
 					layout='vertical'
 					initialValues={{
-						status: 'ACTIVE',
-						role: 'STUDENT',
+						roleName: 'MANAGER',
 					}}>
 					<Row gutter={16}>
 						<Col span={12}>
 							<Form.Item
 								label={
 									<span>
-										{t('accountManagement.username')}
+										{t('accountManagement.firstName')}
 										<span style={{ color: 'red', marginLeft: '4px' }}>*</span>
 									</span>
 								}
-								name='username'
+								name='firstName'
 								rules={[
 									{
 										required: true,
-										message: t('accountManagement.usernameRequired'),
-									},
-									{
-										min: 3,
-										message: t('accountManagement.usernameMinLength'),
+										message: t('accountManagement.firstNameRequired'),
 									},
 								]}
 								required={false}>
 								<Input
-									placeholder={t('accountManagement.usernamePlaceholder')}
+									placeholder={t('accountManagement.firstNamePlaceholder')}
 								/>
 							</Form.Item>
 						</Col>
+						<Col span={12}>
+							<Form.Item
+								label={
+									<span>
+										{t('accountManagement.lastName')}
+										<span style={{ color: 'red', marginLeft: '4px' }}>*</span>
+									</span>
+								}
+								name='lastName'
+								rules={[
+									{
+										required: true,
+										message: t('accountManagement.lastNameRequired'),
+									},
+								]}
+								required={false}>
+								<Input
+									placeholder={t('accountManagement.lastNamePlaceholder')}
+								/>
+							</Form.Item>
+						</Col>
+					</Row>
+
+					<Row gutter={16}>
 						<Col span={12}>
 							<Form.Item
 								label={
@@ -685,56 +711,6 @@ const AccountList = () => {
 								<Input placeholder={t('accountManagement.emailPlaceholder')} />
 							</Form.Item>
 						</Col>
-					</Row>
-
-					<Row gutter={16}>
-						<Col span={12}>
-							<Form.Item
-								label={
-									<span>
-										{t('accountManagement.fullName')}
-										<span style={{ color: 'red', marginLeft: '4px' }}>*</span>
-									</span>
-								}
-								name='fullName'
-								rules={[
-									{
-										required: true,
-										message: t('accountManagement.fullNameRequired'),
-									},
-								]}
-								required={false}>
-								<Input
-									placeholder={t('accountManagement.fullNamePlaceholder')}
-								/>
-							</Form.Item>
-						</Col>
-						<Col span={12}>
-							<Form.Item
-								label={
-									<span>
-										{t('accountManagement.phone')}
-										<span style={{ color: 'red', marginLeft: '4px' }}>*</span>
-									</span>
-								}
-								name='phone'
-								rules={[
-									{
-										required: true,
-										message: t('accountManagement.phoneRequired'),
-									},
-									{
-										pattern: /^[0-9]{10,11}$/,
-										message: t('accountManagement.phoneInvalid'),
-									},
-								]}
-								required={false}>
-								<Input placeholder={t('accountManagement.phonePlaceholder')} />
-							</Form.Item>
-						</Col>
-					</Row>
-
-					<Row gutter={16}>
 						<Col span={12}>
 							<Form.Item
 								label={
@@ -743,85 +719,20 @@ const AccountList = () => {
 										<span style={{ color: 'red', marginLeft: '4px' }}>*</span>
 									</span>
 								}
-								name='role'
-								rules={[
-									{
-										required: true,
-										message: t('accountManagement.roleRequired'),
-									},
-								]}
+								name='roleName'
 								required={false}>
-								<Select placeholder={t('accountManagement.selectRole')}>
-									<Option value='ADMIN'>{t('accountManagement.admin')}</Option>
-									<Option value='TEACHER'>
-										{t('accountManagement.teacher')}
-									</Option>
-									<Option value='STUDENT'>
-										{t('accountManagement.student')}
-									</Option>
+								<Select 
+									value='MANAGER'
+									disabled
+									style={{ color: '#666' }}
+								>
 									<Option value='MANAGER'>
 										{t('accountManagement.manager')}
 									</Option>
 								</Select>
 							</Form.Item>
 						</Col>
-						<Col span={12}>
-							<Form.Item
-								label={
-									<span>
-										{t('accountManagement.status')}
-										<span style={{ color: 'red', marginLeft: '4px' }}>*</span>
-									</span>
-								}
-								name='status'
-								rules={[
-									{
-										required: true,
-										message: t('accountManagement.statusRequired'),
-									},
-								]}
-								required={false}>
-								<Select placeholder={t('accountManagement.selectStatus')}>
-									<Option value='ACTIVE'>
-										{t('accountManagement.active')}
-									</Option>
-									<Option value='INACTIVE'>
-										{t('accountManagement.inactive')}
-									</Option>
-								</Select>
-							</Form.Item>
-						</Col>
 					</Row>
-
-					{!editingAccount && (
-						<Form.Item
-							label={
-								<span>
-									{t('accountManagement.password')}
-									<span style={{ color: 'red', marginLeft: '4px' }}>*</span>
-								</span>
-							}
-							name='password'
-							rules={[
-								{
-									required: true,
-									message: t('accountManagement.passwordRequired'),
-								},
-								{ min: 6, message: t('accountManagement.passwordMinLength') },
-							]}
-							required={false}>
-							<Input.Password
-								placeholder={t('accountManagement.passwordPlaceholder')}
-							/>
-						</Form.Item>
-					)}
-
-					<Form.Item label={t('accountManagement.note')} name='note'>
-						<TextArea
-							rows={3}
-							placeholder={t('accountManagement.notePlaceholder')}
-						/>
-					</Form.Item>
 				</Form>
 			</Modal>
 
