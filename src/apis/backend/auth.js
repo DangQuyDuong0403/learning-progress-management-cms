@@ -12,10 +12,31 @@ const authApi = {
 
 	// Quên mật khẩu
 	forgotPassword: (data) => {
-		const url = `/auth/reset-password?userName=${data.username}`;
-		console.log('ForgotPassword API - URL:', url);
-		console.log('ForgotPassword API - Data:', data);
-		return axiosClient.post(url, {}, {
+		const requestBody = {
+			userName: data.username,
+			domain: "http://localhost:3000",
+			path: "/reset-password"
+		};
+		console.log('ForgotPassword API - Request Body:', requestBody);
+		return axiosClient.post('/auth/reset-password', requestBody, {
+			headers: {
+				'Content-Type': 'application/json',
+				'accept': '*/*',
+			}
+		});
+	},
+
+	// Xác nhận reset mật khẩu
+	confirmResetPassword: (data) => {
+		const requestBody = {
+			token: data.token,
+			newPassword: data.newPassword
+		};
+		
+		// Sử dụng axios trực tiếp để tránh interceptor tự động thêm Authorization header
+		const baseURL = process.env.REACT_APP_API_URL;
+		
+		return axios.post(`${baseURL}/auth/confirm-reset-password`, requestBody, {
 			headers: {
 				'Content-Type': 'application/json',
 				'accept': '*/*',
@@ -34,53 +55,17 @@ const authApi = {
 	getUserProfile: () => axiosClient.get('/user/profile'),
 
 	// Đổi mật khẩu
-	changePassword: (data) => axiosClient.post('/auth/change-password', data, {
-		headers: {
-			'Content-Type': 'application/json',
-			'accept': '*/*',
-		}
-	}),
-
-	// Lấy danh sách students với phân trang, search, filter và sort
-	getStudents: (params) => {
-		const queryParams = new URLSearchParams();
+	changePassword: (data) => {
+		console.log('ChangePassword API - Request Body:', data);
 		
-		// Thêm các tham số nếu có
-		if (params.page !== undefined) queryParams.append('page', params.page);
-		if (params.size !== undefined) queryParams.append('size', params.size);
-		if (params.text) queryParams.append('text', params.text);
-		if (params.status && params.status.length > 0) {
-			params.status.forEach(status => queryParams.append('status', status));
-		}
-		if (params.roleName && params.roleName.length > 0) {
-			params.roleName.forEach(role => queryParams.append('roleName', role));
-		}
-		if (params.sortBy) queryParams.append('sortBy', params.sortBy);
-		if (params.sortDir) queryParams.append('sortDir', params.sortDir);
-
-		const url = `/user/students${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
-		console.log('GetStudents API - URL:', url);
-		console.log('GetStudents API - Params:', params);
-		
-		return axiosClient.get(url, {
+		return axiosClient.post('/auth/change-password', data, {
 			headers: {
+				'Content-Type': 'application/json',
 				'accept': '*/*',
 			}
 		});
 	},
 
-	// Cập nhật trạng thái student (ACTIVE/INACTIVE)
-	updateStudentStatus: (userId, status) => {
-		const url = `/user/students/${userId}/status?status=${status}`;
-		console.log('UpdateStudentStatus API - URL:', url);
-		console.log('UpdateStudentStatus API - Params:', { userId, status });
-		
-		return axiosClient.patch(url, {}, {
-			headers: {
-				'accept': '*/*',
-			}
-		});
-	},
 };
 
 export default authApi;

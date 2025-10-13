@@ -597,20 +597,7 @@
   }
 }
 
-/* Button glow effect */
-.ant-btn-primary::before {
-  content: '';
-  position: absolute;
-  top: -2px;
-  left: -2px;
-  right: -2px;
-  bottom: -2px;
-  background: linear-gradient(45deg, #00d4ff, #9c88ff);
-  border-radius: 14px;
-  opacity: 0;
-  z-index: -1;
-  transition: opacity 0.3s ease;
-}
+
 
 .ant-btn-primary:hover::before {
   opacity: 0.5;

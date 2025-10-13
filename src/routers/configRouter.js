@@ -10,7 +10,7 @@ import ResetPassword from '../pages/login/ResetPassword.jsx';
 import LoginTeacher from '../pages/login/LoginTeacher.jsx';
 import Profile from '../pages/profile/Profile.jsx';
 import ProfileStudent from '../pages/profile/ProfileStudent.jsx';
-import ChangePassword from '../pages/profile/ChangePassword.jsx';
+import ChangePassword from '../pages/login/ChangePassword.jsx';
 import Settings from '../pages/settings/Settings.jsx';
 import AccountList from '../pages/management/managementAdmin/account/AccountList.jsx';
 // import RoleList from '../pages/management/managementAdmin/role/RoleList.jsx';

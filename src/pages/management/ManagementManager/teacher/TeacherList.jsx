@@ -1,13 +1,15 @@
-import React, { useState, useEffect } from 'react';
-import { Table, Button, Space, Modal, Input, Select, Tag, Tooltip } from 'antd';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { Table, Button, Space, Modal, Input, Tag, Tooltip, Typography } from 'antd';
 import {
 	PlusOutlined,
-	DeleteOutlined,
 	SearchOutlined,
 	ReloadOutlined,
 	EyeOutlined,
 	DownloadOutlined,
 	UploadOutlined,
+	CheckOutlined,
+	StopOutlined,
+	FilterOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -18,84 +20,161 @@ import ThemedLayout from '../../../../component/ThemedLayout';
 import LoadingWithEffect from '../../../../component/spinner/LoadingWithEffect';
 import { useTheme } from '../../../../contexts/ThemeContext';
 import { spaceToast } from '../../../../component/SpaceToastify';
+import { teacherManagementApi } from '../../../../apis/apis';
 
-const { Option } = Select;
 
 const TeacherList = () => {
 	const { t } = useTranslation();
 	const { theme } = useTheme();
 	const navigate = useNavigate();
 
-	// Mock data for teachers - replace with actual API calls
-	const [teachers, setTeachers] = useState([
-		{
-			id: 1,
-			name: 'Nguyễn Văn An',
-			email: 'nguyen.van.an@example.com',
-			phone: '0123456789',
-			role: 'teacher',
-			specialization: 'Mathematics',
-			experience: '5 years',
-			status: 'active',
-			avatar: null,
-			createdAt: '2024-01-15',
-			classesCount: 3,
-		},
-		{
-			id: 2,
-			name: 'Trần Thị Bình',
-			email: 'tran.thi.binh@example.com',
-			phone: '0987654321',
-			role: 'teacher_assistant',
-			specialization: 'English',
-			experience: '2 years',
-			status: 'active',
-			avatar: null,
-			createdAt: '2024-02-20',
-			classesCount: 2,
-		},
-		{
-			id: 3,
-			name: 'Lê Văn Cường',
-			email: 'le.van.cuong@example.com',
-			phone: '0111222333',
-			role: 'teacher',
-			specialization: 'Physics',
-			experience: '8 years',
-			status: 'inactive',
-			avatar: null,
-			createdAt: '2024-03-10',
-			classesCount: 0,
-		},
-	]);
-
-	const [loading, setLoading] = useState(false);
+	// State for teachers data
+	const [teachers, setTeachers] = useState([]);
+	const [loading, setLoading] = useState(true);
+	
+	// Pagination state
+	const [pagination, setPagination] = useState({
+		current: 1,
+		pageSize: 10,
+		total: 0,
+		showSizeChanger: true,
+		showTotal: (total, range) => `${range[0]}-${range[1]} of ${total}`,
+	});
+	
+	// Search and filter state
+	const [searchText, setSearchText] = useState("");
+	const [statusFilter, setStatusFilter] = useState([]);
+	const [roleNameFilter, setRoleNameFilter] = useState([]);
+	const [searchTimeout, setSearchTimeout] = useState(null);
+	
+	// Sort state - start with createdAt DESC (newest first)
+	const [sortBy, setSortBy] = useState("createdAt");
+	const [sortDir, setSortDir] = useState("desc");
+	
+	// Modal states
 	const [isModalVisible, setIsModalVisible] = useState(false);
 	const [isAssignModalVisible, setIsAssignModalVisible] = useState(false);
-	const [isDeleteModalVisible, setIsDeleteModalVisible] = useState(false);
+	const [confirmModal, setConfirmModal] = useState({
+		visible: false,
+		title: '',
+		content: '',
+		onConfirm: null
+	});
 	const [editingTeacher, setEditingTeacher] = useState(null);
 	const [assigningTeacher, setAssigningTeacher] = useState(null);
-	const [deleteTeacher, setDeleteTeacher] = useState(null);
-	const [searchText, setSearchText] = useState('');
-	const [statusFilter, setStatusFilter] = useState('all');
-	const [roleFilter, setRoleFilter] = useState('all');
+	
+	// Filter dropdown state
+	const [filterDropdown, setFilterDropdown] = useState({
+		visible: false,
+		selectedRoles: [],
+		selectedStatuses: [],
+	});
+	
+	// Refs for click outside detection
+	const filterContainerRef = useRef(null);
 
-	// Mock API calls - replace with actual API calls
-	const fetchTeachers = async () => {
+	// Fetch teachers from API
+	const fetchTeachers = useCallback(async (page = 1, size = 10, search = '', statusFilter = [], roleNameFilter = [], sortField = 'createdAt', sortDirection = 'desc') => {
 		setLoading(true);
-		// Simulate API call
-		setTimeout(() => {
-			setLoading(false);
-		}, 1000);
-	};
+		try {
+			const params = {
+				page: page - 1, // API uses 0-based indexing
+				size: size,
+			};
 
-	const deleteTeacherAction = async (teacherId) => {
-		setTeachers(teachers.filter((teacher) => teacher.id !== teacherId));
-	};
+			// Add sort parameters
+			if (sortField && sortDirection) {
+				params.sortBy = sortField;
+				params.sortDir = sortDirection;
+			}
+
+			// Thêm search text nếu có
+			if (search && search.trim()) {
+				params.text = search.trim();
+			}
+
+			// Thêm status filter nếu có
+			if (statusFilter.length > 0) {
+				params.status = statusFilter;
+			}
+
+			// Thêm roleName filter nếu có
+			if (roleNameFilter.length > 0) {
+				params.roleName = roleNameFilter;
+			}
+
+			console.log('Fetching teachers with params:', params);
+			const response = await teacherManagementApi.getTeachers(params);
+			
+			if (response.success && response.data) {
+				setTeachers(response.data);
+				setPagination(prev => ({
+					...prev,
+					current: page,
+					pageSize: size,
+					total: response.totalElements || response.data.length,
+				}));
+			} else {
+				setTeachers([]);
+				setPagination(prev => ({
+					...prev,
+					current: page,
+					pageSize: size,
+					total: 0,
+				}));
+			}
+		} catch (error) {
+			console.error('Error fetching teachers:', error);
+			spaceToast.error(t('teacherManagement.loadTeachersError'));
+			setTeachers([]);
+			setPagination(prev => ({
+				...prev,
+				current: page,
+				pageSize: size,
+				total: 0,
+			}));
+		} finally {
+			setLoading(false);
+		}
+	}, [t]);
 
 	useEffect(() => {
-		fetchTeachers();
-	}, []);
+		fetchTeachers(1, pagination.pageSize, searchText, statusFilter, roleNameFilter, sortBy, sortDir);
+	}, [fetchTeachers, searchText, statusFilter, roleNameFilter, sortBy, sortDir, pagination.pageSize]);
+
+	// Cleanup timeout on unmount
+	useEffect(() => {
+		return () => {
+			if (searchTimeout) {
+				clearTimeout(searchTimeout);
+			}
+		};
+	}, [searchTimeout]);
+
+	// Handle click outside to close filter dropdown
+	useEffect(() => {
+		const handleClickOutside = (event) => {
+			if (filterDropdown.visible && filterContainerRef.current) {
+				// Check if click is outside the filter container
+				if (!filterContainerRef.current.contains(event.target)) {
+					setFilterDropdown(prev => ({
+						...prev,
+						visible: false,
+					}));
+				}
+			}
+		};
+
+		// Add event listener when dropdown is visible
+		if (filterDropdown.visible) {
+			document.addEventListener('mousedown', handleClickOutside);
+		}
+
+		// Cleanup event listener
+		return () => {
+			document.removeEventListener('mousedown', handleClickOutside);
+		};
+	}, [filterDropdown.visible]);
 
 	const handleAdd = () => {
 		setEditingTeacher(null);
@@ -112,26 +191,48 @@ const TeacherList = () => {
 		setIsAssignModalVisible(true);
 	};
 
-	const handleDeleteClick = (teacher) => {
-		setDeleteTeacher(teacher);
-		setIsDeleteModalVisible(true);
+	// Handle toggle teacher status (ACTIVE/INACTIVE)
+	const handleToggleStatus = (teacherId) => {
+		const teacher = teachers.find(t => t.id === teacherId);
+		if (!teacher) return;
+
+		const newStatus = teacher.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
+		const actionText = newStatus === 'ACTIVE' ? t('teacherManagement.activate') : t('teacherManagement.deactivate');
+		const teacherName = `${teacher.firstName || ''} ${teacher.lastName || ''}`.trim() || teacher.userName;
+		
+		setConfirmModal({
+			visible: true,
+			title: t('teacherManagement.changeStatus'),
+			content: `${t('teacherManagement.confirmStatusChange')} ${actionText} ${t('teacherManagement.teacher')} "${teacherName}"?`,
+			onConfirm: async () => {
+				try {
+					// Call API to update teacher status
+					const response = await teacherManagementApi.updateTeacherStatus(teacherId, newStatus);
+					
+					if (response.success) {
+						spaceToast.success(newStatus === 'ACTIVE' 
+							? t('teacherManagement.activateTeacherSuccess') 
+							: t('teacherManagement.deactivateTeacherSuccess'));
+						
+						// Close modal
+						setConfirmModal({ visible: false, title: '', content: '', onConfirm: null });
+						
+						// Refresh the list
+						fetchTeachers(pagination.current, pagination.pageSize, searchText, statusFilter, roleNameFilter, sortBy, sortDir);
+					} else {
+						throw new Error(response.message || 'Failed to update teacher status');
+					}
+				} catch (error) {
+					console.error('Error updating teacher status:', error);
+					setConfirmModal({ visible: false, title: '', content: '', onConfirm: null });
+					spaceToast.error(error.response?.data?.message || error.message || t('teacherManagement.updateStatusError'));
+				}
+			}
+		});
 	};
 
-	const handleDelete = async () => {
-		try {
-			await deleteTeacherAction(deleteTeacher.id);
-			spaceToast.success(t('teacherManagement.deleteTeacherSuccess'));
-			setIsDeleteModalVisible(false);
-			setDeleteTeacher(null);
-			fetchTeachers();
-		} catch (error) {
-			spaceToast.error(t('teacherManagement.deleteTeacherError'));
-		}
-	};
-
-	const handleDeleteModalClose = () => {
-		setIsDeleteModalVisible(false);
-		setDeleteTeacher(null);
+	const handleConfirmCancel = () => {
+		setConfirmModal({ visible: false, title: '', content: '', onConfirm: null });
 	};
 
 	const handleModalClose = () => {
@@ -144,8 +245,63 @@ const TeacherList = () => {
 		setAssigningTeacher(null);
 	};
 
+	// Handle search input change
+	const handleSearch = (value) => {
+		setSearchText(value);
+		
+		// Clear existing timeout
+		if (searchTimeout) {
+			clearTimeout(searchTimeout);
+		}
+		
+		// Set new timeout for debounced search
+		const newTimeout = setTimeout(() => {
+			fetchTeachers(1, pagination.pageSize, value, statusFilter, roleNameFilter, sortBy, sortDir);
+		}, 500);
+		
+		setSearchTimeout(newTimeout);
+	};
+
+	// Handle table change (pagination, sorting, filtering)
+	const handleTableChange = (pagination, filters, sorter) => {
+		console.log('Table change:', { pagination, filters, sorter });
+		
+		// Handle sorting
+		if (sorter && sorter.field) {
+			let newSortBy = sorter.field;
+			let newSortDir = 'asc'; // Default to asc for first click
+			
+			// Determine sort direction
+			if (sorter.order === 'ascend') {
+				newSortDir = 'asc';
+			} else if (sorter.order === 'descend') {
+				newSortDir = 'desc';
+			} else if (sorter.order === undefined) {
+				// First click on column - start with asc
+				newSortDir = 'asc';
+			}
+			
+			// Map column field to API field
+			if (sorter.field === 'firstName') {
+				newSortBy = 'firstName'; // Sort by firstName for Full Name column
+			} else if (sorter.field === 'status') {
+				newSortBy = 'status'; // Sort by status
+			}
+			
+			console.log('Setting sort:', { newSortBy, newSortDir });
+			setSortBy(newSortBy);
+			setSortDir(newSortDir);
+			
+			// Fetch data with new sorting
+			fetchTeachers(pagination.current, pagination.pageSize, searchText, statusFilter, roleNameFilter, newSortBy, newSortDir);
+		} else {
+			// Handle pagination without sorting change
+			fetchTeachers(pagination.current, pagination.pageSize, searchText, statusFilter, roleNameFilter, sortBy, sortDir);
+		}
+	};
+
 	const handleRefresh = () => {
-		fetchTeachers();
+		fetchTeachers(pagination.current, pagination.pageSize, searchText, statusFilter, roleNameFilter, sortBy, sortDir);
 	};
 
 	const handleExport = () => {
@@ -158,102 +314,137 @@ const TeacherList = () => {
 		spaceToast.success(t('teacherManagement.importSuccess'));
 	};
 
-	// Filter teachers based on search, status, and role
-	const filteredTeachers = teachers.filter((teacher) => {
-		const matchesSearch =
-			teacher.name.toLowerCase().includes(searchText.toLowerCase()) ||
-			teacher.email.toLowerCase().includes(searchText.toLowerCase()) ||
-			teacher.specialization.toLowerCase().includes(searchText.toLowerCase());
-		const matchesStatus =
-			statusFilter === 'all' || teacher.status === statusFilter;
-		const matchesRole = roleFilter === 'all' || teacher.role === roleFilter;
-		return matchesSearch && matchesStatus && matchesRole;
-	});
+	// Handle filter dropdown toggle
+	const handleFilterToggle = () => {
+		setFilterDropdown(prev => ({
+			...prev,
+			visible: !prev.visible,
+			selectedRoles: prev.visible ? prev.selectedRoles : [...roleNameFilter],
+			selectedStatuses: prev.visible ? prev.selectedStatuses : [...statusFilter],
+		}));
+	};
 
-	// Calculate statistics (commented out for now)
-	// const totalTeachers = teachers.length;
-	// const activeTeachers = teachers.filter(
-	// 	(teacher) => teacher.status === 'active'
-	// ).length;
-	// const inactiveTeachers = teachers.filter(
-	// 	(teacher) => teacher.status === 'inactive'
-	// ).length;
-	// const teacherAssistants = teachers.filter(
-	// 	(teacher) => teacher.role === 'teacher_assistant'
-	// ).length;
+	// Handle filter submission
+	const handleFilterSubmit = () => {
+		setRoleNameFilter(filterDropdown.selectedRoles);
+		setStatusFilter(filterDropdown.selectedStatuses);
+		setFilterDropdown(prev => ({
+			...prev,
+			visible: false,
+		}));
+		// Reset to first page when applying filters
+		fetchTeachers(1, pagination.pageSize, searchText, filterDropdown.selectedStatuses, filterDropdown.selectedRoles, sortBy, sortDir);
+	};
+
+	// Handle filter reset
+	const handleFilterReset = () => {
+		setFilterDropdown(prev => ({
+			...prev,
+			selectedRoles: [],
+			selectedStatuses: [],
+		}));
+	};
+
+	// Status options for filter
+	const statusOptions = [
+		{ key: "ACTIVE", label: t('teacherManagement.active') },
+		{ key: "INACTIVE", label: t('teacherManagement.inactive') },
+	];
+
+	// Role options for filter
+	const roleOptions = [
+		{ key: "TEACHER", label: t('teacherManagement.teacher') },
+		{ key: "TEACHING_ASSISTANT", label: t('teacherManagement.teacherAssistant') },
+	];
 
 	const columns = [
 		{
-			title: t('teacherManagement.teacherInfo'),
-			dataIndex: 'name',
-			key: 'name',
-			sorter: (a, b) => a.name.localeCompare(b.name),
-			render: (text, record) => (
-				<div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-					{/* <Avatar 
-						size={48} 
-						icon={<UserOutlined />} 
-						src={record.avatar}
-						style={{ backgroundColor: '#1890ff' }}
-					/> */}
-					<div>
-						<div style={{fontSize: '20px' }}>{text}</div>
-					</div>
-				</div>
+			title: "STT",
+			key: "stt",
+			width: 60,
+			render: (_, __, index) => {
+				// Calculate index based on current page and page size
+				const currentPage = pagination.current || 1;
+				const pageSize = pagination.pageSize || 10;
+				return (
+					<span className="stt-text">
+						{(currentPage - 1) * pageSize + index + 1}
+					</span>
+				);
+			},
+		},
+		{
+			title: "Username",
+			dataIndex: "userName",
+			key: "userName",
+			render: (userName) => (
+				<span className="username-text">
+					{userName}
+				</span>
 			),
 		},
 		{
-			title: t('teacherManagement.role'),
-			dataIndex: 'role',
-			key: 'role',
-			width: 120,
-			render: (role) => (
-				<Tag color={role === 'teacher' ? 'blue' : 'green'}>
-					{role === 'teacher'
-						? t('teacherManagement.teacher')
-						: t('teacherManagement.teacherAssistant')}
-				</Tag>
+			title: "Full Name",
+			dataIndex: "firstName",
+			key: "fullName",
+			sorter: true,
+			sortDirections: ['ascend', 'descend'],
+			render: (_, record) => (
+				<span className="fullname-text">
+					{`${record.firstName || ''} ${record.lastName || ''}`.trim()}
+				</span>
 			),
 		},
 		{
-			title: t('teacherManagement.specialization'),
-			dataIndex: 'specialization',
-			key: 'specialization',
-			width: 120,
-			sorter: (a, b) => a.specialization.localeCompare(b.specialization),
-		},
-		{
-			title: t('teacherManagement.experience'),
-			dataIndex: 'experience',
-			key: 'experience',
-			width: 100,
-		},
-		{
-			title: t('teacherManagement.classesCount'),
-			dataIndex: 'classesCount',
-			key: 'classesCount',
-			width: 100,
-			render: (count) => `${count} ${t('teacherManagement.classes')}`,
-		},
-		{
-			title: t('teacherManagement.status'),
-			dataIndex: 'status',
-			key: 'status',
-			width: 100,
-			render: (status, record) => (
-				<Tag color={status === 'active' ? 'green' : 'red'}>{status}</Tag>
+			title: "Email",
+			dataIndex: "email",
+			key: "email",
+			render: (email) => (
+				<span className="email-text">
+					{email}
+				</span>
 			),
 		},
 		{
-			title: t('teacherManagement.createdAt'),
-			dataIndex: 'createdAt',
-			key: 'createdAt',
-			width: 120,
-			render: (date) => new Date(date).toLocaleDateString(),
+			title: "Role",
+			dataIndex: "roleName",
+			key: "roleName",
+			render: (roleName) => (
+				<span className="role-text">
+					{roleName === 'TEACHER'
+						? 'Teacher'
+						: 'Teaching Assistant'}
+				</span>
+			),
+		},
+		{
+			title: "Classes",
+			dataIndex: "classList",
+			key: "classList",
+			render: (classList) => (
+				<span className="classes-text">
+					{classList ? classList.length : 0} classes
+				</span>
+			),
+		},
+		{
+			title: "Status",
+			dataIndex: "status",
+			key: "status",
+			sorter: true,
+			sortDirections: ['ascend', 'descend'],
+			render: (status) => {
+				const statusConfig = {
+					ACTIVE: { color: "green", text: "Active" },
+					INACTIVE: { color: "red", text: "Inactive" },
+				};
+				const config = statusConfig[status] || statusConfig.INACTIVE;
+				return <Tag color={config.color}>{config.text}</Tag>;
+			},
 		},
 		{
 			title: t('teacherManagement.actions'),
-			key: 'actions',
+			key: "actions",
 			width: 150,
 			render: (_, record) => (
 				<Space size='small'>
@@ -263,29 +454,36 @@ const TeacherList = () => {
 							icon={<EyeOutlined style={{ fontSize: '25px' }} />}
 							size='small'
 							onClick={() => handleViewProfile(record)}
+							style={{
+								color: '#1890ff',
+								padding: '8px 12px'
+							}}
 						/>
 					</Tooltip>
-					{/* <Tooltip title={t('teacherManagement.edit')}>
-						<Button
-							type='text'
-							icon={<EditOutlined style={{ fontSize: '25px' }} />}
-							size='small'
-							onClick={() => handleEdit(record)}
-						/>
-					</Tooltip> */}
 					<Tooltip title={t('teacherManagement.assignToClass')}>
 						<Button
 							type='text'
 							icon={<PlusOutlined style={{ fontSize: '25px' }} />}
 							size='small'
 							onClick={() => handleAssignToClass(record)}
+							style={{
+								color: '#52c41a',
+								padding: '8px 12px'
+							}}
 						/>
 					</Tooltip>
-					<Button
-						type='text'
-						size='small'
-						icon={<DeleteOutlined style={{ fontSize: '25px' }} />}
-						onClick={() => handleDeleteClick(record)}></Button>
+					<Tooltip title={record.status === 'ACTIVE' ? t('teacherManagement.deactivate') : t('teacherManagement.activate')}>
+						<Button
+							type="text"
+							icon={record.status === 'ACTIVE' ? <StopOutlined style={{ fontSize: '25px' }} /> : <CheckOutlined style={{ fontSize: '25px' }} />}
+							size="small"
+							onClick={() => handleToggleStatus(record.id)}
+							style={{
+								color: record.status === 'ACTIVE' ? '#ff4d4f' : '#52c41a',
+								padding: '8px 12px'
+							}}
+						/>
+					</Tooltip>
 				</Space>
 			),
 		},
@@ -297,39 +495,103 @@ const TeacherList = () => {
 			<div className={`teacher-page main-content-panel ${theme}-main-panel`}>
 				{/* Header Section */}
 				<div className={`panel-header ${theme}-panel-header`}>
-					<div className='search-section'>
+					<div className='search-section' style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
 						<Input
 							prefix={<SearchOutlined />}
 							value={searchText}
-							onChange={(e) => setSearchText(e.target.value)}
+							onChange={(e) => handleSearch(e.target.value)}
 							className={`search-input ${theme}-search-input`}
 							style={{ flex: '1', minWidth: '250px', maxWidth: '400px', width: '350px', height: '40px', fontSize: '16px' }}
 							allowClear
 						/>
-						<Select
-							style={{ width: 150, marginLeft: 12, fontSize: '16px' }}
-							value={statusFilter}
-							onChange={setStatusFilter}
-							placeholder={t('teacherManagement.filterByStatus')}
-							className={`filter-select ${theme}-filter-select`}>
-							<Option value='all'>{t('teacherManagement.allStatuses')}</Option>
-							<Option value='active'>{t('teacherManagement.active')}</Option>
-							<Option value='inactive'>
-								{t('teacherManagement.inactive')}
-							</Option>
-						</Select>
-						<Select
-							style={{ width: 150, marginLeft: 12, fontSize: '16px' }}
-							value={roleFilter}
-							onChange={setRoleFilter}
-							placeholder={t('teacherManagement.filterByRole')}
-							className={`filter-select ${theme}-filter-select`}>
-							<Option value='all'>{t('teacherManagement.allRoles')}</Option>
-							<Option value='teacher'>{t('teacherManagement.teacher')}</Option>
-							<Option value='teacher_assistant'>
-								{t('teacherManagement.teacherAssistant')}
-							</Option>
-						</Select>
+						<div ref={filterContainerRef} style={{ position: 'relative' }}>
+							<Button 
+								icon={<FilterOutlined />}
+								onClick={handleFilterToggle}
+								className={`filter-button ${theme}-filter-button ${filterDropdown.visible ? 'active' : ''} ${(statusFilter.length > 0 || roleNameFilter.length > 0) ? 'has-filters' : ''}`}
+							>
+								Filter
+							</Button>
+							
+							{/* Filter Dropdown Panel */}
+							{filterDropdown.visible && (
+								<div className={`filter-dropdown-panel ${theme}-filter-dropdown`}>
+									<div style={{ padding: '20px' }}>
+										{/* Role and Status Filters in same row */}
+										<div style={{ display: 'flex', gap: '24px', marginBottom: '24px' }}>
+											{/* Role Filter */}
+											<div style={{ flex: 1 }}>
+												<Typography.Title level={5} style={{ marginBottom: '12px', color: '#1890ff', fontSize: '16px' }}>
+													Role
+												</Typography.Title>
+												<div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+													{roleOptions.map(option => (
+														<Button
+															key={option.key}
+															onClick={() => {
+																const newRoles = filterDropdown.selectedRoles.includes(option.key)
+																	? filterDropdown.selectedRoles.filter(role => role !== option.key)
+																	: [...filterDropdown.selectedRoles, option.key];
+																setFilterDropdown(prev => ({ ...prev, selectedRoles: newRoles }));
+															}}
+															className={`filter-option ${filterDropdown.selectedRoles.includes(option.key) ? 'selected' : ''}`}
+														>
+															{option.label}
+														</Button>
+													))}
+												</div>
+											</div>
+
+											{/* Status Filter */}
+											<div style={{ flex: 1 }}>
+												<Typography.Title level={5} style={{ marginBottom: '12px', color: '#1890ff', fontSize: '16px' }}>
+													Status
+												</Typography.Title>
+												<div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+													{statusOptions.map(option => (
+														<Button
+															key={option.key}
+															onClick={() => {
+																const newStatuses = filterDropdown.selectedStatuses.includes(option.key)
+																	? filterDropdown.selectedStatuses.filter(status => status !== option.key)
+																	: [...filterDropdown.selectedStatuses, option.key];
+																setFilterDropdown(prev => ({ ...prev, selectedStatuses: newStatuses }));
+															}}
+															className={`filter-option ${filterDropdown.selectedStatuses.includes(option.key) ? 'selected' : ''}`}
+														>
+															{option.label}
+														</Button>
+													))}
+												</div>
+											</div>
+										</div>
+
+										{/* Action Buttons */}
+										<div style={{ 
+											display: 'flex', 
+											justifyContent: 'space-between', 
+											marginTop: '20px',
+											paddingTop: '16px',
+											borderTop: '1px solid #f0f0f0'
+										}}>
+											<Button
+												onClick={handleFilterReset}
+												className="filter-reset-button"
+											>
+												Reset
+											</Button>
+											<Button
+												type="primary"
+												onClick={handleFilterSubmit}
+												className="filter-submit-button"
+											>
+												View Results
+											</Button>
+										</div>
+									</div>
+								</div>
+							)}
+						</div>
 					</div>
 					<div className='action-buttons'>
 						<Button
@@ -367,19 +629,23 @@ const TeacherList = () => {
 						message={t('teacherManagement.loadingTeachers')}>
 						<Table
 							columns={columns}
-							dataSource={filteredTeachers}
-							rowKey='id'
+							dataSource={teachers}
+							rowKey="id"
 							pagination={{
-								total: filteredTeachers.length,
-								pageSize: 10,
-								showSizeChanger: true,
-								showQuickJumper: true,
-								showTotal: (total, range) =>
-									`${range[0]}-${range[1]} of ${total}`,
+								...pagination,
 								className: `${theme}-pagination`,
+								pageSizeOptions: ['5', '10', '20', '50', '100'],
 							}}
+							onChange={handleTableChange}
 							scroll={{ x: 1200 }}
 							className={`teacher-table ${theme}-teacher-table`}
+							showSorterTooltip={false}
+							sortDirections={['ascend', 'descend']}
+							defaultSortOrder={
+								sortBy === 'firstName' ? (sortDir === 'asc' ? 'ascend' : 'descend') :
+								sortBy === 'status' ? (sortDir === 'asc' ? 'ascend' : 'descend') :
+								null
+							}
 						/>
 					</LoadingWithEffect>
 				</div>
@@ -403,7 +669,14 @@ const TeacherList = () => {
 					overflowY: 'auto',
 					padding: '24px',
 				}}>
-				<TeacherForm teacher={editingTeacher} onClose={handleModalClose} />
+				<TeacherForm 
+					teacher={editingTeacher} 
+					onClose={handleModalClose}
+					onSuccess={() => {
+						// Refresh the teacher list after successful creation/update
+						fetchTeachers(pagination.current, pagination.pageSize, searchText, statusFilter, roleNameFilter, sortBy, sortDir);
+					}}
+				/>
 			</Modal>
 
 			{/* Assign Teacher to Class Modal */}
@@ -426,23 +699,12 @@ const TeacherList = () => {
 				/>
 			</Modal>
 
-			{/* Delete Confirmation Modal */}
+			{/* Status Change Confirmation Modal */}
 			<Modal
-				title={
-					<div
-						style={{
-							fontSize: '20px',
-							fontWeight: '600',
-							color: '#1890ff',
-							textAlign: 'center',
-							padding: '10px 0',
-						}}>
-						{t('teacherManagement.confirmDelete')}
-					</div>
-				}
-				open={isDeleteModalVisible}
-				onOk={handleDelete}
-				onCancel={handleDeleteModalClose}
+				title={confirmModal.title}
+				open={confirmModal.visible}
+				onOk={confirmModal.onConfirm}
+				onCancel={handleConfirmCancel}
 				okText={t('common.confirm')}
 				cancelText={t('common.cancel')}
 				width={500}
@@ -455,8 +717,8 @@ const TeacherList = () => {
 				}}
 				okButtonProps={{
 					style: {
-						backgroundColor: '#ff4d4f',
-						borderColor: '#ff4d4f',
+						backgroundColor: '#1890ff',
+						borderColor: '#1890ff',
 						height: '40px',
 						fontSize: '16px',
 						fontWeight: '500',
@@ -481,7 +743,7 @@ const TeacherList = () => {
 					<div
 						style={{
 							fontSize: '48px',
-							color: '#ff4d4f',
+							color: '#1890ff',
 							marginBottom: '10px',
 						}}>
 						⚠️
@@ -493,19 +755,8 @@ const TeacherList = () => {
 							margin: 0,
 							fontWeight: '500',
 						}}>
-						{t('teacherManagement.confirmDeleteMessage')}
+						{confirmModal.content}
 					</p>
-					{deleteTeacher && (
-						<p
-							style={{
-								fontSize: '16px',
-								color: '#666',
-								margin: 0,
-								fontWeight: '600',
-							}}>
-							<strong>{deleteTeacher.name}</strong>
-						</p>
-					)}
 				</div>
 			</Modal>
 		</ThemedLayout>
