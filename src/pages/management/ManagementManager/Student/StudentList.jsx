@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
+import { useNavigate } from "react-router-dom";
 import {
   Table,
   Button,
@@ -33,7 +34,7 @@ import LoadingWithEffect from "../../../../component/spinner/LoadingWithEffect";
 import { useTheme } from "../../../../contexts/ThemeContext";
 import "./StudentList.css";
 import { spaceToast } from "../../../../component/SpaceToastify";
-import authApi from "../../../../apis/backend/auth";
+import studentManagementApi from "../../../../apis/backend/StudentManagement";
 import AssignStudentToClass from "./AssignStudentToClass";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchLevels } from "../../../../redux/level";
@@ -43,6 +44,7 @@ const { Title, Text } = Typography;
 
 const StudentList = () => {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const { theme } = useTheme();
   const dispatch = useDispatch();
   const { levels, loading: levelsLoading } = useSelector((state) => state.level);
@@ -64,9 +66,9 @@ const StudentList = () => {
   const [roleNameFilter, setRoleNameFilter] = useState([]);
   const [searchTimeout, setSearchTimeout] = useState(null);
   
-  // Sort state
+  // Sort state - start with createdAt DESC (newest first)
   const [sortBy, setSortBy] = useState("createdAt");
-  const [sortDir, setSortDir] = useState("asc");
+  const [sortDir, setSortDir] = useState("desc");
   
   // Modal states
   const [isModalVisible, setIsModalVisible] = useState(false);
@@ -88,15 +90,19 @@ const StudentList = () => {
     student: null,
   });
 
-  const fetchStudents = useCallback(async (page = 1, size = 10, search = '', statusFilter = [], roleNameFilter = [], sortField = 'createdAt', sortDirection = 'asc') => {
+  const fetchStudents = useCallback(async (page = 1, size = 10, search = '', statusFilter = [], roleNameFilter = [], sortField = null, sortDirection = null) => {
     setLoading(true);
     try {
       const params = {
         page: page - 1, // API uses 0-based indexing
         size: size,
-        sortBy: sortField,
-        sortDir: sortDirection,
       };
+
+      // Add sort parameters
+      if (sortField && sortDirection) {
+        params.sortBy = sortField;
+        params.sortDir = sortDirection;
+      }
 
       // Thêm search text nếu có
       if (search && search.trim()) {
@@ -114,23 +120,10 @@ const StudentList = () => {
       }
 
       console.log('Fetching students with params:', params);
-      const response = await authApi.getStudents(params);
+      const response = await studentManagementApi.getStudents(params);
       
       if (response.success && response.data) {
-        // Sort students: ACTIVE status first, then INACTIVE
-        const sortedStudents = response.data.sort((a, b) => {
-          // ACTIVE status gets priority (appears first)
-          if (a.status === 'ACTIVE' && b.status === 'INACTIVE') {
-            return -1;
-          }
-          if (a.status === 'INACTIVE' && b.status === 'ACTIVE') {
-            return 1;
-          }
-          // If both have same status, maintain original order or sort by other criteria
-          return 0;
-        });
-        
-        setStudents(sortedStudents);
+        setStudents(response.data);
         setPagination(prev => ({
           ...prev,
           current: page,
@@ -222,7 +215,10 @@ const StudentList = () => {
     },
     {
       title: "Full Name",
+      dataIndex: "firstName",
       key: "fullName",
+      sorter: true,
+      sortDirections: ['ascend', 'descend'],
       render: (_, record) => (
         <span className="fullname-text">
           {`${record.firstName || ''} ${record.lastName || ''}`.trim()}
@@ -233,21 +229,33 @@ const StudentList = () => {
       title: "Role",
       dataIndex: "roleName",
       key: "roleName",
-      render: (roleName) => (
-        <span className="role-text">
-          {roleName || 'N/A'}
-        </span>
-      ),
+      render: (roleName) => {
+        const formatRoleName = (role) => {
+          if (!role) return 'N/A';
+          return role.charAt(0).toUpperCase() + role.slice(1).toLowerCase();
+        };
+        return (
+          <span className="role-text">
+            {formatRoleName(roleName)}
+          </span>
+        );
+      },
     },
     {
       title: "Current Level",
       dataIndex: "currentLevelInfo",
       key: "currentLevelInfo",
-      render: (currentLevelInfo) => (
-        <span className="level-text">
-          {currentLevelInfo?.name || 'N/A'}
-        </span>
-      ),
+      render: (currentLevelInfo) => {
+        // Debug logging to check level data structure
+        if (currentLevelInfo) {
+          console.log('Current Level Info:', currentLevelInfo);
+        }
+        return (
+          <span className="level-text">
+            {currentLevelInfo?.levelName || currentLevelInfo?.name || 'N/A'}
+          </span>
+        );
+      },
     },
     {
       title: "Current Class",
@@ -340,9 +348,27 @@ const StudentList = () => {
     
     // Handle sorting
     if (sorter && sorter.field) {
-      const newSortBy = sorter.field;
-      const newSortDir = sorter.order === 'ascend' ? 'asc' : 'desc';
+      let newSortBy = sorter.field;
+      let newSortDir = 'asc'; // Default to asc for first click
       
+      // Determine sort direction
+      if (sorter.order === 'ascend') {
+        newSortDir = 'asc';
+      } else if (sorter.order === 'descend') {
+        newSortDir = 'desc';
+      } else if (sorter.order === undefined) {
+        // First click on column - start with asc
+        newSortDir = 'asc';
+      }
+      
+      // Map column field to API field
+      if (sorter.field === 'firstName') {
+        newSortBy = 'firstName'; // Sort by firstName for Full Name column
+      } else if (sorter.field === 'status') {
+        newSortBy = 'status'; // Sort by status
+      }
+      
+      console.log('Setting sort:', { newSortBy, newSortDir });
       setSortBy(newSortBy);
       setSortDir(newSortDir);
       
@@ -411,28 +437,11 @@ const StudentList = () => {
         onConfirm: async () => {
           try {
             // Call API to update student status
-            const response = await authApi.updateStudentStatus(id, newStatus);
+            const response = await studentManagementApi.updateStudentStatus(id, newStatus);
             
             if (response.success) {
-              // Update local state with API response data
-              const updatedStudents = students.map(s => 
-                s.id === id ? { ...s, status: newStatus } : s
-              );
-              
-              // Re-sort after status change to maintain ACTIVE first order
-              const sortedStudents = updatedStudents.sort((a, b) => {
-                // ACTIVE status gets priority (appears first)
-                if (a.status === 'ACTIVE' && b.status === 'INACTIVE') {
-                  return -1;
-                }
-                if (a.status === 'INACTIVE' && b.status === 'ACTIVE') {
-                  return 1;
-                }
-                // If both have same status, maintain original order
-                return 0;
-              });
-              
-              setStudents(sortedStudents);
+              // Refresh the list to get updated data from server
+              fetchStudents(pagination.current, pagination.pageSize, searchText, statusFilter, roleNameFilter, sortBy, sortDir);
               setConfirmModal({ visible: false, title: '', content: '', onConfirm: null });
               
               // Show success toast
@@ -462,21 +471,21 @@ const StudentList = () => {
     try {
       const values = await form.validateFields();
       
-      // Format the data according to CreateStudentRequest schema
+      // Format the data according to CreateStudentRequest schema from API
       const studentData = {
-        roleName: values.roleName,
+        roleName: values.roleName, // STUDENT or TEST_TAKER
         email: values.email,
         firstName: values.firstName,
         lastName: values.lastName,
-        avatarUrl: values.avatar && values.avatar.length > 0 ? URL.createObjectURL(values.avatar[0].originFileObj) : null,
-        dateOfBirth: values.dateOfBirth ? values.dateOfBirth.format('YYYY-MM-DDTHH:mm:ss.SSS[Z]') : null,
+        avatarUrl: "string", // Always send "string" as per API example
+        dateOfBirth: values.dateOfBirth ? values.dateOfBirth.format('YYYY-MM-DDTHH:mm:ss.SSS') + 'Z' : null,
         address: values.address || null,
         phoneNumber: values.phoneNumber || null,
-        gender: values.gender || null,
+        gender: values.gender || null, // MALE, FEMALE, OTHER
         parentInfo: {
-          parentName: values.parentInfo?.parentName,
+          parentName: values.parentInfo?.parentName || "",
           parentEmail: values.parentInfo?.parentEmail || null,
-          parentPhone: values.parentInfo?.parentPhone,
+          parentPhone: values.parentInfo?.parentPhone || "",
           relationship: values.parentInfo?.relationship || null,
         },
         levelId: values.levelId,
@@ -488,15 +497,35 @@ const StudentList = () => {
         // TODO: Call update student API
         spaceToast.success(`Update student "${values.firstName} ${values.lastName}" successfully`);
       } else {
-        // TODO: Call create student API with studentData
-        spaceToast.success(`Add student "${values.firstName} ${values.lastName}" successfully`);
-        // Refresh the list after adding
-        fetchStudents();
+        try {
+          // Call create student API
+          const response = await studentManagementApi.createStudent(studentData);
+          
+          if (response.success) {
+            spaceToast.success(`Add student "${values.firstName} ${values.lastName}" successfully`);
+            // Refresh the list after adding
+            fetchStudents(1, pagination.pageSize, searchText, statusFilter, roleNameFilter, sortBy, sortDir);
+          } else {
+            throw new Error(response.message || 'Failed to create student');
+          }
+        } catch (error) {
+          console.error('Error creating student:', error);
+          
+          // Check if it's a timeout error but data might have been created
+          if (error.code === 'ECONNABORTED' && error.message.includes('timeout')) {
+            spaceToast.warning('Request timeout - please check if student was created successfully');
+            // Still refresh the list in case data was created
+            fetchStudents(1, pagination.pageSize, searchText, statusFilter, roleNameFilter, sortBy, sortDir);
+          } else {
+            spaceToast.error(error.response?.data?.message || error.message || 'Failed to create student');
+            return; // Don't close modal on actual error
+          }
+        }
       }
       setIsModalVisible(false);
       form.resetFields();
-    } catch {
-      // Do nothing
+    } catch (error) {
+      console.error('Form validation error:', error);
     }
   };
 
@@ -507,9 +536,13 @@ const StudentList = () => {
 
   // Handle view student profile
   const handleViewProfile = (record) => {
-    // TODO: Implement student profile view
     console.log('View profile for student:', record);
-    spaceToast.info('Student profile view not implemented yet');
+    console.log('Student ID:', record.id);
+    if (!record.id) {
+      spaceToast.error('Student ID not found');
+      return;
+    }
+    navigate(`/manager/student/${record.id}/profile`);
   };
 
   // Handle assign student to class
@@ -600,21 +633,8 @@ const StudentList = () => {
         },
       ];
 
-      // Combine new students with existing ones and sort by status
-      const allStudents = [...newStudents, ...students];
-      const sortedStudents = allStudents.sort((a, b) => {
-        // ACTIVE status gets priority (appears first)
-        if (a.status === 'ACTIVE' && b.status === 'INACTIVE') {
-          return -1;
-        }
-        if (a.status === 'INACTIVE' && b.status === 'ACTIVE') {
-          return 1;
-        }
-        // If both have same status, maintain original order
-        return 0;
-      });
-      
-      setStudents(sortedStudents);
+      // Refresh the list to get updated data from server
+      fetchStudents(pagination.current, pagination.pageSize, searchText, statusFilter, roleNameFilter, sortBy, sortDir);
       spaceToast.success(
         `${t('studentManagement.importSuccess')} ${newStudents.length} ${t(
           'studentManagement.students'
@@ -747,6 +767,13 @@ STU003,Le Van Cuong,levancuong@example.com,0111222333,Lớp 11B1,Advanced,active
                 onChange={handleTableChange}
                 scroll={{ x: 1200 }}
                 className={`student-table ${theme}-student-table`}
+                showSorterTooltip={false}
+                sortDirections={['ascend', 'descend']}
+                defaultSortOrder={
+                  sortBy === 'firstName' ? (sortDir === 'asc' ? 'ascend' : 'descend') :
+                  sortBy === 'status' ? (sortDir === 'asc' ? 'ascend' : 'descend') :
+                  null
+                }
               />
             </LoadingWithEffect>
           </div>
@@ -793,7 +820,7 @@ STU003,Le Van Cuong,levancuong@example.com,0111222333,Lớp 11B1,Advanced,active
                 >
                   <Select placeholder="Select role">
                     <Option value="STUDENT">Student</Option>
-                    <Option value="TEST_TAKER">Test Taker</Option>
+                    <Option value="TEST_TAKER">Test taker</Option>
                   </Select>
                 </Form.Item>
               </Col>
@@ -901,9 +928,9 @@ STU003,Le Van Cuong,levancuong@example.com,0111222333,Lớp 11B1,Advanced,active
                   ]}
                 >
                   <Radio.Group>
-                    <Radio value="Male">Male</Radio>
-                    <Radio value="Female">Female</Radio>
-                    <Radio value="Other">Other</Radio>
+                    <Radio value="MALE">Male</Radio>
+                    <Radio value="FEMALE">Female</Radio>
+                    <Radio value="OTHER">Other</Radio>
                   </Radio.Group>
                 </Form.Item>
               </Col>
@@ -925,12 +952,27 @@ STU003,Le Van Cuong,levancuong@example.com,0111222333,Lớp 11B1,Advanced,active
                     filterOption={(input, option) =>
                       option.children.toLowerCase().indexOf(input.toLowerCase()) >= 0
                     }
+                    notFoundContent={levelsLoading ? "Loading..." : "No levels found"}
                   >
-                    {levels.map(level => (
-                      <Option key={level.id} value={level.id}>
-                        {level.name} ({level.code})
-                      </Option>
-                    ))}
+                    {levels && levels.length > 0 ? (
+                      levels.map(level => {
+                        // Handle different field names that might come from API
+                        const levelName = level.name || level.levelName || level.title || 'Unknown Level';
+                        const levelCode = level.code || level.levelCode || level.code || '';
+                        
+                        return (
+                          <Option key={level.id} value={level.id}>
+                            {levelName} {levelCode ? `(${levelCode})` : ''}
+                          </Option>
+                        );
+                      })
+                    ) : (
+                      !levelsLoading && (
+                        <Option disabled value="">
+                          No levels available
+                        </Option>
+                      )
+                    )}
                   </Select>
                 </Form.Item>
               </Col>

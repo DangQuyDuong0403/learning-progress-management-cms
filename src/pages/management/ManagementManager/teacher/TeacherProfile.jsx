@@ -16,24 +16,30 @@ import {
 	DatePicker,
 	Upload,
 	message,
+	Spin,
+	Alert,
+	Typography,
 } from 'antd';
 import {
 	ArrowLeftOutlined,
 	EditOutlined,
 	UserOutlined,
+	UploadOutlined,
 	CalendarOutlined,
 	BookOutlined,
 	TrophyOutlined,
 	ClockCircleOutlined,
-	UploadOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useTheme } from '../../../../contexts/ThemeContext';
 import { spaceToast } from '../../../../component/SpaceToastify';
+import teacherManagementApi from '../../../../apis/backend/teacherManagement';
 import dayjs from 'dayjs';
 import './TeacherList.css';
 import ThemedLayout from '../../../../component/ThemedLayout';
+
+const { Title } = Typography;
 
 const TeacherProfile = () => {
 	const { t } = useTranslation();
@@ -44,99 +50,11 @@ const TeacherProfile = () => {
 	const [editForm] = Form.useForm();
 	const [editLoading, setEditLoading] = useState(false);
 	const [avatarUrl, setAvatarUrl] = useState(null);
+	const [loading, setLoading] = useState(true);
+	const [error, setError] = useState(null);
 
-	// Mock data - replace with actual API call
-	const [teacher, setTeacher] = useState({
-		id: teacherId || '1',
-		name: 'Nguyễn Văn A',
-		email: 'nguyenvana@example.com',
-		phone: '0123456789',
-		role: 'teacher',
-		specialization: 'Mathematics',
-		experience: '5 years',
-		status: 'active',
-		avatar: '/img/avatar.png',
-		dateOfBirth: '1990-01-15',
-		address: '123 Đường ABC, Quận 1, TP.HCM',
-		bio: 'Giáo viên có kinh nghiệm trong việc giảng dạy Toán học cho học sinh cấp 2 và cấp 3.',
-		joinDate: '2020-01-15',
-		rating: 4.8,
-		totalStudents: 150,
-		averageRating: 4.7,
-		completedCourses: 12,
-	});
-
-	const [currentClasses] = useState([
-		{
-			id: '1',
-			name: 'Raising Star 1',
-			students: 35,
-			startDate: '2024-01-15',
-			status: 'active',
-		},
-		{
-			id: '2',
-			name: 'A2 PET',
-			students: 28,
-			startDate: '2024-01-15',
-			status: 'active',
-		},
-		{
-			id: '3',
-			name: 'Explorer 1',
-			students: 32,
-			startDate: '2024-01-15',
-			status: 'active',
-		},
-	]);
-
-	const [recentActivities] = useState([
-		{
-			id: '1',
-			action: 'Graded assignments',
-			class: 'Raising Star 1',
-			date: '2024-01-20',
-			time: '14:30',
-		},
-		{
-			id: '2',
-			action: 'Conducted class',
-			class: 'A2 PET',
-			date: '2024-01-20',
-			time: '10:00',
-		},
-		{
-			id: '3',
-			action: 'Updated lesson plan',
-			class: 'Explorer 1',
-			date: '2024-01-19',
-			time: '16:45',
-		},
-	]);
-
-	const [achievements] = useState([
-		{
-			id: '1',
-			title: 'Best Teacher Award 2023',
-			description: 'Awarded for outstanding teaching performance',
-			date: '2023-12-15',
-			type: 'award',
-		},
-		{
-			id: '2',
-			title: 'Student Satisfaction 95%',
-			description: 'Achieved high student satisfaction rating',
-			date: '2023-11-30',
-			type: 'achievement',
-		},
-		{
-			id: '3',
-			title: 'Course Completion Certificate',
-			description: 'Completed Advanced Mathematics Teaching Course',
-			date: '2023-10-15',
-			type: 'certificate',
-		},
-	]);
+	// Teacher data from API
+	const [teacher, setTeacher] = useState(null);
 
 	useEffect(() => {
 		fetchTeacherProfile();
@@ -144,11 +62,28 @@ const TeacherProfile = () => {
 
 	const fetchTeacherProfile = async () => {
 		try {
-			// Simulate API call
-			await new Promise((resolve) => setTimeout(resolve, 1000));
-			// In real app, fetch teacher data by teacherId
+			setLoading(true);
+			setError(null);
+			
+			console.log('Fetching profile for teacher ID:', teacherId);
+			if (!teacherId) {
+				setError('Teacher ID not found in URL');
+				return;
+			}
+			
+			const response = await teacherManagementApi.getTeacherProfile(teacherId);
+			
+			if (response.success && response.data) {
+				setTeacher(response.data);
+				setAvatarUrl(response.data.avatarUrl);
+			} else {
+				setError(response.message || 'Failed to fetch teacher profile');
+			}
 		} catch (error) {
 			console.error('Error fetching teacher profile:', error);
+			setError('An error occurred while fetching the teacher profile');
+		} finally {
+			setLoading(false);
 		}
 	};
 
@@ -157,44 +92,60 @@ const TeacherProfile = () => {
 	};
 
 	const handleEdit = () => {
+		if (!teacher) return;
+		
 		setEditModalVisible(true);
 		editForm.setFieldsValue({
-			...teacher,
+			firstName: teacher.firstName,
+			lastName: teacher.lastName,
+			email: teacher.email,
+			phoneNumber: teacher.phoneNumber,
 			dateOfBirth: teacher.dateOfBirth ? dayjs(teacher.dateOfBirth) : null,
+			gender: teacher.gender,
+			address: teacher.address,
 		});
-		setAvatarUrl(teacher.avatar);
+		setAvatarUrl(teacher.avatarUrl);
 	};
 
 	const handleEditSubmit = async (values) => {
 		setEditLoading(true);
 		try {
-			// Simulate API call
-			await new Promise(resolve => setTimeout(resolve, 1000));
-			
-			const updatedTeacher = {
-				...teacher,
-				...values,
-				dateOfBirth: values.dateOfBirth ? values.dateOfBirth.format('YYYY-MM-DD') : null,
-				avatar: avatarUrl,
+			// Format the data according to the API requirements
+			const teacherData = {
+				roleName: "TEACHER", // Always TEACHER for teacher profile
+				email: values.email,
+				firstName: values.firstName,
+				lastName: values.lastName,
+				avatarUrl: avatarUrl || "string", // Use current avatar or default to "string"
+				dateOfBirth: values.dateOfBirth ? values.dateOfBirth.format('YYYY-MM-DDTHH:mm:ss.SSS[Z]') : null,
+				address: values.address || null,
+				phoneNumber: values.phoneNumber || null,
+				gender: values.gender || null, // MALE, FEMALE, OTHER
 			};
 			
-			setTeacher(updatedTeacher);
-			setEditModalVisible(false);
-			spaceToast.success(t('teacherManagement.updateTeacherSuccess'));
+			console.log('Updating teacher with data:', teacherData);
+			
+			const response = await teacherManagementApi.updateTeacherProfile(teacherId, teacherData);
+			
+			if (response.success && response.data) {
+				setTeacher(response.data);
+				setEditModalVisible(false);
+				spaceToast.success(t('teacherManagement.updateTeacherSuccess'));
+			} else {
+				spaceToast.error(response.message || t('teacherManagement.updateTeacherError'));
+			}
 		} catch (error) {
-			spaceToast.error(t('teacherManagement.saveTeacherError'));
+			console.error('Error updating teacher profile:', error);
+			spaceToast.error(error.response?.data?.message || error.message || t('teacherManagement.updateTeacherError'));
 		} finally {
 			setEditLoading(false);
 		}
 	};
 
 	const handleAvatarChange = (info) => {
-		if (info.file.status === 'done') {
-			// Simulate successful upload
-			const url = URL.createObjectURL(info.file.originFileObj);
-			setAvatarUrl(url);
-			message.success(t('teacherManagement.avatarUploadSuccess'));
-		} else if (info.file.status === 'error') {
+		// This function is now mainly for handling upload status changes
+		// The actual file handling is done in beforeUpload
+		if (info.file.status === 'error') {
 			message.error(t('teacherManagement.avatarUploadError'));
 		}
 	};
@@ -203,16 +154,23 @@ const TeacherProfile = () => {
 		name: 'avatar',
 		listType: 'picture',
 		showUploadList: false,
+		action: '', // Disable default upload action to prevent 404 error
 		beforeUpload: (file) => {
 			const isJpgOrPng = file.type === 'image/jpeg' || file.type === 'image/png';
 			if (!isJpgOrPng) {
 				message.error(t('teacherManagement.avatarFormatError'));
+				return false;
 			}
 			const isLt2M = file.size / 1024 / 1024 < 2;
 			if (!isLt2M) {
 				message.error(t('teacherManagement.avatarSizeError'));
+				return false;
 			}
-			return isJpgOrPng && isLt2M;
+			// Handle file locally without server upload
+			const url = URL.createObjectURL(file);
+			setAvatarUrl(url);
+			message.success(t('teacherManagement.avatarUploadSuccess'));
+			return false; // Prevent default upload
 		},
 		onChange: handleAvatarChange,
 	};
@@ -259,29 +217,53 @@ const TeacherProfile = () => {
 		},
 	];
 
-	const activityColumns = [
-		{
-			title: t('teacherManagement.action'),
-			dataIndex: 'action',
-			key: 'action',
-		},
-		{
-			title: t('teacherManagement.class'),
-			dataIndex: 'class',
-			key: 'class',
-		},
-		{
-			title: t('teacherManagement.date'),
-			dataIndex: 'date',
-			key: 'date',
-			render: (date, record) => (
-				<Space>
-					<CalendarOutlined />
-					{new Date(date).toLocaleDateString('vi-VN')} {record.time}
-				</Space>
-			),
-		},
-	];
+	// Loading state
+	if (loading) {
+		return (
+			<ThemedLayout>
+				<div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '400px' }}>
+					<Spin size="large" tip="Loading teacher profile..." />
+				</div>
+			</ThemedLayout>
+		);
+	}
+
+	// Error state
+	if (error) {
+		return (
+			<ThemedLayout>
+				<div style={{ padding: '20px' }}>
+					<Alert 
+						message="Error" 
+						description={error} 
+						type="error" 
+						showIcon 
+						action={
+							<Button size="small" onClick={fetchTeacherProfile}>
+								Retry
+							</Button>
+						}
+					/>
+				</div>
+			</ThemedLayout>
+		);
+	}
+
+	// No teacher data
+	if (!teacher) {
+		return (
+			<ThemedLayout>
+				<div style={{ padding: '20px' }}>
+					<Alert 
+						message="Not Found" 
+						description="Teacher profile not found." 
+						type="warning" 
+						showIcon 
+					/>
+				</div>
+			</ThemedLayout>
+		);
+	}
 
 	return (
 		<ThemedLayout>
@@ -312,7 +294,7 @@ const TeacherProfile = () => {
 									<Avatar
 										size={120}
 										icon={<UserOutlined />}
-										src={teacher.avatar}
+										src={teacher.avatarUrl}
 										style={{
 											backgroundColor: '#1890ff',
 											border: `3px solid ${
@@ -350,59 +332,61 @@ const TeacherProfile = () => {
 										<h2
 											className={`teacher-name ${theme}-teacher-name`}
 											style={{ margin: 0 }}>
-											{teacher.name}
+											{teacher.firstName} {teacher.lastName}
 										</h2>
 
 										<div style={{ display: 'flex', gap: '8px' }}>
-											{' '}
-											{/* ✅ nhóm 2 tag trên cùng 1 hàng */}
-											<Tag
+											<span
 												style={{
-													fontSize: '16px', // chữ to hơn
-													padding: '6px 12px', // khoảng cách trong tag
-													borderRadius: '8px', // bo góc
+													fontSize: '16px',
+													padding: '6px 12px',
+													borderRadius: '8px',
+													color: '#1890ff',
+													fontWeight: '500',
 												}}
-												color='blue'
-												className={`role-tag ${theme}-role-tag`}>
-												{teacher.role === 'teacher'
-													? t('teacherManagement.teacher')
-													: t('teacherManagement.teacherAssistant')}
-											</Tag>
-											<Tag
+												className={`role-text ${theme}-role-text`}>
+												{teacher.roleName ? teacher.roleName.charAt(0).toUpperCase() + teacher.roleName.slice(1).toLowerCase() : 'N/A'}
+											</span>
+											<span
 												style={{
-													fontSize: '16px', // chữ to hơn
-													padding: '6px 12px', // khoảng cách trong tag
-													borderRadius: '8px', // bo góc
+													fontSize: '16px',
+													padding: '6px 12px',
+													borderRadius: '8px',
+													color: teacher.status === 'ACTIVE' ? '#52c41a' : '#ff4d4f',
+													fontWeight: '500',
 												}}
-												color='green'
-												className={`status-tag ${theme}-status-tag`}>
-												{teacher.status === 'active'
+												className={`status-text ${theme}-status-text`}>
+												{teacher.status === 'ACTIVE'
 													? t('teacherManagement.active')
 													: t('teacherManagement.inactive')}
-											</Tag>
+											</span>
 										</div>
 									</div>
 
 									<div className='teacher-details'>
+										<p>
+											<strong>{t('teacherManagement.teacherCode')}:</strong>{' '}
+											{teacher.userName}
+										</p>
 										<p>
 											<strong>{t('teacherManagement.email')}:</strong>{' '}
 											{teacher.email}
 										</p>
 										<p>
 											<strong>{t('teacherManagement.phone')}:</strong>{' '}
-											{teacher.phone}
+											{teacher.phoneNumber || 'N/A'}
 										</p>
 										<p>
-											<strong>{t('teacherManagement.specialization')}:</strong>{' '}
-											{teacher.specialization}
+											<strong>{t('teacherManagement.dateOfBirth')}:</strong>{' '}
+											{teacher.dateOfBirth ? new Date(teacher.dateOfBirth).toLocaleDateString('vi-VN') : 'N/A'}
 										</p>
 										<p>
-											<strong>{t('teacherManagement.experience')}:</strong>{' '}
-											{teacher.experience}
+											<strong>{t('teacherManagement.gender')}:</strong>{' '}
+											{teacher.gender ? teacher.gender.charAt(0).toUpperCase() + teacher.gender.slice(1).toLowerCase() : 'N/A'}
 										</p>
 										<p>
-											<strong>{t('teacherManagement.joinDate')}:</strong>{' '}
-											{new Date(teacher.joinDate).toLocaleDateString('vi-VN')}
+											<strong>{t('teacherManagement.address')}:</strong>{' '}
+											{teacher.address || 'N/A'}
 										</p>
 									</div>
 								</div>
@@ -422,14 +406,18 @@ const TeacherProfile = () => {
 						style={{ marginBottom: 24, marginTop: 24 }}>
 						<Table
 							columns={classColumns}
-							dataSource={currentClasses}
+							dataSource={teacher.classList || []}
 							rowKey='id'
 							pagination={false}
 							size='small'
+							locale={{
+								emptyText: t('teacherManagement.noClassesFound')
+							}}
 						/>
 					</Card>
 
-					{/* Recent Activities */}
+					{/* 
+					// Recent Activities
 					<Card
 						title={
 							<Space>
@@ -439,16 +427,16 @@ const TeacherProfile = () => {
 						}
 						className={`activities-card ${theme}-activities-card`}
 						style={{ marginBottom: 24 }}>
-						<Table
-							columns={activityColumns}
-							dataSource={recentActivities}
-							rowKey='id'
-							pagination={false}
-							size='small'
-						/>
+						<Timeline mode='left'>
+							{recentActivities.map((activity) => (
+								<Timeline.Item key={activity.id} label={new Date(activity.timestamp).toLocaleDateString('vi-VN')}>
+									{activity.description}
+								</Timeline.Item>
+							))}
+						</Timeline>
 					</Card>
 
-					{/* Achievements */}
+					// Achievements
 					<Card
 						title={
 							<Space>
@@ -457,33 +445,32 @@ const TeacherProfile = () => {
 							</Space>
 						}
 						className={`achievements-card ${theme}-achievements-card`}>
-						<Timeline>
+						<Timeline mode='left'>
 							{achievements.map((achievement) => (
-								<Timeline.Item
-									key={achievement.id}
-									color={
-										achievement.type === 'award'
-											? 'gold'
-											: achievement.type === 'achievement'
-											? 'green'
-											: 'blue'
-									}>
-									<div className='achievement-item'>
-										<h4>{achievement.title}</h4>
-										<p>{achievement.description}</p>
-										<small>
-											{new Date(achievement.date).toLocaleDateString('vi-VN')}
-										</small>
-									</div>
+								<Timeline.Item key={achievement.id} label={new Date(achievement.date).toLocaleDateString('vi-VN')}>
+									<strong>{achievement.title}</strong>
+									<p>{achievement.description}</p>
 								</Timeline.Item>
 							))}
 						</Timeline>
 					</Card>
+					*/}
+
 				</div>
 
 				{/* Edit Modal */}
 				<Modal
-					title={t('teacherManagement.editProfile')}
+					title={
+						<div style={{ 
+							fontSize: '26px', 
+							fontWeight: '600', 
+							color: '#000000ff',
+							textAlign: 'center',
+							padding: '10px 0'
+						}}>
+							{t('teacherManagement.editProfile')}
+						</div>
+					}
 					open={editModalVisible}
 					onCancel={() => setEditModalVisible(false)}
 					footer={null}
@@ -502,7 +489,7 @@ const TeacherProfile = () => {
 									<Avatar
 										size={120}
 										icon={<UserOutlined />}
-										src={avatarUrl}
+										src={avatarUrl || teacher?.avatarUrl}
 										style={{ 
 											backgroundColor: '#1890ff',
 											marginBottom: 16,
@@ -525,163 +512,119 @@ const TeacherProfile = () => {
 						</Row>
 
 						{/* Basic Information */}
-						<Row gutter={24}>
+						<Title level={5} style={{ marginBottom: '16px', color: '#1890ff' }}>
+							{t('teacherManagement.basicInformation')}
+						</Title>
+						
+						<Row gutter={16}>
 							<Col span={12}>
 								<Form.Item
-									name="name"
-									label={t('teacherManagement.name')}
+									label={
+										<span>
+											{t('teacherManagement.firstName')}
+											<span style={{ color: 'red', marginLeft: '4px' }}>*</span>
+										</span>
+									}
+									name="firstName"
 									rules={[
-										{ required: true, message: t('teacherManagement.nameRequired') },
-										{ min: 2, message: t('teacherManagement.nameMinLength') },
+										{ required: true, message: t('teacherManagement.firstNameRequired') },
+										{ max: 50, message: t('teacherManagement.nameMaxLength') },
 									]}
 								>
-									<Input 
-										placeholder={t('teacherManagement.namePlaceholder')}
-										className={`form-input ${theme}-form-input`}
-									/>
+									<Input placeholder={t('teacherManagement.enterFirstName')} />
 								</Form.Item>
 							</Col>
 							<Col span={12}>
 								<Form.Item
+									label={
+										<span>
+											{t('teacherManagement.lastName')}
+											<span style={{ color: 'red', marginLeft: '4px' }}>*</span>
+										</span>
+									}
+									name="lastName"
+									rules={[
+										{ required: true, message: t('teacherManagement.lastNameRequired') },
+										{ max: 50, message: t('teacherManagement.nameMaxLength') },
+									]}
+								>
+									<Input placeholder={t('teacherManagement.enterLastName')} />
+								</Form.Item>
+							</Col>
+						</Row>
+
+						<Row gutter={16}>
+							<Col span={12}>
+								<Form.Item
+									label={
+										<span>
+											{t('teacherManagement.email')}
+											<span style={{ color: 'red', marginLeft: '4px' }}>*</span>
+										</span>
+									}
 									name="email"
-									label={t('teacherManagement.email')}
 									rules={[
 										{ required: true, message: t('teacherManagement.emailRequired') },
 										{ type: 'email', message: t('teacherManagement.emailInvalid') },
+										{ max: 255, message: t('teacherManagement.emailMaxLength') },
 									]}
 								>
-									<Input 
-										placeholder={t('teacherManagement.emailPlaceholder')}
-										className={`form-input ${theme}-form-input`}
-									/>
+									<Input placeholder={t('teacherManagement.enterEmail')} />
+								</Form.Item>
+							</Col>
+							<Col span={12}>
+								<Form.Item
+									label={t('teacherManagement.phone')}
+									name="phoneNumber"
+									rules={[
+										{ max: 20, message: t('teacherManagement.phoneMaxLength') },
+									]}
+								>
+									<Input placeholder={t('teacherManagement.enterPhone')} />
 								</Form.Item>
 							</Col>
 						</Row>
 
-						<Row gutter={24}>
+						<Row gutter={16}>
 							<Col span={12}>
 								<Form.Item
-									name="phone"
-									label={t('teacherManagement.phone')}
-									rules={[
-										{ required: true, message: t('teacherManagement.phoneRequired') },
-										{ pattern: /^[0-9]{10,11}$/, message: t('teacherManagement.phoneInvalid') },
-									]}
-								>
-									<Input 
-										placeholder={t('teacherManagement.phonePlaceholder')}
-										className={`form-input ${theme}-form-input`}
-									/>
-								</Form.Item>
-							</Col>
-							<Col span={12}>
-								<Form.Item
-									name="dateOfBirth"
 									label={t('teacherManagement.dateOfBirth')}
+									name="dateOfBirth"
 								>
 									<DatePicker 
 										style={{ width: '100%' }}
-										placeholder={t('teacherManagement.dateOfBirthPlaceholder')}
-										className={`form-input ${theme}-form-input`}
-										format="DD/MM/YYYY"
-									/>
-								</Form.Item>
-							</Col>
-						</Row>
-
-						{/* Professional Information */}
-						<Row gutter={24}>
-							<Col span={12}>
-								<Form.Item
-									name="role"
-									label={t('teacherManagement.role')}
-									rules={[{ required: true, message: t('teacherManagement.roleRequired') }]}
-								>
-									<Select 
-										placeholder={t('teacherManagement.rolePlaceholder')}
-										className={`custom-dropdown ${theme}-custom-dropdown`}
-									>
-										<Select.Option value="teacher">{t('teacherManagement.teacher')}</Select.Option>
-										<Select.Option value="teacher_assistant">{t('teacherManagement.teacherAssistant')}</Select.Option>
-									</Select>
-								</Form.Item>
-							</Col>
-							<Col span={12}>
-								<Form.Item
-									name="specialization"
-									label={t('teacherManagement.specialization')}
-									rules={[{ required: true, message: t('teacherManagement.specializationRequired') }]}
-								>
-									<Select 
-										placeholder={t('teacherManagement.specializationPlaceholder')}
-										className={`custom-dropdown ${theme}-custom-dropdown`}
-									>
-										<Select.Option value="Mathematics">{t('teacherManagement.mathematics')}</Select.Option>
-										<Select.Option value="English">{t('teacherManagement.english')}</Select.Option>
-										<Select.Option value="Physics">{t('teacherManagement.physics')}</Select.Option>
-										<Select.Option value="Chemistry">{t('teacherManagement.chemistry')}</Select.Option>
-										<Select.Option value="Biology">{t('teacherManagement.biology')}</Select.Option>
-										<Select.Option value="History">{t('teacherManagement.history')}</Select.Option>
-										<Select.Option value="Geography">{t('teacherManagement.geography')}</Select.Option>
-										<Select.Option value="Computer Science">{t('teacherManagement.computerScience')}</Select.Option>
-									</Select>
-								</Form.Item>
-							</Col>
-						</Row>
-
-						<Row gutter={24}>
-							<Col span={12}>
-								<Form.Item
-									name="experience"
-									label={t('teacherManagement.experience')}
-									rules={[{ required: true, message: t('teacherManagement.experienceRequired') }]}
-								>
-									<Input 
-										placeholder={t('teacherManagement.experiencePlaceholder')}
-										className={`form-input ${theme}-form-input`}
+										placeholder={t('teacherManagement.selectDateOfBirth')}
+										format="YYYY-MM-DD"
 									/>
 								</Form.Item>
 							</Col>
 							<Col span={12}>
 								<Form.Item
-									name="status"
-									label={t('teacherManagement.status')}
-									rules={[{ required: true, message: t('teacherManagement.statusRequired') }]}
+									label={t('teacherManagement.gender')}
+									name="gender"
 								>
-									<Select 
-										placeholder={t('teacherManagement.statusPlaceholder')}
-										className={`custom-dropdown ${theme}-custom-dropdown`}
-									>
-										<Select.Option value="active">{t('teacherManagement.active')}</Select.Option>
-										<Select.Option value="inactive">{t('teacherManagement.inactive')}</Select.Option>
+									<Select placeholder={t('teacherManagement.selectGender')}>
+										<Select.Option value="MALE">{t('common.male')}</Select.Option>
+										<Select.Option value="FEMALE">{t('common.female')}</Select.Option>
+										<Select.Option value="OTHER">{t('common.other')}</Select.Option>
 									</Select>
 								</Form.Item>
 							</Col>
 						</Row>
 
-						{/* Address */}
-						<Form.Item
-							name="address"
-							label={t('teacherManagement.address')}
-						>
-							<Input.TextArea 
-								rows={3}
-								placeholder={t('teacherManagement.addressPlaceholder')}
-								className={`form-input ${theme}-form-input`}
-							/>
-						</Form.Item>
-
-						{/* Bio */}
-						<Form.Item
-							name="bio"
-							label={t('teacherManagement.bio')}
-						>
-							<Input.TextArea 
-								rows={4}
-								placeholder={t('teacherManagement.bioPlaceholder')}
-								className={`form-input ${theme}-form-input`}
-							/>
-						</Form.Item>
+						<Row gutter={16}>
+							<Col span={24}>
+								<Form.Item
+									label={t('teacherManagement.address')}
+									name="address"
+									rules={[
+										{ max: 255, message: t('teacherManagement.addressMaxLength') },
+									]}
+								>
+									<Input placeholder={t('teacherManagement.enterAddress')} />
+								</Form.Item>
+							</Col>
+						</Row>
 
 						{/* Action Buttons */}
 						<Row gutter={16} style={{ marginTop: 32 }}>
@@ -690,7 +633,6 @@ const TeacherProfile = () => {
 									type="default"
 									onClick={() => setEditModalVisible(false)}
 									style={{ width: '100%', height: 40 }}
-									className={`cancel-button ${theme}-cancel-button`}
 								>
 									{t('common.cancel')}
 								</Button>
@@ -701,9 +643,8 @@ const TeacherProfile = () => {
 									htmlType="submit"
 									loading={editLoading}
 									style={{ width: '100%', height: 40 }}
-									className={`submit-button ${theme}-submit-button`}
 								>
-									{t('common.update')}
+									{t('teacherManagement.updateProfile')}
 								</Button>
 							</Col>
 						</Row>
