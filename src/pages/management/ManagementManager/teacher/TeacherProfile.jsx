@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
 	Card,
 	Row,
@@ -7,15 +7,12 @@ import {
 	Avatar,
 	Tag,
 	Table,
-	Timeline,
 	Space,
 	Modal,
 	Form,
 	Input,
 	Select,
 	DatePicker,
-	Upload,
-	message,
 	Spin,
 	Alert,
 	Typography,
@@ -24,11 +21,8 @@ import {
 	ArrowLeftOutlined,
 	EditOutlined,
 	UserOutlined,
-	UploadOutlined,
 	CalendarOutlined,
 	BookOutlined,
-	TrophyOutlined,
-	ClockCircleOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -56,11 +50,33 @@ const TeacherProfile = () => {
 	// Teacher data from API
 	const [teacher, setTeacher] = useState(null);
 
-	useEffect(() => {
-		fetchTeacherProfile();
-	}, [teacherId]);
+	// Available teacher avatar images
+	const teacherAvatarImages = useMemo(() => [
+		'teacher1.png',
+		'teacher2.png',
+		'teacher3.png',
+		'teacher4.png',
+		'teacher5.png',
+		'teacher6.png',
+		'teacher7.png',
+		'teacher8.png',
+		'teacher9.png',
+		'teacher10.png',
+		'teacher11.png',
+		'teacher12.png',
+	], []);
 
-	const fetchTeacherProfile = async () => {
+	// Function to get random teacher avatar based on teacher ID
+	const getRandomTeacherAvatar = useCallback((teacherId) => {
+		if (!teacherId) return null;
+		
+		// Use teacher ID as seed for consistent random selection
+		const seed = parseInt(teacherId.toString().slice(-3)) || 0;
+		const randomIndex = seed % teacherAvatarImages.length;
+		return `/img/teacher_avatar/${teacherAvatarImages[randomIndex]}`;
+	}, [teacherAvatarImages]);
+
+	const fetchTeacherProfile = useCallback(async () => {
 		try {
 			setLoading(true);
 			setError(null);
@@ -75,7 +91,9 @@ const TeacherProfile = () => {
 			
 			if (response.success && response.data) {
 				setTeacher(response.data);
-				setAvatarUrl(response.data.avatarUrl);
+				// Use random teacher avatar based on teacher ID instead of API avatarUrl
+				const randomAvatar = getRandomTeacherAvatar(response.data.id);
+				setAvatarUrl(randomAvatar);
 			} else {
 				setError(response.message || 'Failed to fetch teacher profile');
 			}
@@ -85,7 +103,11 @@ const TeacherProfile = () => {
 		} finally {
 			setLoading(false);
 		}
-	};
+	}, [teacherId, getRandomTeacherAvatar]);
+
+	useEffect(() => {
+		fetchTeacherProfile();
+	}, [fetchTeacherProfile]);
 
 	const handleBack = () => {
 		navigate('/manager/teachers');
@@ -95,6 +117,10 @@ const TeacherProfile = () => {
 		if (!teacher) return;
 		
 		setEditModalVisible(true);
+		
+		// Get current avatar filename from avatarUrl
+		const currentAvatarFilename = avatarUrl ? avatarUrl.split('/').pop() : null;
+		
 		editForm.setFieldsValue({
 			roleName: teacher.roleName,
 			firstName: teacher.firstName,
@@ -104,8 +130,9 @@ const TeacherProfile = () => {
 			dateOfBirth: teacher.dateOfBirth ? dayjs(teacher.dateOfBirth) : null,
 			gender: teacher.gender,
 			address: teacher.address,
+			// Avatar selection
+			avatar: currentAvatarFilename,
 		});
-		setAvatarUrl(teacher.avatarUrl);
 	};
 
 	const handleEditSubmit = async (values) => {
@@ -117,7 +144,7 @@ const TeacherProfile = () => {
 			email: values.email,
 			firstName: values.firstName,
 			lastName: values.lastName,
-			avatarUrl: avatarUrl || "string", // Use current avatar or default to "string"
+			avatarUrl: "string", // Always send "string" as per API requirement
 			dateOfBirth: values.dateOfBirth ? values.dateOfBirth.toISOString() : null, // Use ISO format like in the image
 			address: values.address || "",
 			phoneNumber: values.phoneNumber,
@@ -143,37 +170,11 @@ const TeacherProfile = () => {
 		}
 	};
 
-	const handleAvatarChange = (info) => {
-		// This function is now mainly for handling upload status changes
-		// The actual file handling is done in beforeUpload
-		if (info.file.status === 'error') {
-			message.error(t('teacherManagement.avatarUploadError'));
+	// Function to handle avatar selection from dropdown
+	const handleAvatarSelect = (selectedAvatar) => {
+		if (selectedAvatar) {
+			setAvatarUrl(`/img/teacher_avatar/${selectedAvatar}`);
 		}
-	};
-
-	const uploadProps = {
-		name: 'avatar',
-		listType: 'picture',
-		showUploadList: false,
-		action: '', // Disable default upload action to prevent 404 error
-		beforeUpload: (file) => {
-			const isJpgOrPng = file.type === 'image/jpeg' || file.type === 'image/png';
-			if (!isJpgOrPng) {
-				message.error(t('teacherManagement.avatarFormatError'));
-				return false;
-			}
-			const isLt2M = file.size / 1024 / 1024 < 2;
-			if (!isLt2M) {
-				message.error(t('teacherManagement.avatarSizeError'));
-				return false;
-			}
-			// Handle file locally without server upload
-			const url = URL.createObjectURL(file);
-			setAvatarUrl(url);
-			message.success(t('teacherManagement.avatarUploadSuccess'));
-			return false; // Prevent default upload
-		},
-		onChange: handleAvatarChange,
 	};
 
 	const classColumns = [
@@ -293,7 +294,7 @@ const TeacherProfile = () => {
 									<Avatar
 										size={120}
 										icon={<UserOutlined />}
-										src={teacher.avatarUrl}
+										src={avatarUrl}
 										style={{
 											backgroundColor: '#1890ff',
 											border: `3px solid ${
@@ -486,7 +487,7 @@ const TeacherProfile = () => {
 									<Avatar
 										size={120}
 										icon={<UserOutlined />}
-										src={avatarUrl || teacher?.avatarUrl}
+										src={avatarUrl}
 										style={{ 
 											backgroundColor: '#1890ff',
 											marginBottom: 16,
@@ -495,14 +496,35 @@ const TeacherProfile = () => {
 										}}
 									/>
 									<div>
-										<Upload {...uploadProps}>
-											<Button 
-												icon={<UploadOutlined />}
-												className={`upload-button ${theme}-upload-button`}
+										<Form.Item
+											name="avatar"
+											label={t('teacherManagement.selectAvatar')}
+											rules={[{ required: true, message: t('teacherManagement.avatarRequired') }]}
+										>
+											<Select
+												placeholder={t('teacherManagement.selectAvatar')}
+												onChange={handleAvatarSelect}
+												className={`custom-dropdown ${theme}-custom-dropdown`}
+												showSearch
+												filterOption={(input, option) =>
+													option.children.toLowerCase().indexOf(input.toLowerCase()) >= 0
+												}
+												style={{ width: 200 }}
 											>
-												{t('teacherManagement.uploadAvatar')}
-											</Button>
-										</Upload>
+												{teacherAvatarImages.map((avatar, index) => (
+													<Select.Option key={index} value={avatar}>
+														<div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+															<Avatar
+																size={24}
+																src={`/img/teacher_avatar/${avatar}`}
+																style={{ flexShrink: 0 }}
+															/>
+															<span>{avatar.replace('.png', '').replace('teacher', 'Teacher ')}</span>
+														</div>
+													</Select.Option>
+												))}
+											</Select>
+										</Form.Item>
 									</div>
 								</div>
 							</Col>

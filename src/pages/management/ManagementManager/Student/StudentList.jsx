@@ -24,7 +24,7 @@ import {
   SearchOutlined,
   CheckOutlined,
   StopOutlined,
-  InfoCircleOutlined,
+  EyeOutlined,
   DownloadOutlined,
   UploadOutlined,
   InboxOutlined,
@@ -310,6 +310,14 @@ const StudentList = () => {
               icon={<PlusOutlined />}
               onClick={() => handleAssignToClass(record)}
               className={`assign-class-button ${theme}-assign-class-button`}
+              style={{
+                fontSize: '12px',
+                height: '28px',
+                padding: '0 8px',
+                backgroundColor: '#52c41a',
+                borderColor: '#52c41a',
+                borderRadius: '4px'
+              }}
             >
               Assign to Class
             </Button>
@@ -339,7 +347,7 @@ const StudentList = () => {
           <Tooltip title={t('studentManagement.viewProfile')}>
             <Button
               type="text"
-              icon={<InfoCircleOutlined style={{ fontSize: '25px' }} />}
+              icon={<EyeOutlined style={{ fontSize: '25px' }} />}
               size="small"
               onClick={() => handleViewProfile(record)}
               style={{ 
@@ -725,7 +733,7 @@ STU003,Le Van Cuong,levancuong@example.com,0111222333,Lớp 11B1,Advanced,active
                       <div style={{ display: 'flex', gap: '24px', marginBottom: '24px' }}>
                         {/* Role Filter */}
                         <div style={{ flex: 1 }}>
-                          <Title level={5} style={{ marginBottom: '12px', color: '#1890ff', fontSize: '16px' }}>
+                          <Title level={5} style={{ marginBottom: '12px', color: '#298EFE', fontSize: '16px' }}>
                             Role
                           </Title>
                           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
@@ -748,7 +756,7 @@ STU003,Le Van Cuong,levancuong@example.com,0111222333,Lớp 11B1,Advanced,active
 
                         {/* Status Filter */}
                         <div style={{ flex: 1 }}>
-                          <Title level={5} style={{ marginBottom: '12px', color: '#1890ff', fontSize: '16px' }}>
+                          <Title level={5} style={{ marginBottom: '12px', color: '#298EFE', fontSize: '16px' }}>
                             Status
                           </Title>
                           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
@@ -1050,35 +1058,6 @@ STU003,Le Van Cuong,levancuong@example.com,0111222333,Lớp 11B1,Advanced,active
               </Col>
             </Row>
 
-            <Row gutter={16}>
-              <Col span={24}>
-                <Form.Item
-                  label="Avatar"
-                  name="avatar"
-                  valuePropName="fileList"
-                  getValueFromEvent={(e) => {
-                    if (Array.isArray(e)) {
-                      return e;
-                    }
-                    return e && e.fileList;
-                  }}
-                >
-                  <Upload.Dragger
-                    name="avatar"
-                    listType="picture"
-                    maxCount={1}
-                    beforeUpload={() => false}
-                    accept="image/*"
-                  >
-                    <p className="ant-upload-drag-icon">
-                      <InboxOutlined />
-                    </p>
-                    <p className="ant-upload-text">Click or drag image to upload</p>
-                    <p className="ant-upload-hint">Support for single image upload</p>
-                  </Upload.Dragger>
-                </Form.Item>
-              </Col>
-            </Row>
 
             {/* Parent Information */}
             <Title level={5} style={{ marginTop: '24px', marginBottom: '16px', color: '#1890ff' }}>

@@ -556,6 +556,8 @@
     "studentLearningProgressOverview": "Student learning progress overview",
     "editProfile": "Edit profile",
     "uploadAvatar": "Upload avatar",
+    "selectAvatar": "Select Avatar",
+    "avatarRequired": "Please select an avatar!",
     "active": "Active",
     "inactive": "Inactive",
     "update": "Update",
@@ -1546,7 +1548,9 @@
     "deactivateTeacherSuccess": "Teacher deactivated successfully",
     "updateStatusError": "Failed to update teacher status",
     "loadTeachersError": "Failed to load teachers list",
-    "loadingTeachers": "Loading teachers list..."
+    "loadingTeachers": "Loading teachers list...",
+    "selectAvatar": "Select Avatar",
+    "avatarRequired": "Please select an avatar!"
   },
   "messages": {
     "loginSuccess": "Login successful!",

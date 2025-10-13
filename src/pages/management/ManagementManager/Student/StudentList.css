@@ -194,7 +194,7 @@
 
 /* Sun theme assign class button */
 .sun-theme .assign-class-button {
-	background: linear-gradient(135deg, #FFFFFF, #B6D8FE 77%, #94C2F5) !important;
+	background: #84ceff !important;
 	color: #000 !important;
   box-shadow: none !important;
 }

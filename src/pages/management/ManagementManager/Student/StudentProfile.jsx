@@ -11,8 +11,6 @@ import {
 	Input,
 	Select,
 	DatePicker,
-	Upload,
-	message,
 	Spin,
 	Alert,
 } from 'antd';
@@ -20,7 +18,6 @@ import {
 	ArrowLeftOutlined,
 	EditOutlined,
 	UserOutlined,
-	UploadOutlined,
 	KeyOutlined,
 	BarChartOutlined,
 } from '@ant-design/icons';
@@ -56,6 +53,38 @@ const StudentProfile = () => {
 	// Redux state for levels
 	const { levels, loading: levelsLoading } = useSelector((state) => state.level);
 
+	// Available avatar images
+	const avatarImages = [
+		'avatar1.png',
+		'avatar2.png',
+		'avatar3.png',
+		'avatar4.png',
+		'avatar5.png',
+		'avatar6.png',
+		'avatar7.png',
+		'avatar8.png',
+		'avatar9.png',
+		'avatar10.png',
+		'avatar11.png',
+		'avatar12.png',
+		'avatar13.png',
+		'avatar14.png',
+		'avatar15.png',
+		'avatar16.png',
+		'avatar17.png',
+		'avatar18.png',
+	];
+
+	// Function to get random avatar based on student ID
+	const getRandomAvatar = (studentId) => {
+		if (!studentId) return null;
+		
+		// Use student ID as seed for consistent random selection
+		const seed = parseInt(studentId.toString().slice(-3)) || 0;
+		const randomIndex = seed % avatarImages.length;
+		return `/img/student_avatar/${avatarImages[randomIndex]}`;
+	};
+
 
 	useEffect(() => {
 		fetchStudentProfile();
@@ -77,7 +106,9 @@ const StudentProfile = () => {
 			
 			if (response.success && response.data) {
 				setStudent(response.data);
-				setAvatarUrl(response.data.avatarUrl);
+				// Use random avatar based on student ID instead of API avatarUrl
+				const randomAvatar = getRandomAvatar(response.data.id);
+				setAvatarUrl(randomAvatar);
 			} else {
 				setError(response.message || 'Failed to fetch student profile');
 			}
@@ -97,6 +128,10 @@ const StudentProfile = () => {
 		if (!student) return;
 		
 		setEditModalVisible(true);
+		
+		// Get current avatar filename from avatarUrl
+		const currentAvatarFilename = avatarUrl ? avatarUrl.split('/').pop() : null;
+		
 		editForm.setFieldsValue({
 			roleName: student.roleName,
 			firstName: student.firstName,
@@ -107,13 +142,14 @@ const StudentProfile = () => {
 			gender: student.gender,
 			address: student.address,
 			levelId: student.currentLevelInfo?.id || null,
+			// Avatar selection
+			avatar: currentAvatarFilename,
 			// Parent information
 			parentName: student.parentInfo?.parentName,
 			parentEmail: student.parentInfo?.parentEmail,
 			parentPhone: student.parentInfo?.parentPhone,
 			relationship: student.parentInfo?.relationship,
 		});
-		setAvatarUrl(student.avatarUrl);
 	};
 
 	const handleEditSubmit = async (values) => {
@@ -125,7 +161,7 @@ const StudentProfile = () => {
 				email: values.email,
 				firstName: values.firstName,
 				lastName: values.lastName,
-				avatarUrl: avatarUrl || "string", // Use current avatar or default to "string"
+				avatarUrl: "string", // Always send "string" as per API requirement
 				dateOfBirth: values.dateOfBirth ? values.dateOfBirth.format('YYYY-MM-DDTHH:mm:ss.SSS[Z]') : null,
 				address: values.address || null,
 				phoneNumber: values.phoneNumber || null,
@@ -188,37 +224,11 @@ const StudentProfile = () => {
 		});
 	};
 
-	const handleAvatarChange = (info) => {
-		// This function is now mainly for handling upload status changes
-		// The actual file handling is done in beforeUpload
-		if (info.file.status === 'error') {
-			message.error(t('studentManagement.avatarUploadError'));
+	// Function to handle avatar selection from dropdown
+	const handleAvatarSelect = (selectedAvatar) => {
+		if (selectedAvatar) {
+			setAvatarUrl(`/img/student_avatar/${selectedAvatar}`);
 		}
-	};
-
-	const uploadProps = {
-		name: 'avatar',
-		listType: 'picture',
-		showUploadList: false,
-		action: '', // Disable default upload action to prevent 404 error
-		beforeUpload: (file) => {
-			const isJpgOrPng = file.type === 'image/jpeg' || file.type === 'image/png';
-			if (!isJpgOrPng) {
-				message.error(t('studentManagement.avatarFormatError'));
-				return false;
-			}
-			const isLt2M = file.size / 1024 / 1024 < 2;
-			if (!isLt2M) {
-				message.error(t('studentManagement.avatarSizeError'));
-				return false;
-			}
-			// Handle file locally without server upload
-			const url = URL.createObjectURL(file);
-			setAvatarUrl(url);
-			message.success(t('studentManagement.avatarUploadSuccess'));
-			return false; // Prevent default upload
-		},
-		onChange: handleAvatarChange,
 	};
 
 	// Loading state
@@ -312,7 +322,7 @@ const StudentProfile = () => {
 									<Avatar
 										size={120}
 										icon={<UserOutlined />}
-										src={student.avatarUrl}
+										src={avatarUrl}
 										style={{
 											backgroundColor: '#1890ff',
 											border: `3px solid ${
@@ -553,14 +563,35 @@ const StudentProfile = () => {
 										}}
 									/>
 									<div>
-										<Upload {...uploadProps}>
-											<Button 
-												icon={<UploadOutlined />}
-												className={`upload-button ${theme}-upload-button`}
+										<Form.Item
+											name="avatar"
+											label={t('studentManagement.selectAvatar')}
+											rules={[{ required: true, message: t('studentManagement.avatarRequired') }]}
+										>
+											<Select
+												placeholder={t('studentManagement.selectAvatar')}
+												onChange={handleAvatarSelect}
+												className={`custom-dropdown ${theme}-custom-dropdown`}
+												showSearch
+												filterOption={(input, option) =>
+													option.children.toLowerCase().indexOf(input.toLowerCase()) >= 0
+												}
+												style={{ width: 200 }}
 											>
-												{t('studentManagement.uploadAvatar')}
-											</Button>
-										</Upload>
+												{avatarImages.map((avatar, index) => (
+													<Select.Option key={index} value={avatar}>
+														<div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+															<Avatar
+																size={24}
+																src={`/img/student_avatar/${avatar}`}
+																style={{ flexShrink: 0 }}
+															/>
+															<span>{avatar.replace('.png', '').replace('avatar', 'Avatar ')}</span>
+														</div>
+													</Select.Option>
+												))}
+											</Select>
+										</Form.Item>
 									</div>
 								</div>
 							</Col>

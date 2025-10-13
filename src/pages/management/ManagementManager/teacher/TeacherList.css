@@ -97,20 +97,22 @@
 }
 
 .filter-option:hover {
-	border-color: #1890ff !important;
-	color: #1890ff !important;
-	background: #f0f8ff !important;
+	border-color: #C2E6FF !important;
+	color: #000 !important;
+	background: #C2E6FF !important;
+	transform: translateY(-1px) !important;
+	box-shadow: 0 2px 8px rgba(194, 230, 255, 0.3) !important;
 }
 
 .filter-option.selected {
-	border: 2px solid #1890ff !important;
-	background: #1890ff !important;
-	color: #fff !important;
+	border: 2px solid #C2E6FF !important;
+	background: #C2E6FF !important;
+	color: #000 !important;
 }
 
 .filter-option.selected:hover {
-	background: #40a9ff !important;
-	border-color: #40a9ff !important;
+	background: #C2E6FF !important;
+	border-color: #C2E6FF !important;
 }
 
 /* Filter action buttons */

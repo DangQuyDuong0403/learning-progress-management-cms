@@ -6,15 +6,8 @@ import {
 	Button,
 	Row,
 	Col,
-	Upload,
-	Avatar,
-	message,
 	DatePicker,
 } from 'antd';
-import {
-	UserOutlined,
-	UploadOutlined,
-} from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../../../contexts/ThemeContext';
 import { spaceToast } from '../../../../component/SpaceToastify';
@@ -29,7 +22,6 @@ const TeacherForm = ({ teacher, onClose, onSuccess }) => {
 	const { theme } = useTheme();
 	const [form] = Form.useForm();
 	const [loading, setLoading] = useState(false);
-	const [avatarUrl, setAvatarUrl] = useState(null);
 
 	useEffect(() => {
 		if (teacher) {
@@ -37,7 +29,6 @@ const TeacherForm = ({ teacher, onClose, onSuccess }) => {
 				...teacher,
 				dateOfBirth: teacher.dateOfBirth ? dayjs(teacher.dateOfBirth) : null,
 			});
-			setAvatarUrl(teacher.avatarUrl);
 		}
 	}, [teacher, form]);
 
@@ -50,7 +41,7 @@ const TeacherForm = ({ teacher, onClose, onSuccess }) => {
 				email: values.email,
 				firstName: values.firstName,
 				lastName: values.lastName,
-				avatarUrl: avatarUrl || "string", // Default to "string" if no avatar
+				avatarUrl: "string", // Always send "string" as per API example
 				dateOfBirth: values.dateOfBirth ? values.dateOfBirth.toISOString() : null,
 				address: values.address || "",
 				phoneNumber: values.phoneNumber,
@@ -88,34 +79,6 @@ const TeacherForm = ({ teacher, onClose, onSuccess }) => {
 		}
 	};
 
-	const handleAvatarChange = (info) => {
-		if (info.file.status === 'done') {
-			// Simulate successful upload
-			const url = URL.createObjectURL(info.file.originFileObj);
-			setAvatarUrl(url);
-			message.success(t('teacherManagement.avatarUploadSuccess'));
-		} else if (info.file.status === 'error') {
-			message.error(t('teacherManagement.avatarUploadError'));
-		}
-	};
-
-	const uploadProps = {
-		name: 'avatar',
-		listType: 'picture',
-		showUploadList: false,
-		beforeUpload: (file) => {
-			const isJpgOrPng = file.type === 'image/jpeg' || file.type === 'image/png';
-			if (!isJpgOrPng) {
-				message.error(t('teacherManagement.avatarFormatError'));
-			}
-			const isLt2M = file.size / 1024 / 1024 < 2;
-			if (!isLt2M) {
-				message.error(t('teacherManagement.avatarSizeError'));
-			}
-			return isJpgOrPng && isLt2M;
-		},
-		onChange: handleAvatarChange,
-	};
 
 	return (
 		<div className={`teacher-form ${theme}-teacher-form`}>
@@ -127,34 +90,6 @@ const TeacherForm = ({ teacher, onClose, onSuccess }) => {
 					// No default values - user must select
 				}}
 			>
-				{/* Avatar Section */}
-				<Row gutter={24} style={{ marginBottom: 24 }}>
-					<Col span={24} style={{ textAlign: 'center' }}>
-						<div className="avatar-section">
-							<Avatar
-								size={120}
-								icon={<UserOutlined />}
-								src={avatarUrl}
-								style={{ 
-									backgroundColor: '#1890ff',
-									marginBottom: 16,
-									border: `3px solid ${theme === 'space' ? 'rgba(77, 208, 255, 0.5)' : 'rgba(0, 0, 0, 0.1)'}`,
-									boxShadow: `0 4px 12px ${theme === 'space' ? 'rgba(77, 208, 255, 0.3)' : 'rgba(0, 0, 0, 0.1)'}`
-								}}
-							/>
-							<div>
-								<Upload {...uploadProps}>
-									<Button 
-										icon={<UploadOutlined />}
-										className={`upload-button ${theme}-upload-button`}
-									>
-										{t('teacherManagement.uploadAvatar')}
-									</Button>
-								</Upload>
-							</div>
-						</div>
-					</Col>
-				</Row>
 
 				{/* Basic Information */}
 				<Row gutter={24}>

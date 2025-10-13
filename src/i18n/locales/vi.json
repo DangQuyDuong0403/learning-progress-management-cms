@@ -557,6 +557,8 @@
     "studentLearningProgressOverview": "Tổng quan tiến độ học tập",
     "editProfile": "Chỉnh sửa hồ sơ",
     "uploadAvatar": "Tải lên ảnh đại diện",
+    "selectAvatar": "Chọn Ảnh đại diện",
+    "avatarRequired": "Vui lòng chọn ảnh đại diện!",
     "active": "Hoạt động",
     "inactive": "Không hoạt động",
     "update": "Cập nhật",
@@ -1546,7 +1548,9 @@
     "deactivateTeacherSuccess": "Vô hiệu hóa giáo viên thành công",
     "updateStatusError": "Cập nhật trạng thái giáo viên thất bại",
     "loadTeachersError": "Tải danh sách giáo viên thất bại",
-    "loadingTeachers": "Đang tải danh sách giáo viên..."
+    "loadingTeachers": "Đang tải danh sách giáo viên...",
+    "selectAvatar": "Chọn Ảnh đại diện",
+    "avatarRequired": "Vui lòng chọn ảnh đại diện!"
   },
   "messages": {
     "loginSuccess": "Đăng nhập thành công!",
