@@ -10,6 +10,23 @@ const syllabusManagementApi = {
         params: { syllabusId, ...params } 
     }),
     bulkUpdateChapters: (data) => axiosClient.put('/chapter/bulk-order', data),
+    
+    // Chapter Sync API - Đồng bộ toàn bộ danh sách chapter cho một syllabus
+    syncChapters: (syllabusId, chaptersData) => axiosClient.put('/chapter/sync', chaptersData, {
+        params: { syllabusId }
+    }),
+    
+    // Lesson Sync API - Đồng bộ toàn bộ danh sách lesson cho một chapter
+    syncLessons: (chapterId, lessonsData) => axiosClient.put(`/lesson/sync/${chapterId}`, lessonsData),
+    
+    // Lesson APIs
+    getLessonsByChapterId: (chapterId, params) => axiosClient.get('/lesson', { 
+        params: { chapterId, ...params } 
+    }),
+    createLesson: (data) => axiosClient.post('/lesson', data),
+    updateLesson: (id, data) => axiosClient.put(`/lesson/${id}`, data),
+    deleteLesson: (id) => axiosClient.delete(`/lesson/${id}`),
+    bulkUpdateLessons: (data) => axiosClient.put('/lesson/bulk-order', data),
 }
 
 export default syllabusManagementApi;

@@ -79,7 +79,7 @@ const AccountList = () => {
 	// Pagination state
 	const [pagination, setPagination] = useState({
 		current: 1,
-		pageSize: 1,
+		pageSize: 10,
 		total: 0,
 		showSizeChanger: true,
 		showTotal: (total, range) => `${range[0]}-${range[1]} of ${total}`,
@@ -120,6 +120,8 @@ const AccountList = () => {
 				username: account.userName,
 				email: account.email,
 				fullName: account.fullName,
+				firstName: account.firstName, // Lấy firstName từ API
+				lastName: account.lastName, // Lấy lastName từ API
 				phone: account.phone || 'N/A', // API doesn't include phone, so we'll show N/A
 				role: account.roleName,
 				status: account.status, // Keep status in uppercase format (ACTIVE/INACTIVE)
@@ -256,7 +258,15 @@ const AccountList = () => {
 
 	const handleEditAccount = (record) => {
 		setEditingAccount(record);
-		form.setFieldsValue(record);
+		
+		// Set form values trực tiếp từ record
+		form.setFieldsValue({
+			firstName: record.firstName || '',
+			lastName: record.lastName || '',
+			email: record.email,
+			roleName: record.role,
+		});
+		
 		setIsModalVisible(true);
 	};
 
@@ -421,15 +431,24 @@ const AccountList = () => {
 			const values = await form.validateFields();
 
 			if (editingAccount) {
-				// Update existing account - giữ logic cũ cho edit
-				setAccounts(
-					accounts.map((account) =>
-						account.id === editingAccount.id
-							? { ...account, ...values }
-							: account
-					)
-				);
-				message.success(t('accountManagement.updateAccountSuccess'));
+				// Update existing account - gọi API update
+				const updateData = {
+					firstName: values.firstName,
+					lastName: values.lastName,
+					email: values.email,
+					roleName: values.roleName || 'MANAGER',
+				};
+				
+				console.log('Updating account with data:', updateData);
+				
+				// Gọi API update account
+				const response = await accountManagementApi.updateAccount(editingAccount.id, updateData);
+				console.log('Update account response:', response);
+				
+				spaceToast.success(t('accountManagement.updateAccountSuccess'));
+				
+				// Đồng bộ lại dữ liệu sau khi cập nhật
+				fetchAccounts(pagination.current, pagination.pageSize, searchText, roleFilter, statusFilter, sortBy, sortDir);
 			} else {
 				// Create new account - gửi API với body JSON đúng format
 				const accountData = {
@@ -445,13 +464,16 @@ const AccountList = () => {
 				const response = await accountManagementApi.createAccount(accountData);
 				console.log('Create account response:', response);
 				
-				message.success(t('accountManagement.addAccountSuccess'));
+				spaceToast.success(t('accountManagement.addAccountSuccess'));
+				
+				// Đồng bộ lại dữ liệu sau khi thêm mới
+				fetchAccounts(pagination.current, pagination.pageSize, searchText, roleFilter, statusFilter, sortBy, sortDir);
 			}
 
 			setIsModalVisible(false);
 			form.resetFields();
 		} catch (error) {
-			console.error('Error creating account:', error);
+			console.error('Error saving account:', error);
 			message.error(t('accountManagement.checkInfoError'));
 		}
 	};
