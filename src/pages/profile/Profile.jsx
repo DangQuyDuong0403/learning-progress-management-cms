@@ -74,7 +74,7 @@ export default function Profile() {
   const handleEdit = () => {
     // Set form values from profile data
     form.setFieldsValue({
-      username: profileData?.username || "test1",
+      username: profileData?.userName || profileData?.username || "test1",
       lastName: profileData?.lastName || "Nguyen Duc",
       firstName: profileData?.firstName || "Anh",
       email: profileData?.email || "anhtony2003@gmail.com",
@@ -214,7 +214,7 @@ export default function Profile() {
                       <h4 className="profile-full-name">
                         {profileData ? `${profileData.lastName} ${profileData.firstName}` : (user?.fullName || 'Nguyen Duc Anh')}
                       </h4>
-                      <p className="profile-role">{profileData?.role || user?.role || 'Admin'}</p>
+                      <p className="profile-role">{profileData?.roleName || user?.role || 'Admin'}</p>
                     </div>
                   </div>
                   
@@ -224,7 +224,7 @@ export default function Profile() {
                     <div className="form-group">
                       <label className={`form-label ${theme}-form-label`}>{t('common.username')}</label>
                       <div className={`form-display ${theme}-form-display`}>
-                        {profileData?.username || "test1"}
+                        {profileData?.userName || profileData?.username || "test1"}
                       </div>
                     </div>
 
