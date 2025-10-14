@@ -1,5 +1,6 @@
 import axios from 'axios';
 import authApi from './backend/auth';
+import { isTokenExpiringSoon } from '../utils/jwtUtils';
 
 // Tạo instance mặc định cho axios
 const axiosClient = axios.create({
@@ -9,15 +10,20 @@ const axiosClient = axios.create({
 });
 
 
-// Interceptor cho request — tự động thêm token nếu có
+// Interceptor cho request — tự động thêm accessToken nếu có
 axiosClient.interceptors.request.use(
 	(config) => {
-		const token = localStorage.getItem('token');
-		// Kiểm tra token hợp lệ (không phải "undefined" hoặc "null")
-		if (token && token !== 'undefined' && token !== 'null' && token.trim() !== '') {
-			config.headers.Authorization = `Bearer ${token}`;
+		const accessToken = localStorage.getItem('accessToken');
+		// Kiểm tra accessToken hợp lệ (không phải "undefined" hoặc "null")
+		if (accessToken && accessToken !== 'undefined' && accessToken !== 'null' && accessToken.trim() !== '') {
+			// Kiểm tra nếu token sắp hết hạn (trong 5 phút)
+			if (isTokenExpiringSoon(accessToken, 5)) {
+				console.warn('⚠️ AccessToken is expiring soon, will refresh on next 401 response');
+			}
+			
+			config.headers.Authorization = `Bearer ${accessToken}`;
 		} else {
-			console.warn('Invalid token detected:', token);
+			console.warn('Invalid accessToken detected:', accessToken);
 		}
 		
 		return config;
@@ -50,13 +56,24 @@ axiosClient.interceptors.response.use(
 	async (error) => {
 		const originalRequest = error.config;
 		
+		// Log error details for debugging
+		console.log('🚨 API Error:', {
+			status: error.response?.status,
+			url: originalRequest.url,
+			method: originalRequest.method,
+			hasRetry: originalRequest._retry
+		});
+		
 		if (error.response?.status === 401 && !originalRequest._retry) {
+			console.log('🔐 401 Unauthorized - attempting token refresh');
+			
 			if (isRefreshing) {
+				console.log('⏳ Token refresh already in progress, queuing request');
 				// Nếu đang refresh token, thêm request vào queue
 				return new Promise((resolve, reject) => {
 					failedQueue.push({ resolve, reject });
-				}).then(token => {
-					originalRequest.headers.Authorization = `Bearer ${token}`;
+				}).then(accessToken => {
+					originalRequest.headers.Authorization = `Bearer ${accessToken}`;
 					return axiosClient(originalRequest);
 				}).catch(err => {
 					return Promise.reject(err);
@@ -70,22 +87,33 @@ axiosClient.interceptors.response.use(
 			
 			if (refreshTokenValue) {
 				try {
+					console.log('🔄 Attempting to refresh token...');
 					const response = await authApi.refreshToken(refreshTokenValue);
-					const { accessToken } = response;
+					console.log('✅ Token refresh successful:', response);
 					
-					// Cập nhật token mới
-					localStorage.setItem('token', accessToken);
+					const { accessToken, refreshToken: newRefreshToken } = response;
+					
+					// Cập nhật cả accessToken và refreshToken mới
+					localStorage.setItem('accessToken', accessToken);
+					if (newRefreshToken) {
+						localStorage.setItem('refreshToken', newRefreshToken);
+						console.log('🔄 Updated refreshToken in localStorage');
+					}
+					
+					// Cập nhật header cho request gốc
 					originalRequest.headers.Authorization = `Bearer ${accessToken}`;
 					
-					// Xử lý queue
+					// Xử lý queue với accessToken mới
 					processQueue(null, accessToken);
 					
+					console.log('🔄 Retrying original request with new accessToken');
 					// Retry request gốc
 					return axiosClient(originalRequest);
 				} catch (refreshError) {
+					console.error('❌ Token refresh failed:', refreshError);
 					// Refresh token không hợp lệ, đăng xuất
 					processQueue(refreshError, null);
-					localStorage.removeItem('token');
+					localStorage.removeItem('accessToken');
 					localStorage.removeItem('user');
 					localStorage.removeItem('refreshToken');
 					// window.location.href = '/choose-login'; // Tạm thời disable
@@ -94,8 +122,9 @@ axiosClient.interceptors.response.use(
 					isRefreshing = false;
 				}
 			} else {
+				console.log('❌ No refresh token found, logging out');
 				// Không có refresh token, đăng xuất
-				localStorage.removeItem('token');
+				localStorage.removeItem('accessToken');
 				localStorage.removeItem('user');
 				localStorage.removeItem('refreshToken');
 				// window.location.href = '/choose-login'; // Tạm thời disable

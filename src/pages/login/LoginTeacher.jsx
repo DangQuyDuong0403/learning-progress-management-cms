@@ -41,6 +41,11 @@ export default function LoginTeacher() {
         setLoading(true);
         
         try {
+            // Clear existing tokens before login
+            localStorage.removeItem('accessToken');
+            localStorage.removeItem('refreshToken');
+            localStorage.removeItem('user');
+            
             // Lấy loginRole từ localStorage
             const loginRole = localStorage.getItem('loginRole') || 'teacher';
             
@@ -55,7 +60,7 @@ export default function LoginTeacher() {
             dispatch(loginSuccess(response.data));
             console.log(response);
             
-            // Store tokens in localStorage
+            // Store new tokens in localStorage
             localStorage.setItem('accessToken', response.data.accessToken);
             localStorage.setItem('refreshToken', response.data.refreshToken);
             

@@ -384,9 +384,180 @@
 
 
 
+/* ===== FILTER BUTTON STYLES ===== */
+.filter-button {
+	height: 40px;
+	border-radius: 8px;
+	font-weight: 500;
+	font-size: 16px;
+	border: 1px solid rgba(77, 208, 255, 0.3);
+	background: rgba(45, 27, 105, 0.8);
+	color: #fff;
+	backdrop-filter: blur(10px);
+	transition: all 0.3s ease;
+}
+
+.filter-button:hover {
+	background: rgba(77, 208, 255, 0.2);
+	border-color: rgba(77, 208, 255, 0.6);
+	transform: translateY(-2px);
+	box-shadow: 0 4px 12px rgba(77, 208, 255, 0.3);
+	filter: brightness(1.1);
+}
+
+.filter-button .ant-btn {
+	font-size: 16px !important;
+}
+
+/* Space theme filter button */
+.space-theme .filter-button {
+	background: rgb(224 217 255 / 90%);
+	border: 1px solid rgba(77, 208, 255, 0.3);
+	color: #000;
+}
+
+.space-theme .filter-button:hover {
+	background: rgb(224 217 255 / 100%);
+	border-color: rgba(77, 208, 255, 0.6);
+	box-shadow: 0 4px 12px rgba(77, 208, 255, 0.3);
+	filter: brightness(1.1);
+}
+
+/* Sun theme filter button */
+.sun-theme .filter-button {
+	background: rgba(255, 255, 255, 0.1);
+	border: 1px solid rgba(0, 0, 0, 0.2);
+	color: #000;
+}
+
+.sun-theme .filter-button:hover {
+	background: rgba(0, 0, 0, 0.1);
+	border-color: rgba(0, 0, 0, 0.3);
+	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* ===== FILTER DROPDOWN PANEL STYLES ===== */
+.filter-dropdown-panel {
+	position: absolute;
+	top: 100%;
+	left: 0;
+	right: 0;
+	background: #fff;
+	border-radius: 12px;
+	box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+	border: 1px solid rgba(0, 0, 0, 0.1);
+	z-index: 1000;
+	min-width: 500px;
+	margin-top: 8px;
+}
+
+/* Space theme filter dropdown */
+.space-theme .filter-dropdown-panel {
+	background: rgb(224 217 255 / 90%) !important;
+	backdrop-filter: blur(10px);
+	border: 1px solid rgba(77, 208, 255, 0.2);
+	box-shadow: 0 8px 32px rgba(77, 208, 255, 0.15);
+	color: #000;
+}
+
+/* Sun theme filter dropdown */
+.sun-theme .filter-dropdown-panel {
+	background: #fff;
+	border: 1px solid rgba(0, 0, 0, 0.1);
+	box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+}
+
+/* Filter option buttons */
+.filter-option {
+	height: 32px;
+	border-radius: 6px;
+	font-size: 14px;
+	font-weight: 500;
+	border: 1px solid #d9d9d9;
+	background: #fff;
+	color: #666;
+	transition: all 0.2s ease;
+}
+
+.filter-option:hover {
+	border-color: #1890ff;
+	color: #1890ff;
+	background: #f0f8ff;
+}
+
+.filter-option.selected {
+	background: #1890ff;
+	border-color: #1890ff;
+	color: #fff;
+}
+
+.filter-option.selected:hover {
+	background: #40a9ff;
+	border-color: #40a9ff;
+}
+
+/* Filter action buttons */
+.filter-reset-button {
+	height: 36px;
+	border-radius: 6px;
+	font-weight: 500;
+	border: 1px solid #d9d9d9;
+	background: #fff;
+	color: #666;
+}
+
+.filter-reset-button:hover {
+	border-color: #ff4d4f;
+	color: #ff4d4f;
+	background: #fff2f0;
+}
+
+.filter-submit-button {
+	height: 36px;
+	border-radius: 6px;
+	font-weight: 500;
+	background: #1890ff;
+	border-color: #1890ff;
+	color: #fff;
+}
+
+.filter-submit-button:hover {
+	background: #40a9ff;
+	border-color: #40a9ff;
+}
+
+/* Filter button states */
+.filter-button.active {
+	background: rgba(77, 208, 255, 0.3);
+	border-color: rgba(77, 208, 255, 0.6);
+}
+
+.filter-button.has-filters {
+	background: rgba(24, 144, 255, 0.2);
+	border-color: rgba(24, 144, 255, 0.6);
+	color: #1890ff;
+}
+
+.space-theme .filter-button.has-filters {
+	background: rgba(24, 144, 255, 0.2);
+	border-color: rgba(24, 144, 255, 0.6);
+	color: #1890ff;
+}
+
+.sun-theme .filter-button.has-filters {
+	background: rgba(24, 144, 255, 0.2);
+	border-color: rgba(24, 144, 255, 0.6);
+	color: #1890ff;
+}
+
 /* Responsive Design for Filters */
 @media (max-width: 768px) {
 	.account-page .search-section {
 		flex-wrap: wrap;
+	}
+	
+	.filter-dropdown-panel {
+		min-width: 300px;
+		left: -100px;
 	}
 }

@@ -125,7 +125,7 @@
 	padding: 12px 16px;
 	border: 2px solid #e8e8e8;
 	border-radius: 12px;
-	background: #ffffff;
+	background: rgb(224 217 255 / 90%);
 	cursor: grab;
 	position: relative;
 	min-height: 50px;
@@ -155,7 +155,7 @@
 	width: 40px;
 	height: 40px;
 	border-radius: 50%;
-	background-color: #a0a0a0;
+	background-color: #bfa1ef;
 	color: black !important;
 	font-weight: bold;
 	font-size: 18px;
@@ -198,91 +198,132 @@
 	z-index: 10;
 }
 
-/* Dark Theme */
-.dark-level-drag-edit-container {
-	background: #1f1f1f;
+/* Space Theme */
+.space-theme .table-section{
+	background: #2d2346e8;
+	border-radius: 20px;
+	/* backdrop-filter: blur(20px); */
 }
 
-.dark-level-drag-item {
-	background: #2a2a2a;
+.space-level-drag-edit-container {
+	background: #9865d146;
+	border-radius: 20px;
+}
+
+.space-level-drag-item {
+	background: rgb(224 217 255 / 90%);
 	border-color: #404040;
-	color: #ffffff;
+	color: #000000;
 }
 
-.dark-level-drag-item:hover {
+.space-level-drag-item:hover {
 	border-color: #1890ff;
 	box-shadow: 0 4px 12px rgba(24, 144, 255, 0.2);
 }
 
-.dark-level-drag-item .level-position {
-	background-color: #a0a0a0;
+.space-level-drag-item .level-position {
+	background-color: #bfa1ef;
 	color: black;
 }
 
-.dark-level-drag-item .ant-typography {
-	color: #ffffff;
+.space-level-drag-item .ant-typography {
+	color: #000000;
 }
 
-.dark-drag-edit-footer {
+.space-drag-edit-footer {
 	border-top-color: #404040;
-	background: #1f1f1f;
+	background: #9765d100;
 }
 
-.dark-add-level-between:hover {
+.space-add-level-between:hover {
 	background: rgba(255, 255, 255, 0.05);
 	border-radius: 8px;
 }
 
-/* Dark theme scrollbar */
-.dark-levels-scroll-container {
+/* Space theme scrollbar */
+.space-levels-scroll-container {
 	scrollbar-color: #555 #333;
 }
 
-.dark-levels-scroll-container::-webkit-scrollbar-track {
+.space-levels-scroll-container::-webkit-scrollbar-track {
 	background: #333;
 }
 
-.dark-levels-scroll-container::-webkit-scrollbar-thumb {
+.space-levels-scroll-container::-webkit-scrollbar-thumb {
 	background: #555;
 }
 
-.dark-levels-scroll-container::-webkit-scrollbar-thumb:hover {
+.space-levels-scroll-container::-webkit-scrollbar-thumb:hover {
 	background: #777;
 }
 
-/* Light Theme */
-.light-level-drag-edit-container {
+/* Sun Theme */
+.sun-level-drag-edit-container {
 	background: #ffffff;
 }
 
-.light-level-drag-item {
-	background: #ffffff;
+.sun-level-drag-item {
+	background: #E6F5FF;
 	border-color: #e8e8e8;
 	color: #000000;
-}
+} 
 
-.light-level-drag-item:hover {
+.sun-level-drag-item:hover {
 	border-color: #1890ff;
 	box-shadow: 0 4px 12px rgba(24, 144, 255, 0.15);
 }
 
-.light-level-drag-item .level-position {
-	background-color: #a0a0a0 !important;
+.sun-level-drag-item .level-position {
+	background-color: #a5d0ff !important;
 	color: black !important;
 }
 
-.light-level-drag-item .ant-typography {
+.sun-level-drag-item .ant-typography {
 	color: #000000;
 }
 
-.light-drag-edit-footer {
+.sun-drag-edit-footer {
 	border-top-color: #f0f0f0;
 	background: #ffffff;
 }
 
-.light-add-level-between:hover {
+.sun-add-level-between:hover {
 	background: rgba(0, 0, 0, 0.02);
 	border-radius: 8px;
+}
+
+/* Save Button Styles */
+.save-button {
+	height: 42px !important;
+	padding: 0 32px !important;
+	font-size: 16px !important;
+	font-weight: 500 !important;
+	border-radius: 8px !important;
+	transition: all 0.3s ease !important;
+}
+
+.space-theme .save-button {
+	background: linear-gradient(135deg, #a78bfa 0%, #c084fc 100%) !important;
+	border-color: #a78bfa !important;
+	box-shadow: 0 4px 12px rgba(167, 139, 250, 0.4) !important;
+}
+
+.space-theme .save-button:hover {
+	background: linear-gradient(135deg, #c084fc 0%, #e879f9 100%) !important;
+	border-color: #c084fc !important;
+	transform: translateY(-2px) !important;
+	box-shadow: 0 6px 16px rgba(167, 139, 250, 0.6) !important;
+}
+
+.sun-theme .save-button {
+	background: #a5d0ff  !important;
+	color: #000000;
+}
+
+.sun-theme .save-button:hover {
+	background: #94c6fc  !important;
+	transform: translateY(-2px) !important;
+	box-shadow: 0 6px 16px rgba(82, 196, 26, 0.6) !important;
 }
 
 /* Drag Handle */

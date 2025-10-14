@@ -11,19 +11,12 @@ import {
   InputNumber
 } from 'antd';
 import { useTranslation } from 'react-i18next';
-import { useDispatch, useSelector } from 'react-redux';
-import { 
-  createLevel, 
-  updateLevel 
-} from '../../../../redux/level';
 
 const { TextArea } = Input;
 const { Option } = Select;
 
 const LevelForm = ({ level, onClose }) => {
   const { t } = useTranslation();
-  const dispatch = useDispatch();
-  const { loading } = useSelector(state => state.level);
   
   const [form] = Form.useForm();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -50,25 +43,21 @@ const LevelForm = ({ level, onClose }) => {
   const onFinish = async (values) => {
     setIsSubmitting(true);
     try {
-      // Map form values to API format (match với Swagger API)
+      // Map form values to API format
       const apiData = {
         levelName: values.levelName,
-        description: values.description,
+        description: values.description || '',
         difficulty: values.difficulty,
         promotionCriteria: values.promotionCriteria || '',
         learningObjectives: values.learningObjectives || '',
         estimatedDurationWeeks: values.estimatedDurationWeeks,
-        orderNumber: values.orderNumber,
+        orderNumber: values.orderNumber || 0,
+        status: values.status || 'active',
       };
 
-      if (isEdit) {
-        await dispatch(updateLevel({ id: level.id, ...apiData }));
-        message.success(t('levelManagement.updateLevelSuccess'));
-      } else {
-        await dispatch(createLevel(apiData));
-        message.success(t('levelManagement.addLevelSuccess'));
-      }
-      onClose(true); // Pass true to indicate successful save
+      // Return data to parent component instead of calling API
+      message.success(isEdit ? t('levelManagement.updateLevelSuccess') : t('levelManagement.addLevelSuccess'));
+      onClose(true, apiData); // Pass data to parent
     } catch (error) {
       message.error(isEdit ? t('levelManagement.updateLevelError') : t('levelManagement.addLevelError'));
     } finally {
@@ -80,17 +69,6 @@ const LevelForm = ({ level, onClose }) => {
     form.resetFields();
     onClose();
   };
-
-  const difficultyOptions = [
-    { value: 'beginner', label: t('levelManagement.beginner') },
-    { value: 'intermediate', label: t('levelManagement.intermediate') },
-    { value: 'advanced', label: t('levelManagement.advanced') },
-  ];
-
-  const statusOptions = [
-    { value: 'active', label: t('levelManagement.active') },
-    { value: 'inactive', label: t('levelManagement.inactive') },
-  ];
 
   return (
     <Form
@@ -218,7 +196,7 @@ const LevelForm = ({ level, onClose }) => {
           <Button 
             type="primary" 
             htmlType="submit" 
-            loading={isSubmitting || loading}
+            loading={isSubmitting}
             size="large"
           >
             {isEdit ? t('common.update') : t('common.save')}
