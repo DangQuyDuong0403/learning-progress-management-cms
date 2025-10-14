@@ -3,7 +3,6 @@ import { Button, message, Typography, Divider, Modal } from 'antd';
 import {
 	PlusOutlined,
 	DeleteOutlined,
-	DragOutlined,
 	SaveOutlined,
 	ArrowLeftOutlined,
 	EditOutlined,
@@ -169,7 +168,11 @@ SortableLevelItem.displayName = 'SortableLevelItem';
 
 // Memoized AddLevelButton
 const AddLevelButton = memo(
-	({ theme, onAddAtPosition }) => {
+	({ theme, onAddAtPosition, index }) => {
+		const handleClick = useCallback(() => {
+			onAddAtPosition(index);
+		}, [onAddAtPosition, index]);
+
 		return (
 			<div className={`add-level-between ${theme}-add-level-between`}>
 				<Button
@@ -178,13 +181,13 @@ const AddLevelButton = memo(
 					icon={<PlusOutlined />}
 					size='large'
 					className='add-level-between-btn'
-					onClick={onAddAtPosition}
+					onClick={handleClick}
 				/>
 			</div>
 		);
 	},
 	(prevProps, nextProps) => {
-		return prevProps.theme === nextProps.theme;
+		return prevProps.theme === nextProps.theme && prevProps.index === nextProps.index;
 	}
 );
 
@@ -255,20 +258,54 @@ const LevelDragEdit = () => {
 		fetchAllLevels();
 	}, [fetchAllLevels]);
 
-	const handleAddLevelAtPosition = useCallback(() => {
+	const [insertAtIndex, setInsertAtIndex] = useState(null);
+
+	const handleAddLevelAtPosition = useCallback((index) => {
 		setEditingLevel(null);
+		setInsertAtIndex(index);
 		setIsModalVisible(true);
 	}, []);
 
 	const handleModalClose = useCallback(
-		(shouldRefresh) => {
+		(shouldRefresh, newLevelData) => {
 			setIsModalVisible(false);
-			setEditingLevel(null);
-			if (shouldRefresh) {
-				fetchAllLevels();
+			
+			if (shouldRefresh && newLevelData) {
+				if (editingLevel) {
+					// Update existing level
+					setLevels((prev) => {
+						return prev.map((level) =>
+							level.id === editingLevel.id
+								? { ...level, ...newLevelData }
+								: level
+						);
+					});
+				} else if (insertAtIndex !== null) {
+					// Insert new level at specific position
+					const newLevel = {
+						...newLevelData,
+						id: `new-${Date.now()}`, // Temporary ID for new record
+						position: insertAtIndex + 1,
+						orderNumber: insertAtIndex + 1,
+					};
+					
+					setLevels((prev) => {
+						const newLevels = [...prev];
+						newLevels.splice(insertAtIndex, 0, newLevel);
+						// Recalculate positions
+						return newLevels.map((level, i) => ({
+							...level,
+							position: i + 1,
+							orderNumber: i + 1,
+						}));
+					});
+				}
 			}
+			
+			setEditingLevel(null);
+			setInsertAtIndex(null);
 		},
-		[fetchAllLevels]
+		[editingLevel, insertAtIndex]
 	);
 
 	const handleDeleteLevel = useCallback(
@@ -348,16 +385,23 @@ const LevelDragEdit = () => {
 
 		setSaving(true);
 		try {
-			// Prepare data theo format API yêu cầu
-			// orderNumber chính là position (vị trí) hiện tại của record
-			const bulkUpdateData = levels.map((level) => ({
-				id: level.id,
-				orderNumber: level.position, // Position hiện tại = orderNumber
-				levelName: level.levelName,
-				difficulty: level.difficulty,
-			}));
+			// Prepare data theo format API yêu cầu với tất cả các trường
+			const bulkUpdateData = levels.map((level) => {
+				const isNewRecord = typeof level.id === 'string' && level.id.startsWith('new-');
+				
+				return {
+					id: isNewRecord ? null : level.id, // null for new records
+					levelName: level.levelName,
+					description: level.description || '',
+					difficulty: level.difficulty,
+					promotionCriteria: level.promotionCriteria || '',
+					learningObjectives: level.learningObjectives || '',
+					estimatedDurationWeeks: level.estimatedDurationWeeks || 0,
+					orderNumber: level.position, // Position hiện tại = orderNumber
+				};
+			});
 
-			// Gọi API bulk update
+			// Gọi API bulk update (sẽ xử lý cả create và update)
 			await levelManagementApi.bulkUpdateLevels(bulkUpdateData);
 
 			spaceToast.success(t('levelManagement.updatePositionsSuccess'));
@@ -451,7 +495,6 @@ const LevelDragEdit = () => {
 					style={{ padding: '24px' }}>
 					<div
 						className={`level-drag-edit-container ${theme}-level-drag-edit-container`}>
-						<Divider />
 
 						{/* Levels List with Scroll */}
 						<div className={`levels-scroll-container ${theme}-levels-scroll-container`}>
@@ -481,6 +524,7 @@ const LevelDragEdit = () => {
 													{index > 0 && (
 														<AddLevelButton
 															theme={theme}
+															index={index}
 															onAddAtPosition={handleAddLevelAtPosition}
 														/>
 													)}
@@ -558,7 +602,13 @@ const LevelDragEdit = () => {
 							<Button
 								icon={<ArrowLeftOutlined />}
 								onClick={handleGoBack}
-								style={{ marginRight: '12px' }}>
+								size='large'
+								style={{ 
+									marginRight: '12px',
+									borderRadius: '8px',
+									height: '42px',
+									padding: '0 24px',
+								}}>
 								{t('common.back')}
 							</Button>
 							<Button
@@ -566,12 +616,7 @@ const LevelDragEdit = () => {
 								icon={<SaveOutlined />}
 								onClick={handleSave}
 								loading={saving}
-								style={{
-									background:
-										'linear-gradient(135deg, #52c41a 0%, #73d13d 100%)',
-									border: 'none',
-									borderRadius: '8px',
-								}}>
+								className='save-button'>
 								{t('common.save')}
 							</Button>
 						</div>

@@ -9,6 +9,7 @@ const syllabusManagementApi = {
     getChaptersBySyllabusId: (syllabusId, params) => axiosClient.get('/chapter', { 
         params: { syllabusId, ...params } 
     }),
+    bulkUpdateChapters: (data) => axiosClient.put('/chapter/bulk-order', data),
 }
 
 export default syllabusManagementApi;

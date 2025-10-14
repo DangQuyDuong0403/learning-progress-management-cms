@@ -18,6 +18,7 @@ import LevelList from '../pages/management/ManagementManager/level/LevelList.jsx
 import LevelDragEdit from '../pages/management/ManagementManager/level/LevelDragEdit.jsx';
 import SyllabusList from '../pages/management/ManagementManager/syllabus/SyllabusList.jsx';
 import ChapterListPage from '../pages/management/ManagementManager/syllabus/ChapterListPage.jsx';
+import ChapterDragEdit from '../pages/management/ManagementManager/syllabus/ChapterDragEdit.jsx';
 import StudentList from '../pages/management/ManagementManager/Student/StudentList.jsx';
 import StudentProfile from '../pages/management/ManagementManager/Student/StudentProfile.jsx';
 import StudentLearningProgressOverview from '../pages/management/ManagementManager/Student/StudentLearningProgressOverview.jsx';
@@ -333,6 +334,16 @@ const CONFIG_ROUTER = [
 		menuName: 'Chapter management',
 		exact: true,
 		key: 'MANAGER_SYLLABUS_CHAPTERS',
+		private: true,
+		role: 'manager',
+	},
+	{
+		show: false,
+		component: ChapterDragEdit,
+		path: ROUTER_PAGE.MANAGER_CHAPTER_EDIT_POSITIONS,
+		menuName: 'Edit Chapter Positions',
+		exact: true,
+		key: 'MANAGER_CHAPTER_EDIT_POSITIONS',
 		private: true,
 		role: 'manager',
 	},
