@@ -25,7 +25,6 @@ import {
 import { useTranslation } from 'react-i18next';
 import { useParams, useNavigate } from 'react-router-dom';
 import ChapterForm from './ChapterForm';
-import LessonList from './LessonList';
 import './SyllabusList.css';
 import ThemedLayout from '../../../../component/ThemedLayout';
 import { useTheme } from '../../../../contexts/ThemeContext';
@@ -46,10 +45,8 @@ const ChapterListPage = () => {
 
 	// Modal states
 	const [isModalVisible, setIsModalVisible] = useState(false);
-	const [isLessonModalVisible, setIsLessonModalVisible] = useState(false);
 	const [isDeleteModalVisible, setIsDeleteModalVisible] = useState(false);
 	const [editingChapter, setEditingChapter] = useState(null);
-	const [selectedChapter, setSelectedChapter] = useState(null);
 	const [deleteChapter, setDeleteChapter] = useState(null);
 
 	// Pagination state
@@ -180,8 +177,7 @@ const ChapterListPage = () => {
 	};
 
 	const handleViewLessons = (chapter) => {
-		setSelectedChapter(chapter);
-		setIsLessonModalVisible(true);
+		navigate(`/manager/syllabuses/${syllabusId}/chapters/${chapter.id}/lessons`);
 	};
 
 	const handleModalClose = () => {
@@ -189,10 +185,6 @@ const ChapterListPage = () => {
 		setEditingChapter(null);
 	};
 
-	const handleLessonModalClose = () => {
-		setIsLessonModalVisible(false);
-		setSelectedChapter(null);
-	};
 
 	const handleRefresh = () => {
 		fetchChapters(pagination.current, pagination.pageSize, searchText);
@@ -365,7 +357,6 @@ const ChapterListPage = () => {
 								onChange={(e) => handleSearch(e.target.value)}
 								className="search-input"
 								style={{ minWidth: '350px', maxWidth: '500px', height: '40px', fontSize: '16px' }}
-								placeholder={t('chapterManagement.searchChapters')}
 								allowClear
 							/>
 						</Col>
@@ -440,23 +431,6 @@ const ChapterListPage = () => {
 						syllabus={syllabusInfo}
 						onClose={handleModalClose}
 					/>
-				</Modal>
-
-				{/* Lesson Modal */}
-				<Modal
-					title={`${t('lessonManagement.lessons')} - ${selectedChapter?.name}`}
-					open={isLessonModalVisible}
-					onCancel={handleLessonModalClose}
-					footer={null}
-					width={1200}
-					destroyOnClose
-				>
-					{selectedChapter && (
-						<LessonList
-							chapter={selectedChapter}
-							onClose={handleLessonModalClose}
-						/>
-					)}
 				</Modal>
 
 				{/* Delete Confirmation Modal */}
