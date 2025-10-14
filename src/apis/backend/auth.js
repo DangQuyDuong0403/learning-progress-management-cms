@@ -1,5 +1,6 @@
 import axiosClient from '../index.js';
 import axios from 'axios';
+import { getUserIdFromToken } from '../../utils/jwtUtils';
 
 const authApi = {
 	// Đăng nhập - sử dụng endpoint chung với 3 trường: username, password, loginRole
@@ -52,7 +53,24 @@ const authApi = {
 		logout: (refreshToken) => axiosClient.post(`/auth/logout?refreshToken=${refreshToken}`),
 
 	// Lấy thông tin user hiện tại
-	getUserProfile: () => axiosClient.get('/user/profile'),
+	getUserProfile: () => {
+		const accessToken = localStorage.getItem('accessToken');
+		const userId = getUserIdFromToken(accessToken);
+		
+		if (!userId) {
+			return Promise.reject(new Error('Unable to extract user ID from accessToken'));
+		}
+		
+		const url = `/user/profile/${userId}`;
+		console.log('GetUserProfile API - URL:', url);
+		console.log('GetUserProfile API - UserId:', userId);
+		
+		return axiosClient.get(url, {
+			headers: {
+				'accept': '*/*',
+			}
+		});
+	},
 
 	// Đổi mật khẩu
 	changePassword: (data) => {
