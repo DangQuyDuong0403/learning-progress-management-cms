@@ -6,7 +6,6 @@ const levelManagementApi = {
 	updateLevel: (id, data) => axiosClient.put(`/level/${id}`, data),
 	deleteLevel: (id) => axiosClient.delete(`/level/${id}`),
 	getLevelById: (id) => axiosClient.get(`/level/${id}`),
-	updateLevel: (id, data) => axiosClient.put(`/level/${id}`, data),
 	activateDeactivateLevel: (id) => {
 		return axiosClient.patch(`/level/${id}/activate-deactivate`);
 	},

@@ -6,7 +6,6 @@ import {
 	Modal,
 	message,
 	Input,
-	Tag,
 	Card,
 	Row,
 	Col,
@@ -20,8 +19,8 @@ import {
 	ReloadOutlined,
 	EyeOutlined,
 	FileTextOutlined,
-	PlayCircleOutlined,
 	ArrowLeftOutlined,
+	SwapOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useParams, useNavigate } from 'react-router-dom';
@@ -203,6 +202,10 @@ const ChapterListPage = () => {
 		navigate('/manager/syllabuses');
 	};
 
+	const handleEditOrder = () => {
+		navigate(`/manager/syllabuses/${syllabusId}/chapters/edit-order`);
+	};
+
 	const handleSearch = (value) => {
 		setSearchText(value);
 		
@@ -375,6 +378,18 @@ const ChapterListPage = () => {
 									loading={loading}
 								>
 									{t('chapterManagement.refresh')}
+								</Button>
+								<Button
+									icon={<SwapOutlined rotate={90} />}
+									onClick={handleEditOrder}
+									style={{
+										background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+										color: '#ffffff',
+										border: 'none',
+										fontWeight: 500,
+									}}
+								>
+									{t('chapterManagement.editOrder')}
 								</Button>
 								<Button
 									icon={<PlusOutlined />}

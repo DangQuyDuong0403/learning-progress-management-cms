@@ -11,19 +11,12 @@ import {
 	InputNumber,
 } from 'antd';
 import { useTranslation } from 'react-i18next';
-import { useDispatch, useSelector } from 'react-redux';
-import {
-	createChapter,
-	updateChapter,
-} from '../../../../redux/syllabus';
 
 const { TextArea } = Input;
 const { Option } = Select;
 
 const ChapterForm = ({ chapter, syllabus, onClose }) => {
 	const { t } = useTranslation();
-	const dispatch = useDispatch();
-	const { loading } = useSelector((state) => state.syllabus);
 
 	const [form] = Form.useForm();
 	const [isSubmitting, setIsSubmitting] = useState(false);
@@ -39,19 +32,25 @@ const ChapterForm = ({ chapter, syllabus, onClose }) => {
 	const onFinish = async (values) => {
 		setIsSubmitting(true);
 		try {
+			// Map form values to API format
 			const chapterData = {
-				...values,
-				syllabusId: syllabus.id,
+				name: values.name,
+				description: values.description || '',
+				duration: values.duration || 0,
+				order: values.order || 0,
+				status: values.status || 'active',
+				objectives: values.objectives || '',
+				learningOutcomes: values.learningOutcomes || '',
+				assessmentCriteria: values.assessmentCriteria || '',
 			};
 
-			if (isEdit) {
-				await dispatch(updateChapter({ id: chapter.id, ...chapterData }));
-				message.success(t('chapterManagement.updateChapterSuccess'));
-			} else {
-				await dispatch(createChapter(chapterData));
-				message.success(t('chapterManagement.addChapterSuccess'));
-			}
-			onClose();
+			// Return data to parent component instead of calling API
+			message.success(
+				isEdit
+					? t('chapterManagement.updateChapterSuccess')
+					: t('chapterManagement.addChapterSuccess')
+			);
+			onClose(true, chapterData); // Pass data to parent
 		} catch (error) {
 			message.error(
 				isEdit
@@ -67,11 +66,6 @@ const ChapterForm = ({ chapter, syllabus, onClose }) => {
 		form.resetFields();
 		onClose();
 	};
-
-	const statusOptions = [
-		{ value: 'active', label: t('chapterManagement.active') },
-		{ value: 'inactive', label: t('chapterManagement.inactive') },
-	];
 
 	return (
 		<Form
@@ -211,11 +205,8 @@ const ChapterForm = ({ chapter, syllabus, onClose }) => {
 							placeholder={t('chapterManagement.selectStatus')}
 							size="large"
 						>
-							{statusOptions.map((option) => (
-								<Option key={option.value} value={option.value}>
-									{option.label}
-								</Option>
-							))}
+							<Option value="active">{t('chapterManagement.active')}</Option>
+							<Option value="inactive">{t('chapterManagement.inactive')}</Option>
 						</Select>
 					</Form.Item>
 				</Col>
@@ -253,7 +244,7 @@ const ChapterForm = ({ chapter, syllabus, onClose }) => {
 					<Button
 						type="primary"
 						htmlType="submit"
-						loading={isSubmitting || loading}
+						loading={isSubmitting}
 						size="large"
 					>
 						{isEdit ? t('common.update') : t('common.save')}
