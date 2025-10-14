@@ -2,9 +2,9 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import authApi from '../apis/backend/auth';
 
-//check nếu có user và token trong localStorage
+//check nếu có user và accessToken trong localStorage
 const storedUser = localStorage.getItem('user');
-const storedToken = localStorage.getItem('token');
+const storedAccessToken = localStorage.getItem('accessToken');
 
 // Async thunk for forgot password
 export const forgotPassword = createAsyncThunk(
@@ -73,9 +73,9 @@ export const changePassword = createAsyncThunk(
 
 const initialState = {
 	user: storedUser ? JSON.parse(storedUser) : null,
-	token: storedToken,
+	accessToken: storedAccessToken,
 	refreshToken: localStorage.getItem('refreshToken'),
-	isAuthenticated: !!storedToken, // true nếu có token
+	isAuthenticated: !!storedAccessToken, // true nếu có accessToken
 	forgotPasswordLoading: false,
 	forgotPasswordError: null,
 	forgotPasswordSuccess: false,
@@ -98,22 +98,22 @@ const authSlice = createSlice({
 		loginSuccess: (state, action) => {
 			const { accessToken, refreshToken, username, role } = action.payload;
 			state.user = { username, role };
-			state.token = accessToken;
+			state.accessToken = accessToken;
 			state.refreshToken = refreshToken;
 			state.isAuthenticated = true;
-			// lưu user và token vào localStorage
+			// lưu user và accessToken vào localStorage
 			localStorage.setItem('user', JSON.stringify({ username, role }));
-			localStorage.setItem('token', accessToken);
+			localStorage.setItem('accessToken', accessToken);
 			localStorage.setItem('refreshToken', refreshToken);
 		},
 		logout: (state) => {
 			state.user = null;
-			state.token = null;
+			state.accessToken = null;
 			state.refreshToken = null;
 			state.isAuthenticated = false;
 			// Xoá khỏi localStorage
 			localStorage.removeItem('user');
-			localStorage.removeItem('token');
+			localStorage.removeItem('accessToken');
 			localStorage.removeItem('refreshToken');
 		},
 		clearForgotPasswordState: (state) => {
@@ -127,8 +127,8 @@ const authSlice = createSlice({
 			state.changePasswordSuccess = false;
 		},
 		updateToken: (state, action) => {
-			state.token = action.payload;
-			localStorage.setItem('token', action.payload);
+			state.accessToken = action.payload;
+			localStorage.setItem('accessToken', action.payload);
 		},
 	},
 	extraReducers: (builder) => {
@@ -155,10 +155,16 @@ const authSlice = createSlice({
 			.addCase(refreshToken.fulfilled, (state, action) => {
 				state.refreshTokenLoading = false;
 				state.refreshTokenError = null;
-				// Cập nhật token mới
+				// Cập nhật cả accessToken và refreshToken mới
 				if (action.payload?.accessToken) {
-					state.token = action.payload.accessToken;
-					localStorage.setItem('token', action.payload.accessToken);
+					state.accessToken = action.payload.accessToken;
+					localStorage.setItem('accessToken', action.payload.accessToken);
+					console.log('✅ Redux: Updated accessToken');
+				}
+				if (action.payload?.refreshToken) {
+					state.refreshToken = action.payload.refreshToken;
+					localStorage.setItem('refreshToken', action.payload.refreshToken);
+					console.log('✅ Redux: Updated refreshToken');
 				}
 			})
 			.addCase(refreshToken.rejected, (state, action) => {
@@ -166,11 +172,11 @@ const authSlice = createSlice({
 				state.refreshTokenError = action.payload;
 				// Nếu refresh token không hợp lệ, đăng xuất người dùng
 				state.user = null;
-				state.token = null;
+				state.accessToken = null;
 				state.refreshToken = null;
 				state.isAuthenticated = false;
 				localStorage.removeItem('user');
-				localStorage.removeItem('token');
+				localStorage.removeItem('accessToken');
 				localStorage.removeItem('refreshToken');
 			})
 			.addCase(logoutApi.pending, (state) => {
@@ -180,25 +186,25 @@ const authSlice = createSlice({
 			.addCase(logoutApi.fulfilled, (state) => {
 				state.logoutLoading = false;
 				state.logoutError = null;
-				// Xóa thông tin user và token
+				// Xóa thông tin user và accessToken
 				state.user = null;
-				state.token = null;
+				state.accessToken = null;
 				state.refreshToken = null;
 				state.isAuthenticated = false;
 				localStorage.removeItem('user');
-				localStorage.removeItem('token');
+				localStorage.removeItem('accessToken');
 				localStorage.removeItem('refreshToken');
 			})
 			.addCase(logoutApi.rejected, (state, action) => {
 				state.logoutLoading = false;
 				state.logoutError = action.payload;
-				// Vẫn xóa thông tin user và token dù API lỗi
+				// Vẫn xóa thông tin user và accessToken dù API lỗi
 				state.user = null;
-				state.token = null;
+				state.accessToken = null;
 				state.refreshToken = null;
 				state.isAuthenticated = false;
 				localStorage.removeItem('user');
-				localStorage.removeItem('token');
+				localStorage.removeItem('accessToken');
 				localStorage.removeItem('refreshToken');
 			})
 			.addCase(getUserProfile.pending, (state) => {

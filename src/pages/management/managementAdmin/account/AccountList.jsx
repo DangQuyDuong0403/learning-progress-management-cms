@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
 	Table,
@@ -26,6 +26,7 @@ import {
 	StopOutlined,
 	DownloadOutlined,
 	UploadOutlined,
+	FilterOutlined,
 } from '@ant-design/icons';
 import ThemedLayout from '../../../../component/ThemedLayout';
 import LoadingWithEffect from '../../../../component/spinner/LoadingWithEffect';
@@ -45,11 +46,11 @@ const AccountList = () => {
 	const [loading, setLoading] = useState(false);
 	const [accounts, setAccounts] = useState([]);
 	const [searchText, setSearchText] = useState('');
-	const [statusFilter, setStatusFilter] = useState('ACTIVE');
-	const [roleFilter, setRoleFilter] = useState('all');
+	const [statusFilter, setStatusFilter] = useState([]);
+	const [roleFilter, setRoleFilter] = useState([]);
 	const [searchTimeout, setSearchTimeout] = useState(null);
 	const [sortBy, setSortBy] = useState('createdAt');
-	const [sortDir, setSortDir] = useState('desc');
+	const [sortDir, setSortDir] = useState('asc');
 	const [isModalVisible, setIsModalVisible] = useState(false);
 	const [editingAccount, setEditingAccount] = useState(null);
 	const [form] = Form.useForm();
@@ -64,16 +65,27 @@ const AccountList = () => {
 		fileList: [],
 		uploading: false,
 	});
+	
+	// Filter dropdown state
+	const [filterDropdown, setFilterDropdown] = useState({
+		visible: false,
+		selectedRoles: [],
+		selectedStatuses: [],
+	});
+	
+	// Refs for click outside detection
+	const filterContainerRef = useRef(null);
+	
 	// Pagination state
 	const [pagination, setPagination] = useState({
 		current: 1,
-		pageSize: 10,
+		pageSize: 1,
 		total: 0,
 		showSizeChanger: true,
 		showTotal: (total, range) => `${range[0]}-${range[1]} of ${total}`,
 	});
 
-	const fetchAccounts = useCallback(async (page = 1, size = 10, search = '', roleFilter = 'all', statusFilter = 'active', sortField = 'createdAt', sortDirection = 'asc') => {
+	const fetchAccounts = useCallback(async (page = 1, size = 10, search = '', roleFilter = [], statusFilter = [], sortField = 'createdAt', sortDirection = 'asc') => {
 		setLoading(true);
 		try {
 			const params = {
@@ -88,14 +100,14 @@ const AccountList = () => {
 				params.text = search.trim();
 			}
 
-			// Add roleName filter if not 'all' (API expects array of strings)
-			if (roleFilter && roleFilter !== 'all') {
-				params.roleName = [roleFilter];
+			// Add roleName filter if provided (API expects array of strings)
+			if (roleFilter && roleFilter.length > 0) {
+				params.roleName = roleFilter;
 			}
 
-			// Add status filter if not 'all' (API expects array of strings)
-			if (statusFilter && statusFilter !== 'all') {
-				params.status = [statusFilter];
+			// Add status filter if provided (API expects array of strings)
+			if (statusFilter && statusFilter.length > 0) {
+				params.status = statusFilter;
 			}
 
 			const response = await accountManagementApi.getAccounts({
@@ -146,6 +158,31 @@ const AccountList = () => {
 		};
 	}, [searchTimeout]);
 
+	// Handle click outside to close filter dropdown
+	useEffect(() => {
+		const handleClickOutside = (event) => {
+			if (filterDropdown.visible && filterContainerRef.current) {
+				// Check if click is outside the filter container
+				if (!filterContainerRef.current.contains(event.target)) {
+					setFilterDropdown(prev => ({
+						...prev,
+						visible: false,
+					}));
+				}
+			}
+		};
+
+		// Add event listener when dropdown is visible
+		if (filterDropdown.visible) {
+			document.addEventListener('mousedown', handleClickOutside);
+		}
+
+		// Cleanup event listener
+		return () => {
+			document.removeEventListener('mousedown', handleClickOutside);
+		};
+	}, [filterDropdown.visible]);
+
 	const handleSearch = (value) => {
 		setSearchText(value);
 		
@@ -163,16 +200,35 @@ const AccountList = () => {
 		setSearchTimeout(newTimeout);
 	};
 
-	const handleRoleFilterChange = (value) => {
-		setRoleFilter(value);
-		// Reset to first page when filtering
-		fetchAccounts(1, pagination.pageSize, searchText, value, statusFilter, sortBy, sortDir);
+	// Handle filter dropdown toggle
+	const handleFilterToggle = () => {
+		setFilterDropdown(prev => ({
+			...prev,
+			visible: !prev.visible,
+			selectedRoles: prev.visible ? prev.selectedRoles : [...roleFilter],
+			selectedStatuses: prev.visible ? prev.selectedStatuses : [...statusFilter],
+		}));
 	};
 
-	const handleStatusFilterChange = (value) => {
-		setStatusFilter(value);
-		// Reset to first page when filtering
-		fetchAccounts(1, pagination.pageSize, searchText, roleFilter, value, sortBy, sortDir);
+	// Handle filter submission
+	const handleFilterSubmit = () => {
+		setRoleFilter(filterDropdown.selectedRoles);
+		setStatusFilter(filterDropdown.selectedStatuses);
+		setFilterDropdown(prev => ({
+			...prev,
+			visible: false,
+		}));
+		// Reset to first page when applying filters
+		fetchAccounts(1, pagination.pageSize, searchText, filterDropdown.selectedRoles, filterDropdown.selectedStatuses, sortBy, sortDir);
+	};
+
+	// Handle filter reset
+	const handleFilterReset = () => {
+		setFilterDropdown(prev => ({
+			...prev,
+			selectedRoles: [],
+			selectedStatuses: [],
+		}));
 	};
 
 	const handleTableChange = (pagination, filters, sorter) => {
@@ -252,12 +308,9 @@ const AccountList = () => {
 								}" ${t('accountManagement.success')}`
 							);
 						}
-						
-						// Refresh data from server
-						fetchAccounts(pagination.current, pagination.pageSize, searchText, roleFilter, statusFilter, sortBy, sortDir);
 					} catch (error) {
 						console.error('Error updating account status:', error);
-						spaceToast.error(t('accountManagement.updateStatusError'));
+						message.error(t('accountManagement.updateStatusError'));
 						setConfirmModal({
 							visible: false,
 							title: '',
@@ -368,25 +421,15 @@ const AccountList = () => {
 			const values = await form.validateFields();
 
 			if (editingAccount) {
-				// Update existing account - gọi API để update
-				const updateData = {
-					firstName: values.firstName,
-					lastName: values.lastName,
-					email: values.email,
-					roleName: values.roleName || 'MANAGER',
-				};
-				
-				console.log('Updating account with data:', updateData);
-				
-				// Gọi API update account
-				const response = await accountManagementApi.updateAccount(editingAccount.id, updateData);
-				console.log('Update account response:', response);
-				
-				// Show success toast
-				spaceToast.success(t('accountManagement.updateAccountSuccess'));
-				
-				// Refresh data from server
-				fetchAccounts(pagination.current, pagination.pageSize, searchText, roleFilter, statusFilter, sortBy, sortDir);
+				// Update existing account - giữ logic cũ cho edit
+				setAccounts(
+					accounts.map((account) =>
+						account.id === editingAccount.id
+							? { ...account, ...values }
+							: account
+					)
+				);
+				message.success(t('accountManagement.updateAccountSuccess'));
 			} else {
 				// Create new account - gửi API với body JSON đúng format
 				const accountData = {
@@ -402,22 +445,14 @@ const AccountList = () => {
 				const response = await accountManagementApi.createAccount(accountData);
 				console.log('Create account response:', response);
 				
-				// Show success toast
-				spaceToast.success(t('accountManagement.addAccountSuccess'));
-				
-				// Refresh data from server
-				fetchAccounts(pagination.current, pagination.pageSize, searchText, roleFilter, statusFilter, sortBy, sortDir);
+				message.success(t('accountManagement.addAccountSuccess'));
 			}
 
 			setIsModalVisible(false);
 			form.resetFields();
 		} catch (error) {
-			console.error('Error saving account:', error);
-			spaceToast.error(
-				editingAccount 
-					? t('accountManagement.updateAccountError') 
-					: t('accountManagement.checkInfoError')
-			);
+			console.error('Error creating account:', error);
+			message.error(t('accountManagement.checkInfoError'));
 		}
 	};
 
@@ -448,6 +483,22 @@ const AccountList = () => {
 
 		return roleTranslations[role] || role;
 	};
+
+	// Status options for filter
+	const statusOptions = [
+		{ key: "ACTIVE", label: t('accountManagement.active') },
+		{ key: "INACTIVE", label: t('accountManagement.inactive') },
+	];
+
+	// Role options for filter
+	const roleOptions = [
+		{ key: "ADMIN", label: t('accountManagement.admin') },
+		{ key: "TEACHER", label: t('accountManagement.teacher') },
+		{ key: "STUDENT", label: t('accountManagement.student') },
+		{ key: "MANAGER", label: t('accountManagement.manager') },
+		{ key: "TEACHING_ASSISTANT", label: t('accountManagement.teacherAssistant') },
+		{ key: "TEST_TAKER", label: t('accountManagement.testTaker') },
+	];
 	console.log(theme);
 	
 	// No need for client-side filtering since API handles filtering
@@ -469,16 +520,12 @@ const AccountList = () => {
 			dataIndex: 'username',
 			key: 'username',
 			sorter: true,
-			sortDirections: ['ascend', 'descend'],
-			defaultSortOrder: sortBy === 'username' ? (sortDir === 'asc' ? 'ascend' : 'descend') : null,
 		},
 		{
 			title: t('accountManagement.fullName'),
 			dataIndex: 'fullName',
 			key: 'fullName',
 			sorter: true,
-			sortDirections: ['ascend', 'descend'],
-			defaultSortOrder: sortBy === 'fullName' ? (sortDir === 'asc' ? 'ascend' : 'descend') : null,
 		},
 		{
 			title: t('accountManagement.email'),
@@ -552,48 +599,103 @@ const AccountList = () => {
 			<div className={`account-page ${theme}-theme main-content-panel`}>
 				{/* Header Section */}
 				<div className={`panel-header ${theme}-panel-header`}>
-					<div className='search-section'>
+					<div className="search-section" style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
 						<Input
 							prefix={<SearchOutlined />}
 							value={searchText}
 							onChange={(e) => handleSearch(e.target.value)}
 							className={`search-input ${theme}-search-input`}
-							style={{ flex: '1', minWidth: '250px', maxWidth: '400px', width: '350px' }}
+							style={{ flex: '1', minWidth: '250px', maxWidth: '400px', width: '350px', height: '40px', fontSize: '16px' }}
 							allowClear
 						/>
-						
-						{/* Role Filter */}
-						<Select
-							placeholder={t('accountManagement.filterByRole')}
-							value={roleFilter}
-							onChange={handleRoleFilterChange}
-							className={`filter-select ${theme}-filter-select`}
-							style={{ width: 150, marginLeft: '12px', fontSize: '16px' }}
-							allowClear>
-							<Option value='all'>{t('accountManagement.allRoles')}</Option>
-							<Option value='ADMIN'>{t('accountManagement.admin')}</Option>
-							<Option value='TEACHER'>{t('accountManagement.teacher')}</Option>
-							<Option value='STUDENT'>{t('accountManagement.student')}</Option>
-							<Option value='MANAGER'>{t('accountManagement.manager')}</Option>
-							<Option value='TEACHING_ASSISTANT'>{t('accountManagement.teacherAssistant')}</Option>
-							<Option value='TEST_TAKER'>{t('accountManagement.testTaker')}</Option>
-						</Select>
+						<div ref={filterContainerRef} style={{ position: 'relative' }}>
+							<Button 
+								icon={<FilterOutlined />}
+								onClick={handleFilterToggle}
+								className={`filter-button ${theme}-filter-button ${filterDropdown.visible ? 'active' : ''} ${(statusFilter.length > 0 || roleFilter.length > 0) ? 'has-filters' : ''}`}
+							>
+								Filter
+							</Button>
+							
+							{/* Filter Dropdown Panel */}
+							{filterDropdown.visible && (
+								<div className={`filter-dropdown-panel ${theme}-filter-dropdown`}>
+									<div style={{ padding: '20px' }}>
+										{/* Role and Status Filters in same row */}
+										<div style={{ display: 'flex', gap: '24px', marginBottom: '24px' }}>
+											{/* Role Filter */}
+											<div style={{ flex: 1 }}>
+												<Typography.Title level={5} style={{ marginBottom: '12px', color: '#1890ff', fontSize: '16px' }}>
+													Role
+												</Typography.Title>
+												<div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+													{roleOptions.map(option => (
+														<Button
+															key={option.key}
+															onClick={() => {
+																const newRoles = filterDropdown.selectedRoles.includes(option.key)
+																	? filterDropdown.selectedRoles.filter(role => role !== option.key)
+																	: [...filterDropdown.selectedRoles, option.key];
+																setFilterDropdown(prev => ({ ...prev, selectedRoles: newRoles }));
+															}}
+															className={`filter-option ${filterDropdown.selectedRoles.includes(option.key) ? 'selected' : ''}`}
+														>
+															{option.label}
+														</Button>
+													))}
+												</div>
+											</div>
 
-						{/* Status Filter */}
-						<Select
-							placeholder={t('accountManagement.filterByStatus')}
-							value={statusFilter}
-							onChange={handleStatusFilterChange}
-							className={`filter-select ${theme}-filter-select`}
-							style={{ width: 150, marginLeft: '12px', fontSize: '16px' }}
-							allowClear>
-							<Option value='all'>{t('accountManagement.allStatuses')}</Option>
-							<Option value='ACTIVE'>{t('accountManagement.active')}</Option>
-							<Option value='INACTIVE'>{t('accountManagement.inactive')}</Option>
-						</Select>
+											{/* Status Filter */}
+											<div style={{ flex: 1 }}>
+												<Typography.Title level={5} style={{ marginBottom: '12px', color: '#1890ff', fontSize: '16px' }}>
+													Status
+												</Typography.Title>
+												<div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+													{statusOptions.map(option => (
+														<Button
+															key={option.key}
+															onClick={() => {
+																const newStatuses = filterDropdown.selectedStatuses.includes(option.key)
+																	? filterDropdown.selectedStatuses.filter(status => status !== option.key)
+																	: [...filterDropdown.selectedStatuses, option.key];
+																setFilterDropdown(prev => ({ ...prev, selectedStatuses: newStatuses }));
+															}}
+															className={`filter-option ${filterDropdown.selectedStatuses.includes(option.key) ? 'selected' : ''}`}
+														>
+															{option.label}
+														</Button>
+													))}
+												</div>
+											</div>
+										</div>
 
-						{/* Spacer để đẩy action buttons về bên phải */}
-						<div style={{ flex: '1' }}></div>
+										{/* Action Buttons */}
+										<div style={{ 
+											display: 'flex', 
+											justifyContent: 'space-between', 
+											marginTop: '20px',
+											paddingTop: '16px',
+											borderTop: '1px solid #f0f0f0'
+										}}>
+											<Button
+												onClick={handleFilterReset}
+												className="filter-reset-button"
+											>
+												Reset
+											</Button>
+											<Button
+												type="primary"
+												onClick={handleFilterSubmit}
+												className="filter-submit-button"
+											>
+												View Results
+											</Button>
+										</div>
+									</div>
+								</div>
+							)}
+						</div>
 					</div>
 					<div className='action-buttons'>
 						<Button
@@ -633,10 +735,6 @@ const AccountList = () => {
 							onChange={handleTableChange}
 							scroll={{ x: 1200 }}
 							className={`account-table ${theme}-account-table`}
-							sortDirections={['ascend', 'descend', 'ascend']}
-							showSorterTooltip={{
-								target: 'sorter-icon',
-							}}
 						/>
 					</LoadingWithEffect>
 				</div>

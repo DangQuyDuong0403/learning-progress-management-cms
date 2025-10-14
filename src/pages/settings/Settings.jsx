@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useDispatch, useSelector } from 'react-redux';
+import { useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import {
 	Card,
@@ -20,7 +20,7 @@ import {
 import ThemedLayout from '../../component/ThemedLayout';
 import { useTheme } from '../../contexts/ThemeContext';
 import { spaceToast } from '../../component/SpaceToastify';
-import { changePassword, clearChangePasswordState, logout } from '../../redux/auth';
+import { logout } from '../../redux/auth';
 import authApi from '../../apis/backend/auth';
 import './Settings.css';
 
@@ -76,8 +76,8 @@ const Settings = () => {
 			setModals(prev => ({ ...prev, password: false }));
 			passwordForm.resetFields();
 			
-			// Clear tokens from localStorage and Redux state (like ChangePassword.jsx)
-			localStorage.removeItem('token');
+			// Clear accessToken from localStorage and Redux state (like ChangePassword.jsx)
+			localStorage.removeItem('accessToken');
 			localStorage.removeItem('refreshToken');
 			localStorage.removeItem('user');
 			dispatch(logout());

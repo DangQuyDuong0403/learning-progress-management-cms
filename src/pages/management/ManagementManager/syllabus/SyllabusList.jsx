@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
 	Table,
 	Button,
@@ -6,12 +6,12 @@ import {
 	Modal,
 	message,
 	Input,
-	Select,
 	Tag,
 	Card,
 	Row,
 	Col,
 	Tooltip,
+	Typography,
 } from 'antd';
 import {
 	PlusOutlined,
@@ -26,6 +26,7 @@ import {
 	UploadOutlined,
 	PlayCircleOutlined,
 	ClockCircleOutlined,
+	FilterOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -38,7 +39,7 @@ import { spaceToast } from '../../../../component/SpaceToastify';
 import syllabusManagementApi from '../../../../apis/backend/syllabusManagement';
 import levelManagementApi from '../../../../apis/backend/levelManagement';
 
-const { Option } = Select;
+const { Title } = Typography;
 
 const SyllabusList = () => {
 	const { t } = useTranslation();
@@ -50,12 +51,26 @@ const SyllabusList = () => {
 	const [syllabuses, setSyllabuses] = useState([]);
 	const [levels, setLevels] = useState([]);
 	const [searchText, setSearchText] = useState('');
-	const [statusFilter, setStatusFilter] = useState('all');
-	const [levelFilter, setLevelFilter] = useState('all');
+	const [statusFilter, setStatusFilter] = useState([]);
+	const [levelFilter, setLevelFilter] = useState([]);
 	const [currentView, setCurrentView] = useState('syllabuses'); // 'syllabuses', 'chapters', 'lessons'
 	const [searchTimeout, setSearchTimeout] = useState(null);
 	const [sortBy, setSortBy] = useState('createdAt');
 	const [sortDir, setSortDir] = useState('desc');
+	const [filterDropdown, setFilterDropdown] = useState({
+		visible: false,
+		selectedStatuses: [],
+		selectedLevels: [],
+	});
+	
+	// Refs for click outside detection
+	const filterContainerRef = useRef(null);
+
+	// Filter options
+	const statusOptions = [
+		{ key: 'active', label: t('syllabusManagement.active') },
+		{ key: 'inactive', label: t('syllabusManagement.inactive') },
+	];
 
 	// Modal states
 	const [isModalVisible, setIsModalVisible] = useState(false);
@@ -73,7 +88,7 @@ const SyllabusList = () => {
 	});
 
 	// Fetch syllabuses from API
-	const fetchSyllabuses = useCallback(async (page = 1, size = 10, search = '', statusFilter = 'all', levelFilter = 'all', sortField = 'createdAt', sortDirection = 'desc') => {
+	const fetchSyllabuses = useCallback(async (page = 1, size = 10, search = '', statusFilter = [], levelFilter = [], sortField = 'createdAt', sortDirection = 'desc') => {
 		setLoading(true);
 		try {
 			const params = {
@@ -88,14 +103,14 @@ const SyllabusList = () => {
 				params.text = search.trim();
 			}
 
-			// Add status filter if not 'all'
-			if (statusFilter && statusFilter !== 'all') {
-				params.status = [statusFilter];
+			// Add status filter if provided
+			if (statusFilter.length > 0) {
+				params.status = statusFilter;
 			}
 
-			// Add level filter if not 'all'
-			if (levelFilter && levelFilter !== 'all') {
-				params.levelId = [parseInt(levelFilter)];
+			// Add level filter if provided
+			if (levelFilter.length > 0) {
+				params.levelId = levelFilter.map(id => parseInt(id));
 			}
 
 			const response = await syllabusManagementApi.getSyllabuses({
@@ -175,6 +190,23 @@ const SyllabusList = () => {
 		};
 	}, [searchTimeout]);
 
+	// Click outside detection for filter dropdown
+	useEffect(() => {
+		const handleClickOutside = (event) => {
+			if (filterContainerRef.current && !filterContainerRef.current.contains(event.target)) {
+				setFilterDropdown(prev => ({
+					...prev,
+					visible: false,
+				}));
+			}
+		};
+
+		document.addEventListener('mousedown', handleClickOutside);
+		return () => {
+			document.removeEventListener('mousedown', handleClickOutside);
+		};
+	}, []);
+
 	const handleAdd = () => {
 		setEditingSyllabus(null);
 		setIsModalVisible(true);
@@ -243,16 +275,35 @@ const SyllabusList = () => {
 		setSearchTimeout(newTimeout);
 	};
 
-	const handleStatusFilterChange = (value) => {
-		setStatusFilter(value);
-		// Reset to first page when filtering
-		fetchSyllabuses(1, pagination.pageSize, searchText, value, levelFilter, sortBy, sortDir);
+	// Handle filter dropdown toggle
+	const handleFilterToggle = () => {
+		setFilterDropdown(prev => ({
+			...prev,
+			visible: !prev.visible,
+			selectedStatuses: prev.visible ? prev.selectedStatuses : [...statusFilter],
+			selectedLevels: prev.visible ? prev.selectedLevels : [...levelFilter],
+		}));
 	};
 
-	const handleLevelFilterChange = (value) => {
-		setLevelFilter(value);
-		// Reset to first page when filtering
-		fetchSyllabuses(1, pagination.pageSize, searchText, statusFilter, value, sortBy, sortDir);
+	// Handle filter submission
+	const handleFilterSubmit = () => {
+		setStatusFilter(filterDropdown.selectedStatuses);
+		setLevelFilter(filterDropdown.selectedLevels);
+		setFilterDropdown(prev => ({
+			...prev,
+			visible: false,
+		}));
+		// Reset to first page when applying filters
+		fetchSyllabuses(1, pagination.pageSize, searchText, filterDropdown.selectedStatuses, filterDropdown.selectedLevels, sortBy, sortDir);
+	};
+
+	// Handle filter reset
+	const handleFilterReset = () => {
+		setFilterDropdown(prev => ({
+			...prev,
+			selectedStatuses: [],
+			selectedLevels: [],
+		}));
 	};
 
 	const handleTableChange = (pagination, filters, sorter) => {
@@ -634,35 +685,95 @@ const SyllabusList = () => {
 								allowClear
 							/>
 							{currentView === 'syllabuses' && (
-								<>
-									<Select
-										style={{ width: 150 }}
-										value={statusFilter}
-										onChange={handleStatusFilterChange}
-										placeholder={t('syllabusManagement.filterByStatus')}
+								<div ref={filterContainerRef} style={{ position: 'relative' }}>
+									<Button 
+										icon={<FilterOutlined />}
+										onClick={handleFilterToggle}
+										className={`filter-button ${theme}-filter-button ${filterDropdown.visible ? 'active' : ''} ${(statusFilter.length > 0 || levelFilter.length > 0) ? 'has-filters' : ''}`}
 									>
-										<Option value="all">{t('syllabusManagement.allStatuses')}</Option>
-										<Option value="active">{t('syllabusManagement.active')}</Option>
-										<Option value="inactive">{t('syllabusManagement.inactive')}</Option>
-									</Select>
-									<Select
-										style={{ width: 150 }}
-										value={levelFilter}
-										onChange={handleLevelFilterChange}
-										placeholder={t('syllabusManagement.filterByLevel')}
-										showSearch
-										filterOption={(input, option) =>
-											option.children.toLowerCase().includes(input.toLowerCase())
-										}
-									>
-										<Option value="all">{t('syllabusManagement.allLevels')}</Option>
-										{levels.map((level) => (
-											<Option key={level.id} value={level.id.toString()}>
-												{level.levelName} ({level.difficulty})
-											</Option>
-										))}
-									</Select>
-								</>
+										Filter
+									</Button>
+									
+									{/* Filter Dropdown Panel */}
+									{filterDropdown.visible && (
+										<div className={`filter-dropdown-panel ${theme}-filter-dropdown`}>
+											<div style={{ padding: '20px' }}>
+												{/* Status and Level Filters in same row */}
+												<div style={{ display: 'flex', gap: '24px', marginBottom: '24px' }}>
+													{/* Status Filter */}
+													<div style={{ flex: 1 }}>
+														<Title level={5} style={{ marginBottom: '12px', color: '#298EFE', fontSize: '16px' }}>
+															Status
+														</Title>
+														<div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+															{statusOptions.map(option => (
+																<Button
+																	key={option.key}
+																	onClick={() => {
+																		const newStatuses = filterDropdown.selectedStatuses.includes(option.key)
+																			? filterDropdown.selectedStatuses.filter(status => status !== option.key)
+																			: [...filterDropdown.selectedStatuses, option.key];
+																		setFilterDropdown(prev => ({ ...prev, selectedStatuses: newStatuses }));
+																	}}
+																	className={`filter-option ${filterDropdown.selectedStatuses.includes(option.key) ? 'selected' : ''}`}
+																>
+																	{option.label}
+																</Button>
+															))}
+														</div>
+													</div>
+
+													{/* Level Filter */}
+													<div style={{ flex: 1 }}>
+														<Title level={5} style={{ marginBottom: '12px', color: '#298EFE', fontSize: '16px' }}>
+															Level
+														</Title>
+														<div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+															{levels.map(level => (
+																<Button
+																	key={level.id}
+																	onClick={() => {
+																		const levelId = level.id.toString();
+																		const newLevels = filterDropdown.selectedLevels.includes(levelId)
+																			? filterDropdown.selectedLevels.filter(id => id !== levelId)
+																			: [...filterDropdown.selectedLevels, levelId];
+																		setFilterDropdown(prev => ({ ...prev, selectedLevels: newLevels }));
+																	}}
+																	className={`filter-option ${filterDropdown.selectedLevels.includes(level.id.toString()) ? 'selected' : ''}`}
+																>
+																	{level.levelName} ({level.difficulty})
+																</Button>
+															))}
+														</div>
+													</div>
+												</div>
+
+												{/* Action Buttons */}
+												<div style={{ 
+													display: 'flex', 
+													justifyContent: 'space-between', 
+													marginTop: '20px',
+													paddingTop: '16px',
+													borderTop: '1px solid #f0f0f0'
+												}}>
+													<Button
+														onClick={handleFilterReset}
+														className="filter-reset-button"
+													>
+														Reset
+													</Button>
+													<Button
+														type="primary"
+														onClick={handleFilterSubmit}
+														className="filter-submit-button"
+													>
+														View Results
+													</Button>
+												</div>
+											</div>
+										</div>
+									)}
+								</div>
 							)}
 						</Space>
 					</Col>
