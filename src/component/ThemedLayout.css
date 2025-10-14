@@ -1083,8 +1083,6 @@
 
 /* Space theme search input - with background */
 .space-theme .themed-content .ant-input {
-	background: #413075;
-	border: 1px solid #604B9E;
 	outline: none;
 	box-shadow: none;
 	backdrop-filter: none;
@@ -1092,8 +1090,6 @@
 }
 
 .space-theme .themed-content .ant-input:focus {
-	background: #4A3588;
-	border: 1px solid #6B4FAE;
 	outline: none;
 	box-shadow: none;
 	color: #000;

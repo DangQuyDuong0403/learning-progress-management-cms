@@ -65,6 +65,8 @@ const AccountList = () => {
 		fileList: [],
 		uploading: false,
 	});
+	
+	// Filter dropdown state
 	const [filterDropdown, setFilterDropdown] = useState({
 		visible: false,
 		selectedRoles: [],
@@ -73,6 +75,7 @@ const AccountList = () => {
 	
 	// Refs for click outside detection
 	const filterContainerRef = useRef(null);
+	
 	// Pagination state
 	const [pagination, setPagination] = useState({
 		current: 1,
@@ -196,22 +199,6 @@ const AccountList = () => {
 		
 		setSearchTimeout(newTimeout);
 	};
-
-	// Status options for filter
-	const statusOptions = [
-		{ key: "ACTIVE", label: t('accountManagement.active') },
-		{ key: "INACTIVE", label: t('accountManagement.inactive') },
-	];
-
-	// Role options for filter
-	const roleOptions = [
-		{ key: "ADMIN", label: t('accountManagement.admin') },
-		{ key: "TEACHER", label: t('accountManagement.teacher') },
-		{ key: "STUDENT", label: t('accountManagement.student') },
-		{ key: "MANAGER", label: t('accountManagement.manager') },
-		{ key: "TEACHING_ASSISTANT", label: t('accountManagement.teacherAssistant') },
-		{ key: "TEST_TAKER", label: t('accountManagement.testTaker') },
-	];
 
 	// Handle filter dropdown toggle
 	const handleFilterToggle = () => {
@@ -496,6 +483,22 @@ const AccountList = () => {
 
 		return roleTranslations[role] || role;
 	};
+
+	// Status options for filter
+	const statusOptions = [
+		{ key: "ACTIVE", label: t('accountManagement.active') },
+		{ key: "INACTIVE", label: t('accountManagement.inactive') },
+	];
+
+	// Role options for filter
+	const roleOptions = [
+		{ key: "ADMIN", label: t('accountManagement.admin') },
+		{ key: "TEACHER", label: t('accountManagement.teacher') },
+		{ key: "STUDENT", label: t('accountManagement.student') },
+		{ key: "MANAGER", label: t('accountManagement.manager') },
+		{ key: "TEACHING_ASSISTANT", label: t('accountManagement.teacherAssistant') },
+		{ key: "TEST_TAKER", label: t('accountManagement.testTaker') },
+	];
 	console.log(theme);
 	
 	// No need for client-side filtering since API handles filtering
@@ -596,7 +599,7 @@ const AccountList = () => {
 			<div className={`account-page ${theme}-theme main-content-panel`}>
 				{/* Header Section */}
 				<div className={`panel-header ${theme}-panel-header`}>
-					<div className='search-section' style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+					<div className="search-section" style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
 						<Input
 							prefix={<SearchOutlined />}
 							value={searchText}
@@ -622,9 +625,9 @@ const AccountList = () => {
 										<div style={{ display: 'flex', gap: '24px', marginBottom: '24px' }}>
 											{/* Role Filter */}
 											<div style={{ flex: 1 }}>
-												<Title level={5} style={{ marginBottom: '12px', color: '#298EFE', fontSize: '16px' }}>
+												<Typography.Title level={5} style={{ marginBottom: '12px', color: '#1890ff', fontSize: '16px' }}>
 													Role
-												</Title>
+												</Typography.Title>
 												<div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
 													{roleOptions.map(option => (
 														<Button
@@ -645,9 +648,9 @@ const AccountList = () => {
 
 											{/* Status Filter */}
 											<div style={{ flex: 1 }}>
-												<Title level={5} style={{ marginBottom: '12px', color: '#298EFE', fontSize: '16px' }}>
+												<Typography.Title level={5} style={{ marginBottom: '12px', color: '#1890ff', fontSize: '16px' }}>
 													Status
-												</Title>
+												</Typography.Title>
 												<div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
 													{statusOptions.map(option => (
 														<Button

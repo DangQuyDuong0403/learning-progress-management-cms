@@ -1,0 +1,348 @@
+/* Level Drag Edit Styles */
+.level-drag-edit-container {
+	padding: 0;
+	max-width: 100%;
+}
+
+.page-header {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 100%;
+	position: relative;
+}
+
+.drag-edit-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	margin-bottom: 16px;
+}
+
+.add-level-button {
+	height: 40px;
+	font-weight: 500;
+	box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+}
+
+.add-level-button:hover {
+	box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.levels-drag-container {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	margin: 24px 0;
+	overflow: visible !important;
+	/* Prevent layout thrashing during drag */
+	contain: layout style;
+	will-change: contents;
+}
+
+.levels-scroll-container {
+	max-height: 60vh; /* Chiều cao tối đa 60% viewport */
+	overflow-y: auto;
+	overflow-x: hidden;
+	padding-right: 8px;
+	margin-bottom: 20px;
+	/* Custom scrollbar styling */
+	scrollbar-width: thin;
+	scrollbar-color: #c1c1c1 #f1f1f1;
+}
+
+.levels-scroll-container::-webkit-scrollbar {
+	width: 8px;
+}
+
+.levels-scroll-container::-webkit-scrollbar-track {
+	background: #f1f1f1;
+	border-radius: 4px;
+}
+
+.levels-scroll-container::-webkit-scrollbar-thumb {
+	background: #c1c1c1;
+	border-radius: 4px;
+	transition: background 0.2s ease;
+}
+
+.levels-scroll-container::-webkit-scrollbar-thumb:hover {
+	background: #a8a8a8;
+}
+
+.add-level-between {
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	margin: 8px 0;
+	position: relative;
+	height: 1px;
+	opacity: 0;
+	transition: opacity 0.2s;
+	cursor: pointer;
+}
+
+.add-level-between:hover {
+	opacity: 1;
+}
+
+.add-level-between::before {
+	content: '';
+	position: absolute;
+	top: -10px;
+	left: 0;
+	right: 0;
+	bottom: -10px;
+	background: transparent;
+	z-index: 1;
+}
+
+.add-level-between-btn {
+	width: 48px;
+	height: 48px;
+	font-size: 20px;
+	background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+	border: none !important;
+	box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+	position: relative;
+	z-index: 2;
+}
+
+.add-level-between-btn:hover {
+	transform: scale(1.05);
+	box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4) !important;
+}
+
+.add-level-between-btn:active {
+	transform: scale(0.95);
+}
+
+/* Base Level Drag Item - Optimized for performance */
+.level-drag-item {
+	display: flex;
+	align-items: flex-start;
+	gap: 12px;
+	padding: 12px 16px;
+	border: 2px solid #e8e8e8;
+	border-radius: 12px;
+	background: #ffffff;
+	cursor: grab;
+	position: relative;
+	min-height: 50px;
+	/* Performance optimizations */
+	will-change: transform;
+	backface-visibility: hidden;
+	transform: translateZ(0);
+}
+
+.level-drag-item:hover {
+	border-color: #1890ff;
+	box-shadow: 0 4px 12px rgba(24, 144, 255, 0.15);
+}
+
+.level-drag-item.dragging {
+	opacity: 0.4;
+	border-color: #1890ff;
+	cursor: grabbing;
+	/* Smooth visual feedback without layout shift */
+	z-index: 1;
+}
+
+.level-position {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 40px;
+	height: 40px;
+	border-radius: 50%;
+	background-color: #a0a0a0;
+	color: black !important;
+	font-weight: bold;
+	font-size: 18px;
+	flex-shrink: 0;
+}
+
+.level-content {
+	flex: 1;
+	display: flex;
+}
+
+.level-field {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	padding: 4px 0;
+}
+
+.level-field .ant-typography {
+	margin: 0;
+}
+
+.level-actions {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	flex-shrink: 0;
+}
+
+.drag-edit-footer {
+	display: flex;
+	justify-content: flex-end;
+	align-items: center;
+	padding: 20px 0;
+	border-top: 1px solid #f0f0f0;
+	margin-top: 24px;
+	position: sticky;
+	bottom: 0;
+	background: inherit;
+	z-index: 10;
+}
+
+/* Dark Theme */
+.dark-level-drag-edit-container {
+	background: #1f1f1f;
+}
+
+.dark-level-drag-item {
+	background: #2a2a2a;
+	border-color: #404040;
+	color: #ffffff;
+}
+
+.dark-level-drag-item:hover {
+	border-color: #1890ff;
+	box-shadow: 0 4px 12px rgba(24, 144, 255, 0.2);
+}
+
+.dark-level-drag-item .level-position {
+	background-color: #a0a0a0;
+	color: black;
+}
+
+.dark-level-drag-item .ant-typography {
+	color: #ffffff;
+}
+
+.dark-drag-edit-footer {
+	border-top-color: #404040;
+	background: #1f1f1f;
+}
+
+.dark-add-level-between:hover {
+	background: rgba(255, 255, 255, 0.05);
+	border-radius: 8px;
+}
+
+/* Dark theme scrollbar */
+.dark-levels-scroll-container {
+	scrollbar-color: #555 #333;
+}
+
+.dark-levels-scroll-container::-webkit-scrollbar-track {
+	background: #333;
+}
+
+.dark-levels-scroll-container::-webkit-scrollbar-thumb {
+	background: #555;
+}
+
+.dark-levels-scroll-container::-webkit-scrollbar-thumb:hover {
+	background: #777;
+}
+
+/* Light Theme */
+.light-level-drag-edit-container {
+	background: #ffffff;
+}
+
+.light-level-drag-item {
+	background: #ffffff;
+	border-color: #e8e8e8;
+	color: #000000;
+}
+
+.light-level-drag-item:hover {
+	border-color: #1890ff;
+	box-shadow: 0 4px 12px rgba(24, 144, 255, 0.15);
+}
+
+.light-level-drag-item .level-position {
+	background-color: #a0a0a0 !important;
+	color: black !important;
+}
+
+.light-level-drag-item .ant-typography {
+	color: #000000;
+}
+
+.light-drag-edit-footer {
+	border-top-color: #f0f0f0;
+	background: #ffffff;
+}
+
+.light-add-level-between:hover {
+	background: rgba(0, 0, 0, 0.02);
+	border-radius: 8px;
+}
+
+/* Drag Handle */
+.drag-handle {
+	cursor: grab;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	flex-shrink: 0;
+	padding: 8px;
+	border-radius: 6px;
+	user-select: none;
+	background: rgba(24, 144, 255, 0.05);
+	transition: all 0.2s ease;
+}
+
+.drag-handle:hover {
+	background: rgba(24, 144, 255, 0.15);
+	transform: scale(1.05);
+}
+
+.drag-handle:active {
+	cursor: grabbing;
+	background: rgba(24, 144, 255, 0.25);
+	transform: scale(0.98);
+}
+
+/* Fix DragOverlay positioning - ensure it follows cursor */
+.level-drag-edit-container {
+	position: relative;
+	isolation: isolate;
+}
+
+[data-dnd-kit-drag-overlay] .level-drag-item {
+	pointer-events: none;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+	.level-drag-item {
+		flex-direction: column;
+		align-items: stretch;
+		gap: 12px;
+	}
+
+	.level-position {
+		align-self: flex-start;
+	}
+
+	.drag-handle {
+		align-self: flex-end;
+	}
+
+	.level-field {
+		flex-direction: column;
+		align-items: stretch;
+		gap: 8px;
+	}
+
+	.level-field .ant-typography {
+		min-width: auto !important;
+	}
+}

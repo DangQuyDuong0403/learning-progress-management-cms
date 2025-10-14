@@ -54,11 +54,11 @@ const authApi = {
 
 	// Lấy thông tin user hiện tại
 	getUserProfile: () => {
-		const token = localStorage.getItem('token');
-		const userId = getUserIdFromToken(token);
+		const accessToken = localStorage.getItem('accessToken');
+		const userId = getUserIdFromToken(accessToken);
 		
 		if (!userId) {
-			return Promise.reject(new Error('Unable to extract user ID from token'));
+			return Promise.reject(new Error('Unable to extract user ID from accessToken'));
 		}
 		
 		const url = `/user/profile/${userId}`;

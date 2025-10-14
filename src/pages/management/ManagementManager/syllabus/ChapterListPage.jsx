@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
 	Table,
 	Button,
@@ -18,58 +18,130 @@ import {
 	DeleteOutlined,
 	SearchOutlined,
 	ReloadOutlined,
-	BookOutlined,
 	EyeOutlined,
 	FileTextOutlined,
 	PlayCircleOutlined,
 	ArrowLeftOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
-import { useDispatch, useSelector } from 'react-redux';
 import { useParams, useNavigate } from 'react-router-dom';
 import ChapterForm from './ChapterForm';
 import LessonList from './LessonList';
 import './SyllabusList.css';
-import {
-	fetchSyllabuses,
-	fetchChaptersBySyllabus,
-} from '../../../../redux/syllabus';
 import ThemedLayout from '../../../../component/ThemedLayout';
 import { useTheme } from '../../../../contexts/ThemeContext';
+import syllabusManagementApi from '../../../../apis/backend/syllabusManagement';
 
 const ChapterListPage = () => {
 	const { t } = useTranslation();
-	const dispatch = useDispatch();
 	const navigate = useNavigate();
 	const { syllabusId } = useParams();
-	const { syllabuses, chapters, loading } = useSelector((state) => state.syllabus);
 	const { theme } = useTheme();
 
+	// State management
+	const [loading, setLoading] = useState(false);
+	const [chapters, setChapters] = useState([]);
+	const [syllabusInfo, setSyllabusInfo] = useState(null);
+	const [searchText, setSearchText] = useState('');
+	const [searchTimeout, setSearchTimeout] = useState(null);
+
+	// Modal states
 	const [isModalVisible, setIsModalVisible] = useState(false);
 	const [isLessonModalVisible, setIsLessonModalVisible] = useState(false);
 	const [isDeleteModalVisible, setIsDeleteModalVisible] = useState(false);
 	const [editingChapter, setEditingChapter] = useState(null);
 	const [selectedChapter, setSelectedChapter] = useState(null);
 	const [deleteChapter, setDeleteChapter] = useState(null);
-	const [searchText, setSearchText] = useState('');
 
-	// Find the current syllabus
-	const currentSyllabus = syllabuses.find(s => s.id === parseInt(syllabusId));
+	// Pagination state
+	const [pagination, setPagination] = useState({
+		current: 1,
+		pageSize: 10,
+		total: 0,
+		showSizeChanger: true,
+		showTotal: (total, range) => `${range[0]}-${range[1]} of ${total}`,
+	});
 
-	useEffect(() => {
-		dispatch(fetchSyllabuses());
-		if (syllabusId) {
-			console.log('Fetching chapters for syllabusId:', syllabusId);
-			dispatch(fetchChaptersBySyllabus(syllabusId));
+	// Fetch chapters from API
+	const fetchChapters = useCallback(async (page = 1, size = 10, search = '') => {
+		if (!syllabusId) return;
+		
+		setLoading(true);
+		try {
+			const params = {
+				page: page - 1, // API uses 0-based indexing
+				size: size,
+			};
+			
+			// Add search parameter if provided
+			if (search && search.trim()) {
+				params.searchText = search.trim();
+			}
+
+			const response = await syllabusManagementApi.getChaptersBySyllabusId(syllabusId, params);
+
+			// Map API response to component format
+			const mappedChapters = response.data.map((chapter) => ({
+				id: chapter.id,
+				name: chapter.chapterName,
+				description: chapter.description,
+				order: chapter.orderNumber,
+				status: chapter.status,
+				createdBy: chapter.createdBy || chapter.createdByUser || 'N/A',
+				createdAt: chapter.createdAt,
+			}));
+
+			setChapters(mappedChapters);
+			setPagination(prev => ({
+				...prev,
+				current: page,
+				pageSize: size,
+				total: response.totalElements || response.data.length,
+			}));
+			setLoading(false);
+		} catch (error) {
+			console.error('Error fetching chapters:', error);
+			message.error(t('chapterManagement.loadChaptersError'));
+			setLoading(false);
 		}
-	}, [dispatch, syllabusId]);
+	}, [syllabusId, t]);
 
-	// Debug log
+	// Fetch syllabus info
+	const fetchSyllabusInfo = useCallback(async () => {
+		if (!syllabusId) return;
+		
+		try {
+			const response = await syllabusManagementApi.getSyllabuses({
+				params: { page: 0, size: 100 }
+			});
+			
+			// Find the specific syllabus
+			const syllabus = response.data.find(s => s.id === parseInt(syllabusId));
+			if (syllabus) {
+				setSyllabusInfo({
+					id: syllabus.id,
+					name: syllabus.syllabusName,
+					description: syllabus.description,
+				});
+			}
+		} catch (error) {
+			console.error('Error fetching syllabus info:', error);
+		}
+	}, [syllabusId]);
+
 	useEffect(() => {
-		console.log('Chapters data:', chapters);
-		console.log('Current syllabus:', currentSyllabus);
-		console.log('Current theme:', theme);
-	}, [chapters, currentSyllabus, theme]);
+		fetchChapters(1, pagination.pageSize, searchText);
+		fetchSyllabusInfo();
+	}, [fetchChapters, fetchSyllabusInfo, searchText, pagination.pageSize]);
+
+	// Cleanup timeout on unmount
+	useEffect(() => {
+		return () => {
+			if (searchTimeout) {
+				clearTimeout(searchTimeout);
+			}
+		};
+	}, [searchTimeout]);
 
 	const handleAdd = () => {
 		setEditingChapter(null);
@@ -88,11 +160,17 @@ const ChapterListPage = () => {
 
 	const handleDelete = async () => {
 		try {
-			await dispatch(deleteChapter(deleteChapter.id));
+			// TODO: Implement delete chapter API call
+			// await syllabusManagementApi.deleteChapter(deleteChapter.id);
+			
+			// Update local state
+			setChapters(chapters.filter(c => c.id !== deleteChapter.id));
+			
 			message.success(t('chapterManagement.deleteChapterSuccess'));
 			setIsDeleteModalVisible(false);
 			setDeleteChapter(null);
 		} catch (error) {
+			console.error('Error deleting chapter:', error);
 			message.error(t('chapterManagement.deleteChapterError'));
 		}
 	};
@@ -118,41 +196,55 @@ const ChapterListPage = () => {
 	};
 
 	const handleRefresh = () => {
-		if (syllabusId) {
-			dispatch(fetchChaptersBySyllabus(syllabusId));
-		}
+		fetchChapters(pagination.current, pagination.pageSize, searchText);
 	};
 
 	const handleBackToSyllabuses = () => {
 		navigate('/manager/syllabuses');
 	};
 
-	// Filter chapters based on search
-	const filteredChapters = chapters.filter((chapter) => {
-		const matchesSearch =
-			chapter.name.toLowerCase().includes(searchText.toLowerCase()) ||
-			chapter.description.toLowerCase().includes(searchText.toLowerCase());
-		return matchesSearch;
-	});
+	const handleSearch = (value) => {
+		setSearchText(value);
+		
+		// Clear existing timeout
+		if (searchTimeout) {
+			clearTimeout(searchTimeout);
+		}
+		
+		// Set new timeout for 1 second delay
+		const newTimeout = setTimeout(() => {
+			// Reset to first page when searching
+			fetchChapters(1, pagination.pageSize, value);
+		}, 1000);
+		
+		setSearchTimeout(newTimeout);
+	};
+
+	const handleTableChange = (pagination) => {
+		fetchChapters(pagination.current, pagination.pageSize, searchText);
+	};
+
+	// No need for client-side filtering since API handles filtering
+	const filteredChapters = chapters;
 
 
 	const columns = [
 		{
-			title: t('chapterManagement.chapterNumber'),
-			dataIndex: 'order',
-			key: 'order',
-			width: 80,
-			sorter: (a, b) => a.order - b.order,
-			render: (order) => (
-				<Tag color="blue" style={{ textAlign: 'center', minWidth: '30px' }}>
-					{order}
-				</Tag>
-			),
+			title: 'No',
+			key: 'index',
+			width: '10%',
+			render: (_, __, index) => {
+				// Calculate index based on current page and page size
+				const currentPage = pagination.current || 1;
+				const pageSize = pagination.pageSize || 10;
+				return (currentPage - 1) * pageSize + index + 1;
+			},
 		},
 		{
 			title: t('chapterManagement.chapterName'),
 			dataIndex: 'name',
 			key: 'name',
+			width: '20%',
 			sorter: (a, b) => a.name.localeCompare(b.name),
 			render: (text, record) => (
 				<div>
@@ -164,46 +256,24 @@ const ChapterListPage = () => {
 			),
 		},
 		{
-			title: t('chapterManagement.lessons'),
-			dataIndex: 'lessons',
-			key: 'lessons',
-			width: 100,
-			render: (lessons) => (
-				<div style={{ textAlign: 'center' }}>
-					<PlayCircleOutlined style={{ marginRight: '4px' }} />
-					{lessons?.length || 0}
-				</div>
-			),
+			title: t('chapterManagement.createdBy'),
+			dataIndex: 'createdBy',
+			key: 'createdBy',
+			width: '20%',
+			render: (createdBy) => createdBy || 'N/A',
 		},
-		{
-			title: t('chapterManagement.duration'),
-			dataIndex: 'duration',
-			key: 'duration',
-			width: 100,
-			render: (duration) => `${duration} ${t('chapterManagement.hours')}`,
-		},
-		{
-			title: t('chapterManagement.status'),
-			dataIndex: 'status',
-			key: 'status',
-			width: 100,
-			render: (status) => (
-				<Tag color={status === 'active' ? 'green' : 'red'}>
-					{t(`chapterManagement.${status}`)}
-				</Tag>
-			),
-		},
+		
 		{
 			title: t('chapterManagement.createdAt'),
 			dataIndex: 'createdAt',
 			key: 'createdAt',
-			width: 120,
+			width: '20%',
 			render: (date) => new Date(date).toLocaleDateString(),
 		},
 		{
 			title: t('chapterManagement.actions'),
 			key: 'actions',
-			width: 200,
+			width: '20%',
 			render: (_, record) => (
 				<Space size="small">
 					<Tooltip title={t('chapterManagement.viewLessons')}>
@@ -233,7 +303,7 @@ const ChapterListPage = () => {
 		},
 	];
 
-	if (!currentSyllabus) {
+	if (!syllabusInfo) {
 		return (
 			<ThemedLayout>
 				<div className="syllabus-list-container">
@@ -274,11 +344,11 @@ const ChapterListPage = () => {
 								margin: 0, 
 								fontSize: '24px', 
 								fontWeight: 'bold',
-								color: theme === 'dark' ? '#ffffff' : '#000000'
+								color: theme === 'space' ? '#ffffff' : '#000000'
 							}}
 						>
 							<FileTextOutlined style={{ marginRight: '8px' }} />
-							{t('chapterManagement.title')} - {currentSyllabus.name}
+							{t('chapterManagement.title')} - {syllabusInfo.name}
 						</h2>
 					</div>
 
@@ -289,9 +359,10 @@ const ChapterListPage = () => {
 							<Input
 								prefix={<SearchOutlined />}
 								value={searchText}
-								onChange={(e) => setSearchText(e.target.value)}
+								onChange={(e) => handleSearch(e.target.value)}
 								className="search-input"
 								style={{ minWidth: '350px', maxWidth: '500px', height: '40px', fontSize: '16px' }}
+								placeholder={t('chapterManagement.searchChapters')}
 								allowClear
 							/>
 						</Col>
@@ -318,21 +389,19 @@ const ChapterListPage = () => {
 
 					{/* Table Card */}
 					<Card className="table-card">
-						
 						<Table
 							columns={columns}
 							dataSource={filteredChapters}
 							rowKey="id"
 							loading={loading}
 							pagination={{
-								total: filteredChapters.length,
-								pageSize: 10,
-								showSizeChanger: true,
+								...pagination,
 								showQuickJumper: true,
 								showTotal: (total, range) => {
 									return `${range[0]}-${range[1]} ${t('chapterManagement.paginationText')} ${total} ${t('chapterManagement.chapters')}`;
 								},
 							}}
+							onChange={handleTableChange}
 							scroll={{ x: 1000 }}
 						/>
 					</Card>
@@ -353,7 +422,7 @@ const ChapterListPage = () => {
 				>
 					<ChapterForm
 						chapter={editingChapter}
-						syllabus={currentSyllabus}
+						syllabus={syllabusInfo}
 						onClose={handleModalClose}
 					/>
 				</Modal>

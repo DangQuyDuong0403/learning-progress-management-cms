@@ -69,3 +69,30 @@ export const isTokenExpired = (token) => {
   const currentTime = Math.floor(Date.now() / 1000);
   return payload.exp < currentTime;
 };
+
+/**
+ * Check if JWT token is about to expire (within 5 minutes)
+ * @param {string} token - JWT token
+ * @param {number} bufferMinutes - Buffer time in minutes (default: 5)
+ * @returns {boolean} - True if token expires within buffer time, false otherwise
+ */
+export const isTokenExpiringSoon = (token, bufferMinutes = 5) => {
+  const payload = decodeJWT(token);
+  if (!payload || !payload.exp) return true;
+  
+  const currentTime = Math.floor(Date.now() / 1000);
+  const bufferTime = bufferMinutes * 60; // Convert minutes to seconds
+  return payload.exp < (currentTime + bufferTime);
+};
+
+/**
+ * Get token expiration time in milliseconds
+ * @param {string} token - JWT token
+ * @returns {number|null} - Expiration time in milliseconds or null if invalid
+ */
+export const getTokenExpirationTime = (token) => {
+  const payload = decodeJWT(token);
+  if (!payload || !payload.exp) return null;
+  
+  return payload.exp * 1000; // Convert from seconds to milliseconds
+};
