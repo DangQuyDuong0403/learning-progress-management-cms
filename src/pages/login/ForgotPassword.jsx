@@ -14,6 +14,7 @@ import './Login.css'; // import Login CSS instead
 
 export default function ForgotPassword() {
 	const [username, setUsername] = useState('');
+	const [isInitialized, setIsInitialized] = useState(false);
 	const navigate = useNavigate();
 	const dispatch = useDispatch();
 	const { t } = useTranslation();
@@ -25,10 +26,13 @@ export default function ForgotPassword() {
 	// Clear state when component mounts
 	useEffect(() => {
 		dispatch(clearForgotPasswordState());
+		setIsInitialized(true);
 	}, [dispatch]);
 
-	// Handle success/error messages
+	// Handle success/error messages - only after initialization
 	useEffect(() => {
+		if (!isInitialized) return;
+		
 		if (forgotPasswordSuccess) {
 			// Navigate to success page with username in state
 			navigate('/forgot-password-success', { state: { username } });
@@ -36,7 +40,7 @@ export default function ForgotPassword() {
 			// Navigate to failure page with username in state
 			navigate('/forgot-password-failure', { state: { username } });
 		}
-	}, [forgotPasswordSuccess, forgotPasswordError, t, navigate, username]);
+	}, [forgotPasswordSuccess, forgotPasswordError, navigate, username, isInitialized]);
 
 	const handleSubmit = (e) => {
 		e.preventDefault();
