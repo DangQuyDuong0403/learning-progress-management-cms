@@ -34,6 +34,7 @@ jobs:
         env:
           CI: false
           REACT_APP_API_URL: ${{ secrets.REACT_APP_API_URL }}
+          REACT_APP_DOMAIN: ${{ secrets.REACT_APP_DOMAIN }}
           ###### End of Repository/Build Configurations ######
 
   close_pull_request_job:
