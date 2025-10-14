@@ -33,6 +33,7 @@ jobs:
           output_location: "build" # Built app content directory - optional
         env:
           CI: false
+          REACT_APP_API_URL: ${{ secrets.REACT_APP_API_URL }}
           ###### End of Repository/Build Configurations ######
 
   close_pull_request_job:
