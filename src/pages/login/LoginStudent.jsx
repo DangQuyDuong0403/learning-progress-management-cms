@@ -36,6 +36,11 @@ export default function Login() {
 		setLoading(true);
 		
 		try {
+			// Clear existing tokens before login
+			localStorage.removeItem('accessToken');
+			localStorage.removeItem('refreshToken');
+			localStorage.removeItem('user');
+			
 			// Lấy loginRole từ localStorage
 			const loginRole = localStorage.getItem('loginRole') || 'student';
 			
@@ -49,7 +54,7 @@ export default function Login() {
 			// Dispatch login success với data từ API
 			dispatch(loginSuccess(response.data));
 			
-			// Store tokens in localStorage
+			// Store new tokens in localStorage
 			localStorage.setItem('accessToken', response.data.accessToken);
 			localStorage.setItem('refreshToken', response.data.refreshToken);
 			

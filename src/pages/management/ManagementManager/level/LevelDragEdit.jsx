@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, memo } from 'react';
-import { Button, message, Typography, Divider, Modal } from 'antd';
+import { Button, message, Typography, Modal } from 'antd';
 import {
 	PlusOutlined,
 	DeleteOutlined,
