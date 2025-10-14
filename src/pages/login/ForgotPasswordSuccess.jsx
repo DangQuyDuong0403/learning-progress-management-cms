@@ -1,21 +1,29 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useDispatch } from 'react-redux';
 import { useTranslation } from 'react-i18next';
 import { CheckCircleOutlined } from '@ant-design/icons';
 import LanguageToggle from '../../component/LanguageToggle';
 import ThemeToggleSwitch from '../../component/ThemeToggleSwitch';
 import { useTheme } from '../../contexts/ThemeContext';
 import ThemedLayoutFullScreen from '../../component/ThemedLayoutFullScreen';
+import { clearForgotPasswordState } from '../../redux/auth';
 import './Login.css';
 
 export default function ForgotPasswordSuccess() {
 	const navigate = useNavigate();
 	const location = useLocation();
+	const dispatch = useDispatch();
 	const { t } = useTranslation();
 	const { isSunTheme } = useTheme();
 	
 	// Get username from navigation state
 	const username = location.state?.username || 'Unknown User';
+
+	// Clear forgot password state when component mounts
+	useEffect(() => {
+		dispatch(clearForgotPasswordState());
+	}, [dispatch]);
 
 	const handleBackToLogin = () => {
 		navigate('/choose-login');

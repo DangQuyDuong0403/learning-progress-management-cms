@@ -3,10 +3,15 @@ import { useSelector } from "react-redux";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import CONFIG_ROUTER from "./routers/configRouter";
 import PrivateRoute from "./routers/PrivateRoute";
-import  SpaceToastify  from "../src/component/SpaceToastify";
+import SpaceToastify from "../src/component/SpaceToastify";
+import { useAuthMonitor } from "./utils/useAuthMonitor";
+
 export default function App() {
   const isAuthenticated = useSelector((state) => state.auth.isAuthenticated);
   const authState = useSelector((state) => state.auth);
+  
+  // Monitor authentication state across tabs
+  useAuthMonitor();
   
   console.log('App.js - isAuthenticated:', isAuthenticated);
   console.log('App.js - authState:', authState);
