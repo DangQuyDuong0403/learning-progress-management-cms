@@ -14,7 +14,7 @@ import { useTheme } from '../../../../contexts/ThemeContext';
 import { spaceToast } from '../../../../component/SpaceToastify';
 import ThemedLayout from '../../../../component/ThemedLayout';
 import syllabusManagementApi from '../../../../apis/backend/syllabusManagement';
-import ChapterForm from './ChapterForm';
+import LessonForm from './LessonForm';
 import {
 	DndContext,
 	closestCenter,
@@ -37,15 +37,17 @@ import '../level/LevelDragEdit.css';
 
 const { Text, Title } = Typography;
 
-// Sortable Chapter Item Component
-const SortableChapterItem = memo(
-	({ chapter, index, onDeleteChapter, onUpdateChapterName, theme, t }) => {
-		const [editValue, setEditValue] = useState(chapter.name || '');
+// Sortable Lesson Item Component
+const SortableLessonItem = memo(
+	({ lesson, index, onDeleteLesson, onUpdateLessonName, onUpdateLessonContent, theme, t }) => {
+		const [nameValue, setNameValue] = useState(lesson.name || '');
+		const [contentValue, setContentValue] = useState(lesson.content || '');
 
-		// Update editValue when chapter.name changes
+		// Update values when lesson data changes
 		useEffect(() => {
-			setEditValue(chapter.name || '');
-		}, [chapter.name]);
+			setNameValue(lesson.name || '');
+			setContentValue(lesson.content || '');
+		}, [lesson.name, lesson.content]);
 
 		const animateLayoutChanges = useCallback((args) => {
 			const { isSorting, wasDragging } = args;
@@ -63,7 +65,7 @@ const SortableChapterItem = memo(
 			transition,
 			isDragging,
 		} = useSortable({
-			id: chapter.id,
+			id: lesson.id,
 			animateLayoutChanges,
 		});
 
@@ -77,15 +79,19 @@ const SortableChapterItem = memo(
 			[transform, transition, isDragging]
 		);
 
-		const handleSaveEdit = useCallback(() => {
-			if (editValue.trim()) {
-				onUpdateChapterName(index, editValue.trim());
+		const handleSaveName = useCallback(() => {
+			if (nameValue.trim()) {
+				onUpdateLessonName(index, nameValue.trim());
 			}
-		}, [index, editValue, onUpdateChapterName]);
+		}, [index, nameValue, onUpdateLessonName]);
+
+		const handleSaveContent = useCallback(() => {
+			onUpdateLessonContent(index, contentValue.trim());
+		}, [index, contentValue, onUpdateLessonContent]);
 
 		const handleDelete = useCallback(() => {
-			onDeleteChapter(index);
-		}, [index, onDeleteChapter]);
+			onDeleteLesson(index);
+		}, [index, onDeleteLesson]);
 
 		return (
 			<div
@@ -96,22 +102,35 @@ const SortableChapterItem = memo(
 				}`}>
 				<div className='level-position'>
 					<Text strong style={{ fontSize: '18px', color: 'black' }}>
-						{chapter.position}
+						{lesson.position}
 					</Text>
 				</div>
 
 				<div className='level-content'>
-					<div className='level-field' style={{ flex: 1 }}>
+					<div className='level-field' style={{ flex: 1, marginBottom: '8px' }}>
 						<Text strong style={{ minWidth: '120px', fontSize: '20px' }}>
-							{t('chapterManagement.chapterName')}:
+							{t('lessonManagement.lessonName')}:
 						</Text>
 						<Input
-							value={editValue}
-							onChange={(e) => setEditValue(e.target.value)}
-							onBlur={handleSaveEdit}
+							value={nameValue}
+							onChange={(e) => setNameValue(e.target.value)}
+							onBlur={handleSaveName}
 							size="small"
 							style={{ width: '200px', fontSize: '16px' }}
-							placeholder={t('chapterManagement.chapterNamePlaceholder')}
+							placeholder={t('lessonManagement.lessonNamePlaceholder')}
+						/>
+					</div>
+					<div className='level-field' style={{ flex: 1 }}>
+						<Text strong style={{ minWidth: '120px', fontSize: '20px' }}>
+							{t('lessonManagement.content')}:
+						</Text>
+						<Input
+							value={contentValue}
+							onChange={(e) => setContentValue(e.target.value)}
+							onBlur={handleSaveContent}
+							size="small"
+							style={{ width: '300px', fontSize: '16px' }}
+							placeholder={t('lessonManagement.contentPlaceholder')}
 						/>
 					</div>
 				</div>
@@ -142,19 +161,19 @@ const SortableChapterItem = memo(
 	},
 	(prevProps, nextProps) => {
 		return (
-			prevProps.chapter.id === nextProps.chapter.id &&
-			prevProps.chapter.name === nextProps.chapter.name &&
-			prevProps.chapter.createdBy === nextProps.chapter.createdBy &&
-			prevProps.chapter.position === nextProps.chapter.position &&
+			prevProps.lesson.id === nextProps.lesson.id &&
+			prevProps.lesson.name === nextProps.lesson.name &&
+			prevProps.lesson.content === nextProps.lesson.content &&
+			prevProps.lesson.position === nextProps.lesson.position &&
 			prevProps.theme === nextProps.theme
 		);
 	}
 );
 
-SortableChapterItem.displayName = 'SortableChapterItem';
+SortableLessonItem.displayName = 'SortableLessonItem';
 
-// Add Chapter Button
-const AddChapterButton = memo(
+// Add Lesson Button
+const AddLessonButton = memo(
 	({ theme, onAddAtPosition, index }) => {
 		const handleClick = useCallback(() => {
 			onAddAtPosition(index);
@@ -178,21 +197,21 @@ const AddChapterButton = memo(
 	}
 );
 
-AddChapterButton.displayName = 'AddChapterButton';
+AddLessonButton.displayName = 'AddLessonButton';
 
-const ChapterDragEdit = () => {
+const LessonDragEdit = () => {
 	const { t } = useTranslation();
 	const { theme } = useTheme();
 	const navigate = useNavigate();
-	const { syllabusId } = useParams();
-	const [chapters, setChapters] = useState([]);
+	const { syllabusId, chapterId } = useParams();
+	const [lessons, setLessons] = useState([]);
 	const [loading, setLoading] = useState(false);
 	const [saving, setSaving] = useState(false);
 	const [activeId, setActiveId] = useState(null);
 	const [isModalVisible, setIsModalVisible] = useState(false);
-	const [editingChapter, setEditingChapter] = useState(null);
+	const [editingLesson, setEditingLesson] = useState(null);
 	const [insertAtIndex, setInsertAtIndex] = useState(null);
-	const [syllabusInfo, setSyllabusInfo] = useState(null);
+	const [chapterInfo, setChapterInfo] = useState(null);
 
 	const sensors = useSensors(
 		useSensor(PointerSensor, {
@@ -206,8 +225,8 @@ const ChapterDragEdit = () => {
 		})
 	);
 
-	const fetchAllChapters = useCallback(async () => {
-		if (!syllabusId) return;
+	const fetchAllLessons = useCallback(async () => {
+		if (!chapterId) return;
 
 		setLoading(true);
 		try {
@@ -216,135 +235,146 @@ const ChapterDragEdit = () => {
 				size: 100,
 			};
 
-			const response = await syllabusManagementApi.getChaptersBySyllabusId(
-				syllabusId,
+			const response = await syllabusManagementApi.getLessonsByChapterId(
+				chapterId,
 				params
 			);
 
-			const mappedChapters = response.data.map((chapter, index) => ({
-				id: chapter.id,
-				name: chapter.chapterName,
-				description: chapter.description || '',
-				duration: chapter.duration || 0,
-				order: chapter.orderNumber,
-				status: chapter.status || 'active',
-				objectives: chapter.objectives || '',
-				learningOutcomes: chapter.learningOutcomes || '',
-				assessmentCriteria: chapter.assessmentCriteria || '',
-				createdBy: chapter.createdBy || chapter.createdByUser || 'N/A',
+			const mappedLessons = response.data.map((lesson, index) => ({
+				id: lesson.id,
+				name: lesson.lessonName,
+				content: lesson.content || '',
+				duration: lesson.duration || 0,
+				lessonType: lesson.lessonType || 'theory',
+				materials: lesson.materials || '',
+				homework: lesson.homework || '',
+				objectives: lesson.objectives || '',
+				status: lesson.status || 'active',
+				createdBy: lesson.createdBy || lesson.createdByUser || 'N/A',
 				position: index + 1,
 			}));
 
-			setChapters(mappedChapters);
+			setLessons(mappedLessons);
 		} catch (error) {
-			console.error('Error fetching chapters:', error);
-			spaceToast.error(t('chapterManagement.loadChaptersError'));
+			console.error('Error fetching lessons:', error);
+			spaceToast.error(t('lessonManagement.loadLessonsError'));
 		} finally {
 			setLoading(false);
 		}
-	}, [syllabusId, t]);
+	}, [chapterId, t]);
 
-	const fetchSyllabusInfo = useCallback(async () => {
-		if (!syllabusId) return;
+	const fetchChapterInfo = useCallback(async () => {
+		if (!chapterId || !syllabusId) return;
 
 		try {
-			const response = await syllabusManagementApi.getSyllabuses({
+			const response = await syllabusManagementApi.getChaptersBySyllabusId(syllabusId, {
 				params: { page: 0, size: 100 },
 			});
 
-			const syllabus = response.data.find((s) => s.id === parseInt(syllabusId));
-			if (syllabus) {
-				setSyllabusInfo({
-					id: syllabus.id,
-					name: syllabus.syllabusName,
-					description: syllabus.description,
+			const chapter = response.data.find((c) => c.id === parseInt(chapterId));
+			if (chapter) {
+				setChapterInfo({
+					id: chapter.id,
+					name: chapter.chapterName,
+					description: chapter.description,
 				});
 			}
 		} catch (error) {
-			console.error('Error fetching syllabus info:', error);
+			console.error('Error fetching chapter info:', error);
 		}
-	}, [syllabusId]);
+	}, [chapterId, syllabusId]);
 
 	useEffect(() => {
-		fetchAllChapters();
-		fetchSyllabusInfo();
-	}, [fetchAllChapters, fetchSyllabusInfo]);
+		fetchAllLessons();
+		fetchChapterInfo();
+	}, [fetchAllLessons, fetchChapterInfo]);
 
-	const handleAddChapterAtPosition = useCallback((index) => {
-		setEditingChapter(null);
+	const handleAddLessonAtPosition = useCallback((index) => {
+		setEditingLesson(null);
 		setInsertAtIndex(index);
 		setIsModalVisible(true);
 	}, []);
 
 	const handleModalClose = useCallback(
-		(shouldRefresh, newChapterData) => {
+		(shouldRefresh, newLessonData) => {
 			setIsModalVisible(false);
 
-			if (shouldRefresh && newChapterData) {
-				if (editingChapter) {
-					// Update existing chapter
-					setChapters((prev) => {
-						return prev.map((chapter) =>
-							chapter.id === editingChapter.id
-								? { ...chapter, ...newChapterData }
-								: chapter
+			if (shouldRefresh && newLessonData) {
+				if (editingLesson) {
+					// Update existing lesson
+					setLessons((prev) => {
+						return prev.map((lesson) =>
+							lesson.id === editingLesson.id
+								? { ...lesson, ...newLessonData }
+								: lesson
 						);
 					});
 				} else if (insertAtIndex !== null) {
-					// Insert new chapter at specific position
-					const newChapter = {
-						...newChapterData,
+					// Insert new lesson at specific position
+					const newLesson = {
+						...newLessonData,
 						id: `new-${Date.now()}`,
 						position: insertAtIndex + 1,
-						order: insertAtIndex + 1,
 					};
 
-					setChapters((prev) => {
-						const newChapters = [...prev];
-						newChapters.splice(insertAtIndex, 0, newChapter);
-						return newChapters.map((chapter, i) => ({
-							...chapter,
+					setLessons((prev) => {
+						const newLessons = [...prev];
+						newLessons.splice(insertAtIndex, 0, newLesson);
+						return newLessons.map((lesson, i) => ({
+							...lesson,
 							position: i + 1,
-							order: i + 1,
 						}));
 					});
 				}
 			}
 
-			setEditingChapter(null);
+			setEditingLesson(null);
 			setInsertAtIndex(null);
 		},
-		[editingChapter, insertAtIndex]
+		[editingLesson, insertAtIndex]
 	);
 
-	const handleDeleteChapter = useCallback(
+	const handleDeleteLesson = useCallback(
 		(index) => {
-			if (chapters.length <= 1) {
-				message.warning(t('chapterManagement.minChaptersRequired'));
+			if (lessons.length <= 1) {
+				message.warning(t('lessonManagement.minLessonsRequired'));
 				return;
 			}
 
-			setChapters((prev) => {
-				const newChapters = prev.filter((_, i) => i !== index);
-				return newChapters.map((chapter, i) => ({
-					...chapter,
+			setLessons((prev) => {
+				const newLessons = prev.filter((_, i) => i !== index);
+				return newLessons.map((lesson, i) => ({
+					...lesson,
 					position: i + 1,
-					order: i + 1,
 				}));
 			});
 		},
-		[chapters.length, t]
+		[lessons.length, t]
 	);
 
-	const handleUpdateChapterName = useCallback(
+	const handleUpdateLessonName = useCallback(
 		(index, newName) => {
-			setChapters((prev) => {
-				const newChapters = [...prev];
-				newChapters[index] = {
-					...newChapters[index],
+			setLessons((prev) => {
+				const newLessons = [...prev];
+				newLessons[index] = {
+					...newLessons[index],
 					name: newName,
 				};
-				return newChapters;
+				return newLessons;
+			});
+		},
+		[]
+	);
+
+	const handleUpdateLessonContent = useCallback(
+		(index, newContent) => {
+			setLessons((prev) => {
+				const newLessons = [...prev];
+				newLessons[index] = {
+					...newLessons[index],
+					content: newContent,
+				};
+				return newLessons;
 			});
 		},
 		[]
@@ -367,7 +397,7 @@ const ChapterDragEdit = () => {
 		document.body.style.overflow = '';
 
 		if (active.id !== over?.id) {
-			setChapters((items) => {
+			setLessons((items) => {
 				const oldIndex = items.findIndex((item) => item.id === active.id);
 				const newIndex = items.findIndex((item) => item.id === over.id);
 
@@ -375,58 +405,58 @@ const ChapterDragEdit = () => {
 
 				const newItems = arrayMove(items, oldIndex, newIndex);
 
-				return newItems.map((chapter, index) => ({
-					...chapter,
+				return newItems.map((lesson, index) => ({
+					...lesson,
 					position: index + 1,
-					order: index + 1,
 				}));
 			});
 		}
 	}, []);
 
-	const chapterIds = useMemo(() => chapters.map((chapter) => chapter.id), [chapters]);
+	const lessonIds = useMemo(() => lessons.map((lesson) => lesson.id), [lessons]);
 
 	const handleSave = useCallback(async () => {
-		const invalidChapters = chapters.filter((chapter) => !chapter.name.trim());
-		if (invalidChapters.length > 0) {
-			message.error(t('chapterManagement.chapterNameRequired'));
+		const invalidLessons = lessons.filter((lesson) => !lesson.name.trim());
+		if (invalidLessons.length > 0) {
+			message.error(t('lessonManagement.lessonNameRequired'));
 			return;
 		}
 
 		setSaving(true);
 		try {
-			// Chuẩn bị dữ liệu theo format của API /chapter/sync
-			const syncData = chapters.map((chapter, index) => {
-				const isNewRecord = typeof chapter.id === 'string' && chapter.id.startsWith('new-');
+			// Chuẩn bị dữ liệu theo format của API /lesson/sync
+			const syncData = lessons.map((lesson, index) => {
+				const isNewRecord = typeof lesson.id === 'string' && lesson.id.startsWith('new-');
 				
 				return {
-					id: isNewRecord ? null : chapter.id, // null cho chapter mới
-					chapterName: chapter.name,
+					id: isNewRecord ? null : lesson.id, // null cho lesson mới
+					lessonName: lesson.name,
+					content: lesson.content,
 					orderNumber: index + 1, // Thứ tự từ 1
 					toBeDeleted: false, // Mặc định không xóa
 				};
 			});
 
-			// Gọi API sync với syllabusId và dữ liệu chapters
-			await syllabusManagementApi.syncChapters(syllabusId, syncData);
+			// Gọi API sync với chapterId và dữ liệu lessons
+			await syllabusManagementApi.syncLessons(chapterId, syncData);
 
-			spaceToast.success(t('chapterManagement.updatePositionsSuccess'));
-			navigate(`/manager/syllabuses/${syllabusId}/chapters`);
+			spaceToast.success(t('lessonManagement.updatePositionsSuccess'));
+			navigate(`/manager/syllabuses/${syllabusId}/chapters/${chapterId}/lessons`);
 		} catch (error) {
-			console.error('Error syncing chapters:', error);
-			spaceToast.error(t('chapterManagement.updatePositionsError'));
+			console.error('Error syncing lessons:', error);
+			spaceToast.error(t('lessonManagement.updatePositionsError'));
 		} finally {
 			setSaving(false);
 		}
-	}, [chapters, syllabusId, t, navigate]);
+	}, [lessons, chapterId, syllabusId, t, navigate]);
 
 	const handleGoBack = useCallback(() => {
-		navigate(`/manager/syllabuses/${syllabusId}/chapters`);
-	}, [navigate, syllabusId]);
+		navigate(`/manager/syllabuses/${syllabusId}/chapters/${chapterId}/lessons`);
+	}, [navigate, syllabusId, chapterId]);
 
-	const activeChapterData = useMemo(
-		() => chapters.find((chapter) => chapter.id === activeId),
-		[activeId, chapters]
+	const activeLessonData = useMemo(
+		() => lessons.find((lesson) => lesson.id === activeId),
+		[activeId, lessons]
 	);
 
 	const offsetModifier = useCallback((args) => {
@@ -446,11 +476,11 @@ const ChapterDragEdit = () => {
 		};
 	}, []);
 
-	if (!syllabusInfo) {
+	if (!chapterInfo) {
 		return (
 			<ThemedLayout>
 				<div style={{ textAlign: 'center', padding: '50px' }}>
-					<Text>{t('chapterManagement.syllabusNotFound')}</Text>
+					<Text>{t('lessonManagement.chapterNotFound')}</Text>
 				</div>
 			</ThemedLayout>
 		);
@@ -497,7 +527,7 @@ const ChapterDragEdit = () => {
 									margin: 0,
 									color: '#ffffff',
 								}}>
-								{t('chapterManagement.editPositions')} - {syllabusInfo.name}
+								{t('lessonManagement.editPositions')} - {chapterInfo.name}
 							</Title>
 						</div>
 					</div>
@@ -510,13 +540,13 @@ const ChapterDragEdit = () => {
 					<div
 						className={`level-drag-edit-container ${theme}-level-drag-edit-container`}>
 
-						{/* Chapters List with Scroll */}
+						{/* Lessons List with Scroll */}
 						<div className={`levels-scroll-container ${theme}-levels-scroll-container`}>
 							<div className='levels-drag-container'>
 								{loading ? (
 									<div style={{ textAlign: 'center', padding: '40px' }}>
 										<Text type='secondary'>
-											{t('chapterManagement.loadingChapters')}
+											{t('lessonManagement.loadingLessons')}
 										</Text>
 									</div>
 								) : (
@@ -531,23 +561,24 @@ const ChapterDragEdit = () => {
 											},
 										}}>
 										<SortableContext
-											items={chapterIds}
+											items={lessonIds}
 											strategy={verticalListSortingStrategy}>
-											{chapters.map((chapter, index) => (
-												<React.Fragment key={chapter.id}>
+											{lessons.map((lesson, index) => (
+												<React.Fragment key={lesson.id}>
 													{index > 0 && (
-														<AddChapterButton
+														<AddLessonButton
 															theme={theme}
 															index={index}
-															onAddAtPosition={handleAddChapterAtPosition}
+															onAddAtPosition={handleAddLessonAtPosition}
 														/>
 													)}
 
-													<SortableChapterItem
-														chapter={chapter}
+													<SortableLessonItem
+														lesson={lesson}
 														index={index}
-														onDeleteChapter={handleDeleteChapter}
-														onUpdateChapterName={handleUpdateChapterName}
+														onDeleteLesson={handleDeleteLesson}
+														onUpdateLessonName={handleUpdateLessonName}
+														onUpdateLessonContent={handleUpdateLessonContent}
 														theme={theme}
 														t={t}
 													/>
@@ -559,7 +590,7 @@ const ChapterDragEdit = () => {
 										<DragOverlay
 											dropAnimation={null}
 											modifiers={[offsetModifier]}>
-											{activeChapterData ? (
+											{activeLessonData ? (
 												<div
 													className={`level-drag-item ${theme}-level-drag-item`}
 													style={{
@@ -575,31 +606,31 @@ const ChapterDragEdit = () => {
 														<Text
 															strong
 															style={{ fontSize: '18px', color: 'black' }}>
-															{activeChapterData.position}
+															{activeLessonData.position}
 														</Text>
 													</div>
 													<div className='drag-handle'></div>
 													<div className='level-content'>
 														<div className='level-field'>
 															<Text strong style={{ minWidth: '120px' }}>
-																{t('chapterManagement.chapterName')}:
+																{t('lessonManagement.lessonName')}:
 															</Text>
 															<Text
 																style={{
 																	color: theme === 'dark' ? '#ffffff' : '#000000',
 																}}>
-																{activeChapterData.name}
+																{activeLessonData.name}
 															</Text>
 														</div>
 														<div className='level-field'>
 															<Text strong style={{ minWidth: '120px' }}>
-																{t('chapterManagement.createdBy')}:
+																{t('lessonManagement.content')}:
 															</Text>
 															<Text
 																style={{
 																	color: theme === 'dark' ? '#ffffff' : '#000000',
 																}}>
-																{activeChapterData.createdBy || 'N/A'}
+																{activeLessonData.content || 'N/A'}
 															</Text>
 														</div>
 													</div>
@@ -638,22 +669,22 @@ const ChapterDragEdit = () => {
 				</div>
 			</div>
 
-			{/* Add/Edit Chapter Modal */}
+			{/* Add/Edit Lesson Modal */}
 			<Modal
 				title={
 					<div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-						{editingChapter ? (
+						{editingLesson ? (
 							<>
 								<EditOutlined style={{ fontSize: '20px', color: '#1890ff' }} />
 								<Title level={4} style={{ margin: 0, color: '#1890ff' }}>
-									{t('chapterManagement.editChapter')}
+									{t('lessonManagement.editLesson')}
 								</Title>
 							</>
 						) : (
 							<>
 								<PlusOutlined style={{ fontSize: '20px', color: '#1890ff' }} />
 								<Title level={4} style={{ margin: 0, color: '#1890ff' }}>
-									{t('chapterManagement.addChapter')}
+									{t('lessonManagement.addLesson')}
 								</Title>
 							</>
 						)}
@@ -667,9 +698,9 @@ const ChapterDragEdit = () => {
 				bodyStyle={{
 					padding: '24px',
 				}}>
-				<ChapterForm
-					chapter={editingChapter}
-					syllabus={syllabusInfo}
+				<LessonForm
+					lesson={editingLesson}
+					chapter={chapterInfo}
 					onClose={handleModalClose}
 				/>
 			</Modal>
@@ -677,5 +708,4 @@ const ChapterDragEdit = () => {
 	);
 };
 
-export default ChapterDragEdit;
-
+export default LessonDragEdit;
