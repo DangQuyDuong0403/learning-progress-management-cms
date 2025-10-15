@@ -11,12 +11,14 @@ import {
   TeamOutlined,
   HistoryOutlined,
   BookOutlined,
+  DashboardOutlined,
 } from "@ant-design/icons";
 import ThemedLayout from "../../../../component/ThemedLayout";
 import LoadingWithEffect from "../../../../component/spinner/LoadingWithEffect";
 import "./ClassMenu.css";
 import { useParams, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { useSelector } from "react-redux";
 
 // Mock class data
 const mockClassData = {
@@ -36,8 +38,26 @@ const ClassMenu = () => {
   const { t } = useTranslation();
   const { id } = useParams();
   const navigate = useNavigate();
+  const { user } = useSelector((state) => state.auth);
   const [loading, setLoading] = useState(false);
   const [classData, setClassData] = useState(null);
+
+  // Determine route prefix based on user role
+  const getRoutePrefix = () => {
+    const userRole = user?.role?.toLowerCase();
+    switch (userRole) {
+      case 'manager':
+        return '/manager/classes';
+      case 'teacher':
+        return '/teacher/classes';
+      case 'teaching_assistant':
+        return '/teaching-assistant/classes';
+      default:
+        return '/manager/classes';
+    }
+  };
+
+  const routePrefix = getRoutePrefix();
 
   useEffect(() => {
     fetchClassData();
@@ -58,11 +78,19 @@ const ClassMenu = () => {
 
   const menuItems = [
     {
+      id: "dashboard",
+      title: t('classMenu.dashboard'),
+      description: t('classMenu.dashboardDescription'),
+      icon: <DashboardOutlined style={{ fontSize: '48px', color: '#00d4ff' }} />,
+      path: `${routePrefix}/dashboard/${id}`,
+      color: "#00d4ff",
+    },
+    {
       id: "students",
       title: t('classMenu.students'),
       description: t('classMenu.studentsDescription'),
       icon: <UserOutlined style={{ fontSize: '48px', color: '#1890ff' }} />,
-      path: `/manager/classes/student/${id}`,
+      path: `${routePrefix}/student/${id}`,
       color: "#1890ff",
     },
     {
@@ -70,7 +98,7 @@ const ClassMenu = () => {
       title: t('classMenu.teachers'),
       description: t('classMenu.teachersDescription'),
       icon: <TeamOutlined style={{ fontSize: '48px', color: '#52c41a' }} />,
-      path: `/manager/classes/teachers/${id}`,
+      path: `${routePrefix}/teachers/${id}`,
       color: "#52c41a",
     },
     {
@@ -78,7 +106,7 @@ const ClassMenu = () => {
       title: t('classMenu.activities'),
       description: t('classMenu.activitiesDescription'),
       icon: <HistoryOutlined style={{ fontSize: '48px', color: '#fa8c16' }} />,
-      path: `/manager/classes/activities/${id}`,
+      path: `${routePrefix}/activities/${id}`,
       color: "#fa8c16",
     },
     {
@@ -86,7 +114,7 @@ const ClassMenu = () => {
       title: t('classMenu.chaptersLessons'),
       description: t('classMenu.chaptersLessonsDescription'),
       icon: <BookOutlined style={{ fontSize: '48px', color: '#722ed1' }} />,
-      path: `/manager/classes/chapters-lessons/${id}`,
+      path: `${routePrefix}/chapters-lessons/${id}`,
       color: "#722ed1",
     },
   ];
@@ -114,7 +142,7 @@ const ClassMenu = () => {
             <div className="header-left">
               <Button
                 icon={<ArrowLeftOutlined />}
-                onClick={() => navigate('/manager/classes')}
+                onClick={() => navigate(`${routePrefix}`)}
                 className="back-button"
               >
                 {t('common.back')}

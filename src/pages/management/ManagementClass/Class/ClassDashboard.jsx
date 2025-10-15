@@ -21,9 +21,10 @@ import {
 // Removed recharts import to avoid dependency issues
 import ThemedLayout from "../../../../component/ThemedLayout";
 import LoadingWithEffect from "../../../../component/spinner/LoadingWithEffect";
-import "./ClassDetail.css";
+import "./ClassStudent.css";
 import { useParams, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { useSelector } from "react-redux";
 import { spaceToast } from "../../../../component/SpaceToastify";
 
 // Mock data for class dashboard
@@ -141,9 +142,27 @@ const ClassDashboard = () => {
   const { t } = useTranslation();
   const { id } = useParams();
   const navigate = useNavigate();
+  const { user } = useSelector((state) => state.auth);
   const [loading, setLoading] = useState(false);
   const [classData, setClassData] = useState(null);
   const [studentPerformance, setStudentPerformance] = useState([]);
+
+  // Determine route prefix based on user role
+  const getRoutePrefix = () => {
+    const userRole = user?.role?.toLowerCase();
+    switch (userRole) {
+      case 'manager':
+        return '/manager/classes';
+      case 'teacher':
+        return '/teacher/classes';
+      case 'teaching_assistant':
+        return '/teaching-assistant/classes';
+      default:
+        return '/manager/classes';
+    }
+  };
+
+  const routePrefix = getRoutePrefix();
 
   const fetchClassData = useCallback(async () => {
     setLoading(true);
@@ -298,7 +317,7 @@ const ClassDashboard = () => {
             <div className="header-left">
                <Button
                  icon={<ArrowLeftOutlined />}
-                 onClick={() => navigate(`/teacher/classes/menu/${id}`)}
+                 onClick={() => navigate(`${routePrefix}/menu/${id}`)}
                  className="back-button"
                >
                  {t('common.back')}

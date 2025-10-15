@@ -88,6 +88,7 @@ axiosClient.interceptors.response.use(
 			if (refreshTokenValue) {
 				try {
 					console.log('🔄 Attempting to refresh token...');
+					console.log('🔄 RefreshToken value:', refreshTokenValue);
 					const response = await authApi.refreshToken(refreshTokenValue);
 					console.log('✅ Token refresh successful:', response);
 					
@@ -98,6 +99,12 @@ axiosClient.interceptors.response.use(
 					if (newRefreshToken) {
 						localStorage.setItem('refreshToken', newRefreshToken);
 						console.log('🔄 Updated refreshToken in localStorage');
+					}
+					
+					// Cleanup token thừa nếu có
+					if (localStorage.getItem('token')) {
+						localStorage.removeItem('token');
+						console.log('🧹 Cleaned up duplicate token');
 					}
 					
 					// Cập nhật header cho request gốc
