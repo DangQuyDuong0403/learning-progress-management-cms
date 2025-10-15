@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   Button,
   Card,
@@ -19,26 +19,16 @@ import "./ClassMenu.css";
 import { useParams, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useSelector } from "react-redux";
-
-// Mock class data
-const mockClassData = {
-  id: 1,
-  name: "Rising star 1",
-  studentCount: 3,
-  color: "#00d4ff",
-  status: "active",
-  createdAt: "2024-01-15",
-  teacher: "Nguyễn Văn A",
-  level: "Beginner",
-  ageRange: "6-8",
-  description: "Basic English course for beginners",
-};
+import { classManagementApi } from "../../../../apis/apis";
+import { spaceToast } from "../../../../component/SpaceToastify";
+import { useTheme } from "../../../../contexts/ThemeContext";
 
 const ClassMenu = () => {
   const { t } = useTranslation();
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useSelector((state) => state.auth);
+  const { isSunTheme } = useTheme();
   const [loading, setLoading] = useState(false);
   const [classData, setClassData] = useState(null);
 
@@ -59,21 +49,43 @@ const ClassMenu = () => {
 
   const routePrefix = getRoutePrefix();
 
-  useEffect(() => {
-    fetchClassData();
-  }, [id]);
-
-  const fetchClassData = async () => {
+  const fetchClassData = useCallback(async () => {
+    if (!id) return;
+    
     setLoading(true);
     try {
-      // Simulate API call
-      setTimeout(() => {
-        setClassData(mockClassData);
-        setLoading(false);
-      }, 1000);
+      const response = await classManagementApi.getClassDetail(id);
+      
+      if (response.success && response.data) {
+        setClassData({
+          id: response.data.id,
+          name: response.data.className,
+          description: `Class ID: ${response.data.id}`,
+          isActive: response.data.isActive,
+          syllabusId: response.data.syllabusId,
+          createdBy: response.data.createdBy,
+          createdAt: response.data.createdAt,
+          updatedBy: response.data.updatedBy,
+          updatedAt: response.data.updatedAt,
+        });
+      } else {
+        spaceToast.error('Failed to load class information');
+      }
     } catch (error) {
+      console.error('Error fetching class data:', error);
+      spaceToast.error('Failed to load class information');
+    } finally {
       setLoading(false);
     }
+  }, [id]);
+
+  useEffect(() => {
+    fetchClassData();
+  }, [fetchClassData]);
+
+  // Theme-based colors for cards
+  const getCardBackgroundColor = () => {
+    return isSunTheme ? '#E6F5FF' : 'rgb(224 217 255 / 90%)';
   };
 
   const menuItems = [
@@ -134,7 +146,7 @@ const ClassMenu = () => {
   if (loading) {
     return (
       <ThemedLayout>
-        <div className="class-menu-container">
+        <div className={`class-menu-container ${isSunTheme ? 'light-theme' : 'dark-theme'}`}>
           <LoadingWithEffect loading={true} message={t('classMenu.loadingClassInfo')} />
         </div>
       </ThemedLayout>
@@ -143,7 +155,7 @@ const ClassMenu = () => {
 
   return (
     <ThemedLayout>
-      <div className="class-menu-container">
+      <div className={`class-menu-container ${isSunTheme ? 'light-theme' : 'dark-theme'}`}>
         {/* Header */}
         <Card className="header-card">
           <div className="header-content">
@@ -182,6 +194,7 @@ const ClassMenu = () => {
                     borderRadius: '16px',
                     transition: 'all 0.3s ease',
                     cursor: 'pointer',
+                    backgroundColor: getCardBackgroundColor(),
                   }}
                   bodyStyle={{
                     padding: '24px',

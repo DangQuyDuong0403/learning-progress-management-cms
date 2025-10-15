@@ -2,13 +2,13 @@ import React, { useEffect, useState } from 'react';
 import { toast } from 'react-toastify';
 import { useTranslation } from 'react-i18next';
 import { useSelector, useDispatch } from 'react-redux';
-import { Modal, Form, Row, Col, Input, Radio, Upload, Avatar } from 'antd';
-import { UploadOutlined, UserOutlined } from '@ant-design/icons';
 import './Profile.css';
 import ThemedLayout from '../../component/ThemedLayout';
 import { useTheme } from '../../contexts/ThemeContext';
 import { getUserProfile } from '../../redux/auth';
 import TableSpinner from '../../component/spinner/TableSpinner';
+import EditEmailModal from './EditEmailModal';
+import EditPersonalInfoModal from './EditPersonalInfoModal';
 
 export default function Profile() {
   const { t } = useTranslation();
@@ -17,9 +17,8 @@ export default function Profile() {
   const dispatch = useDispatch();
   
   // Modal state
-  const [isEditModalVisible, setIsEditModalVisible] = useState(false);
-  const [form] = Form.useForm();
-  const [avatarFileList, setAvatarFileList] = useState([]);
+  const [isEditEmailModalVisible, setIsEditEmailModalVisible] = useState(false);
+  const [isEditPersonalInfoModalVisible, setIsEditPersonalInfoModalVisible] = useState(false);
   
   // Spinner state
   const [showSpinner, setShowSpinner] = useState(true);
@@ -53,93 +52,24 @@ export default function Profile() {
   };
 
 
-  function validateName(name) {
-    // Only letters (including Vietnamese), spaces, at least 2 chars
-    return /^[A-Za-zÀ-ỹà-ỹ\s]{2,}$/u.test(name);
-  }
-
-  function validateEmail(email) {
-    // Simple email regex
-    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-  }
-
-  function isFutureDate(dateStr) {
-    if (!dateStr) return false;
-    const today = new Date();
-    today.setHours(0,0,0,0);
-    const inputDate = new Date(dateStr);
-    return inputDate > today;
-  }
-
-  const handleEdit = () => {
-    // Set form values from profile data
-    form.setFieldsValue({
-      username: profileData?.userName || "test1",
-      lastName: profileData?.lastName || "Nguyen Duc",
-      firstName: profileData?.firstName || "Anh",
-      email: profileData?.email || "anhtony2003@gmail.com",
-      phone: profileData?.phoneNumber || "0987654321",
-      address: profileData?.address || "fsd",
-      gender: profileData?.gender || "Male",
-      dateOfBirth: profileData?.dateOfBirth 
-        ? new Date(profileData.dateOfBirth).toISOString().split('T')[0]
-        : "2003-05-16"
-    });
-    setIsEditModalVisible(true);
+  const handleEditEmail = () => {
+    setIsEditEmailModalVisible(true);
   };
 
-  const handleModalUpdate = async () => {
-    try {
-      const values = await form.validateFields();
-      
-      // Validation
-      if (!validateName(values.lastName)) {
-        toast.error('Last name must be at least 2 letters, no numbers or special characters!');
-        return;
-      }
-      if (!validateName(values.firstName)) {
-        toast.error('First name must be at least 2 letters, no numbers or special characters!');
-        return;
-      }
-      if (!validateEmail(values.email)) {
-        toast.error(t('messages.invalidEmail'));
-        return;
-      }
-      if (isFutureDate(values.dateOfBirth)) {
-        toast.error('Date of birth cannot be in the future!');
-        return;
-      }
-      
-      toast.success(t('messages.updateSuccess'));
-      setIsEditModalVisible(false);
-      // ...submit logic here
-    } catch (error) {
-      toast.error('Please check your information');
-    }
+  const handleEditPersonalInfo = () => {
+    setIsEditPersonalInfoModalVisible(true);
   };
 
-  const handleModalCancel = () => {
-    setIsEditModalVisible(false);
-    form.resetFields();
-    setAvatarFileList([]);
+  const handleEmailUpdateSuccess = (newEmail) => {
+    // Handle email update success
+    console.log('Email updated to:', newEmail);
+    // You can dispatch an action to update the profile data here
   };
 
-  const handleAvatarChange = ({ fileList }) => {
-    setAvatarFileList(fileList);
-  };
-
-  const beforeUpload = (file) => {
-    const isImage = file.type.startsWith('image/');
-    if (!isImage) {
-      toast.error('You can only upload image files!');
-      return false;
-    }
-    const isLt2M = file.size / 1024 / 1024 < 2;
-    if (!isLt2M) {
-      toast.error('Image must be smaller than 2MB!');
-      return false;
-    }
-    return false; // Prevent auto upload
+  const handlePersonalInfoUpdateSuccess = (updatedData) => {
+    // Handle personal info update success
+    console.log('Personal info updated:', updatedData);
+    // You can dispatch an action to update the profile data here
   };
 
   
@@ -173,8 +103,11 @@ export default function Profile() {
             <div style={{width: 500}}></div>
           </div>
           <div className='action-buttons'>
-            <button className={`btn btn-primary ${theme}-btn-primary`} onClick={handleEdit}>
-              {t('common.edit')}
+            <button className={`btn btn-secondary ${theme}-btn-secondary`} onClick={handleEditEmail}>
+              {t('common.editEmail')}
+            </button>
+            <button className={`btn btn-primary ${theme}-btn-primary`} onClick={handleEditPersonalInfo}>
+              {t('common.editPersonalInfo')}
             </button>
           </div>
         </div>
@@ -314,270 +247,21 @@ export default function Profile() {
         </div>
       </div>
 
-      {/* Edit Modal */}
-      <Modal
-        title={
-          <div
-            style={{
-              fontSize: '26px',
-              fontWeight: '600',
-              color: '#000000ff',
-              textAlign: 'center',
-              padding: '10px 0',
-            }}>
-            {t('common.editProfile')}
-          </div>
-        }
-        open={isEditModalVisible}
-        onOk={handleModalUpdate}
-        onCancel={handleModalCancel}
-        width={600}
-        okText={t('common.update')}
-        cancelText={t('common.cancel')}
-        okButtonProps={{
-          style: {
-            backgroundColor: '#1890ff',
-            borderColor: '#1890ff',
-            height: '40px',
-            fontSize: '16px',
-            fontWeight: '500',
-            minWidth: '100px',
-          },
-        }}
-        cancelButtonProps={{
-          style: {
-            height: '40px',
-            fontSize: '16px',
-            fontWeight: '500',
-            minWidth: '100px',
-          },
-        }}>
-        <Form
-          form={form}
-          layout='vertical'
-          initialValues={{
-            gender: 'Male',
-          }}>
-          {/* Avatar Upload */}
-          <Form.Item
-            label={
-              <span>
-                {t('common.avatar')}
-                <span style={{ color: 'red', marginLeft: '4px' }}>*</span>
-              </span>
-            }
-            name='avatar'
-            rules={[
-              {
-                required: true,
-                message: 'Avatar is required',
-              },
-            ]}
-            required={false}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-              <Avatar
-                size={80}
-                src={avatarFileList.length > 0 ? URL.createObjectURL(avatarFileList[0].originFileObj) : (profileData?.avatarUrl || "/img/avatar_1.png")}
-                icon={<UserOutlined />}
-              />
-              <Upload
-                fileList={avatarFileList}
-                onChange={handleAvatarChange}
-                beforeUpload={beforeUpload}
-                maxCount={1}
-                listType="picture-card"
-                showUploadList={false}>
-                <div style={{ textAlign: 'center' }}>
-                  <UploadOutlined style={{ fontSize: '24px', color: '#1890ff' }} />
-                  <div style={{ marginTop: '8px', color: '#1890ff' }}>Upload Avatar</div>
-                </div>
-              </Upload>
-            </div>
-          </Form.Item>
+      {/* Edit Email Modal */}
+      <EditEmailModal
+        isVisible={isEditEmailModalVisible}
+        onCancel={() => setIsEditEmailModalVisible(false)}
+        onSuccess={handleEmailUpdateSuccess}
+        currentEmail={profileData?.email || "anhtony2003@gmail.com"}
+      />
 
-          <Row gutter={16}>
-            <Col span={12}>
-              <Form.Item
-                label={
-                  <span>
-                    {t('common.username')}
-                    <span style={{ color: 'red', marginLeft: '4px' }}>*</span>
-                  </span>
-                }
-                name='username'
-                rules={[
-                  {
-                    required: true,
-                    message: 'Username is required',
-                  },
-                  {
-                    min: 3,
-                    message: 'Username must be at least 3 characters',
-                  },
-                ]}
-                required={false}>
-                <Input placeholder="Enter username" />
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item
-                label={
-                  <span>
-                    {t('common.email')}
-                    <span style={{ color: 'red', marginLeft: '4px' }}>*</span>
-                  </span>
-                }
-                name='email'
-                rules={[
-                  {
-                    required: true,
-                    message: 'Email is required',
-                  },
-                  {
-                    type: 'email',
-                    message: 'Please enter a valid email',
-                  },
-                ]}
-                required={false}>
-                <Input placeholder="Enter email" />
-              </Form.Item>
-            </Col>
-          </Row>
-
-          <Row gutter={16}>
-            <Col span={12}>
-              <Form.Item
-                label={
-                  <span>
-                    {t('common.lastName')}
-                    <span style={{ color: 'red', marginLeft: '4px' }}>*</span>
-                  </span>
-                }
-                name='lastName'
-                rules={[
-                  {
-                    required: true,
-                    message: 'Last name is required',
-                  },
-                ]}
-                required={false}>
-                <Input placeholder="Enter last name" />
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item
-                label={
-                  <span>
-                    {t('common.firstName')}
-                    <span style={{ color: 'red', marginLeft: '4px' }}>*</span>
-                  </span>
-                }
-                name='firstName'
-                rules={[
-                  {
-                    required: true,
-                    message: 'First name is required',
-                  },
-                ]}
-                required={false}>
-                <Input placeholder="Enter first name" />
-              </Form.Item>
-            </Col>
-          </Row>
-
-          <Row gutter={16}>
-            <Col span={12}>
-              <Form.Item
-                label={
-                  <span>
-                    {t('common.gender')}
-                    <span style={{ color: 'red', marginLeft: '4px' }}>*</span>
-                  </span>
-                }
-                name='gender'
-                rules={[
-                  {
-                    required: true,
-                    message: 'Gender is required',
-                  },
-                ]}
-                required={false}>
-                <Radio.Group>
-                  <Radio value="Male">{t('common.male')}</Radio>
-                  <Radio value="Female">{t('common.female')}</Radio>
-                </Radio.Group>
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item
-                label={
-                  <span>
-                    {t('common.dateOfBirth')}
-                    <span style={{ color: 'red', marginLeft: '4px' }}>*</span>
-                  </span>
-                }
-                name='dateOfBirth'
-                rules={[
-                  {
-                    required: true,
-                    message: 'Date of birth is required',
-                  },
-                ]}
-                required={false}>
-                <Input 
-                  type="date"
-                  placeholder="Select date of birth"
-                />
-              </Form.Item>
-            </Col>
-          </Row>
-
-          <Row gutter={16}>
-            <Col span={12}>
-              <Form.Item
-                label={
-                  <span>
-                    {t('common.phoneNumber')}
-                    <span style={{ color: 'red', marginLeft: '4px' }}>*</span>
-                  </span>
-                }
-                name='phone'
-                rules={[
-                  {
-                    required: true,
-                    message: 'Phone number is required',
-                  },
-                  {
-                    pattern: /^[0-9]{10,11}$/,
-                    message: 'Please enter a valid phone number',
-                  },
-                ]}
-                required={false}>
-                <Input placeholder="Enter phone number" />
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item
-                label={
-                  <span>
-                    {t('common.address')}
-                    <span style={{ color: 'red', marginLeft: '4px' }}>*</span>
-                  </span>
-                }
-                name='address'
-                rules={[
-                  {
-                    required: true,
-                    message: 'Address is required',
-                  },
-                ]}
-                required={false}>
-                <Input placeholder="Enter address" />
-              </Form.Item>
-            </Col>
-          </Row>
-        </Form>
-      </Modal>
+      {/* Edit Personal Info Modal */}
+      <EditPersonalInfoModal
+        isVisible={isEditPersonalInfoModalVisible}
+        onCancel={() => setIsEditPersonalInfoModalVisible(false)}
+        onSuccess={handlePersonalInfoUpdateSuccess}
+        profileData={profileData}
+      />
     </ThemedLayout>
   );
     }

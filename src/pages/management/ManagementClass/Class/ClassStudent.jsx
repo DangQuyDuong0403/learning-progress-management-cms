@@ -1,22 +1,16 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
   Button,
-  Card,
-  Row,
-  Col,
   Table,
   Space,
   Tag,
-  Avatar,
   Input,
-  Select,
   Modal,
   Upload,
   Radio,
 } from "antd";
 import {
   ArrowLeftOutlined,
-  UserOutlined,
   PlusOutlined,
   SearchOutlined,
   DeleteOutlined,
@@ -24,6 +18,7 @@ import {
   ExportOutlined,
   DownloadOutlined,
   UploadOutlined,
+  FilterOutlined,
 } from "@ant-design/icons";
 import ThemedLayout from "../../../../component/ThemedLayout";
 import LoadingWithEffect from "../../../../component/spinner/LoadingWithEffect";
@@ -31,41 +26,13 @@ import "./ClassStudent.css";
 import { useParams, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { spaceToast } from "../../../../component/SpaceToastify";
+import { useTheme } from "../../../../contexts/ThemeContext";
+import { Typography } from "antd";
+import classManagementApi from "../../../../apis/backend/classManagement";
 
-const { Option } = Select;
+const { Title } = Typography;
 
-// Mock data for students
-const mockStudents = [
-  {
-    id: 1,
-    name: "Nguyễn Văn An",
-    email: "an.nguyen@example.com",
-    phone: "0123456789",
-    status: "active",
-    joinDate: "2024-01-15",
-    gender: "male",
-  },
-  {
-    id: 2,
-    name: "Trần Thị Bình",
-    email: "binh.tran@example.com",
-    phone: "0987654321",
-    status: "active",
-    joinDate: "2024-01-16",
-    gender: "female",
-  },
-  {
-    id: 3,
-    name: "Lê Văn Cường",
-    email: "cuong.le@example.com",
-    phone: "0369258147",
-    status: "inactive",
-    joinDate: "2024-01-17",
-    gender: "male",
-  },
-];
-
-// Mock data for all available students (for autocomplete)
+// Mock data for all available students (for autocomplete) - keeping for add student functionality
 const mockAllStudents = [
   { id: 10, code: "HE176502", name: "Nguyễn Đức Anh", email: "anhndhe176502@fpt.edu.vn" },
   { id: 11, code: "HE176501", name: "Nguyễn Đức Anh", email: "anhndhe176501@fpt.edu.vn" },
@@ -75,21 +42,11 @@ const mockAllStudents = [
   { id: 15, code: "HE176506", name: "Hoàng Thị Em", email: "emhthe176506@fpt.edu.vn" },
 ];
 
-// Mock class data
-const mockClassData = {
-  id: 1,
-  name: "Rising star 1",
-  studentCount: 3,
-  color: "#00d4ff",
-  status: "active",
-  createdAt: "2024-01-15",
-  teacher: "Nguyễn Văn A",
-};
-
 const ClassStudent = () => {
   const { t } = useTranslation();
   const { id } = useParams();
   const navigate = useNavigate();
+  const { theme } = useTheme();
   const [loading, setLoading] = useState(false);
   const [students, setStudents] = useState([]);
   const [classData, setClassData] = useState(null);
@@ -105,36 +62,149 @@ const ClassStudent = () => {
   const [isImportModalVisible, setIsImportModalVisible] = useState(false);
   const [isExportModalVisible, setIsExportModalVisible] = useState(false);
   const [importFile, setImportFile] = useState(null);
+  const [filterDropdown, setFilterDropdown] = useState({
+    visible: false,
+    selectedStatuses: [],
+  });
+  
+  // Pagination state
+  const [pagination, setPagination] = useState({
+    current: 1,
+    pageSize: 10,
+    total: 0,
+  });
+  
+  // Sort state
+  const [sortConfig, setSortConfig] = useState({
+    sortBy: 'joinedAt',
+    sortDir: 'desc',
+  });
+  
+  // Refs for click outside detection
+  const filterContainerRef = useRef(null);
+
+  // Status options for filter
+  const statusOptions = [
+    { key: "ACTIVE", label: "Active" },
+    { key: "INACTIVE", label: "Inactive" },
+    { key: "PENDING", label: "Pending" },
+  ];
+
+  // Handle click outside to close filter dropdown
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (filterDropdown.visible && filterContainerRef.current) {
+        // Check if click is outside the filter container
+        if (!filterContainerRef.current.contains(event.target)) {
+          setFilterDropdown(prev => ({
+            ...prev,
+            visible: false,
+          }));
+        }
+      }
+    };
+
+    // Add event listener when dropdown is visible
+    if (filterDropdown.visible) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    // Cleanup event listener
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [filterDropdown.visible]);
+
+  // Handle filter dropdown toggle
+  const handleFilterToggle = () => {
+    setFilterDropdown(prev => ({
+      ...prev,
+      visible: !prev.visible,
+      selectedStatuses: prev.visible ? prev.selectedStatuses : [statusFilter].filter(s => s !== 'all'),
+    }));
+  };
+
+  // Handle filter submission
+  const handleFilterSubmit = () => {
+    if (filterDropdown.selectedStatuses.length > 0) {
+      setStatusFilter(filterDropdown.selectedStatuses[0]);
+    } else {
+      setStatusFilter('all');
+    }
+    setFilterDropdown(prev => ({
+      ...prev,
+      visible: false,
+    }));
+  };
+
+  // Handle filter reset
+  const handleFilterReset = () => {
+    setFilterDropdown(prev => ({
+      ...prev,
+      selectedStatuses: [],
+    }));
+  };
 
   const fetchClassData = useCallback(async () => {
+    try {
+      const response = await classManagementApi.getClassDetail(id);
+      console.log('Class detail response:', response);
+      setClassData(response.data);
+    } catch (error) {
+      console.error('Error fetching class data:', error);
+      spaceToast.error(t('classDetail.loadingClassInfo'));
+    }
+  }, [id, t]);
+
+  const fetchStudents = useCallback(async (params = {}) => {
+    try {
+      const apiParams = {
+        page: params.page !== undefined ? params.page : 0, // Default to first page
+        size: params.size !== undefined ? params.size : 10, // Default page size
+        text: params.text !== undefined ? params.text : '',
+        status: params.status !== undefined ? params.status : 'all',
+        sortBy: params.sortBy !== undefined ? params.sortBy : 'joinedAt',
+        sortDir: params.sortDir !== undefined ? params.sortDir : 'desc',
+      };
+      
+      console.log('Fetching students with params:', apiParams);
+      const response = await classManagementApi.getClassStudents(id, apiParams);
+      console.log('Students response:', response);
+      
+      if (response.success) {
+        setStudents(response.data || []);
+        setPagination(prev => ({
+          ...prev,
+          total: response.totalElements || 0,
+          current: (response.page || 0) + 1, // Convert 0-based to 1-based
+        }));
+      } else {
+        spaceToast.error(response.message || t('classDetail.loadingStudents'));
+        setStudents([]);
+      }
+    } catch (error) {
+      console.error('Error fetching students:', error);
+      spaceToast.error(t('classDetail.loadingStudents'));
+      setStudents([]);
+    }
+  }, [id, t]);
+
+  // Combined initial data loading
+  const fetchInitialData = useCallback(async () => {
     setLoading(true);
     try {
-      // Simulate API call
-      setTimeout(() => {
-        setClassData(mockClassData);
-        setLoading(false);
-      }, 1000);
-    } catch (error) {
-      spaceToast.error(t('classDetail.loadingClassInfo'));
+      await Promise.all([
+        fetchClassData(),
+        fetchStudents()
+      ]);
+    } finally {
       setLoading(false);
     }
-  }, [t]);
-
-  const fetchStudents = useCallback(async () => {
-    try {
-      // Simulate API call
-      setTimeout(() => {
-        setStudents(mockStudents);
-      }, 1000);
-    } catch (error) {
-      spaceToast.error(t('classDetail.loadingStudents'));
-    }
-  }, [t]);
+  }, [fetchClassData, fetchStudents]);
 
   useEffect(() => {
-    fetchClassData();
-    fetchStudents();
-  }, [id, fetchClassData, fetchStudents]);
+    fetchInitialData();
+  }, [fetchInitialData]);
 
   const handleAddStudent = () => {
     setStudentSearchValue("");
@@ -189,12 +259,23 @@ const ClassStudent = () => {
   const handleConfirmDelete = () => {
     if (studentToDelete) {
       console.log("Confirm delete for student:", studentToDelete);
-      const updatedStudents = students.filter(s => s.id !== studentToDelete.id);
-      console.log("Updated students:", updatedStudents);
+      // Remove student from local state immediately for better UX
+      const updatedStudents = students.filter(s => s.userId !== studentToDelete.userId);
       setStudents(updatedStudents);
-      spaceToast.success(`${t('classDetail.deleteSuccess')} "${studentToDelete.name}" ${t('classDetail.fromClass')}`);
+      
+      // Update pagination total
+      setPagination(prev => ({
+        ...prev,
+        total: prev.total - 1,
+      }));
+      
+      const fullName = `${studentToDelete.firstName || ''} ${studentToDelete.lastName || ''}`.trim();
+      spaceToast.success(`${t('classDetail.deleteSuccess')} "${fullName}" ${t('classDetail.fromClass')}`);
       setIsDeleteModalVisible(false);
       setStudentToDelete(null);
+      
+      // TODO: Call API to remove student from class
+      // await classManagementApi.removeStudentFromClass(id, studentToDelete.userId);
     }
   };
 
@@ -315,84 +396,125 @@ const ClassStudent = () => {
 
   const getStatusTag = (status) => {
     const statusConfig = {
-      active: { color: "green", text: "Active" },
-      inactive: { color: "red", text: "Inactive" },
-      pending: { color: "orange", text: "Pending" },
+      ACTIVE: { color: "green", text: "Active" },
+      INACTIVE: { color: "red", text: "Inactive" },
+      PENDING: { color: "orange", text: "Pending" },
     };
 
-    const config = statusConfig[status] || statusConfig.inactive;
+    const config = statusConfig[status] || statusConfig.INACTIVE;
     return <Tag color={config.color}>{config.text}</Tag>;
   };
 
-  const getGenderTag = (gender) => {
-    const genderConfig = {
-      male: { color: "blue", text: "Male" },
-      female: { color: "pink", text: "Female" },
-      other: { color: "purple", text: "Other" },
-    };
+  // Track if this is the initial load
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
 
-    const config = genderConfig[gender] || genderConfig.other;
-    return <Tag color={config.color}>{config.text}</Tag>;
+  // Single useEffect to handle all changes with debounce
+  useEffect(() => {
+    // Skip the first load since it's handled by the initial useEffect
+    if (isInitialLoad) {
+      setIsInitialLoad(false);
+      return;
+    }
+
+    const timeoutId = setTimeout(() => {
+      setLoading(true);
+      fetchStudents({
+        page: 0, // Always reset to first page for search/filter/sort
+        size: pagination.pageSize,
+        text: searchText,
+        status: statusFilter,
+        sortBy: sortConfig.sortBy,
+        sortDir: sortConfig.sortDir
+      }).finally(() => {
+        setLoading(false);
+      });
+      // Reset pagination to first page
+      setPagination(prev => ({ ...prev, current: 1 }));
+    }, 300); // Reduced debounce time
+    
+    return () => clearTimeout(timeoutId);
+  }, [searchText, statusFilter, sortConfig.sortBy, sortConfig.sortDir, pagination.pageSize, fetchStudents, isInitialLoad]);
+  
+  // Handle pagination change
+  const handleTableChange = (paginationInfo, filters, sorter) => {
+    console.log('Table change:', { paginationInfo, filters, sorter });
+    
+    // Handle pagination - only update state, don't call API here
+    if (paginationInfo.current !== pagination.current || paginationInfo.pageSize !== pagination.pageSize) {
+      setPagination(prev => ({
+        ...prev,
+        current: paginationInfo.current,
+        pageSize: paginationInfo.pageSize,
+      }));
+      
+      // Call API with new pagination
+      setLoading(true);
+      fetchStudents({ 
+        page: paginationInfo.current - 1, 
+        size: paginationInfo.pageSize,
+        text: searchText,
+        status: statusFilter,
+        sortBy: sortConfig.sortBy,
+        sortDir: sortConfig.sortDir
+      }).finally(() => {
+        setLoading(false);
+      });
+    }
+    
+    // Handle sorting - this will trigger the main useEffect
+    if (sorter && sorter.field) {
+      const newSortConfig = {
+        sortBy: sorter.field,
+        sortDir: sorter.order === 'ascend' ? 'asc' : 'desc',
+      };
+      setSortConfig(newSortConfig);
+    }
   };
-
-  // Filter students based on search and filters
-  const filteredStudents = students.filter((student) => {
-    const matchesSearch =
-      searchText === "" ||
-      student.name.toLowerCase().includes(searchText.toLowerCase()) ||
-      student.email.toLowerCase().includes(searchText.toLowerCase());
-
-    const matchesStatus =
-      statusFilter === "all" || student.status === statusFilter;
-
-    return matchesSearch && matchesStatus;
-  });
 
   const columns = [
     {
-      title: t('classDetail.student'),
-      dataIndex: "name",
-      key: "name",
-      render: (text, record) => (
-        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-          <Avatar
-            size={40}
-            icon={<UserOutlined />}
-            style={{
-              backgroundColor: classData?.color || "#00d4ff",
-            }}
-          />
-          <div>
-            <div style={{ fontWeight: 600, fontSize: "15px" }}>{text}</div>
-            <div style={{ fontSize: "13px", color: "#666" }}>{record.email}</div>
+      title: 'No',
+      key: 'no',
+      width: 60,
+      render: (_, record, index) => {
+        const no = (pagination.current - 1) * pagination.pageSize + index + 1;
+        return <span style={{ fontSize: "20px", fontWeight: 500 }}>{no}</span>;
+      },
+    },
+    {
+      title: 'Full Name',
+      key: 'fullName',
+      sorter: true,
+      render: (_, record) => {
+        const fullName = `${record.firstName || ''} ${record.lastName || ''}`.trim();
+        return (
+          <div className="student-name-text" style={{ fontSize: "20px" }}>
+            {fullName}
           </div>
-        </div>
-      ),
+        );
+      },
     },
     {
-      title: t('classDetail.phoneNumber'),
-      dataIndex: "phone",
-      key: "phone",
-      render: (text) => <span style={{ fontSize: "14px" }}>{text}</span>,
+      title: 'Email',
+      dataIndex: 'email',
+      key: 'email',
+      sorter: true,
+      render: (text) => <span style={{ fontSize: "20px" }}>{text}</span>,
     },
     {
-      title: t('classDetail.status'),
-      dataIndex: "status",
-      key: "status",
+      title: 'Status',
+      dataIndex: 'status',
+      key: 'status',
+      sorter: true,
       render: (status) => getStatusTag(status),
     },
     {
-      title: t('classDetail.gender'),
-      dataIndex: "gender",
-      key: "gender",
-      render: (gender) => getGenderTag(gender),
-    },
-    {
-      title: t('classDetail.joinDate'),
-      dataIndex: "joinDate",
-      key: "joinDate",
+      title: 'Joined At',
+      dataIndex: 'joinedAt',
+      key: 'joinedAt',
+      sorter: true,
       render: (date) => (
-        <span style={{ fontSize: "14px" }}>
+        <span style={{ fontSize: "20px" }}>
           {new Date(date).toLocaleDateString("vi-VN")}
         </span>
       ),
@@ -400,9 +522,9 @@ const ClassStudent = () => {
     {
       title: t('classDetail.actions'),
       key: "actions",
+      width: 100,
       render: (_, record) => (
         <Space>
-        
           <Button
             type="text"
             icon={<DeleteOutlined style={{ fontSize: '18px' }} />}
@@ -418,7 +540,7 @@ const ClassStudent = () => {
   if (loading) {
     return (
       <ThemedLayout>
-        <div className="class-detail-container">
+        <div className={`main-content-panel ${theme}-main-panel`}>
           <LoadingWithEffect loading={true} message={t('classDetail.loadingClassInfo')} />
         </div>
       </ThemedLayout>
@@ -427,105 +549,151 @@ const ClassStudent = () => {
 
   return (
     <ThemedLayout>
-      <div className="class-detail-container">
-        {/* Header */}
-        <Card className="header-card">
-          <div className="header-content">
-            <div className="header-left">
+        {/* Main Content Panel */}
+        <div className={`main-content-panel ${theme}-main-panel`}>
+          {/* Header Section */}
+          <div className={`panel-header ${theme}-panel-header`}>
+            <div className="search-section" style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
               <Button
                 icon={<ArrowLeftOutlined />}
                 onClick={() => navigate(`/manager/classes/menu/${id}`)}
-                className="back-button"
+                className={`back-button ${theme}-back-button`}
+                style={{ height: '40px', fontSize: '16px' }}
               >
                 {t('common.back')}
               </Button>
-            </div>
-            
-            <div className="header-center">
-              <h2 className="class-title">
-                {classData?.name}
-              </h2>
-             
-            </div>
-            
-            <div className="header-right">
-              <Space>
-                <Button
-                  icon={<ImportOutlined />}
-                  onClick={handleImport}
-                  className="import-button"
-                >
-                  {t('classDetail.import')}
-                </Button>
-                <Button
-                  icon={<ExportOutlined />}
-                  onClick={handleExport}
-                  className="export-button"
-                >
-                  {t('classDetail.export')}
-                </Button>
-                <Button
-                  type="primary"
-                  icon={<PlusOutlined />}
-                  onClick={handleAddStudent}
-                  className="add-student-button"
-                >
-                  {t('classDetail.addStudent')}
-                </Button>
-              </Space>
+              <div style={{ flex: '1', textAlign: 'center' }}>
+                <h2 className={`class-title ${theme}-class-title`} style={{ margin: 0, fontSize: '36px', fontWeight: '600' }}>
+                  {classData?.name}
+                </h2>
+              </div>
+              <div style={{ width: '120px' }}></div> {/* Spacer for centering */}
             </div>
           </div>
-        </Card>
 
-        {/* Main Content Card */}
-        <Card className="main-content-card">
-          {/* Filters */}
-          <div className="filters-section">
-            <Row gutter={[16, 16]} align="middle">
-              <Col xs={24} sm={12} md={8} lg={6}>
-                <Input
-                  placeholder={t('classDetail.searchStudents')}
-                  prefix={<SearchOutlined />}
-                  value={searchText}
-                  onChange={(e) => setSearchText(e.target.value)}
-                  allowClear
-                />
-              </Col>
-              <Col xs={24} sm={12} md={8} lg={6}>
-                <Select
-                  placeholder="Filter by status"
-                  value={statusFilter}
-                  onChange={setStatusFilter}
-                  style={{ width: "100%" }}
-                >
-                  <Option value="all">All Status</Option>
-                  <Option value="active">Active</Option>
-                  <Option value="inactive">Inactive</Option>
-                  <Option value="pending">Pending</Option>
-                </Select>
-              </Col>
-            </Row>
+          {/* Search and Action Section */}
+          <div className="search-action-section" style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '24px' }}>
+            <Input
+              prefix={<SearchOutlined />}
+              value={searchText}
+              onChange={(e) => setSearchText(e.target.value)}
+              className={`search-input ${theme}-search-input`}
+              style={{ flex: '1', minWidth: '250px', maxWidth: '400px', width: '350px', height: '40px', fontSize: '16px' }}
+              allowClear
+            />
+            <div ref={filterContainerRef} style={{ position: 'relative' }}>
+              <Button 
+                icon={<FilterOutlined />}
+                onClick={handleFilterToggle}
+                className={`filter-button ${theme}-filter-button ${filterDropdown.visible ? 'active' : ''} ${(statusFilter !== 'all') ? 'has-filters' : ''}`}
+              >
+                Filter
+              </Button>
+              
+              {/* Filter Dropdown Panel */}
+              {filterDropdown.visible && (
+                <div className={`filter-dropdown-panel ${theme}-filter-dropdown`}>
+                  <div style={{ padding: '20px' }}>
+                    {/* Status Filter */}
+                    <div style={{ marginBottom: '24px' }}>
+                      <Title level={5} style={{ marginBottom: '12px', color: '#298EFE', fontSize: '16px' }}>
+                        Status
+                      </Title>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                        {statusOptions.map(option => (
+                          <Button
+                            key={option.key}
+                            onClick={() => {
+                              const newStatus = filterDropdown.selectedStatuses.includes(option.key)
+                                ? filterDropdown.selectedStatuses.filter(status => status !== option.key)
+                                : [...filterDropdown.selectedStatuses, option.key];
+                              setFilterDropdown(prev => ({ ...prev, selectedStatuses: newStatus }));
+                            }}
+                            className={`filter-option ${filterDropdown.selectedStatuses.includes(option.key) ? 'selected' : ''}`}
+                          >
+                            {option.label}
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div style={{ 
+                      display: 'flex', 
+                      justifyContent: 'space-between', 
+                      marginTop: '20px',
+                      paddingTop: '16px',
+                      borderTop: '1px solid #f0f0f0'
+                    }}>
+                      <Button
+                        onClick={handleFilterReset}
+                        className="filter-reset-button"
+                      >
+                        Reset
+                      </Button>
+                      <Button
+                        type="primary"
+                        onClick={handleFilterSubmit}
+                        className="filter-submit-button"
+                      >
+                        View Results
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+            <div className="action-buttons" style={{ marginLeft: 'auto' }}>
+              <Button 
+                icon={<ImportOutlined />}
+                className={`import-button ${theme}-import-button`}
+                onClick={handleImport}
+              >
+                {t('classDetail.import')}
+              </Button>
+              <Button 
+                icon={<ExportOutlined />}
+                className={`export-button ${theme}-export-button`}
+                onClick={handleExport}
+              >
+                {t('classDetail.export')}
+              </Button>
+              <Button 
+                icon={<PlusOutlined />}
+                className={`create-button ${theme}-create-button`}
+                onClick={handleAddStudent}
+              >
+                {t('classDetail.addStudent')}
+              </Button>
+            </div>
           </div>
 
-          {/* Students Table */}
-          <div className="table-section">
+          {/* Table Section */}
+          <div className={`table-section ${theme}-table-section`}>
             <LoadingWithEffect loading={loading} message={t('classDetail.loadingStudents')}>
               <Table
                 columns={columns}
-                dataSource={filteredStudents}
-                rowKey="id"
+                dataSource={students}
+                rowKey="userId"
+                loading={loading}
                 pagination={{
-                  pageSize: 10,
+                  current: pagination.current,
+                  pageSize: pagination.pageSize,
+                  total: pagination.total,
                   showSizeChanger: true,
                   showQuickJumper: true,
                   showTotal: (total, range) =>
                     `${range[0]}-${range[1]} of ${total} ${t('classDetail.students')}`,
+                  className: `${theme}-pagination`,
+                  pageSizeOptions: ['10', '20', '50', '100'],
                 }}
+                onChange={handleTableChange}
                 scroll={{ x: 800 }}
+                className={`student-table ${theme}-student-table`}
               />
             </LoadingWithEffect>
           </div>
-        </Card>
+        </div>
 
         {/* Add Student Modal */}
         <Modal
@@ -778,11 +946,10 @@ const ClassStudent = () => {
               <strong>{t('classDetail.exportInfo')}</strong>
             </div>
             <div style={{ fontSize: '13px', color: '#586069' }}>
-              <div>• {t('classDetail.totalStudents')} {students.length}</div>
-              <div>• {t('classDetail.activeStudents')} {students.filter(s => s.status === 'active').length}</div>
-              <div>• {t('classDetail.inactiveStudents')} {students.filter(s => s.status === 'inactive').length}</div>
-              <div>• {t('classDetail.maleStudents')} {students.filter(s => s.gender === 'male').length}</div>
-              <div>• {t('classDetail.femaleStudents')} {students.filter(s => s.gender === 'female').length}</div>
+              <div>• {t('classDetail.totalStudents')} {pagination.total}</div>
+              <div>• {t('classDetail.activeStudents')} {students.filter(s => s.status === 'ACTIVE').length}</div>
+              <div>• {t('classDetail.inactiveStudents')} {students.filter(s => s.status === 'INACTIVE').length}</div>
+              <div>• {t('classDetail.pendingStudents')} {students.filter(s => s.status === 'PENDING').length}</div>
             </div>
           </div>
 
@@ -813,11 +980,11 @@ const ClassStudent = () => {
           okType="danger"
           centered
         >
-          <p>{t('classDetail.confirmDeleteMessage')} "{studentToDelete?.name}"?</p>
+          <p>{t('classDetail.confirmDeleteMessage')} "{studentToDelete ? `${studentToDelete.firstName || ''} ${studentToDelete.lastName || ''}`.trim() : ''}"?</p>
         </Modal>
-      </div>
     </ThemedLayout>
   );
 };
 
 export default ClassStudent;
+  

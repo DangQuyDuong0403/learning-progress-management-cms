@@ -92,13 +92,44 @@ const classManagementApi = {
 		});
 	},
 
-	// Cập nhật trạng thái class (ACTIVE/INACTIVE)
-	updateClassStatus: (classId, status) => {
-		const url = `/class/${classId}/status?status=${status}`;
-		console.log('UpdateClassStatus API - URL:', url);
-		console.log('UpdateClassStatus API - Params:', { classId, status });
+	// Cập nhật trạng thái class (toggle isActive)
+	toggleClassStatus: (classId, isActive) => {
+		const url = `/class/${classId}/toggle?isActive=${isActive}`;
+		console.log('ToggleClassStatus API - URL:', url);
+		console.log('ToggleClassStatus API - Params:', { classId, isActive });
 		
 		return axiosClient.patch(url, {}, {
+			headers: {
+				'accept': '*/*',
+			}
+		});
+	},
+
+	// Lấy danh sách học sinh trong class với phân trang, search, filter, sort
+	getClassStudents: (classId, params) => {
+		const queryParams = new URLSearchParams();
+		
+		// Thêm các tham số nếu có
+		if (params.page !== undefined) queryParams.append('page', params.page);
+		if (params.size !== undefined) queryParams.append('size', params.size);
+		if (params.text && params.text.trim()) {
+			queryParams.append('text', params.text.trim());
+		}
+		if (params.status && params.status !== 'all') {
+			queryParams.append('status', params.status);
+		}
+		if (params.sortBy) {
+			queryParams.append('sortBy', params.sortBy);
+		}
+		if (params.sortDir) {
+			queryParams.append('sortDir', params.sortDir);
+		}
+
+		const url = `/class-student/${classId}/students${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
+		console.log('GetClassStudents API - URL:', url);
+		console.log('GetClassStudents API - Params:', { classId, ...params });
+		
+		return axiosClient.get(url, {
 			headers: {
 				'accept': '*/*',
 			}

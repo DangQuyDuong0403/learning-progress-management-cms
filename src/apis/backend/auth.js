@@ -72,11 +72,43 @@ const authApi = {
 		});
 	},
 
-	// Đổi mật khẩu
-	changePassword: (data) => {
-		console.log('ChangePassword API - Request Body:', data);
+	// Cập nhật thông tin profile
+	updateProfile: (data) => {
+		const accessToken = localStorage.getItem('accessToken');
+		const userId = getUserIdFromToken(accessToken);
 		
-		return axiosClient.post('/auth/change-password', data, {
+		if (!userId) {
+			return Promise.reject(new Error('Unable to extract user ID from accessToken'));
+		}
+		
+		const url = `/user/profile/${userId}`;
+		console.log('UpdateProfile API - URL:', url);
+		console.log('UpdateProfile API - UserId:', userId);
+		console.log('UpdateProfile API - Request Body:', data);
+		
+		return axiosClient.put(url, data, {
+			headers: {
+				'Content-Type': 'application/json',
+				'accept': '*/*',
+			}
+		});
+	},
+
+	// Cập nhật email
+	updateEmail: (data) => {
+		const accessToken = localStorage.getItem('accessToken');
+		const userId = getUserIdFromToken(accessToken);
+		
+		if (!userId) {
+			return Promise.reject(new Error('Unable to extract user ID from accessToken'));
+		}
+		
+		const url = `/user/profile/${userId}/email`;
+		console.log('UpdateEmail API - URL:', url);
+		console.log('UpdateEmail API - UserId:', userId);
+		console.log('UpdateEmail API - Request Body:', data);
+		
+		return axiosClient.put(url, data, {
 			headers: {
 				'Content-Type': 'application/json',
 				'accept': '*/*',
