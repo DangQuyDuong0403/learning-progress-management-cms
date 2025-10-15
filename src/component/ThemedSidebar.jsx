@@ -39,7 +39,10 @@ export default function ThemedSidebar({ collapsed }) {
       'MANAGER_STUDENTS': <UserOutlined />,
       'TEACHER_DASHBOARD': <DashboardOutlined />,
       'TEACHER_CLASSES': <TeamOutlined />,
+      'MANAGER_CLASSES': <UserOutlined />,
       'TEACHER_DAILY_CHALLENGES': <TrophyOutlined />,
+      'TEACHING_ASSISTANT_CLASSES': <UserOutlined />,
+      'MANAGER_TEACHERS': <UserOutlined />,
       'SECURITY': <SecurityScanOutlined />,
     };
     return iconMap[key] || <UserOutlined />;
@@ -69,6 +72,7 @@ export default function ThemedSidebar({ collapsed }) {
       'TEACHER_DASHBOARD': t('sidebar.dashboard'),
       'TEACHER_CLASSES': t('sidebar.classesManagement'),
       'TEACHER_DAILY_CHALLENGES': t('sidebar.dailyChallengeManagement'),
+      'TEACHING_ASSISTANT_CLASSES': t('sidebar.classesManagement'),
       'MANAGER_TEACHERS': t('sidebar.teacherManagement'),
       'SECURITY': 'Security',
     };
@@ -91,7 +95,14 @@ export default function ThemedSidebar({ collapsed }) {
   const routeMenuItems = CONFIG_ROUTER
     .filter((route) => {
       // Show routes that are visible and match user role
-      return route.show && (!route.role || route.role === user?.role?.toLowerCase());
+      if (!route.show) return false;
+      if (!route.role) return true;
+      
+      const userRole = user?.role?.toLowerCase();
+      if (Array.isArray(route.role)) {
+        return route.role.includes(userRole);
+      }
+      return route.role === userRole;
     })
     .map((route) => ({
       key: route.key,

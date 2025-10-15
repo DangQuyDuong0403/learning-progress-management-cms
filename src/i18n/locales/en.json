@@ -48,7 +48,9 @@
     "dark": "Dark",
     "vietnamese": "Vietnamese",
     "english": "English",
-    "update": "Update"
+    "update": "Update",
+    "of": "of",
+    "classes": "classes"
   },
   "sidebar": {
     "title": "Learning CMS",
@@ -663,7 +665,18 @@
     "statusRequired": "Please select status",
     "classColor": "Class Color",
     "classColorRequired": "Please select a color for the class",
-    "selectClassColor": "Select class color"
+    "selectClassColor": "Select class color",
+    "importInstructions": "Please select an Excel or CSV file to import classes. Make sure your file follows the required format.",
+    "dragFileHere": "Click or drag file to this area to upload",
+    "supportedFormats": "Support for Excel (.xlsx, .xls) and CSV files",
+    "importing": "Importing",
+    "importTemplate": "Import Template",
+    "templateInstructions": "Download the template file to see the required format for importing classes.",
+    "downloadTemplate": "Download Template",
+    "templateDownloaded": "Template downloaded successfully",
+    "importSuccess": "Classes imported successfully",
+    "importError": "Failed to import classes",
+    "exportSuccess": "Classes exported successfully"
   },
   "classMenu": {
     "loadingClassInfo": "Loading class information...",
@@ -1414,6 +1427,8 @@
     "bio": "Biography",
     "classesCount": "Classes Count",
     "classes": "classes",
+    "of": "of",
+    "paginationText": "of",
     "createdAt": "Created At",
     "actions": "Actions",
     "totalTeachers": "Total Teachers",

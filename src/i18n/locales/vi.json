@@ -49,7 +49,9 @@
     "dark": "Tối",
     "vietnamese": "Tiếng Việt",
     "english": "Tiếng Anh",
-    "update": "Cập nhật"
+    "update": "Cập nhật",
+    "of": "trong",
+    "classes": "lớp"
   },
   "sidebar": {
     "title": "Learning CMS",
@@ -664,7 +666,18 @@
     "statusRequired": "Vui lòng chọn trạng thái",
     "classColor": "Màu sắc lớp học",
     "classColorRequired": "Vui lòng chọn màu sắc cho lớp học",
-    "selectClassColor": "Chọn màu sắc cho lớp học"
+    "selectClassColor": "Chọn màu sắc cho lớp học",
+    "importInstructions": "Vui lòng chọn file Excel hoặc CSV để nhập lớp học. Đảm bảo file của bạn tuân theo định dạng yêu cầu.",
+    "dragFileHere": "Nhấp hoặc kéo thả file vào khu vực này để tải lên",
+    "supportedFormats": "Hỗ trợ file Excel (.xlsx, .xls) và CSV",
+    "importing": "Đang nhập",
+    "importTemplate": "Mẫu nhập",
+    "templateInstructions": "Tải file mẫu để xem định dạng yêu cầu cho việc nhập lớp học.",
+    "downloadTemplate": "Tải mẫu",
+    "templateDownloaded": "Tải mẫu thành công",
+    "importSuccess": "Nhập lớp học thành công",
+    "importError": "Nhập lớp học thất bại",
+    "exportSuccess": "Xuất lớp học thành công"
   },
   "classMenu": {
     "loadingClassInfo": "Đang tải thông tin lớp học...",
@@ -1407,6 +1420,8 @@
     "bio": "Tiểu sử",
     "classesCount": "Số lớp",
     "classes": "lớp",
+    "of": "trong",
+    "paginationText": "trong",
     "createdAt": "Ngày tạo",
     "actions": "Hành động",
     "totalTeachers": "Tổng giáo viên",

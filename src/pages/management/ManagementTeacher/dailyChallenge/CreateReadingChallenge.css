@@ -639,7 +639,8 @@
 
 /* Override Ant Design default styles */
 .ant-dropdown .ant-dropdown-menu {
-  background: linear-gradient(135deg, #0b1b4b 0%, #381770 50%, #5e17eb 100%) !important;
+  background: white !important;
+  color: black !important;
 }
 
 .ant-dropdown .ant-dropdown-menu-item {

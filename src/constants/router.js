@@ -45,6 +45,7 @@ const ROUTER_PAGE = {
 	// Manager Management Routes
 	MANAGER_CLASSES: '/manager/classes',
 	MANAGER_CLASS_MENU: '/manager/classes/menu/:id',
+	MANAGER_CLASS_DASHBOARD: '/manager/classes/dashboard/:id',
 	//MANAGER_CLASS_DETAIL: '/manager/classes/:id',
 	MANAGER_CLASS_STUDENTS: '/manager/classes/student/:id',
 	MANAGER_CLASS_TEACHERS: '/manager/classes/teachers/:id',
@@ -59,6 +60,14 @@ const ROUTER_PAGE = {
 	TEACHER_CLASS_TEACHERS: '/teacher/classes/teachers/:id',
 	TEACHER_CLASS_ACTIVITIES: '/teacher/classes/activities/:id',
 	TEACHER_CLASS_CHAPTERS_LESSONS: '/teacher/classes/chapters-lessons/:id',
+	// Teaching Assistant Management Routes
+	TEACHING_ASSISTANT_CLASSES: '/teaching-assistant/classes',
+	TEACHING_ASSISTANT_CLASS_MENU: '/teaching-assistant/classes/menu/:id',
+	TEACHING_ASSISTANT_CLASS_DASHBOARD: '/teaching-assistant/classes/dashboard/:id',
+	TEACHING_ASSISTANT_CLASS_STUDENTS: '/teaching-assistant/classes/student/:id',
+	TEACHING_ASSISTANT_CLASS_TEACHERS: '/teaching-assistant/classes/teachers/:id',
+	TEACHING_ASSISTANT_CLASS_ACTIVITIES: '/teaching-assistant/classes/activities/:id',
+	TEACHING_ASSISTANT_CLASS_CHAPTERS_LESSONS: '/teaching-assistant/classes/chapters-lessons/:id',
 	TEACHER_DAILY_CHALLENGES: '/teacher/daily-challenges',
 	TEACHER_DAILY_CHALLENGE_DETAIL: '/teacher/daily-challenges/detail/:id',
 	TEACHER_DAILY_CHALLENGE_CREATE: '/teacher/daily-challenges/create',
