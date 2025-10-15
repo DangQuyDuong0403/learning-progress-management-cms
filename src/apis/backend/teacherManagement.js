@@ -92,6 +92,96 @@ const teacherManagementApi = {
 			throw error;
 		});
 	},
+
+	// Class Management APIs for Teacher
+	getClassById: (classId) => {
+		const url = `/class/${classId}`;
+		return axiosClient.get(url, {
+			headers: {
+				'accept': '*/*',
+			}
+		});
+	},
+
+	getClassesByTeacher: (teacherId, params) => {
+		const queryParams = new URLSearchParams();
+		
+		if (params.page !== undefined) queryParams.append('page', params.page);
+		if (params.size !== undefined) queryParams.append('size', params.size);
+		if (params.text) queryParams.append('text', params.text);
+		if (params.status && params.status.length > 0) {
+			params.status.forEach(status => queryParams.append('status', status));
+		}
+
+		const url = `/class${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
+		return axiosClient.get(url, {
+			headers: {
+				'accept': '*/*',
+			}
+		});
+	},
+
+	// Class Chapter Management APIs
+	getClassChapters: (classId, params = {}) => {
+		const queryParams = new URLSearchParams();
+		
+		// Add classId as required parameter
+		queryParams.append('classId', classId);
+		
+		if (params.page !== undefined) queryParams.append('page', params.page);
+		if (params.size !== undefined) queryParams.append('size', params.size);
+		if (params.searchText) queryParams.append('searchText', params.searchText);
+
+		const url = `/class-chapter${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
+		
+		return axiosClient.get(url, {
+			headers: {
+				'accept': '*/*',
+			}
+		});
+	},
+
+	getClassChapterById: (id) => {
+		const url = `/class-chapter/${id}`;
+		
+		return axiosClient.get(url, {
+			headers: {
+				'accept': '*/*',
+			}
+		});
+	},
+
+	syncClassChapters: (classId, chaptersData) => {
+		const url = `/class-chapter/sync/${classId}`;
+		
+		return axiosClient.put(url, chaptersData, {
+			headers: {
+				'accept': '*/*',
+				'Content-Type': 'application/json',
+			}
+		}).catch(error => {
+			console.error('SyncClassChapters API Error:', error);
+			console.error('Error response:', error.response?.data);
+			console.error('Error status:', error.response?.status);
+			throw error;
+		});
+	},
+
+	importClassChapters: (importData) => {
+		const url = `/class-chapter/import`;
+		
+		return axiosClient.post(url, importData, {
+			headers: {
+				'accept': '*/*',
+				'Content-Type': 'application/json',
+			}
+		}).catch(error => {
+			console.error('ImportClassChapters API Error:', error);
+			console.error('Error response:', error.response?.data);
+			console.error('Error status:', error.response?.status);
+			throw error;
+		});
+	},
 };
 
 export default teacherManagementApi;

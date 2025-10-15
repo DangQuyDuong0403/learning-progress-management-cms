@@ -394,7 +394,7 @@
 	border-radius: 20px;
 	height: 72px;
 	line-height: 72px;
-	font-size: 23px;
+	font-size: 25px;
 	font-weight: 600;
 	position: relative;
 	overflow: hidden;
@@ -475,7 +475,7 @@
 }
 
 .themed-sidebar-menu .ant-menu-item .anticon {
-	font-size: 24px;
+	font-size: 25px;
 	margin-right: 20px;
 	transition: all 0.3s ease;
 }

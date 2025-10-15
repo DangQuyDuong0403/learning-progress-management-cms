@@ -189,11 +189,11 @@
 }
 
 .space-theme .stat-number {
-	color: #000 !important;
+	color: #000 ;
 }
 
 .sun-theme .stat-number {
-	color: #333 !important;
+	color: #333 ;
 }
 
 .stat-label {
@@ -203,11 +203,11 @@
 }
 
 .space-theme .stat-label {
-	color: rgba(0, 0, 0, 0.7) !important;
+	color: rgba(0, 0, 0, 0.7);
 }
 
 .sun-theme .stat-label {
-	color: rgba(0, 0, 0, 0.6) !important;
+	color: rgba(0, 0, 0, 0.6);
 }
 
 /* ===== FILTERS SECTION ===== */

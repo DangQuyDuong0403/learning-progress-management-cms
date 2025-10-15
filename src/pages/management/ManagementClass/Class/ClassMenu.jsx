@@ -129,6 +129,14 @@ const ClassMenu = () => {
       path: `${routePrefix}/chapters-lessons/${id}`,
       color: "#722ed1",
     },
+    {
+      id: "chapters",
+      title: t('classMenu.chapters'),
+      description: t('classMenu.chaptersDescription'),
+      icon: <BookOutlined style={{ fontSize: '48px', color: '#13c2c2' }} />,
+      path: `${routePrefix}/chapters/${id}`,
+      color: "#13c2c2",
+    },
   ];
 
   const handleCardClick = (path) => {

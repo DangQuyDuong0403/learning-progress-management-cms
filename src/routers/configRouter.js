@@ -44,9 +44,12 @@ import TeacherClassDashboard from '../pages/management/ManagementClass/Class/Cla
 import TeacherClassTeachers from '../pages/management/ManagementClass/Class/ClassTeachers.jsx';
 import TeacherClassActivities from '../pages/management/ManagementClass/Class/ClassActivities.jsx';
 import TeacherClassChapterLesson from '../pages/management/ManagementClass/Class/ClassChapterLesson.jsx';
+import TeacherClassChapterList from '../pages/management/ManagementClass/Class/TeacherClassChapterList.jsx';
+import TeacherClassChapterDragEdit from '../pages/management/ManagementClass/Class/TeacherClassChapterDragEdit.jsx';
 import DailyChallengeList from '../pages/management/ManagementTeacher/dailyChallenge/DailyChallengeList.jsx';
 import CreateGrammarVocabularyChallenge from '../pages/management/ManagementTeacher/dailyChallenge/CreateGrammarVocabularyChallenge.jsx';
 import CreateReadingChallenge from '../pages/management/ManagementTeacher/dailyChallenge/CreateReadingChallenge.jsx';
+import TeacherDashboard from '../pages/management/ManagementTeacher/TeacherDashboard.jsx';
 // import AdminDashboard from '../pages/management/managementAdmin/AdminDashboard';
   
 const CONFIG_ROUTER = [
@@ -333,17 +336,6 @@ const CONFIG_ROUTER = [
 	// Teacher Management Routes
 	{
 		show: true,
-		component: TeacherClassList,
-		// icon: <UserOutlined />,
-		path: ROUTER_PAGE.TEACHER_CLASSES,
-		menuName: 'classes management',
-		exact: true,
-		key: 'TEACHER_CLASSES',
-		private: true,
-		role: 'teacher',
-	},
-	{
-		show: true,
 		component: ClassList,
 		// icon: <UserOutlined />,
 		path: ROUTER_PAGE.TEACHING_ASSISTANT_CLASSES,
@@ -528,6 +520,27 @@ const CONFIG_ROUTER = [
 	
 	// Teacher Management Routes
 	{
+		show: true,
+		component: TeacherDashboard,
+		path: ROUTER_PAGE.TEACHER_DASHBOARD,
+		menuName: 'Teacher Dashboard',
+		exact: true,
+		key: 'TEACHER_DASHBOARD',
+		private: true,
+		role: 'teacher',
+	},
+	{
+		show: true,
+		component: TeacherClassList,
+		// icon: <UserOutlined />,
+		path: ROUTER_PAGE.TEACHER_CLASSES,
+		menuName: 'My Classes',
+		exact: true,
+		key: 'TEACHER_CLASSES',
+		private: true,
+		role: 'teacher',
+	},
+	{
 		show: false,
 		component: TeacherClassMenu,
 		// icon: <UserOutlined />,
@@ -590,6 +603,28 @@ const CONFIG_ROUTER = [
 		menuName: 'class chapters lessons',
 		exact: true,
 		key: 'TEACHER_CLASS_CHAPTERS_LESSONS',
+		private: true,
+		role: 'teacher',
+	},
+	{
+		show: false,
+		component: TeacherClassChapterList,
+		// icon: <UserOutlined />,
+		path: ROUTER_PAGE.TEACHER_CLASS_CHAPTERS,
+		menuName: 'class chapters',
+		exact: true,
+		key: 'TEACHER_CLASS_CHAPTERS',
+		private: true,
+		role: 'teacher',
+	},
+	{
+		show: false,
+		component: TeacherClassChapterDragEdit,
+		// icon: <UserOutlined />,
+		path: ROUTER_PAGE.TEACHER_CLASS_CHAPTERS_EDIT_ORDER,
+		menuName: 'class chapters edit order',
+		exact: true,
+		key: 'TEACHER_CLASS_CHAPTERS_EDIT_ORDER',
 		private: true,
 		role: 'teacher',
 	},

@@ -52,6 +52,7 @@ const ROUTER_PAGE = {
 	MANAGER_CLASS_ACTIVITIES: '/manager/classes/activities/:id',
 	MANAGER_CLASS_CHAPTERS_LESSONS: '/manager/classes/chapters-lessons/:id',
 	// Teacher Management Routes
+	TEACHER_DASHBOARD: '/teacher/dashboard',
 	TEACHER_CLASSES: '/teacher/classes',
 	TEACHER_CLASS_MENU: '/teacher/classes/menu/:id',
 	TEACHER_CLASS_DASHBOARD: '/teacher/classes/dashboard/:id',
@@ -59,6 +60,9 @@ const ROUTER_PAGE = {
 	TEACHER_CLASS_TEACHERS: '/teacher/classes/teachers/:id',
 	TEACHER_CLASS_ACTIVITIES: '/teacher/classes/activities/:id',
 	TEACHER_CLASS_CHAPTERS_LESSONS: '/teacher/classes/chapters-lessons/:id',
+	TEACHER_CLASS_CHAPTERS: '/teacher/classes/chapters/:classId',
+	TEACHER_CLASS_CHAPTERS_EDIT_ORDER: '/teacher/classes/chapters/:classId/edit-order',
+	TEACHER_CLASS_CHAPTER_LESSONS: '/teacher/classes/chapters/:classId/:chapterId/lessons',
 	// Teaching Assistant Management Routes
 	TEACHING_ASSISTANT_CLASSES: '/teaching-assistant/classes',
 	TEACHING_ASSISTANT_CLASS_MENU: '/teaching-assistant/classes/menu/:id',

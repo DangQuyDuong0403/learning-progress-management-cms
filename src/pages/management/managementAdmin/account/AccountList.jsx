@@ -39,7 +39,6 @@ const { Option } = Select;
 const { Title, Text } = Typography;
 const { Dragger } = Upload;
 
-
 const AccountList = () => {
 	const { t } = useTranslation();
 	const { theme } = useTheme();
@@ -65,17 +64,17 @@ const AccountList = () => {
 		fileList: [],
 		uploading: false,
 	});
-	
+
 	// Filter dropdown state
 	const [filterDropdown, setFilterDropdown] = useState({
 		visible: false,
 		selectedRoles: [],
 		selectedStatuses: [],
 	});
-	
+
 	// Refs for click outside detection
 	const filterContainerRef = useRef(null);
-	
+
 	// Pagination state
 	const [pagination, setPagination] = useState({
 		current: 1,
@@ -85,71 +84,98 @@ const AccountList = () => {
 		showTotal: (total, range) => `${range[0]}-${range[1]} of ${total}`,
 	});
 
-	const fetchAccounts = useCallback(async (page = 1, size = 10, search = '', roleFilter = [], statusFilter = [], sortField = 'createdAt', sortDirection = 'asc') => {
-		setLoading(true);
-		try {
-			const params = {
-				page: page - 1, // API uses 0-based indexing
-				size: size,
-				sortBy: sortField,
-				sortDir: sortDirection,
-			};
-			
-			// Add search parameter if provided (API uses 'text' parameter)
-			if (search && search.trim()) {
-				params.text = search.trim();
+	const fetchAccounts = useCallback(
+		async (
+			page = 1,
+			size = 10,
+			search = '',
+			roleFilter = [],
+			statusFilter = [],
+			sortField = 'createdAt',
+			sortDirection = 'asc'
+		) => {
+			setLoading(true);
+			try {
+				const params = {
+					page: page - 1, // API uses 0-based indexing
+					size: size,
+					sortBy: sortField,
+					sortDir: sortDirection,
+				};
+
+				// Add search parameter if provided (API uses 'text' parameter)
+				if (search && search.trim()) {
+					params.text = search.trim();
+				}
+
+				// Add roleName filter if provided (API expects array of strings)
+				if (roleFilter && roleFilter.length > 0) {
+					params.roleName = roleFilter;
+				}
+
+				// Add status filter if provided (API expects array of strings)
+				if (statusFilter && statusFilter.length > 0) {
+					params.status = statusFilter;
+				}
+
+				const response = await accountManagementApi.getAccounts({
+					params: params,
+				});
+
+				// Map API response to component format
+				const mappedAccounts = response.data.map((account) => ({
+					id: account.id,
+					username: account.userName,
+					email: account.email,
+					fullName: `${account.firstName} ${account.lastName}`.trim(),
+					firstName: account.firstName,
+					lastName: account.lastName,
+					phone: account.phone || 'N/A',
+					role: account.roleName,
+					status: account.status,
+					createdAt: new Date(account.createAt).toLocaleDateString(),
+					lastLogin: account.lastLogin || null,
+					avatar: null,
+					mustChangePassword: account.mustChangePassword,
+					requestResetPasswordByTeacher: account.requestResetPasswordByTeacher,
+				}));
+
+				setAccounts(mappedAccounts);
+				setPagination((prev) => ({
+					...prev,
+					current: page,
+					pageSize: size,
+					total: response.totalElements,
+				}));
+				setLoading(false);
+			} catch (error) {
+				console.error('Error fetching accounts:', error);
+				message.error(t('accountManagement.loadAccountsError'));
+				setLoading(false);
 			}
-
-			// Add roleName filter if provided (API expects array of strings)
-			if (roleFilter && roleFilter.length > 0) {
-				params.roleName = roleFilter;
-			}
-
-			// Add status filter if provided (API expects array of strings)
-			if (statusFilter && statusFilter.length > 0) {
-				params.status = statusFilter;
-			}
-
-			const response = await accountManagementApi.getAccounts({
-				params: params,
-			});
-
-			// Map API response to component format
-			const mappedAccounts = response.data.map((account) => ({
-				id: account.id,
-				username: account.userName,
-				email: account.email,
-				fullName: account.fullName,
-				firstName: account.firstName, // Lấy firstName từ API
-				lastName: account.lastName, // Lấy lastName từ API
-				phone: account.phone || 'N/A', // API doesn't include phone, so we'll show N/A
-				role: account.roleName,
-				status: account.status, // Keep status in uppercase format (ACTIVE/INACTIVE)
-				createdAt: new Date(account.createAt).toLocaleDateString(),
-				lastLogin: account.lastLogin || null,
-				avatar: null,
-				mustChangePassword: account.mustChangePassword,
-				requestResetPasswordByTeacher: account.requestResetPasswordByTeacher,
-			}));
-
-			setAccounts(mappedAccounts);
-			setPagination(prev => ({
-				...prev,
-				current: page,
-				pageSize: size,
-				total: response.totalElements,
-			}));
-			setLoading(false);
-		} catch (error) {
-			console.error('Error fetching accounts:', error);
-			message.error(t('accountManagement.loadAccountsError'));
-			setLoading(false);
-		}
-	}, [t]);
+		},
+		[t]
+	);
 
 	useEffect(() => {
-		fetchAccounts(1, pagination.pageSize, searchText, roleFilter, statusFilter, sortBy, sortDir);
-	}, [fetchAccounts, searchText, roleFilter, statusFilter, sortBy, sortDir, pagination.pageSize]);
+		fetchAccounts(
+			1,
+			pagination.pageSize,
+			searchText,
+			roleFilter,
+			statusFilter,
+			sortBy,
+			sortDir
+		);
+	}, [
+		fetchAccounts,
+		searchText,
+		roleFilter,
+		statusFilter,
+		sortBy,
+		sortDir,
+		pagination.pageSize,
+	]);
 
 	// Cleanup timeout on unmount
 	useEffect(() => {
@@ -166,7 +192,7 @@ const AccountList = () => {
 			if (filterDropdown.visible && filterContainerRef.current) {
 				// Check if click is outside the filter container
 				if (!filterContainerRef.current.contains(event.target)) {
-					setFilterDropdown(prev => ({
+					setFilterDropdown((prev) => ({
 						...prev,
 						visible: false,
 					}));
@@ -187,28 +213,38 @@ const AccountList = () => {
 
 	const handleSearch = (value) => {
 		setSearchText(value);
-		
+
 		// Clear existing timeout
 		if (searchTimeout) {
 			clearTimeout(searchTimeout);
 		}
-		
+
 		// Set new timeout for 1 second delay
 		const newTimeout = setTimeout(() => {
 			// Reset to first page when searching
-			fetchAccounts(1, pagination.pageSize, value, roleFilter, statusFilter, sortBy, sortDir);
+			fetchAccounts(
+				1,
+				pagination.pageSize,
+				value,
+				roleFilter,
+				statusFilter,
+				sortBy,
+				sortDir
+			);
 		}, 1000);
-		
+
 		setSearchTimeout(newTimeout);
 	};
 
 	// Handle filter dropdown toggle
 	const handleFilterToggle = () => {
-		setFilterDropdown(prev => ({
+		setFilterDropdown((prev) => ({
 			...prev,
 			visible: !prev.visible,
 			selectedRoles: prev.visible ? prev.selectedRoles : [...roleFilter],
-			selectedStatuses: prev.visible ? prev.selectedStatuses : [...statusFilter],
+			selectedStatuses: prev.visible
+				? prev.selectedStatuses
+				: [...statusFilter],
 		}));
 	};
 
@@ -216,17 +252,25 @@ const AccountList = () => {
 	const handleFilterSubmit = () => {
 		setRoleFilter(filterDropdown.selectedRoles);
 		setStatusFilter(filterDropdown.selectedStatuses);
-		setFilterDropdown(prev => ({
+		setFilterDropdown((prev) => ({
 			...prev,
 			visible: false,
 		}));
 		// Reset to first page when applying filters
-		fetchAccounts(1, pagination.pageSize, searchText, filterDropdown.selectedRoles, filterDropdown.selectedStatuses, sortBy, sortDir);
+		fetchAccounts(
+			1,
+			pagination.pageSize,
+			searchText,
+			filterDropdown.selectedRoles,
+			filterDropdown.selectedStatuses,
+			sortBy,
+			sortDir
+		);
 	};
 
 	// Handle filter reset
 	const handleFilterReset = () => {
-		setFilterDropdown(prev => ({
+		setFilterDropdown((prev) => ({
 			...prev,
 			selectedRoles: [],
 			selectedStatuses: [],
@@ -234,19 +278,67 @@ const AccountList = () => {
 	};
 
 	const handleTableChange = (pagination, filters, sorter) => {
+		console.log('handleTableChange called:', { pagination, filters, sorter });
+		console.log('Current sortBy:', sortBy, 'Current sortDir:', sortDir);
+		
 		// Handle sorting
 		if (sorter && sorter.field) {
-			const newSortBy = sorter.field;
-			const newSortDir = sorter.order === 'ascend' ? 'asc' : 'desc';
+			// Map frontend field names to backend field names
+			const fieldMapping = {
+				'username': 'username', // Keep original field name
+				'fullName': 'fullName', // Keep original field name for fullName
+				'email': 'email',
+				'role': 'role',
+				'status': 'status',
+				'createdAt': 'createdAt'
+			};
 			
-			setSortBy(newSortBy);
+			const backendField = fieldMapping[sorter.field] || sorter.field;
+			
+			// Handle sorting direction - force toggle if same field
+			let newSortDir;
+			if (backendField === sortBy) {
+				// Same field - toggle direction
+				newSortDir = sortDir === 'asc' ? 'desc' : 'asc';
+				console.log('Same field clicked, toggling from', sortDir, 'to', newSortDir);
+			} else {
+				// Different field - start with asc
+				newSortDir = 'asc';
+				console.log('Different field clicked, starting with asc');
+			}
+
+			console.log('Sorting:', {
+				frontendField: sorter.field,
+				backendField: backendField,
+				direction: newSortDir,
+				order: sorter.order
+			});
+
+			setSortBy(backendField);
 			setSortDir(newSortDir);
-			
+
 			// Fetch data with new sorting
-			fetchAccounts(pagination.current, pagination.pageSize, searchText, roleFilter, statusFilter, newSortBy, newSortDir);
+			fetchAccounts(
+				pagination.current,
+				pagination.pageSize,
+				searchText,
+				roleFilter,
+				statusFilter,
+				backendField,
+				newSortDir
+			);
 		} else {
 			// Handle pagination without sorting change
-			fetchAccounts(pagination.current, pagination.pageSize, searchText, roleFilter, statusFilter, sortBy, sortDir);
+			console.log('Pagination only, no sorting change');
+			fetchAccounts(
+				pagination.current,
+				pagination.pageSize,
+				searchText,
+				roleFilter,
+				statusFilter,
+				sortBy,
+				sortDir
+			);
 		}
 	};
 
@@ -258,7 +350,7 @@ const AccountList = () => {
 
 	const handleEditAccount = (record) => {
 		setEditingAccount(record);
-		
+
 		// Set form values trực tiếp từ record
 		form.setFieldsValue({
 			firstName: record.firstName || '',
@@ -266,7 +358,7 @@ const AccountList = () => {
 			email: record.email,
 			roleName: record.role,
 		});
-		
+
 		setIsModalVisible(true);
 	};
 
@@ -291,12 +383,14 @@ const AccountList = () => {
 					try {
 						// Call API to update status
 						await accountManagementApi.updateAccountStatus(id, newStatus);
-						
+
 						// Update local state
 						setAccounts(
-							accounts.map((a) => (a.id === id ? { ...a, status: newStatus } : a))
+							accounts.map((a) =>
+								a.id === id ? { ...a, status: newStatus } : a
+							)
 						);
-						
+
 						setConfirmModal({
 							visible: false,
 							title: '',
@@ -351,7 +445,7 @@ const AccountList = () => {
 		const csvContent = [
 			'username,email,fullName,phone,role,status,password,note',
 			'example_user,example@email.com,Example User,0123456789,STUDENT,ACTIVE,password123,Example note',
-			'teacher_user,teacher@email.com,Teacher User,0987654321,TEACHER,ACTIVE,password123,Teacher note'
+			'teacher_user,teacher@email.com,Teacher User,0987654321,TEACHER,ACTIVE,password123,Teacher note',
 		].join('\n');
 
 		// Create blob and download
@@ -364,7 +458,7 @@ const AccountList = () => {
 		document.body.appendChild(link);
 		link.click();
 		document.body.removeChild(link);
-		
+
 		spaceToast.success(t('accountManagement.templateDownloaded'));
 	};
 
@@ -438,17 +532,28 @@ const AccountList = () => {
 					email: values.email,
 					roleName: values.roleName || 'MANAGER',
 				};
-				
+
 				console.log('Updating account with data:', updateData);
-				
+
 				// Gọi API update account
-				const response = await accountManagementApi.updateAccount(editingAccount.id, updateData);
+				const response = await accountManagementApi.updateAccount(
+					editingAccount.id,
+					updateData
+				);
 				console.log('Update account response:', response);
-				
+
 				spaceToast.success(t('accountManagement.updateAccountSuccess'));
-				
+
 				// Đồng bộ lại dữ liệu sau khi cập nhật
-				fetchAccounts(pagination.current, pagination.pageSize, searchText, roleFilter, statusFilter, sortBy, sortDir);
+				fetchAccounts(
+					pagination.current,
+					pagination.pageSize,
+					searchText,
+					roleFilter,
+					statusFilter,
+					sortBy,
+					sortDir
+				);
 			} else {
 				// Create new account - gửi API với body JSON đúng format
 				const accountData = {
@@ -457,17 +562,25 @@ const AccountList = () => {
 					email: values.email,
 					roleName: values.roleName || 'MANAGER', // Fix cứng Manager
 				};
-				
+
 				console.log('Creating account with data:', accountData);
-				
+
 				// Gọi API create account
 				const response = await accountManagementApi.createAccount(accountData);
 				console.log('Create account response:', response);
-				
+
 				spaceToast.success(t('accountManagement.addAccountSuccess'));
-				
+
 				// Đồng bộ lại dữ liệu sau khi thêm mới
-				fetchAccounts(pagination.current, pagination.pageSize, searchText, roleFilter, statusFilter, sortBy, sortDir);
+				fetchAccounts(
+					pagination.current,
+					pagination.pageSize,
+					searchText,
+					roleFilter,
+					statusFilter,
+					sortBy,
+					sortDir
+				);
 			}
 
 			setIsModalVisible(false);
@@ -485,8 +598,8 @@ const AccountList = () => {
 
 	const getStatusTag = (status) => {
 		const statusConfig = {
-			ACTIVE: { color: 'green', text: t('accountManagement.active') },
-			INACTIVE: { color: 'red', text: t('accountManagement.inactive') },
+			ACTIVE: { color: 'green', text: 'Active' },
+			INACTIVE: { color: 'red', text: 'Inactive' },
 		};
 
 		const config = statusConfig[status] || statusConfig.INACTIVE;
@@ -495,12 +608,12 @@ const AccountList = () => {
 
 	const getRoleTag = (role) => {
 		const roleTranslations = {
-			ADMIN: t('accountManagement.admin'),
-			TEACHER: t('accountManagement.teacher'),
-			STUDENT: t('accountManagement.student'),
-			MANAGER: t('accountManagement.manager'),
-			TEACHING_ASSISTANT: t('accountManagement.teacherAssistant'),
-			TEST_TAKER: t('accountManagement.testTaker'),
+			ADMIN: 'Admin',
+			TEACHER: 'Teacher',
+			STUDENT:'Student',
+			MANAGER: 'Manager',
+			TEACHING_ASSISTANT: 'Teacher Assistant',
+			TEST_TAKER: 'Test Taker',
 		};
 
 		return roleTranslations[role] || role;
@@ -508,21 +621,24 @@ const AccountList = () => {
 
 	// Status options for filter
 	const statusOptions = [
-		{ key: "ACTIVE", label: t('accountManagement.active') },
-		{ key: "INACTIVE", label: t('accountManagement.inactive') },
+		{ key: 'ACTIVE', label: t('accountManagement.active') },
+		{ key: 'INACTIVE', label: t('accountManagement.inactive') },
 	];
 
 	// Role options for filter
 	const roleOptions = [
-		{ key: "ADMIN", label: t('accountManagement.admin') },
-		{ key: "TEACHER", label: t('accountManagement.teacher') },
-		{ key: "STUDENT", label: t('accountManagement.student') },
-		{ key: "MANAGER", label: t('accountManagement.manager') },
-		{ key: "TEACHING_ASSISTANT", label: t('accountManagement.teacherAssistant') },
-		{ key: "TEST_TAKER", label: t('accountManagement.testTaker') },
+		{ key: 'ADMIN', label: t('accountManagement.admin') },
+		{ key: 'TEACHER', label: t('accountManagement.teacher') },
+		{ key: 'STUDENT', label: t('accountManagement.student') },
+		{ key: 'MANAGER', label: t('accountManagement.manager') },
+		{
+			key: 'TEACHING_ASSISTANT',
+			label: t('accountManagement.teacherAssistant'),
+		},
+		{ key: 'TEST_TAKER', label: t('accountManagement.testTaker') },
 	];
 	console.log(theme);
-	
+
 	// No need for client-side filtering since API handles filtering
 
 	const columns = [
@@ -580,7 +696,6 @@ const AccountList = () => {
 				<Space size='small'>
 					<Tooltip title={t('accountManagement.edit')}>
 						<Button
-							
 							type='text'
 							icon={<EditOutlined style={{ fontSize: '25px' }} />}
 							size='small'
@@ -621,47 +736,94 @@ const AccountList = () => {
 			<div className={`account-page ${theme}-theme main-content-panel`}>
 				{/* Header Section */}
 				<div className={`panel-header ${theme}-panel-header`}>
-					<div className="search-section" style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+					<div
+						className='search-section'
+						style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
 						<Input
 							prefix={<SearchOutlined />}
 							value={searchText}
 							onChange={(e) => handleSearch(e.target.value)}
 							className={`search-input ${theme}-search-input`}
-							style={{ flex: '1', minWidth: '250px', maxWidth: '400px', width: '350px', height: '40px', fontSize: '16px' }}
+							style={{
+								flex: '1',
+								minWidth: '250px',
+								maxWidth: '400px',
+								width: '350px',
+								height: '40px',
+								fontSize: '16px',
+							}}
 							allowClear
 						/>
 						<div ref={filterContainerRef} style={{ position: 'relative' }}>
-							<Button 
+							<Button
 								icon={<FilterOutlined />}
 								onClick={handleFilterToggle}
-								className={`filter-button ${theme}-filter-button ${filterDropdown.visible ? 'active' : ''} ${(statusFilter.length > 0 || roleFilter.length > 0) ? 'has-filters' : ''}`}
-							>
-								Filter
+								className={`filter-button ${theme}-filter-button ${
+									filterDropdown.visible ? 'active' : ''
+								} ${
+									statusFilter.length > 0 || roleFilter.length > 0
+										? 'has-filters'
+										: ''
+								}`}>
+								{t('accountManagement.filter')}
 							</Button>
-							
+
 							{/* Filter Dropdown Panel */}
 							{filterDropdown.visible && (
-								<div className={`filter-dropdown-panel ${theme}-filter-dropdown`}>
+								<div
+									className={`filter-dropdown-panel ${theme}-filter-dropdown`}>
 									<div style={{ padding: '20px' }}>
 										{/* Role and Status Filters in same row */}
-										<div style={{ display: 'flex', gap: '24px', marginBottom: '24px' }}>
+										<div
+											style={{
+												display: 'flex',
+												gap: '24px',
+												marginBottom: '24px',
+											}}>
 											{/* Role Filter */}
 											<div style={{ flex: 1 }}>
-												<Typography.Title level={5} style={{ marginBottom: '12px', color: '#1890ff', fontSize: '16px' }}>
-													Role
+												<Typography.Title
+													level={5}
+													style={{
+														marginBottom: '12px',
+														color: '#1890ff',
+														fontSize: '16px',
+													}}>
+													{t('accountManagement.role')}
 												</Typography.Title>
-												<div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-													{roleOptions.map(option => (
+												<div
+													style={{
+														display: 'flex',
+														flexWrap: 'wrap',
+														gap: '8px',
+													}}>
+													{roleOptions.map((option) => (
 														<Button
 															key={option.key}
 															onClick={() => {
-																const newRoles = filterDropdown.selectedRoles.includes(option.key)
-																	? filterDropdown.selectedRoles.filter(role => role !== option.key)
-																	: [...filterDropdown.selectedRoles, option.key];
-																setFilterDropdown(prev => ({ ...prev, selectedRoles: newRoles }));
+																const newRoles =
+																	filterDropdown.selectedRoles.includes(
+																		option.key
+																	)
+																		? filterDropdown.selectedRoles.filter(
+																				(role) => role !== option.key
+																		  )
+																		: [
+																				...filterDropdown.selectedRoles,
+																				option.key,
+																		  ];
+																setFilterDropdown((prev) => ({
+																	...prev,
+																	selectedRoles: newRoles,
+																}));
 															}}
-															className={`filter-option ${filterDropdown.selectedRoles.includes(option.key) ? 'selected' : ''}`}
-														>
+															className={`filter-option ${
+																filterDropdown.selectedRoles.includes(
+																	option.key
+																)
+																	? 'selected'
+																	: ''
+															}`}>
 															{option.label}
 														</Button>
 													))}
@@ -670,21 +832,48 @@ const AccountList = () => {
 
 											{/* Status Filter */}
 											<div style={{ flex: 1 }}>
-												<Typography.Title level={5} style={{ marginBottom: '12px', color: '#1890ff', fontSize: '16px' }}>
-													Status
+												<Typography.Title
+													level={5}
+													style={{
+														marginBottom: '12px',
+														color: '#1890ff',
+														fontSize: '16px',
+													}}>
+													{t('accountManagement.status')}
 												</Typography.Title>
-												<div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-													{statusOptions.map(option => (
+												<div
+													style={{
+														display: 'flex',
+														flexWrap: 'wrap',
+														gap: '8px',
+													}}>
+													{statusOptions.map((option) => (
 														<Button
 															key={option.key}
 															onClick={() => {
-																const newStatuses = filterDropdown.selectedStatuses.includes(option.key)
-																	? filterDropdown.selectedStatuses.filter(status => status !== option.key)
-																	: [...filterDropdown.selectedStatuses, option.key];
-																setFilterDropdown(prev => ({ ...prev, selectedStatuses: newStatuses }));
+																const newStatuses =
+																	filterDropdown.selectedStatuses.includes(
+																		option.key
+																	)
+																		? filterDropdown.selectedStatuses.filter(
+																				(status) => status !== option.key
+																		  )
+																		: [
+																				...filterDropdown.selectedStatuses,
+																				option.key,
+																		  ];
+																setFilterDropdown((prev) => ({
+																	...prev,
+																	selectedStatuses: newStatuses,
+																}));
 															}}
-															className={`filter-option ${filterDropdown.selectedStatuses.includes(option.key) ? 'selected' : ''}`}
-														>
+															className={`filter-option ${
+																filterDropdown.selectedStatuses.includes(
+																	option.key
+																)
+																	? 'selected'
+																	: ''
+															}`}>
 															{option.label}
 														</Button>
 													))}
@@ -693,25 +882,24 @@ const AccountList = () => {
 										</div>
 
 										{/* Action Buttons */}
-										<div style={{ 
-											display: 'flex', 
-											justifyContent: 'space-between', 
-											marginTop: '20px',
-											paddingTop: '16px',
-											borderTop: '1px solid #f0f0f0'
-										}}>
+										<div
+											style={{
+												display: 'flex',
+												justifyContent: 'space-between',
+												marginTop: '20px',
+												paddingTop: '16px',
+												borderTop: '1px solid #f0f0f0',
+											}}>
 											<Button
 												onClick={handleFilterReset}
-												className="filter-reset-button"
-											>
-												Reset
+												className='filter-reset-button'>
+												{t('accountManagement.reset')}
 											</Button>
 											<Button
-												type="primary"
+												type='primary'
 												onClick={handleFilterSubmit}
-												className="filter-submit-button"
-											>
-												View Results
+												className='filter-submit-button'>
+												{t('accountManagement.viewResults')}
 											</Button>
 										</div>
 									</div>
@@ -722,21 +910,15 @@ const AccountList = () => {
 					<div className='action-buttons'>
 						<Button
 							icon={<DownloadOutlined />}
-							className={`export-button ${theme}-export-button`}
-							onClick={handleExportTemplate}>
-							Export Template
-						</Button>
-						<Button
-							icon={<UploadOutlined />}
 							className={`import-button ${theme}-import-button`}
 							onClick={handleImportAccount}>
-							Import Account
+							{t('accountManagement.importAccount')}
 						</Button>
 						<Button
 							icon={<PlusOutlined />}
 							className={`create-button ${theme}-create-button`}
 							onClick={handleAddAccount}>
-							Create Account
+							{t('accountManagement.createAccount')}
 						</Button>
 					</div>
 				</div>
@@ -757,6 +939,7 @@ const AccountList = () => {
 							onChange={handleTableChange}
 							scroll={{ x: 1200 }}
 							className={`account-table ${theme}-account-table`}
+							sortDirections={['ascend', 'descend']}
 						/>
 					</LoadingWithEffect>
 				</div>
@@ -869,11 +1052,7 @@ const AccountList = () => {
 								}
 								name='roleName'
 								required={false}>
-								<Select 
-									value='MANAGER'
-									disabled
-									style={{ color: '#666' }}
-								>
+								<Select value='MANAGER' disabled style={{ color: '#666' }}>
 									<Option value='MANAGER'>
 										{t('accountManagement.manager')}
 									</Option>
@@ -1012,6 +1191,27 @@ const AccountList = () => {
 						}}>
 						{t('accountManagement.importInstructions')}
 					</Title>
+
+					{/* Export Template Button */}
+					<div style={{ textAlign: 'center', marginBottom: '20px' }}>
+						<Button
+							icon={<UploadOutlined />}
+							type="dashed"
+							onClick={handleExportTemplate}
+							style={{
+								borderColor: '#1890ff',
+								color: '#1890ff',
+								height: '40px',
+								fontSize: '16px',
+								fontWeight: '500',
+								padding: '0 20px',
+							}}>
+							{t('accountManagement.exportTemplate')}
+						</Button>
+						<div style={{ marginTop: '8px', fontSize: '14px', color: '#999' }}>
+							Tải template mẫu để tham khảo định dạng
+						</div>
+					</div>
 
 					<Dragger
 						multiple={false}

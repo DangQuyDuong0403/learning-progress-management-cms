@@ -107,6 +107,7 @@ const ClassList = () => {
   // State for classes data
   const [classes, setClasses] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadingComplete, setLoadingComplete] = useState(false);
   const [syllabusMap, setSyllabusMap] = useState({});
   const [syllabuses, setSyllabuses] = useState([]);
   const [syllabusLoading, setSyllabusLoading] = useState(false);
@@ -210,6 +211,7 @@ const ClassList = () => {
   // Fetch classes from API
   const fetchClasses = useCallback(async (page = 1, size = 10, search = '') => {
     setLoading(true);
+    setLoadingComplete(false);
     try {
       const params = {
         page: page - 1, // API uses 0-based indexing
@@ -278,6 +280,10 @@ const ClassList = () => {
       }));
     } finally {
       setLoading(false);
+      // Delay setting loadingComplete to allow LoadingWithEffect animation to finish
+      setTimeout(() => {
+        setLoadingComplete(true);
+      }, 1000); // Adjust this delay based on your LoadingWithEffect animation duration
     }
   }, [t, fetchSyllabusData]);
 
@@ -819,7 +825,7 @@ const ClassList = () => {
         </div>
 
         {/* Pagination */}
-        {filteredClasses.length > 0 && !loading && (
+        {loadingComplete && filteredClasses.length > 0 && pagination.total > 0 && (
           <Card className="pagination-card">
             <div style={{ textAlign: 'right' }}>
               <Pagination
