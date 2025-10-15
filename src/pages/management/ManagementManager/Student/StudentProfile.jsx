@@ -353,17 +353,24 @@ const StudentProfile = () => {
 										style={{
 											display: 'flex',
 											flexDirection: 'column',
-											alignItems: 'flex-start',
+											alignItems: 'center',
 											gap: '8px',
 											marginBottom: '16px',
 										}}>
 										<h2
 											className={`student-name ${theme}-student-name`}
-											style={{ margin: 0 }}>
+											style={{ 
+												margin: 0,
+												fontSize: '32px',
+												fontWeight: '700',
+												color: theme === 'space' ? '#4dd0ff' : '#1890ff',
+												letterSpacing: '0.5px',
+												textAlign: 'center'
+											}}>
 											{student.firstName} {student.lastName}
 										</h2>
 
-										<div style={{ display: 'flex', gap: '8px' }}>
+										<div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
 											<span
 												style={{
 													fontSize: '16px',
@@ -456,37 +463,31 @@ const StudentProfile = () => {
 							<Col xs={24} sm={12} md={8}>
 								<div className="account-info-item">
 									<strong>{t('studentManagement.accountStatus')}:</strong>
-									<span>{student.status === 'ACTIVE'
-										? t('studentManagement.active')
-										: t('studentManagement.inactive')}</span>
+									<span>{student.status === 'ACTIVE' ? 'Active' : 'Inactive'}</span>
 								</div>
 							</Col>
 							<Col xs={24} sm={12} md={8}>
 								<div className="account-info-item">
 									<strong>{t('studentManagement.theme')}:</strong>
-									<span>{student.theme === 'LIGHT' ? t('common.light') : t('common.dark')}</span>
+									<span>{student.theme === 'LIGHT' ? 'Light' : 'Dark'}</span>
 								</div>
 							</Col>
 							<Col xs={24} sm={12} md={8}>
 								<div className="account-info-item">
 									<strong>{t('studentManagement.language')}:</strong>
-									<span>{student.language === 'VI' ? t('common.vietnamese') : t('common.english')}</span>
+									<span>{student.language === 'VI' ? 'Vietnamese' : 'English'}</span>
 								</div>
 							</Col>
 							<Col xs={24} sm={12} md={8}>
 								<div className="account-info-item">
 									<strong>{t('studentManagement.mustUpdateProfile')}:</strong>
-									<span>{student.mustUpdateProfile
-										? t('common.yes')
-										: t('common.no')}</span>
+									<span>{student.mustUpdateProfile ? 'Yes' : 'No'}</span>
 								</div>
 							</Col>
 							<Col xs={24} sm={12} md={8}>
 								<div className="account-info-item">
 									<strong>{t('studentManagement.mustChangePassword')}:</strong>
-									<span>{student.mustChangePassword
-										? t('common.yes')
-										: t('common.no')}</span>
+									<span>{student.mustChangePassword ? 'Yes' : 'No'}</span>
 								</div>
 							</Col>
 						</Row>

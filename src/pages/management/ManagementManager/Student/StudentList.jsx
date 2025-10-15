@@ -1019,7 +1019,12 @@ STU003,Le Van Cuong,levancuong@example.com,0111222333,Lớp 11B1,Advanced,active
             <Row gutter={16}>
               <Col span={12}>
                 <Form.Item
-                  label="Level"
+                  label={
+                    <span>
+                      Level
+                      <span style={{ color: 'red', marginLeft: '4px' }}>*</span>
+                    </span>
+                  }
                   name="levelId"
                   rules={[
                     { required: true, message: 'Level is required' },
