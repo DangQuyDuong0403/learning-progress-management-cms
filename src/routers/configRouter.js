@@ -29,23 +29,27 @@ import TeacherList from '../pages/management/ManagementManager/teacher/TeacherLi
 import TeacherProfile from '../pages/management/ManagementManager/teacher/TeacherProfile.jsx';
 import SpinnerDemo from '../pages/SpinnerDemo.jsx';
 //manager
-import ClassList from '../pages/management/ManagementManager/Class/ClassList.jsx';
-import ClassMenu from '../pages/management/ManagementManager/Class/ClassMenu.jsx';
-import ClassDetail from '../pages/management/ManagementManager/Class/ClassDetail.jsx';
-import ClassTeachers from '../pages/management/ManagementManager/Class/ClassTeachers.jsx';
-import ClassActivities from '../pages/management/ManagementManager/Class/ClassActivities.jsx';
-import ClassChapterLesson from '../pages/management/ManagementManager/Class/ClassChapterLesson.jsx';
-// Teacher Class Components
-import TeacherClassList from '../pages/management/ManagementTeacher/class/ClassList.jsx';
-import TeacherClassMenu from '../pages/management/ManagementTeacher/class/ClassMenu.jsx';
-import TeacherClassDetail from '../pages/management/ManagementTeacher/class/ClassDetail.jsx';
-import TeacherClassDashboard from '../pages/management/ManagementTeacher/class/ClassDashboard.jsx';
-import TeacherClassTeachers from '../pages/management/ManagementTeacher/class/ClassTeachers.jsx';
-import TeacherClassActivities from '../pages/management/ManagementTeacher/class/ClassActivities.jsx';
-import TeacherClassChapterLesson from '../pages/management/ManagementTeacher/class/ClassChapterLesson.jsx';
+import ClassList from '../pages/management/ManagementClass/Class/ClassList.jsx';
+import ClassMenu from '../pages/management/ManagementClass/Class/ClassMenu.jsx';
+import ClassStudent from '../pages/management/ManagementClass/Class/ClassStudent.jsx';
+import ClassDashboard from '../pages/management/ManagementClass/Class/ClassDashboard.jsx';
+import ClassTeachers from '../pages/management/ManagementClass/Class/ClassTeachers.jsx';
+import ClassActivities from '../pages/management/ManagementClass/Class/ClassActivities.jsx';
+import ClassChapterLesson from '../pages/management/ManagementClass/Class/ClassChapterLesson.jsx';
+// Teacher Class Components - Now using ManagementClass Components
+import TeacherClassList from '../pages/management/ManagementClass/Class/ClassList.jsx';
+import TeacherClassMenu from '../pages/management/ManagementClass/Class/ClassMenu.jsx';
+import TeacherClassStudent from '../pages/management/ManagementClass/Class/ClassStudent.jsx';
+import TeacherClassDashboard from '../pages/management/ManagementClass/Class/ClassDashboard.jsx';
+import TeacherClassTeachers from '../pages/management/ManagementClass/Class/ClassTeachers.jsx';
+import TeacherClassActivities from '../pages/management/ManagementClass/Class/ClassActivities.jsx';
+import TeacherClassChapterLesson from '../pages/management/ManagementClass/Class/ClassChapterLesson.jsx';
+import TeacherClassChapterList from '../pages/management/ManagementClass/Class/TeacherClassChapterList.jsx';
+import TeacherClassChapterDragEdit from '../pages/management/ManagementClass/Class/TeacherClassChapterDragEdit.jsx';
 import DailyChallengeList from '../pages/management/ManagementTeacher/dailyChallenge/DailyChallengeList.jsx';
 import CreateGrammarVocabularyChallenge from '../pages/management/ManagementTeacher/dailyChallenge/CreateGrammarVocabularyChallenge.jsx';
 import CreateReadingChallenge from '../pages/management/ManagementTeacher/dailyChallenge/CreateReadingChallenge.jsx';
+import TeacherDashboard from '../pages/management/ManagementTeacher/TeacherDashboard.jsx';
 // import AdminDashboard from '../pages/management/managementAdmin/AdminDashboard';
   
 const CONFIG_ROUTER = [
@@ -218,11 +222,22 @@ const CONFIG_ROUTER = [
 		exact: true,
 		key: 'MANAGER_CLASS_MENU',
 		private: true,
-		role: 'manager',
+		role: ['manager', 'teacher', 'teaching_assistant'],
+	},
+	{
+		show: false,
+		component: ClassDashboard,
+		// icon: <UserOutlined />,
+		path: ROUTER_PAGE.MANAGER_CLASS_DASHBOARD,
+		menuName: 'class dashboard',
+		exact: true,
+		key: 'MANAGER_CLASS_DASHBOARD',
+		private: true,
+		role: ['manager', 'teacher', 'teaching_assistant'],
 	},
 	// {
 	// 	show: false,
-	// 	component: ClassDetail,
+	// 	component: ClassStudent,
 	// 	// icon: <UserOutlined />,
 	// 	path: ROUTER_PAGE.MANAGER_CLASS_DETAIL,
 	// 	menuName: 'class detail',
@@ -233,14 +248,14 @@ const CONFIG_ROUTER = [
 	// },
 	{
 		show: false,
-		component: ClassDetail,
+		component: ClassStudent,
 		// icon: <UserOutlined />,
 		path: ROUTER_PAGE.MANAGER_CLASS_STUDENTS,
 		menuName: 'class students',
 		exact: true,
 		key: 'MANAGER_CLASS_STUDENTS',
 		private: true,
-		role: 'manager',
+		role: ['manager', 'teacher', 'teaching_assistant'],
 	},
 	{
 		show: true,
@@ -293,7 +308,7 @@ const CONFIG_ROUTER = [
 		exact: true,
 		key: 'MANAGER_CLASS_TEACHERS',
 		private: true,
-		role: 'manager',
+		role: ['manager', 'teacher', 'teaching_assistant'],
 	},
 	{
 		show: false,
@@ -304,7 +319,7 @@ const CONFIG_ROUTER = [
 		exact: true,
 		key: 'MANAGER_CLASS_ACTIVITIES',
 		private: true,
-		role: 'manager',
+		role: ['manager', 'teacher', 'teaching_assistant'],
 	},
 	{
 		show: false,
@@ -315,7 +330,86 @@ const CONFIG_ROUTER = [
 		exact: true,
 		key: 'MANAGER_CLASS_CHAPTERS_LESSONS',
 		private: true,
-		role: 'manager',
+		role: ['manager', 'teacher', 'teaching_assistant'],
+	},
+	
+	// Teacher Management Routes
+	{
+		show: true,
+		component: ClassList,
+		// icon: <UserOutlined />,
+		path: ROUTER_PAGE.TEACHING_ASSISTANT_CLASSES,
+		menuName: 'classes management',
+		exact: true,
+		key: 'TEACHING_ASSISTANT_CLASSES',
+		private: true,
+		role: 'teaching_assistant',
+	},
+	{
+		show: false,
+		component: ClassMenu,
+		// icon: <UserOutlined />,
+		path: ROUTER_PAGE.TEACHING_ASSISTANT_CLASS_MENU,
+		menuName: 'class menu',
+		exact: true,
+		key: 'TEACHING_ASSISTANT_CLASS_MENU',
+		private: true,
+		role: 'teaching_assistant',
+	},
+	{
+		show: false,
+		component: ClassDashboard,
+		// icon: <UserOutlined />,
+		path: ROUTER_PAGE.TEACHING_ASSISTANT_CLASS_DASHBOARD,
+		menuName: 'class dashboard',
+		exact: true,
+		key: 'TEACHING_ASSISTANT_CLASS_DASHBOARD',
+		private: true,
+		role: 'teaching_assistant',
+	},
+	{
+		show: false,
+		component: ClassStudent,
+		// icon: <UserOutlined />,
+		path: ROUTER_PAGE.TEACHING_ASSISTANT_CLASS_STUDENTS,
+		menuName: 'class students',
+		exact: true,
+		key: 'TEACHING_ASSISTANT_CLASS_STUDENTS',
+		private: true,
+		role: 'teaching_assistant',
+	},
+	{
+		show: false,
+		component: ClassTeachers,
+		// icon: <UserOutlined />,
+		path: ROUTER_PAGE.TEACHING_ASSISTANT_CLASS_TEACHERS,
+		menuName: 'class teachers',
+		exact: true,
+		key: 'TEACHING_ASSISTANT_CLASS_TEACHERS',
+		private: true,
+		role: 'teaching_assistant',
+	},
+	{
+		show: false,
+		component: ClassActivities,
+		// icon: <UserOutlined />,
+		path: ROUTER_PAGE.TEACHING_ASSISTANT_CLASS_ACTIVITIES,
+		menuName: 'class activities',
+		exact: true,
+		key: 'TEACHING_ASSISTANT_CLASS_ACTIVITIES',
+		private: true,
+		role: 'teaching_assistant',
+	},
+	{
+		show: false,
+		component: ClassChapterLesson,
+		// icon: <UserOutlined />,
+		path: ROUTER_PAGE.TEACHING_ASSISTANT_CLASS_CHAPTERS_LESSONS,
+		menuName: 'class chapters lessons',
+		exact: true,
+		key: 'TEACHING_ASSISTANT_CLASS_CHAPTERS_LESSONS',
+		private: true,
+		role: 'teaching_assistant',
 	},
 	
 	{
@@ -427,6 +521,16 @@ const CONFIG_ROUTER = [
 	// Teacher Management Routes
 	{
 		show: true,
+		component: TeacherDashboard,
+		path: ROUTER_PAGE.TEACHER_DASHBOARD,
+		menuName: 'Teacher Dashboard',
+		exact: true,
+		key: 'TEACHER_DASHBOARD',
+		private: true,
+		role: 'teacher',
+	},
+	{
+		show: true,
 		component: TeacherClassList,
 		// icon: <UserOutlined />,
 		path: ROUTER_PAGE.TEACHER_CLASSES,
@@ -460,7 +564,7 @@ const CONFIG_ROUTER = [
 	},
 	{
 		show: false,
-		component: TeacherClassDetail,
+		component: TeacherClassStudent,
 		// icon: <UserOutlined />,
 		path: ROUTER_PAGE.TEACHER_CLASS_STUDENTS,
 		menuName: 'class students',
@@ -499,6 +603,28 @@ const CONFIG_ROUTER = [
 		menuName: 'class chapters lessons',
 		exact: true,
 		key: 'TEACHER_CLASS_CHAPTERS_LESSONS',
+		private: true,
+		role: 'teacher',
+	},
+	{
+		show: false,
+		component: TeacherClassChapterList,
+		// icon: <UserOutlined />,
+		path: ROUTER_PAGE.TEACHER_CLASS_CHAPTERS,
+		menuName: 'class chapters',
+		exact: true,
+		key: 'TEACHER_CLASS_CHAPTERS',
+		private: true,
+		role: 'teacher',
+	},
+	{
+		show: false,
+		component: TeacherClassChapterDragEdit,
+		// icon: <UserOutlined />,
+		path: ROUTER_PAGE.TEACHER_CLASS_CHAPTERS_EDIT_ORDER,
+		menuName: 'class chapters edit order',
+		exact: true,
+		key: 'TEACHER_CLASS_CHAPTERS_EDIT_ORDER',
 		private: true,
 		role: 'teacher',
 	},

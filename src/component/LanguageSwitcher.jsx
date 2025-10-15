@@ -36,13 +36,14 @@ const LanguageSwitcher = () => {
   };
 
   const getCurrentLanguageLabel = () => {
-    switch (i18n.language) {
+    const currentLang = i18n.language || 'en'; // Mặc định là 'en' nếu không có
+    switch (currentLang) {
       case 'vi':
         return '🇻🇳 Tiếng Việt';
       case 'en':
         return '🇺🇸 English';
       default:
-        return '🇻🇳 Tiếng Việt';
+        return '🇺🇸 English'; // Mặc định về tiếng Anh
     }
   };
 

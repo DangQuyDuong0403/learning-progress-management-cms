@@ -27,7 +27,7 @@ import {
 } from "@ant-design/icons";
 import ThemedLayout from "../../../../component/ThemedLayout";
 import LoadingWithEffect from "../../../../component/spinner/LoadingWithEffect";
-import "./ClassDetail.css";
+import "./ClassStudent.css";
 import { useParams, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { spaceToast } from "../../../../component/SpaceToastify";
@@ -86,7 +86,7 @@ const mockClassData = {
   teacher: "Nguyễn Văn A",
 };
 
-const ClassDetail = () => {
+const ClassStudent = () => {
   const { t } = useTranslation();
   const { id } = useParams();
   const navigate = useNavigate();
@@ -820,4 +820,4 @@ const ClassDetail = () => {
   );
 };
 
-export default ClassDetail;
+export default ClassStudent;

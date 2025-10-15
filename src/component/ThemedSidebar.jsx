@@ -37,7 +37,12 @@ export default function ThemedSidebar({ collapsed }) {
       'MANAGER_LEVELS': <BookOutlined />,
       'MANAGER_COURSES': <BookOutlined />,
       'MANAGER_STUDENTS': <UserOutlined />,
+      'TEACHER_DASHBOARD': <DashboardOutlined />,
+      'TEACHER_CLASSES': <TeamOutlined />,
+      'MANAGER_CLASSES': <UserOutlined />,
       'TEACHER_DAILY_CHALLENGES': <TrophyOutlined />,
+      'TEACHING_ASSISTANT_CLASSES': <UserOutlined />,
+      'MANAGER_TEACHERS': <UserOutlined />,
       'SECURITY': <SecurityScanOutlined />,
     };
     return iconMap[key] || <UserOutlined />;
@@ -64,27 +69,15 @@ export default function ThemedSidebar({ collapsed }) {
       'MANAGER_LEVELS': t('sidebar.levelsManagement'),
       'MANAGER_COURSES': t('sidebar.coursesManagement'),
       'MANAGER_STUDENTS': t('sidebar.studentsManagement'),
+      'TEACHER_DASHBOARD': t('sidebar.dashboard'),
       'TEACHER_CLASSES': t('sidebar.classesManagement'),
       'TEACHER_DAILY_CHALLENGES': t('sidebar.dailyChallengeManagement'),
+      'TEACHING_ASSISTANT_CLASSES': t('sidebar.classesManagement'),
       'MANAGER_TEACHERS': t('sidebar.teacherManagement'),
       'SECURITY': 'Security',
     };
     return menuNameMap[key] || key;
   };
-
-  // Create static menu items (Dashboard only)
-  const staticMenuItems = [
-    {
-      key: 'DASHBOARD',
-      icon: <DashboardOutlined />,
-      label: (
-        <Link to="/dashboard" style={{ textDecoration: 'none' }}>
-          {t('sidebar.dashboard')}
-        </Link>
-      ),
-      title: collapsed ? t('sidebar.dashboard') : undefined,
-    }
-  ];
 
   // Create settings menu item (separate for positioning)
   const settingsMenuItem = {
@@ -102,7 +95,14 @@ export default function ThemedSidebar({ collapsed }) {
   const routeMenuItems = CONFIG_ROUTER
     .filter((route) => {
       // Show routes that are visible and match user role
-      return route.show && (!route.role || route.role === user?.role?.toLowerCase());
+      if (!route.show) return false;
+      if (!route.role) return true;
+      
+      const userRole = user?.role?.toLowerCase();
+      if (Array.isArray(route.role)) {
+        return route.role.includes(userRole);
+      }
+      return route.role === userRole;
     })
     .map((route) => ({
       key: route.key,
@@ -116,8 +116,8 @@ export default function ThemedSidebar({ collapsed }) {
       path: route.path,
     }));
 
-  // Combine static, route menu items, and settings at the end
-  const menuItems = [...staticMenuItems, ...routeMenuItems, settingsMenuItem];
+  // Combine route menu items and settings at the end
+  const menuItems = [...routeMenuItems, settingsMenuItem];
 
   // Auto scroll to selected item when sidebar is expanded
   useEffect(() => {
