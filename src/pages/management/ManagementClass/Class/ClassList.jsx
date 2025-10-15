@@ -3,7 +3,6 @@ import {
   Button,
   Input,
   Space,
-  message,
   Card,
   Row,
   Col,
@@ -233,7 +232,7 @@ const ClassList = () => {
           studentCount: 0, // API doesn't provide student count, set to 0
           color: getClassColor(classItem.id), // Use predefined color based on ID
           avatar: getRandomAvatar(), // Random avatar for display
-          status: classItem.isActive ? "active" : "inactive",
+          isActive: classItem.isActive,
           createdAt: classItem.createdAt ? classItem.createdAt.split('T')[0] : new Date().toISOString().split('T')[0],
           description: "", // API doesn't provide description
           teacher: "", // API doesn't provide teacher info
@@ -365,24 +364,45 @@ const ClassList = () => {
   };
 
   const handleToggleStatus = async (classItem) => {
-    const newStatus = classItem.status === 'active' ? 'inactive' : 'active';
-    const actionText = newStatus === 'active' ? t('classManagement.activate') : t('classManagement.deactivate');
+    const newStatus = !classItem.isActive;
+    const actionText = newStatus ? 'open' : 'close';
     
     setConfirmModal({
       visible: true,
-      title: t('classManagement.confirmStatusChange'),
-      content: `${t('classManagement.confirmStatusChangeMessage')} ${actionText} ${t('classManagement.class')} "${classItem.name}"?`,
+      title: 'Confirm Status Change',
+      content: `Are you sure you want to ${actionText} the class "${classItem.name}"?`,
       onConfirm: async () => {
         try {
-          await classManagementApi.updateClassStatus(classItem.id, newStatus === 'active' ? 'ACTIVE' : 'INACTIVE');
+          await classManagementApi.toggleClassStatus(classItem.id, newStatus);
           
           // Refresh the list
           fetchClasses(pagination.current, pagination.pageSize, searchText);
         setConfirmModal({ visible: false, title: '', content: '', onConfirm: null });
-        spaceToast.success(`${t('classManagement.statusChangedSuccess')} ${actionText}d ${t('classManagement.class')} "${classItem.name}"`);
+        spaceToast.success(`Class "${classItem.name}" has been ${actionText}ed successfully!`);
         } catch (error) {
           console.error('Error updating class status:', error);
-          spaceToast.error(t('classManagement.statusChangeError'));
+          spaceToast.error('Failed to update class status. Please try again.');
+        }
+      }
+    });
+  };
+
+  const handleDeleteClass = (classItem) => {
+    setConfirmModal({
+      visible: true,
+      title: 'Delete Class',
+      content: `Are you sure you want to delete the class "${classItem.name}"? This action cannot be undone.`,
+      onConfirm: async () => {
+        try {
+          await classManagementApi.deleteClass(classItem.id);
+          
+          // Refresh the list
+          fetchClasses(pagination.current, pagination.pageSize, searchText);
+          setConfirmModal({ visible: false, title: '', content: '', onConfirm: null });
+          spaceToast.success(`Class "${classItem.name}" has been deleted successfully!`);
+        } catch (error) {
+          console.error('Error deleting class:', error);
+          spaceToast.error(error.response?.data?.message || error.message || 'Failed to delete class. Please try again.');
         }
       }
     });
@@ -476,7 +496,7 @@ const ClassList = () => {
         
         // Refresh the list
         fetchClasses(pagination.current, pagination.pageSize, searchText);
-        message.success(t('classManagement.classUpdatedSuccess'));
+        spaceToast.success('Class updated successfully!');
       } else {
         // Add new class
         const newClassData = {
@@ -489,14 +509,14 @@ const ClassList = () => {
         
         // Refresh the list
         fetchClasses(1, pagination.pageSize, searchText);
-        message.success(t('classManagement.classCreatedSuccess'));
+        spaceToast.success('Class created successfully!');
       }
 
       setIsModalVisible(false);
       form.resetFields();
     } catch (error) {
       console.error('Error saving class:', error);
-      message.error(t('classManagement.checkInfoError'));
+      spaceToast.error(error.response?.data?.message || error.message || 'Failed to save class. Please try again.');
     }
   };
 
@@ -517,14 +537,13 @@ const ClassList = () => {
     }
   };
 
-  const getStatusTag = (status) => {
+  const getStatusTag = (isActive) => {
     const statusConfig = {
-      active: { color: "green", text: t('classManagement.active') },
-      inactive: { color: "red", text: t('classManagement.inactive') },
-      pending: { color: "orange", text: t('classManagement.pending') },
+      true: { color: "green", text: "Open" },
+      false: { color: "red", text: "Close" },
     };
 
-    const config = statusConfig[status] || statusConfig.inactive;
+    const config = statusConfig[isActive] || statusConfig.false;
     return <Tag color={config.color}>{config.text}</Tag>;
   };
 
@@ -542,10 +561,18 @@ const ClassList = () => {
     },
     {
       key: "toggle",
-      label: <span style={{ color: '#000000' }}>{classItem.status === 'active' ? t('classManagement.deactivate') : t('classManagement.activate')}</span>,
+      label: <span style={{ color: '#000000' }}>{classItem.isActive ? 'Close' : 'Open'}</span>,
       icon: <DeleteOutlined className="delete-icon" style={{ color: '#000000' }} />,
-      danger: classItem.status === 'active',
+      danger: classItem.isActive,
       onClick: () => handleToggleStatus(classItem),
+      className: "delete-menu-item",
+    },
+    {
+      key: "delete",
+      label: <span style={{ color: '#ff4d4f' }}>Delete Class</span>,
+      icon: <DeleteOutlined className="delete-icon" style={{ color: '#ff4d4f' }} />,
+      danger: true,
+      onClick: () => handleDeleteClass(classItem),
       className: "delete-menu-item",
     },
   ];
@@ -755,7 +782,7 @@ const ClassList = () => {
                           </div>
                           
                           <div className="class-stats">
-                            {getStatusTag(classItem.status)}
+                            {getStatusTag(classItem.isActive)}
                           </div>
                         </div>
                         
@@ -838,6 +865,8 @@ const ClassList = () => {
               name="name"
               rules={[
                 { required: true, message: t('classManagement.classNameRequired') },
+                { min: 3, message: 'Class name must be at least 3 characters' },
+                { max: 100, message: 'Class name must not exceed 100 characters' },
               ]}
             >
               <Input 
@@ -871,7 +900,7 @@ const ClassList = () => {
                       <Form.Item
                         name="avatar"
                         label="Select Avatar"
-                        rules={[{ required: true, message: 'Please select an avatar' }]}
+                        rules={[{ required: true, message: 'Please select an avatar for the class' }]}
                       >
                         <Select
                           placeholder="Select Avatar"
@@ -906,7 +935,7 @@ const ClassList = () => {
               label="Syllabus"
               name="syllabusId"
               rules={[
-                { required: !editingClass, message: 'Please select a syllabus' },
+                { required: !editingClass, message: 'Please select a syllabus for the class' },
               ]}
             >
               <Select 
@@ -929,7 +958,7 @@ const ClassList = () => {
               label={t('classManagement.classColor')}
               name="color"
               rules={[
-                { required: true, message: t('classManagement.classColorRequired') },
+                { required: true, message: 'Please select a color for the class' },
               ]}
             >
               <ColorPicker 

@@ -71,6 +71,32 @@ export const changePassword = createAsyncThunk(
 	}
 );
 
+// Async thunk for update profile
+export const updateProfile = createAsyncThunk(
+	'/auth/updateProfile',
+	async (data, { rejectWithValue }) => {
+		try {
+			const response = await authApi.updateProfile(data);
+			return response;
+		} catch (error) {
+			return rejectWithValue(error.response?.data || error.message);
+		}
+	}
+);
+
+// Async thunk for update email
+export const updateEmail = createAsyncThunk(
+	'/auth/updateEmail',
+	async (data, { rejectWithValue }) => {
+		try {
+			const response = await authApi.updateEmail(data);
+			return response;
+		} catch (error) {
+			return rejectWithValue(error.response?.data || error.message);
+		}
+	}
+);
+
 const initialState = {
 	user: storedUser ? JSON.parse(storedUser) : null,
 	accessToken: storedAccessToken,
@@ -89,6 +115,12 @@ const initialState = {
 	changePasswordLoading: false,
 	changePasswordError: null,
 	changePasswordSuccess: false,
+	updateProfileLoading: false,
+	updateProfileError: null,
+	updateProfileSuccess: false,
+	updateEmailLoading: false,
+	updateEmailError: null,
+	updateEmailSuccess: false,
 };
 
 const authSlice = createSlice({
@@ -125,6 +157,16 @@ const authSlice = createSlice({
 			state.changePasswordLoading = false;
 			state.changePasswordError = null;
 			state.changePasswordSuccess = false;
+		},
+		clearUpdateProfileState: (state) => {
+			state.updateProfileLoading = false;
+			state.updateProfileError = null;
+			state.updateProfileSuccess = false;
+		},
+		clearUpdateEmailState: (state) => {
+			state.updateEmailLoading = false;
+			state.updateEmailError = null;
+			state.updateEmailSuccess = false;
 		},
 		updateToken: (state, action) => {
 			state.accessToken = action.payload;
@@ -234,9 +276,47 @@ const authSlice = createSlice({
 				state.changePasswordLoading = false;
 				state.changePasswordError = action.payload;
 				state.changePasswordSuccess = false;
+			})
+			.addCase(updateProfile.pending, (state) => {
+				state.updateProfileLoading = true;
+				state.updateProfileError = null;
+				state.updateProfileSuccess = false;
+			})
+			.addCase(updateProfile.fulfilled, (state, action) => {
+				state.updateProfileLoading = false;
+				state.updateProfileSuccess = true;
+				state.updateProfileError = null;
+				// Cập nhật profileData với dữ liệu mới
+				if (action.payload?.data) {
+					state.profileData = action.payload.data;
+				}
+			})
+			.addCase(updateProfile.rejected, (state, action) => {
+				state.updateProfileLoading = false;
+				state.updateProfileError = action.payload;
+				state.updateProfileSuccess = false;
+			})
+			.addCase(updateEmail.pending, (state) => {
+				state.updateEmailLoading = true;
+				state.updateEmailError = null;
+				state.updateEmailSuccess = false;
+			})
+			.addCase(updateEmail.fulfilled, (state, action) => {
+				state.updateEmailLoading = false;
+				state.updateEmailSuccess = true;
+				state.updateEmailError = null;
+				// Cập nhật email trong profileData
+				if (action.payload?.data && state.profileData) {
+					state.profileData.email = action.payload.data.email;
+				}
+			})
+			.addCase(updateEmail.rejected, (state, action) => {
+				state.updateEmailLoading = false;
+				state.updateEmailError = action.payload;
+				state.updateEmailSuccess = false;
 			});
 	},
 });
 
-export const { loginSuccess, logout, clearForgotPasswordState, clearChangePasswordState, updateToken } = authSlice.actions;
+export const { loginSuccess, logout, clearForgotPasswordState, clearChangePasswordState, clearUpdateProfileState, clearUpdateEmailState, updateToken } = authSlice.actions;
 export default authSlice.reducer;
