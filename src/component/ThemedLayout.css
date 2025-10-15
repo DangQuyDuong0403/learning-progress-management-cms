@@ -426,7 +426,7 @@
 /* Sun theme menu items */
 .sun-theme .themed-sidebar-menu .ant-menu-item {
 	color: #4398f8;
-	background: rgba(131, 117, 165, 0.1);
+	background: transparent; /* Bỏ nền xám */
 	font-size: 25px;
 }
 
@@ -450,8 +450,7 @@
 /* Space theme menu items */
 .space-theme .themed-sidebar-menu .ant-menu-item {
 	color: rgba(255, 255, 255, 0.9);
-	font-size: 25px;
-	background: rgba(109, 95, 143, 0.1);
+	background: transparent; /* Bỏ nền xám */
 }
 
 .space-theme .themed-sidebar-menu .ant-menu-item:hover {
@@ -602,8 +601,9 @@
 	display: none;
 }
 
+/* Chỉ ẩn text, giữ nguyên icon và styling */
 .themed-layout .ant-layout-sider-collapsed .themed-sidebar-menu .ant-menu-item {
-	padding: 0;
+	padding: 0 20px;
 	text-align: center;
 	height: 72px;
 	line-height: 72px;
@@ -611,8 +611,19 @@
 	align-items: center;
 	justify-content: center;
 	margin: 12px 12px;
+	/* Giữ nguyên tất cả styling khác */
+	border-radius: 20px;
+	font-size: 23px;
+	font-weight: 600;
+	border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
+/* Ẩn text content khi collapsed */
+.themed-layout .ant-layout-sider-collapsed .themed-sidebar-menu .ant-menu-item .ant-menu-title-content {
+	display: none;
+}
+
+/* Giữ nguyên icon styling */
 .themed-layout
 	.ant-layout-sider-collapsed
 	.themed-sidebar-menu
@@ -620,7 +631,7 @@
 	.anticon {
 	margin-right: 0;
 	margin-left: 0;
-	font-size: 28px;
+	font-size: 24px; /* Giữ nguyên kích thước icon */
 	display: flex;
 	align-items: center;
 	justify-content: center;
@@ -1483,18 +1494,11 @@
 }
 
 @keyframes sunFloat {
-	0%,
-	100% {
-		transform: translateY(0px) rotate(0deg);
-	}
-	25% {
-		transform: translateY(-5px) rotate(2deg);
+	0%, 100% {
+		transform: translateY(0px);
 	}
 	50% {
-		transform: translateY(-10px) rotate(0deg);
-	}
-	75% {
-		transform: translateY(-5px) rotate(-2deg);
+		transform: translateY(-8px);
 	}
 }
 

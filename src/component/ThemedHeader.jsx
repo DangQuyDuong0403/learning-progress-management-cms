@@ -1,10 +1,10 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useSelector, useDispatch } from 'react-redux';
 import { Switch, Tooltip } from 'antd';
 import { SunOutlined, MoonOutlined } from '@ant-design/icons';
-import { logoutApi, logout } from '../redux/auth';
+import { logoutApi, logout, getUserProfile } from '../redux/auth';
 import { useTheme } from '../contexts/ThemeContext';
 import LanguageToggle from './LanguageToggle';
 import { spaceToast } from './SpaceToastify';
@@ -13,9 +13,14 @@ import './ThemedHeader.css';
 export default function ThemedHeader() {
   const navigate = useNavigate();
   const { t } = useTranslation();
-  const { user, refreshToken, logoutLoading } = useSelector((state) => state.auth);
+  const { user, refreshToken, profileData } = useSelector((state) => state.auth);
   const dispatch = useDispatch();
   const { theme, toggleTheme, isSunTheme } = useTheme();
+
+  // Fetch user profile data on component mount
+  useEffect(() => {
+    dispatch(getUserProfile());
+  }, [dispatch]);
 
   const handleLogout = async () => {
     try {
@@ -261,13 +266,13 @@ export default function ThemedHeader() {
                           color: theme === 'sun' ? '#1e40af' : '#fff',
                           marginBottom: '2px'
                         }}>
-                          {user?.name || 'User'}
+                          {profileData ? `${profileData.lastName} ${profileData.firstName}` : (user?.fullName || user?.name || 'User')}
                         </div>
                         <div style={{ 
                           fontSize: '14px', 
                           color: theme === 'sun' ? '#64748b' : 'rgba(255, 255, 255, 0.7)'
                         }}>
-                          {user?.email || user?.name || 'user@example.com'}
+                          {profileData?.email || user?.email || 'user@example.com'}
                         </div>
                       </div>
                     </div>
