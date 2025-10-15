@@ -394,7 +394,7 @@
 	border-radius: 20px;
 	height: 72px;
 	line-height: 72px;
-	font-size: 23px;
+	font-size: 25px;
 	font-weight: 600;
 	position: relative;
 	overflow: hidden;
@@ -450,6 +450,7 @@
 /* Space theme menu items */
 .space-theme .themed-sidebar-menu .ant-menu-item {
 	color: rgba(255, 255, 255, 0.9);
+	font-size: 25px;
 	background: rgba(109, 95, 143, 0.1);
 }
 
@@ -475,7 +476,7 @@
 }
 
 .themed-sidebar-menu .ant-menu-item .anticon {
-	font-size: 24px;
+	font-size: 25px;
 	margin-right: 20px;
 	transition: all 0.3s ease;
 }

@@ -44,6 +44,11 @@ const Settings = () => {
 	const [isTransitioning, setIsTransitioning] = useState(false);
 	const [transitionDirection, setTransitionDirection] = useState('right'); // 'right' for sun->space, 'left' for space->sun
 
+	// Helper function để lấy ngôn ngữ hiện tại
+	const getCurrentLanguage = () => {
+		return localStorage.getItem('i18nextLng') || i18n.language || 'en';
+	};
+
 
 	// Password change functionality
 	const handlePasswordChange = async () => {
@@ -127,7 +132,8 @@ const Settings = () => {
 
 	// Language toggle (similar to theme toggle)
 	const handleLanguageToggle = () => {
-		const currentLang = localStorage.getItem('i18nextLng') || 'en';
+		// Lấy ngôn ngữ hiện tại từ localStorage hoặc i18n, mặc định là 'en'
+		const currentLang = getCurrentLanguage();
 		const newLang = currentLang === 'vi' ? 'en' : 'vi';
 		
 		i18n.changeLanguage(newLang);
@@ -217,19 +223,19 @@ const Settings = () => {
 								</Text>
 								<div className="custom-language-toggle">
 									<div className="language-toggle-track" onClick={handleLanguageToggle}>
-										<div className={`language-toggle-thumb ${(localStorage.getItem('i18nextLng') || 'en') === 'vi' ? 'vi-theme' : 'en-theme'}`}>
+										<div className={`language-toggle-thumb ${getCurrentLanguage() === 'vi' ? 'vi-theme' : 'en-theme'}`}>
 											<img 
-												src={(localStorage.getItem('i18nextLng') || 'en') === 'vi' ? "/img/vietnamflag.png" : "/img/englandflag.png"} 
+												src={getCurrentLanguage() === 'vi' ? "/img/vietnamflag.png" : "/img/englandflag.png"} 
 												alt="Language Flag" 
 												className="flag-image"
 											/>
 										</div>
 									</div>
 									<div className="language-labels">
-										<Text className={`language-label vi-label ${(localStorage.getItem('i18nextLng') || 'en') === 'vi' ? 'active' : ''}`}>
+										<Text className={`language-label vi-label ${getCurrentLanguage() === 'vi' ? 'active' : ''}`}>
 											🇻🇳 Tiếng Việt
 										</Text>
-										<Text className={`language-label en-label ${(localStorage.getItem('i18nextLng') || 'en') === 'en' ? 'active' : ''}`}>
+										<Text className={`language-label en-label ${getCurrentLanguage() === 'en' ? 'active' : ''}`}>
 											🇬🇧 English
 										</Text>
 									</div>
