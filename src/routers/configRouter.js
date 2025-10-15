@@ -35,6 +35,8 @@ import ClassDetail from '../pages/management/ManagementManager/Class/ClassDetail
 import ClassTeachers from '../pages/management/ManagementManager/Class/ClassTeachers.jsx';
 import ClassActivities from '../pages/management/ManagementManager/Class/ClassActivities.jsx';
 import ClassChapterLesson from '../pages/management/ManagementManager/Class/ClassChapterLesson.jsx';
+// Teacher Components
+import TeacherDashboard from '../pages/management/ManagementTeacher/TeacherDashboard.jsx';
 // Teacher Class Components
 import TeacherClassList from '../pages/management/ManagementTeacher/class/ClassList.jsx';
 import TeacherClassMenu from '../pages/management/ManagementTeacher/class/ClassMenu.jsx';
@@ -425,6 +427,16 @@ const CONFIG_ROUTER = [
 	},
 	
 	// Teacher Management Routes
+	{
+		show: true,
+		component: TeacherDashboard,
+		path: ROUTER_PAGE.TEACHER_DASHBOARD,
+		menuName: 'Teacher Dashboard',
+		exact: true,
+		key: 'TEACHER_DASHBOARD',
+		private: true,
+		role: 'teacher',
+	},
 	{
 		show: true,
 		component: TeacherClassList,

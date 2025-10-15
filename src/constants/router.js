@@ -51,6 +51,7 @@ const ROUTER_PAGE = {
 	MANAGER_CLASS_ACTIVITIES: '/manager/classes/activities/:id',
 	MANAGER_CLASS_CHAPTERS_LESSONS: '/manager/classes/chapters-lessons/:id',
 	// Teacher Management Routes
+	TEACHER_DASHBOARD: '/teacher/dashboard',
 	TEACHER_CLASSES: '/teacher/classes',
 	TEACHER_CLASS_MENU: '/teacher/classes/menu/:id',
 	TEACHER_CLASS_DASHBOARD: '/teacher/classes/dashboard/:id',
