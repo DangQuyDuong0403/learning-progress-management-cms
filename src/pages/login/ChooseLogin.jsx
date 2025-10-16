@@ -13,8 +13,9 @@ export default function ChooseLogin() {
   const { isSunTheme } = useTheme();
 
   const selectRole = (role) => {
-    localStorage.setItem('selectedRole', role);
-    localStorage.setItem('loginRole', role);
+    const roleUpper = role.toUpperCase();
+    localStorage.setItem('selectedRole', roleUpper);
+    localStorage.setItem('loginRole', roleUpper);
     if (role === 'student') {
       navigate('/login-student');
     } else if (role === 'teacher') {
