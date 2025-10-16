@@ -222,17 +222,36 @@ const LevelDragEdit = () => {
 		try {
 			const params = {
 				page: 0,
-				size: 100,
+				size: 100, // Request all at once
 				sortBy: 'orderNumber',
 				sortDir: 'asc',
+				status: [true], // Chỉ active levels
 			};
-			params.status = [true, false];
 
-			const response = await levelManagementApi.getLevels({
-				params: params,
+			console.log('LevelDragEdit - Fetching all active levels...');
+
+			const response = await levelManagementApi.getLevels(params);
+
+			console.log('LevelDragEdit API Response:', response);
+			console.log('Response structure check:', {
+				isArray: Array.isArray(response.data),
+				hasContent: response.data?.content,
+				totalElements: response.totalElements,
+				totalPages: response.totalPages,
+				dataLength: response.data?.length
 			});
 
-			const mappedLevels = response.data.map((level, index) => ({
+			// Handle different response structures
+			let levelsData = [];
+			if (response && response.data) {
+				if (Array.isArray(response.data)) {
+					levelsData = response.data;
+				} else if (response.data.content && Array.isArray(response.data.content)) {
+					levelsData = response.data.content;
+				}
+			}
+
+			const mappedLevels = levelsData.map((level, index) => ({
 				id: level.id,
 				levelName: level.levelName,
 				difficulty: level.difficulty,
@@ -245,6 +264,7 @@ const LevelDragEdit = () => {
 				position: index + 1,
 			}));
 
+			console.log('LevelDragEdit - All active levels fetched:', mappedLevels.length);
 			setLevels(mappedLevels);
 		} catch (error) {
 			console.error('Error fetching levels:', error);
@@ -267,7 +287,7 @@ const LevelDragEdit = () => {
 	}, []);
 
 	const handleModalClose = useCallback(
-		(shouldRefresh, newLevelData) => {
+		(shouldRefresh, newLevelData, successMessage) => {
 			setIsModalVisible(false);
 			
 			if (shouldRefresh && newLevelData) {
@@ -299,6 +319,11 @@ const LevelDragEdit = () => {
 							orderNumber: i + 1,
 						}));
 					});
+				}
+				
+				// Show success message if provided
+				if (successMessage) {
+					spaceToast.success(successMessage);
 				}
 			}
 			
@@ -398,7 +423,13 @@ const LevelDragEdit = () => {
 					learningObjectives: level.learningObjectives || '',
 					estimatedDurationWeeks: level.estimatedDurationWeeks || 0,
 					orderNumber: level.position, // Position hiện tại = orderNumber
+					isActive: true, // Đảm bảo tất cả levels đều active
 				};
+			});
+
+			console.log('LevelDragEdit - Sending bulk update data:', {
+				count: bulkUpdateData.length,
+				levels: bulkUpdateData.map(l => ({ id: l.id, levelName: l.levelName, orderNumber: l.orderNumber }))
 			});
 
 			// Gọi API bulk update (sẽ xử lý cả create và update)
@@ -653,7 +684,7 @@ const LevelDragEdit = () => {
 				bodyStyle={{
 					padding: '24px',
 				}}>
-				<LevelForm level={editingLevel} onClose={handleModalClose} />
+				<LevelForm level={editingLevel} onClose={handleModalClose} shouldCallApi={false} />
 			</Modal>
 		</ThemedLayout>
 	);

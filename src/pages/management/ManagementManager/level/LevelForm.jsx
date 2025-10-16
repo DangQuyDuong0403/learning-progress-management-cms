@@ -11,11 +11,12 @@ import {
   InputNumber
 } from 'antd';
 import { useTranslation } from 'react-i18next';
+import levelManagementApi from '../../../../apis/backend/levelManagement';
 
 const { TextArea } = Input;
 const { Option } = Select;
 
-const LevelForm = ({ level, onClose }) => {
+const LevelForm = ({ level, onClose, shouldCallApi = true }) => {
   const { t } = useTranslation();
   
   const [form] = Form.useForm();
@@ -52,13 +53,33 @@ const LevelForm = ({ level, onClose }) => {
         learningObjectives: values.learningObjectives || '',
         estimatedDurationWeeks: values.estimatedDurationWeeks,
         orderNumber: values.orderNumber || 0,
-        status: values.status || 'active',
       };
 
-      // Return data to parent component instead of calling API
-      message.success(isEdit ? t('levelManagement.updateLevelSuccess') : t('levelManagement.addLevelSuccess'));
-      onClose(true, apiData); // Pass data to parent
+      console.log('LevelForm onFinish:', { isEdit, level, apiData, shouldCallApi });
+
+      if (shouldCallApi) {
+        // Call API (for LevelList usage)
+        let successMessage;
+        if (isEdit) {
+          // Update existing level
+          console.log('Updating level with ID:', level.id);
+          await levelManagementApi.updateLevel(level.id, apiData);
+          successMessage = t('levelManagement.updateLevelSuccess');
+        } else {
+          // Create new level
+          console.log('Creating new level');
+          await levelManagementApi.createLevel(apiData);
+          successMessage = t('levelManagement.addLevelSuccess');
+        }
+        onClose(true, successMessage); // Tell parent to refresh data and show success message
+      } else {
+        // Don't call API (for LevelDragEdit usage)
+        console.log('Not calling API, returning data to parent');
+        const successMessage = isEdit ? t('levelManagement.updateLevelSuccess') : t('levelManagement.addLevelSuccess');
+        onClose(true, apiData, successMessage); // Pass data and message to parent
+      }
     } catch (error) {
+      console.error('Error saving level:', error);
       message.error(isEdit ? t('levelManagement.updateLevelError') : t('levelManagement.addLevelError'));
     } finally {
       setIsSubmitting(false);
