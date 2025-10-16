@@ -27,12 +27,6 @@ export default function Login() {
 	const handleSubmit = async (e) => {
 		e.preventDefault();
 
-		// Validation: empty fields
-		if (!username || !password) {
-			spaceToast.error(t('messages.fieldsEmpty'));
-			return;
-		}
-
 		setLoading(true);
 		
 		try {
@@ -44,12 +38,13 @@ export default function Login() {
 			// Lấy loginRole từ localStorage
 			const loginRole = localStorage.getItem('loginRole') || 'student';
 			
-			// Gọi API login với 3 trường
-			const response = await authApi.login({
-				username,
-				password,
-				loginRole
-			});
+			// Gọi API login với 3 trường - đảm bảo thứ tự tuyệt đối
+			const loginData = new Map();
+			loginData.set('username', username);
+			loginData.set('password', password);
+			loginData.set('loginRole', loginRole);
+			
+			const response = await authApi.login(Object.fromEntries(loginData));
 
 			// Dispatch login success với data từ API
 			dispatch(loginSuccess(response.data));

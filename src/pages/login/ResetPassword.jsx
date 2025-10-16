@@ -179,7 +179,6 @@ export default function ResetPassword() {
                                                             color: isSunTheme ? '#6b7280' : '#ffffff'
                                                         }
                                                     }}
-                                                    required
                                                 />
                                             </div>
 

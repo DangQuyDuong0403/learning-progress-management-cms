@@ -24,18 +24,6 @@ export default function LoginTeacher() {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        
-        // Validation: empty fields
-        if (!username || !password) {
-            return;
-        }
-        
-        // Validation: email format
-        // const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        // if (!emailRegex.test(username)) {
-        //     spaceToast.error("Invalid email format!");
-        //     return;
-        // }
 
         setLoading(true);
         
@@ -48,12 +36,13 @@ export default function LoginTeacher() {
             // Lấy loginRole từ localStorage
             const loginRole = localStorage.getItem('loginRole') || 'teacher';
             
-            // Gọi API login với 3 trường
-            const response = await authApi.login({
-                username,
-                password,
-                loginRole
-            });
+            // Gọi API login với 3 trường - đảm bảo thứ tự tuyệt đối
+            const loginData = new Map();
+            loginData.set('username', username);
+            loginData.set('password', password);
+            loginData.set('loginRole', loginRole);
+            
+            const response = await authApi.login(Object.fromEntries(loginData));
 
             // Dispatch login success với data từ API
             dispatch(loginSuccess(response.data));

@@ -130,7 +130,6 @@ export default function ForgotPassword() {
                                                     prefix={<UserOutlined />}
                                                     size='large'
                                                     style={getInputStyle(isSunTheme)}
-                                                    required
                                                 />
                                             </div>
                                         </div>

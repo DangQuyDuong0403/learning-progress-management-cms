@@ -209,7 +209,6 @@ export default function ChangePassword() {
                                                             color: isSunTheme ? '#6b7280' : '#ffffff'
                                                         }
                                                     }}
-                                                    required
                                                 />
                                             </div>
                                         </div>
@@ -234,7 +233,6 @@ export default function ChangePassword() {
                                                             color: isSunTheme ? '#6b7280' : '#ffffff'
                                                         }
                                                     }}
-                                                    required
                                                 />
                                             </div>
 
@@ -278,7 +276,6 @@ export default function ChangePassword() {
                                                             color: isSunTheme ? '#6b7280' : '#ffffff'
                                                         }
                                                     }}
-                                                    required
                                                 />
                                             </div>
 
