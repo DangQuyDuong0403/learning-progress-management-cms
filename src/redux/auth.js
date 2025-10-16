@@ -12,7 +12,11 @@ export const forgotPassword = createAsyncThunk(
 	async (username, { rejectWithValue }) => {
 		try {
 			const response = await authApi.forgotPassword({ username });
-			return response;
+			// Return the message from the original response
+			return {
+				message: response.message,
+				data: response.data
+			};
 		} catch (error) {
 			return rejectWithValue(error.response.data.error || error.message);
 		}
@@ -105,6 +109,7 @@ const initialState = {
 	forgotPasswordLoading: false,
 	forgotPasswordError: null,
 	forgotPasswordSuccess: false,
+	forgotPasswordMessage: null,
 	refreshTokenLoading: false,
 	refreshTokenError: null,
 	logoutLoading: false,
@@ -152,6 +157,7 @@ const authSlice = createSlice({
 			state.forgotPasswordLoading = false;
 			state.forgotPasswordError = null;
 			state.forgotPasswordSuccess = false;
+			state.forgotPasswordMessage = null;
 		},
 		clearChangePasswordState: (state) => {
 			state.changePasswordLoading = false;
@@ -179,16 +185,19 @@ const authSlice = createSlice({
 				state.forgotPasswordLoading = true;
 				state.forgotPasswordError = null;
 				state.forgotPasswordSuccess = false;
+				state.forgotPasswordMessage = null;
 			})
 			.addCase(forgotPassword.fulfilled, (state, action) => {
 				state.forgotPasswordLoading = false;
 				state.forgotPasswordSuccess = true;
 				state.forgotPasswordError = null;
+				state.forgotPasswordMessage = action.payload.message;
 			})
 			.addCase(forgotPassword.rejected, (state, action) => {
 				state.forgotPasswordLoading = false;
 				state.forgotPasswordError = action.payload;
 				state.forgotPasswordSuccess = false;
+				state.forgotPasswordMessage = null;
 			})
 			.addCase(refreshToken.pending, (state) => {
 				state.refreshTokenLoading = true;

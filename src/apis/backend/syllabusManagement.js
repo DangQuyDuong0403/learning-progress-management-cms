@@ -27,6 +27,16 @@ const syllabusManagementApi = {
     updateLesson: (id, data) => axiosClient.put(`/lesson/${id}`, data),
     deleteLesson: (id) => axiosClient.delete(`/lesson/${id}`),
     bulkUpdateLessons: (data) => axiosClient.put('/lesson/bulk-order', data),
+    
+    // Lesson Import/Export APIs
+    importLessons: (formData) => axiosClient.post('/lesson/import', formData, {
+        headers: {
+            'Content-Type': 'multipart/form-data',
+        },
+    }),
+    downloadLessonTemplate: () => axiosClient.get('/lesson/download-template', {
+        responseType: 'blob'
+    }),
 }
 
 export default syllabusManagementApi;

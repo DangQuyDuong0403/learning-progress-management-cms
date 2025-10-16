@@ -86,21 +86,20 @@ export default function ResetPassword() {
 			});
 
 			if (response.data.success) {
-				spaceToast.success(t('resetPassword.resetSuccess'));
+				spaceToast.success(response.message);
 				
 				// Chuyển về trang login sau 2 giây
 				setTimeout(() => {
 					navigate('/choose-login');
 				}, 2000);
 			} else {
-				spaceToast.error(response.data.message || t('resetPassword.resetError'));
+				spaceToast.error(response.message);
 			}
 		} catch (error) {
-			const errorMessage = error.response?.data?.message || 
-								error.response?.data?.error || 
-								error.message || 
-								t('resetPassword.resetError');
-			spaceToast.error(errorMessage);
+			if (error.response) {
+				const errorMessage = error.response.data.error;
+				spaceToast.error(errorMessage);
+			}
 		} finally {
 			setLoading(false);
 		}
@@ -180,7 +179,6 @@ export default function ResetPassword() {
                                                             color: isSunTheme ? '#6b7280' : '#ffffff'
                                                         }
                                                     }}
-                                                    required
                                                 />
                                             </div>
 
