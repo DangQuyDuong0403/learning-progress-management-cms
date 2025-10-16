@@ -1019,16 +1019,8 @@ STU003,Le Van Cuong,levancuong@example.com,0111222333,Lớp 11B1,Advanced,active
             <Row gutter={16}>
               <Col span={12}>
                 <Form.Item
-                  label={
-                    <span>
-                      Level
-                      <span style={{ color: 'red', marginLeft: '4px' }}>*</span>
-                    </span>
-                  }
+                  label="Level"
                   name="levelId"
-                  rules={[
-                    { required: true, message: 'Level is required' },
-                  ]}
                 >
                   <Select 
                     placeholder="Select level"
