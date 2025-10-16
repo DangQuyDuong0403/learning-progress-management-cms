@@ -60,7 +60,7 @@ const ClassMenu = () => {
         setClassData({
           id: response.data.id,
           name: response.data.className,
-          description: `Class ID: ${response.data.id}`,
+          description: '',
           isActive: response.data.isActive,
           syllabusId: response.data.syllabusId,
           createdBy: response.data.createdBy,
@@ -173,9 +173,11 @@ const ClassMenu = () => {
               <h2 className="class-title">
                 {classData?.name}
               </h2>
-              <p className="class-subtitle">
-                {classData?.description}
-              </p>
+              {classData?.description && (
+                <p className="class-subtitle">
+                  {classData?.description}
+                </p>
+              )}
             </div>
           </div>
         </Card>
