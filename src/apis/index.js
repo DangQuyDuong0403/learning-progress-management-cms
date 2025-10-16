@@ -35,6 +35,13 @@ axiosClient.interceptors.request.use(
 let isRefreshing = false;
 let failedQueue = [];
 
+// Hàm để reset trạng thái refresh token
+const resetRefreshState = () => {
+	isRefreshing = false;
+	failedQueue = [];
+	console.log('🔄 Reset refresh state');
+};
+
 const processQueue = (error, token = null) => {
 	failedQueue.forEach(prom => {
 		if (error) {
@@ -64,8 +71,24 @@ axiosClient.interceptors.response.use(
 			hasRetry: originalRequest._retry
 		});
 		
+		// Reset refresh state nếu có lỗi không phải 401 hoặc đã retry
+		if (error.response?.status !== 401 || originalRequest._retry) {
+			resetRefreshState();
+		}
+		
+		// Reset refresh state nếu có lỗi network hoặc timeout
+		if (!error.response) {
+			resetRefreshState();
+		}
+		
 		if (error.response?.status === 401 && !originalRequest._retry) {
 			console.log('🔐 401 Unauthorized - attempting token refresh');
+			
+			// Kiểm tra nếu đây là request login thì không cần refresh token
+			if (originalRequest.url?.includes('/auth/Login')) {
+				console.log('🚫 Login request - skipping token refresh');
+				return Promise.reject(error);
+			}
 			
 			if (isRefreshing) {
 				console.log('⏳ Token refresh already in progress, queuing request');
@@ -127,13 +150,18 @@ axiosClient.interceptors.response.use(
 					return Promise.reject(refreshError);
 				} finally {
 					isRefreshing = false;
+					// Reset trạng thái để tránh stuck
+					resetRefreshState();
 				}
 			} else {
 				console.log('❌ No refresh token found, logging out');
 				// Không có refresh token, đăng xuất
+				processQueue(error, null); // Xử lý queue với lỗi gốc
 				localStorage.removeItem('accessToken');
 				localStorage.removeItem('user');
 				localStorage.removeItem('refreshToken');
+				// Reset trạng thái để tránh stuck
+				resetRefreshState();
 				// window.location.href = '/choose-login'; // Tạm thời disable
 				return Promise.reject(error);
 			}

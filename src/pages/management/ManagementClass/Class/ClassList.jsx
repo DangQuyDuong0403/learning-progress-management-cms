@@ -161,24 +161,43 @@ const ClassList = () => {
       // Fetch all unique syllabus IDs
       const uniqueSyllabusIds = [...new Set(syllabusIds.filter(id => id))];
       
-      // Fetch syllabus data for each ID
-      for (const syllabusId of uniqueSyllabusIds) {
-        try {
-          const response = await syllabusManagementApi.getSyllabuses({ 
-            params: { id: syllabusId } 
+      // Fetch all syllabuses and filter by IDs
+      try {
+        const response = await syllabusManagementApi.getSyllabuses({ 
+          params: { page: 0, size: 1000 } // Get all syllabuses
+        });
+        
+        console.log('All syllabuses response:', response);
+        
+        if (response.success && response.data) {
+          // Create a map of syllabus ID to syllabus name
+          response.data.forEach(syllabus => {
+            if (uniqueSyllabusIds.includes(syllabus.id)) {
+              syllabusMap[syllabus.id] = syllabus.syllabusName || 'Unknown Syllabus';
+            }
           });
           
-          if (response.success && response.data && response.data.length > 0) {
-            syllabusMap[syllabusId] = response.data[0].syllabusName || 'Unknown Syllabus';
-          } else {
-            syllabusMap[syllabusId] = 'Unknown Syllabus';
-          }
-        } catch (error) {
-          console.error(`Error fetching syllabus ${syllabusId}:`, error);
-          syllabusMap[syllabusId] = 'Unknown Syllabus';
+          // Set default for any missing syllabus IDs
+          uniqueSyllabusIds.forEach(id => {
+            if (!syllabusMap[id]) {
+              syllabusMap[id] = 'Unknown Syllabus';
+            }
+          });
+        } else {
+          // If API fails, set all to unknown
+          uniqueSyllabusIds.forEach(id => {
+            syllabusMap[id] = 'Unknown Syllabus';
+          });
         }
+      } catch (error) {
+        console.error('Error fetching all syllabuses:', error);
+        // Set all to unknown on error
+        uniqueSyllabusIds.forEach(id => {
+          syllabusMap[id] = 'Unknown Syllabus';
+        });
       }
       
+      console.log('Final syllabus map:', syllabusMap);
       return syllabusMap;
     } catch (error) {
       console.error('Error fetching syllabus data:', error);

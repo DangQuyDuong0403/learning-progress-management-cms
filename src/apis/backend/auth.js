@@ -49,9 +49,19 @@ const authApi = {
 	// Làm mới Access Token
 	refreshToken: (refreshToken) => axiosClient.post(`/auth/refresh-token?refreshToken=${refreshToken}`),
 
-	
-		// Đăng xuất
-		logout: (refreshToken) => axiosClient.post(`/auth/logout?refreshToken=${refreshToken}`),
+	// Đổi mật khẩu
+	changePassword: (data) => {
+		console.log('ChangePassword API - Request Body:', data);
+		return axiosClient.post('/auth/change-password', data, {
+			headers: {
+				'Content-Type': 'application/json',
+				'accept': '*/*',
+			}
+		});
+	},
+
+	// Đăng xuất
+	logout: (refreshToken) => axiosClient.post(`/auth/logout?refreshToken=${refreshToken}`),
 
 	// Lấy thông tin user hiện tại
 	getUserProfile: () => {
