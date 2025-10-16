@@ -95,15 +95,42 @@ const Settings = () => {
 			
 		} catch (error) {
 			console.error('Change password error:', error);
+			console.error('Error response:', error.response);
+			console.error('Error status:', error.response?.status);
+			console.error('Error data:', error.response?.data);
 			
-			// Handle API errors with toast messages
+			// Handle API errors with specific messages
 			if (error.response) {
-				const errorMessage = error.response.data.message || t('settings.passwordChangeError');
-				message.error(errorMessage);
+				const statusCode = error.response.status;
+				const errorData = error.response.data;
+				
+				// Check if it's a wrong current password error by examining the message
+				const errorMessage = errorData.message || errorData.error || '';
+				const isWrongCurrentPassword = 
+					errorMessage.toLowerCase().includes('current') ||
+					errorMessage.toLowerCase().includes('old') ||
+					errorMessage.toLowerCase().includes('incorrect') ||
+					errorMessage.toLowerCase().includes('wrong') ||
+					errorMessage.toLowerCase().includes('invalid') ||
+					errorMessage.toLowerCase().includes('mismatch');
+				
+				// Handle specific error cases
+				if (statusCode === 400 || statusCode === 401 || statusCode === 403) {
+					if (isWrongCurrentPassword) {
+						spaceToast.error(t('settings.wrongCurrentPassword'));
+					} else if (statusCode === 401) {
+						spaceToast.error(t('settings.sessionExpired'));
+					} else {
+						spaceToast.error(errorMessage || t('settings.passwordChangeError'));
+					}
+				} else {
+					// Other server errors
+					spaceToast.error(errorMessage || t('settings.passwordChangeError'));
+				}
 			} else if (error.request) {
-				message.error('Network error. Please check your connection!');
+				spaceToast.error('Network error. Please check your connection!');
 			} else {
-				message.error('Something went wrong!');
+				spaceToast.error('Something went wrong!');
 			}
 		} finally {
 			setChangePasswordLoading(false);
