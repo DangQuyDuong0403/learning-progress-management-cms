@@ -6,12 +6,15 @@ import {
 	Modal,
 	message,
 	Input,
-	Tag,
 	Card,
 	Row,
 	Col,
-	Statistic,
 	Tooltip,
+	Upload,
+	Typography,
+	Divider,
+	Progress,
+	Alert,
 } from 'antd';
 import {
 	PlusOutlined,
@@ -20,25 +23,25 @@ import {
 	SearchOutlined,
 	ReloadOutlined,
 	PlayCircleOutlined,
-	ClockCircleOutlined,
-	BookOutlined,
 	ArrowLeftOutlined,
 	SwapOutlined,
+	UploadOutlined,
+	DownloadOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useDispatch, useSelector } from 'react-redux';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
 	fetchLessonsByChapter,
-	updateLessonStatus,
-	createLesson,
-	updateLesson,
-	deleteLesson,
 } from '../../../../redux/syllabus';
 import syllabusManagementApi from '../../../../apis/backend/syllabusManagement';
+import { spaceToast } from '../../../../component/SpaceToastify';
 import './SyllabusList.css';
 import ThemedLayout from '../../../../component/ThemedLayout';
 import { useTheme } from '../../../../contexts/ThemeContext';
+
+const { Dragger } = Upload;
+const { Title, Text } = Typography;
 
 const LessonListPage = () => {
 	const { t } = useTranslation();
@@ -56,6 +59,13 @@ const LessonListPage = () => {
 	// Modal states
 	const [isDeleteModalVisible, setIsDeleteModalVisible] = useState(false);
 	const [deleteLesson, setDeleteLesson] = useState(null);
+	const [importModal, setImportModal] = useState({
+		visible: false,
+		fileList: [],
+		uploading: false,
+		progress: 0,
+		error: null,
+	});
 
 	// Pagination state
 	const [pagination, setPagination] = useState({
@@ -196,13 +206,198 @@ const LessonListPage = () => {
 		fetchLessons(pagination.current, pagination.pageSize, searchText);
 	};
 
+	const handleImportLesson = () => {
+		setImportModal({ 
+			visible: true, 
+			fileList: [], 
+			uploading: false, 
+			progress: 0, 
+			error: null 
+		});
+	};
+
+	const handleExportTemplate = async () => {
+		try {
+			const response = await syllabusManagementApi.downloadLessonTemplate();
+			
+			console.log('Template response:', response);
+			console.log('Is response a Blob?', response instanceof Blob);
+			console.log('Response size:', response.size);
+			console.log('Response type:', response.type);
+			
+			// If response is already a blob (which it seems to be), use it directly
+			let blob;
+			if (response instanceof Blob) {
+				blob = response;
+				console.log('Response is already a blob, using directly');
+			} else if (response.data instanceof Blob) {
+				blob = response.data;
+				console.log('Using response.data blob');
+			} else {
+				// Create blob from response data
+				blob = new Blob([response.data], { 
+					type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
+				});
+				console.log('Created new blob from response data');
+			}
+			
+			console.log('Final blob:', blob);
+			console.log('Blob type:', blob.type);
+			console.log('Blob size:', blob.size);
+			
+			// Validate blob
+			if (blob.size === 0) {
+				throw new Error('Downloaded file is empty');
+			}
+			
+			// Create download link
+			const link = document.createElement('a');
+			const url = URL.createObjectURL(blob);
+			link.href = url;
+			link.download = 'lesson_template.xlsx';
+			link.style.display = 'none';
+			
+			// Trigger download
+			document.body.appendChild(link);
+			link.click();
+			
+			// Cleanup
+			document.body.removeChild(link);
+			URL.revokeObjectURL(url);
+
+			spaceToast.success(t('lessonManagement.templateDownloaded'));
+		} catch (error) {
+			console.error('Error downloading template:', error);
+			spaceToast.error(t('lessonManagement.templateDownloadError'));
+		}
+	};
+
+	const handleImportCancel = () => {
+		setImportModal({ 
+			visible: false, 
+			fileList: [], 
+			uploading: false, 
+			progress: 0, 
+			error: null 
+		});
+	};
+
+	const handleImportOk = async () => {
+		if (importModal.fileList.length === 0) {
+			message.warning(t('lessonManagement.selectFileToImport'));
+			return;
+		}
+
+		const file = importModal.fileList[0];
+		
+		// Validate file type
+		const allowedTypes = [
+			'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // .xlsx
+			'application/vnd.ms-excel', // .xls
+			'text/csv', // .csv
+		];
+		
+		if (!allowedTypes.includes(file.type) && !file.name.match(/\.(xlsx|xls|csv)$/i)) {
+			message.error(t('lessonManagement.invalidFileType'));
+			return;
+		}
+
+		// Validate file size (max 10MB)
+		const maxSize = 10 * 1024 * 1024; // 10MB
+		if (file.size > maxSize) {
+			message.error(t('lessonManagement.fileTooLarge'));
+			return;
+		}
+
+		setImportModal((prev) => ({ 
+			...prev, 
+			uploading: true, 
+			progress: 0, 
+			error: null 
+		}));
+
+		try {
+			const formData = new FormData();
+			formData.append('file', file.originFileObj);
+			
+			// Add chapterId to the request
+			formData.append('chapterId', chapterId);
+
+			// Simulate progress for better UX
+			const progressInterval = setInterval(() => {
+				setImportModal((prev) => ({
+					...prev,
+					progress: Math.min(prev.progress + 10, 90)
+				}));
+			}, 200);
+
+			const response = await syllabusManagementApi.importLessons(formData);
+			
+			clearInterval(progressInterval);
+			setImportModal((prev) => ({ ...prev, progress: 100 }));
+			
+			// Handle different response formats
+			const importedCount = response.data?.importedCount || 
+								 response.data?.data?.importedCount || 
+								 response.data?.count || 0;
+			
+			const successMessage = importedCount > 0 
+				? `${t('lessonManagement.importSuccess')} ${importedCount} ${t('lessonManagement.lessons')}`
+				: t('lessonManagement.importSuccessNoData');
+
+			spaceToast.success(successMessage);
+
+			// Delay closing modal to show completion
+			setTimeout(() => {
+				setImportModal({ 
+					visible: false, 
+					fileList: [], 
+					uploading: false, 
+					progress: 0, 
+					error: null 
+				});
+				
+				// Refresh the lesson list
+				fetchLessons(pagination.current, pagination.pageSize, searchText);
+			}, 1000);
+			
+		} catch (error) {
+			console.error('Error importing lessons:', error);
+			
+			// Handle different error formats
+			let errorMessage = t('lessonManagement.importError');
+			let errorDetails = '';
+			
+			if (error.response?.data?.message) {
+				errorMessage = error.response.data.message;
+			} else if (error.response?.data?.error) {
+				errorMessage = error.response.data.error;
+			} else if (error.message) {
+				errorMessage = error.message;
+			}
+			
+			// Extract more detailed error information
+			if (error.response?.data?.details) {
+				errorDetails = error.response.data.details;
+			} else if (error.response?.data?.errors) {
+				errorDetails = Array.isArray(error.response.data.errors) 
+					? error.response.data.errors.join(', ')
+					: error.response.data.errors;
+			}
+			
+			setImportModal((prev) => ({ 
+				...prev, 
+				uploading: false, 
+				progress: 0,
+				error: errorDetails ? `${errorMessage}: ${errorDetails}` : errorMessage
+			}));
+			
+			spaceToast.error(errorMessage);
+		}
+	};
+
 	// Use Redux state for lessons data
 	const filteredLessons = lessons;
-
-	// Calculate statistics
-	const totalLessons = lessons.length;
-	const totalDuration = lessons.reduce((sum, lesson) => sum + lesson.duration, 0);
-	const averageDuration = totalLessons > 0 ? (totalDuration / totalLessons).toFixed(1) : 0;
 
 	const columns = [
 		{
@@ -367,6 +562,13 @@ const LessonListPage = () => {
 									{t('lessonManagement.refresh')}
 								</Button>
 								<Button
+									icon={<DownloadOutlined />}
+									className="import-button"
+									onClick={handleImportLesson}
+								>
+									{t('lessonManagement.importLessons')}
+								</Button>
+								<Button
 									icon={<SwapOutlined rotate={90} />}
 									onClick={handleEditOrder}
 									style={{
@@ -424,6 +626,235 @@ const LessonListPage = () => {
 							<strong>{deleteLesson.name}</strong>
 						</p>
 					)}
+				</Modal>
+
+				{/* Import Modal */}
+				<Modal
+					title={
+						<div
+							style={{
+								fontSize: '20px',
+								fontWeight: '600',
+								color: '#1890ff',
+								textAlign: 'center',
+								padding: '10px 0',
+								display: 'flex',
+								alignItems: 'center',
+								justifyContent: 'center',
+								gap: '10px',
+							}}>
+							<DownloadOutlined />
+							{t('lessonManagement.importLessons')}
+						</div>
+					}
+					open={importModal.visible}
+					onOk={handleImportOk}
+					onCancel={handleImportCancel}
+					okText={t('lessonManagement.import')}
+					cancelText={t('common.cancel')}
+					width={600}
+					centered
+					confirmLoading={importModal.uploading}
+					okButtonProps={{
+						disabled: importModal.fileList.length === 0 || importModal.uploading,
+						style: {
+							backgroundColor: '#52c41a',
+							borderColor: '#52c41a',
+							height: '40px',
+							fontSize: '16px',
+							fontWeight: '500',
+							minWidth: '120px',
+						},
+					}}
+					cancelButtonProps={{
+						style: {
+							height: '40px',
+							fontSize: '16px',
+							fontWeight: '500',
+							minWidth: '100px',
+						},
+					}}>
+					<div style={{ padding: '20px 0' }}>
+						<Title
+							level={5}
+							style={{
+								textAlign: 'center',
+								marginBottom: '20px',
+								color: '#666',
+							}}>
+							{t('lessonManagement.importInstructions')}
+						</Title>
+
+						{/* Progress Bar */}
+						{importModal.uploading && (
+							<div style={{ marginBottom: '20px' }}>
+								<Progress 
+									percent={importModal.progress} 
+									status={importModal.progress === 100 ? 'success' : 'active'}
+									strokeColor={{
+										'0%': '#108ee9',
+										'100%': '#87d068',
+									}}
+								/>
+								<div style={{ textAlign: 'center', marginTop: '8px', color: '#666' }}>
+									{importModal.progress < 100 ? t('lessonManagement.uploading') : t('lessonManagement.processing')}
+								</div>
+							</div>
+						)}
+
+						{/* Error Display */}
+						{importModal.error && (
+							<div style={{ marginBottom: '20px' }}>
+								<Alert
+									message={t('lessonManagement.importError')}
+									description={importModal.error}
+									type="error"
+									showIcon
+									closable
+									onClose={() => setImportModal((prev) => ({ ...prev, error: null }))}
+								/>
+							</div>
+						)}
+
+						{/* Export Template Button */}
+						<div style={{ textAlign: 'center', marginBottom: '20px' }}>
+							<Button
+								icon={<DownloadOutlined />}
+								type="dashed"
+								onClick={handleExportTemplate}
+								style={{
+									borderColor: '#1890ff',
+									color: '#1890ff',
+									height: '40px',
+									fontSize: '16px',
+									fontWeight: '500',
+									padding: '0 20px',
+								}}>
+								{t('lessonManagement.exportTemplate')}
+							</Button>
+						</div>
+
+						<Dragger
+							multiple={false}
+							accept='.xlsx,.xls,.csv'
+							fileList={importModal.fileList}
+							onChange={({ fileList }) => {
+								// Limit to 1 file
+								const limitedFileList = fileList.slice(-1);
+								setImportModal((prev) => ({ ...prev, fileList: limitedFileList }));
+							}}
+							beforeUpload={(file) => {
+								// Validate file type
+								const allowedTypes = [
+									'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+									'application/vnd.ms-excel',
+									'text/csv',
+								];
+								
+								const isValidType = allowedTypes.includes(file.type) || 
+									file.name.match(/\.(xlsx|xls|csv)$/i);
+								
+								if (!isValidType) {
+									message.error(t('lessonManagement.invalidFileType'));
+									return false;
+								}
+								
+								// Validate file size (max 10MB)
+								const maxSize = 10 * 1024 * 1024;
+								if (file.size > maxSize) {
+									message.error(t('lessonManagement.fileTooLarge'));
+									return false;
+								}
+								
+								return false; // Prevent auto upload
+							}}
+							style={{
+								marginBottom: '20px',
+								border: '2px dashed #d9d9d9',
+								borderRadius: '8px',
+								background: '#fafafa',
+							}}>
+							<p
+								className='ant-upload-drag-icon'
+								style={{ fontSize: '48px', color: '#1890ff' }}>
+								<UploadOutlined />
+							</p>
+							<p
+								className='ant-upload-text'
+								style={{ fontSize: '16px', fontWeight: '500' }}>
+								{t('lessonManagement.clickOrDragFile')}
+							</p>
+							<p className='ant-upload-hint' style={{ color: '#999' }}>
+								{t('lessonManagement.supportedFormats')}: Excel (.xlsx, .xls), CSV (.csv)
+							</p>
+							<p className='ant-upload-hint' style={{ color: '#ff7875', fontSize: '12px' }}>
+								{t('lessonManagement.maxFileSize')}: 10MB
+							</p>
+						</Dragger>
+
+						<Divider />
+
+						<div
+							style={{
+								background: '#f6f8fa',
+								padding: '16px',
+								borderRadius: '8px',
+								border: '1px solid #e1e4e8',
+							}}>
+							<Title level={5} style={{ marginBottom: '12px', color: '#24292e' }}>
+								📋 {t('lessonManagement.fileFormat')}
+							</Title>
+							<Text
+								style={{ color: '#586069', fontSize: '14px', lineHeight: '1.6' }}>
+								{t('lessonManagement.fileFormatDescription')}
+							</Text>
+
+							<div
+								style={{ marginTop: '12px', fontSize: '13px', color: '#6a737d' }}>
+								<div>
+									<strong>{t('lessonManagement.requiredColumns')}:</strong>
+								</div>
+								<div>• name, description, duration, type</div>
+								<div>
+									<strong>{t('lessonManagement.optionalColumns')}:</strong>
+								</div>
+								<div>• order (thứ tự bài học)</div>
+								<div>• note (ghi chú)</div>
+							</div>
+						</div>
+
+						{importModal.fileList.length > 0 && (
+							<div
+								style={{
+									marginTop: '16px',
+									padding: '16px',
+									background: '#e6f7ff',
+									border: '1px solid #91d5ff',
+									borderRadius: '8px',
+								}}>
+								<div style={{ display: 'flex', alignItems: 'center', marginBottom: '8px' }}>
+									<Text style={{ color: '#1890ff', fontWeight: '600', fontSize: '16px' }}>
+										✅ {t('lessonManagement.fileSelected')}
+									</Text>
+								</div>
+								<div style={{ marginBottom: '8px' }}>
+									<Text style={{ color: '#1890ff', fontWeight: '500' }}>
+										📄 {importModal.fileList[0].name}
+									</Text>
+								</div>
+								<div style={{ fontSize: '12px', color: '#666' }}>
+									<Text>
+										📊 {t('lessonManagement.fileSize')}: {(importModal.fileList[0].size / 1024 / 1024).toFixed(2)} MB
+									</Text>
+								</div>
+								<div style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>
+									<Text>
+										📅 {t('lessonManagement.lastModified')}: {new Date(importModal.fileList[0].lastModified).toLocaleString()}
+									</Text>
+								</div>
+							</div>
+						)}
+					</div>
 				</Modal>
 			</div>
 		</ThemedLayout>

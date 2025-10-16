@@ -670,20 +670,6 @@ const ClassStudent = () => {
 
           {/* Table Section */}
           <div className={`table-section ${theme}-table-section`}>
-            {/* Class Title */}
-            <div style={{ marginBottom: '16px', textAlign: 'center' }}>
-              <h3 style={{ 
-                fontSize: '24px', 
-                fontWeight: '600', 
-                color: '#1e293b',
-                margin: 0,
-                padding: '12px 0',
-                borderBottom: '2px solid #e2e8f0'
-              }}>
-                {classData?.name} - {t('classDetail.students')}
-              </h3>
-            </div>
-            
             <LoadingWithEffect loading={loading} message={t('classDetail.loadingStudents')}>
               <Table
                 columns={columns}

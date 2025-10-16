@@ -27,12 +27,6 @@ export default function Login() {
 	const handleSubmit = async (e) => {
 		e.preventDefault();
 
-		// Validation: empty fields
-		if (!username || !password) {
-			spaceToast.error("Fields cannot be empty!");
-			return;
-		}
-
 		setLoading(true);
 		
 		try {
@@ -44,12 +38,13 @@ export default function Login() {
 			// Lấy loginRole từ localStorage
 			const loginRole = localStorage.getItem('loginRole') || 'student';
 			
-			// Gọi API login với 3 trường
-			const response = await authApi.login({
-				username,
-				password,
-				loginRole
-			});
+			// Gọi API login với 3 trường - đảm bảo thứ tự tuyệt đối
+			const loginData = new Map();
+			loginData.set('username', username);
+			loginData.set('password', password);
+			loginData.set('loginRole', loginRole);
+			
+			const response = await authApi.login(Object.fromEntries(loginData));
 
 			// Dispatch login success với data từ API
 			dispatch(loginSuccess(response.data));
@@ -61,14 +56,13 @@ export default function Login() {
 			// Check if user must change password
 			if (response.data.mustChangePassword) {
 				// Show security message for password change
-				spaceToast.warning('For security reasons, you need to change your password immediately.');
 				// Redirect to change password page
 				setTimeout(() => {
 					navigate('/change-password');
 				}, 2000);
 			} else {
 				// Normal login success
-				spaceToast.success('Login successful!');
+				spaceToast.success(response.message);
 				// Redirect to student dashboard
 				setTimeout(() => {
 					navigate('/student/dashboard');
@@ -80,12 +74,8 @@ export default function Login() {
 			
 			// Xử lý lỗi từ API
 			if (error.response) {
-				const errorMessage = error.response.data.error || 'Login failed!';	
+				const errorMessage = error.response.data.error;
 				spaceToast.error(errorMessage);
-			} else if (error.request) {
-				spaceToast.error('Network error. Please check your connection!');
-			} else {
-				spaceToast.error('Something went wrong!');
 			}
 		} finally {
 			setLoading(false);
