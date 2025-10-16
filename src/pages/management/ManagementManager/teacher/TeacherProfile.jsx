@@ -331,7 +331,10 @@ const TeacherProfile = () => {
 										}}>
 										<h2
 											className={`teacher-name ${theme}-teacher-name`}
-											style={{ margin: 0 }}>
+											style={{ 
+												margin: 0,
+												color: theme === 'space' ? '#ffffff' : '#000000'
+											}}>
 											{teacher.firstName} {teacher.lastName}
 										</h2>
 
@@ -361,30 +364,30 @@ const TeacherProfile = () => {
 										</div>
 									</div>
 
-									<div className='teacher-details'>
-										<p>
-											<strong>{t('teacherManagement.teacherCode')}:</strong>{' '}
-											{teacher.userName}
+									<div className='teacher-details' style={{ color: theme === 'space' ? '#ffffff' : '#000000' }}>
+										<p style={{ color: theme === 'space' ? '#ffffff' : '#000000' }}>
+											<strong style={{ color: theme === 'space' ? '#ffffff' : '#000000' }}>{t('teacherManagement.teacherCode')}:</strong>{' '}
+											<span style={{ color: theme === 'space' ? '#ffffff' : '#000000' }}>{teacher.userName}</span>
 										</p>
-										<p>
-											<strong>{t('teacherManagement.email')}:</strong>{' '}
-											{teacher.email}
+										<p style={{ color: theme === 'space' ? '#ffffff' : '#000000' }}>
+											<strong style={{ color: theme === 'space' ? '#ffffff' : '#000000' }}>{t('teacherManagement.email')}:</strong>{' '}
+											<span style={{ color: theme === 'space' ? '#ffffff' : '#000000' }}>{teacher.email}</span>
 										</p>
-										<p>
-											<strong>{t('teacherManagement.phone')}:</strong>{' '}
-											{teacher.phoneNumber || 'N/A'}
+										<p style={{ color: theme === 'space' ? '#ffffff' : '#000000' }}>
+											<strong style={{ color: theme === 'space' ? '#ffffff' : '#000000' }}>{t('teacherManagement.phone')}:</strong>{' '}
+											<span style={{ color: theme === 'space' ? '#ffffff' : '#000000' }}>{teacher.phoneNumber || 'N/A'}</span>
 										</p>
-										<p>
-											<strong>{t('teacherManagement.dateOfBirth')}:</strong>{' '}
-											{teacher.dateOfBirth ? new Date(teacher.dateOfBirth).toLocaleDateString('vi-VN') : 'N/A'}
+										<p style={{ color: theme === 'space' ? '#ffffff' : '#000000' }}>
+											<strong style={{ color: theme === 'space' ? '#ffffff' : '#000000' }}>{t('teacherManagement.dateOfBirth')}:</strong>{' '}
+											<span style={{ color: theme === 'space' ? '#ffffff' : '#000000' }}>{teacher.dateOfBirth ? new Date(teacher.dateOfBirth).toLocaleDateString('vi-VN') : 'N/A'}</span>
 										</p>
-										<p>
-											<strong>{t('teacherManagement.gender')}:</strong>{' '}
-											{teacher.gender === 'MALE' ? 'Male' : teacher.gender === 'FEMALE' ? 'Female' : teacher.gender === 'OTHER' ? 'Other' : 'N/A'}
+										<p style={{ color: theme === 'space' ? '#ffffff' : '#000000' }}>
+											<strong style={{ color: theme === 'space' ? '#ffffff' : '#000000' }}>{t('teacherManagement.gender')}:</strong>{' '}
+											<span style={{ color: theme === 'space' ? '#ffffff' : '#000000' }}>{teacher.gender === 'MALE' ? 'Male' : teacher.gender === 'FEMALE' ? 'Female' : teacher.gender === 'OTHER' ? 'Other' : 'N/A'}</span>
 										</p>
-										<p>
-											<strong>{t('teacherManagement.address')}:</strong>{' '}
-											{teacher.address || 'N/A'}
+										<p style={{ color: theme === 'space' ? '#ffffff' : '#000000' }}>
+											<strong style={{ color: theme === 'space' ? '#ffffff' : '#000000' }}>{t('teacherManagement.address')}:</strong>{' '}
+											<span style={{ color: theme === 'space' ? '#ffffff' : '#000000' }}>{teacher.address || 'N/A'}</span>
 										</p>
 									</div>
 								</div>

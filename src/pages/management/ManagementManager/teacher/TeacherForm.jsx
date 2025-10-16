@@ -96,7 +96,12 @@ const TeacherForm = ({ teacher, onClose, onSuccess }) => {
 					<Col span={12}>
 						<Form.Item
 							name="firstName"
-							label={t('teacherManagement.firstName')}
+							label={
+								<span>
+									{t('teacherManagement.firstName')}
+									<span style={{ color: 'red', marginLeft: '4px' }}>*</span>
+								</span>
+							}
 							rules={[
 								{ required: true, message: t('teacherManagement.firstNameRequired') },
 								{ min: 2, message: t('teacherManagement.firstNameMinLength') },
@@ -111,7 +116,12 @@ const TeacherForm = ({ teacher, onClose, onSuccess }) => {
 					<Col span={12}>
 						<Form.Item
 							name="lastName"
-							label={t('teacherManagement.lastName')}
+							label={
+								<span>
+									{t('teacherManagement.lastName')}
+									<span style={{ color: 'red', marginLeft: '4px' }}>*</span>
+								</span>
+							}
 							rules={[
 								{ required: true, message: t('teacherManagement.lastNameRequired') },
 								{ min: 2, message: t('teacherManagement.lastNameMinLength') },
@@ -130,7 +140,12 @@ const TeacherForm = ({ teacher, onClose, onSuccess }) => {
 					<Col span={12}>
 						<Form.Item
 							name="email"
-							label={t('teacherManagement.email')}
+							label={
+								<span>
+									{t('teacherManagement.email')}
+									<span style={{ color: 'red', marginLeft: '4px' }}>*</span>
+								</span>
+							}
 							rules={[
 								{ required: true, message: t('teacherManagement.emailRequired') },
 								{ type: 'email', message: t('teacherManagement.emailInvalid') },
@@ -145,7 +160,12 @@ const TeacherForm = ({ teacher, onClose, onSuccess }) => {
 					<Col span={12}>
 						<Form.Item
 							name="phoneNumber"
-							label={t('teacherManagement.phoneNumber')}
+							label={
+								<span>
+									{t('teacherManagement.phoneNumber')}
+									<span style={{ color: 'red', marginLeft: '4px' }}>*</span>
+								</span>
+							}
 							rules={[
 								{ required: true, message: t('teacherManagement.phoneNumberRequired') },
 								{ pattern: /^[0-9]{10,11}$/, message: t('teacherManagement.phoneNumberInvalid') },
@@ -163,7 +183,12 @@ const TeacherForm = ({ teacher, onClose, onSuccess }) => {
 					<Col span={12}>
 						<Form.Item
 							name="roleName"
-							label={t('teacherManagement.role')}
+							label={
+								<span>
+									{t('teacherManagement.role')}
+									<span style={{ color: 'red', marginLeft: '4px' }}>*</span>
+								</span>
+							}
 							rules={[{ required: true, message: t('teacherManagement.roleRequired') }]}
 						>
 							<Select 
@@ -194,7 +219,12 @@ const TeacherForm = ({ teacher, onClose, onSuccess }) => {
 					<Col span={12}>
 						<Form.Item
 							name="gender"
-							label={t('teacherManagement.gender')}
+							label={
+								<span>
+									{t('teacherManagement.gender')}
+									<span style={{ color: 'red', marginLeft: '4px' }}>*</span>
+								</span>
+							}
 							rules={[{ required: true, message: t('teacherManagement.genderRequired') }]}
 						>
 							<Select 
