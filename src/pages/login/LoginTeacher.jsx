@@ -27,7 +27,6 @@ export default function LoginTeacher() {
         
         // Validation: empty fields
         if (!username || !password) {
-            spaceToast.error("Fields cannot be empty!");
             return;
         }
         
@@ -66,15 +65,13 @@ export default function LoginTeacher() {
             
             // Check if user must change password
             if (response.data.mustChangePassword) {
-                // Show security message for password change
-                spaceToast.warning('For security reasons, you need to change your password immediately.');
                 // Redirect to change password page
                 setTimeout(() => {
                     navigate('/change-password');
                 }, 2000);
             } else {
                 // Normal login success
-                spaceToast.success('Login successful!');
+                spaceToast.success(response.message);
                 // Redirect based on role
                 let redirectPath = '/choose-login';
                 console.log('LoginTeacher - Response role:', response.data.role);
@@ -101,12 +98,8 @@ export default function LoginTeacher() {
             
             // Xử lý lỗi từ API
             if (error.response) {
-                const errorMessage = error.response.data.error || 'Login failed!';
+                const errorMessage = error.response.data.error;
                 spaceToast.error(errorMessage);
-            } else if (error.request) {
-                spaceToast.error('Network error. Please check your connection!');
-            } else {
-                spaceToast.error('Something went wrong!');
             }
         } finally {
             setLoading(false);

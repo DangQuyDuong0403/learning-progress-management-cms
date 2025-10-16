@@ -78,13 +78,12 @@ export default function ChangePassword() {
 			const refreshToken = localStorage.getItem('refreshToken');
 			
 			if (!refreshToken) {
-				spaceToast.error('Session expired. Please login again.');
-				setLoading(false);
+				navigate('/choose-login');
 				return;
 			}
 
 			// Call change password API
-			await authApi.changePassword({
+			const response = await authApi.changePassword({
 				oldPassword: formData.oldPassword,
 				newPassword: formData.newPassword,
 				confirmPassword: formData.confirmPassword,
@@ -92,7 +91,7 @@ export default function ChangePassword() {
 			});
 
 			// Success - show toast message
-			spaceToast.success(t('changePassword.changeSuccess'));
+			spaceToast.success(response.message);
 
 			// Clear tokens from localStorage
 			localStorage.removeItem('accessToken');
@@ -108,12 +107,8 @@ export default function ChangePassword() {
 			
 			// Handle API errors with toast messages
 			if (error.response) {
-				const errorMessage = error.response.data.message || 'Failed to change password!';
+				const errorMessage = error.response.data.error;
 				spaceToast.error(errorMessage);
-			} else if (error.request) {
-				spaceToast.error('Network error. Please check your connection!');
-			} else {
-				spaceToast.error('Something went wrong!');
 			}
 		} finally {
 			setLoading(false);
