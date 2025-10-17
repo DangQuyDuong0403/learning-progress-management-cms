@@ -18,35 +18,9 @@ export default function EditPersonalInfoModal({
   const [form] = Form.useForm();
   const [avatarFileList, setAvatarFileList] = useState([]);
 
-  function validateName(name) {
-    return /^[A-Za-zÀ-ỹà-ỹ\s]{2,}$/u.test(name);
-  }
-
-  function isFutureDate(dateStr) {
-    if (!dateStr) return false;
-    const today = new Date();
-    today.setHours(0,0,0,0);
-    const inputDate = new Date(dateStr);
-    return inputDate > today;
-  }
-
   const handleOk = async () => {
     try {
       const values = await form.validateFields();
-      
-      // Validation
-      if (!validateName(values.lastName)) {
-        spaceToast.error('Last name must be at least 2 letters, no numbers or special characters!');
-        return;
-      }
-      if (!validateName(values.firstName)) {
-        spaceToast.error('First name must be at least 2 letters, no numbers or special characters!');
-        return;
-      }
-      if (isFutureDate(values.dateOfBirth)) {
-        spaceToast.error('Date of birth cannot be in the future!');
-        return;
-      }
 
       // Chuẩn bị dữ liệu theo format API - chỉ gửi các field cần thiết
       const updateData = {
@@ -59,19 +33,19 @@ export default function EditPersonalInfoModal({
         gender: values.gender === "Male" ? "MALE" : values.gender === "Female" ? "FEMALE" : "OTHER"
       };
 
-      console.log('Update Profile Data:', updateData);
       
       // Dispatch action để update profile
       const result = await dispatch(updateProfile(updateData)).unwrap();
       
       if (result.success) {
-        spaceToast.success(t('common.profileUpdated'));
+        spaceToast.success(result.message);
         onSuccess(result.data);
         handleCancel();
       }
     } catch (error) {
-      console.error('Update Profile Error:', error);
-      spaceToast.error(error.message || t('common.profileUpdateFailed'));
+      // Xử lý lỗi từ API - error object có cấu trúc trực tiếp
+      const errorMessage = error.error || error.message;
+      spaceToast.error(errorMessage);
     }
   };
 
@@ -192,16 +166,6 @@ export default function EditPersonalInfoModal({
                 </span>
               }
               name='username'
-              rules={[
-                {
-                  required: true,
-                  message: 'Username is required',
-                },
-                {
-                  min: 3,
-                  message: 'Username must be at least 3 characters',
-                },
-              ]}
               required={false}>
               <Input placeholder="Enter username" />
             </Form.Item>
@@ -215,16 +179,6 @@ export default function EditPersonalInfoModal({
                 </span>
               }
               name='phone'
-              rules={[
-                {
-                  required: true,
-                  message: 'Phone number is required',
-                },
-                {
-                  pattern: /^[0-9]{10,11}$/,
-                  message: 'Please enter a valid phone number',
-                },
-              ]}
               required={false}>
               <Input placeholder="Enter phone number" />
             </Form.Item>
@@ -241,12 +195,6 @@ export default function EditPersonalInfoModal({
                 </span>
               }
               name='lastName'
-              rules={[
-                {
-                  required: true,
-                  message: 'Last name is required',
-                },
-              ]}
               required={false}>
               <Input placeholder="Enter last name" />
             </Form.Item>
@@ -260,12 +208,6 @@ export default function EditPersonalInfoModal({
                 </span>
               }
               name='firstName'
-              rules={[
-                {
-                  required: true,
-                  message: 'First name is required',
-                },
-              ]}
               required={false}>
               <Input placeholder="Enter first name" />
             </Form.Item>
@@ -282,12 +224,6 @@ export default function EditPersonalInfoModal({
                 </span>
               }
               name='gender'
-              rules={[
-                {
-                  required: true,
-                  message: 'Gender is required',
-                },
-              ]}
               required={false}>
               <Radio.Group>
                 <Radio value="Male">{t('common.male')}</Radio>
@@ -304,12 +240,6 @@ export default function EditPersonalInfoModal({
                 </span>
               }
               name='dateOfBirth'
-              rules={[
-                {
-                  required: true,
-                  message: 'Date of birth is required',
-                },
-              ]}
               required={false}>
               <Input 
                 type="date"
@@ -327,12 +257,6 @@ export default function EditPersonalInfoModal({
             </span>
           }
           name='address'
-          rules={[
-            {
-              required: true,
-              message: 'Address is required',
-            },
-          ]}
           required={false}>
           <Input placeholder="Enter address" />
         </Form.Item>
