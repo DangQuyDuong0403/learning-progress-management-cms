@@ -49,7 +49,7 @@ const AccountList = () => {
 	const [roleFilter, setRoleFilter] = useState([]);
 	const [searchTimeout, setSearchTimeout] = useState(null);
 	const [sortBy, setSortBy] = useState('createdAt');
-	const [sortDir, setSortDir] = useState('asc');
+	const [sortDir, setSortDir] = useState('desc');
 	const [isModalVisible, setIsModalVisible] = useState(false);
 	const [editingAccount, setEditingAccount] = useState(null);
 	const [form] = Form.useForm();
@@ -83,6 +83,10 @@ const AccountList = () => {
 		showSizeChanger: true,
 		showTotal: (total, range) => `${range[0]}-${range[1]} of ${total}`,
 	});
+	
+	// Separate pagination values for useEffect dependencies
+	const currentPage = pagination.current;
+	const pageSize = pagination.pageSize;
 
 	const fetchAccounts = useCallback(
 		async (
@@ -150,7 +154,14 @@ const AccountList = () => {
 				setLoading(false);
 			} catch (error) {
 				console.error('Error fetching accounts:', error);
-				message.error(t('accountManagement.loadAccountsError'));
+				
+				// Handle error messages from backend like LoginTeacher.jsx
+				if (error.response) {
+					const errorMessage = error.response.data.error || error.response.data.message;
+					spaceToast.error(errorMessage);
+				} else {
+					message.error(t('accountManagement.loadAccountsError'));
+				}
 				setLoading(false);
 			}
 		},
@@ -159,8 +170,8 @@ const AccountList = () => {
 
 	useEffect(() => {
 		fetchAccounts(
-			1,
-			pagination.pageSize,
+			currentPage,
+			pageSize,
 			searchText,
 			roleFilter,
 			statusFilter,
@@ -174,7 +185,8 @@ const AccountList = () => {
 		statusFilter,
 		sortBy,
 		sortDir,
-		pagination.pageSize,
+		currentPage,
+		pageSize,
 	]);
 
 	// Cleanup timeout on unmount
@@ -219,7 +231,7 @@ const AccountList = () => {
 			clearTimeout(searchTimeout);
 		}
 
-		// Set new timeout for 1 second delay
+		// Set new timeout for 2 second delay
 		const newTimeout = setTimeout(() => {
 			// Reset to first page when searching
 			fetchAccounts(
@@ -231,7 +243,7 @@ const AccountList = () => {
 				sortBy,
 				sortDir
 			);
-		}, 1000);
+		}, 2000);
 
 		setSearchTimeout(newTimeout);
 	};
@@ -257,15 +269,10 @@ const AccountList = () => {
 			visible: false,
 		}));
 		// Reset to first page when applying filters
-		fetchAccounts(
-			1,
-			pagination.pageSize,
-			searchText,
-			filterDropdown.selectedRoles,
-			filterDropdown.selectedStatuses,
-			sortBy,
-			sortDir
-		);
+		setPagination(prev => ({
+			...prev,
+			current: 1,
+		}));
 	};
 
 	// Handle filter reset
@@ -285,8 +292,7 @@ const AccountList = () => {
 		if (sorter && sorter.field) {
 			// Map frontend field names to backend field names
 			const fieldMapping = {
-				'username': 'username', // Keep original field name
-				'fullName': 'fullName', // Keep original field name for fullName
+				'username': 'userName', // Keep original field name
 				'email': 'email',
 				'role': 'role',
 				'status': 'status',
@@ -314,31 +320,18 @@ const AccountList = () => {
 				order: sorter.order
 			});
 
+			// Update state - useEffect will handle the API call
 			setSortBy(backendField);
 			setSortDir(newSortDir);
-
-			// Fetch data with new sorting
-			fetchAccounts(
-				pagination.current,
-				pagination.pageSize,
-				searchText,
-				roleFilter,
-				statusFilter,
-				backendField,
-				newSortDir
-			);
 		} else {
 			// Handle pagination without sorting change
 			console.log('Pagination only, no sorting change');
-			fetchAccounts(
-				pagination.current,
-				pagination.pageSize,
-				searchText,
-				roleFilter,
-				statusFilter,
-				sortBy,
-				sortDir
-			);
+			// Update pagination state - useEffect will handle the API call
+			setPagination(prev => ({
+				...prev,
+				current: pagination.current,
+				pageSize: pagination.pageSize,
+			}));
 		}
 	};
 
@@ -382,7 +375,7 @@ const AccountList = () => {
 				onConfirm: async () => {
 					try {
 						// Call API to update status
-						await accountManagementApi.updateAccountStatus(id, newStatus);
+						const response = await accountManagementApi.updateAccountStatus(id, newStatus);
 
 						// Update local state
 						setAccounts(
@@ -398,23 +391,24 @@ const AccountList = () => {
 							onConfirm: null,
 						});
 
-						// Show success message
-						if (newStatus === 'ACTIVE') {
-							spaceToast.success(
-								`${t('accountManagement.activateAccountSuccess')} "${
-									account.username
-								}" ${t('accountManagement.success')}`
+						// Use backend message if available, otherwise fallback to translation
+						const successMessage = response.message || 
+							(newStatus === 'ACTIVE' 
+								? `${t('accountManagement.activateAccountSuccess')} "${account.username}" ${t('accountManagement.success')}`
+								: `${t('accountManagement.deactivateAccountSuccess')} "${account.username}" ${t('accountManagement.success')}`
 							);
-						} else {
-							spaceToast.success(
-								`${t('accountManagement.deactivateAccountSuccess')} "${
-									account.username
-								}" ${t('accountManagement.success')}`
-							);
-						}
+						spaceToast.success(successMessage);
 					} catch (error) {
 						console.error('Error updating account status:', error);
-						message.error(t('accountManagement.updateStatusError'));
+						
+						// Handle error messages from backend like LoginTeacher.jsx
+						if (error.response) {
+							const errorMessage = error.response.data.error || error.response.data.message;
+							spaceToast.error(errorMessage);
+						} else {
+							message.error(t('accountManagement.updateStatusError'));
+						}
+						
 						setConfirmModal({
 							visible: false,
 							title: '',
@@ -525,13 +519,23 @@ const AccountList = () => {
 			const values = await form.validateFields();
 
 			if (editingAccount) {
-				// Update existing account - gọi API update
-				const updateData = {
-					firstName: values.firstName,
-					lastName: values.lastName,
-					email: values.email,
-					roleName: values.roleName || 'MANAGER',
-				};
+				// Update existing account - conditional data based on status
+				let updateData;
+				
+				if (editingAccount.status === 'PENDING') {
+					// PENDING status - only update email
+					updateData = {
+						email: values.email,
+					};
+				} else {
+					// Non-PENDING status - update all fields
+					updateData = {
+						firstName: values.firstName,
+						lastName: values.lastName,
+						email: values.email,
+						roleName: values.roleName || 'MANAGER',
+					};
+				}
 
 				console.log('Updating account with data:', updateData);
 
@@ -542,7 +546,9 @@ const AccountList = () => {
 				);
 				console.log('Update account response:', response);
 
-				spaceToast.success(t('accountManagement.updateAccountSuccess'));
+				// Use backend message if available, otherwise fallback to translation
+				const successMessage = response.message || t('accountManagement.updateAccountSuccess');
+				spaceToast.success(successMessage);
 
 				// Đồng bộ lại dữ liệu sau khi cập nhật
 				fetchAccounts(
@@ -555,12 +561,10 @@ const AccountList = () => {
 					sortDir
 				);
 			} else {
-				// Create new account - gửi API với body JSON đúng format
+				// Create new account - chỉ cần email và roleName
 				const accountData = {
-					firstName: values.firstName,
-					lastName: values.lastName,
 					email: values.email,
-					roleName: values.roleName || 'MANAGER', // Fix cứng Manager
+					roleName: values.roleName,
 				};
 
 				console.log('Creating account with data:', accountData);
@@ -569,7 +573,9 @@ const AccountList = () => {
 				const response = await accountManagementApi.createAccount(accountData);
 				console.log('Create account response:', response);
 
-				spaceToast.success(t('accountManagement.addAccountSuccess'));
+				// Use backend message if available, otherwise fallback to translation
+				const successMessage = response.message || t('accountManagement.addAccountSuccess');
+				spaceToast.success(successMessage);
 
 				// Đồng bộ lại dữ liệu sau khi thêm mới
 				fetchAccounts(
@@ -587,7 +593,14 @@ const AccountList = () => {
 			form.resetFields();
 		} catch (error) {
 			console.error('Error saving account:', error);
-			message.error(t('accountManagement.checkInfoError'));
+			
+			// Handle error messages from backend like LoginTeacher.jsx
+			if (error.response) {
+				const errorMessage = error.response.data.error || error.response.data.message;
+				spaceToast.error(errorMessage);
+			} else {
+				message.error(t('accountManagement.checkInfoError'));
+			}
 		}
 	};
 
@@ -600,6 +613,7 @@ const AccountList = () => {
 		const statusConfig = {
 			ACTIVE: { color: 'green', text: 'Active' },
 			INACTIVE: { color: 'red', text: 'Inactive' },
+			PENDING: { color: 'orange', text: 'Pending' },
 		};
 
 		const config = statusConfig[status] || statusConfig.INACTIVE;
@@ -623,6 +637,7 @@ const AccountList = () => {
 	const statusOptions = [
 		{ key: 'ACTIVE', label: t('accountManagement.active') },
 		{ key: 'INACTIVE', label: t('accountManagement.inactive') },
+		{ key: 'PENDING', label: t('accountManagement.pending') },
 	];
 
 	// Role options for filter
@@ -660,12 +675,6 @@ const AccountList = () => {
 			sorter: true,
 		},
 		{
-			title: t('accountManagement.fullName'),
-			dataIndex: 'fullName',
-			key: 'fullName',
-			sorter: true,
-		},
-		{
 			title: t('accountManagement.email'),
 			dataIndex: 'email',
 			key: 'email',
@@ -694,37 +703,43 @@ const AccountList = () => {
 			width: 180,
 			render: (_, record) => (
 				<Space size='small'>
-					<Tooltip title={t('accountManagement.edit')}>
-						<Button
-							type='text'
-							icon={<EditOutlined style={{ fontSize: '25px' }} />}
-							size='small'
-							onClick={() => handleEditAccount(record)}
-						/>
-					</Tooltip>
-					<Tooltip
-						title={
-							record.status === 'ACTIVE'
-								? t('accountManagement.deactivate')
-								: t('accountManagement.activate')
-						}>
-						<Button
-							type='text'
-							icon={
-								record.status === 'ACTIVE' ? (
-									<StopOutlined style={{ fontSize: '25px' }} />
-								) : (
-									<CheckOutlined style={{ fontSize: '25px' }} />
-								)
-							}
-							size='small'
-							onClick={() => handleToggleStatus(record.id)}
-							style={{
-								color: record.status === 'ACTIVE' ? '#ff4d4f' : '#52c41a',
-								padding: '4px 8px',
-							}}
-						/>
-					</Tooltip>
+					{/* Only show edit button for PENDING status */}
+					{record.status === 'PENDING' && (
+						<Tooltip title={t('accountManagement.edit')}>
+							<Button
+								type='text'
+								icon={<EditOutlined style={{ fontSize: '25px' }} />}
+								size='small'
+								onClick={() => handleEditAccount(record)}
+							/>
+						</Tooltip>
+					)}
+					{/* Only show status toggle for non-PENDING status */}
+					{record.status !== 'PENDING' && (
+						<Tooltip
+							title={
+								record.status === 'ACTIVE'
+									? t('accountManagement.deactivate')
+									: t('accountManagement.activate')
+							}>
+							<Button
+								type='text'
+								icon={
+									record.status === 'ACTIVE' ? (
+										<StopOutlined style={{ fontSize: '25px' }} />
+									) : (
+										<CheckOutlined style={{ fontSize: '25px' }} />
+									)
+								}
+								size='small'
+								onClick={() => handleToggleStatus(record.id)}
+								style={{
+									color: record.status === 'ACTIVE' ? '#ff4d4f' : '#52c41a',
+									padding: '4px 8px',
+								}}
+							/>
+						</Tooltip>
+					)}
 				</Space>
 			),
 		},
@@ -957,7 +972,9 @@ const AccountList = () => {
 							padding: '10px 0',
 						}}>
 						{editingAccount
-							? t('accountManagement.editAccount')
+							? editingAccount.status === 'PENDING'
+								? t('accountManagement.editPendingAccount')
+								: t('accountManagement.editAccount')
 							: t('accountManagement.addNewAccount')}
 					</div>
 				}
@@ -971,95 +988,195 @@ const AccountList = () => {
 					form={form}
 					layout='vertical'
 					initialValues={{
-						roleName: 'MANAGER',
+						roleName: editingAccount ? editingAccount.role : undefined,
 					}}>
-					<Row gutter={16}>
-						<Col span={12}>
-							<Form.Item
-								label={
-									<span>
-										{t('accountManagement.firstName')}
-										<span style={{ color: 'red', marginLeft: '4px' }}>*</span>
-									</span>
-								}
-								name='firstName'
-								rules={[
-									{
-										required: true,
-										message: t('accountManagement.firstNameRequired'),
-									},
-								]}
-								required={false}>
-								<Input
-									placeholder={t('accountManagement.firstNamePlaceholder')}
-								/>
-							</Form.Item>
-						</Col>
-						<Col span={12}>
-							<Form.Item
-								label={
-									<span>
-										{t('accountManagement.lastName')}
-										<span style={{ color: 'red', marginLeft: '4px' }}>*</span>
-									</span>
-								}
-								name='lastName'
-								rules={[
-									{
-										required: true,
-										message: t('accountManagement.lastNameRequired'),
-									},
-								]}
-								required={false}>
-								<Input
-									placeholder={t('accountManagement.lastNamePlaceholder')}
-								/>
-							</Form.Item>
-						</Col>
-					</Row>
+					{editingAccount ? (
+						// Edit mode - conditional fields based on status
+						editingAccount.status === 'PENDING' ? (
+							// PENDING status - only show email field
+							<Row gutter={16}>
+								<Col span={24}>
+									<Form.Item
+										label={
+											<span>
+												{t('accountManagement.email')}
+												<span style={{ color: 'red', marginLeft: '4px' }}>*</span>
+											</span>
+										}
+										name='email'
+										rules={[
+											{
+												required: true,
+												message: t('accountManagement.emailRequired'),
+											},
+											{
+												type: 'email',
+												message: t('accountManagement.emailInvalid'),
+											},
+										]}
+										required={false}>
+										<Input placeholder={t('accountManagement.emailPlaceholder')} />
+									</Form.Item>
+								</Col>
+							</Row>
+						) : (
+							// Non-PENDING status - show all fields
+							<>
+								<Row gutter={16}>
+									<Col span={12}>
+										<Form.Item
+											label={
+												<span>
+													{t('accountManagement.firstName')}
+													<span style={{ color: 'red', marginLeft: '4px' }}>*</span>
+												</span>
+											}
+											name='firstName'
+											rules={[
+												{
+													required: true,
+													message: t('accountManagement.firstNameRequired'),
+												},
+											]}
+											required={false}>
+											<Input
+												placeholder={t('accountManagement.firstNamePlaceholder')}
+											/>
+										</Form.Item>
+									</Col>
+									<Col span={12}>
+										<Form.Item
+											label={
+												<span>
+													{t('accountManagement.lastName')}
+													<span style={{ color: 'red', marginLeft: '4px' }}>*</span>
+												</span>
+											}
+											name='lastName'
+											rules={[
+												{
+													required: true,
+													message: t('accountManagement.lastNameRequired'),
+												},
+											]}
+											required={false}>
+											<Input
+												placeholder={t('accountManagement.lastNamePlaceholder')}
+											/>
+										</Form.Item>
+									</Col>
+								</Row>
 
-					<Row gutter={16}>
-						<Col span={12}>
-							<Form.Item
-								label={
-									<span>
-										{t('accountManagement.email')}
-										<span style={{ color: 'red', marginLeft: '4px' }}>*</span>
-									</span>
-								}
-								name='email'
-								rules={[
-									{
-										required: true,
-										message: t('accountManagement.emailRequired'),
-									},
-									{
-										type: 'email',
-										message: t('accountManagement.emailInvalid'),
-									},
-								]}
-								required={false}>
-								<Input placeholder={t('accountManagement.emailPlaceholder')} />
-							</Form.Item>
-						</Col>
-						<Col span={12}>
-							<Form.Item
-								label={
-									<span>
-										{t('accountManagement.role')}
-										<span style={{ color: 'red', marginLeft: '4px' }}>*</span>
-									</span>
-								}
-								name='roleName'
-								required={false}>
-								<Select value='MANAGER' disabled style={{ color: '#666' }}>
-									<Option value='MANAGER'>
-										{t('accountManagement.manager')}
-									</Option>
-								</Select>
-							</Form.Item>
-						</Col>
-					</Row>
+								<Row gutter={16}>
+									<Col span={12}>
+										<Form.Item
+											label={
+												<span>
+													{t('accountManagement.email')}
+													<span style={{ color: 'red', marginLeft: '4px' }}>*</span>
+												</span>
+											}
+											name='email'
+											rules={[
+												{
+													required: true,
+													message: t('accountManagement.emailRequired'),
+												},
+												{
+													type: 'email',
+													message: t('accountManagement.emailInvalid'),
+												},
+											]}
+											required={false}>
+											<Input placeholder={t('accountManagement.emailPlaceholder')} />
+										</Form.Item>
+									</Col>
+									<Col span={12}>
+										<Form.Item
+											label={
+												<span>
+													{t('accountManagement.role')}
+													<span style={{ color: 'red', marginLeft: '4px' }}>*</span>
+												</span>
+											}
+											name='roleName'
+											required={false}>
+											<Select value='MANAGER' disabled style={{ color: '#666' }}>
+												<Option value='MANAGER'>
+													{t('accountManagement.manager')}
+												</Option>
+											</Select>
+										</Form.Item>
+									</Col>
+								</Row>
+							</>
+						)
+					) : (
+						// Create mode - only email and roleName
+						<Row gutter={16}>
+							<Col span={12}>
+								<Form.Item
+									label={
+										<span>
+											{t('accountManagement.email')}
+											<span style={{ color: 'red', marginLeft: '4px' }}>*</span>
+										</span>
+									}
+									name='email'
+									rules={[
+										{
+											required: true,
+											message: t('accountManagement.emailRequired'),
+										},
+										{
+											type: 'email',
+											message: t('accountManagement.emailInvalid'),
+										},
+									]}
+									required={false}>
+									<Input placeholder={t('accountManagement.emailPlaceholder')} />
+								</Form.Item>
+							</Col>
+							<Col span={12}>
+								<Form.Item
+									label={
+										<span>
+											{t('accountManagement.role')}
+											<span style={{ color: 'red', marginLeft: '4px' }}>*</span>
+										</span>
+									}
+									name='roleName'
+									rules={[
+										{
+											required: true,
+											message: t('accountManagement.roleRequired'),
+										},
+									]}
+									required={false}>
+									<Select placeholder={t('accountManagement.selectRole')}>
+										<Option value='ADMIN'>
+											{t('accountManagement.admin')}
+										</Option>
+										<Option value='TEACHER'>
+											{t('accountManagement.teacher')}
+										</Option>
+										<Option value='STUDENT'>
+											{t('accountManagement.student')}
+										</Option>
+										<Option value='MANAGER'>
+											{t('accountManagement.manager')}
+										</Option>
+										<Option value='TEACHING_ASSISTANT'>
+											{t('accountManagement.teacherAssistant')}
+										</Option>
+										<Option value='TEST_TAKER'>
+											{t('accountManagement.testTaker')}
+										</Option>
+									</Select>
+								</Form.Item>
+							</Col>
+						</Row>
+					)}
 				</Form>
 			</Modal>
 
