@@ -131,12 +131,6 @@ export default function ThemedHeader() {
                     </div>
                     <div className="notification-list">
                       <div className="notification-item">
-                        <div className="notification-avatar">
-                          <img src="/img/logo.png" alt="System" />
-                          <div className="notification-icon event">
-                            <i className="ti ti-calendar"></i>
-                          </div>
-                        </div>
                         <div className="notification-content">
                           <p className="notification-text">
                             <strong>{t('header.systemRole')}</strong> {t('header.systemPostedEvent')} "{t('header.systemMaintenanceEvent')}"
@@ -147,12 +141,6 @@ export default function ThemedHeader() {
                       </div>
                       
                       <div className="notification-item">
-                        <div className="notification-avatar">
-                          <img src="/img/logo.png" alt="Admin" />
-                          <div className="notification-icon message">
-                            <i className="ti ti-message"></i>
-                          </div>
-                        </div>
                         <div className="notification-content">
                           <p className="notification-text">
                             <strong>{t('header.adminRole')}</strong> {t('header.adminSentMessage')} "{t('header.welcomeMessage')}"
@@ -170,12 +158,6 @@ export default function ThemedHeader() {
                     </div>
                     <div className="notification-list">
                       <div className="notification-item">
-                        <div className="notification-avatar">
-                          <img src="/img/logo.png" alt="System" />
-                          <div className="notification-icon update">
-                            <i className="ti ti-refresh"></i>
-                          </div>
-                        </div>
                         <div className="notification-content">
                           <p className="notification-text">
                             <strong>{t('header.systemRole')}</strong> {t('header.systemUpdated')} "{t('header.newVersionReleased')}"
@@ -185,12 +167,6 @@ export default function ThemedHeader() {
                       </div>
                       
                       <div className="notification-item">
-                        <div className="notification-avatar">
-                          <img src="/img/logo.png" alt="Support" />
-                          <div className="notification-icon support">
-                            <i className="ti ti-headset"></i>
-                          </div>
-                        </div>
                         <div className="notification-content">
                           <p className="notification-text">
                             <strong>{t('header.supportRole')}</strong> {t('header.supportReplied')} "{t('header.issueResolved')}"

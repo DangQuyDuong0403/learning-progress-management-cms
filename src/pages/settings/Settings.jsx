@@ -74,10 +74,10 @@ const Settings = () => {
 			};
 			
 			// Call API directly like ChangePassword.jsx instead of through Redux
-			await authApi.changePassword(passwordData);
+			const response = await authApi.changePassword(passwordData);
 			
 			// Success - show toast and close modal
-			spaceToast.success(t('settings.passwordChangedSuccess'));
+			spaceToast.success(response.message);
 			setModals(prev => ({ ...prev, password: false }));
 			passwordForm.resetFields();
 			
@@ -99,38 +99,10 @@ const Settings = () => {
 			console.error('Error status:', error.response?.status);
 			console.error('Error data:', error.response?.data);
 			
-			// Handle API errors with specific messages
+			// Handle API errors with backend messages
 			if (error.response) {
-				const statusCode = error.response.status;
-				const errorData = error.response.data;
-				
-				// Check if it's a wrong current password error by examining the message
-				const errorMessage = errorData.message || errorData.error || '';
-				const isWrongCurrentPassword = 
-					errorMessage.toLowerCase().includes('current') ||
-					errorMessage.toLowerCase().includes('old') ||
-					errorMessage.toLowerCase().includes('incorrect') ||
-					errorMessage.toLowerCase().includes('wrong') ||
-					errorMessage.toLowerCase().includes('invalid') ||
-					errorMessage.toLowerCase().includes('mismatch');
-				
-				// Handle specific error cases
-				if (statusCode === 400 || statusCode === 401 || statusCode === 403) {
-					if (isWrongCurrentPassword) {
-						spaceToast.error(t('settings.wrongCurrentPassword'));
-					} else if (statusCode === 401) {
-						spaceToast.error(t('settings.sessionExpired'));
-					} else {
-						spaceToast.error(errorMessage || t('settings.passwordChangeError'));
-					}
-				} else {
-					// Other server errors
-					spaceToast.error(errorMessage || t('settings.passwordChangeError'));
-				}
-			} else if (error.request) {
-				spaceToast.error('Network error. Please check your connection!');
-			} else {
-				spaceToast.error('Something went wrong!');
+				const errorMessage = error.response.data?.error || error.response.data?.message;
+				spaceToast.error(errorMessage);
 			}
 		} finally {
 			setChangePasswordLoading(false);
@@ -195,7 +167,7 @@ const Settings = () => {
 								className={`settings-edit-btn ${theme}-settings-edit-btn`}
 								onClick={() => openModal('password')}
 							>
-								{t('common.edit')}
+								{t('common.changePassword')}
 							</Button>
 						</div>
 					</Card>
@@ -260,10 +232,10 @@ const Settings = () => {
 									</div>
 									<div className="language-labels">
 										<Text className={`language-label vi-label ${getCurrentLanguage() === 'vi' ? 'active' : ''}`}>
-											🇻🇳 Tiếng Việt
+											🇻🇳 {t('common.vietnamese')}
 										</Text>
 										<Text className={`language-label en-label ${getCurrentLanguage() === 'en' ? 'active' : ''}`}>
-											🇬🇧 English
+											🇬🇧 {t('common.english')}
 										</Text>
 									</div>
 								</div>
@@ -292,6 +264,34 @@ const Settings = () => {
 				confirmLoading={changePasswordLoading}
 				width={500}
 				className={`settings-modal ${theme}-settings-modal`}
+				okButtonProps={{
+					style: {
+						background: theme === 'sun' 
+							? '#298EFE' 
+							: 'linear-gradient(135deg, #7228d9 0%, #9c88ff 100%)',
+						border: 'none',
+						color: '#ffffff',
+						fontWeight: '600',
+						borderRadius: '8px',
+						height: '40px',
+						padding: '0 24px',
+						boxShadow: theme === 'sun' 
+							? '0 4px 12px rgba(41, 142, 254, 0.3)' 
+							: '0 4px 12px rgba(114, 40, 217, 0.3)',
+						transition: 'all 0.3s ease',
+						minWidth: '80px'
+					}
+				}}
+				cancelButtonProps={{
+					style: {
+						height: '40px',
+						padding: '0 24px',
+						borderRadius: '8px',
+						fontWeight: '600',
+						minWidth: '80px',
+						transition: 'all 0.3s ease'
+					}
+				}}
 			>
 				<Form
 					form={passwordForm}
@@ -299,7 +299,11 @@ const Settings = () => {
 					className={`settings-form ${theme}-settings-form`}
 				>
 					<Form.Item
-						label={t('settings.currentPassword')}
+						label={
+							<span>
+								{t('settings.currentPassword')} <span style={{ color: 'red' }}>*</span>
+							</span>
+						}
 						name="currentPassword"
 						rules={[
 							{ required: true, message: t('settings.currentPasswordRequired') }
@@ -312,7 +316,11 @@ const Settings = () => {
 					</Form.Item>
 
 					<Form.Item
-						label={t('settings.newPassword')}
+						label={
+							<span>
+								{t('settings.newPassword')} <span style={{ color: 'red' }}>*</span>
+							</span>
+						}
 						name="newPassword"
 						rules={[
 							{ required: true, message: t('settings.newPasswordRequired') },
@@ -326,7 +334,11 @@ const Settings = () => {
 					</Form.Item>
 
 					<Form.Item
-						label={t('settings.confirmNewPassword')}
+						label={
+							<span>
+								{t('settings.confirmNewPassword')} <span style={{ color: 'red' }}>*</span>
+							</span>
+						}
 						name="confirmPassword"
 						dependencies={['newPassword']}
 						rules={[

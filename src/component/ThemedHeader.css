@@ -307,7 +307,8 @@
   min-width: 380px;
   max-width: 420px;
   max-height: 500px;
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .space-theme .space-dropdown-menu {
@@ -321,10 +322,38 @@
   min-width: 380px;
   max-width: 420px;
   max-height: 500px;
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
-/* ===== PROFILE DROPDOWN STYLES ===== */
+/* Custom scrollbar for notification dropdown */
+.sun-theme .sun-dropdown-menu::-webkit-scrollbar,
+.space-theme .space-dropdown-menu::-webkit-scrollbar {
+  width: 6px;
+}
+
+.sun-theme .sun-dropdown-menu::-webkit-scrollbar-track,
+.space-theme .space-dropdown-menu::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.sun-theme .sun-dropdown-menu::-webkit-scrollbar-thumb {
+  background: rgba(30, 64, 175, 0.3);
+  border-radius: 3px;
+}
+
+.sun-theme .sun-dropdown-menu::-webkit-scrollbar-thumb:hover {
+  background: rgba(30, 64, 175, 0.5);
+}
+
+.space-theme .space-dropdown-menu::-webkit-scrollbar-thumb {
+  background: rgba(77, 208, 255, 0.3);
+  border-radius: 3px;
+}
+
+.space-theme .space-dropdown-menu::-webkit-scrollbar-thumb:hover {
+  background: rgba(77, 208, 255, 0.5);
+}
 .sun-theme .sun-profile-dropdown {
   background: rgba(109, 95, 143, 0.4);
   backdrop-filter: blur(15px);

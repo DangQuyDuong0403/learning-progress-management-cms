@@ -17,9 +17,8 @@ export default function ForgotPasswordSuccess() {
 	const { t } = useTranslation();
 	const { isSunTheme } = useTheme();
 	
-	// Get username and message from navigation state
-	const username = location.state?.username || 'Unknown User';
-	const successMessage = location.state?.message || t('forgotPasswordSuccess.message', { username });
+	// Get email from navigation state
+	const email = location.state?.email || 'Unknown Email';
 
 	// Clear forgot password state when component mounts
 	useEffect(() => {
@@ -27,7 +26,15 @@ export default function ForgotPasswordSuccess() {
 	}, [dispatch]);
 
 	const handleBackToLogin = () => {
-		navigate('/choose-login');
+		const loginRole = localStorage.getItem('loginRole');
+		if (loginRole === 'TEACHER') {
+			navigate('/login-teacher');
+		} else if (loginRole === 'STUDENT') {
+			navigate('/login-student');
+		} else {
+			// Fallback to choose-login if no role is found
+			navigate('/choose-login');
+		}
 	};
 
 	return (
@@ -63,7 +70,7 @@ export default function ForgotPasswordSuccess() {
 
 								{/* Success Message */}
 								<p style={getMessageStyle(isSunTheme)}>
-									{successMessage}
+									{t('forgotPasswordSuccess.message', { email })}
 								</p>
 
 								{/* Additional Info */}

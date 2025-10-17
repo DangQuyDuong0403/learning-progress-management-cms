@@ -474,7 +474,7 @@ const StudentList = () => {
           } catch (error) {
             console.error('Error updating student status:', error);
             setConfirmModal({ visible: false, title: '', content: '', onConfirm: null });
-            spaceToast.error(error.response?.data?.message || error.message || t('studentManagement.updateStatusError'));
+            spaceToast.error(error.response?.data?.error || error.response?.data?.message || error.message || t('studentManagement.updateStatusError'));
           }
         }
       });
@@ -535,7 +535,7 @@ const StudentList = () => {
             // Still refresh the list in case data was created
             fetchStudents(1, pagination.pageSize, searchText, statusFilter, roleNameFilter, sortBy, sortDir);
           } else {
-            spaceToast.error(error.response?.data?.message || error.message || 'Failed to create student');
+            spaceToast.error(error.response?.data?.error || error.response?.data?.message || error.message || 'Failed to create student');
             return; // Don't close modal on actual error
           }
         }
@@ -733,7 +733,7 @@ STU003,Le Van Cuong,levancuong@example.com,0111222333,Lớp 11B1,Advanced,active
                       <div style={{ display: 'flex', gap: '24px', marginBottom: '24px' }}>
                         {/* Role Filter */}
                         <div style={{ flex: 1 }}>
-                          <Title level={5} style={{ marginBottom: '12px', color: '#298EFE', fontSize: '16px' }}>
+                          <Title level={5} style={{ marginBottom: '12px', fontSize: '16px' }}>
                             Role
                           </Title>
                           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
@@ -756,7 +756,7 @@ STU003,Le Van Cuong,levancuong@example.com,0111222333,Lớp 11B1,Advanced,active
 
                         {/* Status Filter */}
                         <div style={{ flex: 1 }}>
-                          <Title level={5} style={{ marginBottom: '12px', color: '#298EFE', fontSize: '16px' }}>
+                          <Title level={5} style={{ marginBottom: '12px', fontSize: '16px' }}>
                             Status
                           </Title>
                           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>

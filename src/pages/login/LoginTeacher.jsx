@@ -56,7 +56,7 @@ export default function LoginTeacher() {
             if (response.data.mustChangePassword) {
                 // Redirect to change password page
                 setTimeout(() => {
-                    navigate('/change-password');
+                    navigate('/reset-password');
                 }, 2000);
             } else {
                 // Normal login success
@@ -200,24 +200,6 @@ export default function LoginTeacher() {
                                                 </div>
                                             </div>
                                             <div className='d-flex align-items-center mb-4'>
-                                                <div className='form-check'>
-                                                    <input
-                                                        className='form-check-input primary'
-                                                        type='checkbox'
-                                                        value=''
-                                                        id='flexCheckChecked'
-                                                        defaultChecked
-                                                        style={{
-                                                            accentColor: isSunTheme ? '#1677ff' : '#c8c8f7'
-                                                        }}
-                                                    />
-                                                    <label
-                                                        className='form-check-label'
-                                                        htmlFor='flexCheckChecked'
-                                                        style={getLabelStyle(isSunTheme)}>
-                                                        {t('login.rememberMe')} ?
-                                                    </label>
-                                                </div>
                                             </div>
                                             <div className='text-center'>
                                                 <button

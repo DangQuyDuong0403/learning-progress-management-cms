@@ -21,8 +21,10 @@ export default function ResetPassword() {
 	const { isSunTheme } = useTheme();
 	const { t } = useTranslation();
 
-	// Lấy token từ URL
-	const token = searchParams.get('token');
+	// Lấy token từ URL params trước, nếu không có thì lấy từ localStorage
+	const tokenFromParams = searchParams.get('token');
+	const tokenFromStorage = localStorage.getItem('accessToken');
+	const token = tokenFromParams || tokenFromStorage;
 
 	// Kiểm tra token khi component mount
 	useEffect(() => {
@@ -40,41 +42,9 @@ export default function ResetPassword() {
 	};
 
 
-	const validatePassword = (password) => {
-		const minLength = 6;
-
-		return {
-			isValid: password.length >= minLength,
-			errors: {
-				length:
-					password.length < minLength
-						? t('resetPassword.passwordMinLengthError')
-						: null,
-			},
-		};
-	};
 
 	const handleSubmit = async (e) => {
 		e.preventDefault();
-
-		// Check if password is not empty
-		if (!formData.newPassword) {
-			spaceToast.error(t('resetPassword.passwordRequired'));
-			return;
-		}
-
-		// Validate password
-		const passwordValidation = validatePassword(formData.newPassword);
-		if (!passwordValidation.isValid) {
-			spaceToast.error(t('resetPassword.passwordMinLengthError'));
-			return;
-		}
-
-		// Check if token exists
-		if (!token) {
-			spaceToast.error(t('resetPassword.invalidToken'));
-			return;
-		}
 
 		setLoading(true);
 
@@ -84,22 +54,19 @@ export default function ResetPassword() {
 				token: token,
 				newPassword: formData.newPassword
 			});
-
+			
 			if (response.data.success) {
-				spaceToast.success(response.message);
-				
+				spaceToast.success(response.data.message);
 				// Chuyển về trang login sau 2 giây
 				setTimeout(() => {
 					navigate('/choose-login');
 				}, 2000);
-			} else {
-				spaceToast.error(response.message);
 			}
 		} catch (error) {
-			if (error.response) {
-				const errorMessage = error.response.data.error;
-				spaceToast.error(errorMessage);
-			}
+			// Xử lý lỗi từ API - error object có cấu trúc trực tiếp
+			const errorMessage = error.response.data.error;
+			console.log('Final error message:', errorMessage);
+			spaceToast.error(errorMessage);
 		} finally {
 			setLoading(false);
 		}
@@ -108,8 +75,6 @@ export default function ResetPassword() {
 	const handleBackToLogin = () => {
 		navigate('/choose-login');
 	};
-
-	const passwordValidation = validatePassword(formData.newPassword);
 
 	return (
 		<ThemedLayoutFullScreen>
@@ -181,27 +146,8 @@ export default function ResetPassword() {
                                                     }}
                                                 />
                                             </div>
+                                        </div>
 
-												{/* Password requirements */}
-												{formData.newPassword && (
-													<div className='mt-2' style={{ fontSize: '0.8rem' }}>
-														<div
-															className={`mb-1 ${
-																passwordValidation.errors.length
-																	? 'text-danger'
-																	: 'text-success'
-															}`}>
-															•{' '}
-															{passwordValidation.errors.length ||
-																`✓ ${t('resetPassword.minLength')}`}
-														</div>
-													</div>
-												)}
-											</div>
-
-
-
-                                  
 									<div className='text-center'>
 											<button
 												type='submit'

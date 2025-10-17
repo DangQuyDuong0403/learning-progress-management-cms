@@ -124,21 +124,20 @@ const ThemedLayoutFullScreen = ({ children }) => {
         >
           {isSunTheme ? (
             <img 
-              src="/img/sun-logo.png" 
+              src="/img/logo-blue.png" 
               alt="CAMKEY Logo" 
               style={{ 
-                width: '100px', 
-                height: '100px', 
-                filter: 'drop-shadow(0 0 15px rgba(255, 215, 0, 0.8))'
+                width: '60px', 
+                height: '60px', 
               }} 
             />
           ) : (
             <img 
-              src="/img/astro.png" 
+              src="/img/logo-dark.png" 
               alt="CAMKEY Logo" 
               style={{ 
-                width: '100px', 
-                height: '100px', 
+                width: '60px', 
+                height: '60px', 
                 filter: 'drop-shadow(0 0 15px rgba(125, 211, 252, 0.8))'
               }} 
             />

@@ -443,20 +443,6 @@
   }
 }
 
-/* Button styling */
-.ant-btn-primary {
-  background: linear-gradient(135deg, #7228d9 0%, #9c88ff 100%);
-  border: none;
-  border-radius: 6px;
-  font-weight: 500;
-  transition: all 0.3s ease;
-}
-
-.ant-btn-primary:hover {
-  background: linear-gradient(135deg, #6420c7 0%, #8a7aff 100%);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(114, 40, 217, 0.3);
-}
 
 .ant-btn-text {
   color: #7228d9;
