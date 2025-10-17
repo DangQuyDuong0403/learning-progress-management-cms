@@ -210,12 +210,12 @@ export default function ThemedHeader() {
                     />
                   </div>
                 </button>
-                <ul className={`dropdown-menu dropdown-menu-end ${theme}-profile-dropdown-menu`} aria-labelledby="profileDropdown" style={{ 
-                    minWidth: 280, 
+                <ul className={`dropdown-menu dropdown-menu-end ${theme}-profile-dropdown-menu`} aria-labelledby="profileDropdown"                   style={{ 
+                    minWidth: 224, 
                     padding: 0, 
                     background: theme === 'sun' ? 'rgba(255, 255, 255, 0.98)' : 'rgba(26, 26, 46, 0.98)',
                     backdropFilter: 'blur(20px)',
-                    borderRadius: '16px',
+                    borderRadius: '12px',
                     boxShadow: theme === 'sun' ? '0 12px 40px rgba(30, 64, 175, 0.15)' : '0 12px 40px rgba(0, 0, 0, 0.3)',
                     border: theme === 'sun' ? '1px solid rgba(30, 64, 175, 0.2)' : '1px solid rgba(77, 208, 255, 0.3)',
                     overflow: 'hidden',
@@ -223,14 +223,14 @@ export default function ThemedHeader() {
                     position: 'absolute'
                   }}>
                   {/* Profile Header */}
-                  <li style={{ padding: '20px', borderBottom: theme === 'sun' ? '1px solid rgba(30, 64, 175, 0.1)' : '1px solid rgba(77, 208, 255, 0.2)' }}>
+                  <li style={{ padding: '16px', borderBottom: theme === 'sun' ? '1px solid rgba(30, 64, 175, 0.1)' : '1px solid rgba(77, 208, 255, 0.2)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                       <img 
                         src="/img/avatar_1.png" 
                         alt="Profile" 
                         style={{ 
-                          width: '48px', 
-                          height: '48px', 
+                          width: '40px', 
+                          height: '40px', 
                           borderRadius: '50%',
                           objectFit: 'cover'
                         }} 
@@ -238,14 +238,14 @@ export default function ThemedHeader() {
                       <div>
                         <div style={{ 
                           fontWeight: 'bold', 
-                          fontSize: '16px', 
+                          fontSize: '14px', 
                           color: theme === 'sun' ? '#1e40af' : '#fff',
                           marginBottom: '2px'
                         }}>
                           {profileData ? `${profileData.lastName} ${profileData.firstName}` : (user?.fullName || user?.name || 'User')}
                         </div>
                         <div style={{ 
-                          fontSize: '14px', 
+                          fontSize: '12px', 
                           color: theme === 'sun' ? '#64748b' : 'rgba(255, 255, 255, 0.7)'
                         }}>
                           {profileData?.email || user?.email || 'user@example.com'}
@@ -255,20 +255,20 @@ export default function ThemedHeader() {
                   </li>
 
                   {/* Menu Items */}
-                  <li style={{ padding: '8px 0' }}>
+                  <li style={{ padding: '6px 0' }}>
                     {/* View Profile */}
                     <button 
                       onClick={() => navigate('/profile')}
                       style={{
                         width: '100%',
-                        padding: '12px 20px',
+                        padding: '10px 16px',
                         border: 'none',
                         background: 'none',
                         display: 'flex',
                         alignItems: 'center',
-                        gap: '12px',
+                        gap: '10px',
                         color: theme === 'sun' ? '#1e40af' : '#fff',
-                        fontSize: '14px',
+                        fontSize: '13px',
                         cursor: 'pointer',
                         transition: 'background-color 0.2s'
                       }}
@@ -276,13 +276,13 @@ export default function ThemedHeader() {
                       onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
                     >
                       <div style={{ 
-                        width: '20px', 
-                        height: '20px', 
+                        width: '16px', 
+                        height: '16px', 
                         display: 'flex', 
                         alignItems: 'center', 
                         justifyContent: 'center' 
                       }}>
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                           <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
                           <circle cx="12" cy="7" r="4"></circle>
                         </svg>
@@ -295,32 +295,30 @@ export default function ThemedHeader() {
                     {/* Logout */}
                     <button 
                       onClick={handleLogout}
-                  
                       style={{
                         width: '100%',
-                        padding: '12px 20px',
+                        padding: '10px 16px',
                         border: 'none',
                         background: theme === 'sun' ? 'rgba(30, 64, 175, 0.1)' : 'rgba(77, 208, 255, 0.1)',
                         display: 'flex',
                         alignItems: 'center',
-                        gap: '12px',
+                        gap: '10px',
                         color: '#ff4757',
-                        fontSize: '14px',
+                        fontSize: '13px',
                         fontWeight: '500',
-                    
                         transition: 'background-color 0.2s'
                       }}
                       onMouseEnter={(e) => (e.target.style.backgroundColor = '#ffeeee')}
                       onMouseLeave={(e) => (e.target.style.backgroundColor = theme === 'sun' ? 'rgba(30, 64, 175, 0.1)' : 'rgba(77, 208, 255, 0.1)')}
                     >
                       <div style={{ 
-                        width: '20px', 
-                        height: '20px', 
+                        width: '16px', 
+                        height: '16px', 
                         display: 'flex', 
                         alignItems: 'center', 
                         justifyContent: 'center' 
                       }}>
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                           <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
                           <polyline points="16,17 21,12 16,7"></polyline>
                           <line x1="21" y1="12" x2="9" y2="12"></line>

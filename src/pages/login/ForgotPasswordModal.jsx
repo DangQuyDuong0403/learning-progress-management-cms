@@ -36,15 +36,15 @@ export default function ForgotPasswordModal({ visible, onCancel, onMethodSelect 
             footer={null}
             onCancel={onCancel}
             centered
-            width={480}
-            style={{ borderRadius: '16px' }}>
-            <div style={{ padding: '8px 0' }}>
+            width={400}
+            style={{ borderRadius: '12px' }}>
+            <div style={{ padding: '6px 0' }}>
                 <p
                     style={{
                         textAlign: 'center',
-                        marginBottom: '24px',
+                        marginBottom: '20px',
                         color: isSunTheme ? '#374151' : '#666',
-                        fontSize: '16px',
+                        fontSize: '14px',
                         fontWeight: 500,
                     }}>
                     {t('forgotPassword.description')}
@@ -53,7 +53,7 @@ export default function ForgotPasswordModal({ visible, onCancel, onMethodSelect 
                 <div
                     style={{
                         display: 'flex',
-                        gap: '20px',
+                        gap: '16px',
                         justifyContent: 'center',
                         flexWrap: 'wrap',
                     }}>
@@ -86,15 +86,15 @@ export default function ForgotPasswordModal({ visible, onCancel, onMethodSelect 
                 <div
                     style={{
                         textAlign: 'center',
-                        marginTop: '24px',
-                        padding: '16px 0',
+                        marginTop: '20px',
+                        padding: '12px 0',
                         borderTop: isSunTheme ? '1px solid #e5e7eb' : '1px solid #f0f0f0',
                     }}>
                     <p
                         style={{
                             margin: 0,
                             color: isSunTheme ? '#6b7280' : '#999',
-                            fontSize: '12px',
+                            fontSize: '11px',
                         }}>
                         {t('forgotPassword.footerNote')}
                     </p>

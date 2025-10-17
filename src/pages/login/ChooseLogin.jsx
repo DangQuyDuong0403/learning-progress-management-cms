@@ -25,7 +25,7 @@ export default function ChooseLogin() {
 
   return (
     <ThemedLayoutFullScreen>
-      <div className="main-content" style={{ paddingTop: 120, minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+      <div className="main-content" style={{ paddingTop: 80, minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
         {/* Theme Toggle - Top Right */}
         <div className={`login-theme-toggle-container ${isSunTheme ? 'sun-theme' : 'space-theme'}`} style={{ position: 'absolute', top: '20px', right: '20px' }}>
           <ThemeToggleSwitch />
@@ -35,7 +35,7 @@ export default function ChooseLogin() {
 
         <div className="container">
           <h1 className="page-title" style={{
-            fontSize: 48,
+            fontSize: 40,
             fontWeight: 700,
             color: isSunTheme ? '#3b82f6' : '#fff',
             textAlign: 'center',
@@ -46,7 +46,7 @@ export default function ChooseLogin() {
             {t('login.chooseRole')}
           </h1>      
         </div>
-          <div className="role-cards" style={{ display: 'flex', gap: 80, justifyContent: 'center',justifySelf: 'center',flexWrap: 'wrap', maxWidth: 1000, width: '100%', marginTop: '40px' }}>
+          <div className="role-cards" style={{ display: 'flex', gap: 60, justifyContent: 'center',justifySelf: 'center',flexWrap: 'wrap', maxWidth: 900, width: '100%', marginTop: '30px' }}>
            
             {/* Student Card */}
             <div className="role-card" style={getRoleCardStyle(isSunTheme)} onClick={() => selectRole('student')}>
@@ -81,27 +81,27 @@ export default function ChooseLogin() {
 const getRoleCardStyle = (isSunTheme) => ({
   background: isSunTheme ? '#EDF1FF' : 'rgba(109, 95, 143, 0.7)',
   backdropFilter: isSunTheme ? 'blur(1px)' : 'blur(5px)',
-  borderRadius: 24,
-  padding: '60px 50px',
+  borderRadius: 20,
+  padding: '50px 40px',
   boxShadow: isSunTheme 
-    ? '0 15px 50px rgba(0, 0, 0, 0.1)' 
-    : '0 15px 50px rgba(77, 208, 255, 0.15)',
+    ? '0 12px 40px rgba(0, 0, 0, 0.1)' 
+    : '0 12px 40px rgba(77, 208, 255, 0.15)',
   textAlign: 'center',
   transition: 'transform 0.3s ease, box-shadow 0.3s ease',
   cursor: 'pointer',
 
-  width: 450,
-  marginBottom: 24,
+  width: 400,
+  marginBottom: 20,
 });
 
 const getRoleIllustrationStyle = (isSunTheme) => ({
   width: '80%',
-  height: 250,
-  margin: '0 auto 30px',
+  height: 220,
+  margin: '0 auto 25px',
   background: isSunTheme 
     ? 'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)' 
     : 'linear-gradient(135deg, rgba(77, 208, 255, 0.1) 0%, rgba(77, 208, 255, 0.2) 100%)',
-  borderRadius: 16,
+  borderRadius: 14,
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
@@ -119,14 +119,14 @@ const getRoleButtonStyle = (isSunTheme) => ({
     : 'linear-gradient(135deg, #D9D9D9 0%, #CAC0E3 42%, #BAA5EE 66%, #AA8BF9 100%)',
   border: 'none',
   color: '#000000',
-  padding: '16px 32px', // Tăng padding
-  borderRadius: 12,
-  fontWeight: 700, // Tăng font weight
-  fontSize: 18, // Tăng font size từ 16 lên 18
+  padding: '14px 28px', // Giảm padding
+  borderRadius: 10,
+  fontWeight: 700, 
+  fontSize: 16, // Giảm font size từ 18 xuống 16
   fontFamily: "'Plus Jakarta Sans', sans-serif",
   textShadow: '0 1px 2px rgba(0, 0, 0, 0.1)',
-  letterSpacing: '0.5px', // Thêm letter spacing
+  letterSpacing: '0.5px', 
   transition: 'all 0.3s ease',
   width: '100%',
-  marginTop: 16,
+  marginTop: 14,
 });
