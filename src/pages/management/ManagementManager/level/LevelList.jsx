@@ -41,7 +41,6 @@ const LevelList = () => {
 	const [isDeleteModalVisible, setIsDeleteModalVisible] = useState(false);
 	const [editingLevel, setEditingLevel] = useState(null);
 	const [deleteLevel, setDeleteLevel] = useState(null);
-	const [modalLoading, setModalLoading] = useState(false);
 	const [searchText, setSearchText] = useState('');
 	const [statusFilter, setStatusFilter] = useState([]);
 	const [searchTimeout, setSearchTimeout] = useState(null);
@@ -121,7 +120,7 @@ const LevelList = () => {
 			const mappedLevels = levelsData.map((level) => ({
 				id: level.id,
 				levelName: level.levelName,
-				difficulty: level.difficulty,
+				prerequisite: level.prerequisite,
 				estimatedDurationWeeks: level.estimatedDurationWeeks,
 				status: level.isActive ? 'active' : 'inactive',
 				orderNumber: level.orderNumber,
@@ -305,8 +304,7 @@ const LevelList = () => {
 	const handleEdit = async (level) => {
 		try {
 			console.log('Level Edit clicked for:', level);
-			setModalLoading(true);
-			setIsModalVisible(true); // Mở modal trước để hiển thị loading
+			setIsModalVisible(true); // Mở modal ngay lập tức
 			
 			// Fetch full level details from API
 			const response = await levelManagementApi.getLevelById(level.id);
@@ -317,7 +315,7 @@ const LevelList = () => {
 				id: response.data.id,
 				levelName: response.data.levelName,
 				description: response.data.description || '',
-				difficulty: response.data.difficulty,
+				prerequisite: response.data.prerequisite,
 				estimatedDurationWeeks: response.data.estimatedDurationWeeks,
 				status: response.data.isActive ? 'active' : 'inactive',
 				orderNumber: response.data.orderNumber,
@@ -326,14 +324,12 @@ const LevelList = () => {
 			};
 			
 			setEditingLevel(levelDetails);
-			setModalLoading(false);
 			
 			// Show success toast
 			spaceToast.success(t('levelManagement.editLevelSuccess'));
 		} catch (error) {
 			console.error('Error fetching level details:', error);
 			spaceToast.error(t('levelManagement.loadLevelDetailsError'));
-			setModalLoading(false);
 			setIsModalVisible(false); // Đóng modal nếu có lỗi
 		}
 	};
@@ -366,7 +362,6 @@ const LevelList = () => {
 	const handleModalClose = (shouldRefresh = false, successMessage = null) => {
 		setIsModalVisible(false);
 		setEditingLevel(null);
-		setModalLoading(false);
 		
 		// Refresh data if save was successful
 		if (shouldRefresh) {
@@ -415,7 +410,7 @@ const LevelList = () => {
 			title: t('levelManagement.levelName'),
 			dataIndex: 'levelName',
 			key: 'levelName',
-			width: '30%',
+			width: '25%',
 			sorter: true,
 			render: (text) => (
 				<div>
@@ -424,10 +419,16 @@ const LevelList = () => {
 			),
 		},
 		{
-			title: t('levelManagement.difficulty'),
-			dataIndex: 'difficulty',
-			key: 'difficulty',
-			width: '15%',
+			title: t('levelManagement.prerequisite'),
+			dataIndex: 'prerequisite',
+			key: 'prerequisite',
+			width: '20%',
+			render: (prerequisite) => {
+				if (!prerequisite) {
+					return <span style={{ color: '#999' }}>None</span>;
+				}
+				return prerequisite.levelName || prerequisite;
+			},
 		},
 		{
 			title: t('levelManagement.status'),
@@ -695,20 +696,13 @@ const LevelList = () => {
 				footer={null}
 				width={800}
 				destroyOnClose
-				confirmLoading={modalLoading}
 				style={{ top: 20 }}
 				bodyStyle={{
 					maxHeight: '70vh',
 					overflowY: 'auto',
 					padding: '24px',
 				}}>
-				{modalLoading ? (
-					<div style={{ textAlign: 'center', padding: '40px' }}>
-						<div>Loading level details...</div>
-					</div>
-				) : (
-					<LevelForm level={editingLevel} onClose={handleModalClose} />
-				)}
+				<LevelForm level={editingLevel} onClose={handleModalClose} />
 			</Modal>
 
 			{/* Delete Confirmation Modal */}
