@@ -10,6 +10,8 @@ const levelManagementApi = {
 		return axiosClient.patch(`/level/${id}/activate-deactivate`);
 	},
 	bulkUpdateLevels: (data) => axiosClient.put('/level/bulk-order', data),
+	publishAllLevels: () => axiosClient.patch('/level/publish-all'),
+	draftAllLevels: () => axiosClient.patch('/level/draft-all'),
 };
 
 export default levelManagementApi;

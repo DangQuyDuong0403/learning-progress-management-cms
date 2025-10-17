@@ -22,24 +22,60 @@ const LevelForm = ({ level, onClose, shouldCallApi = true }) => {
   const [form] = Form.useForm();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [durationUnit, setDurationUnit] = useState('weeks');
+  
+  // Convert duration to weeks for API
+  const convertToWeeks = (value, unit) => {
+    if (!value) return 0;
+    switch (unit) {
+      case 'days':
+        return Math.round(value / 7 * 100) / 100; // Convert days to weeks
+      case 'weeks':
+        return value;
+      case 'months':
+        return Math.round(value * 4.33 * 100) / 100; // Convert months to weeks (1 month ≈ 4.33 weeks)
+      case 'years':
+        return Math.round(value * 52 * 100) / 100; // Convert years to weeks (1 year = 52 weeks)
+      default:
+        return value;
+    }
+  };
+  
+  // Convert weeks to display unit
+  const convertFromWeeks = (weeks, unit) => {
+    if (!weeks) return 0;
+    switch (unit) {
+      case 'days':
+        return Math.round(weeks * 7 * 100) / 100; // Convert weeks to days
+      case 'weeks':
+        return weeks;
+      case 'months':
+        return Math.round(weeks / 4.33 * 100) / 100; // Convert weeks to months
+      case 'years':
+        return Math.round(weeks / 52 * 100) / 100; // Convert weeks to years
+      default:
+        return weeks;
+    }
+  };
 
   const isEdit = !!level;
+  const isPublished = level?.status === 'PUBLISHED';
 
   useEffect(() => {
     if (level) {
       // Map API data to form fields
       form.setFieldsValue({
         levelName: level.levelName,
+        levelCode: level.levelCode,
         description: level.description,
-        prerequisite: level.prerequisite,
-        estimatedDurationWeeks: level.estimatedDurationWeeks,
+        prerequisite: level.prerequisite?.levelName || level.prerequisite || '',
+        estimatedDurationWeeks: convertFromWeeks(level.estimatedDurationWeeks, durationUnit),
         status: level.status,
         orderNumber: level.orderNumber,
         promotionCriteria: level.promotionCriteria,
         learningObjectives: level.learningObjectives,
       });
     }
-  }, [level, form]);
+  }, [level, form, durationUnit]);
 
   const onFinish = async (values) => {
     setIsSubmitting(true);
@@ -47,10 +83,11 @@ const LevelForm = ({ level, onClose, shouldCallApi = true }) => {
       // Map form values to API format
       const apiData = {
         levelName: values.levelName,
+        levelCode: values.levelCode,
         description: values.description || '',
         promotionCriteria: values.promotionCriteria || '',
         learningObjectives: values.learningObjectives || '',
-        estimatedDurationWeeks: values.estimatedDurationWeeks,
+        estimatedDurationWeeks: convertToWeeks(values.estimatedDurationWeeks, durationUnit),
         orderNumber: values.orderNumber || 0,
       };
 
@@ -118,6 +155,34 @@ const LevelForm = ({ level, onClose, shouldCallApi = true }) => {
             <Input 
               placeholder={t('levelManagement.levelNamePlaceholder')}
               size="large"
+              disabled={isPublished}
+            />
+          </Form.Item>
+        </Col>
+        <Col span={12}>
+          <Form.Item
+            name="levelCode"
+            label={t('levelManagement.levelCode')}
+          >
+            <Input 
+              placeholder={t('levelManagement.levelCodePlaceholder')}
+              size="large"
+              disabled={isPublished}
+            />
+          </Form.Item>
+        </Col>
+      </Row>
+
+      <Row gutter={16}>
+        <Col span={12}>
+          <Form.Item
+            name="prerequisite"
+            label={t('levelManagement.prerequisite')}
+          >
+            <Input 
+              placeholder="e.g., Movers, Starters"
+              size="large"
+              disabled={isPublished}
             />
           </Form.Item>
         </Col>
@@ -132,16 +197,19 @@ const LevelForm = ({ level, onClose, shouldCallApi = true }) => {
               placeholder={t('levelManagement.durationPlaceholder')}
               style={{ width: '100%' }}
               size="large"
+              disabled={isPublished}
               addonAfter={
                 <Select 
                   value={durationUnit}
                   onChange={setDurationUnit}
                   style={{ width: 120 }}
                   size="large"
+                  disabled={isPublished}
                 >
                   <Option value="days">{t('levelManagement.days')}</Option>
                   <Option value="weeks">{t('levelManagement.weeks')}</Option>
                   <Option value="months">{t('levelManagement.months')}</Option>
+                  <Option value="years">{t('levelManagement.years')}</Option>
                 </Select>
               }
             />

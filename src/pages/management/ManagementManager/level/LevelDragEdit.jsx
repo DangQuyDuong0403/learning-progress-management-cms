@@ -248,6 +248,7 @@ const LevelDragEdit = () => {
 			const mappedLevels = levelsData.map((level, index) => ({
 				id: level.id,
 				levelName: level.levelName,
+				levelCode: level.levelCode,
 				estimatedDurationWeeks: level.estimatedDurationWeeks,
 				status: level.isActive ? 'active' : 'inactive',
 				orderNumber: level.orderNumber,
@@ -417,6 +418,7 @@ const LevelDragEdit = () => {
 				return {
 					id: isNewRecord ? null : level.id, // null for new records
 					levelName: level.levelName,
+					levelCode: level.levelCode,
 					description: level.description || '',
 					promotionCriteria: level.promotionCriteria || '',
 					learningObjectives: level.learningObjectives || '',
