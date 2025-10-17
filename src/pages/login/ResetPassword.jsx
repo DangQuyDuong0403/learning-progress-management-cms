@@ -57,6 +57,23 @@ export default function ResetPassword() {
 			
 			if (response.data.success) {
 				spaceToast.success(response.data.message);
+				
+				// Gọi API logout để logout tất cả sessions trên backend
+				try {
+					const refreshToken = localStorage.getItem('refreshToken');
+					if (refreshToken) {
+						await authApi.logout(refreshToken);
+						console.log('Successfully logged out all sessions');
+					}
+				} catch (logoutError) {
+					console.log('Logout API failed, but continuing with token cleanup:', logoutError);
+				}
+				
+				// Xóa tất cả auth tokens để logout các tab khác trong cùng trình duyệt
+				localStorage.removeItem('accessToken');
+				localStorage.removeItem('refreshToken');
+				localStorage.removeItem('user');
+				
 				// Chuyển về trang login sau 2 giây dựa trên role trong localStorage
 				setTimeout(() => {
 					const loginRole = localStorage.getItem('selectedRole') || 'teacher';
