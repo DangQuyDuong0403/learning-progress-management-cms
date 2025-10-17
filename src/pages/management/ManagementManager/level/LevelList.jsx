@@ -36,9 +36,9 @@ const LevelList = () => {
 	const navigate = useNavigate();
 	const [loading, setLoading] = useState(false);
 	const [toggleLoading, setToggleLoading] = useState(false);
-	const [currentAction, setCurrentAction] = useState('publish'); // 'publish' or 'draft' - will be auto-detected
-	const [isAllPublished, setIsAllPublished] = useState(false); // Track if all levels are published
-	const [durationDisplayUnit, setDurationDisplayUnit] = useState('weeks'); // 'auto', 'days', 'weeks', 'months', 'years'
+	const [currentAction, setCurrentAction] = useState('publish'); 
+	const [isAllPublished, setIsAllPublished] = useState(false); 
+	const [durationDisplayUnit, setDurationDisplayUnit] = useState('weeks'); 
 	const [levels, setLevels] = useState([]);
 	const [isModalVisible, setIsModalVisible] = useState(false);
 	const [editingLevel, setEditingLevel] = useState(null);
