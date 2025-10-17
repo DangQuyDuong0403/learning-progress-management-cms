@@ -1057,6 +1057,7 @@
     "editLevelSuccess": "Tải chi tiết cấp độ thành công",
     "deleteLevelSuccess": "Xóa cấp độ thành công",
     "deleteLevelError": "Lỗi khi xóa cấp độ",
+    "confirmDeleteLevel": "Bạn có chắc chắn muốn xóa cấp độ",
     "deactivatedLevelSuccess": "Vô hiệu hóa cấp độ thành công",
     "activatedLevelSuccess": "Kích hoạt cấp độ thành công",
     "deactivateLevelError": "Lỗi khi vô hiệu hóa cấp độ",

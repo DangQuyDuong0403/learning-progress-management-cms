@@ -202,6 +202,12 @@ const LevelDragEdit = () => {
 	const [activeId, setActiveId] = useState(null);
 	const [isModalVisible, setIsModalVisible] = useState(false);
 	const [editingLevel, setEditingLevel] = useState(null);
+	const [confirmModal, setConfirmModal] = useState({
+		visible: false,
+		title: '',
+		content: '',
+		onConfirm: null,
+	});
 
 	// Optimized: Sử dụng passive events và giảm sensitivity
 	const sensors = useSensors(
@@ -346,16 +352,46 @@ const LevelDragEdit = () => {
 				return;
 			}
 
-			setLevels((prev) => {
-				const newLevels = prev.filter((_, i) => i !== index);
-				return newLevels.map((level, i) => ({
-					...level,
-					position: i + 1,
-					orderNumber: i + 1,
-				}));
+			const level = levels[index];
+			setConfirmModal({
+				visible: true,
+				title: t('levelManagement.deleteLevel'),
+				content: `${t('levelManagement.confirmDeleteLevel')} "${level.levelName}"?`,
+				onConfirm: async () => {
+					try {
+						// Delete from local state
+						setLevels((prev) => {
+							const newLevels = prev.filter((_, i) => i !== index);
+							return newLevels.map((level, i) => ({
+								...level,
+								position: i + 1,
+								orderNumber: i + 1,
+							}));
+						});
+
+						setConfirmModal({
+							visible: false,
+							title: '',
+							content: '',
+							onConfirm: null,
+						});
+
+						spaceToast.success(t('levelManagement.deleteLevelSuccess'));
+					} catch (error) {
+						console.error('Error deleting level:', error);
+						spaceToast.error(t('levelManagement.deleteLevelError'));
+						
+						setConfirmModal({
+							visible: false,
+							title: '',
+							content: '',
+							onConfirm: null,
+						});
+					}
+				},
 			});
 		},
-		[levels.length, t]
+		[levels, t]
 	);
 
 	const handleEditLevel = useCallback(
@@ -366,6 +402,15 @@ const LevelDragEdit = () => {
 		},
 		[levels]
 	);
+
+	const handleConfirmCancel = useCallback(() => {
+		setConfirmModal({
+			visible: false,
+			title: '',
+			content: '',
+			onConfirm: null,
+		});
+	}, []);
 
 	const handleDragStart = useCallback((event) => {
 		setActiveId(event.active.id);
@@ -686,6 +731,116 @@ const LevelDragEdit = () => {
 					padding: '24px',
 				}}>
 				<LevelForm level={editingLevel} onClose={handleModalClose} shouldCallApi={false} />
+			</Modal>
+
+			{/* Confirmation Modal */}
+			<Modal
+				title={
+					<div
+						style={{
+							fontSize: '26px',
+							fontWeight: '600',
+							color: '#000000ff',
+							textAlign: 'center',
+							padding: '10px 0',
+						}}>
+						{confirmModal.title}
+					</div>
+				}
+				open={confirmModal.visible}
+				onCancel={handleConfirmCancel}
+				width={400}
+				centered
+				bodyStyle={{
+					padding: '24px 32px',
+					fontSize: '14px',
+					lineHeight: '1.6',
+					textAlign: 'center',
+				}}
+				footer={[
+					<Button 
+						key="cancel" 
+						onClick={handleConfirmCancel}
+						style={{
+							height: '28px',
+							fontWeight: '500',
+							fontSize: '13px',
+							padding: '4px 12px',
+							width: '80px'
+						}}>
+						{t('common.cancel')}
+					</Button>,
+					<Button 
+						key="confirm" 
+						type="primary" 
+						onClick={confirmModal.onConfirm}
+						style={{
+							background: theme === 'sun' ? '#298EFE' : 'linear-gradient(135deg, #7228d9 0%, #9c88ff 100%)',
+							borderColor: theme === 'sun' ? '#298EFE' : '#7228d9',
+							color: '#fff',
+							borderRadius: '5px',
+							height: '28px',
+							fontWeight: '500',
+							fontSize: '13px',
+							padding: '4px 12px',
+							width: '80px',
+							transition: 'all 0.3s ease',
+							boxShadow: 'none'
+						}}
+						onMouseEnter={(e) => {
+							if (theme === 'sun') {
+								e.target.style.background = '#1a7ce8';
+								e.target.style.borderColor = '#1a7ce8';
+								e.target.style.transform = 'translateY(-1px)';
+								e.target.style.boxShadow = '0 4px 12px rgba(41, 142, 254, 0.4)';
+							} else {
+								e.target.style.background = 'linear-gradient(135deg, #5a1fb8 0%, #8a7aff 100%)';
+								e.target.style.borderColor = '#5a1fb8';
+								e.target.style.transform = 'translateY(-1px)';
+								e.target.style.boxShadow = '0 4px 12px rgba(114, 40, 217, 0.4)';
+							}
+						}}
+						onMouseLeave={(e) => {
+							if (theme === 'sun') {
+								e.target.style.background = '#298EFE';
+								e.target.style.borderColor = '#298EFE';
+								e.target.style.transform = 'translateY(0)';
+								e.target.style.boxShadow = 'none';
+							} else {
+								e.target.style.background = 'linear-gradient(135deg, #7228d9 0%, #9c88ff 100%)';
+								e.target.style.borderColor = '#7228d9';
+								e.target.style.transform = 'translateY(0)';
+								e.target.style.boxShadow = 'none';
+							}
+						}}>
+						{t('common.confirm')}
+					</Button>
+				]}>
+				<div
+					style={{
+						display: 'flex',
+						flexDirection: 'column',
+						alignItems: 'center',
+						gap: '20px',
+					}}>
+					<div
+						style={{
+							fontSize: '48px',
+							color: '#ff4d4f',
+							marginBottom: '10px',
+						}}>
+						⚠️
+					</div>
+					<p
+						style={{
+							fontSize: '18px',
+							color: '#333',
+							margin: 0,
+							fontWeight: '500',
+						}}>
+						{confirmModal.content}
+					</p>
+				</div>
 			</Modal>
 		</ThemedLayout>
 	);
