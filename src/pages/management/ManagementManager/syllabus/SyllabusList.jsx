@@ -702,7 +702,7 @@ const SyllabusList = () => {
 												<div style={{ display: 'flex', gap: '24px', marginBottom: '24px' }}>
 													{/* Status Filter */}
 													<div style={{ flex: 1 }}>
-														<Title level={5} style={{ marginBottom: '12px', color: '#298EFE', fontSize: '16px' }}>
+														<Title level={5} style={{ marginBottom: '12px', fontSize: '16px' }}>
 															Status
 														</Title>
 														<div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
@@ -725,7 +725,7 @@ const SyllabusList = () => {
 
 													{/* Level Filter */}
 													<div style={{ flex: 1 }}>
-														<Title level={5} style={{ marginBottom: '12px', color: '#298EFE', fontSize: '16px' }}>
+														<Title level={5} style={{ marginBottom: '12px', fontSize: '16px' }}>
 															Level
 														</Title>
 														<div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>

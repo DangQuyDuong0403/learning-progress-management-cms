@@ -9,12 +9,28 @@ import './ThemedLayout.css';
 const { Sider, Content } = AntLayout;
 
 const ThemedLayout = ({ children }) => {
-  const [collapsed, setCollapsed] = useState(false);
+  // Load collapsed state from localStorage, default to false
+  const [collapsed, setCollapsed] = useState(() => {
+    const saved = localStorage.getItem('sidebarCollapsed');
+    return saved ? JSON.parse(saved) : false;
+  });
   const { theme } = useTheme();
 
   const toggleCollapsed = () => {
-    setCollapsed(!collapsed);
+    const newCollapsed = !collapsed;
+    setCollapsed(newCollapsed);
+    // Save to localStorage
+    localStorage.setItem('sidebarCollapsed', JSON.stringify(newCollapsed));
   };
+
+  // Force sidebar state to prevent auto-expansion
+  React.useEffect(() => {
+    const sider = document.querySelector('.themed-sider');
+    if (sider) {
+      sider.style.transition = 'none';
+      sider.style.width = collapsed ? '80px' : '300px';
+    }
+  }, [collapsed]);
 
   return (
     <AntLayout 
@@ -38,6 +54,8 @@ const ThemedLayout = ({ children }) => {
         collapsedWidth={80}
         collapsed={collapsed}
         theme="dark"
+        trigger={null}
+        collapsible={false}
         className={`themed-sider ${theme}-sider`}
         style={{
           overflow: 'hidden',
@@ -57,20 +75,37 @@ const ThemedLayout = ({ children }) => {
           <div className="themed-logo">
             {theme === 'space' ? (
               <img 
-                src="/img/astro.png" 
-                alt="Logo" 
-                className="themed-logo-img" 
+                src="/img/logo-dark.png" 
+                alt="CAMKEY Logo" 
+                className="themed-logo-img"
+                style={{ 
+                  width: '50px', 
+                  height: '50px', 
+                  filter: 'drop-shadow(0 0 15px rgba(125, 211, 252, 0.8))'
+                }}
               />
             ) : (
               <img 
-                src="/img/sun-logo.png" 
-                alt="Logo" 
-                className="themed-logo-img" 
+                src="/img/logo-blue.png" 
+                alt="CAMKEY Logo" 
+                className="themed-logo-img"
+                style={{ 
+                  width: '50px', 
+                  height: '50px', 
+                }}
               />
             )}
             {!collapsed && (
-              <span className={`themed-logo-text ${theme}-logo-text`}>
-               Camkey
+              <span 
+                className={`themed-logo-text ${theme}-logo-text`}
+                style={{ 
+                  fontSize: '40px', 
+                  fontWeight: 700, 
+                  color: theme === 'sun' ? '#1E40AF' : '#FFFFFF',
+                  textShadow: theme === 'sun' ? '0 0 5px rgba(30, 64, 175, 0.3)' : '0 0 15px rgba(134, 134, 134, 0.8)'
+                }}
+              >
+                CAMKEY
               </span>
             )}
           </div>

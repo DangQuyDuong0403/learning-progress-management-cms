@@ -596,7 +596,7 @@ const ClassStudent = () => {
                   <div style={{ padding: '20px' }}>
                     {/* Status Filter */}
                     <div style={{ marginBottom: '24px' }}>
-                      <Title level={5} style={{ marginBottom: '12px', color: '#298EFE', fontSize: '16px' }}>
+                      <Title level={5} style={{ marginBottom: '12px', fontSize: '16px' }}>
                         Status
                       </Title>
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
