@@ -11,6 +11,7 @@ import {
   InputNumber
 } from 'antd';
 import { useTranslation } from 'react-i18next';
+import { useTheme } from '../../../../contexts/ThemeContext';
 import levelManagementApi from '../../../../apis/backend/levelManagement';
 
 const { TextArea } = Input;
@@ -18,6 +19,7 @@ const { Option } = Select;
 
 const LevelForm = ({ level, onClose, shouldCallApi = true }) => {
   const { t } = useTranslation();
+  const { theme } = useTheme();
   
   const [form] = Form.useForm();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -154,7 +156,7 @@ const LevelForm = ({ level, onClose, shouldCallApi = true }) => {
           >
             <Input 
               placeholder={t('levelManagement.levelNamePlaceholder')}
-              size="large"
+              size="middle"
               disabled={isPublished}
             />
           </Form.Item>
@@ -181,7 +183,7 @@ const LevelForm = ({ level, onClose, shouldCallApi = true }) => {
           >
             <Input 
               placeholder="e.g., Movers, Starters"
-              size="large"
+              size="middle"
               disabled={isPublished}
             />
           </Form.Item>
@@ -222,10 +224,11 @@ const LevelForm = ({ level, onClose, shouldCallApi = true }) => {
         label={t('levelManagement.description')}
       >
         <TextArea 
-          rows={3}
+          rows={2}
           placeholder={t('levelManagement.descriptionPlaceholder')}
           maxLength={500}
           showCount
+          size="middle"
         />
       </Form.Item>
 
@@ -235,10 +238,11 @@ const LevelForm = ({ level, onClose, shouldCallApi = true }) => {
         label={t('levelManagement.learningObjectives')}
       >
         <TextArea 
-          rows={4}
+          rows={3}
           placeholder={t('levelManagement.learningObjectivesPlaceholder')}
           maxLength={1000}
           showCount
+          size="middle"
         />
       </Form.Item>
 
@@ -247,23 +251,72 @@ const LevelForm = ({ level, onClose, shouldCallApi = true }) => {
         label={t('levelManagement.promotionCriteria')}
       >
         <TextArea 
-          rows={3}
+          rows={2}
           placeholder={t('levelManagement.promotionCriteriaPlaceholder')}
           maxLength={500}
           showCount
+          size="middle"
         />
       </Form.Item>
 
       <Form.Item style={{ marginBottom: 0, textAlign: 'right' }}>
         <Space>
-          <Button onClick={onCancel} size="large">
+          <Button 
+            onClick={onCancel} 
+            size="middle"
+            style={{
+              height: '40px',
+              width: '120px',
+              fontSize: '14px',
+              fontWeight: '500',
+              borderRadius: '6px',
+              transition: 'all 0.3s ease',
+            }}
+          >
             {t('common.cancel')}
           </Button>
           <Button 
             type="primary" 
             htmlType="submit" 
             loading={isSubmitting}
-            size="large"
+            size="middle"
+            style={{
+              background: theme === 'sun' ? '#298EFE' : 'linear-gradient(135deg, #7228d9 0%, #9c88ff 100%)',
+              borderColor: theme === 'sun' ? '#298EFE' : '#7228d9',
+              color: '#ffffff',
+              height: '40px',
+              width: '120px',
+              fontSize: '14px',
+              fontWeight: '500',
+              borderRadius: '6px',
+              transition: 'all 0.3s ease',
+            }}
+            onMouseEnter={(e) => {
+              if (theme === 'sun') {
+                e.target.style.background = '#1a7ce8';
+                e.target.style.borderColor = '#1a7ce8';
+                e.target.style.transform = 'translateY(-2px)';
+                e.target.style.boxShadow = '0 6px 16px rgba(41, 142, 254, 0.6)';
+              } else {
+                e.target.style.background = 'linear-gradient(135deg, #5a1fb8 0%, #8a7aff 100%)';
+                e.target.style.borderColor = '#5a1fb8';
+                e.target.style.transform = 'translateY(-2px)';
+                e.target.style.boxShadow = '0 6px 16px rgba(114, 40, 217, 0.6)';
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (theme === 'sun') {
+                e.target.style.background = '#298EFE';
+                e.target.style.borderColor = '#298EFE';
+                e.target.style.transform = 'translateY(0)';
+                e.target.style.boxShadow = 'none';
+              } else {
+                e.target.style.background = 'linear-gradient(135deg, #7228d9 0%, #9c88ff 100%)';
+                e.target.style.borderColor = '#7228d9';
+                e.target.style.transform = 'translateY(0)';
+                e.target.style.boxShadow = 'none';
+              }
+            }}
           >
             {isEdit ? t('common.update') : t('common.save')}
           </Button>

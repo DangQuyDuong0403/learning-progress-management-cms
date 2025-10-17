@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { toast } from 'react-toastify';
 import { useTranslation } from 'react-i18next';
 import { useSelector, useDispatch } from 'react-redux';
+import { Typography } from 'antd';
+import usePageTitle from '../../hooks/usePageTitle';
 import './Profile.css';
 import ThemedLayout from '../../component/ThemedLayout';
 import { useTheme } from '../../contexts/ThemeContext';
@@ -14,6 +16,9 @@ export default function Profile() {
   const { t } = useTranslation();
   const { user, profileData, profileLoading, profileError } = useSelector((state) => state.auth);
   const { theme } = useTheme();
+  
+  // Set page title
+  usePageTitle('Profile');
   const dispatch = useDispatch();
   
   // Modal state
@@ -97,6 +102,15 @@ export default function Profile() {
     <ThemedLayout>
       {/* Main Content Panel */}
       <div className={`profile-page main-content-panel ${theme}-main-panel`}>
+        {/* Page Title */}
+        <div className="page-title-container">
+          <Typography.Title 
+            level={1} 
+            className="page-title"
+          >
+            Profile
+          </Typography.Title>
+        </div>
         {/* Header Section */}
         <div className={`panel-header ${theme}-panel-header`}>
           <div className='search-section'>

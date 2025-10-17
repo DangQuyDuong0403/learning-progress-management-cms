@@ -9,6 +9,7 @@ import { useTheme } from '../../contexts/ThemeContext';
 import ThemedLayoutFullScreen from '../../component/ThemedLayoutFullScreen';
 import { spaceToast } from '../../component/SpaceToastify';
 import authApi from '../../apis/backend/auth';
+import usePageTitle from '../../hooks/usePageTitle';
 import './Login.css';
 
 export default function ChangePassword() {
@@ -21,6 +22,9 @@ export default function ChangePassword() {
 	const navigate = useNavigate();
 	const { isSunTheme } = useTheme();
 	const { t } = useTranslation();
+	
+	// Set page title
+	usePageTitle('Change Password');
 
 	const handleInputChange = (field, value) => {
 		setFormData((prev) => ({

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import usePageTitle from '../../../../hooks/usePageTitle';
 import {
 	Table,
 	Button,
@@ -45,6 +46,9 @@ const SyllabusList = () => {
 	const { t } = useTranslation();
 	const navigate = useNavigate();
 	const { theme } = useTheme();
+	
+	// Set page title
+	usePageTitle('Syllabus Management');
 
 	// State management
 	const [loading, setLoading] = useState(false);
@@ -666,6 +670,15 @@ const SyllabusList = () => {
 	return (
 		<ThemedLayout>
 			<div className="syllabus-list-container">
+				{/* Page Title */}
+				<div className="page-title-container">
+					<Typography.Title 
+						level={1} 
+						className="page-title"
+					>
+						Syllabus Management
+					</Typography.Title>
+				</div>
 
 			{/* Main Container Card */}
 			<Card className="main-container-card">

@@ -12,12 +12,16 @@ import ThemeToggleSwitch from '../../component/ThemeToggleSwitch';
 import { useTheme } from '../../contexts/ThemeContext';
 import ThemedLayoutFullScreen from '../../component/ThemedLayoutFullScreen';
 import ForgotPasswordModal from './ForgotPasswordModal';
+import usePageTitle from '../../hooks/usePageTitle';
 import './Login.css';
 
 export default function Login() {
 	const [username, setUsername] = useState('');
 	const [password, setPassword] = useState('');
 	const [forgotVisible, setForgotVisible] = useState(false);
+	
+	// Set page title
+	usePageTitle('Student Login');
 	const [loading, setLoading] = useState(false);
 	const dispatch = useDispatch();
 	const navigate = useNavigate();

@@ -432,8 +432,9 @@
 }
 
 .sun-theme .themed-sidebar-menu .ant-menu-item:hover {
-	background: #b5cef7;
-	color: #1181FF;
+	background: #b5cef7 !important;
+	color: #4398f8 !important;
+	font-weight: 700 !important;
 	transform: none;
 	box-shadow: 0 4px 12px rgba(109, 95, 143, 0.15);
 	border-color: rgba(109, 95, 143, 0.3);
@@ -456,7 +457,8 @@
 
 .space-theme .themed-sidebar-menu .ant-menu-item:hover {
 	background: rgba(109, 95, 143, 0.2);
-	color: #fff;
+	color: #fff !important;
+	font-weight: 700 !important;
 	transform: none;
 	box-shadow: 0 4px 12px rgba(109, 95, 143, 0.15);
 	border-color: rgba(109, 95, 143, 0.3);
@@ -502,6 +504,24 @@
 .sun-theme .themed-sidebar-menu .ant-menu-item:hover .anticon {
 	filter: drop-shadow(0 0 10px rgba(17, 129, 255, 0.8));
 	color: #1181FF;
+}
+
+/* Force override for sun theme hover text color */
+.sun-theme .themed-sidebar-menu .ant-menu-item:hover,
+.sun-theme .themed-sidebar-menu .ant-menu-item:hover a,
+.sun-theme .themed-sidebar-menu .ant-menu-item:hover .ant-menu-title-content,
+.sun-theme .themed-sidebar-menu .ant-menu-item:hover .ant-menu-title-content a {
+	color: #4398f8 !important;
+	font-weight: 700 !important;
+}
+
+/* Force override for space theme hover text color */
+.space-theme .themed-sidebar-menu .ant-menu-item:hover,
+.space-theme .themed-sidebar-menu .ant-menu-item:hover a,
+.space-theme .themed-sidebar-menu .ant-menu-item:hover .ant-menu-title-content,
+.space-theme .themed-sidebar-menu .ant-menu-item:hover .ant-menu-title-content a {
+	color: #fff !important;
+	font-weight: 700 !important;
 }
 
 .space-theme .themed-sidebar-menu .ant-menu-item:hover .anticon {
@@ -1704,6 +1724,28 @@
 	border: none !important;
 	transform: translateY(-1px) !important;
 	box-shadow: 0 4px 12px rgba(114, 40, 217, 0.4) !important;
+}
+
+/* ===== PAGE TITLE STYLES ===== */
+.page-title-container {
+	margin-bottom: 20px;
+	text-align: center;
+}
+
+.page-title {
+	margin: 0;
+	font-size: 30px;
+	font-weight: 600;
+}
+
+/* Sun theme page title */
+.sun-theme .page-title {
+	color: #000000;
+}
+
+/* Space theme page title */
+.space-theme .page-title {
+	color: #ffffff;
 }
 
 /* ===== RESPONSIVE ===== */

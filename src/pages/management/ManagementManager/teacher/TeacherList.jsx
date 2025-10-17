@@ -13,6 +13,7 @@ import {
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import usePageTitle from '../../../../hooks/usePageTitle';
 import TeacherForm from './TeacherForm';
 import AssignTeacherToClass from './AssignTeacherToClass';
 import './TeacherList.css';
@@ -27,6 +28,9 @@ const TeacherList = () => {
 	const { t } = useTranslation();
 	const { theme } = useTheme();
 	const navigate = useNavigate();
+	
+	// Set page title
+	usePageTitle('Teacher Management');
 
 	// State for teachers data
 	const [teachers, setTeachers] = useState([]);
@@ -493,6 +497,15 @@ const TeacherList = () => {
 		<ThemedLayout>
 			{/* Main Content Panel */}
 			<div className={`teacher-page main-content-panel ${theme}-main-panel`}>
+				{/* Page Title */}
+				<div className="page-title-container">
+					<Typography.Title 
+						level={1} 
+						className="page-title"
+					>
+						Teacher Management
+					</Typography.Title>
+				</div>
 				{/* Header Section */}
 				<div className={`panel-header ${theme}-panel-header`}>
 					<div className='search-section' style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>

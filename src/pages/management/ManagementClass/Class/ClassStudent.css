@@ -404,7 +404,7 @@
 /* Sun theme table section */
 .sun-theme .table-section {
   position: relative;
-  background: rgba(255, 255, 255, 0.05); /* Rất trong suốt để nhìn xuyên qua */
+  background: #ffffffb3; /* Rất trong suốt để nhìn xuyên qua */
   backdrop-filter: blur(1px); /* Blur nhẹ để tạo hiệu ứng glass */
   border-radius: 12px;
   overflow: hidden;

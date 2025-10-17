@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
+import usePageTitle from "../../../../hooks/usePageTitle";
 import {
   Button,
   Input,
@@ -103,6 +104,9 @@ const ClassList = () => {
   const { t } = useTranslation();
   const { theme } = useTheme();
   const navigate = useNavigate();
+  
+  // Set page title
+  usePageTitle('Class Management');
   
   // State for classes data
   const [classes, setClasses] = useState([]);
@@ -606,6 +610,15 @@ const ClassList = () => {
   return (
     <ThemedLayout>
       <div className={`class-list-container class-page ${theme}-theme`}>
+        {/* Page Title */}
+        <div className="page-title-container">
+          <Typography.Title 
+            level={1} 
+            className="page-title"
+          >
+            Class Management
+          </Typography.Title>
+        </div>
 
         {/* Filters */}
         <Card className="filter-card">

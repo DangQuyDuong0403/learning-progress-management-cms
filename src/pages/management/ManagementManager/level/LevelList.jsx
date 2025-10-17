@@ -7,18 +7,17 @@ import {
 	Input,
 	Tooltip,
 	Typography,
-	Select,
 } from 'antd';
 import {
 	EditOutlined,
 	SearchOutlined,
-	ReloadOutlined,
 	DragOutlined,
 	FilterOutlined,
 	SendOutlined,
 	FileTextOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
+import usePageTitle from '../../../../hooks/usePageTitle';
 import { useNavigate } from 'react-router-dom';
 import ThemedLayout from '../../../../component/ThemedLayout';
 import LoadingWithEffect from '../../../../component/spinner/LoadingWithEffect';
@@ -34,11 +33,23 @@ const LevelList = () => {
 	const { t } = useTranslation();
 	const { theme } = useTheme();
 	const navigate = useNavigate();
+	
+	// Set page title
+	usePageTitle('Level Management');
+	
 	const [loading, setLoading] = useState(false);
 	const [toggleLoading, setToggleLoading] = useState(false);
 	const [currentAction, setCurrentAction] = useState('publish'); 
 	const [isAllPublished, setIsAllPublished] = useState(false); 
-	const [durationDisplayUnit, setDurationDisplayUnit] = useState('weeks'); 
+	const [durationDisplayUnit, setDurationDisplayUnit] = useState('weeks');
+	
+	// Cycle through duration units
+	const durationUnits = ['days', 'weeks', 'months', 'years'];
+	const handleDurationUnitClick = () => {
+		const currentIndex = durationUnits.indexOf(durationDisplayUnit);
+		const nextIndex = (currentIndex + 1) % durationUnits.length;
+		setDurationDisplayUnit(durationUnits[nextIndex]);
+	}; 
 	const [levels, setLevels] = useState([]);
 	const [isModalVisible, setIsModalVisible] = useState(false);
 	const [editingLevel, setEditingLevel] = useState(null);
@@ -366,9 +377,6 @@ const LevelList = () => {
 		});
 	};
 
-	const handleRefresh = () => {
-		fetchLevels(pagination.current, pagination.pageSize, searchText, statusFilter);
-	};
 
 	const handleTogglePublishDraft = async () => {
 		setToggleLoading(true);
@@ -453,7 +461,7 @@ const LevelList = () => {
 
 	const columns = [
 		{
-			title: 'No',
+			title: 'STT',
 			key: 'index',
 			width: '5%',
 			render: (_, __, index) => {
@@ -467,7 +475,7 @@ const LevelList = () => {
 			title: t('levelManagement.levelName'),
 			dataIndex: 'levelName',
 			key: 'levelName',
-			width: '25%',
+			width: '20%',
 			render: (text) => (
 				<div>
 					<div>{text}</div>
@@ -499,26 +507,28 @@ const LevelList = () => {
 		},
 		{
 			title: (
-				<div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-					<span>{t('levelManagement.duration')}</span>
-					<Select
-						value={durationDisplayUnit}
-						onChange={setDurationDisplayUnit}
-						size="small"
-						style={{ width: 80 }}
-						dropdownMatchSelectWidth={false}
-					>
-						<Select.Option value="auto">{t('levelManagement.auto')}</Select.Option>
-						<Select.Option value="days">{t('levelManagement.days')}</Select.Option>
-						<Select.Option value="weeks">{t('levelManagement.weeks')}</Select.Option>
-						<Select.Option value="months">{t('levelManagement.months')}</Select.Option>
-						<Select.Option value="years">{t('levelManagement.years')}</Select.Option>
-					</Select>
-				</div>
+				<span
+					onClick={handleDurationUnitClick}
+					style={{
+						cursor: 'pointer',
+						userSelect: 'none',
+						transition: 'color 0.2s ease',
+						fontWeight: '500',
+						whiteSpace: 'nowrap',
+					}}
+					onMouseEnter={(e) => {
+						e.target.style.color = '#1890ff';
+					}}
+					onMouseLeave={(e) => {
+						e.target.style.color = '#000';
+					}}
+				>
+					{t('levelManagement.duration')} ({t(`levelManagement.${durationDisplayUnit}`)})
+				</span>
 			),
 			dataIndex: 'estimatedDurationWeeks',
 			key: 'estimatedDurationWeeks',
-			width: '15%',
+			width: '18%',
 			render: (estimatedDurationWeeks) => formatDuration(estimatedDurationWeeks, durationDisplayUnit),
 		},
 		{
@@ -530,7 +540,7 @@ const LevelList = () => {
 					<Tooltip title={t('levelManagement.edit')}>
 						<Button
 							type='text'
-							icon={<EditOutlined style={{ fontSize: '25px' }} />}
+							icon={<EditOutlined style={{ fontSize: '25px', color: '#000000' }} />}
 							size='small'
 							onClick={() => handleEdit(record)}
 						/>
@@ -544,6 +554,15 @@ const LevelList = () => {
 		<ThemedLayout>
 			{/* Main Content Panel */}
 			<div className={`main-content-panel ${theme}-main-panel`}>
+				{/* Page Title */}
+				<div className="page-title-container">
+					<Typography.Title 
+						level={1} 
+						className="page-title"
+					>
+						Level Management
+					</Typography.Title>
+				</div>
 				{/* Header Section */}
 				<div className={`panel-header ${theme}-panel-header`}>
 					<div
@@ -555,10 +574,9 @@ const LevelList = () => {
 							onChange={(e) => handleSearch(e.target.value)}
 							className={`search-input ${theme}-search-input`}
 							style={{
-								flex: '1',
-								minWidth: '250px',
-								maxWidth: '400px',
-								width: '350px',
+								minWidth: '200px',
+								maxWidth: '300px',
+								width: '250px',
 								height: '40px',
 								fontSize: '16px',
 							}}
@@ -661,13 +679,6 @@ const LevelList = () => {
 					</div>
 					<div className='action-buttons'>
 						<Button
-							icon={<ReloadOutlined />}
-							onClick={handleRefresh}
-							loading={loading}
-							className={`refresh-button ${theme}-refresh-button`}>
-							{t('levelManagement.refresh')}
-						</Button>
-						<Button
 							icon={currentAction === 'publish' ? <SendOutlined /> : <FileTextOutlined />}
 							onClick={handleTogglePublishDraft}
 							loading={toggleLoading}
@@ -677,29 +688,17 @@ const LevelList = () => {
 								borderRadius: '8px',
 								fontWeight: '500',
 								border: theme === 'space' 
-									? currentAction === 'publish' 
-										? '1px solid rgba(34, 197, 94, 0.3)' 
-										: '1px solid rgba(245, 158, 11, 0.3)'
-									: currentAction === 'publish' 
-										? '1px solid rgba(34, 197, 94, 0.3)' 
-										: '1px solid rgba(245, 158, 11, 0.3)',
+									? '1px solid rgba(77, 208, 255, 0.3)' 
+									: '1px solid #0000001a',
 								background: theme === 'space'
-									? currentAction === 'publish' 
-										? 'rgb(34, 197, 94)' 
-										: 'rgb(245, 158, 11)'
-									: currentAction === 'publish' 
-										? 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)' 
-										: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
-								color: '#fff',
+									? 'linear-gradient(135deg, #b5b0c0 19%, #a79ebb 64%, #8377a0 75%, #aca5c0 97%, #6d5f8f)'
+									: '#71b3fd',
+								color: '#000',
 								backdropFilter: 'blur(10px)',
 								transition: 'all 0.3s ease',
 								boxShadow: theme === 'space'
-									? currentAction === 'publish' 
-										? '0 4px 12px rgba(34, 197, 94, 0.3)' 
-										: '0 4px 12px rgba(245, 158, 11, 0.3)'
-									: currentAction === 'publish' 
-										? '0 4px 12px rgba(34, 197, 94, 0.3)' 
-										: '0 4px 12px rgba(245, 158, 11, 0.3)',
+									? '0 4px 12px rgba(76, 29, 149, 0.3)'
+									: '0 4px 12px rgba(24, 144, 255, 0.3)',
 							}}>
 							{currentAction === 'publish' ? t('levelManagement.publishAll') : t('levelManagement.draftAll')}
 						</Button>
@@ -714,11 +713,11 @@ const LevelList = () => {
 								fontWeight: '500',
 								border: theme === 'space' 
 									? '1px solid rgba(77, 208, 255, 0.3)' 
-									: '1px solid rgba(24, 144, 255, 0.3)',
+									: '1px solid #0000001a',
 								background: theme === 'space'
-									? 'rgb(75, 65, 119)'
-									: 'linear-gradient(135deg, #1890ff 0%, #40a9ff 50%, #69c0ff 100%)',
-								color: theme === 'space' ? '#fff' : '#000',
+									? 'linear-gradient(135deg, #b5b0c0 19%, #a79ebb 64%, #8377a0 75%, #aca5c0 97%, #6d5f8f)'
+									: '#71b3fd',
+								color: '#000',
 								backdropFilter: 'blur(10px)',
 								transition: 'all 0.3s ease',
 								boxShadow: theme === 'space'
@@ -729,7 +728,7 @@ const LevelList = () => {
 							}}
 						
 						>
-							{t('levelManagement.editPositions')}
+							{t('levelManagement.edit')}
 						</Button>
 					</div>
 				</div>
@@ -758,9 +757,11 @@ const LevelList = () => {
 			{/* Modal */}
 			<Modal
 				title={
-					editingLevel
-						? t('levelManagement.editLevel')
-						: t('levelManagement.addLevel')
+					<div style={{ textAlign: 'center', fontSize: '30px', fontWeight: '600' }}>
+						{editingLevel
+							? t('levelManagement.editLevel')
+							: t('levelManagement.addLevel')}
+					</div>
 				}
 				open={isModalVisible}
 				onCancel={() => {
