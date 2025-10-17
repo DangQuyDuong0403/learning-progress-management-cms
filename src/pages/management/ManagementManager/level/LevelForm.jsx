@@ -152,7 +152,9 @@ const LevelForm = ({ level, onClose, shouldCallApi = true }) => {
         <Col span={12}>
           <Form.Item
             name="levelName"
-            label={t('levelManagement.levelName')}
+            label={<span>{t('levelManagement.levelName')} <span style={{ color: 'red' }}>*</span></span>}
+            required
+            rules={[{ required: true, message: t('levelManagement.levelNameRequired') }]}
           >
             <Input 
             
@@ -191,7 +193,9 @@ const LevelForm = ({ level, onClose, shouldCallApi = true }) => {
         <Col span={12}>
           <Form.Item
             name="estimatedDurationWeeks"
-            label={t('levelManagement.duration')}
+            label={<span>{t('levelManagement.duration')} <span style={{ color: 'red' }}>*</span></span>}
+            required
+            rules={[{ required: true, message: t('levelManagement.durationRequired') }]}
           >
             <InputNumber 
               min={1}
