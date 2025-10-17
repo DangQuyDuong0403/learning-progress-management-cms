@@ -733,7 +733,7 @@ STU003,Le Van Cuong,levancuong@example.com,0111222333,Lớp 11B1,Advanced,active
                       <div style={{ display: 'flex', gap: '24px', marginBottom: '24px' }}>
                         {/* Role Filter */}
                         <div style={{ flex: 1 }}>
-                          <Title level={5} style={{ marginBottom: '12px', color: '#298EFE', fontSize: '16px' }}>
+                          <Title level={5} style={{ marginBottom: '12px', fontSize: '16px' }}>
                             Role
                           </Title>
                           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
@@ -756,7 +756,7 @@ STU003,Le Van Cuong,levancuong@example.com,0111222333,Lớp 11B1,Advanced,active
 
                         {/* Status Filter */}
                         <div style={{ flex: 1 }}>
-                          <Title level={5} style={{ marginBottom: '12px', color: '#298EFE', fontSize: '16px' }}>
+                          <Title level={5} style={{ marginBottom: '12px', fontSize: '16px' }}>
                             Status
                           </Title>
                           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>

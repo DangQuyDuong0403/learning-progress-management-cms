@@ -5,7 +5,6 @@ import {
 	Button,
 	Input,
 	Space,
-	Tag,
 	message,
 	Row,
 	Col,
@@ -13,19 +12,14 @@ import {
 	Tooltip,
 	Modal,
 	Form,
-	Upload,
 	Typography,
-	Divider,
+	Switch,
 } from 'antd';
 import {
 	PlusOutlined,
 	EditOutlined,
 	SearchOutlined,
 	MailOutlined,
-	CheckOutlined,
-	StopOutlined,
-	DownloadOutlined,
-	UploadOutlined,
 	FilterOutlined,
 } from '@ant-design/icons';
 import ThemedLayout from '../../../../component/ThemedLayout';
@@ -36,8 +30,6 @@ import { spaceToast } from '../../../../component/SpaceToastify';
 import accountManagementApi from '../../../../apis/backend/accountManagement';
 
 const { Option } = Select;
-const { Title, Text } = Typography;
-const { Dragger } = Upload;
 
 const AccountList = () => {
 	const { t } = useTranslation();
@@ -58,11 +50,6 @@ const AccountList = () => {
 		title: '',
 		content: '',
 		onConfirm: null,
-	});
-	const [importModal, setImportModal] = useState({
-		visible: false,
-		fileList: [],
-		uploading: false,
 	});
 
 	// Filter dropdown state
@@ -430,89 +417,6 @@ const AccountList = () => {
 		});
 	};
 
-	const handleImportAccount = () => {
-		setImportModal({ visible: true, fileList: [], uploading: false });
-	};
-
-	const handleExportTemplate = () => {
-		// Create CSV template content
-		const csvContent = [
-			'username,email,fullName,phone,role,status,password,note',
-			'example_user,example@email.com,Example User,0123456789,STUDENT,ACTIVE,password123,Example note',
-			'teacher_user,teacher@email.com,Teacher User,0987654321,TEACHER,ACTIVE,password123,Teacher note',
-		].join('\n');
-
-		// Create blob and download
-		const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-		const link = document.createElement('a');
-		const url = URL.createObjectURL(blob);
-		link.setAttribute('href', url);
-		link.setAttribute('download', 'account_template.csv');
-		link.style.visibility = 'hidden';
-		document.body.appendChild(link);
-		link.click();
-		document.body.removeChild(link);
-
-		spaceToast.success(t('accountManagement.templateDownloaded'));
-	};
-
-	const handleImportCancel = () => {
-		setImportModal({ visible: false, fileList: [], uploading: false });
-	};
-
-	const handleImportOk = async () => {
-		if (importModal.fileList.length === 0) {
-			message.warning(t('accountManagement.selectFileToImport'));
-			return;
-		}
-
-		setImportModal((prev) => ({ ...prev, uploading: true }));
-
-		try {
-			// Simulate file processing
-			await new Promise((resolve) => setTimeout(resolve, 2000));
-
-			// Mock successful import
-			const newAccounts = [
-				{
-					id: Date.now() + 1,
-					username: 'imported001',
-					email: 'imported001@example.com',
-					fullName: 'Account Imported 1',
-					phone: '0123456789',
-					role: 'Student',
-					status: 'active',
-					createdAt: new Date().toISOString().split('T')[0],
-					lastLogin: null,
-					avatar: null,
-				},
-				{
-					id: Date.now() + 2,
-					username: 'imported002',
-					email: 'imported002@example.com',
-					fullName: 'Account Imported 2',
-					phone: '0987654321',
-					role: 'Teacher',
-					status: 'active',
-					createdAt: new Date().toISOString().split('T')[0],
-					lastLogin: null,
-					avatar: null,
-				},
-			];
-
-			setAccounts([...newAccounts, ...accounts]);
-			spaceToast.success(
-				`${t('accountManagement.importSuccess')} ${newAccounts.length} ${t(
-					'accountManagement.accounts'
-				)}`
-			);
-
-			setImportModal({ visible: false, fileList: [], uploading: false });
-		} catch (error) {
-			message.error(t('accountManagement.importError'));
-			setImportModal((prev) => ({ ...prev, uploading: false }));
-		}
-	};
 
 	const handleModalOk = async () => {
 		try {
@@ -609,25 +513,15 @@ const AccountList = () => {
 		form.resetFields();
 	};
 
-	const getStatusTag = (status) => {
-		const statusConfig = {
-			ACTIVE: { color: 'green', text: 'Active' },
-			INACTIVE: { color: 'red', text: 'Inactive' },
-			PENDING: { color: 'orange', text: 'Pending' },
-		};
-
-		const config = statusConfig[status] || statusConfig.INACTIVE;
-		return <Tag color={config.color}>{config.text}</Tag>;
-	};
 
 	const getRoleTag = (role) => {
 		const roleTranslations = {
-			ADMIN: 'Admin',
-			TEACHER: 'Teacher',
-			STUDENT:'Student',
-			MANAGER: 'Manager',
-			TEACHING_ASSISTANT: 'Teacher Assistant',
-			TEST_TAKER: 'Test Taker',
+			ADMIN: t('accountManagement.admin'),
+			TEACHER: t('accountManagement.teacher'),
+			STUDENT: t('accountManagement.student'),
+			MANAGER: t('accountManagement.manager'),
+			TEACHING_ASSISTANT: t('accountManagement.teacherAssistant'),
+			TEST_TAKER: t('accountManagement.testTaker'),
 		};
 
 		return roleTranslations[role] || role;
@@ -658,9 +552,10 @@ const AccountList = () => {
 
 	const columns = [
 		{
-			title: 'No',
+			title: t('accountManagement.stt'),
 			key: 'index',
-			width: 60,
+			width: 80,
+			align: 'center',
 			render: (_, __, index) => {
 				// Calculate index based on current page and page size
 				const currentPage = pagination.current || 1;
@@ -672,16 +567,18 @@ const AccountList = () => {
 			title: t('accountManagement.username'),
 			dataIndex: 'username',
 			key: 'username',
+			width: 150,
 			sorter: true,
 		},
 		{
 			title: t('accountManagement.email'),
 			dataIndex: 'email',
 			key: 'email',
+			width: 250,
 			render: (email) => (
 				<Space>
 					<MailOutlined />
-					{email}
+					<span style={{ wordBreak: 'break-all' }}>{email}</span>
 				</Space>
 			),
 		},
@@ -689,18 +586,40 @@ const AccountList = () => {
 			title: t('accountManagement.role'),
 			dataIndex: 'role',
 			key: 'role',
+			width: 120,
+			align: 'center',
 			render: (role) => getRoleTag(role),
 		},
 		{
 			title: t('accountManagement.status'),
 			dataIndex: 'status',
 			key: 'status',
-			render: (status) => getStatusTag(status),
+			width: 150,
+			align: 'center',
+			render: (status, record) => {
+				if (status === 'PENDING') {
+					return <span style={{ color: '#000' }}>{t('accountManagement.pending')}</span>;
+				}
+				return (
+					<Switch
+						checked={status === 'ACTIVE'}
+						onChange={() => handleToggleStatus(record.id)}
+						checkedChildren={t('accountManagement.active')}
+						unCheckedChildren={t('accountManagement.inactive')}
+						size="large"
+						style={{
+							backgroundColor: status === 'ACTIVE' ? '#52c41a' : '#ff4d4f',
+							transform: 'scale(1.2)',
+						}}
+					/>
+				);
+			},
 		},
 		{
 			title: t('accountManagement.actions'),
 			key: 'actions',
-			width: 180,
+			width: 120,
+			align: 'center',
 			render: (_, record) => (
 				<Space size='small'>
 					{/* Only show edit button for PENDING status */}
@@ -708,34 +627,15 @@ const AccountList = () => {
 						<Tooltip title={t('accountManagement.edit')}>
 							<Button
 								type='text'
-								icon={<EditOutlined style={{ fontSize: '25px' }} />}
-								size='small'
+								icon={<EditOutlined style={{ fontSize: '26px' }} />}
+								size='large'
 								onClick={() => handleEditAccount(record)}
-							/>
-						</Tooltip>
-					)}
-					{/* Only show status toggle for non-PENDING status */}
-					{record.status !== 'PENDING' && (
-						<Tooltip
-							title={
-								record.status === 'ACTIVE'
-									? t('accountManagement.deactivate')
-									: t('accountManagement.activate')
-							}>
-							<Button
-								type='text'
-								icon={
-									record.status === 'ACTIVE' ? (
-										<StopOutlined style={{ fontSize: '25px' }} />
-									) : (
-										<CheckOutlined style={{ fontSize: '25px' }} />
-									)
-								}
-								size='small'
-								onClick={() => handleToggleStatus(record.id)}
 								style={{
-									color: record.status === 'ACTIVE' ? '#ff4d4f' : '#52c41a',
-									padding: '4px 8px',
+									width: '40px',
+									height: '40px',
+									display: 'flex',
+									alignItems: 'center',
+									justifyContent: 'center'
 								}}
 							/>
 						</Tooltip>
@@ -801,7 +701,6 @@ const AccountList = () => {
 													level={5}
 													style={{
 														marginBottom: '12px',
-														color: '#1890ff',
 														fontSize: '16px',
 													}}>
 													{t('accountManagement.role')}
@@ -851,7 +750,6 @@ const AccountList = () => {
 													level={5}
 													style={{
 														marginBottom: '12px',
-														color: '#1890ff',
 														fontSize: '16px',
 													}}>
 													{t('accountManagement.status')}
@@ -924,12 +822,6 @@ const AccountList = () => {
 					</div>
 					<div className='action-buttons'>
 						<Button
-							icon={<DownloadOutlined />}
-							className={`import-button ${theme}-import-button`}
-							onClick={handleImportAccount}>
-							{t('accountManagement.importAccount')}
-						</Button>
-						<Button
 							icon={<PlusOutlined />}
 							className={`create-button ${theme}-create-button`}
 							onClick={handleAddAccount}>
@@ -979,11 +871,67 @@ const AccountList = () => {
 					</div>
 				}
 				open={isModalVisible}
-				onOk={handleModalOk}
 				onCancel={handleModalCancel}
 				width={600}
-				okText={t('common.save')}
-				cancelText={t('common.cancel')}>
+				footer={[
+					<Button 
+						key="cancel" 
+						onClick={handleModalCancel}
+						style={{
+							height: '32px',
+							fontWeight: '500',
+							fontSize: '14px',
+							padding: '4px 15px',
+							width: '100px'
+						}}>
+						{t('common.cancel')}
+					</Button>,
+					<Button 
+						key="save" 
+						type="primary" 
+						onClick={handleModalOk}
+						style={{
+							background: theme === 'sun' ? '#298EFE' : 'linear-gradient(135deg, #7228d9 0%, #9c88ff 100%)',
+							borderColor: theme === 'sun' ? '#298EFE' : '#7228d9',
+							color: '#fff',
+							borderRadius: '6px',
+							height: '32px',
+							fontWeight: '500',
+							fontSize: '14px',
+							padding: '4px 15px',
+							width: '100px',
+							transition: 'all 0.3s ease',
+							boxShadow: 'none'
+						}}
+						onMouseEnter={(e) => {
+							if (theme === 'sun') {
+								e.target.style.background = '#1a7ce8';
+								e.target.style.borderColor = '#1a7ce8';
+								e.target.style.transform = 'translateY(-1px)';
+								e.target.style.boxShadow = '0 4px 12px rgba(41, 142, 254, 0.4)';
+							} else {
+								e.target.style.background = 'linear-gradient(135deg, #5a1fb8 0%, #8a7aff 100%)';
+								e.target.style.borderColor = '#5a1fb8';
+								e.target.style.transform = 'translateY(-1px)';
+								e.target.style.boxShadow = '0 4px 12px rgba(114, 40, 217, 0.4)';
+							}
+						}}
+						onMouseLeave={(e) => {
+							if (theme === 'sun') {
+								e.target.style.background = '#298EFE';
+								e.target.style.borderColor = '#298EFE';
+								e.target.style.transform = 'translateY(0)';
+								e.target.style.boxShadow = 'none';
+							} else {
+								e.target.style.background = 'linear-gradient(135deg, #7228d9 0%, #9c88ff 100%)';
+								e.target.style.borderColor = '#7228d9';
+								e.target.style.transform = 'translateY(0)';
+								e.target.style.boxShadow = 'none';
+							}
+						}}>
+						{t('common.save')}
+					</Button>
+				]}>
 				<Form
 					form={form}
 					layout='vertical'
@@ -1195,10 +1143,7 @@ const AccountList = () => {
 					</div>
 				}
 				open={confirmModal.visible}
-				onOk={confirmModal.onConfirm}
 				onCancel={handleConfirmCancel}
-				okText={t('common.confirm')}
-				cancelText={t('common.cancel')}
 				width={500}
 				centered
 				bodyStyle={{
@@ -1207,24 +1152,65 @@ const AccountList = () => {
 					lineHeight: '1.6',
 					textAlign: 'center',
 				}}
-				okButtonProps={{
-					style: {
-						backgroundColor: '#ff4d4f',
-						borderColor: '#ff4d4f',
-						height: '40px',
-						fontSize: '16px',
-						fontWeight: '500',
-						minWidth: '100px',
-					},
-				}}
-				cancelButtonProps={{
-					style: {
-						height: '40px',
-						fontSize: '16px',
-						fontWeight: '500',
-						minWidth: '100px',
-					},
-				}}>
+				footer={[
+					<Button 
+						key="cancel" 
+						onClick={handleConfirmCancel}
+						style={{
+							height: '32px',
+							fontWeight: '500',
+							fontSize: '14px',
+							padding: '4px 15px',
+							width: '100px'
+						}}>
+						{t('common.cancel')}
+					</Button>,
+					<Button 
+						key="confirm" 
+						type="primary" 
+						onClick={confirmModal.onConfirm}
+						style={{
+							background: theme === 'sun' ? '#298EFE' : 'linear-gradient(135deg, #7228d9 0%, #9c88ff 100%)',
+							borderColor: theme === 'sun' ? '#298EFE' : '#7228d9',
+							color: '#fff',
+							borderRadius: '6px',
+							height: '32px',
+							fontWeight: '500',
+							fontSize: '14px',
+							padding: '4px 15px',
+							width: '100px',
+							transition: 'all 0.3s ease',
+							boxShadow: 'none'
+						}}
+						onMouseEnter={(e) => {
+							if (theme === 'sun') {
+								e.target.style.background = '#1a7ce8';
+								e.target.style.borderColor = '#1a7ce8';
+								e.target.style.transform = 'translateY(-1px)';
+								e.target.style.boxShadow = '0 4px 12px rgba(41, 142, 254, 0.4)';
+							} else {
+								e.target.style.background = 'linear-gradient(135deg, #5a1fb8 0%, #8a7aff 100%)';
+								e.target.style.borderColor = '#5a1fb8';
+								e.target.style.transform = 'translateY(-1px)';
+								e.target.style.boxShadow = '0 4px 12px rgba(114, 40, 217, 0.4)';
+							}
+						}}
+						onMouseLeave={(e) => {
+							if (theme === 'sun') {
+								e.target.style.background = '#298EFE';
+								e.target.style.borderColor = '#298EFE';
+								e.target.style.transform = 'translateY(0)';
+								e.target.style.boxShadow = 'none';
+							} else {
+								e.target.style.background = 'linear-gradient(135deg, #7228d9 0%, #9c88ff 100%)';
+								e.target.style.borderColor = '#7228d9';
+								e.target.style.transform = 'translateY(0)';
+								e.target.style.boxShadow = 'none';
+							}
+						}}>
+						{t('common.confirm')}
+					</Button>
+				]}>
 				<div
 					style={{
 						display: 'flex',
@@ -1252,162 +1238,6 @@ const AccountList = () => {
 				</div>
 			</Modal>
 
-			{/* Import Modal */}
-			<Modal
-				title={
-					<div
-						style={{
-							fontSize: '20px',
-							fontWeight: '600',
-							color: '#1890ff',
-							textAlign: 'center',
-							padding: '10px 0',
-							display: 'flex',
-							alignItems: 'center',
-							justifyContent: 'center',
-							gap: '10px',
-						}}>
-						<UploadOutlined />
-						{t('accountManagement.importAccounts')}
-					</div>
-				}
-				open={importModal.visible}
-				onOk={handleImportOk}
-				onCancel={handleImportCancel}
-				okText={t('accountManagement.import')}
-				cancelText={t('common.cancel')}
-				width={600}
-				centered
-				confirmLoading={importModal.uploading}
-				okButtonProps={{
-					disabled: importModal.fileList.length === 0,
-					style: {
-						backgroundColor: '#52c41a',
-						borderColor: '#52c41a',
-						height: '40px',
-						fontSize: '16px',
-						fontWeight: '500',
-						minWidth: '120px',
-					},
-				}}
-				cancelButtonProps={{
-					style: {
-						height: '40px',
-						fontSize: '16px',
-						fontWeight: '500',
-						minWidth: '100px',
-					},
-				}}>
-				<div style={{ padding: '20px 0' }}>
-					<Title
-						level={5}
-						style={{
-							textAlign: 'center',
-							marginBottom: '20px',
-							color: '#666',
-						}}>
-						{t('accountManagement.importInstructions')}
-					</Title>
-
-					{/* Export Template Button */}
-					<div style={{ textAlign: 'center', marginBottom: '20px' }}>
-						<Button
-							icon={<UploadOutlined />}
-							type="dashed"
-							onClick={handleExportTemplate}
-							style={{
-								borderColor: '#1890ff',
-								color: '#1890ff',
-								height: '40px',
-								fontSize: '16px',
-								fontWeight: '500',
-								padding: '0 20px',
-							}}>
-							{t('accountManagement.exportTemplate')}
-						</Button>
-						<div style={{ marginTop: '8px', fontSize: '14px', color: '#999' }}>
-							Tải template mẫu để tham khảo định dạng
-						</div>
-					</div>
-
-					<Dragger
-						multiple={false}
-						accept='.xlsx,.xls,.csv'
-						fileList={importModal.fileList}
-						onChange={({ fileList }) => {
-							setImportModal((prev) => ({ ...prev, fileList }));
-						}}
-						beforeUpload={() => false} // Prevent auto upload
-						style={{
-							marginBottom: '20px',
-							border: '2px dashed #d9d9d9',
-							borderRadius: '8px',
-							background: '#fafafa',
-						}}>
-						<p
-							className='ant-upload-drag-icon'
-							style={{ fontSize: '48px', color: '#1890ff' }}>
-							<UploadOutlined />
-						</p>
-						<p
-							className='ant-upload-text'
-							style={{ fontSize: '16px', fontWeight: '500' }}>
-							{t('accountManagement.clickOrDragFile')}
-						</p>
-						<p className='ant-upload-hint' style={{ color: '#999' }}>
-							{t('accountManagement.supportedFormats')}: Excel (.xlsx, .xls),
-							CSV (.csv)
-						</p>
-					</Dragger>
-
-					<Divider />
-
-					<div
-						style={{
-							background: '#f6f8fa',
-							padding: '16px',
-							borderRadius: '8px',
-							border: '1px solid #e1e4e8',
-						}}>
-						<Title level={5} style={{ marginBottom: '12px', color: '#24292e' }}>
-							📋 {t('accountManagement.fileFormat')}
-						</Title>
-						<Text
-							style={{ color: '#586069', fontSize: '14px', lineHeight: '1.6' }}>
-							{t('accountManagement.fileFormatDescription')}
-						</Text>
-
-						<div
-							style={{ marginTop: '12px', fontSize: '13px', color: '#6a737d' }}>
-							<div>
-								<strong>{t('accountManagement.requiredColumns')}:</strong>
-							</div>
-							<div>• username, email, fullName, phone, role, status</div>
-							<div>
-								<strong>{t('accountManagement.optionalColumns')}:</strong>
-							</div>
-							<div>• password (nếu không có sẽ tự động tạo)</div>
-							<div>• note (ghi chú)</div>
-						</div>
-					</div>
-
-					{importModal.fileList.length > 0 && (
-						<div
-							style={{
-								marginTop: '16px',
-								padding: '12px',
-								background: '#e6f7ff',
-								border: '1px solid #91d5ff',
-								borderRadius: '6px',
-							}}>
-							<Text style={{ color: '#1890ff', fontWeight: '500' }}>
-								✅ {t('accountManagement.fileSelected')}:{' '}
-								{importModal.fileList[0].name}
-							</Text>
-						</div>
-					)}
-				</div>
-			</Modal>
 		</ThemedLayout>
 	);
 };
