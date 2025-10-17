@@ -187,24 +187,6 @@ export default function Login() {
 											</div>
 										</div>
 										<div className='d-flex align-items-center mb-4'>
-											<div className='form-check'>
-												<input
-													className='form-check-input primary'
-													type='checkbox'
-													value=''
-													id='flexCheckChecked'
-													defaultChecked
-													style={{
-														accentColor: isSunTheme ? '#1677ff' : '#c8c8f7'
-													}}
-												/>
-												<label
-													className='form-check-label'
-													htmlFor='flexCheckChecked'
-													style={getLabelStyle(isSunTheme)}>
-													{t('login.rememberMe')} ?
-												</label>
-											</div>
 										</div>
 										<div className='text-center'>
 											<button

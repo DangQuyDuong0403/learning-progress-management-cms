@@ -28,6 +28,7 @@ import { useTheme } from '../../../../contexts/ThemeContext';
 import './AccountList.css';
 import { spaceToast } from '../../../../component/SpaceToastify';
 import accountManagementApi from '../../../../apis/backend/accountManagement';
+import { useSelector } from 'react-redux';
 
 const { Option } = Select;
 
@@ -622,8 +623,8 @@ const AccountList = () => {
 			align: 'center',
 			render: (_, record) => (
 				<Space size='small'>
-					{/* Only show edit button for PENDING status */}
-					{record.status === 'PENDING' && (
+					{/* Only show edit button for MANAGER/ADMIN roles and PENDING status */}
+					{(record.role === 'MANAGER' || record.role === 'ADMIN') && record.status === 'PENDING' && (
 						<Tooltip title={t('accountManagement.edit')}>
 							<Button
 								type='text'
@@ -1105,20 +1106,8 @@ const AccountList = () => {
 										<Option value='ADMIN'>
 											{t('accountManagement.admin')}
 										</Option>
-										<Option value='TEACHER'>
-											{t('accountManagement.teacher')}
-										</Option>
-										<Option value='STUDENT'>
-											{t('accountManagement.student')}
-										</Option>
 										<Option value='MANAGER'>
 											{t('accountManagement.manager')}
-										</Option>
-										<Option value='TEACHING_ASSISTANT'>
-											{t('accountManagement.teacherAssistant')}
-										</Option>
-										<Option value='TEST_TAKER'>
-											{t('accountManagement.testTaker')}
 										</Option>
 									</Select>
 								</Form.Item>

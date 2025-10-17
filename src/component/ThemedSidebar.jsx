@@ -12,7 +12,13 @@ import {
   SettingOutlined,
   DashboardOutlined,
   TrophyOutlined,
-  SecurityScanOutlined
+  SecurityScanOutlined,
+  UsergroupAddOutlined,
+  ReadOutlined,
+  BankOutlined,
+  HomeOutlined,
+  CrownOutlined,
+  SolutionOutlined
 } from '@ant-design/icons';
 import CONFIG_ROUTER from "../routers/configRouter";
 
@@ -37,13 +43,13 @@ export default function ThemedSidebar({ collapsed }) {
       'MANAGER_SYLLABUSES': <BookOutlined />,
       'MANAGER_LEVELS': <BookOutlined />,
       'MANAGER_COURSES': <BookOutlined />,
-      'MANAGER_STUDENTS': <UserOutlined />,
+      'MANAGER_STUDENTS': <TeamOutlined />, // Student icon - học sinh với tài liệu học tập
       'TEACHER_DASHBOARD': <DashboardOutlined />,
-      'TEACHER_CLASSES': <TeamOutlined />,
-      'MANAGER_CLASSES': <UserOutlined />,
+      'TEACHER_CLASSES': <HomeOutlined />, // Class icon - lớp học/phòng học
+      'MANAGER_CLASSES': <HomeOutlined />, // Class icon - lớp học/phòng học
       'TEACHER_DAILY_CHALLENGES': <TrophyOutlined />,
-      'TEACHING_ASSISTANT_CLASSES': <UserOutlined />,
-      'MANAGER_TEACHERS': <UserOutlined />,
+      'TEACHING_ASSISTANT_CLASSES': <HomeOutlined />, // Class icon - lớp học/phòng học
+      'MANAGER_TEACHERS': <SolutionOutlined />, // Teacher icon - giáo viên với vương miện (quyền uy)
       'SECURITY': <SecurityScanOutlined />,
     };
     return iconMap[key] || <UserOutlined />;

@@ -29,60 +29,28 @@ export default function ChangePassword() {
 		}));
 	};
 
-	const validatePassword = (password) => {
-		const minLength = 6;
-
-		return {
-			isValid: password.length >= minLength,
-			errors: {
-				length:
-					password.length < minLength
-						? t('changePassword.passwordMinLengthError')
-						: null,
-			},
-		};
-	};
 
 	const handleSubmit = async (e) => {
 		e.preventDefault();
 
-		// Validate old password
-		if (!formData.oldPassword) {
-			spaceToast.error(t('changePassword.oldPasswordRequired'));
-			return;
-		}
-
-		// Validate new password
-		const passwordValidation = validatePassword(formData.newPassword);
-		if (!passwordValidation.isValid) {
-			spaceToast.error(t('changePassword.passwordMinLengthError'));
-			return;
-		}
-
-		// Check if old password and new password are different
-		if (formData.oldPassword === formData.newPassword) {
-			spaceToast.error(t('changePassword.newPasswordSameAsOld'));
-			return;
-		}
-
-		// Check if passwords match
-		if (formData.newPassword !== formData.confirmPassword) {
-			spaceToast.error(t('changePassword.confirmPasswordNotMatch'));
-			return;
-		}
-
 		setLoading(true);
 
 		try {
-			// Get refresh token from localStorage
+			// Get tokens from localStorage
+			const accessToken = localStorage.getItem('accessToken');
 			const refreshToken = localStorage.getItem('refreshToken');
 			
-			if (!refreshToken) {
+			if (!accessToken || accessToken === 'undefined' || accessToken === 'null') {
 				navigate('/choose-login');
 				return;
 			}
 
-			// Call change password API
+			if (!refreshToken || refreshToken === 'undefined' || refreshToken === 'null') {
+				navigate('/choose-login');
+				return;
+			}
+
+			// Call change password API - axiosClient will automatically add Authorization header
 			const response = await authApi.changePassword({
 				oldPassword: formData.oldPassword,
 				newPassword: formData.newPassword,
@@ -119,7 +87,6 @@ export default function ChangePassword() {
 		navigate(-1);
 	};
 
-	const passwordValidation = validatePassword(formData.newPassword);
 
 	return (
 		<ThemedLayoutFullScreen>
@@ -236,21 +203,6 @@ export default function ChangePassword() {
                                                 />
                                             </div>
 
-											{/* Password requirements */}
-											{formData.newPassword && (
-												<div className='mt-2' style={{ fontSize: '0.8rem' }}>
-													<div
-														className={`mb-1 ${
-															passwordValidation.errors.length
-																? 'text-danger'
-																: 'text-success'
-														}`}>
-														•{' '}
-														{passwordValidation.errors.length ||
-															`✓ ${t('changePassword.minLength')}`}
-													</div>
-												</div>
-											)}
 										</div>
 
                                         {/* Confirm Password Field */}
@@ -279,23 +231,6 @@ export default function ChangePassword() {
                                                 />
                                             </div>
 
-											{/* Password match indicator */}
-											{formData.confirmPassword && (
-												<div className='mt-2' style={{ fontSize: '0.8rem' }}>
-													<div
-														className={`mb-1 ${
-															formData.newPassword ===
-															formData.confirmPassword
-																? 'text-success'
-																: 'text-danger'
-														}`}>
-														•{' '}
-														{formData.newPassword === formData.confirmPassword
-															? `✓ ${t('changePassword.passwordMatch')}`
-															: `✗ ${t('changePassword.passwordNotMatch')}`}
-													</div>
-												</div>
-											)}
 										</div>
 
 

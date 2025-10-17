@@ -21,8 +21,10 @@ export default function ResetPassword() {
 	const { isSunTheme } = useTheme();
 	const { t } = useTranslation();
 
-	// Lấy token từ URL
-	const token = searchParams.get('token');
+	// Lấy token từ URL params trước, nếu không có thì lấy từ localStorage
+	const tokenFromParams = searchParams.get('token');
+	const tokenFromStorage = localStorage.getItem('accessToken');
+	const token = tokenFromParams || tokenFromStorage;
 
 	// Kiểm tra token khi component mount
 	useEffect(() => {
@@ -40,41 +42,9 @@ export default function ResetPassword() {
 	};
 
 
-	const validatePassword = (password) => {
-		const minLength = 6;
-
-		return {
-			isValid: password.length >= minLength,
-			errors: {
-				length:
-					password.length < minLength
-						? t('resetPassword.passwordMinLengthError')
-						: null,
-			},
-		};
-	};
 
 	const handleSubmit = async (e) => {
 		e.preventDefault();
-
-		// Check if password is not empty
-		if (!formData.newPassword) {
-			spaceToast.error(t('resetPassword.passwordRequired'));
-			return;
-		}
-
-		// Validate password
-		const passwordValidation = validatePassword(formData.newPassword);
-		if (!passwordValidation.isValid) {
-			spaceToast.error(t('resetPassword.passwordMinLengthError'));
-			return;
-		}
-
-		// Check if token exists
-		if (!token) {
-			spaceToast.error(t('resetPassword.invalidToken'));
-			return;
-		}
 
 		setLoading(true);
 
@@ -84,22 +54,24 @@ export default function ResetPassword() {
 				token: token,
 				newPassword: formData.newPassword
 			});
-
+			
 			if (response.data.success) {
-				spaceToast.success(response.message);
-				
-				// Chuyển về trang login sau 2 giây
+				spaceToast.success(response.data.message);
+				// Chuyển về trang login sau 2 giây dựa trên role trong localStorage
 				setTimeout(() => {
-					navigate('/choose-login');
+					const loginRole = localStorage.getItem('selectedRole') || 'teacher';
+					if (loginRole === 'STUDENT') {
+						navigate('/login-student');
+					} else {
+						navigate('/login-teacher');
+					}
 				}, 2000);
-			} else {
-				spaceToast.error(response.message);
 			}
 		} catch (error) {
-			if (error.response) {
-				const errorMessage = error.response.data.error;
-				spaceToast.error(errorMessage);
-			}
+			// Xử lý lỗi từ API - error object có cấu trúc trực tiếp
+			const errorMessage = error.response.data.error;
+			console.log('Final error message:', errorMessage);
+			spaceToast.error(errorMessage);
 		} finally {
 			setLoading(false);
 		}
@@ -109,11 +81,9 @@ export default function ResetPassword() {
 		navigate('/choose-login');
 	};
 
-	const passwordValidation = validatePassword(formData.newPassword);
-
 	return (
 		<ThemedLayoutFullScreen>
-			<div className="main-content" style={{ paddingTop: 80, minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+			<div className="main-content" style={{ paddingTop: 120, minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
 				{/* Theme Toggle - Top Right */}
 				<div className={`login-theme-toggle-container ${isSunTheme ? 'sun-theme' : 'space-theme'}`} style={{ position: 'absolute', top: '20px', right: '20px' }}>
 					<ThemeToggleSwitch />
@@ -128,7 +98,7 @@ export default function ResetPassword() {
 							style={getLoginCardStyle(isSunTheme)}>
                             <div
                                 className='card-body'
-                                style={{ padding: '1rem 1.5rem 1rem 1.5rem' }}>
+                                style={{ padding: '1.5rem 2.5rem 1.5rem 2.5rem' }}>
                                 <div className='card-body'>
                                     {/* Back Button and Title */}
                                     <div className='d-flex align-items-center justify-content-center mb-4' style={{ position: 'relative' }}>
@@ -181,27 +151,8 @@ export default function ResetPassword() {
                                                     }}
                                                 />
                                             </div>
+                                        </div>
 
-												{/* Password requirements */}
-												{formData.newPassword && (
-													<div className='mt-2' style={{ fontSize: '0.8rem' }}>
-														<div
-															className={`mb-1 ${
-																passwordValidation.errors.length
-																	? 'text-danger'
-																	: 'text-success'
-															}`}>
-															•{' '}
-															{passwordValidation.errors.length ||
-																`✓ ${t('resetPassword.minLength')}`}
-														</div>
-													</div>
-												)}
-											</div>
-
-
-
-                                  
 									<div className='text-center'>
 											<button
 												type='submit'
@@ -226,19 +177,19 @@ export default function ResetPassword() {
 const getLoginCardStyle = (isSunTheme) => ({
 	background: isSunTheme ? '#EDF1FF' : 'rgba(109, 95, 143, 0.7)',
 	backdropFilter: isSunTheme ? 'blur(1px)' : 'blur(5px)',
-	borderRadius: 24,
+	borderRadius: 32,
 	boxShadow: isSunTheme 
-		? '0 15px 40px rgba(0, 0, 0, 0.15)' 
-		: '0 15px 40px rgba(77, 208, 255, 0.25)',
+		? '0 20px 60px rgba(0, 0, 0, 0.15)' 
+		: '0 20px 60px rgba(77, 208, 255, 0.25)',
 	border: isSunTheme ? '2px solid #3B82F6' : 'none',
-	minWidth: 350,
-	maxWidth: 500,
+	minWidth: 400,
+	maxWidth: 600,
 	margin: '0 auto',
 	padding: 0,
 });
 
 const getHeadingStyle = (isSunTheme) => ({
-	fontSize: '40px',
+	fontSize: '48px',
 	fontWeight: 700,
 	color: isSunTheme ? '#3b82f6' : '#fff',
 	textShadow: isSunTheme ? 'none' : '0 0 10px rgba(77, 208, 255, 0.5)',
@@ -249,19 +200,19 @@ const getHeadingStyle = (isSunTheme) => ({
 const getLabelStyle = (isSunTheme) => ({
 	color: isSunTheme ? '#3b82f6' : '#ffffff',
 	fontWeight: 400,
-	fontSize: '16px',
-	marginBottom: '6px',
+	fontSize: '18px',
+	marginBottom: '8px',
 });
 
 const getInputStyle = (isSunTheme) => ({
-	borderRadius: '50px',
+	borderRadius: '59px',
 	background: isSunTheme ? '#ffffff' : '#ffffff',
 	border: isSunTheme ? '2px solid #3B82F6' : 'none',
 	color: isSunTheme ? '#374151' : 'black',
-	fontSize: '14px',
+	fontSize: '16px',
 	width: '90%',
 	margin: '0 auto',
-	height: '40px',
+	height: '45px',
 });
 
 const getSubmitButtonStyle = (isSunTheme) => ({
@@ -271,12 +222,12 @@ const getSubmitButtonStyle = (isSunTheme) => ({
 	border: 'none',
 	color: 'black',
 	fontWeight: 600,
-	fontSize: '18px',
-	padding: '10px 20px',
+	fontSize: '20px',
+	padding: '12px 24px',
 	width: '90%',
-	borderRadius: '10px',
+	borderRadius: '12px',
 	boxShadow: isSunTheme 
-		? '0 6px 20px rgba(139, 176, 249, 0.3)' 
-		: '0 6px 20px rgba(170, 139, 249, 0.3)',
+		? '0 8px 25px rgba(139, 176, 249, 0.3)' 
+		: '0 8px 25px rgba(170, 139, 249, 0.3)',
 	transition: 'all 0.3s ease',
 });

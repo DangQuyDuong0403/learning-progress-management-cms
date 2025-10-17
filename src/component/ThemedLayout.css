@@ -383,7 +383,7 @@
 	overflow-x: hidden;
 	scrollbar-width: none;
 	-ms-overflow-style: none;
-	max-height: calc(72px * 7 + 48px); /* Limit to 7 items + margins */
+	max-height: calc(72px * 5 + 48px); /* Limit to 5 items + margins */
 }
 
 .themed-sidebar-menu::-webkit-scrollbar {
@@ -1151,7 +1151,6 @@
 	background: #fefffe;
 	border: none;
 	color: #666;
-	border-radius: 20px;
 }
 
 .sun-theme .themed-content .ant-input:focus {

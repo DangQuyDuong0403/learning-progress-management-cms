@@ -12,12 +12,10 @@ import {
 import {
 	EditOutlined,
 	SearchOutlined,
-	ReloadOutlined,
 	CheckOutlined,
 	StopOutlined,
 	DragOutlined,
 	FilterOutlined,
-	PlusOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -41,7 +39,6 @@ const LevelList = () => {
 	const [isDeleteModalVisible, setIsDeleteModalVisible] = useState(false);
 	const [editingLevel, setEditingLevel] = useState(null);
 	const [deleteLevel, setDeleteLevel] = useState(null);
-	const [modalLoading, setModalLoading] = useState(false);
 	const [searchText, setSearchText] = useState('');
 	const [statusFilter, setStatusFilter] = useState([]);
 	const [searchTimeout, setSearchTimeout] = useState(null);
@@ -121,7 +118,7 @@ const LevelList = () => {
 			const mappedLevels = levelsData.map((level) => ({
 				id: level.id,
 				levelName: level.levelName,
-				difficulty: level.difficulty,
+				prerequisite: level.prerequisite,
 				estimatedDurationWeeks: level.estimatedDurationWeeks,
 				status: level.isActive ? 'active' : 'inactive',
 				orderNumber: level.orderNumber,
@@ -305,8 +302,7 @@ const LevelList = () => {
 	const handleEdit = async (level) => {
 		try {
 			console.log('Level Edit clicked for:', level);
-			setModalLoading(true);
-			setIsModalVisible(true); // Mở modal trước để hiển thị loading
+			setIsModalVisible(true); // Mở modal ngay lập tức
 			
 			// Fetch full level details from API
 			const response = await levelManagementApi.getLevelById(level.id);
@@ -317,7 +313,7 @@ const LevelList = () => {
 				id: response.data.id,
 				levelName: response.data.levelName,
 				description: response.data.description || '',
-				difficulty: response.data.difficulty,
+				prerequisite: response.data.prerequisite,
 				estimatedDurationWeeks: response.data.estimatedDurationWeeks,
 				status: response.data.isActive ? 'active' : 'inactive',
 				orderNumber: response.data.orderNumber,
@@ -326,14 +322,12 @@ const LevelList = () => {
 			};
 			
 			setEditingLevel(levelDetails);
-			setModalLoading(false);
 			
 			// Show success toast
 			spaceToast.success(t('levelManagement.editLevelSuccess'));
 		} catch (error) {
 			console.error('Error fetching level details:', error);
 			spaceToast.error(t('levelManagement.loadLevelDetailsError'));
-			setModalLoading(false);
 			setIsModalVisible(false); // Đóng modal nếu có lỗi
 		}
 	};
@@ -366,7 +360,6 @@ const LevelList = () => {
 	const handleModalClose = (shouldRefresh = false, successMessage = null) => {
 		setIsModalVisible(false);
 		setEditingLevel(null);
-		setModalLoading(false);
 		
 		// Refresh data if save was successful
 		if (shouldRefresh) {
@@ -378,15 +371,6 @@ const LevelList = () => {
 		}
 	};
 
-	const handleRefresh = () => {
-		fetchLevels(pagination.current, pagination.pageSize, searchText, statusFilter, sortBy, sortDir);
-	};
-
-	const handleAddLevel = () => {
-		console.log('Add Level clicked');
-		setEditingLevel(null); // No existing level data
-		setIsModalVisible(true);
-	};
 
 	const handleEditPositions = () => {
 		navigate(ROUTER_PAGE.MANAGER_LEVEL_EDIT_POSITIONS);
@@ -415,7 +399,7 @@ const LevelList = () => {
 			title: t('levelManagement.levelName'),
 			dataIndex: 'levelName',
 			key: 'levelName',
-			width: '30%',
+			width: '25%',
 			sorter: true,
 			render: (text) => (
 				<div>
@@ -424,10 +408,16 @@ const LevelList = () => {
 			),
 		},
 		{
-			title: t('levelManagement.difficulty'),
-			dataIndex: 'difficulty',
-			key: 'difficulty',
-			width: '15%',
+			title: t('levelManagement.prerequisite'),
+			dataIndex: 'prerequisite',
+			key: 'prerequisite',
+			width: '20%',
+			render: (prerequisite) => {
+				if (!prerequisite) {
+					return <span style={{ color: '#999' }}>None</span>;
+				}
+				return prerequisite.levelName || prerequisite;
+			},
 		},
 		{
 			title: t('levelManagement.status'),
@@ -604,36 +594,6 @@ const LevelList = () => {
 					</div>
 					<div className='action-buttons'>
 						<Button
-							icon={<ReloadOutlined />}
-							onClick={handleRefresh}
-							loading={loading}
-							className={`refresh-button ${theme}-refresh-button`}>
-							{t('levelManagement.refresh')}
-						</Button>
-						<Button
-							icon={<PlusOutlined />}
-							className={`add-button ${theme}-add-button`}
-							onClick={handleAddLevel}
-							style={{
-								height: '40px',
-								borderRadius: '8px',
-								fontWeight: '500',
-								border: theme === 'space' 
-									? '1px solid rgba(77, 208, 255, 0.3)' 
-									: '1px solid rgba(24, 144, 255, 0.3)',
-								background: theme === 'space'
-									? 'rgb(75, 65, 119)'
-									: 'linear-gradient(135deg, #1890ff 0%, #40a9ff 50%, #69c0ff 100%)',
-								color: theme === 'space' ? '#fff' : '#000',
-								backdropFilter: 'blur(10px)',
-								transition: 'all 0.3s ease',
-								boxShadow: theme === 'space'
-									? '0 4px 12px rgba(76, 29, 149, 0.3)'
-									: '0 4px 12px rgba(24, 144, 255, 0.3)',
-							}}>
-							{t('levelManagement.addLevel')}
-						</Button>
-						<Button
 							icon={<DragOutlined />}
 							className={`edit-positions-button ${theme}-edit-positions-button`}
 							onClick={handleEditPositions}
@@ -695,20 +655,13 @@ const LevelList = () => {
 				footer={null}
 				width={800}
 				destroyOnClose
-				confirmLoading={modalLoading}
 				style={{ top: 20 }}
 				bodyStyle={{
 					maxHeight: '70vh',
 					overflowY: 'auto',
 					padding: '24px',
 				}}>
-				{modalLoading ? (
-					<div style={{ textAlign: 'center', padding: '40px' }}>
-						<div>Loading level details...</div>
-					</div>
-				) : (
-					<LevelForm level={editingLevel} onClose={handleModalClose} />
-				)}
+				<LevelForm level={editingLevel} onClose={handleModalClose} />
 			</Modal>
 
 			{/* Delete Confirmation Modal */}
