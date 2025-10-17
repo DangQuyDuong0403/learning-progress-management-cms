@@ -57,9 +57,14 @@ export default function ResetPassword() {
 			
 			if (response.data.success) {
 				spaceToast.success(response.data.message);
-				// Chuyển về trang login sau 2 giây
+				// Chuyển về trang login sau 2 giây dựa trên role trong localStorage
 				setTimeout(() => {
-					navigate('/choose-login');
+					const loginRole = localStorage.getItem('selectedRole') || 'teacher';
+					if (loginRole === 'STUDENT') {
+						navigate('/login-student');
+					} else {
+						navigate('/login-teacher');
+					}
 				}, 2000);
 			}
 		} catch (error) {

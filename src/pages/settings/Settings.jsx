@@ -94,14 +94,10 @@ const Settings = () => {
 			}, 2000);
 			
 		} catch (error) {
-			console.error('Change password error:', error);
-			console.error('Error response:', error.response);
-			console.error('Error status:', error.response?.status);
-			console.error('Error data:', error.response?.data);
-			
+	
 			// Handle API errors with backend messages
 			if (error.response) {
-				const errorMessage = error.response.data?.error || error.response.data?.message;
+				const errorMessage = error.response.data.error || error.response.data?.message;
 				spaceToast.error(errorMessage);
 			}
 		} finally {
@@ -305,9 +301,6 @@ const Settings = () => {
 							</span>
 						}
 						name="currentPassword"
-						rules={[
-							{ required: true, message: t('settings.currentPasswordRequired') }
-						]}
 					>
 						<Input.Password 
 							placeholder={t('settings.enterCurrentPassword')}
@@ -322,10 +315,6 @@ const Settings = () => {
 							</span>
 						}
 						name="newPassword"
-						rules={[
-							{ required: true, message: t('settings.newPasswordRequired') },
-							{ min: 6, message: t('settings.passwordMinLength') }
-						]}
 					>
 						<Input.Password 
 							placeholder={t('settings.enterNewPassword')}
@@ -340,18 +329,6 @@ const Settings = () => {
 							</span>
 						}
 						name="confirmPassword"
-						dependencies={['newPassword']}
-						rules={[
-							{ required: true, message: t('settings.confirmPasswordRequired') },
-							({ getFieldValue }) => ({
-								validator(_, value) {
-									if (!value || getFieldValue('newPassword') === value) {
-										return Promise.resolve();
-									}
-									return Promise.reject(new Error(t('settings.passwordsDoNotMatch')));
-								},
-							}),
-						]}
 					>
 						<Input.Password 
 							placeholder={t('settings.confirmNewPassword')}
