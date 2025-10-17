@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
 	Table,
 	Button,
@@ -12,7 +12,6 @@ import {
 	EditOutlined,
 	SearchOutlined,
 	DragOutlined,
-	FilterOutlined,
 	SendOutlined,
 	FileTextOutlined,
 } from '@ant-design/icons';
@@ -26,8 +25,6 @@ import { spaceToast } from '../../../../component/SpaceToastify';
 import levelManagementApi from '../../../../apis/backend/levelManagement';
 import LevelForm from './LevelForm';
 import ROUTER_PAGE from '../../../../constants/router';
-
-const { Title } = Typography;
 
 const LevelList = () => {
 	const { t } = useTranslation();
@@ -54,17 +51,7 @@ const LevelList = () => {
 	const [isModalVisible, setIsModalVisible] = useState(false);
 	const [editingLevel, setEditingLevel] = useState(null);
 	const [searchText, setSearchText] = useState('');
-	const [statusFilter, setStatusFilter] = useState([]);
 	const [searchTimeout, setSearchTimeout] = useState(null);
-	
-	// Filter dropdown state
-	const [filterDropdown, setFilterDropdown] = useState({
-		visible: false,
-		selectedStatuses: [],
-	});
-
-	// Refs for click outside detection
-	const filterContainerRef = useRef(null);
 	
 	// Pagination state
 	const [pagination, setPagination] = useState({
@@ -75,7 +62,7 @@ const LevelList = () => {
 		showTotal: (total, range) => `${range[0]}-${range[1]} of ${total}`,
 	});
 
-	const fetchLevels = useCallback(async (page = 1, size = 10, search = '', statusFilter = []) => {
+	const fetchLevels = useCallback(async (page = 1, size = 10, search = '') => {
 		setLoading(true);
 		try {
 			const params = {
@@ -86,11 +73,6 @@ const LevelList = () => {
 			// Add search parameter if provided (API uses 'text' parameter)
 			if (search && search.trim()) {
 				params.text = search.trim();
-			}
-
-			// Add status filter if provided (API expects array of booleans)
-			if (statusFilter && statusFilter.length > 0) {
-				params.status = statusFilter.map(status => status === 'active');
 			}
 
 			console.log('Level API Request Params:', params);
@@ -181,11 +163,10 @@ const LevelList = () => {
 	useEffect(() => {
 		console.log('Level useEffect triggered:', {
 			searchText,
-			statusFilter,
 			pageSize: pagination.pageSize
 		});
-		fetchLevels(1, pagination.pageSize, searchText, statusFilter);
-	}, [fetchLevels, searchText, statusFilter, pagination.pageSize]);
+		fetchLevels(1, pagination.pageSize, searchText);
+	}, [fetchLevels, searchText, pagination.pageSize]);
 
 	// Cleanup timeout on unmount
 	useEffect(() => {
@@ -195,31 +176,6 @@ const LevelList = () => {
 			}
 		};
 	}, [searchTimeout]);
-
-	// Handle click outside to close filter dropdown
-	useEffect(() => {
-		const handleClickOutside = (event) => {
-			if (filterDropdown.visible && filterContainerRef.current) {
-				// Check if click is outside the filter container
-				if (!filterContainerRef.current.contains(event.target)) {
-					setFilterDropdown((prev) => ({
-						...prev,
-						visible: false,
-					}));
-				}
-			}
-		};
-
-		// Add event listener when dropdown is visible
-		if (filterDropdown.visible) {
-			document.addEventListener('mousedown', handleClickOutside);
-		}
-
-		// Cleanup event listener
-		return () => {
-			document.removeEventListener('mousedown', handleClickOutside);
-		};
-	}, [filterDropdown.visible]);
 
 	const handleSearch = (value) => {
 		console.log('Level Search:', value);
@@ -234,43 +190,10 @@ const LevelList = () => {
 		const newTimeout = setTimeout(() => {
 			console.log('Level Search executing:', value);
 			// Reset to first page when searching
-			fetchLevels(1, pagination.pageSize, value, statusFilter);
+			fetchLevels(1, pagination.pageSize, value);
 		}, 1000);
 		
 		setSearchTimeout(newTimeout);
-	};
-
-	// Handle filter dropdown toggle
-	const handleFilterToggle = () => {
-		setFilterDropdown((prev) => ({
-			...prev,
-			visible: !prev.visible,
-			selectedStatuses: prev.visible ? prev.selectedStatuses : [...statusFilter],
-		}));
-	};
-
-	// Handle filter submission
-	const handleFilterSubmit = () => {
-		setStatusFilter(filterDropdown.selectedStatuses);
-		setFilterDropdown((prev) => ({
-			...prev,
-			visible: false,
-		}));
-		// Reset to first page when applying filters
-		fetchLevels(
-			1,
-			pagination.pageSize,
-			searchText,
-			filterDropdown.selectedStatuses
-		);
-	};
-
-	// Handle filter reset
-	const handleFilterReset = () => {
-		setFilterDropdown((prev) => ({
-			...prev,
-			selectedStatuses: [],
-		}));
 	};
 
 	const handleTableChange = (pagination) => {
@@ -282,7 +205,7 @@ const LevelList = () => {
 			pageSize: pagination.pageSize,
 			total: pagination.total
 		});
-		fetchLevels(pagination.current, pagination.pageSize, searchText, statusFilter);
+		fetchLevels(pagination.current, pagination.pageSize, searchText);
 	};
 
 
@@ -339,7 +262,7 @@ const LevelList = () => {
 			if (successMessage) {
 				spaceToast.success(successMessage);
 			}
-			fetchLevels(pagination.current, pagination.pageSize, searchText, statusFilter);
+			fetchLevels(pagination.current, pagination.pageSize, searchText);
 		}
 	};
 
@@ -397,7 +320,7 @@ const LevelList = () => {
 			spaceToast.success(successMessage);
 			
 			// Refresh the list after action - detectCurrentAction will determine the next button state
-			fetchLevels(pagination.current, pagination.pageSize, searchText, statusFilter);
+			fetchLevels(pagination.current, pagination.pageSize, searchText);
 		} catch (error) {
 			console.error(`Error ${currentAction === 'publish' ? 'publishing' : 'drafting'} all levels:`, error);
 			
@@ -451,12 +374,6 @@ const LevelList = () => {
 				}
 		}
 	};
-
-	// Status options for filter
-	const statusOptions = [
-		{ key: 'active', label: t('levelManagement.active') },
-		{ key: 'inactive', label: t('levelManagement.inactive') },
-	];
 
 
 	const columns = [
@@ -582,100 +499,6 @@ const LevelList = () => {
 							}}
 							allowClear
 						/>
-						<div ref={filterContainerRef} style={{ position: 'relative' }}>
-							<Button
-								icon={<FilterOutlined />}
-								onClick={handleFilterToggle}
-								className={`filter-button ${theme}-filter-button ${
-									filterDropdown.visible ? 'active' : ''
-								} ${
-									statusFilter.length > 0
-										? 'has-filters'
-										: ''
-								}`}>
-								{t('levelManagement.filter')}
-							</Button>
-
-							{/* Filter Dropdown Panel */}
-							{filterDropdown.visible && (
-								<div
-									className={`filter-dropdown-panel ${theme}-filter-dropdown`}>
-									<div style={{ padding: '20px' }}>
-										{/* Status Filter */}
-										<div style={{ marginBottom: '24px' }}>
-											<Title
-												level={5}
-												style={{
-													marginBottom: '12px',
-													color: '#1890ff',
-													fontSize: '16px',
-												}}>
-												{t('levelManagement.status')}
-											</Title>
-											<div
-												style={{
-													display: 'flex',
-													flexWrap: 'wrap',
-													gap: '8px',
-												}}>
-												{statusOptions.map((option) => (
-													<Button
-														key={option.key}
-														onClick={() => {
-															const newStatuses =
-																filterDropdown.selectedStatuses.includes(
-																	option.key
-																)
-																	? filterDropdown.selectedStatuses.filter(
-																			(status) => status !== option.key
-																	  )
-																	: [
-																			...filterDropdown.selectedStatuses,
-																			option.key,
-																	  ];
-															setFilterDropdown((prev) => ({
-																...prev,
-																selectedStatuses: newStatuses,
-															}));
-														}}
-														className={`filter-option ${
-															filterDropdown.selectedStatuses.includes(
-																option.key
-															)
-																? 'selected'
-																: ''
-														}`}>
-														{option.label}
-													</Button>
-												))}
-											</div>
-										</div>
-
-										{/* Action Buttons */}
-										<div
-											style={{
-												display: 'flex',
-												justifyContent: 'space-between',
-												marginTop: '20px',
-												paddingTop: '16px',
-												borderTop: '1px solid #f0f0f0',
-											}}>
-											<Button
-												onClick={handleFilterReset}
-												className='filter-reset-button'>
-												{t('levelManagement.reset')}
-											</Button>
-											<Button
-												type='primary'
-												onClick={handleFilterSubmit}
-												className='filter-submit-button'>
-												{t('levelManagement.viewResults')}
-											</Button>
-										</div>
-									</div>
-								</div>
-							)}
-						</div>
 					</div>
 					<div className='action-buttons'>
 						<Button
