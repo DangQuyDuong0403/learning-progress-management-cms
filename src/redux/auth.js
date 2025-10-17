@@ -109,7 +109,7 @@ const initialState = {
 	forgotPasswordLoading: false,
 	forgotPasswordError: null,
 	forgotPasswordSuccess: false,
-	forgotPasswordMessage: null,
+	forgotPasswordData: null,
 	refreshTokenLoading: false,
 	refreshTokenError: null,
 	logoutLoading: false,
@@ -157,7 +157,7 @@ const authSlice = createSlice({
 			state.forgotPasswordLoading = false;
 			state.forgotPasswordError = null;
 			state.forgotPasswordSuccess = false;
-			state.forgotPasswordMessage = null;
+			state.forgotPasswordData = null;
 		},
 		clearChangePasswordState: (state) => {
 			state.changePasswordLoading = false;
@@ -191,7 +191,7 @@ const authSlice = createSlice({
 				state.forgotPasswordLoading = false;
 				state.forgotPasswordSuccess = true;
 				state.forgotPasswordError = null;
-				state.forgotPasswordMessage = action.payload.message;
+				state.forgotPasswordData = action.payload.data; // Lưu email từ response
 			})
 			.addCase(forgotPassword.rejected, (state, action) => {
 				state.forgotPasswordLoading = false;

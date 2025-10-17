@@ -97,9 +97,9 @@ export default function ChangePassword() {
 			localStorage.removeItem('accessToken');
 			localStorage.removeItem('refreshToken');
 
-			// Redirect to login after 2 seconds
+			// Redirect to previous page after 2 seconds
 			setTimeout(() => {
-				navigate('/choose-login');
+				navigate(-1);
 			}, 2000);
 
 		} catch (error) {
@@ -116,7 +116,7 @@ export default function ChangePassword() {
 	};
 
 	const handleBackToLogin = () => {
-		navigate('/choose-login');
+		navigate(-1);
 	};
 
 	const passwordValidation = validatePassword(formData.newPassword);
@@ -174,8 +174,8 @@ export default function ChangePassword() {
                                     {/* Security Alert */}
                                     <div className='mb-4'>
                                         <Alert
-                                            message="Security Notice"
-                                            description="For security reasons, you need to change your password immediately. Please enter your current password and choose a new one."
+                                            message={t('changePassword.securityNotice.title')}
+                                            description={t('changePassword.securityNotice.message')}
                                             type="warning"
                                             showIcon
                                             icon={<SecurityScanOutlined />}

@@ -21,7 +21,7 @@ export default function ForgotPassword() {
 	const { isSunTheme } = useTheme();
 	
 	// Redux state
-	const { forgotPasswordLoading, forgotPasswordError, forgotPasswordSuccess, forgotPasswordMessage } = useSelector(state => state.auth);
+	const { forgotPasswordLoading, forgotPasswordError, forgotPasswordSuccess, forgotPasswordData } = useSelector(state => state.auth);
 
 	// Clear state when component mounts
 	useEffect(() => {
@@ -34,22 +34,13 @@ export default function ForgotPassword() {
 		if (!isInitialized) return;
 		
 		if (forgotPasswordSuccess) {
-		
-			// Show success message from backend and navigate to success page
-			spaceToast.success(forgotPasswordMessage);
-			setTimeout(() => {
-				navigate('/forgot-password-success', { 
-					state: { 
-						username,
-						message: forgotPasswordMessage 
-					} 
-				});
-			}, 1500);
+			// Navigate to success page with email data from API response
+			navigate('/forgot-password-success', { state: { email: forgotPasswordData } });
 		} else if (forgotPasswordError) {
 			// Show error message from backend (no navigation)
 			spaceToast.error(forgotPasswordError);
 		}
-	}, [forgotPasswordSuccess, forgotPasswordError, forgotPasswordMessage, navigate, username, isInitialized]);
+	}, [forgotPasswordSuccess, forgotPasswordError, forgotPasswordData, navigate, username, isInitialized]);
 
 	const handleSubmit = (e) => {
 		e.preventDefault();

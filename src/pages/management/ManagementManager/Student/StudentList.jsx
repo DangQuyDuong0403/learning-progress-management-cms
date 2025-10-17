@@ -474,7 +474,7 @@ const StudentList = () => {
           } catch (error) {
             console.error('Error updating student status:', error);
             setConfirmModal({ visible: false, title: '', content: '', onConfirm: null });
-            spaceToast.error(error.response?.data?.message || error.message || t('studentManagement.updateStatusError'));
+            spaceToast.error(error.response?.data?.error || error.response?.data?.message || error.message || t('studentManagement.updateStatusError'));
           }
         }
       });
@@ -535,7 +535,7 @@ const StudentList = () => {
             // Still refresh the list in case data was created
             fetchStudents(1, pagination.pageSize, searchText, statusFilter, roleNameFilter, sortBy, sortDir);
           } else {
-            spaceToast.error(error.response?.data?.message || error.message || 'Failed to create student');
+            spaceToast.error(error.response?.data?.error || error.response?.data?.message || error.message || 'Failed to create student');
             return; // Don't close modal on actual error
           }
         }

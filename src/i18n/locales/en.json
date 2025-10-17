@@ -13,6 +13,7 @@
     "save": "Save",
     "cancel": "Cancel",
     "edit": "Edit",
+    "changePassword": "Change Password",
     "delete": "Delete",
     "add": "Add",
     "search": "Search",
@@ -127,7 +128,7 @@
   },
   "forgotPasswordSuccess": {
     "title": "Reset Link Sent Successfully!",
-    "message": "We have sent a password reset link to the email address associated with username \"{{username}}\". Please check your inbox and click the link to reset your password.",
+    "message": "We have sent a password reset link to the email address {{email}}. Please check your inbox and click the link to reset your password.",
     "checkEmail": "If you don't see the email, please check your spam folder. The reset link will expire after a certain time for security reasons.",
     "backToLogin": "Back to Login"
   },
@@ -1399,7 +1400,11 @@
     "oldPasswordRequired": "Please enter old password!",
     "newPasswordSameAsOld": "New password must be different from old password!",
     "changeSuccess": "Password changed successfully! You can login with your new password.",
-    "passwordMinLengthError": "Password must be at least 6 characters"
+    "passwordMinLengthError": "Password must be at least 6 characters",
+    "securityNotice": {
+      "title": "Security Notice",
+      "message": "For security reasons, you need to change your password immediately. Please enter your current password and choose a new one."
+    }
   },
   "settings": {
     "title": "Settings",

@@ -168,11 +168,11 @@ export const spaceToast = {
         </div>
       ),
       style: {
-        background: '#add5ff',
-        border: '1px solid rgba(135, 206, 235, 0.4)',
+        background: '#ffffff',
+        border: '1px solid rgba(0, 0, 0, 0.1)',
         borderRadius: '20px',
-        boxShadow: '0 12px 40px rgba(135, 206, 235, 0.3), 0 0 30px rgba(135, 206, 235, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.3)',
-        color: '#1a4d80',
+        boxShadow: '0 12px 40px rgba(0, 0, 0, 0.1), 0 0 30px rgba(0, 0, 0, 0.05), inset 0 1px 0 rgba(255, 255, 255, 0.8)',
+        color: '#000000',
         fontFamily: '"Orbitron", "Exo 2", system-ui, sans-serif',
         fontWeight: '600',
         fontSize: '16px',

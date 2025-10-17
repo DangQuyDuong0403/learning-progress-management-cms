@@ -13,6 +13,7 @@
     "save": "Lưu",
     "cancel": "Hủy",
     "edit": "Chỉnh sửa",
+    "changePassword": "Đổi mật khẩu",
     "delete": "Xóa",
     "add": "Thêm",
     "search": "Tìm kiếm",
@@ -126,7 +127,7 @@
   },
   "forgotPasswordSuccess": {
     "title": "Gửi Link Đặt Lại Mật Khẩu Thành Công!",
-    "message": "Chúng tôi đã gửi link đặt lại mật khẩu đến địa chỉ email được liên kết với tài khoản \"{{username}}\". Vui lòng kiểm tra hộp thư và nhấp vào link để đặt lại mật khẩu.",
+    "message": "Chúng tôi đã gửi link đặt lại mật khẩu đến địa chỉ email {{email}}. Vui lòng kiểm tra hộp thư và nhấp vào link để đặt lại mật khẩu.",
     "checkEmail": "Nếu bạn không thấy email, vui lòng kiểm tra thư mục spam. Link đặt lại sẽ hết hạn sau một thời gian nhất định vì lý do bảo mật.",
     "backToLogin": "Quay Lại Đăng Nhập"
   },
@@ -1399,7 +1400,11 @@
     "oldPasswordRequired": "Vui lòng nhập mật khẩu cũ!",
     "newPasswordSameAsOld": "Mật khẩu mới phải khác mật khẩu cũ!",
     "changeSuccess": "Đổi mật khẩu thành công! Bạn có thể đăng nhập với mật khẩu mới.",
-    "passwordMinLengthError": "Mật khẩu phải có ít nhất 6 ký tự"
+    "passwordMinLengthError": "Mật khẩu phải có ít nhất 6 ký tự",
+    "securityNotice": {
+      "title": "Thông báo bảo mật",
+      "message": "Vì lý do bảo mật, bạn cần thay đổi mật khẩu ngay lập tức. Vui lòng nhập mật khẩu hiện tại và chọn mật khẩu mới."
+    }
   },
   "settings": {
     "title": "Cài đặt",
