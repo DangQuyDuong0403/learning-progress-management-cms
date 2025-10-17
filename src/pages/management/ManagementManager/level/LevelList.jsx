@@ -153,7 +153,14 @@ const LevelList = () => {
 			setLoading(false);
 		} catch (error) {
 			console.error('Error fetching levels:', error);
-			spaceToast.error(t('levelManagement.loadLevelsError'));
+			
+			// Handle API errors with backend messages
+			if (error.response) {
+				const errorMessage = error.response.data.error || error.response.data?.message;
+				spaceToast.error(errorMessage);
+			} else {
+				spaceToast.error(error.message || t('levelManagement.loadLevelsError'));
+			}
 			setLoading(false);
 		}
 	}, [t]);
@@ -329,7 +336,14 @@ const LevelList = () => {
 			spaceToast.success(t('levelManagement.editLevelSuccess'));
 		} catch (error) {
 			console.error('Error fetching level details:', error);
-			spaceToast.error(t('levelManagement.loadLevelDetailsError'));
+			
+			// Handle API errors with backend messages
+			if (error.response) {
+				const errorMessage = error.response.data.error || error.response.data?.message;
+				spaceToast.error(errorMessage);
+			} else {
+				spaceToast.error(error.message || t('levelManagement.loadLevelDetailsError'));
+			}
 			setIsModalVisible(false); // Đóng modal nếu có lỗi
 		}
 	};
@@ -341,16 +355,27 @@ const LevelList = () => {
 
 	const handleDeactivate = async () => {
 		try {
-			await levelManagementApi.activateDeactivateLevel(deleteLevel.id);
+			const response = await levelManagementApi.activateDeactivateLevel(deleteLevel.id);
+			
+			// Use backend message if available, otherwise fallback to translation
 			const action = deleteLevel.status === 'active' ? 'deactivated' : 'activated';
-			spaceToast.success(t(`levelManagement.${action}LevelSuccess`));
+			const successMessage = response.message || t(`levelManagement.${action}LevelSuccess`);
+			spaceToast.success(successMessage);
+			
 			setIsDeleteModalVisible(false);
 			setDeleteLevel(null);
 			// Refresh the list after deactivation
 			fetchLevels(pagination.current, pagination.pageSize, searchText, statusFilter, sortBy, sortDir);
 		} catch (error) {
 			console.error('Error deactivating level:', error);
-			spaceToast.error(t('levelManagement.deactivateLevelError'));
+			
+			// Handle API errors with backend messages
+			if (error.response) {
+				const errorMessage = error.response.data.error || error.response.data?.message;
+				spaceToast.error(errorMessage);
+			} else {
+				spaceToast.error(error.message || t('levelManagement.deactivateLevelError'));
+			}
 		}
 	};
 

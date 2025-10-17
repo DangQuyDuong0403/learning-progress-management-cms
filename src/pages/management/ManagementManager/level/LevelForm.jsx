@@ -48,7 +48,6 @@ const LevelForm = ({ level, onClose, shouldCallApi = true }) => {
       const apiData = {
         levelName: values.levelName,
         description: values.description || '',
-        prerequisite: values.prerequisite,
         promotionCriteria: values.promotionCriteria || '',
         learningObjectives: values.learningObjectives || '',
         estimatedDurationWeeks: values.estimatedDurationWeeks,
@@ -59,18 +58,19 @@ const LevelForm = ({ level, onClose, shouldCallApi = true }) => {
 
       if (shouldCallApi) {
         // Call API (for LevelList usage)
-        let successMessage;
+        let response;
         if (isEdit) {
           // Update existing level
           console.log('Updating level with ID:', level.id);
-          await levelManagementApi.updateLevel(level.id, apiData);
-          successMessage = t('levelManagement.updateLevelSuccess');
+          response = await levelManagementApi.updateLevel(level.id, apiData);
         } else {
           // Create new level
           console.log('Creating new level');
-          await levelManagementApi.createLevel(apiData);
-          successMessage = t('levelManagement.addLevelSuccess');
+          response = await levelManagementApi.createLevel(apiData);
         }
+        
+        // Use backend message if available, otherwise fallback to translation
+        const successMessage = response.message || (isEdit ? t('levelManagement.updateLevelSuccess') : t('levelManagement.addLevelSuccess'));
         onClose(true, successMessage); // Tell parent to refresh data and show success message
       } else {
         // Don't call API (for LevelDragEdit usage)
@@ -80,7 +80,14 @@ const LevelForm = ({ level, onClose, shouldCallApi = true }) => {
       }
     } catch (error) {
       console.error('Error saving level:', error);
-      message.error(isEdit ? t('levelManagement.updateLevelError') : t('levelManagement.addLevelError'));
+      
+      // Handle API errors with backend messages
+      if (error.response) {
+        const errorMessage = error.response.data.error || error.response.data?.message;
+        message.error(errorMessage);
+      } else {
+        message.error(error.message || (isEdit ? t('levelManagement.updateLevelError') : t('levelManagement.addLevelError')));
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -107,10 +114,6 @@ const LevelForm = ({ level, onClose, shouldCallApi = true }) => {
           <Form.Item
             name="levelName"
             label={t('levelManagement.levelName')}
-            rules={[
-              { required: true, message: t('levelManagement.levelNameRequired') },
-              { min: 2, message: t('levelManagement.levelNameMinLength') }
-            ]}
           >
             <Input 
               placeholder={t('levelManagement.levelNamePlaceholder')}
@@ -120,42 +123,8 @@ const LevelForm = ({ level, onClose, shouldCallApi = true }) => {
         </Col>
         <Col span={12}>
           <Form.Item
-            name="prerequisite"
-            label={t('levelManagement.prerequisite')}
-          >
-            <Input 
-              placeholder="e.g., Movers, Starters"
-              size="large"
-            />
-          </Form.Item>
-        </Col>
-      </Row>
-
-      <Form.Item
-        name="description"
-        label={t('levelManagement.description')}
-        rules={[
-          { required: false, message: t('levelManagement.descriptionRequired') },
-          { min: 10, message: t('levelManagement.descriptionMinLength') }
-        ]}
-      >
-        <TextArea 
-          rows={3}
-          placeholder={t('levelManagement.descriptionPlaceholder')}
-          maxLength={500}
-          showCount
-        />
-      </Form.Item>
-
-      <Row gutter={16}>
-        <Col span={16}>
-          <Form.Item
             name="estimatedDurationWeeks"
             label={t('levelManagement.duration')}
-            rules={[
-              { required: true, message: t('levelManagement.durationRequired') },
-              { type: 'number', min: 1, max: 104, message: t('levelManagement.durationRange') }
-            ]}
           >
             <InputNumber 
               min={1}
@@ -178,10 +147,20 @@ const LevelForm = ({ level, onClose, shouldCallApi = true }) => {
             />
           </Form.Item>
         </Col>
-        <Col span={8}>
-         
-        </Col>
       </Row>
+
+      <Form.Item
+        name="description"
+        label={t('levelManagement.description')}
+      >
+        <TextArea 
+          rows={3}
+          placeholder={t('levelManagement.descriptionPlaceholder')}
+          maxLength={500}
+          showCount
+        />
+      </Form.Item>
+
 
       <Form.Item
         name="learningObjectives"
