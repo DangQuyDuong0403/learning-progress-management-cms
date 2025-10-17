@@ -18,6 +18,7 @@ import {
 	FilterOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
+import usePageTitle from '../../../../hooks/usePageTitle';
 import { useNavigate } from 'react-router-dom';
 import ThemedLayout from '../../../../component/ThemedLayout';
 import LoadingWithEffect from '../../../../component/spinner/LoadingWithEffect';
@@ -33,6 +34,10 @@ const LevelList = () => {
 	const { t } = useTranslation();
 	const { theme } = useTheme();
 	const navigate = useNavigate();
+	
+	// Set page title
+	usePageTitle('Level Management');
+	
 	const [loading, setLoading] = useState(false);
 	const [levels, setLevels] = useState([]);
 	const [isModalVisible, setIsModalVisible] = useState(false);
@@ -385,7 +390,7 @@ const LevelList = () => {
 
 	const columns = [
 		{
-			title: 'No',
+			title: 'STT',
 			key: 'index',
 			width: '5%',
 			render: (_, __, index) => {
@@ -477,6 +482,15 @@ const LevelList = () => {
 		<ThemedLayout>
 			{/* Main Content Panel */}
 			<div className={`main-content-panel ${theme}-main-panel`}>
+				{/* Page Title */}
+				<div className="page-title-container">
+					<Typography.Title 
+						level={1} 
+						className="page-title"
+					>
+						Level Management
+					</Typography.Title>
+				</div>
 				{/* Header Section */}
 				<div className={`panel-header ${theme}-panel-header`}>
 					<div
@@ -488,10 +502,9 @@ const LevelList = () => {
 							onChange={(e) => handleSearch(e.target.value)}
 							className={`search-input ${theme}-search-input`}
 							style={{
-								flex: '1',
-								minWidth: '250px',
-								maxWidth: '400px',
-								width: '350px',
+								minWidth: '200px',
+								maxWidth: '300px',
+								width: '250px',
 								height: '40px',
 								fontSize: '16px',
 							}}
@@ -603,11 +616,11 @@ const LevelList = () => {
 								fontWeight: '500',
 								border: theme === 'space' 
 									? '1px solid rgba(77, 208, 255, 0.3)' 
-									: '1px solid rgba(24, 144, 255, 0.3)',
+									: '1px solid #0000001a',
 								background: theme === 'space'
-									? 'rgb(75, 65, 119)'
-									: 'linear-gradient(135deg, #1890ff 0%, #40a9ff 50%, #69c0ff 100%)',
-								color: theme === 'space' ? '#fff' : '#000',
+									? 'linear-gradient(135deg, #b5b0c0 19%, #a79ebb 64%, #8377a0 75%, #aca5c0 97%, #6d5f8f)'
+									: '#71b3fd',
+								color: '#000',
 								backdropFilter: 'blur(10px)',
 								transition: 'all 0.3s ease',
 								boxShadow: theme === 'space'
@@ -616,7 +629,7 @@ const LevelList = () => {
 							}}
 						
 						>
-							{t('levelManagement.editPositions')}
+							{t('levelManagement.edit')}
 						</Button>
 					</div>
 				</div>

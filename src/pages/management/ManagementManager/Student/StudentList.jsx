@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
+import usePageTitle from "../../../../hooks/usePageTitle";
 import {
   Table,
   Button,
@@ -46,6 +47,9 @@ const { Title, Text } = Typography;
 const StudentList = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  
+  // Set page title
+  usePageTitle('Student Management');
   const { theme } = useTheme();
   const dispatch = useDispatch();
   const { levels, loading: levelsLoading } = useSelector((state) => state.level);
@@ -705,6 +709,15 @@ STU003,Le Van Cuong,levancuong@example.com,0111222333,Lớp 11B1,Advanced,active
     <ThemedLayout>
         {/* Main Content Panel */}
         <div className={`main-content-panel ${theme}-main-panel`}>
+          {/* Page Title */}
+          <div className="page-title-container">
+            <Typography.Title 
+              level={1} 
+              className="page-title"
+            >
+              Student Management
+            </Typography.Title>
+          </div>
           {/* Header Section */}
           <div className={`panel-header ${theme}-panel-header`}>
             <div className="search-section" style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>

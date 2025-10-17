@@ -9,6 +9,7 @@ import { useTheme } from '../../contexts/ThemeContext';
 import ThemedLayoutFullScreen from '../../component/ThemedLayoutFullScreen';
 import { spaceToast } from '../../component/SpaceToastify';
 import authApi from '../../apis/backend/auth';
+import usePageTitle from '../../hooks/usePageTitle';
 import './Login.css';
 
 export default function ResetPassword() {
@@ -20,6 +21,9 @@ export default function ResetPassword() {
 	const navigate = useNavigate();
 	const { isSunTheme } = useTheme();
 	const { t } = useTranslation();
+	
+	// Set page title
+	usePageTitle('Reset Password');
 
 	// Lấy token từ URL params trước, nếu không có thì lấy từ localStorage
 	const tokenFromParams = searchParams.get('token');

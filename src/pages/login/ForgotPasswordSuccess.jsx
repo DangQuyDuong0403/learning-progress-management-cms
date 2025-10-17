@@ -8,6 +8,7 @@ import ThemeToggleSwitch from '../../component/ThemeToggleSwitch';
 import { useTheme } from '../../contexts/ThemeContext';
 import ThemedLayoutFullScreen from '../../component/ThemedLayoutFullScreen';
 import { clearForgotPasswordState } from '../../redux/auth';
+import usePageTitle from '../../hooks/usePageTitle';
 import './Login.css';
 
 export default function ForgotPasswordSuccess() {
@@ -16,6 +17,9 @@ export default function ForgotPasswordSuccess() {
 	const dispatch = useDispatch();
 	const { t } = useTranslation();
 	const { isSunTheme } = useTheme();
+	
+	// Set page title
+	usePageTitle('Password Reset Success');
 	
 	// Get email from navigation state
 	const email = location.state?.email || 'Unknown Email';

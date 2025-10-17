@@ -106,6 +106,11 @@
 	box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
 	position: relative;
 	z-index: 2;
+	color: #000000 !important;
+}
+
+.add-level-between-btn .anticon {
+	color: #000000 !important;
 }
 
 .add-level-between-btn:hover {
@@ -240,6 +245,16 @@
 	border-radius: 8px;
 }
 
+/* Space theme add button */
+.space-theme .add-level-between-btn {
+	background: linear-gradient(135deg, #b5b0c0 19%, #a79ebb 64%, #8377a0 75%, #aca5c0 97%, #6d5f8f) !important;
+	color: #000000 !important;
+}
+
+.space-theme .add-level-between-btn .anticon {
+	color: #000000 !important;
+}
+
 /* Space theme scrollbar */
 .space-levels-scroll-container {
 	scrollbar-color: #555 #333;
@@ -292,6 +307,41 @@
 	border-radius: 8px;
 }
 
+/* Sun theme add button */
+.sun-theme .add-level-between-btn {
+	background: #71b3fd !important;
+	color: #000000 !important;
+}
+
+.sun-theme .add-level-between-btn .anticon {
+	color: #000000 !important;
+}
+
+/* Back Button Styles */
+.sun-theme .back-button {
+	background: #ffffff !important;
+	border-color: #0000001a !important;
+	color: #000000 !important;
+}
+
+.sun-theme .back-button:hover {
+	background: #f5f5f5 !important;
+	border-color: #0000001a !important;
+	color: #000000 !important;
+}
+
+.space-theme .back-button {
+	background: #ffffff !important;
+	border-color: #0000001a !important;
+	color: #000000 !important;
+}
+
+.space-theme .back-button:hover {
+	background: #f5f5f5 !important;
+	border-color: #0000001a !important;
+	color: #000000 !important;
+}
+
 /* Save Button Styles */
 .save-button {
 	height: 42px !important;
@@ -303,27 +353,29 @@
 }
 
 .space-theme .save-button {
-	background: linear-gradient(135deg, #a78bfa 0%, #c084fc 100%) !important;
-	border-color: #a78bfa !important;
-	box-shadow: 0 4px 12px rgba(167, 139, 250, 0.4) !important;
+	background: linear-gradient(135deg, #7228d9 0%, #9c88ff 100%) !important;
+	border-color: #7228d9 !important;
+	box-shadow: 0 4px 12px rgba(114, 40, 217, 0.4) !important;
 }
 
 .space-theme .save-button:hover {
-	background: linear-gradient(135deg, #c084fc 0%, #e879f9 100%) !important;
-	border-color: #c084fc !important;
+	background: linear-gradient(135deg, #5a1fb8 0%, #8a7aff 100%) !important;
+	border-color: #5a1fb8 !important;
 	transform: translateY(-2px) !important;
-	box-shadow: 0 6px 16px rgba(167, 139, 250, 0.6) !important;
+	box-shadow: 0 6px 16px rgba(114, 40, 217, 0.6) !important;
 }
 
 .sun-theme .save-button {
-	background: #a5d0ff  !important;
-	color: #000000;
+	background: #298EFE !important;
+	border-color: #298EFE !important;
+	color: #ffffff !important;
 }
 
 .sun-theme .save-button:hover {
-	background: #94c6fc  !important;
+	background: #1a7ce8 !important;
+	border-color: #1a7ce8 !important;
 	transform: translateY(-2px) !important;
-	box-shadow: 0 6px 16px rgba(82, 196, 26, 0.6) !important;
+	box-shadow: 0 6px 16px rgba(41, 142, 254, 0.6) !important;
 }
 
 /* Drag Handle */

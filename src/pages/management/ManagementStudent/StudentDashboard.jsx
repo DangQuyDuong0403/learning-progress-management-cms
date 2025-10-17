@@ -2,92 +2,84 @@ import React from 'react';
 import { Card, Row, Col, Statistic, Button, Space } from 'antd';
 import { 
   UserOutlined, 
-  TeamOutlined, 
   BookOutlined, 
+  TrophyOutlined, 
   BarChartOutlined,
-  ArrowRightOutlined 
+  ArrowRightOutlined,
+  HomeOutlined
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
-import { useTheme } from '../../../contexts/ThemeContext';
 import ThemedLayout from '../../../component/ThemedLayout';
 import ROUTER_PAGE from '../../../constants/router';
 
-const AdminDashboard = () => {
+const StudentDashboard = () => {
   const navigate = useNavigate();
-  const { theme } = useTheme();
 
-  const handleNavigateToAccounts = () => {
-    navigate(ROUTER_PAGE.ADMIN_ACCOUNTS);
+  const handleNavigateToProfile = () => {
+    navigate(ROUTER_PAGE.PROFILE_STUDENT);
   };
 
   const statsData = [
     {
-      title: 'Tổng tài khoản',
-      value: 1250,
-      icon: <UserOutlined style={{ color: '#1890ff' }} />,
+      title: 'Khóa học đang học',
+      value: 3,
+      icon: <BookOutlined style={{ color: '#1890ff' }} />,
       color: '#1890ff'
     },
     {
-      title: 'Giáo viên',
-      value: 85,
-      icon: <TeamOutlined style={{ color: '#52c41a' }} />,
+      title: 'Điểm số trung bình',
+      value: 8.5,
+      icon: <TrophyOutlined style={{ color: '#52c41a' }} />,
       color: '#52c41a'
     },
     {
-      title: 'Học sinh',
-      value: 1150,
-      icon: <UserOutlined style={{ color: '#faad14' }} />,
+      title: 'Bài tập hoàn thành',
+      value: 45,
+      icon: <BarChartOutlined style={{ color: '#faad14' }} />,
       color: '#faad14'
     },
     {
-      title: 'Khóa học',
-      value: 42,
-      icon: <BookOutlined style={{ color: '#722ed1' }} />,
+      title: 'Ngày học liên tiếp',
+      value: 12,
+      icon: <UserOutlined style={{ color: '#722ed1' }} />,
       color: '#722ed1'
     }
   ];
 
   const quickActions = [
     {
-      title: 'Quản lý tài khoản',
-      description: 'Thêm, sửa, xóa tài khoản người dùng',
+      title: 'Xem hồ sơ',
+      description: 'Cập nhật thông tin cá nhân',
       icon: <UserOutlined />,
-      action: () => navigate(ROUTER_PAGE.ADMIN_ACCOUNTS),
+      action: handleNavigateToProfile,
       color: '#1890ff'
     },
     {
-      title: 'Quản lý vai trò',
-      description: 'Phân quyền và quản lý vai trò',
-      icon: <TeamOutlined />,
+      title: 'Khóa học của tôi',
+      description: 'Xem tiến độ học tập',
+      icon: <BookOutlined />,
       action: () => {},
       color: '#52c41a'
     },
     {
-      title: 'Báo cáo thống kê',
-      description: 'Xem báo cáo và thống kê hệ thống',
-      icon: <BarChartOutlined />,
+      title: 'Thành tích',
+      description: 'Xem điểm số và thành tích',
+      icon: <TrophyOutlined />,
       action: () => {},
-      color: '#722ed1'
+      color: '#faad14'
     }
   ];
 
   return (
     <ThemedLayout>
-      <div className="admin-dashboard">
+      <div className="student-dashboard">
         {/* Welcome Header */}
-        <Card 
-          className="welcome-card" 
-          style={{ 
-            marginBottom: 24,
-            backgroundColor: theme === 'sun' ? '#ffffff' : undefined,
-            border: theme === 'sun' ? '1px solid #d9d9d9' : undefined
-          }}
-        >
+        <Card className="welcome-card" style={{ marginBottom: 24 }}>
           <Row justify="space-between" align="middle">
             <Col>
-              <h1 style={{ margin: 0, color: '#1890ff' }}>Chào mừng Admin!</h1>
+              <h1 style={{ margin: 0, color: '#faad14' }}>Chào mừng Học sinh!</h1>
               <p style={{ margin: '8px 0 0 0', color: '#666', fontSize: '16px' }}>
-                Quản lý hệ thống Learning Progress Management CMS
+                Theo dõi tiến độ học tập của bạn
               </p>
             </Col>
             <Col>
@@ -95,9 +87,9 @@ const AdminDashboard = () => {
                 type="primary" 
                 size="large"
                 icon={<UserOutlined />}
-                onClick={handleNavigateToAccounts}
+                onClick={handleNavigateToProfile}
               >
-                Quản lý tài khoản
+                Xem hồ sơ
               </Button>
             </Col>
           </Row>
@@ -107,13 +99,7 @@ const AdminDashboard = () => {
         <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
           {statsData.map((stat, index) => (
             <Col xs={24} sm={12} lg={6} key={index}>
-              <Card 
-                hoverable
-                style={{
-                  backgroundColor: theme === 'sun' ? '#ffffff' : undefined,
-                  border: theme === 'sun' ? '1px solid #d9d9d9' : undefined
-                }}
-              >
+              <Card hoverable>
                 <Statistic
                   title={stat.title}
                   value={stat.value}
@@ -126,14 +112,7 @@ const AdminDashboard = () => {
         </Row>
 
         {/* Quick Actions */}
-        <Card 
-          title="Thao tác nhanh" 
-          style={{ 
-            marginBottom: 24,
-            backgroundColor: theme === 'sun' ? '#ffffff' : undefined,
-            border: theme === 'sun' ? '1px solid #d9d9d9' : undefined
-          }}
-        >
+        <Card title="Thao tác nhanh" style={{ marginBottom: 24 }}>
           <Row gutter={[16, 16]}>
             {quickActions.map((action, index) => (
               <Col xs={24} sm={12} lg={8} key={index}>
@@ -144,8 +123,7 @@ const AdminDashboard = () => {
                   style={{ 
                     cursor: 'pointer',
                     border: `2px solid ${action.color}`,
-                    borderRadius: '8px',
-                    backgroundColor: theme === 'sun' ? '#ffffff' : undefined
+                    borderRadius: '8px'
                   }}
                 >
                   <Space direction="vertical" size="middle" style={{ width: '100%', textAlign: 'center' }}>
@@ -173,15 +151,9 @@ const AdminDashboard = () => {
         </Card>
 
         {/* Recent Activities */}
-        <Card 
-          title="Hoạt động gần đây"
-          style={{
-            backgroundColor: theme === 'sun' ? '#ffffff' : undefined,
-            border: theme === 'sun' ? '1px solid #d9d9d9' : undefined
-          }}
-        >
+        <Card title="Hoạt động gần đây">
           <div style={{ textAlign: 'center', padding: '40px 0', color: '#999' }}>
-            <BarChartOutlined style={{ fontSize: '48px', marginBottom: '16px' }} />
+            <BookOutlined style={{ fontSize: '48px', marginBottom: '16px' }} />
             <p>Chưa có hoạt động nào</p>
           </div>
         </Card>
@@ -190,4 +162,4 @@ const AdminDashboard = () => {
   );
 };
 
-export default AdminDashboard;
+export default StudentDashboard;

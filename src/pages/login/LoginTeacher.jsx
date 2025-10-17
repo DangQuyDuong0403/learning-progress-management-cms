@@ -11,12 +11,16 @@ import LanguageToggle from '../../component/LanguageToggle';
 import ThemeToggleSwitch from '../../component/ThemeToggleSwitch';
 import { useTheme } from '../../contexts/ThemeContext';
 import ThemedLayoutFullScreen from '../../component/ThemedLayoutFullScreen';
+import usePageTitle from '../../hooks/usePageTitle';
 import './Login.css';
 
 export default function LoginTeacher() {
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
+    
+    // Set page title
+    usePageTitle('Teacher Login');
     const dispatch = useDispatch();
     const navigate = useNavigate();
     const { t } = useTranslation();
@@ -66,11 +70,11 @@ export default function LoginTeacher() {
                 console.log('LoginTeacher - Response role:', response.data.role);
                 
                 if (response.data.role === 'ADMIN') {
-                    redirectPath = '/admin/accounts';
+                    redirectPath = '/admin/dashboard';
                 } else if (response.data.role === 'MANAGER') {
-                    redirectPath = '/manager/syllabuses';
+                    redirectPath = '/manager/dashboard';
                 } else if (response.data.role === 'TEACHER') {
-                    redirectPath = '/teacher/classes';
+                    redirectPath = '/teacher/dashboard';
                 } else if (response.data.role === 'TEACHING_ASSISTANT') {
                     redirectPath = '/teacher/classes';
                 }

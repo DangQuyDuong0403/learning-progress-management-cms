@@ -16,6 +16,7 @@ import ThemedLayout from '../../../../component/ThemedLayout';
 import levelManagementApi from '../../../../apis/backend/levelManagement';
 import ROUTER_PAGE from '../../../../constants/router';
 import LevelForm from './LevelForm';
+import usePageTitle from '../../../../hooks/usePageTitle';
 import {
 	DndContext,
 	closestCenter,
@@ -130,7 +131,7 @@ const SortableLevelItem = memo(
 					</div>
 					<Button
 						type='text'
-						icon={<EditOutlined />}
+						icon={<EditOutlined style={{ color: '#000', fontSize: '18px' }} />}
 						onClick={handleEdit}
 						style={{
 							background: 'rgba(24, 144, 255, 0.1)',
@@ -141,7 +142,7 @@ const SortableLevelItem = memo(
 					<Button
 						type='text'
 						danger
-						icon={<DeleteOutlined />}
+						icon={<DeleteOutlined style={{ color: '#000', fontSize: '18px' }} />}
 						onClick={handleDelete}
 						style={{
 							background: 'rgba(239, 68, 68, 0.1)',
@@ -197,6 +198,10 @@ const LevelDragEdit = () => {
 	const { t } = useTranslation();
 	const { theme } = useTheme();
 	const navigate = useNavigate();
+	
+	// Set page title
+	usePageTitle('Edit Level');
+	
 	const [levels, setLevels] = useState([]);
 	const [loading, setLoading] = useState(false);
 	const [saving, setSaving] = useState(false);
@@ -482,39 +487,19 @@ const LevelDragEdit = () => {
 						<Button
 							icon={<ArrowLeftOutlined />}
 							onClick={handleGoBack}
-							style={{ position: 'absolute', left: 0 }}>
+							className={`back-button ${theme}-back-button`}
+							style={{ 
+								position: 'absolute', 
+								left: 0,
+							}}>
 							{t('common.back')}
 						</Button>
-						<div
-							style={{
-								display: 'flex',
-								alignItems: 'center',
-								gap: '12px',
-								padding: '12px 24px',
-								borderRadius: '12px',
-								background:
-									theme === 'space'
-										? 'linear-gradient(135deg, #4c1d95 0%, #5b21b6 100%)'
-										: 'rgb(101 191 253)',
-								boxShadow:
-									theme === 'space'
-										? '0 4px 12px rgba(76, 29, 149, 0.4)'
-										: '0 4px 12px rgba(173, 219, 250, 0.3)',
-							}}>
-							<SwapOutlined
-								rotate={90}
-								style={{
-									fontSize: '28px',
-									color: '#ffffff',
-								}}
-							/>
+						<div className="page-title-container">
 							<Title
-								level={2}
-								style={{
-									margin: 0,
-									color: '#ffffff',
-								}}>
-								{t('levelManagement.editPositions')}
+								level={1}
+								className="page-title"
+							>
+								{t('levelManagement.editLevel')}
 							</Title>
 						</div>
 					</div>
@@ -634,6 +619,7 @@ const LevelDragEdit = () => {
 								icon={<ArrowLeftOutlined />}
 								onClick={handleGoBack}
 								size='large'
+								className={`back-button ${theme}-back-button`}
 								style={{ 
 									marginRight: '12px',
 									borderRadius: '8px',
@@ -647,7 +633,12 @@ const LevelDragEdit = () => {
 								icon={<SaveOutlined />}
 								onClick={handleSave}
 								loading={saving}
-								className='save-button'>
+								className='save-button'
+								style={{
+									height: '42px',
+									borderRadius: '8px',
+									fontWeight: '500'
+								}}>
 								{t('common.save')}
 							</Button>
 						</div>
@@ -658,18 +649,18 @@ const LevelDragEdit = () => {
 			{/* Add/Edit Level Modal */}
 			<Modal
 				title={
-					<div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+					<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px' }}>
 						{editingLevel ? (
 							<>
-								<EditOutlined style={{ fontSize: '20px', color: '#1890ff' }} />
-								<Title level={4} style={{ margin: 0, color: '#1890ff' }}>
+								<EditOutlined style={{ fontSize: '26px', color: '#000000' }} />
+								<Title level={4} style={{ margin: 0, color: '#000000', fontSize: '26px' }}>
 									{t('levelManagement.editLevel')}
 								</Title>
 							</>
 						) : (
 							<>
-								<PlusOutlined style={{ fontSize: '20px', color: '#1890ff' }} />
-								<Title level={4} style={{ margin: 0, color: '#1890ff' }}>
+								<PlusOutlined style={{ fontSize: '20px', color: '#000000' }} />
+								<Title level={4} style={{ margin: 0, color: '#000000' }}>
 									{t('levelManagement.addLevel')}
 								</Title>
 							</>

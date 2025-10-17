@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
+import usePageTitle from '../../../../hooks/usePageTitle';
 import {
 	Table,
 	Button,
@@ -34,6 +35,10 @@ const { Option } = Select;
 const AccountList = () => {
 	const { t } = useTranslation();
 	const { theme } = useTheme();
+	
+	// Set page title
+	usePageTitle('Account Management');
+	
 	const [loading, setLoading] = useState(false);
 	const [accounts, setAccounts] = useState([]);
 	const [searchText, setSearchText] = useState('');
@@ -649,6 +654,15 @@ const AccountList = () => {
 		<ThemedLayout>
 			{/* Main Content Panel */}
 			<div className={`account-page ${theme}-theme main-content-panel`}>
+				{/* Page Title */}
+				<div className="page-title-container">
+					<Typography.Title 
+						level={1} 
+						className="page-title"
+					>
+						Account Management
+					</Typography.Title>
+				</div>
 				{/* Header Section */}
 				<div className={`panel-header ${theme}-panel-header`}>
 					<div

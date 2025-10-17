@@ -1706,6 +1706,28 @@
 	box-shadow: 0 4px 12px rgba(114, 40, 217, 0.4) !important;
 }
 
+/* ===== PAGE TITLE STYLES ===== */
+.page-title-container {
+	margin-bottom: 20px;
+	text-align: center;
+}
+
+.page-title {
+	margin: 0;
+	font-size: 30px;
+	font-weight: 600;
+}
+
+/* Sun theme page title */
+.sun-theme .page-title {
+	color: #000000;
+}
+
+/* Space theme page title */
+.space-theme .page-title {
+	color: #ffffff;
+}
+
 /* ===== RESPONSIVE ===== */
 @media (max-width: 768px) {
 	.themed-sider {

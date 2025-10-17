@@ -36,7 +36,7 @@ export default function ForgotPasswordModal({ visible, onCancel, onMethodSelect 
             footer={null}
             onCancel={onCancel}
             centered
-            width={400}
+            width={500}
             style={{ borderRadius: '12px' }}>
             <div style={{ padding: '6px 0' }}>
                 <p
@@ -55,12 +55,14 @@ export default function ForgotPasswordModal({ visible, onCancel, onMethodSelect 
                         display: 'flex',
                         gap: '16px',
                         justifyContent: 'center',
-                        flexWrap: 'wrap',
+                        flexWrap: 'nowrap',
+                        alignItems: 'stretch',
                     }}>
                     {/* Email Option */}
                     <div
                         onClick={() => handleMethodSelect('email')}
-                        className='recover-option'>
+                        className='recover-option'
+                        style={{ flex: 1, minWidth: 0 }}>
                         <div className='recover-card'>
                             <div className='recover-icon'>
                                 <MailOutlined style={{ fontSize: '32px', color: '#EA4335' }} />
@@ -73,7 +75,8 @@ export default function ForgotPasswordModal({ visible, onCancel, onMethodSelect 
                     {/* Teacher Option */}
                     <div
                         onClick={() => handleMethodSelect('teacher')}
-                        className='recover-option'>
+                        className='recover-option'
+                        style={{ flex: 1, minWidth: 0 }}>
                         <div className='recover-card'>
                             <div className='recover-icon'>👨‍🏫</div>
                             <h6>{t('forgotPassword.viaPhone')}</h6>

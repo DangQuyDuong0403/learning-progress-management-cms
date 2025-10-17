@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
+import usePageTitle from '../../hooks/usePageTitle';
 import {
 	Card,
 	Button,
@@ -31,6 +32,9 @@ const Settings = () => {
 	const { theme, toggleTheme } = useTheme();
 	const dispatch = useDispatch();
 	const navigate = useNavigate();
+	
+	// Set page title
+	usePageTitle('Settings');
 	const [passwordForm] = Form.useForm();
 	
 	// Loading state for password change
@@ -55,8 +59,7 @@ const Settings = () => {
 		setChangePasswordLoading(true);
 		
 		try {
-			// Get form values directly without any frontend validation
-			const values = passwordForm.getFieldsValue();
+			const values = await passwordForm.validateFields();
 			
 			// Get refresh token from localStorage
 			const refreshToken = localStorage.getItem('refreshToken');
@@ -66,11 +69,11 @@ const Settings = () => {
 				return;
 			}
 			
-			// Prepare data for API call - send all fields including empty ones to let BE validate
+			// Prepare data for API call - include refreshToken like ChangePassword.jsx
 			const passwordData = {
-				oldPassword: values.currentPassword || '',
-				newPassword: values.newPassword || '',
-				confirmPassword: values.confirmPassword || '',
+				oldPassword: values.currentPassword,
+				newPassword: values.newPassword,
+				confirmPassword: values.confirmPassword,
 				refreshToken: refreshToken
 			};
 			
@@ -95,12 +98,14 @@ const Settings = () => {
 			}, 2000);
 			
 		} catch (error) {
-			console.log('Error:', error);
+			console.error('Change password error:', error);
+			console.error('Error response:', error.response);
+			console.error('Error status:', error.response?.status);
+			console.error('Error data:', error.response?.data);
 			
 			// Handle API errors with backend messages
 			if (error.response) {
-				console.log('Error response:', error.response);
-				const errorMessage = error.response.data.error || error.response.data?.message;
+				const errorMessage = error.response.data?.error || error.response.data?.message;
 				spaceToast.error(errorMessage);
 			}
 		} finally {
@@ -152,6 +157,15 @@ const Settings = () => {
 	return (
 		<ThemedLayout>
 			<div className={`settings-container ${theme}-settings-container`}>
+				{/* Page Title */}
+				<div className="page-title-container">
+					<Typography.Title 
+						level={1} 
+						className="page-title"
+					>
+						Settings
+					</Typography.Title>
+				</div>
 				<div className={`settings-content ${theme}-settings-content`}>
 					{/* Password Section */}
 					<Card className={`settings-card ${theme}-settings-card`}>
@@ -234,7 +248,7 @@ const Settings = () => {
 											🇻🇳 {t('common.vietnamese')}
 										</Text>
 										<Text className={`language-label en-label ${getCurrentLanguage() === 'en' ? 'active' : ''}`}>
-											EN {t('common.english')}
+											🇬🇧 {t('common.english')}
 										</Text>
 									</div>
 								</div>
@@ -300,8 +314,15 @@ const Settings = () => {
 					className={`settings-form ${theme}-settings-form`}
 				>
 					<Form.Item
-						label={t('settings.currentPassword')}
+						label={
+							<span>
+								{t('settings.currentPassword')} <span style={{ color: 'red' }}>*</span>
+							</span>
+						}
 						name="currentPassword"
+						rules={[
+							{ required: true, message: t('settings.currentPasswordRequired') }
+						]}
 					>
 						<Input.Password 
 							placeholder={t('settings.enterCurrentPassword')}
@@ -310,8 +331,16 @@ const Settings = () => {
 					</Form.Item>
 
 					<Form.Item
-						label={t('settings.newPassword')}
+						label={
+							<span>
+								{t('settings.newPassword')} <span style={{ color: 'red' }}>*</span>
+							</span>
+						}
 						name="newPassword"
+						rules={[
+							{ required: true, message: t('settings.newPasswordRequired') },
+							{ min: 6, message: t('settings.passwordMinLength') }
+						]}
 					>
 						<Input.Password 
 							placeholder={t('settings.enterNewPassword')}
@@ -320,8 +349,24 @@ const Settings = () => {
 					</Form.Item>
 
 					<Form.Item
-						label={t('settings.confirmNewPassword')}
+						label={
+							<span>
+								{t('settings.confirmNewPassword')} <span style={{ color: 'red' }}>*</span>
+							</span>
+						}
 						name="confirmPassword"
+						dependencies={['newPassword']}
+						rules={[
+							{ required: true, message: t('settings.confirmPasswordRequired') },
+							({ getFieldValue }) => ({
+								validator(_, value) {
+									if (!value || getFieldValue('newPassword') === value) {
+										return Promise.resolve();
+									}
+									return Promise.reject(new Error(t('settings.passwordsDoNotMatch')));
+								},
+							}),
+						]}
 					>
 						<Input.Password 
 							placeholder={t('settings.confirmNewPassword')}

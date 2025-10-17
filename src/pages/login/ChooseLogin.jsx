@@ -5,12 +5,16 @@ import LanguageToggle from '../../component/LanguageToggle';
 import ThemeToggleSwitch from '../../component/ThemeToggleSwitch';
 import { useTheme } from '../../contexts/ThemeContext';
 import ThemedLayoutFullScreen from '../../component/ThemedLayoutFullScreen';
+import usePageTitle from '../../hooks/usePageTitle';
 import './Login.css'; // Tận dụng lại nền và hiệu ứng từ Login.css
 
 export default function ChooseLogin() {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const { isSunTheme } = useTheme();
+  
+  // Set page title
+  usePageTitle('Choose Login');
 
   const selectRole = (role) => {
     const roleUpper = role.toUpperCase();
