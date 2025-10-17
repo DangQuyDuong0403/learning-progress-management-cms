@@ -521,7 +521,7 @@ const TeacherList = () => {
 										<div style={{ display: 'flex', gap: '24px', marginBottom: '24px' }}>
 											{/* Role Filter */}
 											<div style={{ flex: 1 }}>
-												<Typography.Title level={5} style={{ marginBottom: '12px', color: '#1890ff', fontSize: '16px' }}>
+												<Typography.Title level={5} style={{ marginBottom: '12px', fontSize: '16px' }}>
 													Role
 												</Typography.Title>
 												<div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
@@ -544,7 +544,7 @@ const TeacherList = () => {
 
 											{/* Status Filter */}
 											<div style={{ flex: 1 }}>
-												<Typography.Title level={5} style={{ marginBottom: '12px', color: '#1890ff', fontSize: '16px' }}>
+												<Typography.Title level={5} style={{ marginBottom: '12px', fontSize: '16px' }}>
 													Status
 												</Typography.Title>
 												<div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>

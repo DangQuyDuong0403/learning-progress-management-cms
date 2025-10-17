@@ -169,6 +169,10 @@
     "totalAccounts": "Total",
     "accounts": "accounts",
     "exportExcel": "Export Excel",
+    "stt": "No",
+    "active": "Active",
+    "inactive": "Inactive",
+    "pending": "Pending",
     "importExcel": "Import Excel",
     "refresh": "Refresh",
     "loadingAccounts": "Loading accounts list...",
@@ -258,6 +262,7 @@
     "exportTemplate": "Export Template",
     "importAccount": "Import Account",
     "createAccount": "Create Account",
+    "editPendingAccount": "Edit Pending Account",
     "no": "No"
   },
   "roleManagement": {

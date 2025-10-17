@@ -208,24 +208,7 @@
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
-/* Button Styles */
-.ant-btn-primary {
-  background: linear-gradient(135deg, #00d4ff 0%, #9c88ff 100%);
-  border-color: transparent;
-  border-radius: 12px;
-  height: 44px;
-  font-weight: 700;
-  font-size: 16px;
-  box-shadow: 0 4px 20px rgba(0, 212, 255, 0.4);
-  transition: all 0.3s ease;
-}
 
-.ant-btn-primary:hover {
-  background: linear-gradient(135deg, #00b8e6 0%, #8a7aff 100%);
-  border-color: transparent;
-  transform: translateY(-2px);
-  box-shadow: 0 8px 30px rgba(0, 212, 255, 0.6);
-}
 
 .ant-btn {
   border-radius: 8px;

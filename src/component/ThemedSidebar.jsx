@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Menu } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { useSelector } from 'react-redux';
@@ -18,6 +18,7 @@ import CONFIG_ROUTER from "../routers/configRouter";
 
 export default function ThemedSidebar({ collapsed }) {
   const location = useLocation();
+  const navigate = useNavigate();
   const { t } = useTranslation();
   const { user } = useSelector((state) => state.auth);
   const { theme } = useTheme();
@@ -79,15 +80,28 @@ export default function ThemedSidebar({ collapsed }) {
     return menuNameMap[key] || key;
   };
 
+  // Handle menu click
+  const handleMenuClick = ({ key }) => {
+    if (key === 'SETTINGS') {
+      navigate('/settings');
+    } else {
+      const route = CONFIG_ROUTER.find(r => r.key === key);
+      if (route) {
+        navigate(route.path);
+      }
+    }
+  };
+
+  // Prevent auto-expansion when navigating
+  const handleMenuOpenChange = () => {
+    // Do nothing to prevent auto-expansion
+  };
+
   // Create settings menu item (separate for positioning)
   const settingsMenuItem = {
     key: 'SETTINGS',
     icon: <SettingOutlined />,
-    label: (
-      <Link to="/settings" style={{ textDecoration: 'none' }}>
-        {t('sidebar.settings')}
-      </Link>
-    ),
+    label: collapsed ? null : t('sidebar.settings'),
     title: collapsed ? t('sidebar.settings') : undefined,
   };
 
@@ -107,11 +121,7 @@ export default function ThemedSidebar({ collapsed }) {
     .map((route) => ({
       key: route.key,
       icon: getIcon(route.key),
-      label: (
-        <Link to={route.path} style={{ textDecoration: 'none' }}>
-          {getMenuName(route.key)}
-        </Link>
-      ),
+      label: collapsed ? null : getMenuName(route.key),
       title: collapsed ? getMenuName(route.key) : undefined,
       path: route.path,
     }));
@@ -152,6 +162,8 @@ export default function ThemedSidebar({ collapsed }) {
         mode="inline"
         selectedKeys={getSelectedKey()}
         items={menuItems}
+        onClick={handleMenuClick}
+        onOpenChange={handleMenuOpenChange}
         style={{
           border: 'none',
           background: 'transparent',
