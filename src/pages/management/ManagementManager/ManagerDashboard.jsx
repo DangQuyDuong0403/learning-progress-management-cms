@@ -5,75 +5,111 @@ import {
   TeamOutlined, 
   BookOutlined, 
   BarChartOutlined,
-  ArrowRightOutlined 
+  ArrowRightOutlined,
+  HomeOutlined,
+  SolutionOutlined,
+  ReadOutlined
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../../../contexts/ThemeContext';
 import ThemedLayout from '../../../component/ThemedLayout';
 import ROUTER_PAGE from '../../../constants/router';
 
-const AdminDashboard = () => {
+const ManagerDashboard = () => {
   const navigate = useNavigate();
   const { theme } = useTheme();
 
-  const handleNavigateToAccounts = () => {
-    navigate(ROUTER_PAGE.ADMIN_ACCOUNTS);
+  const handleNavigateToClasses = () => {
+    navigate(ROUTER_PAGE.MANAGER_CLASSES);
+  };
+
+  const handleNavigateToStudents = () => {
+    navigate(ROUTER_PAGE.MANAGER_STUDENTS);
+  };
+
+  const handleNavigateToTeachers = () => {
+    navigate(ROUTER_PAGE.MANAGER_TEACHERS);
+  };
+
+  const handleNavigateToSyllabuses = () => {
+    navigate(ROUTER_PAGE.MANAGER_SYLLABUSES);
   };
 
   const statsData = [
     {
-      title: 'Tổng tài khoản',
-      value: 1250,
-      icon: <UserOutlined style={{ color: '#1890ff' }} />,
+      title: 'Tổng lớp học',
+      value: 25,
+      icon: <HomeOutlined style={{ color: '#1890ff' }} />,
       color: '#1890ff'
     },
     {
       title: 'Giáo viên',
-      value: 85,
-      icon: <TeamOutlined style={{ color: '#52c41a' }} />,
+      value: 15,
+      icon: <SolutionOutlined style={{ color: '#52c41a' }} />,
       color: '#52c41a'
     },
     {
       title: 'Học sinh',
-      value: 1150,
+      value: 450,
       icon: <UserOutlined style={{ color: '#faad14' }} />,
       color: '#faad14'
     },
     {
-      title: 'Khóa học',
-      value: 42,
-      icon: <BookOutlined style={{ color: '#722ed1' }} />,
+      title: 'Giáo trình',
+      value: 8,
+      icon: <ReadOutlined style={{ color: '#722ed1' }} />,
       color: '#722ed1'
     }
   ];
 
   const quickActions = [
     {
-      title: 'Quản lý tài khoản',
-      description: 'Thêm, sửa, xóa tài khoản người dùng',
-      icon: <UserOutlined />,
-      action: () => navigate(ROUTER_PAGE.ADMIN_ACCOUNTS),
+      title: 'Quản lý lớp học',
+      description: 'Quản lý các lớp học và học sinh',
+      icon: <HomeOutlined />,
+      action: handleNavigateToClasses,
       color: '#1890ff'
     },
     {
-      title: 'Quản lý vai trò',
-      description: 'Phân quyền và quản lý vai trò',
-      icon: <TeamOutlined />,
-      action: () => {},
+      title: 'Quản lý học sinh',
+      description: 'Theo dõi tiến độ học tập của học sinh',
+      icon: <UserOutlined />,
+      action: handleNavigateToStudents,
       color: '#52c41a'
     },
     {
+      title: 'Quản lý giáo viên',
+      description: 'Quản lý thông tin và phân công giáo viên',
+      icon: <SolutionOutlined />,
+      action: handleNavigateToTeachers,
+      color: '#faad14'
+    },
+    {
+      title: 'Quản lý giáo trình',
+      description: 'Tạo và chỉnh sửa giáo trình học',
+      icon: <ReadOutlined />,
+      action: handleNavigateToSyllabuses,
+      color: '#722ed1'
+    },
+    {
+      title: 'Quản lý cấp độ',
+      description: 'Quản lý các cấp độ học tập',
+      icon: <BookOutlined />,
+      action: () => navigate(ROUTER_PAGE.MANAGER_LEVELS),
+      color: '#13c2c2'
+    },
+    {
       title: 'Báo cáo thống kê',
-      description: 'Xem báo cáo và thống kê hệ thống',
+      description: 'Xem báo cáo và thống kê chi tiết',
       icon: <BarChartOutlined />,
       action: () => {},
-      color: '#722ed1'
+      color: '#eb2f96'
     }
   ];
 
   return (
     <ThemedLayout>
-      <div className="admin-dashboard">
+      <div className="manager-dashboard">
         {/* Welcome Header */}
         <Card 
           className="welcome-card" 
@@ -85,20 +121,29 @@ const AdminDashboard = () => {
         >
           <Row justify="space-between" align="middle">
             <Col>
-              <h1 style={{ margin: 0, color: '#1890ff' }}>Chào mừng Admin!</h1>
+              <h1 style={{ margin: 0, color: '#52c41a' }}>Chào mừng Manager!</h1>
               <p style={{ margin: '8px 0 0 0', color: '#666', fontSize: '16px' }}>
-                Quản lý hệ thống Learning Progress Management CMS
+                Quản lý học tập và tiến độ của học sinh
               </p>
             </Col>
             <Col>
-              <Button 
-                type="primary" 
-                size="large"
-                icon={<UserOutlined />}
-                onClick={handleNavigateToAccounts}
-              >
-                Quản lý tài khoản
-              </Button>
+              <Space>
+                <Button 
+                  type="primary" 
+                  size="large"
+                  icon={<HomeOutlined />}
+                  onClick={handleNavigateToClasses}
+                >
+                  Quản lý lớp học
+                </Button>
+                <Button 
+                  size="large"
+                  icon={<UserOutlined />}
+                  onClick={handleNavigateToStudents}
+                >
+                  Quản lý học sinh
+                </Button>
+              </Space>
             </Col>
           </Row>
         </Card>
@@ -173,13 +218,7 @@ const AdminDashboard = () => {
         </Card>
 
         {/* Recent Activities */}
-        <Card 
-          title="Hoạt động gần đây"
-          style={{
-            backgroundColor: theme === 'sun' ? '#ffffff' : undefined,
-            border: theme === 'sun' ? '1px solid #d9d9d9' : undefined
-          }}
-        >
+        <Card title="Hoạt động gần đây">
           <div style={{ textAlign: 'center', padding: '40px 0', color: '#999' }}>
             <BarChartOutlined style={{ fontSize: '48px', marginBottom: '16px' }} />
             <p>Chưa có hoạt động nào</p>
@@ -190,4 +229,4 @@ const AdminDashboard = () => {
   );
 };
 
-export default AdminDashboard;
+export default ManagerDashboard;

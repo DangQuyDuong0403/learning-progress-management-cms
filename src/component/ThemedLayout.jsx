@@ -1,9 +1,12 @@
 import React, { useState } from 'react';
 import { Layout as AntLayout, Button } from 'antd';
 import { MenuFoldOutlined, MenuUnfoldOutlined } from '@ant-design/icons';
+import { useNavigate } from 'react-router-dom';
+import { useSelector } from 'react-redux';
 import { useTheme } from '../contexts/ThemeContext';
 import ThemedSidebar from './ThemedSidebar';
 import ThemedHeader from './ThemedHeader';
+import ROUTER_PAGE from '../constants/router';
 import './ThemedLayout.css';
 
 const { Sider, Content } = AntLayout;
@@ -15,12 +18,39 @@ const ThemedLayout = ({ children }) => {
     return saved ? JSON.parse(saved) : false;
   });
   const { theme } = useTheme();
+  const navigate = useNavigate();
+  const { user } = useSelector((state) => state.auth);
 
   const toggleCollapsed = () => {
     const newCollapsed = !collapsed;
     setCollapsed(newCollapsed);
     // Save to localStorage
     localStorage.setItem('sidebarCollapsed', JSON.stringify(newCollapsed));
+  };
+
+  // Handle logo/title click to redirect to dashboard based on user role
+  const handleLogoClick = () => {
+    const userRole = user?.role?.toLowerCase();
+    let dashboardPath = '/choose-login'; // default fallback
+    
+    switch (userRole) {
+      case 'admin':
+        dashboardPath = ROUTER_PAGE.ADMIN_DASHBOARD;
+        break;
+      case 'manager':
+        dashboardPath = ROUTER_PAGE.MANAGER_DASHBOARD;
+        break;
+      case 'teacher':
+        dashboardPath = ROUTER_PAGE.TEACHER_DASHBOARD;
+        break;
+      case 'student':
+        dashboardPath = ROUTER_PAGE.STUDENT_DASHBOARD;
+        break;
+      default:
+        dashboardPath = '/choose-login';
+    }
+    
+    navigate(dashboardPath);
   };
 
   // Force sidebar state to prevent auto-expansion
@@ -72,7 +102,19 @@ const ThemedLayout = ({ children }) => {
         }}
       >
         <div className="themed-sidebar-header">
-          <div className="themed-logo">
+          <div 
+            className="themed-logo"
+            onClick={handleLogoClick}
+            style={{ 
+              cursor: 'pointer',
+              transition: 'transform 0.2s ease',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '12px'
+            }}
+            onMouseEnter={(e) => e.target.style.transform = 'scale(1.05)'}
+            onMouseLeave={(e) => e.target.style.transform = 'scale(1)'}
+          >
             {theme === 'space' ? (
               <img 
                 src="/img/logo-dark.png" 

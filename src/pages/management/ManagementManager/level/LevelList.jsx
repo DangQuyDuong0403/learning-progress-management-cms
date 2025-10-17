@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
 	Table,
 	Button,
@@ -7,18 +7,16 @@ import {
 	Input,
 	Tooltip,
 	Typography,
-	Select,
 } from 'antd';
 import {
 	EditOutlined,
 	SearchOutlined,
-	ReloadOutlined,
 	DragOutlined,
-	FilterOutlined,
 	SendOutlined,
 	FileTextOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
+import usePageTitle from '../../../../hooks/usePageTitle';
 import { useNavigate } from 'react-router-dom';
 import ThemedLayout from '../../../../component/ThemedLayout';
 import LoadingWithEffect from '../../../../component/spinner/LoadingWithEffect';
@@ -28,32 +26,32 @@ import levelManagementApi from '../../../../apis/backend/levelManagement';
 import LevelForm from './LevelForm';
 import ROUTER_PAGE from '../../../../constants/router';
 
-const { Title } = Typography;
-
 const LevelList = () => {
 	const { t } = useTranslation();
 	const { theme } = useTheme();
 	const navigate = useNavigate();
+	
+	// Set page title
+	usePageTitle('Level Management');
+	
 	const [loading, setLoading] = useState(false);
 	const [toggleLoading, setToggleLoading] = useState(false);
 	const [currentAction, setCurrentAction] = useState('publish'); 
 	const [isAllPublished, setIsAllPublished] = useState(false); 
-	const [durationDisplayUnit, setDurationDisplayUnit] = useState('weeks'); 
+	const [durationDisplayUnit, setDurationDisplayUnit] = useState('weeks');
+	
+	// Cycle through duration units
+	const durationUnits = ['days', 'weeks', 'months', 'years'];
+	const handleDurationUnitClick = () => {
+		const currentIndex = durationUnits.indexOf(durationDisplayUnit);
+		const nextIndex = (currentIndex + 1) % durationUnits.length;
+		setDurationDisplayUnit(durationUnits[nextIndex]);
+	}; 
 	const [levels, setLevels] = useState([]);
 	const [isModalVisible, setIsModalVisible] = useState(false);
 	const [editingLevel, setEditingLevel] = useState(null);
 	const [searchText, setSearchText] = useState('');
-	const [statusFilter, setStatusFilter] = useState([]);
 	const [searchTimeout, setSearchTimeout] = useState(null);
-	
-	// Filter dropdown state
-	const [filterDropdown, setFilterDropdown] = useState({
-		visible: false,
-		selectedStatuses: [],
-	});
-
-	// Refs for click outside detection
-	const filterContainerRef = useRef(null);
 	
 	// Pagination state
 	const [pagination, setPagination] = useState({
@@ -64,7 +62,7 @@ const LevelList = () => {
 		showTotal: (total, range) => `${range[0]}-${range[1]} of ${total}`,
 	});
 
-	const fetchLevels = useCallback(async (page = 1, size = 10, search = '', statusFilter = []) => {
+	const fetchLevels = useCallback(async (page = 1, size = 10, search = '') => {
 		setLoading(true);
 		try {
 			const params = {
@@ -75,11 +73,6 @@ const LevelList = () => {
 			// Add search parameter if provided (API uses 'text' parameter)
 			if (search && search.trim()) {
 				params.text = search.trim();
-			}
-
-			// Add status filter if provided (API expects array of booleans)
-			if (statusFilter && statusFilter.length > 0) {
-				params.status = statusFilter.map(status => status === 'active');
 			}
 
 			console.log('Level API Request Params:', params);
@@ -170,11 +163,10 @@ const LevelList = () => {
 	useEffect(() => {
 		console.log('Level useEffect triggered:', {
 			searchText,
-			statusFilter,
 			pageSize: pagination.pageSize
 		});
-		fetchLevels(1, pagination.pageSize, searchText, statusFilter);
-	}, [fetchLevels, searchText, statusFilter, pagination.pageSize]);
+		fetchLevels(1, pagination.pageSize, searchText);
+	}, [fetchLevels, searchText, pagination.pageSize]);
 
 	// Cleanup timeout on unmount
 	useEffect(() => {
@@ -184,31 +176,6 @@ const LevelList = () => {
 			}
 		};
 	}, [searchTimeout]);
-
-	// Handle click outside to close filter dropdown
-	useEffect(() => {
-		const handleClickOutside = (event) => {
-			if (filterDropdown.visible && filterContainerRef.current) {
-				// Check if click is outside the filter container
-				if (!filterContainerRef.current.contains(event.target)) {
-					setFilterDropdown((prev) => ({
-						...prev,
-						visible: false,
-					}));
-				}
-			}
-		};
-
-		// Add event listener when dropdown is visible
-		if (filterDropdown.visible) {
-			document.addEventListener('mousedown', handleClickOutside);
-		}
-
-		// Cleanup event listener
-		return () => {
-			document.removeEventListener('mousedown', handleClickOutside);
-		};
-	}, [filterDropdown.visible]);
 
 	const handleSearch = (value) => {
 		console.log('Level Search:', value);
@@ -223,43 +190,10 @@ const LevelList = () => {
 		const newTimeout = setTimeout(() => {
 			console.log('Level Search executing:', value);
 			// Reset to first page when searching
-			fetchLevels(1, pagination.pageSize, value, statusFilter);
+			fetchLevels(1, pagination.pageSize, value);
 		}, 1000);
 		
 		setSearchTimeout(newTimeout);
-	};
-
-	// Handle filter dropdown toggle
-	const handleFilterToggle = () => {
-		setFilterDropdown((prev) => ({
-			...prev,
-			visible: !prev.visible,
-			selectedStatuses: prev.visible ? prev.selectedStatuses : [...statusFilter],
-		}));
-	};
-
-	// Handle filter submission
-	const handleFilterSubmit = () => {
-		setStatusFilter(filterDropdown.selectedStatuses);
-		setFilterDropdown((prev) => ({
-			...prev,
-			visible: false,
-		}));
-		// Reset to first page when applying filters
-		fetchLevels(
-			1,
-			pagination.pageSize,
-			searchText,
-			filterDropdown.selectedStatuses
-		);
-	};
-
-	// Handle filter reset
-	const handleFilterReset = () => {
-		setFilterDropdown((prev) => ({
-			...prev,
-			selectedStatuses: [],
-		}));
 	};
 
 	const handleTableChange = (pagination) => {
@@ -271,7 +205,7 @@ const LevelList = () => {
 			pageSize: pagination.pageSize,
 			total: pagination.total
 		});
-		fetchLevels(pagination.current, pagination.pageSize, searchText, statusFilter);
+		fetchLevels(pagination.current, pagination.pageSize, searchText);
 	};
 
 
@@ -328,7 +262,7 @@ const LevelList = () => {
 			if (successMessage) {
 				spaceToast.success(successMessage);
 			}
-			fetchLevels(pagination.current, pagination.pageSize, searchText, statusFilter);
+			fetchLevels(pagination.current, pagination.pageSize, searchText);
 		}
 	};
 
@@ -366,9 +300,6 @@ const LevelList = () => {
 		});
 	};
 
-	const handleRefresh = () => {
-		fetchLevels(pagination.current, pagination.pageSize, searchText, statusFilter);
-	};
 
 	const handleTogglePublishDraft = async () => {
 		setToggleLoading(true);
@@ -389,7 +320,7 @@ const LevelList = () => {
 			spaceToast.success(successMessage);
 			
 			// Refresh the list after action - detectCurrentAction will determine the next button state
-			fetchLevels(pagination.current, pagination.pageSize, searchText, statusFilter);
+			fetchLevels(pagination.current, pagination.pageSize, searchText);
 		} catch (error) {
 			console.error(`Error ${currentAction === 'publish' ? 'publishing' : 'drafting'} all levels:`, error);
 			
@@ -444,16 +375,10 @@ const LevelList = () => {
 		}
 	};
 
-	// Status options for filter
-	const statusOptions = [
-		{ key: 'active', label: t('levelManagement.active') },
-		{ key: 'inactive', label: t('levelManagement.inactive') },
-	];
-
 
 	const columns = [
 		{
-			title: 'No',
+			title: 'STT',
 			key: 'index',
 			width: '5%',
 			render: (_, __, index) => {
@@ -467,7 +392,7 @@ const LevelList = () => {
 			title: t('levelManagement.levelName'),
 			dataIndex: 'levelName',
 			key: 'levelName',
-			width: '25%',
+			width: '20%',
 			render: (text) => (
 				<div>
 					<div>{text}</div>
@@ -499,26 +424,28 @@ const LevelList = () => {
 		},
 		{
 			title: (
-				<div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-					<span>{t('levelManagement.duration')}</span>
-					<Select
-						value={durationDisplayUnit}
-						onChange={setDurationDisplayUnit}
-						size="small"
-						style={{ width: 80 }}
-						dropdownMatchSelectWidth={false}
-					>
-						<Select.Option value="auto">{t('levelManagement.auto')}</Select.Option>
-						<Select.Option value="days">{t('levelManagement.days')}</Select.Option>
-						<Select.Option value="weeks">{t('levelManagement.weeks')}</Select.Option>
-						<Select.Option value="months">{t('levelManagement.months')}</Select.Option>
-						<Select.Option value="years">{t('levelManagement.years')}</Select.Option>
-					</Select>
-				</div>
+				<span
+					onClick={handleDurationUnitClick}
+					style={{
+						cursor: 'pointer',
+						userSelect: 'none',
+						transition: 'color 0.2s ease',
+						fontWeight: '500',
+						whiteSpace: 'nowrap',
+					}}
+					onMouseEnter={(e) => {
+						e.target.style.color = '#1890ff';
+					}}
+					onMouseLeave={(e) => {
+						e.target.style.color = '#000';
+					}}
+				>
+					{t('levelManagement.duration')} ({t(`levelManagement.${durationDisplayUnit}`)})
+				</span>
 			),
 			dataIndex: 'estimatedDurationWeeks',
 			key: 'estimatedDurationWeeks',
-			width: '15%',
+			width: '18%',
 			render: (estimatedDurationWeeks) => formatDuration(estimatedDurationWeeks, durationDisplayUnit),
 		},
 		{
@@ -530,7 +457,7 @@ const LevelList = () => {
 					<Tooltip title={t('levelManagement.edit')}>
 						<Button
 							type='text'
-							icon={<EditOutlined style={{ fontSize: '25px' }} />}
+							icon={<EditOutlined style={{ fontSize: '25px', color: '#000000' }} />}
 							size='small'
 							onClick={() => handleEdit(record)}
 						/>
@@ -544,6 +471,15 @@ const LevelList = () => {
 		<ThemedLayout>
 			{/* Main Content Panel */}
 			<div className={`main-content-panel ${theme}-main-panel`}>
+				{/* Page Title */}
+				<div className="page-title-container">
+					<Typography.Title 
+						level={1} 
+						className="page-title"
+					>
+						Level Management
+					</Typography.Title>
+				</div>
 				{/* Header Section */}
 				<div className={`panel-header ${theme}-panel-header`}>
 					<div
@@ -555,118 +491,16 @@ const LevelList = () => {
 							onChange={(e) => handleSearch(e.target.value)}
 							className={`search-input ${theme}-search-input`}
 							style={{
-								flex: '1',
-								minWidth: '250px',
-								maxWidth: '400px',
-								width: '350px',
+								minWidth: '200px',
+								maxWidth: '300px',
+								width: '250px',
 								height: '40px',
 								fontSize: '16px',
 							}}
 							allowClear
 						/>
-						<div ref={filterContainerRef} style={{ position: 'relative' }}>
-							<Button
-								icon={<FilterOutlined />}
-								onClick={handleFilterToggle}
-								className={`filter-button ${theme}-filter-button ${
-									filterDropdown.visible ? 'active' : ''
-								} ${
-									statusFilter.length > 0
-										? 'has-filters'
-										: ''
-								}`}>
-								{t('levelManagement.filter')}
-							</Button>
-
-							{/* Filter Dropdown Panel */}
-							{filterDropdown.visible && (
-								<div
-									className={`filter-dropdown-panel ${theme}-filter-dropdown`}>
-									<div style={{ padding: '20px' }}>
-										{/* Status Filter */}
-										<div style={{ marginBottom: '24px' }}>
-											<Title
-												level={5}
-												style={{
-													marginBottom: '12px',
-													color: '#1890ff',
-													fontSize: '16px',
-												}}>
-												{t('levelManagement.status')}
-											</Title>
-											<div
-												style={{
-													display: 'flex',
-													flexWrap: 'wrap',
-													gap: '8px',
-												}}>
-												{statusOptions.map((option) => (
-													<Button
-														key={option.key}
-														onClick={() => {
-															const newStatuses =
-																filterDropdown.selectedStatuses.includes(
-																	option.key
-																)
-																	? filterDropdown.selectedStatuses.filter(
-																			(status) => status !== option.key
-																	  )
-																	: [
-																			...filterDropdown.selectedStatuses,
-																			option.key,
-																	  ];
-															setFilterDropdown((prev) => ({
-																...prev,
-																selectedStatuses: newStatuses,
-															}));
-														}}
-														className={`filter-option ${
-															filterDropdown.selectedStatuses.includes(
-																option.key
-															)
-																? 'selected'
-																: ''
-														}`}>
-														{option.label}
-													</Button>
-												))}
-											</div>
-										</div>
-
-										{/* Action Buttons */}
-										<div
-											style={{
-												display: 'flex',
-												justifyContent: 'space-between',
-												marginTop: '20px',
-												paddingTop: '16px',
-												borderTop: '1px solid #f0f0f0',
-											}}>
-											<Button
-												onClick={handleFilterReset}
-												className='filter-reset-button'>
-												{t('levelManagement.reset')}
-											</Button>
-											<Button
-												type='primary'
-												onClick={handleFilterSubmit}
-												className='filter-submit-button'>
-												{t('levelManagement.viewResults')}
-											</Button>
-										</div>
-									</div>
-								</div>
-							)}
-						</div>
 					</div>
 					<div className='action-buttons'>
-						<Button
-							icon={<ReloadOutlined />}
-							onClick={handleRefresh}
-							loading={loading}
-							className={`refresh-button ${theme}-refresh-button`}>
-							{t('levelManagement.refresh')}
-						</Button>
 						<Button
 							icon={currentAction === 'publish' ? <SendOutlined /> : <FileTextOutlined />}
 							onClick={handleTogglePublishDraft}
@@ -677,29 +511,17 @@ const LevelList = () => {
 								borderRadius: '8px',
 								fontWeight: '500',
 								border: theme === 'space' 
-									? currentAction === 'publish' 
-										? '1px solid rgba(34, 197, 94, 0.3)' 
-										: '1px solid rgba(245, 158, 11, 0.3)'
-									: currentAction === 'publish' 
-										? '1px solid rgba(34, 197, 94, 0.3)' 
-										: '1px solid rgba(245, 158, 11, 0.3)',
+									? '1px solid rgba(77, 208, 255, 0.3)' 
+									: '1px solid #0000001a',
 								background: theme === 'space'
-									? currentAction === 'publish' 
-										? 'rgb(34, 197, 94)' 
-										: 'rgb(245, 158, 11)'
-									: currentAction === 'publish' 
-										? 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)' 
-										: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
-								color: '#fff',
+									? 'linear-gradient(135deg, #b5b0c0 19%, #a79ebb 64%, #8377a0 75%, #aca5c0 97%, #6d5f8f)'
+									: '#71b3fd',
+								color: '#000',
 								backdropFilter: 'blur(10px)',
 								transition: 'all 0.3s ease',
 								boxShadow: theme === 'space'
-									? currentAction === 'publish' 
-										? '0 4px 12px rgba(34, 197, 94, 0.3)' 
-										: '0 4px 12px rgba(245, 158, 11, 0.3)'
-									: currentAction === 'publish' 
-										? '0 4px 12px rgba(34, 197, 94, 0.3)' 
-										: '0 4px 12px rgba(245, 158, 11, 0.3)',
+									? '0 4px 12px rgba(76, 29, 149, 0.3)'
+									: '0 4px 12px rgba(24, 144, 255, 0.3)',
 							}}>
 							{currentAction === 'publish' ? t('levelManagement.publishAll') : t('levelManagement.draftAll')}
 						</Button>
@@ -714,11 +536,11 @@ const LevelList = () => {
 								fontWeight: '500',
 								border: theme === 'space' 
 									? '1px solid rgba(77, 208, 255, 0.3)' 
-									: '1px solid rgba(24, 144, 255, 0.3)',
+									: '1px solid #0000001a',
 								background: theme === 'space'
-									? 'rgb(75, 65, 119)'
-									: 'linear-gradient(135deg, #1890ff 0%, #40a9ff 50%, #69c0ff 100%)',
-								color: theme === 'space' ? '#fff' : '#000',
+									? 'linear-gradient(135deg, #b5b0c0 19%, #a79ebb 64%, #8377a0 75%, #aca5c0 97%, #6d5f8f)'
+									: '#71b3fd',
+								color: '#000',
 								backdropFilter: 'blur(10px)',
 								transition: 'all 0.3s ease',
 								boxShadow: theme === 'space'
@@ -729,7 +551,7 @@ const LevelList = () => {
 							}}
 						
 						>
-							{t('levelManagement.editPositions')}
+							{t('levelManagement.edit')}
 						</Button>
 					</div>
 				</div>
@@ -758,9 +580,11 @@ const LevelList = () => {
 			{/* Modal */}
 			<Modal
 				title={
-					editingLevel
-						? t('levelManagement.editLevel')
-						: t('levelManagement.addLevel')
+					<div style={{ textAlign: 'center', fontSize: '30px', fontWeight: '600' }}>
+						{editingLevel
+							? t('levelManagement.editLevel')
+							: t('levelManagement.addLevel')}
+					</div>
 				}
 				open={isModalVisible}
 				onCancel={() => {

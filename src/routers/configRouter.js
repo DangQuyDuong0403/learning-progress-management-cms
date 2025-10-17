@@ -50,7 +50,9 @@ import DailyChallengeList from '../pages/management/ManagementTeacher/dailyChall
 import CreateGrammarVocabularyChallenge from '../pages/management/ManagementTeacher/dailyChallenge/CreateGrammarVocabularyChallenge.jsx';
 import CreateReadingChallenge from '../pages/management/ManagementTeacher/dailyChallenge/CreateReadingChallenge.jsx';
 import TeacherDashboard from '../pages/management/ManagementTeacher/TeacherDashboard.jsx';
-// import AdminDashboard from '../pages/management/managementAdmin/AdminDashboard';
+import AdminDashboard from '../pages/management/managementAdmin/AdminDashboard';
+import ManagerDashboard from '../pages/management/ManagementManager/ManagerDashboard';
+import StudentDashboard from '../pages/management/ManagementStudent/StudentDashboard';
   
 const CONFIG_ROUTER = [
 	//   {
@@ -168,18 +170,30 @@ const CONFIG_ROUTER = [
 		key: 'SETTINGS',
 	},
 	
+	// Student Dashboard
+	{
+		show: false, // không hiện trên menu sidebar
+		component: StudentDashboard,
+		path: ROUTER_PAGE.STUDENT_DASHBOARD,
+		menuName: 'Student Dashboard',
+		exact: true,
+		key: 'STUDENT_DASHBOARD',
+		private: true,
+		role: 'student',
+	},
+	
 	// Admin Management Routes
-	// {
-	// 	show: true,
-	// 	component: AdminDashboard,
-	// 	// icon: <DashboardOutlined />,
-	// 	path: ROUTER_PAGE.ADMIN_DASHBOARD,
-	// 	menuName: 'Dashboard',
-	// 	exact: true,
-	// 	key: 'ADMIN_DASHBOARD',
-	// 	private: true,
-	// 	role: 'admin',
-	// },
+	{
+		show: true,
+		component: AdminDashboard,
+		// icon: <DashboardOutlined />,
+		path: ROUTER_PAGE.ADMIN_DASHBOARD,
+		menuName: 'Dashboard',
+		exact: true,
+		key: 'ADMIN_DASHBOARD',
+		private: true,
+		role: 'admin',
+	},
 	{
 		show: true,
 		component: AccountList,
@@ -202,6 +216,18 @@ const CONFIG_ROUTER = [
 	// 	private: false,
 	// 	role: 'admin',
 	// },
+	// Manager Dashboard
+	{
+		show: true,
+		component: ManagerDashboard,
+		// icon: <DashboardOutlined />,
+		path: ROUTER_PAGE.MANAGER_DASHBOARD,
+		menuName: 'Dashboard',
+		exact: true,
+		key: 'MANAGER_DASHBOARD',
+		private: true,
+		role: 'manager',
+	},
 	{
 		show: true,
 		component: ClassList,

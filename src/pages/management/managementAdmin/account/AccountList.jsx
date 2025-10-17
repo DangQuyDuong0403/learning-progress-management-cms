@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
+import usePageTitle from '../../../../hooks/usePageTitle';
 import {
 	Table,
 	Button,
@@ -36,6 +37,8 @@ const AccountList = () => {
 	const { t } = useTranslation();
 	const { theme } = useTheme();
 	
+	// Set page title
+	usePageTitle('Account Management');
 	// Get current user info from Redux store
 	const currentUser = useSelector(state => state.auth.user);
 	const currentUserId = currentUser?.id;
@@ -673,6 +676,15 @@ const AccountList = () => {
 		<ThemedLayout>
 			{/* Main Content Panel */}
 			<div className={`account-page ${theme}-theme main-content-panel`}>
+				{/* Page Title */}
+				<div className="page-title-container">
+					<Typography.Title 
+						level={1} 
+						className="page-title"
+					>
+						Account Management
+					</Typography.Title>
+				</div>
 				{/* Header Section */}
 				<div className={`panel-header ${theme}-panel-header`}>
 					<div

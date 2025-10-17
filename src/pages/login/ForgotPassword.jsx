@@ -10,6 +10,7 @@ import { useTheme } from '../../contexts/ThemeContext';
 import ThemedLayoutFullScreen from '../../component/ThemedLayoutFullScreen';
 import { forgotPassword, clearForgotPasswordState } from '../../redux/auth';
 import { spaceToast } from '../../component/SpaceToastify';
+import usePageTitle from '../../hooks/usePageTitle';
 import './Login.css'; // import Login CSS instead
 
 export default function ForgotPassword() {
@@ -19,6 +20,9 @@ export default function ForgotPassword() {
 	const dispatch = useDispatch();
 	const { t } = useTranslation();
 	const { isSunTheme } = useTheme();
+	
+	// Set page title
+	usePageTitle('Forgot Password');
 	
 	// Redux state
 	const { forgotPasswordLoading, forgotPasswordError, forgotPasswordSuccess, forgotPasswordData } = useSelector(state => state.auth);
