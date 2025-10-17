@@ -1,5 +1,99 @@
 /* Settings Styles */
 
+/* ===== RESPONSIVE DESIGN FOR 125% SCALE ===== */
+@media screen and (min-resolution: 125dpi) {
+  .settings-container {
+    padding: 8px;
+    max-height: calc(100vh - 100px);
+    overflow-y: auto;
+  }
+  
+  .settings-content {
+    gap: 6px;
+  }
+  
+  .settings-card .ant-card-body {
+    padding: 6px !important;
+  }
+  
+  .settings-card-header {
+    margin-bottom: 4px;
+  }
+  
+  .settings-card-title {
+    font-size: 13px;
+  }
+  
+  .settings-card-icon {
+    font-size: 13px;
+    margin-right: 3px;
+  }
+  
+  .settings-edit-btn {
+    height: 22px;
+    font-size: 11px;
+    padding: 1px 4px;
+  }
+  
+  .settings-field-label {
+    font-size: 11px;
+    margin-bottom: 3px;
+  }
+  
+  .theme-toggle-track,
+  .language-toggle-track {
+    height: 32px;
+  }
+  
+  .theme-toggle-thumb,
+  .language-toggle-thumb {
+    width: 28px;
+    height: 28px;
+  }
+  
+  .theme-toggle-thumb.space-theme,
+  .language-toggle-thumb.en-theme {
+    left: 164px;
+  }
+  
+  .astronaut-image,
+  .flag-image {
+    width: 16px;
+    height: 16px;
+  }
+  
+  .theme-labels,
+  .language-labels {
+    margin-top: 3px;
+  }
+  
+  .theme-label,
+  .language-label {
+    font-size: 10px;
+  }
+  
+  .settings-modal .ant-modal-body {
+    padding: 8px;
+  }
+  
+  .settings-form .ant-form-item-label > label {
+    font-size: 11px;
+  }
+  
+  .settings-input {
+    height: 24px;
+    font-size: 11px;
+  }
+  
+  .settings-modal .ant-btn {
+    height: 32px;
+    font-size: 13px;
+    border-radius: 8px;
+    min-width: 80px;
+    width: 80px;
+  }
+}
+
 /* ===== MAIN CONTAINER ===== */
 .settings-container {
 	max-width: 500px;

@@ -50,8 +50,8 @@ const ThemedLayout = ({ children }) => {
     >
       {/* Themed Sidebar */}
       <Sider
-        width={300}
-        collapsedWidth={80}
+        width={240}
+        collapsedWidth={64}
         collapsed={collapsed}
         theme="dark"
         trigger={null}
@@ -66,9 +66,9 @@ const ThemedLayout = ({ children }) => {
           bottom: 0,
           scrollbarWidth: 'none',
           msOverflowStyle: 'none',
-          width: collapsed ? 80 : 300,
-          maxWidth: collapsed ? 80 : 300,
-          minWidth: collapsed ? 80 : 300,
+          width: collapsed ? 64 : 240,
+          maxWidth: collapsed ? 64 : 240,
+          minWidth: collapsed ? 64 : 240,
         }}
       >
         <div className="themed-sidebar-header">
@@ -79,8 +79,8 @@ const ThemedLayout = ({ children }) => {
                 alt="CAMKEY Logo" 
                 className="themed-logo-img"
                 style={{ 
-                  width: '50px', 
-                  height: '50px', 
+                  width: '40px', 
+                  height: '40px', 
                   filter: 'drop-shadow(0 0 15px rgba(125, 211, 252, 0.8))'
                 }}
               />
@@ -90,8 +90,8 @@ const ThemedLayout = ({ children }) => {
                 alt="CAMKEY Logo" 
                 className="themed-logo-img"
                 style={{ 
-                  width: '50px', 
-                  height: '50px', 
+                  width: '40px', 
+                  height: '40px', 
                 }}
               />
             )}
@@ -99,7 +99,7 @@ const ThemedLayout = ({ children }) => {
               <span 
                 className={`themed-logo-text ${theme}-logo-text`}
                 style={{ 
-                  fontSize: '40px', 
+                  fontSize: '32px', 
                   fontWeight: 700, 
                   color: theme === 'sun' ? '#1E40AF' : '#FFFFFF',
                   textShadow: theme === 'sun' ? '0 0 5px rgba(30, 64, 175, 0.3)' : '0 0 15px rgba(134, 134, 134, 0.8)'
@@ -127,9 +127,9 @@ const ThemedLayout = ({ children }) => {
       <AntLayout 
         className={`themed-main-layout ${theme}-main-layout`}
         style={{ 
-          marginLeft: collapsed ? 80 : 300,
-          width: `calc(100vw - ${collapsed ? 80 : 300}px)`,
-          maxWidth: `calc(100vw - ${collapsed ? 80 : 300}px)`,
+          marginLeft: collapsed ? 64 : 240,
+          width: `calc(100vw - ${collapsed ? 64 : 240}px)`,
+          maxWidth: `calc(100vw - ${collapsed ? 64 : 240}px)`,
           overflow: 'hidden',
           position: 'relative',
           zIndex: 1
@@ -154,8 +154,8 @@ const ThemedLayout = ({ children }) => {
         <Content
           className={`themed-content ${theme}-content`}
           style={{
-            margin: '24px',
-            padding: '24px',
+            margin: '20px',
+            padding: '20px',
             borderRadius: '8px',
             minHeight: 'calc(100vh - 112px)',
             maxHeight: 'calc(100vh - 112px)',

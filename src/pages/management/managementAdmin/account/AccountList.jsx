@@ -28,7 +28,6 @@ import { useTheme } from '../../../../contexts/ThemeContext';
 import './AccountList.css';
 import { spaceToast } from '../../../../component/SpaceToastify';
 import accountManagementApi from '../../../../apis/backend/accountManagement';
-import { useSelector } from 'react-redux';
 
 const { Option } = Select;
 
@@ -444,7 +443,7 @@ const AccountList = () => {
 
 				console.log('Updating account with data:', updateData);
 
-				// Gọi API update account
+				// Gọi API update account với params
 				const response = await accountManagementApi.updateAccount(
 					editingAccount.id,
 					updateData
@@ -632,8 +631,8 @@ const AccountList = () => {
 								size='large'
 								onClick={() => handleEditAccount(record)}
 								style={{
-									width: '40px',
-									height: '40px',
+									width: '32px',
+									height: '32px',
 									display: 'flex',
 									alignItems: 'center',
 									justifyContent: 'center'
@@ -662,11 +661,11 @@ const AccountList = () => {
 							className={`search-input ${theme}-search-input`}
 							style={{
 								flex: '1',
-								minWidth: '250px',
-								maxWidth: '400px',
-								width: '350px',
-								height: '40px',
-								fontSize: '16px',
+								minWidth: '200px',
+								maxWidth: '320px',
+								width: '280px',
+								height: '36px',
+								fontSize: '14px',
 							}}
 							allowClear
 						/>
@@ -688,21 +687,21 @@ const AccountList = () => {
 							{filterDropdown.visible && (
 								<div
 									className={`filter-dropdown-panel ${theme}-filter-dropdown`}>
-									<div style={{ padding: '20px' }}>
+									<div style={{ padding: '16px' }}>
 										{/* Role and Status Filters in same row */}
 										<div
 											style={{
 												display: 'flex',
-												gap: '24px',
-												marginBottom: '24px',
+												gap: '16px',
+												marginBottom: '16px',
 											}}>
 											{/* Role Filter */}
 											<div style={{ flex: 1 }}>
 												<Typography.Title
 													level={5}
 													style={{
-														marginBottom: '12px',
-														fontSize: '16px',
+														marginBottom: '10px',
+														fontSize: '15px',
 													}}>
 													{t('accountManagement.role')}
 												</Typography.Title>
@@ -750,8 +749,8 @@ const AccountList = () => {
 												<Typography.Title
 													level={5}
 													style={{
-														marginBottom: '12px',
-														fontSize: '16px',
+														marginBottom: '10px',
+														fontSize: '15px',
 													}}>
 													{t('accountManagement.status')}
 												</Typography.Title>
@@ -800,8 +799,8 @@ const AccountList = () => {
 											style={{
 												display: 'flex',
 												justifyContent: 'space-between',
-												marginTop: '20px',
-												paddingTop: '16px',
+												marginTop: '16px',
+												paddingTop: '12px',
 												borderTop: '1px solid #f0f0f0',
 											}}>
 											<Button
@@ -845,7 +844,7 @@ const AccountList = () => {
 								className: `${theme}-pagination`,
 							}}
 							onChange={handleTableChange}
-							scroll={{ x: 1200 }}
+							scroll={{ x: 1000 }}
 							className={`account-table ${theme}-account-table`}
 							sortDirections={['ascend', 'descend']}
 						/>
@@ -946,24 +945,8 @@ const AccountList = () => {
 							<Row gutter={16}>
 								<Col span={24}>
 									<Form.Item
-										label={
-											<span>
-												{t('accountManagement.email')}
-												<span style={{ color: 'red', marginLeft: '4px' }}>*</span>
-											</span>
-										}
-										name='email'
-										rules={[
-											{
-												required: true,
-												message: t('accountManagement.emailRequired'),
-											},
-											{
-												type: 'email',
-												message: t('accountManagement.emailInvalid'),
-											},
-										]}
-										required={false}>
+										label={t('accountManagement.email')}
+										name='email'>
 										<Input placeholder={t('accountManagement.emailPlaceholder')} />
 									</Form.Item>
 								</Col>
@@ -974,20 +957,8 @@ const AccountList = () => {
 								<Row gutter={16}>
 									<Col span={12}>
 										<Form.Item
-											label={
-												<span>
-													{t('accountManagement.firstName')}
-													<span style={{ color: 'red', marginLeft: '4px' }}>*</span>
-												</span>
-											}
-											name='firstName'
-											rules={[
-												{
-													required: true,
-													message: t('accountManagement.firstNameRequired'),
-												},
-											]}
-											required={false}>
+											label={t('accountManagement.firstName')}
+											name='firstName'>
 											<Input
 												placeholder={t('accountManagement.firstNamePlaceholder')}
 											/>
@@ -995,20 +966,8 @@ const AccountList = () => {
 									</Col>
 									<Col span={12}>
 										<Form.Item
-											label={
-												<span>
-													{t('accountManagement.lastName')}
-													<span style={{ color: 'red', marginLeft: '4px' }}>*</span>
-												</span>
-											}
-											name='lastName'
-											rules={[
-												{
-													required: true,
-													message: t('accountManagement.lastNameRequired'),
-												},
-											]}
-											required={false}>
+											label={t('accountManagement.lastName')}
+											name='lastName'>
 											<Input
 												placeholder={t('accountManagement.lastNamePlaceholder')}
 											/>
@@ -1019,37 +978,15 @@ const AccountList = () => {
 								<Row gutter={16}>
 									<Col span={12}>
 										<Form.Item
-											label={
-												<span>
-													{t('accountManagement.email')}
-													<span style={{ color: 'red', marginLeft: '4px' }}>*</span>
-												</span>
-											}
-											name='email'
-											rules={[
-												{
-													required: true,
-													message: t('accountManagement.emailRequired'),
-												},
-												{
-													type: 'email',
-													message: t('accountManagement.emailInvalid'),
-												},
-											]}
-											required={false}>
+											label={t('accountManagement.email')}
+											name='email'>
 											<Input placeholder={t('accountManagement.emailPlaceholder')} />
 										</Form.Item>
 									</Col>
 									<Col span={12}>
 										<Form.Item
-											label={
-												<span>
-													{t('accountManagement.role')}
-													<span style={{ color: 'red', marginLeft: '4px' }}>*</span>
-												</span>
-											}
-											name='roleName'
-											required={false}>
+											label={t('accountManagement.role')}
+											name='roleName'>
 											<Select value='MANAGER' disabled style={{ color: '#666' }}>
 												<Option value='MANAGER'>
 													{t('accountManagement.manager')}
@@ -1065,43 +1002,15 @@ const AccountList = () => {
 						<Row gutter={16}>
 							<Col span={12}>
 								<Form.Item
-									label={
-										<span>
-											{t('accountManagement.email')}
-											<span style={{ color: 'red', marginLeft: '4px' }}>*</span>
-										</span>
-									}
-									name='email'
-									rules={[
-										{
-											required: true,
-											message: t('accountManagement.emailRequired'),
-										},
-										{
-											type: 'email',
-											message: t('accountManagement.emailInvalid'),
-										},
-									]}
-									required={false}>
+									label={t('accountManagement.email')}
+									name='email'>
 									<Input placeholder={t('accountManagement.emailPlaceholder')} />
 								</Form.Item>
 							</Col>
 							<Col span={12}>
 								<Form.Item
-									label={
-										<span>
-											{t('accountManagement.role')}
-											<span style={{ color: 'red', marginLeft: '4px' }}>*</span>
-										</span>
-									}
-									name='roleName'
-									rules={[
-										{
-											required: true,
-											message: t('accountManagement.roleRequired'),
-										},
-									]}
-									required={false}>
+									label={t('accountManagement.role')}
+									name='roleName'>
 									<Select placeholder={t('accountManagement.selectRole')}>
 										<Option value='ADMIN'>
 											{t('accountManagement.admin')}
@@ -1133,11 +1042,11 @@ const AccountList = () => {
 				}
 				open={confirmModal.visible}
 				onCancel={handleConfirmCancel}
-				width={500}
+				width={400}
 				centered
 				bodyStyle={{
-					padding: '30px 40px',
-					fontSize: '16px',
+					padding: '24px 32px',
+					fontSize: '14px',
 					lineHeight: '1.6',
 					textAlign: 'center',
 				}}
@@ -1146,11 +1055,11 @@ const AccountList = () => {
 						key="cancel" 
 						onClick={handleConfirmCancel}
 						style={{
-							height: '32px',
+							height: '28px',
 							fontWeight: '500',
-							fontSize: '14px',
-							padding: '4px 15px',
-							width: '100px'
+							fontSize: '13px',
+							padding: '4px 12px',
+							width: '80px'
 						}}>
 						{t('common.cancel')}
 					</Button>,
@@ -1162,12 +1071,12 @@ const AccountList = () => {
 							background: theme === 'sun' ? '#298EFE' : 'linear-gradient(135deg, #7228d9 0%, #9c88ff 100%)',
 							borderColor: theme === 'sun' ? '#298EFE' : '#7228d9',
 							color: '#fff',
-							borderRadius: '6px',
-							height: '32px',
+							borderRadius: '5px',
+							height: '28px',
 							fontWeight: '500',
-							fontSize: '14px',
-							padding: '4px 15px',
-							width: '100px',
+							fontSize: '13px',
+							padding: '4px 12px',
+							width: '80px',
 							transition: 'all 0.3s ease',
 							boxShadow: 'none'
 						}}

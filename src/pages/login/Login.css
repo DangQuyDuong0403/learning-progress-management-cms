@@ -31,6 +31,7 @@
 .page-wrapper {
 	width: 100%;
 	height: 100vh;
+	overflow: hidden;
 }
 
 .position-relative {
@@ -92,8 +93,8 @@
 .col-lg-6,
 .col-xxl-3 {
 	width: 100%;
-	max-width: 400px;
-	padding: 0 15px;
+	max-width: 350px;
+	padding: 0 10px;
 }
 
 @media (min-width: 768px) {
@@ -104,15 +105,15 @@
 
 @media (min-width: 992px) {
 	.col-lg-6 {
-		width: 60%;
-		max-width: none; /* bỏ giới hạn khi lên laptop trở lên */
+		width: 50%;
+		max-width: 400px; /* giới hạn kích thước cho scale 125% */
 	}
 }
 
 @media (min-width: 1400px) {
 	.col-xxl-3 {
-		width: 60%;
-		max-width: none;
+		width: 50%;
+		max-width: 450px; /* giới hạn kích thước cho scale 125% */
 	}
 }
 
@@ -128,7 +129,7 @@
 
 .card-body {
 	flex: 1 1 auto;
-	padding: 1.5rem;
+	padding: 1rem;
 }
 
 .mb-0 {
@@ -148,8 +149,8 @@
 	padding-bottom: 1rem;
 }
 .py-8 {
-	padding-top: 2rem;
-	padding-bottom: 2rem;
+	padding-top: 1.5rem;
+	padding-bottom: 1.5rem;
 }
 .fs-4 {
 	font-size: 1.125rem;
@@ -298,7 +299,7 @@ a:hover {
 	font-weight: 700;
 	color: #4dd0ff;
 	letter-spacing: 0.3px;
-	font-size: 1.5rem;
+	font-size: 1.25rem;
 }
 
 .kids-subtitle {
@@ -604,7 +605,7 @@ a:hover {
 .recover-card {
 	background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
 	border-radius: 16px;
-	padding: 24px 16px;
+	padding: 20px 12px;
 	text-align: center;
 	border: 2px solid transparent;
 	box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
@@ -613,19 +614,19 @@ a:hover {
 	flex-direction: column;
 	justify-content: space-between;
 	width: 100%;
-	min-height: 180px;
+	min-height: 160px;
 }
 
 .recover-icon {
-	width: 64px;
-	height: 64px;
-	margin: 0 auto 16px;
+	width: 56px;
+	height: 56px;
+	margin: 0 auto 12px;
 	border-radius: 50%;
 	background: rgba(94, 23, 235, 0.1);
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	font-size: 28px;
+	font-size: 24px;
 }
 
 .recover-card h6 {
@@ -801,10 +802,44 @@ a:hover {
   border-color: rgba(125, 211, 252, 0.3) !important;
 }
 
+/* ===== RESPONSIVE DESIGN FOR 125% SCALE ===== */
+@media screen and (min-resolution: 125dpi) {
+  .kids-space {
+    min-height: 100vh;
+    overflow: hidden;
+  }
+  
+  .page-wrapper {
+    height: 100vh;
+    overflow: hidden;
+  }
+  
+  .main-content {
+    padding-top: 60px !important;
+    min-height: 100vh !important;
+    overflow: hidden;
+  }
+  
+  .card {
+    max-width: 90vw;
+    margin: 0 auto;
+  }
+  
+  .role-cards {
+    gap: 40px !important;
+    max-width: 800px !important;
+  }
+  
+  .role-card {
+    width: 350px !important;
+    padding: 40px 30px !important;
+  }
+}
+
 /* ===== BUTTON TYPOGRAPHY ENHANCEMENT ===== */
 .role-button {
   font-weight: 700 !important;
-  font-size: 18px !important;
+  font-size: 16px !important;
   font-family: 'Plus Jakarta Sans', sans-serif !important;
   letter-spacing: 0.5px !important;
 }

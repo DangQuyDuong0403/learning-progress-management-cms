@@ -91,7 +91,7 @@ export default function ChangePassword() {
 	return (
 		<ThemedLayoutFullScreen>
 			<style>{darkThemeAlertStyle}</style>
-			<div className="main-content" style={{ paddingTop: 120, minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+			<div className="main-content" style={{ paddingTop: 80, minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
 				{/* Theme Toggle - Top Right */}
 				<div className={`login-theme-toggle-container ${isSunTheme ? 'sun-theme' : 'space-theme'}`} style={{ position: 'absolute', top: '20px', right: '20px' }}>
 					<ThemeToggleSwitch />
@@ -106,7 +106,7 @@ export default function ChangePassword() {
 							style={getLoginCardStyle(isSunTheme)}>
                             <div
                                 className='card-body'
-                                style={{ padding: '1.5rem 2.5rem 1.5rem 2.5rem' }}>
+                                style={{ padding: '1rem 1.5rem 1rem 1.5rem' }}>
                                 <div className='card-body'>
                                     {/* Back Button and Title */}
                                     <div className='d-flex align-items-center justify-content-center mb-4' style={{ position: 'relative' }}>
@@ -259,19 +259,19 @@ export default function ChangePassword() {
 const getLoginCardStyle = (isSunTheme) => ({
 	background: isSunTheme ? '#EDF1FF' : 'rgba(109, 95, 143, 0.7)',
 	backdropFilter: isSunTheme ? 'blur(1px)' : 'blur(5px)',
-	borderRadius: 32,
+	borderRadius: 24,
 	boxShadow: isSunTheme 
-		? '0 20px 60px rgba(0, 0, 0, 0.15)' 
-		: '0 20px 60px rgba(77, 208, 255, 0.25)',
+		? '0 15px 40px rgba(0, 0, 0, 0.15)' 
+		: '0 15px 40px rgba(77, 208, 255, 0.25)',
 	border: isSunTheme ? '2px solid #3B82F6' : 'none',
-	minWidth: 400,
-	maxWidth: 600,
+	minWidth: 350,
+	maxWidth: 500,
 	margin: '0 auto',
 	padding: 0,
 });
 
 const getHeadingStyle = (isSunTheme) => ({
-	fontSize: '48px',
+	fontSize: '40px',
 	fontWeight: 700,
 	color: isSunTheme ? '#3b82f6' : '#fff',
 	textShadow: isSunTheme ? 'none' : '0 0 10px rgba(77, 208, 255, 0.5)',
@@ -281,19 +281,19 @@ const getHeadingStyle = (isSunTheme) => ({
 const getLabelStyle = (isSunTheme) => ({
 	color: isSunTheme ? '#3b82f6' : '#ffffff',
 	fontWeight: 400,
-	fontSize: '18px',
-	marginBottom: '8px',
+	fontSize: '16px',
+	marginBottom: '6px',
 });
 
 const getInputStyle = (isSunTheme) => ({
-	borderRadius: '59px',
+	borderRadius: '50px',
 	background: isSunTheme ? '#ffffff' : '#ffffff',
 	border: isSunTheme ? '2px solid #3B82F6' : 'none',
 	color: isSunTheme ? '#374151' : 'black',
-	fontSize: '16px',
+	fontSize: '14px',
 	width: '90%',
 	margin: '0 auto',
-	height: '45px',
+	height: '40px',
 });
 
 const getSubmitButtonStyle = (isSunTheme) => ({
@@ -303,13 +303,13 @@ const getSubmitButtonStyle = (isSunTheme) => ({
 	border: 'none',
 	color: 'black',
 	fontWeight: 600,
-	fontSize: '20px',
-	padding: '12px 24px',
+	fontSize: '18px',
+	padding: '10px 20px',
 	width: '90%',
-	borderRadius: '12px',
+	borderRadius: '10px',
 	boxShadow: isSunTheme 
-		? '0 8px 25px rgba(139, 176, 249, 0.3)' 
-		: '0 8px 25px rgba(170, 139, 249, 0.3)',
+		? '0 6px 20px rgba(139, 176, 249, 0.3)' 
+		: '0 6px 20px rgba(170, 139, 249, 0.3)',
 	transition: 'all 0.3s ease',
 });
 

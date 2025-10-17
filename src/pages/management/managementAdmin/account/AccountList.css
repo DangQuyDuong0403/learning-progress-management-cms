@@ -1,6 +1,4 @@
-/* Account List Styles */
 
-/* ===== MAIN CONTENT PANEL ===== */
 /* Force AccountList main-content-panel styles to override ThemedLayout */
 .account-page .main-content-panel,
 .account-page.space-theme .main-content-panel,
@@ -447,7 +445,7 @@
 	box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
 	border: 1px solid rgba(0, 0, 0, 0.1);
 	z-index: 1000;
-	min-width: 500px;
+	min-width: 400px;
 	margin-top: 8px;
 }
 
@@ -470,9 +468,10 @@
 
 /* Filter action buttons */
 .filter-reset-button {
-	height: 36px;
+	height: 32px;
 	border-radius: 6px;
 	font-weight: 500;
+	font-size: 14px;
 	border: 1px solid #d9d9d9;
 	background: #fff;
 	color: #666;
@@ -520,3 +519,4 @@
 		left: -100px;
 	}
 }
+

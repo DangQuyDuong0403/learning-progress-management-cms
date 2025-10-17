@@ -31,7 +31,7 @@ const LevelForm = ({ level, onClose, shouldCallApi = true }) => {
       form.setFieldsValue({
         levelName: level.levelName,
         description: level.description,
-        difficulty: level.difficulty,
+        prerequisite: level.prerequisite,
         estimatedDurationWeeks: level.estimatedDurationWeeks,
         status: level.status,
         orderNumber: level.orderNumber,
@@ -48,7 +48,7 @@ const LevelForm = ({ level, onClose, shouldCallApi = true }) => {
       const apiData = {
         levelName: values.levelName,
         description: values.description || '',
-        difficulty: values.difficulty,
+        prerequisite: values.prerequisite,
         promotionCriteria: values.promotionCriteria || '',
         learningObjectives: values.learningObjectives || '',
         estimatedDurationWeeks: values.estimatedDurationWeeks,
@@ -88,7 +88,7 @@ const LevelForm = ({ level, onClose, shouldCallApi = true }) => {
 
   const onCancel = () => {
     form.resetFields();
-    onClose();
+    onClose(false); // Pass false to indicate no refresh needed
   };
 
   return (
@@ -98,7 +98,6 @@ const LevelForm = ({ level, onClose, shouldCallApi = true }) => {
       onFinish={onFinish}
       initialValues={{
         status: 'active',
-        difficulty: 'LE',
         estimatedDurationWeeks: 12,
         ...level
       }}
@@ -121,12 +120,11 @@ const LevelForm = ({ level, onClose, shouldCallApi = true }) => {
         </Col>
         <Col span={12}>
           <Form.Item
-            name="difficulty"
-            label={t('levelManagement.difficulty')}
-            rules={[{ required: true, message: t('levelManagement.difficultyRequired') }]}
+            name="prerequisite"
+            label={t('levelManagement.prerequisite')}
           >
             <Input 
-              placeholder="e.g., LE, ME, AE"
+              placeholder="e.g., Movers, Starters"
               size="large"
             />
           </Form.Item>
