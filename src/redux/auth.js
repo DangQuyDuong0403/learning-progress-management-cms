@@ -12,7 +12,11 @@ export const forgotPassword = createAsyncThunk(
 	async (username, { rejectWithValue }) => {
 		try {
 			const response = await authApi.forgotPassword({ username });
-			return response;
+			// Return the message from the original response
+			return {
+				message: response.message,
+				data: response.data
+			};
 		} catch (error) {
 			return rejectWithValue(error.response.data.error || error.message);
 		}
@@ -181,6 +185,7 @@ const authSlice = createSlice({
 				state.forgotPasswordLoading = true;
 				state.forgotPasswordError = null;
 				state.forgotPasswordSuccess = false;
+				state.forgotPasswordMessage = null;
 			})
 			.addCase(forgotPassword.fulfilled, (state, action) => {
 				state.forgotPasswordLoading = false;
@@ -192,6 +197,7 @@ const authSlice = createSlice({
 				state.forgotPasswordLoading = false;
 				state.forgotPasswordError = action.payload;
 				state.forgotPasswordSuccess = false;
+				state.forgotPasswordMessage = null;
 			})
 			.addCase(refreshToken.pending, (state) => {
 				state.refreshTokenLoading = true;

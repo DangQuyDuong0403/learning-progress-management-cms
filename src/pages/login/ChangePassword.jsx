@@ -78,13 +78,12 @@ export default function ChangePassword() {
 			const refreshToken = localStorage.getItem('refreshToken');
 			
 			if (!refreshToken) {
-				spaceToast.error('Session expired. Please login again.');
-				setLoading(false);
+				navigate('/choose-login');
 				return;
 			}
 
 			// Call change password API
-			await authApi.changePassword({
+			const response = await authApi.changePassword({
 				oldPassword: formData.oldPassword,
 				newPassword: formData.newPassword,
 				confirmPassword: formData.confirmPassword,
@@ -92,15 +91,15 @@ export default function ChangePassword() {
 			});
 
 			// Success - show toast message
-			spaceToast.success(t('changePassword.changeSuccess'));
+			spaceToast.success(response.message);
 
 			// Clear tokens from localStorage
 			localStorage.removeItem('accessToken');
 			localStorage.removeItem('refreshToken');
 
-			// Redirect to login after 2 seconds
+			// Redirect to previous page after 2 seconds
 			setTimeout(() => {
-				navigate('/choose-login');
+				navigate(-1);
 			}, 2000);
 
 		} catch (error) {
@@ -108,12 +107,8 @@ export default function ChangePassword() {
 			
 			// Handle API errors with toast messages
 			if (error.response) {
-				const errorMessage = error.response.data.message || 'Failed to change password!';
+				const errorMessage = error.response.data.error;
 				spaceToast.error(errorMessage);
-			} else if (error.request) {
-				spaceToast.error('Network error. Please check your connection!');
-			} else {
-				spaceToast.error('Something went wrong!');
 			}
 		} finally {
 			setLoading(false);
@@ -121,7 +116,7 @@ export default function ChangePassword() {
 	};
 
 	const handleBackToLogin = () => {
-		navigate('/choose-login');
+		navigate(-1);
 	};
 
 	const passwordValidation = validatePassword(formData.newPassword);
@@ -179,8 +174,8 @@ export default function ChangePassword() {
                                     {/* Security Alert */}
                                     <div className='mb-4'>
                                         <Alert
-                                            message="Security Notice"
-                                            description="For security reasons, you need to change your password immediately. Please enter your current password and choose a new one."
+                                            message={t('changePassword.securityNotice.title')}
+                                            description={t('changePassword.securityNotice.message')}
                                             type="warning"
                                             showIcon
                                             icon={<SecurityScanOutlined />}
@@ -214,7 +209,6 @@ export default function ChangePassword() {
                                                             color: isSunTheme ? '#6b7280' : '#ffffff'
                                                         }
                                                     }}
-                                                    required
                                                 />
                                             </div>
                                         </div>
@@ -239,7 +233,6 @@ export default function ChangePassword() {
                                                             color: isSunTheme ? '#6b7280' : '#ffffff'
                                                         }
                                                     }}
-                                                    required
                                                 />
                                             </div>
 
@@ -283,7 +276,6 @@ export default function ChangePassword() {
                                                             color: isSunTheme ? '#6b7280' : '#ffffff'
                                                         }
                                                     }}
-                                                    required
                                                 />
                                             </div>
 

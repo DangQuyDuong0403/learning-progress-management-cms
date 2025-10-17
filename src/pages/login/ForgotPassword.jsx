@@ -37,8 +37,8 @@ export default function ForgotPassword() {
 			// Navigate to success page with email data from API response
 			navigate('/forgot-password-success', { state: { email: forgotPasswordData } });
 		} else if (forgotPasswordError) {
-			// Navigate to failure page with username in state
-			navigate('/forgot-password-failure', { state: { username } });
+			// Show error message from backend (no navigation)
+			spaceToast.error(forgotPasswordError);
 		}
 	}, [forgotPasswordSuccess, forgotPasswordError, forgotPasswordData, navigate, username, isInitialized]);
 
@@ -121,7 +121,6 @@ export default function ForgotPassword() {
                                                     prefix={<UserOutlined />}
                                                     size='large'
                                                     style={getInputStyle(isSunTheme)}
-                                                    required
                                                 />
                                             </div>
                                         </div>

@@ -26,7 +26,15 @@ export default function ForgotPasswordSuccess() {
 	}, [dispatch]);
 
 	const handleBackToLogin = () => {
-		navigate('/choose-login');
+		const loginRole = localStorage.getItem('loginRole');
+		if (loginRole === 'TEACHER') {
+			navigate('/login-teacher');
+		} else if (loginRole === 'STUDENT') {
+			navigate('/login-student');
+		} else {
+			// Fallback to choose-login if no role is found
+			navigate('/choose-login');
+		}
 	};
 
 	return (
