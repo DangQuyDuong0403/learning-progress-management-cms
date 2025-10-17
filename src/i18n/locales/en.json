@@ -1061,6 +1061,7 @@
     "editLevelSuccess": "Level details loaded successfully",
     "deleteLevelSuccess": "Delete level successfully",
     "deleteLevelError": "Error deleting level",
+    "confirmDeleteLevel": "Are you sure you want to delete the level",
     "deactivatedLevelSuccess": "Level deactivated successfully",
     "activatedLevelSuccess": "Level activated successfully",
     "deactivateLevelError": "Error deactivating level",
