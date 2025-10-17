@@ -21,7 +21,7 @@ export default function ForgotPassword() {
 	const { isSunTheme } = useTheme();
 	
 	// Redux state
-	const { forgotPasswordLoading, forgotPasswordError, forgotPasswordSuccess } = useSelector(state => state.auth);
+	const { forgotPasswordLoading, forgotPasswordError, forgotPasswordSuccess, forgotPasswordData } = useSelector(state => state.auth);
 
 	// Clear state when component mounts
 	useEffect(() => {
@@ -34,13 +34,13 @@ export default function ForgotPassword() {
 		if (!isInitialized) return;
 		
 		if (forgotPasswordSuccess) {
-			// Navigate to success page with username in state
-			navigate('/forgot-password-success', { state: { username } });
+			// Navigate to success page with email data from API response
+			navigate('/forgot-password-success', { state: { email: forgotPasswordData } });
 		} else if (forgotPasswordError) {
 			// Navigate to failure page with username in state
 			navigate('/forgot-password-failure', { state: { username } });
 		}
-	}, [forgotPasswordSuccess, forgotPasswordError, navigate, username, isInitialized]);
+	}, [forgotPasswordSuccess, forgotPasswordError, forgotPasswordData, navigate, username, isInitialized]);
 
 	const handleSubmit = (e) => {
 		e.preventDefault();

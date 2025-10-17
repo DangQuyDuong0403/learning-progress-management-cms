@@ -126,7 +126,7 @@
   },
   "forgotPasswordSuccess": {
     "title": "Gửi Link Đặt Lại Mật Khẩu Thành Công!",
-    "message": "Chúng tôi đã gửi link đặt lại mật khẩu đến địa chỉ email được liên kết với tài khoản \"{{username}}\". Vui lòng kiểm tra hộp thư và nhấp vào link để đặt lại mật khẩu.",
+    "message": "Chúng tôi đã gửi link đặt lại mật khẩu đến địa chỉ email {{email}}. Vui lòng kiểm tra hộp thư và nhấp vào link để đặt lại mật khẩu.",
     "checkEmail": "Nếu bạn không thấy email, vui lòng kiểm tra thư mục spam. Link đặt lại sẽ hết hạn sau một thời gian nhất định vì lý do bảo mật.",
     "backToLogin": "Quay Lại Đăng Nhập"
   },

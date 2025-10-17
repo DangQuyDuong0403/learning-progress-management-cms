@@ -17,8 +17,8 @@ export default function ForgotPasswordSuccess() {
 	const { t } = useTranslation();
 	const { isSunTheme } = useTheme();
 	
-	// Get username from navigation state
-	const username = location.state?.username || 'Unknown User';
+	// Get email from navigation state
+	const email = location.state?.email || 'Unknown Email';
 
 	// Clear forgot password state when component mounts
 	useEffect(() => {
@@ -62,7 +62,7 @@ export default function ForgotPasswordSuccess() {
 
 								{/* Success Message */}
 								<p style={getMessageStyle(isSunTheme)}>
-									{t('forgotPasswordSuccess.message', { username })}
+									{t('forgotPasswordSuccess.message', { email })}
 								</p>
 
 								{/* Additional Info */}
