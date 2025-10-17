@@ -40,7 +40,7 @@ export default function ForgotPassword() {
 			// Show error message from backend (no navigation)
 			spaceToast.error(forgotPasswordError);
 		}
-	}, [forgotPasswordSuccess, forgotPasswordError, forgotPasswordData, navigate, username, isInitialized]);
+	}, [forgotPasswordSuccess, forgotPasswordError, forgotPasswordData, navigate, isInitialized]);
 
 	const handleSubmit = (e) => {
 		e.preventDefault();
