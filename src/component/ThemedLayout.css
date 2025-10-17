@@ -432,8 +432,9 @@
 }
 
 .sun-theme .themed-sidebar-menu .ant-menu-item:hover {
-	background: #b5cef7;
-	color: #1181FF;
+	background: #b5cef7 !important;
+	color: #4398f8 !important;
+	font-weight: 700 !important;
 	transform: none;
 	box-shadow: 0 4px 12px rgba(109, 95, 143, 0.15);
 	border-color: rgba(109, 95, 143, 0.3);
@@ -456,7 +457,8 @@
 
 .space-theme .themed-sidebar-menu .ant-menu-item:hover {
 	background: rgba(109, 95, 143, 0.2);
-	color: #fff;
+	color: #fff !important;
+	font-weight: 700 !important;
 	transform: none;
 	box-shadow: 0 4px 12px rgba(109, 95, 143, 0.15);
 	border-color: rgba(109, 95, 143, 0.3);
@@ -502,6 +504,24 @@
 .sun-theme .themed-sidebar-menu .ant-menu-item:hover .anticon {
 	filter: drop-shadow(0 0 10px rgba(17, 129, 255, 0.8));
 	color: #1181FF;
+}
+
+/* Force override for sun theme hover text color */
+.sun-theme .themed-sidebar-menu .ant-menu-item:hover,
+.sun-theme .themed-sidebar-menu .ant-menu-item:hover a,
+.sun-theme .themed-sidebar-menu .ant-menu-item:hover .ant-menu-title-content,
+.sun-theme .themed-sidebar-menu .ant-menu-item:hover .ant-menu-title-content a {
+	color: #4398f8 !important;
+	font-weight: 700 !important;
+}
+
+/* Force override for space theme hover text color */
+.space-theme .themed-sidebar-menu .ant-menu-item:hover,
+.space-theme .themed-sidebar-menu .ant-menu-item:hover a,
+.space-theme .themed-sidebar-menu .ant-menu-item:hover .ant-menu-title-content,
+.space-theme .themed-sidebar-menu .ant-menu-item:hover .ant-menu-title-content a {
+	color: #fff !important;
+	font-weight: 700 !important;
 }
 
 .space-theme .themed-sidebar-menu .ant-menu-item:hover .anticon {

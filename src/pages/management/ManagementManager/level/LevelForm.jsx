@@ -24,24 +24,60 @@ const LevelForm = ({ level, onClose, shouldCallApi = true }) => {
   const [form] = Form.useForm();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [durationUnit, setDurationUnit] = useState('weeks');
+  
+  // Convert duration to weeks for API
+  const convertToWeeks = (value, unit) => {
+    if (!value) return 0;
+    switch (unit) {
+      case 'days':
+        return Math.round(value / 7 * 100) / 100; // Convert days to weeks
+      case 'weeks':
+        return value;
+      case 'months':
+        return Math.round(value * 4.33 * 100) / 100; // Convert months to weeks (1 month ≈ 4.33 weeks)
+      case 'years':
+        return Math.round(value * 52 * 100) / 100; // Convert years to weeks (1 year = 52 weeks)
+      default:
+        return value;
+    }
+  };
+  
+  // Convert weeks to display unit
+  const convertFromWeeks = (weeks, unit) => {
+    if (!weeks) return 0;
+    switch (unit) {
+      case 'days':
+        return Math.round(weeks * 7 * 100) / 100; // Convert weeks to days
+      case 'weeks':
+        return weeks;
+      case 'months':
+        return Math.round(weeks / 4.33 * 100) / 100; // Convert weeks to months
+      case 'years':
+        return Math.round(weeks / 52 * 100) / 100; // Convert weeks to years
+      default:
+        return weeks;
+    }
+  };
 
   const isEdit = !!level;
+  const isPublished = level?.status === 'PUBLISHED';
 
   useEffect(() => {
     if (level) {
       // Map API data to form fields
       form.setFieldsValue({
         levelName: level.levelName,
+        levelCode: level.levelCode,
         description: level.description,
-        prerequisite: level.prerequisite,
-        estimatedDurationWeeks: level.estimatedDurationWeeks,
+        prerequisite: level.prerequisite?.levelName || level.prerequisite || '',
+        estimatedDurationWeeks: convertFromWeeks(level.estimatedDurationWeeks, durationUnit),
         status: level.status,
         orderNumber: level.orderNumber,
         promotionCriteria: level.promotionCriteria,
         learningObjectives: level.learningObjectives,
       });
     }
-  }, [level, form]);
+  }, [level, form, durationUnit]);
 
   const onFinish = async (values) => {
     setIsSubmitting(true);
@@ -49,11 +85,11 @@ const LevelForm = ({ level, onClose, shouldCallApi = true }) => {
       // Map form values to API format
       const apiData = {
         levelName: values.levelName,
+        levelCode: values.levelCode,
         description: values.description || '',
-        prerequisite: values.prerequisite,
         promotionCriteria: values.promotionCriteria || '',
         learningObjectives: values.learningObjectives || '',
-        estimatedDurationWeeks: values.estimatedDurationWeeks,
+        estimatedDurationWeeks: convertToWeeks(values.estimatedDurationWeeks, durationUnit),
         orderNumber: values.orderNumber || 0,
       };
 
@@ -61,18 +97,19 @@ const LevelForm = ({ level, onClose, shouldCallApi = true }) => {
 
       if (shouldCallApi) {
         // Call API (for LevelList usage)
-        let successMessage;
+        let response;
         if (isEdit) {
           // Update existing level
           console.log('Updating level with ID:', level.id);
-          await levelManagementApi.updateLevel(level.id, apiData);
-          successMessage = t('levelManagement.updateLevelSuccess');
+          response = await levelManagementApi.updateLevel(level.id, apiData);
         } else {
           // Create new level
           console.log('Creating new level');
-          await levelManagementApi.createLevel(apiData);
-          successMessage = t('levelManagement.addLevelSuccess');
+          response = await levelManagementApi.createLevel(apiData);
         }
+        
+        // Use backend message if available, otherwise fallback to translation
+        const successMessage = response.message || (isEdit ? t('levelManagement.updateLevelSuccess') : t('levelManagement.addLevelSuccess'));
         onClose(true, successMessage); // Tell parent to refresh data and show success message
       } else {
         // Don't call API (for LevelDragEdit usage)
@@ -82,7 +119,14 @@ const LevelForm = ({ level, onClose, shouldCallApi = true }) => {
       }
     } catch (error) {
       console.error('Error saving level:', error);
-      message.error(isEdit ? t('levelManagement.updateLevelError') : t('levelManagement.addLevelError'));
+      
+      // Handle API errors with backend messages
+      if (error.response) {
+        const errorMessage = error.response.data.error || error.response.data?.message;
+        message.error(errorMessage);
+      } else {
+        message.error(error.message || (isEdit ? t('levelManagement.updateLevelError') : t('levelManagement.addLevelError')));
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -109,17 +153,29 @@ const LevelForm = ({ level, onClose, shouldCallApi = true }) => {
           <Form.Item
             name="levelName"
             label={t('levelManagement.levelName')}
-            rules={[
-              { required: true, message: t('levelManagement.levelNameRequired') },
-              { min: 2, message: t('levelManagement.levelNameMinLength') }
-            ]}
           >
             <Input 
               placeholder={t('levelManagement.levelNamePlaceholder')}
               size="middle"
+              disabled={isPublished}
             />
           </Form.Item>
         </Col>
+        <Col span={12}>
+          <Form.Item
+            name="levelCode"
+            label={t('levelManagement.levelCode')}
+          >
+            <Input 
+              placeholder={t('levelManagement.levelCodePlaceholder')}
+              size="large"
+              disabled={isPublished}
+            />
+          </Form.Item>
+        </Col>
+      </Row>
+
+      <Row gutter={16}>
         <Col span={12}>
           <Form.Item
             name="prerequisite"
@@ -128,6 +184,36 @@ const LevelForm = ({ level, onClose, shouldCallApi = true }) => {
             <Input 
               placeholder="e.g., Movers, Starters"
               size="middle"
+              disabled={isPublished}
+            />
+          </Form.Item>
+        </Col>
+        <Col span={12}>
+          <Form.Item
+            name="estimatedDurationWeeks"
+            label={t('levelManagement.duration')}
+          >
+            <InputNumber 
+              min={1}
+              max={104}
+              placeholder={t('levelManagement.durationPlaceholder')}
+              style={{ width: '100%' }}
+              size="large"
+              disabled={isPublished}
+              addonAfter={
+                <Select 
+                  value={durationUnit}
+                  onChange={setDurationUnit}
+                  style={{ width: 120 }}
+                  size="large"
+                  disabled={isPublished}
+                >
+                  <Option value="days">{t('levelManagement.days')}</Option>
+                  <Option value="weeks">{t('levelManagement.weeks')}</Option>
+                  <Option value="months">{t('levelManagement.months')}</Option>
+                  <Option value="years">{t('levelManagement.years')}</Option>
+                </Select>
+              }
             />
           </Form.Item>
         </Col>
@@ -136,10 +222,6 @@ const LevelForm = ({ level, onClose, shouldCallApi = true }) => {
       <Form.Item
         name="description"
         label={t('levelManagement.description')}
-        rules={[
-          { required: false, message: t('levelManagement.descriptionRequired') },
-          { min: 10, message: t('levelManagement.descriptionMinLength') }
-        ]}
       >
         <TextArea 
           rows={2}
@@ -150,41 +232,6 @@ const LevelForm = ({ level, onClose, shouldCallApi = true }) => {
         />
       </Form.Item>
 
-      <Row gutter={16}>
-        <Col span={16}>
-          <Form.Item
-            name="estimatedDurationWeeks"
-            label={t('levelManagement.duration')}
-            rules={[
-              { required: true, message: t('levelManagement.durationRequired') },
-              { type: 'number', min: 1, max: 104, message: t('levelManagement.durationRange') }
-            ]}
-          >
-            <InputNumber 
-              min={1}
-              max={104}
-              placeholder={t('levelManagement.durationPlaceholder')}
-              style={{ width: '100%' }}
-              size="middle"
-              addonAfter={
-                <Select 
-                  value={durationUnit}
-                  onChange={setDurationUnit}
-                  style={{ width: 100 }}
-                  size="middle"
-                >
-                  <Option value="days">{t('levelManagement.days')}</Option>
-                  <Option value="weeks">{t('levelManagement.weeks')}</Option>
-                  <Option value="months">{t('levelManagement.months')}</Option>
-                </Select>
-              }
-            />
-          </Form.Item>
-        </Col>
-        <Col span={8}>
-         
-        </Col>
-      </Row>
 
       <Form.Item
         name="learningObjectives"
@@ -218,8 +265,8 @@ const LevelForm = ({ level, onClose, shouldCallApi = true }) => {
             onClick={onCancel} 
             size="middle"
             style={{
-              height: '36px',
-              padding: '0 24px',
+              height: '40px',
+              width: '120px',
               fontSize: '14px',
               fontWeight: '500',
               borderRadius: '6px',
@@ -237,8 +284,8 @@ const LevelForm = ({ level, onClose, shouldCallApi = true }) => {
               background: theme === 'sun' ? '#298EFE' : 'linear-gradient(135deg, #7228d9 0%, #9c88ff 100%)',
               borderColor: theme === 'sun' ? '#298EFE' : '#7228d9',
               color: '#ffffff',
-              height: '36px',
-              padding: '0 24px',
+              height: '40px',
+              width: '120px',
               fontSize: '14px',
               fontWeight: '500',
               borderRadius: '6px',
