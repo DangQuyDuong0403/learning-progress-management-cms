@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
+import usePageTitle from '../../../../hooks/usePageTitle';
 import {
 	Table,
 	Button,
@@ -28,12 +29,20 @@ import { useTheme } from '../../../../contexts/ThemeContext';
 import './AccountList.css';
 import { spaceToast } from '../../../../component/SpaceToastify';
 import accountManagementApi from '../../../../apis/backend/accountManagement';
+import { useSelector } from 'react-redux';
 
 const { Option } = Select;
 
 const AccountList = () => {
 	const { t } = useTranslation();
 	const { theme } = useTheme();
+	
+	// Set page title
+	usePageTitle('Account Management');
+	// Get current user info from Redux store
+	const currentUser = useSelector(state => state.auth.user);
+	const currentUserId = currentUser?.id;
+	
 	const [loading, setLoading] = useState(false);
 	const [accounts, setAccounts] = useState([]);
 	const [searchText, setSearchText] = useState('');
@@ -345,6 +354,18 @@ const AccountList = () => {
 	const handleToggleStatus = (id) => {
 		const account = accounts.find((a) => a.id === id);
 		if (account) {
+			// Check if trying to deactivate admin accounts
+			if (account.role === 'ADMIN') {
+				// Prevent deactivating own account
+				if (account.id === currentUserId) {
+					spaceToast.error(t('accountManagement.cannotDeactivateSelf'));
+					return;
+				}
+				// Prevent deactivating other admin accounts
+				spaceToast.error(t('accountManagement.cannotDeactivateAdmin'));
+				return;
+			}
+			
 			const newStatus = account.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
 			const actionText =
 				newStatus === 'ACTIVE'
@@ -600,6 +621,10 @@ const AccountList = () => {
 				if (status === 'PENDING') {
 					return <span style={{ color: '#000' }}>{t('accountManagement.pending')}</span>;
 				}
+				
+				// Check if switch should be disabled
+				const isDisabled = record.role === 'ADMIN';
+				
 				return (
 					<Switch
 						checked={status === 'ACTIVE'}
@@ -607,9 +632,11 @@ const AccountList = () => {
 						checkedChildren={t('accountManagement.active')}
 						unCheckedChildren={t('accountManagement.inactive')}
 						size="large"
+						disabled={isDisabled}
 						style={{
 							backgroundColor: status === 'ACTIVE' ? '#52c41a' : '#ff4d4f',
 							transform: 'scale(1.2)',
+							opacity: isDisabled ? 0.5 : 1,
 						}}
 					/>
 				);
@@ -649,6 +676,15 @@ const AccountList = () => {
 		<ThemedLayout>
 			{/* Main Content Panel */}
 			<div className={`account-page ${theme}-theme main-content-panel`}>
+				{/* Page Title */}
+				<div className="page-title-container">
+					<Typography.Title 
+						level={1} 
+						className="page-title"
+					>
+						Account Management
+					</Typography.Title>
+				</div>
 				{/* Header Section */}
 				<div className={`panel-header ${theme}-panel-header`}>
 					<div

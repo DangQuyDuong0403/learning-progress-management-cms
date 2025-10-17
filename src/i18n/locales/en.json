@@ -1007,6 +1007,8 @@
     "days": "days",
     "weeks": "weeks",
     "months": "months",
+    "publishAll": "Publish All",
+    "draftAll": "Draft All",
     "years": "years",
     "refresh": "Refresh",
     "searchPlaceholder": "Search levels...",

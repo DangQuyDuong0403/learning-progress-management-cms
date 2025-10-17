@@ -32,18 +32,31 @@ export const useAuthMonitor = () => {
       if (e.key === 'accessToken' || e.key === 'refreshToken' || e.key === 'user') {
         console.log('Storage change detected:', e.key, e.newValue);
         
-        // If any auth token was removed, logout
-        if (e.newValue === null && (e.key === 'accessToken' || e.key === 'refreshToken' || e.key === 'user')) {
+        // If any auth token was removed, logout immediately
+        if (e.newValue === null) {
           console.log('Auth token removed, logging out...');
           dispatch(logout());
         }
       }
     };
 
+    // Additional check for when multiple tokens are removed at once
+    const handleMultipleTokenRemoval = () => {
+      const accessToken = localStorage.getItem('accessToken');
+      const refreshToken = localStorage.getItem('refreshToken');
+      const user = localStorage.getItem('user');
+      
+      // If any critical token is missing, logout
+      if (!accessToken || !refreshToken || !user) {
+        console.log('Critical auth tokens missing, logging out...');
+        dispatch(logout());
+      }
+    };
+
     // Listen for focus events (when user switches back to this tab)
     const handleFocus = () => {
       console.log('Window focused, checking auth status...');
-      checkAuthStatus();
+      handleMultipleTokenRemoval();
     };
 
     // Add event listeners

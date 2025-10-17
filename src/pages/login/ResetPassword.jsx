@@ -9,6 +9,7 @@ import { useTheme } from '../../contexts/ThemeContext';
 import ThemedLayoutFullScreen from '../../component/ThemedLayoutFullScreen';
 import { spaceToast } from '../../component/SpaceToastify';
 import authApi from '../../apis/backend/auth';
+import usePageTitle from '../../hooks/usePageTitle';
 import './Login.css';
 
 export default function ResetPassword() {
@@ -20,6 +21,9 @@ export default function ResetPassword() {
 	const navigate = useNavigate();
 	const { isSunTheme } = useTheme();
 	const { t } = useTranslation();
+	
+	// Set page title
+	usePageTitle('Reset Password');
 
 	// Lấy token từ URL params trước, nếu không có thì lấy từ localStorage
 	const tokenFromParams = searchParams.get('token');
@@ -57,6 +61,23 @@ export default function ResetPassword() {
 			
 			if (response.data.success) {
 				spaceToast.success(response.data.message);
+				
+				// Gọi API logout để logout tất cả sessions trên backend
+				try {
+					const refreshToken = localStorage.getItem('refreshToken');
+					if (refreshToken) {
+						await authApi.logout(refreshToken);
+						console.log('Successfully logged out all sessions');
+					}
+				} catch (logoutError) {
+					console.log('Logout API failed, but continuing with token cleanup:', logoutError);
+				}
+				
+				// Xóa tất cả auth tokens để logout các tab khác trong cùng trình duyệt
+				localStorage.removeItem('accessToken');
+				localStorage.removeItem('refreshToken');
+				localStorage.removeItem('user');
+				
 				// Chuyển về trang login sau 2 giây dựa trên role trong localStorage
 				setTimeout(() => {
 					const loginRole = localStorage.getItem('selectedRole') || 'teacher';

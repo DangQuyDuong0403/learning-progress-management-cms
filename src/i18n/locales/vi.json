@@ -994,6 +994,8 @@
     "reset": "Làm mới",
     "viewResults": "Xem kết quả",
     "filter": "Lọc",
+    "publishAll": "Kích hoạt tất cả",
+    "draftAll": "Vô hiệu hóa tất cả",
     "actions": "Thao tác",
     "totalLevels": "Tổng số cấp độ",
     "activeLevels": "Cấp độ hoạt động",

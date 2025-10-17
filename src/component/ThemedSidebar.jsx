@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { Menu } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { useSelector } from 'react-redux';
@@ -13,11 +13,7 @@ import {
   DashboardOutlined,
   TrophyOutlined,
   SecurityScanOutlined,
-  UsergroupAddOutlined,
-  ReadOutlined,
-  BankOutlined,
   HomeOutlined,
-  CrownOutlined,
   SolutionOutlined
 } from '@ant-design/icons';
 import CONFIG_ROUTER from "../routers/configRouter";
@@ -47,6 +43,7 @@ export default function ThemedSidebar({ collapsed }) {
       'TEACHER_DASHBOARD': <DashboardOutlined />,
       'TEACHER_CLASSES': <HomeOutlined />, // Class icon - lớp học/phòng học
       'MANAGER_CLASSES': <HomeOutlined />, // Class icon - lớp học/phòng học
+      'MANAGER_DASHBOARD': <DashboardOutlined />,
       'TEACHER_DAILY_CHALLENGES': <TrophyOutlined />,
       'TEACHING_ASSISTANT_CLASSES': <HomeOutlined />, // Class icon - lớp học/phòng học
       'MANAGER_TEACHERS': <SolutionOutlined />, // Teacher icon - giáo viên với vương miện (quyền uy)
@@ -72,6 +69,7 @@ export default function ThemedSidebar({ collapsed }) {
       'ADMIN_DASHBOARD': t('sidebar.dashboard'),
       'ADMIN_SETTINGS': t('sidebar.settings'),
       'MANAGER_CLASSES': t('sidebar.classesManagement'),
+      'MANAGER_DASHBOARD': t('sidebar.dashboard'),
       'MANAGER_SYLLABUSES': t('sidebar.syllabusManagement'),
       'MANAGER_LEVELS': t('sidebar.levelsManagement'),
       'MANAGER_COURSES': t('sidebar.coursesManagement'),

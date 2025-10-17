@@ -16,6 +16,7 @@ import ThemedLayout from '../../../../component/ThemedLayout';
 import levelManagementApi from '../../../../apis/backend/levelManagement';
 import ROUTER_PAGE from '../../../../constants/router';
 import LevelForm from './LevelForm';
+import usePageTitle from '../../../../hooks/usePageTitle';
 import {
 	DndContext,
 	closestCenter,
@@ -105,16 +106,10 @@ const SortableLevelItem = memo(
 					</div>
 
 					<div className='level-field'>
-						<Text
-							strong
-							style={{
-								minWidth: '120px',
-								fontSize: '20px',
-								marginLeft: '20px',
-							}}>
-							{t('levelManagement.difficulty')}:
+						<Text strong style={{ minWidth: '120px', fontSize: '20px' }}>
+							{t('levelManagement.duration')}:
 						</Text>
-						<Text style={{ fontSize: '20px' }}>{level.difficulty}</Text>
+						<Text style={{ fontSize: '20px' }}>{level.estimatedDurationWeeks} weeks</Text>
 					</div>
 				</div>
 
@@ -130,7 +125,7 @@ const SortableLevelItem = memo(
 					</div>
 					<Button
 						type='text'
-						icon={<EditOutlined />}
+						icon={<EditOutlined style={{ color: '#000', fontSize: '18px' }} />}
 						onClick={handleEdit}
 						style={{
 							background: 'rgba(24, 144, 255, 0.1)',
@@ -141,7 +136,7 @@ const SortableLevelItem = memo(
 					<Button
 						type='text'
 						danger
-						icon={<DeleteOutlined />}
+						icon={<DeleteOutlined style={{ color: '#000', fontSize: '18px' }} />}
 						onClick={handleDelete}
 						style={{
 							background: 'rgba(239, 68, 68, 0.1)',
@@ -157,7 +152,7 @@ const SortableLevelItem = memo(
 		return (
 			prevProps.level.id === nextProps.level.id &&
 			prevProps.level.levelName === nextProps.level.levelName &&
-			prevProps.level.difficulty === nextProps.level.difficulty &&
+			prevProps.level.estimatedDurationWeeks === nextProps.level.estimatedDurationWeeks &&
 			prevProps.level.position === nextProps.level.position &&
 			prevProps.theme === nextProps.theme
 		);
@@ -197,6 +192,10 @@ const LevelDragEdit = () => {
 	const { t } = useTranslation();
 	const { theme } = useTheme();
 	const navigate = useNavigate();
+	
+	// Set page title
+	usePageTitle('Edit Level');
+	
 	const [levels, setLevels] = useState([]);
 	const [loading, setLoading] = useState(false);
 	const [saving, setSaving] = useState(false);
@@ -254,7 +253,7 @@ const LevelDragEdit = () => {
 			const mappedLevels = levelsData.map((level, index) => ({
 				id: level.id,
 				levelName: level.levelName,
-				difficulty: level.difficulty,
+				levelCode: level.levelCode,
 				estimatedDurationWeeks: level.estimatedDurationWeeks,
 				status: level.isActive ? 'active' : 'inactive',
 				orderNumber: level.orderNumber,
@@ -268,7 +267,14 @@ const LevelDragEdit = () => {
 			setLevels(mappedLevels);
 		} catch (error) {
 			console.error('Error fetching levels:', error);
-			spaceToast.error(t('levelManagement.loadLevelsError'));
+			
+			// Handle API errors with backend messages
+			if (error.response) {
+				const errorMessage = error.response.data.error || error.response.data?.message;
+				spaceToast.error(errorMessage);
+			} else {
+				spaceToast.error(error.message || t('levelManagement.loadLevelsError'));
+			}
 		} finally {
 			setLoading(false);
 		}
@@ -417,8 +423,8 @@ const LevelDragEdit = () => {
 				return {
 					id: isNewRecord ? null : level.id, // null for new records
 					levelName: level.levelName,
+					levelCode: level.levelCode,
 					description: level.description || '',
-					difficulty: level.difficulty,
 					promotionCriteria: level.promotionCriteria || '',
 					learningObjectives: level.learningObjectives || '',
 					estimatedDurationWeeks: level.estimatedDurationWeeks || 0,
@@ -433,13 +439,22 @@ const LevelDragEdit = () => {
 			});
 
 			// Gọi API bulk update (sẽ xử lý cả create và update)
-			await levelManagementApi.bulkUpdateLevels(bulkUpdateData);
+			const response = await levelManagementApi.bulkUpdateLevels(bulkUpdateData);
 
-			spaceToast.success(t('levelManagement.updatePositionsSuccess'));
+			// Use backend message if available, otherwise fallback to translation
+			const successMessage = response.message || t('levelManagement.updatePositionsSuccess');
+			spaceToast.success(successMessage);
 			navigate(ROUTER_PAGE.MANAGER_LEVELS);
 		} catch (error) {
 			console.error('Error saving levels:', error);
-			spaceToast.error(t('levelManagement.updatePositionsError'));
+			
+			// Handle API errors with backend messages
+			if (error.response) {
+				const errorMessage = error.response.data.error || error.response.data?.message;
+				spaceToast.error(errorMessage);
+			} else {
+				spaceToast.error(error.message || t('levelManagement.updatePositionsError'));
+			}
 		} finally {
 			setSaving(false);
 		}
@@ -482,39 +497,19 @@ const LevelDragEdit = () => {
 						<Button
 							icon={<ArrowLeftOutlined />}
 							onClick={handleGoBack}
-							style={{ position: 'absolute', left: 0 }}>
+							className={`back-button ${theme}-back-button`}
+							style={{ 
+								position: 'absolute', 
+								left: 0,
+							}}>
 							{t('common.back')}
 						</Button>
-						<div
-							style={{
-								display: 'flex',
-								alignItems: 'center',
-								gap: '12px',
-								padding: '12px 24px',
-								borderRadius: '12px',
-								background:
-									theme === 'space'
-										? 'linear-gradient(135deg, #4c1d95 0%, #5b21b6 100%)'
-										: 'rgb(101 191 253)',
-								boxShadow:
-									theme === 'space'
-										? '0 4px 12px rgba(76, 29, 149, 0.4)'
-										: '0 4px 12px rgba(173, 219, 250, 0.3)',
-							}}>
-							<SwapOutlined
-								rotate={90}
-								style={{
-									fontSize: '28px',
-									color: '#ffffff',
-								}}
-							/>
+						<div className="page-title-container">
 							<Title
-								level={2}
-								style={{
-									margin: 0,
-									color: '#ffffff',
-								}}>
-								{t('levelManagement.editPositions')}
+								level={1}
+								className="page-title"
+							>
+								{t('levelManagement.editLevel')}
 							</Title>
 						</div>
 					</div>
@@ -608,17 +603,17 @@ const LevelDragEdit = () => {
 																{activeLevelData.levelName}
 															</Text>
 														</div>
-														<div className='level-field'>
-															<Text strong style={{ minWidth: '120px' }}>
-																{t('levelManagement.difficulty')}:
-															</Text>
-															<Text
-																style={{
-																	color: theme === 'dark' ? '#ffffff' : '#000000',
-																}}>
-																{activeLevelData.difficulty}
-															</Text>
-														</div>
+													<div className='level-field'>
+														<Text strong style={{ minWidth: '120px' }}>
+															{t('levelManagement.duration')}:
+														</Text>
+														<Text
+															style={{
+																color: theme === 'dark' ? '#ffffff' : '#000000',
+															}}>
+															{activeLevelData.estimatedDurationWeeks} weeks
+														</Text>
+													</div>
 													</div>
 												</div>
 											) : null}
@@ -634,6 +629,7 @@ const LevelDragEdit = () => {
 								icon={<ArrowLeftOutlined />}
 								onClick={handleGoBack}
 								size='large'
+								className={`back-button ${theme}-back-button`}
 								style={{ 
 									marginRight: '12px',
 									borderRadius: '8px',
@@ -647,7 +643,12 @@ const LevelDragEdit = () => {
 								icon={<SaveOutlined />}
 								onClick={handleSave}
 								loading={saving}
-								className='save-button'>
+								className='save-button'
+								style={{
+									height: '42px',
+									borderRadius: '8px',
+									fontWeight: '500'
+								}}>
 								{t('common.save')}
 							</Button>
 						</div>
@@ -658,18 +659,18 @@ const LevelDragEdit = () => {
 			{/* Add/Edit Level Modal */}
 			<Modal
 				title={
-					<div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+					<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px' }}>
 						{editingLevel ? (
 							<>
-								<EditOutlined style={{ fontSize: '20px', color: '#1890ff' }} />
-								<Title level={4} style={{ margin: 0, color: '#1890ff' }}>
+								<EditOutlined style={{ fontSize: '26px', color: '#000000' }} />
+								<Title level={4} style={{ margin: 0, color: '#000000', fontSize: '26px' }}>
 									{t('levelManagement.editLevel')}
 								</Title>
 							</>
 						) : (
 							<>
-								<PlusOutlined style={{ fontSize: '20px', color: '#1890ff' }} />
-								<Title level={4} style={{ margin: 0, color: '#1890ff' }}>
+								<PlusOutlined style={{ fontSize: '20px', color: '#000000' }} />
+								<Title level={4} style={{ margin: 0, color: '#000000' }}>
 									{t('levelManagement.addLevel')}
 								</Title>
 							</>
