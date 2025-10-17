@@ -105,16 +105,10 @@ const SortableLevelItem = memo(
 					</div>
 
 					<div className='level-field'>
-						<Text
-							strong
-							style={{
-								minWidth: '120px',
-								fontSize: '20px',
-								marginLeft: '20px',
-							}}>
-							{t('levelManagement.difficulty')}:
+						<Text strong style={{ minWidth: '120px', fontSize: '20px' }}>
+							{t('levelManagement.duration')}:
 						</Text>
-						<Text style={{ fontSize: '20px' }}>{level.difficulty}</Text>
+						<Text style={{ fontSize: '20px' }}>{level.estimatedDurationWeeks} weeks</Text>
 					</div>
 				</div>
 
@@ -157,7 +151,7 @@ const SortableLevelItem = memo(
 		return (
 			prevProps.level.id === nextProps.level.id &&
 			prevProps.level.levelName === nextProps.level.levelName &&
-			prevProps.level.difficulty === nextProps.level.difficulty &&
+			prevProps.level.estimatedDurationWeeks === nextProps.level.estimatedDurationWeeks &&
 			prevProps.level.position === nextProps.level.position &&
 			prevProps.theme === nextProps.theme
 		);
@@ -254,7 +248,7 @@ const LevelDragEdit = () => {
 			const mappedLevels = levelsData.map((level, index) => ({
 				id: level.id,
 				levelName: level.levelName,
-				difficulty: level.difficulty,
+				levelCode: level.levelCode,
 				estimatedDurationWeeks: level.estimatedDurationWeeks,
 				status: level.isActive ? 'active' : 'inactive',
 				orderNumber: level.orderNumber,
@@ -268,7 +262,14 @@ const LevelDragEdit = () => {
 			setLevels(mappedLevels);
 		} catch (error) {
 			console.error('Error fetching levels:', error);
-			spaceToast.error(t('levelManagement.loadLevelsError'));
+			
+			// Handle API errors with backend messages
+			if (error.response) {
+				const errorMessage = error.response.data.error || error.response.data?.message;
+				spaceToast.error(errorMessage);
+			} else {
+				spaceToast.error(error.message || t('levelManagement.loadLevelsError'));
+			}
 		} finally {
 			setLoading(false);
 		}
@@ -417,8 +418,8 @@ const LevelDragEdit = () => {
 				return {
 					id: isNewRecord ? null : level.id, // null for new records
 					levelName: level.levelName,
+					levelCode: level.levelCode,
 					description: level.description || '',
-					difficulty: level.difficulty,
 					promotionCriteria: level.promotionCriteria || '',
 					learningObjectives: level.learningObjectives || '',
 					estimatedDurationWeeks: level.estimatedDurationWeeks || 0,
@@ -433,13 +434,22 @@ const LevelDragEdit = () => {
 			});
 
 			// Gọi API bulk update (sẽ xử lý cả create và update)
-			await levelManagementApi.bulkUpdateLevels(bulkUpdateData);
+			const response = await levelManagementApi.bulkUpdateLevels(bulkUpdateData);
 
-			spaceToast.success(t('levelManagement.updatePositionsSuccess'));
+			// Use backend message if available, otherwise fallback to translation
+			const successMessage = response.message || t('levelManagement.updatePositionsSuccess');
+			spaceToast.success(successMessage);
 			navigate(ROUTER_PAGE.MANAGER_LEVELS);
 		} catch (error) {
 			console.error('Error saving levels:', error);
-			spaceToast.error(t('levelManagement.updatePositionsError'));
+			
+			// Handle API errors with backend messages
+			if (error.response) {
+				const errorMessage = error.response.data.error || error.response.data?.message;
+				spaceToast.error(errorMessage);
+			} else {
+				spaceToast.error(error.message || t('levelManagement.updatePositionsError'));
+			}
 		} finally {
 			setSaving(false);
 		}
@@ -608,17 +618,17 @@ const LevelDragEdit = () => {
 																{activeLevelData.levelName}
 															</Text>
 														</div>
-														<div className='level-field'>
-															<Text strong style={{ minWidth: '120px' }}>
-																{t('levelManagement.difficulty')}:
-															</Text>
-															<Text
-																style={{
-																	color: theme === 'dark' ? '#ffffff' : '#000000',
-																}}>
-																{activeLevelData.difficulty}
-															</Text>
-														</div>
+													<div className='level-field'>
+														<Text strong style={{ minWidth: '120px' }}>
+															{t('levelManagement.duration')}:
+														</Text>
+														<Text
+															style={{
+																color: theme === 'dark' ? '#ffffff' : '#000000',
+															}}>
+															{activeLevelData.estimatedDurationWeeks} weeks
+														</Text>
+													</div>
 													</div>
 												</div>
 											) : null}
