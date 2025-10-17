@@ -170,12 +170,14 @@
 .level-content {
 	flex: 1;
 	display: flex;
+	gap: 50px;
+	align-items: center;
 }
 
 .level-field {
 	display: flex;
 	align-items: center;
-	gap: 12px;
+	gap: 4px;
 	padding: 4px 0;
 }
 

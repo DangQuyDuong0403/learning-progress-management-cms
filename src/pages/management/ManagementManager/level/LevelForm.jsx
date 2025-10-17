@@ -155,7 +155,7 @@ const LevelForm = ({ level, onClose, shouldCallApi = true }) => {
             label={t('levelManagement.levelName')}
           >
             <Input 
-              placeholder={t('levelManagement.levelNamePlaceholder')}
+            
               size="middle"
               disabled={isPublished}
             />
@@ -167,8 +167,8 @@ const LevelForm = ({ level, onClose, shouldCallApi = true }) => {
             label={t('levelManagement.levelCode')}
           >
             <Input 
-              placeholder={t('levelManagement.levelCodePlaceholder')}
-              size="large"
+          
+              size="middle"
               disabled={isPublished}
             />
           </Form.Item>
@@ -182,7 +182,7 @@ const LevelForm = ({ level, onClose, shouldCallApi = true }) => {
             label={t('levelManagement.prerequisite')}
           >
             <Input 
-              placeholder="e.g., Movers, Starters"
+              
               size="middle"
               disabled={isPublished}
             />
@@ -196,16 +196,16 @@ const LevelForm = ({ level, onClose, shouldCallApi = true }) => {
             <InputNumber 
               min={1}
               max={104}
-              placeholder={t('levelManagement.durationPlaceholder')}
+             
               style={{ width: '100%' }}
-              size="large"
+              size="middle"
               disabled={isPublished}
               addonAfter={
                 <Select 
                   value={durationUnit}
                   onChange={setDurationUnit}
                   style={{ width: 120 }}
-                  size="large"
+                  size="middle"
                   disabled={isPublished}
                 >
                   <Option value="days">{t('levelManagement.days')}</Option>
