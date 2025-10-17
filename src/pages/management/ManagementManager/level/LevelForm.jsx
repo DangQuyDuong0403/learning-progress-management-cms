@@ -88,7 +88,7 @@ const LevelForm = ({ level, onClose, shouldCallApi = true }) => {
 
   const onCancel = () => {
     form.resetFields();
-    onClose();
+    onClose(false); // Pass false to indicate no refresh needed
   };
 
   return (

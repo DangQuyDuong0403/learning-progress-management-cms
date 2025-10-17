@@ -55,7 +55,8 @@ const Settings = () => {
 		setChangePasswordLoading(true);
 		
 		try {
-			const values = await passwordForm.validateFields();
+			// Get form values directly without any frontend validation
+			const values = passwordForm.getFieldsValue();
 			
 			// Get refresh token from localStorage
 			const refreshToken = localStorage.getItem('refreshToken');
@@ -65,11 +66,11 @@ const Settings = () => {
 				return;
 			}
 			
-			// Prepare data for API call - include refreshToken like ChangePassword.jsx
+			// Prepare data for API call - send all fields including empty ones to let BE validate
 			const passwordData = {
-				oldPassword: values.currentPassword,
-				newPassword: values.newPassword,
-				confirmPassword: values.confirmPassword,
+				oldPassword: values.currentPassword || '',
+				newPassword: values.newPassword || '',
+				confirmPassword: values.confirmPassword || '',
 				refreshToken: refreshToken
 			};
 			
@@ -94,9 +95,11 @@ const Settings = () => {
 			}, 2000);
 			
 		} catch (error) {
-	
+			console.log('Error:', error);
+			
 			// Handle API errors with backend messages
 			if (error.response) {
+				console.log('Error response:', error.response);
 				const errorMessage = error.response.data.error || error.response.data?.message;
 				spaceToast.error(errorMessage);
 			}
@@ -297,11 +300,7 @@ const Settings = () => {
 					className={`settings-form ${theme}-settings-form`}
 				>
 					<Form.Item
-						label={
-							<span>
-								{t('settings.currentPassword')} <span style={{ color: 'red' }}>*</span>
-							</span>
-						}
+						label={t('settings.currentPassword')}
 						name="currentPassword"
 					>
 						<Input.Password 
@@ -311,11 +310,7 @@ const Settings = () => {
 					</Form.Item>
 
 					<Form.Item
-						label={
-							<span>
-								{t('settings.newPassword')} <span style={{ color: 'red' }}>*</span>
-							</span>
-						}
+						label={t('settings.newPassword')}
 						name="newPassword"
 					>
 						<Input.Password 
@@ -325,11 +320,7 @@ const Settings = () => {
 					</Form.Item>
 
 					<Form.Item
-						label={
-							<span>
-								{t('settings.confirmNewPassword')} <span style={{ color: 'red' }}>*</span>
-							</span>
-						}
+						label={t('settings.confirmNewPassword')}
 						name="confirmPassword"
 					>
 						<Input.Password 

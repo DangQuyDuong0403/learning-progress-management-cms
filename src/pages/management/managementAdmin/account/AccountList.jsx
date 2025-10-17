@@ -28,7 +28,6 @@ import { useTheme } from '../../../../contexts/ThemeContext';
 import './AccountList.css';
 import { spaceToast } from '../../../../component/SpaceToastify';
 import accountManagementApi from '../../../../apis/backend/accountManagement';
-import { useSelector } from 'react-redux';
 
 const { Option } = Select;
 
@@ -444,7 +443,7 @@ const AccountList = () => {
 
 				console.log('Updating account with data:', updateData);
 
-				// Gọi API update account
+				// Gọi API update account với params
 				const response = await accountManagementApi.updateAccount(
 					editingAccount.id,
 					updateData
@@ -946,24 +945,8 @@ const AccountList = () => {
 							<Row gutter={16}>
 								<Col span={24}>
 									<Form.Item
-										label={
-											<span>
-												{t('accountManagement.email')}
-												<span style={{ color: 'red', marginLeft: '4px' }}>*</span>
-											</span>
-										}
-										name='email'
-										rules={[
-											{
-												required: true,
-												message: t('accountManagement.emailRequired'),
-											},
-											{
-												type: 'email',
-												message: t('accountManagement.emailInvalid'),
-											},
-										]}
-										required={false}>
+										label={t('accountManagement.email')}
+										name='email'>
 										<Input placeholder={t('accountManagement.emailPlaceholder')} />
 									</Form.Item>
 								</Col>
@@ -974,20 +957,8 @@ const AccountList = () => {
 								<Row gutter={16}>
 									<Col span={12}>
 										<Form.Item
-											label={
-												<span>
-													{t('accountManagement.firstName')}
-													<span style={{ color: 'red', marginLeft: '4px' }}>*</span>
-												</span>
-											}
-											name='firstName'
-											rules={[
-												{
-													required: true,
-													message: t('accountManagement.firstNameRequired'),
-												},
-											]}
-											required={false}>
+											label={t('accountManagement.firstName')}
+											name='firstName'>
 											<Input
 												placeholder={t('accountManagement.firstNamePlaceholder')}
 											/>
@@ -995,20 +966,8 @@ const AccountList = () => {
 									</Col>
 									<Col span={12}>
 										<Form.Item
-											label={
-												<span>
-													{t('accountManagement.lastName')}
-													<span style={{ color: 'red', marginLeft: '4px' }}>*</span>
-												</span>
-											}
-											name='lastName'
-											rules={[
-												{
-													required: true,
-													message: t('accountManagement.lastNameRequired'),
-												},
-											]}
-											required={false}>
+											label={t('accountManagement.lastName')}
+											name='lastName'>
 											<Input
 												placeholder={t('accountManagement.lastNamePlaceholder')}
 											/>
@@ -1019,37 +978,15 @@ const AccountList = () => {
 								<Row gutter={16}>
 									<Col span={12}>
 										<Form.Item
-											label={
-												<span>
-													{t('accountManagement.email')}
-													<span style={{ color: 'red', marginLeft: '4px' }}>*</span>
-												</span>
-											}
-											name='email'
-											rules={[
-												{
-													required: true,
-													message: t('accountManagement.emailRequired'),
-												},
-												{
-													type: 'email',
-													message: t('accountManagement.emailInvalid'),
-												},
-											]}
-											required={false}>
+											label={t('accountManagement.email')}
+											name='email'>
 											<Input placeholder={t('accountManagement.emailPlaceholder')} />
 										</Form.Item>
 									</Col>
 									<Col span={12}>
 										<Form.Item
-											label={
-												<span>
-													{t('accountManagement.role')}
-													<span style={{ color: 'red', marginLeft: '4px' }}>*</span>
-												</span>
-											}
-											name='roleName'
-											required={false}>
+											label={t('accountManagement.role')}
+											name='roleName'>
 											<Select value='MANAGER' disabled style={{ color: '#666' }}>
 												<Option value='MANAGER'>
 													{t('accountManagement.manager')}
@@ -1065,43 +1002,15 @@ const AccountList = () => {
 						<Row gutter={16}>
 							<Col span={12}>
 								<Form.Item
-									label={
-										<span>
-											{t('accountManagement.email')}
-											<span style={{ color: 'red', marginLeft: '4px' }}>*</span>
-										</span>
-									}
-									name='email'
-									rules={[
-										{
-											required: true,
-											message: t('accountManagement.emailRequired'),
-										},
-										{
-											type: 'email',
-											message: t('accountManagement.emailInvalid'),
-										},
-									]}
-									required={false}>
+									label={t('accountManagement.email')}
+									name='email'>
 									<Input placeholder={t('accountManagement.emailPlaceholder')} />
 								</Form.Item>
 							</Col>
 							<Col span={12}>
 								<Form.Item
-									label={
-										<span>
-											{t('accountManagement.role')}
-											<span style={{ color: 'red', marginLeft: '4px' }}>*</span>
-										</span>
-									}
-									name='roleName'
-									rules={[
-										{
-											required: true,
-											message: t('accountManagement.roleRequired'),
-										},
-									]}
-									required={false}>
+									label={t('accountManagement.role')}
+									name='roleName'>
 									<Select placeholder={t('accountManagement.selectRole')}>
 										<Option value='ADMIN'>
 											{t('accountManagement.admin')}
