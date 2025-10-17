@@ -152,10 +152,12 @@ const LevelForm = ({ level, onClose, shouldCallApi = true }) => {
         <Col span={12}>
           <Form.Item
             name="levelName"
-            label={t('levelManagement.levelName')}
+            label={<span>{t('levelManagement.levelName')} <span style={{ color: 'red' }}>*</span></span>}
+            required
+            rules={[{ required: true, message: t('levelManagement.levelNameRequired') }]}
           >
             <Input 
-              placeholder={t('levelManagement.levelNamePlaceholder')}
+            
               size="middle"
               disabled={isPublished}
             />
@@ -167,8 +169,8 @@ const LevelForm = ({ level, onClose, shouldCallApi = true }) => {
             label={t('levelManagement.levelCode')}
           >
             <Input 
-              placeholder={t('levelManagement.levelCodePlaceholder')}
-              size="large"
+          
+              size="middle"
               disabled={isPublished}
             />
           </Form.Item>
@@ -182,7 +184,7 @@ const LevelForm = ({ level, onClose, shouldCallApi = true }) => {
             label={t('levelManagement.prerequisite')}
           >
             <Input 
-              placeholder="e.g., Movers, Starters"
+              
               size="middle"
               disabled={isPublished}
             />
@@ -191,21 +193,23 @@ const LevelForm = ({ level, onClose, shouldCallApi = true }) => {
         <Col span={12}>
           <Form.Item
             name="estimatedDurationWeeks"
-            label={t('levelManagement.duration')}
+            label={<span>{t('levelManagement.duration')} <span style={{ color: 'red' }}>*</span></span>}
+            required
+            rules={[{ required: true, message: t('levelManagement.durationRequired') }]}
           >
             <InputNumber 
               min={1}
               max={104}
-              placeholder={t('levelManagement.durationPlaceholder')}
+             
               style={{ width: '100%' }}
-              size="large"
+              size="middle"
               disabled={isPublished}
               addonAfter={
                 <Select 
                   value={durationUnit}
                   onChange={setDurationUnit}
                   style={{ width: 120 }}
-                  size="large"
+                  size="middle"
                   disabled={isPublished}
                 >
                   <Option value="days">{t('levelManagement.days')}</Option>

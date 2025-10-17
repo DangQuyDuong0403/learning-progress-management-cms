@@ -97,7 +97,7 @@ const SortableLevelItem = memo(
 
 				<div className='level-content'>
 					<div className='level-field'>
-						<Text strong style={{ minWidth: '120px', fontSize: '20px' }}>
+						<Text strong style={{ minWidth: '100px', fontSize: '20px' }}>
 							{t('levelManagement.levelName')}:
 						</Text>
 						<Text style={{ flex: 1, fontSize: '20px' }}>
@@ -106,7 +106,7 @@ const SortableLevelItem = memo(
 					</div>
 
 					<div className='level-field'>
-						<Text strong style={{ minWidth: '120px', fontSize: '20px' }}>
+						<Text strong style={{ minWidth: '100px', fontSize: '20px' }}>
 							{t('levelManagement.duration')}:
 						</Text>
 						<Text style={{ fontSize: '20px' }}>{level.estimatedDurationWeeks} weeks</Text>
