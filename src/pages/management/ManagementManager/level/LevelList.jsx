@@ -363,8 +363,8 @@ const LevelList = () => {
 		setIsModalVisible(false);
 		setEditingLevel(null);
 		
-		// Refresh data if save was successful
-		if (shouldRefresh) {
+		// Only refresh data if save was successful
+		if (shouldRefresh === true) {
 			// Only show success message if provided from LevelForm
 			if (successMessage) {
 				spaceToast.success(successMessage);
@@ -692,7 +692,10 @@ const LevelList = () => {
 						: t('levelManagement.addLevel')
 				}
 				open={isModalVisible}
-				onCancel={handleModalClose}
+				onCancel={() => {
+					setIsModalVisible(false);
+					setEditingLevel(null);
+				}}
 				footer={null}
 				width={800}
 				destroyOnClose
