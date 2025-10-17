@@ -235,7 +235,7 @@ const Settings = () => {
 											🇻🇳 {t('common.vietnamese')}
 										</Text>
 										<Text className={`language-label en-label ${getCurrentLanguage() === 'en' ? 'active' : ''}`}>
-											🇬🇧 {t('common.english')}
+											EN {t('common.english')}
 										</Text>
 									</div>
 								</div>
@@ -273,22 +273,24 @@ const Settings = () => {
 						color: '#ffffff',
 						fontWeight: '600',
 						borderRadius: '8px',
-						height: '40px',
-						padding: '0 24px',
+						height: '32px',
+						padding: '0 16px',
 						boxShadow: theme === 'sun' 
 							? '0 4px 12px rgba(41, 142, 254, 0.3)' 
 							: '0 4px 12px rgba(114, 40, 217, 0.3)',
 						transition: 'all 0.3s ease',
-						minWidth: '80px'
+						minWidth: '80px',
+						width: '80px'
 					}
 				}}
 				cancelButtonProps={{
 					style: {
-						height: '40px',
-						padding: '0 24px',
+						height: '32px',
+						padding: '0 16px',
 						borderRadius: '8px',
 						fontWeight: '600',
 						minWidth: '80px',
+						width: '80px',
 						transition: 'all 0.3s ease'
 					}
 				}}

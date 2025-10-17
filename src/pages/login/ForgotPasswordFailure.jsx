@@ -35,7 +35,7 @@ export default function ForgotPasswordFailure() {
 
 	return (
 		<ThemedLayoutFullScreen>
-			<div className="main-content" style={{ paddingTop: 120, minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+			<div className="main-content" style={{ paddingTop: 80, minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
 				{/* Theme Toggle - Top Right */}
 				<div className={`login-theme-toggle-container ${isSunTheme ? 'sun-theme' : 'space-theme'}`} style={{ position: 'absolute', top: '20px', right: '20px' }}>
 					<ThemeToggleSwitch />
@@ -50,7 +50,7 @@ export default function ForgotPasswordFailure() {
 							style={getFailureCardStyle(isSunTheme)}>
 							<div
 								className='card-body'
-								style={{ padding: '3rem 2.5rem' }}>
+								style={{ padding: '2rem 1.5rem' }}>
 								{/* Error Icon with Animation */}
 								<div style={getIconContainerStyle(isSunTheme)}>
 									<CloseCircleOutlined 
@@ -130,13 +130,13 @@ export default function ForgotPasswordFailure() {
 const getFailureCardStyle = (isSunTheme) => ({
 	background: isSunTheme ? '#EDF1FF' : 'rgba(109, 95, 143, 0.7)',
 	backdropFilter: isSunTheme ? 'blur(1px)' : 'blur(5px)',
-	borderRadius: 32,
+	borderRadius: 24,
 	boxShadow: isSunTheme 
-		? '0 20px 60px rgba(0, 0, 0, 0.15)' 
-		: '0 20px 60px rgba(77, 208, 255, 0.25)',
+		? '0 15px 40px rgba(0, 0, 0, 0.15)' 
+		: '0 15px 40px rgba(77, 208, 255, 0.25)',
 	border: isSunTheme ? '2px solid #3B82F6' : 'none',
-	minWidth: 500,
-	maxWidth: 700,
+	minWidth: 400,
+	maxWidth: 600,
 	margin: '0 auto',
 	padding: 0,
 });
@@ -148,28 +148,28 @@ const getIconContainerStyle = (isSunTheme) => ({
 });
 
 const getIconStyle = (isSunTheme) => ({
-	fontSize: '100px',
+	fontSize: '80px',
 	color: isSunTheme ? '#ef4444' : '#f87171',
 	filter: isSunTheme 
-		? 'drop-shadow(0 0 20px rgba(239, 68, 68, 0.3))' 
-		: 'drop-shadow(0 0 30px rgba(248, 113, 113, 0.5))',
+		? 'drop-shadow(0 0 15px rgba(239, 68, 68, 0.3))' 
+		: 'drop-shadow(0 0 25px rgba(248, 113, 113, 0.5))',
 });
 
 const getTitleStyle = (isSunTheme) => ({
-	fontSize: '36px',
+	fontSize: '32px',
 	fontWeight: 700,
 	color: isSunTheme ? '#3b82f6' : '#fff',
 	textAlign: 'center',
-	marginBottom: '1.5rem',
+	marginBottom: '1.2rem',
 	textShadow: isSunTheme ? 'none' : '0 0 10px rgba(77, 208, 255, 0.5)',
 });
 
 const getMessageStyle = (isSunTheme) => ({
-	fontSize: '18px',
+	fontSize: '16px',
 	fontWeight: 400,
 	color: isSunTheme ? '#374151' : '#e5e7eb',
 	textAlign: 'center',
-	marginBottom: '2rem',
+	marginBottom: '1.5rem',
 	lineHeight: '1.6',
 });
 
@@ -180,13 +180,13 @@ const getInfoBoxStyle = (isSunTheme) => ({
 	border: isSunTheme 
 		? '1px solid rgba(239, 68, 68, 0.3)' 
 		: '1px solid rgba(248, 113, 113, 0.3)',
-	borderRadius: '16px',
-	padding: '1.5rem',
+	borderRadius: '12px',
+	padding: '1.2rem',
 	marginBottom: '1rem',
 });
 
 const getInfoTextStyle = (isSunTheme) => ({
-	fontSize: '16px',
+	fontSize: '14px',
 	fontWeight: 500,
 	color: isSunTheme ? '#ef4444' : '#fca5a5',
 	textAlign: 'center',
@@ -201,13 +201,13 @@ const getTryAgainButtonStyle = (isSunTheme) => ({
 	border: 'none',
 	color: 'black',
 	fontWeight: 600,
-	fontSize: '20px',
-	padding: '14px 32px',
+	fontSize: '18px',
+	padding: '12px 28px',
 	width: '90%',
-	borderRadius: '12px',
+	borderRadius: '10px',
 	boxShadow: isSunTheme 
-		? '0 8px 25px rgba(139, 176, 249, 0.3)' 
-		: '0 8px 25px rgba(170, 139, 249, 0.3)',
+		? '0 6px 20px rgba(139, 176, 249, 0.3)' 
+		: '0 6px 20px rgba(170, 139, 249, 0.3)',
 	transition: 'all 0.3s ease',
 	cursor: 'pointer',
 });
@@ -217,10 +217,10 @@ const getBackButtonStyle = (isSunTheme) => ({
 	border: isSunTheme ? '2px solid #3b82f6' : '2px solid #ffffff',
 	color: isSunTheme ? '#3b82f6' : '#ffffff',
 	fontWeight: 600,
-	fontSize: '18px',
-	padding: '12px 32px',
+	fontSize: '16px',
+	padding: '10px 28px',
 	width: '90%',
-	borderRadius: '12px',
+	borderRadius: '10px',
 	transition: 'all 0.3s ease',
 	cursor: 'pointer',
 });

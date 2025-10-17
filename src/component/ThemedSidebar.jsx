@@ -167,8 +167,8 @@ export default function ThemedSidebar({ collapsed }) {
         style={{
           border: 'none',
           background: 'transparent',
-          marginTop: '16px',
-          marginBottom: collapsed ? '60px' : '16px'
+          marginTop: '12px',
+          marginBottom: collapsed ? '48px' : '12px'
         }}
         className={`themed-sidebar-menu ${theme}-sidebar-menu`}
         inlineCollapsed={collapsed}

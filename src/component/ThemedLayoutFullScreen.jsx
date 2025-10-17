@@ -46,8 +46,8 @@ const ThemedLayoutFullScreen = ({ children }) => {
               position: 'absolute', 
               top: '5%', 
               right: '5%', 
-              width: 250, 
-              height: 250,
+              width: 200, 
+              height: 200,
               opacity: 0.8, 
               pointerEvents: 'none', 
               zIndex: 1
@@ -62,8 +62,8 @@ const ThemedLayoutFullScreen = ({ children }) => {
               position: 'absolute', 
               bottom: '5%', 
               left: '5%', 
-              width: 250, 
-              height: 250,
+              width: 200, 
+              height: 200,
               opacity: 0.8, 
               pointerEvents: 'none', 
               zIndex: 1
@@ -80,8 +80,8 @@ const ThemedLayoutFullScreen = ({ children }) => {
               position: 'absolute', 
               top: '10%', 
               left: '10%', 
-              width: 200, 
-              height: 200,
+              width: 160, 
+              height: 160,
               opacity: 0.8, 
               pointerEvents: 'none', 
               zIndex: 1
@@ -97,8 +97,8 @@ const ThemedLayoutFullScreen = ({ children }) => {
               top: '50%', 
               left: '50%', 
               transform: 'translate(-50%, -50%)',
-              width: 900, 
-              height: 900,
+              width: 720, 
+              height: 720,
               opacity: 0.6, 
               pointerEvents: 'none', 
               zIndex: 1,
@@ -127,8 +127,8 @@ const ThemedLayoutFullScreen = ({ children }) => {
               src="/img/logo-blue.png" 
               alt="CAMKEY Logo" 
               style={{ 
-                width: '60px', 
-                height: '60px', 
+                width: '48px', 
+                height: '48px', 
               }} 
             />
           ) : (
@@ -136,14 +136,14 @@ const ThemedLayoutFullScreen = ({ children }) => {
               src="/img/logo-dark.png" 
               alt="CAMKEY Logo" 
               style={{ 
-                width: '60px', 
-                height: '60px', 
+                width: '48px', 
+                height: '48px', 
                 filter: 'drop-shadow(0 0 15px rgba(125, 211, 252, 0.8))'
               }} 
             />
           )}
           <span style={{ 
-            fontSize: '40px', 
+            fontSize: '32px', 
             fontWeight: 700, 
             color: isSunTheme ? '#1E40AF' : '#FFFFFF',
             textShadow: isSunTheme ? '0 0 5px rgba(30, 64, 175, 0.3)' : '0 0 15px rgba(255, 255, 255, 0.8)'
@@ -168,11 +168,17 @@ const ThemedLayoutFullScreen = ({ children }) => {
         
         {/* Sun Decoration Icon - Only for Sun Theme */}
         {theme === 'sun' && (
-          <div className="sun-decoration-icon">
+          <div style={{ position: 'absolute', bottom: '20px', left: '20px', zIndex: 1000 }}>
             <img 
               src="/img/icon-sun1.png" 
               alt="Sun Decoration" 
-              className="sun-icon-image" 
+              style={{ 
+                width: '96px', 
+                height: 'auto',
+                filter: 'drop-shadow(0 0 20px rgba(125, 211, 252, 0.6))',
+                animation: 'float 4s ease-in-out infinite',
+                animationDelay: '0.5s'
+              }} 
             />
           </div>
         )}
@@ -184,7 +190,7 @@ const ThemedLayoutFullScreen = ({ children }) => {
               src="/img/astronut-11.png" 
               alt="Astronaut Decoration" 
               style={{ 
-                width: '120px', 
+                width: '96px', 
                 height: 'auto',
                 filter: 'drop-shadow(0 0 20px rgba(125, 211, 252, 0.6))'
               }} 
@@ -203,7 +209,7 @@ const ThemedLayoutFullScreen = ({ children }) => {
                 position: 'absolute', 
                 right: '2%', 
                 bottom: '2%', 
-                width: 120, 
+                width: 96, 
                 opacity: 0.9, 
                 pointerEvents: 'none', 
                 animation: 'float 4s ease-in-out infinite',
