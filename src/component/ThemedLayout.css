@@ -1736,11 +1736,32 @@
 	margin: 0;
 	font-size: 30px;
 	font-weight: 600;
+	display: inline-block;
+}
+
+/* Student count styling */
+.page-title .student-count {
+	font-size: 20px !important;
+	font-weight: 400;
+	font-style: italic;
+	margin-left: 8px;
+	display: inline;
+}
+
+/* Sun theme student count */
+.sun-theme .page-title .student-count {
+	color: #666666;
+}
+
+/* Space theme student count */
+.space-theme .page-title .student-count {
+	color: #d9d9d9;
 }
 
 /* Sun theme page title */
 .sun-theme .page-title {
 	color: #000000;
+	font-size: 32px;
 }
 
 /* Space theme page title */

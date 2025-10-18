@@ -545,25 +545,23 @@ const LevelDragEdit = () => {
 			<div className={`main-content-panel ${theme}-main-panel`}>
 				{/* Header Section */}
 				<div className={`panel-header ${theme}-panel-header`}>
-					<div className='page-header'>
+					<div className='page-header' style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
 						<Button
 							icon={<ArrowLeftOutlined />}
 							onClick={handleGoBack}
-							className={`back-button ${theme}-back-button`}
-							style={{ 
-								position: 'absolute', 
-								left: 0,
-							}}>
+							className={`back-button ${theme}-back-button`}>
 							{t('common.back')}
 						</Button>
 						<div className="page-title-container">
 							<Title
 								level={1}
 								className="page-title"
+								style={{ margin: 0 }}
 							>
 								{t('levelManagement.editLevel')}
 							</Title>
 						</div>
+						<div style={{ width: '100px' }}></div> {/* Spacer để căn giữa */}
 					</div>
 				</div>
 
@@ -580,7 +578,7 @@ const LevelDragEdit = () => {
 								{loading ? (
 									<div style={{ textAlign: 'center', padding: '40px' }}>
 										<Text type='secondary'>
-											{t('levelManagement.loadingLevels')}
+											{t('common.loading')}
 										</Text>
 									</div>
 								) : (

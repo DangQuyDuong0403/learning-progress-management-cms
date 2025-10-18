@@ -248,6 +248,18 @@ const StudentList = () => {
       },
     },
     {
+      title: t('studentManagement.username'),
+      dataIndex: "userName",
+      key: "userName",
+      width: 100,
+      ellipsis: true,
+      render: (userName) => (
+        <span className="username-text">
+          {userName || '-'}
+        </span>
+      ),
+    },
+    {
       title: t('studentManagement.fullName'),
       dataIndex: "firstName",
       key: "fullName",
@@ -730,7 +742,7 @@ STU003,Le Van Cuong,levancuong@example.com,0111222333,Lớp 11B1,Advanced,active
               level={1} 
               className="page-title"
             >
-              {t('studentManagement.title')} ({totalStudents})
+              {t('studentManagement.title')} <span className="student-count">({totalStudents})</span>
             </Typography.Title>
           </div>
           {/* Header Section */}
@@ -861,7 +873,8 @@ STU003,Le Van Cuong,levancuong@example.com,0111222333,Lớp 11B1,Advanced,active
           {/* Table Section */}
 				<div className={`table-section ${theme}-table-section`}>
 					<LoadingWithEffect
-						loading={loading}>
+						loading={loading}
+						message={t('common.loading')}>
 						<Table
                 columns={columns}
                 dataSource={students}
