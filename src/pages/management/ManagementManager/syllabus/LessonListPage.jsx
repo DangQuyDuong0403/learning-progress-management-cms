@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
 	Table,
 	Button,
@@ -6,7 +6,6 @@ import {
 	Modal,
 	message,
 	Input,
-	Card,
 	Row,
 	Col,
 	Tooltip,
@@ -15,6 +14,7 @@ import {
 	Divider,
 	Progress,
 	Alert,
+	Checkbox,
 } from 'antd';
 import {
 	PlusOutlined,
@@ -27,6 +27,7 @@ import {
 	SwapOutlined,
 	UploadOutlined,
 	DownloadOutlined,
+	DragOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useDispatch, useSelector } from 'react-redux';
@@ -39,6 +40,8 @@ import { spaceToast } from '../../../../component/SpaceToastify';
 import './SyllabusList.css';
 import ThemedLayout from '../../../../component/ThemedLayout';
 import { useTheme } from '../../../../contexts/ThemeContext';
+import LessonForm from './LessonForm';
+import LoadingWithEffect from '../../../../component/spinner/LoadingWithEffect';
 
 const { Dragger } = Upload;
 const { Title, Text } = Typography;
@@ -55,10 +58,16 @@ const LessonListPage = () => {
 	const [searchText, setSearchText] = useState('');
 	const [searchTimeout, setSearchTimeout] = useState(null);
 	const [chapterInfo, setChapterInfo] = useState(null);
+	const [selectedRowKeys, setSelectedRowKeys] = useState([]);
+	const [totalElements, setTotalElements] = useState(0);
+	const [isInitialLoading, setIsInitialLoading] = useState(true);
 
 	// Modal states
 	const [isDeleteModalVisible, setIsDeleteModalVisible] = useState(false);
+	const [isBulkDeleteModalVisible, setIsBulkDeleteModalVisible] = useState(false);
+	const [isFormModalVisible, setIsFormModalVisible] = useState(false);
 	const [deleteLesson, setDeleteLesson] = useState(null);
+	const [editingLesson, setEditingLesson] = useState(null);
 	const [importModal, setImportModal] = useState({
 		visible: false,
 		fileList: [],
@@ -117,8 +126,15 @@ const LessonListPage = () => {
 	}, [chapterId, syllabusId]);
 
 	useEffect(() => {
-		fetchLessons(1, pagination.pageSize, searchText);
-		fetchChapterInfo();
+		const fetchData = async () => {
+			setIsInitialLoading(true);
+			await Promise.all([
+				fetchLessons(1, pagination.pageSize, searchText),
+				fetchChapterInfo()
+			]);
+			setIsInitialLoading(false);
+		};
+		fetchData();
 	}, [fetchLessons, fetchChapterInfo, searchText, pagination.pageSize]);
 
 	// Update pagination when Redux state changes
@@ -128,6 +144,7 @@ const LessonListPage = () => {
 				...prev,
 				total: lessonsPagination.totalElements || 0,
 			}));
+			setTotalElements(lessonsPagination.totalElements || 0);
 		}
 	}, [lessonsPagination]);
 
@@ -141,11 +158,13 @@ const LessonListPage = () => {
 	}, [searchTimeout]);
 
 	const handleAdd = () => {
-		navigate(`/manager/syllabuses/${syllabusId}/chapters/${chapterId}/lessons/form`);
+		setEditingLesson(null);
+		setIsFormModalVisible(true);
 	};
 
 	const handleEdit = (lesson) => {
-		navigate(`/manager/syllabuses/${syllabusId}/chapters/${chapterId}/lessons/${lesson.id}/edit`);
+		setEditingLesson(lesson);
+		setIsFormModalVisible(true);
 	};
 
 	const handleDeleteClick = (lesson) => {
@@ -204,6 +223,110 @@ const LessonListPage = () => {
 
 	const handleTableChange = (pagination) => {
 		fetchLessons(pagination.current, pagination.pageSize, searchText);
+	};
+
+	// Checkbox logic
+	const handleSelectAll = async (checked) => {
+		if (checked) {
+			try {
+				// Fetch all lesson IDs from API (without pagination)
+				const params = {
+					page: 0,
+					size: totalElements, // Get all items
+				};
+				
+				// Add search parameter if provided
+				if (searchText && searchText.trim()) {
+					params.searchText = searchText.trim();
+				}
+
+				const response = await syllabusManagementApi.getLessonsByChapterId(chapterId, params);
+
+				// Get all IDs from the response
+				const allKeys = response.data.map(lesson => lesson.id);
+				setSelectedRowKeys(allKeys);
+			} catch (error) {
+				console.error('Error fetching all lesson IDs:', error);
+				message.error('Error selecting all items');
+			}
+		} else {
+			setSelectedRowKeys([]);
+		}
+	};
+
+	const handleSelectRow = (record, checked) => {
+		if (checked) {
+			setSelectedRowKeys(prev => [...prev, record.id]);
+		} else {
+			setSelectedRowKeys(prev => prev.filter(key => key !== record.id));
+		}
+	};
+
+	// Bulk actions
+	const handleBulkDelete = () => {
+		if (selectedRowKeys.length === 0) {
+			message.warning(t('lessonManagement.selectItemsToDelete'));
+			return;
+		}
+		setIsBulkDeleteModalVisible(true);
+	};
+
+	const handleBulkExport = () => {
+		if (selectedRowKeys.length === 0) {
+			message.warning(t('lessonManagement.selectItemsToExport'));
+			return;
+		}
+		// TODO: Implement bulk export functionality
+		message.success(t('lessonManagement.bulkExportSuccess'));
+	};
+
+	const handleBulkDeleteConfirm = async () => {
+		try {
+			// TODO: Implement bulk delete API call
+			// await syllabusManagementApi.bulkDeleteLessons(selectedRowKeys);
+			
+			// Update local state
+			setSelectedRowKeys([]);
+			
+			message.success(t('lessonManagement.bulkDeleteSuccess'));
+			setIsBulkDeleteModalVisible(false);
+			
+			// Refresh the lesson list
+			fetchLessons(pagination.current, pagination.pageSize, searchText);
+		} catch (error) {
+			console.error('Error bulk deleting lessons:', error);
+			message.error(t('lessonManagement.bulkDeleteError'));
+		}
+	};
+
+	const handleBulkDeleteModalClose = () => {
+		setIsBulkDeleteModalVisible(false);
+	};
+
+	const handleFormModalClose = () => {
+		setIsFormModalVisible(false);
+		setEditingLesson(null);
+	};
+
+	const handleFormSubmit = async (success, lessonData) => {
+		if (success) {
+			// TODO: Implement API call to save lesson
+			// if (editingLesson) {
+			//     await syllabusManagementApi.updateLesson(editingLesson.id, lessonData);
+			// } else {
+			//     await syllabusManagementApi.createLesson(lessonData);
+			// }
+			
+			// Refresh the lesson list
+			fetchLessons(pagination.current, pagination.pageSize, searchText);
+		}
+		// Always close modal regardless of success or cancel
+		handleFormModalClose();
+	};
+
+	const handleExport = () => {
+		// TODO: Implement export functionality
+		message.success(t('lessonManagement.exportSuccess'));
 	};
 
 	const handleImportLesson = () => {
@@ -399,26 +522,73 @@ const LessonListPage = () => {
 	// Use Redux state for lessons data
 	const filteredLessons = lessons;
 
+	// Calculate checkbox states with useMemo
+	const checkboxStates = useMemo(() => {
+		const totalItems = totalElements; // Sử dụng totalElements thay vì lessons.length
+		const selectedCount = selectedRowKeys.length;
+		const isSelectAll = selectedCount === totalItems && totalItems > 0;
+		const isIndeterminate = false; // Không bao giờ hiển thị indeterminate
+
+		console.log('Checkbox Debug:', {
+			totalItems,
+			selectedCount,
+			selectedRowKeys,
+			isSelectAll,
+			isIndeterminate,
+		});
+
+		return { isSelectAll, isIndeterminate, totalItems, selectedCount };
+	}, [selectedRowKeys, totalElements]);
+
 	const columns = [
 		{
-			title: 'No',
+			title: (
+				<Checkbox
+					key={`select-all-${checkboxStates.selectedCount}-${checkboxStates.totalItems}`}
+					checked={checkboxStates.isSelectAll}
+					indeterminate={checkboxStates.isIndeterminate}
+					onChange={(e) => handleSelectAll(e.target.checked)}
+					style={{
+						transform: 'scale(1.2)',
+						marginRight: '8px'
+					}}
+				/>
+			),
+			key: 'selection',
+			width: '5%',
+			render: (_, record) => (
+				<Checkbox
+					checked={selectedRowKeys.includes(record.id)}
+					onChange={(e) => handleSelectRow(record, e.target.checked)}
+					style={{
+						transform: 'scale(1.2)'
+					}}
+				/>
+			),
+		},
+		{
+			title: 'STT',
 			key: 'index',
 			width: '10%',
 			render: (_, __, index) => {
 				// Calculate index based on current page and page size
 				const currentPage = pagination.current || 1;
 				const pageSize = pagination.pageSize || 10;
-				return (currentPage - 1) * pageSize + index + 1;
+				return (
+					<span style={{ fontSize: '20px' }}>
+						{(currentPage - 1) * pageSize + index + 1}
+					</span>
+				);
 			},
 		},
 		{
 			title: t('lessonManagement.lessonName'),
 			dataIndex: 'name',
 			key: 'name',
-			width: '30%',
+			width: '20%',
 			sorter: (a, b) => a.name.localeCompare(b.name),
 			render: (text) => (
-				<div style={{ fontWeight: 'bold', fontSize: '16px' }}>
+				<div style={{ fontSize: '20px' }}>
 					{text}
 				</div>
 			),
@@ -427,10 +597,10 @@ const LessonListPage = () => {
 			title: t('lessonManagement.content'),
 			dataIndex: 'content',
 			key: 'content',
-			width: '35%',
+			width: '45%',
 			render: (content) => (
 				<div style={{ 
-					maxWidth: '300px',
+					maxWidth: '400px',
 					overflow: 'hidden',
 					textOverflow: 'ellipsis',
 					whiteSpace: 'nowrap'
@@ -440,38 +610,16 @@ const LessonListPage = () => {
 			),
 		},
 		{
-			title: t('lessonManagement.createdBy'),
-			dataIndex: 'createdBy',
-			key: 'createdBy',
-			width: '15%',
-			render: (createdBy) => (
-				<div style={{ fontWeight: '500' }}>
-					{createdBy || 'N/A'}
-				</div>
-			),
-		},
-		{
-			title: t('lessonManagement.createdAt'),
-			dataIndex: 'createdAt',
-			key: 'createdAt',
-			width: '15%',
-			render: (date) => (
-				<div>
-					{new Date(date).toLocaleDateString()}
-				</div>
-			),
-		},
-		{
 			title: t('lessonManagement.actions'),
 			key: 'actions',
-			width: '10%',
+			width: '20%',
 			render: (_, record) => (
 				<Space size="small">
 					<Tooltip title={t('common.edit')}>
 						<Button
 							type="text"
 							size="small"
-							icon={<EditOutlined style={{ fontSize: '20px' }} />}
+							icon={<EditOutlined style={{ fontSize: '25px' }} />}
 							onClick={() => handleEdit(record)}
 						/>
 					</Tooltip>
@@ -479,7 +627,7 @@ const LessonListPage = () => {
 						<Button
 							type="text"
 							size="small"
-							icon={<DeleteOutlined style={{ fontSize: '20px' }} />}
+							icon={<DeleteOutlined style={{ fontSize: '25px' }} />}
 							onClick={() => handleDeleteClick(record)}
 						/>
 					</Tooltip>
@@ -488,18 +636,19 @@ const LessonListPage = () => {
 		},
 	];
 
-	if (!chapterInfo) {
+	if (!chapterInfo || isInitialLoading) {
 		return (
 			<ThemedLayout>
-				<div className="lesson-list-container">
-					<Card>
-						<div style={{ textAlign: 'center', padding: '50px' }}>
-							<h3>{t('lessonManagement.chapterNotFound')}</h3>
-							<Button type="primary" onClick={handleBackToChapters}>
-								{t('lessonManagement.backToChapters')}
-							</Button>
-						</div>
-					</Card>
+				{/* Main Content Panel */}
+				<div className={`main-content-panel ${theme}-main-panel`}>
+					<div style={{ textAlign: 'center', padding: '50px' }}>
+						<LoadingWithEffect
+							loading={true}
+							message={t('common.loading')}
+						>
+							<div></div>
+						</LoadingWithEffect>
+					</div>
 				</div>
 			</ThemedLayout>
 		);
@@ -507,41 +656,31 @@ const LessonListPage = () => {
 
 	return (
 		<ThemedLayout>
-			<div className="lesson-list-container">
-				{/* Main Container Card */}
-				<Card className="main-container-card">
-					{/* Back Button */}
-					<div style={{ marginBottom: '16px' }}>
-						<Button 
-							type="text" 
-							icon={<ArrowLeftOutlined />}
-							onClick={handleBackToChapters}
-							style={{ padding: '4px 8px' }}
-						>
-							{t('common.back')}
-						</Button>
-					</div>
+			{/* Main Content Panel */}
+			<div className={`main-content-panel ${theme}-main-panel`}>
+				{/* Page Title */}
+				<div className="page-title-container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
+					<Button 
+						icon={<ArrowLeftOutlined />}
+						onClick={handleBackToChapters}
+						className={`back-button ${theme}-back-button`}
+					>
+						{t('common.back')}
+					</Button>
+					<Typography.Title 
+						level={1} 
+						className="page-title"
+						style={{ margin: 0, flex: 1, textAlign: 'center' }}
+					>
+						{t('lessonManagement.title')} - {chapterInfo.name} <span className="student-count">({totalElements})</span>
+					</Typography.Title>
+					<div style={{ width: '100px' }}></div> {/* Spacer để cân bằng layout */}
+				</div>
 
-					{/* Header */}
-					<div style={{ marginBottom: '24px' }}>
-						<h2 
-							style={{ 
-								margin: 0, 
-								fontSize: '24px', 
-								fontWeight: 'bold',
-								color: theme === 'space' ? '#ffffff' : '#000000'
-							}}
-						>
-							<PlayCircleOutlined style={{ marginRight: '8px' }} />
-							{t('lessonManagement.title')} - {chapterInfo.name}
-						</h2>
-					</div>
-
-					
-
-					{/* Action Bar */}
-					<Row gutter={16} align="middle" style={{ marginBottom: '16px' }}>
-						<Col flex="auto">
+				{/* Action Bar */}
+				<Row gutter={16} align="middle" style={{ marginBottom: '16px' }}>
+					<Col flex="auto">
+						<Space size="middle">
 							<Input
 								prefix={<SearchOutlined />}
 								value={searchText}
@@ -550,313 +689,367 @@ const LessonListPage = () => {
 								style={{ minWidth: '350px', maxWidth: '500px', height: '40px', fontSize: '16px' }}
 								allowClear
 							/>
-						</Col>
+						</Space>
+					</Col>
+					<Col>
+						<Space>
+							<Button
+								icon={<UploadOutlined />}
+								className={`export-button ${theme}-export-button`}
+								onClick={handleExport}
+							>
+								{t('lessonManagement.exportData')}
+							</Button>
+							<Button
+								icon={<DownloadOutlined />}
+								className={`import-button ${theme}-import-button`}
+								onClick={handleImportLesson}
+							>
+								{t('lessonManagement.importLessons')}
+							</Button>
+							<Button
+								icon={<DragOutlined />}
+								onClick={handleEditOrder}
+								className="create-button"
+							>
+								{t('common.edit')}
+							</Button>
+							<Button
+								icon={<PlusOutlined />}
+								className="create-button"
+								onClick={handleAdd}
+							>
+								{t('lessonManagement.addLesson')}
+							</Button>
+						</Space>
+					</Col>
+				</Row>
+
+				{/* Bulk Actions Row */}
+				{selectedRowKeys.length > 0 && (
+					<Row justify="end" style={{ marginBottom: '16px' }}>
 						<Col>
 							<Space>
 								<Button
-									icon={<ReloadOutlined />}
-									className={`refresh-button ${theme}-refresh-button`}
-									onClick={handleRefresh}
-									loading={loading}
+									icon={<DeleteOutlined />}
+									onClick={handleBulkDelete}
+									className="bulk-delete-button"
 								>
-									{t('lessonManagement.refresh')}
+									{t('lessonManagement.bulkDelete')} ({selectedRowKeys.length})
 								</Button>
 								<Button
-									icon={<DownloadOutlined />}
-									className="import-button"
-									onClick={handleImportLesson}
+									icon={<UploadOutlined />}
+									onClick={handleBulkExport}
+									className="bulk-export-button"
 								>
-									{t('lessonManagement.importLessons')}
-								</Button>
-								<Button
-									icon={<SwapOutlined rotate={90} />}
-									onClick={handleEditOrder}
-									style={{
-										background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-										color: '#ffffff',
-										border: 'none',
-										fontWeight: 500,
-									}}
-								>
-									{t('lessonManagement.editOrder')}
-								</Button>
-								<Button
-									icon={<PlusOutlined />}
-									className="create-button"
-									onClick={handleAdd}
-								>
-									{t('lessonManagement.addLesson')}
+									{t('lessonManagement.bulkExport')} ({selectedRowKeys.length})
 								</Button>
 							</Space>
 						</Col>
 					</Row>
+				)}
 
-					{/* Table Card */}
-					<Card className="table-card">
-						<Table
-							columns={columns}
-							dataSource={filteredLessons}
-							rowKey="id"
-							loading={loading}
-							pagination={{
-								...pagination,
-								showQuickJumper: true,
-								showTotal: (total, range) => {
-									return `${range[0]}-${range[1]} ${t('lessonManagement.paginationText')} ${total} ${t('lessonManagement.lessons')}`;
-								},
-							}}
-							onChange={handleTableChange}
-							scroll={{ x: 1000 }}
-						/>
-					</Card>
-				</Card>
+				{/* Table Section */}
+				<div className={`table-section ${theme}-table-section`}>
+					<Table
+						columns={columns}
+						dataSource={filteredLessons}
+						rowKey="id"
+						loading={loading}
+						pagination={{
+							...pagination,
+							showQuickJumper: true,
+							showTotal: (total, range) => {
+								return `${range[0]}-${range[1]} ${t('lessonManagement.paginationText')} ${total} ${t('lessonManagement.lessons')}`;
+							},
+						}}
+						onChange={handleTableChange}
+						scroll={{ x: 1000 }}
+					/>
+				</div>
+			</div>
 
-				{/* Delete Confirmation Modal */}
-				<Modal
-					title={t('lessonManagement.confirmDelete')}
-					open={isDeleteModalVisible}
-					onOk={handleDelete}
-					onCancel={handleDeleteModalClose}
-					okText={t('common.yes')}
-					cancelText={t('common.no')}
-					okButtonProps={{ danger: true }}>
-					<p>{t('lessonManagement.confirmDeleteMessage')}</p>
+			{/* Delete Confirmation Modal */}
+			<Modal
+				title={
+					<div style={{ 
+						fontSize: '20px', 
+						fontWeight: '600', 
+						color: '#1890ff',
+						textAlign: 'center',
+						padding: '10px 0'
+					}}>
+						{t('lessonManagement.confirmDelete')}
+					</div>
+				}
+				open={isDeleteModalVisible}
+				onOk={handleDelete}
+				onCancel={handleDeleteModalClose}
+				okText={t('common.confirm')}
+				cancelText={t('common.cancel')}
+				width={500}
+				centered
+				bodyStyle={{
+					padding: '30px 40px',
+					fontSize: '16px',
+					lineHeight: '1.6',
+					textAlign: 'center'
+				}}
+				okButtonProps={{
+					style: {
+						backgroundColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
+						background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
+						borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'transparent',
+						color: theme === 'sun' ? '#000000' : '#ffffff',
+						height: '40px',
+						fontSize: '16px',
+						fontWeight: '500',
+						minWidth: '100px'
+					}
+				}}
+				cancelButtonProps={{
+					style: {
+						height: '40px',
+						fontSize: '16px',
+						fontWeight: '500',
+						minWidth: '100px'
+					}
+				}}
+			>
+				<div style={{
+					display: 'flex',
+					flexDirection: 'column',
+					alignItems: 'center',
+					gap: '20px'
+				}}>
+					<div style={{
+						fontSize: '48px',
+						color: '#ff4d4f',
+						marginBottom: '10px'
+					}}>
+						⚠️
+					</div>
+					<p style={{
+						fontSize: '18px',
+						color: '#333',
+						margin: 0,
+						fontWeight: '500'
+					}}>
+						{t('lessonManagement.confirmDeleteMessage')}
+					</p>
 					{deleteLesson && (
-						<p>
+						<p style={{
+							fontSize: '20px',
+							color: '#1890ff',
+							margin: 0,
+							fontWeight: '600'
+						}}>
 							<strong>{deleteLesson.name}</strong>
 						</p>
 					)}
-				</Modal>
+				</div>
+			</Modal>
 
-				{/* Import Modal */}
-				<Modal
-					title={
-						<div
-							style={{
-								fontSize: '20px',
-								fontWeight: '600',
-								color: '#1890ff',
-								textAlign: 'center',
-								padding: '10px 0',
-								display: 'flex',
-								alignItems: 'center',
-								justifyContent: 'center',
-								gap: '10px',
-							}}>
-							<DownloadOutlined />
-							{t('lessonManagement.importLessons')}
-						</div>
-					}
-					open={importModal.visible}
-					onOk={handleImportOk}
-					onCancel={handleImportCancel}
-					okText={t('lessonManagement.import')}
-					cancelText={t('common.cancel')}
-					width={600}
-					centered
-					confirmLoading={importModal.uploading}
-					okButtonProps={{
-						disabled: importModal.fileList.length === 0 || importModal.uploading,
-						style: {
-							backgroundColor: '#52c41a',
-							borderColor: '#52c41a',
-							height: '40px',
-							fontSize: '16px',
-							fontWeight: '500',
-							minWidth: '120px',
-						},
-					}}
-					cancelButtonProps={{
-						style: {
-							height: '40px',
-							fontSize: '16px',
-							fontWeight: '500',
-							minWidth: '100px',
-						},
+			{/* Bulk Delete Confirmation Modal */}
+			<Modal
+				title={
+					<div style={{
+						fontSize: '20px',
+						fontWeight: '600',
+						color: '#1890ff',
+						textAlign: 'center',
+						padding: '10px 0'
 					}}>
-					<div style={{ padding: '20px 0' }}>
-						<Title
-							level={5}
-							style={{
-								textAlign: 'center',
-								marginBottom: '20px',
-								color: '#666',
-							}}>
-							{t('lessonManagement.importInstructions')}
-						</Title>
-
-						{/* Progress Bar */}
-						{importModal.uploading && (
-							<div style={{ marginBottom: '20px' }}>
-								<Progress 
-									percent={importModal.progress} 
-									status={importModal.progress === 100 ? 'success' : 'active'}
-									strokeColor={{
-										'0%': '#108ee9',
-										'100%': '#87d068',
-									}}
-								/>
-								<div style={{ textAlign: 'center', marginTop: '8px', color: '#666' }}>
-									{importModal.progress < 100 ? t('lessonManagement.uploading') : t('lessonManagement.processing')}
-								</div>
-							</div>
-						)}
-
-						{/* Error Display */}
-						{importModal.error && (
-							<div style={{ marginBottom: '20px' }}>
-								<Alert
-									message={t('lessonManagement.importError')}
-									description={importModal.error}
-									type="error"
-									showIcon
-									closable
-									onClose={() => setImportModal((prev) => ({ ...prev, error: null }))}
-								/>
-							</div>
-						)}
-
-						{/* Export Template Button */}
-						<div style={{ textAlign: 'center', marginBottom: '20px' }}>
-							<Button
-								icon={<DownloadOutlined />}
-								type="dashed"
-								onClick={handleExportTemplate}
-								style={{
-									borderColor: '#1890ff',
-									color: '#1890ff',
-									height: '40px',
-									fontSize: '16px',
-									fontWeight: '500',
-									padding: '0 20px',
-								}}>
-								{t('lessonManagement.exportTemplate')}
-							</Button>
-						</div>
-
-						<Dragger
-							multiple={false}
-							accept='.xlsx,.xls,.csv'
-							fileList={importModal.fileList}
-							onChange={({ fileList }) => {
-								// Limit to 1 file
-								const limitedFileList = fileList.slice(-1);
-								setImportModal((prev) => ({ ...prev, fileList: limitedFileList }));
-							}}
-							beforeUpload={(file) => {
-								// Validate file type
-								const allowedTypes = [
-									'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-									'application/vnd.ms-excel',
-									'text/csv',
-								];
-								
-								const isValidType = allowedTypes.includes(file.type) || 
-									file.name.match(/\.(xlsx|xls|csv)$/i);
-								
-								if (!isValidType) {
-									message.error(t('lessonManagement.invalidFileType'));
-									return false;
-								}
-								
-								// Validate file size (max 10MB)
-								const maxSize = 10 * 1024 * 1024;
-								if (file.size > maxSize) {
-									message.error(t('lessonManagement.fileTooLarge'));
-									return false;
-								}
-								
-								return false; // Prevent auto upload
-							}}
-							style={{
-								marginBottom: '20px',
-								border: '2px dashed #d9d9d9',
-								borderRadius: '8px',
-								background: '#fafafa',
-							}}>
-							<p
-								className='ant-upload-drag-icon'
-								style={{ fontSize: '48px', color: '#1890ff' }}>
-								<UploadOutlined />
-							</p>
-							<p
-								className='ant-upload-text'
-								style={{ fontSize: '16px', fontWeight: '500' }}>
-								{t('lessonManagement.clickOrDragFile')}
-							</p>
-							<p className='ant-upload-hint' style={{ color: '#999' }}>
-								{t('lessonManagement.supportedFormats')}: Excel (.xlsx, .xls), CSV (.csv)
-							</p>
-							<p className='ant-upload-hint' style={{ color: '#ff7875', fontSize: '12px' }}>
-								{t('lessonManagement.maxFileSize')}: 10MB
-							</p>
-						</Dragger>
-
-						<Divider />
-
-						<div
-							style={{
-								background: '#f6f8fa',
-								padding: '16px',
-								borderRadius: '8px',
-								border: '1px solid #e1e4e8',
-							}}>
-							<Title level={5} style={{ marginBottom: '12px', color: '#24292e' }}>
-								📋 {t('lessonManagement.fileFormat')}
-							</Title>
-							<Text
-								style={{ color: '#586069', fontSize: '14px', lineHeight: '1.6' }}>
-								{t('lessonManagement.fileFormatDescription')}
-							</Text>
-
-							<div
-								style={{ marginTop: '12px', fontSize: '13px', color: '#6a737d' }}>
-								<div>
-									<strong>{t('lessonManagement.requiredColumns')}:</strong>
-								</div>
-								<div>• name, description, duration, type</div>
-								<div>
-									<strong>{t('lessonManagement.optionalColumns')}:</strong>
-								</div>
-								<div>• order (thứ tự bài học)</div>
-								<div>• note (ghi chú)</div>
-							</div>
-						</div>
-
-						{importModal.fileList.length > 0 && (
-							<div
-								style={{
-									marginTop: '16px',
-									padding: '16px',
-									background: '#e6f7ff',
-									border: '1px solid #91d5ff',
-									borderRadius: '8px',
-								}}>
-								<div style={{ display: 'flex', alignItems: 'center', marginBottom: '8px' }}>
-									<Text style={{ color: '#1890ff', fontWeight: '600', fontSize: '16px' }}>
-										✅ {t('lessonManagement.fileSelected')}
-									</Text>
-								</div>
-								<div style={{ marginBottom: '8px' }}>
-									<Text style={{ color: '#1890ff', fontWeight: '500' }}>
-										📄 {importModal.fileList[0].name}
-									</Text>
-								</div>
-								<div style={{ fontSize: '12px', color: '#666' }}>
-									<Text>
-										📊 {t('lessonManagement.fileSize')}: {(importModal.fileList[0].size / 1024 / 1024).toFixed(2)} MB
-									</Text>
-								</div>
-								<div style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>
-									<Text>
-										📅 {t('lessonManagement.lastModified')}: {new Date(importModal.fileList[0].lastModified).toLocaleString()}
-									</Text>
-								</div>
-							</div>
-						)}
+						{t('lessonManagement.confirmBulkDelete')}
 					</div>
+				}
+				open={isBulkDeleteModalVisible}
+				onOk={handleBulkDeleteConfirm}
+				onCancel={handleBulkDeleteModalClose}
+				okText={t('common.confirm')}
+				cancelText={t('common.cancel')}
+				width={500}
+				centered
+				bodyStyle={{
+					padding: '30px 40px',
+					fontSize: '16px',
+					lineHeight: '1.6',
+					textAlign: 'center'
+				}}
+				okButtonProps={{
+					style: {
+						backgroundColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
+						background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
+						borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'transparent',
+						color: theme === 'sun' ? '#000000' : '#ffffff',
+						height: '40px',
+						fontSize: '16px',
+						fontWeight: '500',
+						minWidth: '100px'
+					}
+				}}
+				cancelButtonProps={{
+					style: {
+						height: '40px',
+						fontSize: '16px',
+						fontWeight: '500',
+						minWidth: '100px'
+					}
+				}}
+			>
+				<div style={{
+					display: 'flex',
+					flexDirection: 'column',
+					alignItems: 'center',
+					gap: '20px'
+				}}>
+					<div style={{
+						fontSize: '48px',
+						color: '#ff4d4f',
+						marginBottom: '10px'
+					}}>
+						⚠️
+					</div>
+					<p style={{
+						fontSize: '18px',
+						color: '#333',
+						margin: 0,
+						fontWeight: '500'
+					}}>
+						{t('lessonManagement.confirmBulkDeleteMessage')}
+					</p>
+					<div style={{
+						fontSize: '20px',
+						color: '#1890ff',
+						margin: 0,
+						fontWeight: '600'
+					}}>
+						<strong>{selectedRowKeys.length} {t('lessonManagement.lessons')}</strong>
+					</div>
+				</div>
+			</Modal>
+
+			{/* Lesson Form Modal */}
+			<Modal
+				title={
+					editingLesson
+						? t('lessonManagement.editLesson')
+						: t('lessonManagement.addLesson')
+				}
+				open={isFormModalVisible}
+				onCancel={handleFormModalClose}
+				footer={null}
+				width={600}
+				destroyOnClose
+				bodyStyle={{
+					padding: '30px 40px',
+					fontSize: '16px',
+					lineHeight: '1.6'
+				}}
+			>
+				<LessonForm
+					lesson={editingLesson}
+					chapter={chapterInfo}
+					onClose={handleFormSubmit}
+					theme={theme}
+				/>
+			</Modal>
+
+			{/* Import Modal */}
+			<Modal
+				title={
+					<div style={{
+						fontSize: '20px',
+						fontWeight: '600',
+						color: '#000000',
+						textAlign: 'center',
+						padding: '10px 0',
+						display: 'flex',
+						alignItems: 'center',
+						justifyContent: 'center',
+						gap: '10px',
+					}}>
+						<DownloadOutlined style={{ color: '#000000' }} />
+						{t('lessonManagement.importLessons')}
+					</div>
+				}
+				open={importModal.visible}
+				onOk={handleImportOk}
+				onCancel={handleImportCancel}
+				okText={t('lessonManagement.importLessons')}
+				cancelText={t('common.cancel')}
+				width={600}
+				centered
+				confirmLoading={importModal.uploading}
+				okButtonProps={{
+					style: {
+						backgroundColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
+						background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
+						borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'transparent',
+						color: theme === 'sun' ? '#000000' : '#ffffff',
+						height: '40px',
+						fontSize: '16px',
+						fontWeight: '500',
+						minWidth: '100px'
+					}
+				}}
+				cancelButtonProps={{
+					style: {
+						height: '40px',
+						fontSize: '16px',
+						fontWeight: '500',
+						minWidth: '100px'
+					}
+				}}
+				bodyStyle={{
+					padding: '30px 40px',
+					fontSize: '16px',
+					lineHeight: '1.6',
+					textAlign: 'center'
+				}}>
+				<div style={{ padding: '20px 0' }}>
+					<div style={{ textAlign: 'center', marginBottom: '20px' }}>
+						<Button
+							type="dashed"
+							icon={<DownloadOutlined />}
+							onClick={handleExportTemplate}
+							style={{
+								borderColor: '#1890ff',
+								color: '#1890ff',
+								height: '36px',
+								fontSize: '14px',
+								fontWeight: '500',
+								marginBottom: '20px'
+							}}>
+							{t('lessonManagement.exportTemplate')}
+						</Button>
+					</div>
+					
+					<div style={{
+						border: '2px dashed #d9d9d9',
+						borderRadius: '8px',
+						padding: '40px 20px',
+						backgroundColor: '#fafafa',
+						textAlign: 'center',
+					}}>
+						<p
+							className='ant-upload-drag-icon'
+							style={{ fontSize: '48px', color: '#1890ff' }}>
+							<DownloadOutlined />
+						</p>
+						<p
+							className='ant-upload-text'
+							style={{ fontSize: '16px', fontWeight: '500' }}>
+							{t('lessonManagement.clickOrDragFile')}
+						</p>
+						<p
+							className='ant-upload-hint'
+							style={{ fontSize: '14px', color: '#666', marginTop: '8px' }}>
+							{t('lessonManagement.supportedFormats')}
+						</p>
+					</div>
+				</div>
 				</Modal>
-			</div>
 		</ThemedLayout>
 	);
 };

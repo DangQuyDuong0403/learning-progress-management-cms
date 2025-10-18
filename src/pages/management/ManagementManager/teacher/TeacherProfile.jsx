@@ -179,12 +179,12 @@ const TeacherProfile = () => {
 
 	const classColumns = [
 		{
-			title: "Class Name",
+			title: t('teacherManagement.className'),
 			dataIndex: 'name',
 			key: 'name',
 		},
 		{
-			title: "Students",
+			title: t('teacherManagement.students'),
 			dataIndex: 'students',
 			key: 'students',
 			render: (students) => (
@@ -195,7 +195,7 @@ const TeacherProfile = () => {
 			),
 		},
 		{
-			title: "Start Date",
+			title: t('teacherManagement.startDate'),
 			dataIndex: 'startDate',
 			key: 'startDate',
 			render: (date) => (
@@ -206,12 +206,12 @@ const TeacherProfile = () => {
 			),
 		},
 		{
-			title: "Status",
+			title: t('teacherManagement.status'),
 			dataIndex: 'status',
 			key: 'status',
 			render: (status) => (
 				<Tag color={status === 'active' ? 'green' : 'red'}>
-					{status === 'active' ? 'Active' : 'Inactive'}
+					{status === 'active' ? t('teacherManagement.active') : t('teacherManagement.inactive')}
 				</Tag>
 			),
 		},

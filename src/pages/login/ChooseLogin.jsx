@@ -34,7 +34,7 @@ export default function ChooseLogin() {
         </div>
         
 
-        <div className="container">
+        <div className="container" style={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
           <h1 className="page-title" style={{
             fontSize: 40,
             fontWeight: 700,
@@ -42,7 +42,8 @@ export default function ChooseLogin() {
             textAlign: 'center',
             marginBottom: 16,
             letterSpacing: 0.5,
-            textShadow: isSunTheme ? 'none' : '0 0 20px rgba(77, 208, 255, 0.5)'
+            textShadow: isSunTheme ? 'none' : '0 0 20px rgba(77, 208, 255, 0.5)',
+            width: '100%'
           }}>
             {t('login.chooseRole')}
           </h1>      

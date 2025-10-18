@@ -117,8 +117,8 @@ const authApi = {
 		// Chuẩn bị request body theo API documentation
 		const requestBody = {
 			newEmail: data.email,
-			domain: process.env.REACT_APP_DOMAIN,
-			// domain:'http://localhost:3000',
+			//domain: process.env.REACT_APP_DOMAIN,
+			 domain:'http://localhost:3000',
 			path: '/confirm-email-change'
 		};
 		
