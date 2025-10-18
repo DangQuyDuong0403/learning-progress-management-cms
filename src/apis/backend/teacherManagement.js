@@ -218,6 +218,29 @@ const teacherManagementApi = {
 			throw error;
 		});
 	},
+
+	// Upload avatar for teacher
+	uploadTeacherAvatar: (userId, file) => {
+		const formData = new FormData();
+		formData.append('file', file);
+		
+		const url = `/user/profile/${userId}/avatar`;
+		console.log('UploadTeacherAvatar API - URL:', url);
+		console.log('UploadTeacherAvatar API - UserId:', userId);
+		console.log('UploadTeacherAvatar API - File:', file);
+		
+		return axiosClient.patch(url, formData, {
+			headers: {
+				'Content-Type': 'multipart/form-data',
+				'accept': '*/*',
+			}
+		}).catch(error => {
+			console.error('UploadTeacherAvatar API Error:', error);
+			console.error('Error response:', error.response?.data);
+			console.error('Error status:', error.response?.status);
+			throw error;
+		});
+	},
 };
 
 export default teacherManagementApi;

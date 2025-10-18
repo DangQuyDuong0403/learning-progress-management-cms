@@ -1,16 +1,12 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Table, Button, Space, Modal, Input, Tag, Tooltip, Typography, Switch, Upload, Divider } from 'antd';
+import { Table, Button, Space, Modal, Input, Tooltip, Typography, Switch, Upload, Divider } from 'antd';
 import {
 	PlusOutlined,
 	SearchOutlined,
-	ReloadOutlined,
 	EyeOutlined,
 	DownloadOutlined,
 	UploadOutlined,
-	CheckOutlined,
-	StopOutlined,
 	FilterOutlined,
-	InboxOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -239,7 +235,7 @@ const TeacherList = () => {
 				} catch (error) {
 					console.error('Error updating teacher status:', error);
 					setConfirmModal({ visible: false, title: '', content: '', onConfirm: null });
-					spaceToast.error(error.response?.data?.message || error.message || t('teacherManagement.updateStatusError'));
+					spaceToast.error(error.response?.data?.error || error.message || t('teacherManagement.updateStatusError'));
 				}
 			}
 		});
@@ -278,45 +274,53 @@ const TeacherList = () => {
 
 	// Handle table change (pagination, sorting, filtering)
 	const handleTableChange = (pagination, filters, sorter) => {
-		console.log('Table change:', { pagination, filters, sorter });
+		console.log('handleTableChange called:', { pagination, filters, sorter });
+		console.log('Current sortBy:', sortBy, 'Current sortDir:', sortDir);
 		
 		// Handle sorting
 		if (sorter && sorter.field) {
-			let newSortBy = sorter.field;
-			let newSortDir = 'asc'; // Default to asc for first click
+			// Map frontend field names to backend field names
+			const fieldMapping = {
+				'firstName': 'firstName', // Keep original field name
+				'createdAt': 'createdAt'
+			};
 			
-			// Determine sort direction
-			if (sorter.order === 'ascend') {
+			const backendField = fieldMapping[sorter.field] || sorter.field;
+			
+			// Handle sorting direction - force toggle if same field
+			let newSortDir;
+			if (backendField === sortBy) {
+				// Same field - toggle direction
+				newSortDir = sortDir === 'asc' ? 'desc' : 'asc';
+				console.log('Same field clicked, toggling from', sortDir, 'to', newSortDir);
+			} else {
+				// Different field - start with asc
 				newSortDir = 'asc';
-			} else if (sorter.order === 'descend') {
-				newSortDir = 'desc';
-			} else if (sorter.order === undefined) {
-				// First click on column - start with asc
-				newSortDir = 'asc';
+				console.log('Different field clicked, starting with asc');
 			}
-			
-			// Map column field to API field
-			if (sorter.field === 'firstName') {
-				newSortBy = 'firstName'; // Sort by firstName for Full Name column
-			} else if (sorter.field === 'status') {
-				newSortBy = 'status'; // Sort by status
-			}
-			
-			console.log('Setting sort:', { newSortBy, newSortDir });
-			setSortBy(newSortBy);
+
+			console.log('Sorting:', {
+				frontendField: sorter.field,
+				backendField: backendField,
+				direction: newSortDir,
+				order: sorter.order
+			});
+
+			// Update state - useEffect will handle the API call
+			setSortBy(backendField);
 			setSortDir(newSortDir);
-			
-			// Fetch data with new sorting
-			fetchTeachers(pagination.current, pagination.pageSize, searchText, statusFilter, roleNameFilter, newSortBy, newSortDir);
 		} else {
 			// Handle pagination without sorting change
-			fetchTeachers(pagination.current, pagination.pageSize, searchText, statusFilter, roleNameFilter, sortBy, sortDir);
+			console.log('Pagination only, no sorting change');
+			// Update pagination state - useEffect will handle the API call
+			setPagination(prev => ({
+				...prev,
+				current: pagination.current,
+				pageSize: pagination.pageSize,
+			}));
 		}
 	};
 
-	const handleRefresh = () => {
-		fetchTeachers(pagination.current, pagination.pageSize, searchText, statusFilter, roleNameFilter, sortBy, sortDir);
-	};
 
 	const handleExport = () => {
 		// TODO: Implement export functionality
@@ -363,7 +367,7 @@ const TeacherList = () => {
 			}
 		} catch (error) {
 			console.error('Error importing teachers:', error);
-			spaceToast.error(error.response?.data?.error || error.response?.data?.message || error.message || t('teacherManagement.importError'));
+			spaceToast.error(error.response?.data?.error || error.message || t('teacherManagement.importError'));
 			setImportModal((prev) => ({ ...prev, uploading: false }));
 		}
 	};
@@ -429,7 +433,7 @@ const TeacherList = () => {
 			spaceToast.success('Template downloaded successfully');
 		} catch (error) {
 			console.error('Error downloading template:', error);
-			spaceToast.error(error.response?.data?.error || error.response?.data?.message || error.message || 'Failed to download template');
+			spaceToast.error(error.response?.data?.error || error.message || 'Failed to download template');
 		}
 	};
 
@@ -539,8 +543,6 @@ const TeacherList = () => {
 			key: "status",
 			width: 80,
 			align: 'center',
-			sorter: true,
-			sortDirections: ['ascend', 'descend'],
 			render: (status, record) => {
 				if (status === 'PENDING') {
 					return <span style={{ color: '#000' }}>{t('teacherManagement.pending')}</span>;
@@ -750,7 +752,6 @@ const TeacherList = () => {
 							sortDirections={['ascend', 'descend']}
 							defaultSortOrder={
 								sortBy === 'firstName' ? (sortDir === 'asc' ? 'ascend' : 'descend') :
-								sortBy === 'status' ? (sortDir === 'asc' ? 'ascend' : 'descend') :
 								null
 							}
 						/>

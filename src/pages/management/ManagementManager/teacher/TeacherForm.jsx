@@ -72,7 +72,7 @@ const TeacherForm = ({ teacher, onClose, onSuccess }) => {
 			}
 		} catch (error) {
 			console.error('Error saving teacher:', error);
-			const errorMessage = error.response?.data?.message || error.message || t('teacherManagement.saveTeacherError');
+			const errorMessage = error.response?.data?.error || error.message || t('teacherManagement.saveTeacherError');
 			spaceToast.error(errorMessage);
 		} finally {
 			setLoading(false);
