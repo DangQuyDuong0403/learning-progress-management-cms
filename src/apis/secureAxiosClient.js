@@ -165,8 +165,10 @@ axiosClient.interceptors.response.use(
 				// Xử lý queue với error
 				processQueue(refreshError, null);
 				
-				// Redirect về login
-				window.location.href = '/choose-login';
+				// Chỉ redirect nếu không phải đang ở trang login
+				if (!window.location.pathname.includes('/login')) {
+					window.location.href = '/choose-login';
+				}
 				
 				return Promise.reject(refreshError);
 			} finally {

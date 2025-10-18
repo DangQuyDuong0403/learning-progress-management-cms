@@ -47,6 +47,7 @@ const AccountList = () => {
 	const [accounts, setAccounts] = useState([]);
 	const [totalElements, setTotalElements] = useState(0);
 	const [searchText, setSearchText] = useState('');
+	const [searchValue, setSearchValue] = useState(''); // Actual search value used for API calls
 	const [statusFilter, setStatusFilter] = useState([]);
 	const [roleFilter, setRoleFilter] = useState([]);
 	const [searchTimeout, setSearchTimeout] = useState(null);
@@ -166,11 +167,12 @@ const AccountList = () => {
 		[t]
 	);
 
+	// Initial load effect - only runs on mount and when non-search dependencies change
 	useEffect(() => {
 		fetchAccounts(
 			currentPage,
 			pageSize,
-			searchText,
+			searchValue,
 			roleFilter,
 			statusFilter,
 			sortBy,
@@ -178,7 +180,7 @@ const AccountList = () => {
 		);
 	}, [
 		fetchAccounts,
-		searchText,
+		searchValue,
 		roleFilter,
 		statusFilter,
 		sortBy,
@@ -231,17 +233,14 @@ const AccountList = () => {
 
 		// Set new timeout for 2 second delay
 		const newTimeout = setTimeout(() => {
+			// Update searchValue which will trigger useEffect
+			setSearchValue(value);
 			// Reset to first page when searching
-			fetchAccounts(
-				1,
-				pagination.pageSize,
-				value,
-				roleFilter,
-				statusFilter,
-				sortBy,
-				sortDir
-			);
-		}, 2000);
+			setPagination(prev => ({
+				...prev,
+				current: 1,
+			}));
+		}, 1000);
 
 		setSearchTimeout(newTimeout);
 	};
@@ -481,7 +480,7 @@ const AccountList = () => {
 				fetchAccounts(
 					pagination.current,
 					pagination.pageSize,
-					searchText,
+					searchValue,
 					roleFilter,
 					statusFilter,
 					sortBy,
@@ -508,7 +507,7 @@ const AccountList = () => {
 				fetchAccounts(
 					pagination.current,
 					pagination.pageSize,
-					searchText,
+					searchValue,
 					roleFilter,
 					statusFilter,
 					sortBy,

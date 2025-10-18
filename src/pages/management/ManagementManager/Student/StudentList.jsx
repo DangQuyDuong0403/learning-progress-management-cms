@@ -712,34 +712,25 @@ const StudentList = () => {
       
       const response = await studentManagementApi.downloadStudentTemplate();
       
-      // Create blob from response data
-      const blob = new Blob([response.data], { 
-        type: response.headers['content-type'] || 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-      });
-      
-      // Extract filename from response headers or use default
-      const contentDisposition = response.headers['content-disposition'];
-      let filename = 'student_import_template.xlsx';
-      
-      if (contentDisposition) {
-        const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
-        if (filenameMatch && filenameMatch[1]) {
-          filename = filenameMatch[1].replace(/['"]/g, '');
-        }
+      // API returns SAS URL, extract it from response
+      let downloadUrl;
+      if (typeof response.data === 'string') {
+        downloadUrl = response.data;
+      } else if (response.data && response.data.url) {
+        downloadUrl = response.data.url;
+      } else {
+        throw new Error('No download URL received from server');
       }
       
-      // Create download link
+      // Create download link directly from SAS URL
       const link = document.createElement('a');
-      const url = URL.createObjectURL(blob);
-      link.setAttribute('href', url);
-      link.setAttribute('download', filename);
+      link.setAttribute('href', downloadUrl);
+      link.setAttribute('download', 'student_import_template.xlsx');
+      link.setAttribute('target', '_blank');
       link.style.visibility = 'hidden';
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      
-      // Clean up the URL object
-      URL.revokeObjectURL(url);
       
       spaceToast.success('Template downloaded successfully');
     } catch (error) {
