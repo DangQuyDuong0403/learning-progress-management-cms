@@ -522,6 +522,8 @@
     "fileSelected": "File đã chọn",
     "downloadTemplate": "Tải mẫu",
     "templateDownloaded": "Tải xuống mẫu thành công",
+    "downloadingTemplate": "Đang tải mẫu...",
+    "downloadTemplateError": "Lỗi khi tải mẫu",
     "dateOfBirth": "Ngày sinh",
     "gender": "Giới tính",
     "profileImage": "Ảnh đại diện",

@@ -526,6 +526,8 @@
     "fileSelected": "File selected",
     "downloadTemplate": "Download Template",
     "templateDownloaded": "Template downloaded successfully",
+    "downloadingTemplate": "Downloading template...",
+    "downloadTemplateError": "Failed to download template",
     "dateOfBirth": "Date of Birth",
     "gender": "Gender",
     "profileImage": "Profile Image",

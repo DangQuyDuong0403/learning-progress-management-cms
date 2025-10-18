@@ -234,7 +234,7 @@ export default function Profile() {
                     <div className="form-group">
                       <label className={`form-label ${theme}-form-label`}>{t('common.username')}</label>
                       <div className={`form-display ${theme}-form-display`}>
-                        {profileData?.userName || "test1"}
+                        {profileData?.userName || ""}
                       </div>
                     </div>
 
@@ -243,13 +243,13 @@ export default function Profile() {
                       <div className="form-group" style={{ flex: 1 }}>
                         <label className={`form-label ${theme}-form-label`}>{t('common.lastName')}</label>
                         <div className={`form-display ${theme}-form-display`}>
-                          {profileData?.lastName || "Nguyen Duc"}
+                          {profileData?.lastName || ""}
                         </div>
                       </div>
                       <div className="form-group" style={{ flex: 1, marginLeft: '1rem' }}>
                         <label className={`form-label ${theme}-form-label`}>{t('common.firstName')}</label>
                         <div className={`form-display ${theme}-form-display`}>
-                          {profileData?.firstName || "Anh"}
+                          {profileData?.firstName || ""}
                         </div>
                       </div>
                     </div>
@@ -259,7 +259,7 @@ export default function Profile() {
                       <div className="form-group" style={{ flex: 1 }}>
                         <label className={`form-label ${theme}-form-label`}>{t('common.gender')}</label>
                         <div className={`form-display ${theme}-form-display`}>
-                          {profileData?.gender || "Male"}
+                          {profileData?.gender || ""}
                         </div>
                       </div>
                       <div className="form-group" style={{ flex: 1, marginLeft: '1rem' }}>
@@ -267,7 +267,7 @@ export default function Profile() {
                         <div className={`form-display ${theme}-form-display`}>
                           {profileData?.dateOfBirth 
                             ? new Date(profileData.dateOfBirth).toLocaleDateString()
-                            : "16/05/2003"
+                            : ""
                           }
                         </div>
                       </div>
@@ -298,7 +298,7 @@ export default function Profile() {
                   <div className="form-group">
                     <label className={`form-label ${theme}-form-label`}>{t('common.email')}</label>
                     <div className={`form-display ${theme}-form-display`}>
-                      {profileData?.email || "anhtony2003@gmail.com"}
+                      {profileData?.email}
                     </div>
                   </div>
 
@@ -306,7 +306,7 @@ export default function Profile() {
                   <div className="form-group">
                     <label className={`form-label ${theme}-form-label`}>{t('common.phoneNumber')}</label>
                     <div className={`form-display ${theme}-form-display`}>
-                      {profileData?.phoneNumber || "0987654321"}
+                      {profileData?.phoneNumber}
                     </div>
                   </div>
 
@@ -314,7 +314,7 @@ export default function Profile() {
                   <div className="form-group">
                     <label className={`form-label ${theme}-form-label`}>{t('common.address')}</label>
                     <div className={`form-display ${theme}-form-display`}>
-                      {profileData?.address || "fsd"}
+                      {profileData?.address}
                     </div>
                   </div>
                 </div>
