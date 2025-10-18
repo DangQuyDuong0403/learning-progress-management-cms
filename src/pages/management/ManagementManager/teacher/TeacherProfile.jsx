@@ -297,14 +297,15 @@ const TeacherProfile = () => {
 								{t('teacherManagement.editProfile')}
 							</Button>
 							<Button
-								type='default'
+								type='primary'
 								icon={<EditOutlined />}
 								onClick={handleEditEmail}
 								className={`edit-email-button ${theme}-edit-email-button`}
 								style={{
-									backgroundColor: theme === 'sun' ? 'rgba(113, 179, 253, 0.1)' : 'rgba(138, 122, 255, 0.1)',
-									borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'rgb(138, 122, 255)',
-									color: theme === 'sun' ? 'rgb(113, 179, 253)' : 'rgb(138, 122, 255)',
+									backgroundColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)',
+									background: theme === 'sun' ? 'linear-gradient(135deg, #66AEFF, #3C99FF)' : 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)',
+									borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'transparent',
+									color: theme === 'sun' ? '#000000' : '#000000',
 								}}>
 								{t('teacherManagement.editEmail')}
 							</Button>
