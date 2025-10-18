@@ -202,12 +202,6 @@ const LevelDragEdit = () => {
 	const [activeId, setActiveId] = useState(null);
 	const [isModalVisible, setIsModalVisible] = useState(false);
 	const [editingLevel, setEditingLevel] = useState(null);
-	const [confirmModal, setConfirmModal] = useState({
-		visible: false,
-		title: '',
-		content: '',
-		onConfirm: null,
-	});
 
 	// Optimized: Sử dụng passive events và giảm sensitivity
 	const sensors = useSensors(
@@ -261,7 +255,7 @@ const LevelDragEdit = () => {
 				levelName: level.levelName,
 				levelCode: level.levelCode,
 				estimatedDurationWeeks: level.estimatedDurationWeeks,
-				status: level.isActive ? 'active' : 'inactive',
+				status: level.status, // Use actual status from API
 				orderNumber: level.orderNumber,
 				description: level.description || '',
 				promotionCriteria: level.promotionCriteria || '',
@@ -270,6 +264,17 @@ const LevelDragEdit = () => {
 			}));
 
 			console.log('LevelDragEdit - All active levels fetched:', mappedLevels.length);
+			
+			// Check if all levels are published
+			const allPublished = mappedLevels.length > 0 && mappedLevels.every(level => level.status === 'PUBLISHED');
+			
+			if (allPublished) {
+				console.log('All levels are published, redirecting to LevelList...');
+				spaceToast.warning(t('levelManagement.allLevelsPublished'));
+				navigate(ROUTER_PAGE.MANAGER_LEVELS);
+				return;
+			}
+			
 			setLevels(mappedLevels);
 		} catch (error) {
 			console.error('Error fetching levels:', error);
@@ -284,7 +289,7 @@ const LevelDragEdit = () => {
 		} finally {
 			setLoading(false);
 		}
-	}, [t]);
+	}, [t, navigate]);
 
 	useEffect(() => {
 		fetchAllLevels();
@@ -347,70 +352,63 @@ const LevelDragEdit = () => {
 
 	const handleDeleteLevel = useCallback(
 		(index) => {
-			if (levels.length <= 1) {
-				message.warning(t('levelManagement.minLevelsRequired'));
+			const visibleLevels = levels.filter(level => !level.toBeDeleted);
+
+			// Get the actual level from visible levels using the index
+			const levelToDelete = visibleLevels[index];
+			if (!levelToDelete) {
+				console.error('Level not found at index:', index);
 				return;
 			}
 
-			const level = levels[index];
-			setConfirmModal({
-				visible: true,
-				title: t('levelManagement.deleteLevel'),
-				content: `${t('levelManagement.confirmDeleteLevel')} "${level.levelName}"?`,
-				onConfirm: async () => {
-					try {
-						// Delete from local state
-						setLevels((prev) => {
-							const newLevels = prev.filter((_, i) => i !== index);
-							return newLevels.map((level, i) => ({
-								...level,
-								position: i + 1,
-								orderNumber: i + 1,
-							}));
-						});
-
-						setConfirmModal({
-							visible: false,
-							title: '',
-							content: '',
-							onConfirm: null,
-						});
-
-						spaceToast.success(t('levelManagement.deleteLevelSuccess'));
-					} catch (error) {
-						console.error('Error deleting level:', error);
-						spaceToast.error(t('levelManagement.deleteLevelError'));
-						
-						setConfirmModal({
-							visible: false,
-							title: '',
-							content: '',
-							onConfirm: null,
-						});
+			// Set toBeDeleted: true but keep in state
+			setLevels((prev) => {
+				const newLevels = prev.map((level) => {
+					if (level.id === levelToDelete.id) {
+						return {
+							...level,
+							toBeDeleted: true
+						};
 					}
-				},
+					return level;
+				});
+				
+				// Recalculate positions only for visible items
+				const visibleItems = newLevels.filter(level => !level.toBeDeleted);
+				return newLevels.map((level) => {
+					if (level.toBeDeleted) {
+						return level; // Keep deleted items as-is
+					}
+					
+					// Update position for visible items
+					const visibleIndex = visibleItems.findIndex(item => item.id === level.id);
+					return {
+						...level,
+						position: visibleIndex + 1,
+						orderNumber: visibleIndex + 1,
+					};
+				});
 			});
+
+			spaceToast.success(t('levelManagement.deleteLevelSuccess'));
 		},
 		[levels, t]
 	);
 
 	const handleEditLevel = useCallback(
 		(index) => {
-			const level = levels[index];
+			const visibleLevels = levels.filter(level => !level.toBeDeleted);
+			const level = visibleLevels[index];
+			if (!level) {
+				console.error('Level not found at index:', index);
+				return;
+			}
 			setEditingLevel(level);
 			setIsModalVisible(true);
 		},
 		[levels]
 	);
 
-	const handleConfirmCancel = useCallback(() => {
-		setConfirmModal({
-			visible: false,
-			title: '',
-			content: '',
-			onConfirm: null,
-		});
-	}, []);
 
 	const handleDragStart = useCallback((event) => {
 		setActiveId(event.active.id);
@@ -450,7 +448,10 @@ const LevelDragEdit = () => {
 		}
 	}, []);
 
-	const levelIds = useMemo(() => levels.map((level) => level.id), [levels]);
+	const levelIds = useMemo(() => 
+		levels.filter(level => !level.toBeDeleted).map((level) => level.id), 
+		[levels]
+	);
 
 	const handleSave = useCallback(async () => {
 		const invalidLevels = levels.filter((level) => !level.levelName.trim());
@@ -475,15 +476,21 @@ const LevelDragEdit = () => {
 					estimatedDurationWeeks: level.estimatedDurationWeeks || 0,
 					orderNumber: level.position, // Position hiện tại = orderNumber
 					isActive: true, // Đảm bảo tất cả levels đều active
+					toBeDeleted: level.toBeDeleted || false, // Include toBeDeleted flag
 				};
 			});
 
 			console.log('LevelDragEdit - Sending bulk update data:', {
 				count: bulkUpdateData.length,
-				levels: bulkUpdateData.map(l => ({ id: l.id, levelName: l.levelName, orderNumber: l.orderNumber }))
+				levels: bulkUpdateData.map(l => ({ 
+					id: l.id, 
+					levelName: l.levelName, 
+					orderNumber: l.orderNumber,
+					toBeDeleted: l.toBeDeleted 
+				}))
 			});
 
-			// Gọi API bulk update (sẽ xử lý cả create và update)
+			// Gọi API bulk update (sẽ xử lý cả create, update và delete)
 			const response = await levelManagementApi.bulkUpdateLevels(bulkUpdateData);
 
 			// Use backend message if available, otherwise fallback to translation
@@ -510,7 +517,7 @@ const LevelDragEdit = () => {
 	}, [navigate]);
 
 	const activeLevelData = useMemo(
-		() => levels.find((level) => level.id === activeId),
+		() => levels.filter(level => !level.toBeDeleted).find((level) => level.id === activeId),
 		[activeId, levels]
 	);
 
@@ -590,7 +597,9 @@ const LevelDragEdit = () => {
 										<SortableContext
 											items={levelIds}
 											strategy={verticalListSortingStrategy}>
-											{levels.map((level, index) => (
+											{levels
+												.filter(level => !level.toBeDeleted)
+												.map((level, index) => (
 												<React.Fragment key={level.id}>
 													{index > 0 && (
 														<AddLevelButton
@@ -610,6 +619,51 @@ const LevelDragEdit = () => {
 													/>
 												</React.Fragment>
 											))}
+											
+											{/* Always show Add button at the end if there are levels */}
+											{levels.filter(level => !level.toBeDeleted).length > 0 && (
+												<AddLevelButton
+													theme={theme}
+													index={levels.filter(level => !level.toBeDeleted).length}
+													onAddAtPosition={handleAddLevelAtPosition}
+												/>
+											)}
+											
+											{/* Show fixed Add button when no levels exist */}
+											{levels.filter(level => !level.toBeDeleted).length === 0 && (
+												<div className={`add-level-empty ${theme}-add-level-empty`} style={{ 
+													marginTop: '40px', 
+													textAlign: 'center',
+													padding: '40px 20px'
+												}}>
+													<Button
+														type='primary'
+														icon={<PlusOutlined />}
+														size='large'
+														onClick={() => handleAddLevelAtPosition(0)}
+														style={{
+															height: '60px',
+															padding: '0 40px',
+															fontSize: '18px',
+															fontWeight: '600',
+															borderRadius: '12px',
+															background: theme === 'sun' ? '#298EFE' : 'linear-gradient(135deg, #7228d9 0%, #9c88ff 100%)',
+															borderColor: theme === 'sun' ? '#298EFE' : '#7228d9',
+															boxShadow: theme === 'sun' 
+																? '0 6px 20px rgba(41, 142, 254, 0.4)' 
+																: '0 6px 20px rgba(114, 40, 217, 0.4)',
+														}}
+													>
+														{t('levelManagement.addLevel')}
+													</Button>
+													<div style={{ 
+														marginTop: '16px', 
+														color: '#666', 
+														fontSize: '14px' 
+													}}>
+													</div>
+												</div>
+											)}
 										</SortableContext>
 
 										{/* Drag Overlay - offset lên trên 100px */}
@@ -730,117 +784,7 @@ const LevelDragEdit = () => {
 				bodyStyle={{
 					padding: '24px',
 				}}>
-				<LevelForm level={editingLevel} onClose={handleModalClose} shouldCallApi={false} />
-			</Modal>
-
-			{/* Confirmation Modal */}
-			<Modal
-				title={
-					<div
-						style={{
-							fontSize: '26px',
-							fontWeight: '600',
-							color: '#000000ff',
-							textAlign: 'center',
-							padding: '10px 0',
-						}}>
-						{confirmModal.title}
-					</div>
-				}
-				open={confirmModal.visible}
-				onCancel={handleConfirmCancel}
-				width={400}
-				centered
-				bodyStyle={{
-					padding: '24px 32px',
-					fontSize: '14px',
-					lineHeight: '1.6',
-					textAlign: 'center',
-				}}
-				footer={[
-					<Button 
-						key="cancel" 
-						onClick={handleConfirmCancel}
-						style={{
-							height: '28px',
-							fontWeight: '500',
-							fontSize: '13px',
-							padding: '4px 12px',
-							width: '80px'
-						}}>
-						{t('common.cancel')}
-					</Button>,
-					<Button 
-						key="confirm" 
-						type="primary" 
-						onClick={confirmModal.onConfirm}
-						style={{
-							background: theme === 'sun' ? '#298EFE' : 'linear-gradient(135deg, #7228d9 0%, #9c88ff 100%)',
-							borderColor: theme === 'sun' ? '#298EFE' : '#7228d9',
-							color: '#fff',
-							borderRadius: '5px',
-							height: '28px',
-							fontWeight: '500',
-							fontSize: '13px',
-							padding: '4px 12px',
-							width: '80px',
-							transition: 'all 0.3s ease',
-							boxShadow: 'none'
-						}}
-						onMouseEnter={(e) => {
-							if (theme === 'sun') {
-								e.target.style.background = '#1a7ce8';
-								e.target.style.borderColor = '#1a7ce8';
-								e.target.style.transform = 'translateY(-1px)';
-								e.target.style.boxShadow = '0 4px 12px rgba(41, 142, 254, 0.4)';
-							} else {
-								e.target.style.background = 'linear-gradient(135deg, #5a1fb8 0%, #8a7aff 100%)';
-								e.target.style.borderColor = '#5a1fb8';
-								e.target.style.transform = 'translateY(-1px)';
-								e.target.style.boxShadow = '0 4px 12px rgba(114, 40, 217, 0.4)';
-							}
-						}}
-						onMouseLeave={(e) => {
-							if (theme === 'sun') {
-								e.target.style.background = '#298EFE';
-								e.target.style.borderColor = '#298EFE';
-								e.target.style.transform = 'translateY(0)';
-								e.target.style.boxShadow = 'none';
-							} else {
-								e.target.style.background = 'linear-gradient(135deg, #7228d9 0%, #9c88ff 100%)';
-								e.target.style.borderColor = '#7228d9';
-								e.target.style.transform = 'translateY(0)';
-								e.target.style.boxShadow = 'none';
-							}
-						}}>
-						{t('common.confirm')}
-					</Button>
-				]}>
-				<div
-					style={{
-						display: 'flex',
-						flexDirection: 'column',
-						alignItems: 'center',
-						gap: '20px',
-					}}>
-					<div
-						style={{
-							fontSize: '48px',
-							color: '#ff4d4f',
-							marginBottom: '10px',
-						}}>
-						⚠️
-					</div>
-					<p
-						style={{
-							fontSize: '18px',
-							color: '#333',
-							margin: 0,
-							fontWeight: '500',
-						}}>
-						{confirmModal.content}
-					</p>
-				</div>
+				<LevelForm level={editingLevel} onClose={handleModalClose} shouldCallApi={false} showPrerequisiteAndCode={false} />
 			</Modal>
 		</ThemedLayout>
 	);

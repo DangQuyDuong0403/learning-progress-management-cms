@@ -89,6 +89,8 @@ const Settings = () => {
 			localStorage.removeItem('accessToken');
 			localStorage.removeItem('refreshToken');
 			localStorage.removeItem('user');
+			localStorage.removeItem('mustChangePassword');
+			localStorage.removeItem('mustUpdateProfile');
 			dispatch(logout());
 			
 			// Show message that user needs to login again and redirect

@@ -68,6 +68,8 @@ export default function ChangePassword() {
 			// Clear tokens from localStorage
 			localStorage.removeItem('accessToken');
 			localStorage.removeItem('refreshToken');
+			localStorage.removeItem('mustChangePassword');
+			localStorage.removeItem('mustUpdateProfile');
 
 			// Redirect to previous page after 2 seconds
 			setTimeout(() => {

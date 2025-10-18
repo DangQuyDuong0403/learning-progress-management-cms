@@ -1058,6 +1058,7 @@
     "levels": "levels",
     "days": "days",
     "weeks": "weeks",
+    "allLevelsPublished": "All levels are published, you cannot edit the positions",
     "months": "months",
     "publishAll": "Publish All",
     "draftAll": "Draft All",
