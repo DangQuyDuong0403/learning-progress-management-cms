@@ -408,6 +408,8 @@
   align-items: center;
   justify-content: center;
   transition: all 0.3s ease;
+  cursor: pointer;
+  position: relative;
 }
 
 .profile-picture-placeholder:hover {

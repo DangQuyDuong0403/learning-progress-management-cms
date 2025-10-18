@@ -8,6 +8,7 @@ const ROUTER_PAGE = {
 	FORGOT_PASSWORD_FAILURE: '/forgot-password-failure',
 	OTP_VERIFICATION: '/otp-verification',
 	RESET_PASSWORD: '/reset-password',
+	CONFIRM_EMAIL_CHANGE: '/confirm-email-change',
 	CHOOSE_LOGIN: '/choose-login',
 	LOGIN_TEACHER: '/login-teacher',
 	PROFILE : '/profile',
