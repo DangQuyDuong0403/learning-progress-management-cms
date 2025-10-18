@@ -66,8 +66,8 @@ export default function EditEmailModal({
         spaceToast.success('Email update request sent successfully!');
         // Không đóng modal ngay, hiển thị thông báo chờ xác nhận
         setShowConfirmationMessage(true);
-        // Gọi callback để update email trong parent component
-        onSuccess(values.email);
+        // KHÔNG gọi onSuccess ở đây vì email chưa được confirm
+        // Email sẽ chỉ được cập nhật sau khi user confirm từ email
       } else {
         spaceToast.error(response.message || 'Failed to update email');
       }

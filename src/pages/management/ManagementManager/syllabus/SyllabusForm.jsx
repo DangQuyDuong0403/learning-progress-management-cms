@@ -53,7 +53,14 @@ const SyllabusForm = ({ syllabus, onClose, onSuccess }) => {
 				console.log('Fetched levels:', levelsData);
 			} catch (error) {
 				console.error('Error fetching levels:', error);
-				message.error(t('levelManagement.loadLevelsError') || 'Failed to load levels');
+				
+				// Handle error message from backend
+				let errorMessage = error.response?.data?.error || 
+					error.response?.data?.message || 
+					error.message ||
+					t('levelManagement.loadLevelsError') || 'Failed to load levels';
+				
+				message.error(errorMessage);
 				setLevels([]); // Set empty array on error
 			} finally {
 				setLoading(false);
@@ -93,13 +100,14 @@ const SyllabusForm = ({ syllabus, onClose, onSuccess }) => {
 
 			console.log('Sending request body:', requestBody);
 
+			let response;
 			if (isEdit) {
-				await syllabusManagementApi.updateSyllabus(syllabus.id, requestBody);
-				message.success(t('syllabusManagement.updateSyllabusSuccess'));
+				response = await syllabusManagementApi.updateSyllabus(syllabus.id, requestBody);
 			} else {
-				await syllabusManagementApi.createSyllabus(requestBody);
-				message.success(t('syllabusManagement.addSyllabusSuccess'));
+				response = await syllabusManagementApi.createSyllabus(requestBody);
 			}
+			
+			// No success message - only show error messages from backend
 			
 			// Call onSuccess callback to refresh the list
 			if (onSuccess) {
@@ -109,11 +117,14 @@ const SyllabusForm = ({ syllabus, onClose, onSuccess }) => {
 			onClose();
 		} catch (error) {
 			console.error('Error saving syllabus:', error);
-			message.error(
-				isEdit
-					? t('syllabusManagement.updateSyllabusError')
-					: t('syllabusManagement.addSyllabusError')
-			);
+			
+			// Handle error message from backend
+			let errorMessage = error.response?.data?.error || 
+				error.response?.data?.message || 
+				error.message ||
+				(isEdit ? t('syllabusManagement.updateSyllabusError') : t('syllabusManagement.addSyllabusError'));
+			
+			message.error(errorMessage);
 		} finally {
 			setIsSubmitting(false);
 		}
@@ -140,7 +151,7 @@ const SyllabusForm = ({ syllabus, onClose, onSuccess }) => {
 				<Col span={12}>
 					<Form.Item
 						name="name"
-						label={t('syllabusManagement.syllabusName')}
+						label={<span>{t('syllabusManagement.syllabusName')} <span style={{ color: 'red' }}>*</span></span>}
 						rules={[
 							{
 								required: true,
@@ -161,7 +172,7 @@ const SyllabusForm = ({ syllabus, onClose, onSuccess }) => {
 				<Col span={12}>
 					<Form.Item
 						name="levelId"
-						label={t('syllabusManagement.level')}
+						label={<span>{t('syllabusManagement.level')} <span style={{ color: 'red' }}>*</span></span>}
 						rules={[
 							{
 								required: true,
@@ -189,16 +200,6 @@ const SyllabusForm = ({ syllabus, onClose, onSuccess }) => {
 			<Form.Item
 				name="description"
 				label={t('syllabusManagement.description')}
-				rules={[
-					{
-						required: true,
-						message: t('syllabusManagement.descriptionRequired'),
-					},
-					{
-						min: 10,
-						message: t('syllabusManagement.descriptionMinLength'),
-					},
-				]}
 			>
 				<TextArea
 					rows={3}
