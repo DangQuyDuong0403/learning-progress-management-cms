@@ -7,7 +7,6 @@ import {
   Button,
   Input,
   Space,
-  Tag,
   Modal,
   Form,
   Select,
@@ -18,18 +17,14 @@ import {
   Divider,
   DatePicker,
   Radio,
-  Upload,
   Switch,
 } from "antd";
 import {
   PlusOutlined,
   SearchOutlined,
-  CheckOutlined,
-  StopOutlined,
   EyeOutlined,
   DownloadOutlined,
   UploadOutlined,
-  InboxOutlined,
   FilterOutlined,
 } from "@ant-design/icons";
 import ThemedLayout from "../../../../component/ThemedLayout";
@@ -711,25 +706,46 @@ const StudentList = () => {
   };
 
   // Handle download template
-  const handleDownloadTemplate = () => {
-    // Create CSV template content
-    const templateContent = `studentCode,fullName,email,phone,class,level,status,username,password
-STU001,Nguyen Van An,nguyenvanan@example.com,0123456789,Lớp 10A1,Beginner,active,student001,password123
-STU002,Tran Thi Binh,tranthibinh@example.com,0987654321,Lớp 10A2,Intermediate,active,student002,password123
-STU003,Le Van Cuong,levancuong@example.com,0111222333,Lớp 11B1,Advanced,active,student003,password123`;
-
-    // Create blob and download
-    const blob = new Blob([templateContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    link.setAttribute('href', url);
-    link.setAttribute('download', 'student_import_template.csv');
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    
-    spaceToast.success(t('studentManagement.templateDownloaded'));
+  const handleDownloadTemplate = async () => {
+    try {
+      spaceToast.info('Downloading template...');
+      
+      const response = await studentManagementApi.downloadStudentTemplate();
+      
+      // Create blob from response data
+      const blob = new Blob([response.data], { 
+        type: response.headers['content-type'] || 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      });
+      
+      // Extract filename from response headers or use default
+      const contentDisposition = response.headers['content-disposition'];
+      let filename = 'student_import_template.xlsx';
+      
+      if (contentDisposition) {
+        const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+        if (filenameMatch && filenameMatch[1]) {
+          filename = filenameMatch[1].replace(/['"]/g, '');
+        }
+      }
+      
+      // Create download link
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+      link.setAttribute('href', url);
+      link.setAttribute('download', filename);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      // Clean up the URL object
+      URL.revokeObjectURL(url);
+      
+      spaceToast.success('Template downloaded successfully');
+    } catch (error) {
+      console.error('Error downloading template:', error);
+      spaceToast.error(error.response?.data?.error || error.response?.data?.message || error.message || 'Failed to download template');
+    }
   };
 
   return (

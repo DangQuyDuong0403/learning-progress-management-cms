@@ -7,14 +7,15 @@ import usePageTitle from '../../hooks/usePageTitle';
 import './Profile.css';
 import ThemedLayout from '../../component/ThemedLayout';
 import { useTheme } from '../../contexts/ThemeContext';
-import { getUserProfile } from '../../redux/auth';
+import { getUserProfile, uploadAvatar } from '../../redux/auth';
 import TableSpinner from '../../component/spinner/TableSpinner';
 import EditEmailModal from './EditEmailModal';
 import EditPersonalInfoModal from './EditPersonalInfoModal';
+import { spaceToast } from '../../component/SpaceToastify';
 
 export default function Profile() {
   const { t } = useTranslation();
-  const { user, profileData, profileLoading, profileError } = useSelector((state) => state.auth);
+  const { user, profileData, profileLoading, profileError, uploadAvatarLoading, uploadAvatarError, uploadAvatarSuccess } = useSelector((state) => state.auth);
   const { theme } = useTheme();
   
   // Set page title
@@ -41,6 +42,21 @@ export default function Profile() {
     }
   }, [profileError]);
 
+  // Handle upload avatar success and error
+  useEffect(() => {
+    if (uploadAvatarSuccess) {
+      spaceToast.success('Avatar updated successfully!');
+      // Reload profile data to get updated avatar
+      dispatch(getUserProfile());
+    }
+  }, [uploadAvatarSuccess, dispatch]);
+
+  useEffect(() => {
+    if (uploadAvatarError) {
+      spaceToast.error('Failed to upload avatar');
+    }
+  }, [uploadAvatarError]);
+
   // Handle spinner completion when profile data is loaded
   useEffect(() => {
     if (!profileLoading && profileData) {
@@ -63,6 +79,25 @@ export default function Profile() {
 
   const handleEditPersonalInfo = () => {
     setIsEditPersonalInfoModalVisible(true);
+  };
+
+  const handleAvatarUpload = (event) => {
+    const file = event.target.files[0];
+    if (file) {
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        toast.error('Please select an image file');
+        return;
+      }
+      
+      // Validate file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error('File size must be less than 5MB');
+        return;
+      }
+      
+      dispatch(uploadAvatar(file));
+    }
   };
 
   const handleEmailUpdateSuccess = (newEmail) => {
@@ -149,13 +184,38 @@ export default function Profile() {
                   {/* Left side - Profile Picture and Name */}
                   <div className="profile-left">
                     <div className="profile-picture-container">
-                      <div className="profile-picture-placeholder">
+                      <div className="profile-picture-placeholder" onClick={() => document.getElementById('avatar-upload').click()}>
                         <img 
                           src={profileData?.avatarUrl || "/img/avatar_1.png"} 
                           alt="Profile" 
                           style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} 
                         />
+                        {uploadAvatarLoading && (
+                          <div style={{
+                            position: 'absolute',
+                            top: 0,
+                            left: 0,
+                            right: 0,
+                            bottom: 0,
+                            backgroundColor: 'rgba(0,0,0,0.5)',
+                            borderRadius: '50%',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            color: 'white',
+                            fontSize: '12px'
+                          }}>
+                            Uploading...
+                          </div>
+                        )}
                       </div>
+                      <input
+                        id="avatar-upload"
+                        type="file"
+                        accept="image/*"
+                        onChange={handleAvatarUpload}
+                        style={{ display: 'none' }}
+                      />
                     </div>
                     <div className="profile-name-section">
                       <h4 className="profile-full-name">
@@ -174,7 +234,7 @@ export default function Profile() {
                     <div className="form-group">
                       <label className={`form-label ${theme}-form-label`}>{t('common.username')}</label>
                       <div className={`form-display ${theme}-form-display`}>
-                        {profileData?.userName || "test1"}
+                        {profileData?.userName || ""}
                       </div>
                     </div>
 
@@ -183,13 +243,13 @@ export default function Profile() {
                       <div className="form-group" style={{ flex: 1 }}>
                         <label className={`form-label ${theme}-form-label`}>{t('common.lastName')}</label>
                         <div className={`form-display ${theme}-form-display`}>
-                          {profileData?.lastName || "Nguyen Duc"}
+                          {profileData?.lastName || ""}
                         </div>
                       </div>
                       <div className="form-group" style={{ flex: 1, marginLeft: '1rem' }}>
                         <label className={`form-label ${theme}-form-label`}>{t('common.firstName')}</label>
                         <div className={`form-display ${theme}-form-display`}>
-                          {profileData?.firstName || "Anh"}
+                          {profileData?.firstName || ""}
                         </div>
                       </div>
                     </div>
@@ -199,7 +259,7 @@ export default function Profile() {
                       <div className="form-group" style={{ flex: 1 }}>
                         <label className={`form-label ${theme}-form-label`}>{t('common.gender')}</label>
                         <div className={`form-display ${theme}-form-display`}>
-                          {profileData?.gender || "Male"}
+                          {profileData?.gender || ""}
                         </div>
                       </div>
                       <div className="form-group" style={{ flex: 1, marginLeft: '1rem' }}>
@@ -207,7 +267,7 @@ export default function Profile() {
                         <div className={`form-display ${theme}-form-display`}>
                           {profileData?.dateOfBirth 
                             ? new Date(profileData.dateOfBirth).toLocaleDateString()
-                            : "16/05/2003"
+                            : ""
                           }
                         </div>
                       </div>
@@ -238,7 +298,7 @@ export default function Profile() {
                   <div className="form-group">
                     <label className={`form-label ${theme}-form-label`}>{t('common.email')}</label>
                     <div className={`form-display ${theme}-form-display`}>
-                      {profileData?.email || "anhtony2003@gmail.com"}
+                      {profileData?.email}
                     </div>
                   </div>
 
@@ -246,7 +306,7 @@ export default function Profile() {
                   <div className="form-group">
                     <label className={`form-label ${theme}-form-label`}>{t('common.phoneNumber')}</label>
                     <div className={`form-display ${theme}-form-display`}>
-                      {profileData?.phoneNumber || "0987654321"}
+                      {profileData?.phoneNumber}
                     </div>
                   </div>
 
@@ -254,7 +314,7 @@ export default function Profile() {
                   <div className="form-group">
                     <label className={`form-label ${theme}-form-label`}>{t('common.address')}</label>
                     <div className={`form-display ${theme}-form-display`}>
-                      {profileData?.address || "fsd"}
+                      {profileData?.address}
                     </div>
                   </div>
                 </div>

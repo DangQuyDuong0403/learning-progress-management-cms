@@ -10,7 +10,8 @@ import ResetPassword from '../pages/login/ResetPassword.jsx';
 import LoginTeacher from '../pages/login/LoginTeacher.jsx';
 import Profile from '../pages/profile/Profile.jsx';
 import ProfileStudent from '../pages/profile/ProfileStudent.jsx';
-import ChangePassword from '../pages/login/ChangePassword.jsx';
+import ConfirmEmailChange from '../pages/login/ConfirmEmailChange.jsx';
+import ChangePasswordPage from '../pages/profile/ChangePassword.jsx';
 import Settings from '../pages/settings/Settings.jsx';
 import AccountList from '../pages/management/managementAdmin/account/AccountList.jsx';
 // import RoleList from '../pages/management/managementAdmin/role/RoleList.jsx';
@@ -123,6 +124,13 @@ const CONFIG_ROUTER = [
 	},
 	{
 		show: false, // không hiện trên menu
+		component: ConfirmEmailChange,
+		// icon: <LogIn size={18} />,
+		path: ROUTER_PAGE.CONFIRM_EMAIL_CHANGE,
+		exact: true,
+		key: 'CONFIRM_EMAIL_CHANGE',
+	},
+	{
 		component: ChooseLogin,
 		// icon: <LogIn size={18} />,
 		path: ROUTER_PAGE.CHOOSE_LOGIN,
@@ -144,6 +152,7 @@ const CONFIG_ROUTER = [
 		path: ROUTER_PAGE.PROFILE,
 		exact: true,
 		key: 'PROFILE',
+		private: true,
 	},
 	{
 		show: false, // không hiện trên menu
@@ -152,14 +161,16 @@ const CONFIG_ROUTER = [
 		path: ROUTER_PAGE.PROFILE_STUDENT,
 		exact: true,
 		key: 'PROFILE_STUDENT',
+		private: true,
 	},
 	{
 		show: false, // không hiện trên menu
-		component: ChangePassword,
+		component: ChangePasswordPage,
 		// icon: <LogIn size={18} />,
 		path: ROUTER_PAGE.CHANGE_PASSWORD,
 		exact: true,
 		key: 'CHANGE_PASSWORD',
+		private: true,
 	},
 	{
 		show: false, // không hiện trên menu
@@ -168,6 +179,7 @@ const CONFIG_ROUTER = [
 		path: ROUTER_PAGE.SETTINGS,
 		exact: true,
 		key: 'SETTINGS',
+		private: true,
 	},
 	
 	// Student Dashboard
