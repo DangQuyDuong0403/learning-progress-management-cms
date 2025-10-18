@@ -586,7 +586,6 @@ const ChapterListPage = () => {
 						loading={loading}
 						pagination={{
 							...pagination,
-							showQuickJumper: true,
 							showTotal: (total, range) => {
 								return `${range[0]}-${range[1]} ${t('chapterManagement.paginationText')} ${total} ${t('chapterManagement.chapters')}`;
 							},
