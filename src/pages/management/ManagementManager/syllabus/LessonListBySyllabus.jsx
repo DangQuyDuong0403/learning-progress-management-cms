@@ -9,7 +9,11 @@ import {
 	Row,
 	Col,
 	Tooltip,
+	Upload,
 	Typography,
+	Divider,
+	Progress,
+	Alert,
 	Checkbox,
 } from 'antd';
 import {
@@ -17,46 +21,60 @@ import {
 	EditOutlined,
 	DeleteOutlined,
 	SearchOutlined,
-	EyeOutlined,
+	ReloadOutlined,
+	PlayCircleOutlined,
 	ArrowLeftOutlined,
-	DragOutlined,
+	SwapOutlined,
 	UploadOutlined,
 	DownloadOutlined,
+	DragOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
+import { useDispatch, useSelector } from 'react-redux';
 import { useParams, useNavigate } from 'react-router-dom';
-import ChapterForm from './ChapterForm';
+import {
+	fetchLessonsByChapter,
+} from '../../../../redux/syllabus';
+import syllabusManagementApi from '../../../../apis/backend/syllabusManagement';
+import { spaceToast } from '../../../../component/SpaceToastify';
 import './SyllabusList.css';
 import ThemedLayout from '../../../../component/ThemedLayout';
-import LoadingWithEffect from '../../../../component/spinner/LoadingWithEffect';
 import { useTheme } from '../../../../contexts/ThemeContext';
-import syllabusManagementApi from '../../../../apis/backend/syllabusManagement';
+import LessonForm from './LessonForm';
+import LoadingWithEffect from '../../../../component/spinner/LoadingWithEffect';
 
-const ChapterListPage = () => {
+const { Dragger } = Upload;
+const { Title, Text } = Typography;
+
+const LessonListBySyllabus = () => {
 	const { t } = useTranslation();
 	const navigate = useNavigate();
 	const { syllabusId } = useParams();
 	const { theme } = useTheme();
+	const dispatch = useDispatch();
 
 	// State management
-	const [loading, setLoading] = useState(false);
-	const [chapters, setChapters] = useState([]);
-	const [syllabusInfo, setSyllabusInfo] = useState(null);
 	const [searchText, setSearchText] = useState('');
 	const [searchTimeout, setSearchTimeout] = useState(null);
-	const [totalElements, setTotalElements] = useState(0);
+	const [syllabusInfo, setSyllabusInfo] = useState(null);
 	const [selectedRowKeys, setSelectedRowKeys] = useState([]);
+	const [totalElements, setTotalElements] = useState(0);
+	const [isInitialLoading, setIsInitialLoading] = useState(true);
+	const [lessons, setLessons] = useState([]);
+	const [loading, setLoading] = useState(false);
 
 	// Modal states
-	const [isModalVisible, setIsModalVisible] = useState(false);
 	const [isDeleteModalVisible, setIsDeleteModalVisible] = useState(false);
 	const [isBulkDeleteModalVisible, setIsBulkDeleteModalVisible] = useState(false);
-	const [editingChapter, setEditingChapter] = useState(null);
-	const [deleteChapter, setDeleteChapter] = useState(null);
+	const [isFormModalVisible, setIsFormModalVisible] = useState(false);
+	const [deleteLesson, setDeleteLesson] = useState(null);
+	const [editingLesson, setEditingLesson] = useState(null);
 	const [importModal, setImportModal] = useState({
 		visible: false,
 		fileList: [],
-		uploading: false
+		uploading: false,
+		progress: 0,
+		error: null,
 	});
 
 	// Pagination state
@@ -68,8 +86,8 @@ const ChapterListPage = () => {
 		showTotal: (total, range) => `${range[0]}-${range[1]} of ${total}`,
 	});
 
-	// Fetch chapters from API
-	const fetchChapters = useCallback(async (page = 1, size = 10, search = '') => {
+	// Fetch lessons from API using syllabusId
+	const fetchLessons = useCallback(async (page = 1, size = 10, search = '') => {
 		if (!syllabusId) return;
 		
 		setLoading(true);
@@ -84,18 +102,23 @@ const ChapterListPage = () => {
 				params.searchText = search.trim();
 			}
 
-			const response = await syllabusManagementApi.getChaptersBySyllabusId(syllabusId, params);
+			const response = await syllabusManagementApi.getLessonsBySyllabusId(syllabusId, params);
 
 			// Map API response to component format
-			const mappedChapters = response.data.map((chapter) => ({
-				id: chapter.id,
-				name: chapter.chapterName,
-				description: chapter.description,
-				order: chapter.orderNumber,
-				status: chapter.status,
+			const mappedLessons = response.data.map((lesson) => ({
+				id: lesson.id,
+				name: lesson.lessonName,
+				content: lesson.content || '',
+				duration: lesson.duration || 0,
+				lessonType: lesson.lessonType || 'theory',
+				materials: lesson.materials || '',
+				homework: lesson.homework || '',
+				objectives: lesson.objectives || '',
+				status: lesson.status || 'active',
+				createdBy: lesson.createdBy || lesson.createdByUser || 'N/A',
 			}));
 
-			setChapters(mappedChapters);
+			setLessons(mappedLessons);
 			setTotalElements(response.totalElements || response.data.length);
 			setPagination(prev => ({
 				...prev,
@@ -103,10 +126,10 @@ const ChapterListPage = () => {
 				pageSize: size,
 				total: response.totalElements || response.data.length,
 			}));
-			setLoading(false);
 		} catch (error) {
-			console.error('Error fetching chapters:', error);
-			message.error(t('chapterManagement.loadChaptersError'));
+			console.error('Error fetching lessons:', error);
+			spaceToast.error(t('lessonManagement.loadLessonsError'));
+		} finally {
 			setLoading(false);
 		}
 	}, [syllabusId, t]);
@@ -135,9 +158,16 @@ const ChapterListPage = () => {
 	}, [syllabusId]);
 
 	useEffect(() => {
-		fetchChapters(1, pagination.pageSize, searchText);
-		fetchSyllabusInfo();
-	}, [fetchChapters, fetchSyllabusInfo, searchText, pagination.pageSize]);
+		const fetchData = async () => {
+			setIsInitialLoading(true);
+			await Promise.all([
+				fetchLessons(1, pagination.pageSize, searchText),
+				fetchSyllabusInfo()
+			]);
+			setIsInitialLoading(false);
+		};
+		fetchData();
+	}, [fetchLessons, fetchSyllabusInfo, searchText, pagination.pageSize]);
 
 	// Cleanup timeout on unmount
 	useEffect(() => {
@@ -149,62 +179,49 @@ const ChapterListPage = () => {
 	}, [searchTimeout]);
 
 	const handleAdd = () => {
-		setEditingChapter(null);
-		setIsModalVisible(true);
+		setEditingLesson(null);
+		setIsFormModalVisible(true);
 	};
 
-	const handleEdit = (chapter) => {
-		setEditingChapter(chapter);
-		setIsModalVisible(true);
+	const handleEdit = (lesson) => {
+		setEditingLesson(lesson);
+		setIsFormModalVisible(true);
 	};
 
-	const handleDeleteClick = (chapter) => {
-		setDeleteChapter(chapter);
+	const handleDeleteClick = (lesson) => {
+		setDeleteLesson(lesson);
 		setIsDeleteModalVisible(true);
 	};
 
 	const handleDelete = async () => {
 		try {
-			// TODO: Implement delete chapter API call
-			// await syllabusManagementApi.deleteChapter(deleteChapter.id);
-			
-			// Update local state
-			setChapters(chapters.filter(c => c.id !== deleteChapter.id));
-			
-			message.success(t('chapterManagement.deleteChapterSuccess'));
+			await syllabusManagementApi.deleteLesson(deleteLesson.id);
+			message.success(t('lessonManagement.deleteLessonSuccess'));
 			setIsDeleteModalVisible(false);
-			setDeleteChapter(null);
+			setDeleteLesson(null);
+			// Refresh the list
+			fetchLessons(pagination.current, pagination.pageSize, searchText);
 		} catch (error) {
-			console.error('Error deleting chapter:', error);
-			message.error(t('chapterManagement.deleteChapterError'));
+			console.error('Error deleting lesson:', error);
+			message.error(t('lessonManagement.deleteLessonError'));
 		}
 	};
 
 	const handleDeleteModalClose = () => {
 		setIsDeleteModalVisible(false);
-		setDeleteChapter(null);
+		setDeleteLesson(null);
 	};
 
-	const handleViewLessons = (chapter) => {
-		navigate(`/manager/syllabuses/${syllabusId}/chapters/${chapter.id}/lessons`);
+	const handleRefresh = () => {
+		fetchLessons(pagination.current, pagination.pageSize, searchText);
 	};
 
-	const handleViewAllLessons = () => {
-		navigate(`/manager/syllabuses/${syllabusId}/lessons`);
-	};
-
-	const handleModalClose = () => {
-		setIsModalVisible(false);
-		setEditingChapter(null);
-	};
-
-
-	const handleBackToSyllabuses = () => {
-		navigate('/manager/syllabuses');
+	const handleBackToChapters = () => {
+		navigate(`/manager/syllabuses/${syllabusId}/chapters`);
 	};
 
 	const handleEditOrder = () => {
-		navigate(`/manager/syllabuses/${syllabusId}/chapters/edit-order`);
+		navigate(`/manager/syllabuses/${syllabusId}/lessons/edit-order`);
 	};
 
 	const handleSearch = (value) => {
@@ -218,21 +235,21 @@ const ChapterListPage = () => {
 		// Set new timeout for 1 second delay
 		const newTimeout = setTimeout(() => {
 			// Reset to first page when searching
-			fetchChapters(1, pagination.pageSize, value);
+			fetchLessons(1, pagination.pageSize, value);
 		}, 1000);
 		
 		setSearchTimeout(newTimeout);
 	};
 
 	const handleTableChange = (pagination) => {
-		fetchChapters(pagination.current, pagination.pageSize, searchText);
+		fetchLessons(pagination.current, pagination.pageSize, searchText);
 	};
 
 	// Checkbox logic
 	const handleSelectAll = async (checked) => {
 		if (checked) {
 			try {
-				// Fetch all chapter IDs from API (without pagination)
+				// Fetch all lesson IDs from API (without pagination)
 				const params = {
 					page: 0,
 					size: totalElements, // Get all items
@@ -243,13 +260,13 @@ const ChapterListPage = () => {
 					params.searchText = searchText.trim();
 				}
 
-				const response = await syllabusManagementApi.getChaptersBySyllabusId(syllabusId, params);
+				const response = await syllabusManagementApi.getLessonsBySyllabusId(syllabusId, params);
 
 				// Get all IDs from the response
-				const allKeys = response.data.map(chapter => chapter.id);
+				const allKeys = response.data.map(lesson => lesson.id);
 				setSelectedRowKeys(allKeys);
 			} catch (error) {
-				console.error('Error fetching all chapter IDs:', error);
+				console.error('Error fetching all lesson IDs:', error);
 				message.error('Error selecting all items');
 			}
 		} else {
@@ -268,7 +285,7 @@ const ChapterListPage = () => {
 	// Bulk actions
 	const handleBulkDelete = () => {
 		if (selectedRowKeys.length === 0) {
-			message.warning(t('chapterManagement.selectItemsToDelete'));
+			message.warning(t('lessonManagement.selectItemsToDelete'));
 			return;
 		}
 		setIsBulkDeleteModalVisible(true);
@@ -276,27 +293,29 @@ const ChapterListPage = () => {
 
 	const handleBulkExport = () => {
 		if (selectedRowKeys.length === 0) {
-			message.warning(t('chapterManagement.selectItemsToExport'));
+			message.warning(t('lessonManagement.selectItemsToExport'));
 			return;
 		}
 		// TODO: Implement bulk export functionality
-		message.success(t('chapterManagement.bulkExportSuccess'));
+		message.success(t('lessonManagement.bulkExportSuccess'));
 	};
 
 	const handleBulkDeleteConfirm = async () => {
 		try {
 			// TODO: Implement bulk delete API call
-			// await syllabusManagementApi.bulkDeleteChapters(selectedRowKeys);
+			// await syllabusManagementApi.bulkDeleteLessons(selectedRowKeys);
 			
 			// Update local state
-			setChapters(chapters.filter(c => !selectedRowKeys.includes(c.id)));
 			setSelectedRowKeys([]);
 			
-			message.success(t('chapterManagement.bulkDeleteSuccess'));
+			message.success(t('lessonManagement.bulkDeleteSuccess'));
 			setIsBulkDeleteModalVisible(false);
+			
+			// Refresh the lesson list
+			fetchLessons(pagination.current, pagination.pageSize, searchText);
 		} catch (error) {
-			console.error('Error bulk deleting chapters:', error);
-			message.error(t('chapterManagement.bulkDeleteError'));
+			console.error('Error bulk deleting lessons:', error);
+			message.error(t('lessonManagement.bulkDeleteError'));
 		}
 	};
 
@@ -304,65 +323,228 @@ const ChapterListPage = () => {
 		setIsBulkDeleteModalVisible(false);
 	};
 
+	const handleFormModalClose = () => {
+		setIsFormModalVisible(false);
+		setEditingLesson(null);
+	};
+
+	const handleFormSubmit = async (success, lessonData) => {
+		if (success) {
+			// TODO: Implement API call to save lesson
+			// if (editingLesson) {
+			//     await syllabusManagementApi.updateLesson(editingLesson.id, lessonData);
+			// } else {
+			//     await syllabusManagementApi.createLesson(lessonData);
+			// }
+			
+			// Refresh the lesson list
+			fetchLessons(pagination.current, pagination.pageSize, searchText);
+		}
+		// Always close modal regardless of success or cancel
+		handleFormModalClose();
+	};
+
 	const handleExport = () => {
 		// TODO: Implement export functionality
-		message.success(t('chapterManagement.exportSuccess'));
+		message.success(t('lessonManagement.exportSuccess'));
 	};
 
-	const handleImport = () => {
-		setImportModal(prev => ({
-			...prev,
-			visible: true,
-			fileList: [],
-			uploading: false
-		}));
+	const handleImportLesson = () => {
+		setImportModal({ 
+			visible: true, 
+			fileList: [], 
+			uploading: false, 
+			progress: 0, 
+			error: null 
+		});
 	};
 
-	const handleImportOk = async () => {
-		setImportModal(prev => ({ ...prev, uploading: true }));
-		
+	const handleExportTemplate = async () => {
 		try {
-			// TODO: Implement import functionality
-			// await syllabusManagementApi.importChapters(importModal.fileList);
+			const response = await syllabusManagementApi.downloadLessonTemplate();
 			
-			message.success(t('chapterManagement.importSuccess'));
-			setImportModal(prev => ({
-				...prev,
-				visible: false,
-				fileList: [],
-				uploading: false
-			}));
+			console.log('Template response:', response);
+			console.log('Is response a Blob?', response instanceof Blob);
+			console.log('Response size:', response.size);
+			console.log('Response type:', response.type);
 			
-			// Refresh the data
-			fetchChapters(pagination.current, pagination.pageSize, searchText);
+			// If response is already a blob (which it seems to be), use it directly
+			let blob;
+			if (response instanceof Blob) {
+				blob = response;
+				console.log('Response is already a blob, using directly');
+			} else if (response.data instanceof Blob) {
+				blob = response.data;
+				console.log('Using response.data blob');
+			} else {
+				// Create blob from response data
+				blob = new Blob([response.data], { 
+					type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
+				});
+				console.log('Created new blob from response data');
+			}
+			
+			console.log('Final blob:', blob);
+			console.log('Blob type:', blob.type);
+			console.log('Blob size:', blob.size);
+			
+			// Validate blob
+			if (blob.size === 0) {
+				throw new Error('Downloaded file is empty');
+			}
+			
+			// Create download link
+			const link = document.createElement('a');
+			const url = URL.createObjectURL(blob);
+			link.href = url;
+			link.download = 'lesson_template.xlsx';
+			link.style.display = 'none';
+			
+			// Trigger download
+			document.body.appendChild(link);
+			link.click();
+			
+			// Cleanup
+			document.body.removeChild(link);
+			URL.revokeObjectURL(url);
+
+			spaceToast.success(t('lessonManagement.templateDownloaded'));
 		} catch (error) {
-			console.error('Import error:', error);
-			message.error(t('chapterManagement.importError'));
-		} finally {
-			setImportModal(prev => ({ ...prev, uploading: false }));
+			console.error('Error downloading template:', error);
+			spaceToast.error(t('lessonManagement.templateDownloadError'));
 		}
 	};
 
 	const handleImportCancel = () => {
-		setImportModal(prev => ({
-			...prev,
-			visible: false,
-			fileList: [],
-			uploading: false
+		setImportModal({ 
+			visible: false, 
+			fileList: [], 
+			uploading: false, 
+			progress: 0, 
+			error: null 
+		});
+	};
+
+	const handleImportOk = async () => {
+		if (importModal.fileList.length === 0) {
+			message.warning(t('lessonManagement.selectFileToImport'));
+			return;
+		}
+
+		const file = importModal.fileList[0];
+		
+		// Validate file type
+		const allowedTypes = [
+			'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // .xlsx
+			'application/vnd.ms-excel', // .xls
+			'text/csv', // .csv
+		];
+		
+		if (!allowedTypes.includes(file.type) && !file.name.match(/\.(xlsx|xls|csv)$/i)) {
+			message.error(t('lessonManagement.invalidFileType'));
+			return;
+		}
+
+		// Validate file size (max 10MB)
+		const maxSize = 10 * 1024 * 1024; // 10MB
+		if (file.size > maxSize) {
+			message.error(t('lessonManagement.fileTooLarge'));
+			return;
+		}
+
+		setImportModal((prev) => ({ 
+			...prev, 
+			uploading: true, 
+			progress: 0, 
+			error: null 
 		}));
+
+		try {
+			const formData = new FormData();
+			formData.append('file', file.originFileObj);
+			
+			// Add syllabusId to the request
+			formData.append('syllabusId', syllabusId);
+
+			// Simulate progress for better UX
+			const progressInterval = setInterval(() => {
+				setImportModal((prev) => ({
+					...prev,
+					progress: Math.min(prev.progress + 10, 90)
+				}));
+			}, 200);
+
+			const response = await syllabusManagementApi.importLessons(formData);
+			
+			clearInterval(progressInterval);
+			setImportModal((prev) => ({ ...prev, progress: 100 }));
+			
+			// Handle different response formats
+			const importedCount = response.data?.importedCount || 
+								 response.data?.data?.importedCount || 
+								 response.data?.count || 0;
+			
+			const successMessage = importedCount > 0 
+				? `${t('lessonManagement.importSuccess')} ${importedCount} ${t('lessonManagement.lessons')}`
+				: t('lessonManagement.importSuccessNoData');
+
+			spaceToast.success(successMessage);
+
+			// Delay closing modal to show completion
+			setTimeout(() => {
+				setImportModal({ 
+					visible: false, 
+					fileList: [], 
+					uploading: false, 
+					progress: 0, 
+					error: null 
+				});
+				
+				// Refresh the lesson list
+				fetchLessons(pagination.current, pagination.pageSize, searchText);
+			}, 1000);
+			
+		} catch (error) {
+			console.error('Error importing lessons:', error);
+			
+			// Handle different error formats
+			let errorMessage = t('lessonManagement.importError');
+			let errorDetails = '';
+			
+			if (error.response?.data?.message) {
+				errorMessage = error.response.data.message;
+			} else if (error.response?.data?.error) {
+				errorMessage = error.response.data.error;
+			} else if (error.message) {
+				errorMessage = error.message;
+			}
+			
+			// Extract more detailed error information
+			if (error.response?.data?.details) {
+				errorDetails = error.response.data.details;
+			} else if (error.response?.data?.errors) {
+				errorDetails = Array.isArray(error.response.data.errors) 
+					? error.response.data.errors.join(', ')
+					: error.response.data.errors;
+			}
+			
+			setImportModal((prev) => ({ 
+				...prev, 
+				uploading: false, 
+				progress: 0,
+				error: errorDetails ? `${errorMessage}: ${errorDetails}` : errorMessage
+			}));
+			
+			spaceToast.error(errorMessage);
+		}
 	};
 
-	const handleDownloadTemplate = () => {
-		// TODO: Implement template download
-		message.info(t('chapterManagement.templateDownloadInfo'));
-	};
-
-	// No need for client-side filtering since API handles filtering
-	const filteredChapters = chapters;
+	// Use lessons data
+	const filteredLessons = lessons;
 
 	// Calculate checkbox states with useMemo
 	const checkboxStates = useMemo(() => {
-		const totalItems = totalElements; // Sử dụng totalElements thay vì chapters.length
+		const totalItems = totalElements; // Sử dụng totalElements thay vì lessons.length
 		const selectedCount = selectedRowKeys.length;
 		const isSelectAll = selectedCount === totalItems && totalItems > 0;
 		const isIndeterminate = false; // Không bao giờ hiển thị indeterminate
@@ -377,7 +559,6 @@ const ChapterListPage = () => {
 
 		return { isSelectAll, isIndeterminate, totalItems, selectedCount };
 	}, [selectedRowKeys, totalElements]);
-
 
 	const columns = [
 		{
@@ -421,34 +602,39 @@ const ChapterListPage = () => {
 			},
 		},
 		{
-			title: t('chapterManagement.chapterName'),
+			title: t('lessonManagement.lessonName'),
 			dataIndex: 'name',
 			key: 'name',
 			width: '20%',
 			sorter: (a, b) => a.name.localeCompare(b.name),
-			render: (text, record) => (
-				<div>
-					<div style={{ fontSize: '20px' }}>{text}</div>
-					<div style={{ color: '#666', fontSize: '12px' }}>
-						{record.description}
-					</div>
+			render: (text) => (
+				<div style={{ fontSize: '20px' }}>
+					{text}
 				</div>
 			),
 		},
 		{
-			title: t('chapterManagement.actions'),
+			title: t('lessonManagement.content'),
+			dataIndex: 'content',
+			key: 'content',
+			width: '45%',
+			render: (content) => (
+				<div style={{ 
+					maxWidth: '400px',
+					overflow: 'hidden',
+					textOverflow: 'ellipsis',
+					whiteSpace: 'nowrap'
+				}}>
+					{content || 'N/A'}
+				</div>
+			),
+		},
+		{
+			title: t('lessonManagement.actions'),
 			key: 'actions',
 			width: '20%',
 			render: (_, record) => (
 				<Space size="small">
-					<Tooltip title={t('chapterManagement.viewLessons')}>
-						<Button
-							type="text"
-							size="small"
-							icon={<EyeOutlined style={{ fontSize: '25px' }} />}
-							onClick={() => handleViewLessons(record)}
-						/>
-					</Tooltip>
 					<Tooltip title={t('common.edit')}>
 						<Button
 							type="text"
@@ -457,18 +643,20 @@ const ChapterListPage = () => {
 							onClick={() => handleEdit(record)}
 						/>
 					</Tooltip>
-					<Button
-						type="text"
-						size="small"
-						icon={<DeleteOutlined style={{ fontSize: '25px' }} />}
-						onClick={() => handleDeleteClick(record)}
-					/>
+					<Tooltip title={t('common.delete')}>
+						<Button
+							type="text"
+							size="small"
+							icon={<DeleteOutlined style={{ fontSize: '25px' }} />}
+							onClick={() => handleDeleteClick(record)}
+						/>
+					</Tooltip>
 				</Space>
 			),
 		},
 	];
 
-	if (!syllabusInfo) {
+	if (!syllabusInfo || isInitialLoading) {
 		return (
 			<ThemedLayout>
 				{/* Main Content Panel */}
@@ -494,7 +682,7 @@ const ChapterListPage = () => {
 				<div className="page-title-container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
 					<Button 
 						icon={<ArrowLeftOutlined />}
-						onClick={handleBackToSyllabuses}
+						onClick={handleBackToChapters}
 						className={`back-button ${theme}-back-button`}
 					>
 						{t('common.back')}
@@ -504,7 +692,7 @@ const ChapterListPage = () => {
 						className="page-title"
 						style={{ margin: 0, flex: 1, textAlign: 'center' }}
 					>
-						{t('chapterManagement.title')} - {syllabusInfo.name} <span className="student-count">({totalElements})</span>
+						{t('lessonManagement.title')} - {syllabusInfo.name} <span className="student-count">({totalElements})</span>
 					</Typography.Title>
 					<div style={{ width: '100px' }}></div> {/* Spacer để cân bằng layout */}
 				</div>
@@ -526,35 +714,18 @@ const ChapterListPage = () => {
 					<Col>
 						<Space>
 							<Button
-								icon={<EyeOutlined />}
-								onClick={handleViewAllLessons}
-								className="create-button"
-								style={{
-									backgroundColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)',
-									background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)',
-									borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'transparent',
-									color: '#000000',
-									height: '40px',
-									fontSize: '16px',
-									fontWeight: '500',
-									minWidth: '100px'
-								}}
-							>
-								{t('lessonManagement.viewAllLessons')}
-							</Button>
-							<Button
 								icon={<UploadOutlined />}
 								className={`export-button ${theme}-export-button`}
 								onClick={handleExport}
 							>
-								{t('chapterManagement.exportData')}
+								{t('lessonManagement.exportData')}
 							</Button>
 							<Button
 								icon={<DownloadOutlined />}
 								className={`import-button ${theme}-import-button`}
-								onClick={handleImport}
+								onClick={handleImportLesson}
 							>
-								{t('chapterManagement.importChapters')}
+								{t('lessonManagement.importLessons')}
 							</Button>
 							<Button
 								icon={<DragOutlined />}
@@ -568,7 +739,7 @@ const ChapterListPage = () => {
 								className="create-button"
 								onClick={handleAdd}
 							>
-								{t('chapterManagement.addChapter')}
+								{t('lessonManagement.addLesson')}
 							</Button>
 						</Space>
 					</Col>
@@ -584,14 +755,14 @@ const ChapterListPage = () => {
 									onClick={handleBulkDelete}
 									className="bulk-delete-button"
 								>
-									{t('chapterManagement.bulkDelete')} ({selectedRowKeys.length})
+									{t('lessonManagement.bulkDelete')} ({selectedRowKeys.length})
 								</Button>
 								<Button
 									icon={<UploadOutlined />}
 									onClick={handleBulkExport}
 									className="bulk-export-button"
 								>
-									{t('chapterManagement.bulkExport')} ({selectedRowKeys.length})
+									{t('lessonManagement.bulkExport')} ({selectedRowKeys.length})
 								</Button>
 							</Space>
 						</Col>
@@ -602,14 +773,14 @@ const ChapterListPage = () => {
 				<div className={`table-section ${theme}-table-section`}>
 					<Table
 						columns={columns}
-						dataSource={filteredChapters}
+						dataSource={filteredLessons}
 						rowKey="id"
 						loading={loading}
 						pagination={{
 							...pagination,
 							showQuickJumper: true,
 							showTotal: (total, range) => {
-								return `${range[0]}-${range[1]} ${t('chapterManagement.paginationText')} ${total} ${t('chapterManagement.chapters')}`;
+								return `${range[0]}-${range[1]} ${t('lessonManagement.paginationText')} ${total} ${t('lessonManagement.lessons')}`;
 							},
 						}}
 						onChange={handleTableChange}
@@ -617,26 +788,6 @@ const ChapterListPage = () => {
 					/>
 				</div>
 			</div>
-
-				{/* Chapter Modal */}
-				<Modal
-					title={
-						editingChapter
-							? t('chapterManagement.editChapter')
-							: t('chapterManagement.addChapter')
-					}
-					open={isModalVisible}
-					onCancel={handleModalClose}
-					footer={null}
-					width={600}
-					destroyOnClose
-				>
-					<ChapterForm
-						chapter={editingChapter}
-						syllabus={syllabusInfo}
-						onClose={handleModalClose}
-					/>
-				</Modal>
 
 			{/* Delete Confirmation Modal */}
 			<Modal
@@ -648,7 +799,7 @@ const ChapterListPage = () => {
 						textAlign: 'center',
 						padding: '10px 0'
 					}}>
-						{t('chapterManagement.confirmDelete')}
+						{t('lessonManagement.confirmDelete')}
 					</div>
 				}
 				open={isDeleteModalVisible}
@@ -704,16 +855,16 @@ const ChapterListPage = () => {
 						margin: 0,
 						fontWeight: '500'
 					}}>
-						{t('chapterManagement.confirmDeleteMessage')}
+						{t('lessonManagement.confirmDeleteMessage')}
 					</p>
-					{deleteChapter && (
+					{deleteLesson && (
 						<p style={{
 							fontSize: '20px',
 							color: '#1890ff',
 							margin: 0,
 							fontWeight: '600'
 						}}>
-							<strong>{deleteChapter.name}</strong>
+							<strong>{deleteLesson.name}</strong>
 						</p>
 					)}
 				</div>
@@ -729,7 +880,7 @@ const ChapterListPage = () => {
 						textAlign: 'center',
 						padding: '10px 0'
 					}}>
-						{t('chapterManagement.confirmBulkDelete')}
+						{t('lessonManagement.confirmBulkDelete')}
 					</div>
 				}
 				open={isBulkDeleteModalVisible}
@@ -785,7 +936,7 @@ const ChapterListPage = () => {
 						margin: 0,
 						fontWeight: '500'
 					}}>
-						{t('chapterManagement.confirmBulkDeleteMessage')}
+						{t('lessonManagement.confirmBulkDeleteMessage')}
 					</p>
 					<div style={{
 						fontSize: '20px',
@@ -793,9 +944,35 @@ const ChapterListPage = () => {
 						margin: 0,
 						fontWeight: '600'
 					}}>
-						<strong>{selectedRowKeys.length} {t('chapterManagement.chapters')}</strong>
+						<strong>{selectedRowKeys.length} {t('lessonManagement.lessons')}</strong>
 					</div>
 				</div>
+			</Modal>
+
+			{/* Lesson Form Modal */}
+			<Modal
+				title={
+					editingLesson
+						? t('lessonManagement.editLesson')
+						: t('lessonManagement.addLesson')
+				}
+				open={isFormModalVisible}
+				onCancel={handleFormModalClose}
+				footer={null}
+				width={600}
+				destroyOnClose
+				bodyStyle={{
+					padding: '30px 40px',
+					fontSize: '16px',
+					lineHeight: '1.6'
+				}}
+			>
+				<LessonForm
+					lesson={editingLesson}
+					chapter={null} // No specific chapter context for syllabus-level lessons
+					onClose={handleFormSubmit}
+					theme={theme}
+				/>
 			</Modal>
 
 			{/* Import Modal */}
@@ -813,13 +990,13 @@ const ChapterListPage = () => {
 						gap: '10px',
 					}}>
 						<DownloadOutlined style={{ color: '#000000' }} />
-						{t('chapterManagement.importChapters')}
+						{t('lessonManagement.importLessons')}
 					</div>
 				}
 				open={importModal.visible}
 				onOk={handleImportOk}
 				onCancel={handleImportCancel}
-				okText={t('chapterManagement.importChapters')}
+				okText={t('lessonManagement.importLessons')}
 				cancelText={t('common.cancel')}
 				width={600}
 				centered
@@ -855,7 +1032,7 @@ const ChapterListPage = () => {
 						<Button
 							type="dashed"
 							icon={<DownloadOutlined />}
-							onClick={handleDownloadTemplate}
+							onClick={handleExportTemplate}
 							style={{
 								borderColor: '#1890ff',
 								color: '#1890ff',
@@ -864,7 +1041,7 @@ const ChapterListPage = () => {
 								fontWeight: '500',
 								marginBottom: '20px'
 							}}>
-							{t('chapterManagement.downloadTemplate')}
+							{t('lessonManagement.exportTemplate')}
 						</Button>
 					</div>
 					
@@ -883,18 +1060,18 @@ const ChapterListPage = () => {
 						<p
 							className='ant-upload-text'
 							style={{ fontSize: '16px', fontWeight: '500' }}>
-							{t('chapterManagement.clickOrDragFile')}
+							{t('lessonManagement.clickOrDragFile')}
 						</p>
 						<p
 							className='ant-upload-hint'
 							style={{ fontSize: '14px', color: '#666', marginTop: '8px' }}>
-							{t('chapterManagement.supportedFormats')}
+							{t('lessonManagement.supportedFormats')}
 						</p>
 					</div>
 				</div>
-			</Modal>
+				</Modal>
 		</ThemedLayout>
 	);
 };
 
-export default ChapterListPage;
+export default LessonListBySyllabus;

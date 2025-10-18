@@ -131,15 +131,15 @@ export default function EditEmailModal({
             rules={[
               {
                 required: true,
-                message: 'Email is required',
+                message: t('common.emailRequired'),
               },
               {
                 type: 'email',
-                message: 'Please enter a valid email',
+                message: t('messages.invalidEmail'),
               },
             ]}
             required={false}>
-            <Input placeholder="Enter email" />
+            <Input placeholder={t('common.emailPlaceholder')} />
           </Form.Item>
         </Form>
       ) : (

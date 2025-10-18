@@ -7,9 +7,11 @@ import {
 	Space,
 } from 'antd';
 import { useTranslation } from 'react-i18next';
+import { useTheme } from '../../../../contexts/ThemeContext';
 
 const ChapterForm = ({ chapter, syllabus, onClose }) => {
 	const { t } = useTranslation();
+	const { theme } = useTheme();
 
 	const [form] = Form.useForm();
 	const [isSubmitting, setIsSubmitting] = useState(false);
@@ -92,6 +94,12 @@ const ChapterForm = ({ chapter, syllabus, onClose }) => {
 						htmlType="submit"
 						loading={isSubmitting}
 						size="large"
+						style={{
+							backgroundColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
+							background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
+							borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'transparent',
+							color: theme === 'sun' ? '#000000' : '#ffffff',
+						}}
 					>
 						{isEdit ? t('common.update') : t('common.save')}
 					</Button>

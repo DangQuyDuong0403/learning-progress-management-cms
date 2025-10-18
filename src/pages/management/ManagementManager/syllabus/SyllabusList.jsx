@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import usePageTitle from '../../../../hooks/usePageTitle';
 import SecurityWrapper from '../../../../component/SecurityWrapper';
 import {
@@ -9,13 +9,12 @@ import {
 	message,
 	Input,
 	Tag,
-	Card,
 	Row,
 	Col,
 	Tooltip,
 	Typography,
-	Upload,
 	Divider,
+	Checkbox,
 } from 'antd';
 import {
 	PlusOutlined,
@@ -29,8 +28,6 @@ import {
 	UploadOutlined,
 	PlayCircleOutlined,
 	ClockCircleOutlined,
-	FilterOutlined,
-	InboxOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -41,9 +38,6 @@ import { useTheme } from '../../../../contexts/ThemeContext';
 import LoadingWithEffect from '../../../../component/spinner/LoadingWithEffect';
 import { spaceToast } from '../../../../component/SpaceToastify';
 import syllabusManagementApi from '../../../../apis/backend/syllabusManagement';
-import levelManagementApi from '../../../../apis/backend/levelManagement';
-
-const { Title } = Typography;
 
 const SyllabusList = () => {
 	const { t } = useTranslation();
@@ -56,32 +50,20 @@ const SyllabusList = () => {
 	// State management
 	const [loading, setLoading] = useState(false);
 	const [syllabuses, setSyllabuses] = useState([]);
-	const [levels, setLevels] = useState([]);
+	const [totalElements, setTotalElements] = useState(0);
 	const [searchText, setSearchText] = useState('');
-	const [statusFilter, setStatusFilter] = useState([]);
-	const [levelFilter, setLevelFilter] = useState([]);
-	const [currentView, setCurrentView] = useState('syllabuses'); // 'syllabuses', 'chapters', 'lessons'
+	const [currentView] = useState('syllabuses'); // 'syllabuses', 'chapters', 'lessons'
 	const [searchTimeout, setSearchTimeout] = useState(null);
 	const [sortBy, setSortBy] = useState('createdAt');
 	const [sortDir, setSortDir] = useState('desc');
-	const [filterDropdown, setFilterDropdown] = useState({
-		visible: false,
-		selectedStatuses: [],
-		selectedLevels: [],
-	});
 	
-	// Refs for click outside detection
-	const filterContainerRef = useRef(null);
-
-	// Filter options
-	const statusOptions = [
-		{ key: 'active', label: t('syllabusManagement.active') },
-		{ key: 'inactive', label: t('syllabusManagement.inactive') },
-	];
+	// Checkbox selection state
+	const [selectedRowKeys, setSelectedRowKeys] = useState([]);
 
 	// Modal states
 	const [isModalVisible, setIsModalVisible] = useState(false);
 	const [isDeleteModalVisible, setIsDeleteModalVisible] = useState(false);
+	const [isBulkDeleteModalVisible, setIsBulkDeleteModalVisible] = useState(false);
 	const [editingSyllabus, setEditingSyllabus] = useState(null);
 	const [deleteSyllabus, setDeleteSyllabus] = useState(null);
 	const [importModal, setImportModal] = useState({
@@ -100,7 +82,7 @@ const SyllabusList = () => {
 	});
 
 	// Fetch syllabuses from API
-	const fetchSyllabuses = useCallback(async (page = 1, size = 10, search = '', statusFilter = [], levelFilter = [], sortField = 'createdAt', sortDirection = 'desc') => {
+	const fetchSyllabuses = useCallback(async (page = 1, size = 10, search = '', sortField = 'createdAt', sortDirection = 'desc') => {
 		setLoading(true);
 		try {
 			const params = {
@@ -109,20 +91,10 @@ const SyllabusList = () => {
 				sortBy: sortField,
 				sortDir: sortDirection,
 			};
-			
+
 			// Add search parameter if provided
 			if (search && search.trim()) {
 				params.text = search.trim();
-			}
-
-			// Add status filter if provided
-			if (statusFilter.length > 0) {
-				params.status = statusFilter;
-			}
-
-			// Add level filter if provided
-			if (levelFilter.length > 0) {
-				params.levelId = levelFilter.map(id => parseInt(id));
 			}
 
 			const response = await syllabusManagementApi.getSyllabuses({
@@ -143,9 +115,12 @@ const SyllabusList = () => {
 				assessmentCriteria: syllabus.assessmentCriteria,
 				createdAt: syllabus.createdAt,
 				chapters: syllabus.chapters || [],
+				chapterCount: syllabus.chapterCount || 0,
+				lessonCount: syllabus.lessonCount || 0,
 			}));
 
 			setSyllabuses(mappedSyllabuses);
+			setTotalElements(response.totalElements || response.data.length);
 			setPagination(prev => ({
 				...prev,
 				current: page,
@@ -160,38 +135,28 @@ const SyllabusList = () => {
 		}
 	}, [t]);
 
-	// Fetch levels for filter dropdown
-	const fetchLevels = useCallback(async () => {
-		try {
-			const params = {
-				page: 0,
-				size: 100, // Get all levels
-				sortBy: 'orderNumber',
-				sortDir: 'asc',
-			};
-			
-			// Add status filter - API expects array of booleans
-			params.status = [true]; // true for active levels
-			
-			const response = await levelManagementApi.getLevels({
-				params: params,
-			});
-			
-			// Handle different response structures
-			const levelsData = response.data?.content || response.data || [];
-			setLevels(levelsData);
-			
-			console.log('Fetched levels for filter:', levelsData);
-		} catch (error) {
-			console.error('Error fetching levels:', error);
-			setLevels([]); // Set empty array on error
-		}
-	}, []);
 
 	useEffect(() => {
-		fetchSyllabuses(1, pagination.pageSize, searchText, statusFilter, levelFilter, sortBy, sortDir);
-		fetchLevels(); // Load levels for filter dropdown
-	}, [fetchSyllabuses, fetchLevels, searchText, statusFilter, levelFilter, sortBy, sortDir, pagination.pageSize]);
+		fetchSyllabuses(1, pagination.pageSize, searchText, sortBy, sortDir);
+	}, [fetchSyllabuses, searchText, sortBy, sortDir, pagination.pageSize]);
+
+	// Calculate checkbox states with useMemo
+	const checkboxStates = useMemo(() => {
+		const totalItems = totalElements; // Sử dụng totalElements thay vì syllabuses.length
+		const selectedCount = selectedRowKeys.length;
+		const isSelectAll = selectedCount === totalItems && totalItems > 0;
+		const isIndeterminate = false; // Không bao giờ hiển thị indeterminate
+		
+		console.log('Checkbox Debug:', {
+			totalItems,
+			selectedCount,
+			selectedRowKeys,
+			isSelectAll,
+			isIndeterminate,
+		});
+		
+		return { isSelectAll, isIndeterminate, totalItems, selectedCount };
+	}, [selectedRowKeys, totalElements]);
 
 	// Cleanup timeout on unmount
 	useEffect(() => {
@@ -202,22 +167,6 @@ const SyllabusList = () => {
 		};
 	}, [searchTimeout]);
 
-	// Click outside detection for filter dropdown
-	useEffect(() => {
-		const handleClickOutside = (event) => {
-			if (filterContainerRef.current && !filterContainerRef.current.contains(event.target)) {
-				setFilterDropdown(prev => ({
-					...prev,
-					visible: false,
-				}));
-			}
-		};
-
-		document.addEventListener('mousedown', handleClickOutside);
-		return () => {
-			document.removeEventListener('mousedown', handleClickOutside);
-		};
-	}, []);
 
 	const handleAdd = () => {
 		setEditingSyllabus(null);
@@ -267,7 +216,7 @@ const SyllabusList = () => {
 
 
 	const handleRefresh = () => {
-		fetchSyllabuses(pagination.current, pagination.pageSize, searchText, statusFilter, levelFilter, sortBy, sortDir);
+		fetchSyllabuses(pagination.current, pagination.pageSize, searchText, sortBy, sortDir);
 	};
 
 	const handleSearch = (value) => {
@@ -281,41 +230,10 @@ const SyllabusList = () => {
 		// Set new timeout for 1 second delay
 		const newTimeout = setTimeout(() => {
 			// Reset to first page when searching
-			fetchSyllabuses(1, pagination.pageSize, value, statusFilter, levelFilter, sortBy, sortDir);
+			fetchSyllabuses(1, pagination.pageSize, value, sortBy, sortDir);
 		}, 1000);
 		
 		setSearchTimeout(newTimeout);
-	};
-
-	// Handle filter dropdown toggle
-	const handleFilterToggle = () => {
-		setFilterDropdown(prev => ({
-			...prev,
-			visible: !prev.visible,
-			selectedStatuses: prev.visible ? prev.selectedStatuses : [...statusFilter],
-			selectedLevels: prev.visible ? prev.selectedLevels : [...levelFilter],
-		}));
-	};
-
-	// Handle filter submission
-	const handleFilterSubmit = () => {
-		setStatusFilter(filterDropdown.selectedStatuses);
-		setLevelFilter(filterDropdown.selectedLevels);
-		setFilterDropdown(prev => ({
-			...prev,
-			visible: false,
-		}));
-		// Reset to first page when applying filters
-		fetchSyllabuses(1, pagination.pageSize, searchText, filterDropdown.selectedStatuses, filterDropdown.selectedLevels, sortBy, sortDir);
-	};
-
-	// Handle filter reset
-	const handleFilterReset = () => {
-		setFilterDropdown(prev => ({
-			...prev,
-			selectedStatuses: [],
-			selectedLevels: [],
-		}));
 	};
 
 	const handleTableChange = (pagination, filters, sorter) => {
@@ -328,10 +246,10 @@ const SyllabusList = () => {
 			setSortDir(newSortDir);
 			
 			// Fetch data with new sorting
-			fetchSyllabuses(pagination.current, pagination.pageSize, searchText, statusFilter, levelFilter, newSortBy, newSortDir);
+			fetchSyllabuses(pagination.current, pagination.pageSize, searchText, newSortBy, newSortDir);
 		} else {
 			// Handle pagination without sorting change
-			fetchSyllabuses(pagination.current, pagination.pageSize, searchText, statusFilter, levelFilter, sortBy, sortDir);
+			fetchSyllabuses(pagination.current, pagination.pageSize, searchText, sortBy, sortDir);
 		}
 	};
 
@@ -376,7 +294,7 @@ const SyllabusList = () => {
 			});
 			
 			// Refresh the data
-			fetchSyllabuses(pagination.current, pagination.pageSize, searchText, statusFilter, levelFilter, sortBy, sortDir);
+			fetchSyllabuses(pagination.current, pagination.pageSize, searchText, sortBy, sortDir);
 		} catch (error) {
 			console.error('Import error:', error);
 			message.error(t('syllabusManagement.importError'));
@@ -390,8 +308,104 @@ const SyllabusList = () => {
 		message.success(t('syllabusManagement.templateDownloaded'));
 	};
 
+	// Checkbox selection handlers
+	const handleSelectAll = async (checked) => {
+		if (checked) {
+			try {
+				// Fetch all syllabus IDs from API (without pagination)
+				const params = {
+					page: 0,
+					size: totalElements, // Get all items
+					sortBy: sortBy,
+					sortDir: sortDir,
+				};
+				
+				// Add search parameter if provided
+				if (searchText && searchText.trim()) {
+					params.text = searchText.trim();
+				}
+
+				const response = await syllabusManagementApi.getSyllabuses({
+					params: params,
+				});
+
+				// Get all IDs from the response
+				const allKeys = response.data.map(syllabus => syllabus.id);
+				setSelectedRowKeys(allKeys);
+			} catch (error) {
+				console.error('Error fetching all syllabus IDs:', error);
+				message.error('Error selecting all items');
+			}
+		} else {
+			setSelectedRowKeys([]);
+		}
+	};
+
+	const handleSelectRow = (record, checked) => {
+		if (checked) {
+			setSelectedRowKeys(prev => [...prev, record.id]);
+		} else {
+			setSelectedRowKeys(prev => prev.filter(key => key !== record.id));
+		}
+	};
+
+
+	// Bulk actions for selected items
+	const handleBulkDelete = () => {
+		if (selectedRowKeys.length === 0) {
+			message.warning(t('syllabusManagement.selectItemsToDelete'));
+			return;
+		}
+		setIsBulkDeleteModalVisible(true);
+	};
+
+	const handleBulkExport = () => {
+		if (selectedRowKeys.length === 0) {
+			message.warning(t('syllabusManagement.selectItemsToExport'));
+			return;
+		}
+		// TODO: Implement bulk export
+		message.success(`${t('syllabusManagement.bulkExportSuccess')}: ${selectedRowKeys.length} items`);
+	};
+
+	// Bulk delete modal handlers
+	const handleBulkDeleteConfirm = async () => {
+		try {
+			// TODO: Implement actual bulk delete API call
+			await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate API call
+			
+			// Update local state
+			setSyllabuses(syllabuses.filter(s => !selectedRowKeys.includes(s.id)));
+			
+			spaceToast.success(`${t('syllabusManagement.bulkDeleteSuccess')}: ${selectedRowKeys.length} items`);
+			setIsBulkDeleteModalVisible(false);
+			setSelectedRowKeys([]);
+		} catch (error) {
+			console.error('Error bulk deleting syllabuses:', error);
+			message.error(t('syllabusManagement.bulkDeleteError'));
+		}
+	};
+
+	const handleBulkDeleteModalClose = () => {
+		setIsBulkDeleteModalVisible(false);
+	};
+
 	// No need for client-side filtering since API handles filtering
 	const filteredSyllabuses = syllabuses;
+
+	// Calculate statistics based on current view
+	const getCurrentData = () => {
+		switch (currentView) {
+			case 'syllabuses':
+				return filteredSyllabuses;
+			case 'chapters':
+				return filteredChapters;
+			case 'lessons':
+				return filteredLessons;
+			default:
+				return filteredSyllabuses;
+		}
+	};
 
 	// Get all chapters from all syllabuses
 	const allChapters = syllabuses.flatMap(syllabus => 
@@ -435,6 +449,31 @@ const SyllabusList = () => {
 
 	const syllabusColumns = [
 		{
+			title: (
+				<Checkbox
+					key={`select-all-${checkboxStates.selectedCount}-${checkboxStates.totalItems}`}
+					checked={checkboxStates.isSelectAll}
+					indeterminate={checkboxStates.isIndeterminate}
+					onChange={(e) => handleSelectAll(e.target.checked)}
+					style={{ 
+						transform: 'scale(1.2)',
+						marginRight: '8px'
+					}}
+				/>
+			),
+			key: 'selection',
+			width: '5%',
+			render: (_, record) => (
+				<Checkbox
+					checked={selectedRowKeys.includes(record.id)}
+					onChange={(e) => handleSelectRow(record, e.target.checked)}
+					style={{ 
+						transform: 'scale(1.2)'
+					}}
+				/>
+			),
+		},
+		{
 			title: 'No',
 			key: 'index',
 			width: '5%',
@@ -448,63 +487,51 @@ const SyllabusList = () => {
 		{
 			title: t('syllabusManagement.syllabusName'),
 			dataIndex: 'name',
-			width: '20%',
+			width: '18%',
 			key: 'name',
 			sorter: true,
 			render: (text, record) => (
-				<div>
-					<div style={{ fontWeight: 'bold', fontSize: '16px' }}>{text}</div>
-					<div style={{ color: '#666', fontSize: '12px' }}>
-						{record.description}
-					</div>
+				<div style={{ fontSize: '20px'}}>
+					{text}
 				</div>
 			),
 		},
 		{
 			title: t('syllabusManagement.level'),
-			dataIndex: 'levelId',
-			key: 'levelId',
-			width: '20%',
-			render: (levelId) => {
-				// Find level by matching levelId with levels array
-				const level = levels.find(l => l.id === levelId);
+			dataIndex: 'level',
+			key: 'level',
+			width: '12%',
+			render: (level) => {
 				return (
 					<div style={{ color: 'black', fontSize: '20px' }}>
-						{level ? `${level.levelName} (${level.difficulty})` : 'N/A'}
+						{level?.levelName || '-'}
 					</div>
 				);
 			},
 		},
 		{
-			title: t('syllabusManagement.chapters'),
-			dataIndex: 'chapters',
+			title: t('syllabusManagement.totalChapters'),
+			dataIndex: 'chapterCount',
 			key: 'chapters',
-			width: '10%',
-			render: (chapters) => (
+			width: '15%',
+			render: (chapterCount) => (
 				<div style={{ textAlign: 'center' }}>
 					<FileTextOutlined style={{ marginRight: '4px' }} />
-					{chapters?.length || 0}
+					{chapterCount || 0}
 				</div>
 			),
 		},
 		{
 			title: t('syllabusManagement.totalLessons'),
-			dataIndex: 'totalLessons',
+			dataIndex: 'lessonCount',
 			key: 'totalLessons',
-			width: '10%',
-			render: (totalLessons, record) => (
+			width: '15%',
+			render: (lessonCount) => (
 				<div style={{ textAlign: 'center' }}>
 					<BookOutlined style={{ marginRight: '4px' }} />
-					{record.chapters?.reduce((sum, chapter) => sum + (chapter.lessons?.length || 0), 0) || 0}
+					{lessonCount || 0}
 				</div>
 			),
-		},
-		{
-			title: t('syllabusManagement.duration'),
-			dataIndex: 'duration',
-			key: 'duration',
-			width: '10%',
-			render: (duration) => `${duration} ${t('syllabusManagement.weeks')}`,
 		},
 		{
 			title: t('syllabusManagement.actions'),
@@ -692,20 +719,6 @@ const SyllabusList = () => {
 		},
 	];
 
-	// Calculate statistics based on current view
-	const getCurrentData = () => {
-		switch (currentView) {
-			case 'syllabuses':
-				return filteredSyllabuses;
-			case 'chapters':
-				return filteredChapters;
-			case 'lessons':
-				return filteredLessons;
-			default:
-				return filteredSyllabuses;
-		}
-	};
-
 	const getCurrentColumns = () => {
 		switch (currentView) {
 			case 'syllabuses':
@@ -723,16 +736,15 @@ const SyllabusList = () => {
 	return (
 		<SecurityWrapper requiredRoles={['MANAGER', 'ADMIN']}>
 			<ThemedLayout>
-				<div className="syllabus-list-container">
-					{/* Main Container Card */}
-					<Card className="main-container-card">
+				{/* Main Content Panel */}
+				<div className={`main-content-panel ${theme}-main-panel`}>
 						{/* Page Title */}
 						<div className="page-title-container">
 							<Typography.Title 
 								level={1} 
 								className="page-title"
 							>
-								{t('syllabusManagement.title')}
+								{t('syllabusManagement.title')} <span className="student-count">({totalElements})</span>
 							</Typography.Title>
 						</div>
 
@@ -748,97 +760,6 @@ const SyllabusList = () => {
 								style={{ minWidth: '350px', maxWidth: '500px', height: '40px', fontSize: '16px' }}
 								allowClear
 							/>
-							{currentView === 'syllabuses' && (
-								<div ref={filterContainerRef} style={{ position: 'relative' }}>
-									<Button 
-										icon={<FilterOutlined />}
-										onClick={handleFilterToggle}
-										className={`filter-button ${theme}-filter-button ${filterDropdown.visible ? 'active' : ''} ${(statusFilter.length > 0 || levelFilter.length > 0) ? 'has-filters' : ''}`}
-									>
-										{t('common.filter')}
-									</Button>
-									
-									{/* Filter Dropdown Panel */}
-									{filterDropdown.visible && (
-										<div className={`filter-dropdown-panel ${theme}-filter-dropdown`}>
-											<div style={{ padding: '20px' }}>
-												{/* Status and Level Filters in same row */}
-												<div style={{ display: 'flex', gap: '24px', marginBottom: '24px' }}>
-													{/* Status Filter */}
-													<div style={{ flex: 1 }}>
-														<Title level={5} style={{ marginBottom: '12px', fontSize: '16px' }}>
-															Status
-														</Title>
-														<div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-															{statusOptions.map(option => (
-																<Button
-																	key={option.key}
-																	onClick={() => {
-																		const newStatuses = filterDropdown.selectedStatuses.includes(option.key)
-																			? filterDropdown.selectedStatuses.filter(status => status !== option.key)
-																			: [...filterDropdown.selectedStatuses, option.key];
-																		setFilterDropdown(prev => ({ ...prev, selectedStatuses: newStatuses }));
-																	}}
-																	className={`filter-option ${filterDropdown.selectedStatuses.includes(option.key) ? 'selected' : ''}`}
-																>
-																	{option.label}
-																</Button>
-															))}
-														</div>
-													</div>
-
-													{/* Level Filter */}
-													<div style={{ flex: 1 }}>
-														<Title level={5} style={{ marginBottom: '12px', fontSize: '16px' }}>
-															Level
-														</Title>
-														<div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-															{levels.map(level => (
-																<Button
-																	key={level.id}
-																	onClick={() => {
-																		const levelId = level.id.toString();
-																		const newLevels = filterDropdown.selectedLevels.includes(levelId)
-																			? filterDropdown.selectedLevels.filter(id => id !== levelId)
-																			: [...filterDropdown.selectedLevels, levelId];
-																		setFilterDropdown(prev => ({ ...prev, selectedLevels: newLevels }));
-																	}}
-																	className={`filter-option ${filterDropdown.selectedLevels.includes(level.id.toString()) ? 'selected' : ''}`}
-																>
-																	{level.levelName}
-																</Button>
-															))}
-														</div>
-													</div>
-												</div>
-
-												{/* Action Buttons */}
-												<div style={{ 
-													display: 'flex', 
-													justifyContent: 'space-between', 
-													marginTop: '20px',
-													paddingTop: '16px',
-													borderTop: '1px solid #f0f0f0'
-												}}>
-													<Button
-														onClick={handleFilterReset}
-														className="filter-reset-button"
-													>
-														{t('common.reset')}
-													</Button>
-													<Button
-														type="primary"
-														onClick={handleFilterSubmit}
-														className="filter-submit-button"
-													>
-														{t('common.viewResults')}
-													</Button>
-												</div>
-											</div>
-										</div>
-									)}
-								</div>
-							)}
 						</Space>
 					</Col>
 					<Col>
@@ -870,8 +791,33 @@ const SyllabusList = () => {
 					</Col>
 				</Row>
 
-						{/* Table Card */}
-						<Card className="table-card">
+				{/* Bulk Actions Row */}
+				{selectedRowKeys.length > 0 && currentView === 'syllabuses' && (
+					<Row style={{ marginBottom: '16px' }}>
+						<Col flex="auto"></Col>
+						<Col>
+							<Space>
+								<Button
+									icon={<DeleteOutlined />}
+									onClick={handleBulkDelete}
+									className="bulk-delete-button"
+								>
+									{t('syllabusManagement.bulkDelete')} ({selectedRowKeys.length})
+								</Button>
+								<Button
+									icon={<UploadOutlined />}
+									onClick={handleBulkExport}
+									className="bulk-export-button"
+								>
+									{t('syllabusManagement.bulkExport')} ({selectedRowKeys.length})
+								</Button>
+							</Space>
+						</Col>
+					</Row>
+				)}
+
+				{/* Table Section */}
+				<div className={`table-section ${theme}-table-section`}>
 					<LoadingWithEffect
 						loading={loading}
 						message={t('syllabusManagement.loadingSyllabuses')}>
@@ -902,9 +848,8 @@ const SyllabusList = () => {
 							scroll={{ x: currentView === 'lessons' ? 1200 : 1000 }}
 						/>
 					</LoadingWithEffect>
-						</Card>
-					</Card>
 				</div>
+			</div>
 
 			{/* Syllabus Modal */}
 			<Modal
@@ -929,19 +874,162 @@ const SyllabusList = () => {
 
 			{/* Delete Confirmation Modal */}
 			<Modal
-				title={t('syllabusManagement.confirmDelete')}
+				title={
+					<div style={{ 
+						fontSize: '20px', 
+						fontWeight: '600', 
+						color: '#1890ff',
+						textAlign: 'center',
+						padding: '10px 0'
+					}}>
+						{t('syllabusManagement.confirmDelete')}
+					</div>
+				}
 				open={isDeleteModalVisible}
 				onOk={handleDelete}
 				onCancel={handleDeleteModalClose}
-				okText={t('common.yes')}
-				cancelText={t('common.no')}
-				okButtonProps={{ danger: true }}>
-				<p>{t('syllabusManagement.confirmDeleteMessage')}</p>
-				{deleteSyllabus && (
-					<p>
-						<strong>{deleteSyllabus.name}</strong>
+				okText={t('common.confirm')}
+				cancelText={t('common.cancel')}
+				width={500}
+				centered
+				bodyStyle={{
+					padding: '30px 40px',
+					fontSize: '16px',
+					lineHeight: '1.6',
+					textAlign: 'center'
+				}}
+				okButtonProps={{
+					style: {
+						backgroundColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
+						background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
+						borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'transparent',
+						color: theme === 'sun' ? '#000000' : '#ffffff',
+						height: '40px',
+						fontSize: '16px',
+						fontWeight: '500',
+						minWidth: '100px'
+					}
+				}}
+				cancelButtonProps={{
+					style: {
+						height: '40px',
+						fontSize: '16px',
+						fontWeight: '500',
+						minWidth: '100px'
+					}
+				}}
+			>
+				<div style={{
+					display: 'flex',
+					flexDirection: 'column',
+					alignItems: 'center',
+					gap: '20px'
+				}}>
+					<div style={{
+						fontSize: '48px',
+						color: '#ff4d4f',
+						marginBottom: '10px'
+					}}>
+						⚠️
+					</div>
+					<p style={{
+						fontSize: '18px',
+						color: '#333',
+						margin: 0,
+						fontWeight: '500'
+					}}>
+						{t('syllabusManagement.confirmDeleteMessage')}
 					</p>
-				)}
+					{deleteSyllabus && (
+						<p style={{
+							fontSize: '20px',
+							color: '#1890ff',
+							margin: 0,
+							fontWeight: '600'
+						}}>
+							<strong>{deleteSyllabus.name}</strong>
+						</p>
+					)}
+				</div>
+			</Modal>
+
+			{/* Bulk Delete Confirmation Modal */}
+			<Modal
+				title={
+					<div style={{ 
+						fontSize: '20px', 
+						fontWeight: '600', 
+						color: '#1890ff',
+						textAlign: 'center',
+						padding: '10px 0'
+					}}>
+						{t('syllabusManagement.confirmBulkDelete')}
+					</div>
+				}
+				open={isBulkDeleteModalVisible}
+				onOk={handleBulkDeleteConfirm}
+				onCancel={handleBulkDeleteModalClose}
+				okText={t('common.confirm')}
+				cancelText={t('common.cancel')}
+				width={500}
+				centered
+				bodyStyle={{
+					padding: '30px 40px',
+					fontSize: '16px',
+					lineHeight: '1.6',
+					textAlign: 'center'
+				}}
+				okButtonProps={{
+					style: {
+						backgroundColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
+						background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
+						borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'transparent',
+						color: theme === 'sun' ? '#000000' : '#ffffff',
+						height: '40px',
+						fontSize: '16px',
+						fontWeight: '500',
+						minWidth: '100px'
+					}
+				}}
+				cancelButtonProps={{
+					style: {
+						height: '40px',
+						fontSize: '16px',
+						fontWeight: '500',
+						minWidth: '100px'
+					}
+				}}
+			>
+				<div style={{
+					display: 'flex',
+					flexDirection: 'column',
+					alignItems: 'center',
+					gap: '20px'
+				}}>
+					<div style={{
+						fontSize: '48px',
+						color: '#ff4d4f',
+						marginBottom: '10px'
+					}}>
+						⚠️
+					</div>
+					<p style={{
+						fontSize: '18px',
+						color: '#333',
+						margin: 0,
+						fontWeight: '500'
+					}}>
+						{t('syllabusManagement.confirmBulkDeleteMessage')}
+					</p>
+					<div style={{
+						fontSize: '20px',
+						color: '#1890ff',
+						margin: 0,
+						fontWeight: '600'
+					}}>
+						<strong>{selectedRowKeys.length} {t('syllabusManagement.syllabuses')}</strong>
+					</div>
+				</div>
 			</Modal>
 
 			{/* Import Modal */}
