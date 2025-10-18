@@ -13,6 +13,7 @@ import {
 	DatePicker,
 	Spin,
 	Alert,
+	Radio,
 } from 'antd';
 import {
 	ArrowLeftOutlined,
@@ -31,6 +32,7 @@ import './StudentList.css';
 import ThemedLayout from '../../../../component/ThemedLayout';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchLevels } from '../../../../redux/level';
+import EditEmailModal from './EditEmailModal';
 
 const StudentProfile = () => {
 	const { t } = useTranslation();
@@ -39,11 +41,15 @@ const StudentProfile = () => {
 	const { theme } = useTheme();
 	const dispatch = useDispatch();
 	const [editModalVisible, setEditModalVisible] = useState(false);
+	const [editEmailModalVisible, setEditEmailModalVisible] = useState(false);
 	const [resetPasswordModalVisible, setResetPasswordModalVisible] = useState(false);
 	const [editForm] = Form.useForm();
 	const [editLoading, setEditLoading] = useState(false);
 	const [resetPasswordLoading, setResetPasswordLoading] = useState(false);
 	const [avatarUrl, setAvatarUrl] = useState(null);
+	const [isCustomAvatar, setIsCustomAvatar] = useState(false);
+	const [avatarUploadLoading, setAvatarUploadLoading] = useState(false);
+	const [avatarModalVisible, setAvatarModalVisible] = useState(false);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState(null);
 
@@ -53,37 +59,20 @@ const StudentProfile = () => {
 	// Redux state for levels
 	const { levels, loading: levelsLoading } = useSelector((state) => state.level);
 
-	// Available avatar images
-	const avatarImages = [
-		'avatar1.png',
-		'avatar2.png',
-		'avatar3.png',
-		'avatar4.png',
-		'avatar5.png',
-		'avatar6.png',
-		'avatar7.png',
-		'avatar8.png',
-		'avatar9.png',
-		'avatar10.png',
-		'avatar11.png',
-		'avatar12.png',
-		'avatar13.png',
-		'avatar14.png',
-		'avatar15.png',
-		'avatar16.png',
-		'avatar17.png',
-		'avatar18.png',
-	];
-
-	// Function to get random avatar based on student ID
-	const getRandomAvatar = (studentId) => {
-		if (!studentId) return null;
-		
-		// Use student ID as seed for consistent random selection
-		const seed = parseInt(studentId.toString().slice(-3)) || 0;
-		const randomIndex = seed % avatarImages.length;
-		return `/img/student_avatar/${avatarImages[randomIndex]}`;
+	// Generate avatar list from system avatars
+	const generateAvatarList = () => {
+		const avatars = [];
+		for (let i = 1; i <= 18; i++) {
+			avatars.push({
+				id: i,
+				url: `/img/student_avatar/avatar${i}.png`,
+				name: `Avatar ${i}`
+			});
+		}
+		return avatars;
 	};
+
+	const systemAvatars = generateAvatarList();
 
 
 	useEffect(() => {
@@ -106,9 +95,10 @@ const StudentProfile = () => {
 			
 			if (response.success && response.data) {
 				setStudent(response.data);
-				// Use random avatar based on student ID instead of API avatarUrl
-				const randomAvatar = getRandomAvatar(response.data.id);
-				setAvatarUrl(randomAvatar);
+				// Only update avatar from API if no custom avatar is being displayed
+				if (!isCustomAvatar) {
+					setAvatarUrl(response.data.avatarUrl || "/img/avatar_1.png");
+				}
 			} else {
 				setError(response.message || 'Failed to fetch student profile');
 			}
@@ -129,21 +119,15 @@ const StudentProfile = () => {
 		
 		setEditModalVisible(true);
 		
-		// Get current avatar filename from avatarUrl
-		const currentAvatarFilename = avatarUrl ? avatarUrl.split('/').pop() : null;
-		
 		editForm.setFieldsValue({
 			roleName: student.roleName,
 			firstName: student.firstName,
 			lastName: student.lastName,
-			email: student.email,
 			phoneNumber: student.phoneNumber,
 			dateOfBirth: student.dateOfBirth ? dayjs(student.dateOfBirth) : null,
-			gender: student.gender,
+			gender: student.gender || 'MALE',
 			address: student.address,
 			levelId: student.currentLevelInfo?.id || null,
-			// Avatar selection
-			avatar: currentAvatarFilename,
 			// Parent information
 			parentName: student.parentInfo?.parentName,
 			parentEmail: student.parentInfo?.parentEmail,
@@ -152,20 +136,133 @@ const StudentProfile = () => {
 		});
 	};
 
+	const handleEditEmail = () => {
+		setEditEmailModalVisible(true);
+	};
+
+	const handleEmailUpdateSuccess = (newEmail) => {
+		// Update student data with new email
+		setStudent(prev => ({
+			...prev,
+			email: newEmail
+		}));
+	};
+
+	const handleAvatarUpload = async (event) => {
+		const file = event.target.files[0];
+		if (file) {
+			// Validate file type
+			if (!file.type.startsWith('image/')) {
+				spaceToast.error('Please select an image file');
+				return;
+			}
+			
+			// Validate file size (max 5MB)
+			if (file.size > 5 * 1024 * 1024) {
+				spaceToast.error('File size must be less than 5MB');
+				return;
+			}
+			
+		setAvatarUploadLoading(true);
+		try {
+			// Upload avatar for student using student ID
+			console.log('Uploading avatar for student ID:', id);
+			const result = await studentManagementApi.uploadStudentAvatar(id, file);
+			
+			if (result.success || result.data) {
+				// Update avatar URL immediately for better UX (custom file)
+				setAvatarUrl(URL.createObjectURL(file));
+				setIsCustomAvatar(true);
+				
+				// Close modal
+				setAvatarModalVisible(false);
+				
+				spaceToast.success('Avatar uploaded successfully!');
+				
+				// Refresh student data after upload
+				fetchStudentProfile();
+			} else {
+				spaceToast.error(result.message || 'Failed to upload avatar');
+			}
+		} catch (error) {
+			console.error('Error uploading avatar:', error);
+			const errorMessage = error.response?.data?.message || 
+								error.response?.data?.error || 
+								error.message;
+			spaceToast.error(errorMessage);
+		} finally {
+			setAvatarUploadLoading(false);
+		}
+		}
+	};
+
+	const handleSelectSystemAvatar = async (selectedAvatarUrl) => {
+		setAvatarUploadLoading(true);
+		try {
+			// Prepare data for API call
+			const updateData = {
+				roleName: student.roleName,
+				firstName: student.firstName,
+				lastName: student.lastName,
+				avatarUrl: selectedAvatarUrl, // Send the selected avatar URL
+				dateOfBirth: student.dateOfBirth ? dayjs(student.dateOfBirth).format('YYYY-MM-DDTHH:mm:ss.SSS[Z]') : null,
+				address: student.address || null,
+				phoneNumber: student.phoneNumber || null,
+				gender: student.gender || null,
+				parentInfo: {
+					parentName: student.parentInfo?.parentName || "",
+					parentEmail: student.parentInfo?.parentEmail || null,
+					parentPhone: student.parentInfo?.parentPhone || "",
+					relationship: student.parentInfo?.relationship || null,
+				},
+				levelId: student.currentLevelInfo?.id || null,
+				email: student.email, // Always include email for backend
+			};
+			
+			console.log('Updating student avatar with data:', updateData);
+			
+			// Call API to update student profile with new avatar URL
+			const result = await studentManagementApi.updateStudentProfile(id, updateData);
+			
+			if (result.success || result.message) {
+				// Update avatar URL immediately for better UX (system avatar)
+				setAvatarUrl(selectedAvatarUrl);
+				setIsCustomAvatar(false);
+				
+				// Close modal
+				setAvatarModalVisible(false);
+				
+				spaceToast.success('Avatar updated successfully!');
+				
+				// Refresh student data after update
+				fetchStudentProfile();
+			} else {
+				spaceToast.error(result.message || 'Failed to update avatar');
+			}
+		} catch (error) {
+			console.error('Error updating avatar:', error);
+			const errorMessage = error.response?.data?.message || 
+								error.response?.data?.error || 
+								error.message;
+			spaceToast.error(errorMessage);
+		} finally {
+			setAvatarUploadLoading(false);
+		}
+	};
+
 	const handleEditSubmit = async (values) => {
 		setEditLoading(true);
 		try {
 			// Format the data according to the API requirements
 			const studentData = {
-				roleName: values.roleName, // Allow editing role name
-				email: values.email,
+				roleName: values.roleName,
 				firstName: values.firstName,
 				lastName: values.lastName,
-				avatarUrl: "string", // Always send "string" as per API requirement
+				avatarUrl: student.avatarUrl , // Send current avatar URL
 				dateOfBirth: values.dateOfBirth ? values.dateOfBirth.format('YYYY-MM-DDTHH:mm:ss.SSS[Z]') : null,
 				address: values.address || null,
 				phoneNumber: values.phoneNumber || null,
-				gender: values.gender || null, // MALE, FEMALE, OTHER
+				gender: values.gender || null,
 				parentInfo: {
 					parentName: values.parentName || "",
 					parentEmail: values.parentEmail || null,
@@ -173,22 +270,31 @@ const StudentProfile = () => {
 					relationship: values.relationship || null,
 				},
 				levelId: values.levelId,
+				email: student.email, // Always include email for backend
 			};
 			
 			console.log('Updating student with data:', studentData);
+			console.log('Student email:', student.email);
+			console.log('Student data:', student);
 			
-			const response = await studentManagementApi.updateStudentProfile(id, studentData);
+			// Call API to update student profile directly
+			const result = await studentManagementApi.updateStudentProfile(id, studentData);
 			
-			if (response.success && response.data) {
-				setStudent(response.data);
+			if (result.success || result.message) {
+				spaceToast.success(result.message || t('studentManagement.updateStudentSuccess'));
 				setEditModalVisible(false);
-				spaceToast.success(t('studentManagement.updateStudentSuccess'));
+				// Refresh student data
+				fetchStudentProfile();
 			} else {
-				spaceToast.error(response.message || t('studentManagement.updateStudentError'));
+				spaceToast.error(result.message || t('studentManagement.updateStudentError'));
 			}
 		} catch (error) {
 			console.error('Error updating student profile:', error);
-			spaceToast.error(error.response?.data?.message || error.message || t('studentManagement.updateStudentError'));
+			// Show backend error message if available
+			const errorMessage = error.response?.data?.message || 
+								error.response?.data?.error || 
+								error.message
+			spaceToast.error(errorMessage);
 		} finally {
 			setEditLoading(false);
 		}
@@ -222,13 +328,6 @@ const StudentProfile = () => {
 		navigate(`/manager/student/${student.id}/progress`, { 
 			state: { student: student } 
 		});
-	};
-
-	// Function to handle avatar selection from dropdown
-	const handleAvatarSelect = (selectedAvatar) => {
-		if (selectedAvatar) {
-			setAvatarUrl(`/img/student_avatar/${selectedAvatar}`);
-		}
 	};
 
 	// Loading state
@@ -311,6 +410,12 @@ const StudentProfile = () => {
 						className={`edit-button ${theme}-edit-button`}>
 						{t('studentManagement.editProfile')}
 					</Button>
+					<Button
+						type='default'
+						onClick={handleEditEmail}
+						className={`edit-email-button ${theme}-edit-email-button`}>
+						{t('common.editEmail')}
+					</Button>
 				</div>
 			</div>
 
@@ -319,24 +424,57 @@ const StudentProfile = () => {
 				<Row gutter={24}>
 					<Col span={6}>
 						<div className='avatar-section'>
-							<Avatar
-								size={120}
-								icon={<UserOutlined />}
-								src={avatarUrl}
+							<div 
+								className="profile-picture-placeholder" 
+								onClick={() => setAvatarModalVisible(true)}
 								style={{
-									backgroundColor: '#1890ff',
-									border: `3px solid ${
-										theme === 'space'
-											? 'rgba(77, 208, 255, 0.5)'
-											: 'rgba(0, 0, 0, 0.1)'
-									}`,
-									boxShadow: `0 4px 12px ${
-										theme === 'space'
-											? 'rgba(77, 208, 255, 0.3)'
-											: 'rgba(0, 0, 0, 0.1)'
-									}`,
+									cursor: 'pointer',
+									position: 'relative',
+									display: 'inline-block'
 								}}
-							/>
+							>
+								<Avatar
+									size={120}
+									icon={<UserOutlined />}
+									src={avatarUrl}
+									style={{
+										backgroundColor: '#1890ff',
+										border: `3px solid ${
+											theme === 'space'
+												? 'rgba(77, 208, 255, 0.5)'
+												: 'rgba(0, 0, 0, 0.1)'
+										}`,
+										boxShadow: `0 4px 12px ${
+											theme === 'space'
+												? 'rgba(77, 208, 255, 0.3)'
+												: 'rgba(0, 0, 0, 0.1)'
+										}`,
+									}}
+								/>
+								{avatarUploadLoading && (
+									<div style={{
+										position: 'absolute',
+										top: 0,
+										left: 0,
+										right: 0,
+										bottom: 0,
+										backgroundColor: 'rgba(0,0,0,0.5)',
+										borderRadius: '50%',
+										display: 'flex',
+										alignItems: 'center',
+										justifyContent: 'center',
+										color: 'white',
+										fontSize: '12px',
+										width: '120px',
+										height: '120px'
+									}}>
+										Uploading...
+									</div>
+								)}
+							</div>
+							<p style={{ fontSize: '12px', color: '#666', marginTop: '8px', textAlign: 'center' }}>
+								Click to change avatar
+							</p>
 						</div>
 					</Col>
 					<Col span={18}>
@@ -502,56 +640,6 @@ const StudentProfile = () => {
 					layout="vertical"
 					onFinish={handleEditSubmit}
 				>
-					{/* Avatar Section */}
-					<Row gutter={16} style={{ marginBottom: 16 }}>
-						<Col span={24} style={{ textAlign: 'center' }}>
-							<div className="avatar-section">
-								<Avatar
-									size={80}
-									icon={<UserOutlined />}
-									src={avatarUrl}
-									style={{ 
-										backgroundColor: '#1890ff',
-										marginBottom: 12,
-										border: `2px solid ${theme === 'space' ? 'rgba(77, 208, 255, 0.5)' : 'rgba(0, 0, 0, 0.1)'}`,
-										boxShadow: `0 2px 8px ${theme === 'space' ? 'rgba(77, 208, 255, 0.3)' : 'rgba(0, 0, 0, 0.1)'}`
-									}}
-								/>
-								<div>
-									<Form.Item
-										name="avatar"
-										label={t('studentManagement.selectAvatar')}
-										rules={[{ required: true, message: t('studentManagement.avatarRequired') }]}
-									>
-										<Select
-											placeholder={t('studentManagement.selectAvatar')}
-											onChange={handleAvatarSelect}
-											className={`custom-dropdown ${theme}-custom-dropdown`}
-											showSearch
-											filterOption={(input, option) =>
-												option.children.toLowerCase().indexOf(input.toLowerCase()) >= 0
-											}
-											style={{ width: 160 }}
-										>
-											{avatarImages.map((avatar, index) => (
-												<Select.Option key={index} value={avatar}>
-													<div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-														<Avatar
-															size={24}
-															src={`/img/student_avatar/${avatar}`}
-															style={{ flexShrink: 0 }}
-														/>
-														<span>{avatar.replace('.png', '').replace('avatar', 'Avatar ')}</span>
-													</div>
-												</Select.Option>
-											))}
-										</Select>
-									</Form.Item>
-								</div>
-							</div>
-						</Col>
-					</Row>
-
 					{/* Basic Information */}
 					<Row gutter={16}>
 						<Col span={12}>
@@ -575,21 +663,20 @@ const StudentProfile = () => {
 						</Col>
 						<Col span={12}>
 							<Form.Item
-								name="email"
+								name="phoneNumber"
 								label={
 									<span>
-										Email
+										{t('studentManagement.phone')}
 										<span style={{ color: 'red', marginLeft: '4px' }}>*</span>
 									</span>
 								}
 								rules={[
-									{ required: true, message: 'Email is required' },
-									{ type: 'email', message: 'Please enter a valid email' },
-									{ max: 255, message: 'Email must not exceed 255 characters' },
+									{ required: true, message: t('studentManagement.phoneRequired') },
+									{ pattern: /^[0-9]{10,11}$/, message: t('studentManagement.phoneInvalid') },
 								]}
 							>
 								<Input 
-									placeholder="Enter email address"
+									placeholder={t('studentManagement.enterPhone')}
 									className={`form-input ${theme}-form-input`}
 								/>
 							</Form.Item>
@@ -600,7 +687,12 @@ const StudentProfile = () => {
 						<Col span={12}>
 							<Form.Item
 								name="firstName"
-								label={t('studentManagement.firstName')}
+								label={
+									<span>
+										{t('studentManagement.firstName')}
+										<span style={{ color: 'red', marginLeft: '4px' }}>*</span>
+									</span>
+								}
 								rules={[
 									{ required: true, message: t('studentManagement.firstNameRequired') },
 									{ min: 2, message: t('studentManagement.nameMinLength') },
@@ -615,7 +707,12 @@ const StudentProfile = () => {
 						<Col span={12}>
 							<Form.Item
 								name="lastName"
-								label={t('studentManagement.lastName')}
+								label={
+									<span>
+										{t('studentManagement.lastName')}
+										<span style={{ color: 'red', marginLeft: '4px' }}>*</span>
+									</span>
+								}
 								rules={[
 									{ required: true, message: t('studentManagement.lastNameRequired') },
 									{ min: 2, message: t('studentManagement.nameMinLength') },
@@ -632,21 +729,6 @@ const StudentProfile = () => {
 					<Row gutter={16}>
 						<Col span={12}>
 							<Form.Item
-								name="phoneNumber"
-								label={t('studentManagement.phone')}
-								rules={[
-									{ required: true, message: t('studentManagement.phoneRequired') },
-									{ pattern: /^[0-9]{10,11}$/, message: t('studentManagement.phoneInvalid') },
-								]}
-							>
-								<Input 
-									placeholder={t('studentManagement.enterPhone')}
-									className={`form-input ${theme}-form-input`}
-								/>
-							</Form.Item>
-						</Col>
-						<Col span={12}>
-							<Form.Item
 								name="dateOfBirth"
 								label={t('studentManagement.dateOfBirth')}
 							>
@@ -658,30 +740,32 @@ const StudentProfile = () => {
 								/>
 							</Form.Item>
 						</Col>
-					</Row>
-
-					<Row gutter={16}>
 						<Col span={12}>
 							<Form.Item
 								name="gender"
-								label={t('studentManagement.gender')}
+								label={
+									<span>
+										{t('studentManagement.gender')}
+										<span style={{ color: 'red', marginLeft: '4px' }}>*</span>
+									</span>
+								}
 								rules={[{ required: true, message: t('studentManagement.genderRequired') }]}
+								initialValue="MALE"
 							>
-								<Select 
-									placeholder="Select gender"
-									className={`custom-dropdown ${theme}-custom-dropdown`}
-								>
-									<Select.Option value="MALE">Male</Select.Option>
-									<Select.Option value="FEMALE">Female</Select.Option>
-									<Select.Option value="OTHER">Other</Select.Option>
-								</Select>
+								<Radio.Group>
+									<Radio value="MALE">Male</Radio>
+									<Radio value="FEMALE">Female</Radio>
+									<Radio value="OTHER">Other</Radio>
+								</Radio.Group>
 							</Form.Item>
 						</Col>
-						<Col span={12}>
+					</Row>
+
+					<Row gutter={16}>
+						<Col span={24}>
 							<Form.Item
 								name="address"
 								label={t('studentManagement.address')}
-								rules={[{ required: true, message: t('studentManagement.addressRequired') }]}
 							>
 								<Input 
 									placeholder={t('studentManagement.enterAddress')}
@@ -696,7 +780,6 @@ const StudentProfile = () => {
 							<Form.Item
 								name="levelId"
 								label={t('studentManagement.level')}
-								rules={[{ required: true, message: t('studentManagement.levelRequired') }]}
 							>
 								<Select 
 									placeholder={t('studentManagement.selectLevel')}
@@ -749,7 +832,6 @@ const StudentProfile = () => {
 									<Form.Item
 										name="parentName"
 										label={t('studentManagement.parentName')}
-										rules={[{ required: true, message: t('studentManagement.parentNameRequired') }]}
 									>
 										<Input 
 											placeholder={t('studentManagement.enterParentName')}
@@ -761,7 +843,6 @@ const StudentProfile = () => {
 									<Form.Item
 										name="parentPhone"
 										label={t('studentManagement.parentPhone')}
-										rules={[{ required: true, message: t('studentManagement.parentPhoneRequired') }]}
 									>
 										<Input 
 											placeholder={t('studentManagement.enterParentPhone')}
@@ -773,10 +854,6 @@ const StudentProfile = () => {
 									<Form.Item
 										name="parentEmail"
 										label={t('studentManagement.parentEmail')}
-										rules={[
-											{ required: true, message: t('studentManagement.parentEmailRequired') },
-											{ type: 'email', message: t('studentManagement.emailInvalid') }
-										]}
 									>
 										<Input 
 											placeholder={t('studentManagement.enterParentEmail')}
@@ -788,7 +865,6 @@ const StudentProfile = () => {
 									<Form.Item
 										name="relationship"
 										label={t('studentManagement.relationship')}
-										rules={[{ required: true, message: t('studentManagement.relationshipRequired') }]}
 									>
 										<Input 
 											placeholder="Enter relationship"
@@ -907,8 +983,138 @@ const StudentProfile = () => {
 					</Row>
 				</div>
 			</Modal>
+
+			{/* Edit Email Modal */}
+			<EditEmailModal
+				isVisible={editEmailModalVisible}
+				onCancel={() => setEditEmailModalVisible(false)}
+				onSuccess={handleEmailUpdateSuccess}
+				currentEmail={student?.email}
+				studentId={id}
+			/>
+
+			{/* Avatar Selection Modal */}
+			<Modal
+				title={
+					<div style={{
+						fontSize: '20px',
+						fontWeight: '600',
+						color: '#000000',
+						textAlign: 'center',
+						padding: '10px 0'
+					}}>
+						{t('common.selectAvatar')}
+					</div>
+				}
+				open={avatarModalVisible}
+				onCancel={() => setAvatarModalVisible(false)}
+				footer={null}
+				width={600}
+				centered
+				destroyOnClose
+			>
+				<div style={{ padding: '20px 0' }}>
+					{/* System Avatars */}
+					<div style={{ marginBottom: '30px' }}>
+						<h3 style={{ 
+							fontSize: '16px', 
+							fontWeight: '600', 
+							marginBottom: '16px',
+							color: '#000000'
+						}}>
+							{t('common.systemAvatars')}
+						</h3>
+						<Row gutter={[12, 12]}>
+							{systemAvatars.map((avatar) => (
+								<Col span={4} key={avatar.id}>
+									<div
+										onClick={() => handleSelectSystemAvatar(avatar.url)}
+										style={{
+											cursor: 'pointer',
+											padding: '8px',
+											borderRadius: '8px',
+											border: '2px solid transparent',
+											transition: 'all 0.3s ease',
+											textAlign: 'center'
+										}}
+										onMouseEnter={(e) => {
+											e.target.style.borderColor = '#1890ff';
+											e.target.style.backgroundColor = '#f0f8ff';
+										}}
+										onMouseLeave={(e) => {
+											e.target.style.borderColor = 'transparent';
+											e.target.style.backgroundColor = 'transparent';
+										}}
+									>
+										<Avatar
+											size={60}
+											src={avatar.url}
+											style={{
+												border: '2px solid #f0f0f0',
+												boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+											}}
+										/>
+									</div>
+								</Col>
+							))}
+						</Row>
+					</div>
+
+					{/* Upload Custom Avatar */}
+					<div style={{ 
+						borderTop: '1px solid #f0f0f0', 
+						paddingTop: '20px',
+						textAlign: 'center'
+					}}>
+						<h3 style={{ 
+							fontSize: '16px', 
+							fontWeight: '600', 
+							marginBottom: '16px',
+							color: '#000000'
+						}}>
+							{t('common.uploadCustomAvatar')}
+						</h3>
+						<div
+							onClick={() => document.getElementById('avatar-upload').click()}
+							style={{
+								cursor: 'pointer',
+								padding: '20px',
+								border: '2px dashed #d9d9d9',
+								borderRadius: '8px',
+								backgroundColor: '#fafafa',
+								transition: 'all 0.3s ease',
+								display: 'inline-block',
+								minWidth: '200px'
+							}}
+							onMouseEnter={(e) => {
+								e.target.style.borderColor = '#1890ff';
+								e.target.style.backgroundColor = '#f0f8ff';
+							}}
+							onMouseLeave={(e) => {
+								e.target.style.borderColor = '#d9d9d9';
+								e.target.style.backgroundColor = '#fafafa';
+							}}
+						>
+							<div style={{ fontSize: '24px', marginBottom: '8px' }}>📁</div>
+							<div style={{ fontSize: '14px', color: '#666' }}>
+								{t('common.clickToUpload')}
+							</div>
+							<div style={{ fontSize: '12px', color: '#999', marginTop: '4px' }}>
+								{t('common.maxFileSize')}: 5MB
+							</div>
+						</div>
+						<input
+							id="avatar-upload"
+							type="file"
+							accept="image/*"
+							onChange={handleAvatarUpload}
+							style={{ display: 'none' }}
+						/>
+					</div>
 				</div>
+			</Modal>
 			</div>
+		</div>
 		</ThemedLayout>
 	);
 };
