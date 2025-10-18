@@ -1370,6 +1370,8 @@
     "deleteLessonError": "Không thể xóa bài học",
     "confirmDelete": "Xác nhận xóa",
     "confirmDeleteMessage": "Bạn có chắc chắn muốn xóa bài học này?",
+    "confirmBulkDelete": "Xác nhận xóa hàng loạt",
+    "confirmBulkDeleteMessage": "Bạn có chắc chắn muốn xóa các bài học đã chọn?",
     "paginationText": "trong",
     "searchPlaceholder": "Tìm kiếm bài học...",
     "addNewLesson": "Thêm bài học mới",

@@ -323,6 +323,8 @@ const LessonListBySyllabus = () => {
 		setIsBulkDeleteModalVisible(false);
 	};
 
+
+
 	const handleFormModalClose = () => {
 		setIsFormModalVisible(false);
 		setEditingLesson(null);
@@ -627,31 +629,6 @@ const LessonListBySyllabus = () => {
 				}}>
 					{content || 'N/A'}
 				</div>
-			),
-		},
-		{
-			title: t('lessonManagement.actions'),
-			key: 'actions',
-			width: '20%',
-			render: (_, record) => (
-				<Space size="small">
-					<Tooltip title={t('common.edit')}>
-						<Button
-							type="text"
-							size="small"
-							icon={<EditOutlined style={{ fontSize: '25px' }} />}
-							onClick={() => handleEdit(record)}
-						/>
-					</Tooltip>
-					<Tooltip title={t('common.delete')}>
-						<Button
-							type="text"
-							size="small"
-							icon={<DeleteOutlined style={{ fontSize: '25px' }} />}
-							onClick={() => handleDeleteClick(record)}
-						/>
-					</Tooltip>
-				</Space>
 			),
 		},
 	];

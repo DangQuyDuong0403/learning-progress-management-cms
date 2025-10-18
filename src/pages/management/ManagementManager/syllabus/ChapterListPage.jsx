@@ -449,20 +449,6 @@ const ChapterListPage = () => {
 							onClick={() => handleViewLessons(record)}
 						/>
 					</Tooltip>
-					<Tooltip title={t('common.edit')}>
-						<Button
-							type="text"
-							size="small"
-							icon={<EditOutlined style={{ fontSize: '25px' }} />}
-							onClick={() => handleEdit(record)}
-						/>
-					</Tooltip>
-					<Button
-						type="text"
-						size="small"
-						icon={<DeleteOutlined style={{ fontSize: '25px' }} />}
-						onClick={() => handleDeleteClick(record)}
-					/>
 				</Space>
 			),
 		},

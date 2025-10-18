@@ -28,12 +28,6 @@ const SyllabusForm = ({ syllabus, onClose, onSuccess }) => {
 	const isEdit = !!syllabus;
 
 	useEffect(() => {
-		if (syllabus) {
-			form.setFieldsValue(syllabus);
-		}
-	}, [syllabus, form]);
-
-	useEffect(() => {
 		// Load levels when component mounts
 		const fetchLevels = async () => {
 			setLoading(true);
@@ -67,6 +61,19 @@ const SyllabusForm = ({ syllabus, onClose, onSuccess }) => {
 		};
 		fetchLevels();
 	}, [t]);
+
+	// Set form values after levels are loaded (for edit mode)
+	useEffect(() => {
+		if (syllabus && levels.length > 0) {
+			// Map syllabus data to form format
+			const formData = {
+				...syllabus,
+				levelId: syllabus.level?.id || syllabus.levelId // Use level.id if available, fallback to levelId
+			};
+			form.setFieldsValue(formData);
+			console.log('Setting form values for edit:', formData);
+		}
+	}, [syllabus, levels, form]);
 
 	const onFinish = async (values) => {
 		setIsSubmitting(true);
@@ -165,17 +172,13 @@ const SyllabusForm = ({ syllabus, onClose, onSuccess }) => {
 						<Select
 							placeholder={loading ? t('common.loading') : t('syllabusManagement.selectLevel')}
 							size="large"
-							showSearch
 							loading={loading}
 							disabled={loading}
 							notFoundContent={loading ? t('common.loading') : t('syllabusManagement.noLevelsFound')}
-							filterOption={(input, option) =>
-								option.children.toLowerCase().includes(input.toLowerCase())
-							}
 						>
 							{levels.map((level) => (
 								<Option key={level.id} value={level.id}>
-									{level.levelName} ({level.difficulty})
+									{level.levelName}
 								</Option>
 							))}
 						</Select>
