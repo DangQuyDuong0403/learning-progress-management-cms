@@ -329,7 +329,7 @@ export default function Profile() {
         isVisible={isEditEmailModalVisible}
         onCancel={() => setIsEditEmailModalVisible(false)}
         onSuccess={handleEmailUpdateSuccess}
-        currentEmail={profileData?.email || "anhtony2003@gmail.com"}
+        currentEmail={profileData?.email}
       />
 
       {/* Edit Personal Info Modal */}
