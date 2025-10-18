@@ -750,45 +750,60 @@
 
 /* ===== SPACE THEME BUTTONS ===== */
 .space-theme .btn-primary {
-	background: linear-gradient(135deg, #ffffff, #8bb0f9, #1d0161) ;
-	border: 1px solid rgba(109, 95, 143, 0.3) ;
-	color: #000 ;
+	background: linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%) !important;
+	border: 1px solid transparent !important;
+	color: #000000 !important;
 }
 
 .space-theme .btn-primary:hover {
-	background: linear-gradient(135deg, #ffffff, #8bb0f9, #1d0161) ;
-	border-color: rgba(109, 95, 143, 0.5);
-  transform: translateY(-2px);
-	color: #000 ;
+	background: linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%) !important;
+	border-color: transparent !important;
+	transform: translateY(-2px);
+	color: #000000 !important;
+	box-shadow: 0 4px 12px rgba(181, 176, 192, 0.3);
+}
+
+.space-theme .btn-secondary {
+	background: linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%) !important;
+	border: 1px solid transparent !important;
+	color: #000000 !important;
+}
+
+.space-theme .btn-secondary:hover {
+	background: linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%) !important;
+	border-color: transparent !important;
+	transform: translateY(-2px);
+	color: #000000 !important;
+	box-shadow: 0 4px 12px rgba(181, 176, 192, 0.3);
 }
 
 /* ===== SUN THEME BUTTONS ===== */
 .sun-theme .btn-primary {
-	background: #dcf8ff!important;
-	border: 1px solid rgba(109, 95, 143, 0.3) !important;
-	color: #000 !important;
+	background: rgb(113, 179, 253) !important;
+	border: 1px solid rgb(113, 179, 253) !important;
+	color: #000000 !important;
 }
 
 .sun-theme .btn-primary:hover {
-	background: #dcf8ff!important;
-	border-color: rgba(109, 95, 143, 0.5) !important;
-	color: #000 !important;
+	background: rgb(113, 179, 253) !important;
+	border-color: rgb(113, 179, 253) !important;
+	color: #000000 !important;
 	transform: translateY(-2px);
-	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+	box-shadow: 0 4px 12px rgba(113, 179, 253, 0.3);
 }
 
 .sun-theme .btn-secondary {
-	background: #dcf8ff !important;
-	border: 1px solid rgba(109, 95, 143, 0.3) !important;
-	color: #000 !important;
+	background: rgb(113, 179, 253) !important;
+	border: 1px solid rgb(113, 179, 253) !important;
+	color: #000000 !important;
 }
 
 .sun-theme .btn-secondary:hover {
-	background: #dcf8ff !important;
-	border-color: rgba(109, 95, 143, 0.5) !important;
-	color: #000 !important;
+	background: rgb(113, 179, 253) !important;
+	border-color: rgb(113, 179, 253) !important;
+	color: #000000 !important;
 	transform: translateY(-2px);
-	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+	box-shadow: 0 4px 12px rgba(113, 179, 253, 0.3);
 }
 
 /* ===== SPACE THEME PASSWORD INPUTS ===== */

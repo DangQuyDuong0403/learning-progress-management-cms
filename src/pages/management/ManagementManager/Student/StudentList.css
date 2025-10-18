@@ -490,7 +490,7 @@
 }
 
 .sun-theme .student-profile {
-  background: #E6F5FF !important;
+  background: transparent;
 }
 
 /* Profile Container */
@@ -1309,8 +1309,8 @@ div.student-profile .space-theme .edit-button:hover {
 }
 
 .space-theme .parent-info-item {
-	background: rgba(255, 255, 255, 0.9);
-	border: 1px solid rgba(0, 0, 0, 0.1);
+	background: #f6ebffd1;
+	border: 1px solid rgba(0, 0, 0, 0.05);
 	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
@@ -1369,16 +1369,8 @@ div.student-profile .space-theme .edit-button:hover {
 	padding-bottom: 8px;
 	border-bottom: 2px solid;
 	border-radius: 4px;
-}
-
-.space-theme .section-title {
-	color: #4dd0ff;
-	border-bottom-color: rgba(77, 208, 255, 0.3);
-}
-
-.sun-theme .section-title {
-	color: #1890ff;
-	border-bottom-color: rgba(24, 144, 255, 0.3);
+	color: #000000;
+	border-bottom-color: rgba(0, 0, 0, 0.2);
 }
 
 .parent-section-title {
@@ -1398,4 +1390,53 @@ div.student-profile .space-theme .edit-button:hover {
 .sun-theme .parent-section-title {
 	color: #1890ff;
 	border-bottom-color: rgba(24, 144, 255, 0.2);
+}
+
+/* Student Profile buttons - use same style as create-button */
+.student-profile .back-button,
+.student-profile .reset-password-button,
+.student-profile .progress-button,
+.student-profile .edit-button {
+	height: 32px;
+	border-radius: 8px;
+	font-weight: 500;
+	font-size: 14px;
+	border: 1px solid rgba(131, 119, 160, 0.3);
+	background: linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%);
+	color: #000;
+	backdrop-filter: blur(10px);
+	transition: all 0.3s ease;
+}
+
+.student-profile .back-button:hover,
+.student-profile .reset-password-button:hover,
+.student-profile .progress-button:hover,
+.student-profile .edit-button:hover {
+	background: linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%);
+	border-color: rgba(131, 119, 160, 0.6);
+	transform: translateY(-2px);
+	box-shadow: 0 4px 12px rgba(131, 119, 160, 0.4);
+	filter: brightness(1.1);
+	color: #000 !important;
+}
+
+/* Sun theme for student profile buttons - same as create-button */
+.sun-theme .student-profile .back-button,
+.sun-theme .student-profile .reset-password-button,
+.sun-theme .student-profile .progress-button,
+.sun-theme .student-profile .edit-button {
+	background: linear-gradient(135deg, #66AEFF, #3C99FF);
+	border: 1px solid rgba(102, 174, 255, 0.3);
+	color: #000;
+}
+
+.sun-theme .student-profile .back-button:hover,
+.sun-theme .student-profile .reset-password-button:hover,
+.sun-theme .student-profile .progress-button:hover,
+.sun-theme .student-profile .edit-button:hover {
+	background: linear-gradient(135deg, #66AEFF, #3C99FF);
+	border-color: rgba(102, 174, 255, 0.6);
+	box-shadow: 0 4px 12px rgba(102, 174, 255, 0.3);
+	filter: brightness(1.1);
+	color: #000 !important;
 }

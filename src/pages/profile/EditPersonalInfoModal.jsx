@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { useDispatch, useSelector } from 'react-redux';
 import { updateProfile } from '../../redux/auth';
 import { spaceToast } from '../../component/SpaceToastify';
+import { useTheme } from '../../contexts/ThemeContext';
 
 export default function EditPersonalInfoModal({ 
   isVisible, 
@@ -15,6 +16,7 @@ export default function EditPersonalInfoModal({
   const { t } = useTranslation();
   const dispatch = useDispatch();
   const { updateProfileLoading } = useSelector((state) => state.auth);
+  const { theme } = useTheme();
   const [form] = Form.useForm();
   const [avatarFileList, setAvatarFileList] = useState([]);
 
@@ -96,8 +98,10 @@ export default function EditPersonalInfoModal({
       confirmLoading={updateProfileLoading}
       okButtonProps={{
         style: {
-          backgroundColor: '#1890ff',
-          borderColor: '#1890ff',
+          backgroundColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
+          background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
+          borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'transparent',
+          color: theme === 'sun' ? '#000000' : '#ffffff',
           height: '40px',
           fontSize: '16px',
           fontWeight: '500',

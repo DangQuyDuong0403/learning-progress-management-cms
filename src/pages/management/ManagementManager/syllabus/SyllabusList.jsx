@@ -678,7 +678,7 @@ const SyllabusList = () => {
 						level={1} 
 						className="page-title"
 					>
-						Syllabus Management
+						{t('syllabusManagement.title')}
 					</Typography.Title>
 				</div>
 

@@ -368,9 +368,9 @@
 }
 
 .sun-theme .save-button {
-	background: #298EFE !important;
+	background: rgb(113, 179, 253) !important;
 	border-color: #298EFE !important;
-	color: #ffffff !important;
+	color: #000000 !important;
 }
 
 .sun-theme .save-button:hover {

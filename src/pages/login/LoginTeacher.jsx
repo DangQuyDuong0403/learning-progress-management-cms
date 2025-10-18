@@ -20,7 +20,7 @@ export default function LoginTeacher() {
     const [loading, setLoading] = useState(false);
     
     // Set page title
-    usePageTitle('Teacher Login');
+    usePageTitle('Camkey member Login');
     const dispatch = useDispatch();
     const navigate = useNavigate();
     const { t } = useTranslation();
