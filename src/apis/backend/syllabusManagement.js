@@ -23,6 +23,9 @@ const syllabusManagementApi = {
     getLessonsByChapterId: (chapterId, params) => axiosClient.get('/lesson', { 
         params: { chapterId, ...params } 
     }),
+    getLessonsBySyllabusId: (syllabusId, params) => axiosClient.get('/lesson/by-syllabus', { 
+        params: { syllabusId, ...params } 
+    }),
     createLesson: (data) => axiosClient.post('/lesson', data),
     updateLesson: (id, data) => axiosClient.put(`/lesson/${id}`, data),
     deleteLesson: (id) => axiosClient.delete(`/lesson/${id}`),
