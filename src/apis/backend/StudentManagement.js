@@ -99,7 +99,9 @@ const studentManagementApi = {
 		console.log('DownloadStudentTemplate API - URL:', url);
 		
 		return axiosClient.get(url, {
-			responseType: 'blob' // Important for file downloads
+			headers: {
+				'accept': '*/*',
+			}
 		}).catch(error => {
 			console.error('DownloadStudentTemplate API Error:', error);
 			console.error('Error response:', error.response?.data);
