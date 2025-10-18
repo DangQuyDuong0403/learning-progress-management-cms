@@ -1200,7 +1200,7 @@ const StudentList = () => {
         >
           <Form form={form} layout="vertical">
             {/* Basic Information */}
-            <Title level={5} style={{ marginBottom: '16px', color: '#1890ff' }}>
+            <Title level={5} style={{ marginBottom: '16px', color: '#000000' }}>
               {t('studentManagement.basicInformation')}
             </Title>
             
@@ -1407,7 +1407,7 @@ const StudentList = () => {
 
 
             {/* Parent Information */}
-            <Title level={5} style={{ marginTop: '24px', marginBottom: '16px', color: '#1890ff' }}>
+            <Title level={5} style={{ marginTop: '24px', marginBottom: '16px', color: '#000000' }}>
               {t('studentManagement.parentInformation')}
             </Title>
 
@@ -1618,7 +1618,7 @@ const StudentList = () => {
               <p
                 className='ant-upload-drag-icon'
                 style={{ fontSize: '48px', color: '#1890ff' }}>
-                <UploadOutlined />
+                <DownloadOutlined />
               </p>
               <p
                 className='ant-upload-text'
