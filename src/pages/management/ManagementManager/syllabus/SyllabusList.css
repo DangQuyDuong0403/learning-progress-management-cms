@@ -1,5 +1,5 @@
 .syllabus-list-container {
-	padding: 0;
+	padding: 24px;
 }
 
 .syllabus-list-header {
@@ -227,6 +227,65 @@
 	border-color: rgba(102, 174, 255, 0.6);
 	transform: translateY(-2px);
 	box-shadow: 0 4px 12px rgba(102, 174, 255, 0.4);
+	filter: brightness(1.1);
+}
+
+/* Theme-specific button styling */
+/* Sun theme (light) */
+.syllabus-list-container .sun-export-button {
+	background: linear-gradient(135deg, #E0E0E0 0%, #8A81A1 46%, #9289A6 64%, #9790AB 75%, #584A7A 100%);
+	border-color: rgba(77, 208, 255, 0.3);
+	color: #000;
+}
+
+.syllabus-list-container .sun-export-button:hover {
+	background: linear-gradient(135deg, #E0E0E0 0%, #8A81A1 46%, #9289A6 64%, #9790AB 75%, #584A7A 100%);
+	border-color: rgba(77, 208, 255, 0.6);
+	transform: translateY(-2px);
+	box-shadow: 0 4px 12px rgba(77, 208, 255, 0.3);
+	filter: brightness(1.1);
+}
+
+.syllabus-list-container .sun-import-button {
+	background: linear-gradient(135deg, #66AEFF, #3C99FF);
+	border-color: rgba(102, 174, 255, 0.3);
+	color: #fff;
+}
+
+.syllabus-list-container .sun-import-button:hover {
+	background: linear-gradient(135deg, #66AEFF, #3C99FF);
+	border-color: rgba(102, 174, 255, 0.6);
+	transform: translateY(-2px);
+	box-shadow: 0 4px 12px rgba(102, 174, 255, 0.4);
+	filter: brightness(1.1);
+}
+
+/* Space theme (dark) */
+.syllabus-list-container .space-export-button {
+	background: linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%);
+	border-color: rgba(170, 139, 249, 0.3);
+	color: #000;
+}
+
+.syllabus-list-container .space-export-button:hover {
+	background: linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%);
+	border-color: rgba(170, 139, 249, 0.6);
+	transform: translateY(-2px);
+	box-shadow: 0 4px 12px rgba(170, 139, 249, 0.3);
+	filter: brightness(1.1);
+}
+
+.syllabus-list-container .space-import-button {
+	background: linear-gradient(135deg, #7228d9 0%, #9c88ff 100%);
+	border-color: rgba(114, 40, 217, 0.3);
+	color: #fff;
+}
+
+.syllabus-list-container .space-import-button:hover {
+	background: linear-gradient(135deg, #7228d9 0%, #9c88ff 100%);
+	border-color: rgba(114, 40, 217, 0.6);
+	transform: translateY(-2px);
+	box-shadow: 0 4px 12px rgba(114, 40, 217, 0.4);
 	filter: brightness(1.1);
 }
 
@@ -910,4 +969,36 @@
 .sun-theme .syllabus-list-container .ant-table-thead > tr > th {
 	background: rgba(255, 255, 255, 0.8);
 	color: #000;
+}
+
+/* Back Button */
+.back-button {
+  height: 40px;
+  border-radius: 8px;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.space-theme .back-button {
+  background: linear-gradient(135deg, #B5B0C0, #A79EBB);
+  border: 1px solid #8377A0;
+  color: #000;
+}
+
+.space-theme .back-button:hover {
+  background: linear-gradient(135deg, #ACA5C0, #6D5F8F);
+  border-color: #8377A0;
+  color: #000;
+}
+
+.sun-theme .back-button {
+  background: rgba(164, 207, 255, 0.8);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  color: #000;
+}
+
+.sun-theme .back-button:hover {
+  background: rgba(148, 191, 255, 0.8);
+  border-color: rgba(0, 0, 0, 0.2);
+  color: #000;
 }

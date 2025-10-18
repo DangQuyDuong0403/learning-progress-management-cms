@@ -680,7 +680,7 @@ const AccountList = () => {
 						level={1} 
 						className="page-title"
 					>
-						{t('accountManagement.title')} ({totalElements})
+						{t('accountManagement.title')} <span className="student-count">({totalElements})</span>
 					</Typography.Title>
 				</div>
 				{/* Header Section */}
@@ -867,7 +867,8 @@ const AccountList = () => {
 				{/* Table Section */}
 				<div className={`table-section ${theme}-table-section`}>
 					<LoadingWithEffect
-						loading={loading}>
+						loading={loading}
+						message={t('common.loading')}>
 						<Table
 							columns={columns}
 							dataSource={accounts}

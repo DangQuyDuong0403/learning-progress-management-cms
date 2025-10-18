@@ -10,6 +10,7 @@ import {
 	Col,
 } from 'antd';
 import { useTranslation } from 'react-i18next';
+import { useTheme } from '../../../../contexts/ThemeContext';
 import syllabusManagementApi from '../../../../apis/backend/syllabusManagement';
 import levelManagementApi from '../../../../apis/backend/levelManagement';
 
@@ -18,6 +19,7 @@ const { Option } = Select;
 
 const SyllabusForm = ({ syllabus, onClose, onSuccess }) => {
 	const { t } = useTranslation();
+	const { theme } = useTheme();
 	const [form] = Form.useForm();
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [loading, setLoading] = useState(false);
@@ -323,6 +325,15 @@ const SyllabusForm = ({ syllabus, onClose, onSuccess }) => {
 						htmlType="submit"
 						loading={isSubmitting || loading}
 						size="large"
+						style={{
+							background: theme === 'sun' 
+								? 'rgb(113, 179, 253)' 
+								: 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
+							color: theme === 'sun' ? '#000' : '#fff',
+							borderColor: theme === 'sun' 
+								? 'rgb(113, 179, 253)' 
+								: 'transparent'
+						}}
 					>
 						{isEdit ? t('common.update') : t('common.save')}
 					</Button>

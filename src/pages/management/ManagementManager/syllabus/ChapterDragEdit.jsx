@@ -13,6 +13,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useTheme } from '../../../../contexts/ThemeContext';
 import { spaceToast } from '../../../../component/SpaceToastify';
 import ThemedLayout from '../../../../component/ThemedLayout';
+import LoadingWithEffect from '../../../../component/spinner/LoadingWithEffect';
 import syllabusManagementApi from '../../../../apis/backend/syllabusManagement';
 import ChapterForm from './ChapterForm';
 import {
@@ -193,6 +194,7 @@ const ChapterDragEdit = () => {
 	const [editingChapter, setEditingChapter] = useState(null);
 	const [insertAtIndex, setInsertAtIndex] = useState(null);
 	const [syllabusInfo, setSyllabusInfo] = useState(null);
+	const [isInitialLoading, setIsInitialLoading] = useState(true);
 
 	const sensors = useSensors(
 		useSensor(PointerSensor, {
@@ -266,8 +268,15 @@ const ChapterDragEdit = () => {
 	}, [syllabusId]);
 
 	useEffect(() => {
-		fetchAllChapters();
-		fetchSyllabusInfo();
+		const fetchData = async () => {
+			setIsInitialLoading(true);
+			await Promise.all([
+				fetchAllChapters(),
+				fetchSyllabusInfo()
+			]);
+			setIsInitialLoading(false);
+		};
+		fetchData();
 	}, [fetchAllChapters, fetchSyllabusInfo]);
 
 	const handleAddChapterAtPosition = useCallback((index) => {
@@ -319,21 +328,47 @@ const ChapterDragEdit = () => {
 
 	const handleDeleteChapter = useCallback(
 		(index) => {
-			if (chapters.length <= 1) {
-				message.warning(t('chapterManagement.minChaptersRequired'));
+			const visibleChapters = chapters.filter(chapter => !chapter.toBeDeleted);
+
+			// Get the actual chapter from visible chapters using the index
+			const chapterToDelete = visibleChapters[index];
+			if (!chapterToDelete) {
+				console.error('Chapter not found at index:', index);
 				return;
 			}
 
+			// Set toBeDeleted: true but keep in state
 			setChapters((prev) => {
-				const newChapters = prev.filter((_, i) => i !== index);
-				return newChapters.map((chapter, i) => ({
-					...chapter,
-					position: i + 1,
-					order: i + 1,
-				}));
+				const newChapters = prev.map((chapter) => {
+					if (chapter.id === chapterToDelete.id) {
+						return {
+							...chapter,
+							toBeDeleted: true
+						};
+					}
+					return chapter;
+				});
+				
+				// Recalculate positions only for visible items
+				const visibleItems = newChapters.filter(chapter => !chapter.toBeDeleted);
+				return newChapters.map((chapter) => {
+					if (chapter.toBeDeleted) {
+						return chapter; // Keep deleted items as-is
+					}
+					
+					// Update position for visible items
+					const visibleIndex = visibleItems.findIndex(item => item.id === chapter.id);
+					return {
+						...chapter,
+						position: visibleIndex + 1,
+						order: visibleIndex + 1,
+					};
+				});
 			});
+
+			spaceToast.success(t('chapterManagement.deleteChapterSuccess'));
 		},
-		[chapters.length, t]
+		[chapters, t]
 	);
 
 	const handleUpdateChapterName = useCallback(
@@ -384,10 +419,14 @@ const ChapterDragEdit = () => {
 		}
 	}, []);
 
-	const chapterIds = useMemo(() => chapters.map((chapter) => chapter.id), [chapters]);
+	const chapterIds = useMemo(() => 
+		chapters.filter(chapter => !chapter.toBeDeleted).map((chapter) => chapter.id), 
+		[chapters]
+	);
 
 	const handleSave = useCallback(async () => {
-		const invalidChapters = chapters.filter((chapter) => !chapter.name.trim());
+		const visibleChapters = chapters.filter(chapter => !chapter.toBeDeleted);
+		const invalidChapters = visibleChapters.filter((chapter) => !chapter.name.trim());
 		if (invalidChapters.length > 0) {
 			message.error(t('chapterManagement.chapterNameRequired'));
 			return;
@@ -403,7 +442,7 @@ const ChapterDragEdit = () => {
 					id: isNewRecord ? null : chapter.id, // null cho chapter mới
 					chapterName: chapter.name,
 					orderNumber: index + 1, // Thứ tự từ 1
-					toBeDeleted: false, // Mặc định không xóa
+					toBeDeleted: chapter.toBeDeleted || false, // Include toBeDeleted flag
 				};
 			});
 
@@ -425,7 +464,7 @@ const ChapterDragEdit = () => {
 	}, [navigate, syllabusId]);
 
 	const activeChapterData = useMemo(
-		() => chapters.find((chapter) => chapter.id === activeId),
+		() => chapters.filter(chapter => !chapter.toBeDeleted).find((chapter) => chapter.id === activeId),
 		[activeId, chapters]
 	);
 
@@ -446,11 +485,19 @@ const ChapterDragEdit = () => {
 		};
 	}, []);
 
-	if (!syllabusInfo) {
+	if (!syllabusInfo || isInitialLoading) {
 		return (
 			<ThemedLayout>
-				<div style={{ textAlign: 'center', padding: '50px' }}>
-					<Text>{t('chapterManagement.syllabusNotFound')}</Text>
+				{/* Main Content Panel */}
+				<div className={`main-content-panel ${theme}-main-panel`}>
+					<div style={{ textAlign: 'center', padding: '50px' }}>
+						<LoadingWithEffect
+							loading={true}
+							message={t('common.loading')}
+						>
+							<div></div>
+						</LoadingWithEffect>
+					</div>
 				</div>
 			</ThemedLayout>
 		);
@@ -461,45 +508,23 @@ const ChapterDragEdit = () => {
 			<div className={`main-content-panel ${theme}-main-panel`}>
 				{/* Header Section */}
 				<div className={`panel-header ${theme}-panel-header`}>
-					<div className='page-header'>
+					<div className='page-header' style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
 						<Button
 							icon={<ArrowLeftOutlined />}
 							onClick={handleGoBack}
-							style={{ position: 'absolute', left: 0 }}>
+							className={`back-button ${theme}-back-button`}>
 							{t('common.back')}
 						</Button>
-						<div
-							style={{
-								display: 'flex',
-								alignItems: 'center',
-								gap: '12px',
-								padding: '12px 24px',
-								borderRadius: '12px',
-								background:
-									theme === 'space'
-										? 'linear-gradient(135deg, #4c1d95 0%, #5b21b6 100%)'
-										: 'rgb(101 191 253)',
-								boxShadow:
-									theme === 'space'
-										? '0 4px 12px rgba(76, 29, 149, 0.4)'
-										: '0 4px 12px rgba(173, 219, 250, 0.3)',
-							}}>
-							<SwapOutlined
-								rotate={90}
-								style={{
-									fontSize: '28px',
-									color: '#ffffff',
-								}}
-							/>
+						<div className="page-title-container">
 							<Title
-								level={2}
-								style={{
-									margin: 0,
-									color: '#ffffff',
-								}}>
+								level={1}
+								className="page-title"
+								style={{ margin: 0 }}
+							>
 								{t('chapterManagement.editPositions')} - {syllabusInfo.name}
 							</Title>
 						</div>
+						<div style={{ width: '100px' }}></div> {/* Spacer để căn giữa */}
 					</div>
 				</div>
 
@@ -516,7 +541,7 @@ const ChapterDragEdit = () => {
 								{loading ? (
 									<div style={{ textAlign: 'center', padding: '40px' }}>
 										<Text type='secondary'>
-											{t('chapterManagement.loadingChapters')}
+											{t('common.loading')}
 										</Text>
 									</div>
 								) : (
@@ -533,7 +558,9 @@ const ChapterDragEdit = () => {
 										<SortableContext
 											items={chapterIds}
 											strategy={verticalListSortingStrategy}>
-											{chapters.map((chapter, index) => (
+											{chapters
+												.filter(chapter => !chapter.toBeDeleted)
+												.map((chapter, index) => (
 												<React.Fragment key={chapter.id}>
 													{index > 0 && (
 														<AddChapterButton
@@ -553,9 +580,56 @@ const ChapterDragEdit = () => {
 													/>
 												</React.Fragment>
 											))}
+											
+											{/* Always show Add button at the end if there are chapters */}
+											{chapters.filter(chapter => !chapter.toBeDeleted).length > 0 && (
+												<AddChapterButton
+													theme={theme}
+													index={chapters.filter(chapter => !chapter.toBeDeleted).length}
+													onAddAtPosition={handleAddChapterAtPosition}
+												/>
+											)}
+											
+											{/* Show fixed Add button when no chapters exist */}
+											{chapters.filter(chapter => !chapter.toBeDeleted).length === 0 && (
+												<div className={`add-level-empty ${theme}-add-level-empty`} style={{ 
+													marginTop: '40px', 
+													textAlign: 'center',
+													padding: '40px 20px'
+												}}>
+													<Button
+														type='primary'
+														icon={<PlusOutlined />}
+														size='large'
+														onClick={() => handleAddChapterAtPosition(0)}
+														style={{
+															height: '60px',
+															padding: '0 40px',
+															fontSize: '18px',
+															fontWeight: '600',
+															borderRadius: '12px',
+															backgroundColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
+															background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
+															borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'transparent',
+															color: theme === 'sun' ? '#000000' : '#ffffff',
+															boxShadow: theme === 'sun' 
+																? '0 6px 20px rgba(113, 179, 253, 0.4)' 
+																: '0 6px 20px rgba(90, 31, 184, 0.4)',
+														}}
+													>
+														{t('chapterManagement.addChapter')}
+													</Button>
+													<div style={{ 
+														marginTop: '16px', 
+														color: '#666', 
+														fontSize: '14px' 
+													}}>
+													</div>
+												</div>
+											)}
 										</SortableContext>
 
-										{/* Drag Overlay */}
+										{/* Drag Overlay - offset lên trên 100px */}
 										<DragOverlay
 											dropAnimation={null}
 											modifiers={[offsetModifier]}>
@@ -617,6 +691,7 @@ const ChapterDragEdit = () => {
 								icon={<ArrowLeftOutlined />}
 								onClick={handleGoBack}
 								size='large'
+								className={`back-button ${theme}-back-button`}
 								style={{ 
 									marginRight: '12px',
 									borderRadius: '8px',
@@ -630,7 +705,12 @@ const ChapterDragEdit = () => {
 								icon={<SaveOutlined />}
 								onClick={handleSave}
 								loading={saving}
-								className='save-button'>
+								className='save-button'
+								style={{
+									height: '42px',
+									borderRadius: '8px',
+									fontWeight: '500'
+								}}>
 								{t('common.save')}
 							</Button>
 						</div>
@@ -641,18 +721,18 @@ const ChapterDragEdit = () => {
 			{/* Add/Edit Chapter Modal */}
 			<Modal
 				title={
-					<div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+					<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px' }}>
 						{editingChapter ? (
 							<>
-								<EditOutlined style={{ fontSize: '20px', color: '#1890ff' }} />
-								<Title level={4} style={{ margin: 0, color: '#1890ff' }}>
+								<EditOutlined style={{ fontSize: '26px', color: '#000000' }} />
+								<Title level={4} style={{ margin: 0, color: '#000000', fontSize: '26px' }}>
 									{t('chapterManagement.editChapter')}
 								</Title>
 							</>
 						) : (
 							<>
-								<PlusOutlined style={{ fontSize: '20px', color: '#1890ff' }} />
-								<Title level={4} style={{ margin: 0, color: '#1890ff' }}>
+								<PlusOutlined style={{ fontSize: '20px', color: '#000000' }} />
+								<Title level={4} style={{ margin: 0, color: '#000000' }}>
 									{t('chapterManagement.addChapter')}
 								</Title>
 							</>

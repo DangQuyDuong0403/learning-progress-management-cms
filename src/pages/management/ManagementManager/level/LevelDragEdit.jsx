@@ -545,25 +545,23 @@ const LevelDragEdit = () => {
 			<div className={`main-content-panel ${theme}-main-panel`}>
 				{/* Header Section */}
 				<div className={`panel-header ${theme}-panel-header`}>
-					<div className='page-header'>
+					<div className='page-header' style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
 						<Button
 							icon={<ArrowLeftOutlined />}
 							onClick={handleGoBack}
-							className={`back-button ${theme}-back-button`}
-							style={{ 
-								position: 'absolute', 
-								left: 0,
-							}}>
+							className={`back-button ${theme}-back-button`}>
 							{t('common.back')}
 						</Button>
 						<div className="page-title-container">
 							<Title
 								level={1}
 								className="page-title"
+								style={{ margin: 0 }}
 							>
 								{t('levelManagement.editLevel')}
 							</Title>
 						</div>
+						<div style={{ width: '100px' }}></div> {/* Spacer để căn giữa */}
 					</div>
 				</div>
 
@@ -580,7 +578,7 @@ const LevelDragEdit = () => {
 								{loading ? (
 									<div style={{ textAlign: 'center', padding: '40px' }}>
 										<Text type='secondary'>
-											{t('levelManagement.loadingLevels')}
+											{t('common.loading')}
 										</Text>
 									</div>
 								) : (
@@ -647,11 +645,13 @@ const LevelDragEdit = () => {
 															fontSize: '18px',
 															fontWeight: '600',
 															borderRadius: '12px',
-															background: theme === 'sun' ? '#298EFE' : 'linear-gradient(135deg, #7228d9 0%, #9c88ff 100%)',
-															borderColor: theme === 'sun' ? '#298EFE' : '#7228d9',
+															backgroundColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
+															background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
+															borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'transparent',
+															color: theme === 'sun' ? '#000000' : '#ffffff',
 															boxShadow: theme === 'sun' 
-																? '0 6px 20px rgba(41, 142, 254, 0.4)' 
-																: '0 6px 20px rgba(114, 40, 217, 0.4)',
+																? '0 6px 20px rgba(113, 179, 253, 0.4)' 
+																: '0 6px 20px rgba(90, 31, 184, 0.4)',
 														}}
 													>
 														{t('levelManagement.addLevel')}

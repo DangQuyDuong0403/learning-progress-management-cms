@@ -1003,7 +1003,7 @@
 
 /* Sun theme edit buttons - green for edit action */
 .sun-theme .themed-content .ant-btn:has(.anticon-edit) .anticon {
-	color: #7228d9;
+	color: #000;
 }
 /* Space theme create button */
 .space-theme .themed-content .create-button {
@@ -1736,16 +1736,38 @@
 	margin: 0;
 	font-size: 30px;
 	font-weight: 600;
+	display: inline-block;
+}
+
+/* Student count styling */
+.page-title .student-count {
+	font-size: 20px !important;
+	font-weight: 400;
+	font-style: italic;
+	margin-left: 8px;
+	display: inline;
+}
+
+/* Sun theme student count */
+.sun-theme .page-title .student-count {
+	color: #666666;
+}
+
+/* Space theme student count */
+.space-theme .page-title .student-count {
+	color: #d9d9d9;
 }
 
 /* Sun theme page title */
 .sun-theme .page-title {
 	color: #000000;
+	font-size: 32px;
 }
 
 /* Space theme page title */
 .space-theme .page-title {
 	color: #ffffff;
+	font-size: 32px;
 }
 
 /* ===== TOGGLE SWITCH STYLES ===== */
@@ -1809,4 +1831,94 @@
 		filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.8)) brightness(1.3)
 			contrast(1.2);
 	}
+}
+
+/* Checkbox column styling - Common styles for all tables */
+.ant-table-thead > tr > th:first-child {
+	background-color: #E6F5FF ;
+	border: none !important;
+	padding: 8px 12px !important;
+	text-align: center !important;
+}
+
+.ant-table-tbody > tr > td:first-child {
+	background-color: #E6F5FF !important;
+	border: none !important;
+	padding: 8px 12px !important;
+	text-align: center !important;
+}
+
+/* Checkbox styling to match Jira */
+.ant-checkbox-wrapper {
+	margin: 0 !important;
+}
+
+.ant-checkbox {
+	transform: scale(1.2) !important;
+}
+
+.ant-checkbox-checked .ant-checkbox-inner {
+	background-color: #1890ff !important;
+	border-color: #1890ff !important;
+}
+
+.ant-checkbox-indeterminate .ant-checkbox-inner {
+	background-color: #1890ff !important;
+	border-color: #1890ff !important;
+}
+
+/* Bulk action buttons styling - giống hệt create-button */
+.space-theme .themed-content .bulk-delete-button,
+.space-theme .themed-content .bulk-export-button {
+	background: linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%);
+	border: none;
+	color: #000;
+	border-radius: 8px;
+	font-weight: 600;
+	font-size: 16px;
+	box-shadow: 0 2px 8px rgba(170, 139, 249, 0.3);
+	transition: all 0.3s ease;
+	margin-right: 8px !important;
+}
+
+.space-theme .themed-content .bulk-delete-button:hover,
+.space-theme .themed-content .bulk-export-button:hover {
+	background: linear-gradient(135deg, #A09BAA 19%, #9289A6 64%, #6E628B 75%, #9790AB 97%, #584A7A 100%);
+	color: #000;
+	transform: translateY(-2px);
+	box-shadow: 0 4px 16px rgba(170, 139, 249, 0.4);
+}
+
+.sun-theme .themed-content .bulk-delete-button,
+.sun-theme .themed-content .bulk-export-button {
+	background: linear-gradient(135deg, #66AEFF, #3C99FF);
+	border: none;
+	color: #000;
+	border-radius: 8px;
+	font-weight: 600;
+	font-size: 16px;
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+	transition: all 0.3s ease;
+	margin-right: 8px !important;
+}
+
+.sun-theme .themed-content .bulk-delete-button:hover,
+.sun-theme .themed-content .bulk-export-button:hover {
+	background: linear-gradient(135deg, #5A9EFF, #2B89FF);
+	color: #000;
+	transform: translateY(-2px);
+	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Bulk action button icons */
+.space-theme .themed-content .bulk-delete-button .anticon,
+.space-theme .themed-content .bulk-export-button .anticon {
+	color: #000;
+	font-size: 16px;
+}
+
+.sun-theme .themed-content .bulk-delete-button .anticon,
+.sun-theme .themed-content .bulk-export-button .anticon {
+	color: #000;
+	font-size: 16px;
 }

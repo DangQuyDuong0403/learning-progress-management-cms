@@ -21,8 +21,10 @@ import SyllabusList from '../pages/management/ManagementManager/syllabus/Syllabu
 import ChapterListPage from '../pages/management/ManagementManager/syllabus/ChapterListPage.jsx';
 import ChapterDragEdit from '../pages/management/ManagementManager/syllabus/ChapterDragEdit.jsx';
 import LessonListPage from '../pages/management/ManagementManager/syllabus/LessonListPage.jsx';
+import LessonListBySyllabus from '../pages/management/ManagementManager/syllabus/LessonListBySyllabus.jsx';
 import LessonFormPage from '../pages/management/ManagementManager/syllabus/LessonFormPage.jsx';
 import LessonDragEdit from '../pages/management/ManagementManager/syllabus/LessonDragEdit.jsx';
+import LessonDragEditBySyllabus from '../pages/management/ManagementManager/syllabus/LessonDragEditBySyllabus.jsx';
 import StudentList from '../pages/management/ManagementManager/Student/StudentList.jsx';
 import StudentProfile from '../pages/management/ManagementManager/Student/StudentProfile.jsx';
 import StudentLearningProgressOverview from '../pages/management/ManagementManager/Student/StudentLearningProgressOverview.jsx';
@@ -502,6 +504,26 @@ const CONFIG_ROUTER = [
 		menuName: 'Edit Lesson Positions',
 		exact: true,
 		key: 'MANAGER_LESSON_EDIT_POSITIONS',
+		private: true,
+		role: 'manager',
+	},
+	{
+		show: false,
+		component: LessonListBySyllabus,
+		path: ROUTER_PAGE.MANAGER_SYLLABUS_LESSONS,
+		menuName: 'Syllabus Lessons Management',
+		exact: true,
+		key: 'MANAGER_SYLLABUS_LESSONS',
+		private: true,
+		role: 'manager',
+	},
+	{
+		show: false,
+		component: LessonDragEditBySyllabus,
+		path: ROUTER_PAGE.MANAGER_SYLLABUS_LESSON_EDIT_POSITIONS,
+		menuName: 'Edit Syllabus Lesson Positions',
+		exact: true,
+		key: 'MANAGER_SYLLABUS_LESSON_EDIT_POSITIONS',
 		private: true,
 		role: 'manager',
 	},

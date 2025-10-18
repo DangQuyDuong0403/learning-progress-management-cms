@@ -34,6 +34,8 @@ const ROUTER_PAGE = {
 	MANAGER_LESSON_EDIT_POSITIONS: '/manager/syllabuses/:syllabusId/chapters/:chapterId/lessons/edit-order',
 	MANAGER_LESSON_FORM: '/manager/syllabuses/:syllabusId/chapters/:chapterId/lessons/form',
 	MANAGER_LESSON_EDIT: '/manager/syllabuses/:syllabusId/chapters/:chapterId/lessons/:lessonId/edit',
+	MANAGER_SYLLABUS_LESSONS: '/manager/syllabuses/:syllabusId/lessons',
+	MANAGER_SYLLABUS_LESSON_EDIT_POSITIONS: '/manager/syllabuses/:syllabusId/lessons/edit-order',
 	MANAGER_LEVELS: '/manager/levels',
 	MANAGER_LEVEL_EDIT_POSITIONS: '/manager/level/edit-positions',
 	MANAGER_TEACHERS: '/manager/teachers',

@@ -136,11 +136,11 @@ const LevelList = () => {
 			if (mappedLevels.length === 0) {
 				setCurrentStatus('');
 			} else if (mappedLevels.every(level => level.status === 'PUBLISHED')) {
-				setCurrentStatus('Published');
+				setCurrentStatus(t('levelManagement.published'));
 			} else if (mappedLevels.every(level => level.status === 'DRAFT')) {
-				setCurrentStatus('Draft');
+				setCurrentStatus(t('levelManagement.draft'));
 			} else {
-				setCurrentStatus('Mixed');
+				setCurrentStatus(t('levelManagement.mixed'));
 			}
 			
 			setPagination(prev => ({
@@ -459,14 +459,14 @@ const LevelList = () => {
 						level={1} 
 						className="page-title"
 					>
-						{t('levelManagement.title')} ({totalElements})
+						{t('levelManagement.title')} <span className="student-count">({totalElements})</span>
 					</Typography.Title>
 					{currentStatus && (
 						<div style={{ 
 							textAlign: 'center',
 							marginTop: '8px',
 							fontSize: '20px',
-							color: currentStatus === 'Published' 
+							color: currentStatus === t('levelManagement.published')
 								? (theme === 'sun' ? 'rgb(113, 179, 253)' : 'rgb(224 217 255 / 90%)')
 								: (theme === 'sun' ? '#999' : '#ccc')
 						}}>

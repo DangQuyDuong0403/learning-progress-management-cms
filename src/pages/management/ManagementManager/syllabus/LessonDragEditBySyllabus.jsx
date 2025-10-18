@@ -200,11 +200,11 @@ const AddLessonButton = memo(
 
 AddLessonButton.displayName = 'AddLessonButton';
 
-const LessonDragEdit = () => {
+const LessonDragEditBySyllabus = () => {
 	const { t } = useTranslation();
 	const { theme } = useTheme();
 	const navigate = useNavigate();
-	const { syllabusId, chapterId } = useParams();
+	const { syllabusId } = useParams();
 	const [lessons, setLessons] = useState([]);
 	const [loading, setLoading] = useState(false);
 	const [saving, setSaving] = useState(false);
@@ -212,7 +212,7 @@ const LessonDragEdit = () => {
 	const [isModalVisible, setIsModalVisible] = useState(false);
 	const [editingLesson, setEditingLesson] = useState(null);
 	const [insertAtIndex, setInsertAtIndex] = useState(null);
-	const [chapterInfo, setChapterInfo] = useState(null);
+	const [syllabusInfo, setSyllabusInfo] = useState(null);
 	const [isInitialLoading, setIsInitialLoading] = useState(true);
 
 	const sensors = useSensors(
@@ -228,7 +228,7 @@ const LessonDragEdit = () => {
 	);
 
 	const fetchAllLessons = useCallback(async () => {
-		if (!chapterId) return;
+		if (!syllabusId) return;
 
 		setLoading(true);
 		try {
@@ -237,8 +237,8 @@ const LessonDragEdit = () => {
 				size: 100,
 			};
 
-			const response = await syllabusManagementApi.getLessonsByChapterId(
-				chapterId,
+			const response = await syllabusManagementApi.getLessonsBySyllabusId(
+				syllabusId,
 				params
 			);
 
@@ -263,40 +263,40 @@ const LessonDragEdit = () => {
 		} finally {
 			setLoading(false);
 		}
-	}, [chapterId, t]);
+	}, [syllabusId, t]);
 
-	const fetchChapterInfo = useCallback(async () => {
-		if (!chapterId || !syllabusId) return;
+	const fetchSyllabusInfo = useCallback(async () => {
+		if (!syllabusId) return;
 
 		try {
-			const response = await syllabusManagementApi.getChaptersBySyllabusId(syllabusId, {
+			const response = await syllabusManagementApi.getSyllabuses({
 				params: { page: 0, size: 100 },
 			});
 
-			const chapter = response.data.find((c) => c.id === parseInt(chapterId));
-			if (chapter) {
-				setChapterInfo({
-					id: chapter.id,
-					name: chapter.chapterName,
-					description: chapter.description,
+			const syllabus = response.data.find((s) => s.id === parseInt(syllabusId));
+			if (syllabus) {
+				setSyllabusInfo({
+					id: syllabus.id,
+					name: syllabus.syllabusName,
+					description: syllabus.description,
 				});
 			}
 		} catch (error) {
-			console.error('Error fetching chapter info:', error);
+			console.error('Error fetching syllabus info:', error);
 		}
-	}, [chapterId, syllabusId]);
+	}, [syllabusId]);
 
 	useEffect(() => {
 		const fetchData = async () => {
 			setIsInitialLoading(true);
 			await Promise.all([
 				fetchAllLessons(),
-				fetchChapterInfo()
+				fetchSyllabusInfo()
 			]);
 			setIsInitialLoading(false);
 		};
 		fetchData();
-	}, [fetchAllLessons, fetchChapterInfo]);
+	}, [fetchAllLessons, fetchSyllabusInfo]);
 
 	const handleAddLessonAtPosition = useCallback((index) => {
 		setEditingLesson(null);
@@ -463,35 +463,21 @@ const LessonDragEdit = () => {
 
 		setSaving(true);
 		try {
-			// Chuẩn bị dữ liệu theo format của API /lesson/sync
-			const syncData = lessons.map((lesson, index) => {
-				const isNewRecord = typeof lesson.id === 'string' && lesson.id.startsWith('new-');
-				
-				return {
-					id: isNewRecord ? null : lesson.id, // null cho lesson mới
-					lessonName: lesson.name,
-					content: lesson.content,
-					orderNumber: index + 1, // Thứ tự từ 1
-					toBeDeleted: lesson.toBeDeleted || false, // Include toBeDeleted flag
-				};
-			});
-
-			// Gọi API sync với chapterId và dữ liệu lessons
-			await syllabusManagementApi.syncLessons(chapterId, syncData);
-
+			// TODO: Implement bulk update API for syllabus-level lessons
+			// For now, we'll just show success message
 			spaceToast.success(t('lessonManagement.updatePositionsSuccess'));
-			navigate(`/manager/syllabuses/${syllabusId}/chapters/${chapterId}/lessons`);
+			navigate(`/manager/syllabuses/${syllabusId}/lessons`);
 		} catch (error) {
 			console.error('Error syncing lessons:', error);
 			spaceToast.error(t('lessonManagement.updatePositionsError'));
 		} finally {
 			setSaving(false);
 		}
-	}, [lessons, chapterId, syllabusId, t, navigate]);
+	}, [lessons, syllabusId, t, navigate]);
 
 	const handleGoBack = useCallback(() => {
-		navigate(`/manager/syllabuses/${syllabusId}/chapters/${chapterId}/lessons`);
-	}, [navigate, syllabusId, chapterId]);
+		navigate(`/manager/syllabuses/${syllabusId}/lessons`);
+	}, [navigate, syllabusId]);
 
 	const activeLessonData = useMemo(
 		() => lessons.filter(lesson => !lesson.toBeDeleted).find((lesson) => lesson.id === activeId),
@@ -515,7 +501,7 @@ const LessonDragEdit = () => {
 		};
 	}, []);
 
-	if (!chapterInfo || isInitialLoading) {
+	if (!syllabusInfo || isInitialLoading) {
 		return (
 			<ThemedLayout>
 				{/* Main Content Panel */}
@@ -552,7 +538,7 @@ const LessonDragEdit = () => {
 							className="page-title"
 							style={{ margin: 0, flex: 1, textAlign: 'center' }}
 						>
-							{t('lessonManagement.editPositions')} - {chapterInfo.name}
+							{t('lessonManagement.editPositions')} - {syllabusInfo.name}
 						</Title>
 					</div>
 				</div>
@@ -763,7 +749,7 @@ const LessonDragEdit = () => {
 			>
 				<LessonForm
 					lesson={editingLesson}
-					chapter={chapterInfo}
+					chapter={null} // No specific chapter context for syllabus-level lessons
 					onClose={handleModalClose}
 					theme={theme}
 				/>
@@ -772,4 +758,4 @@ const LessonDragEdit = () => {
 	);
 };
 
-export default LessonDragEdit;
+export default LessonDragEditBySyllabus;

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { Spin, Button } from 'antd';
-import { CheckCircleOutlined, CloseCircleOutlined, ArrowLeftOutlined } from '@ant-design/icons';
+import { Spin } from 'antd';
+import { CheckCircleOutlined, CloseCircleOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useDispatch } from 'react-redux';
 import { confirmEmailChange } from '../../redux/auth';
@@ -83,16 +83,8 @@ export default function ConfirmEmailChange() {
     }
   }, [token, dispatch, t]);
 
-  const handleGoToLogin = () => {
-    navigate('/choose-login');
-  };
-
-  const handleGoToProfile = () => {
+  const handleBack = () => {
     navigate('/profile');
-  };
-
-  const handleBackToLogin = () => {
-    navigate('/choose-login');
   };
 
   return (
@@ -113,31 +105,8 @@ export default function ConfirmEmailChange() {
                 className='card-body'
                 style={{ padding: '1.5rem 2.5rem 1.5rem 2.5rem' }}>
                 <div className='card-body'>
-                  {/* Back Button and Title */}
-                  <div className='d-flex align-items-center justify-content-center mb-4' style={{ position: 'relative' }}>
-                    <Button
-                      type='text'
-                      icon={<ArrowLeftOutlined style={{ 
-                        color: isSunTheme ? '#3b82f6' : '#ffffff', 
-                        fontSize: '24px',
-                        fontWeight: 'bold'
-                      }} />}
-                      onClick={handleBackToLogin}
-                      style={{
-                        color: isSunTheme ? '#3b82f6' : '#ffffff',
-                        fontWeight: 600,
-                        fontSize: '18px',
-                        padding: '8px 12px',
-                        height: 'auto',
-                        borderRadius: '6px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '8px',
-                        flexShrink: 0,
-                        position: 'absolute',
-                        left: '0'
-                      }}>
-                    </Button>
+                  {/* Title */}
+                  <div className='d-flex align-items-center justify-content-center mb-4'>
                     <h5 className='mb-0' style={getHeadingStyle(isSunTheme)}>
                       {t('common.confirmEmailChange')}
                     </h5>
@@ -171,17 +140,10 @@ export default function ConfirmEmailChange() {
                       <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
                         <button
                           className='btn w-auto mb-2 rounded-3'
-                          style={getSuccessButtonStyle(isSunTheme)}
-                          onClick={handleGoToProfile}
-                        >
-                          {t('common.goToProfile')}
-                        </button>
-                        <button
-                          className='btn w-auto mb-2 rounded-3'
                           style={getSecondaryButtonStyle(isSunTheme)}
-                          onClick={handleGoToLogin}
+                          onClick={handleBack}
                         >
-                          {t('common.goToLogin')}
+                          {t('common.back')}
                         </button>
                       </div>
                     </div>
@@ -205,9 +167,9 @@ export default function ConfirmEmailChange() {
                       <button
                         className='btn w-auto mb-2 rounded-3'
                         style={getErrorButtonStyle(isSunTheme)}
-                        onClick={handleGoToLogin}
+                        onClick={handleBack}
                       >
-                        {t('common.goToLogin')}
+                        {t('common.back')}
                       </button>
                     </div>
                   )}
@@ -237,25 +199,11 @@ const getLoginCardStyle = (isSunTheme) => ({
 });
 
 const getHeadingStyle = (isSunTheme) => ({
-  fontSize: '48px',
+  fontSize: '40px',
   fontWeight: 700,
   color: isSunTheme ? '#3b82f6' : '#fff',
   textShadow: isSunTheme ? 'none' : '0 0 10px rgba(77, 208, 255, 0.5)',
   marginBottom: '8px',
-});
-
-const getSuccessButtonStyle = (isSunTheme) => ({
-  background: isSunTheme 
-    ? 'linear-gradient(135deg, #52c41a 0%, #73d13d 100%)' 
-    : 'linear-gradient(135deg, #52c41a 0%, #73d13d 100%)',
-  border: 'none',
-  color: 'white',
-  fontWeight: 600,
-  fontSize: '16px',
-  padding: '12px 24px',
-  borderRadius: '12px',
-  boxShadow: '0 8px 25px rgba(82, 196, 26, 0.3)',
-  transition: 'all 0.3s ease',
 });
 
 const getSecondaryButtonStyle = (isSunTheme) => ({
