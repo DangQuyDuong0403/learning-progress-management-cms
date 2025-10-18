@@ -14,13 +14,14 @@ import {
 	Col,
 	Tooltip,
 	Typography,
+	Upload,
+	Divider,
 } from 'antd';
 import {
 	PlusOutlined,
 	EditOutlined,
 	DeleteOutlined,
 	SearchOutlined,
-	ReloadOutlined,
 	BookOutlined,
 	EyeOutlined,
 	FileTextOutlined,
@@ -29,6 +30,7 @@ import {
 	PlayCircleOutlined,
 	ClockCircleOutlined,
 	FilterOutlined,
+	InboxOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -82,6 +84,11 @@ const SyllabusList = () => {
 	const [isDeleteModalVisible, setIsDeleteModalVisible] = useState(false);
 	const [editingSyllabus, setEditingSyllabus] = useState(null);
 	const [deleteSyllabus, setDeleteSyllabus] = useState(null);
+	const [importModal, setImportModal] = useState({
+		visible: false,
+		fileList: [],
+		uploading: false
+	});
 
 	// Pagination state
 	const [pagination, setPagination] = useState({
@@ -334,8 +341,53 @@ const SyllabusList = () => {
 	};
 
 	const handleImport = () => {
-		// TODO: Implement import functionality
-		message.success(t('syllabusManagement.importSuccess'));
+		setImportModal({
+			visible: true,
+			fileList: [],
+			uploading: false
+		});
+	};
+
+	const handleImportCancel = () => {
+		setImportModal({
+			visible: false,
+			fileList: [],
+			uploading: false
+		});
+	};
+
+	const handleImportOk = async () => {
+		if (importModal.fileList.length === 0) {
+			message.warning(t('syllabusManagement.selectFileToImport'));
+			return;
+		}
+
+		setImportModal(prev => ({ ...prev, uploading: true }));
+		
+		try {
+			// TODO: Implement actual import API call
+			await new Promise(resolve => setTimeout(resolve, 2000)); // Simulate API call
+			
+			message.success(t('syllabusManagement.importSuccess'));
+			setImportModal({
+				visible: false,
+				fileList: [],
+				uploading: false
+			});
+			
+			// Refresh the data
+			fetchSyllabuses(pagination.current, pagination.pageSize, searchText, statusFilter, levelFilter, sortBy, sortDir);
+		} catch (error) {
+			console.error('Import error:', error);
+			message.error(t('syllabusManagement.importError'));
+		} finally {
+			setImportModal(prev => ({ ...prev, uploading: false }));
+		}
+	};
+
+	const handleDownloadTemplate = () => {
+		// TODO: Implement template download
+		message.success(t('syllabusManagement.templateDownloaded'));
 	};
 
 	// No need for client-side filtering since API handles filtering
@@ -672,23 +724,20 @@ const SyllabusList = () => {
 		<SecurityWrapper requiredRoles={['MANAGER', 'ADMIN']}>
 			<ThemedLayout>
 				<div className="syllabus-list-container">
-					{/* Page Title */}
-					<div className="page-title-container">
-						<Typography.Title 
-						level={1} 
-						className="page-title"
-					>
-						{t('syllabusManagement.title')}
-					</Typography.Title>
-				</div>
+					{/* Main Container Card */}
+					<Card className="main-container-card">
+						{/* Page Title */}
+						<div className="page-title-container">
+							<Typography.Title 
+								level={1} 
+								className="page-title"
+							>
+								{t('syllabusManagement.title')}
+							</Typography.Title>
+						</div>
 
-			{/* Main Container Card */}
-			<Card className="main-container-card">
-				
-
-
-				{/* Action Bar */}
-				<Row gutter={16} align="middle" style={{ marginBottom: '16px' }}>
+						{/* Action Bar */}
+						<Row gutter={16} align="middle" style={{ marginBottom: '16px' }}>
 					<Col flex="auto">
 						<Space size="middle">
 							<Input
@@ -706,7 +755,7 @@ const SyllabusList = () => {
 										onClick={handleFilterToggle}
 										className={`filter-button ${theme}-filter-button ${filterDropdown.visible ? 'active' : ''} ${(statusFilter.length > 0 || levelFilter.length > 0) ? 'has-filters' : ''}`}
 									>
-										Filter
+										{t('common.filter')}
 									</Button>
 									
 									{/* Filter Dropdown Panel */}
@@ -756,7 +805,7 @@ const SyllabusList = () => {
 																	}}
 																	className={`filter-option ${filterDropdown.selectedLevels.includes(level.id.toString()) ? 'selected' : ''}`}
 																>
-																	{level.levelName} ({level.difficulty})
+																	{level.levelName}
 																</Button>
 															))}
 														</div>
@@ -775,14 +824,14 @@ const SyllabusList = () => {
 														onClick={handleFilterReset}
 														className="filter-reset-button"
 													>
-														Reset
+														{t('common.reset')}
 													</Button>
 													<Button
 														type="primary"
 														onClick={handleFilterSubmit}
 														className="filter-submit-button"
 													>
-														View Results
+														{t('common.viewResults')}
 													</Button>
 												</div>
 											</div>
@@ -795,26 +844,18 @@ const SyllabusList = () => {
 					<Col>
 						<Space>
 							<Button
-								icon={<DownloadOutlined />}
+								icon={<UploadOutlined />}
 								className={`export-button ${theme}-export-button`}
 								onClick={handleExport}
 							>
 								{t('syllabusManagement.exportData')}
 							</Button>
 							<Button
-								icon={<UploadOutlined />}
+								icon={<DownloadOutlined />}
 								className={`import-button ${theme}-import-button`}
 								onClick={handleImport}
 							>
 								{t('syllabusManagement.importSyllabuses')}
-							</Button>
-							<Button
-								icon={<ReloadOutlined />}
-								className={`refresh-button ${theme}-refresh-button`}
-								onClick={handleRefresh}
-								loading={loading}
-							>
-								{t('syllabusManagement.refresh')}
 							</Button>
 							{currentView === 'syllabuses' && (
 								<Button
@@ -829,8 +870,8 @@ const SyllabusList = () => {
 					</Col>
 				</Row>
 
-				{/* Table Card */}
-				<Card className="table-card">
+						{/* Table Card */}
+						<Card className="table-card">
 					<LoadingWithEffect
 						loading={loading}
 						message={t('syllabusManagement.loadingSyllabuses')}>
@@ -861,8 +902,9 @@ const SyllabusList = () => {
 							scroll={{ x: currentView === 'lessons' ? 1200 : 1000 }}
 						/>
 					</LoadingWithEffect>
-				</Card>
-			</Card>
+						</Card>
+					</Card>
+				</div>
 
 			{/* Syllabus Modal */}
 			<Modal
@@ -901,7 +943,126 @@ const SyllabusList = () => {
 					</p>
 				)}
 			</Modal>
-			</div>
+
+			{/* Import Modal */}
+			<Modal
+				title={
+					<div
+						style={{
+							fontSize: '20px',
+							fontWeight: '600',
+							color: '#000000',
+							textAlign: 'center',
+							padding: '10px 0',
+							display: 'flex',
+							alignItems: 'center',
+							justifyContent: 'center',
+							gap: '10px',
+						}}>
+						<DownloadOutlined style={{ color: '#000000' }} />
+						{t('syllabusManagement.importSyllabuses')}
+					</div>
+				}
+				open={importModal.visible}
+				onOk={handleImportOk}
+				onCancel={handleImportCancel}
+				okText={t('syllabusManagement.import')}
+				cancelText={t('common.cancel')}
+				width={600}
+				centered
+				confirmLoading={importModal.uploading}
+				okButtonProps={{
+					disabled: importModal.fileList.length === 0,
+					style: {
+						backgroundColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
+						background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
+						borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'transparent',
+						color: theme === 'sun' ? '#000000' : '#ffffff',
+						height: '40px',
+						fontSize: '16px',
+						fontWeight: '500',
+						minWidth: '120px',
+					},
+				}}
+				cancelButtonProps={{
+					style: {
+						height: '40px',
+						fontSize: '16px',
+						fontWeight: '500',
+						minWidth: '100px',
+					},
+				}}>
+				<div style={{ padding: '20px 0' }}>
+					<div style={{ textAlign: 'center', marginBottom: '20px' }}>
+						<Button
+							type="dashed"
+							icon={<DownloadOutlined />}
+							onClick={handleDownloadTemplate}
+							style={{
+								borderColor: '#1890ff',
+								color: '#1890ff',
+								height: '36px',
+								fontSize: '14px',
+								fontWeight: '500',
+							}}>
+							{t('syllabusManagement.downloadTemplate')}
+						</Button>
+					</div>
+
+					<Typography.Title
+						level={5}
+						style={{
+							textAlign: 'center',
+							marginBottom: '20px',
+							color: '#666',
+						}}>
+						{t('syllabusManagement.importInstructions')}
+					</Typography.Title>
+
+					<div
+						style={{
+							marginBottom: '20px',
+							border: '2px dashed #d9d9d9',
+							borderRadius: '8px',
+							background: '#fafafa',
+							padding: '40px',
+							textAlign: 'center',
+						}}>
+						<p
+							className='ant-upload-drag-icon'
+							style={{ fontSize: '48px', color: '#1890ff' }}>
+							<DownloadOutlined />
+						</p>
+						<p
+							className='ant-upload-text'
+							style={{ fontSize: '16px', fontWeight: '500' }}>
+							{t('syllabusManagement.clickOrDragFile')}
+						</p>
+						<p className='ant-upload-hint' style={{ color: '#999' }}>
+							{t('syllabusManagement.supportedFormats')}: Excel (.xlsx, .xls),
+							CSV (.csv)
+						</p>
+					</div>
+
+					<Divider />
+
+					{importModal.fileList.length > 0 && (
+						<div
+							style={{
+								marginTop: '16px',
+								padding: '12px',
+								background: '#e6f7ff',
+								border: '1px solid #91d5ff',
+								borderRadius: '6px',
+							}}>
+							<Typography.Text style={{ color: '#1890ff', fontWeight: '500' }}>
+								✅ {t('syllabusManagement.fileSelected')}:{' '}
+								{importModal.fileList[0].name}
+							</Typography.Text>
+						</div>
+					)}
+				</div>
+			</Modal>
 		</ThemedLayout>
 		</SecurityWrapper>
 	);
