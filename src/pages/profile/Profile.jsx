@@ -143,7 +143,7 @@ export default function Profile() {
             level={1} 
             className="page-title"
           >
-            Profile
+            {t('profile.title')}
           </Typography.Title>
         </div>
         {/* Header Section */}
@@ -219,7 +219,10 @@ export default function Profile() {
                     </div>
                     <div className="profile-name-section">
                       <h4 className="profile-full-name">
-                        {profileData ? `${profileData.lastName} ${profileData.firstName}` : (user?.fullName || 'Nguyen Duc Anh')}
+                        {profileData ? 
+                          `${profileData.lastName || ''} ${profileData.firstName || ''}`.trim() || 
+                          (user?.fullName || '') 
+                          : (user?.fullName || '')}
                       </h4>
                       <p className="profile-role">{profileData?.roleName || user?.role || 'Admin'}</p>
                     </div>

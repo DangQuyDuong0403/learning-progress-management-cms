@@ -338,6 +338,12 @@ const AssignStudentToClass = ({ student, onClose }) => {
 						icon={<CheckOutlined />}
 						size="small"
 						disabled={classItem.studentCount >= classItem.maxStudents}
+						style={{
+							backgroundColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
+							background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
+							borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'transparent',
+							color: theme === 'sun' ? '#000000' : '#ffffff',
+						}}
 						onClick={(e) => {
 							e.stopPropagation();
 							handleClassSelection(classItem.id);
@@ -461,7 +467,14 @@ const AssignStudentToClass = ({ student, onClose }) => {
 							htmlType="submit"
 							loading={loading}
 							disabled={!selectedClass}
-							style={{ width: '100%', height: 40 }}
+							style={{ 
+								width: '100%', 
+								height: 40,
+								backgroundColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
+								background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
+								borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'transparent',
+								color: theme === 'sun' ? '#000000' : '#ffffff',
+							}}
 							className={`submit-button ${theme}-submit-button`}
 						>
 							{t('studentManagement.assignToSelectedClass')}
