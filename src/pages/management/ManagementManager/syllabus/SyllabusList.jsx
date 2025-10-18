@@ -130,7 +130,13 @@ const SyllabusList = () => {
 			setLoading(false);
 		} catch (error) {
 			console.error('Error fetching syllabuses:', error);
-			message.error(t('syllabusManagement.loadSyllabusesError'));
+			
+			// Handle error message from backend
+			let errorMessage = error.response?.data?.error || 
+				error.response?.data?.message || 
+				error.message 
+			
+			message.error(errorMessage);
 			setLoading(false);
 		}
 	}, [t]);
@@ -185,17 +191,24 @@ const SyllabusList = () => {
 
 	const handleDelete = async () => {
 		try {
-			await syllabusManagementApi.deleteSyllabus(deleteSyllabus.id);
+			const response = await syllabusManagementApi.deleteSyllabus(deleteSyllabus.id);
 			
 			// Update local state
 			setSyllabuses(syllabuses.filter(s => s.id !== deleteSyllabus.id));
 			
-			spaceToast.success(t('syllabusManagement.deleteSyllabusSuccess'));
+			// No success message - only show error messages from backend
+			
 			setIsDeleteModalVisible(false);
 			setDeleteSyllabus(null);
 		} catch (error) {
 			console.error('Error deleting syllabus:', error);
-			message.error(t('syllabusManagement.deleteSyllabusError'));
+			
+			// Handle error message from backend
+			let errorMessage = error.response?.data?.error || 
+				error.response?.data?.message || 
+				error.message 
+			
+			message.error(errorMessage);
 		}
 	};
 
@@ -284,9 +297,10 @@ const SyllabusList = () => {
 		
 		try {
 			// TODO: Implement actual import API call
-			await new Promise(resolve => setTimeout(resolve, 2000)); // Simulate API call
+			const response = await new Promise(resolve => setTimeout(resolve, 2000)); // Simulate API call
 			
-			message.success(t('syllabusManagement.importSuccess'));
+			// No success message - only show error messages from backend
+			
 			setImportModal({
 				visible: false,
 				fileList: [],
@@ -297,7 +311,13 @@ const SyllabusList = () => {
 			fetchSyllabuses(pagination.current, pagination.pageSize, searchText, sortBy, sortDir);
 		} catch (error) {
 			console.error('Import error:', error);
-			message.error(t('syllabusManagement.importError'));
+			
+			// Handle error message from backend
+			let errorMessage = error.response?.data?.error || 
+				error.response?.data?.message || 
+				error.message
+			
+			message.error(errorMessage);
 		} finally {
 			setImportModal(prev => ({ ...prev, uploading: false }));
 		}
@@ -334,7 +354,14 @@ const SyllabusList = () => {
 				setSelectedRowKeys(allKeys);
 			} catch (error) {
 				console.error('Error fetching all syllabus IDs:', error);
-				message.error('Error selecting all items');
+				
+				// Handle error message from backend
+				let errorMessage = error.response?.data?.error || 
+					error.response?.data?.message || 
+					error.message ||
+					'Error selecting all items';
+				
+				message.error(errorMessage);
 			}
 		} else {
 			setSelectedRowKeys([]);
@@ -372,17 +399,25 @@ const SyllabusList = () => {
 	const handleBulkDeleteConfirm = async () => {
 		try {
 			// TODO: Implement actual bulk delete API call
-			await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate API call
+			const response = await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate API call
 			
 			// Update local state
 			setSyllabuses(syllabuses.filter(s => !selectedRowKeys.includes(s.id)));
 			
-			spaceToast.success(`${t('syllabusManagement.bulkDeleteSuccess')}: ${selectedRowKeys.length} items`);
+			// No success message - only show error messages from backend
+			
 			setIsBulkDeleteModalVisible(false);
 			setSelectedRowKeys([]);
 		} catch (error) {
 			console.error('Error bulk deleting syllabuses:', error);
-			message.error(t('syllabusManagement.bulkDeleteError'));
+			
+			// Handle error message from backend
+			let errorMessage = error.response?.data?.error || 
+				error.response?.data?.message || 
+				error.message ||
+				t('syllabusManagement.bulkDeleteError');
+			
+			message.error(errorMessage);
 		}
 	};
 
@@ -489,7 +524,6 @@ const SyllabusList = () => {
 			dataIndex: 'name',
 			width: '18%',
 			key: 'name',
-			sorter: true,
 			render: (text, record) => (
 				<div style={{ fontSize: '20px'}}>
 					{text}
