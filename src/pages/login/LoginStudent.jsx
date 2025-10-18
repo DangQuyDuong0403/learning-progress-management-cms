@@ -57,6 +57,10 @@ export default function Login() {
 			localStorage.setItem('accessToken', response.data.accessToken);
 			localStorage.setItem('refreshToken', response.data.refreshToken);
 			
+			// Store mustChangePassword flag
+			localStorage.setItem('mustChangePassword', response.data.mustChangePassword ? 'true' : 'false');
+			localStorage.setItem('mustUpdateProfile', response.data.mustUpdateProfile ? 'true' : 'false');
+			
 			// Check if user must change password
 			if (response.data.mustChangePassword) {
 				// Show security message for password change

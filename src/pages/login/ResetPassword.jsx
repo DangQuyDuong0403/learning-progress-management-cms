@@ -84,6 +84,8 @@ export default function ResetPassword() {
 				localStorage.removeItem('accessToken');
 				localStorage.removeItem('refreshToken');
 				localStorage.removeItem('user');
+				localStorage.removeItem('mustChangePassword');
+				localStorage.removeItem('mustUpdateProfile');
 				
 				// Chuyển về trang login ngay lập tức dựa trên role đã lưu
 				console.log('Redirecting immediately with role:', loginRole);

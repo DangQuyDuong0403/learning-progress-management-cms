@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { 
   Form, 
   Input, 
-  Select, 
   Button, 
   message, 
   Space,
@@ -15,49 +14,13 @@ import { useTheme } from '../../../../contexts/ThemeContext';
 import levelManagementApi from '../../../../apis/backend/levelManagement';
 
 const { TextArea } = Input;
-const { Option } = Select;
 
-const LevelForm = ({ level, onClose, shouldCallApi = true }) => {
+const LevelForm = ({ level, onClose, shouldCallApi = true, showPrerequisiteAndCode = true }) => {
   const { t } = useTranslation();
   const { theme } = useTheme();
   
   const [form] = Form.useForm();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [durationUnit, setDurationUnit] = useState('weeks');
-  
-  // Convert duration to weeks for API
-  const convertToWeeks = (value, unit) => {
-    if (!value) return 0;
-    switch (unit) {
-      case 'days':
-        return Math.round(value / 7 * 100) / 100; // Convert days to weeks
-      case 'weeks':
-        return value;
-      case 'months':
-        return Math.round(value * 4.33 * 100) / 100; // Convert months to weeks (1 month ≈ 4.33 weeks)
-      case 'years':
-        return Math.round(value * 52 * 100) / 100; // Convert years to weeks (1 year = 52 weeks)
-      default:
-        return value;
-    }
-  };
-  
-  // Convert weeks to display unit
-  const convertFromWeeks = (weeks, unit) => {
-    if (!weeks) return 0;
-    switch (unit) {
-      case 'days':
-        return Math.round(weeks * 7 * 100) / 100; // Convert weeks to days
-      case 'weeks':
-        return weeks;
-      case 'months':
-        return Math.round(weeks / 4.33 * 100) / 100; // Convert weeks to months
-      case 'years':
-        return Math.round(weeks / 52 * 100) / 100; // Convert weeks to years
-      default:
-        return weeks;
-    }
-  };
 
   const isEdit = !!level;
   const isPublished = level?.status === 'PUBLISHED';
@@ -70,14 +33,14 @@ const LevelForm = ({ level, onClose, shouldCallApi = true }) => {
         levelCode: level.levelCode,
         description: level.description,
         prerequisite: level.prerequisite?.levelName || level.prerequisite || '',
-        estimatedDurationWeeks: convertFromWeeks(level.estimatedDurationWeeks, durationUnit),
+        estimatedDurationWeeks: level.estimatedDurationWeeks, // Direct value in weeks
         status: level.status,
         orderNumber: level.orderNumber,
         promotionCriteria: level.promotionCriteria,
         learningObjectives: level.learningObjectives,
       });
     }
-  }, [level, form, durationUnit]);
+  }, [level, form]);
 
   const onFinish = async (values) => {
     setIsSubmitting(true);
@@ -89,7 +52,7 @@ const LevelForm = ({ level, onClose, shouldCallApi = true }) => {
         description: values.description || '',
         promotionCriteria: values.promotionCriteria || '',
         learningObjectives: values.learningObjectives || '',
-        estimatedDurationWeeks: convertToWeeks(values.estimatedDurationWeeks, durationUnit),
+        estimatedDurationWeeks: values.estimatedDurationWeeks, // Direct value in weeks
         orderNumber: values.orderNumber || 0,
       };
 
@@ -149,7 +112,7 @@ const LevelForm = ({ level, onClose, shouldCallApi = true }) => {
       }}
     >
       <Row gutter={16}>
-        <Col span={12}>
+        <Col span={showPrerequisiteAndCode ? 12 : 12}>
           <Form.Item
             name="levelName"
             label={<span>{t('levelManagement.levelName')} <span style={{ color: 'red' }}>*</span></span>}
@@ -157,71 +120,77 @@ const LevelForm = ({ level, onClose, shouldCallApi = true }) => {
             rules={[{ required: true, message: t('levelManagement.levelNameRequired') }]}
           >
             <Input 
-            
               size="middle"
               disabled={isPublished}
             />
           </Form.Item>
         </Col>
-        <Col span={12}>
-          <Form.Item
-            name="levelCode"
-            label={t('levelManagement.levelCode')}
-          >
-            <Input 
-          
-              size="middle"
-              disabled={isPublished}
-            />
-          </Form.Item>
-        </Col>
+        {showPrerequisiteAndCode && (
+          <Col span={12}>
+            <Form.Item
+              name="levelCode"
+              label={t('levelManagement.levelCode')}
+            >
+              <Input 
+                size="middle"
+                disabled={true}
+              />
+            </Form.Item>
+          </Col>
+        )}
+        {!showPrerequisiteAndCode && (
+          <Col span={12}>
+            <Form.Item
+              name="estimatedDurationWeeks"
+              label={<span>{t('levelManagement.duration')} <span style={{ color: 'red' }}>*</span></span>}
+              required
+              rules={[{ required: true, message: t('levelManagement.durationRequired') }]}
+            >
+              <InputNumber 
+                min={1}
+                max={260}
+                style={{ width: '100%' }}
+                size="middle"
+                disabled={isPublished}
+                addonAfter="weeks"
+              />
+            </Form.Item>
+          </Col>
+        )}
       </Row>
 
-      <Row gutter={16}>
-        <Col span={12}>
-          <Form.Item
-            name="prerequisite"
-            label={t('levelManagement.prerequisite')}
-          >
-            <Input 
-              
-              size="middle"
-              disabled={isPublished}
-            />
-          </Form.Item>
-        </Col>
-        <Col span={12}>
-          <Form.Item
-            name="estimatedDurationWeeks"
-            label={<span>{t('levelManagement.duration')} <span style={{ color: 'red' }}>*</span></span>}
-            required
-            rules={[{ required: true, message: t('levelManagement.durationRequired') }]}
-          >
-            <InputNumber 
-              min={1}
-              max={104}
-             
-              style={{ width: '100%' }}
-              size="middle"
-              disabled={isPublished}
-              addonAfter={
-                <Select 
-                  value={durationUnit}
-                  onChange={setDurationUnit}
-                  style={{ width: 120 }}
-                  size="middle"
-                  disabled={isPublished}
-                >
-                  <Option value="days">{t('levelManagement.days')}</Option>
-                  <Option value="weeks">{t('levelManagement.weeks')}</Option>
-                  <Option value="months">{t('levelManagement.months')}</Option>
-                  <Option value="years">{t('levelManagement.years')}</Option>
-                </Select>
-              }
-            />
-          </Form.Item>
-        </Col>
-      </Row>
+      {showPrerequisiteAndCode && (
+        <Row gutter={16}>
+          <Col span={12}>
+            <Form.Item
+              name="prerequisite"
+              label={t('levelManagement.prerequisite')}
+            >
+              <Input 
+                size="middle"
+                disabled={true}
+              />
+            </Form.Item>
+          </Col>
+          <Col span={12}>
+            <Form.Item
+              name="estimatedDurationWeeks"
+              label={<span>{t('levelManagement.duration')} <span style={{ color: 'red' }}>*</span></span>}
+              required
+              rules={[{ required: true, message: t('levelManagement.durationRequired') }]}
+            >
+              <InputNumber 
+                min={1}
+                max={104}
+                style={{ width: '100%' }}
+                size="middle"
+                disabled={isPublished}
+                addonAfter="weeks"
+              />
+            </Form.Item>
+          </Col>
+        </Row>
+      )}
 
       <Form.Item
         name="description"

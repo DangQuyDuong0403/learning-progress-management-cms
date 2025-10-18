@@ -143,15 +143,26 @@ const authSlice = createSlice({
 			localStorage.setItem('accessToken', accessToken);
 			localStorage.setItem('refreshToken', refreshToken);
 		},
+		syncAuthState: (state, action) => {
+			// Sync state từ localStorage mà không lưu lại localStorage (tránh vòng lặp)
+			const { accessToken, refreshToken, username, role } = action.payload;
+			state.user = { username, role };
+			state.accessToken = accessToken;
+			state.refreshToken = refreshToken;
+			state.isAuthenticated = true;
+			// Không lưu vào localStorage để tránh trigger storage event
+		},
 		logout: (state) => {
 			state.user = null;
 			state.accessToken = null;
 			state.refreshToken = null;
 			state.isAuthenticated = false;
-			// Xoá khỏi localStorage
+			// Xoá khỏi localStorage - chỉ xóa khi thực sự logout
 			localStorage.removeItem('user');
 			localStorage.removeItem('accessToken');
 			localStorage.removeItem('refreshToken');
+			localStorage.removeItem('mustChangePassword');
+			localStorage.removeItem('mustUpdateProfile');
 		},
 		clearForgotPasswordState: (state) => {
 			state.forgotPasswordLoading = false;
@@ -327,5 +338,5 @@ const authSlice = createSlice({
 	},
 });
 
-export const { loginSuccess, logout, clearForgotPasswordState, clearChangePasswordState, clearUpdateProfileState, clearUpdateEmailState, updateToken } = authSlice.actions;
+export const { loginSuccess, logout, clearForgotPasswordState, clearChangePasswordState, clearUpdateProfileState, clearUpdateEmailState, updateToken, syncAuthState } = authSlice.actions;
 export default authSlice.reducer;
