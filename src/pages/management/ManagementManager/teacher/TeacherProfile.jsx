@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
 	Card,
 	Row,
@@ -16,6 +16,7 @@ import {
 	Spin,
 	Alert,
 	Typography,
+	Radio,
 } from 'antd';
 import {
 	ArrowLeftOutlined,
@@ -32,6 +33,7 @@ import teacherManagementApi from '../../../../apis/backend/teacherManagement';
 import dayjs from 'dayjs';
 import './TeacherList.css';
 import ThemedLayout from '../../../../component/ThemedLayout';
+import EditEmailModal from './EditEmailModal';
 
 const { Title } = Typography;
 
@@ -41,40 +43,18 @@ const TeacherProfile = () => {
 	const { teacherId } = useParams();
 	const { theme } = useTheme();
 	const [editModalVisible, setEditModalVisible] = useState(false);
+	const [editEmailModalVisible, setEditEmailModalVisible] = useState(false);
 	const [editForm] = Form.useForm();
 	const [editLoading, setEditLoading] = useState(false);
 	const [avatarUrl, setAvatarUrl] = useState(null);
+	const [avatarUploadLoading, setAvatarUploadLoading] = useState(false);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState(null);
 
 	// Teacher data from API
 	const [teacher, setTeacher] = useState(null);
 
-	// Available teacher avatar images
-	const teacherAvatarImages = useMemo(() => [
-		'teacher1.png',
-		'teacher2.png',
-		'teacher3.png',
-		'teacher4.png',
-		'teacher5.png',
-		'teacher6.png',
-		'teacher7.png',
-		'teacher8.png',
-		'teacher9.png',
-		'teacher10.png',
-		'teacher11.png',
-		'teacher12.png',
-	], []);
 
-	// Function to get random teacher avatar based on teacher ID
-	const getRandomTeacherAvatar = useCallback((teacherId) => {
-		if (!teacherId) return null;
-		
-		// Use teacher ID as seed for consistent random selection
-		const seed = parseInt(teacherId.toString().slice(-3)) || 0;
-		const randomIndex = seed % teacherAvatarImages.length;
-		return `/img/teacher_avatar/${teacherAvatarImages[randomIndex]}`;
-	}, [teacherAvatarImages]);
 
 	const fetchTeacherProfile = useCallback(async () => {
 		try {
@@ -91,19 +71,19 @@ const TeacherProfile = () => {
 			
 			if (response.success && response.data) {
 				setTeacher(response.data);
-				// Use random teacher avatar based on teacher ID instead of API avatarUrl
-				const randomAvatar = getRandomTeacherAvatar(response.data.id);
-				setAvatarUrl(randomAvatar);
+				// Use API avatarUrl or default avatar
+				setAvatarUrl(response.data.avatarUrl || "/img/avatar_1.png");
 			} else {
 				setError(response.message || 'Failed to fetch teacher profile');
 			}
 		} catch (error) {
 			console.error('Error fetching teacher profile:', error);
-			setError('An error occurred while fetching the teacher profile');
+			const errorMessage = error.response?.data?.error || error.message;
+			setError(errorMessage);
 		} finally {
 			setLoading(false);
 		}
-	}, [teacherId, getRandomTeacherAvatar]);
+	}, [teacherId]);
 
 	useEffect(() => {
 		fetchTeacherProfile();
@@ -113,42 +93,72 @@ const TeacherProfile = () => {
 		navigate('/manager/teachers');
 	};
 
+	const handleEditEmail = () => {
+		setEditEmailModalVisible(true);
+	};
+
+	const handleEmailUpdateSuccess = () => {
+		// Refresh teacher data after email update
+		fetchTeacherProfile();
+	};
+
+	const handleAvatarUpload = async (file) => {
+		setAvatarUploadLoading(true);
+		try {
+			// Upload avatar for specific teacher
+			const response = await teacherManagementApi.uploadTeacherAvatar(teacherId, file);
+			
+			if (response.success || response.message) {
+				// Update avatar immediately for better UX
+				setAvatarUrl(URL.createObjectURL(file));
+				spaceToast.success(response.message || t('teacherManagement.uploadAvatarSuccess'));
+				
+				// Refresh teacher data after a short delay
+				setTimeout(() => {
+					fetchTeacherProfile();
+				}, 1000);
+			} else {
+				spaceToast.error(response.message || t('teacherManagement.uploadAvatarError'));
+			}
+		} catch (error) {
+			console.error('Error uploading teacher avatar:', error);
+			const errorMessage = error.response?.data?.error || error.message || t('teacherManagement.uploadAvatarError');
+			spaceToast.error(errorMessage);
+		} finally {
+			setAvatarUploadLoading(false);
+		}
+	};
+
 	const handleEdit = () => {
 		if (!teacher) return;
 		
 		setEditModalVisible(true);
 		
-		// Get current avatar filename from avatarUrl
-		const currentAvatarFilename = avatarUrl ? avatarUrl.split('/').pop() : null;
-		
 		editForm.setFieldsValue({
 			roleName: teacher.roleName,
 			firstName: teacher.firstName,
 			lastName: teacher.lastName,
-			email: teacher.email,
 			phoneNumber: teacher.phoneNumber,
 			dateOfBirth: teacher.dateOfBirth ? dayjs(teacher.dateOfBirth) : null,
 			gender: teacher.gender,
 			address: teacher.address,
-			// Avatar selection
-			avatar: currentAvatarFilename,
 		});
 	};
 
 	const handleEditSubmit = async (values) => {
 		setEditLoading(true);
 		try {
-		// Format the data according to the API requirements from the image
+		// Format the data according to the API requirements
 		const teacherData = {
-			roleName: values.roleName || "TEACHER", // Use selected role or default to TEACHER
-			email: values.email,
+			roleName: values.roleName || "TEACHER",
 			firstName: values.firstName,
 			lastName: values.lastName,
-			avatarUrl: "string", // Always send "string" as per API requirement
-			dateOfBirth: values.dateOfBirth ? values.dateOfBirth.toISOString() : null, // Use ISO format like in the image
+			avatarUrl: teacher.avatarUrl || "/img/avatar_1.png", // Send current avatar URL
+			dateOfBirth: values.dateOfBirth ? values.dateOfBirth.toISOString() : null,
 			address: values.address || "",
 			phoneNumber: values.phoneNumber,
-			gender: values.gender || "MALE", // MALE, FEMALE, OTHER
+			gender: values.gender || "MALE",
+			email: teacher.email, // Always include email for backend
 		};
 			
 			console.log('Updating teacher with data:', teacherData);
@@ -164,18 +174,13 @@ const TeacherProfile = () => {
 			}
 		} catch (error) {
 			console.error('Error updating teacher profile:', error);
-			spaceToast.error(error.response?.data?.message || error.message || t('teacherManagement.updateTeacherError'));
+			const errorMessage = error.response?.data?.error || error.message || t('teacherManagement.updateTeacherError');
+			spaceToast.error(errorMessage);
 		} finally {
 			setEditLoading(false);
 		}
 	};
 
-	// Function to handle avatar selection from dropdown
-	const handleAvatarSelect = (selectedAvatar) => {
-		if (selectedAvatar) {
-			setAvatarUrl(`/img/teacher_avatar/${selectedAvatar}`);
-		}
-	};
 
 	const classColumns = [
 		{
@@ -277,44 +282,116 @@ const TeacherProfile = () => {
 							className={`back-button ${theme}-back-button`}>
 							{t('common.back')}
 						</Button>
-						<Button
-							type='primary'
-							icon={<EditOutlined />}
-							onClick={handleEdit}
-							className={`edit-button ${theme}-edit-button`}
-							style={{
-								backgroundColor: theme === 'sun' ? 'linear-gradient(135deg, #66AEFF, #3C99FF)' : 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)',
-								background: theme === 'sun' ? 'linear-gradient(135deg, #66AEFF, #3C99FF)' : 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)',
-								borderColor: theme === 'sun' ? 'transparent' : 'transparent',
-								color: '#000000',
-							}}>
-							{t('teacherManagement.editProfile')}
-						</Button>
+						<div style={{ display: 'flex', gap: '12px' }}>
+							<Button
+								type='primary'
+								icon={<EditOutlined />}
+								onClick={handleEdit}
+								className={`edit-button ${theme}-edit-button`}
+								style={{
+									backgroundColor: theme === 'sun' ? 'linear-gradient(135deg, #66AEFF, #3C99FF)' : 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)',
+									background: theme === 'sun' ? 'linear-gradient(135deg, #66AEFF, #3C99FF)' : 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)',
+									borderColor: theme === 'sun' ? 'transparent' : 'transparent',
+									color: '#000000',
+								}}>
+								{t('teacherManagement.editProfile')}
+							</Button>
+							<Button
+								type='default'
+								icon={<EditOutlined />}
+								onClick={handleEditEmail}
+								className={`edit-email-button ${theme}-edit-email-button`}
+								style={{
+									backgroundColor: theme === 'sun' ? 'rgba(113, 179, 253, 0.1)' : 'rgba(138, 122, 255, 0.1)',
+									borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'rgb(138, 122, 255)',
+									color: theme === 'sun' ? 'rgb(113, 179, 253)' : 'rgb(138, 122, 255)',
+								}}>
+								{t('teacherManagement.editEmail')}
+							</Button>
+						</div>
 					</div>
 
 					{/* Teacher Info Card */}
 					<Card className={`profile-card ${theme}-profile-card`}>
 						<Row gutter={24}>
 							<Col span={6}>
-								<div className='avatar-section'>
-									<Avatar
-										size={120}
-										icon={<UserOutlined />}
-										src={avatarUrl}
+								<div className='avatar-section' style={{ position: 'relative' }}>
+									<div
+										onClick={() => document.getElementById('teacher-avatar-upload').click()}
 										style={{
-											backgroundColor: '#1890ff',
-											border: `3px solid ${
-												theme === 'space'
-													? 'rgba(77, 208, 255, 0.5)'
-													: 'rgba(0, 0, 0, 0.1)'
-											}`,
-											boxShadow: `0 4px 12px ${
-												theme === 'space'
-													? 'rgba(77, 208, 255, 0.3)'
-													: 'rgba(0, 0, 0, 0.1)'
-											}`,
+											cursor: 'pointer',
+											position: 'relative',
+											display: 'inline-block'
+										}}
+									>
+										<Avatar
+											size={120}
+											icon={<UserOutlined />}
+											src={avatarUrl}
+											style={{
+												backgroundColor: '#1890ff',
+												border: `3px solid ${
+													theme === 'space'
+														? 'rgba(77, 208, 255, 0.5)'
+														: 'rgba(0, 0, 0, 0.1)'
+												}`,
+												boxShadow: `0 4px 12px ${
+													theme === 'space'
+														? 'rgba(77, 208, 255, 0.3)'
+														: 'rgba(0, 0, 0, 0.1)'
+												}`,
+											}}
+										/>
+										{avatarUploadLoading && (
+											<div
+												style={{
+													position: 'absolute',
+													top: 0,
+													left: 0,
+													right: 0,
+													bottom: 0,
+													backgroundColor: 'rgba(0, 0, 0, 0.5)',
+													display: 'flex',
+													alignItems: 'center',
+													justifyContent: 'center',
+													borderRadius: '50%',
+												}}
+											>
+												<Spin size="small" />
+											</div>
+										)}
+									</div>
+									<input
+										id="teacher-avatar-upload"
+										type="file"
+										accept="image/*"
+										style={{ display: 'none' }}
+										onChange={(e) => {
+											const file = e.target.files[0];
+											if (file) {
+												// Validate file type
+												if (!file.type.startsWith('image/')) {
+													spaceToast.error(t('teacherManagement.invalidFileType'));
+													return;
+												}
+												// Validate file size (max 5MB)
+												if (file.size > 5 * 1024 * 1024) {
+													spaceToast.error(t('teacherManagement.fileTooLarge'));
+													return;
+												}
+												handleAvatarUpload(file);
+											}
 										}}
 									/>
+									<p style={{ 
+										textAlign: 'center', 
+										marginTop: '8px', 
+										fontSize: '12px',
+										color: theme === 'space' ? '#ffffff' : '#000000',
+										cursor: 'pointer'
+									}}>
+										{t('teacherManagement.clickToChangeAvatar')}
+									</p>
 								</div>
 							</Col>
 							<Col span={18}>
@@ -378,6 +455,7 @@ const TeacherProfile = () => {
 										<p style={{ color: theme === 'space' ? '#ffffff' : '#000000' }}>
 											<strong style={{ color: theme === 'space' ? '#ffffff' : '#000000' }}>{t('teacherManagement.email')}:</strong>{' '}
 											<span style={{ color: theme === 'space' ? '#ffffff' : '#000000' }}>{teacher.email}</span>
+										
 										</p>
 										<p style={{ color: theme === 'space' ? '#ffffff' : '#000000' }}>
 											<strong style={{ color: theme === 'space' ? '#ffffff' : '#000000' }}>{t('teacherManagement.phone')}:</strong>{' '}
@@ -489,55 +567,6 @@ const TeacherProfile = () => {
 						layout="vertical"
 						onFinish={handleEditSubmit}
 					>
-						{/* Avatar Section */}
-						<Row gutter={16} style={{ marginBottom: 16 }}>
-							<Col span={24} style={{ textAlign: 'center' }}>
-								<div className="avatar-section">
-									<Avatar
-										size={80}
-										icon={<UserOutlined />}
-										src={avatarUrl}
-										style={{ 
-											backgroundColor: '#1890ff',
-											marginBottom: 12,
-											border: `2px solid ${theme === 'space' ? 'rgba(77, 208, 255, 0.5)' : 'rgba(0, 0, 0, 0.1)'}`,
-											boxShadow: `0 2px 8px ${theme === 'space' ? 'rgba(77, 208, 255, 0.3)' : 'rgba(0, 0, 0, 0.1)'}`
-										}}
-									/>
-									<div>
-										<Form.Item
-											name="avatar"
-											label={t('teacherManagement.selectAvatar')}
-											rules={[{ required: true, message: t('teacherManagement.avatarRequired') }]}
-										>
-											<Select
-												placeholder={t('teacherManagement.selectAvatar')}
-												onChange={handleAvatarSelect}
-												className={`custom-dropdown ${theme}-custom-dropdown`}
-												showSearch
-												filterOption={(input, option) =>
-													option.children.toLowerCase().indexOf(input.toLowerCase()) >= 0
-												}
-												style={{ width: 160 }}
-											>
-												{teacherAvatarImages.map((avatar, index) => (
-													<Select.Option key={index} value={avatar}>
-														<div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-															<Avatar
-																size={24}
-																src={`/img/teacher_avatar/${avatar}`}
-																style={{ flexShrink: 0 }}
-															/>
-															<span>{avatar.replace('.png', '').replace('teacher', 'Teacher ')}</span>
-														</div>
-													</Select.Option>
-												))}
-											</Select>
-										</Form.Item>
-									</div>
-								</div>
-							</Col>
-						</Row>
 
 						{/* Basic Information */}
 						<Title level={5} style={{ marginBottom: '12px', color: '#000000', fontSize: '16px' }}>
@@ -566,17 +595,22 @@ const TeacherProfile = () => {
 							</Col>
 							<Col span={12}>
 								<Form.Item
-									label={t('teacherManagement.gender')}
+									label={
+										<span>
+											{t('teacherManagement.gender')}
+											<span style={{ color: 'red', marginLeft: '4px' }}>*</span>
+										</span>
+									}
 									name="gender"
 									rules={[
 										{ required: true, message: t('teacherManagement.genderRequired') },
 									]}
 								>
-									<Select placeholder={t('teacherManagement.genderPlaceholder')}>
-										<Select.Option value="MALE">{t('teacherManagement.male')}</Select.Option>
-										<Select.Option value="FEMALE">{t('teacherManagement.female')}</Select.Option>
-										<Select.Option value="OTHER">{t('teacherManagement.other')}</Select.Option>
-									</Select>
+									<Radio.Group>
+										<Radio value="MALE">{t('teacherManagement.male')}</Radio>
+										<Radio value="FEMALE">{t('teacherManagement.female')}</Radio>
+										<Radio value="OTHER">{t('teacherManagement.other')}</Radio>
+									</Radio.Group>
 								</Form.Item>
 							</Col>
 						</Row>
@@ -623,34 +657,19 @@ const TeacherProfile = () => {
 								<Form.Item
 									label={
 										<span>
-											{t('teacherManagement.email')}
+											{t('teacherManagement.phone')}
 											<span style={{ color: 'red', marginLeft: '4px' }}>*</span>
 										</span>
 									}
-									name="email"
-									rules={[
-										{ required: true, message: t('teacherManagement.emailRequired') },
-										{ type: 'email', message: t('teacherManagement.emailInvalid') },
-										{ max: 255, message: t('teacherManagement.emailMaxLength') },
-									]}
-								>
-									<Input placeholder={t('teacherManagement.enterEmail')} />
-								</Form.Item>
-							</Col>
-							<Col span={12}>
-								<Form.Item
-									label={t('teacherManagement.phone')}
 									name="phoneNumber"
 									rules={[
+										{ required: true, message: t('teacherManagement.phoneRequired') },
 										{ max: 20, message: t('teacherManagement.phoneMaxLength') },
 									]}
 								>
 									<Input placeholder={t('teacherManagement.enterPhone')} />
 								</Form.Item>
 							</Col>
-						</Row>
-
-						<Row gutter={16}>
 							<Col span={12}>
 								<Form.Item
 									label={t('teacherManagement.dateOfBirth')}
@@ -710,6 +729,19 @@ const TeacherProfile = () => {
 						</Row>
 					</Form>
 				</Modal>
+
+				{/* Edit Email Modal */}
+				<EditEmailModal
+					isVisible={editEmailModalVisible}
+					onClose={(shouldRefresh) => {
+						setEditEmailModalVisible(false);
+						if (shouldRefresh) {
+							handleEmailUpdateSuccess();
+						}
+					}}
+					teacherId={teacherId}
+					currentEmail={teacher?.email}
+				/>
 			</div>
 		</ThemedLayout>
 	);
