@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { Table, Button, Space, Modal, Input, Tooltip, Typography, Switch, Upload, Divider, Checkbox } from 'antd';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { Table, Button, Space, Modal, Input, Tooltip, Typography, Switch, Upload, Divider } from 'antd';
 import {
 	PlusOutlined,
 	SearchOutlined,
@@ -52,9 +52,6 @@ const TeacherList = () => {
 	// Sort state - start with createdAt DESC (newest first)
 	const [sortBy, setSortBy] = useState("createdAt");
 	const [sortDir, setSortDir] = useState("desc");
-	
-	// Checkbox selection state
-	const [selectedRowKeys, setSelectedRowKeys] = useState([]);
 	
 	// Modal states
 	const [isModalVisible, setIsModalVisible] = useState(false);
@@ -238,7 +235,7 @@ const TeacherList = () => {
 				} catch (error) {
 					console.error('Error updating teacher status:', error);
 					setConfirmModal({ visible: false, title: '', content: '', onConfirm: null });
-					spaceToast.error(error.response?.data?.message || error.message || t('teacherManagement.updateStatusError'));
+					spaceToast.error(error.response?.data?.error || error.message || t('teacherManagement.updateStatusError'));
 				}
 			}
 		});
@@ -277,41 +274,53 @@ const TeacherList = () => {
 
 	// Handle table change (pagination, sorting, filtering)
 	const handleTableChange = (pagination, filters, sorter) => {
-		console.log('Table change:', { pagination, filters, sorter });
+		console.log('handleTableChange called:', { pagination, filters, sorter });
+		console.log('Current sortBy:', sortBy, 'Current sortDir:', sortDir);
 		
 		// Handle sorting
 		if (sorter && sorter.field) {
-			let newSortBy = sorter.field;
-			let newSortDir = 'asc'; // Default to asc for first click
+			// Map frontend field names to backend field names
+			const fieldMapping = {
+				'firstName': 'firstName', // Keep original field name
+				'createdAt': 'createdAt'
+			};
 			
-			// Determine sort direction
-			if (sorter.order === 'ascend') {
+			const backendField = fieldMapping[sorter.field] || sorter.field;
+			
+			// Handle sorting direction - force toggle if same field
+			let newSortDir;
+			if (backendField === sortBy) {
+				// Same field - toggle direction
+				newSortDir = sortDir === 'asc' ? 'desc' : 'asc';
+				console.log('Same field clicked, toggling from', sortDir, 'to', newSortDir);
+			} else {
+				// Different field - start with asc
 				newSortDir = 'asc';
-			} else if (sorter.order === 'descend') {
-				newSortDir = 'desc';
-			} else if (sorter.order === undefined) {
-				// First click on column - start with asc
-				newSortDir = 'asc';
+				console.log('Different field clicked, starting with asc');
 			}
-			
-			// Map column field to API field
-			if (sorter.field === 'firstName') {
-				newSortBy = 'firstName'; // Sort by firstName for Full Name column
-			} else if (sorter.field === 'status') {
-				newSortBy = 'status'; // Sort by status
-			}
-			
-			console.log('Setting sort:', { newSortBy, newSortDir });
-			setSortBy(newSortBy);
+
+			console.log('Sorting:', {
+				frontendField: sorter.field,
+				backendField: backendField,
+				direction: newSortDir,
+				order: sorter.order
+			});
+
+			// Update state - useEffect will handle the API call
+			setSortBy(backendField);
 			setSortDir(newSortDir);
-			
-			// Fetch data with new sorting
-			fetchTeachers(pagination.current, pagination.pageSize, searchText, statusFilter, roleNameFilter, newSortBy, newSortDir);
 		} else {
 			// Handle pagination without sorting change
-			fetchTeachers(pagination.current, pagination.pageSize, searchText, statusFilter, roleNameFilter, sortBy, sortDir);
+			console.log('Pagination only, no sorting change');
+			// Update pagination state - useEffect will handle the API call
+			setPagination(prev => ({
+				...prev,
+				current: pagination.current,
+				pageSize: pagination.pageSize,
+			}));
 		}
 	};
+
 
 	const handleExport = () => {
 		// TODO: Implement export functionality
@@ -358,7 +367,7 @@ const TeacherList = () => {
 			}
 		} catch (error) {
 			console.error('Error importing teachers:', error);
-			spaceToast.error(error.response?.data?.error || error.response?.data?.message || error.message || t('teacherManagement.importError'));
+			spaceToast.error(error.response?.data?.error || error.message || t('teacherManagement.importError'));
 			setImportModal((prev) => ({ ...prev, uploading: false }));
 		}
 	};
@@ -424,7 +433,7 @@ const TeacherList = () => {
 			spaceToast.success('Template downloaded successfully');
 		} catch (error) {
 			console.error('Error downloading template:', error);
-			spaceToast.error(error.response?.data?.error || error.response?.data?.message || error.message || 'Failed to download template');
+			spaceToast.error(error.response?.data?.error || error.message || 'Failed to download template');
 		}
 	};
 
@@ -459,140 +468,6 @@ const TeacherList = () => {
 		}));
 	};
 
-	// Calculate checkbox states with useMemo
-	const checkboxStates = useMemo(() => {
-		const totalItems = totalTeachers; // Sử dụng totalTeachers thay vì teachers.length
-		const selectedCount = selectedRowKeys.length;
-		const isSelectAll = selectedCount === totalItems && totalItems > 0;
-		const isIndeterminate = false; // Không bao giờ hiển thị indeterminate
-
-		console.log('Checkbox Debug:', {
-			totalItems,
-			selectedCount,
-			selectedRowKeys,
-			isSelectAll,
-			isIndeterminate,
-		});
-
-		return { isSelectAll, isIndeterminate, totalItems, selectedCount };
-	}, [selectedRowKeys, totalTeachers]);
-
-	// Checkbox logic
-	const handleSelectAll = async (checked) => {
-		if (checked) {
-			try {
-				// Fetch all teacher IDs from API (without pagination)
-				const params = {
-					page: 0,
-					size: totalTeachers, // Get all items
-				};
-				
-				// Add search parameter if provided
-				if (searchText && searchText.trim()) {
-					params.text = searchText.trim();
-				}
-
-				// Add status filter if provided
-				if (statusFilter.length > 0) {
-					params.status = statusFilter;
-				}
-
-				// Add roleName filter if provided
-				if (roleNameFilter.length > 0) {
-					params.roleName = roleNameFilter;
-				}
-
-				const response = await teacherManagementApi.getTeachers(params);
-
-				// Get all IDs from the response
-				const allKeys = response.data.map(teacher => teacher.id);
-				setSelectedRowKeys(allKeys);
-			} catch (error) {
-				console.error('Error fetching all teacher IDs:', error);
-				spaceToast.error('Error selecting all items');
-			}
-		} else {
-			setSelectedRowKeys([]);
-		}
-	};
-
-	const handleSelectRow = (record, checked) => {
-		if (checked) {
-			setSelectedRowKeys(prev => [...prev, record.id]);
-		} else {
-			setSelectedRowKeys(prev => prev.filter(key => key !== record.id));
-		}
-	};
-
-	// Bulk actions
-	const handleBulkActiveDeactive = () => {
-		if (selectedRowKeys.length === 0) {
-			spaceToast.warning(t('teacherManagement.selectItemsToActiveDeactive'));
-			return;
-		}
-		
-		// Get selected teachers info
-		const selectedTeachers = teachers.filter(teacher => selectedRowKeys.includes(teacher.id));
-		const activeTeachers = selectedTeachers.filter(t => t.status === 'ACTIVE');
-		const inactiveTeachers = selectedTeachers.filter(t => t.status === 'INACTIVE');
-		
-		let actionText = '';
-		let confirmContent = '';
-		let bulkAction = '';
-		
-		if (activeTeachers.length > 0 && inactiveTeachers.length > 0) {
-			// Mixed selection - show general message
-			actionText = t('teacherManagement.changeStatus');
-			confirmContent = `${t('teacherManagement.confirmBulkStatusChange')} ${selectedRowKeys.length} ${t('teacherManagement.teachers')}?`;
-		} else if (activeTeachers.length > 0) {
-			// All active - will deactivate
-			actionText = t('teacherManagement.deactivate');
-			confirmContent = `${t('teacherManagement.confirmBulkDeactivate')} ${selectedRowKeys.length} ${t('teacherManagement.teachers')}?`;
-			bulkAction = 'INACTIVE';
-		} else {
-			// All inactive - will activate
-			actionText = t('teacherManagement.activate');
-			confirmContent = `${t('teacherManagement.confirmBulkActivate')} ${selectedRowKeys.length} ${t('teacherManagement.teachers')}?`;
-			bulkAction = 'ACTIVE';
-		}
-		
-		setConfirmModal({
-			visible: true,
-			title: actionText,
-			content: confirmContent,
-			onConfirm: async () => {
-				try {
-					// Call API for bulk update (you'll need to implement this API)
-					// For now, we'll update each teacher individually
-					const promises = selectedRowKeys.map(id => 
-						teacherManagementApi.updateTeacherStatus(id, bulkAction)
-					);
-					
-					await Promise.all(promises);
-					
-					spaceToast.success(t('teacherManagement.bulkStatusUpdateSuccess'));
-					setSelectedRowKeys([]);
-					setConfirmModal({ visible: false, title: '', content: '', onConfirm: null });
-					
-					// Refresh the teacher list
-					fetchTeachers(pagination.current, pagination.pageSize, searchText, statusFilter, roleNameFilter, sortBy, sortDir);
-				} catch (error) {
-					console.error('Error bulk updating teacher status:', error);
-					spaceToast.error(t('teacherManagement.bulkStatusUpdateError'));
-				}
-			}
-		});
-	};
-
-	const handleBulkExport = () => {
-		if (selectedRowKeys.length === 0) {
-			spaceToast.warning(t('teacherManagement.selectItemsToExport'));
-			return;
-		}
-		// TODO: Implement bulk export functionality
-		spaceToast.info(`Selected ${selectedRowKeys.length} teachers for export`);
-	};
-
 	// Status options for filter
 	const statusOptions = [
 		{ key: "ACTIVE", label: t('teacherManagement.active') },
@@ -607,31 +482,6 @@ const TeacherList = () => {
 	];
 
 	const columns = [
-		{
-			title: (
-				<Checkbox
-					key={`select-all-${checkboxStates.selectedCount}-${checkboxStates.totalItems}`}
-					checked={checkboxStates.isSelectAll}
-					indeterminate={checkboxStates.isIndeterminate}
-					onChange={(e) => handleSelectAll(e.target.checked)}
-					style={{
-						transform: 'scale(1.2)',
-						marginRight: '8px'
-					}}
-				/>
-			),
-			key: 'selection',
-			width: '5%',
-			render: (_, record) => (
-				<Checkbox
-					checked={selectedRowKeys.includes(record.id)}
-					onChange={(e) => handleSelectRow(record, e.target.checked)}
-					style={{
-						transform: 'scale(1.2)'
-					}}
-				/>
-			),
-		},
 		{
 			title: t('teacherManagement.stt'),
 			key: "stt",
@@ -693,8 +543,6 @@ const TeacherList = () => {
 			key: "status",
 			width: 80,
 			align: 'center',
-			sorter: true,
-			sortDirections: ['ascend', 'descend'],
 			render: (status, record) => {
 				if (status === 'PENDING') {
 					return <span style={{ color: '#000' }}>{t('teacherManagement.pending')}</span>;
@@ -759,7 +607,7 @@ const TeacherList = () => {
 						level={1} 
 						className="page-title"
 					>
-						{t('teacherManagement.title')} <span className="student-count">({totalTeachers})</span>
+						{t('teacherManagement.title')} ({totalTeachers})
 					</Typography.Title>
 				</div>
 				{/* Header Section */}
@@ -884,51 +732,6 @@ const TeacherList = () => {
 					</div>
 				</div>
 
-				{/* Bulk Actions Row */}
-				{selectedRowKeys.length > 0 && (
-					<div className={`bulk-actions-row ${theme}-bulk-actions-row`} style={{
-						display: 'flex',
-						justifyContent: 'flex-end',
-						marginTop: '16px',
-						padding: '12px 0',
-						borderTop: '1px solid #f0f0f0'
-					}}>
-						<div style={{ display: 'flex', gap: '12px' }}>
-							<Button 
-								onClick={handleBulkActiveDeactive}
-								className={`bulk-active-deactive-button ${theme}-bulk-active-deactive-button`}
-								style={{
-									backgroundColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)',
-									background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)',
-									borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'transparent',
-									color: '#000000',
-									height: '40px',
-									fontSize: '16px',
-									fontWeight: '500',
-									minWidth: '140px',
-									width: '260px'
-								}}
-							>
-								{t('teacherManagement.bulkActiveDeactive')} ({selectedRowKeys.length})
-							</Button>
-							<Button 
-								icon={<UploadOutlined />}
-								onClick={handleBulkExport}
-								className={`bulk-export-button ${theme}-bulk-export-button`}
-								style={{
-									height: '40px',
-									fontSize: '16px',
-									fontWeight: '500',
-									minWidth: '140px',
-									width: '160px'
-								}}
-							>
-								{t('teacherManagement.bulkExport')} ({selectedRowKeys.length})
-							</Button>
-						</div>
-					</div>
-				)}
-
 				{/* Table Section */}
 				<div className={`table-section ${theme}-table-section`}>
 					<LoadingWithEffect
@@ -943,12 +746,12 @@ const TeacherList = () => {
 								pageSizeOptions: ['5', '10', '20', '50', '100'],
 							}}
 							onChange={handleTableChange}
+							scroll={{ y: 400 }}
 							className={`teacher-table ${theme}-teacher-table`}
 							showSorterTooltip={false}
 							sortDirections={['ascend', 'descend']}
 							defaultSortOrder={
 								sortBy === 'firstName' ? (sortDir === 'asc' ? 'ascend' : 'descend') :
-								sortBy === 'status' ? (sortDir === 'asc' ? 'ascend' : 'descend') :
 								null
 							}
 						/>

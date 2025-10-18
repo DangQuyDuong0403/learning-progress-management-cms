@@ -463,22 +463,28 @@ const LevelDragEdit = () => {
 		setSaving(true);
 		try {
 			// Prepare data theo format API yêu cầu với tất cả các trường
-			const bulkUpdateData = levels.map((level) => {
-				const isNewRecord = typeof level.id === 'string' && level.id.startsWith('new-');
-				
-				return {
-					id: isNewRecord ? null : level.id, // null for new records
-					levelName: level.levelName,
-					levelCode: level.levelCode,
-					description: level.description || '',
-					promotionCriteria: level.promotionCriteria || '',
-					learningObjectives: level.learningObjectives || '',
-					estimatedDurationWeeks: level.estimatedDurationWeeks || 0,
-					orderNumber: level.position, // Position hiện tại = orderNumber
-					isActive: true, // Đảm bảo tất cả levels đều active
-					toBeDeleted: level.toBeDeleted || false, // Include toBeDeleted flag
-				};
-			});
+			const bulkUpdateData = levels
+				.map((level) => {
+					const isNewRecord = typeof level.id === 'string' && level.id.startsWith('new-');
+					
+					return {
+						id: isNewRecord ? null : level.id, // null for new records
+						levelName: level.levelName,
+						levelCode: level.levelCode,
+						description: level.description || '',
+						promotionCriteria: level.promotionCriteria || '',
+						learningObjectives: level.learningObjectives || '',
+						estimatedDurationWeeks: level.estimatedDurationWeeks || 0,
+						orderNumber: level.position, // Position hiện tại = orderNumber
+						isActive: true, // Đảm bảo tất cả levels đều active
+						toBeDeleted: level.toBeDeleted || false, // Include toBeDeleted flag
+					};
+				})
+				.filter((level) => {
+					// Không gửi các record mới (id: null) mà đã bị xóa (toBeDeleted: true)
+					// Vì chúng chưa tồn tại trên backend nên không cần xóa
+					return !(level.id === null && level.toBeDeleted === true);
+				});
 
 			console.log('LevelDragEdit - Sending bulk update data:', {
 				count: bulkUpdateData.length,
