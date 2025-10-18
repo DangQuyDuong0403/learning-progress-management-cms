@@ -42,9 +42,12 @@ const syllabusManagementApi = {
     }),
     
     // Syllabus Import/Export APIs
-    downloadSyllabusTemplate: () => axiosClient.get('/syllabus/download-template', {
-        responseType: 'blob'
+    importSyllabuses: (formData) => axiosClient.post('/syllabus/import', formData, {
+        headers: {
+            'Content-Type': 'multipart/form-data',
+        },
     }),
+    downloadSyllabusTemplate: () => axiosClient.get('/syllabus/download-template'),
 }
 
 export default syllabusManagementApi;

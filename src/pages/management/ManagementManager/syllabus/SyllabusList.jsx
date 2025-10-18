@@ -15,6 +15,7 @@ import {
 	Typography,
 	Divider,
 	Checkbox,
+	Upload,
 } from 'antd';
 import {
 	PlusOutlined,
@@ -196,7 +197,8 @@ const SyllabusList = () => {
 			// Update local state
 			setSyllabuses(syllabuses.filter(s => s.id !== deleteSyllabus.id));
 			
-			// No success message - only show error messages from backend
+			// Show success message
+			spaceToast.success(response.message);
 			
 			setIsDeleteModalVisible(false);
 			setDeleteSyllabus(null);
@@ -208,7 +210,7 @@ const SyllabusList = () => {
 				error.response?.data?.message || 
 				error.message 
 			
-			message.error(errorMessage);
+			spaceToast.error(errorMessage);
 		}
 	};
 
@@ -289,95 +291,100 @@ const SyllabusList = () => {
 
 	const handleImportOk = async () => {
 		if (importModal.fileList.length === 0) {
-			message.warning(t('syllabusManagement.selectFileToImport'));
+			spaceToast.warning(t('syllabusManagement.selectFileToImport'));
 			return;
 		}
 
 		setImportModal(prev => ({ ...prev, uploading: true }));
 		
 		try {
-			// TODO: Implement actual import API call
-			const response = await new Promise(resolve => setTimeout(resolve, 2000)); // Simulate API call
+			const file = importModal.fileList[0];
 			
-			// No success message - only show error messages from backend
+			// Create FormData object
+			const formData = new FormData();
+			formData.append('file', file);
 			
-			setImportModal({
-				visible: false,
-				fileList: [],
-				uploading: false
-			});
-			
-			// Refresh the data
-			fetchSyllabuses(pagination.current, pagination.pageSize, searchText, sortBy, sortDir);
+			// Call import API with FormData
+			const response = await syllabusManagementApi.importSyllabuses(formData);
+
+			if (response.success) {
+				// Refresh the list to get updated data from server
+				fetchSyllabuses(pagination.current, pagination.pageSize, searchText, sortBy, sortDir);
+				
+				// Use backend message if available, otherwise fallback to translation
+				const successMessage = response.message || t('syllabusManagement.importSuccess');
+				spaceToast.success(successMessage);
+				
+				setImportModal({ visible: false, fileList: [], uploading: false });
+			} else {
+				throw new Error(response.message || 'Import failed');
+			}
 		} catch (error) {
-			console.error('Import error:', error);
-			
-			// Handle error message from backend
-			let errorMessage = error.response?.data?.error || 
-				error.response?.data?.message || 
-				error.message
-			
-			message.error(errorMessage);
-		} finally {
+			console.error('Error importing syllabuses:', error);
+			spaceToast.error(error.response?.data?.error || error.response?.data?.message || error.message || t('syllabusManagement.importError'));
 			setImportModal(prev => ({ ...prev, uploading: false }));
 		}
 	};
 
+	// Handle file selection
+	const handleFileSelect = (file) => {
+		// Validate file type
+		const allowedTypes = [
+			'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // .xlsx
+			'application/vnd.ms-excel', // .xls
+		];
+		
+		if (!allowedTypes.includes(file.type)) {
+			spaceToast.error('Please select a valid Excel (.xlsx, .xls) file');
+			return false;
+		}
+		
+		// Validate file size (max 10MB)
+		const maxSize = 10 * 1024 * 1024; // 10MB
+		if (file.size > maxSize) {
+			spaceToast.error('File size must be less than 10MB');
+			return false;
+		}
+		
+		setImportModal(prev => ({
+			...prev,
+			fileList: [file]
+		}));
+		
+		return false; // Prevent default upload behavior
+	};
+
 	const handleDownloadTemplate = async () => {
 		try {
-			spaceToast.info('Downloading template...');
 			
 			const response = await syllabusManagementApi.downloadSyllabusTemplate();
 			
-			console.log('Syllabus template response:', response);
-			console.log('Is response a Blob?', response instanceof Blob);
-			console.log('Response size:', response.size);
-			console.log('Response type:', response.type);
-			
-			// If response is already a blob (which it seems to be), use it directly
-			let blob;
-			if (response instanceof Blob) {
-				blob = response;
-				console.log('Response is already a blob, using directly');
-			} else if (response.data instanceof Blob) {
-				blob = response.data;
-				console.log('Using response.data blob');
+			// API returns SAS URL directly (due to axios interceptor returning response.data)
+			let downloadUrl;
+			if (typeof response === 'string') {
+				downloadUrl = response;
+			} else if (response && typeof response.data === 'string') {
+				downloadUrl = response.data;
+			} else if (response && response.data && response.data.url) {
+				downloadUrl = response.data.url;
 			} else {
-				// Create blob from response data
-				blob = new Blob([response.data], { 
-					type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
-				});
-				console.log('Created new blob from response data');
+				console.error('Unexpected response format:', response);
 			}
 			
-			console.log('Final blob:', blob);
-			console.log('Blob type:', blob.type);
-			console.log('Blob size:', blob.size);
-			
-			// Validate blob
-			if (blob.size === 0) {
-				throw new Error('Downloaded file is empty');
-			}
-			
-			// Create download link
+			// Create download link directly from SAS URL
 			const link = document.createElement('a');
-			const url = URL.createObjectURL(blob);
-			link.href = url;
-			link.download = 'syllabus_import_template.xlsx';
-			link.style.display = 'none';
-			
-			// Trigger download
+			link.setAttribute('href', downloadUrl);
+			link.setAttribute('download', 'syllabus_import_template.xlsx');
+			link.setAttribute('target', '_blank');
+			link.style.visibility = 'hidden';
 			document.body.appendChild(link);
 			link.click();
-			
-			// Cleanup
 			document.body.removeChild(link);
-			URL.revokeObjectURL(url);
-
+			
 			spaceToast.success('Template downloaded successfully');
 		} catch (error) {
 			console.error('Error downloading template:', error);
-			spaceToast.error(error.response?.data?.error || error.message || 'Failed to download template');
+			spaceToast.error(error.response?.data?.error || error.response?.data?.message || error.message || 'Failed to download template');
 		}
 	};
 
@@ -457,7 +464,8 @@ const SyllabusList = () => {
 			// Update local state
 			setSyllabuses(syllabuses.filter(s => !selectedRowKeys.includes(s.id)));
 			
-			// No success message - only show error messages from backend
+			// Show success message
+			spaceToast.success(`${t('syllabusManagement.bulkDeleteSuccess')} ${selectedRowKeys.length} ${t('syllabusManagement.syllabuses')} ${t('common.success')}`);
 			
 			setIsBulkDeleteModalVisible(false);
 			setSelectedRowKeys([]);
@@ -470,7 +478,7 @@ const SyllabusList = () => {
 				error.message ||
 				t('syllabusManagement.bulkDeleteError');
 			
-			message.error(errorMessage);
+			spaceToast.error(errorMessage);
 		}
 	};
 
@@ -1192,7 +1200,12 @@ const SyllabusList = () => {
 						{t('syllabusManagement.importInstructions')}
 					</Typography.Title>
 
-					<div
+					<Upload.Dragger
+						name="file"
+						multiple={false}
+						beforeUpload={handleFileSelect}
+						showUploadList={false}
+						accept=".xlsx,.xls"
 						style={{
 							marginBottom: '20px',
 							border: '2px dashed #d9d9d9',
@@ -1204,7 +1217,7 @@ const SyllabusList = () => {
 						<p
 							className='ant-upload-drag-icon'
 							style={{ fontSize: '48px', color: '#1890ff' }}>
-							<DownloadOutlined />
+							<UploadOutlined />
 						</p>
 						<p
 							className='ant-upload-text'
@@ -1212,10 +1225,9 @@ const SyllabusList = () => {
 							{t('syllabusManagement.clickOrDragFile')}
 						</p>
 						<p className='ant-upload-hint' style={{ color: '#999' }}>
-							{t('syllabusManagement.supportedFormats')}: Excel (.xlsx, .xls),
-							CSV (.csv)
+							{t('syllabusManagement.supportedFormats')}: Excel (.xlsx, .xls)
 						</p>
-					</div>
+					</Upload.Dragger>
 
 					<Divider />
 
@@ -1227,11 +1239,30 @@ const SyllabusList = () => {
 								background: '#e6f7ff',
 								border: '1px solid #91d5ff',
 								borderRadius: '6px',
+								display: 'flex',
+								justifyContent: 'space-between',
+								alignItems: 'center',
 							}}>
-							<Typography.Text style={{ color: '#1890ff', fontWeight: '500' }}>
-								✅ {t('syllabusManagement.fileSelected')}:{' '}
-								{importModal.fileList[0].name}
-							</Typography.Text>
+							<div>
+								<Typography.Text style={{ color: '#1890ff', fontWeight: '500' }}>
+									✅ {t('syllabusManagement.fileSelected')}:{' '}
+									{importModal.fileList[0].name}
+								</Typography.Text>
+								<br />
+								<Typography.Text style={{ color: '#666', fontSize: '12px' }}>
+									Size: {importModal.fileList[0].size < 1024 * 1024 
+										? `${(importModal.fileList[0].size / 1024).toFixed(1)} KB`
+										: `${(importModal.fileList[0].size / 1024 / 1024).toFixed(2)} MB`
+									}
+								</Typography.Text>
+							</div>
+							<Button
+								type="text"
+								size="small"
+								onClick={() => setImportModal(prev => ({ ...prev, fileList: [] }))}
+								style={{ color: '#ff4d4f' }}>
+								Remove
+							</Button>
 						</div>
 					)}
 				</div>
