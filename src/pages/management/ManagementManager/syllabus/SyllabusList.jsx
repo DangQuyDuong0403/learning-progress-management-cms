@@ -323,9 +323,62 @@ const SyllabusList = () => {
 		}
 	};
 
-	const handleDownloadTemplate = () => {
-		// TODO: Implement template download
-		message.success(t('syllabusManagement.templateDownloaded'));
+	const handleDownloadTemplate = async () => {
+		try {
+			spaceToast.info('Downloading template...');
+			
+			const response = await syllabusManagementApi.downloadSyllabusTemplate();
+			
+			console.log('Syllabus template response:', response);
+			console.log('Is response a Blob?', response instanceof Blob);
+			console.log('Response size:', response.size);
+			console.log('Response type:', response.type);
+			
+			// If response is already a blob (which it seems to be), use it directly
+			let blob;
+			if (response instanceof Blob) {
+				blob = response;
+				console.log('Response is already a blob, using directly');
+			} else if (response.data instanceof Blob) {
+				blob = response.data;
+				console.log('Using response.data blob');
+			} else {
+				// Create blob from response data
+				blob = new Blob([response.data], { 
+					type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
+				});
+				console.log('Created new blob from response data');
+			}
+			
+			console.log('Final blob:', blob);
+			console.log('Blob type:', blob.type);
+			console.log('Blob size:', blob.size);
+			
+			// Validate blob
+			if (blob.size === 0) {
+				throw new Error('Downloaded file is empty');
+			}
+			
+			// Create download link
+			const link = document.createElement('a');
+			const url = URL.createObjectURL(blob);
+			link.href = url;
+			link.download = 'syllabus_import_template.xlsx';
+			link.style.display = 'none';
+			
+			// Trigger download
+			document.body.appendChild(link);
+			link.click();
+			
+			// Cleanup
+			document.body.removeChild(link);
+			URL.revokeObjectURL(url);
+
+			spaceToast.success('Template downloaded successfully');
+		} catch (error) {
+			console.error('Error downloading template:', error);
+			spaceToast.error(error.response?.data?.error || error.message || 'Failed to download template');
+		}
 	};
 
 	// Checkbox selection handlers
