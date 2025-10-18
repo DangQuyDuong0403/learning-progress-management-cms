@@ -92,6 +92,21 @@ const studentManagementApi = {
 			throw error;
 		});
 	},
+
+	// Download student import template
+	downloadStudentTemplate: () => {
+		const url = `/user/students/download-template`;
+		console.log('DownloadStudentTemplate API - URL:', url);
+		
+		return axiosClient.get(url, {
+			responseType: 'blob' // Important for file downloads
+		}).catch(error => {
+			console.error('DownloadStudentTemplate API Error:', error);
+			console.error('Error response:', error.response?.data);
+			console.error('Error status:', error.response?.status);
+			throw error;
+		});
+	},
 };
 
 export default studentManagementApi;
