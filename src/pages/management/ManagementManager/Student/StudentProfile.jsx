@@ -1,11 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import {
-	Card,
 	Row,
 	Col,
 	Button,
 	Avatar,
-	Space,
 	Modal,
 	Form,
 	Input,
@@ -140,12 +138,11 @@ const StudentProfile = () => {
 		setEditEmailModalVisible(true);
 	};
 
-	const handleEmailUpdateSuccess = (newEmail) => {
-		// Update student data with new email
-		setStudent(prev => ({
-			...prev,
-			email: newEmail
-		}));
+	const handleEmailUpdateSuccess = () => {
+		// Không cập nhật email ngay lập tức
+		// Email sẽ chỉ được cập nhật sau khi user confirm từ email
+		// Chỉ cần refresh dữ liệu student để lấy thông tin mới nhất
+		fetchStudentProfile();
 	};
 
 	const handleAvatarUpload = async (event) => {
@@ -411,219 +408,171 @@ const StudentProfile = () => {
 						{t('studentManagement.editProfile')}
 					</Button>
 					<Button
-						type='default'
+						type='primary'
+						icon={<EditOutlined />}
 						onClick={handleEditEmail}
-						className={`edit-email-button ${theme}-edit-email-button`}>
+						className={`edit-email-button ${theme}-edit-email-button`}
+						style={{
+							backgroundColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
+							background: theme === 'sun' ? 'linear-gradient(135deg, #66AEFF, #3C99FF)' : 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)',
+							borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'transparent',
+							color: theme === 'sun' ? '#000000' : '#000000',
+						}}>
 						{t('common.editEmail')}
 					</Button>
 				</div>
 			</div>
 
 			{/* Student Info Card */}
-			<Card className={`profile-card ${theme}-profile-card`}>
-				<Row gutter={24}>
-					<Col span={6}>
-						<div className='avatar-section'>
-							<div 
-								className="profile-picture-placeholder" 
-								onClick={() => setAvatarModalVisible(true)}
-								style={{
-									cursor: 'pointer',
-									position: 'relative',
-									display: 'inline-block'
-								}}
-							>
-								<Avatar
-									size={120}
-									icon={<UserOutlined />}
-									src={avatarUrl}
-									style={{
-										backgroundColor: '#1890ff',
-										border: `3px solid ${
-											theme === 'space'
-												? 'rgba(77, 208, 255, 0.5)'
-												: 'rgba(0, 0, 0, 0.1)'
-										}`,
-										boxShadow: `0 4px 12px ${
-											theme === 'space'
-												? 'rgba(77, 208, 255, 0.3)'
-												: 'rgba(0, 0, 0, 0.1)'
-										}`,
-									}}
-								/>
-								{avatarUploadLoading && (
-									<div style={{
-										position: 'absolute',
-										top: 0,
-										left: 0,
-										right: 0,
-										bottom: 0,
-										backgroundColor: 'rgba(0,0,0,0.5)',
-										borderRadius: '50%',
-										display: 'flex',
-										alignItems: 'center',
-										justifyContent: 'center',
-										color: 'white',
-										fontSize: '12px',
-										width: '120px',
-										height: '120px'
-									}}>
-										Uploading...
-									</div>
-								)}
-							</div>
-							<p style={{ fontSize: '12px', color: '#666', marginTop: '8px', textAlign: 'center' }}>
-								Click to change avatar
-							</p>
-						</div>
-					</Col>
-					<Col span={18}>
-						<div
-							className='student-info'
-							style={{
-								display: 'flex',
-								flexDirection: 'column',
-								alignItems: 'flex-start',
-								gap: '8px',
-								marginBottom: '16px',
-							}}>
-							<div
-								style={{
-									display: 'flex',
-									flexDirection: 'column',
-									alignItems: 'center',
-									gap: '8px',
-									marginBottom: '16px',
-								}}>
-								<h2
-									className={`student-name ${theme}-student-name`}
-									style={{ 
-										margin: 0,
-										fontSize: '32px',
-										fontWeight: '700',
-										color: theme === 'space' ? '#4dd0ff' : '#1890ff',
-										letterSpacing: '0.5px',
-										textAlign: 'center'
-									}}>
-									{student.firstName} {student.lastName}
-								</h2>
-
-								<div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
-									<span
-										style={{
-											fontSize: '16px',
-											padding: '6px 12px',
-											borderRadius: '8px',
-											color: '#1890ff',
-											fontWeight: '500',
-										}}
-										className={`role-text ${theme}-role-text`}>
-										{student.roleName === 'STUDENT' ? t('common.student') : student.roleName === 'TEST_TAKER' ? t('common.testTaker') : 'N/A'}
-									</span>
-									<span
-										style={{
-											fontSize: '16px',
-											padding: '6px 12px',
-											borderRadius: '8px',
-											color: student.status === 'ACTIVE' ? '#52c41a' : student.status === 'PENDING' ? '#faad14' : '#ff4d4f',
-											fontWeight: '500',
-										}}
-										className={`status-text ${theme}-status-text`}>
-										{student.status === 'ACTIVE'
-											? t('studentManagement.active')
-											: student.status === 'PENDING'
-											? t('studentManagement.pending')
-											: t('studentManagement.inactive')}
-									</span>
+			<div className={`profile-container-new ${theme}-profile-container-new`}>
+				{/* Profile Title */}
+				<div className={`profile-title-new ${theme}-profile-title-new`}>
+					{t('common.profile')}
+				</div>
+				
+				<div className={`profile-content-new ${theme}-profile-content-new`}>
+					{/* Left Section - Avatar */}
+					<div className={`avatar-section-new ${theme}-avatar-section-new`}>
+						<div 
+							className="profile-picture-new" 
+							onClick={() => setAvatarModalVisible(true)}
+						>
+							<Avatar
+								size={120}
+								icon={<UserOutlined />}
+								src={avatarUrl}
+								className={`avatar-image-new ${theme}-avatar-image-new`}
+							/>
+							{avatarUploadLoading && (
+								<div className="avatar-loading-overlay">
+									Uploading...
 								</div>
-							</div>
+							)}
+						</div>
+						
+						{/* Email */}
+						<div className={`email-section-new ${theme}-email-section-new`}>
+							<span className={`email-text-new ${theme}-email-text-new`}>
+								{student.email || '-'}
+							</span>
+						</div>
+						
+						{/* Starter Badge */}
+						<div className={`starter-badge-new ${theme}-starter-badge-new`}>
+							Starter
+						</div>
+					</div>
 
-							<div className='student-details'>
-								<p>
-									<strong>{t('studentManagement.username')}:</strong>{' '}
-									{student.userName || '-'}
-								</p>
-								<p>
-									<strong>{t('studentManagement.email')}:</strong>{' '}
-									{student.email || '-'}
-								</p>
-								<p>
-									<strong>{t('studentManagement.phone')}:</strong>{' '}
-									{student.phoneNumber || '-'}
-								</p>
-								<p>
-									<strong>{t('studentManagement.dateOfBirth')}:</strong>{' '}
-									{student.dateOfBirth ? new Date(student.dateOfBirth).toLocaleDateString('vi-VN') : '-'}
-								</p>
-								<p>
-									<strong>{t('studentManagement.gender')}:</strong>{' '}
-									{student.gender === 'MALE' ? t('common.male') : student.gender === 'FEMALE' ? t('common.female') : student.gender === 'OTHER' ? t('common.other') : '-'}
-								</p>
-								<p>
-									<strong>{t('studentManagement.address')}:</strong>{' '}
-									{student.address || '-'}
-								</p>
-								{student.currentClassInfo && (
-									<p>
-										<strong>{t('studentManagement.class')}:</strong>{' '}
-										{student.currentClassInfo.name || '-'}
-									</p>
-								)}
-							
-								{student.currentLevelInfo && (
-                                    <p>
-                                        <strong>{t('studentManagement.level')}:</strong>{' '}
-                                        {student.currentLevelInfo.levelName || '-'}
-                                    </p>
-                                )}
+					{/* Right Section - Student Info */}
+					<div className={`student-info-new ${theme}-student-info-new`}>
+						{/* Name and Status Row */}
+						<div className={`name-status-row-new ${theme}-name-status-row-new`}>
+							<h2 className={`student-name-new ${theme}-student-name-new`}>
+								{student.firstName} {student.lastName}
+							</h2>
+							<div className={`status-badges-new ${theme}-status-badges-new`}>
+								<span className={`role-badge-new ${theme}-role-badge-new`}>
+									{student.roleName === 'STUDENT' ? t('common.student') : student.roleName === 'TEST_TAKER' ? t('common.testTaker') : 'N/A'}
+								</span>
+								<span className={`status-badge-new ${theme}-status-badge-new ${student.status?.toLowerCase()}`}>
+									{student.status === 'ACTIVE'
+										? t('studentManagement.active')
+										: student.status === 'PENDING'
+										? t('studentManagement.pending')
+										: t('studentManagement.inactive')}
+								</span>
 							</div>
 						</div>
-					</Col>
-				</Row>
-			</Card>
+						
+						{/* Student ID */}
+						<div className={`student-id-new ${theme}-student-id-new`}>
+							{student.userName || '-'}
+						</div>
+
+						{/* Personal Information Grid */}
+						<div className={`personal-info-grid-new ${theme}-personal-info-grid-new`}>
+							<div className={`info-item-new ${theme}-info-item-new`}>
+								<span className={`info-label-new ${theme}-info-label-new`}>{t('studentManagement.phone')}</span>
+								<span className={`info-value-new ${theme}-info-value-new`}>{student.phoneNumber || '-'}</span>
+							</div>
+							<div className={`info-item-new ${theme}-info-item-new`}>
+								<span className={`info-label-new ${theme}-info-label-new`}>{t('studentManagement.gender')}</span>
+								<span className={`info-value-new ${theme}-info-value-new`}>
+									{student.gender === 'MALE' ? t('common.male') : student.gender === 'FEMALE' ? t('common.female') : student.gender === 'OTHER' ? t('common.other') : '-'}
+								</span>
+							</div>
+							<div className={`info-item-new ${theme}-info-item-new`}>
+								<span className={`info-label-new ${theme}-info-label-new`}>{t('studentManagement.dateOfBirth')}</span>
+								<span className={`info-value-new ${theme}-info-value-new`}>
+									{student.dateOfBirth ? new Date(student.dateOfBirth).toLocaleDateString('vi-VN') : '-'}
+								</span>
+							</div>
+							<div className={`info-item-new ${theme}-info-item-new`}>
+								<span className={`info-label-new ${theme}-info-label-new`}>{t('studentManagement.address')}</span>
+								<span className={`info-value-new ${theme}-info-value-new`}>{student.address || '-'}</span>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
 
 
 			{/* Parent Information */}
 			{student.parentInfo && (
-				<Card
-					title={
-						<Space>
-							<UserOutlined />
-							{t('studentManagement.parentInformation')}
-						</Space>
-					}
-					className={`parent-card ${theme}-parent-card`}
-					style={{ 
-						marginTop: 24, 
-						marginBottom: 24,
-					}}>
-					<Row gutter={[16, 16]}>
-						<Col xs={24} sm={12} md={8}>
-							<div className="parent-info-item">
-								<strong style={{ color: '#000000' }}>{t('studentManagement.parentName')}:</strong>
-								<span style={{ color: '#000000' }}>{student.parentInfo.parentName || '-'}</span>
+				<div className={`parent-container-new ${theme}-parent-container-new`}>
+					{/* Parent Title */}
+					<div className={`parent-title-new ${theme}-parent-title-new`}>
+						{t('studentManagement.parentInformation')}
+					</div>
+					
+					{/* Parent Content */}
+					<div className={`parent-content-new ${theme}-parent-content-new`}>
+						{/* Left Section - Personal Info */}
+						<div className={`parent-left-section-new ${theme}-parent-left-section-new`}>
+							{/* Family Icon */}
+							<div className={`family-icon-new ${theme}-family-icon-new`}>
+								<img 
+									src="/img/family-icon.png" 
+									alt="Family Icon" 
+									style={{ width: '60px', height: '60px' }}
+								/>
 							</div>
-						</Col>
-						<Col xs={24} sm={12} md={8}>
-							<div className="parent-info-item">
-								<strong style={{ color: '#000000' }}>{t('studentManagement.parentEmail')}:</strong>
-								<span style={{ color: '#000000' }}>{student.parentInfo.parentEmail || '-'}</span>
+							
+							{/* Parent Name and Relationship */}
+							<div className={`parent-name-section-new ${theme}-parent-name-section-new`}>
+								<div className={`parent-name-new ${theme}-parent-name-new`}>
+									{student.parentInfo.parentName || '-'}
+								</div>
+								<div className={`parent-relationship-new ${theme}-parent-relationship-new`}>
+									{student.parentInfo.relationship || '-'}
+								</div>
 							</div>
-						</Col>
-						<Col xs={24} sm={12} md={8}>
-							<div className="parent-info-item">
-								<strong style={{ color: '#000000' }}>{t('studentManagement.parentPhone')}:</strong>
-								<span style={{ color: '#000000' }}>{student.parentInfo.parentPhone || '-'}</span>
+						</div>
+
+						{/* Right Section - Contact Info */}
+						<div className={`parent-right-section-new ${theme}-parent-right-section-new`}>
+							{/* Phone */}
+							<div className={`parent-contact-item-new ${theme}-parent-contact-item-new`}>
+								<div className={`parent-contact-label-new ${theme}-parent-contact-label-new`}>
+									{t('studentManagement.parentPhone')}
+								</div>
+								<div className={`parent-contact-value-new ${theme}-parent-contact-value-new`}>
+									{student.parentInfo.parentPhone || '-'}
+								</div>
 							</div>
-						</Col>
-						<Col xs={24} sm={12} md={8}>
-							<div className="parent-info-item">
-								<strong style={{ color: '#000000' }}>{t('studentManagement.relationship')}:</strong>
-								<span style={{ color: '#000000' }}>{student.parentInfo.relationship || '-'}</span>
+							
+							{/* Email */}
+							<div className={`parent-contact-item-new ${theme}-parent-contact-item-new`}>
+								<div className={`parent-contact-label-new ${theme}-parent-contact-label-new`}>
+									{t('studentManagement.parentEmail')}
+								</div>
+								<div className={`parent-contact-value-new ${theme}-parent-contact-value-new`}>
+									{student.parentInfo.parentEmail || '-'}
+								</div>
 							</div>
-						</Col>
-					</Row>
-				</Card>
+						</div>
+					</div>
+				</div>
 			)}
 
 			{/* Edit Modal */}
@@ -647,17 +596,17 @@ const StudentProfile = () => {
 								name="roleName"
 								label={
 									<span>
-										Role Name
+										{t('studentManagement.roleName')}
 										<span style={{ color: 'red', marginLeft: '4px' }}>*</span>
 									</span>
 								}
 								rules={[
-									{ required: true, message: 'Role name is required' },
+									{ required: true, message: t('studentManagement.roleNameRequired') },
 								]}
 							>
-								<Select placeholder="Select role">
-									<Select.Option value="STUDENT">Student</Select.Option>
-									<Select.Option value="TEST_TAKER">Test taker</Select.Option>
+								<Select placeholder={t('studentManagement.selectRole')}>
+									<Select.Option value="STUDENT">{t('common.student')}</Select.Option>
+									<Select.Option value="TEST_TAKER">{t('common.testTaker')}</Select.Option>
 								</Select>
 							</Form.Item>
 						</Col>

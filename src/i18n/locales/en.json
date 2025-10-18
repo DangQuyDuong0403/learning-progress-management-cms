@@ -47,6 +47,7 @@
     "emailChangeRequestSent": "Email Change Request Sent",
     "emailChangeConfirmationMessage": "Please check your email inbox for a confirmation link to complete the email change process.",
     "emailChangeCheckInbox": "Check your inbox and spam folder for the confirmation email.",
+    "pendingEmailChange": "Pending change to: {{email}}",
     "username": "Username",
     "usernameRequired": "Please enter username!",
     "gender": "Gender",

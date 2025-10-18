@@ -130,7 +130,13 @@ const SyllabusList = () => {
 			setLoading(false);
 		} catch (error) {
 			console.error('Error fetching syllabuses:', error);
-			message.error(t('syllabusManagement.loadSyllabusesError'));
+			
+			// Handle error message from backend
+			let errorMessage = error.response?.data?.error || 
+				error.response?.data?.message || 
+				error.message 
+			
+			message.error(errorMessage);
 			setLoading(false);
 		}
 	}, [t]);
@@ -185,17 +191,24 @@ const SyllabusList = () => {
 
 	const handleDelete = async () => {
 		try {
-			await syllabusManagementApi.deleteSyllabus(deleteSyllabus.id);
+			const response = await syllabusManagementApi.deleteSyllabus(deleteSyllabus.id);
 			
 			// Update local state
 			setSyllabuses(syllabuses.filter(s => s.id !== deleteSyllabus.id));
 			
-			spaceToast.success(t('syllabusManagement.deleteSyllabusSuccess'));
+			// No success message - only show error messages from backend
+			
 			setIsDeleteModalVisible(false);
 			setDeleteSyllabus(null);
 		} catch (error) {
 			console.error('Error deleting syllabus:', error);
-			message.error(t('syllabusManagement.deleteSyllabusError'));
+			
+			// Handle error message from backend
+			let errorMessage = error.response?.data?.error || 
+				error.response?.data?.message || 
+				error.message 
+			
+			message.error(errorMessage);
 		}
 	};
 
@@ -284,9 +297,10 @@ const SyllabusList = () => {
 		
 		try {
 			// TODO: Implement actual import API call
-			await new Promise(resolve => setTimeout(resolve, 2000)); // Simulate API call
+			const response = await new Promise(resolve => setTimeout(resolve, 2000)); // Simulate API call
 			
-			message.success(t('syllabusManagement.importSuccess'));
+			// No success message - only show error messages from backend
+			
 			setImportModal({
 				visible: false,
 				fileList: [],
@@ -297,15 +311,74 @@ const SyllabusList = () => {
 			fetchSyllabuses(pagination.current, pagination.pageSize, searchText, sortBy, sortDir);
 		} catch (error) {
 			console.error('Import error:', error);
-			message.error(t('syllabusManagement.importError'));
+			
+			// Handle error message from backend
+			let errorMessage = error.response?.data?.error || 
+				error.response?.data?.message || 
+				error.message
+			
+			message.error(errorMessage);
 		} finally {
 			setImportModal(prev => ({ ...prev, uploading: false }));
 		}
 	};
 
-	const handleDownloadTemplate = () => {
-		// TODO: Implement template download
-		message.success(t('syllabusManagement.templateDownloaded'));
+	const handleDownloadTemplate = async () => {
+		try {
+			spaceToast.info('Downloading template...');
+			
+			const response = await syllabusManagementApi.downloadSyllabusTemplate();
+			
+			console.log('Syllabus template response:', response);
+			console.log('Is response a Blob?', response instanceof Blob);
+			console.log('Response size:', response.size);
+			console.log('Response type:', response.type);
+			
+			// If response is already a blob (which it seems to be), use it directly
+			let blob;
+			if (response instanceof Blob) {
+				blob = response;
+				console.log('Response is already a blob, using directly');
+			} else if (response.data instanceof Blob) {
+				blob = response.data;
+				console.log('Using response.data blob');
+			} else {
+				// Create blob from response data
+				blob = new Blob([response.data], { 
+					type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
+				});
+				console.log('Created new blob from response data');
+			}
+			
+			console.log('Final blob:', blob);
+			console.log('Blob type:', blob.type);
+			console.log('Blob size:', blob.size);
+			
+			// Validate blob
+			if (blob.size === 0) {
+				throw new Error('Downloaded file is empty');
+			}
+			
+			// Create download link
+			const link = document.createElement('a');
+			const url = URL.createObjectURL(blob);
+			link.href = url;
+			link.download = 'syllabus_import_template.xlsx';
+			link.style.display = 'none';
+			
+			// Trigger download
+			document.body.appendChild(link);
+			link.click();
+			
+			// Cleanup
+			document.body.removeChild(link);
+			URL.revokeObjectURL(url);
+
+			spaceToast.success('Template downloaded successfully');
+		} catch (error) {
+			console.error('Error downloading template:', error);
+			spaceToast.error(error.response?.data?.error || error.message || 'Failed to download template');
+		}
 	};
 
 	// Checkbox selection handlers
@@ -334,7 +407,14 @@ const SyllabusList = () => {
 				setSelectedRowKeys(allKeys);
 			} catch (error) {
 				console.error('Error fetching all syllabus IDs:', error);
-				message.error('Error selecting all items');
+				
+				// Handle error message from backend
+				let errorMessage = error.response?.data?.error || 
+					error.response?.data?.message || 
+					error.message ||
+					'Error selecting all items';
+				
+				message.error(errorMessage);
 			}
 		} else {
 			setSelectedRowKeys([]);
@@ -372,17 +452,25 @@ const SyllabusList = () => {
 	const handleBulkDeleteConfirm = async () => {
 		try {
 			// TODO: Implement actual bulk delete API call
-			await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate API call
+			const response = await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate API call
 			
 			// Update local state
 			setSyllabuses(syllabuses.filter(s => !selectedRowKeys.includes(s.id)));
 			
-			spaceToast.success(`${t('syllabusManagement.bulkDeleteSuccess')}: ${selectedRowKeys.length} items`);
+			// No success message - only show error messages from backend
+			
 			setIsBulkDeleteModalVisible(false);
 			setSelectedRowKeys([]);
 		} catch (error) {
 			console.error('Error bulk deleting syllabuses:', error);
-			message.error(t('syllabusManagement.bulkDeleteError'));
+			
+			// Handle error message from backend
+			let errorMessage = error.response?.data?.error || 
+				error.response?.data?.message || 
+				error.message ||
+				t('syllabusManagement.bulkDeleteError');
+			
+			message.error(errorMessage);
 		}
 	};
 
@@ -489,7 +577,6 @@ const SyllabusList = () => {
 			dataIndex: 'name',
 			width: '18%',
 			key: 'name',
-			sorter: true,
 			render: (text, record) => (
 				<div style={{ fontSize: '20px'}}>
 					{text}

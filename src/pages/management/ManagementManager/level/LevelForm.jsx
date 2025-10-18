@@ -9,6 +9,7 @@ import {
   Col,
   InputNumber
 } from 'antd';
+import { spaceToast } from '../../../../component/SpaceToastify';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../../../contexts/ThemeContext';
 import levelManagementApi from '../../../../apis/backend/levelManagement';
@@ -72,7 +73,8 @@ const LevelForm = ({ level, onClose, shouldCallApi = true, showPrerequisiteAndCo
         }
         
         // Use backend message if available, otherwise fallback to translation
-        const successMessage = response.message || (isEdit ? t('levelManagement.updateLevelSuccess') : t('levelManagement.addLevelSuccess'));
+        const successMessage = response.message || response.data?.message ;
+       
         onClose(true, successMessage); // Tell parent to refresh data and show success message
       } else {
         // Don't call API (for LevelDragEdit usage)
@@ -84,12 +86,17 @@ const LevelForm = ({ level, onClose, shouldCallApi = true, showPrerequisiteAndCo
       console.error('Error saving level:', error);
       
       // Handle API errors with backend messages
+      let errorMessage;
       if (error.response) {
-        const errorMessage = error.response.data.error || error.response.data?.message;
-        message.error(errorMessage);
+        errorMessage = error.response.data.error || error.response.data?.message || error.message;
       } else {
-        message.error(error.message || (isEdit ? t('levelManagement.updateLevelError') : t('levelManagement.addLevelError')));
+        errorMessage = error.message;
       }
+      
+      console.log('Final error message:', errorMessage);
+      spaceToast.error(errorMessage);
+      
+      // Don't close modal on error - let user retry
     } finally {
       setIsSubmitting(false);
     }

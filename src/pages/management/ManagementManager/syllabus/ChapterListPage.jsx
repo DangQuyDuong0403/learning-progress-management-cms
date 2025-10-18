@@ -106,7 +106,13 @@ const ChapterListPage = () => {
 			setLoading(false);
 		} catch (error) {
 			console.error('Error fetching chapters:', error);
-			message.error(t('chapterManagement.loadChaptersError'));
+			
+			// Handle error message from backend
+			let errorMessage = error.response?.data?.error || 
+				error.response?.data?.message || 
+				error.message 
+			
+			message.error(errorMessage);
 			setLoading(false);
 		}
 	}, [syllabusId, t]);
@@ -166,17 +172,28 @@ const ChapterListPage = () => {
 	const handleDelete = async () => {
 		try {
 			// TODO: Implement delete chapter API call
-			// await syllabusManagementApi.deleteChapter(deleteChapter.id);
+			const response = await syllabusManagementApi.deleteChapter(deleteChapter.id);
 			
 			// Update local state
 			setChapters(chapters.filter(c => c.id !== deleteChapter.id));
 			
-			message.success(t('chapterManagement.deleteChapterSuccess'));
+			// Handle success message from backend only
+			const successMessage = response?.message || response?.data?.message;
+			if (successMessage) {
+				message.success(successMessage);
+			}
+			
 			setIsDeleteModalVisible(false);
 			setDeleteChapter(null);
 		} catch (error) {
 			console.error('Error deleting chapter:', error);
-			message.error(t('chapterManagement.deleteChapterError'));
+			
+			// Handle error message from backend
+			let errorMessage = error.response?.data?.error || 
+				error.response?.data?.message || 
+				error.message 
+			
+			message.error(errorMessage);
 		}
 	};
 

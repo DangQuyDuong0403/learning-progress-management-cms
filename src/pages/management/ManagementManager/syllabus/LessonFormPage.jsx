@@ -113,22 +113,29 @@ const LessonFormPage = () => {
 				orderNumber: values.order,
 			};
 
+			let response;
 			if (isEditMode) {
-				await dispatch(updateLesson({ id: parseInt(lessonId), ...lessonData }));
-				message.success(t('lessonManagement.updateLessonSuccess'));
+				response = await dispatch(updateLesson({ id: parseInt(lessonId), ...lessonData }));
 			} else {
-				await dispatch(createLesson(lessonData));
-				message.success(t('lessonManagement.createLessonSuccess'));
+				response = await dispatch(createLesson(lessonData));
+			}
+			
+			// Handle success message from backend only
+			const successMessage = response?.message || response?.data?.message;
+			if (successMessage) {
+				message.success(successMessage);
 			}
 
 			handleBack();
 		} catch (error) {
 			console.error('Error saving lesson:', error);
-			message.error(
-				isEditMode 
-					? t('lessonManagement.updateLessonError')
-					: t('lessonManagement.createLessonError')
-			);
+			
+			// Handle error message from backend
+			let errorMessage = error.response?.data?.error || 
+				error.response?.data?.message || 
+				error.message 
+			
+			message.error(errorMessage);
 		}
 	};
 
