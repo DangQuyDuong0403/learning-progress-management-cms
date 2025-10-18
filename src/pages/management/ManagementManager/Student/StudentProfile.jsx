@@ -140,12 +140,11 @@ const StudentProfile = () => {
 		setEditEmailModalVisible(true);
 	};
 
-	const handleEmailUpdateSuccess = (newEmail) => {
-		// Update student data with new email
-		setStudent(prev => ({
-			...prev,
-			email: newEmail
-		}));
+	const handleEmailUpdateSuccess = () => {
+		// Không cập nhật email ngay lập tức
+		// Email sẽ chỉ được cập nhật sau khi user confirm từ email
+		// Chỉ cần refresh dữ liệu student để lấy thông tin mới nhất
+		fetchStudentProfile();
 	};
 
 	const handleAvatarUpload = async (event) => {
@@ -647,7 +646,7 @@ const StudentProfile = () => {
 								name="roleName"
 								label={
 									<span>
-										Role Name
+										{t('studentManagement.roleName')}
 										<span style={{ color: 'red', marginLeft: '4px' }}>*</span>
 									</span>
 								}
