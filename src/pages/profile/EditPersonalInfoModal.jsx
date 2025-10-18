@@ -1,6 +1,5 @@
-import React, { useState } from 'react';
-import { Modal, Form, Row, Col, Input, Radio, Upload, Avatar } from 'antd';
-import { UploadOutlined, UserOutlined } from '@ant-design/icons';
+import React, { useEffect } from 'react';
+import { Modal, Form, Row, Col, Input, Radio } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { useDispatch, useSelector } from 'react-redux';
 import { updateProfile } from '../../redux/auth';
@@ -16,7 +15,23 @@ export default function EditPersonalInfoModal({
   const dispatch = useDispatch();
   const { updateProfileLoading } = useSelector((state) => state.auth);
   const [form] = Form.useForm();
-  const [avatarFileList, setAvatarFileList] = useState([]);
+
+  // Cập nhật form values khi profileData thay đổi
+  useEffect(() => {
+    if (profileData && isVisible) {
+      form.setFieldsValue({
+        username: profileData.userName || "",
+        lastName: profileData.lastName || "",
+        firstName: profileData.firstName || "",
+        phone: profileData.phoneNumber || "",
+        address: profileData.address || "",
+        gender: profileData.gender || "MALE",
+        dateOfBirth: profileData.dateOfBirth 
+          ? new Date(profileData.dateOfBirth).toISOString().split('T')[0]
+          : ""
+      });
+    }
+  }, [profileData, isVisible, form]);
 
   const handleOk = async () => {
     try {
@@ -30,7 +45,7 @@ export default function EditPersonalInfoModal({
         dateOfBirth: values.dateOfBirth ? new Date(values.dateOfBirth).toISOString() : new Date("2003-10-15").toISOString(), // Format ISO với time và timezone
         address: values.address,
         phoneNumber: values.phone,
-        gender: values.gender === "Male" ? "MALE" : values.gender === "Female" ? "FEMALE" : "OTHER"
+        gender: values.gender === "MALE" ? "MALE" : values.gender === "FEMALE" ? "FEMALE" : "OTHER"
       };
 
       
@@ -51,26 +66,7 @@ export default function EditPersonalInfoModal({
 
   const handleCancel = () => {
     form.resetFields();
-    setAvatarFileList([]);
     onCancel();
-  };
-
-  const handleAvatarChange = ({ fileList }) => {
-    setAvatarFileList(fileList);
-  };
-
-  const beforeUpload = (file) => {
-    const isImage = file.type.startsWith('image/');
-    if (!isImage) {
-      spaceToast.error('You can only upload image files!');
-      return false;
-    }
-    const isLt2M = file.size / 1024 / 1024 < 2;
-    if (!isLt2M) {
-      spaceToast.error('Image must be smaller than 2MB!');
-      return false;
-    }
-    return false; // Prevent auto upload
   };
 
   return (
@@ -121,41 +117,11 @@ export default function EditPersonalInfoModal({
           firstName: profileData?.firstName || "",
           phone: profileData?.phoneNumber || "",
           address: profileData?.address || "",
-          gender: profileData?.gender || "Male",
+          gender: profileData?.gender || "MALE",
           dateOfBirth: profileData?.dateOfBirth 
             ? new Date(profileData.dateOfBirth).toISOString().split('T')[0]
             : ""
         }}>
-        {/* Avatar Upload */}
-        <Form.Item
-          label={
-            <span>
-              {t('common.avatar')}
-            </span>
-          }
-          name='avatar'
-          required={false}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-            <Avatar
-              size={80}
-              src={avatarFileList.length > 0 ? URL.createObjectURL(avatarFileList[0].originFileObj) : (profileData?.avatarUrl || "/img/avatar_1.png")}
-              icon={<UserOutlined />}
-            />
-            <Upload
-              fileList={avatarFileList}
-              onChange={handleAvatarChange}
-              beforeUpload={beforeUpload}
-              maxCount={1}
-              listType="picture-card"
-              showUploadList={false}>
-              <div style={{ textAlign: 'center' }}>
-                <UploadOutlined style={{ fontSize: '24px', color: '#1890ff' }} />
-                <div style={{ marginTop: '8px', color: '#1890ff' }}>Upload Avatar</div>
-              </div>
-            </Upload>
-          </div>
-        </Form.Item>
-
         <Row gutter={16}>
           <Col span={12}>
             <Form.Item
@@ -226,8 +192,8 @@ export default function EditPersonalInfoModal({
               name='gender'
               required={false}>
               <Radio.Group>
-                <Radio value="Male">{t('common.male')}</Radio>
-                <Radio value="Female">{t('common.female')}</Radio>
+                <Radio value="MALE">{t('common.male')}</Radio>
+                <Radio value="FEMALE">{t('common.female')}</Radio>
               </Radio.Group>
             </Form.Item>
           </Col>

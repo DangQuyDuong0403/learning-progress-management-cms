@@ -23,6 +23,8 @@
     "confirm": "Confirm",
     "back": "Back",
     "update": "Update",
+    "close": "Close",
+    "ok": "Ok",
     "yes": "Yes",
     "no": "No",
     "lastName": "Last Name",
@@ -55,7 +57,15 @@
     "english": "English",
     "update": "Update",
     "of": "of",
-    "classes": "classes"
+    "classes": "classes",
+    "confirmEmailChange": "Confirm Email Change",
+    "emailChangeConfirmed": "Email Change Confirmed",
+    "confirmingEmailChange": "Confirming email change...",
+    "emailChangeConfirmFailed": "Email Change Confirmation Failed",
+    "emailChangeSuccessMessage": "Your email has been successfully changed. You can now use your new email address to log in.",
+    "emailChangeErrorMessage": "There was an error confirming your email change. The link may have expired or been used already.",
+    "goToProfile": "Go to Profile",
+    "goToLogin": "Go to Login"
   },
   "sidebar": {
     "title": "Learning CMS",

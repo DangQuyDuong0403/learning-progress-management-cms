@@ -84,9 +84,17 @@ axiosClient.interceptors.response.use(
 		if (error.response?.status === 401 && !originalRequest._retry) {
 			console.log('🔐 401 Unauthorized - attempting token refresh');
 			
-			// Kiểm tra nếu đây là request login thì không cần refresh token
-			if (originalRequest.url?.includes('/auth/Login')) {
-				console.log('🚫 Login request - skipping token refresh');
+			// Kiểm tra nếu đây là request login hoặc refresh token thì không cần refresh token
+			if (originalRequest.url?.includes('/auth/Login') || originalRequest.url?.includes('/auth/refresh-token')) {
+				console.log('🚫 Login/Refresh request - skipping token refresh');
+				// Nếu là refresh token request mà trả về 401, có nghĩa là refresh token không hợp lệ
+				if (originalRequest.url?.includes('/auth/refresh-token')) {
+					console.log('❌ Refresh token invalid, redirecting to login');
+					localStorage.removeItem('accessToken');
+					localStorage.removeItem('user');
+					localStorage.removeItem('refreshToken');
+					window.location.href = '/choose-login';
+				}
 				return Promise.reject(error);
 			}
 			
@@ -146,7 +154,7 @@ axiosClient.interceptors.response.use(
 					localStorage.removeItem('accessToken');
 					localStorage.removeItem('user');
 					localStorage.removeItem('refreshToken');
-					// window.location.href = '/choose-login'; // Tạm thời disable
+					window.location.href = '/choose-login';
 					return Promise.reject(refreshError);
 				} finally {
 					isRefreshing = false;
@@ -162,7 +170,7 @@ axiosClient.interceptors.response.use(
 				localStorage.removeItem('refreshToken');
 				// Reset trạng thái để tránh stuck
 				resetRefreshState();
-				// window.location.href = '/choose-login'; // Tạm thời disable
+				window.location.href = '/choose-login';
 				return Promise.reject(error);
 			}
 		}

@@ -105,7 +105,7 @@ const authApi = {
 		});
 	},
 
-	// Cập nhật email
+	// Cập nhật email - sử dụng API change-email
 	updateEmail: (data) => {
 		const accessToken = localStorage.getItem('accessToken');
 		const userId = getUserIdFromToken(accessToken);
@@ -114,16 +114,71 @@ const authApi = {
 			return Promise.reject(new Error('Unable to extract user ID from accessToken'));
 		}
 		
-		const url = `/user/profile/${userId}/email`;
+		// Chuẩn bị request body theo API documentation
+		const requestBody = {
+			newEmail: data.email,
+			// domain: process.env.REACT_APP_DOMAIN,
+			domain:'http://localhost:3000',
+			path: '/confirm-email-change'
+		};
+		
+		const url = `/user/change-email?userId=${userId}`;
 		console.log('UpdateEmail API - URL:', url);
 		console.log('UpdateEmail API - UserId:', userId);
-		console.log('UpdateEmail API - Request Body:', data);
+		console.log('UpdateEmail API - Request Body:', requestBody);
 		
-		return axiosClient.put(url, data, {
+		return axiosClient.post(url, requestBody, {
 			headers: {
 				'Content-Type': 'application/json',
 				'accept': '*/*',
 			}
+		});
+	},
+
+	// Cập nhật avatar
+	updateAvatar: (file) => {
+		const accessToken = localStorage.getItem('accessToken');
+		const userId = getUserIdFromToken(accessToken);
+		
+		if (!userId) {
+			return Promise.reject(new Error('Unable to extract user ID from accessToken'));
+		}
+		
+		const formData = new FormData();
+		formData.append('file', file);
+		
+		const url = `/user/profile/${userId}/avatar`;
+		console.log('UpdateAvatar API - URL:', url);
+		console.log('UpdateAvatar API - UserId:', userId);
+		console.log('UpdateAvatar API - File:', file);
+		
+		return axiosClient.patch(url, formData, {
+			headers: {
+				'Content-Type': 'multipart/form-data',
+				'accept': '*/*',
+			}
+		});
+	},
+
+	// Xác nhận thay đổi email
+	confirmEmailChange: (token) => {
+		
+		const url = `/user/confirm-email-change?token=${token}`;
+		
+		// Sử dụng axios trực tiếp để tránh interceptor tự động thêm Authorization header
+		const baseURL = process.env.REACT_APP_API_URL;
+		
+		return axios.get(`${baseURL}${url}`, {
+			headers: {
+				'accept': '*/*',
+			}
+		}).then(response => {
+			console.log('ConfirmEmailChange API - Response:', response);
+			return response;
+		}).catch(error => {
+			console.error('ConfirmEmailChange API - Error:', error);
+			console.error('ConfirmEmailChange API - Error Response:', error.response);
+			throw error;
 		});
 	},
 

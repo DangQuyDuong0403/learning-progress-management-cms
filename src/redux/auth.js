@@ -101,6 +101,32 @@ export const updateEmail = createAsyncThunk(
 	}
 );
 
+// Async thunk for upload avatar
+export const uploadAvatar = createAsyncThunk(
+	'/auth/uploadAvatar',
+	async (file, { rejectWithValue }) => {
+		try {
+			const response = await authApi.updateAvatar(file);
+			return response;
+		} catch (error) {
+			return rejectWithValue(error.response?.data || error.message);
+		}
+	}
+);
+
+// Async thunk for confirm email change
+export const confirmEmailChange = createAsyncThunk(
+	'/auth/confirmEmailChange',
+	async (token, { rejectWithValue }) => {
+		try {
+			const response = await authApi.confirmEmailChange(token);
+			return response;
+		} catch (error) {
+			return rejectWithValue(error.response?.data || error.message);
+		}
+	}
+);
+
 const initialState = {
 	user: storedUser ? JSON.parse(storedUser) : null,
 	accessToken: storedAccessToken,
@@ -126,6 +152,12 @@ const initialState = {
 	updateEmailLoading: false,
 	updateEmailError: null,
 	updateEmailSuccess: false,
+	uploadAvatarLoading: false,
+	uploadAvatarError: null,
+	uploadAvatarSuccess: false,
+	confirmEmailChangeLoading: false,
+	confirmEmailChangeError: null,
+	confirmEmailChangeSuccess: false,
 };
 
 const authSlice = createSlice({
@@ -184,6 +216,9 @@ const authSlice = createSlice({
 			state.updateEmailLoading = false;
 			state.updateEmailError = null;
 			state.updateEmailSuccess = false;
+			state.confirmEmailChangeLoading = false;
+			state.confirmEmailChangeError = null;
+			state.confirmEmailChangeSuccess = false;
 		},
 		updateToken: (state, action) => {
 			state.accessToken = action.payload;
@@ -330,10 +365,39 @@ const authSlice = createSlice({
 					state.profileData.email = action.payload.data.email;
 				}
 			})
-			.addCase(updateEmail.rejected, (state, action) => {
-				state.updateEmailLoading = false;
-				state.updateEmailError = action.payload;
-				state.updateEmailSuccess = false;
+			.addCase(uploadAvatar.pending, (state) => {
+				state.uploadAvatarLoading = true;
+				state.uploadAvatarError = null;
+				state.uploadAvatarSuccess = false;
+			})
+			.addCase(uploadAvatar.fulfilled, (state, action) => {
+				state.uploadAvatarLoading = false;
+				state.uploadAvatarSuccess = true;
+				state.uploadAvatarError = null;
+				// Cập nhật avatarUrl trong profileData
+				if (action.payload?.data && state.profileData) {
+					state.profileData.avatarUrl = action.payload.data.avatarUrl;
+				}
+			})
+			.addCase(uploadAvatar.rejected, (state, action) => {
+				state.uploadAvatarLoading = false;
+				state.uploadAvatarError = action.payload;
+				state.uploadAvatarSuccess = false;
+			})
+			.addCase(confirmEmailChange.pending, (state) => {
+				state.confirmEmailChangeLoading = true;
+				state.confirmEmailChangeError = null;
+				state.confirmEmailChangeSuccess = false;
+			})
+			.addCase(confirmEmailChange.fulfilled, (state, action) => {
+				state.confirmEmailChangeLoading = false;
+				state.confirmEmailChangeSuccess = true;
+				state.confirmEmailChangeError = null;
+			})
+			.addCase(confirmEmailChange.rejected, (state, action) => {
+				state.confirmEmailChangeLoading = false;
+				state.confirmEmailChangeError = action.payload;
+				state.confirmEmailChangeSuccess = false;
 			});
 	},
 });
