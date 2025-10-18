@@ -19,6 +19,7 @@ import {
   Radio,
   Switch,
   Checkbox,
+  Upload,
 } from "antd";
 import {
   PlusOutlined,
@@ -65,6 +66,7 @@ const StudentList = () => {
   
   // Search and filter state
   const [searchText, setSearchText] = useState("");
+  const [searchValue, setSearchValue] = useState(""); // Actual search value used for API calls
   const [statusFilter, setStatusFilter] = useState([]);
   const [roleNameFilter, setRoleNameFilter] = useState([]);
   const [searchTimeout, setSearchTimeout] = useState(null);
@@ -173,8 +175,8 @@ const StudentList = () => {
 
 
   useEffect(() => {
-    fetchStudents(1, pagination.pageSize, searchText, statusFilter, roleNameFilter, sortBy, sortDir);
-  }, [fetchStudents, searchText, statusFilter, roleNameFilter, sortBy, sortDir, pagination.pageSize]);
+    fetchStudents(1, pagination.pageSize, searchValue, statusFilter, roleNameFilter, sortBy, sortDir);
+  }, [fetchStudents, searchValue, statusFilter, roleNameFilter, sortBy, sortDir, pagination.pageSize]);
 
   // Fetch levels when component mounts
   useEffect(() => {
@@ -574,39 +576,51 @@ const StudentList = () => {
 
   // Handle table change (pagination, sorting, filtering)
   const handleTableChange = (pagination, filters, sorter) => {
-    console.log('Table change:', { pagination, filters, sorter });
+    console.log('handleTableChange called:', { pagination, filters, sorter });
+    console.log('Current sortBy:', sortBy, 'Current sortDir:', sortDir);
     
     // Handle sorting
     if (sorter && sorter.field) {
-      let newSortBy = sorter.field;
-      let newSortDir = 'asc'; // Default to asc for first click
+      // Map frontend field names to backend field names
+      const fieldMapping = {
+        'firstName': 'firstName', // Keep original field name
+        'status': 'status',
+        'createdAt': 'createdAt'
+      };
       
-      // Determine sort direction
-      if (sorter.order === 'ascend') {
+      const backendField = fieldMapping[sorter.field] || sorter.field;
+      
+      // Handle sorting direction - force toggle if same field
+      let newSortDir;
+      if (backendField === sortBy) {
+        // Same field - toggle direction
+        newSortDir = sortDir === 'asc' ? 'desc' : 'asc';
+        console.log('Same field clicked, toggling from', sortDir, 'to', newSortDir);
+      } else {
+        // Different field - start with asc
         newSortDir = 'asc';
-      } else if (sorter.order === 'descend') {
-        newSortDir = 'desc';
-      } else if (sorter.order === undefined) {
-        // First click on column - start with asc
-        newSortDir = 'asc';
+        console.log('Different field clicked, starting with asc');
       }
-      
-      // Map column field to API field
-      if (sorter.field === 'firstName') {
-        newSortBy = 'firstName'; // Sort by firstName for Full Name column
-      } else if (sorter.field === 'status') {
-        newSortBy = 'status'; // Sort by status
-      }
-      
-      console.log('Setting sort:', { newSortBy, newSortDir });
-      setSortBy(newSortBy);
+
+      console.log('Sorting:', {
+        frontendField: sorter.field,
+        backendField: backendField,
+        direction: newSortDir,
+        order: sorter.order
+      });
+
+      // Update state - useEffect will handle the API call
+      setSortBy(backendField);
       setSortDir(newSortDir);
-      
-      // Fetch data with new sorting
-      fetchStudents(pagination.current, pagination.pageSize, searchText, statusFilter, roleNameFilter, newSortBy, newSortDir);
     } else {
       // Handle pagination without sorting change
-      fetchStudents(pagination.current, pagination.pageSize, searchText, statusFilter, roleNameFilter, sortBy, sortDir);
+      console.log('Pagination only, no sorting change');
+      // Update pagination state - useEffect will handle the API call
+      setPagination(prev => ({
+        ...prev,
+        current: pagination.current,
+        pageSize: pagination.pageSize,
+      }));
     }
   };
 
@@ -621,8 +635,13 @@ const StudentList = () => {
     
     // Set new timeout for 1 second delay
     const newTimeout = setTimeout(() => {
+      // Update searchValue which will trigger useEffect
+      setSearchValue(value);
       // Reset to first page when searching
-      fetchStudents(1, pagination.pageSize, value, statusFilter, roleNameFilter, sortBy, sortDir);
+      setPagination(prev => ({
+        ...prev,
+        current: 1,
+      }));
     }, 1000);
     
     setSearchTimeout(newTimeout);
@@ -658,7 +677,7 @@ const StudentList = () => {
             
             if (response.success) {
               // Refresh the list to get updated data from server
-              fetchStudents(pagination.current, pagination.pageSize, searchText, statusFilter, roleNameFilter, sortBy, sortDir);
+              fetchStudents(pagination.current, pagination.pageSize, searchValue, statusFilter, roleNameFilter, sortBy, sortDir);
               setConfirmModal({ visible: false, title: '', content: '', onConfirm: null });
               
               // Show success toast
@@ -721,7 +740,7 @@ const StudentList = () => {
           if (response.success) {
             spaceToast.success(`Add student "${values.firstName} ${values.lastName}" successfully`);
             // Refresh the list after adding
-            fetchStudents(1, pagination.pageSize, searchText, statusFilter, roleNameFilter, sortBy, sortDir);
+            fetchStudents(1, pagination.pageSize, searchValue, statusFilter, roleNameFilter, sortBy, sortDir);
           } else {
             throw new Error(response.message || 'Failed to create student');
           }
@@ -732,7 +751,7 @@ const StudentList = () => {
           if (error.code === 'ECONNABORTED' && error.message.includes('timeout')) {
             spaceToast.warning('Request timeout - please check if student was created successfully');
             // Still refresh the list in case data was created
-            fetchStudents(1, pagination.pageSize, searchText, statusFilter, roleNameFilter, sortBy, sortDir);
+            fetchStudents(1, pagination.pageSize, searchValue, statusFilter, roleNameFilter, sortBy, sortDir);
           } else {
             spaceToast.error(error.response?.data?.error || error.response?.data?.message || error.message || 'Failed to create student');
             return; // Don't close modal on actual error
@@ -798,7 +817,7 @@ const StudentList = () => {
       visible: false,
     }));
     // Reset to first page when applying filters
-    fetchStudents(1, pagination.pageSize, searchText, filterDropdown.selectedStatuses, filterDropdown.selectedRoles, sortBy, sortDir);
+    fetchStudents(1, pagination.pageSize, searchValue, filterDropdown.selectedStatuses, filterDropdown.selectedRoles, sortBy, sortDir);
   };
 
   // Handle filter reset
@@ -828,46 +847,30 @@ const StudentList = () => {
     setImportModal((prev) => ({ ...prev, uploading: true }));
 
     try {
-      // Simulate file processing
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+      const file = importModal.fileList[0];
+      
+      // Create FormData object
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      // Call import API with FormData
+      const response = await studentManagementApi.importStudents(formData);
 
-      // Mock successful import
-      const newStudents = [
-        {
-          id: Date.now() + 1,
-          studentCode: 'IMPORT001',
-          fullName: 'Student Imported 1',
-          email: 'imported1@example.com',
-          phone: '0123456789',
-          class: 'Lớp 10A1',
-          level: 'Beginner',
-          status: 'active',
-          lastActivity: new Date().toISOString().split('T')[0],
-        },
-        {
-          id: Date.now() + 2,
-          studentCode: 'IMPORT002',
-          fullName: 'Student Imported 2',
-          email: 'imported2@example.com',
-          phone: '0987654321',
-          class: 'Lớp 10A2',
-          level: 'Intermediate',
-          status: 'active',
-          lastActivity: new Date().toISOString().split('T')[0],
-        },
-      ];
-
-      // Refresh the list to get updated data from server
-      fetchStudents(pagination.current, pagination.pageSize, searchText, statusFilter, roleNameFilter, sortBy, sortDir);
-      spaceToast.success(
-        `${t('studentManagement.importSuccess')} ${newStudents.length} ${t(
-          'studentManagement.students'
-        )}`
-      );
-
-      setImportModal({ visible: false, fileList: [], uploading: false });
+      if (response.success) {
+        // Refresh the list to get updated data from server
+        fetchStudents(pagination.current, pagination.pageSize, searchValue, statusFilter, roleNameFilter, sortBy, sortDir);
+        
+        // Use backend message if available, otherwise fallback to translation
+        const successMessage = response.message || t('studentManagement.importSuccess');
+        spaceToast.success(successMessage);
+        
+        setImportModal({ visible: false, fileList: [], uploading: false });
+      } else {
+        throw new Error(response.message || 'Import failed');
+      }
     } catch (error) {
-      spaceToast.error(t('studentManagement.importError'));
+      console.error('Error importing students:', error);
+      spaceToast.error(error.response?.data?.error || error.response?.data?.message || error.message || t('studentManagement.importError'));
       setImportModal((prev) => ({ ...prev, uploading: false }));
     }
   };
@@ -878,6 +881,36 @@ const StudentList = () => {
     spaceToast.info(t('studentManagement.exportInProgress'));
   };
 
+
+  // Handle file selection
+  const handleFileSelect = (file) => {
+    // Validate file type
+    const allowedTypes = [
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // .xlsx
+      'application/vnd.ms-excel', // .xls
+      'text/csv' // .csv
+    ];
+    
+    if (!allowedTypes.includes(file.type)) {
+      spaceToast.error('Please select a valid Excel (.xlsx, .xls) or CSV (.csv) file');
+      return false;
+    }
+    
+    // Validate file size (max 10MB)
+    const maxSize = 10 * 1024 * 1024; // 10MB
+    if (file.size > maxSize) {
+      spaceToast.error('File size must be less than 10MB');
+      return false;
+    }
+    
+    setImportModal(prev => ({
+      ...prev,
+      fileList: [file]
+    }));
+    
+    return false; // Prevent default upload behavior
+  };
+
   // Handle download template
   const handleDownloadTemplate = async () => {
     try {
@@ -885,13 +918,16 @@ const StudentList = () => {
       
       const response = await studentManagementApi.downloadStudentTemplate();
       
-      // API returns SAS URL, extract it from response
+      // API returns SAS URL directly (due to axios interceptor returning response.data)
       let downloadUrl;
-      if (typeof response.data === 'string') {
+      if (typeof response === 'string') {
+        downloadUrl = response;
+      } else if (response && typeof response.data === 'string') {
         downloadUrl = response.data;
-      } else if (response.data && response.data.url) {
+      } else if (response && response.data && response.data.url) {
         downloadUrl = response.data.url;
       } else {
+        console.error('Unexpected response format:', response);
         throw new Error('No download URL received from server');
       }
       
@@ -1114,11 +1150,6 @@ const StudentList = () => {
                 className={`student-table ${theme}-student-table`}
                 showSorterTooltip={false}
                 sortDirections={['ascend', 'descend']}
-                defaultSortOrder={
-                  sortBy === 'firstName' ? (sortDir === 'asc' ? 'ascend' : 'descend') :
-                  sortBy === 'status' ? (sortDir === 'asc' ? 'ascend' : 'descend') :
-                  null
-                }
               />
             </LoadingWithEffect>
           </div>
@@ -1275,9 +1306,15 @@ const StudentList = () => {
             <Row gutter={16}>
               <Col span={12}>
                 <Form.Item
-                  label={t('studentManagement.phoneNumber')}
+                  label={
+                    <span>
+                      {t('studentManagement.phoneNumber')}
+                      <span style={{ color: 'red', marginLeft: '4px' }}>*</span>
+                    </span>
+                  }
                   name="phoneNumber"
                   rules={[
+                    { required: true, message: t('studentManagement.phoneRequired') },
                     { max: 20, message: t('studentManagement.phoneMaxLength') },
                   ]}
                 >
@@ -1286,11 +1323,18 @@ const StudentList = () => {
               </Col>
               <Col span={12}>
                 <Form.Item
-                  label={t('studentManagement.gender')}
+                  label={
+                    <span>
+                      {t('studentManagement.gender')}
+                      <span style={{ color: 'red', marginLeft: '4px' }}>*</span>
+                    </span>
+                  }
                   name="gender"
                   rules={[
+                    { required: true, message: t('studentManagement.genderRequired') },
                     { max: 10, message: t('studentManagement.genderMaxLength') },
                   ]}
+                  initialValue="MALE"
                 >
                   <Radio.Group>
                     <Radio value="MALE">{t('studentManagement.male')}</Radio>
@@ -1301,44 +1345,61 @@ const StudentList = () => {
               </Col>
             </Row>
 
-            <Row gutter={16}>
-              <Col span={12}>
-                <Form.Item
-                  label={t('studentManagement.level')}
-                  name="levelId"
-                >
-                  <Select 
-                    placeholder={t('studentManagement.selectLevel')}
-                    loading={levelsLoading}
-                    showSearch
-                    filterOption={(input, option) =>
-                      option.children.toLowerCase().indexOf(input.toLowerCase()) >= 0
-                    }
-                    notFoundContent={levelsLoading ? t("common.loading") : t("studentManagement.noLevelsFound")}
-                  >
-                    {levels && levels.length > 0 ? (
-                      levels.map(level => {
-                        // Handle different field names that might come from API
-                        const levelName = level.name || level.levelName || level.title || 'Unknown Level';
-                        const levelCode = level.code || level.levelCode || level.code || '';
-                        
-                        return (
-                          <Option key={level.id} value={level.id}>
-                            {levelName} {levelCode ? `(${levelCode})` : ''}
-                          </Option>
-                        );
-                      })
-                    ) : (
-                      !levelsLoading && (
-                        <Option disabled value="">
-                          No levels available
-                        </Option>
-                      )
-                    )}
-                  </Select>
-                </Form.Item>
-              </Col>
-            </Row>
+            <Form.Item shouldUpdate={(prevValues, currentValues) => prevValues.roleName !== currentValues.roleName}>
+              {({ getFieldValue }) => {
+                const roleName = getFieldValue('roleName');
+                const isStudent = roleName === 'STUDENT';
+                
+                return (
+                  <Row gutter={16}>
+                    <Col span={12}>
+                      <Form.Item
+                        label={
+                          <span>
+                            {t('studentManagement.level')}
+                            {isStudent && <span style={{ color: 'red', marginLeft: '4px' }}>*</span>}
+                          </span>
+                        }
+                        name="levelId"
+                        rules={isStudent ? [
+                          { required: true, message: t('studentManagement.levelRequired') }
+                        ] : []}
+                      >
+                        <Select 
+                          placeholder={t('studentManagement.selectLevel')}
+                          loading={levelsLoading}
+                          showSearch
+                          filterOption={(input, option) =>
+                            option.children.toLowerCase().indexOf(input.toLowerCase()) >= 0
+                          }
+                          notFoundContent={levelsLoading ? t("common.loading") : t("studentManagement.noLevelsFound")}
+                        >
+                          {levels && levels.length > 0 ? (
+                            levels.map(level => {
+                              // Handle different field names that might come from API
+                              const levelName = level.name || level.levelName || level.title || 'Unknown Level';
+                              const levelCode = level.code || level.levelCode || level.code || '';
+                              
+                              return (
+                                <Option key={level.id} value={level.id}>
+                                  {levelName} {levelCode ? `(${levelCode})` : ''}
+                                </Option>
+                              );
+                            })
+                          ) : (
+                            !levelsLoading && (
+                              <Option disabled value="">
+                                No levels available
+                              </Option>
+                            )
+                          )}
+                        </Select>
+                      </Form.Item>
+                    </Col>
+                  </Row>
+                );
+              }}
+            </Form.Item>
 
 
             {/* Parent Information */}
@@ -1349,16 +1410,8 @@ const StudentList = () => {
             <Row gutter={16}>
               <Col span={12}>
                 <Form.Item
-                  label={
-                    <span>
-                      {t('studentManagement.parentName')}
-                      <span style={{ color: 'red', marginLeft: '4px' }}>*</span>
-                    </span>
-                  }
+                  label={t('studentManagement.parentName')}
                   name={['parentInfo', 'parentName']}
-                  rules={[
-                    { required: true, message: t('studentManagement.parentNameRequired') },
-                  ]}
                 >
                   <Input placeholder={t('studentManagement.enterParentName')} />
                 </Form.Item>
@@ -1379,16 +1432,8 @@ const StudentList = () => {
             <Row gutter={16}>
               <Col span={12}>
                 <Form.Item
-                  label={
-                    <span>
-                      {t('studentManagement.parentPhone')}
-                      <span style={{ color: 'red', marginLeft: '4px' }}>*</span>
-                    </span>
-                  }
+                  label={t('studentManagement.parentPhone')}
                   name={['parentInfo', 'parentPhone']}
-                  rules={[
-                    { required: true, message: t('studentManagement.parentPhoneRequired') },
-                  ]}
                 >
                   <Input placeholder={t('studentManagement.enterParentPhone')} />
                 </Form.Item>
@@ -1552,7 +1597,12 @@ const StudentList = () => {
               {t('studentManagement.importInstructions')}
             </Title>
 
-            <div
+            <Upload.Dragger
+              name="file"
+              multiple={false}
+              beforeUpload={handleFileSelect}
+              showUploadList={false}
+              accept=".xlsx,.xls,.csv"
               style={{
                 marginBottom: '20px',
                 border: '2px dashed #d9d9d9',
@@ -1564,7 +1614,7 @@ const StudentList = () => {
               <p
                 className='ant-upload-drag-icon'
                 style={{ fontSize: '48px', color: '#1890ff' }}>
-                <DownloadOutlined />
+                <UploadOutlined />
               </p>
               <p
                 className='ant-upload-text'
@@ -1575,7 +1625,7 @@ const StudentList = () => {
                 {t('studentManagement.supportedFormats')}: Excel (.xlsx, .xls),
                 CSV (.csv)
               </p>
-            </div>
+            </Upload.Dragger>
 
             <Divider />
 
@@ -1587,11 +1637,30 @@ const StudentList = () => {
                   background: '#e6f7ff',
                   border: '1px solid #91d5ff',
                   borderRadius: '6px',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
                 }}>
-                <Text style={{ color: '#1890ff', fontWeight: '500' }}>
-                  ✅ {t('studentManagement.fileSelected')}:{' '}
-                  {importModal.fileList[0].name}
-                </Text>
+                <div>
+                  <Text style={{ color: '#1890ff', fontWeight: '500' }}>
+                    ✅ {t('studentManagement.fileSelected')}:{' '}
+                    {importModal.fileList[0].name}
+                  </Text>
+                  <br />
+                  <Text style={{ color: '#666', fontSize: '12px' }}>
+                    Size: {importModal.fileList[0].size < 1024 * 1024 
+                      ? `${(importModal.fileList[0].size / 1024).toFixed(1)} KB`
+                      : `${(importModal.fileList[0].size / 1024 / 1024).toFixed(2)} MB`
+                    }
+                  </Text>
+                </div>
+                <Button
+                  type="text"
+                  size="small"
+                  onClick={() => setImportModal(prev => ({ ...prev, fileList: [] }))}
+                  style={{ color: '#ff4d4f' }}>
+                  Remove
+                </Button>
               </div>
             )}
           </div>
@@ -1625,7 +1694,7 @@ const StudentList = () => {
         </Modal>
 
 
-    </ThemedLayout>
+    </ThemedLayout> 
   );
 };
 

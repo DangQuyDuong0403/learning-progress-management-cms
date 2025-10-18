@@ -75,7 +75,12 @@
     "emailChangeSuccessMessage": "Email của bạn đã được thay đổi thành công. Bạn có thể sử dụng địa chỉ email mới để đăng nhập.",
     "emailChangeErrorMessage": "Có lỗi xảy ra khi xác nhận thay đổi email. Link có thể đã hết hạn hoặc đã được sử dụng.",
     "goToProfile": "Đi đến Hồ sơ",
-    "goToLogin": "Đi đến Đăng nhập"
+    "goToLogin": "Đi đến Đăng nhập",
+    "selectAvatar": "Chọn Ảnh đại diện",
+    "systemAvatars": "Ảnh đại diện hệ thống",
+    "uploadCustomAvatar": "Tải lên ảnh đại diện tùy chỉnh",
+    "clickToUpload": "Nhấp để tải lên",
+    "maxFileSize": "Kích thước file tối đa"
   },
   "sidebar": {
     "title": "Learning CMS",
@@ -1789,6 +1794,8 @@
     "updateStatusError": "Cập nhật trạng thái giáo viên thất bại",
     "loadTeachersError": "Tải danh sách giáo viên thất bại",
     "loadingTeachers": "Đang tải danh sách giáo viên...",
+    "bulkStatusUpdateSuccess": "Cập nhật trạng thái hàng loạt thành công",
+    "bulkStatusUpdateError": "Cập nhật trạng thái giáo viên thất bại",
     "selectAvatar": "Chọn Ảnh đại diện",
     "avatarRequired": "Vui lòng chọn ảnh đại diện!"
   },

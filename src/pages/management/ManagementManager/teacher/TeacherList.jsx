@@ -1,16 +1,12 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { Table, Button, Space, Modal, Input, Tag, Tooltip, Typography, Switch, Upload, Divider, Checkbox } from 'antd';
+import { Table, Button, Space, Modal, Input, Tooltip, Typography, Switch, Upload, Divider, Checkbox } from 'antd';
 import {
 	PlusOutlined,
 	SearchOutlined,
-	ReloadOutlined,
 	EyeOutlined,
 	DownloadOutlined,
 	UploadOutlined,
-	CheckOutlined,
-	StopOutlined,
 	FilterOutlined,
-	InboxOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -317,10 +313,6 @@ const TeacherList = () => {
 		}
 	};
 
-	const handleRefresh = () => {
-		fetchTeachers(pagination.current, pagination.pageSize, searchText, statusFilter, roleNameFilter, sortBy, sortDir);
-	};
-
 	const handleExport = () => {
 		// TODO: Implement export functionality
 		spaceToast.success(t('teacherManagement.exportSuccess'));
@@ -343,57 +335,97 @@ const TeacherList = () => {
 		setImportModal((prev) => ({ ...prev, uploading: true }));
 
 		try {
-			// Simulate file processing
-			await new Promise((resolve) => setTimeout(resolve, 2000));
+			const file = importModal.fileList[0];
+			
+			// Create FormData object
+			const formData = new FormData();
+			formData.append('file', file);
+			
+			// Call import API with FormData
+			const response = await teacherManagementApi.importTeachers(formData);
 
-			// Mock successful import
-			const newTeachers = [
-				{
-					id: Date.now() + 1,
-					firstName: 'Teacher Imported 1',
-					lastName: 'Last Name 1',
-					email: 'imported1@example.com',
-					phone: '0123456789',
-					roleName: 'TEACHER',
-					status: 'ACTIVE',
-				},
-				{
-					id: Date.now() + 2,
-					firstName: 'Teacher Imported 2',
-					lastName: 'Last Name 2',
-					email: 'imported2@example.com',
-					phone: '0987654321',
-					roleName: 'TEACHING_ASSISTANT',
-					status: 'ACTIVE',
-				},
-			];
-
-			// Refresh the list to get updated data from server
-			fetchTeachers(pagination.current, pagination.pageSize, searchText, statusFilter, roleNameFilter, sortBy, sortDir);
-			spaceToast.success(
-				`${t('teacherManagement.importSuccess')} ${newTeachers.length} ${t('teacherManagement.teachers')}`
-			);
-
-			setImportModal({ visible: false, fileList: [], uploading: false });
+			if (response.success) {
+				// Refresh the list to get updated data from server
+				fetchTeachers(pagination.current, pagination.pageSize, searchText, statusFilter, roleNameFilter, sortBy, sortDir);
+				
+				// Use backend message if available, otherwise fallback to translation
+				const successMessage = response.message || t('teacherManagement.importSuccess');
+				spaceToast.success(successMessage);
+				
+				setImportModal({ visible: false, fileList: [], uploading: false });
+			} else {
+				throw new Error(response.message || 'Import failed');
+			}
 		} catch (error) {
-			spaceToast.error(t('teacherManagement.importError'));
+			console.error('Error importing teachers:', error);
+			spaceToast.error(error.response?.data?.error || error.response?.data?.message || error.message || t('teacherManagement.importError'));
 			setImportModal((prev) => ({ ...prev, uploading: false }));
 		}
 	};
 
-	const handleDownloadTemplate = () => {
-		// Create a simple CSV template
-		const csvContent = "firstName,lastName,email,phone,roleName\nJohn,Doe,john.doe@example.com,0123456789,TEACHER\nJane,Smith,jane.smith@example.com,0987654321,TEACHING_ASSISTANT";
-		const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-		const link = document.createElement('a');
-		const url = URL.createObjectURL(blob);
-		link.setAttribute('href', url);
-		link.setAttribute('download', 'teacher_template.csv');
-		link.style.visibility = 'hidden';
-		document.body.appendChild(link);
-		link.click();
-		document.body.removeChild(link);
-		spaceToast.success(t('teacherManagement.templateDownloaded'));
+	// Handle file selection
+	const handleFileSelect = (file) => {
+		// Validate file type
+		const allowedTypes = [
+			'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // .xlsx
+			'application/vnd.ms-excel', // .xls
+			'text/csv' // .csv
+		];
+		
+		if (!allowedTypes.includes(file.type)) {
+			spaceToast.error('Please select a valid Excel (.xlsx, .xls) or CSV (.csv) file');
+			return false;
+		}
+		
+		// Validate file size (max 10MB)
+		const maxSize = 10 * 1024 * 1024; // 10MB
+		if (file.size > maxSize) {
+			spaceToast.error('File size must be less than 10MB');
+			return false;
+		}
+		
+		setImportModal(prev => ({
+			...prev,
+			fileList: [file]
+		}));
+		
+		return false; // Prevent default upload behavior
+	};
+
+	const handleDownloadTemplate = async () => {
+		try {
+			spaceToast.info('Downloading template...');
+			
+			const response = await teacherManagementApi.downloadTeacherTemplate();
+			
+			// API returns SAS URL directly (due to axios interceptor returning response.data)
+			let downloadUrl;
+			if (typeof response === 'string') {
+				downloadUrl = response;
+			} else if (response && typeof response.data === 'string') {
+				downloadUrl = response.data;
+			} else if (response && response.data && response.data.url) {
+				downloadUrl = response.data.url;
+			} else {
+				console.error('Unexpected response format:', response);
+				throw new Error('No download URL received from server');
+			}
+			
+			// Create download link directly from SAS URL
+			const link = document.createElement('a');
+			link.setAttribute('href', downloadUrl);
+			link.setAttribute('download', 'teacher_import_template.xlsx');
+			link.setAttribute('target', '_blank');
+			link.style.visibility = 'hidden';
+			document.body.appendChild(link);
+			link.click();
+			document.body.removeChild(link);
+			
+			spaceToast.success('Template downloaded successfully');
+		} catch (error) {
+			console.error('Error downloading template:', error);
+			spaceToast.error(error.response?.data?.error || error.response?.data?.message || error.message || 'Failed to download template');
+		}
 	};
 
 	// Handle filter dropdown toggle
@@ -426,19 +458,6 @@ const TeacherList = () => {
 			selectedStatuses: [],
 		}));
 	};
-
-	// Status options for filter
-	const statusOptions = [
-		{ key: "ACTIVE", label: t('teacherManagement.active') },
-		{ key: "INACTIVE", label: t('teacherManagement.inactive') },
-		{ key: "PENDING", label: t('teacherManagement.pending') },
-	];
-
-	// Role options for filter
-	const roleOptions = [
-		{ key: "TEACHER", label: t('teacherManagement.teacher') },
-		{ key: "TEACHING_ASSISTANT", label: t('teacherManagement.teacherAssistant') },
-	];
 
 	// Calculate checkbox states with useMemo
 	const checkboxStates = useMemo(() => {
@@ -519,6 +538,7 @@ const TeacherList = () => {
 		
 		let actionText = '';
 		let confirmContent = '';
+		let bulkAction = '';
 		
 		if (activeTeachers.length > 0 && inactiveTeachers.length > 0) {
 			// Mixed selection - show general message
@@ -528,47 +548,37 @@ const TeacherList = () => {
 			// All active - will deactivate
 			actionText = t('teacherManagement.deactivate');
 			confirmContent = `${t('teacherManagement.confirmBulkDeactivate')} ${selectedRowKeys.length} ${t('teacherManagement.teachers')}?`;
+			bulkAction = 'INACTIVE';
 		} else {
 			// All inactive - will activate
 			actionText = t('teacherManagement.activate');
 			confirmContent = `${t('teacherManagement.confirmBulkActivate')} ${selectedRowKeys.length} ${t('teacherManagement.teachers')}?`;
+			bulkAction = 'ACTIVE';
 		}
 		
 		setConfirmModal({
 			visible: true,
-			title: `${actionText} ${t('teacherManagement.teachers')}`,
+			title: actionText,
 			content: confirmContent,
 			onConfirm: async () => {
 				try {
-					// Determine the action based on current status
-					const bulkAction = activeTeachers.length > inactiveTeachers.length ? 'INACTIVE' : 'ACTIVE';
-					
-					// Call API for bulk update
+					// Call API for bulk update (you'll need to implement this API)
+					// For now, we'll update each teacher individually
 					const promises = selectedRowKeys.map(id => 
 						teacherManagementApi.updateTeacherStatus(id, bulkAction)
 					);
 					
-					const results = await Promise.all(promises);
-					const successCount = results.filter(r => r.success).length;
+					await Promise.all(promises);
 					
-					if (successCount > 0) {
-						// Refresh the list
-						fetchTeachers(pagination.current, pagination.pageSize, searchText, statusFilter, roleNameFilter, sortBy, sortDir);
-						setConfirmModal({ visible: false, title: '', content: '', onConfirm: null });
-						
-						// Clear selection
-						setSelectedRowKeys([]);
-						
-						// Show success toast
-						const actionText = bulkAction === 'ACTIVE' ? t('teacherManagement.activateTeacherSuccess') : t('teacherManagement.deactivateTeacherSuccess');
-						spaceToast.success(`${actionText} ${successCount} ${t('teacherManagement.teachers')} ${t('common.success')}`);
-					} else {
-						throw new Error('All operations failed');
-					}
-				} catch (error) {
-					console.error('Error updating teacher statuses:', error);
+					spaceToast.success(t('teacherManagement.bulkStatusUpdateSuccess'));
+					setSelectedRowKeys([]);
 					setConfirmModal({ visible: false, title: '', content: '', onConfirm: null });
-					spaceToast.error(t('teacherManagement.bulkUpdateStatusError'));
+					
+					// Refresh the teacher list
+					fetchTeachers(pagination.current, pagination.pageSize, searchText, statusFilter, roleNameFilter, sortBy, sortDir);
+				} catch (error) {
+					console.error('Error bulk updating teacher status:', error);
+					spaceToast.error(t('teacherManagement.bulkStatusUpdateError'));
 				}
 			}
 		});
@@ -582,6 +592,19 @@ const TeacherList = () => {
 		// TODO: Implement bulk export functionality
 		spaceToast.info(`Selected ${selectedRowKeys.length} teachers for export`);
 	};
+
+	// Status options for filter
+	const statusOptions = [
+		{ key: "ACTIVE", label: t('teacherManagement.active') },
+		{ key: "INACTIVE", label: t('teacherManagement.inactive') },
+		{ key: "PENDING", label: t('teacherManagement.pending') },
+	];
+
+	// Role options for filter
+	const roleOptions = [
+		{ key: "TEACHER", label: t('teacherManagement.teacher') },
+		{ key: "TEACHING_ASSISTANT", label: t('teacherManagement.teacherAssistant') },
+	];
 
 	const columns = [
 		{
@@ -625,18 +648,6 @@ const TeacherList = () => {
 			},
 		},
 		{
-			title: t('teacherManagement.username'),
-			dataIndex: "userName",
-			key: "userName",
-			width: 100,
-			ellipsis: true,
-			render: (userName) => (
-				<span className="username-text">
-					{userName || '-'}
-				</span>
-			),
-		},
-		{
 			title: t('teacherManagement.fullName'),
 			dataIndex: "firstName",
 			key: "fullName",
@@ -668,43 +679,13 @@ const TeacherList = () => {
 			title: t('teacherManagement.classes'),
 			dataIndex: "classList",
 			key: "classList",
-			width: 120,
+			width: 80,
 			ellipsis: true,
-			render: (classList, record) => {
-				if (classList?.name) {
-					return (
-						<span className="class-text">
-							{classList.name}
-						</span>
-					);
-				} else if (record.status === 'ACTIVE') {
-					return (
-						<Button
-							type="primary"
-							size="small"
-							icon={<PlusOutlined />}
-							onClick={() => handleAssignToClass(record)}
-							className={`assign-class-button ${theme}-assign-class-button`}
-							style={{
-								fontSize: '12px',
-								height: '28px',
-								padding: '0 8px',
-								backgroundColor: '#52c41a',
-								borderColor: '#52c41a',
-								borderRadius: '4px'
-							}}
-						>
-							{t('teacherManagement.assignToClass')}
-						</Button>
-					);
-				} else {
-					return (
-						<span className="class-text">
-							-
-						</span>
-					);
-				}
-			},
+			render: (classList) => (
+				<span className="classes-text">
+					{classList ? classList.length : 0}
+				</span>
+			),
 		},
 		{
 			title: t('teacherManagement.status'),
@@ -749,6 +730,20 @@ const TeacherList = () => {
 							}}
 						/>
 					</Tooltip>
+					{record.status === 'ACTIVE' && (
+						<Tooltip title={t('teacherManagement.assignToClass')}>
+							<Button
+								type='text'
+								icon={<PlusOutlined style={{ fontSize: '25px' }} />}
+								size='small'
+								onClick={() => handleAssignToClass(record)}
+								style={{
+									color: '#52c41a',
+									padding: '8px 12px'
+								}}
+							/>
+						</Tooltip>
+					)}
 				</Space>
 			),
 		},
@@ -937,8 +932,7 @@ const TeacherList = () => {
 				{/* Table Section */}
 				<div className={`table-section ${theme}-table-section`}>
 					<LoadingWithEffect
-						loading={loading}
-						message={t('common.loading')}>
+						loading={loading}>
 						<Table
 							columns={columns}
 							dataSource={teachers}
@@ -1146,7 +1140,12 @@ const TeacherList = () => {
 						{t('teacherManagement.importInstructions')}
 					</Typography.Title>
 
-					<div
+					<Upload.Dragger
+						name="file"
+						multiple={false}
+						beforeUpload={handleFileSelect}
+						showUploadList={false}
+						accept=".xlsx,.xls,.csv"
 						style={{
 							marginBottom: '20px',
 							border: '2px dashed #d9d9d9',
@@ -1158,7 +1157,7 @@ const TeacherList = () => {
 						<p
 							className='ant-upload-drag-icon'
 							style={{ fontSize: '48px', color: '#1890ff' }}>
-							<DownloadOutlined />
+							<UploadOutlined />
 						</p>
 						<p
 							className='ant-upload-text'
@@ -1169,7 +1168,7 @@ const TeacherList = () => {
 							{t('teacherManagement.supportedFormats')}: Excel (.xlsx, .xls),
 							CSV (.csv)
 						</p>
-					</div>
+					</Upload.Dragger>
 
 					<Divider />
 
@@ -1181,11 +1180,30 @@ const TeacherList = () => {
 								background: '#e6f7ff',
 								border: '1px solid #91d5ff',
 								borderRadius: '6px',
+								display: 'flex',
+								justifyContent: 'space-between',
+								alignItems: 'center',
 							}}>
-							<Typography.Text style={{ color: '#1890ff', fontWeight: '500' }}>
-								✅ {t('teacherManagement.fileSelected')}:{' '}
-								{importModal.fileList[0].name}
-							</Typography.Text>
+							<div>
+								<Typography.Text style={{ color: '#1890ff', fontWeight: '500' }}>
+									✅ {t('teacherManagement.fileSelected')}:{' '}
+									{importModal.fileList[0].name}
+								</Typography.Text>
+								<br />
+								<Typography.Text style={{ color: '#666', fontSize: '12px' }}>
+									Size: {importModal.fileList[0].size < 1024 * 1024 
+										? `${(importModal.fileList[0].size / 1024).toFixed(1)} KB`
+										: `${(importModal.fileList[0].size / 1024 / 1024).toFixed(2)} MB`
+									}
+								</Typography.Text>
+							</div>
+							<Button
+								type="text"
+								size="small"
+								onClick={() => setImportModal(prev => ({ ...prev, fileList: [] }))}
+								style={{ color: '#ff4d4f' }}>
+								Remove
+							</Button>
 						</div>
 					)}
 				</div>

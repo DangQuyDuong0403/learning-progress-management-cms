@@ -182,6 +182,42 @@ const teacherManagementApi = {
 			throw error;
 		});
 	},
+
+	// Download teacher import template
+	downloadTeacherTemplate: () => {
+		const url = `/user/teachers/download-template`;
+		console.log('DownloadTeacherTemplate API - URL:', url);
+		
+		return axiosClient.get(url, {
+			headers: {
+				'accept': '*/*',
+			}
+		}).catch(error => {
+			console.error('DownloadTeacherTemplate API Error:', error);
+			console.error('Error response:', error.response?.data);
+			console.error('Error status:', error.response?.status);
+			throw error;
+		});
+	},
+
+	// Import teachers from Excel file
+	importTeachers: (formData) => {
+		const url = `/user/teachers/import`;
+		console.log('ImportTeachers API - URL:', url);
+		console.log('ImportTeachers API - FormData:', formData);
+		
+		return axiosClient.post(url, formData, {
+			headers: {
+				'accept': '*/*',
+				// Don't set Content-Type, let axios handle it for FormData
+			}
+		}).catch(error => {
+			console.error('ImportTeachers API Error:', error);
+			console.error('Error response:', error.response?.data);
+			console.error('Error status:', error.response?.status);
+			throw error;
+		});
+	},
 };
 
 export default teacherManagementApi;

@@ -4,7 +4,6 @@ import { useTranslation } from 'react-i18next';
 import { useDispatch, useSelector } from 'react-redux';
 import { updateEmail } from '../../redux/auth';
 import { spaceToast } from '../../component/SpaceToastify';
-import { useTheme } from '../../contexts/ThemeContext';
 
 export default function EditEmailModal({ 
   isVisible, 
@@ -15,7 +14,6 @@ export default function EditEmailModal({
   const { t } = useTranslation();
   const dispatch = useDispatch();
   const { updateEmailLoading } = useSelector((state) => state.auth);
-  const { theme } = useTheme();
   const [form] = Form.useForm();
   const [showConfirmationMessage, setShowConfirmationMessage] = useState(false);
 
@@ -46,7 +44,7 @@ export default function EditEmailModal({
         spaceToast.success(result.message);
         // Không đóng modal ngay, hiển thị thông báo chờ xác nhận
         setShowConfirmationMessage(true);
-      } 
+      }
     } catch (error) {
       console.error('Update Email Error:', error);
       
@@ -95,10 +93,8 @@ export default function EditEmailModal({
       confirmLoading={updateEmailLoading}
       okButtonProps={{
         style: {
-          backgroundColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
-          background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
-          borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'transparent',
-          color: theme === 'sun' ? '#000000' : '#ffffff',
+          backgroundColor: '#1890ff',
+          borderColor: '#1890ff',
           height: '40px',
           fontSize: '16px',
           fontWeight: '500',
