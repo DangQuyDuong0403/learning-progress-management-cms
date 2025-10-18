@@ -153,7 +153,7 @@ export default function Profile() {
                               type="email" 
                               id="email" 
                               className="form-input" 
-                              defaultValue="anhtony2003@gmail.com"
+                              defaultValue="email"
                               ref={emailRef}
                             />
                           </div>
