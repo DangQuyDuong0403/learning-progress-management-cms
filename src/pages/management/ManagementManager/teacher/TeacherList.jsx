@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Table, Button, Space, Modal, Input, Tag, Tooltip, Typography } from 'antd';
+import { Table, Button, Space, Modal, Input, Tag, Tooltip, Typography, Switch, Upload, Divider } from 'antd';
 import {
 	PlusOutlined,
 	SearchOutlined,
@@ -10,6 +10,7 @@ import {
 	CheckOutlined,
 	StopOutlined,
 	FilterOutlined,
+	InboxOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -35,6 +36,7 @@ const TeacherList = () => {
 	// State for teachers data
 	const [teachers, setTeachers] = useState([]);
 	const [loading, setLoading] = useState(true);
+	const [totalTeachers, setTotalTeachers] = useState(0);
 	
 	// Pagination state
 	const [pagination, setPagination] = useState({
@@ -66,6 +68,11 @@ const TeacherList = () => {
 	});
 	const [editingTeacher, setEditingTeacher] = useState(null);
 	const [assigningTeacher, setAssigningTeacher] = useState(null);
+	const [importModal, setImportModal] = useState({
+		visible: false,
+		fileList: [],
+		uploading: false
+	});
 	
 	// Filter dropdown state
 	const [filterDropdown, setFilterDropdown] = useState({
@@ -112,6 +119,7 @@ const TeacherList = () => {
 			
 			if (response.success && response.data) {
 				setTeachers(response.data);
+				setTotalTeachers(response.totalElements || response.data.length);
 				setPagination(prev => ({
 					...prev,
 					current: page,
@@ -120,6 +128,7 @@ const TeacherList = () => {
 				}));
 			} else {
 				setTeachers([]);
+				setTotalTeachers(0);
 				setPagination(prev => ({
 					...prev,
 					current: page,
@@ -131,6 +140,7 @@ const TeacherList = () => {
 			console.error('Error fetching teachers:', error);
 			spaceToast.error(t('teacherManagement.loadTeachersError'));
 			setTeachers([]);
+			setTotalTeachers(0);
 			setPagination(prev => ({
 				...prev,
 				current: page,
@@ -314,8 +324,73 @@ const TeacherList = () => {
 	};
 
 	const handleImport = () => {
-		// TODO: Implement import functionality
-		spaceToast.success(t('teacherManagement.importSuccess'));
+		setImportModal({ visible: true, fileList: [], uploading: false });
+	};
+
+	const handleImportCancel = () => {
+		setImportModal({ visible: false, fileList: [], uploading: false });
+	};
+
+	const handleImportOk = async () => {
+		if (importModal.fileList.length === 0) {
+			spaceToast.warning(t('teacherManagement.selectFileToImport'));
+			return;
+		}
+
+		setImportModal((prev) => ({ ...prev, uploading: true }));
+
+		try {
+			// Simulate file processing
+			await new Promise((resolve) => setTimeout(resolve, 2000));
+
+			// Mock successful import
+			const newTeachers = [
+				{
+					id: Date.now() + 1,
+					firstName: 'Teacher Imported 1',
+					lastName: 'Last Name 1',
+					email: 'imported1@example.com',
+					phone: '0123456789',
+					roleName: 'TEACHER',
+					status: 'ACTIVE',
+				},
+				{
+					id: Date.now() + 2,
+					firstName: 'Teacher Imported 2',
+					lastName: 'Last Name 2',
+					email: 'imported2@example.com',
+					phone: '0987654321',
+					roleName: 'TEACHING_ASSISTANT',
+					status: 'ACTIVE',
+				},
+			];
+
+			// Refresh the list to get updated data from server
+			fetchTeachers(pagination.current, pagination.pageSize, searchText, statusFilter, roleNameFilter, sortBy, sortDir);
+			spaceToast.success(
+				`${t('teacherManagement.importSuccess')} ${newTeachers.length} ${t('teacherManagement.teachers')}`
+			);
+
+			setImportModal({ visible: false, fileList: [], uploading: false });
+		} catch (error) {
+			spaceToast.error(t('teacherManagement.importError'));
+			setImportModal((prev) => ({ ...prev, uploading: false }));
+		}
+	};
+
+	const handleDownloadTemplate = () => {
+		// Create a simple CSV template
+		const csvContent = "firstName,lastName,email,phone,roleName\nJohn,Doe,john.doe@example.com,0123456789,TEACHER\nJane,Smith,jane.smith@example.com,0987654321,TEACHING_ASSISTANT";
+		const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+		const link = document.createElement('a');
+		const url = URL.createObjectURL(blob);
+		link.setAttribute('href', url);
+		link.setAttribute('download', 'teacher_template.csv');
+		link.style.visibility = 'hidden';
+		document.body.appendChild(link);
+		link.click();
+		document.body.removeChild(link);
+		spaceToast.success(t('teacherManagement.templateDownloaded'));
 	};
 
 	// Handle filter dropdown toggle
@@ -353,6 +428,7 @@ const TeacherList = () => {
 	const statusOptions = [
 		{ key: "ACTIVE", label: t('teacherManagement.active') },
 		{ key: "INACTIVE", label: t('teacherManagement.inactive') },
+		{ key: "PENDING", label: t('teacherManagement.pending') },
 	];
 
 	// Role options for filter
@@ -363,9 +439,9 @@ const TeacherList = () => {
 
 	const columns = [
 		{
-			title: "STT",
+			title: t('teacherManagement.stt'),
 			key: "stt",
-			width: 60,
+			width: 50,
 			render: (_, __, index) => {
 				// Calculate index based on current page and page size
 				const currentPage = pagination.current || 1;
@@ -378,21 +454,13 @@ const TeacherList = () => {
 			},
 		},
 		{
-			title: "Username",
-			dataIndex: "userName",
-			key: "userName",
-			render: (userName) => (
-				<span className="username-text">
-					{userName}
-				</span>
-			),
-		},
-		{
-			title: "Full Name",
+			title: t('teacherManagement.fullName'),
 			dataIndex: "firstName",
 			key: "fullName",
+			width: 120,
 			sorter: true,
 			sortDirections: ['ascend', 'descend'],
+			ellipsis: true,
 			render: (_, record) => (
 				<span className="fullname-text">
 					{`${record.firstName || ''} ${record.lastName || ''}`.trim()}
@@ -400,56 +468,60 @@ const TeacherList = () => {
 			),
 		},
 		{
-			title: "Email",
-			dataIndex: "email",
-			key: "email",
-			render: (email) => (
-				<span className="email-text">
-					{email}
-				</span>
-			),
-		},
-		{
-			title: "Role",
+			title: t('teacherManagement.role'),
 			dataIndex: "roleName",
 			key: "roleName",
+			width: 100,
+			ellipsis: true,
 			render: (roleName) => (
 				<span className="role-text">
 					{roleName === 'TEACHER'
-						? 'Teacher'
-						: 'Teaching Assistant'}
+						? t('common.teacher')
+						: t('common.teachingAssistant')}
 				</span>
 			),
 		},
 		{
-			title: "Classes",
+			title: t('teacherManagement.classes'),
 			dataIndex: "classList",
 			key: "classList",
+			width: 80,
+			ellipsis: true,
 			render: (classList) => (
 				<span className="classes-text">
-					{classList ? classList.length : 0} classes
+					{classList ? classList.length : 0}
 				</span>
 			),
 		},
 		{
-			title: "Status",
+			title: t('teacherManagement.status'),
 			dataIndex: "status",
 			key: "status",
+			width: 80,
+			align: 'center',
 			sorter: true,
 			sortDirections: ['ascend', 'descend'],
-			render: (status) => {
-				const statusConfig = {
-					ACTIVE: { color: "green", text: "Active" },
-					INACTIVE: { color: "red", text: "Inactive" },
-				};
-				const config = statusConfig[status] || statusConfig.INACTIVE;
-				return <Tag color={config.color}>{config.text}</Tag>;
+			render: (status, record) => {
+				if (status === 'PENDING') {
+					return <span style={{ color: '#000' }}>{t('teacherManagement.pending')}</span>;
+				}
+				
+				return (
+					<Switch
+						checked={status === 'ACTIVE'}
+						onChange={() => handleToggleStatus(record.id)}
+						size="large"
+						style={{
+							transform: 'scale(1.2)',
+						}}
+					/>
+				);
 			},
 		},
 		{
 			title: t('teacherManagement.actions'),
 			key: "actions",
-			width: 150,
+			width: 80,
 			render: (_, record) => (
 				<Space size='small'>
 					<Tooltip title={t('teacherManagement.viewProfile')}>
@@ -464,30 +536,20 @@ const TeacherList = () => {
 							}}
 						/>
 					</Tooltip>
-					<Tooltip title={t('teacherManagement.assignToClass')}>
-						<Button
-							type='text'
-							icon={<PlusOutlined style={{ fontSize: '25px' }} />}
-							size='small'
-							onClick={() => handleAssignToClass(record)}
-							style={{
-								color: '#52c41a',
-								padding: '8px 12px'
-							}}
-						/>
-					</Tooltip>
-					<Tooltip title={record.status === 'ACTIVE' ? t('teacherManagement.deactivate') : t('teacherManagement.activate')}>
-						<Button
-							type="text"
-							icon={record.status === 'ACTIVE' ? <StopOutlined style={{ fontSize: '25px' }} /> : <CheckOutlined style={{ fontSize: '25px' }} />}
-							size="small"
-							onClick={() => handleToggleStatus(record.id)}
-							style={{
-								color: record.status === 'ACTIVE' ? '#ff4d4f' : '#52c41a',
-								padding: '8px 12px'
-							}}
-						/>
-					</Tooltip>
+					{record.status === 'ACTIVE' && (
+						<Tooltip title={t('teacherManagement.assignToClass')}>
+							<Button
+								type='text'
+								icon={<PlusOutlined style={{ fontSize: '25px' }} />}
+								size='small'
+								onClick={() => handleAssignToClass(record)}
+								style={{
+									color: '#52c41a',
+									padding: '8px 12px'
+								}}
+							/>
+						</Tooltip>
+					)}
 				</Space>
 			),
 		},
@@ -503,7 +565,7 @@ const TeacherList = () => {
 						level={1} 
 						className="page-title"
 					>
-						Teacher Management
+						{t('teacherManagement.title')} ({totalTeachers})
 					</Typography.Title>
 				</div>
 				{/* Header Section */}
@@ -514,7 +576,7 @@ const TeacherList = () => {
 							value={searchText}
 							onChange={(e) => handleSearch(e.target.value)}
 							className={`search-input ${theme}-search-input`}
-							style={{ flex: '1', minWidth: '250px', maxWidth: '400px', width: '350px', height: '40px', fontSize: '16px' }}
+							style={{ flex: '1', minWidth: '200px', maxWidth: '300px', width: '250px', height: '40px', fontSize: '16px' }}
 							allowClear
 						/>
 						<div ref={filterContainerRef} style={{ position: 'relative' }}>
@@ -523,7 +585,7 @@ const TeacherList = () => {
 								onClick={handleFilterToggle}
 								className={`filter-button ${theme}-filter-button ${filterDropdown.visible ? 'active' : ''} ${(statusFilter.length > 0 || roleNameFilter.length > 0) ? 'has-filters' : ''}`}
 							>
-								Filter
+								{t('common.filter')}
 							</Button>
 							
 							{/* Filter Dropdown Panel */}
@@ -591,14 +653,14 @@ const TeacherList = () => {
 												onClick={handleFilterReset}
 												className="filter-reset-button"
 											>
-												Reset
+												{t('common.reset')}
 											</Button>
 											<Button
 												type="primary"
 												onClick={handleFilterSubmit}
 												className="filter-submit-button"
 											>
-												View Results
+												{t('common.viewResults')}
 											</Button>
 										</div>
 									</div>
@@ -620,13 +682,6 @@ const TeacherList = () => {
 							{t('teacherManagement.importTeachers')}
 						</Button>
 						<Button
-							icon={<ReloadOutlined />}
-							onClick={handleRefresh}
-							loading={loading}
-							className={`refresh-button ${theme}-refresh-button`}>
-							{t('teacherManagement.refresh')}
-						</Button>
-						<Button
 							icon={<PlusOutlined />}
 							className={`create-button ${theme}-create-button`}
 							onClick={handleAdd}>
@@ -638,8 +693,7 @@ const TeacherList = () => {
 				{/* Table Section */}
 				<div className={`table-section ${theme}-table-section`}>
 					<LoadingWithEffect
-						loading={loading}
-						message={t('teacherManagement.loadingTeachers')}>
+						loading={loading}>
 						<Table
 							columns={columns}
 							dataSource={teachers}
@@ -650,7 +704,7 @@ const TeacherList = () => {
 								pageSizeOptions: ['5', '10', '20', '50', '100'],
 							}}
 							onChange={handleTableChange}
-							scroll={{ x: 1200 }}
+							scroll={{ y: 400 }}
 							className={`teacher-table ${theme}-teacher-table`}
 							showSorterTooltip={false}
 							sortDirections={['ascend', 'descend']}
@@ -698,7 +752,7 @@ const TeacherList = () => {
 				open={isAssignModalVisible}
 				onCancel={handleAssignModalClose}
 				footer={null}
-				width={1200}
+				width={1000}
 				destroyOnClose
 				style={{ top: 20 }}
 				bodyStyle={{
@@ -770,6 +824,125 @@ const TeacherList = () => {
 						}}>
 						{confirmModal.content}
 					</p>
+				</div>
+			</Modal>
+			{/* Import Modal */}
+			<Modal
+				title={
+					<div
+						style={{
+							fontSize: '20px',
+							fontWeight: '600',
+							color: '#000000',
+							textAlign: 'center',
+							padding: '10px 0',
+							display: 'flex',
+							alignItems: 'center',
+							justifyContent: 'center',
+							gap: '10px',
+						}}>
+						<DownloadOutlined style={{ color: '#000000' }} />
+						{t('teacherManagement.importTeachers')}
+					</div>
+				}
+				open={importModal.visible}
+				onOk={handleImportOk}
+				onCancel={handleImportCancel}
+				okText={t('teacherManagement.import')}
+				cancelText={t('common.cancel')}
+				width={600}
+				centered
+				confirmLoading={importModal.uploading}
+				okButtonProps={{
+					disabled: importModal.fileList.length === 0,
+					style: {
+						backgroundColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
+						background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
+						borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'transparent',
+						color: theme === 'sun' ? '#000000' : '#ffffff',
+						height: '40px',
+						fontSize: '16px',
+						fontWeight: '500',
+						minWidth: '120px',
+					},
+				}}
+				cancelButtonProps={{
+					style: {
+						height: '40px',
+						fontSize: '16px',
+						fontWeight: '500',
+						minWidth: '100px',
+					},
+				}}>
+				<div style={{ padding: '20px 0' }}>
+					<div style={{ textAlign: 'center', marginBottom: '20px' }}>
+						<Button
+							type="dashed"
+							icon={<DownloadOutlined />}
+							onClick={handleDownloadTemplate}
+							style={{
+								borderColor: '#1890ff',
+								color: '#1890ff',
+								height: '36px',
+								fontSize: '14px',
+								fontWeight: '500',
+							}}>
+							{t('teacherManagement.downloadTemplate')}
+						</Button>
+					</div>
+
+					<Typography.Title
+						level={5}
+						style={{
+							textAlign: 'center',
+							marginBottom: '20px',
+							color: '#666',
+						}}>
+						{t('teacherManagement.importInstructions')}
+					</Typography.Title>
+
+					<div
+						style={{
+							marginBottom: '20px',
+							border: '2px dashed #d9d9d9',
+							borderRadius: '8px',
+							background: '#fafafa',
+							padding: '40px',
+							textAlign: 'center',
+						}}>
+						<p
+							className='ant-upload-drag-icon'
+							style={{ fontSize: '48px', color: '#1890ff' }}>
+							<DownloadOutlined />
+						</p>
+						<p
+							className='ant-upload-text'
+							style={{ fontSize: '16px', fontWeight: '500' }}>
+							{t('teacherManagement.clickOrDragFile')}
+						</p>
+						<p className='ant-upload-hint' style={{ color: '#999' }}>
+							{t('teacherManagement.supportedFormats')}: Excel (.xlsx, .xls),
+							CSV (.csv)
+						</p>
+					</div>
+
+					<Divider />
+
+					{importModal.fileList.length > 0 && (
+						<div
+							style={{
+								marginTop: '16px',
+								padding: '12px',
+								background: '#e6f7ff',
+								border: '1px solid #91d5ff',
+								borderRadius: '6px',
+							}}>
+							<Typography.Text style={{ color: '#1890ff', fontWeight: '500' }}>
+								✅ {t('teacherManagement.fileSelected')}:{' '}
+								{importModal.fileList[0].name}
+							</Typography.Text>
+						</div>
+					)}
 				</div>
 			</Modal>
 		</ThemedLayout>

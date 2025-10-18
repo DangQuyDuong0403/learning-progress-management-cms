@@ -395,7 +395,7 @@
 	border-radius: 20px;
 	height: 72px;
 	line-height: 72px;
-	font-size: 25px;
+	font-size: 20px;
 	font-weight: 600;
 	position: relative;
 	overflow: hidden;
@@ -428,7 +428,7 @@
 .sun-theme .themed-sidebar-menu .ant-menu-item {
 	color: #4398f8;
 	background: transparent; /* Bỏ nền xám */
-	font-size: 25px;
+	font-size: 20px;
 }
 
 .sun-theme .themed-sidebar-menu .ant-menu-item:hover {
@@ -478,7 +478,7 @@
 }
 
 .themed-sidebar-menu .ant-menu-item .anticon {
-	font-size: 25px;
+	font-size: 20px;
 	margin-right: 20px;
 	transition: all 0.3s ease;
 }
@@ -636,7 +636,7 @@
 	margin: 12px 12px;
 	/* Giữ nguyên tất cả styling khác */
 	border-radius: 20px;
-	font-size: 23px;
+	font-size: 18px;
 	font-weight: 600;
 	border: 1px solid rgba(255, 255, 255, 0.1);
 }
@@ -722,7 +722,7 @@
 	.anticon {
 	margin-right: 0;
 	margin-left: 0;
-	font-size: 24px; /* Giữ nguyên kích thước icon */
+	font-size: 20px; /* Giữ nguyên kích thước icon */
 	display: flex;
 	align-items: center;
 	justify-content: center;
@@ -1702,15 +1702,15 @@
 
 /* Sun theme filter submit button */
 .sun-theme .filter-submit-button {
-	background: #298EFE !important;
-	color: #fff !important;
+	background: rgb(113, 179, 253) !important;
+	color: #000 !important;
 }
 
 .sun-theme .filter-submit-button:hover {
-	background: #1a7ce8 !important;
+	background: rgb(95, 160, 240) !important;
 	border: none !important;
 	transform: translateY(-1px) !important;
-	box-shadow: 0 4px 12px rgba(41, 142, 254, 0.4) !important;
+	box-shadow: 0 4px 12px rgba(113, 179, 253, 0.4) !important;
 }
 
 /* Space theme filter submit button */
@@ -1746,6 +1746,29 @@
 /* Space theme page title */
 .space-theme .page-title {
 	color: #ffffff;
+}
+
+/* ===== TOGGLE SWITCH STYLES ===== */
+/* Sun theme toggle switch */
+.sun-theme .ant-switch-checked {
+	background: linear-gradient(135deg, #4dd0ff 0%, #7bb3ff 50%, #4dd0ff 100%) !important;
+	border-color: #4dd0ff !important;
+}
+
+.sun-theme .ant-switch:not(.ant-switch-checked) {
+	background: #d9d9d9 !important;
+	border-color: #d9d9d9 !important;
+}
+
+/* Space theme toggle switch */
+.space-theme .ant-switch-checked {
+	background: linear-gradient(135deg, #7228d9 0%, #9c88ff 100%) !important;
+	border-color: #7228d9 !important;
+}
+
+.space-theme .ant-switch:not(.ant-switch-checked) {
+	background: #d9d9d9 !important;
+	border-color: #d9d9d9 !important;
 }
 
 /* ===== RESPONSIVE ===== */

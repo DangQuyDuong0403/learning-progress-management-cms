@@ -616,7 +616,7 @@ const ClassList = () => {
             level={1} 
             className="page-title"
           >
-            Class Management
+            {t('classManagement.title')}
           </Typography.Title>
         </div>
 

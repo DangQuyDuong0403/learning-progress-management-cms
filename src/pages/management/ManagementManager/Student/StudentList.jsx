@@ -19,6 +19,7 @@ import {
   DatePicker,
   Radio,
   Upload,
+  Switch,
 } from "antd";
 import {
   PlusOutlined,
@@ -55,6 +56,7 @@ const StudentList = () => {
   const { levels, loading: levelsLoading } = useSelector((state) => state.level);
   const [loading, setLoading] = useState(true);
   const [students, setStudents] = useState([]);
+  const [totalStudents, setTotalStudents] = useState(0);
   
   // Pagination state
   const [pagination, setPagination] = useState({
@@ -137,6 +139,7 @@ const StudentList = () => {
       
       if (response.success && response.data) {
         setStudents(response.data);
+        setTotalStudents(response.totalElements || response.data.length);
         setPagination(prev => ({
           ...prev,
           current: page,
@@ -145,6 +148,7 @@ const StudentList = () => {
         }));
       } else {
         setStudents([]);
+        setTotalStudents(0);
         setPagination(prev => ({
           ...prev,
           current: page,
@@ -156,6 +160,7 @@ const StudentList = () => {
       console.error('Error fetching students:', error);
       spaceToast.error(t('studentManagement.loadStudentsError'));
       setStudents([]);
+      setTotalStudents(0);
       setPagination(prev => ({
         ...prev,
         current: page,
@@ -216,20 +221,21 @@ const StudentList = () => {
   const statusOptions = [
     { key: "ACTIVE", label: t('studentManagement.active') },
     { key: "INACTIVE", label: t('studentManagement.inactive') },
+    { key: "PENDING", label: t('studentManagement.pending') },
   ];
 
   // Role options for filter
   const roleOptions = [
-    { key: "STUDENT", label: "Student" },
-    { key: "TEST_TAKER", label: "Test Taker" },
+    { key: "STUDENT", label: t('common.student') },
+    { key: "TEST_TAKER", label: t('common.testTaker') },
   ];
 
   // Table columns
   const columns = [
     {
-      title: "STT",
+      title: t('studentManagement.stt'),
       key: "stt",
-      width: 60,
+      width: 50,
       render: (_, __, index) => {
         // Calculate index based on current page and page size
         const currentPage = pagination.current || 1;
@@ -242,21 +248,13 @@ const StudentList = () => {
       },
     },
     {
-      title: "Username",
-      dataIndex: "userName",
-      key: "userName",
-      render: (userName) => (
-        <span className="username-text">
-          {userName}
-        </span>
-      ),
-    },
-    {
-      title: "Full Name",
+      title: t('studentManagement.fullName'),
       dataIndex: "firstName",
       key: "fullName",
+      width: 120,
       sorter: true,
       sortDirections: ['ascend', 'descend'],
+      ellipsis: true,
       render: (_, record) => (
         <span className="fullname-text">
           {`${record.firstName || ''} ${record.lastName || ''}`.trim()}
@@ -264,25 +262,36 @@ const StudentList = () => {
       ),
     },
     {
-      title: "Role",
+      title: t('studentManagement.role'),
       dataIndex: "roleName",
       key: "roleName",
+      width: 80,
+      ellipsis: true,
       render: (roleName) => {
-        const formatRoleName = (role) => {
+        const getRoleDisplayName = (role) => {
           if (!role) return 'N/A';
-          return role.charAt(0).toUpperCase() + role.slice(1).toLowerCase();
+          switch (role.toUpperCase()) {
+            case 'STUDENT':
+              return t('common.student');
+            case 'TEST_TAKER':
+              return t('common.testTaker');
+            default:
+              return role.charAt(0).toUpperCase() + role.slice(1).toLowerCase();
+          }
         };
         return (
           <span className="role-text">
-            {formatRoleName(roleName)}
+            {getRoleDisplayName(roleName)}
           </span>
         );
       },
     },
     {
-      title: "Current Level",
+      title: t('studentManagement.currentLevel'),
       dataIndex: "currentLevelInfo",
       key: "currentLevelInfo",
+      width: 100,
+      ellipsis: true,
       render: (currentLevelInfo) => {
         // Debug logging to check level data structure
         if (currentLevelInfo) {
@@ -296,9 +305,11 @@ const StudentList = () => {
       },
     },
     {
-      title: "Current Class",
+      title: t('studentManagement.currentClass'),
       dataIndex: "currentClassInfo",
       key: "currentClassInfo",
+      width: 120,
+      ellipsis: true,
       render: (currentClassInfo, record) => {
         if (currentClassInfo?.name) {
           return (
@@ -306,7 +317,7 @@ const StudentList = () => {
               {currentClassInfo.name}
             </span>
           );
-        } else {
+        } else if (record.status === 'ACTIVE') {
           return (
             <Button
               type="primary"
@@ -323,29 +334,45 @@ const StudentList = () => {
                 borderRadius: '4px'
               }}
             >
-              Assign to Class
+              {t('studentManagement.assignToClass')}
             </Button>
+          );
+        } else {
+          return (
+            <span className="class-text">
+              -
+            </span>
           );
         }
       },
     },
     {
-      title: "Status",
+      title: t('studentManagement.status'),
       dataIndex: "status",
       key: "status",
-      render: (status) => {
-        const statusConfig = {
-          ACTIVE: { color: "green", text: t('studentManagement.active') },
-          INACTIVE: { color: "red", text: t('studentManagement.inactive') },
-        };
-        const config = statusConfig[status] || statusConfig.INACTIVE;
-        return <Tag color={config.color}>{config.text}</Tag>;
+      width: 80,
+      align: 'center',
+      render: (status, record) => {
+        if (status === 'PENDING') {
+          return <span style={{ color: '#000' }}>{t('studentManagement.pending')}</span>;
+        }
+        
+        return (
+          <Switch
+            checked={status === 'ACTIVE'}
+            onChange={() => handleToggleStatus(record.id)}
+            size="large"
+            style={{
+              transform: 'scale(1.2)',
+            }}
+          />
+        );
       },
     },
     {
       title: t('studentManagement.actions'),
       key: "actions",
-      width: 220,
+      width: 80,
       render: (_, record) => (
         <Space size="small">
           <Tooltip title={t('studentManagement.viewProfile')}>
@@ -356,18 +383,6 @@ const StudentList = () => {
               onClick={() => handleViewProfile(record)}
               style={{ 
                 color: '#000',
-                padding: '8px 12px'
-              }}
-            />
-          </Tooltip>
-          <Tooltip title={record.status === 'ACTIVE' ? t('studentManagement.deactivate') : t('studentManagement.activate')}>
-            <Button
-              type="text"
-              icon={record.status === 'ACTIVE' ? <StopOutlined style={{ fontSize: '25px' }} /> : <CheckOutlined style={{ fontSize: '25px' }} />}
-              size="small"
-              onClick={() => handleToggleStatus(record.id)}
-              style={{
-                color: record.status === 'ACTIVE' ? '#ff4d4f' : '#52c41a',
                 padding: '8px 12px'
               }}
             />
@@ -715,27 +730,27 @@ STU003,Le Van Cuong,levancuong@example.com,0111222333,Lớp 11B1,Advanced,active
               level={1} 
               className="page-title"
             >
-              Student Management
+              {t('studentManagement.title')} ({totalStudents})
             </Typography.Title>
           </div>
           {/* Header Section */}
           <div className={`panel-header ${theme}-panel-header`}>
             <div className="search-section" style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-              <Input
-                prefix={<SearchOutlined />}
-                value={searchText}
-                onChange={(e) => handleSearch(e.target.value)}
-                className={`search-input ${theme}-search-input`}
-                style={{ flex: '1', minWidth: '250px', maxWidth: '400px', width: '350px', height: '40px', fontSize: '16px' }}
-                allowClear
-              />
+            <Input
+              prefix={<SearchOutlined />}
+              value={searchText}
+              onChange={(e) => handleSearch(e.target.value)}
+              className={`search-input ${theme}-search-input`}
+              style={{ flex: '1', minWidth: '200px', maxWidth: '300px', width: '250px', height: '40px', fontSize: '16px' }}
+              allowClear
+            />
               <div ref={filterContainerRef} style={{ position: 'relative' }}>
                 <Button 
                   icon={<FilterOutlined />}
                   onClick={handleFilterToggle}
                   className={`filter-button ${theme}-filter-button ${filterDropdown.visible ? 'active' : ''} ${(statusFilter.length > 0 || roleNameFilter.length > 0) ? 'has-filters' : ''}`}
                 >
-                  Filter
+                  {t('common.filter')}
                 </Button>
                 
                 {/* Filter Dropdown Panel */}
@@ -803,14 +818,14 @@ STU003,Le Van Cuong,levancuong@example.com,0111222333,Lớp 11B1,Advanced,active
                           onClick={handleFilterReset}
                           className="filter-reset-button"
                         >
-                          Reset
+                          {t('common.reset')}
                         </Button>
                         <Button
                           type="primary"
                           onClick={handleFilterSubmit}
                           className="filter-submit-button"
                         >
-                          View Results
+                          {t('common.viewResults')}
                         </Button>
                       </div>
                     </div>
@@ -844,11 +859,10 @@ STU003,Le Van Cuong,levancuong@example.com,0111222333,Lớp 11B1,Advanced,active
           </div>
 
           {/* Table Section */}
-          <div className={`table-section ${theme}-table-section`}>
-            <LoadingWithEffect
-              loading={loading}
-              message={t('studentManagement.loadingStudents')}>
-              <Table
+				<div className={`table-section ${theme}-table-section`}>
+					<LoadingWithEffect
+						loading={loading}>
+						<Table
                 columns={columns}
                 dataSource={students}
                 rowKey="id"
@@ -858,7 +872,7 @@ STU003,Le Van Cuong,levancuong@example.com,0111222333,Lớp 11B1,Advanced,active
                   pageSizeOptions: ['5', '10', '20', '50', '100'],
                 }}
                 onChange={handleTableChange}
-                scroll={{ x: 1200 }}
+                scroll={{ y: 400 }}
                 className={`student-table ${theme}-student-table`}
                 showSorterTooltip={false}
                 sortDirections={['ascend', 'descend']}
@@ -875,11 +889,11 @@ STU003,Le Van Cuong,levancuong@example.com,0111222333,Lớp 11B1,Advanced,active
         <Modal
           title={
             <div style={{ 
-              fontSize: '26px', 
+              fontSize: '22px', 
               fontWeight: '600', 
               color: '#000000ff',
               textAlign: 'center',
-              padding: '10px 0'
+              padding: '8px 0'
             }}>
               {editingStudent ? t('studentManagement.editStudent') : t('studentManagement.addNewStudent')}
             </div>
@@ -887,14 +901,34 @@ STU003,Le Van Cuong,levancuong@example.com,0111222333,Lớp 11B1,Advanced,active
           open={isModalVisible}
           onOk={handleModalOk}
           onCancel={handleModalCancel}
-          width={800}
+          width={700}
           okText={editingStudent ? t('common.save') : t('studentManagement.addStudent')}
           cancelText={t('common.cancel')}
+          okButtonProps={{
+            style: {
+              backgroundColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
+              background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
+              borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'transparent',
+              color: theme === 'sun' ? '#000000' : '#ffffff',
+              height: '36px',
+              fontSize: '14px',
+              fontWeight: '500',
+              minWidth: '100px',
+            },
+          }}
+          cancelButtonProps={{
+            style: {
+              height: '36px',
+              fontSize: '14px',
+              fontWeight: '500',
+              minWidth: '80px',
+            },
+          }}
         >
           <Form form={form} layout="vertical">
             {/* Basic Information */}
             <Title level={5} style={{ marginBottom: '16px', color: '#1890ff' }}>
-              Basic Information
+              {t('studentManagement.basicInformation')}
             </Title>
             
             <Row gutter={16}>
@@ -902,18 +936,18 @@ STU003,Le Van Cuong,levancuong@example.com,0111222333,Lớp 11B1,Advanced,active
                 <Form.Item
                   label={
                     <span>
-                      Role Name
+                      {t('studentManagement.roleName')}
                       <span style={{ color: 'red', marginLeft: '4px' }}>*</span>
                     </span>
                   }
                   name="roleName"
                   rules={[
-                    { required: true, message: 'Role name is required' },
+                    { required: true, message: t('studentManagement.roleNameRequired') },
                   ]}
                 >
-                  <Select placeholder="Select role">
-                    <Option value="STUDENT">Student</Option>
-                    <Option value="TEST_TAKER">Test taker</Option>
+                  <Select placeholder={t('studentManagement.selectRole')}>
+                    <Option value="STUDENT">{t('common.student')}</Option>
+                    <Option value="TEST_TAKER">{t('common.testTaker')}</Option>
                   </Select>
                 </Form.Item>
               </Col>
@@ -921,18 +955,18 @@ STU003,Le Van Cuong,levancuong@example.com,0111222333,Lớp 11B1,Advanced,active
                 <Form.Item
                   label={
                     <span>
-                      Email
+                      {t('studentManagement.email')}
                       <span style={{ color: 'red', marginLeft: '4px' }}>*</span>
                     </span>
                   }
                   name="email"
                   rules={[
-                    { required: true, message: 'Email is required' },
-                    { type: 'email', message: 'Please enter a valid email' },
-                    { max: 255, message: 'Email must not exceed 255 characters' },
+                    { required: true, message: t('studentManagement.emailRequired') },
+                    { type: 'email', message: t('studentManagement.emailInvalid') },
+                    { max: 255, message: t('studentManagement.emailMaxLength') },
                   ]}
                 >
-                  <Input placeholder="Enter email address" />
+                  <Input placeholder={t('studentManagement.enterEmail')} />
                 </Form.Item>
               </Col>
             </Row>
@@ -942,34 +976,34 @@ STU003,Le Van Cuong,levancuong@example.com,0111222333,Lớp 11B1,Advanced,active
                 <Form.Item
                   label={
                     <span>
-                      First Name
+                      {t('studentManagement.firstName')}
                       <span style={{ color: 'red', marginLeft: '4px' }}>*</span>
                     </span>
                   }
                   name="firstName"
                   rules={[
-                    { required: true, message: 'First name is required' },
-                    { max: 50, message: 'First name must not exceed 50 characters' },
+                    { required: true, message: t('studentManagement.firstNameRequired') },
+                    { max: 50, message: t('studentManagement.firstNameMaxLength') },
                   ]}
                 >
-                  <Input placeholder="Enter first name" />
+                  <Input placeholder={t('studentManagement.enterFirstName')} />
                 </Form.Item>
               </Col>
               <Col span={12}>
                 <Form.Item
                   label={
                     <span>
-                      Last Name
+                      {t('studentManagement.lastName')}
                       <span style={{ color: 'red', marginLeft: '4px' }}>*</span>
                     </span>
                   }
                   name="lastName"
                   rules={[
-                    { required: true, message: 'Last name is required' },
-                    { max: 50, message: 'Last name must not exceed 50 characters' },
+                    { required: true, message: t('studentManagement.lastNameRequired') },
+                    { max: 50, message: t('studentManagement.lastNameMaxLength') },
                   ]}
                 >
-                  <Input placeholder="Enter last name" />
+                  <Input placeholder={t('studentManagement.enterLastName')} />
                 </Form.Item>
               </Col>
             </Row>
@@ -977,25 +1011,25 @@ STU003,Le Van Cuong,levancuong@example.com,0111222333,Lớp 11B1,Advanced,active
             <Row gutter={16}>
               <Col span={12}>
                 <Form.Item
-                  label="Date of Birth"
+                  label={t('studentManagement.dateOfBirth')}
                   name="dateOfBirth"
                 >
                   <DatePicker 
                     style={{ width: '100%' }}
-                    placeholder="Select date of birth"
+                    placeholder={t('studentManagement.selectDateOfBirth')}
                     format="YYYY-MM-DD"
                   />
                 </Form.Item>
               </Col>
               <Col span={12}>
                 <Form.Item
-                  label="Address"
+                  label={t('studentManagement.address')}
                   name="address"
                   rules={[
-                    { max: 255, message: 'Address must not exceed 255 characters' },
+                    { max: 255, message: t('studentManagement.addressMaxLength') },
                   ]}
                 >
-                  <Input placeholder="Enter address" />
+                  <Input placeholder={t('studentManagement.enterAddress')} />
                 </Form.Item>
               </Col>
             </Row>
@@ -1003,27 +1037,27 @@ STU003,Le Van Cuong,levancuong@example.com,0111222333,Lớp 11B1,Advanced,active
             <Row gutter={16}>
               <Col span={12}>
                 <Form.Item
-                  label="Phone Number"
+                  label={t('studentManagement.phoneNumber')}
                   name="phoneNumber"
                   rules={[
-                    { max: 20, message: 'Phone number must not exceed 20 characters' },
+                    { max: 20, message: t('studentManagement.phoneMaxLength') },
                   ]}
                 >
-                  <Input placeholder="Enter phone number" />
+                  <Input placeholder={t('studentManagement.enterPhoneNumber')} />
                 </Form.Item>
               </Col>
               <Col span={12}>
                 <Form.Item
-                  label="Gender"
+                  label={t('studentManagement.gender')}
                   name="gender"
                   rules={[
-                    { max: 10, message: 'Gender must not exceed 10 characters' },
+                    { max: 10, message: t('studentManagement.genderMaxLength') },
                   ]}
                 >
                   <Radio.Group>
-                    <Radio value="MALE">Male</Radio>
-                    <Radio value="FEMALE">Female</Radio>
-                    <Radio value="OTHER">Other</Radio>
+                    <Radio value="MALE">{t('studentManagement.male')}</Radio>
+                    <Radio value="FEMALE">{t('studentManagement.female')}</Radio>
+                    <Radio value="OTHER">{t('studentManagement.other')}</Radio>
                   </Radio.Group>
                 </Form.Item>
               </Col>
@@ -1032,17 +1066,17 @@ STU003,Le Van Cuong,levancuong@example.com,0111222333,Lớp 11B1,Advanced,active
             <Row gutter={16}>
               <Col span={12}>
                 <Form.Item
-                  label="Level"
+                  label={t('studentManagement.level')}
                   name="levelId"
                 >
                   <Select 
-                    placeholder="Select level"
+                    placeholder={t('studentManagement.selectLevel')}
                     loading={levelsLoading}
                     showSearch
                     filterOption={(input, option) =>
                       option.children.toLowerCase().indexOf(input.toLowerCase()) >= 0
                     }
-                    notFoundContent={levelsLoading ? "Loading..." : "No levels found"}
+                    notFoundContent={levelsLoading ? t("common.loading") : t("studentManagement.noLevelsFound")}
                   >
                     {levels && levels.length > 0 ? (
                       levels.map(level => {
@@ -1071,7 +1105,7 @@ STU003,Le Van Cuong,levancuong@example.com,0111222333,Lớp 11B1,Advanced,active
 
             {/* Parent Information */}
             <Title level={5} style={{ marginTop: '24px', marginBottom: '16px', color: '#1890ff' }}>
-              Parent Information
+              {t('studentManagement.parentInformation')}
             </Title>
 
             <Row gutter={16}>
@@ -1079,27 +1113,27 @@ STU003,Le Van Cuong,levancuong@example.com,0111222333,Lớp 11B1,Advanced,active
                 <Form.Item
                   label={
                     <span>
-                      Parent Name
+                      {t('studentManagement.parentName')}
                       <span style={{ color: 'red', marginLeft: '4px' }}>*</span>
                     </span>
                   }
                   name={['parentInfo', 'parentName']}
                   rules={[
-                    { required: true, message: 'Parent name is required' },
+                    { required: true, message: t('studentManagement.parentNameRequired') },
                   ]}
                 >
-                  <Input placeholder="Enter parent name" />
+                  <Input placeholder={t('studentManagement.enterParentName')} />
                 </Form.Item>
               </Col>
               <Col span={12}>
                 <Form.Item
-                  label="Parent Email"
+                  label={t('studentManagement.parentEmail')}
                   name={['parentInfo', 'parentEmail']}
                   rules={[
-                    { type: 'email', message: 'Please enter a valid email' },
+                    { type: 'email', message: t('studentManagement.emailInvalid') },
                   ]}
                 >
-                  <Input placeholder="Enter parent email" />
+                  <Input placeholder={t('studentManagement.enterParentEmail')} />
                 </Form.Item>
               </Col>
             </Row>
@@ -1109,24 +1143,24 @@ STU003,Le Van Cuong,levancuong@example.com,0111222333,Lớp 11B1,Advanced,active
                 <Form.Item
                   label={
                     <span>
-                      Parent Phone
+                      {t('studentManagement.parentPhone')}
                       <span style={{ color: 'red', marginLeft: '4px' }}>*</span>
                     </span>
                   }
                   name={['parentInfo', 'parentPhone']}
                   rules={[
-                    { required: true, message: 'Parent phone is required' },
+                    { required: true, message: t('studentManagement.parentPhoneRequired') },
                   ]}
                 >
-                  <Input placeholder="Enter parent phone number" />
+                  <Input placeholder={t('studentManagement.enterParentPhone')} />
                 </Form.Item>
               </Col>
               <Col span={12}>
                 <Form.Item
-                  label="Relationship"
+                  label={t('studentManagement.relationship')}
                   name={['parentInfo', 'relationship']}
                 >
-                  <Input placeholder="Enter relationship (e.g., Father, Mother, Guardian)" />
+                  <Input placeholder={t('studentManagement.enterRelationship')} />
                 </Form.Item>
               </Col>
             </Row>
@@ -1162,8 +1196,10 @@ STU003,Le Van Cuong,levancuong@example.com,0111222333,Lớp 11B1,Advanced,active
           }}
           okButtonProps={{
             style: {
-              backgroundColor: '#ff4d4f',
-              borderColor: '#ff4d4f',
+              backgroundColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
+              background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
+              borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'transparent',
+              color: theme === 'sun' ? '#000000' : '#ffffff',
               height: '40px',
               fontSize: '16px',
               fontWeight: '500',
@@ -1210,7 +1246,7 @@ STU003,Le Van Cuong,levancuong@example.com,0111222333,Lớp 11B1,Advanced,active
               style={{
                 fontSize: '20px',
                 fontWeight: '600',
-                color: '#1890ff',
+                color: '#000000',
                 textAlign: 'center',
                 padding: '10px 0',
                 display: 'flex',
@@ -1218,7 +1254,7 @@ STU003,Le Van Cuong,levancuong@example.com,0111222333,Lớp 11B1,Advanced,active
                 justifyContent: 'center',
                 gap: '10px',
               }}>
-              <UploadOutlined />
+              <DownloadOutlined style={{ color: '#000000' }} />
               {t('studentManagement.importStudents')}
             </div>
           }
@@ -1233,8 +1269,10 @@ STU003,Le Van Cuong,levancuong@example.com,0111222333,Lớp 11B1,Advanced,active
           okButtonProps={{
             disabled: importModal.fileList.length === 0,
             style: {
-              backgroundColor: '#52c41a',
-              borderColor: '#52c41a',
+              backgroundColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
+              background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
+              borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'transparent',
+              color: theme === 'sun' ? '#000000' : '#ffffff',
               height: '40px',
               fontSize: '16px',
               fontWeight: '500',
@@ -1250,16 +1288,6 @@ STU003,Le Van Cuong,levancuong@example.com,0111222333,Lớp 11B1,Advanced,active
             },
           }}>
           <div style={{ padding: '20px 0' }}>
-            <Title
-              level={5}
-              style={{
-                textAlign: 'center',
-                marginBottom: '20px',
-                color: '#666',
-              }}>
-              {t('studentManagement.importInstructions')}
-            </Title>
-
             <div style={{ textAlign: 'center', marginBottom: '20px' }}>
               <Button
                 type="dashed"
@@ -1276,6 +1304,16 @@ STU003,Le Van Cuong,levancuong@example.com,0111222333,Lớp 11B1,Advanced,active
               </Button>
             </div>
 
+            <Title
+              level={5}
+              style={{
+                textAlign: 'center',
+                marginBottom: '20px',
+                color: '#666',
+              }}>
+              {t('studentManagement.importInstructions')}
+            </Title>
+
             <div
               style={{
                 marginBottom: '20px',
@@ -1288,7 +1326,7 @@ STU003,Le Van Cuong,levancuong@example.com,0111222333,Lớp 11B1,Advanced,active
               <p
                 className='ant-upload-drag-icon'
                 style={{ fontSize: '48px', color: '#1890ff' }}>
-                <UploadOutlined />
+                <DownloadOutlined />
               </p>
               <p
                 className='ant-upload-text'
@@ -1302,34 +1340,6 @@ STU003,Le Van Cuong,levancuong@example.com,0111222333,Lớp 11B1,Advanced,active
             </div>
 
             <Divider />
-
-            <div
-              style={{
-                background: '#f6f8fa',
-                padding: '16px',
-                borderRadius: '8px',
-                border: '1px solid #e1e4e8',
-              }}>
-              <Title level={5} style={{ marginBottom: '12px', color: '#24292e' }}>
-                📋 {t('studentManagement.fileFormat')}
-              </Title>
-              <Text
-                style={{ color: '#586069', fontSize: '14px', lineHeight: '1.6' }}>
-                {t('studentManagement.fileFormatDescription')}
-              </Text>
-
-              <div
-                style={{ marginTop: '12px', fontSize: '13px', color: '#6a737d' }}>
-                <div>
-                  <strong>{t('studentManagement.requiredColumns')}:</strong>
-                </div>
-                <div>• studentCode, fullName, email, phone, class, level, status</div>
-                <div>
-                  <strong>{t('studentManagement.optionalColumns')}:</strong>
-                </div>
-                <div>• username, password (nếu không có sẽ tự động tạo)</div>
-              </div>
-            </div>
 
             {importModal.fileList.length > 0 && (
               <div
@@ -1359,7 +1369,7 @@ STU003,Le Van Cuong,levancuong@example.com,0111222333,Lớp 11B1,Advanced,active
               textAlign: 'center',
               padding: '10px 0'
             }}>
-              Assign Student to Class
+              {t('studentManagement.assignStudentToClass')}
             </div>
           }
           open={assignClassModal.visible}

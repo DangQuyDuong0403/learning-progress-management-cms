@@ -20,8 +20,8 @@
 
 .space-theme .main-content-panel {
 	position: relative;
-	background: rgba(110, 92, 172, 0.05); /* Rất trong suốt để nhìn xuyên qua */
-	backdrop-filter: blur(1px); /* Blur nhẹ để tạo hiệu ứng glass */
+	background: rgba(110, 92, 172, 0.5); /* Rất trong suốt để nhìn xuyên qua */
+	backdrop-filter: blur(3px); /* Blur nhẹ để tạo hiệu ứng glass */
 	border-radius: 16px;
 	padding: 24px;
 	margin: 24px;

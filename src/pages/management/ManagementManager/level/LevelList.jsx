@@ -38,6 +38,8 @@ const LevelList = () => {
 	const [toggleLoading, setToggleLoading] = useState(false);
 	const [isAllPublished, setIsAllPublished] = useState(false); 
 	const [durationDisplayUnit, setDurationDisplayUnit] = useState('weeks');
+	const [totalElements, setTotalElements] = useState(0);
+	const [currentStatus, setCurrentStatus] = useState('');
 	
 	// Cycle through duration units
 	const durationUnits = ['days', 'weeks', 'months', 'years'];
@@ -125,9 +127,21 @@ const LevelList = () => {
 			}
 
 			setLevels(mappedLevels);
+			setTotalElements(totalElements);
 			
 			// Detect current status to determine button action
 			detectPublishStatus(mappedLevels);
+			
+			// Set current status based on actual data
+			if (mappedLevels.length === 0) {
+				setCurrentStatus('');
+			} else if (mappedLevels.every(level => level.status === 'PUBLISHED')) {
+				setCurrentStatus('Published');
+			} else if (mappedLevels.every(level => level.status === 'DRAFT')) {
+				setCurrentStatus('Draft');
+			} else {
+				setCurrentStatus('Mixed');
+			}
 			
 			setPagination(prev => ({
 				...prev,
@@ -349,7 +363,7 @@ const LevelList = () => {
 
 	const columns = [
 		{
-			title: 'STT',
+			title: t('levelManagement.stt'),
 			key: 'index',
 			width: '5%',
 			render: (_, __, index) => {
@@ -388,7 +402,7 @@ const LevelList = () => {
 			width: '20%',
 			render: (prerequisite) => {
 				if (!prerequisite) {
-					return <span style={{ color: '#999' }}>None</span>;
+					return <span style={{ color: '#000000', textAlign: 'center' }}>-</span>;
 				}
 				return prerequisite.levelName || prerequisite;
 			},
@@ -448,8 +462,20 @@ const LevelList = () => {
 						level={1} 
 						className="page-title"
 					>
-						Level Management
+						{t('levelManagement.title')} ({totalElements})
 					</Typography.Title>
+					{currentStatus && (
+						<div style={{ 
+							textAlign: 'center',
+							marginTop: '8px',
+							fontSize: '20px',
+							color: currentStatus === 'Published' 
+								? (theme === 'sun' ? 'rgb(113, 179, 253)' : 'rgb(224 217 255 / 90%)')
+								: (theme === 'sun' ? '#999' : '#ccc')
+						}}>
+							{currentStatus}
+						</div>
+					)}
 				</div>
 				{/* Header Section */}
 				<div className={`panel-header ${theme}-panel-header`}>
