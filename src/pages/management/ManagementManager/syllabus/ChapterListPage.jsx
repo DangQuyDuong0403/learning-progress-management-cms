@@ -449,20 +449,6 @@ const ChapterListPage = () => {
 							onClick={() => handleViewLessons(record)}
 						/>
 					</Tooltip>
-					<Tooltip title={t('common.edit')}>
-						<Button
-							type="text"
-							size="small"
-							icon={<EditOutlined style={{ fontSize: '25px' }} />}
-							onClick={() => handleEdit(record)}
-						/>
-					</Tooltip>
-					<Button
-						type="text"
-						size="small"
-						icon={<DeleteOutlined style={{ fontSize: '25px' }} />}
-						onClick={() => handleDeleteClick(record)}
-					/>
 				</Space>
 			),
 		},
@@ -563,13 +549,6 @@ const ChapterListPage = () => {
 							>
 								{t('common.edit')}
 							</Button>
-							<Button
-								icon={<PlusOutlined />}
-								className="create-button"
-								onClick={handleAdd}
-							>
-								{t('chapterManagement.addChapter')}
-							</Button>
 						</Space>
 					</Col>
 				</Row>
@@ -607,7 +586,6 @@ const ChapterListPage = () => {
 						loading={loading}
 						pagination={{
 							...pagination,
-							showQuickJumper: true,
 							showTotal: (total, range) => {
 								return `${range[0]}-${range[1]} ${t('chapterManagement.paginationText')} ${total} ${t('chapterManagement.chapters')}`;
 							},
