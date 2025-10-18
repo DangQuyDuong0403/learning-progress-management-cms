@@ -193,6 +193,7 @@ const CONFIG_ROUTER = [
 		key: 'ADMIN_DASHBOARD',
 		private: true,
 		role: 'admin',
+		roleBased: true,
 	},
 	{
 		show: true,
@@ -204,6 +205,7 @@ const CONFIG_ROUTER = [
 		key: 'ADMIN_ACCOUNTS',
 		private: true,
 		role: 'admin',
+		roleBased: true,
 	},
 	// {
 	// 	show: true,
@@ -227,6 +229,7 @@ const CONFIG_ROUTER = [
 		key: 'MANAGER_DASHBOARD',
 		private: true,
 		role: 'manager',
+		roleBased: true,
 	},
 	{
 		show: true,

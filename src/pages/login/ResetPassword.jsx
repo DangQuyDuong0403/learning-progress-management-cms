@@ -62,12 +62,19 @@ export default function ResetPassword() {
 			if (response.data.success) {
 				spaceToast.success(response.data.message);
 				
-				// Gọi API logout để logout tất cả sessions trên backend
+				// Lưu selectedRole trước khi xóa localStorage
+				const loginRole = localStorage.getItem('selectedRole') || 'teacher';
+				
+				// Gọi API logout để logout tất cả sessions trên backend (bỏ qua lỗi)
 				try {
 					const refreshToken = localStorage.getItem('refreshToken');
 					if (refreshToken) {
-						await authApi.logout(refreshToken);
-						console.log('Successfully logged out all sessions');
+						// Không await để tránh bị block bởi lỗi
+						authApi.logout(refreshToken).then(() => {
+							console.log('Successfully logged out all sessions');
+						}).catch((logoutError) => {
+							console.log('Logout API failed, but continuing:', logoutError);
+						});
 					}
 				} catch (logoutError) {
 					console.log('Logout API failed, but continuing with token cleanup:', logoutError);
@@ -77,16 +84,34 @@ export default function ResetPassword() {
 				localStorage.removeItem('accessToken');
 				localStorage.removeItem('refreshToken');
 				localStorage.removeItem('user');
+				localStorage.removeItem('mustChangePassword');
+				localStorage.removeItem('mustUpdateProfile');
 				
-				// Chuyển về trang login sau 2 giây dựa trên role trong localStorage
-				setTimeout(() => {
-					const loginRole = localStorage.getItem('selectedRole') || 'teacher';
+				// Chuyển về trang login ngay lập tức dựa trên role đã lưu
+				console.log('Redirecting immediately with role:', loginRole);
+				try {
+					let redirectUrl;
 					if (loginRole === 'STUDENT') {
-						navigate('/login-student');
+						redirectUrl = '/login-student';
+						console.log('Redirecting to:', redirectUrl);
 					} else {
-						navigate('/login-teacher');
+						redirectUrl = '/login-teacher';
+						console.log('Redirecting to:', redirectUrl);
 					}
-				}, 2000);
+					
+					// Thử navigate trước, nếu không được thì dùng window.location
+					try {
+						navigate(redirectUrl);
+						console.log('Navigate successful');
+					} catch (navError) {
+						console.log('Navigate failed, using window.location:', navError);
+						window.location.href = redirectUrl;
+					}
+				} catch (error) {
+					console.error('All navigation methods failed:', error);
+					// Fallback cuối cùng
+					window.location.href = '/choose-login';
+				}
 			}
 		} catch (error) {
 			// Xử lý lỗi từ API - error object có cấu trúc trực tiếp

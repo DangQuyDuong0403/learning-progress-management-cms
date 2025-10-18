@@ -36,7 +36,6 @@ const LevelList = () => {
 	
 	const [loading, setLoading] = useState(false);
 	const [toggleLoading, setToggleLoading] = useState(false);
-	const [currentAction, setCurrentAction] = useState('publish'); 
 	const [isAllPublished, setIsAllPublished] = useState(false); 
 	const [durationDisplayUnit, setDurationDisplayUnit] = useState('weeks');
 	
@@ -128,7 +127,7 @@ const LevelList = () => {
 			setLevels(mappedLevels);
 			
 			// Detect current status to determine button action
-			detectCurrentAction(mappedLevels);
+			detectPublishStatus(mappedLevels);
 			
 			setPagination(prev => ({
 				...prev,
@@ -267,70 +266,42 @@ const LevelList = () => {
 	};
 
 	// Detect current action based on levels status
-	const detectCurrentAction = (levelsData) => {
+	const detectPublishStatus = (levelsData) => {
 		if (!levelsData || levelsData.length === 0) {
-			setCurrentAction('publish'); // Default to publish if no data
+			setIsAllPublished(false);
 			return;
 		}
 
-		// Check if all levels are in DRAFT status (inactive)
-		const allDraft = levelsData.every(level => level.status === 'DRAFT');
 		// Check if all levels are in PUBLISHED status (active)
 		const allPublished = levelsData.every(level => level.status === 'PUBLISHED');
+		setIsAllPublished(allPublished);
 		
-		if (allDraft) {
-			// All levels are draft → show Publish All button
-			setCurrentAction('publish');
-			setIsAllPublished(false);
-		} else if (allPublished) {
-			// All levels are published → show Draft All button
-			setCurrentAction('draft');
-			setIsAllPublished(true);
-		} else {
-			// Mixed status → default to publish
-			setCurrentAction('publish');
-			setIsAllPublished(false);
-		}
-		
-		console.log('Detected action:', {
-			allDraft,
+		console.log('Detected publish status:', {
 			allPublished,
-			currentAction: allDraft ? 'publish' : allPublished ? 'draft' : 'publish',
 			levelsStatuses: levelsData.map(l => l.status)
 		});
 	};
 
 
-	const handleTogglePublishDraft = async () => {
+	const handlePublishAll = async () => {
 		setToggleLoading(true);
 		try {
-			let response;
-			let successMessage;
-			
-			if (currentAction === 'publish') {
-				// Currently showing Publish, so execute publish
-				response = await levelManagementApi.publishAllLevels();
-				successMessage = response.message || t('levelManagement.publishAllSuccess');
-			} else {
-				// Currently showing Draft, so execute draft
-				response = await levelManagementApi.draftAllLevels();
-				successMessage = response.message || t('levelManagement.draftAllSuccess');
-			}
+			const response = await levelManagementApi.publishAllLevels();
+			const successMessage = response.message || t('levelManagement.publishAllSuccess');
 			
 			spaceToast.success(successMessage);
 			
-			// Refresh the list after action - detectCurrentAction will determine the next button state
+			// Refresh the list after action
 			fetchLevels(pagination.current, pagination.pageSize, searchText);
 		} catch (error) {
-			console.error(`Error ${currentAction === 'publish' ? 'publishing' : 'drafting'} all levels:`, error);
+			console.error('Error publishing all levels:', error);
 			
 			// Handle API errors with backend messages
 			if (error.response) {
 				const errorMessage = error.response.data.error || error.response.data?.message;
 				spaceToast.error(errorMessage);
 			} else {
-				const errorKey = currentAction === 'publish' ? 'levelManagement.publishAllError' : 'levelManagement.draftAllError';
-				spaceToast.error(error.message || t(errorKey));
+				spaceToast.error(error.message || t('levelManagement.publishAllError'));
 			}
 		} finally {
 			setToggleLoading(false);
@@ -502,10 +473,10 @@ const LevelList = () => {
 					</div>
 					<div className='action-buttons'>
 						<Button
-							icon={currentAction === 'publish' ? <SendOutlined /> : <FileTextOutlined />}
-							onClick={handleTogglePublishDraft}
+							icon={<SendOutlined />}
+							onClick={handlePublishAll}
 							loading={toggleLoading}
-							className={`toggle-publish-draft-button ${theme}-toggle-publish-draft-button`}
+							className={`publish-all-button ${theme}-publish-all-button`}
 							style={{
 								height: '40px',
 								borderRadius: '8px',
@@ -523,7 +494,7 @@ const LevelList = () => {
 									? '0 4px 12px rgba(76, 29, 149, 0.3)'
 									: '0 4px 12px rgba(24, 144, 255, 0.3)',
 							}}>
-							{currentAction === 'publish' ? t('levelManagement.publishAll') : t('levelManagement.draftAll')}
+							{t('levelManagement.publishAll')}
 						</Button>
 						<Button
 							icon={<DragOutlined />}
@@ -600,7 +571,7 @@ const LevelList = () => {
 					overflowY: 'auto',
 					padding: '24px',
 				}}>
-				<LevelForm level={editingLevel} onClose={handleModalClose} />
+				<LevelForm level={editingLevel} onClose={handleModalClose} showPrerequisiteAndCode={true} />
 			</Modal>
 
 		</ThemedLayout>

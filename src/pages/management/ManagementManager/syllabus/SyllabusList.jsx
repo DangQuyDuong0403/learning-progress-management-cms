@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import usePageTitle from '../../../../hooks/usePageTitle';
+import SecurityWrapper from '../../../../component/SecurityWrapper';
 import {
 	Table,
 	Button,
@@ -668,11 +669,12 @@ const SyllabusList = () => {
 
 
 	return (
-		<ThemedLayout>
-			<div className="syllabus-list-container">
-				{/* Page Title */}
-				<div className="page-title-container">
-					<Typography.Title 
+		<SecurityWrapper requiredRoles={['MANAGER', 'ADMIN']}>
+			<ThemedLayout>
+				<div className="syllabus-list-container">
+					{/* Page Title */}
+					<div className="page-title-container">
+						<Typography.Title 
 						level={1} 
 						className="page-title"
 					>
@@ -901,6 +903,7 @@ const SyllabusList = () => {
 			</Modal>
 			</div>
 		</ThemedLayout>
+		</SecurityWrapper>
 	);
 };
 
