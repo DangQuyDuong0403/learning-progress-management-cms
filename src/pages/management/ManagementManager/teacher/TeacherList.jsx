@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Table, Button, Space, Modal, Input, Tag, Tooltip, Typography } from 'antd';
+import { Table, Button, Space, Modal, Input, Tag, Tooltip, Typography, Switch } from 'antd';
 import {
 	PlusOutlined,
 	SearchOutlined,
@@ -35,6 +35,7 @@ const TeacherList = () => {
 	// State for teachers data
 	const [teachers, setTeachers] = useState([]);
 	const [loading, setLoading] = useState(true);
+	const [totalTeachers, setTotalTeachers] = useState(0);
 	
 	// Pagination state
 	const [pagination, setPagination] = useState({
@@ -112,6 +113,7 @@ const TeacherList = () => {
 			
 			if (response.success && response.data) {
 				setTeachers(response.data);
+				setTotalTeachers(response.totalElements || response.data.length);
 				setPagination(prev => ({
 					...prev,
 					current: page,
@@ -120,6 +122,7 @@ const TeacherList = () => {
 				}));
 			} else {
 				setTeachers([]);
+				setTotalTeachers(0);
 				setPagination(prev => ({
 					...prev,
 					current: page,
@@ -131,6 +134,7 @@ const TeacherList = () => {
 			console.error('Error fetching teachers:', error);
 			spaceToast.error(t('teacherManagement.loadTeachersError'));
 			setTeachers([]);
+			setTotalTeachers(0);
 			setPagination(prev => ({
 				...prev,
 				current: page,
@@ -353,6 +357,7 @@ const TeacherList = () => {
 	const statusOptions = [
 		{ key: "ACTIVE", label: t('teacherManagement.active') },
 		{ key: "INACTIVE", label: t('teacherManagement.inactive') },
+		{ key: "PENDING", label: t('teacherManagement.pending') },
 	];
 
 	// Role options for filter
@@ -363,9 +368,9 @@ const TeacherList = () => {
 
 	const columns = [
 		{
-			title: "STT",
+			title: t('teacherManagement.stt'),
 			key: "stt",
-			width: 60,
+			width: 50,
 			render: (_, __, index) => {
 				// Calculate index based on current page and page size
 				const currentPage = pagination.current || 1;
@@ -378,21 +383,13 @@ const TeacherList = () => {
 			},
 		},
 		{
-			title: "Username",
-			dataIndex: "userName",
-			key: "userName",
-			render: (userName) => (
-				<span className="username-text">
-					{userName}
-				</span>
-			),
-		},
-		{
-			title: "Full Name",
+			title: t('teacherManagement.fullName'),
 			dataIndex: "firstName",
 			key: "fullName",
+			width: 120,
 			sorter: true,
 			sortDirections: ['ascend', 'descend'],
+			ellipsis: true,
 			render: (_, record) => (
 				<span className="fullname-text">
 					{`${record.firstName || ''} ${record.lastName || ''}`.trim()}
@@ -400,31 +397,25 @@ const TeacherList = () => {
 			),
 		},
 		{
-			title: "Email",
-			dataIndex: "email",
-			key: "email",
-			render: (email) => (
-				<span className="email-text">
-					{email}
-				</span>
-			),
-		},
-		{
-			title: "Role",
+			title: t('teacherManagement.role'),
 			dataIndex: "roleName",
 			key: "roleName",
+			width: 100,
+			ellipsis: true,
 			render: (roleName) => (
 				<span className="role-text">
 					{roleName === 'TEACHER'
-						? 'Teacher'
-						: 'Teaching Assistant'}
+						? t('common.teacher')
+						: t('common.teachingAssistant')}
 				</span>
 			),
 		},
 		{
-			title: "Classes",
+			title: t('teacherManagement.classes'),
 			dataIndex: "classList",
 			key: "classList",
+			width: 80,
+			ellipsis: true,
 			render: (classList) => (
 				<span className="classes-text">
 					{classList ? classList.length : 0} classes
@@ -432,24 +423,34 @@ const TeacherList = () => {
 			),
 		},
 		{
-			title: "Status",
+			title: t('teacherManagement.status'),
 			dataIndex: "status",
 			key: "status",
+			width: 80,
+			align: 'center',
 			sorter: true,
 			sortDirections: ['ascend', 'descend'],
-			render: (status) => {
-				const statusConfig = {
-					ACTIVE: { color: "green", text: "Active" },
-					INACTIVE: { color: "red", text: "Inactive" },
-				};
-				const config = statusConfig[status] || statusConfig.INACTIVE;
-				return <Tag color={config.color}>{config.text}</Tag>;
+			render: (status, record) => {
+				if (status === 'PENDING') {
+					return <span style={{ color: '#000' }}>{t('teacherManagement.pending')}</span>;
+				}
+				
+				return (
+					<Switch
+						checked={status === 'ACTIVE'}
+						onChange={() => handleToggleStatus(record.id)}
+						size="large"
+						style={{
+							transform: 'scale(1.2)',
+						}}
+					/>
+				);
 			},
 		},
 		{
 			title: t('teacherManagement.actions'),
 			key: "actions",
-			width: 150,
+			width: 120,
 			render: (_, record) => (
 				<Space size='small'>
 					<Tooltip title={t('teacherManagement.viewProfile')}>
@@ -503,7 +504,7 @@ const TeacherList = () => {
 						level={1} 
 						className="page-title"
 					>
-						Teacher Management
+						{t('teacherManagement.title')} ({totalTeachers})
 					</Typography.Title>
 				</div>
 				{/* Header Section */}
@@ -523,7 +524,7 @@ const TeacherList = () => {
 								onClick={handleFilterToggle}
 								className={`filter-button ${theme}-filter-button ${filterDropdown.visible ? 'active' : ''} ${(statusFilter.length > 0 || roleNameFilter.length > 0) ? 'has-filters' : ''}`}
 							>
-								Filter
+								{t('common.filter')}
 							</Button>
 							
 							{/* Filter Dropdown Panel */}
@@ -650,7 +651,7 @@ const TeacherList = () => {
 								pageSizeOptions: ['5', '10', '20', '50', '100'],
 							}}
 							onChange={handleTableChange}
-							scroll={{ x: 1200 }}
+							scroll={{ y: 400 }}
 							className={`teacher-table ${theme}-teacher-table`}
 							showSorterTooltip={false}
 							sortDirections={['ascend', 'descend']}

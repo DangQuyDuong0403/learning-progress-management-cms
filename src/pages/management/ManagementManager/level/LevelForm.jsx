@@ -281,9 +281,9 @@ const LevelForm = ({ level, onClose, shouldCallApi = true }) => {
             loading={isSubmitting}
             size="middle"
             style={{
-              background: theme === 'sun' ? '#298EFE' : 'linear-gradient(135deg, #7228d9 0%, #9c88ff 100%)',
-              borderColor: theme === 'sun' ? '#298EFE' : '#7228d9',
-              color: '#ffffff',
+              background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, #7228d9 0%, #9c88ff 100%)',
+              borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : '#7228d9',
+              color: theme === 'sun' ? '#000000' : '#ffffff',
               height: '40px',
               width: '120px',
               fontSize: '14px',
@@ -293,10 +293,10 @@ const LevelForm = ({ level, onClose, shouldCallApi = true }) => {
             }}
             onMouseEnter={(e) => {
               if (theme === 'sun') {
-                e.target.style.background = '#1a7ce8';
-                e.target.style.borderColor = '#1a7ce8';
+                e.target.style.background = 'rgb(95, 160, 240)';
+                e.target.style.borderColor = 'rgb(95, 160, 240)';
                 e.target.style.transform = 'translateY(-2px)';
-                e.target.style.boxShadow = '0 6px 16px rgba(41, 142, 254, 0.6)';
+                e.target.style.boxShadow = '0 6px 16px rgba(113, 179, 253, 0.6)';
               } else {
                 e.target.style.background = 'linear-gradient(135deg, #5a1fb8 0%, #8a7aff 100%)';
                 e.target.style.borderColor = '#5a1fb8';
@@ -306,8 +306,8 @@ const LevelForm = ({ level, onClose, shouldCallApi = true }) => {
             }}
             onMouseLeave={(e) => {
               if (theme === 'sun') {
-                e.target.style.background = '#298EFE';
-                e.target.style.borderColor = '#298EFE';
+                e.target.style.background = 'rgb(113, 179, 253)';
+                e.target.style.borderColor = 'rgb(113, 179, 253)';
                 e.target.style.transform = 'translateY(0)';
                 e.target.style.boxShadow = 'none';
               } else {

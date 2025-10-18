@@ -163,7 +163,7 @@ const Settings = () => {
 						level={1} 
 						className="page-title"
 					>
-						Settings
+						{t('settings.title')}
 					</Typography.Title>
 				</div>
 				<div className={`settings-content ${theme}-settings-content`}>
@@ -280,16 +280,16 @@ const Settings = () => {
 				okButtonProps={{
 					style: {
 						background: theme === 'sun' 
-							? '#298EFE' 
+							? 'rgb(113, 179, 253)' 
 							: 'linear-gradient(135deg, #7228d9 0%, #9c88ff 100%)',
 						border: 'none',
-						color: '#ffffff',
+						color: theme === 'sun' ? '#000000' : '#ffffff',
 						fontWeight: '600',
 						borderRadius: '8px',
 						height: '32px',
 						padding: '0 16px',
 						boxShadow: theme === 'sun' 
-							? '0 4px 12px rgba(41, 142, 254, 0.3)' 
+							? '0 4px 12px rgba(113, 179, 253, 0.3)' 
 							: '0 4px 12px rgba(114, 40, 217, 0.3)',
 						transition: 'all 0.3s ease',
 						minWidth: '80px',

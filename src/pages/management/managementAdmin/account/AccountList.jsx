@@ -45,6 +45,7 @@ const AccountList = () => {
 	
 	const [loading, setLoading] = useState(false);
 	const [accounts, setAccounts] = useState([]);
+	const [totalElements, setTotalElements] = useState(0);
 	const [searchText, setSearchText] = useState('');
 	const [statusFilter, setStatusFilter] = useState([]);
 	const [roleFilter, setRoleFilter] = useState([]);
@@ -141,6 +142,7 @@ const AccountList = () => {
 				}));
 
 				setAccounts(mappedAccounts);
+				setTotalElements(response.totalElements);
 				setPagination((prev) => ({
 					...prev,
 					current: page,
@@ -629,12 +631,9 @@ const AccountList = () => {
 					<Switch
 						checked={status === 'ACTIVE'}
 						onChange={() => handleToggleStatus(record.id)}
-						checkedChildren={t('accountManagement.active')}
-						unCheckedChildren={t('accountManagement.inactive')}
 						size="large"
 						disabled={isDisabled}
 						style={{
-							backgroundColor: status === 'ACTIVE' ? '#52c41a' : '#ff4d4f',
 							transform: 'scale(1.2)',
 							opacity: isDisabled ? 0.5 : 1,
 						}}
@@ -682,7 +681,7 @@ const AccountList = () => {
 						level={1} 
 						className="page-title"
 					>
-						Account Management
+						{t('accountManagement.title')} ({totalElements})
 					</Typography.Title>
 				</div>
 				{/* Header Section */}
@@ -869,8 +868,7 @@ const AccountList = () => {
 				{/* Table Section */}
 				<div className={`table-section ${theme}-table-section`}>
 					<LoadingWithEffect
-						loading={loading}
-						message={t('accountManagement.loadingAccounts')}>
+						loading={loading}>
 						<Table
 							columns={columns}
 							dataSource={accounts}
@@ -927,9 +925,9 @@ const AccountList = () => {
 						type="primary" 
 						onClick={handleModalOk}
 						style={{
-							background: theme === 'sun' ? '#298EFE' : 'linear-gradient(135deg, #7228d9 0%, #9c88ff 100%)',
-							borderColor: theme === 'sun' ? '#298EFE' : '#7228d9',
-							color: '#fff',
+							background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, #7228d9 0%, #9c88ff 100%)',
+							borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : '#7228d9',
+							color: theme === 'sun' ? '#000' : '#fff',
 							borderRadius: '6px',
 							height: '32px',
 							fontWeight: '500',
@@ -941,10 +939,10 @@ const AccountList = () => {
 						}}
 						onMouseEnter={(e) => {
 							if (theme === 'sun') {
-								e.target.style.background = '#1a7ce8';
-								e.target.style.borderColor = '#1a7ce8';
+								e.target.style.background = 'rgb(95, 160, 240)';
+								e.target.style.borderColor = 'rgb(95, 160, 240)';
 								e.target.style.transform = 'translateY(-1px)';
-								e.target.style.boxShadow = '0 4px 12px rgba(41, 142, 254, 0.4)';
+								e.target.style.boxShadow = '0 4px 12px rgba(113, 179, 253, 0.4)';
 							} else {
 								e.target.style.background = 'linear-gradient(135deg, #5a1fb8 0%, #8a7aff 100%)';
 								e.target.style.borderColor = '#5a1fb8';
@@ -954,8 +952,8 @@ const AccountList = () => {
 						}}
 						onMouseLeave={(e) => {
 							if (theme === 'sun') {
-								e.target.style.background = '#298EFE';
-								e.target.style.borderColor = '#298EFE';
+								e.target.style.background = 'rgb(113, 179, 253)';
+								e.target.style.borderColor = 'rgb(113, 179, 253)';
 								e.target.style.transform = 'translateY(0)';
 								e.target.style.boxShadow = 'none';
 							} else {
@@ -1104,9 +1102,9 @@ const AccountList = () => {
 						type="primary" 
 						onClick={confirmModal.onConfirm}
 						style={{
-							background: theme === 'sun' ? '#298EFE' : 'linear-gradient(135deg, #7228d9 0%, #9c88ff 100%)',
-							borderColor: theme === 'sun' ? '#298EFE' : '#7228d9',
-							color: '#fff',
+							background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, #7228d9 0%, #9c88ff 100%)',
+							borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : '#7228d9',
+							color: theme === 'sun' ? '#000' : '#fff',
 							borderRadius: '5px',
 							height: '28px',
 							fontWeight: '500',
@@ -1118,10 +1116,10 @@ const AccountList = () => {
 						}}
 						onMouseEnter={(e) => {
 							if (theme === 'sun') {
-								e.target.style.background = '#1a7ce8';
-								e.target.style.borderColor = '#1a7ce8';
+								e.target.style.background = 'rgb(95, 160, 240)';
+								e.target.style.borderColor = 'rgb(95, 160, 240)';
 								e.target.style.transform = 'translateY(-1px)';
-								e.target.style.boxShadow = '0 4px 12px rgba(41, 142, 254, 0.4)';
+								e.target.style.boxShadow = '0 4px 12px rgba(113, 179, 253, 0.4)';
 							} else {
 								e.target.style.background = 'linear-gradient(135deg, #5a1fb8 0%, #8a7aff 100%)';
 								e.target.style.borderColor = '#5a1fb8';
@@ -1131,8 +1129,8 @@ const AccountList = () => {
 						}}
 						onMouseLeave={(e) => {
 							if (theme === 'sun') {
-								e.target.style.background = '#298EFE';
-								e.target.style.borderColor = '#298EFE';
+								e.target.style.background = 'rgb(113, 179, 253)';
+								e.target.style.borderColor = 'rgb(113, 179, 253)';
 								e.target.style.transform = 'translateY(0)';
 								e.target.style.boxShadow = 'none';
 							} else {

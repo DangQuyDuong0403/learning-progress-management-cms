@@ -275,7 +275,7 @@ const TeacherProfile = () => {
 							icon={<ArrowLeftOutlined />}
 							onClick={handleBack}
 							className={`back-button ${theme}-back-button`}>
-							{t('teacherManagement.backToTeachers')}
+							{t('common.back')}
 						</Button>
 						<Button
 							type='primary'
