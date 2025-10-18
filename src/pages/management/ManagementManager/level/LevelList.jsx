@@ -163,12 +163,14 @@ const LevelList = () => {
 			console.error('Error fetching levels:', error);
 			
 			// Handle API errors with backend messages
+			let errorMessage;
 			if (error.response) {
-				const errorMessage = error.response.data.error || error.response.data?.message;
-				spaceToast.error(errorMessage);
+				errorMessage = error.response.data.error || error.response.data?.message || error.message;
 			} else {
-				spaceToast.error(error.message || t('levelManagement.loadLevelsError'));
+				errorMessage = error.message;
 			}
+			
+			spaceToast.error(errorMessage);
 			setLoading(false);
 		}
 	}, [t]);
@@ -251,12 +253,14 @@ const LevelList = () => {
 			console.error('Error fetching level details:', error);
 			
 			// Handle API errors with backend messages
+			let errorMessage;
 			if (error.response) {
-				const errorMessage = error.response.data.error || error.response.data?.message;
-				spaceToast.error(errorMessage);
+				errorMessage = error.response.data.error || error.response.data?.message || error.message;
 			} else {
-				spaceToast.error(error.message || t('levelManagement.loadLevelDetailsError'));
+				errorMessage = error.message;
 			}
+			
+			spaceToast.error(errorMessage);
 			setIsModalVisible(false); // Đóng modal nếu có lỗi
 		}
 	};
@@ -308,12 +312,14 @@ const LevelList = () => {
 			console.error('Error publishing all levels:', error);
 			
 			// Handle API errors with backend messages
+			let errorMessage;
 			if (error.response) {
-				const errorMessage = error.response.data.error || error.response.data?.message;
-				spaceToast.error(errorMessage);
+				errorMessage = error.response.data.error || error.response.data?.message || error.message;
 			} else {
-				spaceToast.error(error.message || t('levelManagement.publishAllError'));
+				errorMessage = error.message;
 			}
+			
+			spaceToast.error(errorMessage);
 		} finally {
 			setToggleLoading(false);
 		}

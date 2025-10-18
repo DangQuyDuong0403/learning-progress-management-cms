@@ -40,6 +40,11 @@ const syllabusManagementApi = {
     downloadLessonTemplate: () => axiosClient.get('/lesson/download-template', {
         responseType: 'blob'
     }),
+    
+    // Syllabus Import/Export APIs
+    downloadSyllabusTemplate: () => axiosClient.get('/syllabus/download-template', {
+        responseType: 'blob'
+    }),
 }
 
 export default syllabusManagementApi;
