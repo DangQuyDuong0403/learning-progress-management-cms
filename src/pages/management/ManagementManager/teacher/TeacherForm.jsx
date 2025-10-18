@@ -269,7 +269,14 @@ const TeacherForm = ({ teacher, onClose, onSuccess }) => {
 							type="primary"
 							htmlType="submit"
 							loading={loading}
-							style={{ width: '100%', height: 40 }}
+							style={{ 
+								width: '100%', 
+								height: 40,
+								backgroundColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
+								background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
+								borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'transparent',
+								color: theme === 'sun' ? '#000000' : '#ffffff',
+							}}
 							className={`submit-button ${theme}-submit-button`}
 						>
 							{teacher ? t('common.update') : t('common.save')}

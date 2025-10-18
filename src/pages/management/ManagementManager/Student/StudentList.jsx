@@ -317,7 +317,7 @@ const StudentList = () => {
               {currentClassInfo.name}
             </span>
           );
-        } else {
+        } else if (record.status === 'ACTIVE') {
           return (
             <Button
               type="primary"
@@ -336,6 +336,12 @@ const StudentList = () => {
             >
               {t('studentManagement.assignToClass')}
             </Button>
+          );
+        } else {
+          return (
+            <span className="class-text">
+              -
+            </span>
           );
         }
       },
@@ -730,14 +736,14 @@ STU003,Le Van Cuong,levancuong@example.com,0111222333,Lớp 11B1,Advanced,active
           {/* Header Section */}
           <div className={`panel-header ${theme}-panel-header`}>
             <div className="search-section" style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-              <Input
-                prefix={<SearchOutlined />}
-                value={searchText}
-                onChange={(e) => handleSearch(e.target.value)}
-                className={`search-input ${theme}-search-input`}
-                style={{ flex: '1', minWidth: '250px', maxWidth: '400px', width: '350px', height: '40px', fontSize: '16px' }}
-                allowClear
-              />
+            <Input
+              prefix={<SearchOutlined />}
+              value={searchText}
+              onChange={(e) => handleSearch(e.target.value)}
+              className={`search-input ${theme}-search-input`}
+              style={{ flex: '1', minWidth: '200px', maxWidth: '300px', width: '250px', height: '40px', fontSize: '16px' }}
+              allowClear
+            />
               <div ref={filterContainerRef} style={{ position: 'relative' }}>
                 <Button 
                   icon={<FilterOutlined />}
@@ -853,11 +859,10 @@ STU003,Le Van Cuong,levancuong@example.com,0111222333,Lớp 11B1,Advanced,active
           </div>
 
           {/* Table Section */}
-          <div className={`table-section ${theme}-table-section`}>
-            <LoadingWithEffect
-              loading={loading}
-              message={t('studentManagement.loadingStudents')}>
-              <Table
+				<div className={`table-section ${theme}-table-section`}>
+					<LoadingWithEffect
+						loading={loading}>
+						<Table
                 columns={columns}
                 dataSource={students}
                 rowKey="id"

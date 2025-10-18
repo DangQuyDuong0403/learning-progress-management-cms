@@ -281,7 +281,13 @@ const TeacherProfile = () => {
 							type='primary'
 							icon={<EditOutlined />}
 							onClick={handleEdit}
-							className={`edit-button ${theme}-edit-button`}>
+							className={`edit-button ${theme}-edit-button`}
+							style={{
+								backgroundColor: theme === 'sun' ? 'linear-gradient(135deg, #66AEFF, #3C99FF)' : 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)',
+								background: theme === 'sun' ? 'linear-gradient(135deg, #66AEFF, #3C99FF)' : 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)',
+								borderColor: theme === 'sun' ? 'transparent' : 'transparent',
+								color: '#000000',
+							}}>
 							{t('teacherManagement.editProfile')}
 						</Button>
 					</div>
@@ -348,18 +354,18 @@ const TeacherProfile = () => {
 													fontWeight: '500',
 												}}
 												className={`role-text ${theme}-role-text`}>
-												{teacher.roleName === 'TEACHER' ? 'Teacher' : teacher.roleName === 'TEACHING_ASSISTANT' ? 'Teaching Assistant' : 'N/A'}
+												{teacher.roleName === 'TEACHER' ? t('common.teacher') : teacher.roleName === 'TEACHING_ASSISTANT' ? t('common.teachingAssistant') : 'N/A'}
 											</span>
 											<span
 												style={{
 													fontSize: '16px',
 													padding: '6px 12px',
 													borderRadius: '8px',
-													color: teacher.status === 'ACTIVE' ? '#52c41a' : '#ff4d4f',
+													color: teacher.status === 'ACTIVE' ? '#52c41a' : teacher.status === 'PENDING' ? '#faad14' : '#ff4d4f',
 													fontWeight: '500',
 												}}
 												className={`status-text ${theme}-status-text`}>
-												{teacher.status === 'ACTIVE' ? 'Active' : 'Inactive'}
+												{teacher.status === 'ACTIVE' ? t('teacherManagement.active') : teacher.status === 'PENDING' ? t('teacherManagement.pending') : t('teacherManagement.inactive')}
 											</span>
 										</div>
 									</div>
@@ -383,7 +389,7 @@ const TeacherProfile = () => {
 										</p>
 										<p style={{ color: theme === 'space' ? '#ffffff' : '#000000' }}>
 											<strong style={{ color: theme === 'space' ? '#ffffff' : '#000000' }}>{t('teacherManagement.gender')}:</strong>{' '}
-											<span style={{ color: theme === 'space' ? '#ffffff' : '#000000' }}>{teacher.gender === 'MALE' ? 'Male' : teacher.gender === 'FEMALE' ? 'Female' : teacher.gender === 'OTHER' ? 'Other' : 'N/A'}</span>
+											<span style={{ color: theme === 'space' ? '#ffffff' : '#000000' }}>{teacher.gender === 'MALE' ? t('common.male') : teacher.gender === 'FEMALE' ? t('common.female') : teacher.gender === 'OTHER' ? t('common.other') : 'N/A'}</span>
 										</p>
 										<p style={{ color: theme === 'space' ? '#ffffff' : '#000000' }}>
 											<strong style={{ color: theme === 'space' ? '#ffffff' : '#000000' }}>{t('teacherManagement.address')}:</strong>{' '}
@@ -463,11 +469,11 @@ const TeacherProfile = () => {
 				<Modal
 					title={
 						<div style={{ 
-							fontSize: '26px', 
+							fontSize: '18px', 
 							fontWeight: '600', 
-							color: '#000000ff',
+							color: '#000000',
 							textAlign: 'center',
-							padding: '10px 0'
+							padding: '8px 0'
 						}}>
 							{t('teacherManagement.editProfile')}
 						</div>
@@ -475,7 +481,7 @@ const TeacherProfile = () => {
 					open={editModalVisible}
 					onCancel={() => setEditModalVisible(false)}
 					footer={null}
-					width={800}
+					width={600}
 					className={`edit-modal ${theme}-edit-modal`}
 				>
 					<Form
@@ -484,18 +490,18 @@ const TeacherProfile = () => {
 						onFinish={handleEditSubmit}
 					>
 						{/* Avatar Section */}
-						<Row gutter={24} style={{ marginBottom: 24 }}>
+						<Row gutter={16} style={{ marginBottom: 16 }}>
 							<Col span={24} style={{ textAlign: 'center' }}>
 								<div className="avatar-section">
 									<Avatar
-										size={120}
+										size={80}
 										icon={<UserOutlined />}
 										src={avatarUrl}
 										style={{ 
 											backgroundColor: '#1890ff',
-											marginBottom: 16,
-											border: `3px solid ${theme === 'space' ? 'rgba(77, 208, 255, 0.5)' : 'rgba(0, 0, 0, 0.1)'}`,
-											boxShadow: `0 4px 12px ${theme === 'space' ? 'rgba(77, 208, 255, 0.3)' : 'rgba(0, 0, 0, 0.1)'}`
+											marginBottom: 12,
+											border: `2px solid ${theme === 'space' ? 'rgba(77, 208, 255, 0.5)' : 'rgba(0, 0, 0, 0.1)'}`,
+											boxShadow: `0 2px 8px ${theme === 'space' ? 'rgba(77, 208, 255, 0.3)' : 'rgba(0, 0, 0, 0.1)'}`
 										}}
 									/>
 									<div>
@@ -512,7 +518,7 @@ const TeacherProfile = () => {
 												filterOption={(input, option) =>
 													option.children.toLowerCase().indexOf(input.toLowerCase()) >= 0
 												}
-												style={{ width: 200 }}
+												style={{ width: 160 }}
 											>
 												{teacherAvatarImages.map((avatar, index) => (
 													<Select.Option key={index} value={avatar}>
@@ -534,7 +540,7 @@ const TeacherProfile = () => {
 						</Row>
 
 						{/* Basic Information */}
-						<Title level={5} style={{ marginBottom: '16px', color: '#1890ff' }}>
+						<Title level={5} style={{ marginBottom: '12px', color: '#000000', fontSize: '16px' }}>
 							{t('teacherManagement.basicInformation')}
 						</Title>
 						
@@ -674,12 +680,12 @@ const TeacherProfile = () => {
 						</Row>
 
 						{/* Action Buttons */}
-						<Row gutter={16} style={{ marginTop: 32 }}>
+						<Row gutter={16} style={{ marginTop: 24 }}>
 							<Col span={12}>
 								<Button
 									type="default"
 									onClick={() => setEditModalVisible(false)}
-									style={{ width: '100%', height: 40 }}
+									style={{ width: '100%', height: 32 }}
 								>
 									{t('common.cancel')}
 								</Button>
@@ -689,7 +695,14 @@ const TeacherProfile = () => {
 									type="primary"
 									htmlType="submit"
 									loading={editLoading}
-									style={{ width: '100%', height: 40 }}
+									style={{ 
+										width: '100%', 
+										height: 32,
+										backgroundColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
+										background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
+										borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'transparent',
+										color: theme === 'sun' ? '#000000' : '#ffffff',
+									}}
 								>
 									{t('teacherManagement.updateProfile')}
 								</Button>

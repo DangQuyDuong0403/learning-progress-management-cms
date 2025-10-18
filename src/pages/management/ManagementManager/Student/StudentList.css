@@ -1397,10 +1397,10 @@ div.student-profile .space-theme .edit-button:hover {
 .student-profile .reset-password-button,
 .student-profile .progress-button,
 .student-profile .edit-button {
-	height: 40px;
+	height: 32px;
 	border-radius: 8px;
 	font-weight: 500;
-	font-size: 16px;
+	font-size: 14px;
 	border: 1px solid rgba(131, 119, 160, 0.3);
 	background: linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%);
 	color: #000;

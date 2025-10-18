@@ -380,19 +380,21 @@ const StudentProfile = () => {
 											fontWeight: '500',
 										}}
 										className={`role-text ${theme}-role-text`}>
-										{student.roleName ? student.roleName.charAt(0).toUpperCase() + student.roleName.slice(1).toLowerCase() : 'N/A'}
+										{student.roleName === 'STUDENT' ? t('common.student') : student.roleName === 'TEST_TAKER' ? t('common.testTaker') : 'N/A'}
 									</span>
 									<span
 										style={{
 											fontSize: '16px',
 											padding: '6px 12px',
 											borderRadius: '8px',
-											color: student.status === 'ACTIVE' ? '#52c41a' : '#ff4d4f',
+											color: student.status === 'ACTIVE' ? '#52c41a' : student.status === 'PENDING' ? '#faad14' : '#ff4d4f',
 											fontWeight: '500',
 										}}
 										className={`status-text ${theme}-status-text`}>
 										{student.status === 'ACTIVE'
 											? t('studentManagement.active')
+											: student.status === 'PENDING'
+											? t('studentManagement.pending')
 											: t('studentManagement.inactive')}
 									</span>
 								</div>
@@ -417,7 +419,7 @@ const StudentProfile = () => {
 								</p>
 								<p>
 									<strong>{t('studentManagement.gender')}:</strong>{' '}
-									{student.gender ? student.gender.charAt(0).toUpperCase() + student.gender.slice(1).toLowerCase() : '-'}
+									{student.gender === 'MALE' ? t('common.male') : student.gender === 'FEMALE' ? t('common.female') : student.gender === 'OTHER' ? t('common.other') : '-'}
 								</p>
 								<p>
 									<strong>{t('studentManagement.address')}:</strong>{' '}
@@ -492,7 +494,7 @@ const StudentProfile = () => {
 				open={editModalVisible}
 				onCancel={() => setEditModalVisible(false)}
 				footer={null}
-				width={800}
+				width={600}
 				className={`edit-modal ${theme}-edit-modal`}
 			>
 				<Form
@@ -501,18 +503,18 @@ const StudentProfile = () => {
 					onFinish={handleEditSubmit}
 				>
 					{/* Avatar Section */}
-					<Row gutter={24} style={{ marginBottom: 24 }}>
+					<Row gutter={16} style={{ marginBottom: 16 }}>
 						<Col span={24} style={{ textAlign: 'center' }}>
 							<div className="avatar-section">
 								<Avatar
-									size={120}
+									size={80}
 									icon={<UserOutlined />}
 									src={avatarUrl}
 									style={{ 
 										backgroundColor: '#1890ff',
-										marginBottom: 16,
-										border: `3px solid ${theme === 'space' ? 'rgba(77, 208, 255, 0.5)' : 'rgba(0, 0, 0, 0.1)'}`,
-										boxShadow: `0 4px 12px ${theme === 'space' ? 'rgba(77, 208, 255, 0.3)' : 'rgba(0, 0, 0, 0.1)'}`
+										marginBottom: 12,
+										border: `2px solid ${theme === 'space' ? 'rgba(77, 208, 255, 0.5)' : 'rgba(0, 0, 0, 0.1)'}`,
+										boxShadow: `0 2px 8px ${theme === 'space' ? 'rgba(77, 208, 255, 0.3)' : 'rgba(0, 0, 0, 0.1)'}`
 									}}
 								/>
 								<div>
@@ -529,7 +531,7 @@ const StudentProfile = () => {
 											filterOption={(input, option) =>
 												option.children.toLowerCase().indexOf(input.toLowerCase()) >= 0
 											}
-											style={{ width: 200 }}
+											style={{ width: 160 }}
 										>
 											{avatarImages.map((avatar, index) => (
 												<Select.Option key={index} value={avatar}>
@@ -551,7 +553,7 @@ const StudentProfile = () => {
 					</Row>
 
 					{/* Basic Information */}
-					<Row gutter={24}>
+					<Row gutter={16}>
 						<Col span={12}>
 							<Form.Item
 								name="roleName"
@@ -594,7 +596,7 @@ const StudentProfile = () => {
 						</Col>
 					</Row>
 
-					<Row gutter={24}>
+					<Row gutter={16}>
 						<Col span={12}>
 							<Form.Item
 								name="firstName"
@@ -627,7 +629,7 @@ const StudentProfile = () => {
 						</Col>
 					</Row>
 
-					<Row gutter={24}>
+					<Row gutter={16}>
 						<Col span={12}>
 							<Form.Item
 								name="phoneNumber"
@@ -658,7 +660,7 @@ const StudentProfile = () => {
 						</Col>
 					</Row>
 
-					<Row gutter={24}>
+					<Row gutter={16}>
 						<Col span={12}>
 							<Form.Item
 								name="gender"
@@ -689,7 +691,7 @@ const StudentProfile = () => {
 						</Col>
 					</Row>
 
-					<Row gutter={24}>
+					<Row gutter={16}>
 						<Col span={12}>
 							<Form.Item
 								name="levelId"
@@ -732,17 +734,17 @@ const StudentProfile = () => {
 
 					{/* Parent Information Section */}
 					{student.parentInfo && (
-						<div style={{ marginTop: 32, marginBottom: 24 }}>
+						<div style={{ marginTop: 24, marginBottom: 16 }}>
 							<h3 className={`section-title ${theme}-section-title`} style={{ 
-								fontSize: '18px', 
+								fontSize: '16px', 
 								fontWeight: '600', 
-								marginBottom: '20px',
+								marginBottom: '16px',
 								color: '#000000'
 							}}>
 								{t('studentManagement.parentInformation')}
 							</h3>
 							
-							<Row gutter={24}>
+							<Row gutter={16}>
 								<Col span={12}>
 									<Form.Item
 										name="parentName"
@@ -799,12 +801,12 @@ const StudentProfile = () => {
 					)}
 
 					{/* Action Buttons */}
-					<Row gutter={16} style={{ marginTop: 32 }}>
+					<Row gutter={16} style={{ marginTop: 24 }}>
 						<Col span={12}>
 							<Button
 								type="default"
 								onClick={() => setEditModalVisible(false)}
-								style={{ width: '100%', height: 40 }}
+								style={{ width: '100%', height: 32 }}
 								className={`cancel-button ${theme}-cancel-button`}
 							>
 								{t('common.cancel')}
@@ -817,7 +819,7 @@ const StudentProfile = () => {
 								loading={editLoading}
 								style={{ 
 									width: '100%', 
-									height: 40,
+									height: 32,
 									backgroundColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
 									background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
 									borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'transparent',
@@ -836,11 +838,11 @@ const StudentProfile = () => {
 			<Modal
 				title={
 					<div style={{ 
-						fontSize: '20px', 
+						fontSize: '18px', 
 						fontWeight: '600', 
 						color: '#000000',
 						textAlign: 'center',
-						padding: '10px 0'
+						padding: '8px 0'
 					}}>
 						{t('studentManagement.resetPasswordToDefault')}
 					</div>
@@ -848,37 +850,37 @@ const StudentProfile = () => {
 				open={resetPasswordModalVisible}
 				onCancel={() => setResetPasswordModalVisible(false)}
 				footer={null}
-				width={500}
+				width={400}
 				centered
 			>
-				<div style={{ textAlign: 'center', padding: '20px 0' }}>
-					<div style={{ marginBottom: 24 }}>
+				<div style={{ textAlign: 'center', padding: '16px 0' }}>
+					<div style={{ marginBottom: 20 }}>
 						<p style={{ 
-							fontSize: '16px', 
+							fontSize: '14px', 
 							color: '#666', 
 							textAlign: 'center',
-							marginBottom: '20px',
-							lineHeight: '1.6'
+							marginBottom: '16px',
+							lineHeight: '1.5'
 						}}>
 							{t('studentManagement.resetPasswordToDefaultConfirmation')} <strong>{student.firstName} {student.lastName}</strong>?
 						</p>
 						<p style={{ 
-							fontSize: '14px', 
+							fontSize: '12px', 
 							color: '#999', 
 							textAlign: 'center',
-							marginBottom: '20px'
+							marginBottom: '16px'
 						}}>
 							{t('studentManagement.resetPasswordToDefaultNote')}
 						</p>
 					</div>
 
 					{/* Action Buttons */}
-					<Row gutter={16} style={{ marginTop: 32 }}>
+					<Row gutter={16} style={{ marginTop: 24 }}>
 						<Col span={12}>
 							<Button
 								type="default"
 								onClick={() => setResetPasswordModalVisible(false)}
-								style={{ width: '100%', height: 40 }}
+								style={{ width: '100%', height: 32 }}
 								className={`cancel-button ${theme}-cancel-button`}
 							>
 								{t('common.cancel')}
@@ -891,7 +893,7 @@ const StudentProfile = () => {
 								loading={resetPasswordLoading}
 								style={{ 
 									width: '100%', 
-									height: 40,
+									height: 32,
 									backgroundColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
 									background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
 									borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'transparent',
