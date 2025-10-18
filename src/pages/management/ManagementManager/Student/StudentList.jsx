@@ -920,7 +920,6 @@ const StudentList = () => {
   // Handle download template
   const handleDownloadTemplate = async () => {
     try {
-      spaceToast.info('Downloading template...');
       
       const response = await studentManagementApi.downloadStudentTemplate();
       
@@ -1628,7 +1627,6 @@ const StudentList = () => {
               </p>
               <p className='ant-upload-hint' style={{ color: '#999' }}>
                 {t('studentManagement.supportedFormats')}: Excel (.xlsx, .xls),
-                CSV (.csv)
               </p>
             </Upload.Dragger>
 
