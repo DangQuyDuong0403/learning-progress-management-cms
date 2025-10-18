@@ -313,194 +313,162 @@ const TeacherProfile = () => {
 					</div>
 
 					{/* Teacher Info Card */}
-					<Card className={`profile-card ${theme}-profile-card`}>
-						<Row gutter={24}>
-							<Col span={6}>
-								<div className='avatar-section' style={{ position: 'relative' }}>
-									<div
-										onClick={() => document.getElementById('teacher-avatar-upload').click()}
-										style={{
-											cursor: 'pointer',
-											position: 'relative',
-											display: 'inline-block'
-										}}
-									>
-										<Avatar
-											size={120}
-											icon={<UserOutlined />}
-											src={avatarUrl}
-											style={{
-												backgroundColor: '#1890ff',
-												border: `3px solid ${
-													theme === 'space'
-														? 'rgba(77, 208, 255, 0.5)'
-														: 'rgba(0, 0, 0, 0.1)'
-												}`,
-												boxShadow: `0 4px 12px ${
-													theme === 'space'
-														? 'rgba(77, 208, 255, 0.3)'
-														: 'rgba(0, 0, 0, 0.1)'
-												}`,
-											}}
-										/>
-										{avatarUploadLoading && (
-											<div
-												style={{
-													position: 'absolute',
-													top: 0,
-													left: 0,
-													right: 0,
-													bottom: 0,
-													backgroundColor: 'rgba(0, 0, 0, 0.5)',
-													display: 'flex',
-													alignItems: 'center',
-													justifyContent: 'center',
-													borderRadius: '50%',
-												}}
-											>
-												<Spin size="small" />
-											</div>
-										)}
-									</div>
-									<input
-										id="teacher-avatar-upload"
-										type="file"
-										accept="image/*"
-										style={{ display: 'none' }}
-										onChange={(e) => {
-											const file = e.target.files[0];
-											if (file) {
-												// Validate file type
-												if (!file.type.startsWith('image/')) {
-													spaceToast.error(t('teacherManagement.invalidFileType'));
-													return;
-												}
-												// Validate file size (max 5MB)
-												if (file.size > 5 * 1024 * 1024) {
-													spaceToast.error(t('teacherManagement.fileTooLarge'));
-													return;
-												}
-												handleAvatarUpload(file);
-											}
-										}}
+					<div className={`profile-container-new ${theme}-profile-container-new`}>
+						{/* Profile Title */}
+						<div className={`profile-title-new ${theme}-profile-title-new`}>
+							{t('common.profile')}
+						</div>
+						
+						<div className={`profile-content-new ${theme}-profile-content-new`}>
+							{/* Left Section - Avatar */}
+							<div className={`avatar-section-new ${theme}-avatar-section-new`}>
+								<div 
+									className="profile-picture-new" 
+									onClick={() => document.getElementById('teacher-avatar-upload').click()}
+								>
+									<Avatar
+										size={120}
+										icon={<UserOutlined />}
+										src={avatarUrl}
+										className={`avatar-image-new ${theme}-avatar-image-new`}
 									/>
-									<p style={{ 
-										textAlign: 'center', 
-										marginTop: '8px', 
-										fontSize: '12px',
-										color: theme === 'space' ? '#ffffff' : '#000000',
-										cursor: 'pointer'
-									}}>
-										{t('teacherManagement.clickToChangeAvatar')}
-									</p>
-								</div>
-							</Col>
-							<Col span={18}>
-								<div
-									className='teacher-info'
-									style={{
-										display: 'flex',
-										flexDirection: 'column',
-										alignItems: 'flex-start',
-										gap: '8px',
-										marginBottom: '16px',
-									}}>
-									<div
-										style={{
-											display: 'flex',
-											flexDirection: 'column', // ✅ sắp xếp theo cột
-											alignItems: 'flex-start', // căn trái
-											gap: '8px', // khoảng cách giữa các dòng
-											marginBottom: '16px',
-										}}>
-										<h2
-											className={`teacher-name ${theme}-teacher-name`}
-											style={{ 
-												margin: 0,
-												color: theme === 'space' ? '#ffffff' : '#000000'
-											}}>
-											{teacher.firstName} {teacher.lastName}
-										</h2>
-
-										<div style={{ display: 'flex', gap: '8px' }}>
-											<span
-												style={{
-													fontSize: '16px',
-													padding: '6px 12px',
-													borderRadius: '8px',
-													color: '#1890ff',
-													fontWeight: '500',
-												}}
-												className={`role-text ${theme}-role-text`}>
-												{teacher.roleName === 'TEACHER' ? t('common.teacher') : teacher.roleName === 'TEACHING_ASSISTANT' ? t('common.teachingAssistant') : 'N/A'}
-											</span>
-											<span
-												style={{
-													fontSize: '16px',
-													padding: '6px 12px',
-													borderRadius: '8px',
-													color: teacher.status === 'ACTIVE' ? '#52c41a' : teacher.status === 'PENDING' ? '#faad14' : '#ff4d4f',
-													fontWeight: '500',
-												}}
-												className={`status-text ${theme}-status-text`}>
-												{teacher.status === 'ACTIVE' ? t('teacherManagement.active') : teacher.status === 'PENDING' ? t('teacherManagement.pending') : t('teacherManagement.inactive')}
-											</span>
+									{avatarUploadLoading && (
+										<div className="avatar-loading-overlay">
+											Uploading...
 										</div>
-									</div>
+									)}
+								</div>
+								
+								{/* Email */}
+								<div className={`email-section-new ${theme}-email-section-new`}>
+									<span className={`email-text-new ${theme}-email-text-new`}>
+										{teacher.email || '-'}
+									</span>
+								</div>
+							</div>
 
-									<div className='teacher-details' style={{ color: theme === 'space' ? '#ffffff' : '#000000' }}>
-										<p style={{ color: theme === 'space' ? '#ffffff' : '#000000' }}>
-											<strong style={{ color: theme === 'space' ? '#ffffff' : '#000000' }}>{t('teacherManagement.teacherCode')}:</strong>{' '}
-											<span style={{ color: theme === 'space' ? '#ffffff' : '#000000' }}>{teacher.userName}</span>
-										</p>
-										<p style={{ color: theme === 'space' ? '#ffffff' : '#000000' }}>
-											<strong style={{ color: theme === 'space' ? '#ffffff' : '#000000' }}>{t('teacherManagement.email')}:</strong>{' '}
-											<span style={{ color: theme === 'space' ? '#ffffff' : '#000000' }}>{teacher.email}</span>
-										
-										</p>
-										<p style={{ color: theme === 'space' ? '#ffffff' : '#000000' }}>
-											<strong style={{ color: theme === 'space' ? '#ffffff' : '#000000' }}>{t('teacherManagement.phone')}:</strong>{' '}
-											<span style={{ color: theme === 'space' ? '#ffffff' : '#000000' }}>{teacher.phoneNumber || 'N/A'}</span>
-										</p>
-										<p style={{ color: theme === 'space' ? '#ffffff' : '#000000' }}>
-											<strong style={{ color: theme === 'space' ? '#ffffff' : '#000000' }}>{t('teacherManagement.dateOfBirth')}:</strong>{' '}
-											<span style={{ color: theme === 'space' ? '#ffffff' : '#000000' }}>{teacher.dateOfBirth ? new Date(teacher.dateOfBirth).toLocaleDateString('vi-VN') : 'N/A'}</span>
-										</p>
-										<p style={{ color: theme === 'space' ? '#ffffff' : '#000000' }}>
-											<strong style={{ color: theme === 'space' ? '#ffffff' : '#000000' }}>{t('teacherManagement.gender')}:</strong>{' '}
-											<span style={{ color: theme === 'space' ? '#ffffff' : '#000000' }}>{teacher.gender === 'MALE' ? t('common.male') : teacher.gender === 'FEMALE' ? t('common.female') : teacher.gender === 'OTHER' ? t('common.other') : 'N/A'}</span>
-										</p>
-										<p style={{ color: theme === 'space' ? '#ffffff' : '#000000' }}>
-											<strong style={{ color: theme === 'space' ? '#ffffff' : '#000000' }}>{t('teacherManagement.address')}:</strong>{' '}
-											<span style={{ color: theme === 'space' ? '#ffffff' : '#000000' }}>{teacher.address || 'N/A'}</span>
-										</p>
+							{/* Right Section - Teacher Info */}
+							<div className={`student-info-new ${theme}-student-info-new`}>
+								{/* Name and Status Row */}
+								<div className={`name-status-row-new ${theme}-name-status-row-new`}>
+									<h2 className={`student-name-new ${theme}-student-name-new`}>
+										{teacher.firstName} {teacher.lastName}
+									</h2>
+									<div className={`status-badges-new ${theme}-status-badges-new`}>
+										<span 
+											className={`role-badge-new ${theme}-role-badge-new`}
+											style={{ color: theme === 'sun' ? '#3b82f6' : undefined }}
+										>
+											{teacher.roleName === 'TEACHER' ? t('common.teacher') : teacher.roleName === 'TEACHING_ASSISTANT' ? t('common.teachingAssistant') : 'N/A'}
+										</span>
+										<span className={`status-badge-new ${theme}-status-badge-new ${teacher.status?.toLowerCase()}`}>
+											{teacher.status === 'ACTIVE'
+												? t('teacherManagement.active')
+												: teacher.status === 'PENDING'
+												? t('teacherManagement.pending')
+												: t('teacherManagement.inactive')}
+										</span>
 									</div>
 								</div>
-							</Col>
-						</Row>
-					</Card>
+								
+								{/* Teacher ID */}
+								<div className={`student-id-new ${theme}-student-id-new`}>
+									{teacher.userName || '-'}
+								</div>
+
+								{/* Personal Information Grid */}
+								<div className={`personal-info-grid-new ${theme}-personal-info-grid-new`}>
+									<div className={`info-item-new ${theme}-info-item-new`}>
+										<span className={`info-label-new ${theme}-info-label-new`}>{t('teacherManagement.phone')}</span>
+										<span className={`info-value-new ${theme}-info-value-new`}>{teacher.phoneNumber || '-'}</span>
+									</div>
+									<div className={`info-item-new ${theme}-info-item-new`}>
+										<span className={`info-label-new ${theme}-info-label-new`}>{t('teacherManagement.gender')}</span>
+										<span className={`info-value-new ${theme}-info-value-new`}>
+											{teacher.gender === 'MALE' ? t('common.male') : teacher.gender === 'FEMALE' ? t('common.female') : teacher.gender === 'OTHER' ? t('common.other') : '-'}
+										</span>
+									</div>
+									<div className={`info-item-new ${theme}-info-item-new`}>
+										<span className={`info-label-new ${theme}-info-label-new`}>{t('teacherManagement.dateOfBirth')}</span>
+										<span className={`info-value-new ${theme}-info-value-new`}>
+											{teacher.dateOfBirth ? new Date(teacher.dateOfBirth).toLocaleDateString('vi-VN') : '-'}
+										</span>
+									</div>
+									<div className={`info-item-new ${theme}-info-item-new`}>
+										<span className={`info-label-new ${theme}-info-label-new`}>{t('teacherManagement.address')}</span>
+										<span className={`info-value-new ${theme}-info-value-new`}>{teacher.address || '-'}</span>
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+
+					{/* Hidden file input for avatar upload */}
+					<input
+						id="teacher-avatar-upload"
+						type="file"
+						accept="image/*"
+						style={{ display: 'none' }}
+						onChange={(e) => {
+							const file = e.target.files[0];
+							if (file) {
+								// Validate file type
+								if (!file.type.startsWith('image/')) {
+									spaceToast.error(t('teacherManagement.invalidFileType'));
+									return;
+								}
+								// Validate file size (max 5MB)
+								if (file.size > 5 * 1024 * 1024) {
+									spaceToast.error(t('teacherManagement.fileTooLarge'));
+									return;
+								}
+								handleAvatarUpload(file);
+							}
+						}}
+					/>
 
 					{/* Current Classes */}
-					<Card
-						title={
+					<div 
+						style={{ 
+							background: theme === 'space' ? 'rgb(224 217 255 / 95%)' : theme === 'sun' ? '#E6F5FF' : 'rgba(240, 248, 255, 0.95)',
+							borderRadius: '16px',
+							padding: '20px',
+							boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+							border: theme === 'space' ? '1px solid rgba(77, 208, 255, 0.3)' : '1px solid rgba(0, 0, 0, 0.1)',
+							maxWidth: '800px',
+							margin: '24px auto 0 auto',
+							minHeight: 'auto',
+							height: '300px'
+						}}
+					>
+						{/* Classes Title */}
+						<div style={{ 
+							fontSize: '24px',
+							fontWeight: '600',
+							textAlign: 'center',
+							marginBottom: '20px',
+							color: '#000000'
+						}}>
 							<Space>
 								<BookOutlined />
 								{t('teacherManagement.currentClasses')}
 							</Space>
-						}
-						className={`classes-card ${theme}-classes-card`}
-						style={{ marginBottom: 24, marginTop: 24 }}>
-						<Table
-							columns={classColumns}
-							dataSource={teacher.classList || []}
-							rowKey='id'
-							pagination={false}
-							size='small'
-							locale={{
-								emptyText: t('teacherManagement.noClassesFound')
-							}}
-						/>
-					</Card>
+						</div>
+						
+						<div style={{ width: '100%' }}>
+							<Table
+								columns={classColumns}
+								dataSource={teacher.classList || []}
+								rowKey='id'
+								pagination={false}
+								size='small'
+								locale={{
+									emptyText: t('teacherManagement.noClassesFound')
+								}}
+								style={{ marginBottom: 0 }}
+							/>
+						</div>
+					</div>
 
 					{/* 
 					// Recent Activities
