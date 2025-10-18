@@ -420,210 +420,127 @@ const StudentProfile = () => {
 			</div>
 
 			{/* Student Info Card */}
-			<Card className={`profile-card ${theme}-profile-card`}>
-				<Row gutter={24}>
-					<Col span={6}>
-						<div className='avatar-section'>
-							<div 
-								className="profile-picture-placeholder" 
-								onClick={() => setAvatarModalVisible(true)}
-								style={{
-									cursor: 'pointer',
-									position: 'relative',
-									display: 'inline-block'
-								}}
-							>
-								<Avatar
-									size={120}
-									icon={<UserOutlined />}
-									src={avatarUrl}
-									style={{
-										backgroundColor: '#1890ff',
-										border: `3px solid ${
-											theme === 'space'
-												? 'rgba(77, 208, 255, 0.5)'
-												: 'rgba(0, 0, 0, 0.1)'
-										}`,
-										boxShadow: `0 4px 12px ${
-											theme === 'space'
-												? 'rgba(77, 208, 255, 0.3)'
-												: 'rgba(0, 0, 0, 0.1)'
-										}`,
-									}}
-								/>
-								{avatarUploadLoading && (
-									<div style={{
-										position: 'absolute',
-										top: 0,
-										left: 0,
-										right: 0,
-										bottom: 0,
-										backgroundColor: 'rgba(0,0,0,0.5)',
-										borderRadius: '50%',
-										display: 'flex',
-										alignItems: 'center',
-										justifyContent: 'center',
-										color: 'white',
-										fontSize: '12px',
-										width: '120px',
-										height: '120px'
-									}}>
-										Uploading...
-									</div>
-								)}
-							</div>
-							<p style={{ fontSize: '12px', color: '#666', marginTop: '8px', textAlign: 'center' }}>
-								Click to change avatar
-							</p>
-						</div>
-					</Col>
-					<Col span={18}>
-						<div
-							className='student-info'
-							style={{
-								display: 'flex',
-								flexDirection: 'column',
-								alignItems: 'flex-start',
-								gap: '8px',
-								marginBottom: '16px',
-							}}>
-							<div
-								style={{
-									display: 'flex',
-									flexDirection: 'column',
-									alignItems: 'center',
-									gap: '8px',
-									marginBottom: '16px',
-								}}>
-								<h2
-									className={`student-name ${theme}-student-name`}
-									style={{ 
-										margin: 0,
-										fontSize: '32px',
-										fontWeight: '700',
-										color: theme === 'space' ? '#4dd0ff' : '#1890ff',
-										letterSpacing: '0.5px',
-										textAlign: 'center'
-									}}>
-									{student.firstName} {student.lastName}
-								</h2>
-
-								<div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
-									<span
-										style={{
-											fontSize: '16px',
-											padding: '6px 12px',
-											borderRadius: '8px',
-											color: '#1890ff',
-											fontWeight: '500',
-										}}
-										className={`role-text ${theme}-role-text`}>
-										{student.roleName === 'STUDENT' ? t('common.student') : student.roleName === 'TEST_TAKER' ? t('common.testTaker') : 'N/A'}
-									</span>
-									<span
-										style={{
-											fontSize: '16px',
-											padding: '6px 12px',
-											borderRadius: '8px',
-											color: student.status === 'ACTIVE' ? '#52c41a' : student.status === 'PENDING' ? '#faad14' : '#ff4d4f',
-											fontWeight: '500',
-										}}
-										className={`status-text ${theme}-status-text`}>
-										{student.status === 'ACTIVE'
-											? t('studentManagement.active')
-											: student.status === 'PENDING'
-											? t('studentManagement.pending')
-											: t('studentManagement.inactive')}
-									</span>
+			<div className={`profile-container-new ${theme}-profile-container-new`}>
+				{/* Profile Title */}
+				<div className={`profile-title-new ${theme}-profile-title-new`}>
+					{t('common.profile')}
+				</div>
+				
+				<div className={`profile-content-new ${theme}-profile-content-new`}>
+					{/* Left Section - Avatar */}
+					<div className={`avatar-section-new ${theme}-avatar-section-new`}>
+						<div 
+							className="profile-picture-new" 
+							onClick={() => setAvatarModalVisible(true)}
+						>
+							<Avatar
+								size={120}
+								icon={<UserOutlined />}
+								src={avatarUrl}
+								className={`avatar-image-new ${theme}-avatar-image-new`}
+							/>
+							{avatarUploadLoading && (
+								<div className="avatar-loading-overlay">
+									Uploading...
 								</div>
-							</div>
+							)}
+						</div>
+						
+						{/* Email */}
+						<div className={`email-section-new ${theme}-email-section-new`}>
+							<span className={`email-text-new ${theme}-email-text-new`}>
+								{student.email || '-'}
+							</span>
+						</div>
+						
+						{/* Starter Badge */}
+						<div className={`starter-badge-new ${theme}-starter-badge-new`}>
+							Starter
+						</div>
+					</div>
 
-							<div className='student-details'>
-								<p>
-									<strong>{t('studentManagement.username')}:</strong>{' '}
-									{student.userName || '-'}
-								</p>
-								<p>
-									<strong>{t('studentManagement.email')}:</strong>{' '}
-									{student.email || '-'}
-								</p>
-								<p>
-									<strong>{t('studentManagement.phone')}:</strong>{' '}
-									{student.phoneNumber || '-'}
-								</p>
-								<p>
-									<strong>{t('studentManagement.dateOfBirth')}:</strong>{' '}
-									{student.dateOfBirth ? new Date(student.dateOfBirth).toLocaleDateString('vi-VN') : '-'}
-								</p>
-								<p>
-									<strong>{t('studentManagement.gender')}:</strong>{' '}
-									{student.gender === 'MALE' ? t('common.male') : student.gender === 'FEMALE' ? t('common.female') : student.gender === 'OTHER' ? t('common.other') : '-'}
-								</p>
-								<p>
-									<strong>{t('studentManagement.address')}:</strong>{' '}
-									{student.address || '-'}
-								</p>
-								{student.currentClassInfo && (
-									<p>
-										<strong>{t('studentManagement.class')}:</strong>{' '}
-										{student.currentClassInfo.name || '-'}
-									</p>
-								)}
-							
-								{student.currentLevelInfo && (
-                                    <p>
-                                        <strong>{t('studentManagement.level')}:</strong>{' '}
-                                        {student.currentLevelInfo.levelName || '-'}
-                                    </p>
-                                )}
+					{/* Right Section - Student Info */}
+					<div className={`student-info-new ${theme}-student-info-new`}>
+						{/* Name and Status Row */}
+						<div className={`name-status-row-new ${theme}-name-status-row-new`}>
+							<h2 className={`student-name-new ${theme}-student-name-new`}>
+								{student.firstName} {student.lastName}
+							</h2>
+							<div className={`status-badges-new ${theme}-status-badges-new`}>
+								<span className={`role-badge-new ${theme}-role-badge-new`}>
+									{student.roleName === 'STUDENT' ? t('common.student') : student.roleName === 'TEST_TAKER' ? t('common.testTaker') : 'N/A'}
+								</span>
+								<span className={`status-badge-new ${theme}-status-badge-new ${student.status?.toLowerCase()}`}>
+									{student.status === 'ACTIVE'
+										? t('studentManagement.active')
+										: student.status === 'PENDING'
+										? t('studentManagement.pending')
+										: t('studentManagement.inactive')}
+								</span>
 							</div>
 						</div>
-					</Col>
-				</Row>
-			</Card>
+						
+						{/* Student ID */}
+						<div className={`student-id-new ${theme}-student-id-new`}>
+							{student.userName || '-'}
+						</div>
+
+						{/* Personal Information Grid */}
+						<div className={`personal-info-grid-new ${theme}-personal-info-grid-new`}>
+							<div className={`info-item-new ${theme}-info-item-new`}>
+								<span className={`info-label-new ${theme}-info-label-new`}>{t('studentManagement.phone')}</span>
+								<span className={`info-value-new ${theme}-info-value-new`}>{student.phoneNumber || '-'}</span>
+							</div>
+							<div className={`info-item-new ${theme}-info-item-new`}>
+								<span className={`info-label-new ${theme}-info-label-new`}>{t('studentManagement.gender')}</span>
+								<span className={`info-value-new ${theme}-info-value-new`}>
+									{student.gender === 'MALE' ? t('common.male') : student.gender === 'FEMALE' ? t('common.female') : student.gender === 'OTHER' ? t('common.other') : '-'}
+								</span>
+							</div>
+							<div className={`info-item-new ${theme}-info-item-new`}>
+								<span className={`info-label-new ${theme}-info-label-new`}>{t('studentManagement.dateOfBirth')}</span>
+								<span className={`info-value-new ${theme}-info-value-new`}>
+									{student.dateOfBirth ? new Date(student.dateOfBirth).toLocaleDateString('vi-VN') : '-'}
+								</span>
+							</div>
+							<div className={`info-item-new ${theme}-info-item-new`}>
+								<span className={`info-label-new ${theme}-info-label-new`}>{t('studentManagement.address')}</span>
+								<span className={`info-value-new ${theme}-info-value-new`}>{student.address || '-'}</span>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
 
 
 			{/* Parent Information */}
 			{student.parentInfo && (
-				<Card
-					title={
-						<Space>
-							<UserOutlined />
-							{t('studentManagement.parentInformation')}
-						</Space>
-					}
-					className={`parent-card ${theme}-parent-card`}
-					style={{ 
-						marginTop: 24, 
-						marginBottom: 24,
-					}}>
-					<Row gutter={[16, 16]}>
-						<Col xs={24} sm={12} md={8}>
-							<div className="parent-info-item">
-								<strong style={{ color: '#000000' }}>{t('studentManagement.parentName')}:</strong>
-								<span style={{ color: '#000000' }}>{student.parentInfo.parentName || '-'}</span>
-							</div>
-						</Col>
-						<Col xs={24} sm={12} md={8}>
-							<div className="parent-info-item">
-								<strong style={{ color: '#000000' }}>{t('studentManagement.parentEmail')}:</strong>
-								<span style={{ color: '#000000' }}>{student.parentInfo.parentEmail || '-'}</span>
-							</div>
-						</Col>
-						<Col xs={24} sm={12} md={8}>
-							<div className="parent-info-item">
-								<strong style={{ color: '#000000' }}>{t('studentManagement.parentPhone')}:</strong>
-								<span style={{ color: '#000000' }}>{student.parentInfo.parentPhone || '-'}</span>
-							</div>
-						</Col>
-						<Col xs={24} sm={12} md={8}>
-							<div className="parent-info-item">
-								<strong style={{ color: '#000000' }}>{t('studentManagement.relationship')}:</strong>
-								<span style={{ color: '#000000' }}>{student.parentInfo.relationship || '-'}</span>
-							</div>
-						</Col>
-					</Row>
-				</Card>
+				<div className={`profile-container-new ${theme}-profile-container-new`}>
+					{/* Parent Title */}
+					<div className={`profile-title-new ${theme}-profile-title-new`}>
+						<UserOutlined style={{ marginRight: '8px' }} />
+						{t('studentManagement.parentInformation')}
+					</div>
+					
+					<div className={`personal-info-grid-new ${theme}-personal-info-grid-new`}>
+						<div className={`info-item-new ${theme}-info-item-new`}>
+							<span className={`info-label-new ${theme}-info-label-new`}>{t('studentManagement.parentName')}</span>
+							<span className={`info-value-new ${theme}-info-value-new`}>{student.parentInfo.parentName || '-'}</span>
+						</div>
+						<div className={`info-item-new ${theme}-info-item-new`}>
+							<span className={`info-label-new ${theme}-info-label-new`}>{t('studentManagement.parentEmail')}</span>
+							<span className={`info-value-new ${theme}-info-value-new`}>{student.parentInfo.parentEmail || '-'}</span>
+						</div>
+						<div className={`info-item-new ${theme}-info-item-new`}>
+							<span className={`info-label-new ${theme}-info-label-new`}>{t('studentManagement.parentPhone')}</span>
+							<span className={`info-value-new ${theme}-info-value-new`}>{student.parentInfo.parentPhone || '-'}</span>
+						</div>
+						<div className={`info-item-new ${theme}-info-item-new`}>
+							<span className={`info-label-new ${theme}-info-label-new`}>{t('studentManagement.relationship')}</span>
+							<span className={`info-value-new ${theme}-info-value-new`}>{student.parentInfo.relationship || '-'}</span>
+						</div>
+					</div>
+				</div>
 			)}
 
 			{/* Edit Modal */}

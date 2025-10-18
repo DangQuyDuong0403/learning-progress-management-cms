@@ -864,13 +864,13 @@ const TeacherList = () => {
 					</div>
 					<div className='action-buttons'>
 						<Button
-							icon={<DownloadOutlined />}
+							icon={<UploadOutlined />}
 							className={`export-button ${theme}-export-button`}
 							onClick={handleExport}>
 							{t('teacherManagement.exportData')}
 						</Button>
 						<Button
-							icon={<UploadOutlined />}
+							icon={<DownloadOutlined />}
 							className={`import-button ${theme}-import-button`}
 							onClick={handleImport}>
 							{t('teacherManagement.importTeachers')}
@@ -1156,7 +1156,7 @@ const TeacherList = () => {
 						<p
 							className='ant-upload-drag-icon'
 							style={{ fontSize: '48px', color: '#1890ff' }}>
-							<UploadOutlined />
+							<DownloadOutlined />
 						</p>
 						<p
 							className='ant-upload-text'

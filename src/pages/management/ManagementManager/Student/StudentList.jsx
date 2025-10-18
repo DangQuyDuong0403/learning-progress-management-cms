@@ -1619,7 +1619,7 @@ const StudentList = () => {
               <p
                 className='ant-upload-drag-icon'
                 style={{ fontSize: '48px', color: '#1890ff' }}>
-                <UploadOutlined />
+                <DownloadOutlined />
               </p>
               <p
                 className='ant-upload-text'

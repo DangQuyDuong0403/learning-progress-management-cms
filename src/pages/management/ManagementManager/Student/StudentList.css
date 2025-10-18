@@ -668,6 +668,380 @@ div.student-profile .space-theme .edit-button:hover {
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
 }
 
+/* ===== NEW PROFILE LAYOUT STYLES ===== */
+
+/* Profile Container */
+.profile-container-new {
+  background: rgba(240, 248, 255, 0.95);
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  max-width: 800px;
+  margin: 0 auto 24px auto;
+}
+
+.space-theme .profile-container-new {
+  background: rgba(240, 248, 255, 0.95) !important;
+  border: 1px solid rgba(77, 208, 255, 0.3) !important;
+}
+
+.sun-theme .profile-container-new {
+  background: rgba(240, 248, 255, 0.95) !important;
+  border: 1px solid rgba(0, 0, 0, 0.1) !important;
+}
+
+/* Profile Title */
+.profile-title-new {
+  font-size: 24px;
+  font-weight: 600;
+  text-align: center;
+  margin-bottom: 24px;
+  color: #000;
+}
+
+.space-theme .profile-title-new {
+  color: #000 !important;
+}
+
+.sun-theme .profile-title-new {
+  color: #000 !important;
+}
+
+/* Profile Content */
+.profile-content-new {
+  display: flex;
+  gap: 24px;
+  align-items: flex-start;
+}
+
+/* Avatar Section */
+.avatar-section-new {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  flex: 0 0 auto;
+}
+
+.profile-picture-new {
+  cursor: pointer;
+  position: relative;
+  display: inline-block;
+}
+
+.avatar-image-new {
+  border: 3px solid rgba(0, 0, 0, 0.1) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1) !important;
+}
+
+.space-theme .avatar-image-new {
+  border: 3px solid rgba(77, 208, 255, 0.5) !important;
+  box-shadow: 0 4px 12px rgba(77, 208, 255, 0.3) !important;
+}
+
+.sun-theme .avatar-image-new {
+  border: 3px solid rgba(0, 0, 0, 0.1) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1) !important;
+}
+
+.avatar-loading-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0,0,0,0.5);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 12px;
+  width: 120px;
+  height: 120px;
+}
+
+/* Email Section */
+.email-section-new {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.email-text-new {
+  font-size: 14px;
+  color: #6C757D;
+}
+
+.space-theme .email-text-new {
+  color: #6C757D !important;
+}
+
+.sun-theme .email-text-new {
+  color: #6C757D !important;
+}
+
+.email-edit-icon-new {
+  font-size: 14px;
+  color: #6C757D;
+  cursor: pointer;
+  transition: color 0.3s ease;
+}
+
+.email-edit-icon-new:hover {
+  color: #1890ff;
+}
+
+.space-theme .email-edit-icon-new {
+  color: #6C757D !important;
+}
+
+.space-theme .email-edit-icon-new:hover {
+  color: #4dd0ff !important;
+}
+
+.sun-theme .email-edit-icon-new {
+  color: #6C757D !important;
+}
+
+.sun-theme .email-edit-icon-new:hover {
+  color: #1890ff !important;
+}
+
+/* Starter Badge */
+.starter-badge-new {
+  font-size: 12px;
+  padding: 4px 12px;
+  border-radius: 12px;
+  background-color: #fff3cd;
+  color: #856404;
+  border: 1px solid #ffeaa7;
+  font-weight: 500;
+  margin-top: 4px;
+}
+
+.space-theme .starter-badge-new {
+  background-color: #fff3cd !important;
+  color: #856404 !important;
+  border: 1px solid #ffeaa7 !important;
+}
+
+.sun-theme .starter-badge-new {
+  background-color: #fff3cd !important;
+  color: #856404 !important;
+  border: 1px solid #ffeaa7 !important;
+}
+
+/* Student Info Section */
+.student-info-new {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  flex: 1;
+}
+
+.space-theme .student-info-new {
+  color: #000 !important;
+}
+
+.sun-theme .student-info-new {
+  color: #000 !important;
+}
+
+/* Name and Status Row */
+.name-status-row-new {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.student-name-new {
+  font-size: 20px;
+  font-weight: 700;
+  color: #000;
+  margin: 0;
+  line-height: 1.2;
+}
+
+.space-theme .student-name-new {
+  color: #000 !important;
+}
+
+.sun-theme .student-name-new {
+  color: #000 !important;
+}
+
+.student-id-new {
+  font-size: 16px;
+  color: #000;
+  font-weight: 500;
+}
+
+.space-theme .student-id-new {
+  color: #000 !important;
+}
+
+.sun-theme .student-id-new {
+  color: #000 !important;
+}
+
+/* Status Badges */
+.status-badges-new {
+  display: flex;
+  gap: 8px;
+}
+
+.role-badge-new {
+  font-size: 14px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  background-color: rgba(24, 144, 255, 0.1);
+  color: #1890ff;
+  border: 1px solid rgba(24, 144, 255, 0.3);
+  font-weight: 500;
+}
+
+.space-theme .role-badge-new {
+  background-color: rgba(77, 208, 255, 0.1) !important;
+  color: #4dd0ff !important;
+  border: 1px solid rgba(77, 208, 255, 0.3) !important;
+}
+
+.sun-theme .role-badge-new {
+  background-color: rgba(24, 144, 255, 0.1) !important;
+  color: #1890ff !important;
+  border: 1px solid rgba(24, 144, 255, 0.3) !important;
+}
+
+.status-badge-new {
+  font-size: 14px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-weight: 500;
+}
+
+.status-badge-new.active {
+  background-color: rgba(82, 196, 26, 0.1);
+  color: #52c41a;
+  border: 1px solid rgba(82, 196, 26, 0.3);
+}
+
+.status-badge-new.pending {
+  background-color: rgba(250, 173, 20, 0.1);
+  color: #faad14;
+  border: 1px solid rgba(250, 173, 20, 0.3);
+}
+
+.status-badge-new.inactive {
+  background-color: rgba(255, 77, 79, 0.1);
+  color: #ff4d4f;
+  border: 1px solid rgba(255, 77, 79, 0.3);
+}
+
+.space-theme .status-badge-new.active {
+  background-color: rgba(82, 196, 26, 0.1) !important;
+  color: #52c41a !important;
+  border: 1px solid rgba(82, 196, 26, 0.3) !important;
+}
+
+.space-theme .status-badge-new.pending {
+  background-color: rgba(250, 173, 20, 0.1) !important;
+  color: #faad14 !important;
+  border: 1px solid rgba(250, 173, 20, 0.3) !important;
+}
+
+.space-theme .status-badge-new.inactive {
+  background-color: rgba(255, 77, 79, 0.1) !important;
+  color: #ff4d4f !important;
+  border: 1px solid rgba(255, 77, 79, 0.3) !important;
+}
+
+.sun-theme .status-badge-new.active {
+  background-color: rgba(82, 196, 26, 0.1) !important;
+  color: #52c41a !important;
+  border: 1px solid rgba(82, 196, 26, 0.3) !important;
+}
+
+.sun-theme .status-badge-new.pending {
+  background-color: rgba(250, 173, 20, 0.1) !important;
+  color: #faad14 !important;
+  border: 1px solid rgba(250, 173, 20, 0.3) !important;
+}
+
+.sun-theme .status-badge-new.inactive {
+  background-color: rgba(255, 77, 79, 0.1) !important;
+  color: #ff4d4f !important;
+  border: 1px solid rgba(255, 77, 79, 0.3) !important;
+}
+
+/* Personal Information Grid */
+.personal-info-grid-new {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.info-item-new {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.info-label-new {
+  font-size: 14px;
+  color: #6C757D;
+  font-weight: 500;
+}
+
+.space-theme .info-label-new {
+  color: #6C757D !important;
+}
+
+.sun-theme .info-label-new {
+  color: #6C757D !important;
+}
+
+.info-value-new {
+  font-size: 16px;
+  color: #000;
+  font-weight: 400;
+}
+
+.space-theme .info-value-new {
+  color: #000 !important;
+}
+
+.sun-theme .info-value-new {
+  color: #000 !important;
+}
+
+/* Responsive Design for New Layout */
+@media (max-width: 768px) {
+  .profile-content-new {
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .name-status-row-new {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .personal-info-grid-new {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .status-badges-new {
+    align-self: flex-start;
+  }
+}
+
 /* Student Name */
 .student-name {
   color: #fff;
