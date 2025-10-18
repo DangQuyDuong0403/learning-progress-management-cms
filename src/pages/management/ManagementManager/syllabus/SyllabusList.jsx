@@ -474,7 +474,7 @@ const SyllabusList = () => {
 			),
 		},
 		{
-			title: 'No',
+			title: t('syllabusManagement.stt'),
 			key: 'index',
 			width: '5%',
 			render: (_, __, index) => {
@@ -516,7 +516,7 @@ const SyllabusList = () => {
 			width: '15%',
 			render: (chapterCount) => (
 				<div style={{ textAlign: 'center' }}>
-					<FileTextOutlined style={{ marginRight: '4px' }} />
+					<BookOutlined style={{ marginRight: '4px' }} />
 					{chapterCount || 0}
 				</div>
 			),
@@ -528,7 +528,7 @@ const SyllabusList = () => {
 			width: '15%',
 			render: (lessonCount) => (
 				<div style={{ textAlign: 'center' }}>
-					<BookOutlined style={{ marginRight: '4px' }} />
+					<FileTextOutlined style={{ marginRight: '4px' }} />
 					{lessonCount || 0}
 				</div>
 			),
@@ -828,7 +828,6 @@ const SyllabusList = () => {
 							loading={loading}
 							pagination={currentView === 'syllabuses' ? {
 								...pagination,
-								showQuickJumper: true,
 								showTotal: (total, range) => {
 									const itemName = t('syllabusManagement.syllabuses');
 									return `${range[0]}-${range[1]} ${t('syllabusManagement.paginationText')} ${total} ${itemName}`;
@@ -837,7 +836,6 @@ const SyllabusList = () => {
 								total: getCurrentData().length,
 								pageSize: 10,
 								showSizeChanger: true,
-								showQuickJumper: true,
 								showTotal: (total, range) => {
 									const itemName = currentView === 'chapters' ? t('chapterManagement.chapters') :
 													t('lessonManagement.lessons');
