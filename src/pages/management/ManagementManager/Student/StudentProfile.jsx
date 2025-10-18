@@ -1,11 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import {
-	Card,
 	Row,
 	Col,
 	Button,
 	Avatar,
-	Space,
 	Modal,
 	Form,
 	Input,
@@ -411,9 +409,16 @@ const StudentProfile = () => {
 						{t('studentManagement.editProfile')}
 					</Button>
 					<Button
-						type='default'
+						type='primary'
+						icon={<EditOutlined />}
 						onClick={handleEditEmail}
-						className={`edit-email-button ${theme}-edit-email-button`}>
+						className={`edit-email-button ${theme}-edit-email-button`}
+						style={{
+							backgroundColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
+							background: theme === 'sun' ? 'linear-gradient(135deg, #66AEFF, #3C99FF)' : 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)',
+							borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'transparent',
+							color: theme === 'sun' ? '#000000' : '#000000',
+						}}>
 						{t('common.editEmail')}
 					</Button>
 				</div>
@@ -515,29 +520,57 @@ const StudentProfile = () => {
 
 			{/* Parent Information */}
 			{student.parentInfo && (
-				<div className={`profile-container-new ${theme}-profile-container-new`}>
+				<div className={`parent-container-new ${theme}-parent-container-new`}>
 					{/* Parent Title */}
-					<div className={`profile-title-new ${theme}-profile-title-new`}>
-						<UserOutlined style={{ marginRight: '8px' }} />
+					<div className={`parent-title-new ${theme}-parent-title-new`}>
 						{t('studentManagement.parentInformation')}
 					</div>
 					
-					<div className={`personal-info-grid-new ${theme}-personal-info-grid-new`}>
-						<div className={`info-item-new ${theme}-info-item-new`}>
-							<span className={`info-label-new ${theme}-info-label-new`}>{t('studentManagement.parentName')}</span>
-							<span className={`info-value-new ${theme}-info-value-new`}>{student.parentInfo.parentName || '-'}</span>
+					{/* Parent Content */}
+					<div className={`parent-content-new ${theme}-parent-content-new`}>
+						{/* Left Section - Personal Info */}
+						<div className={`parent-left-section-new ${theme}-parent-left-section-new`}>
+							{/* Family Icon */}
+							<div className={`family-icon-new ${theme}-family-icon-new`}>
+								<img 
+									src="/img/family-icon.png" 
+									alt="Family Icon" 
+									style={{ width: '60px', height: '60px' }}
+								/>
+							</div>
+							
+							{/* Parent Name and Relationship */}
+							<div className={`parent-name-section-new ${theme}-parent-name-section-new`}>
+								<div className={`parent-name-new ${theme}-parent-name-new`}>
+									{student.parentInfo.parentName || '-'}
+								</div>
+								<div className={`parent-relationship-new ${theme}-parent-relationship-new`}>
+									{student.parentInfo.relationship || '-'}
+								</div>
+							</div>
 						</div>
-						<div className={`info-item-new ${theme}-info-item-new`}>
-							<span className={`info-label-new ${theme}-info-label-new`}>{t('studentManagement.parentEmail')}</span>
-							<span className={`info-value-new ${theme}-info-value-new`}>{student.parentInfo.parentEmail || '-'}</span>
-						</div>
-						<div className={`info-item-new ${theme}-info-item-new`}>
-							<span className={`info-label-new ${theme}-info-label-new`}>{t('studentManagement.parentPhone')}</span>
-							<span className={`info-value-new ${theme}-info-value-new`}>{student.parentInfo.parentPhone || '-'}</span>
-						</div>
-						<div className={`info-item-new ${theme}-info-item-new`}>
-							<span className={`info-label-new ${theme}-info-label-new`}>{t('studentManagement.relationship')}</span>
-							<span className={`info-value-new ${theme}-info-value-new`}>{student.parentInfo.relationship || '-'}</span>
+
+						{/* Right Section - Contact Info */}
+						<div className={`parent-right-section-new ${theme}-parent-right-section-new`}>
+							{/* Phone */}
+							<div className={`parent-contact-item-new ${theme}-parent-contact-item-new`}>
+								<div className={`parent-contact-label-new ${theme}-parent-contact-label-new`}>
+									{t('studentManagement.parentPhone')}
+								</div>
+								<div className={`parent-contact-value-new ${theme}-parent-contact-value-new`}>
+									{student.parentInfo.parentPhone || '-'}
+								</div>
+							</div>
+							
+							{/* Email */}
+							<div className={`parent-contact-item-new ${theme}-parent-contact-item-new`}>
+								<div className={`parent-contact-label-new ${theme}-parent-contact-label-new`}>
+									{t('studentManagement.parentEmail')}
+								</div>
+								<div className={`parent-contact-value-new ${theme}-parent-contact-value-new`}>
+									{student.parentInfo.parentEmail || '-'}
+								</div>
+							</div>
 						</div>
 					</div>
 				</div>
@@ -564,17 +597,17 @@ const StudentProfile = () => {
 								name="roleName"
 								label={
 									<span>
-										Role Name
+										{t('studentManagement.roleName')}
 										<span style={{ color: 'red', marginLeft: '4px' }}>*</span>
 									</span>
 								}
 								rules={[
-									{ required: true, message: 'Role name is required' },
+									{ required: true, message: t('studentManagement.roleNameRequired') },
 								]}
 							>
-								<Select placeholder="Select role">
-									<Select.Option value="STUDENT">Student</Select.Option>
-									<Select.Option value="TEST_TAKER">Test taker</Select.Option>
+								<Select placeholder={t('studentManagement.selectRole')}>
+									<Select.Option value="STUDENT">{t('common.student')}</Select.Option>
+									<Select.Option value="TEST_TAKER">{t('common.testTaker')}</Select.Option>
 								</Select>
 							</Form.Item>
 						</Col>
