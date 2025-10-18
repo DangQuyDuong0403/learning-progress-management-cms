@@ -76,7 +76,12 @@
     "emailChangeSuccessMessage": "Your email has been successfully changed. You can now use your new email address to log in.",
     "emailChangeErrorMessage": "There was an error confirming your email change. The link may have expired or been used already.",
     "goToProfile": "Go to Profile",
-    "goToLogin": "Go to Login"
+    "goToLogin": "Go to Login",
+    "selectAvatar": "Select Avatar",
+    "systemAvatars": "System Avatars",
+    "uploadCustomAvatar": "Upload Custom Avatar",
+    "clickToUpload": "Click to upload",
+    "maxFileSize": "Max file size"
   },
   "sidebar": {
     "title": "Learning CMS",
