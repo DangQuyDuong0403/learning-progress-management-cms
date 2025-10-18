@@ -152,6 +152,7 @@ const initialState = {
 	updateEmailLoading: false,
 	updateEmailError: null,
 	updateEmailSuccess: false,
+	pendingEmail: null, // Email đang chờ confirm
 	uploadAvatarLoading: false,
 	uploadAvatarError: null,
 	uploadAvatarSuccess: false,
@@ -216,6 +217,7 @@ const authSlice = createSlice({
 			state.updateEmailLoading = false;
 			state.updateEmailError = null;
 			state.updateEmailSuccess = false;
+			state.pendingEmail = null; // Clear pending email
 			state.confirmEmailChangeLoading = false;
 			state.confirmEmailChangeError = null;
 			state.confirmEmailChangeSuccess = false;
@@ -360,9 +362,10 @@ const authSlice = createSlice({
 				state.updateEmailLoading = false;
 				state.updateEmailSuccess = true;
 				state.updateEmailError = null;
-				// Cập nhật email trong profileData
+				// Không cập nhật email ngay lập tức vì chưa confirm
+				// Chỉ lưu pendingEmail để track
 				if (action.payload?.data && state.profileData) {
-					state.profileData.email = action.payload.data.email;
+					state.pendingEmail = action.payload.data.email;
 				}
 			})
 			.addCase(uploadAvatar.pending, (state) => {
@@ -393,6 +396,11 @@ const authSlice = createSlice({
 				state.confirmEmailChangeLoading = false;
 				state.confirmEmailChangeSuccess = true;
 				state.confirmEmailChangeError = null;
+				// Cập nhật email thực sự khi confirm thành công
+				if (state.pendingEmail && state.profileData) {
+					state.profileData.email = state.pendingEmail;
+					state.pendingEmail = null; // Clear pending email
+				}
 			})
 			.addCase(confirmEmailChange.rejected, (state, action) => {
 				state.confirmEmailChangeLoading = false;

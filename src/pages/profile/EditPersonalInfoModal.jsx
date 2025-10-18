@@ -22,7 +22,6 @@ export default function EditPersonalInfoModal({
   useEffect(() => {
     if (profileData && isVisible) {
       form.setFieldsValue({
-        username: profileData.userName || "",
         lastName: profileData.lastName || "",
         firstName: profileData.firstName || "",
         phone: profileData.phoneNumber || "",
@@ -116,7 +115,6 @@ export default function EditPersonalInfoModal({
         form={form}
         layout='vertical'
         initialValues={{
-          username: profileData?.userName || "",
           lastName: profileData?.lastName || "",
           firstName: profileData?.firstName || "",
           phone: profileData?.phoneNumber || "",
@@ -126,35 +124,6 @@ export default function EditPersonalInfoModal({
             ? new Date(profileData.dateOfBirth).toISOString().split('T')[0]
             : ""
         }}>
-        <Row gutter={16}>
-          <Col span={12}>
-            <Form.Item
-              label={
-                <span>
-                  {t('common.username')}
-                  <span style={{ color: 'red', marginLeft: '4px' }}>*</span>
-                </span>
-              }
-              name='username'
-              required={false}>
-              <Input placeholder="Enter username" />
-            </Form.Item>
-          </Col>
-          <Col span={12}>
-            <Form.Item
-              label={
-                <span>
-                  {t('common.phoneNumber')}
-                  <span style={{ color: 'red', marginLeft: '4px' }}>*</span>
-                </span>
-              }
-              name='phone'
-              required={false}>
-              <Input placeholder="Enter phone number" />
-            </Form.Item>
-          </Col>
-        </Row>
-
         <Row gutter={16}>
           <Col span={12}>
             <Form.Item
@@ -189,6 +158,19 @@ export default function EditPersonalInfoModal({
             <Form.Item
               label={
                 <span>
+                  {t('common.phoneNumber')}
+                  <span style={{ color: 'red', marginLeft: '4px' }}>*</span>
+                </span>
+              }
+              name='phone'
+              required={false}>
+              <Input placeholder="Enter phone number" />
+            </Form.Item>
+          </Col>
+          <Col span={12}>
+            <Form.Item
+              label={
+                <span>
                   {t('common.gender')}
                   <span style={{ color: 'red', marginLeft: '4px' }}>*</span>
                 </span>
@@ -201,14 +183,12 @@ export default function EditPersonalInfoModal({
               </Radio.Group>
             </Form.Item>
           </Col>
+        </Row>
+
+        <Row gutter={16}>
           <Col span={12}>
             <Form.Item
-              label={
-                <span>
-                  {t('common.dateOfBirth')}
-                  <span style={{ color: 'red', marginLeft: '4px' }}>*</span>
-                </span>
-              }
+              label={t('common.dateOfBirth')}
               name='dateOfBirth'
               required={false}>
               <Input 
@@ -217,15 +197,13 @@ export default function EditPersonalInfoModal({
               />
             </Form.Item>
           </Col>
+          <Col span={12}>
+            {/* Empty column for layout balance */}
+          </Col>
         </Row>
 
         <Form.Item
-          label={
-            <span>
-              {t('common.address')}
-              <span style={{ color: 'red', marginLeft: '4px' }}>*</span>
-            </span>
-          }
+          label={t('common.address')}
           name='address'
           required={false}>
           <Input placeholder="Enter address" />

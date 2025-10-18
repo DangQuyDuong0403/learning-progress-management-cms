@@ -46,6 +46,7 @@
     "emailChangeRequestSent": "Yêu cầu thay đổi email đã được gửi",
     "emailChangeConfirmationMessage": "Vui lòng kiểm tra hộp thư email của bạn để tìm liên kết xác nhận để hoàn tất quá trình thay đổi email.",
     "emailChangeCheckInbox": "Kiểm tra hộp thư đến và thư mục spam để tìm email xác nhận.",
+    "pendingEmailChange": "Đang chờ thay đổi thành: {{email}}",
     "username": "Tên đăng nhập",
     "usernameRequired": "Vui lòng nhập tên đăng nhập!",
     "gender": "Giới tính",

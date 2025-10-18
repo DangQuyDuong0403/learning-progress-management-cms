@@ -15,7 +15,7 @@ import { spaceToast } from '../../component/SpaceToastify';
 
 export default function Profile() {
   const { t } = useTranslation();
-  const { user, profileData, profileLoading, profileError, uploadAvatarLoading, uploadAvatarError, uploadAvatarSuccess } = useSelector((state) => state.auth);
+  const { user, profileData, profileLoading, profileError, uploadAvatarLoading, uploadAvatarError, uploadAvatarSuccess, pendingEmail, confirmEmailChangeSuccess } = useSelector((state) => state.auth);
   const { theme } = useTheme();
   
   // Set page title
@@ -56,6 +56,15 @@ export default function Profile() {
       spaceToast.error('Failed to upload avatar');
     }
   }, [uploadAvatarError]);
+
+  // Handle email confirmation success
+  useEffect(() => {
+    if (confirmEmailChangeSuccess) {
+      spaceToast.success('Email updated successfully!');
+      // Reload profile data to get updated email
+      dispatch(getUserProfile());
+    }
+  }, [confirmEmailChangeSuccess, dispatch]);
 
   // Handle spinner completion when profile data is loaded
   useEffect(() => {
@@ -101,9 +110,9 @@ export default function Profile() {
   };
 
   const handleEmailUpdateSuccess = (newEmail) => {
-    // Handle email update success
-    console.log('Email updated to:', newEmail);
-    // You can dispatch an action to update the profile data here
+    // Handle email update success - không cần làm gì vì email chưa confirm
+    console.log('Email change request sent for:', newEmail);
+    // Email sẽ được cập nhật khi confirm thành công
   };
 
   const handlePersonalInfoUpdateSuccess = (updatedData) => {
@@ -299,6 +308,16 @@ export default function Profile() {
                     <label className={`form-label ${theme}-form-label`}>{t('common.email')}</label>
                     <div className={`form-display ${theme}-form-display`}>
                       {profileData?.email}
+                      {pendingEmail && (
+                        <div style={{ 
+                          fontSize: '12px', 
+                          color: '#1890ff', 
+                          marginTop: '4px',
+                          fontStyle: 'italic'
+                        }}>
+                          {t('common.pendingEmailChange', { email: pendingEmail })}
+                        </div>
+                      )}
                     </div>
                   </div>
 
