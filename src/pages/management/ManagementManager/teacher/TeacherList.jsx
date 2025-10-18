@@ -943,7 +943,6 @@ const TeacherList = () => {
 								pageSizeOptions: ['5', '10', '20', '50', '100'],
 							}}
 							onChange={handleTableChange}
-							scroll={{ y: 400 }}
 							className={`teacher-table ${theme}-teacher-table`}
 							showSorterTooltip={false}
 							sortDirections={['ascend', 'descend']}

@@ -176,7 +176,7 @@ const StudentList = () => {
 
   useEffect(() => {
     fetchStudents(1, pagination.pageSize, searchValue, statusFilter, roleNameFilter, sortBy, sortDir);
-  }, [fetchStudents, searchValue, statusFilter, roleNameFilter, sortBy, sortDir, pagination.pageSize]);
+  }, [fetchStudents, pagination.pageSize, searchValue, statusFilter, roleNameFilter, sortBy, sortDir]);
 
   // Fetch levels when component mounts
   useEffect(() => {
@@ -575,8 +575,8 @@ const StudentList = () => {
   ];
 
   // Handle table change (pagination, sorting, filtering)
-  const handleTableChange = (pagination, filters, sorter) => {
-    console.log('handleTableChange called:', { pagination, filters, sorter });
+  const handleTableChange = (paginationInfo, filters, sorter) => {
+    console.log('handleTableChange called:', { paginationInfo, filters, sorter });
     console.log('Current sortBy:', sortBy, 'Current sortDir:', sortDir);
     
     // Handle sorting
@@ -615,12 +615,18 @@ const StudentList = () => {
     } else {
       // Handle pagination without sorting change
       console.log('Pagination only, no sorting change');
-      // Update pagination state - useEffect will handle the API call
-      setPagination(prev => ({
-        ...prev,
-        current: pagination.current,
-        pageSize: pagination.pageSize,
-      }));
+      console.log('New pagination:', paginationInfo);
+      
+      // Call fetchStudents directly with new pagination
+      fetchStudents(
+        paginationInfo.current, 
+        paginationInfo.pageSize, 
+        searchValue, 
+        statusFilter, 
+        roleNameFilter, 
+        sortBy, 
+        sortDir
+      );
     }
   };
 
@@ -1146,7 +1152,6 @@ const StudentList = () => {
                   pageSizeOptions: ['5', '10', '20', '50', '100'],
                 }}
                 onChange={handleTableChange}
-                scroll={{ y: 400 }}
                 className={`student-table ${theme}-student-table`}
                 showSorterTooltip={false}
                 sortDirections={['ascend', 'descend']}

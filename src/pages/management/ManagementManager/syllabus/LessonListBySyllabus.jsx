@@ -748,7 +748,6 @@ const LessonListBySyllabus = () => {
 						loading={loading}
 						pagination={{
 							...pagination,
-							showQuickJumper: true,
 							showTotal: (total, range) => {
 								return `${range[0]}-${range[1]} ${t('lessonManagement.paginationText')} ${total} ${t('lessonManagement.lessons')}`;
 							},
