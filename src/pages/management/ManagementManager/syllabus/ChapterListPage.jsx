@@ -449,20 +449,6 @@ const ChapterListPage = () => {
 							onClick={() => handleViewLessons(record)}
 						/>
 					</Tooltip>
-					<Tooltip title={t('common.edit')}>
-						<Button
-							type="text"
-							size="small"
-							icon={<EditOutlined style={{ fontSize: '25px' }} />}
-							onClick={() => handleEdit(record)}
-						/>
-					</Tooltip>
-					<Button
-						type="text"
-						size="small"
-						icon={<DeleteOutlined style={{ fontSize: '25px' }} />}
-						onClick={() => handleDeleteClick(record)}
-					/>
 				</Space>
 			),
 		},
@@ -562,13 +548,6 @@ const ChapterListPage = () => {
 								className="create-button"
 							>
 								{t('common.edit')}
-							</Button>
-							<Button
-								icon={<PlusOutlined />}
-								className="create-button"
-								onClick={handleAdd}
-							>
-								{t('chapterManagement.addChapter')}
 							</Button>
 						</Space>
 					</Col>
