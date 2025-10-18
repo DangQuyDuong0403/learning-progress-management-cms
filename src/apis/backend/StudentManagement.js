@@ -109,6 +109,48 @@ const studentManagementApi = {
 			throw error;
 		});
 	},
+
+	// Import students from Excel file
+	importStudents: (formData) => {
+		const url = `/user/students/import`;
+		console.log('ImportStudents API - URL:', url);
+		console.log('ImportStudents API - FormData:', formData);
+		
+		return axiosClient.post(url, formData, {
+			headers: {
+				'accept': '*/*',
+				// Don't set Content-Type, let axios handle it for FormData
+			}
+		}).catch(error => {
+			console.error('ImportStudents API Error:', error);
+			console.error('Error response:', error.response?.data);
+			console.error('Error status:', error.response?.status);
+			throw error;
+		});
+	},
+
+	// Upload avatar for student
+	uploadStudentAvatar: (userId, file) => {
+		const formData = new FormData();
+		formData.append('file', file);
+		
+		const url = `/user/profile/${userId}/avatar`;
+		console.log('UploadStudentAvatar API - URL:', url);
+		console.log('UploadStudentAvatar API - UserId:', userId);
+		console.log('UploadStudentAvatar API - File:', file);
+		
+		return axiosClient.patch(url, formData, {
+			headers: {
+				'Content-Type': 'multipart/form-data',
+				'accept': '*/*',
+			}
+		}).catch(error => {
+			console.error('UploadStudentAvatar API Error:', error);
+			console.error('Error response:', error.response?.data);
+			console.error('Error status:', error.response?.status);
+			throw error;
+		});
+	},
 };
 
 export default studentManagementApi;

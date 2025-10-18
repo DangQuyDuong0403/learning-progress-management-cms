@@ -247,9 +247,6 @@ const LevelList = () => {
 			console.log('Level details:', levelDetails);
 			
 			setEditingLevel(levelDetails);
-			
-			// Show success toast
-			spaceToast.success(t('levelManagement.editLevelSuccess'));
 		} catch (error) {
 			console.error('Error fetching level details:', error);
 			

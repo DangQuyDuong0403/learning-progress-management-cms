@@ -119,7 +119,7 @@ const authApi = {
 			newEmail: data.email,
 			domain: process.env.REACT_APP_DOMAIN,
 			// domain:'http://localhost:3000',
-			path: '/confirm-email-change'
+			path: 'confirm-email-change'
 		};
 		
 		const url = `/user/change-email?userId=${userId}`;
@@ -155,6 +155,29 @@ const authApi = {
 		return axiosClient.patch(url, formData, {
 			headers: {
 				'Content-Type': 'multipart/form-data',
+				'accept': '*/*',
+			}
+		});
+	},
+
+	// Thay đổi email của user bất kỳ (cho admin/manager)
+	changeUserEmail: (userId, data) => {
+		// Chuẩn bị request body theo API documentation
+		const requestBody = {
+			newEmail: data.email,
+			// domain: process.env.REACT_APP_DOMAIN,
+			domain:'http://localhost:3000',
+			path: 'confirm-email-change'
+		};
+		
+		const url = `/user/change-email?userId=${userId}`;
+		console.log('ChangeUserEmail API - URL:', url);
+		console.log('ChangeUserEmail API - UserId:', userId);
+		console.log('ChangeUserEmail API - Request Body:', requestBody);
+		
+		return axiosClient.post(url, requestBody, {
+			headers: {
+				'Content-Type': 'application/json',
 				'accept': '*/*',
 			}
 		});

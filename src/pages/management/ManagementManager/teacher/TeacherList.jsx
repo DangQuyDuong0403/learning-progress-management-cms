@@ -340,57 +340,97 @@ const TeacherList = () => {
 		setImportModal((prev) => ({ ...prev, uploading: true }));
 
 		try {
-			// Simulate file processing
-			await new Promise((resolve) => setTimeout(resolve, 2000));
+			const file = importModal.fileList[0];
+			
+			// Create FormData object
+			const formData = new FormData();
+			formData.append('file', file);
+			
+			// Call import API with FormData
+			const response = await teacherManagementApi.importTeachers(formData);
 
-			// Mock successful import
-			const newTeachers = [
-				{
-					id: Date.now() + 1,
-					firstName: 'Teacher Imported 1',
-					lastName: 'Last Name 1',
-					email: 'imported1@example.com',
-					phone: '0123456789',
-					roleName: 'TEACHER',
-					status: 'ACTIVE',
-				},
-				{
-					id: Date.now() + 2,
-					firstName: 'Teacher Imported 2',
-					lastName: 'Last Name 2',
-					email: 'imported2@example.com',
-					phone: '0987654321',
-					roleName: 'TEACHING_ASSISTANT',
-					status: 'ACTIVE',
-				},
-			];
-
-			// Refresh the list to get updated data from server
-			fetchTeachers(pagination.current, pagination.pageSize, searchText, statusFilter, roleNameFilter, sortBy, sortDir);
-			spaceToast.success(
-				`${t('teacherManagement.importSuccess')} ${newTeachers.length} ${t('teacherManagement.teachers')}`
-			);
-
-			setImportModal({ visible: false, fileList: [], uploading: false });
+			if (response.success) {
+				// Refresh the list to get updated data from server
+				fetchTeachers(pagination.current, pagination.pageSize, searchText, statusFilter, roleNameFilter, sortBy, sortDir);
+				
+				// Use backend message if available, otherwise fallback to translation
+				const successMessage = response.message || t('teacherManagement.importSuccess');
+				spaceToast.success(successMessage);
+				
+				setImportModal({ visible: false, fileList: [], uploading: false });
+			} else {
+				throw new Error(response.message || 'Import failed');
+			}
 		} catch (error) {
-			spaceToast.error(t('teacherManagement.importError'));
+			console.error('Error importing teachers:', error);
+			spaceToast.error(error.response?.data?.error || error.response?.data?.message || error.message || t('teacherManagement.importError'));
 			setImportModal((prev) => ({ ...prev, uploading: false }));
 		}
 	};
 
-	const handleDownloadTemplate = () => {
-		// Create a simple CSV template
-		const csvContent = "firstName,lastName,email,phone,roleName\nJohn,Doe,john.doe@example.com,0123456789,TEACHER\nJane,Smith,jane.smith@example.com,0987654321,TEACHING_ASSISTANT";
-		const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-		const link = document.createElement('a');
-		const url = URL.createObjectURL(blob);
-		link.setAttribute('href', url);
-		link.setAttribute('download', 'teacher_template.csv');
-		link.style.visibility = 'hidden';
-		document.body.appendChild(link);
-		link.click();
-		document.body.removeChild(link);
-		spaceToast.success(t('teacherManagement.templateDownloaded'));
+	// Handle file selection
+	const handleFileSelect = (file) => {
+		// Validate file type
+		const allowedTypes = [
+			'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // .xlsx
+			'application/vnd.ms-excel', // .xls
+			'text/csv' // .csv
+		];
+		
+		if (!allowedTypes.includes(file.type)) {
+			spaceToast.error('Please select a valid Excel (.xlsx, .xls) or CSV (.csv) file');
+			return false;
+		}
+		
+		// Validate file size (max 10MB)
+		const maxSize = 10 * 1024 * 1024; // 10MB
+		if (file.size > maxSize) {
+			spaceToast.error('File size must be less than 10MB');
+			return false;
+		}
+		
+		setImportModal(prev => ({
+			...prev,
+			fileList: [file]
+		}));
+		
+		return false; // Prevent default upload behavior
+	};
+
+	const handleDownloadTemplate = async () => {
+		try {
+			spaceToast.info('Downloading template...');
+			
+			const response = await teacherManagementApi.downloadTeacherTemplate();
+			
+			// API returns SAS URL directly (due to axios interceptor returning response.data)
+			let downloadUrl;
+			if (typeof response === 'string') {
+				downloadUrl = response;
+			} else if (response && typeof response.data === 'string') {
+				downloadUrl = response.data;
+			} else if (response && response.data && response.data.url) {
+				downloadUrl = response.data.url;
+			} else {
+				console.error('Unexpected response format:', response);
+				throw new Error('No download URL received from server');
+			}
+			
+			// Create download link directly from SAS URL
+			const link = document.createElement('a');
+			link.setAttribute('href', downloadUrl);
+			link.setAttribute('download', 'teacher_import_template.xlsx');
+			link.setAttribute('target', '_blank');
+			link.style.visibility = 'hidden';
+			document.body.appendChild(link);
+			link.click();
+			document.body.removeChild(link);
+			
+			spaceToast.success('Template downloaded successfully');
+		} catch (error) {
+			console.error('Error downloading template:', error);
+			spaceToast.error(error.response?.data?.error || error.response?.data?.message || error.message || 'Failed to download template');
+		}
 	};
 
 	// Handle filter dropdown toggle
@@ -901,7 +941,12 @@ const TeacherList = () => {
 						{t('teacherManagement.importInstructions')}
 					</Typography.Title>
 
-					<div
+					<Upload.Dragger
+						name="file"
+						multiple={false}
+						beforeUpload={handleFileSelect}
+						showUploadList={false}
+						accept=".xlsx,.xls,.csv"
 						style={{
 							marginBottom: '20px',
 							border: '2px dashed #d9d9d9',
@@ -913,7 +958,7 @@ const TeacherList = () => {
 						<p
 							className='ant-upload-drag-icon'
 							style={{ fontSize: '48px', color: '#1890ff' }}>
-							<DownloadOutlined />
+							<UploadOutlined />
 						</p>
 						<p
 							className='ant-upload-text'
@@ -924,7 +969,7 @@ const TeacherList = () => {
 							{t('teacherManagement.supportedFormats')}: Excel (.xlsx, .xls),
 							CSV (.csv)
 						</p>
-					</div>
+					</Upload.Dragger>
 
 					<Divider />
 
@@ -936,11 +981,30 @@ const TeacherList = () => {
 								background: '#e6f7ff',
 								border: '1px solid #91d5ff',
 								borderRadius: '6px',
+								display: 'flex',
+								justifyContent: 'space-between',
+								alignItems: 'center',
 							}}>
-							<Typography.Text style={{ color: '#1890ff', fontWeight: '500' }}>
-								✅ {t('teacherManagement.fileSelected')}:{' '}
-								{importModal.fileList[0].name}
-							</Typography.Text>
+							<div>
+								<Typography.Text style={{ color: '#1890ff', fontWeight: '500' }}>
+									✅ {t('teacherManagement.fileSelected')}:{' '}
+									{importModal.fileList[0].name}
+								</Typography.Text>
+								<br />
+								<Typography.Text style={{ color: '#666', fontSize: '12px' }}>
+									Size: {importModal.fileList[0].size < 1024 * 1024 
+										? `${(importModal.fileList[0].size / 1024).toFixed(1)} KB`
+										: `${(importModal.fileList[0].size / 1024 / 1024).toFixed(2)} MB`
+									}
+								</Typography.Text>
+							</div>
+							<Button
+								type="text"
+								size="small"
+								onClick={() => setImportModal(prev => ({ ...prev, fileList: [] }))}
+								style={{ color: '#ff4d4f' }}>
+								Remove
+							</Button>
 						</div>
 					)}
 				</div>
