@@ -563,13 +563,6 @@ const ChapterListPage = () => {
 							>
 								{t('common.edit')}
 							</Button>
-							<Button
-								icon={<PlusOutlined />}
-								className="create-button"
-								onClick={handleAdd}
-							>
-								{t('chapterManagement.addChapter')}
-							</Button>
 						</Space>
 					</Col>
 				</Row>

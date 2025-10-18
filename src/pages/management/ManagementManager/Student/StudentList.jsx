@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import usePageTitle from "../../../../hooks/usePageTitle";
@@ -18,6 +18,7 @@ import {
   DatePicker,
   Radio,
   Switch,
+  Checkbox,
 } from "antd";
 import {
   PlusOutlined,
@@ -71,6 +72,9 @@ const StudentList = () => {
   // Sort state - start with createdAt DESC (newest first)
   const [sortBy, setSortBy] = useState("createdAt");
   const [sortDir, setSortDir] = useState("desc");
+  
+  // Checkbox selection state
+  const [selectedRowKeys, setSelectedRowKeys] = useState([]);
   
   // Modal states
   const [isModalVisible, setIsModalVisible] = useState(false);
@@ -225,8 +229,177 @@ const StudentList = () => {
     { key: "TEST_TAKER", label: t('common.testTaker') },
   ];
 
+  // Calculate checkbox states with useMemo
+  const checkboxStates = useMemo(() => {
+    const totalItems = totalStudents; // Sử dụng totalStudents thay vì students.length
+    const selectedCount = selectedRowKeys.length;
+    const isSelectAll = selectedCount === totalItems && totalItems > 0;
+    const isIndeterminate = false; // Không bao giờ hiển thị indeterminate
+
+    console.log('Checkbox Debug:', {
+      totalItems,
+      selectedCount,
+      selectedRowKeys,
+      isSelectAll,
+      isIndeterminate,
+    });
+
+    return { isSelectAll, isIndeterminate, totalItems, selectedCount };
+  }, [selectedRowKeys, totalStudents]);
+
+  // Checkbox logic
+  const handleSelectAll = async (checked) => {
+    if (checked) {
+      try {
+        // Fetch all student IDs from API (without pagination)
+        const params = {
+          page: 0,
+          size: totalStudents, // Get all items
+        };
+        
+        // Add search parameter if provided
+        if (searchText && searchText.trim()) {
+          params.text = searchText.trim();
+        }
+
+        // Add status filter if provided
+        if (statusFilter.length > 0) {
+          params.status = statusFilter;
+        }
+
+        // Add roleName filter if provided
+        if (roleNameFilter.length > 0) {
+          params.roleName = roleNameFilter;
+        }
+
+        const response = await studentManagementApi.getStudents(params);
+
+        // Get all IDs from the response
+        const allKeys = response.data.map(student => student.id);
+        setSelectedRowKeys(allKeys);
+      } catch (error) {
+        console.error('Error fetching all student IDs:', error);
+        spaceToast.error('Error selecting all items');
+      }
+    } else {
+      setSelectedRowKeys([]);
+    }
+  };
+
+  const handleSelectRow = (record, checked) => {
+    if (checked) {
+      setSelectedRowKeys(prev => [...prev, record.id]);
+    } else {
+      setSelectedRowKeys(prev => prev.filter(key => key !== record.id));
+    }
+  };
+
+  // Bulk actions
+  const handleBulkActiveDeactive = () => {
+    if (selectedRowKeys.length === 0) {
+      spaceToast.warning(t('studentManagement.selectItemsToActiveDeactive'));
+      return;
+    }
+    
+    // Get selected students info
+    const selectedStudents = students.filter(student => selectedRowKeys.includes(student.id));
+    const activeStudents = selectedStudents.filter(s => s.status === 'ACTIVE');
+    const inactiveStudents = selectedStudents.filter(s => s.status === 'INACTIVE');
+    
+    let actionText = '';
+    let confirmContent = '';
+    
+    if (activeStudents.length > 0 && inactiveStudents.length > 0) {
+      // Mixed selection - show general message
+      actionText = t('studentManagement.changeStatus');
+      confirmContent = `${t('studentManagement.confirmBulkStatusChange')} ${selectedRowKeys.length} ${t('studentManagement.students')}?`;
+    } else if (activeStudents.length > 0) {
+      // All active - will deactivate
+      actionText = t('studentManagement.deactivate');
+      confirmContent = `${t('studentManagement.confirmBulkDeactivate')} ${selectedRowKeys.length} ${t('studentManagement.students')}?`;
+    } else {
+      // All inactive - will activate
+      actionText = t('studentManagement.activate');
+      confirmContent = `${t('studentManagement.confirmBulkActivate')} ${selectedRowKeys.length} ${t('studentManagement.students')}?`;
+    }
+    
+    setConfirmModal({
+      visible: true,
+      title: `${actionText} ${t('studentManagement.students')}`,
+      content: confirmContent,
+      onConfirm: async () => {
+        try {
+          // Determine the action based on current status
+          const bulkAction = activeStudents.length > inactiveStudents.length ? 'INACTIVE' : 'ACTIVE';
+          
+          // Call API for bulk update (you'll need to implement this API)
+          // For now, we'll update each student individually
+          const promises = selectedRowKeys.map(id => 
+            studentManagementApi.updateStudentStatus(id, bulkAction)
+          );
+          
+          const results = await Promise.all(promises);
+          const successCount = results.filter(r => r.success).length;
+          
+          if (successCount > 0) {
+            // Refresh the list
+            fetchStudents(pagination.current, pagination.pageSize, searchText, statusFilter, roleNameFilter, sortBy, sortDir);
+            setConfirmModal({ visible: false, title: '', content: '', onConfirm: null });
+            
+            // Clear selection
+            setSelectedRowKeys([]);
+            
+            // Show success toast
+            const actionText = bulkAction === 'ACTIVE' ? t('studentManagement.activateStudentSuccess') : t('studentManagement.deactivateStudentSuccess');
+            spaceToast.success(`${actionText} ${successCount} ${t('studentManagement.students')} ${t('studentManagement.success')}`);
+          } else {
+            throw new Error('All operations failed');
+          }
+        } catch (error) {
+          console.error('Error updating student statuses:', error);
+          setConfirmModal({ visible: false, title: '', content: '', onConfirm: null });
+          spaceToast.error(t('studentManagement.bulkUpdateStatusError'));
+        }
+      }
+    });
+  };
+
+  const handleBulkExport = () => {
+    if (selectedRowKeys.length === 0) {
+      spaceToast.warning(t('studentManagement.selectItemsToExport'));
+      return;
+    }
+    // TODO: Implement bulk export functionality
+    spaceToast.info(`Selected ${selectedRowKeys.length} students for export`);
+  };
+
   // Table columns
   const columns = [
+    {
+      title: (
+        <Checkbox
+          key={`select-all-${checkboxStates.selectedCount}-${checkboxStates.totalItems}`}
+          checked={checkboxStates.isSelectAll}
+          indeterminate={checkboxStates.isIndeterminate}
+          onChange={(e) => handleSelectAll(e.target.checked)}
+          style={{
+            transform: 'scale(1.2)',
+            marginRight: '8px'
+          }}
+        />
+      ),
+      key: 'selection',
+      width: '5%',
+      render: (_, record) => (
+        <Checkbox
+          checked={selectedRowKeys.includes(record.id)}
+          onChange={(e) => handleSelectRow(record, e.target.checked)}
+          style={{
+            transform: 'scale(1.2)'
+          }}
+        />
+      ),
+    },
     {
       title: t('studentManagement.stt'),
       key: "stt",
@@ -876,6 +1049,51 @@ const StudentList = () => {
               </Button>
             </div>
           </div>
+
+          {/* Bulk Actions Row */}
+          {selectedRowKeys.length > 0 && (
+            <div className={`bulk-actions-row ${theme}-bulk-actions-row`} style={{
+              display: 'flex',
+              justifyContent: 'flex-end',
+              marginTop: '16px',
+              padding: '12px 0',
+              borderTop: '1px solid #f0f0f0'
+            }}>
+              <div style={{ display: 'flex', gap: '12px' }}>
+                <Button 
+                  onClick={handleBulkActiveDeactive}
+                  className={`bulk-active-deactive-button ${theme}-bulk-active-deactive-button`}
+                  style={{
+                    backgroundColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)',
+                    background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)',
+                    borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'transparent',
+                    color: '#000000',
+                    height: '40px',
+                    fontSize: '16px',
+                    fontWeight: '500',
+                    minWidth: '140px',
+                    width: '260px'
+                  }}
+                >
+                  {t('studentManagement.bulkActiveDeactive')} ({selectedRowKeys.length})
+                </Button>
+                <Button 
+                  icon={<UploadOutlined />}
+                  onClick={handleBulkExport}
+                  className={`bulk-export-button ${theme}-bulk-export-button`}
+                  style={{
+                    height: '40px',
+                    fontSize: '16px',
+                    fontWeight: '500',
+                    minWidth: '140px',
+                    width: '160px'
+                  }}
+                >
+                  {t('studentManagement.bulkExport')} ({selectedRowKeys.length})
+                </Button>
+              </div>
+            </div>
+          )}
 
           {/* Table Section */}
 				<div className={`table-section ${theme}-table-section`}>
