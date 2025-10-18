@@ -16,6 +16,8 @@
     "changePassword": "Đổi mật khẩu",
     "delete": "Xóa",
     "add": "Thêm",
+    "close": "Đóng",
+    "ok": "Ok",
     "search": "Tìm kiếm",
     "student": "Học sinh",
     "testTaker": "Thí sinh",
@@ -60,7 +62,15 @@
     "english": "Tiếng Anh",
     "update": "Cập nhật",
     "of": "trong",
-    "classes": "lớp"
+    "classes": "lớp",
+    "confirmEmailChange": "Xác nhận thay đổi Email",
+    "emailChangeConfirmed": "Thay đổi Email thành công",
+    "confirmingEmailChange": "Đang xác nhận thay đổi email...",
+    "emailChangeConfirmFailed": "Xác nhận thay đổi Email thất bại",
+    "emailChangeSuccessMessage": "Email của bạn đã được thay đổi thành công. Bạn có thể sử dụng địa chỉ email mới để đăng nhập.",
+    "emailChangeErrorMessage": "Có lỗi xảy ra khi xác nhận thay đổi email. Link có thể đã hết hạn hoặc đã được sử dụng.",
+    "goToProfile": "Đi đến Hồ sơ",
+    "goToLogin": "Đi đến Đăng nhập"
   },
   "sidebar": {
     "title": "Learning CMS",

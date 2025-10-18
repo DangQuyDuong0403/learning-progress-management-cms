@@ -17,6 +17,7 @@ export default function EditEmailModal({
   const { updateEmailLoading } = useSelector((state) => state.auth);
   const { theme } = useTheme();
   const [form] = Form.useForm();
+  const [showConfirmationMessage, setShowConfirmationMessage] = useState(false);
 
   function validateEmail(email) {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
@@ -41,19 +42,33 @@ export default function EditEmailModal({
       // Dispatch action để update email
       const result = await dispatch(updateEmail(updateData)).unwrap();
       
-      if (result.success) {
-        spaceToast.success(t('common.profileUpdated'));
-        onSuccess(result.data.email);
-        handleCancel();
-      }
+      if (result.success || result.message) {
+        spaceToast.success(result.message);
+        // Không đóng modal ngay, hiển thị thông báo chờ xác nhận
+        setShowConfirmationMessage(true);
+      } 
     } catch (error) {
       console.error('Update Email Error:', error);
-      spaceToast.error(error.message || t('common.profileUpdateFailed'));
+      
+      // Xử lý error từ API response
+      let errorMessage = error.response?.data?.message;
+      if (error.error) {
+        errorMessage = error.error;
+      } else if (error.message) {
+        errorMessage = error.message;
+      } else if (error.response?.data?.error) {
+        errorMessage = error.response.data.error;
+      } else if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      }
+      
+      spaceToast.error(errorMessage);
     }
   };
 
   const handleCancel = () => {
     form.resetFields();
+    setShowConfirmationMessage(false);
     onCancel();
   };
 
@@ -72,11 +87,11 @@ export default function EditEmailModal({
         </div>
       }
       open={isVisible}
-      onOk={handleOk}
+      onOk={showConfirmationMessage ? handleCancel : handleOk}
       onCancel={handleCancel}
       width={500}
-      okText={t('common.update')}
-      cancelText={t('common.cancel')}
+      okText={showConfirmationMessage ? t('common.ok') : t('common.update')}
+      cancelText={t('common.close')}
       confirmLoading={updateEmailLoading}
       okButtonProps={{
         style: {
@@ -98,34 +113,51 @@ export default function EditEmailModal({
           minWidth: '100px',
         },
       }}>
-      <Form
-        form={form}
-        layout='vertical'
-        initialValues={{
-          email: currentEmail,
-        }}>
-        <Form.Item
-          label={
-            <span>
-              {t('common.email')}
-              <span style={{ color: 'red', marginLeft: '4px' }}>*</span>
-            </span>
-          }
-          name='email'
-          rules={[
-            {
-              required: true,
-              message: 'Email is required',
-            },
-            {
-              type: 'email',
-              message: 'Please enter a valid email',
-            },
-          ]}
-          required={false}>
-          <Input placeholder="Enter email" />
-        </Form.Item>
-      </Form>
+      {!showConfirmationMessage ? (
+        <Form
+          form={form}
+          layout='vertical'
+          initialValues={{
+            email: currentEmail,
+          }}>
+          <Form.Item
+            label={
+              <span>
+                {t('common.email')}
+                <span style={{ color: 'red', marginLeft: '4px' }}>*</span>
+              </span>
+            }
+            name='email'
+            rules={[
+              {
+                required: true,
+                message: 'Email is required',
+              },
+              {
+                type: 'email',
+                message: 'Please enter a valid email',
+              },
+            ]}
+            required={false}>
+            <Input placeholder="Enter email" />
+          </Form.Item>
+        </Form>
+      ) : (
+        <div style={{ textAlign: 'center', padding: '20px' }}>
+          <div style={{ fontSize: '48px', color: '#1890ff', marginBottom: '16px' }}>
+            📧
+          </div>
+          <h3 style={{ color: '#1890ff', marginBottom: '16px' }}>
+            {t('common.emailChangeRequestSent')}
+          </h3>
+          <p style={{ color: '#666', marginBottom: '20px' }}>
+            {t('common.emailChangeConfirmationMessage')}
+          </p>
+          <p style={{ color: '#999', fontSize: '14px' }}>
+            {t('common.emailChangeCheckInbox')}
+          </p>
+        </div>
+      )}
     </Modal>
   );
 }
