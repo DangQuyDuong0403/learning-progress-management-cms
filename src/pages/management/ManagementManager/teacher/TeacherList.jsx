@@ -454,6 +454,18 @@ const TeacherList = () => {
 			},
 		},
 		{
+			title: t('teacherManagement.username'),
+			dataIndex: "userName",
+			key: "userName",
+			width: 100,
+			ellipsis: true,
+			render: (userName) => (
+				<span className="username-text">
+					{userName || '-'}
+				</span>
+			),
+		},
+		{
 			title: t('teacherManagement.fullName'),
 			dataIndex: "firstName",
 			key: "fullName",
@@ -485,13 +497,43 @@ const TeacherList = () => {
 			title: t('teacherManagement.classes'),
 			dataIndex: "classList",
 			key: "classList",
-			width: 80,
+			width: 120,
 			ellipsis: true,
-			render: (classList) => (
-				<span className="classes-text">
-					{classList ? classList.length : 0}
-				</span>
-			),
+			render: (classList, record) => {
+				if (classList?.name) {
+					return (
+						<span className="class-text">
+							{classList.name}
+						</span>
+					);
+				} else if (record.status === 'ACTIVE') {
+					return (
+						<Button
+							type="primary"
+							size="small"
+							icon={<PlusOutlined />}
+							onClick={() => handleAssignToClass(record)}
+							className={`assign-class-button ${theme}-assign-class-button`}
+							style={{
+								fontSize: '12px',
+								height: '28px',
+								padding: '0 8px',
+								backgroundColor: '#52c41a',
+								borderColor: '#52c41a',
+								borderRadius: '4px'
+							}}
+						>
+							{t('teacherManagement.assignToClass')}
+						</Button>
+					);
+				} else {
+					return (
+						<span className="class-text">
+							-
+						</span>
+					);
+				}
+			},
 		},
 		{
 			title: t('teacherManagement.status'),
@@ -536,20 +578,6 @@ const TeacherList = () => {
 							}}
 						/>
 					</Tooltip>
-					{record.status === 'ACTIVE' && (
-						<Tooltip title={t('teacherManagement.assignToClass')}>
-							<Button
-								type='text'
-								icon={<PlusOutlined style={{ fontSize: '25px' }} />}
-								size='small'
-								onClick={() => handleAssignToClass(record)}
-								style={{
-									color: '#52c41a',
-									padding: '8px 12px'
-								}}
-							/>
-						</Tooltip>
-					)}
 				</Space>
 			),
 		},
@@ -565,7 +593,7 @@ const TeacherList = () => {
 						level={1} 
 						className="page-title"
 					>
-						{t('teacherManagement.title')} ({totalTeachers})
+						{t('teacherManagement.title')} <span className="student-count">({totalTeachers})</span>
 					</Typography.Title>
 				</div>
 				{/* Header Section */}
@@ -693,7 +721,8 @@ const TeacherList = () => {
 				{/* Table Section */}
 				<div className={`table-section ${theme}-table-section`}>
 					<LoadingWithEffect
-						loading={loading}>
+						loading={loading}
+						message={t('common.loading')}>
 						<Table
 							columns={columns}
 							dataSource={teachers}

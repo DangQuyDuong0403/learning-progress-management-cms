@@ -431,6 +431,15 @@
   color: #000 !important;
 }
 
+/* Username text */
+.username-text {
+  color: #000;
+}
+
+.space-theme .username-text {
+  color: #000 !important;
+}
+
 
 /* Phone text */
 .phone-text {
