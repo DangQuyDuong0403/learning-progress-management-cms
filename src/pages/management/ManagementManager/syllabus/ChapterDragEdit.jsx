@@ -24,7 +24,6 @@ import {
 	PointerSensor,
 	useSensor,
 	useSensors,
-	DragOverlay,
 } from '@dnd-kit/core';
 import {
 	arrayMove,
@@ -71,8 +70,8 @@ const SortableChapterItem = memo(
 
 		const style = useMemo(
 			() => ({
-				transform: CSS.Transform.toString(transform),
-				transition,
+				transform: transform ? CSS.Transform.toString(transform) : undefined,
+				transition: transition || undefined,
 				opacity: isDragging ? 0.5 : 1,
 				willChange: 'transform',
 			}),
@@ -466,27 +465,6 @@ const ChapterDragEdit = () => {
 		navigate(`/manager/syllabuses/${syllabusId}/chapters`);
 	}, [navigate, syllabusId]);
 
-	const activeChapterData = useMemo(
-		() => chapters.filter(chapter => !chapter.toBeDeleted).find((chapter) => chapter.id === activeId),
-		[activeId, chapters]
-	);
-
-	const offsetModifier = useCallback((args) => {
-		if (!args || !args.transform) {
-			return {
-				x: 0,
-				y: 0,
-				scaleX: 1,
-				scaleY: 1,
-			};
-		}
-
-		return {
-			...args.transform,
-			y: args.transform.y - 300,
-			x: args.transform.x - 300,
-		};
-	}, []);
 
 	if (!syllabusInfo || isInitialLoading) {
 		return (
@@ -552,12 +530,7 @@ const ChapterDragEdit = () => {
 										sensors={sensors}
 										collisionDetection={closestCenter}
 										onDragStart={handleDragStart}
-										onDragEnd={handleDragEnd}
-										measuring={{
-											droppable: {
-												strategy: 'always',
-											},
-										}}>
+										onDragEnd={handleDragEnd}>
 										<SortableContext
 											items={chapterIds}
 											strategy={verticalListSortingStrategy}>
@@ -631,58 +604,6 @@ const ChapterDragEdit = () => {
 												</div>
 											)}
 										</SortableContext>
-
-										{/* Drag Overlay - offset lên trên 100px */}
-										<DragOverlay
-											dropAnimation={null}
-											modifiers={[offsetModifier]}>
-											{activeChapterData ? (
-												<div
-													className={`level-drag-item ${theme}-level-drag-item`}
-													style={{
-														opacity: 0.95,
-														boxShadow: '0 12px 32px rgba(24, 144, 255, 0.5)',
-														border: '2px solid #1890ff',
-														background: theme === 'dark' ? '#2a2a2a' : '#ffffff',
-														cursor: 'grabbing',
-														transform: 'rotate(3deg)',
-														maxWidth: '800px',
-													}}>
-													<div className='level-position'>
-														<Text
-															strong
-															style={{ fontSize: '18px', color: 'black' }}>
-															{activeChapterData.position}
-														</Text>
-													</div>
-													<div className='drag-handle'></div>
-													<div className='level-content'>
-														<div className='level-field'>
-															<Text strong style={{ minWidth: '120px' }}>
-																{t('chapterManagement.chapterName')}:
-															</Text>
-															<Text
-																style={{
-																	color: theme === 'dark' ? '#ffffff' : '#000000',
-																}}>
-																{activeChapterData.name}
-															</Text>
-														</div>
-														<div className='level-field'>
-															<Text strong style={{ minWidth: '120px' }}>
-																{t('chapterManagement.createdBy')}:
-															</Text>
-															<Text
-																style={{
-																	color: theme === 'dark' ? '#ffffff' : '#000000',
-																}}>
-																{activeChapterData.createdBy || 'N/A'}
-															</Text>
-														</div>
-													</div>
-												</div>
-											) : null}
-										</DragOverlay>
 									</DndContext>
 								)}
 							</div>
