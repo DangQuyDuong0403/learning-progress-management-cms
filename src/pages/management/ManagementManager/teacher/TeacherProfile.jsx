@@ -331,13 +331,16 @@ const TeacherProfile = () => {
 									<span className={`email-text-new ${theme}-email-text-new`}>
 										{teacher.email || '-'}
 									</span>
-									<Button
-										type="text"
-										icon={<EditOutlined />}
-										onClick={handleEditEmail}
-										className={`email-edit-icon ${theme}-email-edit-icon`}
-										size="small"
-									/>
+									{/* Only show edit email button for PENDING status teachers */}
+									{teacher.status === 'PENDING' && (
+										<Button
+											type="text"
+											icon={<EditOutlined />}
+											onClick={handleEditEmail}
+											className={`email-edit-icon ${theme}-email-edit-icon`}
+											size="small"
+										/>
+									)}
 								</div>
 							</div>
 

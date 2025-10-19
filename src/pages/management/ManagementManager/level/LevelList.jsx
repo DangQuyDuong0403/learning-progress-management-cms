@@ -505,31 +505,8 @@ const LevelList = () => {
 							icon={<SendOutlined />}
 							onClick={handlePublishAll}
 							loading={toggleLoading}
-							className={`publish-all-button ${theme}-publish-all-button`}
-							style={{
-								height: '40px',
-								borderRadius: '8px',
-								fontWeight: '500',
-								border: theme === 'space' 
-									? '1px solid rgba(77, 208, 255, 0.3)' 
-									: '1px solid #0000001a',
-								background: theme === 'space'
-									? 'linear-gradient(135deg, #b5b0c0 19%, #a79ebb 64%, #8377a0 75%, #aca5c0 97%, #6d5f8f)'
-									: '#71b3fd',
-								color: '#000',
-								backdropFilter: 'blur(10px)',
-								transition: 'all 0.3s ease',
-								boxShadow: theme === 'space'
-									? '0 4px 12px rgba(76, 29, 149, 0.3)'
-									: '0 4px 12px rgba(24, 144, 255, 0.3)',
-							}}>
-							{t('levelManagement.publishAll')}
-						</Button>
-						<Button
-							icon={<DragOutlined />}
-							className={`edit-positions-button ${theme}-edit-positions-button`}
-							onClick={handleEditPositions}
 							disabled={isAllPublished}
+							className={`publish-all-button ${theme}-publish-all-button`}
 							style={{
 								height: '40px',
 								borderRadius: '8px',
@@ -548,11 +525,35 @@ const LevelList = () => {
 									: '0 4px 12px rgba(24, 144, 255, 0.3)',
 								opacity: isAllPublished ? 0.5 : 1,
 								cursor: isAllPublished ? 'not-allowed' : 'pointer',
-							}}
-						
-						>
-							{t('levelManagement.edit')}
+							}}>
+							{t('levelManagement.publishAll')}
 						</Button>
+						{!isAllPublished && (
+							<Button
+								icon={<DragOutlined />}
+								className={`edit-positions-button ${theme}-edit-positions-button`}
+								onClick={handleEditPositions}
+								style={{
+									height: '40px',
+									borderRadius: '8px',
+									fontWeight: '500',
+									border: theme === 'space' 
+										? '1px solid rgba(77, 208, 255, 0.3)' 
+										: '1px solid #0000001a',
+									background: theme === 'space'
+										? 'linear-gradient(135deg, #b5b0c0 19%, #a79ebb 64%, #8377a0 75%, #aca5c0 97%, #6d5f8f)'
+										: '#71b3fd',
+									color: '#000',
+									backdropFilter: 'blur(10px)',
+									transition: 'all 0.3s ease',
+									boxShadow: theme === 'space'
+										? '0 4px 12px rgba(76, 29, 149, 0.3)'
+										: '0 4px 12px rgba(24, 144, 255, 0.3)',
+								}}
+							>
+								{t('levelManagement.edit')}
+							</Button>
+						)}
 					</div>
 				</div>
 

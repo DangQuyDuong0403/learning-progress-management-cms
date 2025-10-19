@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Modal, Form, Row, Col, Input, Radio } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { useDispatch, useSelector } from 'react-redux';
@@ -17,6 +17,7 @@ export default function EditPersonalInfoModal({
   const { updateProfileLoading } = useSelector((state) => state.auth);
   const { theme } = useTheme();
   const [form] = Form.useForm();
+  const [isButtonDisabled, setIsButtonDisabled] = useState(false);
 
   // Cập nhật form values khi profileData thay đổi
   useEffect(() => {
@@ -35,6 +36,10 @@ export default function EditPersonalInfoModal({
   }, [profileData, isVisible, form]);
 
   const handleOk = async () => {
+    if (isButtonDisabled) return; // Prevent multiple submissions
+    
+    setIsButtonDisabled(true);
+    
     try {
       const values = await form.validateFields();
 
@@ -62,6 +67,11 @@ export default function EditPersonalInfoModal({
       // Xử lý lỗi từ API - error object có cấu trúc trực tiếp
       const errorMessage = error.error || error.message;
       spaceToast.error(errorMessage);
+    } finally {
+      // Re-enable button after 0.5 seconds
+      setTimeout(() => {
+        setIsButtonDisabled(false);
+      }, 500);
     }
   };
 
@@ -92,6 +102,7 @@ export default function EditPersonalInfoModal({
       cancelText={t('common.cancel')}
       confirmLoading={updateProfileLoading}
       okButtonProps={{
+        disabled: isButtonDisabled,
         style: {
           backgroundColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
           background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
