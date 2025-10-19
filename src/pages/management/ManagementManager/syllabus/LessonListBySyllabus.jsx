@@ -15,6 +15,7 @@ import {
 	Progress,
 	Alert,
 	Checkbox,
+	Tabs,
 } from 'antd';
 import {
 	PlusOutlined,
@@ -66,6 +67,7 @@ const LessonListBySyllabus = () => {
 	const [isInitialLoading, setIsInitialLoading] = useState(true);
 	const [lessons, setLessons] = useState([]);
 	const [loading, setLoading] = useState(false);
+	const [activeTab, setActiveTab] = useState('lessons');
 
 	// Modal states
 	const [isDeleteModalVisible, setIsDeleteModalVisible] = useState(false);
@@ -224,6 +226,13 @@ const LessonListBySyllabus = () => {
 		navigate(`/manager/syllabuses/${syllabusId}/chapters`);
 	};
 
+	const handleTabChange = (key) => {
+		setActiveTab(key);
+		if (key === 'chapters') {
+			navigate(`/manager/syllabuses/${syllabusId}/chapters`);
+		}
+	};
+
 	const handleEditOrder = () => {
 		navigate(`/manager/syllabuses/${syllabusId}/lessons/edit-order`);
 	};
@@ -287,7 +296,7 @@ const LessonListBySyllabus = () => {
 	};
 
 	// Bulk actions
-	const handleBulkDelete = () => {
+	const handleDeleteAll = () => {
 		if (selectedRowKeys.length === 0) {
 			message.warning(t('lessonManagement.selectItemsToDelete'));
 			return;
@@ -295,16 +304,7 @@ const LessonListBySyllabus = () => {
 		setIsBulkDeleteModalVisible(true);
 	};
 
-	const handleBulkExport = () => {
-		if (selectedRowKeys.length === 0) {
-			message.warning(t('lessonManagement.selectItemsToExport'));
-			return;
-		}
-		// TODO: Implement bulk export functionality
-		message.success(t('lessonManagement.bulkExportSuccess'));
-	};
-
-	const handleBulkDeleteConfirm = async () => {
+	const handleDeleteAllConfirm = async () => {
 		try {
 			// TODO: Implement bulk delete API call
 			// await syllabusManagementApi.bulkDeleteLessons(selectedRowKeys);
@@ -312,18 +312,18 @@ const LessonListBySyllabus = () => {
 			// Update local state
 			setSelectedRowKeys([]);
 			
-			message.success(t('lessonManagement.bulkDeleteSuccess'));
+			message.success(t('lessonManagement.deleteAllSuccess'));
 			setIsBulkDeleteModalVisible(false);
 			
 			// Refresh the lesson list
 			fetchLessons(pagination.current, pagination.pageSize, searchText);
 		} catch (error) {
-			console.error('Error bulk deleting lessons:', error);
-			message.error(t('lessonManagement.bulkDeleteError'));
+			console.error('Error deleting all lessons:', error);
+			message.error(t('lessonManagement.deleteAllError'));
 		}
 	};
 
-	const handleBulkDeleteModalClose = () => {
+	const handleDeleteAllModalClose = () => {
 		setIsBulkDeleteModalVisible(false);
 	};
 
@@ -350,10 +350,6 @@ const LessonListBySyllabus = () => {
 		handleFormModalClose();
 	};
 
-	const handleExport = () => {
-		// TODO: Implement export functionality
-		message.success(t('lessonManagement.exportSuccess'));
-	};
 
 	const handleImportLesson = () => {
 		setImportModal({ 
@@ -678,6 +674,33 @@ const LessonListBySyllabus = () => {
 					<div style={{ width: '100px' }}></div> {/* Spacer để cân bằng layout */}
 				</div>
 
+				{/* Tabs Section */}
+				<div className={`custom-tabs-container ${theme}-tabs-container`} style={{ marginBottom: '24px' }}>
+					<Tabs
+						activeKey={activeTab}
+						onChange={handleTabChange}
+						className={`custom-tabs ${theme}-tabs`}
+						items={[
+							{
+								key: 'chapters',
+								label: (
+									<div className={`tab-label ${theme}-tab-label`}>
+										<span className={`tab-text ${theme}-tab-text`}>{t('chapterManagement.title')}</span>
+									</div>
+								),
+							},
+							{
+								key: 'lessons',
+								label: (
+									<div className={`tab-label ${theme}-tab-label`}>
+										<span className={`tab-text ${theme}-tab-text`}>{t('lessonManagement.viewAllLessons')}</span>
+									</div>
+								),
+							},
+						]}
+					/>
+				</div>
+
 				{/* Action Bar */}
 				<Row gutter={16} align="middle" style={{ marginBottom: '16px' }}>
 					<Col flex="auto">
@@ -694,13 +717,6 @@ const LessonListBySyllabus = () => {
 					</Col>
 					<Col>
 						<Space>
-							<Button
-								icon={<UploadOutlined />}
-								className={`export-button ${theme}-export-button`}
-								onClick={handleExport}
-							>
-								{t('lessonManagement.exportData')}
-							</Button>
 							<Button
 								icon={<DownloadOutlined />}
 								className={`import-button ${theme}-import-button`}
@@ -726,17 +742,10 @@ const LessonListBySyllabus = () => {
 							<Space>
 								<Button
 									icon={<DeleteOutlined />}
-									onClick={handleBulkDelete}
+									onClick={handleDeleteAll}
 									className="bulk-delete-button"
 								>
-									{t('lessonManagement.bulkDelete')} ({selectedRowKeys.length})
-								</Button>
-								<Button
-									icon={<UploadOutlined />}
-									onClick={handleBulkExport}
-									className="bulk-export-button"
-								>
-									{t('lessonManagement.bulkExport')} ({selectedRowKeys.length})
+									{t('lessonManagement.deleteAll')} ({selectedRowKeys.length})
 								</Button>
 							</Space>
 						</Col>
@@ -843,7 +852,7 @@ const LessonListBySyllabus = () => {
 				</div>
 			</Modal>
 
-			{/* Bulk Delete Confirmation Modal */}
+			{/* Delete All Confirmation Modal */}
 			<Modal
 				title={
 					<div style={{
@@ -853,12 +862,12 @@ const LessonListBySyllabus = () => {
 						textAlign: 'center',
 						padding: '10px 0'
 					}}>
-						{t('lessonManagement.confirmBulkDelete')}
+						{t('lessonManagement.confirmDeleteAll')}
 					</div>
 				}
 				open={isBulkDeleteModalVisible}
-				onOk={handleBulkDeleteConfirm}
-				onCancel={handleBulkDeleteModalClose}
+				onOk={handleDeleteAllConfirm}
+				onCancel={handleDeleteAllModalClose}
 				okText={t('common.confirm')}
 				cancelText={t('common.cancel')}
 				width={500}
@@ -909,7 +918,7 @@ const LessonListBySyllabus = () => {
 						margin: 0,
 						fontWeight: '500'
 					}}>
-						{t('lessonManagement.confirmBulkDeleteMessage')}
+						{t('lessonManagement.confirmDeleteAllMessage')}
 					</p>
 					<div style={{
 						fontSize: '20px',

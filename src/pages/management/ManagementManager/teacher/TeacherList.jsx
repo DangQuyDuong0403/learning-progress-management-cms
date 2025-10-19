@@ -59,6 +59,7 @@ const TeacherList = () => {
 	// Modal states
 	const [isModalVisible, setIsModalVisible] = useState(false);
 	const [isAssignModalVisible, setIsAssignModalVisible] = useState(false);
+	const [isExportModalVisible, setIsExportModalVisible] = useState(false);
 	const [confirmModal, setConfirmModal] = useState({
 		visible: false,
 		title: '',
@@ -352,10 +353,6 @@ const TeacherList = () => {
 	};
 
 
-	const handleExport = () => {
-		// TODO: Implement export functionality
-		spaceToast.success(t('teacherManagement.exportSuccess'));
-	};
 
 	const handleImport = () => {
 		setImportModal({ visible: true, fileList: [], uploading: false });
@@ -589,46 +586,23 @@ const TeacherList = () => {
 	};
 
 	// Bulk actions
-	const handleBulkActiveDeactive = () => {
+	const handleBulkActive = () => {
 		if (selectedRowKeys.length === 0) {
 			spaceToast.warning(t('teacherManagement.selectItemsToActiveDeactive'));
 			return;
 		}
 		
-		// Get selected teachers info
-		const selectedTeachers = teachers.filter(teacher => selectedRowKeys.includes(teacher.id));
-		const activeTeachers = selectedTeachers.filter(t => t.status === 'ACTIVE');
-		const inactiveTeachers = selectedTeachers.filter(t => t.status === 'INACTIVE');
-		
-		let actionText = '';
-		let confirmContent = '';
-		
-		if (activeTeachers.length > 0 && inactiveTeachers.length > 0) {
-			// Mixed selection - show general message
-			actionText = t('teacherManagement.changeStatus');
-			confirmContent = `${t('teacherManagement.confirmBulkStatusChange')} ${selectedRowKeys.length} ${t('teacherManagement.teachers')}?`;
-		} else if (activeTeachers.length > 0) {
-			// All active - will deactivate
-			actionText = t('teacherManagement.deactivate');
-			confirmContent = `${t('teacherManagement.confirmBulkDeactivate')} ${selectedRowKeys.length} ${t('teacherManagement.teachers')}?`;
-		} else {
-			// All inactive - will activate
-			actionText = t('teacherManagement.activate');
-			confirmContent = `${t('teacherManagement.confirmBulkActivate')} ${selectedRowKeys.length} ${t('teacherManagement.teachers')}?`;
-		}
+		const confirmContent = `${t('teacherManagement.confirmBulkActivate')} ${selectedRowKeys.length} ${t('teacherManagement.teachers')}?`;
 		
 		setConfirmModal({
 			visible: true,
-			title: `${actionText} ${t('teacherManagement.teachers')}`,
+			title: `${t('teacherManagement.activeAll')} ${t('teacherManagement.teachers')}`,
 			content: confirmContent,
 			onConfirm: async () => {
 				try {
-					// Determine the action based on current status
-					const bulkAction = activeTeachers.length > inactiveTeachers.length ? 'INACTIVE' : 'ACTIVE';
-					
-					// Call API for bulk update
+					// Call API for bulk update - activate all selected teachers
 					const promises = selectedRowKeys.map(id => 
-						teacherManagementApi.updateTeacherStatus(id, bulkAction)
+						teacherManagementApi.updateTeacherStatus(id, 'ACTIVE')
 					);
 					
 					const results = await Promise.all(promises);
@@ -649,13 +623,75 @@ const TeacherList = () => {
 		});
 	};
 
-	const handleBulkExport = () => {
+	const handleBulkDeactive = () => {
 		if (selectedRowKeys.length === 0) {
-			spaceToast.warning(t('teacherManagement.selectItemsToExport'));
+			spaceToast.warning(t('teacherManagement.selectItemsToActiveDeactive'));
 			return;
 		}
-		// TODO: Implement bulk export functionality
-		spaceToast.info(`Selected ${selectedRowKeys.length} teachers for export`);
+		
+		const confirmContent = `${t('teacherManagement.confirmBulkDeactivate')} ${selectedRowKeys.length} ${t('teacherManagement.teachers')}?`;
+		
+		setConfirmModal({
+			visible: true,
+			title: `${t('teacherManagement.deactiveAll')} ${t('teacherManagement.teachers')}`,
+			content: confirmContent,
+			onConfirm: async () => {
+				try {
+					// Call API for bulk update - deactivate all selected teachers
+					const promises = selectedRowKeys.map(id => 
+						teacherManagementApi.updateTeacherStatus(id, 'INACTIVE')
+					);
+					
+					const results = await Promise.all(promises);
+					const successCount = results.filter(r => r.success).length;
+					
+					if (successCount > 0) {
+						spaceToast.success(`${t('teacherManagement.bulkUpdateSuccess')} ${successCount}/${selectedRowKeys.length} ${t('teacherManagement.teachers')}`);
+						setSelectedRowKeys([]);
+						fetchTeachers(pagination.current, pagination.pageSize, searchText, statusFilter, roleNameFilter, sortBy, sortDir);
+					} else {
+						throw new Error('No teachers were updated');
+					}
+				} catch (error) {
+					console.error('Error in bulk update:', error);
+					spaceToast.error(error.response?.data?.error || error.message || t('teacherManagement.bulkUpdateError'));
+				}
+			}
+		});
+	};
+
+	const handleExportTeachers = () => {
+		setIsExportModalVisible(true);
+	};
+
+	const handleExportModalClose = () => {
+		setIsExportModalVisible(false);
+	};
+
+	const handleExportSelected = async () => {
+		try {
+			// TODO: Implement export selected items API call
+			// await teacherManagementApi.exportTeachers(selectedRowKeys);
+			
+			spaceToast.success(`${t('teacherManagement.exportSuccess')}: ${selectedRowKeys.length} ${t('teacherManagement.teachers')}`);
+			setIsExportModalVisible(false);
+		} catch (error) {
+			console.error('Error exporting selected teachers:', error);
+			spaceToast.error(t('teacherManagement.exportError'));
+		}
+	};
+
+	const handleExportAll = async () => {
+		try {
+			// TODO: Implement export all items API call
+			// await teacherManagementApi.exportAllTeachers();
+			
+			spaceToast.success(`${t('teacherManagement.exportSuccess')}: ${totalTeachers} ${t('teacherManagement.teachers')}`);
+			setIsExportModalVisible(false);
+		} catch (error) {
+			console.error('Error exporting all teachers:', error);
+			spaceToast.error(t('teacherManagement.exportError'));
+		}
 	};
 
 	const columns = [
@@ -939,8 +975,9 @@ const TeacherList = () => {
 						<Button
 							icon={<UploadOutlined />}
 							className={`export-button ${theme}-export-button`}
-							onClick={handleExport}>
+							onClick={handleExportTeachers}>
 							{t('teacherManagement.exportData')}
+							{selectedRowKeys.length > 0 && ` (${selectedRowKeys.length})`}
 						</Button>
 						<Button
 							icon={<DownloadOutlined />}
@@ -968,8 +1005,8 @@ const TeacherList = () => {
 					}}>
 						<div style={{ display: 'flex', gap: '12px' }}>
 							<Button 
-								onClick={handleBulkActiveDeactive}
-								className={`bulk-active-deactive-button ${theme}-bulk-active-deactive-button`}
+								onClick={handleBulkActive}
+								className={`bulk-active-button ${theme}-bulk-active-button`}
 								style={{
 									backgroundColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)',
 									background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)',
@@ -979,24 +1016,28 @@ const TeacherList = () => {
 									fontSize: '16px',
 									fontWeight: '500',
 									minWidth: '140px',
-									width: '260px'
+									width: '130px'
 								}}
 							>
-								{t('teacherManagement.bulkActiveDeactive')} ({selectedRowKeys.length})
+								{t('teacherManagement.activeAll')} ({selectedRowKeys.length})
 							</Button>
+							
 							<Button 
-								icon={<UploadOutlined />}
-								onClick={handleBulkExport}
-								className={`bulk-export-button ${theme}-bulk-export-button`}
+								onClick={handleBulkDeactive}
+								className={`bulk-deactive-button ${theme}-bulk-deactive-button`}
 								style={{
+									backgroundColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)',
+									background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)',
+									borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'transparent',
+									color: '#000000',
 									height: '40px',
 									fontSize: '16px',
 									fontWeight: '500',
 									minWidth: '140px',
-									width: '160px'
+									width: '130px'
 								}}
 							>
-								{t('teacherManagement.bulkExport')} ({selectedRowKeys.length})
+								{t('teacherManagement.deactiveAll')} ({selectedRowKeys.length})
 							</Button>
 						</div>
 					</div>
@@ -1276,6 +1317,89 @@ const TeacherList = () => {
 							</Button>
 						</div>
 					)}
+				</div>
+			</Modal>
+
+			{/* Export Data Modal */}
+			<Modal
+				title={
+					<div
+						style={{
+							fontSize: '24px',
+							fontWeight: '600',
+							color: theme === 'dark' ? '#ffffff' : '#000000',
+							textAlign: 'center',
+							padding: '10px 0',
+						}}>
+						{t('teacherManagement.exportData')}
+					</div>
+				}
+				open={isExportModalVisible}
+				onCancel={handleExportModalClose}
+				width={500}
+				footer={[
+					<Button 
+						key="cancel" 
+						onClick={handleExportModalClose}
+						style={{
+							height: '32px',
+							fontWeight: '500',
+							fontSize: '14px',
+							padding: '4px 15px',
+							width: '100px'
+						}}>
+						{t('common.cancel')}
+					</Button>
+				]}>
+				<div style={{ padding: '20px 0' }}>
+					<div style={{ textAlign: 'center', marginBottom: '30px' }}>
+						<UploadOutlined style={{ fontSize: '48px', color: '#1890ff', marginBottom: '16px' }} />
+						<Typography.Title level={4} style={{ color: theme === 'dark' ? '#cccccc' : '#666', marginBottom: '8px' }}>
+							{t('teacherManagement.chooseExportOption')}
+						</Typography.Title>
+						<Typography.Text style={{ color: theme === 'dark' ? '#999999' : '#999' }}>
+							{t('teacherManagement.exportDescription')}
+						</Typography.Text>
+					</div>
+
+					<div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+						{selectedRowKeys.length > 0 && (
+							<Button
+								type="primary"
+								icon={<UploadOutlined />}
+								onClick={handleExportSelected}
+								style={{
+									height: '48px',
+									fontSize: '16px',
+									fontWeight: '500',
+									background: theme === 'sun' 
+										? 'linear-gradient(135deg, #FFFFFF, #B6D8FE 77%, #94C2F5)'
+										: 'linear-gradient(135deg, #FFFFFF 0%, #9F96B6 46%, #A79EBB 64%, #ACA5C0 75%, #6D5F8F 100%)',
+									borderColor: theme === 'sun' ? '#B6D8FE' : '#9F96B6',
+									color: '#000000',
+									borderRadius: '8px',
+								}}>
+								{t('teacherManagement.exportSelected')} ({selectedRowKeys.length} {t('teacherManagement.teachers')})
+							</Button>
+						)}
+
+						<Button
+							icon={<UploadOutlined />}
+							onClick={handleExportAll}
+							style={{
+								height: '48px',
+								fontSize: '16px',
+								fontWeight: '500',
+								background: theme === 'sun' 
+									? 'linear-gradient(135deg, #FFFFFF, #B6D8FE 77%, #94C2F5)'
+									: 'linear-gradient(135deg, #FFFFFF 0%, #9F96B6 46%, #A79EBB 64%, #ACA5C0 75%, #6D5F8F 100%)',
+								borderColor: theme === 'sun' ? '#B6D8FE' : '#9F96B6',
+								color: '#000000',
+								borderRadius: '8px',
+							}}>
+							{t('teacherManagement.exportAll')} ({totalTeachers} {t('teacherManagement.teachers')})
+						</Button>
+					</div>
 				</div>
 			</Modal>
 		</ThemedLayout>
