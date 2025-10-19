@@ -107,29 +107,23 @@ export default function ThemedHeader() {
                     display: 'flex',
                     alignItems: 'center',
                     gap: '8px',
-                    border: '1px solid rgba(131, 119, 160, 0.3)',
-                    background: theme === 'sun' 
-                      ? 'linear-gradient(135deg, #66AEFF, #3C99FF)'
-                      : 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)',
-                    color: '#000',
+                    border: '1px solid rgba(0, 0, 0, 0.1)',
+                    background: '#ffffff',
+                    color: '#000000',
                     backdropFilter: 'blur(10px)',
                     transition: 'all 0.3s ease'
                   }}
                   onMouseEnter={(e) => {
                     e.target.style.transform = 'translateY(-2px)';
-                    e.target.style.boxShadow = theme === 'sun' 
-                      ? '0 4px 12px rgba(102, 174, 255, 0.3)'
-                      : '0 4px 12px rgba(131, 119, 160, 0.4)';
-                    e.target.style.filter = 'brightness(1.1)';
-                    e.target.style.borderColor = theme === 'sun' 
-                      ? 'rgba(102, 174, 255, 0.6)'
-                      : 'rgba(131, 119, 160, 0.6)';
+                    e.target.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.15)';
+                    e.target.style.filter = 'brightness(0.95)';
+                    e.target.style.borderColor = 'rgba(0, 0, 0, 0.2)';
                   }}
                   onMouseLeave={(e) => {
                     e.target.style.transform = 'translateY(0)';
                     e.target.style.boxShadow = 'none';
                     e.target.style.filter = 'none';
-                    e.target.style.borderColor = 'rgba(131, 119, 160, 0.3)';
+                    e.target.style.borderColor = 'rgba(0, 0, 0, 0.1)';
                   }}
                 >
                   {t('common.back')}

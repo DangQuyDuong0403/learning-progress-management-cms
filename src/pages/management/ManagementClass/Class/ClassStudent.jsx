@@ -206,22 +206,16 @@ const ClassStudent = () => {
     }
   }, [id, t]);
 
-  // Combined initial data loading
-  const fetchInitialData = useCallback(async () => {
-    setLoading(true);
-    try {
-      await Promise.all([
-        fetchClassData(),
-        fetchStudents()
-      ]);
-    } finally {
-      setLoading(false);
-    }
-  }, [fetchClassData, fetchStudents]);
-
+  // Initial data loading
   useEffect(() => {
-    fetchInitialData();
-  }, [fetchInitialData]);
+    setLoading(true);
+    Promise.all([
+      fetchClassData(),
+      fetchStudents()
+    ]).finally(() => {
+      setLoading(false);
+    });
+  }, [id]);
 
   // Ensure header back button appears immediately while class info loads
   useEffect(() => {
@@ -231,7 +225,7 @@ const ClassStudent = () => {
     return () => {
       exitClassMenu();
     };
-  }, [id, enterClassMenu, exitClassMenu]);
+  }, [id]);
 
   // Enter class menu mode when component mounts
   useEffect(() => {
@@ -247,7 +241,7 @@ const ClassStudent = () => {
     return () => {
       exitClassMenu();
     };
-  }, [classData, students.length, enterClassMenu, exitClassMenu, t]);
+  }, [classData?.id, classData?.name, students.length]);
 
   const handleAddStudent = () => {
     setStudentSearchValue("");
@@ -312,7 +306,7 @@ const ClassStudent = () => {
         total: prev.total - 1,
       }));
       
-      const fullName = `${studentToDelete.firstName || ''} ${studentToDelete.lastName || ''}`.trim();
+      const fullName = studentToDelete.fullName || `${studentToDelete.firstName || ''} ${studentToDelete.lastName || ''}`.trim();
       spaceToast.success(`${t('classDetail.deleteSuccess')} "${fullName}" ${t('classDetail.fromClass')}`);
       setIsDeleteModalVisible(false);
       setStudentToDelete(null);
@@ -479,24 +473,44 @@ const ClassStudent = () => {
       return;
     }
 
-    const timeoutId = setTimeout(() => {
+    const timeoutId = setTimeout(async () => {
       setLoading(true);
-      fetchStudents({
-        page: 0, // Always reset to first page for search/filter/sort
-        size: pagination.pageSize,
-        text: searchText,
-        status: statusFilter,
-        sortBy: sortConfig.sortBy,
-        sortDir: sortConfig.sortDir
-      }).finally(() => {
+      try {
+        const apiParams = {
+          page: 0,
+          size: pagination.pageSize,
+          text: searchText,
+          status: statusFilter,
+          sortBy: sortConfig.sortBy,
+          sortDir: sortConfig.sortDir,
+        };
+        
+        console.log('Fetching students with params:', apiParams);
+        const response = await classManagementApi.getClassStudents(id, apiParams);
+        console.log('Students response:', response);
+        
+        if (response.success) {
+          setStudents(response.data || []);
+          setPagination(prev => ({
+            ...prev,
+            total: response.totalElements || 0,
+            current: 1,
+          }));
+        } else {
+          spaceToast.error(response.message || t('classDetail.loadingStudents'));
+          setStudents([]);
+        }
+      } catch (error) {
+        console.error('Error fetching students:', error);
+        spaceToast.error(t('classDetail.loadingStudents'));
+        setStudents([]);
+      } finally {
         setLoading(false);
-      });
-      // Reset pagination to first page
-      setPagination(prev => ({ ...prev, current: 1 }));
-    }, 300); // Reduced debounce time
+      }
+    }, 300);
     
     return () => clearTimeout(timeoutId);
-  }, [searchText, statusFilter, sortConfig.sortBy, sortConfig.sortDir, pagination.pageSize, fetchStudents, isInitialLoad]);
+  }, [searchText, statusFilter, sortConfig.sortBy, sortConfig.sortDir, pagination.pageSize, id, t]);
   
   // Handle pagination change
   const handleTableChange = (paginationInfo, filters, sorter) => {
@@ -509,19 +523,6 @@ const ClassStudent = () => {
         current: paginationInfo.current,
         pageSize: paginationInfo.pageSize,
       }));
-      
-      // Call API with new pagination
-      setLoading(true);
-      fetchStudents({ 
-        page: paginationInfo.current - 1, 
-        size: paginationInfo.pageSize,
-        text: searchText,
-        status: statusFilter,
-        sortBy: sortConfig.sortBy,
-        sortDir: sortConfig.sortDir
-      }).finally(() => {
-        setLoading(false);
-      });
     }
     
     // Handle sorting - this will trigger the main useEffect
@@ -546,16 +547,14 @@ const ClassStudent = () => {
     },
     {
       title: t('classDetail.fullName'),
-      key: 'fullName',
+      dataIndex: "fullName",
+      key: "fullName",
       sorter: true,
-      render: (_, record) => {
-        const fullName = `${record.firstName || ''} ${record.lastName || ''}`.trim();
-        return (
-          <div className="student-name-text" style={{ fontSize: "20px" }}>
-            {fullName}
-          </div>
-        );
-      },
+      render: (text) => (
+        <div className="student-name-text" style={{ fontSize: "20px" }}>
+          {text || '-'}
+        </div>
+      ),
     },
     {
       title: t('classDetail.email'),
@@ -614,15 +613,14 @@ const ClassStudent = () => {
     <ThemedLayout>
         {/* Main Content Panel */}
         <div className={`main-content-panel ${theme}-main-panel`}>
-          {/* Header Section */}
-          <div className={`panel-header ${theme}-panel-header`}>
-            <div className="search-section" style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-              <div style={{ flex: '1', textAlign: 'center' }}>
-                <h2 className={`class-title ${theme}-class-title`} style={{ margin: 0, fontSize: '36px', fontWeight: '600' }}>
-                  {classData?.name}
-                </h2>
-              </div>
-            </div>
+          {/* Page Title */}
+          <div className="page-title-container">
+            <Typography.Title 
+              level={1} 
+              className="page-title"
+            >
+              Student Management <span className="student-count">({pagination.total})</span>
+            </Typography.Title>
           </div>
 
           {/* Search and Action Section */}
@@ -1077,7 +1075,7 @@ const ClassStudent = () => {
               margin: 0,
               fontWeight: '500'
             }}>
-              {t('classDetail.confirmDeleteMessage')} "{studentToDelete ? `${studentToDelete.firstName || ''} ${studentToDelete.lastName || ''}`.trim() : ''}"?
+              {t('classDetail.confirmDeleteMessage')} "{studentToDelete ? (studentToDelete.fullName || `${studentToDelete.firstName || ''} ${studentToDelete.lastName || ''}`.trim()) : ''}"?
             </p>
           </div>
         </Modal>

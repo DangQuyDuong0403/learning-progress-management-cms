@@ -120,17 +120,17 @@ const ClassActivities = () => {
     }
   }, [id, t]);
 
-  const fetchActivities = useCallback(async () => {
+  const fetchActivities = useCallback(async (params = {}) => {
     setLoading(true);
     try {
-      const params = {
-        page: pagination.current - 1, // Convert to 0-based
-        size: pagination.pageSize,
-        sortBy: sortConfig.sortBy,
-        sortDir: sortConfig.sortDir
+      const apiParams = {
+        page: params.page !== undefined ? params.page : pagination.current - 1,
+        size: params.size !== undefined ? params.size : pagination.pageSize,
+        sortBy: params.sortBy !== undefined ? params.sortBy : sortConfig.sortBy,
+        sortDir: params.sortDir !== undefined ? params.sortDir : sortConfig.sortDir
       };
       
-      const response = await classManagementApi.getClassActivities(id, params);
+      const response = await classManagementApi.getClassActivities(id, apiParams);
       console.log('🔍 API Response:', response);
       console.log('🔍 Response total:', response?.total);
       console.log('🔍 Response data length:', response?.data?.length);
@@ -173,11 +173,13 @@ const ClassActivities = () => {
     } finally {
       setLoading(false);
     }
-  }, [id, pagination.current, pagination.pageSize, sortConfig.sortBy, sortConfig.sortDir, t]);
+  }, [id, t]);
 
+  // Initial data loading
   useEffect(() => {
     fetchClassData();
-  }, [id, fetchClassData]);
+    fetchActivities();
+  }, [id]);
 
   // Ensure header back button appears immediately while class info loads
   useEffect(() => {
@@ -187,11 +189,7 @@ const ClassActivities = () => {
     return () => {
       exitClassMenu();
     };
-  }, [id, enterClassMenu, exitClassMenu]);
-
-  useEffect(() => {
-    fetchActivities();
-  }, [id, fetchActivities]);
+  }, [id]);
 
   // Enter class menu mode when component mounts
   useEffect(() => {
@@ -207,7 +205,19 @@ const ClassActivities = () => {
     return () => {
       exitClassMenu();
     };
-  }, [classData, enterClassMenu, exitClassMenu, t]);
+  }, [classData?.id, classData?.name]);
+
+  // Handle pagination and sort changes
+  useEffect(() => {
+    if (pagination.current > 1 || sortConfig.sortBy !== 'actionAt' || sortConfig.sortDir !== 'desc') {
+      fetchActivities({
+        page: pagination.current - 1,
+        size: pagination.pageSize,
+        sortBy: sortConfig.sortBy,
+        sortDir: sortConfig.sortDir
+      });
+    }
+  }, [pagination.current, pagination.pageSize, sortConfig.sortBy, sortConfig.sortDir]);
 
   // Handle pagination change
   const handlePaginationChange = (page, pageSize) => {
@@ -253,6 +263,16 @@ const ClassActivities = () => {
     <ThemedLayout>
       {/* Main Content Panel */}
       <div className={`main-content-panel ${theme}-main-panel`}>
+        {/* Page Title */}
+        <div className="page-title-container">
+            <Typography.Title 
+              level={1} 
+              className="page-title"
+            >
+              Activities <span className="student-count">({pagination.total})</span>
+            </Typography.Title>
+        </div>
+
         {/* Search and Sort Section */}
         <div className="search-section" style={{ display: 'flex', gap: '12px', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap' }}>
           <Input

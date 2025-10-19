@@ -609,7 +609,6 @@ const LessonListBySyllabus = () => {
 			dataIndex: 'name',
 			key: 'name',
 			width: '20%',
-			sorter: (a, b) => a.name.localeCompare(b.name),
 			render: (text) => (
 				<div style={{ fontSize: '20px' }}>
 					{text}

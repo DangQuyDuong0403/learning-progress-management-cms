@@ -497,7 +497,6 @@ const ChapterListPage = () => {
 			dataIndex: 'name',
 			key: 'name',
 			width: '20%',
-			sorter: (a, b) => a.name.localeCompare(b.name),
 			render: (text, record) => (
 				<div>
 					<div style={{ 

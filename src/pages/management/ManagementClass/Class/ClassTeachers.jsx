@@ -163,10 +163,10 @@ const ClassTeachers = () => {
       const apiParams = {
         page: params.page !== undefined ? params.page : 0,
         size: params.size !== undefined ? params.size : 10,
-        text: params.text !== undefined ? params.text : searchText,
-        status: params.status !== undefined ? params.status : statusFilter,
-        sortBy: params.sortBy !== undefined ? params.sortBy : sortConfig.sortBy,
-        sortDir: params.sortDir !== undefined ? params.sortDir : sortConfig.sortDir,
+        text: params.text !== undefined ? params.text : '',
+        status: params.status !== undefined ? params.status : 'ACTIVE',
+        sortBy: params.sortBy !== undefined ? params.sortBy : 'joinedAt',
+        sortDir: params.sortDir !== undefined ? params.sortDir : 'desc',
       };
       
       console.log('Fetching teachers with params:', apiParams);
@@ -189,12 +189,13 @@ const ClassTeachers = () => {
       spaceToast.error(t('classTeachers.loadingTeachers'));
       setTeachers([]);
     }
-  }, [id, t, searchText, statusFilter, sortConfig.sortBy, sortConfig.sortDir]);
+  }, [id, t]);
 
+  // Initial data loading
   useEffect(() => {
     fetchClassData();
     fetchTeachers();
-  }, [id, fetchClassData, fetchTeachers]);
+  }, [id]);
 
   // Ensure header back button appears immediately while class info loads
   useEffect(() => {
@@ -204,7 +205,7 @@ const ClassTeachers = () => {
     return () => {
       exitClassMenu();
     };
-  }, [id, enterClassMenu, exitClassMenu]);
+  }, [id]);
 
   // Enter class menu mode when component mounts
   useEffect(() => {
@@ -220,27 +221,48 @@ const ClassTeachers = () => {
     return () => {
       exitClassMenu();
     };
-  }, [classData, teachers.length, enterClassMenu, exitClassMenu, t]);
+  }, [classData?.id, classData?.name, teachers.length]);
 
   // Handle search and filter changes with debounce
   useEffect(() => {
-    const timeoutId = setTimeout(() => {
+    const timeoutId = setTimeout(async () => {
       setLoading(true);
-      fetchTeachers({
-        page: 0,
-        size: pagination.pageSize,
-        text: searchText,
-        status: statusFilter,
-        sortBy: sortConfig.sortBy,
-        sortDir: sortConfig.sortDir
-      }).finally(() => {
+      try {
+        const apiParams = {
+          page: 0,
+          size: pagination.pageSize,
+          text: searchText,
+          status: statusFilter,
+          sortBy: sortConfig.sortBy,
+          sortDir: sortConfig.sortDir,
+        };
+        
+        console.log('Fetching teachers with params:', apiParams);
+        const response = await classManagementApi.getClassTeachers(id, apiParams);
+        console.log('Teachers response:', response);
+        
+        if (response.success) {
+          setTeachers(response.data || []);
+          setPagination(prev => ({
+            ...prev,
+            total: response.totalElements || 0,
+            current: 1,
+          }));
+        } else {
+          spaceToast.error(response.message || t('classTeachers.loadingTeachers'));
+          setTeachers([]);
+        }
+      } catch (error) {
+        console.error('Error fetching teachers:', error);
+        spaceToast.error(t('classTeachers.loadingTeachers'));
+        setTeachers([]);
+      } finally {
         setLoading(false);
-      });
-      setPagination(prev => ({ ...prev, current: 1 }));
+      }
     }, 300);
     
     return () => clearTimeout(timeoutId);
-  }, [searchText, statusFilter, sortConfig.sortBy, sortConfig.sortDir, pagination.pageSize, fetchTeachers]);
+  }, [searchText, statusFilter, sortConfig.sortBy, sortConfig.sortDir, pagination.pageSize, id, t]);
 
   const handleAddTeacher = () => {
     form.resetFields();
@@ -327,18 +349,6 @@ const ClassTeachers = () => {
         current: paginationInfo.current,
         pageSize: paginationInfo.pageSize,
       }));
-      
-      setLoading(true);
-      fetchTeachers({ 
-        page: paginationInfo.current - 1, 
-        size: paginationInfo.pageSize,
-        text: searchText,
-        status: statusFilter,
-        sortBy: sortConfig.sortBy,
-        sortDir: sortConfig.sortDir
-      }).finally(() => {
-        setLoading(false);
-      });
     }
     
     // Handle sorting
@@ -372,11 +382,12 @@ const ClassTeachers = () => {
     },
     {
       title: t('classTeachers.fullName'),
-      key: 'fullName',
+      dataIndex: "fullName",
+      key: "fullName",
       sorter: true,
-      render: (_, record) => (
+      render: (text) => (
         <div className="teacher-name-text" style={{ fontSize: "20px" }}>
-          {`${record.firstName || ''} ${record.lastName || ''}`.trim()}
+          {text || '-'}
         </div>
       ),
     },
@@ -432,6 +443,15 @@ const ClassTeachers = () => {
     <ThemedLayout>
         {/* Main Content Panel */}
         <div className={`main-content-panel ${theme}-main-panel`}>
+          {/* Page Title */}
+          <div className="page-title-container">
+            <Typography.Title 
+              level={1} 
+              className="page-title"
+            >
+              Teacher Management <span className="student-count">({pagination.total})</span>
+            </Typography.Title>
+          </div>
 
           {/* Search and Action Section */}
           <div className="search-action-section" style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '24px' }}>
