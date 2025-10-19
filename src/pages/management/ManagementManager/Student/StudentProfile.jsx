@@ -28,8 +28,7 @@ import studentManagementApi from '../../../../apis/backend/StudentManagement';
 import dayjs from 'dayjs';
 import './StudentList.css';
 import ThemedLayout from '../../../../component/ThemedLayout';
-import { useDispatch, useSelector } from 'react-redux';
-import { fetchLevels } from '../../../../redux/level';
+import levelManagementApi from '../../../../apis/backend/levelManagement';
 import EditEmailModal from './EditEmailModal';
 
 const StudentProfile = () => {
@@ -37,7 +36,6 @@ const StudentProfile = () => {
 	const navigate = useNavigate();
 	const { id } = useParams();
 	const { theme } = useTheme();
-	const dispatch = useDispatch();
 	const [editModalVisible, setEditModalVisible] = useState(false);
 	const [editEmailModalVisible, setEditEmailModalVisible] = useState(false);
 	const [resetPasswordModalVisible, setResetPasswordModalVisible] = useState(false);
@@ -54,8 +52,9 @@ const StudentProfile = () => {
 	// Student data from API
 	const [student, setStudent] = useState(null);
 
-	// Redux state for levels
-	const { levels, loading: levelsLoading } = useSelector((state) => state.level);
+	// Published levels state
+	const [publishedLevels, setPublishedLevels] = useState([]);
+	const [publishedLevelsLoading, setPublishedLevelsLoading] = useState(false);
 
 	// Generate avatar list from system avatars
 	const generateAvatarList = () => {
@@ -75,8 +74,33 @@ const StudentProfile = () => {
 
 	useEffect(() => {
 		fetchStudentProfile();
-		dispatch(fetchLevels());
-	}, [id, dispatch]); // eslint-disable-line react-hooks/exhaustive-deps
+		fetchPublishedLevels();
+	}, [id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+	// Fetch published levels
+	const fetchPublishedLevels = async () => {
+		setPublishedLevelsLoading(true);
+		try {
+			const params = {
+				page: 0,
+				size: 100, // Get all published levels
+			};
+			
+			const response = await levelManagementApi.getPublishedLevels({ params });
+			
+			// Handle different response structures
+			const levelsData = response.data?.content || response.data || [];
+			setPublishedLevels(levelsData);
+			
+			console.log('Fetched published levels:', levelsData);
+		} catch (error) {
+			console.error('Error fetching published levels:', error);
+			spaceToast.error('Failed to load levels');
+			setPublishedLevels([]);
+		} finally {
+			setPublishedLevelsLoading(false);
+		}
+	};
 
 	const fetchStudentProfile = async () => {
 		try {
@@ -600,7 +624,10 @@ const StudentProfile = () => {
 							>
 								<Select placeholder={t('studentManagement.selectRole')}>
 									<Select.Option value="STUDENT">{t('common.student')}</Select.Option>
-									<Select.Option value="TEST_TAKER">{t('common.testTaker')}</Select.Option>
+									{/* Only allow TEST_TAKER option if current role is not STUDENT */}
+									{student?.roleName !== 'STUDENT' && (
+										<Select.Option value="TEST_TAKER">{t('common.testTaker')}</Select.Option>
+									)}
 								</Select>
 							</Form.Item>
 						</Col>
@@ -727,15 +754,15 @@ const StudentProfile = () => {
 								<Select 
 									placeholder={t('studentManagement.selectLevel')}
 									className={`custom-dropdown ${theme}-custom-dropdown`}
-									loading={levelsLoading}
+									loading={publishedLevelsLoading}
 									showSearch
 									filterOption={(input, option) =>
 										option.children.toLowerCase().indexOf(input.toLowerCase()) >= 0
 									}
-									notFoundContent={levelsLoading ? "Loading..." : "No levels found"}
+									notFoundContent={publishedLevelsLoading ? "Loading..." : "No levels found"}
 								>
-									{levels && levels.length > 0 ? (
-										levels.map(level => {
+									{publishedLevels && publishedLevels.length > 0 ? (
+										publishedLevels.map(level => {
 											// Handle different field names that might come from API
 											const levelName = level.name || level.levelName || level.title || 'Unknown Level';
 											const levelCode = level.code || level.levelCode || level.code || '';
@@ -747,7 +774,7 @@ const StudentProfile = () => {
 											);
 										})
 									) : (
-										!levelsLoading && (
+										!publishedLevelsLoading && (
 											<Select.Option disabled value="">
 												No levels available
 											</Select.Option>

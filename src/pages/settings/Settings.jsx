@@ -39,6 +39,7 @@ const Settings = () => {
 	
 	// Loading state for password change
 	const [changePasswordLoading, setChangePasswordLoading] = useState(false);
+	const [isButtonDisabled, setIsButtonDisabled] = useState(false);
 
 	const [modals, setModals] = useState({
 		password: false,
@@ -56,7 +57,10 @@ const Settings = () => {
 
 	// Password change functionality
 	const handlePasswordChange = async () => {
+		if (isButtonDisabled) return; // Prevent multiple submissions
+		
 		setChangePasswordLoading(true);
+		setIsButtonDisabled(true);
 		
 		try {
 			const values = await passwordForm.validateFields();
@@ -112,6 +116,10 @@ const Settings = () => {
 			}
 		} finally {
 			setChangePasswordLoading(false);
+			// Re-enable button after 0.5 seconds
+			setTimeout(() => {
+				setIsButtonDisabled(false);
+			}, 500);
 		}
 	};
 
@@ -280,6 +288,7 @@ const Settings = () => {
 				width={500}
 				className={`settings-modal ${theme}-settings-modal`}
 				okButtonProps={{
+					disabled: isButtonDisabled,
 					style: {
 						background: theme === 'sun' 
 							? 'rgb(113, 179, 253)' 

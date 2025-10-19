@@ -22,6 +22,7 @@ const LevelForm = ({ level, onClose, shouldCallApi = true, showPrerequisiteAndCo
   
   const [form] = Form.useForm();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isButtonDisabled, setIsButtonDisabled] = useState(false);
 
   const isEdit = !!level;
   const isPublished = level?.status === 'PUBLISHED';
@@ -44,7 +45,11 @@ const LevelForm = ({ level, onClose, shouldCallApi = true, showPrerequisiteAndCo
   }, [level, form]);
 
   const onFinish = async (values) => {
+    if (isButtonDisabled) return; // Prevent multiple submissions
+    
     setIsSubmitting(true);
+    setIsButtonDisabled(true);
+    
     try {
       // Map form values to API format
       const apiData = {
@@ -99,6 +104,10 @@ const LevelForm = ({ level, onClose, shouldCallApi = true, showPrerequisiteAndCo
       // Don't close modal on error - let user retry
     } finally {
       setIsSubmitting(false);
+      // Re-enable button after 0.5 seconds
+      setTimeout(() => {
+        setIsButtonDisabled(false);
+      }, 500);
     }
   };
 
@@ -259,6 +268,7 @@ const LevelForm = ({ level, onClose, shouldCallApi = true, showPrerequisiteAndCo
             type="primary" 
             htmlType="submit" 
             loading={isSubmitting}
+            disabled={isButtonDisabled}
             size="middle"
             style={{
               background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, #7228d9 0%, #9c88ff 100%)',

@@ -57,6 +57,7 @@ const AccountList = () => {
 	const [isModalVisible, setIsModalVisible] = useState(false);
 	const [editingAccount, setEditingAccount] = useState(null);
 	const [form] = Form.useForm();
+	const [isButtonDisabled, setIsButtonDisabled] = useState(false);
 	const [viewDetailModal, setViewDetailModal] = useState({
 		visible: false,
 		account: null,
@@ -490,6 +491,10 @@ const AccountList = () => {
 
 
 	const handleModalOk = async () => {
+		if (isButtonDisabled) return; // Prevent multiple submissions
+		
+		setIsButtonDisabled(true);
+		
 		try {
 			const values = await form.validateFields();
 
@@ -583,6 +588,11 @@ const AccountList = () => {
 			} else {
 				message.error(t('accountManagement.checkInfoError'));
 			}
+		} finally {
+			// Re-enable button after 0.5 seconds
+			setTimeout(() => {
+				setIsButtonDisabled(false);
+			}, 500);
 		}
 	};
 
@@ -996,6 +1006,7 @@ const AccountList = () => {
 						key="save" 
 						type="primary" 
 						onClick={handleModalOk}
+						disabled={isButtonDisabled}
 						style={{
 							background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, #7228d9 0%, #9c88ff 100%)',
 							borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : '#7228d9',

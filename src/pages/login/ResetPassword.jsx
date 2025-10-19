@@ -59,8 +59,8 @@ export default function ResetPassword() {
 				newPassword: formData.newPassword
 			});
 			
-			if (response.data.success) {
-				spaceToast.success(response.data.message);
+			if (response.success) {
+				spaceToast.success(response.message);
 				
 				// Lưu selectedRole trước khi xóa localStorage
 				const loginRole = localStorage.getItem('selectedRole') || 'teacher';

@@ -22,6 +22,7 @@ const TeacherForm = ({ teacher, onClose, onSuccess }) => {
 	const { theme } = useTheme();
 	const [form] = Form.useForm();
 	const [loading, setLoading] = useState(false);
+	const [isButtonDisabled, setIsButtonDisabled] = useState(false);
 
 	useEffect(() => {
 		if (teacher) {
@@ -33,7 +34,11 @@ const TeacherForm = ({ teacher, onClose, onSuccess }) => {
 	}, [teacher, form]);
 
 	const handleSubmit = async (values) => {
+		if (isButtonDisabled) return; // Prevent multiple submissions
+		
 		setLoading(true);
+		setIsButtonDisabled(true);
+		
 		try {
 			// Format data according to API requirements
 			const processedData = {
@@ -76,6 +81,10 @@ const TeacherForm = ({ teacher, onClose, onSuccess }) => {
 			spaceToast.error(errorMessage);
 		} finally {
 			setLoading(false);
+			// Re-enable button after 0.5 seconds
+			setTimeout(() => {
+				setIsButtonDisabled(false);
+			}, 500);
 		}
 	};
 
@@ -269,6 +278,7 @@ const TeacherForm = ({ teacher, onClose, onSuccess }) => {
 							type="primary"
 							htmlType="submit"
 							loading={loading}
+							disabled={isButtonDisabled}
 							style={{ 
 								width: '100%', 
 								height: 40,
