@@ -516,7 +516,9 @@ const TeacherList = () => {
 
 	// Calculate checkbox states with useMemo
 	const checkboxStates = useMemo(() => {
-		const totalItems = totalTeachers;
+		// Filter out PENDING records from total count
+		const nonPendingTeachers = teachers.filter(teacher => teacher.status !== 'PENDING');
+		const totalItems = nonPendingTeachers.length;
 		const selectedCount = selectedRowKeys.length;
 		const isSelectAll = selectedCount === totalItems && totalItems > 0;
 		const isIndeterminate = false; // Không bao giờ hiển thị indeterminate
@@ -527,10 +529,11 @@ const TeacherList = () => {
 			selectedRowKeys,
 			isSelectAll,
 			isIndeterminate,
+			nonPendingTeachers: nonPendingTeachers.length,
 		});
 
 		return { isSelectAll, isIndeterminate, totalItems, selectedCount };
-	}, [selectedRowKeys, totalTeachers]);
+	}, [selectedRowKeys, teachers]);
 
 	// Checkbox logic
 	const handleSelectAll = async (checked) => {
@@ -566,7 +569,10 @@ const TeacherList = () => {
 				const response = await teacherManagementApi.getTeachers(params);
 				
 				if (response.success && response.data) {
-					const allIds = response.data.map(teacher => teacher.id);
+					// Get all IDs from the response, excluding PENDING records
+					const allIds = response.data
+						.filter(teacher => teacher.status !== 'PENDING')
+						.map(teacher => teacher.id);
 					setSelectedRowKeys(allIds);
 				}
 			} catch (error) {
@@ -579,6 +585,11 @@ const TeacherList = () => {
 	};
 
 	const handleSelectRow = (record, checked) => {
+		// Don't allow selection of PENDING records
+		if (record.status === 'PENDING') {
+			return;
+		}
+		
 		if (checked) {
 			setSelectedRowKeys(prev => [...prev, record.id]);
 		} else {
@@ -593,7 +604,16 @@ const TeacherList = () => {
 			return;
 		}
 		
-		const confirmContent = `${t('teacherManagement.confirmBulkActivate')} ${selectedRowKeys.length} ${t('teacherManagement.teachers')}?`;
+		// Filter out PENDING records from selected items
+		const selectedTeachers = teachers.filter(teacher => selectedRowKeys.includes(teacher.id));
+		const nonPendingSelected = selectedTeachers.filter(teacher => teacher.status !== 'PENDING');
+		
+		if (nonPendingSelected.length === 0) {
+			spaceToast.warning('Cannot activate PENDING teachers');
+			return;
+		}
+		
+		const confirmContent = `${t('teacherManagement.confirmBulkActivate')} ${nonPendingSelected.length} ${t('teacherManagement.teachers')}? ${selectedTeachers.length !== nonPendingSelected.length ? `(${selectedTeachers.length - nonPendingSelected.length} PENDING teachers will be skipped)` : ''}`;
 		
 		setConfirmModal({
 			visible: true,
@@ -601,9 +621,9 @@ const TeacherList = () => {
 			content: confirmContent,
 			onConfirm: async () => {
 				try {
-					// Call API for bulk update - activate all selected teachers
-					const promises = selectedRowKeys.map(id => 
-						teacherManagementApi.updateTeacherStatus(id, 'ACTIVE')
+					// Call API for bulk update - activate only non-PENDING selected teachers
+					const promises = nonPendingSelected.map(teacher => 
+						teacherManagementApi.updateTeacherStatus(teacher.id, 'ACTIVE')
 					);
 					
 					const results = await Promise.all(promises);
@@ -630,7 +650,16 @@ const TeacherList = () => {
 			return;
 		}
 		
-		const confirmContent = `${t('teacherManagement.confirmBulkDeactivate')} ${selectedRowKeys.length} ${t('teacherManagement.teachers')}?`;
+		// Filter out PENDING records from selected items
+		const selectedTeachers = teachers.filter(teacher => selectedRowKeys.includes(teacher.id));
+		const nonPendingSelected = selectedTeachers.filter(teacher => teacher.status !== 'PENDING');
+		
+		if (nonPendingSelected.length === 0) {
+			spaceToast.warning('Cannot deactivate PENDING teachers');
+			return;
+		}
+		
+		const confirmContent = `${t('teacherManagement.confirmBulkDeactivate')} ${nonPendingSelected.length} ${t('teacherManagement.teachers')}? ${selectedTeachers.length !== nonPendingSelected.length ? `(${selectedTeachers.length - nonPendingSelected.length} PENDING teachers will be skipped)` : ''}`;
 		
 		setConfirmModal({
 			visible: true,
@@ -638,9 +667,9 @@ const TeacherList = () => {
 			content: confirmContent,
 			onConfirm: async () => {
 				try {
-					// Call API for bulk update - deactivate all selected teachers
-					const promises = selectedRowKeys.map(id => 
-						teacherManagementApi.updateTeacherStatus(id, 'INACTIVE')
+					// Call API for bulk update - deactivate only non-PENDING selected teachers
+					const promises = nonPendingSelected.map(teacher => 
+						teacherManagementApi.updateTeacherStatus(teacher.id, 'INACTIVE')
 					);
 					
 					const results = await Promise.all(promises);
@@ -715,6 +744,7 @@ const TeacherList = () => {
 				<Checkbox
 					checked={selectedRowKeys.includes(record.id)}
 					onChange={(e) => handleSelectRow(record, e.target.checked)}
+					disabled={record.status === 'PENDING'}
 					style={{
 						transform: 'scale(1.2)'
 					}}

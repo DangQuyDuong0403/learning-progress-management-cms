@@ -622,7 +622,10 @@ const StudentProfile = () => {
 									{ required: true, message: t('studentManagement.roleNameRequired') },
 								]}
 							>
-								<Select placeholder={t('studentManagement.selectRole')}>
+								<Select 
+									placeholder={t('studentManagement.selectRole')}
+									disabled={student?.roleName === 'STUDENT'}
+								>
 									<Select.Option value="STUDENT">{t('common.student')}</Select.Option>
 									{/* Only allow TEST_TAKER option if current role is not STUDENT */}
 									{student?.roleName !== 'STUDENT' && (
