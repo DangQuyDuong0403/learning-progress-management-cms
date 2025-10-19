@@ -15,8 +15,8 @@ const authApi = {
 	forgotPassword: (data) => {
 		const requestBody = {
 			userName: data.username,
-			 domain: process.env.REACT_APP_DOMAIN,
-			//domain:'http://localhost:3000',
+			//  domain: process.env.REACT_APP_DOMAIN,
+			domain:'http://localhost:3000',
 			path: "/reset-password"
 		};
 		console.log('ForgotPassword API - Request Body:', requestBody);
