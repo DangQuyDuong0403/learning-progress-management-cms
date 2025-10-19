@@ -8,24 +8,12 @@ import {
 	Input,
 	Row,
 	Col,
-	Tooltip,
-	Upload,
 	Typography,
-	Divider,
-	Progress,
-	Alert,
 	Checkbox,
 } from 'antd';
 import {
-	PlusOutlined,
-	EditOutlined,
-	DeleteOutlined,
 	SearchOutlined,
-	ReloadOutlined,
-	PlayCircleOutlined,
 	ArrowLeftOutlined,
-	SwapOutlined,
-	UploadOutlined,
 	DownloadOutlined,
 	DragOutlined,
 } from '@ant-design/icons';
@@ -43,9 +31,7 @@ import ThemedLayout from '../../../../component/ThemedLayout';
 import { useTheme } from '../../../../contexts/ThemeContext';
 import LessonForm from './LessonForm';
 import LoadingWithEffect from '../../../../component/spinner/LoadingWithEffect';
-
-const { Dragger } = Upload;
-const { Title, Text } = Typography;
+import BottomActionBar from '../../../../component/BottomActionBar';
 
 const LessonListPage = () => {
 	const { t } = useTranslation();
@@ -67,10 +53,8 @@ const LessonListPage = () => {
 	const [isInitialLoading, setIsInitialLoading] = useState(true);
 
 	// Modal states
-	const [isDeleteModalVisible, setIsDeleteModalVisible] = useState(false);
 	const [isBulkDeleteModalVisible, setIsBulkDeleteModalVisible] = useState(false);
 	const [isFormModalVisible, setIsFormModalVisible] = useState(false);
-	const [deleteLesson, setDeleteLesson] = useState(null);
 	const [editingLesson, setEditingLesson] = useState(null);
 	const [importModal, setImportModal] = useState({
 		visible: false,
@@ -160,45 +144,6 @@ const LessonListPage = () => {
 			}
 		};
 	}, [searchTimeout]);
-
-	const handleAdd = () => {
-		setEditingLesson(null);
-		setIsFormModalVisible(true);
-	};
-
-	const handleEdit = (lesson) => {
-		setEditingLesson(lesson);
-		setIsFormModalVisible(true);
-	};
-
-	const handleDeleteClick = (lesson) => {
-		setDeleteLesson(lesson);
-		setIsDeleteModalVisible(true);
-	};
-
-	const handleDelete = async () => {
-		try {
-			await dispatch(deleteLesson(deleteLesson.id));
-			message.success(t('lessonManagement.deleteLessonSuccess'));
-			setIsDeleteModalVisible(false);
-			setDeleteLesson(null);
-			// Refresh the list
-			fetchLessons(pagination.current, pagination.pageSize, searchText);
-		} catch (error) {
-			console.error('Error deleting lesson:', error);
-			message.error(t('lessonManagement.deleteLessonError'));
-		}
-	};
-
-	const handleDeleteModalClose = () => {
-		setIsDeleteModalVisible(false);
-		setDeleteLesson(null);
-	};
-
-
-	const handleRefresh = () => {
-		fetchLessons(pagination.current, pagination.pageSize, searchText);
-	};
 
 	const handleBackToChapters = () => {
 		navigate(`/manager/syllabuses/${syllabusId}/chapters`);
@@ -684,22 +629,6 @@ const LessonListPage = () => {
 					</Col>
 				</Row>
 
-				{/* Bulk Actions Row */}
-				{selectedRowKeys.length > 0 && (
-					<Row justify="end" style={{ marginBottom: '16px' }}>
-						<Col>
-							<Space>
-								<Button
-									icon={<DeleteOutlined />}
-									onClick={handleDeleteAll}
-									className="bulk-delete-button"
-								>
-									{t('lessonManagement.deleteAll')} ({selectedRowKeys.length})
-								</Button>
-							</Space>
-						</Col>
-					</Row>
-				)}
 
 				{/* Table Section */}
 				<div className={`table-section ${theme}-table-section`}>
@@ -721,86 +650,15 @@ const LessonListPage = () => {
 				</div>
 			</div>
 
-			{/* Delete Confirmation Modal */}
-			<Modal
-				title={
-					<div style={{ 
-						fontSize: '20px', 
-						fontWeight: '600', 
-						color: '#1890ff',
-						textAlign: 'center',
-						padding: '10px 0'
-					}}>
-						{t('lessonManagement.confirmDelete')}
-					</div>
-				}
-				open={isDeleteModalVisible}
-				onOk={handleDelete}
-				onCancel={handleDeleteModalClose}
-				okText={t('common.confirm')}
-				cancelText={t('common.cancel')}
-				width={500}
-				centered
-				bodyStyle={{
-					padding: '30px 40px',
-					fontSize: '16px',
-					lineHeight: '1.6',
-					textAlign: 'center'
-				}}
-				okButtonProps={{
-					style: {
-						backgroundColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
-						background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
-						borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'transparent',
-						color: theme === 'sun' ? '#000000' : '#ffffff',
-						height: '40px',
-						fontSize: '16px',
-						fontWeight: '500',
-						minWidth: '100px'
-					}
-				}}
-				cancelButtonProps={{
-					style: {
-						height: '40px',
-						fontSize: '16px',
-						fontWeight: '500',
-						minWidth: '100px'
-					}
-				}}
-			>
-				<div style={{
-					display: 'flex',
-					flexDirection: 'column',
-					alignItems: 'center',
-					gap: '20px'
-				}}>
-					<div style={{
-						fontSize: '48px',
-						color: '#ff4d4f',
-						marginBottom: '10px'
-					}}>
-						⚠️
-					</div>
-					<p style={{
-						fontSize: '18px',
-						color: '#333',
-						margin: 0,
-						fontWeight: '500'
-					}}>
-						{t('lessonManagement.confirmDeleteMessage')}
-					</p>
-					{deleteLesson && (
-						<p style={{
-							fontSize: '20px',
-							color: '#1890ff',
-							margin: 0,
-							fontWeight: '600'
-						}}>
-							<strong>{deleteLesson.name}</strong>
-						</p>
-					)}
-				</div>
-			</Modal>
+			{/* Bottom Action Bar */}
+			<BottomActionBar
+				selectedCount={selectedRowKeys.length}
+				onSelectAll={handleSelectAll}
+				onDeleteAll={handleDeleteAll}
+				onClose={() => setSelectedRowKeys([])}
+				selectAllText="Select all"
+				deleteAllText="Delete all"
+			/>
 
 			{/* Delete All Confirmation Modal */}
 			<Modal

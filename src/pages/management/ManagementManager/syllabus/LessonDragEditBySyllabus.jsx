@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, memo } from 'react';
-import { Button, message, Typography, Modal, Input, Tabs } from 'antd';
+import { Button, message, Typography, Modal, Input } from 'antd';
 import {
 	PlusOutlined,
 	DeleteOutlined,
@@ -229,7 +229,6 @@ const LessonDragEditBySyllabus = () => {
 	const [syllabusInfo, setSyllabusInfo] = useState(null);
 	const [isInitialLoading, setIsInitialLoading] = useState(true);
 	const [activeTab, setActiveTab] = useState('lessons');
-
 	// Optimized sensors configuration for better performance
 	const sensors = useSensors(
 		useSensor(PointerSensor, {
@@ -556,49 +555,22 @@ const LessonDragEditBySyllabus = () => {
 			<div className={`main-content-panel ${theme}-main-panel`}>
 				{/* Header Section */}
 				<div className={`panel-header ${theme}-panel-header`}>
-					<div className="page-title-container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
+					<div className="page-title-container" style={{ position: 'relative', display: 'flex', alignItems: 'center', marginBottom: '24px' }}>
 						<Button 
 							icon={<ArrowLeftOutlined />}
 							onClick={handleGoBack}
 							className={`back-button ${theme}-back-button`}
+				
 						>
 							{t('common.back')}
 						</Button>
 						<Title 
 							level={1} 
 							className="page-title"
-							style={{ margin: 0, flex: 1, textAlign: 'center' }}
+							style={{ margin: 0, width: '100%', textAlign: 'center' }}
 						>
 							{t('lessonManagement.editPositions')} - {syllabusInfo.name}
 						</Title>
-						<div style={{ width: '100px' }}></div> {/* Spacer để cân bằng layout */}
-					</div>
-
-					{/* Tabs Section */}
-					<div className={`custom-tabs-container ${theme}-tabs-container`} style={{ marginBottom: '24px' }}>
-						<Tabs
-							activeKey={activeTab}
-							onChange={handleTabChange}
-							className={`custom-tabs ${theme}-tabs`}
-							items={[
-							{
-								key: 'chapters',
-								label: (
-									<div className={`tab-label ${theme}-tab-label`}>
-										<span className={`tab-text ${theme}-tab-text`}>{t('chapterManagement.title')}</span>
-									</div>
-								),
-							},
-							{
-								key: 'lessons',
-								label: (
-									<div className={`tab-label ${theme}-tab-label`}>
-										<span className={`tab-text ${theme}-tab-text`}>{t('lessonManagement.viewAllLessons')}</span>
-									</div>
-								),
-							},
-							]}
-						/>
 					</div>
 				</div>
 

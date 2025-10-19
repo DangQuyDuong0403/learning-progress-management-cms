@@ -37,6 +37,7 @@ import { spaceToast } from "../../../../component/SpaceToastify";
 import studentManagementApi from "../../../../apis/backend/StudentManagement";
 import AssignStudentToClass from "./AssignStudentToClass";
 import levelManagementApi from "../../../../apis/backend/levelManagement";
+import StudentBottomActionBar from "../../../../component/StudentBottomActionBar";
 
 const { Option } = Select;
 const { Title, Text } = Typography;
@@ -1165,55 +1166,6 @@ const StudentList = () => {
             </div>
           </div>
 
-          {/* Bulk Actions Row */}
-          {selectedRowKeys.length > 0 && (
-            <div className={`bulk-actions-row ${theme}-bulk-actions-row`} style={{
-              display: 'flex',
-              justifyContent: 'flex-end',
-              marginTop: '16px',
-              padding: '12px 0',
-              borderTop: '1px solid #f0f0f0'
-            }}>
-              <div style={{ display: 'flex', gap: '12px' }}>
-                <Button 
-                  onClick={handleBulkActive}
-                  className={`bulk-active-button ${theme}-bulk-active-button`}
-                  style={{
-                    backgroundColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)',
-                    background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)',
-                    borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'transparent',
-                    color: '#000000',
-                    height: '40px',
-                    fontSize: '16px',
-                    fontWeight: '500',
-                    minWidth: '140px',
-                    width: '130px'
-                  }}
-                >
-                  {t('studentManagement.activeAll')} ({selectedRowKeys.length})
-                </Button>
-                
-                <Button 
-                  onClick={handleBulkDeactive}
-                  className={`bulk-deactive-button ${theme}-bulk-deactive-button`}
-                  style={{
-                    backgroundColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)',
-                    background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)',
-                    borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'transparent',
-                    color: '#000000',
-                    height: '40px',
-                    fontSize: '16px',
-                    fontWeight: '500',
-                    minWidth: '140px',
-                    width: '130px'
-                  }}
-                >
-                  {t('studentManagement.deactiveAll')} ({selectedRowKeys.length})
-                </Button>
-              </div>
-            </div>
-          )}
-
           {/* Table Section */}
 				<div className={`table-section ${theme}-table-section`}>
 					<LoadingWithEffect
@@ -1860,6 +1812,18 @@ const StudentList = () => {
             </div>
           </div>
         </Modal>
+
+        {/* Bottom Action Bar - Fixed at bottom of viewport */}
+        <StudentBottomActionBar
+          selectedCount={selectedRowKeys.length}
+          onSelectAll={handleSelectAll}
+          onActiveAll={handleBulkActive}
+          onDeactiveAll={handleBulkDeactive}
+          onClose={() => setSelectedRowKeys([])}
+          selectAllText="Select all"
+          activeAllText="Active all"
+          deactiveAllText="Deactive all"
+        />
 
     </ThemedLayout> 
   );

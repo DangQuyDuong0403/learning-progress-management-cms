@@ -22,9 +22,7 @@ import {
 	EditOutlined,
 	DeleteOutlined,
 	SearchOutlined,
-	BookOutlined,
 	EyeOutlined,
-	FileTextOutlined,
 	DownloadOutlined,
 	UploadOutlined,
 	PlayCircleOutlined,
@@ -38,6 +36,7 @@ import ThemedLayout from '../../../../component/ThemedLayout';
 import { useTheme } from '../../../../contexts/ThemeContext';
 import LoadingWithEffect from '../../../../component/spinner/LoadingWithEffect';
 import { spaceToast } from '../../../../component/SpaceToastify';
+import BottomActionBar from '../../../../component/BottomActionBar';
 import syllabusManagementApi from '../../../../apis/backend/syllabusManagement';
 
 const SyllabusList = () => {
@@ -141,7 +140,7 @@ const SyllabusList = () => {
 			message.error(errorMessage);
 			setLoading(false);
 		}
-	}, [t]);
+	}, []);
 
 
 	useEffect(() => {
@@ -150,10 +149,10 @@ const SyllabusList = () => {
 
 	// Calculate checkbox states with useMemo
 	const checkboxStates = useMemo(() => {
-		const totalItems = totalElements; // Sử dụng totalElements thay vì syllabuses.length
+		const totalItems = syllabuses.length; // Sử dụng syllabuses.length thay vì totalElements
 		const selectedCount = selectedRowKeys.length;
 		const isSelectAll = selectedCount === totalItems && totalItems > 0;
-		const isIndeterminate = false; // Không bao giờ hiển thị indeterminate
+		const isIndeterminate = false; // Luôn false để không hiển thị indeterminate state
 		
 		console.log('Checkbox Debug:', {
 			totalItems,
@@ -164,7 +163,7 @@ const SyllabusList = () => {
 		});
 		
 		return { isSelectAll, isIndeterminate, totalItems, selectedCount };
-	}, [selectedRowKeys, totalElements]);
+	}, [selectedRowKeys, syllabuses.length]);
 
 	// Cleanup timeout on unmount
 	useEffect(() => {
@@ -397,38 +396,9 @@ const SyllabusList = () => {
 	// Checkbox selection handlers
 	const handleSelectAll = async (checked) => {
 		if (checked) {
-			try {
-				// Fetch all syllabus IDs from API (without pagination)
-				const params = {
-					page: 0,
-					size: totalElements, // Get all items
-					sortBy: sortBy,
-					sortDir: sortDir,
-				};
-				
-				// Add search parameter if provided
-				if (searchText && searchText.trim()) {
-					params.text = searchText.trim();
-				}
-
-				const response = await syllabusManagementApi.getSyllabuses({
-					params: params,
-				});
-
-				// Get all IDs from the response
-				const allKeys = response.data.map(syllabus => syllabus.id);
-				setSelectedRowKeys(allKeys);
-			} catch (error) {
-				console.error('Error fetching all syllabus IDs:', error);
-				
-				// Handle error message from backend
-				let errorMessage = error.response?.data?.error || 
-					error.response?.data?.message || 
-					error.message ||
-					'Error selecting all items';
-				
-				message.error(errorMessage);
-			}
+			// Select all items currently visible on the page
+			const currentPageKeys = syllabuses.map(syllabus => syllabus.id);
+			setSelectedRowKeys(currentPageKeys);
 		} else {
 			setSelectedRowKeys([]);
 		}
@@ -456,7 +426,7 @@ const SyllabusList = () => {
 	const handleBulkDeleteConfirm = async () => {
 		try {
 			// TODO: Implement actual bulk delete API call
-			const response = await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate API call
+			await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate API call
 			
 			// Update local state
 			setSyllabuses(syllabuses.filter(s => !selectedRowKeys.includes(s.id)));
@@ -916,23 +886,6 @@ const SyllabusList = () => {
 					</Col>
 				</Row>
 
-				{/* Bulk Actions Row */}
-				{selectedRowKeys.length > 0 && currentView === 'syllabuses' && (
-					<Row style={{ marginBottom: '16px' }}>
-						<Col flex="auto"></Col>
-						<Col>
-							<Space>
-								<Button
-									icon={<DeleteOutlined />}
-									onClick={handleBulkDelete}
-									className="bulk-delete-button"
-								>
-									{t('syllabusManagement.deleteAll')} ({selectedRowKeys.length})
-								</Button>
-							</Space>
-						</Col>
-					</Row>
-				)}
 
 				{/* Table Section */}
 				<div className={`table-section ${theme}-table-section`}>
@@ -966,6 +919,18 @@ const SyllabusList = () => {
 					</LoadingWithEffect>
 				</div>
 			</div>
+
+			{/* Bottom Action Bar - Jira Style */}
+			{currentView === 'syllabuses' && (
+				<BottomActionBar
+					selectedCount={selectedRowKeys.length}
+					onSelectAll={handleSelectAll}
+					onDeleteAll={handleBulkDelete}
+					onClose={() => setSelectedRowKeys([])}
+					selectAllText="Select all"
+					deleteAllText="Delete all"
+				/>
+			)}
 
 			{/* Syllabus Modal */}
 			<Modal
