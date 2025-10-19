@@ -228,10 +228,7 @@ export default function Profile() {
                     </div>
                     <div className="profile-name-section">
                       <h4 className="profile-full-name">
-                        {profileData ? 
-                          `${profileData.lastName || ''} ${profileData.firstName || ''}`.trim() || 
-                          (user?.fullName || '') 
-                          : (user?.fullName || '')}
+                        {profileData?.fullName || user?.fullName || ''}
                       </h4>
                       <p className="profile-role">{profileData?.roleName || user?.role || 'Admin'}</p>
                     </div>
@@ -247,19 +244,11 @@ export default function Profile() {
                       </div>
                     </div>
 
-                    {/* Name Fields Row */}
-                    <div className="form-row">
-                      <div className="form-group" style={{ flex: 1 }}>
-                        <label className={`form-label ${theme}-form-label`}>{t('common.lastName')}</label>
-                        <div className={`form-display ${theme}-form-display`}>
-                          {profileData?.lastName || ""}
-                        </div>
-                      </div>
-                      <div className="form-group" style={{ flex: 1, marginLeft: '1rem' }}>
-                        <label className={`form-label ${theme}-form-label`}>{t('common.firstName')}</label>
-                        <div className={`form-display ${theme}-form-display`}>
-                          {profileData?.firstName || ""}
-                        </div>
+                    {/* Full Name Field */}
+                    <div className="form-group">
+                      <label className={`form-label ${theme}-form-label`}>{t('common.fullName')}</label>
+                      <div className={`form-display ${theme}-form-display`}>
+                        {profileData?.fullName || ""}
                       </div>
                     </div>
 

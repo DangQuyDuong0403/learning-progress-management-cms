@@ -119,7 +119,7 @@ const authApi = {
 			newEmail: data.email,
 			domain: process.env.REACT_APP_DOMAIN,
 			// domain:'http://localhost:3000',
-			path: 'confirm-email-change'
+			path: '/confirm-email-change'
 		};
 		
 		const url = `/user/change-email?userId=${userId}`;
@@ -166,8 +166,8 @@ const authApi = {
 		const requestBody = {
 			newEmail: data.email,
 			domain: process.env.REACT_APP_DOMAIN,
-			//domain:'http://localhost:3000',
-			path: 'confirm-email-change'
+			// domain:'http://localhost:3000',
+			path: '/confirm-email-change'
 		};
 		
 		const url = `/user/change-email?userId=${userId}`;

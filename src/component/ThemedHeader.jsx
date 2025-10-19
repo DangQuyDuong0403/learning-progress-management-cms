@@ -204,7 +204,7 @@ export default function ThemedHeader() {
                 >
                   <div className={`user-avatar ${theme}-user-avatar`}>
                     <img 
-                      src="/img/avatar_1.png" 
+                      src={profileData?.avatarUrl || "/img/avatar_1.png"} 
                       alt="Profile" 
                       className="avatar-image"
                     />
@@ -226,7 +226,7 @@ export default function ThemedHeader() {
                   <li style={{ padding: '16px', borderBottom: theme === 'sun' ? '1px solid rgba(30, 64, 175, 0.1)' : '1px solid rgba(77, 208, 255, 0.2)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                       <img 
-                        src="/img/avatar_1.png" 
+                        src={profileData?.avatarUrl || "/img/avatar_1.png"} 
                         alt="Profile" 
                         style={{ 
                           width: '40px', 
@@ -242,10 +242,7 @@ export default function ThemedHeader() {
                           color: theme === 'sun' ? '#1e40af' : '#fff',
                           marginBottom: '2px'
                         }}>
-                          {profileData ? 
-                            `${profileData.lastName || ''} ${profileData.firstName || ''}`.trim() || 
-                            (user?.fullName || user?.name || 'User') 
-                            : (user?.fullName || user?.name || 'User')}
+                          {profileData?.fullName || user?.fullName || user?.name || 'User'}
                         </div>
                         <div style={{ 
                           fontSize: '12px', 
