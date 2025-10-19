@@ -33,6 +33,7 @@ import TeacherProfile from '../pages/management/ManagementManager/teacher/Teache
 import SpinnerDemo from '../pages/SpinnerDemo.jsx';
 //manager
 import ClassList from '../pages/management/ManagementClass/Class/ClassList.jsx';
+import ClassListTable from '../pages/management/ManagementClass/Class/ClassListTable.jsx';
 import ClassMenu from '../pages/management/ManagementClass/Class/ClassMenu.jsx';
 import ClassStudent from '../pages/management/ManagementClass/Class/ClassStudent.jsx';
 import ClassDashboard from '../pages/management/ManagementClass/Class/ClassDashboard.jsx';
@@ -247,7 +248,7 @@ const CONFIG_ROUTER = [
 	},
 	{
 		show: true,
-		component: ClassList,
+		component: ClassListTable,
 		// icon: <UserOutlined />,
 		path: ROUTER_PAGE.MANAGER_CLASSES,
 		menuName: 'classes management',

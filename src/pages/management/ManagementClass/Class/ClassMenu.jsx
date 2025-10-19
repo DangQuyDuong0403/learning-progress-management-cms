@@ -12,6 +12,7 @@ import {
   HistoryOutlined,
   BookOutlined,
   DashboardOutlined,
+  SolutionOutlined,
 } from "@ant-design/icons";
 import ThemedLayout from "../../../../component/ThemedLayout";
 import LoadingWithEffect from "../../../../component/spinner/LoadingWithEffect";
@@ -22,6 +23,7 @@ import { useSelector } from "react-redux";
 import { classManagementApi } from "../../../../apis/apis";
 import { spaceToast } from "../../../../component/SpaceToastify";
 import { useTheme } from "../../../../contexts/ThemeContext";
+import usePageTitle from "../../../../hooks/usePageTitle";
 
 const ClassMenu = () => {
   const { t } = useTranslation();
@@ -29,6 +31,10 @@ const ClassMenu = () => {
   const navigate = useNavigate();
   const { user } = useSelector((state) => state.auth);
   const { isSunTheme } = useTheme();
+  
+  // Set page title
+  usePageTitle('Class Menu');
+  
   const [loading, setLoading] = useState(false);
   const [classData, setClassData] = useState(null);
 
@@ -101,7 +107,7 @@ const ClassMenu = () => {
       id: "students",
       title: t('classMenu.students'),
       description: t('classMenu.studentsDescription'),
-      icon: <UserOutlined style={{ fontSize: '48px', color: '#1890ff' }} />,
+      icon: <TeamOutlined style={{ fontSize: '48px', color: '#1890ff' }} />,
       path: `${routePrefix}/student/${id}`,
       color: "#1890ff",
     },
@@ -109,7 +115,7 @@ const ClassMenu = () => {
       id: "teachers",
       title: t('classMenu.teachers'),
       description: t('classMenu.teachersDescription'),
-      icon: <TeamOutlined style={{ fontSize: '48px', color: '#52c41a' }} />,
+      icon: <SolutionOutlined style={{ fontSize: '48px', color: '#52c41a' }} />,
       path: `${routePrefix}/teachers/${id}`,
       color: "#52c41a",
     },
