@@ -20,7 +20,11 @@ export const ClassMenuProvider = ({ children }) => {
     setIsInClassMenu(true);
     setClassData(classInfo);
     
-    // Don't interfere with sidebar state - let user toggle freely
+    // Auto-collapse sidebar when entering class menu mode
+    localStorage.setItem('sidebarCollapsed', JSON.stringify(true));
+    
+    // Dispatch custom event to notify ThemedLayout
+    window.dispatchEvent(new CustomEvent('sidebarStateChanged'));
   };
 
   // Function to exit class menu mode
