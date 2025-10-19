@@ -518,26 +518,57 @@ const TeacherList = () => {
 
 	// Calculate checkbox states with useMemo
 	const checkboxStates = useMemo(() => {
-		// Filter out PENDING records from total count
+		// Filter out PENDING records from current page
 		const nonPendingTeachers = teachers.filter(teacher => teacher.status !== 'PENDING');
-		const totalItems = nonPendingTeachers.length;
+		const currentPageKeys = nonPendingTeachers.map(teacher => teacher.id);
 		const selectedCount = selectedRowKeys.length;
-		const isSelectAll = selectedCount === totalItems && totalItems > 0;
-		const isIndeterminate = false; // Không bao giờ hiển thị indeterminate
-
+		
+		// Check if all non-PENDING items on current page are selected
+		const allCurrentPageSelected = currentPageKeys.length > 0 && 
+			currentPageKeys.every(key => selectedRowKeys.includes(key));
+		
+		// For table header checkbox: only check if all non-PENDING current page items are selected
+		const isSelectAll = allCurrentPageSelected;
+		// Never show indeterminate state for table header checkbox
+		const isIndeterminate = false;
+		
 		console.log('Checkbox Debug:', {
-			totalItems,
-			selectedCount,
+			currentPageKeys,
 			selectedRowKeys,
+			allCurrentPageSelected,
 			isSelectAll,
 			isIndeterminate,
+			selectedCount,
 			nonPendingTeachers: nonPendingTeachers.length,
 		});
-
-		return { isSelectAll, isIndeterminate, totalItems, selectedCount };
+		
+		return { isSelectAll, isIndeterminate, totalItems: currentPageKeys.length, selectedCount };
 	}, [selectedRowKeys, teachers]);
 
-	// Checkbox logic
+	// Handle table header checkbox (only current page)
+	const handleSelectAllCurrentPage = (checked) => {
+		// Filter out PENDING records from current page
+		const nonPendingTeachers = teachers.filter(teacher => teacher.status !== 'PENDING');
+		const currentPageKeys = nonPendingTeachers.map(teacher => teacher.id);
+		
+		if (checked) {
+			// Add all non-PENDING current page items to selection
+			setSelectedRowKeys(prev => {
+				const newKeys = [...prev];
+				currentPageKeys.forEach(key => {
+					if (!newKeys.includes(key)) {
+						newKeys.push(key);
+					}
+				});
+				return newKeys;
+			});
+		} else {
+			// Remove all current page items from selection
+			setSelectedRowKeys(prev => prev.filter(key => !currentPageKeys.includes(key)));
+		}
+	};
+
+	// Checkbox logic for BottomActionBar (select all in entire dataset)
 	const handleSelectAll = async (checked) => {
 		if (checked) {
 			try {
@@ -751,7 +782,7 @@ const TeacherList = () => {
 					key={`select-all-${checkboxStates.selectedCount}-${checkboxStates.totalItems}`}
 					checked={checkboxStates.isSelectAll}
 					indeterminate={checkboxStates.isIndeterminate}
-					onChange={(e) => handleSelectAll(e.target.checked)}
+					onChange={(e) => handleSelectAllCurrentPage(e.target.checked)}
 					style={{
 						transform: 'scale(1.2)',
 						marginRight: '8px'

@@ -425,11 +425,11 @@ const TeacherProfile = () => {
 					{/* Current Classes */}
 					<div 
 						style={{ 
-							background: theme === 'space' ? 'rgb(224 217 255 / 95%)' : theme === 'sun' ? '#E6F5FF' : 'rgba(240, 248, 255, 0.95)',
+							background: '#ffffff',
 							borderRadius: '16px',
 							padding: '20px',
 							boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
-							border: theme === 'space' ? '1px solid rgba(77, 208, 255, 0.3)' : '1px solid rgba(0, 0, 0, 0.1)',
+							border: '1px solid rgba(0, 0, 0, 0.1)',
 							maxWidth: '800px',
 							margin: '24px auto 0 auto',
 							minHeight: 'auto',

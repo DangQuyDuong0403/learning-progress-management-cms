@@ -260,7 +260,7 @@
   min-height: 80vh;
   width: 85%;
   height: auto;
-  background: #edf1ff;
+  background: #E6F5FF;
   border: 1px solid #3b82f6;
   border-radius: 16px;
   padding: 24px;
@@ -1589,7 +1589,7 @@
 }
 
 .space-theme .parent-name-new {
-  color: #ffffff;
+  color: black;
 }
 
 .parent-relationship-new {
@@ -1597,9 +1597,7 @@
   color: #666666;
 }
 
-.space-theme .parent-relationship-new {
-  color: rgba(255, 255, 255, 0.7);
-}
+
 
 /* Parent Right Section New */
 .parent-right-section-new {
@@ -1622,7 +1620,7 @@
 }
 
 .space-theme .parent-contact-label-new {
-  color: rgba(255, 255, 255, 0.7);
+  color: black;
 }
 
 .parent-contact-value-new {
@@ -1632,7 +1630,7 @@
 }
 
 .space-theme .parent-contact-value-new {
-  color: #ffffff;
+  color: black;
 }
 
 /* Avatar Loading Overlay */

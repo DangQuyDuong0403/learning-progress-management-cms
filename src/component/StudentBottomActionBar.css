@@ -97,6 +97,19 @@
   box-shadow: 0 2px 8px rgba(250, 173, 20, 0.3);
 }
 
+.student-assign-all-to-class-button {
+  background: transparent;
+  border: 1px solid #1890ff;
+  color: #1890ff;
+}
+
+.student-assign-all-to-class-button:hover {
+  background: #1890ff;
+  color: #fff;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(24, 144, 255, 0.3);
+}
+
 .student-close-button {
   background: transparent;
   border: none;
@@ -174,6 +187,20 @@
   box-shadow: 0 2px 8px rgba(102, 174, 255, 0.3);
 }
 
+.sun-student-bottom-action-bar .student-assign-all-to-class-button {
+  background: linear-gradient(135deg, #66AEFF, #3C99FF);
+  border: 1px solid #66AEFF;
+  color: #000;
+}
+
+.sun-student-bottom-action-bar .student-assign-all-to-class-button:hover {
+  background: linear-gradient(135deg, #5A9EFF, #2B89FF);
+  border-color: #5A9EFF;
+  color: #000;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(102, 174, 255, 0.3);
+}
+
 .sun-student-bottom-action-bar .student-close-button {
   color: #000;
 }
@@ -234,6 +261,20 @@
 }
 
 .space-student-bottom-action-bar .student-deactive-all-button:hover {
+  background: linear-gradient(135deg, #A59FB0 19%, #9789A6 64%, #736790 75%, #9A90B0 97%, #5D4F7F 100%);
+  border-color: #A59FB0;
+  color: #000;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(181, 176, 192, 0.3);
+}
+
+.space-student-bottom-action-bar .student-assign-all-to-class-button {
+  background: linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%);
+  border: 1px solid #B5B0C0;
+  color: #000;
+}
+
+.space-student-bottom-action-bar .student-assign-all-to-class-button:hover {
   background: linear-gradient(135deg, #A59FB0 19%, #9789A6 64%, #736790 75%, #9A90B0 97%, #5D4F7F 100%);
   border-color: #A59FB0;
   color: #000;
