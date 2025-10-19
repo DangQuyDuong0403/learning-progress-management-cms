@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, memo } from 'react';
-import { Button, message, Typography, Modal, Input } from 'antd';
+import { Button, message, Typography, Modal } from 'antd';
 import {
 	PlusOutlined,
 	DeleteOutlined,
@@ -30,7 +30,6 @@ import {
 	SortableContext,
 	sortableKeyboardCoordinates,
 	verticalListSortingStrategy,
-	defaultAnimateLayoutChanges,
 } from '@dnd-kit/sortable';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
@@ -38,15 +37,17 @@ import '../level/LevelDragEdit.css';
 
 const { Text, Title } = Typography;
 
-// Sortable Lesson Item Component
+// Sortable Lesson Item Component - Optimized
 const SortableLessonItem = memo(
-	({ lesson, index, onDeleteLesson, onEditLesson, theme, t }) => {
+	({ lesson, index, onDeleteLesson, onEditLesson, theme, t, isDraggingGlobal }) => {
+		// Keep minimal animation for smoother experience
 		const animateLayoutChanges = useCallback((args) => {
 			const { isSorting, wasDragging } = args;
-			if (isSorting || wasDragging) {
-				return defaultAnimateLayoutChanges(args);
+			// Only animate when not actively dragging
+			if (isSorting) {
+				return false; // No animation while dragging
 			}
-			return true;
+			return wasDragging; // Smooth animation when dropped
 		}, []);
 
 		const {
@@ -59,16 +60,43 @@ const SortableLessonItem = memo(
 		} = useSortable({
 			id: lesson.id,
 			animateLayoutChanges,
+			transition: {
+				duration: 200, // Giữ animation ngắn 200ms
+				easing: 'cubic-bezier(0.25, 0.1, 0.25, 1)',
+			},
 		});
 
+		// Optimized style with subtle animation
 		const style = useMemo(
-			() => ({
-				transform: transform ? CSS.Transform.toString(transform) : undefined,
-				transition: transition || undefined,
-				opacity: isDragging ? 0.5 : 1,
-				willChange: 'transform',
-			}),
-			[transform, transition, isDragging]
+			() => {
+				// When actively dragging this item, no transition
+				if (isDragging) {
+					return {
+						transform: transform ? CSS.Transform.toString(transform) : undefined,
+						transition: 'none',
+						opacity: 0.5,
+						willChange: 'transform',
+						pointerEvents: 'none',
+					};
+				}
+				// When other items are dragging, minimal transition
+				if (isDraggingGlobal) {
+					return {
+						transform: transform ? CSS.Transform.toString(transform) : undefined,
+						transition: transition || 'transform 0.15s ease-out',
+						opacity: 1,
+						willChange: 'transform',
+					};
+				}
+				// Normal state with smooth transition
+				return {
+					transform: transform ? CSS.Transform.toString(transform) : undefined,
+					transition: transition || 'transform 0.2s ease, opacity 0.2s ease',
+					opacity: 1,
+					willChange: 'auto',
+				};
+			},
+			[transform, transition, isDragging, isDraggingGlobal]
 		);
 
 		const handleEdit = useCallback(() => {
@@ -173,7 +201,8 @@ const SortableLessonItem = memo(
 			prevProps.lesson.name === nextProps.lesson.name &&
 			prevProps.lesson.content === nextProps.lesson.content &&
 			prevProps.lesson.position === nextProps.lesson.position &&
-			prevProps.theme === nextProps.theme
+			prevProps.theme === nextProps.theme &&
+			prevProps.isDraggingGlobal === nextProps.isDraggingGlobal
 		);
 	}
 );
@@ -219,18 +248,22 @@ const LessonDragEdit = () => {
 	const [lessons, setLessons] = useState([]);
 	const [loading, setLoading] = useState(false);
 	const [saving, setSaving] = useState(false);
-	const [activeId, setActiveId] = useState(null);
+	// eslint-disable-next-line no-unused-vars
+	const [activeId, setActiveId] = useState(null); // Keep for future use/debugging
 	const [isModalVisible, setIsModalVisible] = useState(false);
 	const [editingLesson, setEditingLesson] = useState(null);
 	const [insertAtIndex, setInsertAtIndex] = useState(null);
 	const [chapterInfo, setChapterInfo] = useState(null);
 	const [isInitialLoading, setIsInitialLoading] = useState(true);
+	const [isDraggingGlobal, setIsDraggingGlobal] = useState(false);
 
+	// Optimized sensors configuration for better performance
 	const sensors = useSensors(
 		useSensor(PointerSensor, {
 			activationConstraint: {
-				distance: 8,
+				distance: 8, // Reduced for better responsiveness
 				delay: 0,
+				tolerance: 5,
 			},
 		}),
 		useSensor(KeyboardSensor, {
@@ -399,39 +432,58 @@ const LessonDragEdit = () => {
 				});
 			});
 		},
-		[lessons, t]
+		[lessons]
 	);
 
 
 	const handleDragStart = useCallback((event) => {
 		setActiveId(event.active.id);
+		setIsDraggingGlobal(true);
 		document.body.style.overflow = 'hidden';
+		// Add class to body to prevent interactions during drag
+		document.body.classList.add('is-dragging');
+	}, []);
+
+	const handleDragCancel = useCallback(() => {
+		setActiveId(null);
+		setIsDraggingGlobal(false);
+		document.body.style.overflow = '';
+		document.body.classList.remove('is-dragging');
 	}, []);
 
 	useEffect(() => {
 		return () => {
 			document.body.style.overflow = '';
+			document.body.classList.remove('is-dragging');
 		};
 	}, []);
 
+	// Optimized drag end handler - only re-render once when dropped
 	const handleDragEnd = useCallback((event) => {
 		const { active, over } = event;
+		
+		// Reset dragging state immediately
 		setActiveId(null);
+		setIsDraggingGlobal(false);
 		document.body.style.overflow = '';
+		document.body.classList.remove('is-dragging');
 
-		if (active.id !== over?.id) {
-			setLessons((items) => {
-				const oldIndex = items.findIndex((item) => item.id === active.id);
-				const newIndex = items.findIndex((item) => item.id === over.id);
+		if (active.id !== over?.id && over) {
+			// Use requestAnimationFrame to batch the update
+			requestAnimationFrame(() => {
+				setLessons((items) => {
+					const oldIndex = items.findIndex((item) => item.id === active.id);
+					const newIndex = items.findIndex((item) => item.id === over.id);
 
-				if (oldIndex === -1 || newIndex === -1) return items;
+					if (oldIndex === -1 || newIndex === -1) return items;
 
-				const newItems = arrayMove(items, oldIndex, newIndex);
+					const newItems = arrayMove(items, oldIndex, newIndex);
 
-				return newItems.map((lesson, index) => ({
-					...lesson,
-					position: index + 1,
-				}));
+					return newItems.map((lesson, index) => ({
+						...lesson,
+						position: index + 1,
+					}));
+				});
 			});
 		}
 	}, []);
@@ -545,7 +597,8 @@ const LessonDragEdit = () => {
 										sensors={sensors}
 										collisionDetection={closestCenter}
 										onDragStart={handleDragStart}
-										onDragEnd={handleDragEnd}>
+										onDragEnd={handleDragEnd}
+										onDragCancel={handleDragCancel}>
 										<SortableContext
 											items={lessonIds}
 											strategy={verticalListSortingStrategy}>
@@ -568,6 +621,7 @@ const LessonDragEdit = () => {
 														onEditLesson={handleEditLesson}
 														theme={theme}
 														t={t}
+														isDraggingGlobal={isDraggingGlobal}
 													/>
 												</React.Fragment>
 											))}

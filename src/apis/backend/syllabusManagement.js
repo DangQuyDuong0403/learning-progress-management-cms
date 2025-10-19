@@ -37,9 +37,15 @@ const syllabusManagementApi = {
             'Content-Type': 'multipart/form-data',
         },
     }),
-    downloadLessonTemplate: () => axiosClient.get('/lesson/download-template', {
-        responseType: 'blob'
+    downloadLessonTemplate: () => axiosClient.get('/lesson/download-template'),
+    
+    // Chapter Import/Export APIs
+    importChapters: (formData) => axiosClient.post('/chapter/import', formData, {
+        headers: {
+            'Content-Type': 'multipart/form-data',
+        },
     }),
+    downloadChapterTemplate: () => axiosClient.get('/chapter/download-template'),
     
     // Syllabus Import/Export APIs
     importSyllabuses: (formData) => axiosClient.post('/syllabus/import', formData, {
