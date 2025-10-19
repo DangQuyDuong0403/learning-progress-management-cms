@@ -463,27 +463,136 @@ const SyllabusList = () => {
 
 	const handleExportSelected = async () => {
 		try {
-			// TODO: Implement export selected items API call
-			// await syllabusManagementApi.exportSyllabuses(selectedRowKeys);
+			if (selectedRowKeys.length === 0) {
+				spaceToast.warning(t('syllabusManagement.selectItemsToExport'));
+				return;
+			}
+
+			// Export each selected syllabus individually
+			for (let i = 0; i < selectedRowKeys.length; i++) {
+				const syllabusId = selectedRowKeys[i];
+				const response = await syllabusManagementApi.exportSyllabusById(syllabusId);
+				
+				// Since we modified axios interceptor to return full response for blob requests,
+				// response.data should contain the blob data directly
+				const blobData = response.data;
+				
+				// Create download link
+				const url = window.URL.createObjectURL(blobData);
+				const link = document.createElement('a');
+				link.href = url;
+				
+				// Get syllabus name for filename
+				const syllabus = syllabuses.find(s => s.id === syllabusId);
+				const filename = syllabus ? `syllabus_${syllabus.name.replace(/[^a-zA-Z0-9]/g, '_')}.xlsx` : `syllabus_${syllabusId}.xlsx`;
+				
+				link.download = filename;
+				link.style.display = 'none';
+				document.body.appendChild(link);
+				link.click();
+				document.body.removeChild(link);
+				window.URL.revokeObjectURL(url);
+				
+				// Add small delay between downloads to avoid browser blocking
+				if (i < selectedRowKeys.length - 1) {
+					await new Promise(resolve => setTimeout(resolve, 500));
+				}
+			}
 			
 			spaceToast.success(`${t('syllabusManagement.exportSuccess')}: ${selectedRowKeys.length} ${t('syllabusManagement.syllabuses')}`);
 			setIsExportModalVisible(false);
 		} catch (error) {
 			console.error('Error exporting selected syllabuses:', error);
-			spaceToast.error(t('syllabusManagement.exportError'));
+			
+			// Handle error message extraction
+			let errorMessage = 'Export failed';
+			
+			try {
+				// If response.data is a Blob (which happens with responseType: 'blob' errors)
+				if (error.response?.data instanceof Blob) {
+					// Read the blob as text to get the JSON error
+					const errorText = await error.response.data.text();
+					console.log('Error blob text:', errorText);
+					
+					// Try to parse the JSON error
+					const errorJson = JSON.parse(errorText);
+					errorMessage = errorJson.error || errorJson.message || errorMessage;
+				} else if (error.response?.data?.error) {
+					// Direct JSON error
+					errorMessage = error.response.data.error;
+				} else if (error.response?.data?.message) {
+					errorMessage = error.response.data.message;
+				} else if (error.message) {
+					errorMessage = error.message;
+				}
+			} catch (parseError) {
+				console.error('Error parsing error response:', parseError);
+				errorMessage = error.message || 'Export failed';
+			}
+			
+			console.error('Final error message:', errorMessage);
+			spaceToast.error(errorMessage);
 		}
 	};
 
 	const handleExportAll = async () => {
 		try {
-			// TODO: Implement export all items API call
-			// await syllabusManagementApi.exportAllSyllabuses();
+			// Call export all API with current search text
+			const response = await syllabusManagementApi.exportAllSyllabuses(searchText);
+			
+			// Since we modified axios interceptor to return full response for blob requests,
+			// response.data should contain the blob data directly
+			const blobData = response.data;
+			
+			// Create download link
+			const url = window.URL.createObjectURL(blobData);
+			const link = document.createElement('a');
+			link.href = url;
+			
+			// Generate filename with timestamp
+			const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-');
+			const filename = `all_syllabuses_${timestamp}.xlsx`;
+			
+			link.download = filename;
+			link.style.display = 'none';
+			document.body.appendChild(link);
+			link.click();
+			document.body.removeChild(link);
+			window.URL.revokeObjectURL(url);
 			
 			spaceToast.success(`${t('syllabusManagement.exportSuccess')}: ${totalElements} ${t('syllabusManagement.syllabuses')}`);
 			setIsExportModalVisible(false);
 		} catch (error) {
 			console.error('Error exporting all syllabuses:', error);
-			spaceToast.error(t('syllabusManagement.exportError'));
+			
+			// Handle error message extraction
+			let errorMessage = 'Export failed';
+			
+			try {
+				// If response.data is a Blob (which happens with responseType: 'blob' errors)
+				if (error.response?.data instanceof Blob) {
+					// Read the blob as text to get the JSON error
+					const errorText = await error.response.data.text();
+					console.log('Error blob text:', errorText);
+					
+					// Try to parse the JSON error
+					const errorJson = JSON.parse(errorText);
+					errorMessage = errorJson.error || errorJson.message || errorMessage;
+				} else if (error.response?.data?.error) {
+					// Direct JSON error
+					errorMessage = error.response.data.error;
+				} else if (error.response?.data?.message) {
+					errorMessage = error.response.data.message;
+				} else if (error.message) {
+					errorMessage = error.message;
+				}
+			} catch (parseError) {
+				console.error('Error parsing error response:', parseError);
+				errorMessage = error.message || 'Export failed';
+			}
+			
+			console.error('Final error message:', errorMessage);
+			spaceToast.error(errorMessage);
 		}
 	};
 

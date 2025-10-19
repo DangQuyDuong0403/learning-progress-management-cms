@@ -37,9 +37,15 @@ const syllabusManagementApi = {
             'Content-Type': 'multipart/form-data',
         },
     }),
-    downloadLessonTemplate: () => axiosClient.get('/lesson/download-template', {
-        responseType: 'blob'
+    downloadLessonTemplate: () => axiosClient.get('/lesson/download-template'),
+    
+    // Chapter Import/Export APIs
+    importChapters: (formData) => axiosClient.post('/chapter/import', formData, {
+        headers: {
+            'Content-Type': 'multipart/form-data',
+        },
     }),
+    downloadChapterTemplate: () => axiosClient.get('/chapter/download-template'),
     
     // Syllabus Import/Export APIs
     importSyllabuses: (formData) => axiosClient.post('/syllabus/import', formData, {
@@ -48,6 +54,15 @@ const syllabusManagementApi = {
         },
     }),
     downloadSyllabusTemplate: () => axiosClient.get('/syllabus/download-template'),
+    
+    // Export APIs
+    exportSyllabusById: (id) => axiosClient.get(`/syllabus/${id}/export`, {
+        responseType: 'blob', // Important for file download
+    }),
+    exportAllSyllabuses: (searchText = '') => axiosClient.get('/syllabus/export', {
+        params: { searchText },
+        responseType: 'blob', // Important for file download
+    }),
 }
 
 export default syllabusManagementApi;
