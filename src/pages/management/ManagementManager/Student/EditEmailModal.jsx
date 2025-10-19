@@ -18,7 +18,7 @@ export default function EditEmailModal({
   const [showConfirmationMessage, setShowConfirmationMessage] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  // Reset form when modal opens
+  // Reset form and loading state when modal opens
   useEffect(() => {
     if (isVisible) {
       form.resetFields();
@@ -26,6 +26,7 @@ export default function EditEmailModal({
         email: currentEmail
       });
       setShowConfirmationMessage(false);
+      setLoading(false); // Reset loading state
     }
   }, [isVisible, currentEmail, form]);
 
@@ -88,6 +89,7 @@ export default function EditEmailModal({
   const handleCancel = () => {
     form.resetFields();
     setShowConfirmationMessage(false);
+    setLoading(false); // Reset loading state when closing modal
     onCancel();
   };
 

@@ -696,7 +696,13 @@ const SyllabusList = () => {
 			width: '18%',
 			key: 'name',
 			render: (text, record) => (
-				<div style={{ fontSize: '20px'}}>
+				<div style={{ 
+					fontSize: '20px',
+					maxWidth: '200px',
+					overflow: 'hidden',
+					textOverflow: 'ellipsis',
+					whiteSpace: 'nowrap'
+				}}>
 					{text}
 				</div>
 			),
@@ -1036,8 +1042,8 @@ const SyllabusList = () => {
 					onSelectAll={handleSelectAll}
 					onDeleteAll={handleBulkDelete}
 					onClose={() => setSelectedRowKeys([])}
-					selectAllText="Select all"
-					deleteAllText="Delete all"
+					selectAllText={t('classManagement.selectAll')}
+					deleteAllText={t('classManagement.deleteAll')}
 				/>
 			)}
 

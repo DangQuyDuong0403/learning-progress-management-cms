@@ -1854,9 +1854,9 @@ const StudentList = () => {
           onActiveAll={handleBulkActive}
           onDeactiveAll={handleBulkDeactive}
           onClose={() => setSelectedRowKeys([])}
-          selectAllText="Select all"
-          activeAllText="Active all"
-          deactiveAllText="Deactive all"
+          selectAllText={t('classManagement.selectAll')}
+          activeAllText={t('studentManagement.activeAll')}
+          deactiveAllText={t('studentManagement.deactiveAll')}
         />
 
     </ThemedLayout> 

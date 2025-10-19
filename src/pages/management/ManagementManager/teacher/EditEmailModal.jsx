@@ -15,6 +15,7 @@ const EditEmailModal = ({ isVisible, onClose, teacherId, currentEmail }) => {
     if (isVisible) {
       form.resetFields();
       form.setFieldsValue({ email: currentEmail });
+      setLoading(false); // Reset loading state when modal opens
     }
   }, [isVisible, currentEmail, form]);
 
@@ -53,6 +54,7 @@ const EditEmailModal = ({ isVisible, onClose, teacherId, currentEmail }) => {
 
   const handleCancel = () => {
     form.resetFields();
+    setLoading(false); // Reset loading state when closing modal
     onClose(false);
   };
 
