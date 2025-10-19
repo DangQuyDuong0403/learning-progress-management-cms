@@ -284,7 +284,7 @@
 }
 
 .sun-theme .main-content-card {
-  background: linear-gradient(135deg, var(--sun-bg-primary) 0%, var(--sun-bg-secondary) 100%);
+  background: #e9f7fa !important;
   backdrop-filter: blur(20px);
   border: 1px solid var(--primary-color);
   box-shadow: none !important;
@@ -321,10 +321,6 @@
   text-shadow: 0 0 8px var(--primary-medium);
 }
 
-.sun-theme .section-title {
-  color: var(--primary-color);
-  text-shadow: 0 0 8px var(--primary-light);
-}
 
 .view-all-button {
   font-weight: 600;

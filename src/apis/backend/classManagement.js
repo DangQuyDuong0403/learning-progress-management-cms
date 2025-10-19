@@ -101,11 +101,11 @@ const classManagementApi = {
 		});
 	},
 
-	// Cập nhật trạng thái class (toggle isActive)
-	toggleClassStatus: (classId, isActive) => {
-		const url = `/class/${classId}/toggle?isActive=${isActive}`;
+	// Cập nhật trạng thái class (active/inactive)
+	toggleClassStatus: (classId, status) => {
+		const url = `/class/${classId}/toggle?status=${status}`;
 		console.log('ToggleClassStatus API - URL:', url);
-		console.log('ToggleClassStatus API - Params:', { classId, isActive });
+		console.log('ToggleClassStatus API - Params:', { classId, status });
 		
 		return axiosClient.patch(url, {}, {
 			headers: {
@@ -168,6 +168,42 @@ const classManagementApi = {
 		const url = `/class-teacher/${classId}/teachers${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
 		console.log('GetClassTeachers API - URL:', url);
 		console.log('GetClassTeachers API - Params:', { classId, ...params });
+		
+		return axiosClient.get(url, {
+			headers: {
+				'accept': '*/*',
+			}
+		});
+	},
+
+	// Lấy lịch sử hoạt động của class với phân trang và sort
+	getClassActivities: (classId, params) => {
+		const queryParams = new URLSearchParams();
+		
+		// Thêm các tham số nếu có
+		if (params.page !== undefined) queryParams.append('page', params.page);
+		if (params.size !== undefined) queryParams.append('size', params.size);
+		if (params.sortBy) {
+			queryParams.append('sortBy', params.sortBy);
+		}
+		if (params.sortDir) {
+			queryParams.append('sortDir', params.sortDir);
+		}
+
+		const url = `/class-history/${classId}${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
+		
+		return axiosClient.get(url, {
+			headers: {
+				'accept': '*/*',
+			}
+		});
+	},
+
+	// Lấy thông tin overview của class
+	getClassOverview: (classId) => {
+		const url = `/class/${classId}/overview`;
+		console.log('GetClassOverview API - URL:', url);
+		console.log('GetClassOverview API - Params:', { classId });
 		
 		return axiosClient.get(url, {
 			headers: {

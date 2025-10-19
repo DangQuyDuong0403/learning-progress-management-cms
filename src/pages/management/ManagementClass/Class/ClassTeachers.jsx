@@ -11,7 +11,6 @@ import {
   Typography,
 } from "antd";
 import {
-  ArrowLeftOutlined,
   PlusOutlined,
   SearchOutlined,
   DeleteOutlined,
@@ -20,10 +19,11 @@ import {
 import ThemedLayout from "../../../../component/ThemedLayout";
 import LoadingWithEffect from "../../../../component/spinner/LoadingWithEffect";
 import "./ClassTeachers.css";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { spaceToast } from "../../../../component/SpaceToastify";
 import { useTheme } from "../../../../contexts/ThemeContext";
+import { useClassMenu } from "../../../../contexts/ClassMenuContext";
 import classManagementApi from "../../../../apis/backend/classManagement";
 import usePageTitle from "../../../../hooks/usePageTitle";
 
@@ -33,8 +33,8 @@ const { Title } = Typography;
 const ClassTeachers = () => {
   const { t } = useTranslation();
   const { id } = useParams();
-  const navigate = useNavigate();
   const { theme } = useTheme();
+  const { enterClassMenu, exitClassMenu } = useClassMenu();
   
   // Set page title
   usePageTitle('Class Teachers');
@@ -137,7 +137,21 @@ const ClassTeachers = () => {
     try {
       const response = await classManagementApi.getClassDetail(id);
       console.log('Class detail response:', response);
-      setClassData(response.data);
+      const data = response?.data?.data ?? response?.data ?? null;
+      if (data) {
+        const mapped = {
+          id: data.id ?? id,
+          name:
+            data.name ??
+            data.className ??
+            data.classname ??
+            data.class_name ??
+            data.title ??
+            data.classTitle ??
+            '',
+        };
+        setClassData(mapped);
+      }
     } catch (error) {
       console.error('Error fetching class data:', error);
       spaceToast.error(t('classTeachers.loadingClassInfo'));
@@ -181,6 +195,32 @@ const ClassTeachers = () => {
     fetchClassData();
     fetchTeachers();
   }, [id, fetchClassData, fetchTeachers]);
+
+  // Ensure header back button appears immediately while class info loads
+  useEffect(() => {
+    if (id) {
+      enterClassMenu({ id });
+    }
+    return () => {
+      exitClassMenu();
+    };
+  }, [id, enterClassMenu, exitClassMenu]);
+
+  // Enter class menu mode when component mounts
+  useEffect(() => {
+    if (classData) {
+      enterClassMenu({
+        id: classData.id,
+        name: classData.name,
+        description: `${t('classTeachers.teachers')} (${teachers.length})`
+      });
+    }
+    
+    // Cleanup function to exit class menu mode when leaving
+    return () => {
+      exitClassMenu();
+    };
+  }, [classData, teachers.length, enterClassMenu, exitClassMenu, t]);
 
   // Handle search and filter changes with debounce
   useEffect(() => {
@@ -392,27 +432,6 @@ const ClassTeachers = () => {
     <ThemedLayout>
         {/* Main Content Panel */}
         <div className={`main-content-panel ${theme}-main-panel`}>
-          {/* Page Title with Back Button */}
-          <div className="page-title-container" style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '24px' }}>
-              <Button
-              icon={<ArrowLeftOutlined />}
-                onClick={() => navigate(`/manager/classes/menu/${id}`)}
-              className={`back-button ${theme}-back-button`}
-              style={{ height: '40px', fontSize: '16px' }}
-              >
-                {t('common.back')}
-              </Button>
-            <div style={{ flex: '1', textAlign: 'center' }}>
-              <Typography.Title 
-                level={1} 
-                className="page-title"
-                style={{ margin: 0 }}
-              >
-                {t('classTeachers.teachers')} <span className="teacher-count">({teachers.length})</span>
-              </Typography.Title>
-            </div>
-            <div style={{ width: '120px' }}></div> {/* Spacer for centering */}
-          </div>
 
           {/* Search and Action Section */}
           <div className="search-action-section" style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '24px' }}>

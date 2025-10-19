@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Layout as AntLayout, Button } from 'antd';
 import { MenuFoldOutlined, MenuUnfoldOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
@@ -27,6 +27,23 @@ const ThemedLayout = ({ children }) => {
     // Save to localStorage
     localStorage.setItem('sidebarCollapsed', JSON.stringify(newCollapsed));
   };
+
+  // Listen for changes in localStorage (from other tabs only)
+  useEffect(() => {
+    const handleStorageChange = () => {
+      const saved = localStorage.getItem('sidebarCollapsed');
+      if (saved !== null) {
+        setCollapsed(JSON.parse(saved));
+      }
+    };
+
+    // Listen for storage events (from other tabs)
+    window.addEventListener('storage', handleStorageChange);
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+    };
+  }, []);
 
   // Handle logo/title click to redirect to dashboard based on user role
   const handleLogoClick = () => {

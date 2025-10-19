@@ -880,12 +880,14 @@
 	align-items: center;
 	margin-bottom: 24px;
 	padding: 16px 0;
-	border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+	max-width: 800px;
+	margin-left: auto;
+	margin-right: auto;
+	width: 100%;
 }
 
-.space-theme .profile-header {
-	border-bottom: 1px solid rgba(77, 208, 255, 0.3);
-}
+
+
 
 .back-button {
 	border-radius: 8px;

@@ -516,12 +516,9 @@
   align-items: center;
   margin-bottom: 24px;
   padding: 16px 0;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
 }
 
-.space-theme .profile-header {
-  border-bottom: 1px solid rgba(77, 208, 255, 0.3);
-}
+
 
 .header-actions {
   display: flex;
@@ -673,7 +670,6 @@ div.student-profile .space-theme .edit-button:hover {
 
 /* Profile Container */
 .profile-container-new {
-  background: rgba(240, 248, 255, 0.95);
   border-radius: 16px;
   padding: 24px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
@@ -689,7 +685,7 @@ div.student-profile .space-theme .edit-button:hover {
 }
 
 .sun-theme .profile-container-new {
-  background: #E6F5FF !important;
+  background: rgb(230, 245, 255) !important;
   border: 1px solid rgba(0, 0, 0, 0.1) !important;
 }
 

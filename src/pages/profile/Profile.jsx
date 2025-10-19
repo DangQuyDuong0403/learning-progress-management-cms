@@ -16,7 +16,7 @@ import { spaceToast } from '../../component/SpaceToastify';
 
 export default function Profile() {
   const { t } = useTranslation();
-  const { user, profileData, profileLoading, profileError, uploadAvatarLoading, uploadAvatarError, uploadAvatarSuccess, pendingEmail, confirmEmailChangeSuccess } = useSelector((state) => state.auth);
+  const { user, profileData, profileLoading, profileError, uploadAvatarLoading, uploadAvatarError, uploadAvatarSuccess, confirmEmailChangeSuccess } = useSelector((state) => state.auth);
   const { theme } = useTheme();
   
   // Set page title
@@ -83,10 +83,6 @@ export default function Profile() {
   };
 
 
-  const handleEditEmail = () => {
-    setIsEditEmailModalVisible(true);
-  };
-
   const handleEditPersonalInfo = () => {
     setIsEditPersonalInfoModalVisible(true);
   };
@@ -122,6 +118,10 @@ export default function Profile() {
     // You can dispatch an action to update the profile data here
   };
 
+  const handleEditEmail = () => {
+    setIsEditEmailModalVisible(true);
+  };
+
   
 
   // Show TableSpinner while fetching profile data or during fade animation
@@ -145,8 +145,7 @@ export default function Profile() {
 
   return (
     <ThemedLayout>
-      {/* Main Content Panel */}
-      <div className={`profile-page main-content-panel ${theme}-main-panel`}>
+      <div className={`profile-container ${theme}-profile-container`}>
         {/* Page Title */}
         <div className="page-title-container">
           <Typography.Title 
@@ -156,17 +155,13 @@ export default function Profile() {
             {t('profile.title')}
           </Typography.Title>
         </div>
+        
         {/* Header Section */}
-        <div className={`panel-header ${theme}-panel-header`}>
-          <div className='search-section'>
-            <div style={{width: 500}}></div>
-          </div>
+        <div className={`profile-header ${theme}-profile-header`} style={{ display: 'flex', justifyContent: 'flex-end' }}>
           <div className='action-buttons'>
-            <button className={`btn btn-secondary ${theme}-btn-secondary`} onClick={handleEditEmail}>
-              {t('common.editEmail')}
-            </button>
             <button className={`btn btn-primary ${theme}-btn-primary`} onClick={handleEditPersonalInfo}>
-              {t('common.editPersonalInfo')}
+              <i className="ti ti-edit"></i>
+              {t('common.editProfile')}
             </button>
           </div>
         </div>
@@ -348,23 +343,23 @@ export default function Profile() {
             </div>
           )}
         </div>
+
+        {/* Edit Email Modal */}
+        <EditEmailModal
+          isVisible={isEditEmailModalVisible}
+          onCancel={() => setIsEditEmailModalVisible(false)}
+          onSuccess={handleEmailUpdateSuccess}
+          currentEmail={profileData?.email}
+        />
+
+        {/* Edit Personal Info Modal */}
+        <EditPersonalInfoModal
+          isVisible={isEditPersonalInfoModalVisible}
+          onCancel={() => setIsEditPersonalInfoModalVisible(false)}
+          onSuccess={handlePersonalInfoUpdateSuccess}
+          profileData={profileData}
+        />
       </div>
-
-      {/* Edit Email Modal */}
-      <EditEmailModal
-        isVisible={isEditEmailModalVisible}
-        onCancel={() => setIsEditEmailModalVisible(false)}
-        onSuccess={handleEmailUpdateSuccess}
-        currentEmail={profileData?.email}
-      />
-
-      {/* Edit Personal Info Modal */}
-      <EditPersonalInfoModal
-        isVisible={isEditPersonalInfoModalVisible}
-        onCancel={() => setIsEditPersonalInfoModalVisible(false)}
-        onSuccess={handlePersonalInfoUpdateSuccess}
-        profileData={profileData}
-      />
     </ThemedLayout>
   );
     }

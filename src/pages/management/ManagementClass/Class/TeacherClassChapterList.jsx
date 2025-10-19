@@ -19,7 +19,6 @@ import {
 	ReloadOutlined,
 	EyeOutlined,
 	FileTextOutlined,
-	ArrowLeftOutlined,
 	SwapOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
@@ -28,6 +27,7 @@ import ChapterForm from '../../ManagementManager/syllabus/ChapterForm';
 import './ClassStudent.css';
 import ThemedLayout from '../../../../component/ThemedLayout';
 import { useTheme } from '../../../../contexts/ThemeContext';
+import { useClassMenu } from '../../../../contexts/ClassMenuContext';
 import teacherManagementApi from '../../../../apis/backend/teacherManagement';
 import { useSelector } from 'react-redux';
 
@@ -37,6 +37,7 @@ const TeacherClassChapterList = () => {
 	const { classId } = useParams();
 	const { theme } = useTheme();
 	const { user } = useSelector((state) => state.auth);
+	const { enterClassMenu, exitClassMenu } = useClassMenu();
 
 	// State management
 	const [loading, setLoading] = useState(false);
@@ -83,12 +84,13 @@ const TeacherClassChapterList = () => {
 		
 		try {
 			const response = await teacherManagementApi.getClassById(classId);
+			const data = response?.data ?? response;
 			setClassInfo({
 				id: classId,
-				name: response.data.name,
+				name: data?.name ?? data?.className ?? data?.title ?? '',
 				syllabus: {
-					id: response.data.syllabusId,
-					name: response.data.syllabusName,
+					id: data?.syllabusId,
+					name: data?.syllabusName,
 				}
 			});
 		} catch (error) {
@@ -149,6 +151,24 @@ const TeacherClassChapterList = () => {
 			fetchChapters(1, pagination.pageSize, searchText);
 		}
 	}, [fetchChapters, searchText, pagination.pageSize, classId]);
+
+	// Show header back button immediately, then update with name once loaded
+	useEffect(() => {
+		if (classId) {
+			enterClassMenu({ id: classId });
+		}
+		return () => exitClassMenu();
+	}, [classId, enterClassMenu, exitClassMenu]);
+
+	useEffect(() => {
+		if (classInfo) {
+			enterClassMenu({
+				id: classInfo.id,
+				name: classInfo.name,
+				description: `${t('chapterManagement.title')} - ${classInfo.name}`
+			});
+		}
+	}, [classInfo, enterClassMenu, t]);
 
 	// Cleanup timeout on unmount
 	useEffect(() => {
@@ -338,18 +358,6 @@ const TeacherClassChapterList = () => {
 			<div className="syllabus-list-container">
 				{/* Main Container Card */}
 				<Card className="main-container-card">
-					{/* Back Button */}
-					<div style={{ marginBottom: '16px' }}>
-						<Button 
-							type="text" 
-							icon={<ArrowLeftOutlined />}
-							onClick={handleBackToClassMenu}
-							style={{ padding: '4px 8px' }}
-						>
-							{t('common.back')}
-						</Button>
-					</div>
-
 					{/* Header */}
 					<div style={{ marginBottom: '24px' }}>
 						<h2 
