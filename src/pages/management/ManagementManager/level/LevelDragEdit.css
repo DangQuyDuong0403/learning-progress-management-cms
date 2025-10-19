@@ -441,3 +441,64 @@
 		min-width: auto !important;
 	}
 }
+
+/* Performance Optimizations for Dragging */
+body.is-dragging {
+	user-select: none;
+	cursor: grabbing !important;
+}
+
+body.is-dragging * {
+	cursor: grabbing !important;
+	pointer-events: none;
+}
+
+body.is-dragging .drag-handle {
+	pointer-events: auto;
+}
+
+body.is-dragging .level-drag-item {
+	pointer-events: auto;
+}
+
+/* GPU Acceleration for smooth drag */
+.level-drag-item {
+	transform: translate3d(0, 0, 0);
+	-webkit-transform: translate3d(0, 0, 0);
+	backface-visibility: hidden;
+	-webkit-backface-visibility: hidden;
+	perspective: 1000px;
+	-webkit-perspective: 1000px;
+}
+
+/* Light transitions for non-dragging items during drag */
+body.is-dragging .level-drag-item:not(.dragging) {
+	transition: transform 0.15s ease-out !important;
+}
+
+/* Optimize rendering during drag */
+.levels-drag-container {
+	transform: translate3d(0, 0, 0);
+	-webkit-transform: translate3d(0, 0, 0);
+}
+
+/* Smooth GPU-accelerated transform only */
+.level-drag-item.dragging {
+	will-change: transform;
+	transition: none !important;
+	animation: none !important;
+}
+
+/* Prevent layout shifts */
+.level-drag-item {
+	contain: layout style paint;
+}
+
+/* Optimize inputs during drag */
+body.is-dragging .ant-input {
+	pointer-events: none;
+}
+
+body.is-dragging .ant-btn {
+	pointer-events: none;
+}

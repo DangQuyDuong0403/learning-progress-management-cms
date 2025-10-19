@@ -57,7 +57,11 @@ const processQueue = (error, token = null) => {
 // Interceptor cho response — xử lý lỗi tập trung
 axiosClient.interceptors.response.use(
 	(response) => {
-
+		// For blob responses (like file downloads), return the full response
+		if (response.config.responseType === 'blob') {
+			return response;
+		}
+		
 		return response.data; // chỉ trả data ra cho gọn
 	},
 	async (error) => {
@@ -68,7 +72,8 @@ axiosClient.interceptors.response.use(
 			status: error.response?.status,
 			url: originalRequest.url,
 			method: originalRequest.method,
-			hasRetry: originalRequest._retry
+			hasRetry: originalRequest._retry,
+			errorData: error.response?.data
 		});
 		
 		// Reset refresh state nếu có lỗi không phải 401 hoặc đã retry
