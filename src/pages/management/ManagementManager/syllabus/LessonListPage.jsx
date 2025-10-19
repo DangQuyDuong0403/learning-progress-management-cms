@@ -32,6 +32,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { useDispatch, useSelector } from 'react-redux';
 import { useParams, useNavigate } from 'react-router-dom';
+import usePageTitle from '../../../../hooks/usePageTitle';
 import {
 	fetchLessonsByChapter,
 } from '../../../../redux/syllabus';
@@ -53,6 +54,9 @@ const LessonListPage = () => {
 	const { theme } = useTheme();
 	const dispatch = useDispatch();
 	const { lessons, loading, lessonsPagination } = useSelector((state) => state.syllabus);
+
+	// Set page title
+	usePageTitle('Lesson Management');
 
 	// State management
 	const [searchText, setSearchText] = useState('');
@@ -263,7 +267,7 @@ const LessonListPage = () => {
 	};
 
 	// Bulk actions
-	const handleBulkDelete = () => {
+	const handleDeleteAll = () => {
 		if (selectedRowKeys.length === 0) {
 			message.warning(t('lessonManagement.selectItemsToDelete'));
 			return;
@@ -271,16 +275,7 @@ const LessonListPage = () => {
 		setIsBulkDeleteModalVisible(true);
 	};
 
-	const handleBulkExport = () => {
-		if (selectedRowKeys.length === 0) {
-			message.warning(t('lessonManagement.selectItemsToExport'));
-			return;
-		}
-		// TODO: Implement bulk export functionality
-		message.success(t('lessonManagement.bulkExportSuccess'));
-	};
-
-	const handleBulkDeleteConfirm = async () => {
+	const handleDeleteAllConfirm = async () => {
 		try {
 			// TODO: Implement bulk delete API call
 			// await syllabusManagementApi.bulkDeleteLessons(selectedRowKeys);
@@ -288,18 +283,18 @@ const LessonListPage = () => {
 			// Update local state
 			setSelectedRowKeys([]);
 			
-			message.success(t('lessonManagement.bulkDeleteSuccess'));
+			message.success(t('lessonManagement.deleteAllSuccess'));
 			setIsBulkDeleteModalVisible(false);
 			
 			// Refresh the lesson list
 			fetchLessons(pagination.current, pagination.pageSize, searchText);
 		} catch (error) {
-			console.error('Error bulk deleting lessons:', error);
-			message.error(t('lessonManagement.bulkDeleteError'));
+			console.error('Error deleting all lessons:', error);
+			message.error(t('lessonManagement.deleteAllError'));
 		}
 	};
 
-	const handleBulkDeleteModalClose = () => {
+	const handleDeleteAllModalClose = () => {
 		setIsBulkDeleteModalVisible(false);
 	};
 
@@ -324,10 +319,6 @@ const LessonListPage = () => {
 		handleFormModalClose();
 	};
 
-	const handleExport = () => {
-		// TODO: Implement export functionality
-		message.success(t('lessonManagement.exportSuccess'));
-	};
 
 	const handleImportLesson = () => {
 		setImportModal({ 
@@ -669,13 +660,6 @@ const LessonListPage = () => {
 					<Col>
 						<Space>
 							<Button
-								icon={<UploadOutlined />}
-								className={`export-button ${theme}-export-button`}
-								onClick={handleExport}
-							>
-								{t('lessonManagement.exportData')}
-							</Button>
-							<Button
 								icon={<DownloadOutlined />}
 								className={`import-button ${theme}-import-button`}
 								onClick={handleImportLesson}
@@ -700,17 +684,10 @@ const LessonListPage = () => {
 							<Space>
 								<Button
 									icon={<DeleteOutlined />}
-									onClick={handleBulkDelete}
+									onClick={handleDeleteAll}
 									className="bulk-delete-button"
 								>
-									{t('lessonManagement.bulkDelete')} ({selectedRowKeys.length})
-								</Button>
-								<Button
-									icon={<UploadOutlined />}
-									onClick={handleBulkExport}
-									className="bulk-export-button"
-								>
-									{t('lessonManagement.bulkExport')} ({selectedRowKeys.length})
+									{t('lessonManagement.deleteAll')} ({selectedRowKeys.length})
 								</Button>
 							</Space>
 						</Col>
@@ -818,7 +795,7 @@ const LessonListPage = () => {
 				</div>
 			</Modal>
 
-			{/* Bulk Delete Confirmation Modal */}
+			{/* Delete All Confirmation Modal */}
 			<Modal
 				title={
 					<div style={{
@@ -828,12 +805,12 @@ const LessonListPage = () => {
 						textAlign: 'center',
 						padding: '10px 0'
 					}}>
-						{t('lessonManagement.confirmBulkDelete')}
+						{t('lessonManagement.confirmDeleteAll')}
 					</div>
 				}
 				open={isBulkDeleteModalVisible}
-				onOk={handleBulkDeleteConfirm}
-				onCancel={handleBulkDeleteModalClose}
+				onOk={handleDeleteAllConfirm}
+				onCancel={handleDeleteAllModalClose}
 				okText={t('common.confirm')}
 				cancelText={t('common.cancel')}
 				width={500}
@@ -884,7 +861,7 @@ const LessonListPage = () => {
 						margin: 0,
 						fontWeight: '500'
 					}}>
-						{t('lessonManagement.confirmBulkDeleteMessage')}
+						{t('lessonManagement.confirmDeleteAllMessage')}
 					</p>
 					<div style={{
 						fontSize: '20px',

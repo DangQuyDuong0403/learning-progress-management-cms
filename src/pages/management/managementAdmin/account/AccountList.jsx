@@ -22,6 +22,7 @@ import {
 	SearchOutlined,
 	MailOutlined,
 	FilterOutlined,
+	EyeOutlined,
 } from '@ant-design/icons';
 import ThemedLayout from '../../../../component/ThemedLayout';
 import LoadingWithEffect from '../../../../component/spinner/LoadingWithEffect';
@@ -56,6 +57,12 @@ const AccountList = () => {
 	const [isModalVisible, setIsModalVisible] = useState(false);
 	const [editingAccount, setEditingAccount] = useState(null);
 	const [form] = Form.useForm();
+	const [isButtonDisabled, setIsButtonDisabled] = useState(false);
+	const [viewDetailModal, setViewDetailModal] = useState({
+		visible: false,
+		account: null,
+		loading: false,
+	});
 	const [confirmModal, setConfirmModal] = useState({
 		visible: false,
 		title: '',
@@ -352,6 +359,49 @@ const AccountList = () => {
 		setIsModalVisible(true);
 	};
 
+	const handleViewAccountDetails = async (record) => {
+		setViewDetailModal({
+			visible: true,
+			account: null,
+			loading: true,
+		});
+
+		try {
+			// Call API to get account details
+			const response = await accountManagementApi.getAccountById(record.id);
+			
+			setViewDetailModal({
+				visible: true,
+				account: response.data,
+				loading: false,
+			});
+		} catch (error) {
+			console.error('Error fetching account details:', error);
+			
+			// Handle error messages from backend
+			if (error.response) {
+				const errorMessage = error.response.data.error || error.response.data.message;
+				spaceToast.error(errorMessage);
+			} else {
+				message.error(t('accountManagement.loadAccountDetailsError'));
+			}
+			
+			setViewDetailModal({
+				visible: false,
+				account: null,
+				loading: false,
+			});
+		}
+	};
+
+	const handleCloseViewDetailModal = () => {
+		setViewDetailModal({
+			visible: false,
+			account: null,
+			loading: false,
+		});
+	};
+
 	const handleToggleStatus = (id) => {
 		const account = accounts.find((a) => a.id === id);
 		if (account) {
@@ -441,6 +491,10 @@ const AccountList = () => {
 
 
 	const handleModalOk = async () => {
+		if (isButtonDisabled) return; // Prevent multiple submissions
+		
+		setIsButtonDisabled(true);
+		
 		try {
 			const values = await form.validateFields();
 
@@ -513,6 +567,13 @@ const AccountList = () => {
 					sortBy,
 					sortDir
 				);
+
+				// Mở modal view detail của tài khoản vừa tạo
+				if (response.data && response.data.id) {
+					setTimeout(() => {
+						handleViewAccountDetails(response.data);
+					}, 500); // Delay để đảm bảo toast message hiển thị trước
+				}
 			}
 
 			setIsModalVisible(false);
@@ -527,6 +588,11 @@ const AccountList = () => {
 			} else {
 				message.error(t('accountManagement.checkInfoError'));
 			}
+		} finally {
+			// Re-enable button after 0.5 seconds
+			setTimeout(() => {
+				setIsButtonDisabled(false);
+			}, 500);
 		}
 	};
 
@@ -643,10 +709,26 @@ const AccountList = () => {
 		{
 			title: t('accountManagement.actions'),
 			key: 'actions',
-			width: 120,
+			width: 160,
 			align: 'center',
 			render: (_, record) => (
 				<Space size='small'>
+					{/* View details button - always visible */}
+					<Tooltip title={t('accountManagement.viewDetails')}>
+						<Button
+							type='text'
+							icon={<EyeOutlined style={{ fontSize: '26px' }} />}
+							size='large'
+							onClick={() => handleViewAccountDetails(record)}
+							style={{
+								width: '32px',
+								height: '32px',
+								display: 'flex',
+								alignItems: 'center',
+								justifyContent: 'center'
+							}}
+						/>
+					</Tooltip>
 					{/* Only show edit button for MANAGER/ADMIN roles and PENDING status */}
 					{(record.role === 'MANAGER' || record.role === 'ADMIN') && record.status === 'PENDING' && (
 						<Tooltip title={t('accountManagement.edit')}>
@@ -924,6 +1006,7 @@ const AccountList = () => {
 						key="save" 
 						type="primary" 
 						onClick={handleModalOk}
+						disabled={isButtonDisabled}
 						style={{
 							background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, #7228d9 0%, #9c88ff 100%)',
 							borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : '#7228d9',
@@ -1168,6 +1251,117 @@ const AccountList = () => {
 						{confirmModal.content}
 					</p>
 				</div>
+			</Modal>
+
+			{/* View Detail Modal */}
+			<Modal
+				title={
+					<div
+						style={{
+							fontSize: '26px',
+							fontWeight: '600',
+							color: '#000000ff',
+							textAlign: 'center',
+							padding: '10px 0',
+						}}>
+						{t('accountManagement.viewAccountDetails')}
+					</div>
+				}
+				open={viewDetailModal.visible}
+				onCancel={handleCloseViewDetailModal}
+				width={700}
+				footer={[
+					<Button 
+						key="close" 
+						onClick={handleCloseViewDetailModal}
+						style={{
+							height: '32px',
+							fontWeight: '500',
+							fontSize: '14px',
+							padding: '4px 15px',
+							width: '100px'
+						}}>
+						{t('common.close')}
+					</Button>
+				]}>
+				{viewDetailModal.loading ? (
+					<div style={{ textAlign: 'center', padding: '40px' }}>
+						<LoadingWithEffect
+							loading={true}
+							message={t('common.loading')}
+						/>
+					</div>
+				) : viewDetailModal.account ? (
+					<div style={{ padding: '20px 0' }}>
+						<Row gutter={[24, 16]}>
+							<Col span={12}>
+								<div style={{ marginBottom: '16px' }}>
+									<Typography.Text strong style={{ fontSize: '16px', color: '#666' }}>
+										{t('accountManagement.username')}:
+									</Typography.Text>
+									<div style={{ fontSize: '18px', marginTop: '4px' }}>
+										{viewDetailModal.account.userName || 'N/A'}
+									</div>
+								</div>
+							</Col>
+							<Col span={12}>
+								<div style={{ marginBottom: '16px' }}>
+									<Typography.Text strong style={{ fontSize: '16px', color: '#666' }}>
+										{t('accountManagement.email')}:
+									</Typography.Text>
+									<div style={{ fontSize: '18px', marginTop: '4px' }}>
+										{viewDetailModal.account.email || 'N/A'}
+									</div>
+								</div>
+							</Col>
+							<Col span={12}>
+								<div style={{ marginBottom: '16px' }}>
+									<Typography.Text strong style={{ fontSize: '16px', color: '#666' }}>
+										{t('accountManagement.role')}:
+									</Typography.Text>
+									<div style={{ fontSize: '18px', marginTop: '4px' }}>
+										{getRoleTag(viewDetailModal.account.roleName)}
+									</div>
+								</div>
+							</Col>
+							<Col span={12}>
+								<div style={{ marginBottom: '16px' }}>
+									<Typography.Text strong style={{ fontSize: '16px', color: '#666' }}>
+										{t('accountManagement.status')}:
+									</Typography.Text>
+									<div style={{ fontSize: '18px', marginTop: '4px' }}>
+										{viewDetailModal.account.status === 'ACTIVE' && (
+											<span style={{ color: '#52c41a' }}>{t('accountManagement.active')}</span>
+										)}
+										{viewDetailModal.account.status === 'INACTIVE' && (
+											<span style={{ color: '#ff4d4f' }}>{t('accountManagement.inactive')}</span>
+										)}
+										{viewDetailModal.account.status === 'PENDING' && (
+											<span style={{ color: '#faad14' }}>{t('accountManagement.pending')}</span>
+										)}
+									</div>
+								</div>
+							</Col>
+							<Col span={12}>
+								<div style={{ marginBottom: '16px' }}>
+									<Typography.Text strong style={{ fontSize: '16px', color: '#666' }}>
+										{t('accountManagement.createdAt')}:
+									</Typography.Text>
+									<div style={{ fontSize: '18px', marginTop: '4px' }}>
+										{viewDetailModal.account.createAt ? 
+											new Date(viewDetailModal.account.createAt).toLocaleDateString() : 'N/A'}
+									</div>
+								</div>
+							</Col>
+						</Row>
+					</div>
+				) : (
+					<div style={{ textAlign: 'center', padding: '40px' }}>
+						<Typography.Text type="secondary">
+							{t('accountManagement.noAccountData')}
+						</Typography.Text>
+					</div>
+				)}
 			</Modal>
 
 		</ThemedLayout>

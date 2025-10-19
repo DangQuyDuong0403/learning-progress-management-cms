@@ -11,6 +11,7 @@ import {
 } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../../../contexts/ThemeContext';
+import usePageTitle from '../../../../hooks/usePageTitle';
 import syllabusManagementApi from '../../../../apis/backend/syllabusManagement';
 import levelManagementApi from '../../../../apis/backend/levelManagement';
 
@@ -20,29 +21,29 @@ const { Option } = Select;
 const SyllabusForm = ({ syllabus, onClose, onSuccess }) => {
 	const { t } = useTranslation();
 	const { theme } = useTheme();
+	
+	// Set page title
+	usePageTitle(syllabus ? 'Edit Syllabus' : 'Add Syllabus');
+	
 	const [form] = Form.useForm();
 	const [isSubmitting, setIsSubmitting] = useState(false);
+	const [isButtonDisabled, setIsButtonDisabled] = useState(false);
 	const [loading, setLoading] = useState(false);
 	const [levels, setLevels] = useState([]);
 
 	const isEdit = !!syllabus;
 
 	useEffect(() => {
-		// Load levels when component mounts
-		const fetchLevels = async () => {
+		// Load published levels when component mounts
+		const fetchPublishedLevels = async () => {
 			setLoading(true);
 			try {
 				const params = {
 					page: 0,
-					size: 100, // Get all levels
-					sortBy: 'orderNumber',
-					sortDir: 'asc',
+					size: 100, // Get all published levels
 				};
 				
-				// Add status filter - API expects array of booleans
-				params.status = [true]; // true for active levels
-				
-				const response = await levelManagementApi.getLevels({
+				const response = await levelManagementApi.getPublishedLevels({
 					params: params,
 				});
 				
@@ -50,9 +51,9 @@ const SyllabusForm = ({ syllabus, onClose, onSuccess }) => {
 				const levelsData = response.data?.content || response.data || [];
 				setLevels(levelsData);
 				
-				console.log('Fetched levels:', levelsData);
+				console.log('Fetched published levels:', levelsData);
 			} catch (error) {
-				console.error('Error fetching levels:', error);
+				console.error('Error fetching published levels:', error);
 				
 				// Handle error message from backend
 				let errorMessage = error.response?.data?.error || 
@@ -66,7 +67,7 @@ const SyllabusForm = ({ syllabus, onClose, onSuccess }) => {
 				setLoading(false);
 			}
 		};
-		fetchLevels();
+		fetchPublishedLevels();
 	}, [t]);
 
 	// Set form values after levels are loaded (for edit mode)
@@ -83,7 +84,11 @@ const SyllabusForm = ({ syllabus, onClose, onSuccess }) => {
 	}, [syllabus, levels, form]);
 
 	const onFinish = async (values) => {
+		if (isButtonDisabled) return; // Prevent multiple submissions
+		
 		setIsSubmitting(true);
+		setIsButtonDisabled(true);
+		
 		try {
 			// Map form values to API request body format
 			const requestBody = {
@@ -127,6 +132,10 @@ const SyllabusForm = ({ syllabus, onClose, onSuccess }) => {
 			message.error(errorMessage);
 		} finally {
 			setIsSubmitting(false);
+			// Re-enable button after 0.5 seconds
+			setTimeout(() => {
+				setIsButtonDisabled(false);
+			}, 500);
 		}
 	};
 
@@ -187,11 +196,17 @@ const SyllabusForm = ({ syllabus, onClose, onSuccess }) => {
 							disabled={loading}
 							notFoundContent={loading ? t('common.loading') : t('syllabusManagement.noLevelsFound')}
 						>
-							{levels.map((level) => (
-								<Option key={level.id} value={level.id}>
-									{level.levelName}
-								</Option>
-							))}
+							{levels.map((level) => {
+								// Handle different field names that might come from API
+								const levelName = level.name || level.levelName || level.title || 'Unknown Level';
+								const levelCode = level.code || level.levelCode || '';
+								
+								return (
+									<Option key={level.id} value={level.id}>
+										{levelName} {levelCode ? `(${levelCode})` : ''}
+									</Option>
+								);
+							})}
 						</Select>
 					</Form.Item>
 				</Col>
@@ -328,6 +343,7 @@ const SyllabusForm = ({ syllabus, onClose, onSuccess }) => {
 						type="primary"
 						htmlType="submit"
 						loading={isSubmitting || loading}
+						disabled={isButtonDisabled}
 						size="large"
 						style={{
 							background: theme === 'sun' 

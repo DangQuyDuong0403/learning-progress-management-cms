@@ -67,7 +67,12 @@ const LessonForm = ({ lesson, chapter, onClose, theme }) => {
 		>
 			<Form.Item
 				name="name"
-				label={t('lessonManagement.lessonName')}
+				label={
+					<span>
+						{t('lessonManagement.lessonName')}
+						<span style={{ color: 'red', marginLeft: '4px' }}>*</span>
+					</span>
+				}
 				rules={[
 					{
 						required: true,
@@ -90,11 +95,6 @@ const LessonForm = ({ lesson, chapter, onClose, theme }) => {
 				label={t('lessonManagement.content')}
 				rules={[
 					{
-						required: true,
-						message: t('lessonManagement.contentRequired'),
-					},
-					{
-						min: 10,
 						message: t('lessonManagement.contentMinLength'),
 					},
 				]}
