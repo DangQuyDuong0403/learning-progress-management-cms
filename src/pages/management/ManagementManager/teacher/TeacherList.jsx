@@ -433,7 +433,6 @@ const TeacherList = () => {
 
 	const handleDownloadTemplate = async () => {
 		try {
-			spaceToast.info('Downloading template...');
 			
 			const response = await teacherManagementApi.downloadTeacherTemplate();
 			
@@ -1238,7 +1237,6 @@ const TeacherList = () => {
 						</p>
 						<p className='ant-upload-hint' style={{ color: '#999' }}>
 							{t('teacherManagement.supportedFormats')}: Excel (.xlsx, .xls),
-							CSV (.csv)
 						</p>
 					</Upload.Dragger>
 
