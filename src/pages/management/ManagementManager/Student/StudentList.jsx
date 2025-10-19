@@ -259,7 +259,9 @@ const StudentList = () => {
 
   // Calculate checkbox states with useMemo
   const checkboxStates = useMemo(() => {
-    const totalItems = totalStudents; // Sử dụng totalStudents thay vì students.length
+    // Filter out PENDING records from total count
+    const nonPendingStudents = students.filter(student => student.status !== 'PENDING');
+    const totalItems = nonPendingStudents.length;
     const selectedCount = selectedRowKeys.length;
     const isSelectAll = selectedCount === totalItems && totalItems > 0;
     const isIndeterminate = false; // Không bao giờ hiển thị indeterminate
@@ -270,10 +272,11 @@ const StudentList = () => {
       selectedRowKeys,
       isSelectAll,
       isIndeterminate,
+      nonPendingStudents: nonPendingStudents.length,
     });
 
     return { isSelectAll, isIndeterminate, totalItems, selectedCount };
-  }, [selectedRowKeys, totalStudents]);
+  }, [selectedRowKeys, students]);
 
   // Checkbox logic
   const handleSelectAll = async (checked) => {
@@ -302,8 +305,10 @@ const StudentList = () => {
 
         const response = await studentManagementApi.getStudents(params);
 
-        // Get all IDs from the response
-        const allKeys = response.data.map(student => student.id);
+        // Get all IDs from the response, excluding PENDING records
+        const allKeys = response.data
+          .filter(student => student.status !== 'PENDING')
+          .map(student => student.id);
         setSelectedRowKeys(allKeys);
       } catch (error) {
         console.error('Error fetching all student IDs:', error);
@@ -315,6 +320,11 @@ const StudentList = () => {
   };
 
   const handleSelectRow = (record, checked) => {
+    // Don't allow selection of PENDING records
+    if (record.status === 'PENDING') {
+      return;
+    }
+    
     if (checked) {
       setSelectedRowKeys(prev => [...prev, record.id]);
     } else {
@@ -329,7 +339,16 @@ const StudentList = () => {
       return;
     }
     
-    const confirmContent = `${t('studentManagement.confirmBulkActivate')} ${selectedRowKeys.length} ${t('studentManagement.students')}?`;
+    // Filter out PENDING records from selected items
+    const selectedStudents = students.filter(student => selectedRowKeys.includes(student.id));
+    const nonPendingSelected = selectedStudents.filter(student => student.status !== 'PENDING');
+    
+    if (nonPendingSelected.length === 0) {
+      spaceToast.warning('Cannot activate PENDING students');
+      return;
+    }
+    
+    const confirmContent = `${t('studentManagement.confirmBulkActivate')} ${nonPendingSelected.length} ${t('studentManagement.students')}? ${selectedStudents.length !== nonPendingSelected.length ? `(${selectedStudents.length - nonPendingSelected.length} PENDING students will be skipped)` : ''}`;
     
     setConfirmModal({
       visible: true,
@@ -337,9 +356,9 @@ const StudentList = () => {
       content: confirmContent,
       onConfirm: async () => {
         try {
-          // Call API for bulk update - activate all selected students
-          const promises = selectedRowKeys.map(id => 
-            studentManagementApi.updateStudentStatus(id, 'ACTIVE')
+          // Call API for bulk update - activate only non-PENDING selected students
+          const promises = nonPendingSelected.map(student => 
+            studentManagementApi.updateStudentStatus(student.id, 'ACTIVE')
           );
           
           const results = await Promise.all(promises);
@@ -373,7 +392,16 @@ const StudentList = () => {
       return;
     }
     
-    const confirmContent = `${t('studentManagement.confirmBulkDeactivate')} ${selectedRowKeys.length} ${t('studentManagement.students')}?`;
+    // Filter out PENDING records from selected items
+    const selectedStudents = students.filter(student => selectedRowKeys.includes(student.id));
+    const nonPendingSelected = selectedStudents.filter(student => student.status !== 'PENDING');
+    
+    if (nonPendingSelected.length === 0) {
+      spaceToast.warning('Cannot deactivate PENDING students');
+      return;
+    }
+    
+    const confirmContent = `${t('studentManagement.confirmBulkDeactivate')} ${nonPendingSelected.length} ${t('studentManagement.students')}? ${selectedStudents.length !== nonPendingSelected.length ? `(${selectedStudents.length - nonPendingSelected.length} PENDING students will be skipped)` : ''}`;
     
     setConfirmModal({
       visible: true,
@@ -381,9 +409,9 @@ const StudentList = () => {
       content: confirmContent,
       onConfirm: async () => {
         try {
-          // Call API for bulk update - deactivate all selected students
-          const promises = selectedRowKeys.map(id => 
-            studentManagementApi.updateStudentStatus(id, 'INACTIVE')
+          // Call API for bulk update - deactivate only non-PENDING selected students
+          const promises = nonPendingSelected.map(student => 
+            studentManagementApi.updateStudentStatus(student.id, 'INACTIVE')
           );
           
           const results = await Promise.all(promises);
@@ -433,6 +461,7 @@ const StudentList = () => {
         <Checkbox
           checked={selectedRowKeys.includes(record.id)}
           onChange={(e) => handleSelectRow(record, e.target.checked)}
+          disabled={record.status === 'PENDING'}
           style={{
             transform: 'scale(1.2)'
           }}

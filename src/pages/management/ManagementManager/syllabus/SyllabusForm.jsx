@@ -170,11 +170,17 @@ const SyllabusForm = ({ syllabus, onClose, onSuccess }) => {
 								min: 2,
 								message: t('syllabusManagement.syllabusNameMinLength'),
 							},
+							{
+								max: 100,
+								message: t('syllabusManagement.syllabusNameTooLong'),
+							},
 						]}
 					>
 						<Input
 							placeholder={t('syllabusManagement.syllabusNamePlaceholder')}
 							size="large"
+							maxLength={100}
+							showCount
 						/>
 					</Form.Item>
 				</Col>

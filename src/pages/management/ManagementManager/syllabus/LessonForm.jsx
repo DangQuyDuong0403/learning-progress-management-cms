@@ -82,11 +82,17 @@ const LessonForm = ({ lesson, chapter, onClose, theme }) => {
 						min: 2,
 						message: t('lessonManagement.lessonNameMinLength'),
 					},
+					{
+						max: 100,
+						message: t('lessonManagement.lessonNameTooLong'),
+					},
 				]}
 			>
 				<Input
 					placeholder={t('lessonManagement.lessonNamePlaceholder')}
 					size="large"
+					maxLength={100}
+					showCount
 				/>
 			</Form.Item>
 
