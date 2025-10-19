@@ -24,14 +24,12 @@ import {
 	PointerSensor,
 	useSensor,
 	useSensors,
-	DragOverlay,
 } from '@dnd-kit/core';
 import {
 	arrayMove,
 	SortableContext,
 	sortableKeyboardCoordinates,
 	verticalListSortingStrategy,
-	defaultAnimateLayoutChanges,
 } from '@dnd-kit/sortable';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
@@ -39,22 +37,26 @@ import '../level/LevelDragEdit.css';
 
 const { Text, Title } = Typography;
 
-// Sortable Chapter Item Component
+// Sortable Chapter Item Component - Optimized
 const SortableChapterItem = memo(
-	({ chapter, index, onDeleteChapter, onUpdateChapterName, theme, t }) => {
+	({ chapter, index, onDeleteChapter, onUpdateChapterName, theme, t, isDraggingGlobal }) => {
 		const [editValue, setEditValue] = useState(chapter.name || '');
 
-		// Update editValue when chapter.name changes
+		// Update editValue when chapter.name changes - optimized
 		useEffect(() => {
-			setEditValue(chapter.name || '');
-		}, [chapter.name]);
+			if (chapter.name !== editValue) {
+				setEditValue(chapter.name || '');
+			}
+		}, [chapter.name, editValue]);
 
+		// Keep minimal animation for smoother experience
 		const animateLayoutChanges = useCallback((args) => {
 			const { isSorting, wasDragging } = args;
-			if (isSorting || wasDragging) {
-				return defaultAnimateLayoutChanges(args);
+			// Only animate when not actively dragging
+			if (isSorting) {
+				return false; // No animation while dragging
 			}
-			return true;
+			return wasDragging; // Smooth animation when dropped
 		}, []);
 
 		const {
@@ -67,16 +69,43 @@ const SortableChapterItem = memo(
 		} = useSortable({
 			id: chapter.id,
 			animateLayoutChanges,
+			transition: {
+				duration: 200, // Giữ animation ngắn 200ms
+				easing: 'cubic-bezier(0.25, 0.1, 0.25, 1)',
+			},
 		});
 
+		// Optimized style with subtle animation
 		const style = useMemo(
-			() => ({
-				transform: CSS.Transform.toString(transform),
-				transition,
-				opacity: isDragging ? 0.5 : 1,
-				willChange: 'transform',
-			}),
-			[transform, transition, isDragging]
+			() => {
+				// When actively dragging this item, no transition
+				if (isDragging) {
+					return {
+						transform: transform ? CSS.Transform.toString(transform) : undefined,
+						transition: 'none',
+						opacity: 0.5,
+						willChange: 'transform',
+						pointerEvents: 'none',
+					};
+				}
+				// When other items are dragging, minimal transition
+				if (isDraggingGlobal) {
+					return {
+						transform: transform ? CSS.Transform.toString(transform) : undefined,
+						transition: transition || 'transform 0.15s ease-out',
+						opacity: 1,
+						willChange: 'transform',
+					};
+				}
+				// Normal state with smooth transition
+				return {
+					transform: transform ? CSS.Transform.toString(transform) : undefined,
+					transition: transition || 'transform 0.2s ease, opacity 0.2s ease',
+					opacity: 1,
+					willChange: 'auto',
+				};
+			},
+			[transform, transition, isDragging, isDraggingGlobal]
 		);
 
 		const handleSaveEdit = useCallback(() => {
@@ -148,7 +177,8 @@ const SortableChapterItem = memo(
 			prevProps.chapter.name === nextProps.chapter.name &&
 			prevProps.chapter.createdBy === nextProps.chapter.createdBy &&
 			prevProps.chapter.position === nextProps.chapter.position &&
-			prevProps.theme === nextProps.theme
+			prevProps.theme === nextProps.theme &&
+			prevProps.isDraggingGlobal === nextProps.isDraggingGlobal
 		);
 	}
 );
@@ -194,18 +224,22 @@ const ChapterDragEdit = () => {
 	const [chapters, setChapters] = useState([]);
 	const [loading, setLoading] = useState(false);
 	const [saving, setSaving] = useState(false);
-	const [activeId, setActiveId] = useState(null);
+	// eslint-disable-next-line no-unused-vars
+	const [activeId, setActiveId] = useState(null); // Keep for future use/debugging
 	const [isModalVisible, setIsModalVisible] = useState(false);
 	const [editingChapter, setEditingChapter] = useState(null);
 	const [insertAtIndex, setInsertAtIndex] = useState(null);
 	const [syllabusInfo, setSyllabusInfo] = useState(null);
 	const [isInitialLoading, setIsInitialLoading] = useState(true);
+	const [isDraggingGlobal, setIsDraggingGlobal] = useState(false);
 
+	// Optimized sensors configuration for better performance
 	const sensors = useSensors(
 		useSensor(PointerSensor, {
 			activationConstraint: {
-				distance: 8,
+				distance: 8, // Reduced for better responsiveness
 				delay: 0,
+				tolerance: 5,
 			},
 		}),
 		useSensor(KeyboardSensor, {
@@ -320,6 +354,7 @@ const ChapterDragEdit = () => {
 							...chapter,
 							position: i + 1,
 							order: i + 1,
+							orderNumber: i + 1, // Cập nhật orderNumber để tuần tự
 						}));
 					});
 				}
@@ -367,11 +402,12 @@ const ChapterDragEdit = () => {
 						...chapter,
 						position: visibleIndex + 1,
 						order: visibleIndex + 1,
+						orderNumber: visibleIndex + 1, // Cập nhật orderNumber để tuần tự
 					};
 				});
 			});
 		},
-		[chapters, t]
+		[chapters]
 	);
 
 	const handleUpdateChapterName = useCallback(
@@ -390,34 +426,54 @@ const ChapterDragEdit = () => {
 
 	const handleDragStart = useCallback((event) => {
 		setActiveId(event.active.id);
+		setIsDraggingGlobal(true);
 		document.body.style.overflow = 'hidden';
+		// Add class to body to prevent interactions during drag
+		document.body.classList.add('is-dragging');
+	}, []);
+
+	const handleDragCancel = useCallback(() => {
+		setActiveId(null);
+		setIsDraggingGlobal(false);
+		document.body.style.overflow = '';
+		document.body.classList.remove('is-dragging');
 	}, []);
 
 	useEffect(() => {
 		return () => {
 			document.body.style.overflow = '';
+			document.body.classList.remove('is-dragging');
 		};
 	}, []);
 
+	// Optimized drag end handler - only re-render once when dropped
 	const handleDragEnd = useCallback((event) => {
 		const { active, over } = event;
+		
+		// Reset dragging state immediately
 		setActiveId(null);
+		setIsDraggingGlobal(false);
 		document.body.style.overflow = '';
+		document.body.classList.remove('is-dragging');
 
-		if (active.id !== over?.id) {
-			setChapters((items) => {
-				const oldIndex = items.findIndex((item) => item.id === active.id);
-				const newIndex = items.findIndex((item) => item.id === over.id);
+		if (active.id !== over?.id && over) {
+			// Use requestAnimationFrame to batch the update
+			requestAnimationFrame(() => {
+				setChapters((items) => {
+					const oldIndex = items.findIndex((item) => item.id === active.id);
+					const newIndex = items.findIndex((item) => item.id === over.id);
 
-				if (oldIndex === -1 || newIndex === -1) return items;
+					if (oldIndex === -1 || newIndex === -1) return items;
 
-				const newItems = arrayMove(items, oldIndex, newIndex);
+					const newItems = arrayMove(items, oldIndex, newIndex);
 
-				return newItems.map((chapter, index) => ({
-					...chapter,
-					position: index + 1,
-					order: index + 1,
-				}));
+					return newItems.map((chapter, index) => ({
+						...chapter,
+						position: index + 1,
+						order: index + 1,
+						orderNumber: index + 1, // Cập nhật orderNumber để tuần tự
+					}));
+				});
 			});
 		}
 	}, []);
@@ -438,25 +494,50 @@ const ChapterDragEdit = () => {
 		setSaving(true);
 		try {
 			// Chuẩn bị dữ liệu theo format của API /chapter/sync
-			const syncData = chapters.map((chapter, index) => {
-				const isNewRecord = typeof chapter.id === 'string' && chapter.id.startsWith('new-');
-				
-				return {
-					id: isNewRecord ? null : chapter.id, // null cho chapter mới
-					chapterName: chapter.name,
-					orderNumber: index + 1, // Thứ tự từ 1
-					toBeDeleted: chapter.toBeDeleted || false, // Include toBeDeleted flag
-				};
+			const syncData = chapters
+				.map((chapter) => {
+					const isNewRecord = typeof chapter.id === 'string' && chapter.id.startsWith('new-');
+					
+					return {
+						id: isNewRecord ? null : chapter.id, // null cho chapter mới
+						chapterName: chapter.name,
+						orderNumber: chapter.orderNumber || chapter.position || 1, // Sử dụng orderNumber từ state
+						toBeDeleted: chapter.toBeDeleted || false, // Include toBeDeleted flag
+					};
+				})
+				.filter((chapter) => {
+					// Không gửi các record mới (id: null) mà đã bị xóa (toBeDeleted: true)
+					// Vì chúng chưa tồn tại trên backend nên không cần xóa
+					return !(chapter.id === null && chapter.toBeDeleted === true);
+				});
+
+			console.log('ChapterDragEdit - Sending sync data:', {
+				count: syncData.length,
+				chapters: syncData.map(c => ({ 
+					id: c.id, 
+					chapterName: c.chapterName, 
+					orderNumber: c.orderNumber,
+					toBeDeleted: c.toBeDeleted 
+				}))
 			});
 
 			// Gọi API sync với syllabusId và dữ liệu chapters
-			await syllabusManagementApi.syncChapters(syllabusId, syncData);
+			const response = await syllabusManagementApi.syncChapters(syllabusId, syncData);
 
-			spaceToast.success(t('chapterManagement.updatePositionsSuccess'));
+			// Use backend message if available, otherwise fallback to translation
+			const successMessage = response.message || t('chapterManagement.updatePositionsSuccess');
+			spaceToast.success(successMessage);
 			navigate(`/manager/syllabuses/${syllabusId}/chapters`);
 		} catch (error) {
 			console.error('Error syncing chapters:', error);
-			spaceToast.error(t('chapterManagement.updatePositionsError'));
+			
+			// Handle API errors with backend messages
+			if (error.response) {
+				const errorMessage = error.response.data?.error || error.response.data?.message || error.message;
+				spaceToast.error(errorMessage);
+			} else {
+				spaceToast.error(error.message || t('chapterManagement.updatePositionsError'));
+			}
 		} finally {
 			setSaving(false);
 		}
@@ -466,27 +547,6 @@ const ChapterDragEdit = () => {
 		navigate(`/manager/syllabuses/${syllabusId}/chapters`);
 	}, [navigate, syllabusId]);
 
-	const activeChapterData = useMemo(
-		() => chapters.filter(chapter => !chapter.toBeDeleted).find((chapter) => chapter.id === activeId),
-		[activeId, chapters]
-	);
-
-	const offsetModifier = useCallback((args) => {
-		if (!args || !args.transform) {
-			return {
-				x: 0,
-				y: 0,
-				scaleX: 1,
-				scaleY: 1,
-			};
-		}
-
-		return {
-			...args.transform,
-			y: args.transform.y - 300,
-			x: args.transform.x - 300,
-		};
-	}, []);
 
 	if (!syllabusInfo || isInitialLoading) {
 		return (
@@ -553,11 +613,7 @@ const ChapterDragEdit = () => {
 										collisionDetection={closestCenter}
 										onDragStart={handleDragStart}
 										onDragEnd={handleDragEnd}
-										measuring={{
-											droppable: {
-												strategy: 'always',
-											},
-										}}>
+										onDragCancel={handleDragCancel}>
 										<SortableContext
 											items={chapterIds}
 											strategy={verticalListSortingStrategy}>
@@ -580,6 +636,7 @@ const ChapterDragEdit = () => {
 														onUpdateChapterName={handleUpdateChapterName}
 														theme={theme}
 														t={t}
+														isDraggingGlobal={isDraggingGlobal}
 													/>
 												</React.Fragment>
 											))}
@@ -631,58 +688,6 @@ const ChapterDragEdit = () => {
 												</div>
 											)}
 										</SortableContext>
-
-										{/* Drag Overlay - offset lên trên 100px */}
-										<DragOverlay
-											dropAnimation={null}
-											modifiers={[offsetModifier]}>
-											{activeChapterData ? (
-												<div
-													className={`level-drag-item ${theme}-level-drag-item`}
-													style={{
-														opacity: 0.95,
-														boxShadow: '0 12px 32px rgba(24, 144, 255, 0.5)',
-														border: '2px solid #1890ff',
-														background: theme === 'dark' ? '#2a2a2a' : '#ffffff',
-														cursor: 'grabbing',
-														transform: 'rotate(3deg)',
-														maxWidth: '800px',
-													}}>
-													<div className='level-position'>
-														<Text
-															strong
-															style={{ fontSize: '18px', color: 'black' }}>
-															{activeChapterData.position}
-														</Text>
-													</div>
-													<div className='drag-handle'></div>
-													<div className='level-content'>
-														<div className='level-field'>
-															<Text strong style={{ minWidth: '120px' }}>
-																{t('chapterManagement.chapterName')}:
-															</Text>
-															<Text
-																style={{
-																	color: theme === 'dark' ? '#ffffff' : '#000000',
-																}}>
-																{activeChapterData.name}
-															</Text>
-														</div>
-														<div className='level-field'>
-															<Text strong style={{ minWidth: '120px' }}>
-																{t('chapterManagement.createdBy')}:
-															</Text>
-															<Text
-																style={{
-																	color: theme === 'dark' ? '#ffffff' : '#000000',
-																}}>
-																{activeChapterData.createdBy || 'N/A'}
-															</Text>
-														</div>
-													</div>
-												</div>
-											) : null}
-										</DragOverlay>
 									</DndContext>
 								)}
 							</div>

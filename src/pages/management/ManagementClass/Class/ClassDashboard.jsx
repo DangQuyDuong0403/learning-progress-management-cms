@@ -26,6 +26,9 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useSelector } from "react-redux";
 import { spaceToast } from "../../../../component/SpaceToastify";
+import { useTheme } from "../../../../contexts/ThemeContext";
+import classManagementApi from "../../../../apis/backend/classManagement";
+import usePageTitle from "../../../../hooks/usePageTitle";
 
 // Mock data for class dashboard
 const mockClassData = {
@@ -143,6 +146,11 @@ const ClassDashboard = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useSelector((state) => state.auth);
+  const { theme } = useTheme();
+  
+  // Set page title
+  usePageTitle('Class Dashboard');
+  
   const [loading, setLoading] = useState(false);
   const [classData, setClassData] = useState(null);
   const [studentPerformance, setStudentPerformance] = useState([]);

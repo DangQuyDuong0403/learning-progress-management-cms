@@ -1,13 +1,17 @@
 .class-menu-container {
   padding: 24px;
+  margin: 24px;
   min-height: 100vh;
   background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   transition: background 0.3s ease;
 }
 
 /* Dark theme styles */
 .class-menu-container.dark-theme {
-  background: rgba(26, 26, 46, 0.7);
+  background: rgba(110, 92, 172, 0.5);
+  backdrop-filter: blur(7px);
 }
 
 .header-card {
@@ -22,9 +26,11 @@
 /* Dark theme header card body */
 .dark-theme .header-card .ant-card-body {
   background-color: rgb(224 217 255 / 90%);
+  border-radius: 7px;
 }
 .light-theme .header-card .ant-card-body {
   background-color: #E6F5FF;
+  border-radius: 7px;
 }
 
 /* Dark theme header card */
@@ -221,6 +227,7 @@
 @media (max-width: 768px) {
   .class-menu-container {
     padding: 16px;
+    margin: 16px;
   }
   
   .header-content {
@@ -266,6 +273,7 @@
 @media (max-width: 480px) {
   .class-menu-container {
     padding: 12px;
+    margin: 12px;
   }
   
   .class-title {

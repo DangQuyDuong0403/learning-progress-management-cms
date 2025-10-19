@@ -44,6 +44,7 @@ import ThemedLayout from '../../../../component/ThemedLayout';
 import { useTheme } from '../../../../contexts/ThemeContext';
 import LessonForm from './LessonForm';
 import LoadingWithEffect from '../../../../component/spinner/LoadingWithEffect';
+import BottomActionBar from '../../../../component/BottomActionBar';
 
 const { Dragger } = Upload;
 const { Title, Text } = Typography;
@@ -669,7 +670,7 @@ const LessonListBySyllabus = () => {
 						className="page-title"
 						style={{ margin: 0, flex: 1, textAlign: 'center' }}
 					>
-						{t('lessonManagement.title')} - {syllabusInfo.name} <span className="student-count">({totalElements})</span>
+						{syllabusInfo.name} - {t('lessonManagement.title')} <span className="student-count">({totalElements})</span>
 					</Typography.Title>
 					<div style={{ width: '100px' }}></div> {/* Spacer để cân bằng layout */}
 				</div>
@@ -735,22 +736,6 @@ const LessonListBySyllabus = () => {
 					</Col>
 				</Row>
 
-				{/* Bulk Actions Row */}
-				{selectedRowKeys.length > 0 && (
-					<Row justify="end" style={{ marginBottom: '16px' }}>
-						<Col>
-							<Space>
-								<Button
-									icon={<DeleteOutlined />}
-									onClick={handleDeleteAll}
-									className="bulk-delete-button"
-								>
-									{t('lessonManagement.deleteAll')} ({selectedRowKeys.length})
-								</Button>
-							</Space>
-						</Col>
-					</Row>
-				)}
 
 				{/* Table Section */}
 				<div className={`table-section ${theme}-table-section`}>
@@ -770,6 +755,16 @@ const LessonListBySyllabus = () => {
 					/>
 				</div>
 			</div>
+
+			{/* Bottom Action Bar */}
+			<BottomActionBar
+				selectedCount={selectedRowKeys.length}
+				onSelectAll={handleSelectAll}
+				onDeleteAll={handleDeleteAll}
+				onClose={() => setSelectedRowKeys([])}
+				selectAllText="Select all"
+				deleteAllText="Delete all"
+			/>
 
 			{/* Delete Confirmation Modal */}
 			<Modal

@@ -12,14 +12,16 @@ import {
 	Typography,
 	Checkbox,
 	Tabs,
+	Upload,
+	Divider,
 } from 'antd';
 import {
-	DeleteOutlined,
 	SearchOutlined,
 	EyeOutlined,
 	ArrowLeftOutlined,
 	DragOutlined,
 	DownloadOutlined,
+	UploadOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useParams, useNavigate } from 'react-router-dom';
@@ -29,7 +31,9 @@ import './SyllabusList.css';
 import ThemedLayout from '../../../../component/ThemedLayout';
 import LoadingWithEffect from '../../../../component/spinner/LoadingWithEffect';
 import { useTheme } from '../../../../contexts/ThemeContext';
+import BottomActionBar from '../../../../component/BottomActionBar';
 import syllabusManagementApi from '../../../../apis/backend/syllabusManagement';
+import { spaceToast } from '../../../../component/SpaceToastify';
 
 const ChapterListPage = () => {
 	const { t } = useTranslation();
@@ -318,26 +322,39 @@ const ChapterListPage = () => {
 	};
 
 	const handleImportOk = async () => {
+		if (importModal.fileList.length === 0) {
+			spaceToast.warning(t('chapterManagement.selectFileToImport'));
+			return;
+		}
+
 		setImportModal(prev => ({ ...prev, uploading: true }));
 		
 		try {
-			// TODO: Implement import functionality
-			// await syllabusManagementApi.importChapters(importModal.fileList);
+			const file = importModal.fileList[0];
 			
-			message.success(t('chapterManagement.importSuccess'));
-			setImportModal(prev => ({
-				...prev,
-				visible: false,
-				fileList: [],
-				uploading: false
-			}));
+			// Create FormData object
+			const formData = new FormData();
+			formData.append('file', file);
+			formData.append('syllabusId', syllabusId);
 			
-			// Refresh the data
-			fetchChapters(pagination.current, pagination.pageSize, searchText);
+			// Call import API with FormData
+			const response = await syllabusManagementApi.importChapters(formData);
+
+			if (response.success) {
+				// Refresh the list to get updated data from server
+				fetchChapters(pagination.current, pagination.pageSize, searchText);
+				
+				// Use backend message if available, otherwise fallback to translation
+				const successMessage = response.message || t('chapterManagement.importSuccess');
+				spaceToast.success(successMessage);
+				
+				setImportModal({ visible: false, fileList: [], uploading: false });
+			} else {
+				throw new Error(response.message || 'Import failed');
+			}
 		} catch (error) {
-			console.error('Import error:', error);
-			message.error(t('chapterManagement.importError'));
-		} finally {
+			console.error('Error importing chapters:', error);
+			spaceToast.error(error.response?.data?.error || error.response?.data?.message || error.message || t('chapterManagement.importError'));
 			setImportModal(prev => ({ ...prev, uploading: false }));
 		}
 	};
@@ -351,9 +368,65 @@ const ChapterListPage = () => {
 		}));
 	};
 
-	const handleDownloadTemplate = () => {
-		// TODO: Implement template download
-		message.info(t('chapterManagement.templateDownloadInfo'));
+	const handleDownloadTemplate = async () => {
+		try {
+			const response = await syllabusManagementApi.downloadChapterTemplate();
+			
+			// API returns SAS URL directly (due to axios interceptor returning response.data)
+			let downloadUrl;
+			if (typeof response === 'string') {
+				downloadUrl = response;
+			} else if (response && typeof response.data === 'string') {
+				downloadUrl = response.data;
+			} else if (response && response.data && response.data.url) {
+				downloadUrl = response.data.url;
+			} else {
+				console.error('Unexpected response format:', response);
+			}
+			
+			// Create download link directly from SAS URL
+			const link = document.createElement('a');
+			link.setAttribute('href', downloadUrl);
+			link.setAttribute('download', 'chapter_import_template.xlsx');
+			link.setAttribute('target', '_blank');
+			link.style.visibility = 'hidden';
+			document.body.appendChild(link);
+			link.click();
+			document.body.removeChild(link);
+			
+			spaceToast.success('Template downloaded successfully');
+		} catch (error) {
+			console.error('Error downloading template:', error);
+			spaceToast.error(error.response?.data?.error || error.response?.data?.message || error.message || 'Failed to download template');
+		}
+	};
+
+	// Handle file selection
+	const handleFileSelect = (file) => {
+		// Validate file type
+		const allowedTypes = [
+			'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // .xlsx
+			'application/vnd.ms-excel', // .xls
+		];
+		
+		if (!allowedTypes.includes(file.type)) {
+			spaceToast.error('Please select a valid Excel (.xlsx, .xls) file');
+			return false;
+		}
+		
+		// Validate file size (max 10MB)
+		const maxSize = 10 * 1024 * 1024; // 10MB
+		if (file.size > maxSize) {
+			spaceToast.error('File size must be less than 10MB');
+			return false;
+		}
+		
+		setImportModal(prev => ({
+			...prev,
+			fileList: [file]
+		}));
+		
+		return false; // Prevent default upload behavior
 	};
 
 	// No need for client-side filtering since API handles filtering
@@ -489,7 +562,7 @@ const ChapterListPage = () => {
 						className="page-title"
 						style={{ margin: 0, flex: 1, textAlign: 'center' }}
 					>
-						{t('chapterManagement.title')} - {syllabusInfo.name} <span className="student-count">({totalElements})</span>
+						{syllabusInfo.name} - {t('chapterManagement.title')} <span className="student-count">({totalElements})</span>
 					</Typography.Title>
 					<div style={{ width: '100px' }}></div> {/* Spacer để cân bằng layout */}
 				</div>
@@ -538,23 +611,6 @@ const ChapterListPage = () => {
 					<Col>
 						<Space>
 							<Button
-								icon={<EyeOutlined />}
-								onClick={handleViewAllLessons}
-								className="create-button"
-								style={{
-									backgroundColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)',
-									background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)',
-									borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'transparent',
-									color: '#000000',
-									height: '40px',
-									fontSize: '16px',
-									fontWeight: '500',
-									minWidth: '100px'
-								}}
-							>
-								{t('lessonManagement.viewAllLessons')}
-							</Button>
-							<Button
 								icon={<DownloadOutlined />}
 								className={`import-button ${theme}-import-button`}
 								onClick={handleImport}
@@ -572,22 +628,6 @@ const ChapterListPage = () => {
 					</Col>
 				</Row>
 
-				{/* Bulk Actions Row */}
-				{selectedRowKeys.length > 0 && (
-					<Row justify="end" style={{ marginBottom: '16px' }}>
-						<Col>
-							<Space>
-								<Button
-									icon={<DeleteOutlined />}
-									onClick={handleDeleteAll}
-									className="bulk-delete-button"
-								>
-									{t('chapterManagement.deleteAll')} ({selectedRowKeys.length})
-								</Button>
-							</Space>
-						</Col>
-					</Row>
-				)}
 
 				{/* Table Section */}
 				<div className={`table-section ${theme}-table-section`}>
@@ -607,6 +647,16 @@ const ChapterListPage = () => {
 					/>
 				</div>
 			</div>
+
+			{/* Bottom Action Bar */}
+			<BottomActionBar
+				selectedCount={selectedRowKeys.length}
+				onSelectAll={handleSelectAll}
+				onDeleteAll={handleDeleteAll}
+				onClose={() => setSelectedRowKeys([])}
+				selectAllText="Select all"
+				deleteAllText="Delete all"
+			/>
 
 				{/* Chapter Modal */}
 				<Modal
@@ -809,12 +859,13 @@ const ChapterListPage = () => {
 				open={importModal.visible}
 				onOk={handleImportOk}
 				onCancel={handleImportCancel}
-				okText={t('chapterManagement.importChapters')}
+				okText={t('chapterManagement.import')}
 				cancelText={t('common.cancel')}
 				width={600}
 				centered
 				confirmLoading={importModal.uploading}
 				okButtonProps={{
+					disabled: importModal.fileList.length === 0,
 					style: {
 						backgroundColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
 						background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
@@ -823,22 +874,16 @@ const ChapterListPage = () => {
 						height: '40px',
 						fontSize: '16px',
 						fontWeight: '500',
-						minWidth: '100px'
-					}
+						minWidth: '120px',
+					},
 				}}
 				cancelButtonProps={{
 					style: {
 						height: '40px',
 						fontSize: '16px',
 						fontWeight: '500',
-						minWidth: '100px'
-					}
-				}}
-				bodyStyle={{
-					padding: '30px 40px',
-					fontSize: '16px',
-					lineHeight: '1.6',
-					textAlign: 'center'
+						minWidth: '100px',
+					},
 				}}>
 				<div style={{ padding: '20px 0' }}>
 					<div style={{ textAlign: 'center', marginBottom: '20px' }}>
@@ -852,35 +897,86 @@ const ChapterListPage = () => {
 								height: '36px',
 								fontSize: '14px',
 								fontWeight: '500',
-								marginBottom: '20px'
 							}}>
 							{t('chapterManagement.downloadTemplate')}
 						</Button>
 					</div>
-					
-					<div style={{
-						border: '2px dashed #d9d9d9',
-						borderRadius: '8px',
-						padding: '40px 20px',
-						backgroundColor: '#fafafa',
-						textAlign: 'center',
-					}}>
+
+					<Typography.Title
+						level={5}
+						style={{
+							textAlign: 'center',
+							marginBottom: '20px',
+							color: '#666',
+						}}>
+						{t('chapterManagement.importInstructions')}
+					</Typography.Title>
+
+					<Upload.Dragger
+						name="file"
+						multiple={false}
+						beforeUpload={handleFileSelect}
+						showUploadList={false}
+						accept=".xlsx,.xls"
+						style={{
+							marginBottom: '20px',
+							border: '2px dashed #d9d9d9',
+							borderRadius: '8px',
+							background: '#fafafa',
+							padding: '40px',
+							textAlign: 'center',
+						}}>
 						<p
 							className='ant-upload-drag-icon'
 							style={{ fontSize: '48px', color: '#1890ff' }}>
-							<DownloadOutlined />
+							<UploadOutlined />
 						</p>
 						<p
 							className='ant-upload-text'
 							style={{ fontSize: '16px', fontWeight: '500' }}>
 							{t('chapterManagement.clickOrDragFile')}
 						</p>
-						<p
-							className='ant-upload-hint'
-							style={{ fontSize: '14px', color: '#666', marginTop: '8px' }}>
-							{t('chapterManagement.supportedFormats')}
+						<p className='ant-upload-hint' style={{ color: '#999' }}>
+							{t('chapterManagement.supportedFormats')}: Excel (.xlsx, .xls)
 						</p>
-					</div>
+					</Upload.Dragger>
+
+					<Divider />
+
+					{importModal.fileList.length > 0 && (
+						<div
+							style={{
+								marginTop: '16px',
+								padding: '12px',
+								background: '#e6f7ff',
+								border: '1px solid #91d5ff',
+								borderRadius: '6px',
+								display: 'flex',
+								justifyContent: 'space-between',
+								alignItems: 'center',
+							}}>
+							<div>
+								<Typography.Text style={{ color: '#1890ff', fontWeight: '500' }}>
+									✅ {t('chapterManagement.fileSelected')}:{' '}
+									{importModal.fileList[0].name}
+								</Typography.Text>
+								<br />
+								<Typography.Text style={{ color: '#666', fontSize: '12px' }}>
+									Size: {importModal.fileList[0].size < 1024 * 1024 
+										? `${(importModal.fileList[0].size / 1024).toFixed(1)} KB`
+										: `${(importModal.fileList[0].size / 1024 / 1024).toFixed(2)} MB`
+									}
+								</Typography.Text>
+							</div>
+							<Button
+								type="text"
+								size="small"
+								onClick={() => setImportModal(prev => ({ ...prev, fileList: [] }))}
+								style={{ color: '#ff4d4f' }}>
+								Remove
+							</Button>
+						</div>
+					)}
 				</div>
 			</Modal>
 		</ThemedLayout>

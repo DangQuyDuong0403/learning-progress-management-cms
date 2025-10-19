@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, memo } from 'react';
-import { Button, message, Typography, Modal, Input } from 'antd';
+import { Button, message, Typography, Modal } from 'antd';
 import {
 	PlusOutlined,
 	DeleteOutlined,
@@ -24,14 +24,12 @@ import {
 	PointerSensor,
 	useSensor,
 	useSensors,
-	DragOverlay,
 } from '@dnd-kit/core';
 import {
 	arrayMove,
 	SortableContext,
 	sortableKeyboardCoordinates,
 	verticalListSortingStrategy,
-	defaultAnimateLayoutChanges,
 } from '@dnd-kit/sortable';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
@@ -39,15 +37,25 @@ import '../level/LevelDragEdit.css';
 
 const { Text, Title } = Typography;
 
-// Sortable Lesson Item Component
+// Sortable Lesson Item Component - Optimized
 const SortableLessonItem = memo(
-	({ lesson, index, onDeleteLesson, onEditLesson, theme, t }) => {
+	({
+		lesson,
+		index,
+		onDeleteLesson,
+		onEditLesson,
+		theme,
+		t,
+		isDraggingGlobal,
+	}) => {
+		// Keep minimal animation for smoother experience
 		const animateLayoutChanges = useCallback((args) => {
 			const { isSorting, wasDragging } = args;
-			if (isSorting || wasDragging) {
-				return defaultAnimateLayoutChanges(args);
+			// Only animate when not actively dragging
+			if (isSorting) {
+				return false; // No animation while dragging
 			}
-			return true;
+			return wasDragging; // Smooth animation when dropped
 		}, []);
 
 		const {
@@ -60,17 +68,41 @@ const SortableLessonItem = memo(
 		} = useSortable({
 			id: lesson.id,
 			animateLayoutChanges,
+			transition: {
+				duration: 200, // Giữ animation ngắn 200ms
+				easing: 'cubic-bezier(0.25, 0.1, 0.25, 1)',
+			},
 		});
 
-		const style = useMemo(
-			() => ({
-				transform: CSS.Transform.toString(transform),
-				transition,
-				opacity: isDragging ? 0.5 : 1,
-				willChange: 'transform',
-			}),
-			[transform, transition, isDragging]
-		);
+		// Optimized style with subtle animation
+		const style = useMemo(() => {
+			// When actively dragging this item, no transition
+			if (isDragging) {
+				return {
+					transform: transform ? CSS.Transform.toString(transform) : undefined,
+					transition: 'none',
+					opacity: 0.5,
+					willChange: 'transform',
+					pointerEvents: 'none',
+				};
+			}
+			// When other items are dragging, minimal transition
+			if (isDraggingGlobal) {
+				return {
+					transform: transform ? CSS.Transform.toString(transform) : undefined,
+					transition: transition || 'transform 0.15s ease-out',
+					opacity: 1,
+					willChange: 'transform',
+				};
+			}
+			// Normal state with smooth transition
+			return {
+				transform: transform ? CSS.Transform.toString(transform) : undefined,
+				transition: transition || 'transform 0.2s ease, opacity 0.2s ease',
+				opacity: 1,
+				willChange: 'auto',
+			};
+		}, [transform, transition, isDragging, isDraggingGlobal]);
 
 		const handleEdit = useCallback(() => {
 			onEditLesson(lesson);
@@ -98,18 +130,17 @@ const SortableLessonItem = memo(
 						<Text strong style={{ minWidth: '120px', fontSize: '20px' }}>
 							{t('lessonManagement.lessonName')}:
 						</Text>
-						<Text 
-							style={{ 
-								fontSize: '16px', 
+						<Text
+							style={{
+								fontSize: '16px',
 								color: '#333',
 								maxWidth: '200px',
 								overflow: 'hidden',
 								textOverflow: 'ellipsis',
 								whiteSpace: 'nowrap',
-								display: 'inline-block'
+								display: 'inline-block',
 							}}
-							title={lesson.name || t('lessonManagement.noLessonName')}
-						>
+							title={lesson.name || t('lessonManagement.noLessonName')}>
 							{lesson.name || t('lessonManagement.noLessonName')}
 						</Text>
 					</div>
@@ -117,18 +148,17 @@ const SortableLessonItem = memo(
 						<Text strong style={{ minWidth: '120px', fontSize: '20px' }}>
 							{t('lessonManagement.content')}:
 						</Text>
-						<Text 
-							style={{ 
-								fontSize: '16px', 
+						<Text
+							style={{
+								fontSize: '16px',
 								color: '#333',
 								maxWidth: '250px',
 								overflow: 'hidden',
 								textOverflow: 'ellipsis',
 								whiteSpace: 'nowrap',
-								display: 'inline-block'
+								display: 'inline-block',
 							}}
-							title={lesson.content || t('lessonManagement.noContent')}
-						>
+							title={lesson.content || t('lessonManagement.noContent')}>
 							{lesson.content || t('lessonManagement.noContent')}
 						</Text>
 					</div>
@@ -174,7 +204,8 @@ const SortableLessonItem = memo(
 			prevProps.lesson.name === nextProps.lesson.name &&
 			prevProps.lesson.content === nextProps.lesson.content &&
 			prevProps.lesson.position === nextProps.lesson.position &&
-			prevProps.theme === nextProps.theme
+			prevProps.theme === nextProps.theme &&
+			prevProps.isDraggingGlobal === nextProps.isDraggingGlobal
 		);
 	}
 );
@@ -202,7 +233,9 @@ const AddLessonButton = memo(
 		);
 	},
 	(prevProps, nextProps) => {
-		return prevProps.theme === nextProps.theme && prevProps.index === nextProps.index;
+		return (
+			prevProps.theme === nextProps.theme && prevProps.index === nextProps.index
+		);
 	}
 );
 
@@ -213,25 +246,29 @@ const LessonDragEdit = () => {
 	const { theme } = useTheme();
 	const navigate = useNavigate();
 	const { syllabusId, chapterId } = useParams();
-	
+
 	// Set page title
 	usePageTitle('Edit Lesson Positions');
-	
+
 	const [lessons, setLessons] = useState([]);
 	const [loading, setLoading] = useState(false);
 	const [saving, setSaving] = useState(false);
-	const [activeId, setActiveId] = useState(null);
+	// eslint-disable-next-line no-unused-vars
+	const [activeId, setActiveId] = useState(null); // Keep for future use/debugging
 	const [isModalVisible, setIsModalVisible] = useState(false);
 	const [editingLesson, setEditingLesson] = useState(null);
 	const [insertAtIndex, setInsertAtIndex] = useState(null);
 	const [chapterInfo, setChapterInfo] = useState(null);
 	const [isInitialLoading, setIsInitialLoading] = useState(true);
+	const [isDraggingGlobal, setIsDraggingGlobal] = useState(false);
 
+	// Optimized sensors configuration for better performance
 	const sensors = useSensors(
 		useSensor(PointerSensor, {
 			activationConstraint: {
-				distance: 8,
+				distance: 8, // Reduced for better responsiveness
 				delay: 0,
+				tolerance: 5,
 			},
 		}),
 		useSensor(KeyboardSensor, {
@@ -281,9 +318,12 @@ const LessonDragEdit = () => {
 		if (!chapterId || !syllabusId) return;
 
 		try {
-			const response = await syllabusManagementApi.getChaptersBySyllabusId(syllabusId, {
-				params: { page: 0, size: 100 },
-			});
+			const response = await syllabusManagementApi.getChaptersBySyllabusId(
+				syllabusId,
+				{
+					params: { page: 0, size: 100 },
+				}
+			);
 
 			const chapter = response.data.find((c) => c.id === parseInt(chapterId));
 			if (chapter) {
@@ -301,10 +341,7 @@ const LessonDragEdit = () => {
 	useEffect(() => {
 		const fetchData = async () => {
 			setIsInitialLoading(true);
-			await Promise.all([
-				fetchAllLessons(),
-				fetchChapterInfo()
-			]);
+			await Promise.all([fetchAllLessons(), fetchChapterInfo()]);
 			setIsInitialLoading(false);
 		};
 		fetchData();
@@ -350,6 +387,7 @@ const LessonDragEdit = () => {
 						return newLessons.map((lesson, i) => ({
 							...lesson,
 							position: i + 1,
+							orderNumber: i + 1, // Cập nhật orderNumber để tuần tự
 						}));
 					});
 				}
@@ -363,7 +401,7 @@ const LessonDragEdit = () => {
 
 	const handleDeleteLesson = useCallback(
 		(index) => {
-			const visibleLessons = lessons.filter(lesson => !lesson.toBeDeleted);
+			const visibleLessons = lessons.filter((lesson) => !lesson.toBeDeleted);
 
 			// Get the actual lesson from visible lessons using the index
 			const lessonToDelete = visibleLessons[index];
@@ -378,73 +416,100 @@ const LessonDragEdit = () => {
 					if (lesson.id === lessonToDelete.id) {
 						return {
 							...lesson,
-							toBeDeleted: true
+							toBeDeleted: true,
 						};
 					}
 					return lesson;
 				});
-				
+
 				// Recalculate positions only for visible items
-				const visibleItems = newLessons.filter(lesson => !lesson.toBeDeleted);
+				const visibleItems = newLessons.filter((lesson) => !lesson.toBeDeleted);
 				return newLessons.map((lesson) => {
 					if (lesson.toBeDeleted) {
 						return lesson; // Keep deleted items as-is
 					}
-					
+
 					// Update position for visible items
-					const visibleIndex = visibleItems.findIndex(item => item.id === lesson.id);
+					const visibleIndex = visibleItems.findIndex(
+						(item) => item.id === lesson.id
+					);
 					return {
 						...lesson,
 						position: visibleIndex + 1,
+						orderNumber: visibleIndex + 1, // Cập nhật orderNumber để tuần tự
 					};
 				});
 			});
 		},
-		[lessons, t]
+		[lessons]
 	);
-
 
 	const handleDragStart = useCallback((event) => {
 		setActiveId(event.active.id);
+		setIsDraggingGlobal(true);
 		document.body.style.overflow = 'hidden';
+		// Add class to body to prevent interactions during drag
+		document.body.classList.add('is-dragging');
+	}, []);
+
+	const handleDragCancel = useCallback(() => {
+		setActiveId(null);
+		setIsDraggingGlobal(false);
+		document.body.style.overflow = '';
+		document.body.classList.remove('is-dragging');
 	}, []);
 
 	useEffect(() => {
 		return () => {
 			document.body.style.overflow = '';
+			document.body.classList.remove('is-dragging');
 		};
 	}, []);
 
+	// Optimized drag end handler - only re-render once when dropped
 	const handleDragEnd = useCallback((event) => {
 		const { active, over } = event;
+
+		// Reset dragging state immediately
 		setActiveId(null);
+		setIsDraggingGlobal(false);
 		document.body.style.overflow = '';
+		document.body.classList.remove('is-dragging');
 
-		if (active.id !== over?.id) {
-			setLessons((items) => {
-				const oldIndex = items.findIndex((item) => item.id === active.id);
-				const newIndex = items.findIndex((item) => item.id === over.id);
+		if (active.id !== over?.id && over) {
+			// Use requestAnimationFrame to batch the update
+			requestAnimationFrame(() => {
+				setLessons((items) => {
+					const oldIndex = items.findIndex((item) => item.id === active.id);
+					const newIndex = items.findIndex((item) => item.id === over.id);
 
-				if (oldIndex === -1 || newIndex === -1) return items;
+					if (oldIndex === -1 || newIndex === -1) return items;
 
-				const newItems = arrayMove(items, oldIndex, newIndex);
+					const newItems = arrayMove(items, oldIndex, newIndex);
 
-				return newItems.map((lesson, index) => ({
-					...lesson,
-					position: index + 1,
-				}));
+					return newItems.map((lesson, index) => ({
+						...lesson,
+						position: index + 1,
+						orderNumber: index + 1, // Cập nhật orderNumber để tuần tự
+					}));
+				});
 			});
 		}
 	}, []);
 
-	const lessonIds = useMemo(() => 
-		lessons.filter(lesson => !lesson.toBeDeleted).map((lesson) => lesson.id), 
+	const lessonIds = useMemo(
+		() =>
+			lessons
+				.filter((lesson) => !lesson.toBeDeleted)
+				.map((lesson) => lesson.id),
 		[lessons]
 	);
 
 	const handleSave = useCallback(async () => {
-		const visibleLessons = lessons.filter(lesson => !lesson.toBeDeleted);
-		const invalidLessons = visibleLessons.filter((lesson) => !lesson.name.trim());
+		const visibleLessons = lessons.filter((lesson) => !lesson.toBeDeleted);
+		const invalidLessons = visibleLessons.filter(
+			(lesson) => !lesson.name.trim()
+		);
 		if (invalidLessons.length > 0) {
 			message.error(t('lessonManagement.lessonNameRequired'));
 			return;
@@ -453,26 +518,54 @@ const LessonDragEdit = () => {
 		setSaving(true);
 		try {
 			// Chuẩn bị dữ liệu theo format của API /lesson/sync
-			const syncData = lessons.map((lesson, index) => {
-				const isNewRecord = typeof lesson.id === 'string' && lesson.id.startsWith('new-');
-				
-				return {
-					id: isNewRecord ? null : lesson.id, // null cho lesson mới
-					lessonName: lesson.name,
-					content: lesson.content,
-					orderNumber: index + 1, // Thứ tự từ 1
-					toBeDeleted: lesson.toBeDeleted || false, // Include toBeDeleted flag
-				};
+			const syncData = lessons
+				.map((lesson) => {
+					const isNewRecord =
+						typeof lesson.id === 'string' && lesson.id.startsWith('new-');
+
+					return {
+						id: isNewRecord ? null : lesson.id, // null cho lesson mới
+						lessonName: lesson.name,
+						content: lesson.content,
+						orderNumber: lesson.orderNumber || lesson.position || 1, // Sử dụng orderNumber từ state
+						toBeDeleted: lesson.toBeDeleted || false, // Include toBeDeleted flag
+					};
+				})
+				.filter((lesson) => {
+					// Không gửi các record mới (id: null) mà đã bị xóa (toBeDeleted: true)
+					// Vì chúng chưa tồn tại trên backend nên không cần xóa
+					return !(lesson.id === null && lesson.toBeDeleted === true);
+				});
+
+			console.log('LessonDragEdit - Sending sync data:', {
+				count: syncData.length,
+				lessons: syncData.map(l => ({ 
+					id: l.id, 
+					lessonName: l.lessonName, 
+					orderNumber: l.orderNumber,
+					toBeDeleted: l.toBeDeleted 
+				}))
 			});
 
 			// Gọi API sync với chapterId và dữ liệu lessons
-			await syllabusManagementApi.syncLessons(chapterId, syncData);
+			const response = await syllabusManagementApi.syncLessons(chapterId, syncData);
 
-			spaceToast.success(t('lessonManagement.updatePositionsSuccess'));
-			navigate(`/manager/syllabuses/${syllabusId}/chapters/${chapterId}/lessons`);
+			// Use backend message if available, otherwise fallback to translation
+			const successMessage = response.message || t('lessonManagement.updatePositionsSuccess');
+			spaceToast.success(successMessage);
+			navigate(
+				`/manager/syllabuses/${syllabusId}/chapters/${chapterId}/lessons`
+			);
 		} catch (error) {
 			console.error('Error syncing lessons:', error);
-			spaceToast.error(t('lessonManagement.updatePositionsError'));
+			
+			// Handle API errors with backend messages
+			if (error.response) {
+				const errorMessage = error.response.data?.error || error.response.data?.message || error.message;
+				spaceToast.error(errorMessage);
+			} else {
+				spaceToast.error(error.message || t('lessonManagement.updatePositionsError'));
+			}
 		} finally {
 			setSaving(false);
 		}
@@ -482,38 +575,13 @@ const LessonDragEdit = () => {
 		navigate(`/manager/syllabuses/${syllabusId}/chapters/${chapterId}/lessons`);
 	}, [navigate, syllabusId, chapterId]);
 
-	const activeLessonData = useMemo(
-		() => lessons.filter(lesson => !lesson.toBeDeleted).find((lesson) => lesson.id === activeId),
-		[activeId, lessons]
-	);
-
-	const offsetModifier = useCallback((args) => {
-		if (!args || !args.transform) {
-			return {
-				x: 0,
-				y: 0,
-				scaleX: 1,
-				scaleY: 1,
-			};
-		}
-
-		return {
-			...args.transform,
-			y: args.transform.y - 300,
-			x: args.transform.x - 300,
-		};
-	}, []);
-
 	if (!chapterInfo || isInitialLoading) {
 		return (
 			<ThemedLayout>
 				{/* Main Content Panel */}
 				<div className={`main-content-panel ${theme}-main-panel`}>
 					<div style={{ textAlign: 'center', padding: '50px' }}>
-						<LoadingWithEffect
-							loading={true}
-							message={t('common.loading')}
-						>
+						<LoadingWithEffect loading={true} message={t('common.loading')}>
 							<div></div>
 						</LoadingWithEffect>
 					</div>
@@ -527,22 +595,32 @@ const LessonDragEdit = () => {
 			<div className={`main-content-panel ${theme}-main-panel`}>
 				{/* Header Section */}
 				<div className={`panel-header ${theme}-panel-header`}>
-					<div className="page-title-container" style={{ display: 'flex', alignItems: 'center', marginBottom: '24px' }}>
-						<Button 
+					<div
+						className='page-title-container'
+						style={{
+							display: 'grid',
+							gridTemplateColumns: '120px 1fr 120px', // Cột trái và phải có độ rộng bằng nhau
+							alignItems: 'center',
+							marginBottom: '24px',
+							width: '100%',
+						}}>
+						<Button
 							icon={<ArrowLeftOutlined />}
 							onClick={handleGoBack}
-							className={`back-button ${theme}-back-button`}
-							style={{ marginRight: '24px' }}
-						>
+							className={`back-button ${theme}-back-button`}>
 							{t('common.back')}
 						</Button>
-						<Title 
-							level={1} 
-							className="page-title"
-							style={{ margin: 0, flex: 1, textAlign: 'center' }}
-						>
+						<Title
+							level={1}
+							className='page-title'
+							style={{
+								margin: 0,
+								textAlign: 'center',
+								justifySelf: 'center', // Đảm bảo căn giữa trong grid
+							}}>
 							{t('lessonManagement.editPositions')} - {chapterInfo.name}
 						</Title>
+						<div></div> {/* Cột trống để cân bằng */}
 					</div>
 				</div>
 
@@ -552,9 +630,9 @@ const LessonDragEdit = () => {
 					style={{ padding: '24px' }}>
 					<div
 						className={`level-drag-edit-container ${theme}-level-drag-edit-container`}>
-
 						{/* Lessons List with Scroll */}
-						<div className={`levels-scroll-container ${theme}-levels-scroll-container`}>
+						<div
+							className={`levels-scroll-container ${theme}-levels-scroll-container`}>
 							<div className='levels-drag-container'>
 								{loading ? (
 									<div style={{ textAlign: 'center', padding: '40px' }}>
@@ -568,53 +646,57 @@ const LessonDragEdit = () => {
 										collisionDetection={closestCenter}
 										onDragStart={handleDragStart}
 										onDragEnd={handleDragEnd}
-										measuring={{
-											droppable: {
-												strategy: 'always',
-											},
-										}}>
+										onDragCancel={handleDragCancel}>
 										<SortableContext
 											items={lessonIds}
 											strategy={verticalListSortingStrategy}>
 											{lessons
-												.filter(lesson => !lesson.toBeDeleted)
+												.filter((lesson) => !lesson.toBeDeleted)
 												.map((lesson, index) => (
-												<React.Fragment key={lesson.id}>
-													{index > 0 && (
-														<AddLessonButton
-															theme={theme}
-															index={index}
-															onAddAtPosition={handleAddLessonAtPosition}
-														/>
-													)}
+													<React.Fragment key={lesson.id}>
+														{index > 0 && (
+															<AddLessonButton
+																theme={theme}
+																index={index}
+																onAddAtPosition={handleAddLessonAtPosition}
+															/>
+														)}
 
-													<SortableLessonItem
-														lesson={lesson}
-														index={index}
-														onDeleteLesson={handleDeleteLesson}
-														onEditLesson={handleEditLesson}
-														theme={theme}
-														t={t}
-													/>
-												</React.Fragment>
-											))}
-											
+														<SortableLessonItem
+															lesson={lesson}
+															index={index}
+															onDeleteLesson={handleDeleteLesson}
+															onEditLesson={handleEditLesson}
+															theme={theme}
+															t={t}
+															isDraggingGlobal={isDraggingGlobal}
+														/>
+													</React.Fragment>
+												))}
+
 											{/* Always show Add button at the end if there are lessons */}
-											{lessons.filter(lesson => !lesson.toBeDeleted).length > 0 && (
+											{lessons.filter((lesson) => !lesson.toBeDeleted).length >
+												0 && (
 												<AddLessonButton
 													theme={theme}
-													index={lessons.filter(lesson => !lesson.toBeDeleted).length}
+													index={
+														lessons.filter((lesson) => !lesson.toBeDeleted)
+															.length
+													}
 													onAddAtPosition={handleAddLessonAtPosition}
 												/>
 											)}
-											
+
 											{/* Show fixed Add button when no lessons exist */}
-											{lessons.filter(lesson => !lesson.toBeDeleted).length === 0 && (
-												<div className={`add-level-empty ${theme}-add-level-empty`} style={{ 
-													marginTop: '40px', 
-													textAlign: 'center',
-													padding: '40px 20px'
-												}}>
+											{lessons.filter((lesson) => !lesson.toBeDeleted)
+												.length === 0 && (
+												<div
+													className={`add-level-empty ${theme}-add-level-empty`}
+													style={{
+														marginTop: '40px',
+														textAlign: 'center',
+														padding: '40px 20px',
+													}}>
 													<Button
 														type='primary'
 														icon={<PlusOutlined />}
@@ -626,78 +708,35 @@ const LessonDragEdit = () => {
 															fontSize: '18px',
 															fontWeight: '600',
 															borderRadius: '12px',
-															backgroundColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
-															background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
-															borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'transparent',
+															backgroundColor:
+																theme === 'sun'
+																	? 'rgb(113, 179, 253)'
+																	: 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
+															background:
+																theme === 'sun'
+																	? 'rgb(113, 179, 253)'
+																	: 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
+															borderColor:
+																theme === 'sun'
+																	? 'rgb(113, 179, 253)'
+																	: 'transparent',
 															color: theme === 'sun' ? '#000000' : '#ffffff',
-															boxShadow: theme === 'sun' 
-																? '0 6px 20px rgba(113, 179, 253, 0.4)' 
-																: '0 6px 20px rgba(90, 31, 184, 0.4)',
-														}}
-													>
+															boxShadow:
+																theme === 'sun'
+																	? '0 6px 20px rgba(113, 179, 253, 0.4)'
+																	: '0 6px 20px rgba(90, 31, 184, 0.4)',
+														}}>
 														{t('lessonManagement.addLesson')}
 													</Button>
-													<div style={{ 
-														marginTop: '16px', 
-														color: '#666', 
-														fontSize: '14px' 
-													}}>
-													</div>
+													<div
+														style={{
+															marginTop: '16px',
+															color: '#666',
+															fontSize: '14px',
+														}}></div>
 												</div>
 											)}
 										</SortableContext>
-
-										{/* Drag Overlay */}
-										<DragOverlay
-											dropAnimation={null}
-											modifiers={[offsetModifier]}>
-											{activeLessonData ? (
-												<div
-													className={`level-drag-item ${theme}-level-drag-item`}
-													style={{
-														opacity: 0.95,
-														boxShadow: '0 12px 32px rgba(24, 144, 255, 0.5)',
-														border: '2px solid #1890ff',
-														background: theme === 'dark' ? '#2a2a2a' : '#ffffff',
-														cursor: 'grabbing',
-														transform: 'rotate(3deg)',
-														maxWidth: '800px',
-													}}>
-													<div className='level-position'>
-														<Text
-															strong
-															style={{ fontSize: '18px', color: 'black' }}>
-															{activeLessonData.position}
-														</Text>
-													</div>
-													<div className='drag-handle'></div>
-													<div className='level-content'>
-														<div className='level-field'>
-															<Text strong style={{ minWidth: '120px' }}>
-																{t('lessonManagement.lessonName')}:
-															</Text>
-															<Text
-																style={{
-																	color: theme === 'dark' ? '#ffffff' : '#000000',
-																}}>
-																{activeLessonData.name}
-															</Text>
-														</div>
-														<div className='level-field'>
-															<Text strong style={{ minWidth: '120px' }}>
-																{t('lessonManagement.content')}:
-															</Text>
-															<Text
-																style={{
-																	color: theme === 'dark' ? '#ffffff' : '#000000',
-																}}>
-																{activeLessonData.content || 'N/A'}
-															</Text>
-														</div>
-													</div>
-												</div>
-											) : null}
-										</DragOverlay>
 									</DndContext>
 								)}
 							</div>
@@ -710,7 +749,7 @@ const LessonDragEdit = () => {
 								onClick={handleGoBack}
 								size='large'
 								className={`back-button ${theme}-back-button`}
-								style={{ 
+								style={{
 									marginRight: '12px',
 									borderRadius: '8px',
 									height: '42px',
@@ -727,7 +766,7 @@ const LessonDragEdit = () => {
 								style={{
 									height: '42px',
 									borderRadius: '8px',
-									fontWeight: '500'
+									fontWeight: '500',
 								}}>
 								{t('common.save')}
 							</Button>
@@ -747,8 +786,7 @@ const LessonDragEdit = () => {
 				onCancel={() => handleModalClose(false)}
 				footer={null}
 				width={600}
-				destroyOnClose
-			>
+				destroyOnClose>
 				<LessonForm
 					lesson={editingLesson}
 					chapter={chapterInfo}

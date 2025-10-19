@@ -8,26 +8,19 @@ import {
 	Input,
 	Row,
 	Col,
-	Tooltip,
-	Upload,
 	Typography,
-	Divider,
-	Progress,
-	Alert,
 	Checkbox,
+	Divider,
+	Alert,
+	Progress,
+	Upload,
 } from 'antd';
 import {
-	PlusOutlined,
-	EditOutlined,
-	DeleteOutlined,
 	SearchOutlined,
-	ReloadOutlined,
-	PlayCircleOutlined,
 	ArrowLeftOutlined,
-	SwapOutlined,
-	UploadOutlined,
 	DownloadOutlined,
 	DragOutlined,
+	UploadOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useDispatch, useSelector } from 'react-redux';
@@ -43,9 +36,7 @@ import ThemedLayout from '../../../../component/ThemedLayout';
 import { useTheme } from '../../../../contexts/ThemeContext';
 import LessonForm from './LessonForm';
 import LoadingWithEffect from '../../../../component/spinner/LoadingWithEffect';
-
-const { Dragger } = Upload;
-const { Title, Text } = Typography;
+import BottomActionBar from '../../../../component/BottomActionBar';
 
 const LessonListPage = () => {
 	const { t } = useTranslation();
@@ -67,10 +58,8 @@ const LessonListPage = () => {
 	const [isInitialLoading, setIsInitialLoading] = useState(true);
 
 	// Modal states
-	const [isDeleteModalVisible, setIsDeleteModalVisible] = useState(false);
 	const [isBulkDeleteModalVisible, setIsBulkDeleteModalVisible] = useState(false);
 	const [isFormModalVisible, setIsFormModalVisible] = useState(false);
-	const [deleteLesson, setDeleteLesson] = useState(null);
 	const [editingLesson, setEditingLesson] = useState(null);
 	const [importModal, setImportModal] = useState({
 		visible: false,
@@ -160,45 +149,6 @@ const LessonListPage = () => {
 			}
 		};
 	}, [searchTimeout]);
-
-	const handleAdd = () => {
-		setEditingLesson(null);
-		setIsFormModalVisible(true);
-	};
-
-	const handleEdit = (lesson) => {
-		setEditingLesson(lesson);
-		setIsFormModalVisible(true);
-	};
-
-	const handleDeleteClick = (lesson) => {
-		setDeleteLesson(lesson);
-		setIsDeleteModalVisible(true);
-	};
-
-	const handleDelete = async () => {
-		try {
-			await dispatch(deleteLesson(deleteLesson.id));
-			message.success(t('lessonManagement.deleteLessonSuccess'));
-			setIsDeleteModalVisible(false);
-			setDeleteLesson(null);
-			// Refresh the list
-			fetchLessons(pagination.current, pagination.pageSize, searchText);
-		} catch (error) {
-			console.error('Error deleting lesson:', error);
-			message.error(t('lessonManagement.deleteLessonError'));
-		}
-	};
-
-	const handleDeleteModalClose = () => {
-		setIsDeleteModalVisible(false);
-		setDeleteLesson(null);
-	};
-
-
-	const handleRefresh = () => {
-		fetchLessons(pagination.current, pagination.pageSize, searchText);
-	};
 
 	const handleBackToChapters = () => {
 		navigate(`/manager/syllabuses/${syllabusId}/chapters`);
@@ -330,75 +280,43 @@ const LessonListPage = () => {
 		});
 	};
 
-	const handleExportTemplate = async () => {
+	const handleDownloadTemplate = async () => {
 		try {
+			
 			const response = await syllabusManagementApi.downloadLessonTemplate();
 			
-			console.log('Template response:', response);
-			console.log('Is response a Blob?', response instanceof Blob);
-			console.log('Response size:', response.size);
-			console.log('Response type:', response.type);
-			
-			// If response is already a blob (which it seems to be), use it directly
-			let blob;
-			if (response instanceof Blob) {
-				blob = response;
-				console.log('Response is already a blob, using directly');
-			} else if (response.data instanceof Blob) {
-				blob = response.data;
-				console.log('Using response.data blob');
+			// API returns SAS URL directly (due to axios interceptor returning response.data)
+			let downloadUrl;
+			if (typeof response === 'string') {
+				downloadUrl = response;
+			} else if (response && typeof response.data === 'string') {
+				downloadUrl = response.data;
+			} else if (response && response.data && response.data.url) {
+				downloadUrl = response.data.url;
 			} else {
-				// Create blob from response data
-				blob = new Blob([response.data], { 
-					type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
-				});
-				console.log('Created new blob from response data');
+				console.error('Unexpected response format:', response);
 			}
 			
-			console.log('Final blob:', blob);
-			console.log('Blob type:', blob.type);
-			console.log('Blob size:', blob.size);
-			
-			// Validate blob
-			if (blob.size === 0) {
-				throw new Error('Downloaded file is empty');
-			}
-			
-			// Create download link
+			// Create download link directly from SAS URL
 			const link = document.createElement('a');
-			const url = URL.createObjectURL(blob);
-			link.href = url;
-			link.download = 'lesson_template.xlsx';
-			link.style.display = 'none';
-			
-			// Trigger download
+			link.setAttribute('href', downloadUrl);
+			link.setAttribute('download', 'lesson_import_template.xlsx');
+			link.setAttribute('target', '_blank');
+			link.style.visibility = 'hidden';
 			document.body.appendChild(link);
 			link.click();
-			
-			// Cleanup
 			document.body.removeChild(link);
-			URL.revokeObjectURL(url);
-
-			spaceToast.success(t('lessonManagement.templateDownloaded'));
+			
+			spaceToast.success('Template downloaded successfully');
 		} catch (error) {
 			console.error('Error downloading template:', error);
-			spaceToast.error(t('lessonManagement.templateDownloadError'));
+			spaceToast.error(error.response?.data?.error || error.response?.data?.message || error.message || 'Failed to download template');
 		}
-	};
-
-	const handleImportCancel = () => {
-		setImportModal({ 
-			visible: false, 
-			fileList: [], 
-			uploading: false, 
-			progress: 0, 
-			error: null 
-		});
 	};
 
 	const handleImportOk = async () => {
 		if (importModal.fileList.length === 0) {
-			message.warning(t('lessonManagement.selectFileToImport'));
+			spaceToast.warning(t('lessonManagement.selectFileToImport'));
 			return;
 		}
 
@@ -408,18 +326,17 @@ const LessonListPage = () => {
 		const allowedTypes = [
 			'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // .xlsx
 			'application/vnd.ms-excel', // .xls
-			'text/csv', // .csv
 		];
 		
-		if (!allowedTypes.includes(file.type) && !file.name.match(/\.(xlsx|xls|csv)$/i)) {
-			message.error(t('lessonManagement.invalidFileType'));
+		if (!allowedTypes.includes(file.type) && !file.name.match(/\.(xlsx|xls)$/i)) {
+			spaceToast.error(t('lessonManagement.invalidFileType'));
 			return;
 		}
 
 		// Validate file size (max 10MB)
 		const maxSize = 10 * 1024 * 1024; // 10MB
 		if (file.size > maxSize) {
-			message.error(t('lessonManagement.fileTooLarge'));
+			spaceToast.error(t('lessonManagement.fileTooLarge'));
 			return;
 		}
 
@@ -432,7 +349,7 @@ const LessonListPage = () => {
 
 		try {
 			const formData = new FormData();
-			formData.append('file', file.originFileObj);
+			formData.append('file', file.originFileObj || file);
 			
 			// Add chapterId to the request
 			formData.append('chapterId', chapterId);
@@ -508,6 +425,46 @@ const LessonListPage = () => {
 			
 			spaceToast.error(errorMessage);
 		}
+	};
+
+	const handleImportCancel = () => {
+		setImportModal({ 
+			visible: false, 
+			fileList: [], 
+			uploading: false, 
+			progress: 0, 
+			error: null 
+		});
+	};
+
+	
+
+	// Handle file selection
+	const handleFileSelect = (file) => {
+		// Validate file type
+		const allowedTypes = [
+			'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // .xlsx
+			'application/vnd.ms-excel', // .xls
+		];
+		
+		if (!allowedTypes.includes(file.type) && !file.name.match(/\.(xlsx|xls)$/i)) {
+			spaceToast.error(t('lessonManagement.invalidFileType'));
+			return false;
+		}
+		
+		// Validate file size (max 10MB)
+		const maxSize = 10 * 1024 * 1024; // 10MB
+		if (file.size > maxSize) {
+			spaceToast.error(t('lessonManagement.fileTooLarge'));
+			return false;
+		}
+		
+		setImportModal(prev => ({
+			...prev,
+			fileList: [file]
+		}));
+		
+		return false; // Prevent default upload behavior
 	};
 
 	// Use Redux state for lessons data
@@ -638,7 +595,7 @@ const LessonListPage = () => {
 						className="page-title"
 						style={{ margin: 0, flex: 1, textAlign: 'center' }}
 					>
-						{t('lessonManagement.title')} - {chapterInfo.name} <span className="student-count">({totalElements})</span>
+						{chapterInfo.name} - {t('lessonManagement.title')} <span className="student-count">({totalElements})</span>
 					</Typography.Title>
 					<div style={{ width: '100px' }}></div> {/* Spacer để cân bằng layout */}
 				</div>
@@ -677,22 +634,6 @@ const LessonListPage = () => {
 					</Col>
 				</Row>
 
-				{/* Bulk Actions Row */}
-				{selectedRowKeys.length > 0 && (
-					<Row justify="end" style={{ marginBottom: '16px' }}>
-						<Col>
-							<Space>
-								<Button
-									icon={<DeleteOutlined />}
-									onClick={handleDeleteAll}
-									className="bulk-delete-button"
-								>
-									{t('lessonManagement.deleteAll')} ({selectedRowKeys.length})
-								</Button>
-							</Space>
-						</Col>
-					</Row>
-				)}
 
 				{/* Table Section */}
 				<div className={`table-section ${theme}-table-section`}>
@@ -714,86 +655,15 @@ const LessonListPage = () => {
 				</div>
 			</div>
 
-			{/* Delete Confirmation Modal */}
-			<Modal
-				title={
-					<div style={{ 
-						fontSize: '20px', 
-						fontWeight: '600', 
-						color: '#1890ff',
-						textAlign: 'center',
-						padding: '10px 0'
-					}}>
-						{t('lessonManagement.confirmDelete')}
-					</div>
-				}
-				open={isDeleteModalVisible}
-				onOk={handleDelete}
-				onCancel={handleDeleteModalClose}
-				okText={t('common.confirm')}
-				cancelText={t('common.cancel')}
-				width={500}
-				centered
-				bodyStyle={{
-					padding: '30px 40px',
-					fontSize: '16px',
-					lineHeight: '1.6',
-					textAlign: 'center'
-				}}
-				okButtonProps={{
-					style: {
-						backgroundColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
-						background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
-						borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'transparent',
-						color: theme === 'sun' ? '#000000' : '#ffffff',
-						height: '40px',
-						fontSize: '16px',
-						fontWeight: '500',
-						minWidth: '100px'
-					}
-				}}
-				cancelButtonProps={{
-					style: {
-						height: '40px',
-						fontSize: '16px',
-						fontWeight: '500',
-						minWidth: '100px'
-					}
-				}}
-			>
-				<div style={{
-					display: 'flex',
-					flexDirection: 'column',
-					alignItems: 'center',
-					gap: '20px'
-				}}>
-					<div style={{
-						fontSize: '48px',
-						color: '#ff4d4f',
-						marginBottom: '10px'
-					}}>
-						⚠️
-					</div>
-					<p style={{
-						fontSize: '18px',
-						color: '#333',
-						margin: 0,
-						fontWeight: '500'
-					}}>
-						{t('lessonManagement.confirmDeleteMessage')}
-					</p>
-					{deleteLesson && (
-						<p style={{
-							fontSize: '20px',
-							color: '#1890ff',
-							margin: 0,
-							fontWeight: '600'
-						}}>
-							<strong>{deleteLesson.name}</strong>
-						</p>
-					)}
-				</div>
-			</Modal>
+			{/* Bottom Action Bar */}
+			<BottomActionBar
+				selectedCount={selectedRowKeys.length}
+				onSelectAll={handleSelectAll}
+				onDeleteAll={handleDeleteAll}
+				onClose={() => setSelectedRowKeys([])}
+				selectAllText="Select all"
+				deleteAllText="Delete all"
+			/>
 
 			{/* Delete All Confirmation Modal */}
 			<Modal
@@ -921,12 +791,13 @@ const LessonListPage = () => {
 				open={importModal.visible}
 				onOk={handleImportOk}
 				onCancel={handleImportCancel}
-				okText={t('lessonManagement.importLessons')}
+				okText={t('lessonManagement.import')}
 				cancelText={t('common.cancel')}
 				width={600}
 				centered
 				confirmLoading={importModal.uploading}
 				okButtonProps={{
+					disabled: importModal.fileList.length === 0,
 					style: {
 						backgroundColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
 						background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
@@ -935,66 +806,137 @@ const LessonListPage = () => {
 						height: '40px',
 						fontSize: '16px',
 						fontWeight: '500',
-						minWidth: '100px'
-					}
+						minWidth: '120px',
+					},
 				}}
 				cancelButtonProps={{
 					style: {
 						height: '40px',
 						fontSize: '16px',
 						fontWeight: '500',
-						minWidth: '100px'
-					}
-				}}
-				bodyStyle={{
-					padding: '30px 40px',
-					fontSize: '16px',
-					lineHeight: '1.6',
-					textAlign: 'center'
+						minWidth: '100px',
+					},
 				}}>
 				<div style={{ padding: '20px 0' }}>
 					<div style={{ textAlign: 'center', marginBottom: '20px' }}>
 						<Button
 							type="dashed"
 							icon={<DownloadOutlined />}
-							onClick={handleExportTemplate}
+							onClick={handleDownloadTemplate}
 							style={{
 								borderColor: '#1890ff',
 								color: '#1890ff',
 								height: '36px',
 								fontSize: '14px',
 								fontWeight: '500',
-								marginBottom: '20px'
 							}}>
-							{t('lessonManagement.exportTemplate')}
+							{t('lessonManagement.downloadTemplate')}
 						</Button>
 					</div>
-					
-					<div style={{
-						border: '2px dashed #d9d9d9',
-						borderRadius: '8px',
-						padding: '40px 20px',
-						backgroundColor: '#fafafa',
-						textAlign: 'center',
-					}}>
+
+					<Typography.Title
+						level={5}
+						style={{
+							textAlign: 'center',
+							marginBottom: '20px',
+							color: '#666',
+						}}>
+						{t('lessonManagement.importInstructions')}
+					</Typography.Title>
+
+					<Upload.Dragger
+						name="file"
+						multiple={false}
+						beforeUpload={handleFileSelect}
+						showUploadList={false}
+						accept=".xlsx,.xls,.csv"
+						style={{
+							marginBottom: '20px',
+							border: '2px dashed #d9d9d9',
+							borderRadius: '8px',
+							background: '#fafafa',
+							padding: '40px',
+							textAlign: 'center',
+						}}>
 						<p
 							className='ant-upload-drag-icon'
 							style={{ fontSize: '48px', color: '#1890ff' }}>
-							<DownloadOutlined />
+							<UploadOutlined />
 						</p>
 						<p
 							className='ant-upload-text'
 							style={{ fontSize: '16px', fontWeight: '500' }}>
 							{t('lessonManagement.clickOrDragFile')}
 						</p>
-						<p
-							className='ant-upload-hint'
-							style={{ fontSize: '14px', color: '#666', marginTop: '8px' }}>
-							{t('lessonManagement.supportedFormats')}
+						<p className='ant-upload-hint' style={{ color: '#999' }}>
+							{t('lessonManagement.supportedFormats')}: Excel (.xlsx, .xls)
 						</p>
-					</div>
+					</Upload.Dragger>
+
+					<Divider />
+
+					{importModal.fileList.length > 0 && (
+						<div
+							style={{
+								marginTop: '16px',
+								padding: '12px',
+								background: '#e6f7ff',
+								border: '1px solid #91d5ff',
+								borderRadius: '6px',
+								display: 'flex',
+								justifyContent: 'space-between',
+								alignItems: 'center',
+							}}>
+							<div>
+								<Typography.Text style={{ color: '#1890ff', fontWeight: '500' }}>
+									✅ {t('lessonManagement.fileSelected')}:{' '}
+									{importModal.fileList[0].name}
+								</Typography.Text>
+								<br />
+								<Typography.Text style={{ color: '#666', fontSize: '12px' }}>
+									Size: {importModal.fileList[0].size < 1024 * 1024 
+										? `${(importModal.fileList[0].size / 1024).toFixed(1)} KB`
+										: `${(importModal.fileList[0].size / 1024 / 1024).toFixed(2)} MB`
+									}
+								</Typography.Text>
+							</div>
+							<Button
+								type="text"
+								size="small"
+								onClick={() => setImportModal(prev => ({ ...prev, fileList: [] }))}
+								style={{ color: '#ff4d4f' }}>
+								Remove
+							</Button>
+						</div>
+					)}
+
+					{importModal.uploading && (
+						<div style={{ marginTop: '16px' }}>
+							<Progress 
+								percent={importModal.progress} 
+								status={importModal.progress === 100 ? 'success' : 'active'}
+								strokeColor={{
+									'0%': '#108ee9',
+									'100%': '#87d068',
+								}}
+							/>
+							<div style={{ textAlign: 'center', marginTop: '8px', color: '#666' }}>
+								{importModal.progress < 100 ? t('lessonManagement.uploading') : t('lessonManagement.uploadComplete')}
+							</div>
+						</div>
+					)}
+
+					{importModal.error && (
+						<Alert
+							message={t('lessonManagement.importError')}
+							description={importModal.error}
+							type="error"
+							showIcon
+							style={{ marginTop: '16px' }}
+						/>
+					)}
 				</div>
-				</Modal>
+			</Modal>
 		</ThemedLayout>
 	);
 };

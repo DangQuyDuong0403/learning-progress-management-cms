@@ -7,15 +7,13 @@ import {
   Input,
   Modal,
   Upload,
-  Radio,
+  Typography,
 } from "antd";
 import {
   ArrowLeftOutlined,
   PlusOutlined,
   SearchOutlined,
   DeleteOutlined,
-  ImportOutlined,
-  ExportOutlined,
   DownloadOutlined,
   UploadOutlined,
   FilterOutlined,
@@ -27,8 +25,8 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { spaceToast } from "../../../../component/SpaceToastify";
 import { useTheme } from "../../../../contexts/ThemeContext";
-import { Typography } from "antd";
 import classManagementApi from "../../../../apis/backend/classManagement";
+import usePageTitle from "../../../../hooks/usePageTitle";
 
 const { Title } = Typography;
 
@@ -47,6 +45,10 @@ const ClassStudent = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { theme } = useTheme();
+  
+  // Set page title
+  usePageTitle('Class Students');
+  
   const [loading, setLoading] = useState(false);
   const [students, setStudents] = useState([]);
   const [classData, setClassData] = useState(null);
@@ -59,9 +61,11 @@ const ClassStudent = () => {
   const [selectedStudents, setSelectedStudents] = useState([]);
   const [isDeleteModalVisible, setIsDeleteModalVisible] = useState(false);
   const [studentToDelete, setStudentToDelete] = useState(null);
-  const [isImportModalVisible, setIsImportModalVisible] = useState(false);
-  const [isExportModalVisible, setIsExportModalVisible] = useState(false);
-  const [importFile, setImportFile] = useState(null);
+  const [importModal, setImportModal] = useState({
+    visible: false,
+    fileList: [],
+    uploading: false
+  });
   const [filterDropdown, setFilterDropdown] = useState({
     visible: false,
     selectedStatuses: [],
@@ -85,9 +89,9 @@ const ClassStudent = () => {
 
   // Status options for filter
   const statusOptions = [
-    { key: "ACTIVE", label: "Active" },
-    { key: "INACTIVE", label: "Inactive" },
-    { key: "PENDING", label: "Pending" },
+    { key: "ACTIVE", label: t('classDetail.active') },
+    { key: "INACTIVE", label: t('classDetail.inactive') },
+    { key: "DROPPED", label: t('classDetail.dropped') },
   ];
 
   // Handle click outside to close filter dropdown
@@ -286,46 +290,66 @@ const ClassStudent = () => {
   };
 
   const handleImport = () => {
-    setIsImportModalVisible(true);
+    setImportModal(prev => ({
+      ...prev,
+      visible: true,
+      fileList: [],
+      uploading: false
+    }));
+  };
+
+  const handleImportOk = async () => {
+    setImportModal(prev => ({ ...prev, uploading: true }));
+    
+    try {
+      // TODO: Implement import functionality
+      spaceToast.success(t('classDetail.importSuccess'));
+      setImportModal(prev => ({
+        ...prev,
+        visible: false,
+        fileList: [],
+        uploading: false
+      }));
+      
+      // Refresh the data
+      fetchStudents({
+        page: pagination.current - 1,
+        size: pagination.pageSize,
+        text: searchText,
+        status: statusFilter,
+        sortBy: sortConfig.sortBy,
+        sortDir: sortConfig.sortDir
+      });
+    } catch (error) {
+      console.error('Import error:', error);
+      spaceToast.error('Failed to import students');
+    } finally {
+      setImportModal(prev => ({ ...prev, uploading: false }));
+    }
+  };
+
+  const handleImportCancel = () => {
+    setImportModal(prev => ({
+      ...prev,
+      visible: false,
+      fileList: [],
+      uploading: false
+    }));
+  };
+
+  const handleDownloadTemplate = async () => {
+    try {
+      // TODO: Implement template download functionality
+      spaceToast.success(t('classDetail.templateDownloaded'));
+    } catch (error) {
+      console.error('Error downloading template:', error);
+      spaceToast.error('Failed to download template');
+    }
   };
 
   const handleExport = () => {
-    setIsExportModalVisible(true);
-  };
-
-  const handleImportModalOk = () => {
-    if (importFile) {
-      // Simulate import process
-      spaceToast.success(t('classDetail.importSuccess'));
-      setIsImportModalVisible(false);
-      setImportFile(null);
-    } else {
-      spaceToast.error(t('classDetail.selectFileToImportError'));
-    }
-  };
-
-  const handleImportModalCancel = () => {
-    setIsImportModalVisible(false);
-    setImportFile(null);
-  };
-
-  const handleExportModalOk = (exportType) => {
-    // Simulate export process
-    spaceToast.success(`${t('classDetail.exportSuccess')} ${exportType} ${t('classDetail.successful')}`);
-    setIsExportModalVisible(false);
-  };
-
-  const handleExportModalCancel = () => {
-    setIsExportModalVisible(false);
-  };
-
-  const handleFileUpload = (info) => {
-    if (info.file.status === 'done') {
-      setImportFile(info.file);
-      spaceToast.success(`${info.file.name} has been selected for import`);
-    } else if (info.file.status === 'error') {
-      spaceToast.error(`${info.file.name} upload failed`);
-    }
+    // TODO: Implement export functionality
+    spaceToast.success(t('classDetail.exportSuccess'));
   };
 
   const handleModalOk = async () => {
@@ -396,13 +420,13 @@ const ClassStudent = () => {
 
   const getStatusTag = (status) => {
     const statusConfig = {
-      ACTIVE: { color: "green", text: "Active" },
-      INACTIVE: { color: "red", text: "Inactive" },
-      PENDING: { color: "orange", text: "Pending" },
+      ACTIVE: { text: t('classDetail.active') },
+      INACTIVE: { text: t('classDetail.inactive') },
+      DROPPED: { text: t('classDetail.dropped') },
     };
 
     const config = statusConfig[status] || statusConfig.INACTIVE;
-    return <Tag color={config.color}>{config.text}</Tag>;
+    return <span style={{ color: '#000000', fontSize: '20px' }}>{config.text}</span>;
   };
 
   // Track if this is the initial load
@@ -473,7 +497,7 @@ const ClassStudent = () => {
 
   const columns = [
     {
-      title: 'No',
+      title: t('classDetail.no'),
       key: 'no',
       width: 60,
       render: (_, record, index) => {
@@ -482,7 +506,7 @@ const ClassStudent = () => {
       },
     },
     {
-      title: 'Full Name',
+      title: t('classDetail.fullName'),
       key: 'fullName',
       sorter: true,
       render: (_, record) => {
@@ -495,21 +519,21 @@ const ClassStudent = () => {
       },
     },
     {
-      title: 'Email',
+      title: t('classDetail.email'),
       dataIndex: 'email',
       key: 'email',
       sorter: true,
       render: (text) => <span style={{ fontSize: "20px" }}>{text}</span>,
     },
     {
-      title: 'Status',
+      title: t('classDetail.status'),
       dataIndex: 'status',
       key: 'status',
       sorter: true,
       render: (status) => getStatusTag(status),
     },
     {
-      title: 'Joined At',
+      title: t('classDetail.joinedAt'),
       dataIndex: 'joinedAt',
       key: 'joinedAt',
       sorter: true,
@@ -551,23 +575,36 @@ const ClassStudent = () => {
     <ThemedLayout>
         {/* Main Content Panel */}
         <div className={`main-content-panel ${theme}-main-panel`}>
+          {/* Page Title with Back Button */}
+          <div className="page-title-container" style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '24px' }}>
+            <Button
+              icon={<ArrowLeftOutlined />}
+              onClick={() => navigate(`/manager/classes/menu/${id}`)}
+              className={`back-button ${theme}-back-button`}
+              style={{ height: '40px', fontSize: '16px' }}
+            >
+              {t('common.back')}
+            </Button>
+            <div style={{ flex: '1', textAlign: 'center' }}>
+              <Typography.Title 
+                level={1} 
+                className="page-title"
+                style={{ margin: 0 }}
+              >
+                {t('classDetail.students')} <span className="student-count">({students.length})</span>
+              </Typography.Title>
+            </div>
+            <div style={{ width: '120px' }}></div> {/* Spacer for centering */}
+          </div>
+
           {/* Header Section */}
           <div className={`panel-header ${theme}-panel-header`}>
             <div className="search-section" style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-              <Button
-                icon={<ArrowLeftOutlined />}
-                onClick={() => navigate(`/manager/classes/menu/${id}`)}
-                className={`back-button ${theme}-back-button`}
-                style={{ height: '40px', fontSize: '16px' }}
-              >
-                {t('common.back')}
-              </Button>
               <div style={{ flex: '1', textAlign: 'center' }}>
                 <h2 className={`class-title ${theme}-class-title`} style={{ margin: 0, fontSize: '36px', fontWeight: '600' }}>
                   {classData?.name}
                 </h2>
               </div>
-              <div style={{ width: '120px' }}></div> {/* Spacer for centering */}
             </div>
           </div>
 
@@ -587,7 +624,7 @@ const ClassStudent = () => {
                 onClick={handleFilterToggle}
                 className={`filter-button ${theme}-filter-button ${filterDropdown.visible ? 'active' : ''} ${(statusFilter !== 'all') ? 'has-filters' : ''}`}
               >
-                Filter
+                {t('classDetail.filter')}
               </Button>
               
               {/* Filter Dropdown Panel */}
@@ -597,7 +634,7 @@ const ClassStudent = () => {
                     {/* Status Filter */}
                     <div style={{ marginBottom: '24px' }}>
                       <Title level={5} style={{ marginBottom: '12px', fontSize: '16px' }}>
-                        Status
+                        {t('classDetail.status')}
                       </Title>
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
                         {statusOptions.map(option => (
@@ -629,14 +666,14 @@ const ClassStudent = () => {
                         onClick={handleFilterReset}
                         className="filter-reset-button"
                       >
-                        Reset
+                        {t('classDetail.reset')}
                       </Button>
                       <Button
                         type="primary"
                         onClick={handleFilterSubmit}
                         className="filter-submit-button"
                       >
-                        View Results
+                        {t('classDetail.viewResults')}
                       </Button>
                     </div>
                   </div>
@@ -645,18 +682,18 @@ const ClassStudent = () => {
             </div>
             <div className="action-buttons" style={{ marginLeft: 'auto' }}>
               <Button 
-                icon={<ImportOutlined />}
-                className={`import-button ${theme}-import-button`}
-                onClick={handleImport}
-              >
-                {t('classDetail.import')}
-              </Button>
-              <Button 
-                icon={<ExportOutlined />}
+                icon={<UploadOutlined />}
                 className={`export-button ${theme}-export-button`}
                 onClick={handleExport}
               >
-                {t('classDetail.export')}
+                {t('classDetail.exportData')}
+              </Button>
+              <Button 
+                icon={<DownloadOutlined />}
+                className={`import-button ${theme}-import-button`}
+                onClick={handleImport}
+              >
+                {t('classDetail.importData')}
               </Button>
               <Button 
                 icon={<PlusOutlined />}
@@ -704,6 +741,26 @@ const ClassStudent = () => {
           width={600}
           okText={`${t('classDetail.addStudents')} ${selectedStudents.length} ${t('classDetail.studentsAdded')}`}
           cancelText={t('common.cancel')}
+          okButtonProps={{
+            style: {
+              backgroundColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
+              background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
+              borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'transparent',
+              color: theme === 'sun' ? '#000000' : '#ffffff',
+              height: '40px',
+              fontSize: '16px',
+              fontWeight: '500',
+              minWidth: '120px',
+            },
+          }}
+          cancelButtonProps={{
+            style: {
+              height: '40px',
+              fontSize: '16px',
+              fontWeight: '500',
+              minWidth: '100px',
+            },
+          }}
         >
           <div style={{ position: 'relative' }}>
             <div style={{ marginBottom: '16px' }}>
@@ -832,155 +889,180 @@ const ClassStudent = () => {
 
         {/* Import Modal */}
         <Modal
-          title={t('classDetail.importStudentsList')}
-          open={isImportModalVisible}
-          onOk={handleImportModalOk}
-          onCancel={handleImportModalCancel}
-          okText={t('classDetail.import')}
+          title={
+            <div
+              style={{
+                fontSize: '20px',
+                fontWeight: '600',
+                color: '#000000',
+                textAlign: 'center',
+                padding: '10px 0',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '10px',
+              }}>
+              <DownloadOutlined style={{ color: '#000000' }} />
+              {t('classDetail.importStudentsList')}
+            </div>
+          }
+          open={importModal.visible}
+          onOk={handleImportOk}
+          onCancel={handleImportCancel}
+          okText={t('classDetail.importStudentsList')}
           cancelText={t('common.cancel')}
           width={600}
+          centered
+          confirmLoading={importModal.uploading}
+          okButtonProps={{
+            disabled: importModal.fileList.length === 0,
+            style: {
+              backgroundColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
+              background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
+              borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'transparent',
+              color: theme === 'sun' ? '#000000' : '#ffffff',
+              height: '40px',
+              fontSize: '16px',
+              fontWeight: '500',
+              minWidth: '120px',
+            },
+          }}
+          cancelButtonProps={{
+            style: {
+              height: '40px',
+              fontSize: '16px',
+              fontWeight: '500',
+              minWidth: '100px',
+            },
+          }}
         >
-          <div style={{ marginBottom: '16px' }}>
-            <p style={{ fontSize: '14px', color: '#666', marginBottom: '12px' }}>
-              {t('classDetail.selectFileToImport')}
-            </p>
+          <div style={{ padding: '20px 0' }}>
+            <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+              <Button
+                type="dashed"
+                icon={<DownloadOutlined />}
+                onClick={handleDownloadTemplate}
+                style={{
+                  borderColor: '#1890ff',
+                  color: '#1890ff',
+                  height: '36px',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                }}>
+                {t('classDetail.downloadTemplate')}
+              </Button>
+            </div>
             
+            <Typography.Title
+              level={5}
+              style={{
+                textAlign: 'center',
+                marginBottom: '20px',
+                color: '#666',
+              }}>
+              {t('classDetail.importInstructions')}
+            </Typography.Title>
+
             <Upload.Dragger
               name="file"
               multiple={false}
+              beforeUpload={() => false}
+              showUploadList={false}
               accept=".xlsx,.xls,.csv"
-              beforeUpload={() => false} // Prevent auto upload
-              onChange={handleFileUpload}
-              onDrop={(e) => {
-                console.log('Dropped files', e.dataTransfer.files);
-              }}
               style={{
+                marginBottom: '20px',
                 border: '2px dashed #d9d9d9',
-                borderRadius: '6px',
-                backgroundColor: '#fafafa',
-              }}
-            >
-              <p className="ant-upload-drag-icon">
-                <UploadOutlined style={{ fontSize: '48px', color: '#1890ff' }} />
+                borderRadius: '8px',
+                background: '#fafafa',
+                padding: '40px',
+                textAlign: 'center',
+              }}>
+              <p
+                className='ant-upload-drag-icon'
+                style={{ fontSize: '48px', color: '#1890ff' }}>
+                <DownloadOutlined />
               </p>
-              <p className="ant-upload-text" style={{ fontSize: '16px', fontWeight: '500' }}>
-                Click or drag file here to upload
+              <p
+                className='ant-upload-text'
+                style={{ fontSize: '16px', fontWeight: '500' }}>
+                {t('classDetail.clickOrDragFile')}
               </p>
-              <p className="ant-upload-hint" style={{ fontSize: '14px', color: '#666' }}>
-                Support Excel (.xlsx, .xls) and CSV (.csv) files
+              <p className='ant-upload-hint' style={{ color: '#999' }}>
+                {t('classDetail.supportedFormats')}
               </p>
             </Upload.Dragger>
-          </div>
-
-          <div style={{ 
-            padding: '12px', 
-            backgroundColor: '#f6f8fa', 
-            borderRadius: '6px',
-            border: '1px solid #e1e4e8'
-          }}>
-            <div style={{ fontSize: '14px', color: '#24292e', marginBottom: '8px' }}>
-              <strong>{t('classDetail.fileFormatInstructions')}:</strong>
-            </div>
-            <div style={{ fontSize: '13px', color: '#586069' }}>
-              <div>• {t('classDetail.column1')}</div>
-              <div>• {t('classDetail.column2')}</div>
-              <div>• {t('classDetail.column3')}</div>
-              <div>• {t('classDetail.column4')}</div>
-              <div>• {t('classDetail.column5')}</div>
-            </div>
-          </div>
-        </Modal>
-
-        {/* Export Modal */}
-        <Modal
-          title={t('classDetail.exportStudentsList')}
-          open={isExportModalVisible}
-          onCancel={handleExportModalCancel}
-          footer={null}
-          width={500}
-        >
-          <div style={{ marginBottom: '20px' }}>
-            <p style={{ fontSize: '14px', color: '#666', marginBottom: '16px' }}>
-              {t('classDetail.selectFileFormat')}
-            </p>
-            
-            <Radio.Group 
-              defaultValue="excel"
-              style={{ width: '100%' }}
-            >
-              <div style={{ marginBottom: '12px' }}>
-                <Radio value="excel">
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <ExportOutlined style={{ color: '#52c41a' }} />
-                    <span>{t('classDetail.excel')}</span>
-                  </div>
-                </Radio>
-              </div>
-              <div style={{ marginBottom: '12px' }}>
-                <Radio value="csv">
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <ExportOutlined style={{ color: '#1890ff' }} />
-                    <span>{t('classDetail.csv')}</span>
-                  </div>
-                </Radio>
-              </div>
-              <div style={{ marginBottom: '12px' }}>
-                <Radio value="pdf">
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <DownloadOutlined style={{ color: '#ff4d4f' }} />
-                    <span>{t('classDetail.pdf')}</span>
-                  </div>
-                </Radio>
-              </div>
-            </Radio.Group>
-          </div>
-
-          <div style={{ 
-            padding: '12px', 
-            backgroundColor: '#f6f8fa', 
-            borderRadius: '6px',
-            border: '1px solid #e1e4e8',
-            marginBottom: '20px'
-          }}>
-            <div style={{ fontSize: '14px', color: '#24292e', marginBottom: '8px' }}>
-              <strong>{t('classDetail.exportInfo')}</strong>
-            </div>
-            <div style={{ fontSize: '13px', color: '#586069' }}>
-              <div>• {t('classDetail.totalStudents')} {pagination.total}</div>
-              <div>• {t('classDetail.activeStudents')} {students.filter(s => s.status === 'ACTIVE').length}</div>
-              <div>• {t('classDetail.inactiveStudents')} {students.filter(s => s.status === 'INACTIVE').length}</div>
-              <div>• {t('classDetail.pendingStudents')} {students.filter(s => s.status === 'PENDING').length}</div>
-            </div>
-          </div>
-
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
-            <Button onClick={handleExportModalCancel}>
-              {t('common.cancel')}
-            </Button>
-            <Button type="primary" onClick={() => handleExportModalOk("Excel")}>
-              {t('classDetail.exportExcel')}
-            </Button>
-            <Button type="primary" onClick={() => handleExportModalOk("CSV")}>
-              {t('classDetail.exportCsv')}
-            </Button>
-            <Button type="primary" onClick={() => handleExportModalOk("PDF")}>
-              {t('classDetail.exportPdf')}
-            </Button>
           </div>
         </Modal>
 
         {/* Delete Confirmation Modal */}
         <Modal
-          title={t('classDetail.confirmDelete')}
+          title={
+            <div style={{ 
+              fontSize: '20px', 
+              fontWeight: '600', 
+              color: '#1890ff',
+              textAlign: 'center',
+              padding: '10px 0'
+            }}>
+              {t('classDetail.confirmDelete')}
+            </div>
+          }
           open={isDeleteModalVisible}
           onOk={handleConfirmDelete}
           onCancel={handleCancelDelete}
-          okText={t('common.delete')}
+          okText={t('common.confirm')}
           cancelText={t('common.cancel')}
-          okType="danger"
+          width={500}
           centered
+          bodyStyle={{
+            padding: '30px 40px',
+            fontSize: '16px',
+            lineHeight: '1.6',
+            textAlign: 'center'
+          }}
+          okButtonProps={{
+            style: {
+              backgroundColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
+              background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
+              borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'transparent',
+              color: theme === 'sun' ? '#000000' : '#ffffff',
+              height: '40px',
+              fontSize: '16px',
+              fontWeight: '500',
+              minWidth: '100px'
+            }
+          }}
+          cancelButtonProps={{
+            style: {
+              height: '40px',
+              fontSize: '16px',
+              fontWeight: '500',
+              minWidth: '100px'
+            }
+          }}
         >
-          <p>{t('classDetail.confirmDeleteMessage')} "{studentToDelete ? `${studentToDelete.firstName || ''} ${studentToDelete.lastName || ''}`.trim() : ''}"?</p>
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: '20px'
+          }}>
+            <div style={{
+              fontSize: '48px',
+              color: '#ff4d4f',
+              marginBottom: '10px'
+            }}>
+              ⚠️
+            </div>
+            <p style={{
+              fontSize: '18px',
+              color: '#333',
+              margin: 0,
+              fontWeight: '500'
+            }}>
+              {t('classDetail.confirmDeleteMessage')} "{studentToDelete ? `${studentToDelete.firstName || ''} ${studentToDelete.lastName || ''}`.trim() : ''}"?
+            </p>
+          </div>
         </Modal>
     </ThemedLayout>
   );
