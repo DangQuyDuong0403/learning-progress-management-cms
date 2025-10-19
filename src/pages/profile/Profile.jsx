@@ -82,10 +82,6 @@ export default function Profile() {
   };
 
 
-  const handleEditEmail = () => {
-    setIsEditEmailModalVisible(true);
-  };
-
   const handleEditPersonalInfo = () => {
     setIsEditPersonalInfoModalVisible(true);
   };
@@ -144,34 +140,32 @@ export default function Profile() {
 
   return (
     <ThemedLayout>
-      {/* Main Content Panel */}
-      <div className={`profile-page main-content-panel ${theme}-main-panel`}>
-        {/* Page Title */}
-        <div className="page-title-container">
-          <Typography.Title 
-            level={1} 
-            className="page-title"
-          >
-            {t('profile.title')}
-          </Typography.Title>
+      {/* Page Title */}
+      <div className="page-title-container">
+        <Typography.Title 
+          level={1} 
+          className="page-title"
+        >
+          {t('profile.title')}
+        </Typography.Title>
+      </div>
+      
+      {/* Header Section */}
+      <div className={`profile-header ${theme}-profile-header`}>
+        <button className={`btn btn-back ${theme}-btn-back`} onClick={() => window.history.back()}>
+          <i className="ti ti-arrow-left"></i>
+          {t('common.back')}
+        </button>
+        <div className='action-buttons'>
+          <button className={`btn btn-primary ${theme}-btn-primary`} onClick={handleEditPersonalInfo}>
+            <i className="ti ti-edit"></i>
+            {t('common.editProfile')}
+          </button>
         </div>
-        {/* Header Section */}
-        <div className={`panel-header ${theme}-panel-header`}>
-          <div className='search-section'>
-            <div style={{width: 500}}></div>
-          </div>
-          <div className='action-buttons'>
-            <button className={`btn btn-secondary ${theme}-btn-secondary`} onClick={handleEditEmail}>
-              {t('common.editEmail')}
-            </button>
-            <button className={`btn btn-primary ${theme}-btn-primary`} onClick={handleEditPersonalInfo}>
-              {t('common.editPersonalInfo')}
-            </button>
-          </div>
-        </div>
+      </div>
 
-        {/* Content Section */}
-        <div className={`content-section ${theme}-content-section`}>
+      {/* Content Section */}
+      <div className={`profile-content-section ${theme}-profile-content-section`}>
           <div className="profile-cards">
             {/* Personal Information Card */}
             <div className={`profile-card personal-info-card ${theme}-profile-card`}>
@@ -340,7 +334,6 @@ export default function Profile() {
               </div>
             </div>
           </div>
-        </div>
       </div>
 
       {/* Edit Email Modal */}

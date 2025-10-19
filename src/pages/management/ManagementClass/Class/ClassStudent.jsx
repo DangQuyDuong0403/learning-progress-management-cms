@@ -3,14 +3,12 @@ import {
   Button,
   Table,
   Space,
-  Tag,
   Input,
   Modal,
   Upload,
   Typography,
 } from "antd";
 import {
-  ArrowLeftOutlined,
   PlusOutlined,
   SearchOutlined,
   DeleteOutlined,
@@ -21,10 +19,11 @@ import {
 import ThemedLayout from "../../../../component/ThemedLayout";
 import LoadingWithEffect from "../../../../component/spinner/LoadingWithEffect";
 import "./ClassStudent.css";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { spaceToast } from "../../../../component/SpaceToastify";
 import { useTheme } from "../../../../contexts/ThemeContext";
+import { useClassMenu } from "../../../../contexts/ClassMenuContext";
 import classManagementApi from "../../../../apis/backend/classManagement";
 import usePageTitle from "../../../../hooks/usePageTitle";
 
@@ -43,8 +42,8 @@ const mockAllStudents = [
 const ClassStudent = () => {
   const { t } = useTranslation();
   const { id } = useParams();
-  const navigate = useNavigate();
   const { theme } = useTheme();
+  const { enterClassMenu, exitClassMenu } = useClassMenu();
   
   // Set page title
   usePageTitle('Class Students');
@@ -153,7 +152,21 @@ const ClassStudent = () => {
     try {
       const response = await classManagementApi.getClassDetail(id);
       console.log('Class detail response:', response);
-      setClassData(response.data);
+      const data = response?.data?.data ?? response?.data ?? null;
+      if (data) {
+        const mapped = {
+          id: data.id ?? id,
+          name:
+            data.name ??
+            data.className ??
+            data.classname ??
+            data.class_name ??
+            data.title ??
+            data.classTitle ??
+            '',
+        };
+        setClassData(mapped);
+      }
     } catch (error) {
       console.error('Error fetching class data:', error);
       spaceToast.error(t('classDetail.loadingClassInfo'));
@@ -209,6 +222,32 @@ const ClassStudent = () => {
   useEffect(() => {
     fetchInitialData();
   }, [fetchInitialData]);
+
+  // Ensure header back button appears immediately while class info loads
+  useEffect(() => {
+    if (id) {
+      enterClassMenu({ id });
+    }
+    return () => {
+      exitClassMenu();
+    };
+  }, [id, enterClassMenu, exitClassMenu]);
+
+  // Enter class menu mode when component mounts
+  useEffect(() => {
+    if (classData) {
+      enterClassMenu({
+        id: classData.id,
+        name: classData.name,
+        description: `${t('classDetail.students')} (${students.length})`
+      });
+    }
+    
+    // Cleanup function to exit class menu mode when leaving
+    return () => {
+      exitClassMenu();
+    };
+  }, [classData, students.length, enterClassMenu, exitClassMenu, t]);
 
   const handleAddStudent = () => {
     setStudentSearchValue("");
@@ -575,28 +614,6 @@ const ClassStudent = () => {
     <ThemedLayout>
         {/* Main Content Panel */}
         <div className={`main-content-panel ${theme}-main-panel`}>
-          {/* Page Title with Back Button */}
-          <div className="page-title-container" style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '24px' }}>
-            <Button
-              icon={<ArrowLeftOutlined />}
-              onClick={() => navigate(`/manager/classes/menu/${id}`)}
-              className={`back-button ${theme}-back-button`}
-              style={{ height: '40px', fontSize: '16px' }}
-            >
-              {t('common.back')}
-            </Button>
-            <div style={{ flex: '1', textAlign: 'center' }}>
-              <Typography.Title 
-                level={1} 
-                className="page-title"
-                style={{ margin: 0 }}
-              >
-                {t('classDetail.students')} <span className="student-count">({students.length})</span>
-              </Typography.Title>
-            </div>
-            <div style={{ width: '120px' }}></div> {/* Spacer for centering */}
-          </div>
-
           {/* Header Section */}
           <div className={`panel-header ${theme}-panel-header`}>
             <div className="search-section" style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>

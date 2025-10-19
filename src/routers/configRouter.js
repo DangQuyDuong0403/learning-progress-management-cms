@@ -37,6 +37,7 @@ import ClassListTable from '../pages/management/ManagementClass/Class/ClassListT
 import ClassMenu from '../pages/management/ManagementClass/Class/ClassMenu.jsx';
 import ClassStudent from '../pages/management/ManagementClass/Class/ClassStudent.jsx';
 import ClassDashboard from '../pages/management/ManagementClass/Class/ClassDashboard.jsx';
+import ClassOverview from '../pages/management/ManagementClass/Class/ClassOverview.jsx';
 import ClassTeachers from '../pages/management/ManagementClass/Class/ClassTeachers.jsx';
 import ClassActivities from '../pages/management/ManagementClass/Class/ClassActivities.jsx';
 import ClassChapterLesson from '../pages/management/ManagementClass/Class/ClassChapterLesson.jsx';
@@ -323,6 +324,17 @@ const CONFIG_ROUTER = [
 		private: true,
 		role: ['manager', 'teacher', 'teaching_assistant'],
 	},
+	{
+		show: false,
+		component: ClassOverview,
+		// icon: <UserOutlined />,
+		path: ROUTER_PAGE.MANAGER_CLASS_OVERVIEW,
+		menuName: 'class overview',
+		exact: true,
+		key: 'MANAGER_CLASS_OVERVIEW',
+		private: true,
+		role: ['manager', 'teacher', 'teaching_assistant'],
+	},
 	// {
 	// 	show: false,
 	// 	component: ClassStudent,
@@ -398,6 +410,17 @@ const CONFIG_ROUTER = [
 		private: true,
 		role: ['manager', 'teacher', 'teaching_assistant'],
 	},
+	{
+		show: false,
+		component: TeacherClassChapterList,
+		// icon: <UserOutlined />,
+		path: ROUTER_PAGE.MANAGER_CLASS_CHAPTERS,
+		menuName: 'class chapters',
+		exact: true,
+		key: 'MANAGER_CLASS_CHAPTERS',
+		private: true,
+		role: ['manager', 'teacher', 'teaching_assistant'],
+	},
 	
 	// Teacher Management Routes
 	{
@@ -430,6 +453,17 @@ const CONFIG_ROUTER = [
 		menuName: 'class dashboard',
 		exact: true,
 		key: 'TEACHING_ASSISTANT_CLASS_DASHBOARD',
+		private: true,
+		role: 'teaching_assistant',
+	},
+	{
+		show: false,
+		component: ClassOverview,
+		// icon: <UserOutlined />,
+		path: ROUTER_PAGE.TEACHING_ASSISTANT_CLASS_OVERVIEW,
+		menuName: 'class overview',
+		exact: true,
+		key: 'TEACHING_ASSISTANT_CLASS_OVERVIEW',
 		private: true,
 		role: 'teaching_assistant',
 	},
@@ -622,6 +656,17 @@ const CONFIG_ROUTER = [
 		menuName: 'class dashboard',
 		exact: true,
 		key: 'TEACHER_CLASS_DASHBOARD',
+		private: true,
+		role: 'teacher',
+	},
+	{
+		show: false,
+		component: ClassOverview,
+		// icon: <UserOutlined />,
+		path: ROUTER_PAGE.TEACHER_CLASS_OVERVIEW,
+		menuName: 'class overview',
+		exact: true,
+		key: 'TEACHER_CLASS_OVERVIEW',
 		private: true,
 		role: 'teacher',
 	},
