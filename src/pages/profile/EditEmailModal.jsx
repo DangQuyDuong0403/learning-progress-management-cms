@@ -100,7 +100,7 @@ export default function EditEmailModal({
       }
       open={isVisible}
       onOk={showConfirmationMessage ? handleCancel : handleOk}
-      onCancel={handleCancel}
+      onCancel={showConfirmationMessage ? undefined : handleCancel}
       width={500}
       okText={showConfirmationMessage ? t('common.ok') : t('common.update')}
       confirmLoading={updateEmailLoading}
@@ -116,7 +116,7 @@ export default function EditEmailModal({
           minWidth: '100px',
         },
       }}
-      cancelButtonProps={{
+      cancelButtonProps={showConfirmationMessage ? { style: { display: 'none' } } : {
         style: {
           height: '40px',
           fontSize: '16px',
