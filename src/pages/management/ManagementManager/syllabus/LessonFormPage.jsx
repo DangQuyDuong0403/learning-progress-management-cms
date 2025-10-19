@@ -22,6 +22,7 @@ import {
 	createLesson,
 	updateLesson,
 } from '../../../../redux/syllabus';
+import usePageTitle from '../../../../hooks/usePageTitle';
 import syllabusManagementApi from '../../../../apis/backend/syllabusManagement';
 import './SyllabusList.css';
 import ThemedLayout from '../../../../component/ThemedLayout';
@@ -37,6 +38,9 @@ const LessonFormPage = () => {
 	const { theme } = useTheme();
 	const dispatch = useDispatch();
 	const { loading } = useSelector((state) => state.syllabus);
+
+	// Set page title
+	usePageTitle(lessonId ? 'Edit Lesson' : 'Add Lesson');
 
 	const [form] = Form.useForm();
 	const [chapterInfo, setChapterInfo] = useState(null);

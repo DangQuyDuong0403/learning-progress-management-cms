@@ -32,6 +32,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { useDispatch, useSelector } from 'react-redux';
 import { useParams, useNavigate } from 'react-router-dom';
+import usePageTitle from '../../../../hooks/usePageTitle';
 import {
 	fetchLessonsByChapter,
 } from '../../../../redux/syllabus';
@@ -52,6 +53,9 @@ const LessonListBySyllabus = () => {
 	const { syllabusId } = useParams();
 	const { theme } = useTheme();
 	const dispatch = useDispatch();
+
+	// Set page title
+	usePageTitle('Syllabus Lessons Management');
 
 	// State management
 	const [searchText, setSearchText] = useState('');

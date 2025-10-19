@@ -407,19 +407,6 @@ const StudentProfile = () => {
 						className={`edit-button ${theme}-edit-button`}>
 						{t('studentManagement.editProfile')}
 					</Button>
-					<Button
-						type='primary'
-						icon={<EditOutlined />}
-						onClick={handleEditEmail}
-						className={`edit-email-button ${theme}-edit-email-button`}
-						style={{
-							backgroundColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
-							background: theme === 'sun' ? 'linear-gradient(135deg, #66AEFF, #3C99FF)' : 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)',
-							borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'transparent',
-							color: theme === 'sun' ? '#000000' : '#000000',
-						}}>
-						{t('common.editEmail')}
-					</Button>
 				</div>
 			</div>
 
@@ -455,6 +442,13 @@ const StudentProfile = () => {
 							<span className={`email-text-new ${theme}-email-text-new`}>
 								{student.email || '-'}
 							</span>
+							<Button
+								type="text"
+								icon={<EditOutlined />}
+								onClick={handleEditEmail}
+								className={`email-edit-icon ${theme}-email-edit-icon`}
+								size="small"
+							/>
 						</div>
 						
 						{/* Starter Badge */}

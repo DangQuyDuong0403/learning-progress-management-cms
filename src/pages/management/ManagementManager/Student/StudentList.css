@@ -715,6 +715,7 @@ div.student-profile .space-theme .edit-button:hover {
   display: flex;
   gap: 24px;
   align-items: flex-start;
+  margin-left: 50px;
 }
 
 /* Avatar Section */
@@ -790,6 +791,43 @@ div.student-profile .space-theme .edit-button:hover {
   color: #6C757D;
   cursor: pointer;
   transition: color 0.3s ease;
+}
+
+/* Email Edit Icon */
+.email-edit-icon {
+  padding: 0 !important;
+  height: auto !important;
+  width: auto !important;
+  min-width: auto !important;
+  border: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.email-edit-icon .anticon {
+  font-size: 14px;
+  color: #6C757D;
+  transition: color 0.3s ease;
+}
+
+.email-edit-icon:hover .anticon {
+  color: #1890ff;
+}
+
+.space-theme .email-edit-icon .anticon {
+  color: #6C757D;
+}
+
+.space-theme .email-edit-icon:hover .anticon {
+  color: #4dd0ff;
+}
+
+.sun-theme .email-edit-icon .anticon {
+  color: #6C757D;
+}
+
+.sun-theme .email-edit-icon:hover .anticon {
+  color: #1890ff;
 }
 
 .email-edit-icon-new:hover {

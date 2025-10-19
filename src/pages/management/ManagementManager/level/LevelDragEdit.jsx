@@ -338,10 +338,6 @@ const LevelDragEdit = () => {
 					});
 				}
 				
-				// Show success message if provided
-				if (successMessage) {
-					spaceToast.success(successMessage);
-				}
 			}
 			
 			setEditingLevel(null);
@@ -390,7 +386,6 @@ const LevelDragEdit = () => {
 				});
 			});
 
-			spaceToast.success(t('levelManagement.deleteLevelSuccess'));
 		},
 		[levels, t]
 	);
