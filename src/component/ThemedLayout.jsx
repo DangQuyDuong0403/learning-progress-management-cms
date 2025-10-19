@@ -28,7 +28,7 @@ const ThemedLayout = ({ children }) => {
     localStorage.setItem('sidebarCollapsed', JSON.stringify(newCollapsed));
   };
 
-  // Listen for changes in localStorage (from other tabs only)
+  // Listen for changes in localStorage (from other tabs and ClassMenuContext)
   useEffect(() => {
     const handleStorageChange = () => {
       const saved = localStorage.getItem('sidebarCollapsed');
@@ -39,9 +39,13 @@ const ThemedLayout = ({ children }) => {
 
     // Listen for storage events (from other tabs)
     window.addEventListener('storage', handleStorageChange);
+    
+    // Also listen for custom events (from ClassMenuContext)
+    window.addEventListener('sidebarStateChanged', handleStorageChange);
 
     return () => {
       window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('sidebarStateChanged', handleStorageChange);
     };
   }, []);
 
