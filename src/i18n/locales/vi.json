@@ -137,7 +137,7 @@
     "chooseRole": "Chọn vai trò để tiếp tục",
     "student": "Học sinh",
     "teacher": "Thành viên của Camkey",
-    "forTeacher": "Dành cho giáo viên",
+    "forTeacher": "Dành cho thành viên camkey",
     "forStudent": "Dành cho học sinh",
     "admin": "Quản trị viên"
   },
@@ -712,7 +712,12 @@
     "exportInProgress": "Đang xuất dữ liệu...",
     "studentsSelected": "học sinh đã chọn",
     "activeAll": "Kích hoạt tất cả",
-    "deactiveAll": "Vô hiệu hóa tất cả"
+    "deactiveAll": "Vô hiệu hóa tất cả",
+    "assignAllToClass": "Gán tất cả vào lớp",
+    "selectItemsToAssign": "Vui lòng chọn các mục để gán vào lớp",
+    "confirmBulkAssignToClass": "Bạn có chắc chắn muốn gán",
+    "bulkAssignSuccess": "Gán thành công",
+    "bulkAssignError": "Lỗi khi gán học sinh vào lớp"
   },
   "studentProgress": {
     "title": "Tổng quan tiến độ học tập học sinh",
@@ -1405,6 +1410,7 @@
     "updateSyllabusError": "Lỗi khi cập nhật giáo trình",
     "addSyllabusSuccess": "Thêm giáo trình thành công",
     "addSyllabusError": "Lỗi khi thêm giáo trình",
+    "errorFetchingAllSyllabuses": "Lỗi khi tải tất cả giáo trình",
     "paginationText": "của",
     "yes": "Có",
     "no": "Không"
@@ -1759,7 +1765,12 @@
     "confirmDeleteTitle": "Xóa tài khoản",
     "confirmDeleteDescription": "Bạn có chắc chắn muốn xóa tài khoản? Hành động này không thể hoàn tác và tất cả dữ liệu của bạn sẽ bị xóa vĩnh viễn.",
     "accountDeletedSuccess": "Xóa tài khoản thành công",
-    "accountDeletionError": "Không thể xóa tài khoản"
+    "accountDeletionError": "Không thể xóa tài khoản",
+    "confirmDelete": "Xác nhận xóa",
+    "confirmDeleteMessage": "Bạn có chắc chắn muốn xóa tài khoản này?",
+    "deleteAccountSuccess": "Xóa tài khoản thành công",
+    "deleteAccountError": "Không thể xóa tài khoản",
+    "delete": "Xóa"
   },
 
   "teacherManagement": {

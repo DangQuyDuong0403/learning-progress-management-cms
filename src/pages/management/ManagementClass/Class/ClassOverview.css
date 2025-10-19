@@ -167,7 +167,7 @@
 /* ===== INFO TEXT ===== */
 .info-text {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   justify-content: center;
   gap: 8px;
   padding: 8px 0;
