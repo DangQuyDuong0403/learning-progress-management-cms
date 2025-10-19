@@ -24,7 +24,6 @@ import {
 	PointerSensor,
 	useSensor,
 	useSensors,
-	DragOverlay,
 } from '@dnd-kit/core';
 import {
 	arrayMove,
@@ -64,8 +63,8 @@ const SortableLessonItem = memo(
 
 		const style = useMemo(
 			() => ({
-				transform: CSS.Transform.toString(transform),
-				transition,
+				transform: transform ? CSS.Transform.toString(transform) : undefined,
+				transition: transition || undefined,
 				opacity: isDragging ? 0.5 : 1,
 				willChange: 'transform',
 			}),
@@ -482,27 +481,6 @@ const LessonDragEdit = () => {
 		navigate(`/manager/syllabuses/${syllabusId}/chapters/${chapterId}/lessons`);
 	}, [navigate, syllabusId, chapterId]);
 
-	const activeLessonData = useMemo(
-		() => lessons.filter(lesson => !lesson.toBeDeleted).find((lesson) => lesson.id === activeId),
-		[activeId, lessons]
-	);
-
-	const offsetModifier = useCallback((args) => {
-		if (!args || !args.transform) {
-			return {
-				x: 0,
-				y: 0,
-				scaleX: 1,
-				scaleY: 1,
-			};
-		}
-
-		return {
-			...args.transform,
-			y: args.transform.y - 300,
-			x: args.transform.x - 300,
-		};
-	}, []);
 
 	if (!chapterInfo || isInitialLoading) {
 		return (
@@ -567,12 +545,7 @@ const LessonDragEdit = () => {
 										sensors={sensors}
 										collisionDetection={closestCenter}
 										onDragStart={handleDragStart}
-										onDragEnd={handleDragEnd}
-										measuring={{
-											droppable: {
-												strategy: 'always',
-											},
-										}}>
+										onDragEnd={handleDragEnd}>
 										<SortableContext
 											items={lessonIds}
 											strategy={verticalListSortingStrategy}>
@@ -646,58 +619,6 @@ const LessonDragEdit = () => {
 												</div>
 											)}
 										</SortableContext>
-
-										{/* Drag Overlay */}
-										<DragOverlay
-											dropAnimation={null}
-											modifiers={[offsetModifier]}>
-											{activeLessonData ? (
-												<div
-													className={`level-drag-item ${theme}-level-drag-item`}
-													style={{
-														opacity: 0.95,
-														boxShadow: '0 12px 32px rgba(24, 144, 255, 0.5)',
-														border: '2px solid #1890ff',
-														background: theme === 'dark' ? '#2a2a2a' : '#ffffff',
-														cursor: 'grabbing',
-														transform: 'rotate(3deg)',
-														maxWidth: '800px',
-													}}>
-													<div className='level-position'>
-														<Text
-															strong
-															style={{ fontSize: '18px', color: 'black' }}>
-															{activeLessonData.position}
-														</Text>
-													</div>
-													<div className='drag-handle'></div>
-													<div className='level-content'>
-														<div className='level-field'>
-															<Text strong style={{ minWidth: '120px' }}>
-																{t('lessonManagement.lessonName')}:
-															</Text>
-															<Text
-																style={{
-																	color: theme === 'dark' ? '#ffffff' : '#000000',
-																}}>
-																{activeLessonData.name}
-															</Text>
-														</div>
-														<div className='level-field'>
-															<Text strong style={{ minWidth: '120px' }}>
-																{t('lessonManagement.content')}:
-															</Text>
-															<Text
-																style={{
-																	color: theme === 'dark' ? '#ffffff' : '#000000',
-																}}>
-																{activeLessonData.content || 'N/A'}
-															</Text>
-														</div>
-													</div>
-												</div>
-											) : null}
-										</DragOverlay>
 									</DndContext>
 								)}
 							</div>
