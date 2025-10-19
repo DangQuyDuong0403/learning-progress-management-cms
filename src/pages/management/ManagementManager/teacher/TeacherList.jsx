@@ -1123,7 +1123,17 @@ const TeacherList = () => {
 
 			{/* Status Change Confirmation Modal */}
 			<Modal
-				title={confirmModal.title}
+				title={
+					<div style={{ 
+						fontSize: '20px', 
+						fontWeight: '600', 
+						color: '#1890ff',
+						textAlign: 'center',
+						padding: '10px 0'
+					}}>
+						{confirmModal.title}
+					</div>
+				}
 				open={confirmModal.visible}
 				onOk={confirmModal.onConfirm}
 				onCancel={handleConfirmCancel}
@@ -1135,25 +1145,27 @@ const TeacherList = () => {
 					padding: '30px 40px',
 					fontSize: '16px',
 					lineHeight: '1.6',
-					textAlign: 'center',
+					textAlign: 'center'
 				}}
 				okButtonProps={{
 					style: {
-						backgroundColor: '#1890ff',
-						borderColor: '#1890ff',
+						backgroundColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
+						background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
+						borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'transparent',
+						color: theme === 'sun' ? '#000000' : '#ffffff',
 						height: '40px',
 						fontSize: '16px',
 						fontWeight: '500',
-						minWidth: '100px',
-					},
+						minWidth: '100px'
+					}
 				}}
 				cancelButtonProps={{
 					style: {
 						height: '40px',
 						fontSize: '16px',
 						fontWeight: '500',
-						minWidth: '100px',
-					},
+						minWidth: '100px'
+					}
 				}}>
 				<div
 					style={{
@@ -1165,8 +1177,8 @@ const TeacherList = () => {
 					<div
 						style={{
 							fontSize: '48px',
-							color: '#1890ff',
-							marginBottom: '10px',
+							color: '#ff4d4f',
+							marginBottom: '10px'
 						}}>
 						⚠️
 					</div>
@@ -1175,7 +1187,7 @@ const TeacherList = () => {
 							fontSize: '18px',
 							color: '#333',
 							margin: 0,
-							fontWeight: '500',
+							fontWeight: '500'
 						}}>
 						{confirmModal.content}
 					</p>
@@ -1415,9 +1427,9 @@ const TeacherList = () => {
 				onActiveAll={handleBulkActive}
 				onDeactiveAll={handleBulkDeactive}
 				onClose={() => setSelectedRowKeys([])}
-				selectAllText="Select all"
-				activeAllText="Active all"
-				deactiveAllText="Deactive all"
+				selectAllText={t('classManagement.selectAll')}
+				activeAllText={t('teacherManagement.activeAll')}
+				deactiveAllText={t('teacherManagement.deactiveAll')}
 			/>
 		</>
 	);

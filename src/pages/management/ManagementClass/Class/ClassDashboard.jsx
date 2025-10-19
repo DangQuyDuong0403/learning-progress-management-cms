@@ -1,18 +1,15 @@
 import React, { useState, useEffect, useCallback } from "react";
 import {
-  Button,
   Card,
   Row,
   Col,
   Table,
-  Space,
   Statistic,
   Progress,
   Avatar,
   Tag,
 } from "antd";
 import {
-  ArrowLeftOutlined,
   UserOutlined,
   TrophyOutlined,
   BookOutlined,
@@ -22,12 +19,10 @@ import {
 import ThemedLayout from "../../../../component/ThemedLayout";
 import LoadingWithEffect from "../../../../component/spinner/LoadingWithEffect";
 import "./ClassStudent.css";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { useSelector } from "react-redux";
 import { spaceToast } from "../../../../component/SpaceToastify";
-import { useTheme } from "../../../../contexts/ThemeContext";
-import classManagementApi from "../../../../apis/backend/classManagement";
+import { useClassMenu } from "../../../../contexts/ClassMenuContext";
 import usePageTitle from "../../../../hooks/usePageTitle";
 
 // Mock data for class dashboard
@@ -144,9 +139,7 @@ const mockMonthlyProgress = [
 const ClassDashboard = () => {
   const { t } = useTranslation();
   const { id } = useParams();
-  const navigate = useNavigate();
-  const { user } = useSelector((state) => state.auth);
-  const { theme } = useTheme();
+  const { enterClassMenu, exitClassMenu } = useClassMenu();
   
   // Set page title
   usePageTitle('Class Dashboard');
@@ -154,23 +147,6 @@ const ClassDashboard = () => {
   const [loading, setLoading] = useState(false);
   const [classData, setClassData] = useState(null);
   const [studentPerformance, setStudentPerformance] = useState([]);
-
-  // Determine route prefix based on user role
-  const getRoutePrefix = () => {
-    const userRole = user?.role?.toLowerCase();
-    switch (userRole) {
-      case 'manager':
-        return '/manager/classes';
-      case 'teacher':
-        return '/teacher/classes';
-      case 'teaching_assistant':
-        return '/teaching-assistant/classes';
-      default:
-        return '/manager/classes';
-    }
-  };
-
-  const routePrefix = getRoutePrefix();
 
   const fetchClassData = useCallback(async () => {
     setLoading(true);
@@ -190,6 +166,22 @@ const ClassDashboard = () => {
   useEffect(() => {
     fetchClassData();
   }, [id, fetchClassData]);
+
+  // Enter class menu mode when component mounts
+  useEffect(() => {
+    if (classData) {
+      enterClassMenu({
+        id: classData.id,
+        name: classData.name,
+        description: `${classData.name} - ${t('classDashboard.dashboard')}`
+      });
+    }
+    
+    // Cleanup function to exit class menu mode when leaving
+    return () => {
+      exitClassMenu();
+    };
+  }, [classData, enterClassMenu, exitClassMenu, t]);
 
   const getGradeColor = (grade) => {
     const gradeColors = {
@@ -319,32 +311,6 @@ const ClassDashboard = () => {
   return (
     <ThemedLayout>
       <div className="class-detail-container">
-        {/* Header */}
-        <Card className="header-card">
-          <div className="header-content">
-            <div className="header-left">
-               <Button
-                 icon={<ArrowLeftOutlined />}
-                 onClick={() => navigate(`${routePrefix}/menu/${id}`)}
-                 className="back-button"
-               >
-                 {t('common.back')}
-               </Button>
-            </div>
-            
-            <div className="header-center">
-              <h2 className="class-title">
-                {classData?.name} - {t('classDashboard.dashboard')}
-              </h2>
-            </div>
-            
-            <div className="header-right">
-              <Space>
-              </Space>
-            </div>
-          </div>
-        </Card>
-
         {/* Main Content Card */}
         <Card className="main-content-card">
           <div style={{ padding: '24px' }}>

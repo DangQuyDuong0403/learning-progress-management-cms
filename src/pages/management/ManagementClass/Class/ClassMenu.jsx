@@ -1,18 +1,16 @@
 import React, { useState, useEffect, useCallback } from "react";
 import {
-  Button,
   Card,
   Row,
   Col,
 } from "antd";
 import {
-  ArrowLeftOutlined,
-  UserOutlined,
   TeamOutlined,
   HistoryOutlined,
   BookOutlined,
-  DashboardOutlined,
   SolutionOutlined,
+  EyeOutlined,
+  BarChartOutlined,
 } from "@ant-design/icons";
 import ThemedLayout from "../../../../component/ThemedLayout";
 import LoadingWithEffect from "../../../../component/spinner/LoadingWithEffect";
@@ -23,6 +21,7 @@ import { useSelector } from "react-redux";
 import { classManagementApi } from "../../../../apis/apis";
 import { spaceToast } from "../../../../component/SpaceToastify";
 import { useTheme } from "../../../../contexts/ThemeContext";
+import { useClassMenu } from "../../../../contexts/ClassMenuContext";
 import usePageTitle from "../../../../hooks/usePageTitle";
 
 const ClassMenu = () => {
@@ -31,6 +30,7 @@ const ClassMenu = () => {
   const navigate = useNavigate();
   const { user } = useSelector((state) => state.auth);
   const { isSunTheme } = useTheme();
+  const { enterClassMenu, exitClassMenu } = useClassMenu();
   
   // Set page title
   usePageTitle('Class Menu');
@@ -89,6 +89,22 @@ const ClassMenu = () => {
     fetchClassData();
   }, [fetchClassData]);
 
+  // Enter class menu mode when component mounts
+  useEffect(() => {
+    if (classData) {
+      enterClassMenu({
+        id: classData.id,
+        name: classData.name,
+        description: classData.description
+      });
+    }
+    
+    // Cleanup function to exit class menu mode when leaving
+    return () => {
+      exitClassMenu();
+    };
+  }, [classData, enterClassMenu, exitClassMenu]);
+
   // Theme-based colors for cards
   const getCardBackgroundColor = () => {
     return isSunTheme ? '#E6F5FF' : 'rgb(224 217 255 / 90%)';
@@ -96,28 +112,20 @@ const ClassMenu = () => {
 
   const menuItems = [
     {
-      id: "dashboard",
-      title: t('classMenu.dashboard'),
-      description: t('classMenu.dashboardDescription'),
-      icon: <DashboardOutlined style={{ fontSize: '48px', color: '#00d4ff' }} />,
+      id: "overview",
+      title: t('classMenu.overview'),
+      description: t('classMenu.overviewDescription'),
+      icon: <EyeOutlined style={{ fontSize: '48px', color: '#13c2c2' }} />,
+      path: `${routePrefix}/overview/${id}`,
+      color: "#13c2c2",
+    },
+    {
+      id: "report",
+      title: t('classMenu.report'),
+      description: t('classMenu.reportDescription'),
+      icon: <BarChartOutlined style={{ fontSize: '48px', color: '#00d4ff' }} />,
       path: `${routePrefix}/dashboard/${id}`,
       color: "#00d4ff",
-    },
-    {
-      id: "students",
-      title: t('classMenu.students'),
-      description: t('classMenu.studentsDescription'),
-      icon: <TeamOutlined style={{ fontSize: '48px', color: '#1890ff' }} />,
-      path: `${routePrefix}/student/${id}`,
-      color: "#1890ff",
-    },
-    {
-      id: "teachers",
-      title: t('classMenu.teachers'),
-      description: t('classMenu.teachersDescription'),
-      icon: <SolutionOutlined style={{ fontSize: '48px', color: '#52c41a' }} />,
-      path: `${routePrefix}/teachers/${id}`,
-      color: "#52c41a",
     },
     {
       id: "activities",
@@ -132,16 +140,24 @@ const ClassMenu = () => {
       title: t('classMenu.chaptersLessons'),
       description: t('classMenu.chaptersLessonsDescription'),
       icon: <BookOutlined style={{ fontSize: '48px', color: '#722ed1' }} />,
-      path: `${routePrefix}/chapters-lessons/${id}`,
+      path: `${routePrefix}/chapters/${id}`,
       color: "#722ed1",
     },
     {
-      id: "chapters",
-      title: t('classMenu.chapters'),
-      description: t('classMenu.chaptersDescription'),
-      icon: <BookOutlined style={{ fontSize: '48px', color: '#13c2c2' }} />,
-      path: `${routePrefix}/chapters/${id}`,
-      color: "#13c2c2",
+      id: "teachers",
+      title: t('classMenu.teachers'),
+      description: t('classMenu.teachersDescription'),
+      icon: <SolutionOutlined style={{ fontSize: '48px', color: '#52c41a' }} />,
+      path: `${routePrefix}/teachers/${id}`,
+      color: "#52c41a",
+    },
+    {
+      id: "students",
+      title: t('classMenu.students'),
+      description: t('classMenu.studentsDescription'),
+      icon: <TeamOutlined style={{ fontSize: '48px', color: '#1890ff' }} />,
+      path: `${routePrefix}/student/${id}`,
+      color: "#1890ff",
     },
   ];
 
@@ -162,32 +178,6 @@ const ClassMenu = () => {
   return (
     <ThemedLayout>
       <div className={`class-menu-container ${isSunTheme ? 'light-theme' : 'dark-theme'}`}>
-        {/* Header */}
-        <Card className="header-card">
-          <div className="header-content">
-            <div className="header-left">
-              <Button
-                icon={<ArrowLeftOutlined />}
-                onClick={() => navigate(`${routePrefix}`)}
-                className="back-button"
-              >
-                {t('common.back')}
-              </Button>
-            </div>
-            
-            <div className="header-center">
-              <h2 className="class-title">
-                {classData?.name}
-              </h2>
-              {classData?.description && (
-                <p className="class-subtitle">
-                  {classData?.description}
-                </p>
-              )}
-            </div>
-          </div>
-        </Card>
-
         {/* Menu Cards */}
         <div className="menu-cards-section">
           <Row gutter={[24, 24]} justify="center">
