@@ -14,6 +14,7 @@ import { useTheme } from '../../../../contexts/ThemeContext';
 import { spaceToast } from '../../../../component/SpaceToastify';
 import ThemedLayout from '../../../../component/ThemedLayout';
 import LoadingWithEffect from '../../../../component/spinner/LoadingWithEffect';
+import usePageTitle from '../../../../hooks/usePageTitle';
 import syllabusManagementApi from '../../../../apis/backend/syllabusManagement';
 import LessonForm from './LessonForm';
 import {
@@ -205,6 +206,10 @@ const LessonDragEditBySyllabus = () => {
 	const { theme } = useTheme();
 	const navigate = useNavigate();
 	const { syllabusId } = useParams();
+	
+	// Set page title
+	usePageTitle('Edit Syllabus Lesson Positions');
+	
 	const [lessons, setLessons] = useState([]);
 	const [loading, setLoading] = useState(false);
 	const [saving, setSaving] = useState(false);

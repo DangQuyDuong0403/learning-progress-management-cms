@@ -11,6 +11,7 @@ import {
 } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../../../contexts/ThemeContext';
+import usePageTitle from '../../../../hooks/usePageTitle';
 import syllabusManagementApi from '../../../../apis/backend/syllabusManagement';
 import levelManagementApi from '../../../../apis/backend/levelManagement';
 
@@ -20,6 +21,10 @@ const { Option } = Select;
 const SyllabusForm = ({ syllabus, onClose, onSuccess }) => {
 	const { t } = useTranslation();
 	const { theme } = useTheme();
+	
+	// Set page title
+	usePageTitle(syllabus ? 'Edit Syllabus' : 'Add Syllabus');
+	
 	const [form] = Form.useForm();
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [loading, setLoading] = useState(false);

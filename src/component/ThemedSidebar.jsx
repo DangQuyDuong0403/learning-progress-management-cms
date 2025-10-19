@@ -14,7 +14,8 @@ import {
   TrophyOutlined,
   SecurityScanOutlined,
   HomeOutlined,
-  SolutionOutlined
+  SolutionOutlined,
+  AppstoreOutlined
 } from '@ant-design/icons';
 import CONFIG_ROUTER from "../routers/configRouter";
 
@@ -31,21 +32,21 @@ export default function ThemedSidebar({ collapsed }) {
     const iconMap = {
       'ADMIN_ACCOUNTS': <UserOutlined />,
       'ADMIN_ROLES': <TeamOutlined />,
-      'ADMIN_LEVELS': <BookOutlined />,
+      'ADMIN_LEVELS': <TrophyOutlined />,
       'ADMIN_COURSES': <BookOutlined />,
       'ADMIN_REPORTS': <BarChartOutlined />,
       'ADMIN_DASHBOARD': <DashboardOutlined />,
       'ADMIN_SETTINGS': <SettingOutlined />,
       'MANAGER_SYLLABUSES': <BookOutlined />,
-      'MANAGER_LEVELS': <BookOutlined />,
+      'MANAGER_LEVELS': <TrophyOutlined />,
       'MANAGER_COURSES': <BookOutlined />,
       'MANAGER_STUDENTS': <TeamOutlined />, // Student icon - học sinh với tài liệu học tập
       'TEACHER_DASHBOARD': <DashboardOutlined />,
-      'TEACHER_CLASSES': <HomeOutlined />, // Class icon - lớp học/phòng học
-      'MANAGER_CLASSES': <HomeOutlined />, // Class icon - lớp học/phòng học
+      'TEACHER_CLASSES': <AppstoreOutlined />, // Class icon - lớp học/phòng học
+      'MANAGER_CLASSES': <AppstoreOutlined />, // Class icon - lớp học/phòng học
       'MANAGER_DASHBOARD': <DashboardOutlined />,
       'TEACHER_DAILY_CHALLENGES': <TrophyOutlined />,
-      'TEACHING_ASSISTANT_CLASSES': <HomeOutlined />, // Class icon - lớp học/phòng học
+      'TEACHING_ASSISTANT_CLASSES': <AppstoreOutlined />, // Class icon - lớp học/phòng học
       'MANAGER_TEACHERS': <SolutionOutlined />, // Teacher icon - giáo viên với vương miện (quyền uy)
       'SECURITY': <SecurityScanOutlined />,
     };

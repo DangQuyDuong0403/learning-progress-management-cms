@@ -732,13 +732,50 @@ const TeacherList = () => {
 			title: t('teacherManagement.classes'),
 			dataIndex: "classList",
 			key: "classList",
-			width: 80,
+			width: 120,
 			ellipsis: true,
-			render: (classList) => (
-				<span className="classes-text">
-					{classList ? classList.length : 0}
-				</span>
-			),
+			render: (classList, record) => {
+				if (classList && classList.length > 0) {
+					// Show class names if teacher has classes
+					return (
+						<div className="classes-text">
+							{classList.map((cls, index) => (
+								<span key={cls.id || index} style={{ display: 'block', marginBottom: '2px' }}>
+									{cls.name || cls.className || `Class ${index + 1}`}
+								</span>
+							))}
+						</div>
+					);
+				} else if (record.status === 'ACTIVE') {
+					// Show assign button if teacher is active but has no classes
+					return (
+						<Button
+							type="primary"
+							size="small"
+							icon={<PlusOutlined />}
+							onClick={() => handleAssignToClass(record)}
+							className={`assign-class-button ${theme}-assign-class-button`}
+							style={{
+								fontSize: '12px',
+								height: '28px',
+								padding: '0 8px',
+								backgroundColor: '#52c41a',
+								borderColor: '#52c41a',
+								borderRadius: '4px'
+							}}
+						>
+							{t('teacherManagement.assignToClass')}
+						</Button>
+					);
+				} else {
+					// Show dash for inactive teachers
+					return (
+						<span className="classes-text">
+							-
+						</span>
+					);
+				}
+			},
 		},
 		{
 			title: t('teacherManagement.status'),
@@ -781,20 +818,6 @@ const TeacherList = () => {
 							}}
 						/>
 					</Tooltip>
-					{record.status === 'ACTIVE' && (
-						<Tooltip title={t('teacherManagement.assignToClass')}>
-							<Button
-								type='text'
-								icon={<PlusOutlined style={{ fontSize: '25px' }} />}
-								size='small'
-								onClick={() => handleAssignToClass(record)}
-								style={{
-									color: '#52c41a',
-									padding: '8px 12px'
-								}}
-							/>
-						</Tooltip>
-					)}
 				</Space>
 			),
 		},
