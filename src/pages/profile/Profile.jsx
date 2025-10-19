@@ -3,6 +3,7 @@ import { toast } from 'react-toastify';
 import { useTranslation } from 'react-i18next';
 import { useSelector, useDispatch } from 'react-redux';
 import { Typography } from 'antd';
+import { EditOutlined } from '@ant-design/icons';
 import usePageTitle from '../../hooks/usePageTitle';
 import './Profile.css';
 import ThemedLayout from '../../component/ThemedLayout';
@@ -172,163 +173,180 @@ export default function Profile() {
 
         {/* Content Section */}
         <div className={`content-section ${theme}-content-section`}>
-          <div className="profile-cards">
-            {/* Personal Information Card */}
-            <div className={`profile-card personal-info-card ${theme}-profile-card`}>
-              <div className={`card-header ${theme}-card-header`}>
-                <h3
-                  style={{
-                    fontWeight: 700,
-                    fontSize: '1.5rem',
-                    letterSpacing: '0.5px',
-                    margin: 0,
-                  }}
+          {/* Profile Card */}
+          <div className={`profile-container-new ${theme}-profile-container-new`}>
+            {/* Profile Title */}
+            <div className={`profile-title-new ${theme}-profile-title-new`}>
+              {t('common.profile')}
+            </div>
+            
+            <div className={`profile-content-new ${theme}-profile-content-new`}>
+              {/* Left Section - Avatar */}
+              <div className={`avatar-section-new ${theme}-avatar-section-new`}>
+                <div 
+                  className="profile-picture-new" 
+                  onClick={() => document.getElementById('avatar-upload').click()}
                 >
-                  {t('common.personalInformation')}
-                </h3>
-                <i className="ti ti-user"></i>
-              </div>
-              <div className="card-content">
-                <div className="profile-info-layout">
-                  {/* Left side - Profile Picture and Name */}
-                  <div className="profile-left">
-                    <div className="profile-picture-container">
-                      <div className="profile-picture-placeholder" onClick={() => document.getElementById('avatar-upload').click()}>
-                        <img 
-                          src={profileData?.avatarUrl || "/img/avatar_1.png"} 
-                          alt="Profile" 
-                          style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} 
-                        />
-                        {uploadAvatarLoading && (
-                          <div style={{
-                            position: 'absolute',
-                            top: 0,
-                            left: 0,
-                            right: 0,
-                            bottom: 0,
-                            backgroundColor: 'rgba(0,0,0,0.5)',
-                            borderRadius: '50%',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            color: 'white',
-                            fontSize: '12px'
-                          }}>
-                            Uploading...
-                          </div>
-                        )}
-                      </div>
-                      <input
-                        id="avatar-upload"
-                        type="file"
-                        accept="image/*"
-                        onChange={handleAvatarUpload}
-                        style={{ display: 'none' }}
-                      />
+                  <img 
+                    src={profileData?.avatarUrl || "/img/avatar_1.png"} 
+                    alt="Profile" 
+                    style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} 
+                  />
+                  {uploadAvatarLoading && (
+                    <div className="avatar-loading-overlay">
+                      Uploading...
                     </div>
-                    <div className="profile-name-section">
-                      <h4 className="profile-full-name">
-                        {profileData?.fullName || user?.fullName || ''}
-                      </h4>
-                      <p className="profile-role">{profileData?.roleName || user?.role || 'Admin'}</p>
+                  )}
+                </div>
+                
+                {/* Email */}
+                <div className={`email-section-new ${theme}-email-section-new`}>
+                  <span className={`email-text-new ${theme}-email-text-new`}>
+                    {profileData?.email || '-'}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleEditEmail}
+                    className={`email-edit-icon ${theme}-email-edit-icon`}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      padding: '4px',
+                      borderRadius: '4px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}
+                  >
+                    <EditOutlined />
+                  </button>
+                </div>
+                
+                {/* Starter Badge */}
+                <div className={`starter-badge-new ${theme}-starter-badge-new`}>
+                  Starter
+                </div>
+              </div>
+
+              {/* Right Section - Profile Info */}
+              <div className={`student-info-new ${theme}-student-info-new`}>
+                {/* Name and Status Row */}
+                <div className={`name-status-row-new ${theme}-name-status-row-new`}>
+                  <h2 className={`student-name-new ${theme}-student-name-new`}>
+                    Hello {profileData?.fullName || user?.fullName || ''}
+                  </h2>
+                  <div className={`status-badges-new ${theme}-status-badges-new`}>
+                    <span className={`role-badge-new ${theme}-role-badge-new`}>
+                      {profileData?.roleName || user?.role || 'Admin'}
+                    </span>
+                    <span className={`status-badge-new ${theme}-status-badge-new active`}>
+                      {profileData?.status || 'ACTIVE'}
+                    </span>
+                  </div>
+                </div>
+                
+                {/* User ID */}
+                <div className={`student-id-new ${theme}-student-id-new`}>
+                  {profileData?.userName || user?.userName || '-'}
+                </div>
+
+                {/* Personal Information Grid */}
+                <div className={`personal-info-grid-new ${theme}-personal-info-grid-new`}>
+                  <div className={`info-item-new ${theme}-info-item-new`}>
+                    <span className={`info-label-new ${theme}-info-label-new`}>{t('common.phoneNumber')}</span>
+                    <span className={`info-value-new ${theme}-info-value-new`}>{profileData?.phoneNumber || '-'}</span>
+                  </div>
+                  <div className={`info-item-new ${theme}-info-item-new`}>
+                    <span className={`info-label-new ${theme}-info-label-new`}>{t('common.gender')}</span>
+                    <span className={`info-value-new ${theme}-info-value-new`}>
+                      {profileData?.gender === 'MALE' ? t('common.male') : 
+                       profileData?.gender === 'FEMALE' ? t('common.female') : 
+                       profileData?.gender === 'OTHER' ? t('common.other') : 
+                       profileData?.gender || '-'}
+                    </span>
+                  </div>
+                  <div className={`info-item-new ${theme}-info-item-new`}>
+                    <span className={`info-label-new ${theme}-info-label-new`}>{t('common.dateOfBirth')}</span>
+                    <span className={`info-value-new ${theme}-info-value-new`}>
+                      {profileData?.dateOfBirth ? new Date(profileData.dateOfBirth).toLocaleDateString('vi-VN') : '-'}
+                    </span>
+                  </div>
+                  <div className={`info-item-new ${theme}-info-item-new`}>
+                    <span className={`info-label-new ${theme}-info-label-new`}>{t('common.address')}</span>
+                    <span className={`info-value-new ${theme}-info-value-new`}>{profileData?.address || '-'}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            {/* Hidden file input for avatar upload */}
+            <input
+              id="avatar-upload"
+              type="file"
+              accept="image/*"
+              onChange={handleAvatarUpload}
+              style={{ display: 'none' }}
+            />
+          </div>
+
+          {/* Parent Information Card - Show for students */}
+          {(profileData?.roleName === 'STUDENT' || user?.role === 'STUDENT') && (
+            <div className={`parent-container-new ${theme}-parent-container-new`}>
+              {/* Parent Title */}
+              <div className={`parent-title-new ${theme}-parent-title-new`}>
+                {t('common.parentInformation')}
+              </div>
+              
+              {/* Parent Content */}
+              <div className={`parent-content-new ${theme}-parent-content-new`}>
+                {/* Left Section - Personal Info */}
+                <div className={`parent-left-section-new ${theme}-parent-left-section-new`}>
+                  {/* Family Icon */}
+                  <div className={`family-icon-new ${theme}-family-icon-new`}>
+                    <img 
+                      src="/img/family-icon.png" 
+                      alt="Family Icon" 
+                      style={{ width: '60px', height: '60px' }}
+                    />
+                  </div>
+                  
+                  {/* Parent Name and Relationship */}
+                  <div className={`parent-name-section-new ${theme}-parent-name-section-new`}>
+                    <div className={`parent-name-new ${theme}-parent-name-new`}>
+                      {profileData?.parentInfo?.parentName || '-'}
+                    </div>
+                    <div className={`parent-relationship-new ${theme}-parent-relationship-new`}>
+                      {profileData?.parentInfo?.relationship || '-'}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Right Section - Contact Info */}
+                <div className={`parent-right-section-new ${theme}-parent-right-section-new`}>
+                  {/* Phone */}
+                  <div className={`parent-contact-item-new ${theme}-parent-contact-item-new`}>
+                    <div className={`parent-contact-label-new ${theme}-parent-contact-label-new`}>
+                      {t('common.parentPhone')}
+                    </div>
+                    <div className={`parent-contact-value-new ${theme}-parent-contact-value-new`}>
+                      {profileData?.parentInfo?.parentPhone || '-'}
                     </div>
                   </div>
                   
-                  {/* Right side - Personal Info Display */}
-                  <div className="profile-right">
-                    {/* Username Field */}
-                    <div className="form-group">
-                      <label className={`form-label ${theme}-form-label`}>{t('common.username')}</label>
-                      <div className={`form-display ${theme}-form-display`}>
-                        {profileData?.userName || ""}
-                      </div>
+                  {/* Email */}
+                  <div className={`parent-contact-item-new ${theme}-parent-contact-item-new`}>
+                    <div className={`parent-contact-label-new ${theme}-parent-contact-label-new`}>
+                      {t('common.parentEmail')}
                     </div>
-
-                    {/* Full Name Field */}
-                    <div className="form-group">
-                      <label className={`form-label ${theme}-form-label`}>{t('common.fullName')}</label>
-                      <div className={`form-display ${theme}-form-display`}>
-                        {profileData?.fullName || ""}
-                      </div>
-                    </div>
-
-                    {/* Gender and Date of Birth Row */}
-                    <div className="form-row">
-                      <div className="form-group" style={{ flex: 1 }}>
-                        <label className={`form-label ${theme}-form-label`}>{t('common.gender')}</label>
-                        <div className={`form-display ${theme}-form-display`}>
-                          {profileData?.gender || ""}
-                        </div>
-                      </div>
-                      <div className="form-group" style={{ flex: 1, marginLeft: '1rem' }}>
-                        <label className={`form-label ${theme}-form-label`}>{t('common.dateOfBirth')}</label>
-                        <div className={`form-display ${theme}-form-display`}>
-                          {profileData?.dateOfBirth 
-                            ? new Date(profileData.dateOfBirth).toLocaleDateString()
-                            : ""
-                          }
-                        </div>
-                      </div>
+                    <div className={`parent-contact-value-new ${theme}-parent-contact-value-new`}>
+                      {profileData?.parentInfo?.parentEmail || '-'}
                     </div>
                   </div>
                 </div>
               </div>
             </div>
-
-            {/* Contact Information Card */}
-            <div className={`profile-card contact-info-card ${theme}-profile-card`}>
-              <div className={`card-header ${theme}-card-header`}>
-                <h3
-                  style={{
-                    fontWeight: 700,
-                    fontSize: '1.5rem',
-                    letterSpacing: '0.5px',
-                    margin: 0,
-                  }}
-                >
-                  {t('common.contactInformation')}
-                </h3>
-                <i className="ti ti-mail"></i>
-              </div>
-              <div className="card-content">
-                <div className="contact-info-layout">
-                  {/* Email Field */}
-                  <div className="form-group">
-                    <label className={`form-label ${theme}-form-label`}>{t('common.email')}</label>
-                    <div className={`form-display ${theme}-form-display`}>
-                      {profileData?.email}
-                      {pendingEmail && (
-                        <div style={{ 
-                          fontSize: '12px', 
-                          color: '#1890ff', 
-                          marginTop: '4px',
-                          fontStyle: 'italic'
-                        }}>
-                          {t('common.pendingEmailChange', { email: pendingEmail })}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Phone Number Field */}
-                  <div className="form-group">
-                    <label className={`form-label ${theme}-form-label`}>{t('common.phoneNumber')}</label>
-                    <div className={`form-display ${theme}-form-display`}>
-                      {profileData?.phoneNumber}
-                    </div>
-                  </div>
-
-                  {/* Address Field */}
-                  <div className="form-group">
-                    <label className={`form-label ${theme}-form-label`}>{t('common.address')}</label>
-                    <div className={`form-display ${theme}-form-display`}>
-                      {profileData?.address}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
+          )}
         </div>
       </div>
 

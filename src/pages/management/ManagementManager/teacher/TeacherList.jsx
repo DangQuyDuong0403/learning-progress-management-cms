@@ -1415,9 +1415,9 @@ const TeacherList = () => {
 				onActiveAll={handleBulkActive}
 				onDeactiveAll={handleBulkDeactive}
 				onClose={() => setSelectedRowKeys([])}
-				selectAllText="Select all"
-				activeAllText="Active all"
-				deactiveAllText="Deactive all"
+				selectAllText={t('classManagement.selectAll')}
+				activeAllText={t('teacherManagement.activeAll')}
+				deactiveAllText={t('teacherManagement.deactiveAll')}
 			/>
 		</>
 	);

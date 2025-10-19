@@ -500,8 +500,21 @@ const ChapterListPage = () => {
 			sorter: (a, b) => a.name.localeCompare(b.name),
 			render: (text, record) => (
 				<div>
-					<div style={{ fontSize: '20px' }}>{text}</div>
-					<div style={{ color: '#666', fontSize: '12px' }}>
+					<div style={{ 
+						fontSize: '20px',
+						maxWidth: '200px',
+						overflow: 'hidden',
+						textOverflow: 'ellipsis',
+						whiteSpace: 'nowrap'
+					}}>{text}</div>
+					<div style={{ 
+						color: '#666', 
+						fontSize: '12px',
+						maxWidth: '200px',
+						overflow: 'hidden',
+						textOverflow: 'ellipsis',
+						whiteSpace: 'nowrap'
+					}}>
 						{record.description}
 					</div>
 				</div>
@@ -560,9 +573,19 @@ const ChapterListPage = () => {
 					<Typography.Title 
 						level={1} 
 						className="page-title"
-						style={{ margin: 0, flex: 1, textAlign: 'center' }}
+						style={{ margin: 0, flex: 1, textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
 					>
-						{syllabusInfo.name} - {t('chapterManagement.title')} <span className="student-count">({totalElements})</span>
+						<span style={{ 
+							maxWidth: '400px',
+							overflow: 'hidden',
+							textOverflow: 'ellipsis',
+							whiteSpace: 'nowrap'
+						}}>
+							{syllabusInfo.name}
+						</span>
+						<span style={{ margin: '0 8px', flexShrink: 0 }}>-</span>
+						<span style={{ flexShrink: 0 }}>{t('chapterManagement.title')}</span>
+						<span className="student-count" style={{ flexShrink: 0 }}> ({totalElements})</span>
 					</Typography.Title>
 					<div style={{ width: '100px' }}></div> {/* Spacer để cân bằng layout */}
 				</div>
@@ -654,8 +677,8 @@ const ChapterListPage = () => {
 				onSelectAll={handleSelectAll}
 				onDeleteAll={handleDeleteAll}
 				onClose={() => setSelectedRowKeys([])}
-				selectAllText="Select all"
-				deleteAllText="Delete all"
+				selectAllText={t('classManagement.selectAll')}
+				deleteAllText={t('classManagement.deleteAll')}
 			/>
 
 				{/* Chapter Modal */}
