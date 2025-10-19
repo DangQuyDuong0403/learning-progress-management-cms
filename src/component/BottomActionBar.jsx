@@ -48,6 +48,10 @@ const BottomActionBar = ({
 									return 'open-all-button';
 								case 'closeAll':
 									return 'close-all-button';
+								case 'activateAll':
+									return 'active-all-button';
+								case 'deactivateAll':
+									return 'deactive-all-button';
 								default:
 									return `${key}-button`;
 							}
