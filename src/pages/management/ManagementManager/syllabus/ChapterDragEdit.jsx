@@ -354,6 +354,7 @@ const ChapterDragEdit = () => {
 							...chapter,
 							position: i + 1,
 							order: i + 1,
+							orderNumber: i + 1, // Cập nhật orderNumber để tuần tự
 						}));
 					});
 				}
@@ -401,6 +402,7 @@ const ChapterDragEdit = () => {
 						...chapter,
 						position: visibleIndex + 1,
 						order: visibleIndex + 1,
+						orderNumber: visibleIndex + 1, // Cập nhật orderNumber để tuần tự
 					};
 				});
 			});
@@ -469,6 +471,7 @@ const ChapterDragEdit = () => {
 						...chapter,
 						position: index + 1,
 						order: index + 1,
+						orderNumber: index + 1, // Cập nhật orderNumber để tuần tự
 					}));
 				});
 			});
@@ -491,25 +494,50 @@ const ChapterDragEdit = () => {
 		setSaving(true);
 		try {
 			// Chuẩn bị dữ liệu theo format của API /chapter/sync
-			const syncData = chapters.map((chapter, index) => {
-				const isNewRecord = typeof chapter.id === 'string' && chapter.id.startsWith('new-');
-				
-				return {
-					id: isNewRecord ? null : chapter.id, // null cho chapter mới
-					chapterName: chapter.name,
-					orderNumber: index + 1, // Thứ tự từ 1
-					toBeDeleted: chapter.toBeDeleted || false, // Include toBeDeleted flag
-				};
+			const syncData = chapters
+				.map((chapter) => {
+					const isNewRecord = typeof chapter.id === 'string' && chapter.id.startsWith('new-');
+					
+					return {
+						id: isNewRecord ? null : chapter.id, // null cho chapter mới
+						chapterName: chapter.name,
+						orderNumber: chapter.orderNumber || chapter.position || 1, // Sử dụng orderNumber từ state
+						toBeDeleted: chapter.toBeDeleted || false, // Include toBeDeleted flag
+					};
+				})
+				.filter((chapter) => {
+					// Không gửi các record mới (id: null) mà đã bị xóa (toBeDeleted: true)
+					// Vì chúng chưa tồn tại trên backend nên không cần xóa
+					return !(chapter.id === null && chapter.toBeDeleted === true);
+				});
+
+			console.log('ChapterDragEdit - Sending sync data:', {
+				count: syncData.length,
+				chapters: syncData.map(c => ({ 
+					id: c.id, 
+					chapterName: c.chapterName, 
+					orderNumber: c.orderNumber,
+					toBeDeleted: c.toBeDeleted 
+				}))
 			});
 
 			// Gọi API sync với syllabusId và dữ liệu chapters
-			await syllabusManagementApi.syncChapters(syllabusId, syncData);
+			const response = await syllabusManagementApi.syncChapters(syllabusId, syncData);
 
-			spaceToast.success(t('chapterManagement.updatePositionsSuccess'));
+			// Use backend message if available, otherwise fallback to translation
+			const successMessage = response.message || t('chapterManagement.updatePositionsSuccess');
+			spaceToast.success(successMessage);
 			navigate(`/manager/syllabuses/${syllabusId}/chapters`);
 		} catch (error) {
 			console.error('Error syncing chapters:', error);
-			spaceToast.error(t('chapterManagement.updatePositionsError'));
+			
+			// Handle API errors with backend messages
+			if (error.response) {
+				const errorMessage = error.response.data?.error || error.response.data?.message || error.message;
+				spaceToast.error(errorMessage);
+			} else {
+				spaceToast.error(error.message || t('chapterManagement.updatePositionsError'));
+			}
 		} finally {
 			setSaving(false);
 		}

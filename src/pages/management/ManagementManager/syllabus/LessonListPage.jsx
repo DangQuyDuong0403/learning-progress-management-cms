@@ -10,12 +10,17 @@ import {
 	Col,
 	Typography,
 	Checkbox,
+	Divider,
+	Alert,
+	Progress,
+	Upload,
 } from 'antd';
 import {
 	SearchOutlined,
 	ArrowLeftOutlined,
 	DownloadOutlined,
 	DragOutlined,
+	UploadOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useDispatch, useSelector } from 'react-redux';

@@ -54,6 +54,15 @@ const syllabusManagementApi = {
         },
     }),
     downloadSyllabusTemplate: () => axiosClient.get('/syllabus/download-template'),
+    
+    // Export APIs
+    exportSyllabusById: (id) => axiosClient.get(`/syllabus/${id}/export`, {
+        responseType: 'blob', // Important for file download
+    }),
+    exportAllSyllabuses: (searchText = '') => axiosClient.get('/syllabus/export', {
+        params: { searchText },
+        responseType: 'blob', // Important for file download
+    }),
 }
 
 export default syllabusManagementApi;
