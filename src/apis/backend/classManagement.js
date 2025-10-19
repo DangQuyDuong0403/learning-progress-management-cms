@@ -11,6 +11,15 @@ const classManagementApi = {
 		if (params.searchText && params.searchText.trim()) {
 			queryParams.append('searchText', params.searchText.trim());
 		}
+		if (params.include) {
+			queryParams.append('include', params.include);
+		}
+		if (params.sortBy) {
+			queryParams.append('sortBy', params.sortBy);
+		}
+		if (params.sortDir) {
+			queryParams.append('sortDir', params.sortDir);
+		}
 
 		const url = `/class${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
 		console.log('GetClasses API - URL:', url);
@@ -128,6 +137,37 @@ const classManagementApi = {
 		const url = `/class-student/${classId}/students${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
 		console.log('GetClassStudents API - URL:', url);
 		console.log('GetClassStudents API - Params:', { classId, ...params });
+		
+		return axiosClient.get(url, {
+			headers: {
+				'accept': '*/*',
+			}
+		});
+	},
+
+	// Lấy danh sách giáo viên trong class với phân trang, search, filter, sort
+	getClassTeachers: (classId, params) => {
+		const queryParams = new URLSearchParams();
+		
+		// Thêm các tham số nếu có
+		if (params.page !== undefined) queryParams.append('page', params.page);
+		if (params.size !== undefined) queryParams.append('size', params.size);
+		if (params.text && params.text.trim()) {
+			queryParams.append('text', params.text.trim());
+		}
+		if (params.status && params.status !== 'all') {
+			queryParams.append('status', params.status);
+		}
+		if (params.sortBy) {
+			queryParams.append('sortBy', params.sortBy);
+		}
+		if (params.sortDir) {
+			queryParams.append('sortDir', params.sortDir);
+		}
+
+		const url = `/class-teacher/${classId}/teachers${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
+		console.log('GetClassTeachers API - URL:', url);
+		console.log('GetClassTeachers API - Params:', { classId, ...params });
 		
 		return axiosClient.get(url, {
 			headers: {
