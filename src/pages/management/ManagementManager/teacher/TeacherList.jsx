@@ -213,7 +213,7 @@ const TeacherList = () => {
 
 		const newStatus = teacher.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
 		const actionText = newStatus === 'ACTIVE' ? t('teacherManagement.activate') : t('teacherManagement.deactivate');
-		const teacherName = `${teacher.firstName || ''} ${teacher.lastName || ''}`.trim() || teacher.userName;
+		const teacherName = teacher.fullName || teacher.userName;
 		
 		setConfirmModal({
 			visible: true,
@@ -295,7 +295,7 @@ const TeacherList = () => {
 		if (sorter && sorter.field) {
 			// Map frontend field names to backend field names
 			const fieldMapping = {
-				'firstName': 'firstName', // Keep original field name
+				'fullName': 'fullName', // Map to fullName field
 				'createdAt': 'createdAt'
 			};
 			
@@ -788,15 +788,15 @@ const TeacherList = () => {
 		},
 		{
 			title: t('teacherManagement.fullName'),
-			dataIndex: "firstName",
+			dataIndex: "fullName",
 			key: "fullName",
 			width: 120,
 			sorter: true,
 			sortDirections: ['ascend', 'descend'],
 			ellipsis: true,
-			render: (_, record) => (
+			render: (fullName) => (
 				<span className="fullname-text">
-					{`${record.firstName || ''} ${record.lastName || ''}`.trim()}
+					{fullName || '-'}
 				</span>
 			),
 		},
@@ -1065,7 +1065,7 @@ const TeacherList = () => {
 							showSorterTooltip={false}
 							sortDirections={['ascend', 'descend']}
 							defaultSortOrder={
-								sortBy === 'firstName' ? (sortDir === 'asc' ? 'ascend' : 'descend') :
+								sortBy === 'fullName' ? (sortDir === 'asc' ? 'ascend' : 'descend') :
 								null
 							}
 						/>

@@ -44,8 +44,7 @@ const TeacherForm = ({ teacher, onClose, onSuccess }) => {
 			const processedData = {
 				roleName: values.roleName || "TEACHER", // Use selected role or default to TEACHER
 				email: values.email,
-				firstName: values.firstName,
-				lastName: values.lastName,
+				fullName: values.fullName,
 				avatarUrl: "string", // Always send "string" as per API example
 				dateOfBirth: values.dateOfBirth ? values.dateOfBirth.toISOString() : null,
 				address: values.address || "",
@@ -102,42 +101,22 @@ const TeacherForm = ({ teacher, onClose, onSuccess }) => {
 
 				{/* Basic Information */}
 				<Row gutter={24}>
-					<Col span={12}>
+					<Col span={24}>
 						<Form.Item
-							name="firstName"
+							name="fullName"
 							label={
 								<span>
-									{t('teacherManagement.firstName')}
+									{t('teacherManagement.fullName')}
 									<span style={{ color: 'red', marginLeft: '4px' }}>*</span>
 								</span>
 							}
 							rules={[
-								{ required: true, message: t('teacherManagement.firstNameRequired') },
-								{ min: 2, message: t('teacherManagement.firstNameMinLength') },
+								{ required: true, message: t('teacherManagement.fullNameRequired') },
+								{ min: 2, message: t('teacherManagement.nameMinLength') },
 							]}
 						>
 							<Input 
-								placeholder={t('teacherManagement.firstNamePlaceholder')}
-								className={`form-input ${theme}-form-input`}
-							/>
-						</Form.Item>
-					</Col>
-					<Col span={12}>
-						<Form.Item
-							name="lastName"
-							label={
-								<span>
-									{t('teacherManagement.lastName')}
-									<span style={{ color: 'red', marginLeft: '4px' }}>*</span>
-								</span>
-							}
-							rules={[
-								{ required: true, message: t('teacherManagement.lastNameRequired') },
-								{ min: 2, message: t('teacherManagement.lastNameMinLength') },
-							]}
-						>
-							<Input 
-								placeholder={t('teacherManagement.lastNamePlaceholder')}
+								placeholder={t('teacherManagement.fullNamePlaceholder')}
 								className={`form-input ${theme}-form-input`}
 							/>
 						</Form.Item>
@@ -213,12 +192,28 @@ const TeacherForm = ({ teacher, onClose, onSuccess }) => {
 						<Form.Item
 							name="dateOfBirth"
 							label={t('teacherManagement.dateOfBirth')}
+							rules={[
+								{
+									validator: (_, value) => {
+										if (!value) return Promise.resolve();
+										const selectedYear = value.year();
+										if (selectedYear < 1920) {
+											return Promise.reject(new Error('Date of birth must be from 1920 onwards'));
+										}
+										return Promise.resolve();
+									}
+								}
+							]}
 						>
 							<DatePicker 
 								style={{ width: '100%' }}
 								placeholder={t('teacherManagement.dateOfBirthPlaceholder')}
 								className={`form-input ${theme}-form-input`}
 								format="DD/MM/YYYY"
+								disabledDate={(current) => {
+									// Disable dates before 1950-01-01
+									return current && current.year() < 1920;
+								}}
 							/>
 						</Form.Item>
 					</Col>

@@ -501,15 +501,15 @@ const StudentList = () => {
     },
     {
       title: t('studentManagement.fullName'),
-      dataIndex: "firstName",
+      dataIndex: "fullName",
       key: "fullName",
       width: 120,
       sorter: true,
       sortDirections: ['ascend', 'descend'],
       ellipsis: true,
-      render: (_, record) => (
+      render: (fullName) => (
         <span className="fullname-text">
-          {`${record.firstName || ''} ${record.lastName || ''}`.trim()}
+          {fullName || '-'}
         </span>
       ),
     },
@@ -653,7 +653,7 @@ const StudentList = () => {
     if (sorter && sorter.field) {
       // Map frontend field names to backend field names
       const fieldMapping = {
-        'firstName': 'firstName', // Keep original field name
+        'fullName': 'fullName', // Map to fullName field
         'status': 'status',
         'createdAt': 'createdAt'
       };
@@ -740,7 +740,7 @@ const StudentList = () => {
     if (student) {
       const newStatus = student.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
       const actionText = newStatus === 'ACTIVE' ? t('studentManagement.activate') : t('studentManagement.deactivate');
-      const studentName = `${student.firstName || ''} ${student.lastName || ''}`.trim() || student.userName;
+      const studentName = student.fullName || student.userName;
       
       setConfirmModal({
         visible: true,
@@ -793,8 +793,7 @@ const StudentList = () => {
       const studentData = {
         roleName: values.roleName, // STUDENT or TEST_TAKER
         email: values.email,
-        firstName: values.firstName,
-        lastName: values.lastName,
+        fullName: values.fullName,
         avatarUrl: "string", // Always send "string" as per API example
         dateOfBirth: values.dateOfBirth ? values.dateOfBirth.format('YYYY-MM-DDTHH:mm:ss.SSS') + 'Z' : null,
         address: values.address || null,
@@ -813,7 +812,7 @@ const StudentList = () => {
       
       if (editingStudent) {
         // TODO: Call update student API
-        spaceToast.success(`Update student "${values.firstName} ${values.lastName}" successfully`);
+        spaceToast.success(`Update student "${values.fullName}" successfully`);
       } else {
         try {
           // Call create student API
@@ -825,7 +824,7 @@ const StudentList = () => {
             form.resetFields();
             
             // Show success toast
-            spaceToast.success(`Add student "${values.firstName} ${values.lastName}" successfully`);
+            spaceToast.success(`Add student "${values.fullName}" successfully`);
             
             // Refresh the list after adding
             fetchStudents(1, pagination.pageSize, searchValue, statusFilter, roleNameFilter, sortBy, sortDir);
@@ -1318,53 +1317,48 @@ const StudentList = () => {
               </Col>
             </Row>
 
-            <Row gutter={16}>
-              <Col span={12}>
-                <Form.Item
-                  label={
-                    <span>
-                      {t('studentManagement.firstName')}
-                      <span style={{ color: 'red', marginLeft: '4px' }}>*</span>
-                    </span>
-                  }
-                  name="firstName"
-                  rules={[
-                    { required: true, message: t('studentManagement.firstNameRequired') },
-                    { max: 50, message: t('studentManagement.firstNameMaxLength') },
-                  ]}
-                >
-                  <Input placeholder={t('studentManagement.enterFirstName')} />
-                </Form.Item>
-              </Col>
-              <Col span={12}>
-                <Form.Item
-                  label={
-                    <span>
-                      {t('studentManagement.lastName')}
-                      <span style={{ color: 'red', marginLeft: '4px' }}>*</span>
-                    </span>
-                  }
-                  name="lastName"
-                  rules={[
-                    { required: true, message: t('studentManagement.lastNameRequired') },
-                    { max: 50, message: t('studentManagement.lastNameMaxLength') },
-                  ]}
-                >
-                  <Input placeholder={t('studentManagement.enterLastName')} />
-                </Form.Item>
-              </Col>
-            </Row>
+            <Form.Item
+              label={
+                <span>
+                  {t('studentManagement.fullName')}
+                  <span style={{ color: 'red', marginLeft: '4px' }}>*</span>
+                </span>
+              }
+              name="fullName"
+              rules={[
+                { required: true, message: t('studentManagement.fullNameRequired') },
+                { max: 100, message: t('studentManagement.fullNameMaxLength') },
+              ]}
+            >
+              <Input placeholder={t('studentManagement.enterFullName')} />
+            </Form.Item>
 
             <Row gutter={16}>
               <Col span={12}>
                 <Form.Item
                   label={t('studentManagement.dateOfBirth')}
                   name="dateOfBirth"
+                  rules={[
+                    {
+                      validator: (_, value) => {
+                        if (!value) return Promise.resolve();
+                        const selectedYear = value.year();
+                        if (selectedYear < 1920) {
+                          return Promise.reject(new Error('Date of birth must be from 1920 onwards'));
+                        }
+                        return Promise.resolve();
+                      }
+                    }
+                  ]}
                 >
                   <DatePicker 
                     style={{ width: '100%' }}
                     placeholder={t('studentManagement.selectDateOfBirth')}
                     format="YYYY-MM-DD"
+                    disabledDate={(current) => {
+                      // Disable dates before 1950-01-01
+                      return current && current.year() < 1920;
+                    }}
                   />
                 </Form.Item>
               </Col>
