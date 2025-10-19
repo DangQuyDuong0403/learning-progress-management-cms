@@ -95,7 +95,7 @@ const SyllabusList = () => {
 
 			// Add search parameter if provided
 			if (search && search.trim()) {
-				params.text = search.trim();
+				params.searchText = search.trim();
 			}
 
 			const response = await syllabusManagementApi.getSyllabuses({
