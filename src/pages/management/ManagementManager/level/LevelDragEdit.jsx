@@ -24,7 +24,6 @@ import {
 	PointerSensor,
 	useSensor,
 	useSensors,
-	DragOverlay,
 } from '@dnd-kit/core';
 import {
 	arrayMove,
@@ -66,8 +65,8 @@ const SortableLevelItem = memo(
 
 		const style = useMemo(
 			() => ({
-				transform: CSS.Transform.toString(transform),
-				transition,
+				transform: transform ? CSS.Transform.toString(transform) : undefined,
+				transition: transition || undefined,
 				opacity: isDragging ? 0.5 : 1,
 				willChange: 'transform', // GPU acceleration
 			}),
@@ -517,29 +516,6 @@ const LevelDragEdit = () => {
 		navigate(ROUTER_PAGE.MANAGER_LEVELS);
 	}, [navigate]);
 
-	const activeLevelData = useMemo(
-		() => levels.filter(level => !level.toBeDeleted).find((level) => level.id === activeId),
-		[activeId, levels]
-	);
-
-	// Custom modifier để offset DragOverlay - với safety check
-	const offsetModifier = useCallback((args) => {
-		// Safety check để tránh lỗi "Cannot use 'in' operator"
-		if (!args || !args.transform) {
-			return {
-				x: 0,
-				y: 0,
-				scaleX: 1,
-				scaleY: 1,
-			};
-		}
-
-		return {
-			...args.transform,
-			y: args.transform.y - 300,
-			x: args.transform.x - 300,
-		};
-	}, []);
 
 	return (
 		<ThemedLayout>
@@ -587,12 +563,7 @@ const LevelDragEdit = () => {
 										sensors={sensors}
 										collisionDetection={closestCenter}
 										onDragStart={handleDragStart}
-										onDragEnd={handleDragEnd}
-										measuring={{
-											droppable: {
-												strategy: 'always',
-											},
-										}}>
+										onDragEnd={handleDragEnd}>
 										<SortableContext
 											items={levelIds}
 											strategy={verticalListSortingStrategy}>
@@ -666,58 +637,6 @@ const LevelDragEdit = () => {
 												</div>
 											)}
 										</SortableContext>
-
-										{/* Drag Overlay - offset lên trên 100px */}
-										<DragOverlay
-											dropAnimation={null}
-											modifiers={[offsetModifier]}>
-											{activeLevelData ? (
-												<div
-													className={`level-drag-item ${theme}-level-drag-item`}
-													style={{
-														opacity: 0.95,
-														boxShadow: '0 12px 32px rgba(24, 144, 255, 0.5)',
-														border: '2px solid #1890ff',
-														background: theme === 'dark' ? '#2a2a2a' : '#ffffff',
-														cursor: 'grabbing',
-														transform: 'rotate(3deg)',
-														maxWidth: '800px',
-													}}>
-													<div className='level-position'>
-														<Text
-															strong
-															style={{ fontSize: '18px', color: 'black' }}>
-															{activeLevelData.position}
-														</Text>
-													</div>
-													<div className='drag-handle'></div>
-													<div className='level-content'>
-														<div className='level-field'>
-															<Text strong style={{ minWidth: '120px' }}>
-																{t('levelManagement.levelName')}:
-															</Text>
-															<Text
-																style={{
-																	color: theme === 'dark' ? '#ffffff' : '#000000',
-																}}>
-																{activeLevelData.levelName}
-															</Text>
-														</div>
-													<div className='level-field'>
-														<Text strong style={{ minWidth: '120px' }}>
-															{t('levelManagement.duration')}:
-														</Text>
-														<Text
-															style={{
-																color: theme === 'dark' ? '#ffffff' : '#000000',
-															}}>
-															{activeLevelData.estimatedDurationWeeks} weeks
-														</Text>
-													</div>
-													</div>
-												</div>
-											) : null}
-										</DragOverlay>
 									</DndContext>
 								)}
 							</div>
