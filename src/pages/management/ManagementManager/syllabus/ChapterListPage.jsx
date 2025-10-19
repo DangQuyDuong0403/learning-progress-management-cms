@@ -25,6 +25,7 @@ import {
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useParams, useNavigate } from 'react-router-dom';
+import usePageTitle from '../../../../hooks/usePageTitle';
 import ChapterForm from './ChapterForm';
 import './SyllabusList.css';
 import ThemedLayout from '../../../../component/ThemedLayout';
@@ -37,6 +38,9 @@ const ChapterListPage = () => {
 	const navigate = useNavigate();
 	const { syllabusId } = useParams();
 	const { theme } = useTheme();
+
+	// Set page title
+	usePageTitle('Chapter Management');
 
 	// State management
 	const [loading, setLoading] = useState(false);

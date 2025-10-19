@@ -1192,3 +1192,84 @@
 	transform: translateY(-1px) !important;
 	box-shadow: 0 2px 8px rgba(148, 194, 245, 0.2) !important;
 }
+
+/* ===== EMAIL EDIT ICON STYLES ===== */
+.email-edit-icon {
+  padding: 0 !important;
+  height: auto !important;
+  width: auto !important;
+  min-width: auto !important;
+  border: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.email-edit-icon .anticon {
+  font-size: 14px;
+  color: #6C757D;
+  transition: color 0.3s ease;
+}
+
+.email-edit-icon:hover .anticon {
+  color: #1890ff;
+}
+
+.space-theme .email-edit-icon .anticon {
+  color: #6C757D;
+}
+
+.sun-theme .email-edit-icon .anticon {
+  color: #6C757D;
+}
+
+/* ===== ASSIGN CLASS BUTTON STYLES ===== */
+.assign-class-button {
+	height: 28px;
+	border-radius: 6px;
+	font-weight: 500;
+	font-size: 12px;
+	border: none;
+	transition: all 0.3s ease;
+	padding: 0 12px;
+}
+
+/* Space theme assign class button */
+.space-theme .assign-class-button {
+	background: rgb(230 222 308 / 100%) !important;
+  border: 2px solid linear-gradient(135deg, #FFFFFF 0%, #9F96B6 46%, #A79EBB 64%, #ACA5C0 75%, #6D5F8F 100%);
+	color: #000;
+  box-shadow: none;
+}
+
+.space-theme .assign-class-button:hover {
+	background: linear-gradient(135deg, #FFFFFF 0%, #9F96B6 46%, #A79EBB 64%, #ACA5C0 75%, #6D5F8F 100%) !important;
+	color: #000 !important;
+	transform: translateY(-1px) !important;
+	box-shadow: 0 2px 8px rgba(109, 95, 143, 0.2) !important;
+}
+
+/* Sun theme assign class button */
+.sun-theme .assign-class-button {
+	background: #84ceff !important;
+	color: #000 !important;
+  box-shadow: none !important;
+}
+
+.sun-theme .assign-class-button:hover {
+	background: linear-gradient(135deg, #F5F5F5, #A6C8EE 77%, #84B8F5) !important;
+	color: #000 !important;
+	transform: translateY(-1px) !important;
+	box-shadow: 0 2px 8px rgba(148, 194, 245, 0.2) !important;
+}
+
+.space-theme .email-edit-icon:hover .anticon {
+  color: #4dd0ff;
+}
+
+.sun-theme .email-edit-icon .anticon {
+  color: #6C757D;
+}
+
+.sun-theme .email-edit-icon:hover .anticon {
+  color: #1890ff;
+}

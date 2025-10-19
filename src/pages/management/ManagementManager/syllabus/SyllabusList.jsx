@@ -611,7 +611,6 @@ const SyllabusList = () => {
 			width: '15%',
 			render: (chapterCount) => (
 				<div style={{ textAlign: 'center' }}>
-					<BookOutlined style={{ marginRight: '4px' }} />
 					{chapterCount || 0}
 				</div>
 			),
@@ -623,7 +622,6 @@ const SyllabusList = () => {
 			width: '15%',
 			render: (lessonCount) => (
 				<div style={{ textAlign: 'center' }}>
-					<FileTextOutlined style={{ marginRight: '4px' }} />
 					{lessonCount || 0}
 				</div>
 			),

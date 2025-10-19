@@ -14,6 +14,7 @@ import { useTheme } from '../../../../contexts/ThemeContext';
 import { spaceToast } from '../../../../component/SpaceToastify';
 import ThemedLayout from '../../../../component/ThemedLayout';
 import LoadingWithEffect from '../../../../component/spinner/LoadingWithEffect';
+import usePageTitle from '../../../../hooks/usePageTitle';
 import syllabusManagementApi from '../../../../apis/backend/syllabusManagement';
 import LessonForm from './LessonForm';
 import {
@@ -40,16 +41,7 @@ const { Text, Title } = Typography;
 
 // Sortable Lesson Item Component
 const SortableLessonItem = memo(
-	({ lesson, index, onDeleteLesson, onUpdateLessonName, onUpdateLessonContent, theme, t }) => {
-		const [nameValue, setNameValue] = useState(lesson.name || '');
-		const [contentValue, setContentValue] = useState(lesson.content || '');
-
-		// Update values when lesson data changes
-		useEffect(() => {
-			setNameValue(lesson.name || '');
-			setContentValue(lesson.content || '');
-		}, [lesson.name, lesson.content]);
-
+	({ lesson, index, onDeleteLesson, onEditLesson, theme, t }) => {
 		const animateLayoutChanges = useCallback((args) => {
 			const { isSorting, wasDragging } = args;
 			if (isSorting || wasDragging) {
@@ -80,15 +72,9 @@ const SortableLessonItem = memo(
 			[transform, transition, isDragging]
 		);
 
-		const handleSaveName = useCallback(() => {
-			if (nameValue.trim()) {
-				onUpdateLessonName(index, nameValue.trim());
-			}
-		}, [index, nameValue, onUpdateLessonName]);
-
-		const handleSaveContent = useCallback(() => {
-			onUpdateLessonContent(index, contentValue.trim());
-		}, [index, contentValue, onUpdateLessonContent]);
+		const handleEdit = useCallback(() => {
+			onEditLesson(lesson);
+		}, [lesson, onEditLesson]);
 
 		const handleDelete = useCallback(() => {
 			onDeleteLesson(index);
@@ -112,27 +98,39 @@ const SortableLessonItem = memo(
 						<Text strong style={{ minWidth: '120px', fontSize: '20px' }}>
 							{t('lessonManagement.lessonName')}:
 						</Text>
-						<Input
-							value={nameValue}
-							onChange={(e) => setNameValue(e.target.value)}
-							onBlur={handleSaveName}
-							size="small"
-							style={{ width: '200px', fontSize: '16px' }}
-							placeholder={t('lessonManagement.lessonNamePlaceholder')}
-						/>
+						<Text 
+							style={{ 
+								fontSize: '16px', 
+								color: '#333',
+								maxWidth: '200px',
+								overflow: 'hidden',
+								textOverflow: 'ellipsis',
+								whiteSpace: 'nowrap',
+								display: 'inline-block'
+							}}
+							title={lesson.name || t('lessonManagement.noLessonName')}
+						>
+							{lesson.name || t('lessonManagement.noLessonName')}
+						</Text>
 					</div>
 					<div className='level-field' style={{ flex: 1 }}>
 						<Text strong style={{ minWidth: '120px', fontSize: '20px' }}>
 							{t('lessonManagement.content')}:
 						</Text>
-						<Input
-							value={contentValue}
-							onChange={(e) => setContentValue(e.target.value)}
-							onBlur={handleSaveContent}
-							size="small"
-							style={{ width: '300px', fontSize: '16px' }}
-							placeholder={t('lessonManagement.contentPlaceholder')}
-						/>
+						<Text 
+							style={{ 
+								fontSize: '16px', 
+								color: '#333',
+								maxWidth: '250px',
+								overflow: 'hidden',
+								textOverflow: 'ellipsis',
+								whiteSpace: 'nowrap',
+								display: 'inline-block'
+							}}
+							title={lesson.content || t('lessonManagement.noContent')}
+						>
+							{lesson.content || t('lessonManagement.noContent')}
+						</Text>
 					</div>
 				</div>
 
@@ -146,6 +144,16 @@ const SortableLessonItem = memo(
 							}}
 						/>
 					</div>
+					<Button
+						type='text'
+						icon={<EditOutlined />}
+						onClick={handleEdit}
+						style={{
+							background: 'rgba(24, 144, 255, 0.1)',
+							border: 'none',
+							marginRight: '8px',
+						}}
+					/>
 					<Button
 						type='text'
 						danger
@@ -205,6 +213,10 @@ const LessonDragEdit = () => {
 	const { theme } = useTheme();
 	const navigate = useNavigate();
 	const { syllabusId, chapterId } = useParams();
+	
+	// Set page title
+	usePageTitle('Edit Lesson Positions');
+	
 	const [lessons, setLessons] = useState([]);
 	const [loading, setLoading] = useState(false);
 	const [saving, setSaving] = useState(false);
@@ -304,6 +316,12 @@ const LessonDragEdit = () => {
 		setIsModalVisible(true);
 	}, []);
 
+	const handleEditLesson = useCallback((lesson) => {
+		setEditingLesson(lesson);
+		setInsertAtIndex(null);
+		setIsModalVisible(true);
+	}, []);
+
 	const handleModalClose = useCallback(
 		(shouldRefresh, newLessonData) => {
 			setIsModalVisible(false);
@@ -387,33 +405,6 @@ const LessonDragEdit = () => {
 		[lessons, t]
 	);
 
-	const handleUpdateLessonName = useCallback(
-		(index, newName) => {
-			setLessons((prev) => {
-				const newLessons = [...prev];
-				newLessons[index] = {
-					...newLessons[index],
-					name: newName,
-				};
-				return newLessons;
-			});
-		},
-		[]
-	);
-
-	const handleUpdateLessonContent = useCallback(
-		(index, newContent) => {
-			setLessons((prev) => {
-				const newLessons = [...prev];
-				newLessons[index] = {
-					...newLessons[index],
-					content: newContent,
-				};
-				return newLessons;
-			});
-		},
-		[]
-	);
 
 	const handleDragStart = useCallback((event) => {
 		setActiveId(event.active.id);
@@ -603,8 +594,7 @@ const LessonDragEdit = () => {
 														lesson={lesson}
 														index={index}
 														onDeleteLesson={handleDeleteLesson}
-														onUpdateLessonName={handleUpdateLessonName}
-														onUpdateLessonContent={handleUpdateLessonContent}
+														onEditLesson={handleEditLesson}
 														theme={theme}
 														t={t}
 													/>
