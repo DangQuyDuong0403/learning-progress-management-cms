@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { Button } from "antd";
+import { Button, Typography } from "antd";
 import { ArrowLeftOutlined } from "@ant-design/icons";
 import ThemedLayout from "../../../../component/ThemedLayout";
 import LoadingWithEffect from "../../../../component/spinner/LoadingWithEffect";
@@ -24,6 +24,7 @@ const ClassOverview = () => {
   
   const [loading, setLoading] = useState(false);
   const [classData, setClassData] = useState(null);
+  const [dataCount, setDataCount] = useState(0);
 
   const fetchClassData = useCallback(async () => {
     try {
@@ -44,6 +45,19 @@ const ClassOverview = () => {
           level: data.level ?? '-'
         };
         setClassData(mapped);
+        
+        // Count available data items
+        let count = 0;
+        if (mapped.name && mapped.name !== '-') count++;
+        if (mapped.classCode && mapped.classCode !== '-') count++;
+        if (mapped.status && mapped.status !== '-') count++;
+        if (mapped.syllabus && mapped.syllabus !== '-') count++;
+        if (mapped.level && mapped.level !== '-') count++;
+        if (mapped.teachers) count++;
+        if (mapped.teachingAssistants && mapped.teachingAssistants.length > 0) count++;
+        if (mapped.startDate && mapped.startDate !== '-') count++;
+        if (mapped.endDate && mapped.endDate !== '-') count++;
+        setDataCount(count);
       }
     } catch (error) {
       console.error('Error fetching class overview data:', error);
@@ -51,12 +65,13 @@ const ClassOverview = () => {
     }
   }, [id, t]);
 
+  // Initial data loading
   useEffect(() => {
     setLoading(true);
     fetchClassData().finally(() => {
       setLoading(false);
     });
-  }, [fetchClassData]);
+  }, [id]);
 
   // Ensure header back button appears immediately while class info loads
   useEffect(() => {
@@ -66,7 +81,7 @@ const ClassOverview = () => {
     return () => {
       exitClassMenu();
     };
-  }, [id, enterClassMenu, exitClassMenu]);
+  }, [id]);
 
   // Enter class menu mode when component mounts
   useEffect(() => {
@@ -82,7 +97,7 @@ const ClassOverview = () => {
     return () => {
       exitClassMenu();
     };
-  }, [classData, enterClassMenu, exitClassMenu, t]);
+  }, [classData?.id, classData?.name]);
 
   const handleGoBack = () => {
     navigate(-1);
@@ -104,14 +119,18 @@ const ClassOverview = () => {
     <ThemedLayout>
       <div className={`class-overview ${theme}-class-overview`}>
         <div className="overview-container">
+          {/* Page Title */}
+          <div className="page-title-container">
+            <Typography.Title 
+              level={1} 
+              className="page-title"
+            >
+              {t('classMenu.overview')} <span className="student-count">({dataCount})</span>
+            </Typography.Title>
+          </div>
+
           {/* Main Container */}
           <div className={`overview-main-container ${theme}-overview-main-container`}>
-            {/* Header Section */}
-            <div className={`overview-header ${theme}-overview-header`}>
-              <h1 className={`page-title ${theme}-page-title`}>
-                {t('classMenu.overview')}
-              </h1>
-            </div>
 
             {/* Overview Content */}
             <div className={`overview-content ${theme}-overview-content`}>
