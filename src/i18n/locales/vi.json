@@ -1729,6 +1729,8 @@
     "phoneNumber": "Số điện thoại",
     "role": "Vai trò",
     "fullName": "Họ và tên",
+    "bulkUpdateSuccess": "Cập nhật hàng loạt thành công",
+    "bulkUpdateError": "Không thể cập nhật hàng loạt",
     "classes": "Lớp",
     "specialization": "Chuyên môn",
     "experience": "Kinh nghiệm",

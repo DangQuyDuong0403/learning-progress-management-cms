@@ -225,12 +225,13 @@ const TeacherList = () => {
 					const response = await teacherManagementApi.updateTeacherStatus(teacherId, newStatus);
 					
 					if (response.success) {
+						// Close modal first
+						setConfirmModal({ visible: false, title: '', content: '', onConfirm: null });
+						
+						// Show success toast
 						spaceToast.success(newStatus === 'ACTIVE' 
 							? t('teacherManagement.activateTeacherSuccess') 
 							: t('teacherManagement.deactivateTeacherSuccess'));
-						
-						// Close modal
-						setConfirmModal({ visible: false, title: '', content: '', onConfirm: null });
 						
 						// Refresh the list
 						fetchTeachers(pagination.current, pagination.pageSize, searchText, statusFilter, roleNameFilter, sortBy, sortDir);
@@ -382,14 +383,15 @@ const TeacherList = () => {
 			const response = await teacherManagementApi.importTeachers(formData);
 
 			if (response.success) {
-				// Refresh the list to get updated data from server
-				fetchTeachers(pagination.current, pagination.pageSize, searchText, statusFilter, roleNameFilter, sortBy, sortDir);
+				// Close modal first
+				setImportModal({ visible: false, fileList: [], uploading: false });
 				
 				// Use backend message if available, otherwise fallback to translation
 				const successMessage = response.message || t('teacherManagement.importSuccess');
 				spaceToast.success(successMessage);
 				
-				setImportModal({ visible: false, fileList: [], uploading: false });
+				// Refresh the list to get updated data from server
+				fetchTeachers(pagination.current, pagination.pageSize, searchText, statusFilter, roleNameFilter, sortBy, sortDir);
 			} else {
 				throw new Error(response.message || 'Import failed');
 			}
@@ -630,14 +632,23 @@ const TeacherList = () => {
 					const successCount = results.filter(r => r.success).length;
 					
 					if (successCount > 0) {
-						spaceToast.success(`${t('teacherManagement.bulkUpdateSuccess')} ${successCount}/${selectedRowKeys.length} ${t('teacherManagement.teachers')}`);
+						// Close modal first
+						setConfirmModal({ visible: false, title: '', content: '', onConfirm: null });
+						
+						// Clear selection
 						setSelectedRowKeys([]);
+						
+						// Show success toast
+						spaceToast.success(`${t('teacherManagement.bulkUpdateSuccess')} ${successCount}/${selectedRowKeys.length} ${t('teacherManagement.teachers')}`);
+						
+						// Refresh the list
 						fetchTeachers(pagination.current, pagination.pageSize, searchText, statusFilter, roleNameFilter, sortBy, sortDir);
 					} else {
 						throw new Error('No teachers were updated');
 					}
 				} catch (error) {
 					console.error('Error in bulk update:', error);
+					setConfirmModal({ visible: false, title: '', content: '', onConfirm: null });
 					spaceToast.error(error.response?.data?.error || error.message || t('teacherManagement.bulkUpdateError'));
 				}
 			}
@@ -676,14 +687,23 @@ const TeacherList = () => {
 					const successCount = results.filter(r => r.success).length;
 					
 					if (successCount > 0) {
-						spaceToast.success(`${t('teacherManagement.bulkUpdateSuccess')} ${successCount}/${selectedRowKeys.length} ${t('teacherManagement.teachers')}`);
+						// Close modal first
+						setConfirmModal({ visible: false, title: '', content: '', onConfirm: null });
+						
+						// Clear selection
 						setSelectedRowKeys([]);
+						
+						// Show success toast
+						spaceToast.success(`${t('teacherManagement.bulkUpdateSuccess')} ${successCount}/${selectedRowKeys.length} ${t('teacherManagement.teachers')}`);
+						
+						// Refresh the list
 						fetchTeachers(pagination.current, pagination.pageSize, searchText, statusFilter, roleNameFilter, sortBy, sortDir);
 					} else {
 						throw new Error('No teachers were updated');
 					}
 				} catch (error) {
 					console.error('Error in bulk update:', error);
+					setConfirmModal({ visible: false, title: '', content: '', onConfirm: null });
 					spaceToast.error(error.response?.data?.error || error.message || t('teacherManagement.bulkUpdateError'));
 				}
 			}

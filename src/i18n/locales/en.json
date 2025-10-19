@@ -1720,6 +1720,8 @@
     "deleteTeacher": "Delete Teacher",
     "teacherList": "Teacher List",
     "stt": "No",
+    "bulkUpdateSuccess": "Bulk update completed successfully",
+    "bulkUpdateError": "Failed to update teacher statuses",
     "teacherInfo": "Teacher Information",
     "clickToChangeAvatar": "Click to change avatar",
     "teacherCode": "Teacher Code",

@@ -365,8 +365,7 @@ const StudentList = () => {
           const successCount = results.filter(r => r.success).length;
           
           if (successCount > 0) {
-            // Refresh the list
-            fetchStudents(pagination.current, pagination.pageSize, searchText, statusFilter, roleNameFilter, sortBy, sortDir);
+            // Close modal first
             setConfirmModal({ visible: false, title: '', content: '', onConfirm: null });
             
             // Clear selection
@@ -374,13 +373,16 @@ const StudentList = () => {
             
             // Show success toast
             spaceToast.success(`${t('studentManagement.activateStudentSuccess')} ${successCount} ${t('studentManagement.students')} ${t('studentManagement.success')}`);
+            
+            // Refresh the list
+            fetchStudents(pagination.current, pagination.pageSize, searchText, statusFilter, roleNameFilter, sortBy, sortDir);
           } else {
             throw new Error('All operations failed');
           }
         } catch (error) {
           console.error('Error updating student statuses:', error);
           setConfirmModal({ visible: false, title: '', content: '', onConfirm: null });
-          spaceToast.error(t('studentManagement.bulkUpdateStatusError'));
+          spaceToast.error(error.response?.data?.error || error.response?.data?.message || error.message || t('studentManagement.bulkUpdateStatusError'));
         }
       }
     });
@@ -418,8 +420,7 @@ const StudentList = () => {
           const successCount = results.filter(r => r.success).length;
           
           if (successCount > 0) {
-            // Refresh the list
-            fetchStudents(pagination.current, pagination.pageSize, searchText, statusFilter, roleNameFilter, sortBy, sortDir);
+            // Close modal first
             setConfirmModal({ visible: false, title: '', content: '', onConfirm: null });
             
             // Clear selection
@@ -427,13 +428,16 @@ const StudentList = () => {
             
             // Show success toast
             spaceToast.success(`${t('studentManagement.deactivateStudentSuccess')} ${successCount} ${t('studentManagement.students')} ${t('studentManagement.success')}`);
+            
+            // Refresh the list
+            fetchStudents(pagination.current, pagination.pageSize, searchText, statusFilter, roleNameFilter, sortBy, sortDir);
           } else {
             throw new Error('All operations failed');
           }
         } catch (error) {
           console.error('Error updating student statuses:', error);
           setConfirmModal({ visible: false, title: '', content: '', onConfirm: null });
-          spaceToast.error(t('studentManagement.bulkUpdateStatusError'));
+          spaceToast.error(error.response?.data?.error || error.response?.data?.message || error.message || t('studentManagement.bulkUpdateStatusError'));
         }
       }
     });
@@ -748,8 +752,7 @@ const StudentList = () => {
             const response = await studentManagementApi.updateStudentStatus(id, newStatus);
             
             if (response.success) {
-              // Refresh the list to get updated data from server
-              fetchStudents(pagination.current, pagination.pageSize, searchValue, statusFilter, roleNameFilter, sortBy, sortDir);
+              // Close modal first
               setConfirmModal({ visible: false, title: '', content: '', onConfirm: null });
               
               // Show success toast
@@ -758,6 +761,9 @@ const StudentList = () => {
               } else {
                 spaceToast.success(`${t('studentManagement.deactivateStudentSuccess')} "${studentName}" ${t('studentManagement.success')}`);
               }
+              
+              // Refresh the list to get updated data from server
+              fetchStudents(pagination.current, pagination.pageSize, searchValue, statusFilter, roleNameFilter, sortBy, sortDir);
             } else {
               throw new Error(response.message || 'Failed to update student status');
             }
@@ -814,7 +820,13 @@ const StudentList = () => {
           const response = await studentManagementApi.createStudent(studentData);
           
           if (response.success) {
+            // Close modal first
+            setIsModalVisible(false);
+            form.resetFields();
+            
+            // Show success toast
             spaceToast.success(`Add student "${values.firstName} ${values.lastName}" successfully`);
+            
             // Refresh the list after adding
             fetchStudents(1, pagination.pageSize, searchValue, statusFilter, roleNameFilter, sortBy, sortDir);
           } else {
@@ -834,8 +846,6 @@ const StudentList = () => {
           }
         }
       }
-      setIsModalVisible(false);
-      form.resetFields();
     } catch (error) {
       console.error('Form validation error:', error);
     } finally {
@@ -938,14 +948,15 @@ const StudentList = () => {
       const response = await studentManagementApi.importStudents(formData);
 
       if (response.success) {
-        // Refresh the list to get updated data from server
-        fetchStudents(pagination.current, pagination.pageSize, searchValue, statusFilter, roleNameFilter, sortBy, sortDir);
+        // Close modal first
+        setImportModal({ visible: false, fileList: [], uploading: false });
         
         // Use backend message if available, otherwise fallback to translation
         const successMessage = response.message || t('studentManagement.importSuccess');
         spaceToast.success(successMessage);
         
-        setImportModal({ visible: false, fileList: [], uploading: false });
+        // Refresh the list to get updated data from server
+        fetchStudents(pagination.current, pagination.pageSize, searchValue, statusFilter, roleNameFilter, sortBy, sortDir);
       } else {
         throw new Error(response.message || 'Import failed');
       }
