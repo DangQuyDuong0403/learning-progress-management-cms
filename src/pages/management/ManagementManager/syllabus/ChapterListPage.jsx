@@ -14,7 +14,6 @@ import {
 	Tabs,
 } from 'antd';
 import {
-	DeleteOutlined,
 	SearchOutlined,
 	EyeOutlined,
 	ArrowLeftOutlined,
@@ -29,6 +28,7 @@ import './SyllabusList.css';
 import ThemedLayout from '../../../../component/ThemedLayout';
 import LoadingWithEffect from '../../../../component/spinner/LoadingWithEffect';
 import { useTheme } from '../../../../contexts/ThemeContext';
+import BottomActionBar from '../../../../component/BottomActionBar';
 import syllabusManagementApi from '../../../../apis/backend/syllabusManagement';
 
 const ChapterListPage = () => {
@@ -538,23 +538,6 @@ const ChapterListPage = () => {
 					<Col>
 						<Space>
 							<Button
-								icon={<EyeOutlined />}
-								onClick={handleViewAllLessons}
-								className="create-button"
-								style={{
-									backgroundColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)',
-									background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)',
-									borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'transparent',
-									color: '#000000',
-									height: '40px',
-									fontSize: '16px',
-									fontWeight: '500',
-									minWidth: '100px'
-								}}
-							>
-								{t('lessonManagement.viewAllLessons')}
-							</Button>
-							<Button
 								icon={<DownloadOutlined />}
 								className={`import-button ${theme}-import-button`}
 								onClick={handleImport}
@@ -572,22 +555,6 @@ const ChapterListPage = () => {
 					</Col>
 				</Row>
 
-				{/* Bulk Actions Row */}
-				{selectedRowKeys.length > 0 && (
-					<Row justify="end" style={{ marginBottom: '16px' }}>
-						<Col>
-							<Space>
-								<Button
-									icon={<DeleteOutlined />}
-									onClick={handleDeleteAll}
-									className="bulk-delete-button"
-								>
-									{t('chapterManagement.deleteAll')} ({selectedRowKeys.length})
-								</Button>
-							</Space>
-						</Col>
-					</Row>
-				)}
 
 				{/* Table Section */}
 				<div className={`table-section ${theme}-table-section`}>
@@ -607,6 +574,16 @@ const ChapterListPage = () => {
 					/>
 				</div>
 			</div>
+
+			{/* Bottom Action Bar */}
+			<BottomActionBar
+				selectedCount={selectedRowKeys.length}
+				onSelectAll={handleSelectAll}
+				onDeleteAll={handleDeleteAll}
+				onClose={() => setSelectedRowKeys([])}
+				selectAllText="Select all"
+				deleteAllText="Delete all"
+			/>
 
 				{/* Chapter Modal */}
 				<Modal
