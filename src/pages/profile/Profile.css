@@ -244,26 +244,26 @@
 /* ===== SPACE THEME STYLES ===== */
 .space-theme .profile-container {
   font-family: 'Plus Jakarta Sans', system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
-  min-height: 10vh;
+  min-height: 80vh;
   width: 85%;
   height: auto;
   background: #6e5cac80;
   backdrop-filter: blur(7px);
   border-radius:16px;
   border: 1px solid #4dd0ff4d;
+  padding: 24px;
 }
 
 /* ===== SUN THEME STYLES ===== */
 .sun-theme .profile-container {
   font-family: 'Plus Jakarta Sans', system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
-  min-height: 10vh;
+  min-height: 80vh;
   width: 85%;
   height: auto;
   background: #edf1ff;
   border: 1px solid #3b82f6;
   border-radius: 16px;
-  
-  
+  padding: 24px;
 }
 
 
