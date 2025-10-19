@@ -44,10 +44,8 @@ const SortableChapterItem = memo(
 
 		// Update editValue when chapter.name changes - optimized
 		useEffect(() => {
-			if (chapter.name !== editValue) {
-				setEditValue(chapter.name || '');
-			}
-		}, [chapter.name, editValue]);
+			setEditValue(chapter.name || '');
+		}, [chapter.name]);
 
 		// Keep minimal animation for smoother experience
 		const animateLayoutChanges = useCallback((args) => {
@@ -143,6 +141,7 @@ const SortableChapterItem = memo(
 							size="small"
 							style={{ width: '200px', fontSize: '16px' }}
 							placeholder={t('chapterManagement.chapterNamePlaceholder')}
+							maxLength={100}
 						/>
 					</div>
 				</div>
@@ -342,7 +341,7 @@ const ChapterDragEdit = () => {
 					// Insert new chapter at specific position
 					const newChapter = {
 						...newChapterData,
-						id: `new-${Date.now()}`,
+						id: `new-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
 						position: insertAtIndex + 1,
 						order: insertAtIndex + 1,
 					};
@@ -413,12 +412,25 @@ const ChapterDragEdit = () => {
 	const handleUpdateChapterName = useCallback(
 		(index, newName) => {
 			setChapters((prev) => {
-				const newChapters = [...prev];
-				newChapters[index] = {
-					...newChapters[index],
-					name: newName,
-				};
-				return newChapters;
+				// Get visible chapters to find the correct chapter by index
+				const visibleChapters = prev.filter(chapter => !chapter.toBeDeleted);
+				const chapterToUpdate = visibleChapters[index];
+				
+				if (!chapterToUpdate) {
+					console.error('Chapter not found at index:', index);
+					return prev;
+				}
+
+				// Update the chapter by its ID
+				return prev.map((chapter) => {
+					if (chapter.id === chapterToUpdate.id) {
+						return {
+							...chapter,
+							name: newName,
+						};
+					}
+					return chapter;
+				});
 			});
 		},
 		[]
@@ -488,6 +500,13 @@ const ChapterDragEdit = () => {
 		const invalidChapters = visibleChapters.filter((chapter) => !chapter.name.trim());
 		if (invalidChapters.length > 0) {
 			message.error(t('chapterManagement.chapterNameRequired'));
+			return;
+		}
+
+		// Kiểm tra độ dài tên chapter
+		const longNameChapters = visibleChapters.filter((chapter) => chapter.name.length > 100);
+		if (longNameChapters.length > 0) {
+			message.error(t('chapterManagement.chapterNameTooLong'));
 			return;
 		}
 

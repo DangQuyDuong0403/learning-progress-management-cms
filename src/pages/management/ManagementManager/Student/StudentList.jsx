@@ -259,7 +259,9 @@ const StudentList = () => {
 
   // Calculate checkbox states with useMemo
   const checkboxStates = useMemo(() => {
-    const totalItems = totalStudents; // Sử dụng totalStudents thay vì students.length
+    // Filter out PENDING records from total count
+    const nonPendingStudents = students.filter(student => student.status !== 'PENDING');
+    const totalItems = nonPendingStudents.length;
     const selectedCount = selectedRowKeys.length;
     const isSelectAll = selectedCount === totalItems && totalItems > 0;
     const isIndeterminate = false; // Không bao giờ hiển thị indeterminate
@@ -270,10 +272,11 @@ const StudentList = () => {
       selectedRowKeys,
       isSelectAll,
       isIndeterminate,
+      nonPendingStudents: nonPendingStudents.length,
     });
 
     return { isSelectAll, isIndeterminate, totalItems, selectedCount };
-  }, [selectedRowKeys, totalStudents]);
+  }, [selectedRowKeys, students]);
 
   // Checkbox logic
   const handleSelectAll = async (checked) => {
@@ -302,8 +305,10 @@ const StudentList = () => {
 
         const response = await studentManagementApi.getStudents(params);
 
-        // Get all IDs from the response
-        const allKeys = response.data.map(student => student.id);
+        // Get all IDs from the response, excluding PENDING records
+        const allKeys = response.data
+          .filter(student => student.status !== 'PENDING')
+          .map(student => student.id);
         setSelectedRowKeys(allKeys);
       } catch (error) {
         console.error('Error fetching all student IDs:', error);
@@ -315,6 +320,11 @@ const StudentList = () => {
   };
 
   const handleSelectRow = (record, checked) => {
+    // Don't allow selection of PENDING records
+    if (record.status === 'PENDING') {
+      return;
+    }
+    
     if (checked) {
       setSelectedRowKeys(prev => [...prev, record.id]);
     } else {
@@ -329,7 +339,16 @@ const StudentList = () => {
       return;
     }
     
-    const confirmContent = `${t('studentManagement.confirmBulkActivate')} ${selectedRowKeys.length} ${t('studentManagement.students')}?`;
+    // Filter out PENDING records from selected items
+    const selectedStudents = students.filter(student => selectedRowKeys.includes(student.id));
+    const nonPendingSelected = selectedStudents.filter(student => student.status !== 'PENDING');
+    
+    if (nonPendingSelected.length === 0) {
+      spaceToast.warning('Cannot activate PENDING students');
+      return;
+    }
+    
+    const confirmContent = `${t('studentManagement.confirmBulkActivate')} ${nonPendingSelected.length} ${t('studentManagement.students')}? ${selectedStudents.length !== nonPendingSelected.length ? `(${selectedStudents.length - nonPendingSelected.length} PENDING students will be skipped)` : ''}`;
     
     setConfirmModal({
       visible: true,
@@ -337,17 +356,16 @@ const StudentList = () => {
       content: confirmContent,
       onConfirm: async () => {
         try {
-          // Call API for bulk update - activate all selected students
-          const promises = selectedRowKeys.map(id => 
-            studentManagementApi.updateStudentStatus(id, 'ACTIVE')
+          // Call API for bulk update - activate only non-PENDING selected students
+          const promises = nonPendingSelected.map(student => 
+            studentManagementApi.updateStudentStatus(student.id, 'ACTIVE')
           );
           
           const results = await Promise.all(promises);
           const successCount = results.filter(r => r.success).length;
           
           if (successCount > 0) {
-            // Refresh the list
-            fetchStudents(pagination.current, pagination.pageSize, searchText, statusFilter, roleNameFilter, sortBy, sortDir);
+            // Close modal first
             setConfirmModal({ visible: false, title: '', content: '', onConfirm: null });
             
             // Clear selection
@@ -355,13 +373,16 @@ const StudentList = () => {
             
             // Show success toast
             spaceToast.success(`${t('studentManagement.activateStudentSuccess')} ${successCount} ${t('studentManagement.students')} ${t('studentManagement.success')}`);
+            
+            // Refresh the list
+            fetchStudents(pagination.current, pagination.pageSize, searchText, statusFilter, roleNameFilter, sortBy, sortDir);
           } else {
             throw new Error('All operations failed');
           }
         } catch (error) {
           console.error('Error updating student statuses:', error);
           setConfirmModal({ visible: false, title: '', content: '', onConfirm: null });
-          spaceToast.error(t('studentManagement.bulkUpdateStatusError'));
+          spaceToast.error(error.response?.data?.error || error.response?.data?.message || error.message || t('studentManagement.bulkUpdateStatusError'));
         }
       }
     });
@@ -373,7 +394,16 @@ const StudentList = () => {
       return;
     }
     
-    const confirmContent = `${t('studentManagement.confirmBulkDeactivate')} ${selectedRowKeys.length} ${t('studentManagement.students')}?`;
+    // Filter out PENDING records from selected items
+    const selectedStudents = students.filter(student => selectedRowKeys.includes(student.id));
+    const nonPendingSelected = selectedStudents.filter(student => student.status !== 'PENDING');
+    
+    if (nonPendingSelected.length === 0) {
+      spaceToast.warning('Cannot deactivate PENDING students');
+      return;
+    }
+    
+    const confirmContent = `${t('studentManagement.confirmBulkDeactivate')} ${nonPendingSelected.length} ${t('studentManagement.students')}? ${selectedStudents.length !== nonPendingSelected.length ? `(${selectedStudents.length - nonPendingSelected.length} PENDING students will be skipped)` : ''}`;
     
     setConfirmModal({
       visible: true,
@@ -381,17 +411,16 @@ const StudentList = () => {
       content: confirmContent,
       onConfirm: async () => {
         try {
-          // Call API for bulk update - deactivate all selected students
-          const promises = selectedRowKeys.map(id => 
-            studentManagementApi.updateStudentStatus(id, 'INACTIVE')
+          // Call API for bulk update - deactivate only non-PENDING selected students
+          const promises = nonPendingSelected.map(student => 
+            studentManagementApi.updateStudentStatus(student.id, 'INACTIVE')
           );
           
           const results = await Promise.all(promises);
           const successCount = results.filter(r => r.success).length;
           
           if (successCount > 0) {
-            // Refresh the list
-            fetchStudents(pagination.current, pagination.pageSize, searchText, statusFilter, roleNameFilter, sortBy, sortDir);
+            // Close modal first
             setConfirmModal({ visible: false, title: '', content: '', onConfirm: null });
             
             // Clear selection
@@ -399,13 +428,16 @@ const StudentList = () => {
             
             // Show success toast
             spaceToast.success(`${t('studentManagement.deactivateStudentSuccess')} ${successCount} ${t('studentManagement.students')} ${t('studentManagement.success')}`);
+            
+            // Refresh the list
+            fetchStudents(pagination.current, pagination.pageSize, searchText, statusFilter, roleNameFilter, sortBy, sortDir);
           } else {
             throw new Error('All operations failed');
           }
         } catch (error) {
           console.error('Error updating student statuses:', error);
           setConfirmModal({ visible: false, title: '', content: '', onConfirm: null });
-          spaceToast.error(t('studentManagement.bulkUpdateStatusError'));
+          spaceToast.error(error.response?.data?.error || error.response?.data?.message || error.message || t('studentManagement.bulkUpdateStatusError'));
         }
       }
     });
@@ -433,6 +465,7 @@ const StudentList = () => {
         <Checkbox
           checked={selectedRowKeys.includes(record.id)}
           onChange={(e) => handleSelectRow(record, e.target.checked)}
+          disabled={record.status === 'PENDING'}
           style={{
             transform: 'scale(1.2)'
           }}
@@ -468,15 +501,15 @@ const StudentList = () => {
     },
     {
       title: t('studentManagement.fullName'),
-      dataIndex: "firstName",
+      dataIndex: "fullName",
       key: "fullName",
       width: 120,
       sorter: true,
       sortDirections: ['ascend', 'descend'],
       ellipsis: true,
-      render: (_, record) => (
+      render: (fullName) => (
         <span className="fullname-text">
-          {`${record.firstName || ''} ${record.lastName || ''}`.trim()}
+          {fullName || '-'}
         </span>
       ),
     },
@@ -620,7 +653,7 @@ const StudentList = () => {
     if (sorter && sorter.field) {
       // Map frontend field names to backend field names
       const fieldMapping = {
-        'firstName': 'firstName', // Keep original field name
+        'fullName': 'fullName', // Map to fullName field
         'status': 'status',
         'createdAt': 'createdAt'
       };
@@ -707,7 +740,7 @@ const StudentList = () => {
     if (student) {
       const newStatus = student.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
       const actionText = newStatus === 'ACTIVE' ? t('studentManagement.activate') : t('studentManagement.deactivate');
-      const studentName = `${student.firstName || ''} ${student.lastName || ''}`.trim() || student.userName;
+      const studentName = student.fullName || student.userName;
       
       setConfirmModal({
         visible: true,
@@ -719,8 +752,7 @@ const StudentList = () => {
             const response = await studentManagementApi.updateStudentStatus(id, newStatus);
             
             if (response.success) {
-              // Refresh the list to get updated data from server
-              fetchStudents(pagination.current, pagination.pageSize, searchValue, statusFilter, roleNameFilter, sortBy, sortDir);
+              // Close modal first
               setConfirmModal({ visible: false, title: '', content: '', onConfirm: null });
               
               // Show success toast
@@ -729,6 +761,9 @@ const StudentList = () => {
               } else {
                 spaceToast.success(`${t('studentManagement.deactivateStudentSuccess')} "${studentName}" ${t('studentManagement.success')}`);
               }
+              
+              // Refresh the list to get updated data from server
+              fetchStudents(pagination.current, pagination.pageSize, searchValue, statusFilter, roleNameFilter, sortBy, sortDir);
             } else {
               throw new Error(response.message || 'Failed to update student status');
             }
@@ -758,8 +793,7 @@ const StudentList = () => {
       const studentData = {
         roleName: values.roleName, // STUDENT or TEST_TAKER
         email: values.email,
-        firstName: values.firstName,
-        lastName: values.lastName,
+        fullName: values.fullName,
         avatarUrl: "string", // Always send "string" as per API example
         dateOfBirth: values.dateOfBirth ? values.dateOfBirth.format('YYYY-MM-DDTHH:mm:ss.SSS') + 'Z' : null,
         address: values.address || null,
@@ -778,14 +812,20 @@ const StudentList = () => {
       
       if (editingStudent) {
         // TODO: Call update student API
-        spaceToast.success(`Update student "${values.firstName} ${values.lastName}" successfully`);
+        spaceToast.success(`Update student "${values.fullName}" successfully`);
       } else {
         try {
           // Call create student API
           const response = await studentManagementApi.createStudent(studentData);
           
           if (response.success) {
-            spaceToast.success(`Add student "${values.firstName} ${values.lastName}" successfully`);
+            // Close modal first
+            setIsModalVisible(false);
+            form.resetFields();
+            
+            // Show success toast
+            spaceToast.success(`Add student "${values.fullName}" successfully`);
+            
             // Refresh the list after adding
             fetchStudents(1, pagination.pageSize, searchValue, statusFilter, roleNameFilter, sortBy, sortDir);
           } else {
@@ -805,8 +845,6 @@ const StudentList = () => {
           }
         }
       }
-      setIsModalVisible(false);
-      form.resetFields();
     } catch (error) {
       console.error('Form validation error:', error);
     } finally {
@@ -909,14 +947,15 @@ const StudentList = () => {
       const response = await studentManagementApi.importStudents(formData);
 
       if (response.success) {
-        // Refresh the list to get updated data from server
-        fetchStudents(pagination.current, pagination.pageSize, searchValue, statusFilter, roleNameFilter, sortBy, sortDir);
+        // Close modal first
+        setImportModal({ visible: false, fileList: [], uploading: false });
         
         // Use backend message if available, otherwise fallback to translation
         const successMessage = response.message || t('studentManagement.importSuccess');
         spaceToast.success(successMessage);
         
-        setImportModal({ visible: false, fileList: [], uploading: false });
+        // Refresh the list to get updated data from server
+        fetchStudents(pagination.current, pagination.pageSize, searchValue, statusFilter, roleNameFilter, sortBy, sortDir);
       } else {
         throw new Error(response.message || 'Import failed');
       }
@@ -1278,53 +1317,48 @@ const StudentList = () => {
               </Col>
             </Row>
 
-            <Row gutter={16}>
-              <Col span={12}>
-                <Form.Item
-                  label={
-                    <span>
-                      {t('studentManagement.firstName')}
-                      <span style={{ color: 'red', marginLeft: '4px' }}>*</span>
-                    </span>
-                  }
-                  name="firstName"
-                  rules={[
-                    { required: true, message: t('studentManagement.firstNameRequired') },
-                    { max: 50, message: t('studentManagement.firstNameMaxLength') },
-                  ]}
-                >
-                  <Input placeholder={t('studentManagement.enterFirstName')} />
-                </Form.Item>
-              </Col>
-              <Col span={12}>
-                <Form.Item
-                  label={
-                    <span>
-                      {t('studentManagement.lastName')}
-                      <span style={{ color: 'red', marginLeft: '4px' }}>*</span>
-                    </span>
-                  }
-                  name="lastName"
-                  rules={[
-                    { required: true, message: t('studentManagement.lastNameRequired') },
-                    { max: 50, message: t('studentManagement.lastNameMaxLength') },
-                  ]}
-                >
-                  <Input placeholder={t('studentManagement.enterLastName')} />
-                </Form.Item>
-              </Col>
-            </Row>
+            <Form.Item
+              label={
+                <span>
+                  {t('studentManagement.fullName')}
+                  <span style={{ color: 'red', marginLeft: '4px' }}>*</span>
+                </span>
+              }
+              name="fullName"
+              rules={[
+                { required: true, message: t('studentManagement.fullNameRequired') },
+                { max: 100, message: t('studentManagement.fullNameMaxLength') },
+              ]}
+            >
+              <Input placeholder={t('studentManagement.enterFullName')} />
+            </Form.Item>
 
             <Row gutter={16}>
               <Col span={12}>
                 <Form.Item
                   label={t('studentManagement.dateOfBirth')}
                   name="dateOfBirth"
+                  rules={[
+                    {
+                      validator: (_, value) => {
+                        if (!value) return Promise.resolve();
+                        const selectedYear = value.year();
+                        if (selectedYear < 1920) {
+                          return Promise.reject(new Error('Date of birth must be from 1920 onwards'));
+                        }
+                        return Promise.resolve();
+                      }
+                    }
+                  ]}
                 >
                   <DatePicker 
                     style={{ width: '100%' }}
                     placeholder={t('studentManagement.selectDateOfBirth')}
                     format="YYYY-MM-DD"
+                    disabledDate={(current) => {
+                      // Disable dates before 1950-01-01
+                      return current && current.year() < 1920;
+                    }}
                   />
                 </Form.Item>
               </Col>
@@ -1820,9 +1854,9 @@ const StudentList = () => {
           onActiveAll={handleBulkActive}
           onDeactiveAll={handleBulkDeactive}
           onClose={() => setSelectedRowKeys([])}
-          selectAllText="Select all"
-          activeAllText="Active all"
-          deactiveAllText="Deactive all"
+          selectAllText={t('classManagement.selectAll')}
+          activeAllText={t('studentManagement.activeAll')}
+          deactiveAllText={t('studentManagement.deactiveAll')}
         />
 
     </ThemedLayout> 

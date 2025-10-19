@@ -213,7 +213,7 @@ const TeacherList = () => {
 
 		const newStatus = teacher.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
 		const actionText = newStatus === 'ACTIVE' ? t('teacherManagement.activate') : t('teacherManagement.deactivate');
-		const teacherName = `${teacher.firstName || ''} ${teacher.lastName || ''}`.trim() || teacher.userName;
+		const teacherName = teacher.fullName || teacher.userName;
 		
 		setConfirmModal({
 			visible: true,
@@ -225,12 +225,13 @@ const TeacherList = () => {
 					const response = await teacherManagementApi.updateTeacherStatus(teacherId, newStatus);
 					
 					if (response.success) {
+						// Close modal first
+						setConfirmModal({ visible: false, title: '', content: '', onConfirm: null });
+						
+						// Show success toast
 						spaceToast.success(newStatus === 'ACTIVE' 
 							? t('teacherManagement.activateTeacherSuccess') 
 							: t('teacherManagement.deactivateTeacherSuccess'));
-						
-						// Close modal
-						setConfirmModal({ visible: false, title: '', content: '', onConfirm: null });
 						
 						// Refresh the list
 						fetchTeachers(pagination.current, pagination.pageSize, searchText, statusFilter, roleNameFilter, sortBy, sortDir);
@@ -294,7 +295,7 @@ const TeacherList = () => {
 		if (sorter && sorter.field) {
 			// Map frontend field names to backend field names
 			const fieldMapping = {
-				'firstName': 'firstName', // Keep original field name
+				'fullName': 'fullName', // Map to fullName field
 				'createdAt': 'createdAt'
 			};
 			
@@ -382,14 +383,15 @@ const TeacherList = () => {
 			const response = await teacherManagementApi.importTeachers(formData);
 
 			if (response.success) {
-				// Refresh the list to get updated data from server
-				fetchTeachers(pagination.current, pagination.pageSize, searchText, statusFilter, roleNameFilter, sortBy, sortDir);
+				// Close modal first
+				setImportModal({ visible: false, fileList: [], uploading: false });
 				
 				// Use backend message if available, otherwise fallback to translation
 				const successMessage = response.message || t('teacherManagement.importSuccess');
 				spaceToast.success(successMessage);
 				
-				setImportModal({ visible: false, fileList: [], uploading: false });
+				// Refresh the list to get updated data from server
+				fetchTeachers(pagination.current, pagination.pageSize, searchText, statusFilter, roleNameFilter, sortBy, sortDir);
 			} else {
 				throw new Error(response.message || 'Import failed');
 			}
@@ -516,7 +518,9 @@ const TeacherList = () => {
 
 	// Calculate checkbox states with useMemo
 	const checkboxStates = useMemo(() => {
-		const totalItems = totalTeachers;
+		// Filter out PENDING records from total count
+		const nonPendingTeachers = teachers.filter(teacher => teacher.status !== 'PENDING');
+		const totalItems = nonPendingTeachers.length;
 		const selectedCount = selectedRowKeys.length;
 		const isSelectAll = selectedCount === totalItems && totalItems > 0;
 		const isIndeterminate = false; // Không bao giờ hiển thị indeterminate
@@ -527,10 +531,11 @@ const TeacherList = () => {
 			selectedRowKeys,
 			isSelectAll,
 			isIndeterminate,
+			nonPendingTeachers: nonPendingTeachers.length,
 		});
 
 		return { isSelectAll, isIndeterminate, totalItems, selectedCount };
-	}, [selectedRowKeys, totalTeachers]);
+	}, [selectedRowKeys, teachers]);
 
 	// Checkbox logic
 	const handleSelectAll = async (checked) => {
@@ -566,7 +571,10 @@ const TeacherList = () => {
 				const response = await teacherManagementApi.getTeachers(params);
 				
 				if (response.success && response.data) {
-					const allIds = response.data.map(teacher => teacher.id);
+					// Get all IDs from the response, excluding PENDING records
+					const allIds = response.data
+						.filter(teacher => teacher.status !== 'PENDING')
+						.map(teacher => teacher.id);
 					setSelectedRowKeys(allIds);
 				}
 			} catch (error) {
@@ -579,6 +587,11 @@ const TeacherList = () => {
 	};
 
 	const handleSelectRow = (record, checked) => {
+		// Don't allow selection of PENDING records
+		if (record.status === 'PENDING') {
+			return;
+		}
+		
 		if (checked) {
 			setSelectedRowKeys(prev => [...prev, record.id]);
 		} else {
@@ -593,7 +606,16 @@ const TeacherList = () => {
 			return;
 		}
 		
-		const confirmContent = `${t('teacherManagement.confirmBulkActivate')} ${selectedRowKeys.length} ${t('teacherManagement.teachers')}?`;
+		// Filter out PENDING records from selected items
+		const selectedTeachers = teachers.filter(teacher => selectedRowKeys.includes(teacher.id));
+		const nonPendingSelected = selectedTeachers.filter(teacher => teacher.status !== 'PENDING');
+		
+		if (nonPendingSelected.length === 0) {
+			spaceToast.warning('Cannot activate PENDING teachers');
+			return;
+		}
+		
+		const confirmContent = `${t('teacherManagement.confirmBulkActivate')} ${nonPendingSelected.length} ${t('teacherManagement.teachers')}? ${selectedTeachers.length !== nonPendingSelected.length ? `(${selectedTeachers.length - nonPendingSelected.length} PENDING teachers will be skipped)` : ''}`;
 		
 		setConfirmModal({
 			visible: true,
@@ -601,23 +623,32 @@ const TeacherList = () => {
 			content: confirmContent,
 			onConfirm: async () => {
 				try {
-					// Call API for bulk update - activate all selected teachers
-					const promises = selectedRowKeys.map(id => 
-						teacherManagementApi.updateTeacherStatus(id, 'ACTIVE')
+					// Call API for bulk update - activate only non-PENDING selected teachers
+					const promises = nonPendingSelected.map(teacher => 
+						teacherManagementApi.updateTeacherStatus(teacher.id, 'ACTIVE')
 					);
 					
 					const results = await Promise.all(promises);
 					const successCount = results.filter(r => r.success).length;
 					
 					if (successCount > 0) {
-						spaceToast.success(`${t('teacherManagement.bulkUpdateSuccess')} ${successCount}/${selectedRowKeys.length} ${t('teacherManagement.teachers')}`);
+						// Close modal first
+						setConfirmModal({ visible: false, title: '', content: '', onConfirm: null });
+						
+						// Clear selection
 						setSelectedRowKeys([]);
+						
+						// Show success toast
+						spaceToast.success(`${t('teacherManagement.bulkUpdateSuccess')} ${successCount}/${selectedRowKeys.length} ${t('teacherManagement.teachers')}`);
+						
+						// Refresh the list
 						fetchTeachers(pagination.current, pagination.pageSize, searchText, statusFilter, roleNameFilter, sortBy, sortDir);
 					} else {
 						throw new Error('No teachers were updated');
 					}
 				} catch (error) {
 					console.error('Error in bulk update:', error);
+					setConfirmModal({ visible: false, title: '', content: '', onConfirm: null });
 					spaceToast.error(error.response?.data?.error || error.message || t('teacherManagement.bulkUpdateError'));
 				}
 			}
@@ -630,7 +661,16 @@ const TeacherList = () => {
 			return;
 		}
 		
-		const confirmContent = `${t('teacherManagement.confirmBulkDeactivate')} ${selectedRowKeys.length} ${t('teacherManagement.teachers')}?`;
+		// Filter out PENDING records from selected items
+		const selectedTeachers = teachers.filter(teacher => selectedRowKeys.includes(teacher.id));
+		const nonPendingSelected = selectedTeachers.filter(teacher => teacher.status !== 'PENDING');
+		
+		if (nonPendingSelected.length === 0) {
+			spaceToast.warning('Cannot deactivate PENDING teachers');
+			return;
+		}
+		
+		const confirmContent = `${t('teacherManagement.confirmBulkDeactivate')} ${nonPendingSelected.length} ${t('teacherManagement.teachers')}? ${selectedTeachers.length !== nonPendingSelected.length ? `(${selectedTeachers.length - nonPendingSelected.length} PENDING teachers will be skipped)` : ''}`;
 		
 		setConfirmModal({
 			visible: true,
@@ -638,23 +678,32 @@ const TeacherList = () => {
 			content: confirmContent,
 			onConfirm: async () => {
 				try {
-					// Call API for bulk update - deactivate all selected teachers
-					const promises = selectedRowKeys.map(id => 
-						teacherManagementApi.updateTeacherStatus(id, 'INACTIVE')
+					// Call API for bulk update - deactivate only non-PENDING selected teachers
+					const promises = nonPendingSelected.map(teacher => 
+						teacherManagementApi.updateTeacherStatus(teacher.id, 'INACTIVE')
 					);
 					
 					const results = await Promise.all(promises);
 					const successCount = results.filter(r => r.success).length;
 					
 					if (successCount > 0) {
-						spaceToast.success(`${t('teacherManagement.bulkUpdateSuccess')} ${successCount}/${selectedRowKeys.length} ${t('teacherManagement.teachers')}`);
+						// Close modal first
+						setConfirmModal({ visible: false, title: '', content: '', onConfirm: null });
+						
+						// Clear selection
 						setSelectedRowKeys([]);
+						
+						// Show success toast
+						spaceToast.success(`${t('teacherManagement.bulkUpdateSuccess')} ${successCount}/${selectedRowKeys.length} ${t('teacherManagement.teachers')}`);
+						
+						// Refresh the list
 						fetchTeachers(pagination.current, pagination.pageSize, searchText, statusFilter, roleNameFilter, sortBy, sortDir);
 					} else {
 						throw new Error('No teachers were updated');
 					}
 				} catch (error) {
 					console.error('Error in bulk update:', error);
+					setConfirmModal({ visible: false, title: '', content: '', onConfirm: null });
 					spaceToast.error(error.response?.data?.error || error.message || t('teacherManagement.bulkUpdateError'));
 				}
 			}
@@ -715,6 +764,7 @@ const TeacherList = () => {
 				<Checkbox
 					checked={selectedRowKeys.includes(record.id)}
 					onChange={(e) => handleSelectRow(record, e.target.checked)}
+					disabled={record.status === 'PENDING'}
 					style={{
 						transform: 'scale(1.2)'
 					}}
@@ -738,15 +788,15 @@ const TeacherList = () => {
 		},
 		{
 			title: t('teacherManagement.fullName'),
-			dataIndex: "firstName",
+			dataIndex: "fullName",
 			key: "fullName",
 			width: 120,
 			sorter: true,
 			sortDirections: ['ascend', 'descend'],
 			ellipsis: true,
-			render: (_, record) => (
+			render: (fullName) => (
 				<span className="fullname-text">
-					{`${record.firstName || ''} ${record.lastName || ''}`.trim()}
+					{fullName || '-'}
 				</span>
 			),
 		},
@@ -1015,7 +1065,7 @@ const TeacherList = () => {
 							showSorterTooltip={false}
 							sortDirections={['ascend', 'descend']}
 							defaultSortOrder={
-								sortBy === 'firstName' ? (sortDir === 'asc' ? 'ascend' : 'descend') :
+								sortBy === 'fullName' ? (sortDir === 'asc' ? 'ascend' : 'descend') :
 								null
 							}
 						/>
@@ -1377,9 +1427,9 @@ const TeacherList = () => {
 				onActiveAll={handleBulkActive}
 				onDeactiveAll={handleBulkDeactive}
 				onClose={() => setSelectedRowKeys([])}
-				selectAllText="Select all"
-				activeAllText="Active all"
-				deactiveAllText="Deactive all"
+				selectAllText={t('classManagement.selectAll')}
+				activeAllText={t('teacherManagement.activeAll')}
+				deactiveAllText={t('teacherManagement.deactiveAll')}
 			/>
 		</>
 	);

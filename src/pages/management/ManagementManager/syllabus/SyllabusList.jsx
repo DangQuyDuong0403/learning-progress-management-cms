@@ -95,7 +95,7 @@ const SyllabusList = () => {
 
 			// Add search parameter if provided
 			if (search && search.trim()) {
-				params.text = search.trim();
+				params.searchText = search.trim();
 			}
 
 			const response = await syllabusManagementApi.getSyllabuses({
@@ -696,7 +696,13 @@ const SyllabusList = () => {
 			width: '18%',
 			key: 'name',
 			render: (text, record) => (
-				<div style={{ fontSize: '20px'}}>
+				<div style={{ 
+					fontSize: '20px',
+					maxWidth: '200px',
+					overflow: 'hidden',
+					textOverflow: 'ellipsis',
+					whiteSpace: 'nowrap'
+				}}>
 					{text}
 				</div>
 			),
@@ -1036,8 +1042,8 @@ const SyllabusList = () => {
 					onSelectAll={handleSelectAll}
 					onDeleteAll={handleBulkDelete}
 					onClose={() => setSelectedRowKeys([])}
-					selectAllText="Select all"
-					deleteAllText="Delete all"
+					selectAllText={t('classManagement.selectAll')}
+					deleteAllText={t('classManagement.deleteAll')}
 				/>
 			)}
 
@@ -1314,7 +1320,7 @@ const SyllabusList = () => {
 						<p
 							className='ant-upload-drag-icon'
 							style={{ fontSize: '48px', color: '#1890ff' }}>
-							<UploadOutlined />
+							<DownloadOutlined />
 						</p>
 						<p
 							className='ant-upload-text'

@@ -14,6 +14,7 @@ import { useTheme } from '../../../../contexts/ThemeContext';
 import usePageTitle from '../../../../hooks/usePageTitle';
 import syllabusManagementApi from '../../../../apis/backend/syllabusManagement';
 import levelManagementApi from '../../../../apis/backend/levelManagement';
+import { spaceToast } from '../../../../component/SpaceToastify';
 
 const { TextArea } = Input;
 const { Option } = Select;
@@ -110,6 +111,7 @@ const SyllabusForm = ({ syllabus, onClose, onSuccess }) => {
 				response = await syllabusManagementApi.updateSyllabus(syllabus.id, requestBody);
 			} else {
 				response = await syllabusManagementApi.createSyllabus(requestBody);
+				spaceToast.success(response.message);
 			}
 			
 			// No success message - only show error messages from backend
@@ -129,7 +131,7 @@ const SyllabusForm = ({ syllabus, onClose, onSuccess }) => {
 				error.message ||
 				(isEdit ? t('syllabusManagement.updateSyllabusError') : t('syllabusManagement.addSyllabusError'));
 			
-			message.error(errorMessage);
+				spaceToast.error(errorMessage);
 		} finally {
 			setIsSubmitting(false);
 			// Re-enable button after 0.5 seconds
@@ -170,11 +172,17 @@ const SyllabusForm = ({ syllabus, onClose, onSuccess }) => {
 								min: 2,
 								message: t('syllabusManagement.syllabusNameMinLength'),
 							},
+							{
+								max: 100,
+								message: t('syllabusManagement.syllabusNameTooLong'),
+							},
 						]}
 					>
 						<Input
 							placeholder={t('syllabusManagement.syllabusNamePlaceholder')}
 							size="large"
+							maxLength={100}
+							showCount
 						/>
 					</Form.Item>
 				</Col>

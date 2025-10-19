@@ -668,9 +668,19 @@ const LessonListBySyllabus = () => {
 					<Typography.Title 
 						level={1} 
 						className="page-title"
-						style={{ margin: 0, flex: 1, textAlign: 'center' }}
+						style={{ margin: 0, flex: 1, textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
 					>
-						{syllabusInfo.name} - {t('lessonManagement.title')} <span className="student-count">({totalElements})</span>
+						<span style={{ 
+							maxWidth: '400px',
+							overflow: 'hidden',
+							textOverflow: 'ellipsis',
+							whiteSpace: 'nowrap'
+						}}>
+							{syllabusInfo.name}
+						</span>
+						<span style={{ margin: '0 8px', flexShrink: 0 }}>-</span>
+						<span style={{ flexShrink: 0 }}>{t('lessonManagement.title')}</span>
+						<span className="student-count" style={{ flexShrink: 0 }}> ({totalElements})</span>
 					</Typography.Title>
 					<div style={{ width: '100px' }}></div> {/* Spacer để cân bằng layout */}
 				</div>
@@ -717,22 +727,7 @@ const LessonListBySyllabus = () => {
 						</Space>
 					</Col>
 					<Col>
-						<Space>
-							<Button
-								icon={<DownloadOutlined />}
-								className={`import-button ${theme}-import-button`}
-								onClick={handleImportLesson}
-							>
-								{t('lessonManagement.importLessons')}
-							</Button>
-							<Button
-								icon={<DragOutlined />}
-								onClick={handleEditOrder}
-								className="create-button"
-							>
-								{t('common.edit')}
-							</Button>
-						</Space>
+					
 					</Col>
 				</Row>
 
@@ -762,8 +757,8 @@ const LessonListBySyllabus = () => {
 				onSelectAll={handleSelectAll}
 				onDeleteAll={handleDeleteAll}
 				onClose={() => setSelectedRowKeys([])}
-				selectAllText="Select all"
-				deleteAllText="Delete all"
+				selectAllText={t('classManagement.selectAll')}
+				deleteAllText={t('classManagement.deleteAll')}
 			/>
 
 			{/* Delete Confirmation Modal */}

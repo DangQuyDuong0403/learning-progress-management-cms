@@ -76,11 +76,17 @@ const ChapterForm = ({ chapter, syllabus, onClose }) => {
 						min: 2,
 						message: t('chapterManagement.chapterNameMinLength'),
 					},
+					{
+						max: 100,
+						message: t('chapterManagement.chapterNameTooLong'),
+					},
 				]}
 			>
 				<Input
 					placeholder={t('chapterManagement.chapterNamePlaceholder')}
 					size="large"
+					maxLength={100}
+					showCount
 				/>
 			</Form.Item>
 

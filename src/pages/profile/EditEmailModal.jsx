@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Modal, Form, Input } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { useDispatch, useSelector } from 'react-redux';
-import { updateEmail } from '../../redux/auth';
+import { updateEmail, clearUpdateEmailState } from '../../redux/auth';
 import { spaceToast } from '../../component/SpaceToastify';
+import { useTheme } from '../../contexts/ThemeContext';
 
 export default function EditEmailModal({ 
   isVisible, 
@@ -14,8 +15,16 @@ export default function EditEmailModal({
   const { t } = useTranslation();
   const dispatch = useDispatch();
   const { updateEmailLoading } = useSelector((state) => state.auth);
+  const { theme } = useTheme();
   const [form] = Form.useForm();
   const [showConfirmationMessage, setShowConfirmationMessage] = useState(false);
+
+  // Reset loading state khi modal được mở
+  useEffect(() => {
+    if (isVisible) {
+      dispatch(clearUpdateEmailState());
+    }
+  }, [isVisible, dispatch]);
 
   function validateEmail(email) {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
@@ -61,12 +70,17 @@ export default function EditEmailModal({
       }
       
       spaceToast.error(errorMessage);
+      
+      // Đóng modal khi có lỗi
+      handleCancel();
     }
   };
 
   const handleCancel = () => {
     form.resetFields();
     setShowConfirmationMessage(false);
+    // Reset loading state khi đóng modal
+    dispatch(clearUpdateEmailState());
     onCancel();
   };
 
@@ -89,12 +103,13 @@ export default function EditEmailModal({
       onCancel={handleCancel}
       width={500}
       okText={showConfirmationMessage ? t('common.ok') : t('common.update')}
-      cancelText={t('common.close')}
       confirmLoading={updateEmailLoading}
       okButtonProps={{
         style: {
-          backgroundColor: '#1890ff',
-          borderColor: '#1890ff',
+          backgroundColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
+          background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
+          borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'transparent',
+          color: theme === 'sun' ? '#000000' : '#ffffff',
           height: '40px',
           fontSize: '16px',
           fontWeight: '500',

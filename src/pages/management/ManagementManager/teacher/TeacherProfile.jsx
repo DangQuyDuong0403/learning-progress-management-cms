@@ -136,8 +136,7 @@ const TeacherProfile = () => {
 		
 		editForm.setFieldsValue({
 			roleName: teacher.roleName,
-			firstName: teacher.firstName,
-			lastName: teacher.lastName,
+			fullName: teacher.fullName,
 			phoneNumber: teacher.phoneNumber,
 			dateOfBirth: teacher.dateOfBirth ? dayjs(teacher.dateOfBirth) : null,
 			gender: teacher.gender,
@@ -151,8 +150,7 @@ const TeacherProfile = () => {
 		// Format the data according to the API requirements
 		const teacherData = {
 			roleName: values.roleName || "TEACHER",
-			firstName: values.firstName,
-			lastName: values.lastName,
+			fullName: values.fullName,
 			avatarUrl: teacher.avatarUrl || "/img/avatar_1.png", // Send current avatar URL
 			dateOfBirth: values.dateOfBirth ? values.dateOfBirth.toISOString() : null,
 			address: values.address || "",
@@ -349,7 +347,7 @@ const TeacherProfile = () => {
 								{/* Name and Status Row */}
 								<div className={`name-status-row-new ${theme}-name-status-row-new`}>
 									<h2 className={`student-name-new ${theme}-student-name-new`}>
-										{teacher.firstName} {teacher.lastName}
+										{teacher.fullName}
 									</h2>
 									<div className={`status-badges-new ${theme}-status-badges-new`}>
 										<span 
@@ -582,38 +580,21 @@ const TeacherProfile = () => {
 						</Row>
 
 						<Row gutter={16}>
-							<Col span={12}>
+							<Col span={24}>
 								<Form.Item
 									label={
 										<span>
-											{t('teacherManagement.firstName')}
+											{t('teacherManagement.fullName')}
 											<span style={{ color: 'red', marginLeft: '4px' }}>*</span>
 										</span>
 									}
-									name="firstName"
+									name="fullName"
 									rules={[
-										{ required: true, message: t('teacherManagement.firstNameRequired') },
-										{ max: 50, message: t('teacherManagement.nameMaxLength') },
+										{ required: true, message: t('teacherManagement.fullNameRequired') },
+										{ max: 100, message: t('teacherManagement.nameMaxLength') },
 									]}
 								>
-									<Input placeholder={t('teacherManagement.enterFirstName')} />
-								</Form.Item>
-							</Col>
-							<Col span={12}>
-								<Form.Item
-									label={
-										<span>
-											{t('teacherManagement.lastName')}
-											<span style={{ color: 'red', marginLeft: '4px' }}>*</span>
-										</span>
-									}
-									name="lastName"
-									rules={[
-										{ required: true, message: t('teacherManagement.lastNameRequired') },
-										{ max: 50, message: t('teacherManagement.nameMaxLength') },
-									]}
-								>
-									<Input placeholder={t('teacherManagement.enterLastName')} />
+									<Input placeholder={t('teacherManagement.enterFullName')} />
 								</Form.Item>
 							</Col>
 						</Row>
@@ -640,11 +621,27 @@ const TeacherProfile = () => {
 								<Form.Item
 									label={t('teacherManagement.dateOfBirth')}
 									name="dateOfBirth"
+									rules={[
+										{
+											validator: (_, value) => {
+												if (!value) return Promise.resolve();
+												const selectedYear = value.year();
+												if (selectedYear < 1920) {
+													return Promise.reject(new Error('Date of birth must be from 1920 onwards'));
+												}
+												return Promise.resolve();
+											}
+										}
+									]}
 								>
 									<DatePicker 
 										style={{ width: '100%' }}
 										placeholder={t('teacherManagement.selectDateOfBirth')}
 										format="YYYY-MM-DD"
+										disabledDate={(current) => {
+											// Disable dates before 1920-01-01
+											return current && current.year() < 1920;
+										}}
 									/>
 								</Form.Item>
 							</Col>

@@ -377,7 +377,7 @@ const LessonDragEdit = () => {
 					// Insert new lesson at specific position
 					const newLesson = {
 						...newLessonData,
-						id: `new-${Date.now()}`,
+						id: `new-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
 						position: insertAtIndex + 1,
 					};
 
@@ -515,13 +515,19 @@ const LessonDragEdit = () => {
 			return;
 		}
 
+		// Kiểm tra độ dài tên lesson
+		const longNameLessons = visibleLessons.filter((lesson) => lesson.name.length > 100);
+		if (longNameLessons.length > 0) {
+			message.error(t('lessonManagement.lessonNameTooLong'));
+			return;
+		}
+
 		setSaving(true);
 		try {
 			// Chuẩn bị dữ liệu theo format của API /lesson/sync
 			const syncData = lessons
 				.map((lesson) => {
-					const isNewRecord =
-						typeof lesson.id === 'string' && lesson.id.startsWith('new-');
+					const isNewRecord = typeof lesson.id === 'string' && lesson.id.startsWith('new-');
 
 					return {
 						id: isNewRecord ? null : lesson.id, // null cho lesson mới

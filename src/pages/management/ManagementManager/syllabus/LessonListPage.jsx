@@ -536,7 +536,13 @@ const LessonListPage = () => {
 			width: '20%',
 			sorter: (a, b) => a.name.localeCompare(b.name),
 			render: (text) => (
-				<div style={{ fontSize: '20px' }}>
+				<div style={{ 
+					fontSize: '20px',
+					maxWidth: '200px',
+					overflow: 'hidden',
+					textOverflow: 'ellipsis',
+					whiteSpace: 'nowrap'
+				}}>
 					{text}
 				</div>
 			),
@@ -593,9 +599,19 @@ const LessonListPage = () => {
 					<Typography.Title 
 						level={1} 
 						className="page-title"
-						style={{ margin: 0, flex: 1, textAlign: 'center' }}
+						style={{ margin: 0, flex: 1, textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
 					>
-						{chapterInfo.name} - {t('lessonManagement.title')} <span className="student-count">({totalElements})</span>
+						<span style={{ 
+							maxWidth: '400px',
+							overflow: 'hidden',
+							textOverflow: 'ellipsis',
+							whiteSpace: 'nowrap'
+						}}>
+							{chapterInfo.name}
+						</span>
+						<span style={{ margin: '0 8px', flexShrink: 0 }}>-</span>
+						<span style={{ flexShrink: 0 }}>{t('lessonManagement.title')}</span>
+						<span className="student-count" style={{ flexShrink: 0 }}> ({totalElements})</span>
 					</Typography.Title>
 					<div style={{ width: '100px' }}></div> {/* Spacer để cân bằng layout */}
 				</div>
@@ -661,8 +677,8 @@ const LessonListPage = () => {
 				onSelectAll={handleSelectAll}
 				onDeleteAll={handleDeleteAll}
 				onClose={() => setSelectedRowKeys([])}
-				selectAllText="Select all"
-				deleteAllText="Delete all"
+				selectAllText={t('classManagement.selectAll')}
+				deleteAllText={t('classManagement.deleteAll')}
 			/>
 
 			{/* Delete All Confirmation Modal */}
