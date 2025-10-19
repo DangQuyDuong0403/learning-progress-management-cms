@@ -143,8 +143,7 @@ const StudentProfile = () => {
 		
 		editForm.setFieldsValue({
 			roleName: student.roleName,
-			firstName: student.firstName,
-			lastName: student.lastName,
+			fullName: student.fullName,
 			phoneNumber: student.phoneNumber,
 			dateOfBirth: student.dateOfBirth ? dayjs(student.dateOfBirth) : null,
 			gender: student.gender || 'MALE',
@@ -223,8 +222,7 @@ const StudentProfile = () => {
 			// Prepare data for API call
 			const updateData = {
 				roleName: student.roleName,
-				firstName: student.firstName,
-				lastName: student.lastName,
+				fullName: student.fullName,
 				avatarUrl: selectedAvatarUrl, // Send the selected avatar URL
 				dateOfBirth: student.dateOfBirth ? dayjs(student.dateOfBirth).format('YYYY-MM-DDTHH:mm:ss.SSS[Z]') : null,
 				address: student.address || null,
@@ -277,8 +275,7 @@ const StudentProfile = () => {
 			// Format the data according to the API requirements
 			const studentData = {
 				roleName: values.roleName,
-				firstName: values.firstName,
-				lastName: values.lastName,
+				fullName: values.fullName,
 				avatarUrl: student.avatarUrl , // Send current avatar URL
 				dateOfBirth: values.dateOfBirth ? values.dateOfBirth.format('YYYY-MM-DDTHH:mm:ss.SSS[Z]') : null,
 				address: values.address || null,
@@ -486,7 +483,7 @@ const StudentProfile = () => {
 						{/* Name and Status Row */}
 						<div className={`name-status-row-new ${theme}-name-status-row-new`}>
 							<h2 className={`student-name-new ${theme}-student-name-new`}>
-								{student.firstName} {student.lastName}
+								{student.fullName}
 							</h2>
 							<div className={`status-badges-new ${theme}-status-badges-new`}>
 								<span className={`role-badge-new ${theme}-role-badge-new`}>
@@ -657,42 +654,22 @@ const StudentProfile = () => {
 					</Row>
 
 					<Row gutter={16}>
-						<Col span={12}>
+						<Col span={24}>
 							<Form.Item
-								name="firstName"
+								name="fullName"
 								label={
 									<span>
-										{t('studentManagement.firstName')}
+										{t('studentManagement.fullName')}
 										<span style={{ color: 'red', marginLeft: '4px' }}>*</span>
 									</span>
 								}
 								rules={[
-									{ required: true, message: t('studentManagement.firstNameRequired') },
+									{ required: true, message: t('studentManagement.fullNameRequired') },
 									{ min: 2, message: t('studentManagement.nameMinLength') },
 								]}
 							>
 								<Input 
-									placeholder={t('studentManagement.enterFirstName')}
-									className={`form-input ${theme}-form-input`}
-								/>
-							</Form.Item>
-						</Col>
-						<Col span={12}>
-							<Form.Item
-								name="lastName"
-								label={
-									<span>
-										{t('studentManagement.lastName')}
-										<span style={{ color: 'red', marginLeft: '4px' }}>*</span>
-									</span>
-								}
-								rules={[
-									{ required: true, message: t('studentManagement.lastNameRequired') },
-									{ min: 2, message: t('studentManagement.nameMinLength') },
-								]}
-							>
-								<Input 
-									placeholder={t('studentManagement.enterLastName')}
+									placeholder={t('studentManagement.enterFullName')}
 									className={`form-input ${theme}-form-input`}
 								/>
 							</Form.Item>
@@ -911,7 +888,7 @@ const StudentProfile = () => {
 							marginBottom: '16px',
 							lineHeight: '1.5'
 						}}>
-							{t('studentManagement.resetPasswordToDefaultConfirmation')} <strong>{student.firstName} {student.lastName}</strong>?
+							{t('studentManagement.resetPasswordToDefaultConfirmation')} <strong>{student.fullName}</strong>?
 						</p>
 						<p style={{ 
 							fontSize: '12px', 

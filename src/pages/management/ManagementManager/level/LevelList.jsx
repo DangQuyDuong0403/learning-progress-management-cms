@@ -53,6 +53,12 @@ const LevelList = () => {
 	const [editingLevel, setEditingLevel] = useState(null);
 	const [searchText, setSearchText] = useState('');
 	const [searchTimeout, setSearchTimeout] = useState(null);
+	const [confirmModal, setConfirmModal] = useState({
+		visible: false,
+		title: '',
+		content: '',
+		onConfirm: null
+	});
 	
 	// Pagination state
 	const [pagination, setPagination] = useState({
@@ -298,31 +304,46 @@ const LevelList = () => {
 	};
 
 
-	const handlePublishAll = async () => {
-		setToggleLoading(true);
-		try {
-			const response = await levelManagementApi.publishAllLevels();
-			const successMessage = response.message || t('levelManagement.publishAllSuccess');
-			
-			spaceToast.success(successMessage);
-			
-			// Refresh the list after action
-			fetchLevels(pagination.current, pagination.pageSize, searchText);
-		} catch (error) {
-			console.error('Error publishing all levels:', error);
-			
-			// Handle API errors with backend messages
-			let errorMessage;
-			if (error.response) {
-				errorMessage = error.response.data.error || error.response.data?.message || error.message;
-			} else {
-				errorMessage = error.message;
+	const handlePublishAll = () => {
+		setConfirmModal({
+			visible: true,
+			title: t('levelManagement.confirmPublishAll'),
+			content: t('levelManagement.confirmPublishAllMessage'),
+			onConfirm: async () => {
+				setToggleLoading(true);
+				try {
+					const response = await levelManagementApi.publishAllLevels();
+					const successMessage = response.message || t('levelManagement.publishAllSuccess');
+					
+					// Close modal first
+					setConfirmModal({ visible: false, title: '', content: '', onConfirm: null });
+					
+					spaceToast.success(successMessage);
+					
+					// Refresh the list after action
+					fetchLevels(pagination.current, pagination.pageSize, searchText);
+				} catch (error) {
+					console.error('Error publishing all levels:', error);
+					
+					// Handle API errors with backend messages
+					let errorMessage;
+					if (error.response) {
+						errorMessage = error.response.data.error || error.response.data?.message || error.message;
+					} else {
+						errorMessage = error.message;
+					}
+					
+					setConfirmModal({ visible: false, title: '', content: '', onConfirm: null });
+					spaceToast.error(errorMessage);
+				} finally {
+					setToggleLoading(false);
+				}
 			}
-			
-			spaceToast.error(errorMessage);
-		} finally {
-			setToggleLoading(false);
-		}
+		});
+	};
+
+	const handleConfirmCancel = () => {
+		setConfirmModal({ visible: false, title: '', content: '', onConfirm: null });
 	};
 
 	const handleEditPositions = () => {
@@ -467,18 +488,6 @@ const LevelList = () => {
 					>
 						{t('levelManagement.title')} <span className="student-count">({totalElements})</span>
 					</Typography.Title>
-					{currentStatus && (
-						<div style={{ 
-							textAlign: 'center',
-							marginTop: '8px',
-							fontSize: '20px',
-							color: currentStatus === t('levelManagement.published')
-								? (theme === 'sun' ? 'rgb(113, 179, 253)' : 'rgb(224 217 255 / 90%)')
-								: (theme === 'sun' ? '#999' : '#ccc')
-						}}>
-							{currentStatus}
-						</div>
-					)}
 				</div>
 				{/* Header Section */}
 				<div className={`panel-header ${theme}-panel-header`}>
@@ -502,8 +511,8 @@ const LevelList = () => {
 					</div>
 					<div className='action-buttons'>
 						<Button
-							icon={<SendOutlined />}
-							onClick={handlePublishAll}
+							icon={isAllPublished ? null : <SendOutlined />}
+							onClick={isAllPublished ? null : handlePublishAll}
 							loading={toggleLoading}
 							disabled={isAllPublished}
 							className={`publish-all-button ${theme}-publish-all-button`}
@@ -526,7 +535,7 @@ const LevelList = () => {
 								opacity: isAllPublished ? 0.5 : 1,
 								cursor: isAllPublished ? 'not-allowed' : 'pointer',
 							}}>
-							{t('levelManagement.publishAll')}
+							{isAllPublished ? t('levelManagement.published') : t('levelManagement.publishAll')}
 						</Button>
 						{!isAllPublished && (
 							<Button
@@ -602,6 +611,67 @@ const LevelList = () => {
 					padding: '24px',
 				}}>
 				<LevelForm level={editingLevel} onClose={handleModalClose} showPrerequisiteAndCode={true} />
+			</Modal>
+
+			{/* Confirm Modal */}
+			<Modal
+				title={confirmModal.title}
+				open={confirmModal.visible}
+				onOk={confirmModal.onConfirm}
+				onCancel={handleConfirmCancel}
+				okText={t('common.confirm')}
+				cancelText={t('common.cancel')}
+				width={500}
+				centered
+				bodyStyle={{
+					padding: '30px 40px',
+					fontSize: '16px',
+					lineHeight: '1.6',
+					textAlign: 'center',
+				}}
+				okButtonProps={{
+					style: {
+						backgroundColor: '#1890ff',
+						borderColor: '#1890ff',
+						height: '40px',
+						fontSize: '16px',
+						fontWeight: '500',
+						minWidth: '100px',
+					},
+				}}
+				cancelButtonProps={{
+					style: {
+						height: '40px',
+						fontSize: '16px',
+						fontWeight: '500',
+						minWidth: '100px',
+					},
+				}}>
+				<div
+					style={{
+						display: 'flex',
+						flexDirection: 'column',
+						alignItems: 'center',
+						gap: '20px',
+					}}>
+					<div
+						style={{
+							fontSize: '48px',
+							color: '#1890ff',
+							marginBottom: '10px',
+						}}>
+						⚠️
+					</div>
+					<p
+						style={{
+							fontSize: '18px',
+							color: '#333',
+							margin: 0,
+							fontWeight: '500',
+						}}>
+						{confirmModal.content}
+					</p>
+				</div>
 			</Modal>
 
 		</ThemedLayout>

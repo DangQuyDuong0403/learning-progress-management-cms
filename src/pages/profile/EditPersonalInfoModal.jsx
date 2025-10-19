@@ -23,8 +23,7 @@ export default function EditPersonalInfoModal({
   useEffect(() => {
     if (profileData && isVisible) {
       form.setFieldsValue({
-        lastName: profileData.lastName || "",
-        firstName: profileData.firstName || "",
+        fullName: profileData.fullName || "",
         phone: profileData.phoneNumber || "",
         address: profileData.address || "",
         gender: profileData.gender || "MALE",
@@ -45,8 +44,7 @@ export default function EditPersonalInfoModal({
 
       // Chuẩn bị dữ liệu theo format API - chỉ gửi các field cần thiết
       const updateData = {
-        firstName: values.firstName,
-        lastName: values.lastName,
+        fullName: values.fullName,
         avatarUrl: profileData?.avatarUrl || "string", // Luôn gửi string, không gửi File object
         dateOfBirth: values.dateOfBirth ? new Date(values.dateOfBirth).toISOString() : new Date("2003-10-15").toISOString(), // Format ISO với time và timezone
         address: values.address,
@@ -126,8 +124,7 @@ export default function EditPersonalInfoModal({
         form={form}
         layout='vertical'
         initialValues={{
-          lastName: profileData?.lastName || "",
-          firstName: profileData?.firstName || "",
+          fullName: profileData?.fullName || "",
           phone: profileData?.phoneNumber || "",
           address: profileData?.address || "",
           gender: profileData?.gender || "MALE",
@@ -135,34 +132,17 @@ export default function EditPersonalInfoModal({
             ? new Date(profileData.dateOfBirth).toISOString().split('T')[0]
             : ""
         }}>
-        <Row gutter={16}>
-          <Col span={12}>
-            <Form.Item
-              label={
-                <span>
-                  {t('common.lastName')}
-                  <span style={{ color: 'red', marginLeft: '4px' }}>*</span>
-                </span>
-              }
-              name='lastName'
-              required={false}>
-              <Input placeholder="Enter last name" />
-            </Form.Item>
-          </Col>
-          <Col span={12}>
-            <Form.Item
-              label={
-                <span>
-                  {t('common.firstName')}
-                  <span style={{ color: 'red', marginLeft: '4px' }}>*</span>
-                </span>
-              }
-              name='firstName'
-              required={false}>
-              <Input placeholder="Enter first name" />
-            </Form.Item>
-          </Col>
-        </Row>
+        <Form.Item
+          label={
+            <span>
+              {t('common.fullName')}
+              <span style={{ color: 'red', marginLeft: '4px' }}>*</span>
+            </span>
+          }
+          name='fullName'
+          required={false}>
+          <Input placeholder="Enter full name" />
+        </Form.Item>
 
         <Row gutter={16}>
           <Col span={12}>
@@ -201,10 +181,24 @@ export default function EditPersonalInfoModal({
             <Form.Item
               label={t('common.dateOfBirth')}
               name='dateOfBirth'
-              required={false}>
+              required={false}
+              rules={[
+                {
+                  validator: (_, value) => {
+                    if (!value) return Promise.resolve();
+                    const selectedDate = new Date(value);
+                    const selectedYear = selectedDate.getFullYear();
+                    if (selectedYear < 1920) {
+                      return Promise.reject(new Error('Date of birth must be from 1920 onwards'));
+                    }
+                    return Promise.resolve();
+                  }
+                }
+              ]}>
               <Input 
                 type="date"
                 placeholder="Select date of birth"
+                min="1920-01-01"
               />
             </Form.Item>
           </Col>

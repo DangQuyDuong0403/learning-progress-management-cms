@@ -89,7 +89,6 @@ export default function EditEmailModal({
       onCancel={handleCancel}
       width={500}
       okText={showConfirmationMessage ? t('common.ok') : t('common.update')}
-      cancelText={t('common.close')}
       confirmLoading={updateEmailLoading}
       okButtonProps={{
         style: {

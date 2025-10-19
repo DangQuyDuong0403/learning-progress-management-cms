@@ -64,6 +64,7 @@ export default function ResetPassword() {
 				
 				// Lưu selectedRole trước khi xóa localStorage
 				const loginRole = localStorage.getItem('selectedRole') || 'teacher';
+				console.log('Saved role before cleanup:', loginRole);
 				
 				// Gọi API logout để logout tất cả sessions trên backend (bỏ qua lỗi)
 				try {
@@ -89,29 +90,37 @@ export default function ResetPassword() {
 				
 				// Chuyển về trang login ngay lập tức dựa trên role đã lưu
 				console.log('Redirecting immediately with role:', loginRole);
-				try {
-					let redirectUrl;
-					if (loginRole === 'STUDENT') {
-						redirectUrl = '/login-student';
-						console.log('Redirecting to:', redirectUrl);
-					} else {
-						redirectUrl = '/login-teacher';
-						console.log('Redirecting to:', redirectUrl);
-					}
-					
-					// Thử navigate trước, nếu không được thì dùng window.location
+				
+				// Delay ngắn để đảm bảo toast message hiển thị
+				setTimeout(() => {
 					try {
-						navigate(redirectUrl);
-						console.log('Navigate successful');
-					} catch (navError) {
-						console.log('Navigate failed, using window.location:', navError);
-						window.location.href = redirectUrl;
+						let redirectUrl;
+						if (loginRole === 'STUDENT') {
+							redirectUrl = '/login-student';
+							console.log('Redirecting to student login:', redirectUrl);
+						} else if (loginRole === 'TEACHER') {
+							redirectUrl = '/login-teacher';
+							console.log('Redirecting to teacher login:', redirectUrl);
+						} else {
+							// Fallback cho các role khác hoặc không xác định
+							redirectUrl = '/choose-login';
+							console.log('Unknown role, redirecting to choose login:', redirectUrl);
+						}
+						
+						// Thử navigate trước, nếu không được thì dùng window.location
+						try {
+							navigate(redirectUrl);
+							console.log('Navigate successful');
+						} catch (navError) {
+							console.log('Navigate failed, using window.location:', navError);
+							window.location.href = redirectUrl;
+						}
+					} catch (error) {
+						console.error('All navigation methods failed:', error);
+						// Fallback cuối cùng
+						window.location.href = '/choose-login';
 					}
-				} catch (error) {
-					console.error('All navigation methods failed:', error);
-					// Fallback cuối cùng
-					window.location.href = '/choose-login';
-				}
+				}, 1500); // Delay 1.5 giây để user thấy success message
 			}
 		} catch (error) {
 			// Xử lý lỗi từ API - error object có cấu trúc trực tiếp
