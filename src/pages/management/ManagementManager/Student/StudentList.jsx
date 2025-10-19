@@ -36,8 +36,7 @@ import "./StudentList.css";
 import { spaceToast } from "../../../../component/SpaceToastify";
 import studentManagementApi from "../../../../apis/backend/StudentManagement";
 import AssignStudentToClass from "./AssignStudentToClass";
-import { useDispatch, useSelector } from "react-redux";
-import { fetchLevels } from "../../../../redux/level";
+import levelManagementApi from "../../../../apis/backend/levelManagement";
 
 const { Option } = Select;
 const { Title, Text } = Typography;
@@ -49,8 +48,8 @@ const StudentList = () => {
   // Set page title
   usePageTitle('Student Management');
   const { theme } = useTheme();
-  const dispatch = useDispatch();
-  const { levels, loading: levelsLoading } = useSelector((state) => state.level);
+  const [publishedLevels, setPublishedLevels] = useState([]);
+  const [publishedLevelsLoading, setPublishedLevelsLoading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [students, setStudents] = useState([]);
   const [totalStudents, setTotalStudents] = useState(0);
@@ -82,6 +81,7 @@ const StudentList = () => {
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [editingStudent, setEditingStudent] = useState(null);
   const [form] = Form.useForm();
+  const [isButtonDisabled, setIsButtonDisabled] = useState(false);
   const [confirmModal, setConfirmModal] = useState({
     visible: false,
     title: '',
@@ -178,10 +178,34 @@ const StudentList = () => {
     fetchStudents(1, pagination.pageSize, searchValue, statusFilter, roleNameFilter, sortBy, sortDir);
   }, [fetchStudents, pagination.pageSize, searchValue, statusFilter, roleNameFilter, sortBy, sortDir]);
 
-  // Fetch levels when component mounts
+  // Fetch published levels when component mounts
   useEffect(() => {
-    dispatch(fetchLevels());
-  }, [dispatch]);
+    const fetchPublishedLevels = async () => {
+      setPublishedLevelsLoading(true);
+      try {
+        const params = {
+          page: 0,
+          size: 100, // Get all published levels
+        };
+        
+        const response = await levelManagementApi.getPublishedLevels({ params });
+        
+        // Handle different response structures
+        const levelsData = response.data?.content || response.data || [];
+        setPublishedLevels(levelsData);
+        
+        console.log('Fetched published levels:', levelsData);
+      } catch (error) {
+        console.error('Error fetching published levels:', error);
+        spaceToast.error('Failed to load levels');
+        setPublishedLevels([]);
+      } finally {
+        setPublishedLevelsLoading(false);
+      }
+    };
+    
+    fetchPublishedLevels();
+  }, []);
 
   // Cleanup timeout on unmount
   useEffect(() => {
@@ -710,6 +734,10 @@ const StudentList = () => {
   };
 
   const handleModalOk = async () => {
+    if (isButtonDisabled) return; // Prevent multiple submissions
+    
+    setIsButtonDisabled(true);
+    
     try {
       const values = await form.validateFields();
       
@@ -768,6 +796,11 @@ const StudentList = () => {
       form.resetFields();
     } catch (error) {
       console.error('Form validation error:', error);
+    } finally {
+      // Re-enable button after 0.5 seconds
+      setTimeout(() => {
+        setIsButtonDisabled(false);
+      }, 500);
     }
   };
 
@@ -1178,6 +1211,7 @@ const StudentList = () => {
           okText={editingStudent ? t('common.save') : t('studentManagement.addStudent')}
           cancelText={t('common.cancel')}
           okButtonProps={{
+            disabled: isButtonDisabled,
             style: {
               backgroundColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
               background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
@@ -1220,7 +1254,10 @@ const StudentList = () => {
                 >
                   <Select placeholder={t('studentManagement.selectRole')}>
                     <Option value="STUDENT">{t('common.student')}</Option>
-                    <Option value="TEST_TAKER">{t('common.testTaker')}</Option>
+                    {/* Only allow TEST_TAKER option if not editing a STUDENT */}
+                    {(!editingStudent || editingStudent?.roleName !== 'STUDENT') && (
+                      <Option value="TEST_TAKER">{t('common.testTaker')}</Option>
+                    )}
                   </Select>
                 </Form.Item>
               </Col>
@@ -1371,15 +1408,15 @@ const StudentList = () => {
                       >
                         <Select 
                           placeholder={t('studentManagement.selectLevel')}
-                          loading={levelsLoading}
+                          loading={publishedLevelsLoading}
                           showSearch
                           filterOption={(input, option) =>
                             option.children.toLowerCase().indexOf(input.toLowerCase()) >= 0
                           }
-                          notFoundContent={levelsLoading ? t("common.loading") : t("studentManagement.noLevelsFound")}
+                          notFoundContent={publishedLevelsLoading ? t("common.loading") : t("studentManagement.noLevelsFound")}
                         >
-                          {levels && levels.length > 0 ? (
-                            levels.map(level => {
+                          {publishedLevels && publishedLevels.length > 0 ? (
+                            publishedLevels.map(level => {
                               // Handle different field names that might come from API
                               const levelName = level.name || level.levelName || level.title || 'Unknown Level';
                               const levelCode = level.code || level.levelCode || level.code || '';
@@ -1391,7 +1428,7 @@ const StudentList = () => {
                               );
                             })
                           ) : (
-                            !levelsLoading && (
+                            !publishedLevelsLoading && (
                               <Option disabled value="">
                                 No levels available
                               </Option>
