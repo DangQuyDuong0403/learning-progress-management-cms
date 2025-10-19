@@ -399,8 +399,6 @@ const LessonDragEdit = () => {
 					};
 				});
 			});
-
-			spaceToast.success(t('lessonManagement.deleteLessonSuccess'));
 		},
 		[lessons, t]
 	);

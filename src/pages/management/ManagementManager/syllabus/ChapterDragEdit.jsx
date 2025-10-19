@@ -370,8 +370,6 @@ const ChapterDragEdit = () => {
 					};
 				});
 			});
-
-			spaceToast.success(t('chapterManagement.deleteChapterSuccess'));
 		},
 		[chapters, t]
 	);

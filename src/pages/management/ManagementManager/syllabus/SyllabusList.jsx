@@ -65,6 +65,7 @@ const SyllabusList = () => {
 	const [isModalVisible, setIsModalVisible] = useState(false);
 	const [isDeleteModalVisible, setIsDeleteModalVisible] = useState(false);
 	const [isBulkDeleteModalVisible, setIsBulkDeleteModalVisible] = useState(false);
+	const [isExportModalVisible, setIsExportModalVisible] = useState(false);
 	const [editingSyllabus, setEditingSyllabus] = useState(null);
 	const [deleteSyllabus, setDeleteSyllabus] = useState(null);
 	const [importModal, setImportModal] = useState({
@@ -197,6 +198,12 @@ const SyllabusList = () => {
 			// Update local state
 			setSyllabuses(syllabuses.filter(s => s.id !== deleteSyllabus.id));
 			
+			// Update selectedRowKeys - remove deleted item if it was selected
+			setSelectedRowKeys(prev => prev.filter(key => key !== deleteSyllabus.id));
+			
+			// Update totalElements
+			setTotalElements(prev => prev - 1);
+			
 			// Show success message
 			spaceToast.success(response.message);
 			
@@ -269,8 +276,7 @@ const SyllabusList = () => {
 	};
 
 	const handleExport = () => {
-		// TODO: Implement export functionality
-		message.success(t('syllabusManagement.exportSuccess'));
+		setIsExportModalVisible(true);
 	};
 
 	const handleImport = () => {
@@ -446,15 +452,6 @@ const SyllabusList = () => {
 		setIsBulkDeleteModalVisible(true);
 	};
 
-	const handleBulkExport = () => {
-		if (selectedRowKeys.length === 0) {
-			message.warning(t('syllabusManagement.selectItemsToExport'));
-			return;
-		}
-		// TODO: Implement bulk export
-		message.success(`${t('syllabusManagement.bulkExportSuccess')}: ${selectedRowKeys.length} items`);
-	};
-
 	// Bulk delete modal handlers
 	const handleBulkDeleteConfirm = async () => {
 		try {
@@ -463,6 +460,9 @@ const SyllabusList = () => {
 			
 			// Update local state
 			setSyllabuses(syllabuses.filter(s => !selectedRowKeys.includes(s.id)));
+			
+			// Update totalElements
+			setTotalElements(prev => prev - selectedRowKeys.length);
 			
 			// Show success message
 			spaceToast.success(`${t('syllabusManagement.bulkDeleteSuccess')} ${selectedRowKeys.length} ${t('syllabusManagement.syllabuses')} ${t('common.success')}`);
@@ -484,6 +484,37 @@ const SyllabusList = () => {
 
 	const handleBulkDeleteModalClose = () => {
 		setIsBulkDeleteModalVisible(false);
+	};
+
+	// Export modal handlers
+	const handleExportModalClose = () => {
+		setIsExportModalVisible(false);
+	};
+
+	const handleExportSelected = async () => {
+		try {
+			// TODO: Implement export selected items API call
+			// await syllabusManagementApi.exportSyllabuses(selectedRowKeys);
+			
+			spaceToast.success(`${t('syllabusManagement.exportSuccess')}: ${selectedRowKeys.length} ${t('syllabusManagement.syllabuses')}`);
+			setIsExportModalVisible(false);
+		} catch (error) {
+			console.error('Error exporting selected syllabuses:', error);
+			spaceToast.error(t('syllabusManagement.exportError'));
+		}
+	};
+
+	const handleExportAll = async () => {
+		try {
+			// TODO: Implement export all items API call
+			// await syllabusManagementApi.exportAllSyllabuses();
+			
+			spaceToast.success(`${t('syllabusManagement.exportSuccess')}: ${totalElements} ${t('syllabusManagement.syllabuses')}`);
+			setIsExportModalVisible(false);
+		} catch (error) {
+			console.error('Error exporting all syllabuses:', error);
+			spaceToast.error(t('syllabusManagement.exportError'));
+		}
 	};
 
 	// No need for client-side filtering since API handles filtering
@@ -863,6 +894,7 @@ const SyllabusList = () => {
 								onClick={handleExport}
 							>
 								{t('syllabusManagement.exportData')}
+								{selectedRowKeys.length > 0 && ` (${selectedRowKeys.length})`}
 							</Button>
 							<Button
 								icon={<DownloadOutlined />}
@@ -895,14 +927,7 @@ const SyllabusList = () => {
 									onClick={handleBulkDelete}
 									className="bulk-delete-button"
 								>
-									{t('syllabusManagement.bulkDelete')} ({selectedRowKeys.length})
-								</Button>
-								<Button
-									icon={<UploadOutlined />}
-									onClick={handleBulkExport}
-									className="bulk-export-button"
-								>
-									{t('syllabusManagement.bulkExport')} ({selectedRowKeys.length})
+									{t('syllabusManagement.deleteAll')} ({selectedRowKeys.length})
 								</Button>
 							</Space>
 						</Col>
@@ -1263,6 +1288,89 @@ const SyllabusList = () => {
 							</Button>
 						</div>
 					)}
+				</div>
+			</Modal>
+
+			{/* Export Data Modal */}
+			<Modal
+				title={
+					<div
+						style={{
+							fontSize: '24px',
+							fontWeight: '600',
+							color: '#000000',
+							textAlign: 'center',
+							padding: '10px 0',
+						}}>
+						{t('syllabusManagement.exportData')}
+					</div>
+				}
+				open={isExportModalVisible}
+				onCancel={handleExportModalClose}
+				width={500}
+				footer={[
+					<Button 
+						key="cancel" 
+						onClick={handleExportModalClose}
+						style={{
+							height: '32px',
+							fontWeight: '500',
+							fontSize: '14px',
+							padding: '4px 15px',
+							width: '100px'
+						}}>
+						{t('common.cancel')}
+					</Button>
+				]}>
+				<div style={{ padding: '20px 0' }}>
+					<div style={{ textAlign: 'center', marginBottom: '30px' }}>
+						<UploadOutlined style={{ fontSize: '48px', color: '#1890ff', marginBottom: '16px' }} />
+						<Typography.Title level={4} style={{ color: '#666', marginBottom: '8px' }}>
+							{t('syllabusManagement.chooseExportOption')}
+						</Typography.Title>
+						<Typography.Text style={{ color: '#999' }}>
+							{t('syllabusManagement.exportDescription')}
+						</Typography.Text>
+					</div>
+
+					<div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+						{selectedRowKeys.length > 0 && (
+							<Button
+								type="primary"
+								icon={<UploadOutlined />}
+								onClick={handleExportSelected}
+								style={{
+									height: '48px',
+									fontSize: '16px',
+									fontWeight: '500',
+									background: theme === 'sun' 
+										? 'linear-gradient(135deg, #FFFFFF, #B6D8FE 77%, #94C2F5)'
+										: 'linear-gradient(135deg, #FFFFFF 0%, #9F96B6 46%, #A79EBB 64%, #ACA5C0 75%, #6D5F8F 100%)',
+									borderColor: theme === 'sun' ? '#B6D8FE' : '#9F96B6',
+									color: '#000000',
+									borderRadius: '8px',
+								}}>
+								{t('syllabusManagement.exportSelected')} ({selectedRowKeys.length} {t('syllabusManagement.syllabuses')})
+							</Button>
+						)}
+
+						<Button
+							icon={<UploadOutlined />}
+							onClick={handleExportAll}
+							style={{
+								height: '48px',
+								fontSize: '16px',
+								fontWeight: '500',
+								background: theme === 'sun' 
+									? 'linear-gradient(135deg, #FFFFFF, #B6D8FE 77%, #94C2F5)'
+									: 'linear-gradient(135deg, #FFFFFF 0%, #9F96B6 46%, #A79EBB 64%, #ACA5C0 75%, #6D5F8F 100%)',
+								borderColor: theme === 'sun' ? '#B6D8FE' : '#9F96B6',
+								color: '#000000',
+								borderRadius: '8px',
+							}}>
+							{t('syllabusManagement.exportAll')} ({totalElements} {t('syllabusManagement.syllabuses')})
+						</Button>
+					</div>
 				</div>
 			</Modal>
 		</ThemedLayout>

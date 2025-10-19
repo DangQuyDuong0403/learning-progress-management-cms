@@ -11,16 +11,14 @@ import {
 	Tooltip,
 	Typography,
 	Checkbox,
+	Tabs,
 } from 'antd';
 import {
-	PlusOutlined,
-	EditOutlined,
 	DeleteOutlined,
 	SearchOutlined,
 	EyeOutlined,
 	ArrowLeftOutlined,
 	DragOutlined,
-	UploadOutlined,
 	DownloadOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
@@ -50,6 +48,7 @@ const ChapterListPage = () => {
 	const [searchTimeout, setSearchTimeout] = useState(null);
 	const [totalElements, setTotalElements] = useState(0);
 	const [selectedRowKeys, setSelectedRowKeys] = useState([]);
+	const [activeTab, setActiveTab] = useState('chapters');
 
 	// Modal states
 	const [isModalVisible, setIsModalVisible] = useState(false);
@@ -119,7 +118,7 @@ const ChapterListPage = () => {
 			message.error(errorMessage);
 			setLoading(false);
 		}
-	}, [syllabusId, t]);
+	}, [syllabusId]);
 
 	// Fetch syllabus info
 	const fetchSyllabusInfo = useCallback(async () => {
@@ -158,20 +157,6 @@ const ChapterListPage = () => {
 		};
 	}, [searchTimeout]);
 
-	const handleAdd = () => {
-		setEditingChapter(null);
-		setIsModalVisible(true);
-	};
-
-	const handleEdit = (chapter) => {
-		setEditingChapter(chapter);
-		setIsModalVisible(true);
-	};
-
-	const handleDeleteClick = (chapter) => {
-		setDeleteChapter(chapter);
-		setIsDeleteModalVisible(true);
-	};
 
 	const handleDelete = async () => {
 		try {
@@ -226,6 +211,13 @@ const ChapterListPage = () => {
 
 	const handleEditOrder = () => {
 		navigate(`/manager/syllabuses/${syllabusId}/chapters/edit-order`);
+	};
+
+	const handleTabChange = (key) => {
+		setActiveTab(key);
+		if (key === 'lessons') {
+			navigate(`/manager/syllabuses/${syllabusId}/lessons`);
+		}
 	};
 
 	const handleSearch = (value) => {
@@ -287,7 +279,7 @@ const ChapterListPage = () => {
 	};
 
 	// Bulk actions
-	const handleBulkDelete = () => {
+	const handleDeleteAll = () => {
 		if (selectedRowKeys.length === 0) {
 			message.warning(t('chapterManagement.selectItemsToDelete'));
 			return;
@@ -295,16 +287,7 @@ const ChapterListPage = () => {
 		setIsBulkDeleteModalVisible(true);
 	};
 
-	const handleBulkExport = () => {
-		if (selectedRowKeys.length === 0) {
-			message.warning(t('chapterManagement.selectItemsToExport'));
-			return;
-		}
-		// TODO: Implement bulk export functionality
-		message.success(t('chapterManagement.bulkExportSuccess'));
-	};
-
-	const handleBulkDeleteConfirm = async () => {
+	const handleDeleteAllConfirm = async () => {
 		try {
 			// TODO: Implement bulk delete API call
 			// await syllabusManagementApi.bulkDeleteChapters(selectedRowKeys);
@@ -313,21 +296,16 @@ const ChapterListPage = () => {
 			setChapters(chapters.filter(c => !selectedRowKeys.includes(c.id)));
 			setSelectedRowKeys([]);
 			
-			message.success(t('chapterManagement.bulkDeleteSuccess'));
+			message.success(t('chapterManagement.deleteAllSuccess'));
 			setIsBulkDeleteModalVisible(false);
 		} catch (error) {
-			console.error('Error bulk deleting chapters:', error);
-			message.error(t('chapterManagement.bulkDeleteError'));
+			console.error('Error deleting all chapters:', error);
+			message.error(t('chapterManagement.deleteAllError'));
 		}
 	};
 
-	const handleBulkDeleteModalClose = () => {
+	const handleDeleteAllModalClose = () => {
 		setIsBulkDeleteModalVisible(false);
-	};
-
-	const handleExport = () => {
-		// TODO: Implement export functionality
-		message.success(t('chapterManagement.exportSuccess'));
 	};
 
 	const handleImport = () => {
@@ -516,6 +494,33 @@ const ChapterListPage = () => {
 					<div style={{ width: '100px' }}></div> {/* Spacer để cân bằng layout */}
 				</div>
 
+				{/* Tabs Section */}
+				<div className={`custom-tabs-container ${theme}-tabs-container`} style={{ marginBottom: '24px' }}>
+					<Tabs
+						activeKey={activeTab}
+						onChange={handleTabChange}
+						className={`custom-tabs ${theme}-tabs`}
+						items={[
+							{
+								key: 'chapters',
+								label: (
+									<div className={`tab-label ${theme}-tab-label`}>
+										<span className={`tab-text ${theme}-tab-text`}>{t('chapterManagement.title')}</span>
+									</div>
+								),
+							},
+							{
+								key: 'lessons',
+								label: (
+									<div className={`tab-label ${theme}-tab-label`}>
+										<span className={`tab-text ${theme}-tab-text`}>{t('lessonManagement.viewAllLessons')}</span>
+									</div>
+								),
+							},
+						]}
+					/>
+				</div>
+
 				{/* Action Bar */}
 				<Row gutter={16} align="middle" style={{ marginBottom: '16px' }}>
 					<Col flex="auto">
@@ -550,13 +555,6 @@ const ChapterListPage = () => {
 								{t('lessonManagement.viewAllLessons')}
 							</Button>
 							<Button
-								icon={<UploadOutlined />}
-								className={`export-button ${theme}-export-button`}
-								onClick={handleExport}
-							>
-								{t('chapterManagement.exportData')}
-							</Button>
-							<Button
 								icon={<DownloadOutlined />}
 								className={`import-button ${theme}-import-button`}
 								onClick={handleImport}
@@ -581,17 +579,10 @@ const ChapterListPage = () => {
 							<Space>
 								<Button
 									icon={<DeleteOutlined />}
-									onClick={handleBulkDelete}
+									onClick={handleDeleteAll}
 									className="bulk-delete-button"
 								>
-									{t('chapterManagement.bulkDelete')} ({selectedRowKeys.length})
-								</Button>
-								<Button
-									icon={<UploadOutlined />}
-									onClick={handleBulkExport}
-									className="bulk-export-button"
-								>
-									{t('chapterManagement.bulkExport')} ({selectedRowKeys.length})
+									{t('chapterManagement.deleteAll')} ({selectedRowKeys.length})
 								</Button>
 							</Space>
 						</Col>
@@ -718,7 +709,7 @@ const ChapterListPage = () => {
 				</div>
 			</Modal>
 
-			{/* Bulk Delete Confirmation Modal */}
+			{/* Delete All Confirmation Modal */}
 			<Modal
 				title={
 					<div style={{
@@ -728,12 +719,12 @@ const ChapterListPage = () => {
 						textAlign: 'center',
 						padding: '10px 0'
 					}}>
-						{t('chapterManagement.confirmBulkDelete')}
+						{t('chapterManagement.confirmDeleteAll')}
 					</div>
 				}
 				open={isBulkDeleteModalVisible}
-				onOk={handleBulkDeleteConfirm}
-				onCancel={handleBulkDeleteModalClose}
+				onOk={handleDeleteAllConfirm}
+				onCancel={handleDeleteAllModalClose}
 				okText={t('common.confirm')}
 				cancelText={t('common.cancel')}
 				width={500}
@@ -784,7 +775,7 @@ const ChapterListPage = () => {
 						margin: 0,
 						fontWeight: '500'
 					}}>
-						{t('chapterManagement.confirmBulkDeleteMessage')}
+						{t('chapterManagement.confirmDeleteAllMessage')}
 					</p>
 					<div style={{
 						fontSize: '20px',

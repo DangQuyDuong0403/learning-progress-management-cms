@@ -80,6 +80,7 @@ const StudentList = () => {
   
   // Modal states
   const [isModalVisible, setIsModalVisible] = useState(false);
+  const [isExportModalVisible, setIsExportModalVisible] = useState(false);
   const [editingStudent, setEditingStudent] = useState(null);
   const [form] = Form.useForm();
   const [confirmModal, setConfirmModal] = useState({
@@ -297,47 +298,23 @@ const StudentList = () => {
   };
 
   // Bulk actions
-  const handleBulkActiveDeactive = () => {
+  const handleBulkActive = () => {
     if (selectedRowKeys.length === 0) {
       spaceToast.warning(t('studentManagement.selectItemsToActiveDeactive'));
       return;
     }
     
-    // Get selected students info
-    const selectedStudents = students.filter(student => selectedRowKeys.includes(student.id));
-    const activeStudents = selectedStudents.filter(s => s.status === 'ACTIVE');
-    const inactiveStudents = selectedStudents.filter(s => s.status === 'INACTIVE');
-    
-    let actionText = '';
-    let confirmContent = '';
-    
-    if (activeStudents.length > 0 && inactiveStudents.length > 0) {
-      // Mixed selection - show general message
-      actionText = t('studentManagement.changeStatus');
-      confirmContent = `${t('studentManagement.confirmBulkStatusChange')} ${selectedRowKeys.length} ${t('studentManagement.students')}?`;
-    } else if (activeStudents.length > 0) {
-      // All active - will deactivate
-      actionText = t('studentManagement.deactivate');
-      confirmContent = `${t('studentManagement.confirmBulkDeactivate')} ${selectedRowKeys.length} ${t('studentManagement.students')}?`;
-    } else {
-      // All inactive - will activate
-      actionText = t('studentManagement.activate');
-      confirmContent = `${t('studentManagement.confirmBulkActivate')} ${selectedRowKeys.length} ${t('studentManagement.students')}?`;
-    }
+    const confirmContent = `${t('studentManagement.confirmBulkActivate')} ${selectedRowKeys.length} ${t('studentManagement.students')}?`;
     
     setConfirmModal({
       visible: true,
-      title: `${actionText} ${t('studentManagement.students')}`,
+      title: `${t('studentManagement.activeAll')} ${t('studentManagement.students')}`,
       content: confirmContent,
       onConfirm: async () => {
         try {
-          // Determine the action based on current status
-          const bulkAction = activeStudents.length > inactiveStudents.length ? 'INACTIVE' : 'ACTIVE';
-          
-          // Call API for bulk update (you'll need to implement this API)
-          // For now, we'll update each student individually
+          // Call API for bulk update - activate all selected students
           const promises = selectedRowKeys.map(id => 
-            studentManagementApi.updateStudentStatus(id, bulkAction)
+            studentManagementApi.updateStudentStatus(id, 'ACTIVE')
           );
           
           const results = await Promise.all(promises);
@@ -352,8 +329,7 @@ const StudentList = () => {
             setSelectedRowKeys([]);
             
             // Show success toast
-            const actionText = bulkAction === 'ACTIVE' ? t('studentManagement.activateStudentSuccess') : t('studentManagement.deactivateStudentSuccess');
-            spaceToast.success(`${actionText} ${successCount} ${t('studentManagement.students')} ${t('studentManagement.success')}`);
+            spaceToast.success(`${t('studentManagement.activateStudentSuccess')} ${successCount} ${t('studentManagement.students')} ${t('studentManagement.success')}`);
           } else {
             throw new Error('All operations failed');
           }
@@ -366,14 +342,50 @@ const StudentList = () => {
     });
   };
 
-  const handleBulkExport = () => {
+  const handleBulkDeactive = () => {
     if (selectedRowKeys.length === 0) {
-      spaceToast.warning(t('studentManagement.selectItemsToExport'));
+      spaceToast.warning(t('studentManagement.selectItemsToActiveDeactive'));
       return;
     }
-    // TODO: Implement bulk export functionality
-    spaceToast.info(`Selected ${selectedRowKeys.length} students for export`);
+    
+    const confirmContent = `${t('studentManagement.confirmBulkDeactivate')} ${selectedRowKeys.length} ${t('studentManagement.students')}?`;
+    
+    setConfirmModal({
+      visible: true,
+      title: `${t('studentManagement.deactiveAll')} ${t('studentManagement.students')}`,
+      content: confirmContent,
+      onConfirm: async () => {
+        try {
+          // Call API for bulk update - deactivate all selected students
+          const promises = selectedRowKeys.map(id => 
+            studentManagementApi.updateStudentStatus(id, 'INACTIVE')
+          );
+          
+          const results = await Promise.all(promises);
+          const successCount = results.filter(r => r.success).length;
+          
+          if (successCount > 0) {
+            // Refresh the list
+            fetchStudents(pagination.current, pagination.pageSize, searchText, statusFilter, roleNameFilter, sortBy, sortDir);
+            setConfirmModal({ visible: false, title: '', content: '', onConfirm: null });
+            
+            // Clear selection
+            setSelectedRowKeys([]);
+            
+            // Show success toast
+            spaceToast.success(`${t('studentManagement.deactivateStudentSuccess')} ${successCount} ${t('studentManagement.students')} ${t('studentManagement.success')}`);
+          } else {
+            throw new Error('All operations failed');
+          }
+        } catch (error) {
+          console.error('Error updating student statuses:', error);
+          setConfirmModal({ visible: false, title: '', content: '', onConfirm: null });
+          spaceToast.error(t('studentManagement.bulkUpdateStatusError'));
+        }
+      }
+    });
   };
+
 
   // Table columns
   const columns = [
@@ -881,10 +893,38 @@ const StudentList = () => {
     }
   };
 
-  // Handle export students
   const handleExportStudents = () => {
-    // Simulate export functionality
-    spaceToast.info(t('studentManagement.exportInProgress'));
+    setIsExportModalVisible(true);
+  };
+
+  const handleExportModalClose = () => {
+    setIsExportModalVisible(false);
+  };
+
+  const handleExportSelected = async () => {
+    try {
+      // TODO: Implement export selected items API call
+      // await studentManagementApi.exportStudents(selectedRowKeys);
+      
+      spaceToast.success(`${t('studentManagement.exportSuccess')}: ${selectedRowKeys.length} ${t('studentManagement.students')}`);
+      setIsExportModalVisible(false);
+    } catch (error) {
+      console.error('Error exporting selected students:', error);
+      spaceToast.error(t('studentManagement.exportError'));
+    }
+  };
+
+  const handleExportAll = async () => {
+    try {
+      // TODO: Implement export all items API call
+      // await studentManagementApi.exportAllStudents();
+      
+      spaceToast.success(`${t('studentManagement.exportSuccess')}: ${totalStudents} ${t('studentManagement.students')}`);
+      setIsExportModalVisible(false);
+    } catch (error) {
+      console.error('Error exporting all students:', error);
+      spaceToast.error(t('studentManagement.exportError'));
+    }
   };
 
 
@@ -1073,6 +1113,7 @@ const StudentList = () => {
                 onClick={handleExportStudents}
               >
                 {t('studentManagement.exportData')}
+                {selectedRowKeys.length > 0 && ` (${selectedRowKeys.length})`}
               </Button>
               <Button 
                 icon={<DownloadOutlined />}
@@ -1102,8 +1143,8 @@ const StudentList = () => {
             }}>
               <div style={{ display: 'flex', gap: '12px' }}>
                 <Button 
-                  onClick={handleBulkActiveDeactive}
-                  className={`bulk-active-deactive-button ${theme}-bulk-active-deactive-button`}
+                  onClick={handleBulkActive}
+                  className={`bulk-active-button ${theme}-bulk-active-button`}
                   style={{
                     backgroundColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)',
                     background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)',
@@ -1113,24 +1154,28 @@ const StudentList = () => {
                     fontSize: '16px',
                     fontWeight: '500',
                     minWidth: '140px',
-                    width: '260px'
+                    width: '130px'
                   }}
                 >
-                  {t('studentManagement.bulkActiveDeactive')} ({selectedRowKeys.length})
+                  {t('studentManagement.activeAll')} ({selectedRowKeys.length})
                 </Button>
+                
                 <Button 
-                  icon={<UploadOutlined />}
-                  onClick={handleBulkExport}
-                  className={`bulk-export-button ${theme}-bulk-export-button`}
+                  onClick={handleBulkDeactive}
+                  className={`bulk-deactive-button ${theme}-bulk-deactive-button`}
                   style={{
+                    backgroundColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)',
+                    background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)',
+                    borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'transparent',
+                    color: '#000000',
                     height: '40px',
                     fontSize: '16px',
                     fontWeight: '500',
                     minWidth: '140px',
-                    width: '160px'
+                    width: '130px'
                   }}
                 >
-                  {t('studentManagement.bulkExport')} ({selectedRowKeys.length})
+                  {t('studentManagement.deactiveAll')} ({selectedRowKeys.length})
                 </Button>
               </div>
             </div>
@@ -1696,6 +1741,88 @@ const StudentList = () => {
           )}
         </Modal>
 
+        {/* Export Data Modal */}
+        <Modal
+          title={
+            <div
+              style={{
+                fontSize: '24px',
+                fontWeight: '600',
+                color: theme === 'dark' ? '#ffffff' : '#000000',
+                textAlign: 'center',
+                padding: '10px 0',
+              }}>
+              {t('studentManagement.exportData')}
+            </div>
+          }
+          open={isExportModalVisible}
+          onCancel={handleExportModalClose}
+          width={500}
+          footer={[
+            <Button 
+              key="cancel" 
+              onClick={handleExportModalClose}
+              style={{
+                height: '32px',
+                fontWeight: '500',
+                fontSize: '14px',
+                padding: '4px 15px',
+                width: '100px'
+              }}>
+              {t('common.cancel')}
+            </Button>
+          ]}>
+          <div style={{ padding: '20px 0' }}>
+            <div style={{ textAlign: 'center', marginBottom: '30px' }}>
+              <UploadOutlined style={{ fontSize: '48px', color: '#1890ff', marginBottom: '16px' }} />
+              <Typography.Title level={4} style={{ color: theme === 'dark' ? '#cccccc' : '#666', marginBottom: '8px' }}>
+                {t('studentManagement.chooseExportOption')}
+              </Typography.Title>
+              <Typography.Text style={{ color: theme === 'dark' ? '#999999' : '#999' }}>
+                {t('studentManagement.exportDescription')}
+              </Typography.Text>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              {selectedRowKeys.length > 0 && (
+                <Button
+                  type="primary"
+                  icon={<UploadOutlined />}
+                  onClick={handleExportSelected}
+                  style={{
+                    height: '48px',
+                    fontSize: '16px',
+                    fontWeight: '500',
+                    background: theme === 'sun' 
+                      ? 'linear-gradient(135deg, #FFFFFF, #B6D8FE 77%, #94C2F5)'
+                      : 'linear-gradient(135deg, #FFFFFF 0%, #9F96B6 46%, #A79EBB 64%, #ACA5C0 75%, #6D5F8F 100%)',
+                    borderColor: theme === 'sun' ? '#B6D8FE' : '#9F96B6',
+                    color: '#000000',
+                    borderRadius: '8px',
+                  }}>
+                  {t('studentManagement.exportSelected')} ({selectedRowKeys.length} {t('studentManagement.students')})
+                </Button>
+              )}
+
+              <Button
+                icon={<UploadOutlined />}
+                onClick={handleExportAll}
+                style={{
+                  height: '48px',
+                  fontSize: '16px',
+                  fontWeight: '500',
+                  background: theme === 'sun' 
+                    ? 'linear-gradient(135deg, #FFFFFF, #B6D8FE 77%, #94C2F5)'
+                    : 'linear-gradient(135deg, #FFFFFF 0%, #9F96B6 46%, #A79EBB 64%, #ACA5C0 75%, #6D5F8F 100%)',
+                  borderColor: theme === 'sun' ? '#B6D8FE' : '#9F96B6',
+                  color: '#000000',
+                  borderRadius: '8px',
+                }}>
+                {t('studentManagement.exportAll')} ({totalStudents} {t('studentManagement.students')})
+              </Button>
+            </div>
+          </div>
+        </Modal>
 
     </ThemedLayout> 
   );
