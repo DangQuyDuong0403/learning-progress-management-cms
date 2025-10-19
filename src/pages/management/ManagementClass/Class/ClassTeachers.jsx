@@ -1,27 +1,21 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
   Button,
-  Card,
-  Row,
-  Col,
   Table,
   Space,
-  Tag,
-  Avatar,
   Input,
   Select,
   Modal,
   Form,
   Upload,
+  Typography,
 } from "antd";
 import {
   ArrowLeftOutlined,
-  UserOutlined,
   PlusOutlined,
   SearchOutlined,
   DeleteOutlined,
-  ReloadOutlined,
-  UploadOutlined,
+  FilterOutlined,
 } from "@ant-design/icons";
 import ThemedLayout from "../../../../component/ThemedLayout";
 import LoadingWithEffect from "../../../../component/spinner/LoadingWithEffect";
@@ -29,171 +23,188 @@ import "./ClassTeachers.css";
 import { useParams, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { spaceToast } from "../../../../component/SpaceToastify";
+import { useTheme } from "../../../../contexts/ThemeContext";
+import classManagementApi from "../../../../apis/backend/classManagement";
+import usePageTitle from "../../../../hooks/usePageTitle";
 
 const { Option } = Select;
-
-// Mock data for all available staff (teachers can be both teacher and teaching assistant)
-const mockAllStaff = [
-  {
-    id: 1,
-    name: "John Smith",
-    email: "john.smith@fpt.edu.vn",
-    phone: "0123456789",
-    specialization: "English",
-    type: "teacher", // teacher có thể vừa là teacher vừa là teaching assistant
-  },
-  {
-    id: 2,
-    name: "Sarah Johnson",
-    email: "sarah.johnson@fpt.edu.vn",
-    phone: "0987654321",
-    specialization: "English",
-    type: "teacher",
-  },
-  {
-    id: 3,
-    name: "Michael Brown",
-    email: "michael.brown@fpt.edu.vn",
-    phone: "0369258147",
-    specialization: "English",
-    type: "teacher",
-  },
-  {
-    id: 10,
-    name: "Emily Davis",
-    email: "emily.davis@fpt.edu.vn",
-    phone: "0123456780",
-    specialization: "English",
-    type: "teaching_assistant", // teaching assistant chỉ có thể là teaching assistant
-  },
-  {
-    id: 11,
-    name: "David Wilson",
-    email: "david.wilson@fpt.edu.vn",
-    phone: "0987654320",
-    specialization: "English",
-    type: "teaching_assistant",
-  },
-  {
-    id: 12,
-    name: "Lisa Anderson",
-    email: "lisa.anderson@fpt.edu.vn",
-    phone: "0369258140",
-    specialization: "English",
-    type: "teaching_assistant",
-  },
-  {
-    id: 13,
-    name: "Robert Taylor",
-    email: "robert.taylor@fpt.edu.vn",
-    phone: "0123456781",
-    specialization: "English",
-    type: "teaching_assistant",
-  },
-];
-
-// Filter teachers (can be both teacher and teaching assistant)
-const mockAvailableTeachers = mockAllStaff.filter(staff => staff.type === "teacher");
-
-// Filter teaching assistants (teachers + teaching assistants can be teaching assistants)
-const mockAvailableTeachingAssistants = mockAllStaff;
-
-// Mock data for current class teachers and teaching assistants
-const mockClassTeachers = [
-  {
-    id: 1,
-    name: "John Smith",
-    email: "john.smith@fpt.edu.vn",
-    phone: "0123456789",
-    role: "teacher",
-    status: "active",
-    joinDate: "2024-01-01",
-    specialization: "English",
-  },
-  {
-    id: 10,
-    name: "Emily Davis",
-    email: "emily.davis@fpt.edu.vn",
-    phone: "0123456780",
-    role: "teaching_assistant",
-    status: "active",
-    joinDate: "2024-01-15",
-    specialization: "English",
-  },
-  {
-    id: 11,
-    name: "David Wilson",
-    email: "david.wilson@fpt.edu.vn",
-    phone: "0987654320",
-    role: "teaching_assistant",
-    status: "active",
-    joinDate: "2024-02-01",
-    specialization: "English",
-  },
-];
-
-// Mock class data
-const mockClassData = {
-  id: 1,
-  name: "Rising star 1",
-  color: "#00d4ff",
-  status: "active",
-  createdAt: "2024-01-15",
-};
+const { Title } = Typography;
 
 const ClassTeachers = () => {
   const { t } = useTranslation();
   const { id } = useParams();
   const navigate = useNavigate();
+  const { theme } = useTheme();
+  
+  // Set page title
+  usePageTitle('Class Teachers');
+  
   const [loading, setLoading] = useState(false);
   const [teachers, setTeachers] = useState([]);
   const [classData, setClassData] = useState(null);
   const [searchText, setSearchText] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("ACTIVE");
   const [isModalVisible, setIsModalVisible] = useState(false);
+  const [filterDropdown, setFilterDropdown] = useState({
+    visible: false,
+    selectedStatuses: [],
+  });
+  
+  // Pagination state
+  const [pagination, setPagination] = useState({
+    current: 1,
+    pageSize: 10,
+    total: 0,
+  });
+  
+  // Sort state
+  const [sortConfig, setSortConfig] = useState({
+    sortBy: 'joinedAt',
+    sortDir: 'desc',
+  });
   const [form] = Form.useForm();
   const [isDeleteModalVisible, setIsDeleteModalVisible] = useState(false);
   const [teacherToDelete, setTeacherToDelete] = useState(null);
   const [isImportModalVisible, setIsImportModalVisible] = useState(false);
   const [fileList, setFileList] = useState([]);
+  
+  // Refs for click outside detection
+  const filterContainerRef = useRef(null);
+
+  // Status options for filter
+  const statusOptions = [
+    { key: "ACTIVE", label: t('classTeachers.active') },
+    { key: "INACTIVE", label: t('classTeachers.inactive') },
+    { key: "REMOVED", label: t('classTeachers.removed') },
+  ];
+
+  // Handle click outside to close filter dropdown
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (filterDropdown.visible && filterContainerRef.current) {
+        // Check if click is outside the filter container
+        if (!filterContainerRef.current.contains(event.target)) {
+          setFilterDropdown(prev => ({
+            ...prev,
+            visible: false,
+          }));
+        }
+      }
+    };
+
+    // Add event listener when dropdown is visible
+    if (filterDropdown.visible) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    // Cleanup event listener
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [filterDropdown.visible]);
+
+  // Handle filter dropdown toggle
+  const handleFilterToggle = () => {
+    setFilterDropdown(prev => ({
+      ...prev,
+      visible: !prev.visible,
+      selectedStatuses: prev.visible ? prev.selectedStatuses : [statusFilter].filter(s => s !== 'all'),
+    }));
+  };
+
+  // Handle filter submission
+  const handleFilterSubmit = () => {
+    if (filterDropdown.selectedStatuses.length > 0) {
+      setStatusFilter(filterDropdown.selectedStatuses[0]);
+    } else {
+      setStatusFilter('ACTIVE');
+    }
+    setFilterDropdown(prev => ({
+      ...prev,
+      visible: false,
+    }));
+  };
+
+  // Handle filter reset
+  const handleFilterReset = () => {
+    setFilterDropdown(prev => ({
+      ...prev,
+      selectedStatuses: [],
+    }));
+  };
 
   const fetchClassData = useCallback(async () => {
-    setLoading(true);
     try {
-      // Simulate API call
-      setTimeout(() => {
-        setClassData(mockClassData);
-        setLoading(false);
-      }, 500);
+      const response = await classManagementApi.getClassDetail(id);
+      console.log('Class detail response:', response);
+      setClassData(response.data);
     } catch (error) {
+      console.error('Error fetching class data:', error);
       spaceToast.error(t('classTeachers.loadingClassInfo'));
-      setLoading(false);
     }
-  }, [t]);
+  }, [id, t]);
 
-  const fetchTeachers = useCallback(async () => {
+  const fetchTeachers = useCallback(async (params = {}) => {
     try {
-      // Simulate API call
-      setTimeout(() => {
-        setTeachers(mockClassTeachers);
-      }, 500);
+      const apiParams = {
+        page: params.page !== undefined ? params.page : 0,
+        size: params.size !== undefined ? params.size : 10,
+        text: params.text !== undefined ? params.text : searchText,
+        status: params.status !== undefined ? params.status : statusFilter,
+        sortBy: params.sortBy !== undefined ? params.sortBy : sortConfig.sortBy,
+        sortDir: params.sortDir !== undefined ? params.sortDir : sortConfig.sortDir,
+      };
+      
+      console.log('Fetching teachers with params:', apiParams);
+      const response = await classManagementApi.getClassTeachers(id, apiParams);
+      console.log('Teachers response:', response);
+      
+      if (response.success) {
+        setTeachers(response.data || []);
+        setPagination(prev => ({
+          ...prev,
+          total: response.totalElements || 0,
+          current: (response.page || 0) + 1,
+        }));
+      } else {
+        spaceToast.error(response.message || t('classTeachers.loadingTeachers'));
+        setTeachers([]);
+      }
     } catch (error) {
+      console.error('Error fetching teachers:', error);
       spaceToast.error(t('classTeachers.loadingTeachers'));
+      setTeachers([]);
     }
-  }, [t]);
+  }, [id, t, searchText, statusFilter, sortConfig.sortBy, sortConfig.sortDir]);
 
   useEffect(() => {
     fetchClassData();
     fetchTeachers();
   }, [id, fetchClassData, fetchTeachers]);
 
+  // Handle search and filter changes with debounce
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      setLoading(true);
+      fetchTeachers({
+        page: 0,
+        size: pagination.pageSize,
+        text: searchText,
+        status: statusFilter,
+        sortBy: sortConfig.sortBy,
+        sortDir: sortConfig.sortDir
+      }).finally(() => {
+        setLoading(false);
+      });
+      setPagination(prev => ({ ...prev, current: 1 }));
+    }, 300);
+    
+    return () => clearTimeout(timeoutId);
+  }, [searchText, statusFilter, sortConfig.sortBy, sortConfig.sortDir, pagination.pageSize, fetchTeachers]);
+
   const handleAddTeacher = () => {
     form.resetFields();
     setIsModalVisible(true);
-  };
-
-  const handleImportFile = () => {
-    setIsImportModalVisible(true);
   };
 
   const handleImportModalOk = () => {
@@ -246,83 +257,13 @@ const ClassTeachers = () => {
       const values = await form.validateFields();
       console.log("Form values:", values);
 
-      const newTeachers = [];
-      const duplicateNames = [];
-      const existingTeacherNames = [];
-      
-      // Check if there's already a teacher in the class
-      const hasExistingTeacher = teachers.some(t => t.role === "teacher");
-      
-      // Add selected teacher
-      if (values.selectedTeacher) {
-        const teacher = mockAllStaff.find(t => t.id === values.selectedTeacher);
-        if (teacher) {
-          // Check if this person already exists in the class
-          const alreadyExists = teachers.some(t => t.id === teacher.id);
-          if (alreadyExists) {
-            duplicateNames.push(teacher.name);
-          } else if (hasExistingTeacher) {
-            existingTeacherNames.push(teacher.name);
-          } else {
-            const newTeacher = {
-              ...teacher,
-              role: "teacher",
-              status: "active",
-              joinDate: new Date().toISOString().split("T")[0],
-            };
-            newTeachers.push(newTeacher);
-          }
-        }
-      }
-
-      // Add selected teaching assistants
-      if (values.selectedTeachingAssistants && values.selectedTeachingAssistants.length > 0) {
-        values.selectedTeachingAssistants.forEach(taId => {
-          // Skip if this person is already selected as teacher
-          if (values.selectedTeacher === taId) {
-            return;
-          }
-          
-          const ta = mockAllStaff.find(t => t.id === taId);
-          if (ta) {
-            // Check if this person already exists in the class
-            const alreadyExists = teachers.some(t => t.id === ta.id);
-            if (alreadyExists) {
-              duplicateNames.push(ta.name);
-            } else {
-              const newTA = {
-                ...ta,
-                role: "teaching_assistant",
-                status: "active",
-                joinDate: new Date().toISOString().split("T")[0],
-              };
-              newTeachers.push(newTA);
-            }
-          }
-        });
-      }
-
-      // Show appropriate messages
-      if (duplicateNames.length > 0) {
-        spaceToast.error(`${t('classTeachers.alreadyInClassError')} ${duplicateNames.join(", ")}`);
-      }
-      
-      if (existingTeacherNames.length > 0) {
-        spaceToast.error(`${t('classTeachers.classAlreadyHasTeacherError')} ${existingTeacherNames.join(", ")}`);
-      }
-
-      if (newTeachers.length > 0) {
-        setTeachers([...newTeachers, ...teachers]);
-        spaceToast.success(`${t('classTeachers.addSuccess')} ${newTeachers.length} ${t('classTeachers.membersToClass')}`);
+      // TODO: Implement real API call to add teachers
+      spaceToast.success(t('classTeachers.addSuccess'));
         setIsModalVisible(false);
         form.resetFields();
-      } else if (duplicateNames.length === 0 && existingTeacherNames.length === 0) {
-        spaceToast.warning(t('classTeachers.selectAtLeastOne'));
-      } else {
-        // Don't close modal if there are errors, let user fix the selection
-        return;
-      }
-
+      
+      // Refresh the teachers list
+      fetchTeachers();
     } catch (error) {
       console.error("Error adding staff:", error);
       spaceToast.error(t('classTeachers.checkInfoError'));
@@ -334,92 +275,95 @@ const ClassTeachers = () => {
     form.resetFields();
   };
 
-  const getStatusTag = (status) => {
-    const statusConfig = {
-      active: { color: "green", text: "Active" },
-      inactive: { color: "red", text: "Inactive" },
-      pending: { color: "orange", text: "Pending" },
-    };
 
-    const config = statusConfig[status] || statusConfig.inactive;
-    return <Tag color={config.color}>{config.text}</Tag>;
+  // Handle table changes (pagination, sorting)
+  const handleTableChange = (paginationInfo, filters, sorter) => {
+    console.log('Table change:', { paginationInfo, filters, sorter });
+    
+    // Handle pagination
+    if (paginationInfo.current !== pagination.current || paginationInfo.pageSize !== pagination.pageSize) {
+      setPagination(prev => ({
+        ...prev,
+        current: paginationInfo.current,
+        pageSize: paginationInfo.pageSize,
+      }));
+      
+      setLoading(true);
+      fetchTeachers({ 
+        page: paginationInfo.current - 1, 
+        size: paginationInfo.pageSize,
+        text: searchText,
+        status: statusFilter,
+        sortBy: sortConfig.sortBy,
+        sortDir: sortConfig.sortDir
+      }).finally(() => {
+        setLoading(false);
+      });
+    }
+    
+    // Handle sorting
+    if (sorter && sorter.field) {
+      const newSortConfig = {
+        sortBy: sorter.field,
+        sortDir: sorter.order === 'ascend' ? 'asc' : 'desc',
+      };
+      setSortConfig(newSortConfig);
+    }
   };
-
-  const getRoleTag = (role) => {
-    const roleConfig = {
-      teacher: { color: "gold", text: "Teacher" },
-      teaching_assistant: { color: "blue", text: "Teaching Assistant" },
-    };
-
-    const config = roleConfig[role] || roleConfig.teaching_assistant;
-    return <Tag color={config.color}>{config.text}</Tag>;
-  };
-
-  // Filter teachers based on search and filters
-  const filteredTeachers = teachers.filter((teacher) => {
-    const matchesSearch =
-      searchText === "" ||
-      teacher.name.toLowerCase().includes(searchText.toLowerCase()) ||
-      teacher.email.toLowerCase().includes(searchText.toLowerCase());
-
-    const matchesStatus =
-      statusFilter === "all" || teacher.status === statusFilter;
-
-    return matchesSearch && matchesStatus;
-  });
 
   const columns = [
     {
-      title: t('classTeachers.teacherTeachingAssistant'),
-      dataIndex: "name",
-      key: "name",
-      render: (text, record) => (
-        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-          <Avatar
-            size={40}
-            icon={<UserOutlined style={{ fontSize: '18px' }} />}
-            style={{
-              backgroundColor: classData?.color || "#00d4ff",
-            }}
-          />
-          <div>
-            <div style={{ fontWeight: 600, fontSize: "15px" }}>{text}</div>
-            <div style={{ fontSize: "13px", color: "#666" }}>{record.email}</div>
-          </div>
+      title: t('classTeachers.no'),
+      key: 'no',
+      width: 60,
+      render: (_, record, index) => {
+        const no = (pagination.current - 1) * pagination.pageSize + index + 1;
+        return <span style={{ fontSize: "20px", fontWeight: 500 }}>{no}</span>;
+      },
+    },
+    {
+      title: t('classTeachers.username'),
+      dataIndex: "userName",
+      key: "userName",
+      sorter: true,
+      render: (text) => (
+        <div className="teacher-name-text" style={{ fontSize: "20px" }}>{text}</div>
+      ),
+    },
+    {
+      title: t('classTeachers.fullName'),
+      key: 'fullName',
+      sorter: true,
+      render: (_, record) => (
+        <div className="teacher-name-text" style={{ fontSize: "20px" }}>
+          {`${record.firstName || ''} ${record.lastName || ''}`.trim()}
         </div>
       ),
     },
     {
-      title: t('classTeachers.role'),
-      dataIndex: "role",
-      key: "role",
-      render: (role) => getRoleTag(role),
-    },
-    {
-      title: t('classTeachers.phoneNumber'),
-      dataIndex: "phone",
-      key: "phone",
-      render: (text) => <span style={{ fontSize: "14px" }}>{text}</span>,
+      title: t('classTeachers.email'),
+      dataIndex: "email",
+      key: "email",
+      sorter: true,
+      render: (text) => (
+        <span style={{ fontSize: "20px" }}>{text || 'N/A'}</span>
+      ),
     },
     {
       title: t('classTeachers.status'),
       dataIndex: "status",
       key: "status",
-      render: (status) => getStatusTag(status),
-    },
-    {
-      title: t('classTeachers.joinDate'),
-      dataIndex: "joinDate",
-      key: "joinDate",
-      render: (date) => (
-        <span style={{ fontSize: "14px" }}>
-          {new Date(date).toLocaleDateString("vi-VN")}
+      sorter: true,
+      render: (status) => (
+        <span style={{ fontSize: "20px" }}>
+          {status === 'ACTIVE' ? t('classTeachers.active') : status === 'INACTIVE' ? t('classTeachers.inactive') : t('classTeachers.removed')}
         </span>
       ),
     },
     {
       title: t('classTeachers.actions'),
       key: "actions",
+      width: 150,
       render: (_, record) => (
         <Space>
           <Button
@@ -437,7 +381,7 @@ const ClassTeachers = () => {
   if (loading) {
     return (
       <ThemedLayout>
-        <div className="class-detail-container">
+        <div className={`main-content-panel ${theme}-main-panel`}>
           <LoadingWithEffect loading={true} message={t('classTeachers.loadingClassInfo')} />
         </div>
       </ThemedLayout>
@@ -446,104 +390,139 @@ const ClassTeachers = () => {
 
   return (
     <ThemedLayout>
-      <div className="class-detail-container">
-        {/* Header */}
-        <Card className="header-card">
-          <div className="header-content">
-            <div className="header-left">
+        {/* Main Content Panel */}
+        <div className={`main-content-panel ${theme}-main-panel`}>
+          {/* Page Title with Back Button */}
+          <div className="page-title-container" style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '24px' }}>
               <Button
-                icon={<ArrowLeftOutlined style={{ fontSize: '18px' }} />}
+              icon={<ArrowLeftOutlined />}
                 onClick={() => navigate(`/manager/classes/menu/${id}`)}
-                className="back-button"
+              className={`back-button ${theme}-back-button`}
+              style={{ height: '40px', fontSize: '16px' }}
               >
                 {t('common.back')}
               </Button>
+            <div style={{ flex: '1', textAlign: 'center' }}>
+              <Typography.Title 
+                level={1} 
+                className="page-title"
+                style={{ margin: 0 }}
+              >
+                {t('classTeachers.teachers')} <span className="teacher-count">({teachers.length})</span>
+              </Typography.Title>
             </div>
-            
-            <div className="header-center">
-              <h2 className="class-title">
-                {classData?.name}
-              </h2>
-            </div>
-            
-            <div className="header-right">
-              <Space>
-                <Button
-                  icon={<ReloadOutlined style={{ fontSize: '18px' }} />}
-                  onClick={fetchTeachers}
-                  className="refresh-button"
-                >
-                  {t('classTeachers.refresh')}
-                </Button>
-                <Button
-                  icon={<UploadOutlined style={{ fontSize: '18px' }} />}
-                  onClick={handleImportFile}
-                  className="import-button"
-                >
-                  {t('classTeachers.importFile')}
-                </Button>
-                <Button
-                  type="primary"
-                  icon={<PlusOutlined style={{ fontSize: '18px' }} />}
-                  onClick={handleAddTeacher}
-                  className="add-teacher-button"
-                >
-                  {t('classTeachers.addTeacher')}
-                </Button>
-              </Space>
-            </div>
-          </div>
-        </Card>
-
-        {/* Main Content Card */}
-        <Card className="main-content-card">
-          {/* Filters */}
-          <div className="filters-section">
-            <Row gutter={[16, 16]} align="middle">
-              <Col xs={24} sm={12} md={8} lg={6}>
-                <Input
-                  placeholder={t('classTeachers.searchTeachers')}
-                  prefix={<SearchOutlined />}
-                  value={searchText}
-                  onChange={(e) => setSearchText(e.target.value)}
-                  allowClear
-                />
-              </Col>
-              <Col xs={24} sm={12} md={8} lg={6}>
-                <Select
-                  placeholder="Filter by status"
-                  value={statusFilter}
-                  onChange={setStatusFilter}
-                  style={{ width: "100%" }}
-                >
-                  <Option value="all">All Status</Option>
-                  <Option value="active">Active</Option>
-                  <Option value="inactive">Inactive</Option>
-                  <Option value="pending">Pending</Option>
-                </Select>
-              </Col>
-            </Row>
+            <div style={{ width: '120px' }}></div> {/* Spacer for centering */}
           </div>
 
-          {/* Teachers Table */}
-          <div className="table-section">
+          {/* Search and Action Section */}
+          <div className="search-action-section" style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '24px' }}>
+            <Input
+              prefix={<SearchOutlined />}
+              value={searchText}
+              onChange={(e) => setSearchText(e.target.value)}
+              className={`search-input ${theme}-search-input`}
+              style={{ flex: '1', minWidth: '250px', maxWidth: '400px', width: '350px', height: '40px', fontSize: '16px' }}
+              allowClear
+            />
+            <div ref={filterContainerRef} style={{ position: 'relative' }}>
+              <Button 
+                icon={<FilterOutlined />}
+                onClick={handleFilterToggle}
+                className={`filter-button ${theme}-filter-button ${filterDropdown.visible ? 'active' : ''} ${(statusFilter !== 'ACTIVE') ? 'has-filters' : ''}`}
+              >
+                {t('classTeachers.filter')}
+              </Button>
+              
+              {/* Filter Dropdown Panel */}
+              {filterDropdown.visible && (
+                <div className={`filter-dropdown-panel ${theme}-filter-dropdown`}>
+                  <div style={{ padding: '20px' }}>
+                    {/* Status Filter */}
+                    <div style={{ marginBottom: '24px' }}>
+                      <Title level={5} style={{ marginBottom: '12px', fontSize: '16px' }}>
+                        {t('classTeachers.status')}
+                      </Title>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                        {statusOptions.map(option => (
+                          <Button
+                            key={option.key}
+                            onClick={() => {
+                              const newStatus = filterDropdown.selectedStatuses.includes(option.key)
+                                ? filterDropdown.selectedStatuses.filter(status => status !== option.key)
+                                : [...filterDropdown.selectedStatuses, option.key];
+                              setFilterDropdown(prev => ({ ...prev, selectedStatuses: newStatus }));
+                            }}
+                            className={`filter-option ${filterDropdown.selectedStatuses.includes(option.key) ? 'selected' : ''}`}
+                          >
+                            {option.label}
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div style={{ 
+                      display: 'flex', 
+                      justifyContent: 'space-between', 
+                      marginTop: '20px',
+                      paddingTop: '16px',
+                      borderTop: '1px solid #f0f0f0'
+                    }}>
+                      <Button
+                        onClick={handleFilterReset}
+                        className="filter-reset-button"
+                      >
+                        {t('classTeachers.reset')}
+                      </Button>
+                      <Button
+                        type="primary"
+                        onClick={handleFilterSubmit}
+                        className="filter-submit-button"
+                      >
+                        {t('classTeachers.viewResults')}
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+            <div className="action-buttons" style={{ marginLeft: 'auto' }}>
+              <Button 
+                icon={<PlusOutlined />}
+                className={`create-button ${theme}-create-button`}
+                onClick={handleAddTeacher}
+              >
+                {t('common.add')}
+              </Button>
+            </div>
+          </div>
+
+          {/* Table Section */}
+          <div className={`table-section ${theme}-table-section`}>
             <LoadingWithEffect loading={loading} message={t('classTeachers.loadingTeachers')}>
               <Table
                 columns={columns}
-                dataSource={filteredTeachers}
-                rowKey="id"
+                dataSource={teachers}
+                rowKey="userId"
+                loading={loading}
                 pagination={{
-                  pageSize: 10,
+                  current: pagination.current,
+                  pageSize: pagination.pageSize,
+                  total: pagination.total,
                   showSizeChanger: true,
                   showQuickJumper: true,
                   showTotal: (total, range) =>
                     `${range[0]}-${range[1]} of ${total} ${t('classTeachers.teachers')}`,
+                  className: `${theme}-pagination`,
+                  pageSizeOptions: ['10', '20', '50', '100'],
                 }}
+                onChange={handleTableChange}
                 scroll={{ x: 800 }}
+                className={`teacher-table ${theme}-teacher-table`}
               />
             </LoadingWithEffect>
           </div>
-        </Card>
+        </div>
 
         {/* Add Staff Modal */}
         <Modal
@@ -554,6 +533,26 @@ const ClassTeachers = () => {
           width={600}
           okText={t('classTeachers.add')}
           cancelText={t('common.cancel')}
+          okButtonProps={{
+            style: {
+              backgroundColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
+              background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
+              borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'transparent',
+              color: theme === 'sun' ? '#000000' : '#ffffff',
+              height: '40px',
+              fontSize: '16px',
+              fontWeight: '500',
+              minWidth: '120px',
+            },
+          }}
+          cancelButtonProps={{
+            style: {
+              height: '40px',
+              fontSize: '16px',
+              fontWeight: '500',
+              minWidth: '100px',
+            },
+          }}
         >
           {/* Status Info */}
           <div style={{ 
@@ -592,30 +591,8 @@ const ClassTeachers = () => {
                   fontSize: "15px",
                 }}
                 allowClear
-                onChange={(value) => {
-                  // Clear teaching assistant selection if same person is selected as teacher
-                  const currentTeachingAssistants = form.getFieldValue('selectedTeachingAssistants') || [];
-                  const filteredTAs = currentTeachingAssistants.filter(id => id !== value);
-                  form.setFieldValue('selectedTeachingAssistants', filteredTAs);
-                }}
               >
-                {mockAvailableTeachers.map(teacher => {
-                  const alreadyInClass = teachers.some(t => t.id === teacher.id);
-                  const hasExistingTeacher = teachers.some(t => t.role === "teacher");
-                  const isDisabled = alreadyInClass || hasExistingTeacher;
-                  
-                  return (
-                    <Option 
-                      key={teacher.id} 
-                      value={teacher.id}
-                      disabled={isDisabled}
-                    >
-                      {teacher.name} - {teacher.email}
-                      {alreadyInClass && ` - ${t('classTeachers.alreadyInClass')}`}
-                      {hasExistingTeacher && !alreadyInClass && ` - ${t('classTeachers.classAlreadyHasTeacher')}`}
-                    </Option>
-                  );
-                })}
+                <Option value="placeholder">Coming Soon...</Option>
               </Select>
             </Form.Item>
 
@@ -630,35 +607,8 @@ const ClassTeachers = () => {
                   fontSize: "15px",
                 }}
                 allowClear
-                onChange={(values) => {
-                  // Clear teacher selection if same person is selected as teaching assistant
-                  const selectedTeacher = form.getFieldValue('selectedTeacher');
-                  if (selectedTeacher && values && values.includes(selectedTeacher)) {
-                    // Don't allow selecting the same person as both teacher and teaching assistant
-                    spaceToast.warning(t('classTeachers.cannotSelectSamePerson'));
-                    // Remove the conflicting selection
-                    const filteredValues = values.filter(id => id !== selectedTeacher);
-                    form.setFieldValue('selectedTeachingAssistants', filteredValues);
-                  }
-                }}
               >
-                {mockAvailableTeachingAssistants.map(ta => {
-                  const selectedTeacher = form.getFieldValue('selectedTeacher');
-                  const alreadyInClass = teachers.some(t => t.id === ta.id);
-                  const isDisabled = selectedTeacher === ta.id || alreadyInClass;
-                  
-                  return (
-                    <Option 
-                      key={ta.id} 
-                      value={ta.id}
-                      disabled={isDisabled}
-                    >
-                      {ta.name} - {ta.email} {ta.type === "teacher" ? `(${t('classTeachers.teacher')})` : `(${t('classTeachers.teachingAssistant')})`}
-                      {selectedTeacher === ta.id && ` - ${t('classTeachers.selectedAsTeacher')}`}
-                      {alreadyInClass && ` - ${t('classTeachers.alreadyInClass')}`}
-                    </Option>
-                  );
-                })}
+                <Option value="placeholder">Coming Soon...</Option>
               </Select>
             </Form.Item>
            </Form>
@@ -666,27 +616,122 @@ const ClassTeachers = () => {
 
          {/* Delete Confirmation Modal */}
          <Modal
-           title={t('classTeachers.confirmDelete')}
+           title={
+             <div style={{ 
+               fontSize: '20px', 
+               fontWeight: '600', 
+               color: '#1890ff',
+               textAlign: 'center',
+               padding: '10px 0'
+             }}>
+               {t('classTeachers.confirmDelete')}
+             </div>
+           }
            open={isDeleteModalVisible}
            onOk={handleConfirmDelete}
            onCancel={handleCancelDelete}
-           okText={t('common.delete')}
+           okText={t('common.confirm')}
            cancelText={t('common.cancel')}
-           okType="danger"
+           width={500}
            centered
+           bodyStyle={{
+             padding: '30px 40px',
+             fontSize: '16px',
+             lineHeight: '1.6',
+             textAlign: 'center'
+           }}
+           okButtonProps={{
+             style: {
+               backgroundColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
+               background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
+               borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'transparent',
+               color: theme === 'sun' ? '#000000' : '#ffffff',
+               height: '40px',
+               fontSize: '16px',
+               fontWeight: '500',
+               minWidth: '100px'
+             }
+           }}
+           cancelButtonProps={{
+             style: {
+               height: '40px',
+               fontSize: '16px',
+               fontWeight: '500',
+               minWidth: '100px'
+             }
+           }}
          >
-           <p>{teacherToDelete?.role === 'teacher' ? t('classTeachers.confirmDeleteTeacher') : t('classTeachers.confirmDeleteTA')} "{teacherToDelete?.name}"?</p>
+           <div style={{
+             display: 'flex',
+             flexDirection: 'column',
+             alignItems: 'center',
+             gap: '20px'
+           }}>
+             <div style={{
+               fontSize: '48px',
+               color: '#ff4d4f',
+               marginBottom: '10px'
+             }}>
+               ⚠️
+             </div>
+             <p style={{
+               fontSize: '18px',
+               color: '#333',
+               margin: 0,
+               fontWeight: '500'
+             }}>
+               {teacherToDelete?.role === 'teacher' ? t('classTeachers.confirmDeleteTeacher') : t('classTeachers.confirmDeleteTA')} "{teacherToDelete?.name}"?
+             </p>
+           </div>
          </Modal>
 
          {/* Import File Modal */}
          <Modal
-           title={t('classTeachers.importTeachersList')}
+           title={
+             <div
+               style={{
+                 fontSize: '20px',
+                 fontWeight: '600',
+                 color: '#000000',
+                 textAlign: 'center',
+                 padding: '10px 0',
+                 display: 'flex',
+                 alignItems: 'center',
+                 justifyContent: 'center',
+                 gap: '10px',
+               }}>
+               <PlusOutlined style={{ color: '#000000' }} />
+               {t('classTeachers.importTeachersList')}
+             </div>
+           }
            open={isImportModalVisible}
            onOk={handleImportModalOk}
            onCancel={handleImportModalCancel}
            okText={t('classTeachers.import')}
            cancelText={t('common.cancel')}
            width={600}
+           centered
+           okButtonProps={{
+             disabled: fileList.length === 0,
+             style: {
+               backgroundColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
+               background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
+               borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'transparent',
+               color: theme === 'sun' ? '#000000' : '#ffffff',
+               height: '40px',
+               fontSize: '16px',
+               fontWeight: '500',
+               minWidth: '120px',
+             },
+           }}
+           cancelButtonProps={{
+             style: {
+               height: '40px',
+               fontSize: '16px',
+               fontWeight: '500',
+               minWidth: '100px',
+             },
+           }}
          >
            <div style={{ marginBottom: '16px' }}>
              <p style={{ fontSize: '14px', color: '#666', marginBottom: '12px' }}>
@@ -704,7 +749,7 @@ const ClassTeachers = () => {
              accept=".xlsx,.xls,.csv"
              maxCount={1}
            >
-             <Button icon={<UploadOutlined style={{ fontSize: '18px' }} />} style={{ width: '100%' }}>
+             <Button icon={<PlusOutlined style={{ fontSize: '18px' }} />} style={{ width: '100%' }}>
                {t('classTeachers.selectFileToUpload')}
              </Button>
            </Upload>
@@ -722,7 +767,6 @@ const ClassTeachers = () => {
              </div>
            )}
          </Modal>
-       </div>
      </ThemedLayout>
    );
  };

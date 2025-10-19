@@ -29,6 +29,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import ThemedLayout from '../../../../component/ThemedLayout';
 import LoadingWithEffect from '../../../../component/spinner/LoadingWithEffect';
 import { spaceToast } from '../../../../component/SpaceToastify';
+import { useTheme } from '../../../../contexts/ThemeContext';
+import usePageTitle from '../../../../hooks/usePageTitle';
 import ChapterForm from '../../ManagementManager/syllabus/ChapterForm';
 import LessonList from '../../ManagementManager/syllabus/LessonList';
 const { Search } = Input;
@@ -119,6 +121,10 @@ const ClassChapterLesson = () => {
 	const { t } = useTranslation();
 	const { id } = useParams();
 	const navigate = useNavigate();
+	const { theme } = useTheme();
+	
+	// Set page title
+	usePageTitle('Class Chapter & Lesson');
 
 	const [classData, setClassData] = useState(null);
 	const [isLoading, setIsLoading] = useState(false);

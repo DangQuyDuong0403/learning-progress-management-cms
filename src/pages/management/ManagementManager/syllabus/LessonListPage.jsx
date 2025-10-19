@@ -595,7 +595,7 @@ const LessonListPage = () => {
 						className="page-title"
 						style={{ margin: 0, flex: 1, textAlign: 'center' }}
 					>
-						{t('lessonManagement.title')} - {chapterInfo.name} <span className="student-count">({totalElements})</span>
+						{chapterInfo.name} - {t('lessonManagement.title')} <span className="student-count">({totalElements})</span>
 					</Typography.Title>
 					<div style={{ width: '100px' }}></div> {/* Spacer để cân bằng layout */}
 				</div>

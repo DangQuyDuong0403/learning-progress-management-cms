@@ -14,6 +14,8 @@ import "./ClassActivities.css";
 import { useParams, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { spaceToast } from "../../../../component/SpaceToastify";
+import { useTheme } from "../../../../contexts/ThemeContext";
+import usePageTitle from "../../../../hooks/usePageTitle";
 
 // Mock data for activities (timeline format)
 const mockActivities = [
@@ -67,6 +69,11 @@ const ClassActivities = () => {
   const { t } = useTranslation();
   const { id } = useParams();
   const navigate = useNavigate();
+  const { theme } = useTheme();
+  
+  // Set page title
+  usePageTitle('Class Activities');
+  
   const [loading, setLoading] = useState(false);
   const [activities, setActivities] = useState([]);
   const [classData, setClassData] = useState(null);

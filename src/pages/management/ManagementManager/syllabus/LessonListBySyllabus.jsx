@@ -670,7 +670,7 @@ const LessonListBySyllabus = () => {
 						className="page-title"
 						style={{ margin: 0, flex: 1, textAlign: 'center' }}
 					>
-						{t('lessonManagement.title')} - {syllabusInfo.name} <span className="student-count">({totalElements})</span>
+						{syllabusInfo.name} - {t('lessonManagement.title')} <span className="student-count">({totalElements})</span>
 					</Typography.Title>
 					<div style={{ width: '100px' }}></div> {/* Spacer để cân bằng layout */}
 				</div>

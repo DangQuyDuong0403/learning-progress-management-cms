@@ -2,6 +2,7 @@ import React from 'react';
 import { Button } from 'antd';
 import { DeleteOutlined } from '@ant-design/icons';
 import { useTheme } from '../contexts/ThemeContext';
+import { useTranslation } from 'react-i18next';
 import './BottomActionBar.css';
 
 const BottomActionBar = ({ 
@@ -13,9 +14,11 @@ const BottomActionBar = ({
 	showDeleteAll = true,
 	showClose = true,
 	selectAllText = "Select all",
-	deleteAllText = "Delete all"
+	deleteAllText = "Delete all",
+	additionalActions = []
 }) => {
 	const { theme } = useTheme();
+	const { t } = useTranslation();
 
 	if (selectedCount === 0) {
 		return null;
@@ -25,7 +28,7 @@ const BottomActionBar = ({
 		<div className={`bottom-action-bar ${theme}-bottom-action-bar`}>
 			<div className="action-bar-content">
 				<div className="selected-info">
-					<span className="selected-count">{selectedCount} selected</span>
+					<span className="selected-count">{selectedCount} {t('classManagement.selected')}</span>
 				</div>
 				<div className="action-buttons">
 					{showSelectAll && (
@@ -37,6 +40,30 @@ const BottomActionBar = ({
 							{selectAllText}
 						</Button>
 					)}
+					{additionalActions.map((action) => {
+						// Map action keys to appropriate CSS classes
+						const getButtonClass = (key) => {
+							switch(key) {
+								case 'openAll':
+									return 'open-all-button';
+								case 'closeAll':
+									return 'close-all-button';
+								default:
+									return `${key}-button`;
+							}
+						};
+						
+						return (
+							<Button
+								key={action.key}
+								type={action.type || "text"}
+								onClick={action.onClick}
+								className={getButtonClass(action.key)}
+							>
+								{action.label}
+							</Button>
+						);
+					})}
 					{showDeleteAll && (
 						<Button
 							type="text"
