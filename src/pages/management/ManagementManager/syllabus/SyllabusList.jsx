@@ -73,6 +73,11 @@ const SyllabusList = () => {
 		uploading: false
 	});
 
+	// Loading states for buttons
+	const [templateDownloadLoading, setTemplateDownloadLoading] = useState(false);
+	const [exportSelectedLoading, setExportSelectedLoading] = useState(false);
+	const [exportAllLoading, setExportAllLoading] = useState(false);
+
 	// Pagination state
 	const [pagination, setPagination] = useState({
 		current: 1,
@@ -360,6 +365,7 @@ const SyllabusList = () => {
 	};
 
 	const handleDownloadTemplate = async () => {
+		setTemplateDownloadLoading(true);
 		try {
 			
 			const response = await syllabusManagementApi.downloadSyllabusTemplate();
@@ -390,6 +396,8 @@ const SyllabusList = () => {
 		} catch (error) {
 			console.error('Error downloading template:', error);
 			spaceToast.error(error.response?.data?.error || error.response?.data?.message || error.message || 'Failed to download template');
+		} finally {
+			setTemplateDownloadLoading(false);
 		}
 	};
 
@@ -462,6 +470,7 @@ const SyllabusList = () => {
 	};
 
 	const handleExportSelected = async () => {
+		setExportSelectedLoading(true);
 		try {
 			if (selectedRowKeys.length === 0) {
 				spaceToast.warning(t('syllabusManagement.selectItemsToExport'));
@@ -532,10 +541,13 @@ const SyllabusList = () => {
 			
 			console.error('Final error message:', errorMessage);
 			spaceToast.error(errorMessage);
+		} finally {
+			setExportSelectedLoading(false);
 		}
 	};
 
 	const handleExportAll = async () => {
+		setExportAllLoading(true);
 		try {
 			// Call export all API with current search text
 			const response = await syllabusManagementApi.exportAllSyllabuses(searchText);
@@ -593,6 +605,8 @@ const SyllabusList = () => {
 			
 			console.error('Final error message:', errorMessage);
 			spaceToast.error(errorMessage);
+		} finally {
+			setExportAllLoading(false);
 		}
 	};
 
@@ -1282,6 +1296,8 @@ const SyllabusList = () => {
 							type="dashed"
 							icon={<DownloadOutlined />}
 							onClick={handleDownloadTemplate}
+							loading={templateDownloadLoading}
+							disabled={templateDownloadLoading}
 							style={{
 								borderColor: '#1890ff',
 								color: '#1890ff',
@@ -1419,6 +1435,8 @@ const SyllabusList = () => {
 								type="primary"
 								icon={<UploadOutlined />}
 								onClick={handleExportSelected}
+								loading={exportSelectedLoading}
+								disabled={exportSelectedLoading}
 								style={{
 									height: '48px',
 									fontSize: '16px',
@@ -1437,6 +1455,8 @@ const SyllabusList = () => {
 						<Button
 							icon={<UploadOutlined />}
 							onClick={handleExportAll}
+							loading={exportAllLoading}
+							disabled={exportAllLoading}
 							style={{
 								height: '48px',
 								fontSize: '16px',

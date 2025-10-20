@@ -1094,9 +1094,15 @@ const TeacherList = () => {
 				<TeacherForm 
 					teacher={editingTeacher} 
 					onClose={handleModalClose}
-					onSuccess={() => {
-						// Refresh the teacher list after successful creation/update
-						fetchTeachers(pagination.current, pagination.pageSize, searchText, statusFilter, roleNameFilter, sortBy, sortDir);
+					onSuccess={(teacherData) => {
+						// Navigate to teacher profile if teacher ID is available and it's a new teacher
+						if (teacherData && teacherData.id) {
+							console.log('Navigating to teacher profile:', teacherData.id);
+							navigate(`/manager/teachers/profile/${teacherData.id}`);
+						} else {
+							// Refresh the teacher list after successful creation/update
+							fetchTeachers(pagination.current, pagination.pageSize, searchText, statusFilter, roleNameFilter, sortBy, sortDir);
+						}
 					}}
 				/>
 			</Modal>

@@ -19,6 +19,7 @@ import {
 	UserOutlined,
 	KeyOutlined,
 	BarChartOutlined,
+	UploadOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -472,9 +473,22 @@ const StudentProfile = () => {
 							/>
 						</div>
 						
-						{/* Starter Badge */}
+						{/* Level Badge */}
 						<div className={`starter-badge-new ${theme}-starter-badge-new`}>
-							Starter
+							{(() => {
+								// Debug logging to understand data structure
+								console.log('StudentProfile Level Debug:', {
+									student,
+									currentLevelInfo: student?.currentLevelInfo,
+									levelName: student?.levelName,
+									levelId: student?.levelId
+								});
+								
+								return student?.currentLevelInfo?.levelName || 
+									   student?.currentLevelInfo?.name || 
+									   student?.levelName || 
+									   'N/A';
+							})()}
 						</div>
 					</div>
 
@@ -621,11 +635,11 @@ const StudentProfile = () => {
 							>
 								<Select 
 									placeholder={t('studentManagement.selectRole')}
-									disabled={student?.roleName === 'STUDENT'}
+									disabled={student?.roleName === 'STUDENT' && student?.status !== 'PENDING'}
 								>
 									<Select.Option value="STUDENT">{t('common.student')}</Select.Option>
-									{/* Only allow TEST_TAKER option if current role is not STUDENT */}
-									{student?.roleName !== 'STUDENT' && (
+									{/* Allow TEST_TAKER option if current role is not STUDENT, or if STUDENT has PENDING status */}
+									{(student?.roleName !== 'STUDENT' || student?.status === 'PENDING') && (
 										<Select.Option value="TEST_TAKER">{t('common.testTaker')}</Select.Option>
 									)}
 								</Select>
@@ -1045,7 +1059,7 @@ const StudentProfile = () => {
 								e.target.style.backgroundColor = '#fafafa';
 							}}
 						>
-							<div style={{ fontSize: '24px', marginBottom: '8px' }}>📁</div>
+							<div style={{ fontSize: '24px', marginBottom: '8px' }}><UploadOutlined /></div>
 							<div style={{ fontSize: '14px', color: '#666' }}>
 								{t('common.clickToUpload')}
 							</div>

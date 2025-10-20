@@ -10,6 +10,7 @@ import {
 	Col,
 } from 'antd';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../../../../contexts/ThemeContext';
 import usePageTitle from '../../../../hooks/usePageTitle';
 import syllabusManagementApi from '../../../../apis/backend/syllabusManagement';
@@ -21,6 +22,7 @@ const { Option } = Select;
 
 const SyllabusForm = ({ syllabus, onClose, onSuccess }) => {
 	const { t } = useTranslation();
+	const navigate = useNavigate();
 	const { theme } = useTheme();
 	
 	// Set page title
@@ -109,19 +111,29 @@ const SyllabusForm = ({ syllabus, onClose, onSuccess }) => {
 			let response;
 			if (isEdit) {
 				response = await syllabusManagementApi.updateSyllabus(syllabus.id, requestBody);
+				
+				// Call onSuccess callback to refresh the list
+				if (onSuccess) {
+					onSuccess();
+				}
+				
+				onClose();
 			} else {
 				response = await syllabusManagementApi.createSyllabus(requestBody);
 				spaceToast.success(response.message);
+				
+				// Navigate to chapter list of the newly created syllabus
+				if (response.data && response.data.id) {
+					console.log('Navigating to chapter list for syllabus:', response.data.id);
+					navigate(`/manager/syllabuses/${response.data.id}/chapters`);
+				} else {
+					// Fallback: call onSuccess callback to refresh the list
+					if (onSuccess) {
+						onSuccess();
+					}
+					onClose();
+				}
 			}
-			
-			// No success message - only show error messages from backend
-			
-			// Call onSuccess callback to refresh the list
-			if (onSuccess) {
-				onSuccess();
-			}
-			
-			onClose();
 		} catch (error) {
 			console.error('Error saving syllabus:', error);
 			

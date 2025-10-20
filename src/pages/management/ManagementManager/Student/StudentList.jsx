@@ -826,8 +826,14 @@ const StudentList = () => {
             // Show success toast
             spaceToast.success(`Add student "${values.fullName}" successfully`);
             
-            // Refresh the list after adding
-            fetchStudents(1, pagination.pageSize, searchValue, statusFilter, roleNameFilter, sortBy, sortDir);
+            // Navigate to student profile if student ID is available
+            if (response.data && response.data.id) {
+              console.log('Navigating to student profile:', response.data.id);
+              navigate(`/manager/student/${response.data.id}/profile`);
+            } else {
+              // Fallback: refresh the list if no ID available
+              fetchStudents(1, pagination.pageSize, searchValue, statusFilter, roleNameFilter, sortBy, sortDir);
+            }
           } else {
             throw new Error(response.message || 'Failed to create student');
           }

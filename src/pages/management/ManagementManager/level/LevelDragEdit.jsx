@@ -90,25 +90,35 @@ const SortableLevelItem = memo(
 				}`}>
 				<div className='level-position'>
 					<Text strong style={{ fontSize: '18px', color: 'black' }}>
-						{level.position}
+						{index + 1}
 					</Text>
 				</div>
 
 				<div className='level-content'>
-					<div className='level-field'>
+					<div className='level-field level-name-field'>
 						<Text strong style={{ minWidth: '100px', fontSize: '20px' }}>
 							{t('levelManagement.levelName')}:
 						</Text>
-						<Text style={{ flex: 1, fontSize: '20px' }}>
+						<Text 
+							className='level-name-text'
+							style={{ flex: 1, fontSize: '20px' }}
+							title={level.levelName || 'N/A'}
+						>
 							{level.levelName || 'N/A'}
 						</Text>
 					</div>
 
-					<div className='level-field'>
+					<div className='level-field level-duration-field'>
 						<Text strong style={{ minWidth: '100px', fontSize: '20px' }}>
 							{t('levelManagement.duration')}:
 						</Text>
-						<Text style={{ fontSize: '20px' }}>{level.estimatedDurationWeeks} weeks</Text>
+						<Text 
+							className='level-duration-text'
+							style={{ fontSize: '20px' }}
+							title={`${level.estimatedDurationWeeks} weeks`}
+						>
+							{level.estimatedDurationWeeks} weeks
+						</Text>
 					</div>
 				</div>
 
@@ -198,7 +208,6 @@ const LevelDragEdit = () => {
 	const [levels, setLevels] = useState([]);
 	const [loading, setLoading] = useState(false);
 	const [saving, setSaving] = useState(false);
-	const [activeId, setActiveId] = useState(null);
 	const [isModalVisible, setIsModalVisible] = useState(false);
 	const [editingLevel, setEditingLevel] = useState(null);
 
@@ -298,6 +307,7 @@ const LevelDragEdit = () => {
 
 	const handleAddLevelAtPosition = useCallback((index) => {
 		setEditingLevel(null);
+		// Insert exactly at the separator's index so item appears right after the preceding item
 		setInsertAtIndex(index);
 		setIsModalVisible(true);
 	}, []);
@@ -317,23 +327,33 @@ const LevelDragEdit = () => {
 						);
 					});
 				} else if (insertAtIndex !== null) {
-					// Insert new level at specific position
-					const newLevel = {
-						...newLevelData,
-						id: `new-${Date.now()}`, // Temporary ID for new record
-						position: insertAtIndex + 1,
-						orderNumber: insertAtIndex + 1,
-					};
-					
 					setLevels((prev) => {
-						const newLevels = [...prev];
-						newLevels.splice(insertAtIndex, 0, newLevel);
-						// Recalculate positions
-						return newLevels.map((level, i) => ({
+						// Create new level with temporary position
+						const newLevel = {
+							...newLevelData,
+							id: `new-${Date.now()}`,
+							position: 0, // Temporary, will be recalculated
+							orderNumber: 0, // Temporary, will be recalculated
+						};
+						
+						// Get only visible levels (not deleted)
+						const visibleLevels = prev.filter(level => !level.toBeDeleted);
+						
+						// Insert at the correct position in visible levels
+						const newVisibleLevels = [...visibleLevels];
+						newVisibleLevels.splice(insertAtIndex, 0, newLevel);
+						
+						// Recalculate positions for visible levels only
+						const updatedVisibleLevels = newVisibleLevels.map((level, i) => ({
 							...level,
 							position: i + 1,
 							orderNumber: i + 1,
 						}));
+						
+						// Combine with deleted levels (keep them as-is)
+						const deletedLevels = prev.filter(level => level.toBeDeleted);
+						
+						return [...updatedVisibleLevels, ...deletedLevels];
 					});
 				}
 				
@@ -356,6 +376,8 @@ const LevelDragEdit = () => {
 				return;
 			}
 
+			console.log('Deleting level at index:', index, 'Level:', levelToDelete);
+
 			// Set toBeDeleted: true but keep in state
 			setLevels((prev) => {
 				const newLevels = prev.map((level) => {
@@ -370,23 +392,29 @@ const LevelDragEdit = () => {
 				
 				// Recalculate positions only for visible items
 				const visibleItems = newLevels.filter(level => !level.toBeDeleted);
+				console.log('Visible items after deletion:', visibleItems.length);
+				
 				return newLevels.map((level) => {
 					if (level.toBeDeleted) {
 						return level; // Keep deleted items as-is
 					}
 					
-					// Update position for visible items
+					// Update position for visible items based on their current order in the array
 					const visibleIndex = visibleItems.findIndex(item => item.id === level.id);
+					const newPosition = visibleIndex + 1;
+					
+					console.log(`Updating level ${level.id}: old position ${level.position} -> new position ${newPosition}`);
+					
 					return {
 						...level,
-						position: visibleIndex + 1,
-						orderNumber: visibleIndex + 1,
+						position: newPosition,
+						orderNumber: newPosition,
 					};
 				});
 			});
 
 		},
-		[levels, t]
+		[levels]
 	);
 
 	const handleEditLevel = useCallback(
@@ -405,7 +433,6 @@ const LevelDragEdit = () => {
 
 
 	const handleDragStart = useCallback((event) => {
-		setActiveId(event.active.id);
 		// Thêm class để document không bị scroll
 		document.body.style.overflow = 'hidden';
 	}, []);
@@ -419,7 +446,6 @@ const LevelDragEdit = () => {
 
 	const handleDragEnd = useCallback((event) => {
 		const { active, over } = event;
-		setActiveId(null);
 		// Reset overflow
 		document.body.style.overflow = '';
 
@@ -432,12 +458,21 @@ const LevelDragEdit = () => {
 
 				const newItems = arrayMove(items, oldIndex, newIndex);
 
-				// Chỉ update position một lần khi drop, không update liên tục
-				return newItems.map((level, index) => ({
-					...level,
-					position: index + 1,
-					orderNumber: index + 1,
-				}));
+				// Chỉ update position cho visible items (không bị xóa)
+				const visibleItems = newItems.filter(level => !level.toBeDeleted);
+				return newItems.map((level) => {
+					if (level.toBeDeleted) {
+						return level; // Giữ nguyên items đã bị xóa
+					}
+					
+					// Tính position dựa trên thứ tự trong visible items
+					const visibleIndex = visibleItems.findIndex(item => item.id === level.id);
+					return {
+						...level,
+						position: visibleIndex + 1,
+						orderNumber: visibleIndex + 1,
+					};
+				});
 			});
 		}
 	}, []);
