@@ -167,6 +167,24 @@ const teacherManagementApi = {
 		});
 	},
 
+	// Class Lesson Management APIs
+	getClassLessons: (params = {}) => {
+		const queryParams = new URLSearchParams();
+		
+		if (params.classChapterId) queryParams.append('classChapterId', params.classChapterId);
+		if (params.page !== undefined) queryParams.append('page', params.page);
+		if (params.size !== undefined) queryParams.append('size', params.size);
+		if (params.searchText) queryParams.append('searchText', params.searchText);
+
+		const url = `/class-lesson${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
+		
+		return axiosClient.get(url, {
+			headers: {
+				'accept': '*/*',
+			}
+		});
+	},
+
 	importClassChapters: (importData) => {
 		const url = `/class-chapter/import`;
 		
@@ -177,6 +195,21 @@ const teacherManagementApi = {
 			}
 		}).catch(error => {
 			console.error('ImportClassChapters API Error:', error);
+			console.error('Error response:', error.response?.data);
+			console.error('Error status:', error.response?.status);
+			throw error;
+		});
+	},
+
+	downloadClassChapterTemplate: () => {
+		const url = `/class-chapter/download-template`;
+		
+		return axiosClient.get(url, {
+			headers: {
+				'accept': '*/*',
+			}
+		}).catch(error => {
+			console.error('DownloadClassChapterTemplate API Error:', error);
 			console.error('Error response:', error.response?.data);
 			console.error('Error status:', error.response?.status);
 			throw error;

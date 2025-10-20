@@ -480,12 +480,6 @@ const TeacherClassChapterDragEdit = () => {
 				{/* Header Section */}
 				<div className={`panel-header ${theme}-panel-header`}>
 					<div className='page-header'>
-						<Button
-							icon={<ArrowLeftOutlined />}
-							onClick={handleGoBack}
-							style={{ position: 'absolute', left: 0 }}>
-							{t('common.back')}
-						</Button>
 						<div
 							style={{
 								display: 'flex',
