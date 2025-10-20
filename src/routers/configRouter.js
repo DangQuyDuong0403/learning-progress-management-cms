@@ -421,6 +421,17 @@ const CONFIG_ROUTER = [
 		private: true,
 		role: ['manager', 'teacher', 'teaching_assistant'],
 	},
+	{
+		show: false,
+		component: ClassChapterLesson,
+		// icon: <UserOutlined />,
+		path: ROUTER_PAGE.MANAGER_CLASS_CHAPTER_LESSONS,
+		menuName: 'class chapter lessons',
+		exact: true,
+		key: 'MANAGER_CLASS_CHAPTER_LESSONS',
+		private: true,
+		role: ['manager', 'teacher', 'teaching_assistant'],
+	},
 	
 	// Teacher Management Routes
 	{
@@ -508,6 +519,17 @@ const CONFIG_ROUTER = [
 		menuName: 'class chapters lessons',
 		exact: true,
 		key: 'TEACHING_ASSISTANT_CLASS_CHAPTERS_LESSONS',
+		private: true,
+		role: 'teaching_assistant',
+	},
+	{
+		show: false,
+		component: ClassChapterLesson,
+		// icon: <UserOutlined />,
+		path: ROUTER_PAGE.TEACHING_ASSISTANT_CLASS_CHAPTER_LESSONS,
+		menuName: 'class chapter lessons',
+		exact: true,
+		key: 'TEACHING_ASSISTANT_CLASS_CHAPTER_LESSONS',
 		private: true,
 		role: 'teaching_assistant',
 	},
@@ -735,6 +757,17 @@ const CONFIG_ROUTER = [
 		key: 'TEACHER_CLASS_CHAPTERS_EDIT_ORDER',
 		private: true,
 		role: 'teacher',
+	},
+	{
+		show: false,
+		component: ClassChapterLesson,
+		// icon: <UserOutlined />,
+		path: ROUTER_PAGE.TEACHER_CLASS_CHAPTER_LESSONS,
+		menuName: 'class chapter lessons',
+		exact: true,
+		key: 'TEACHER_CLASS_CHAPTER_LESSONS',
+		private: true,
+		role: ['manager', 'teacher', 'teaching_assistant'],
 	},
 	// Daily Challenge Routes for Teacher
 	{

@@ -1,0 +1,307 @@
+/* Class Chapter Lesson Page Styles - Matching ChapterListPage */
+
+.class-chapter-lesson-container {
+	padding: 24px;
+}
+
+/* Main content panel styling */
+.main-content-panel {
+	background: transparent;
+	border-radius: 12px;
+	padding: 24px;
+	min-height: calc(100vh - 120px);
+}
+
+/* Space theme main panel */
+.space-theme .main-content-panel {
+	background: rgba(26, 26, 46, 0.3);
+	backdrop-filter: blur(10px);
+	border: 1px solid rgba(77, 208, 255, 0.2);
+}
+
+/* Sun theme main panel */
+.sun-theme .main-content-panel {
+	background: rgba(255, 255, 255, 0.3);
+	backdrop-filter: blur(10px);
+	border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+/* Page title styling */
+.page-title-container {
+	margin-bottom: 24px;
+}
+
+.page-title {
+	font-size: 28px !important;
+	font-weight: 700 !important;
+	margin: 0 !important;
+}
+
+/* Sun theme title - black text */
+.sun-theme .page-title {
+	color: #000000 !important;
+}
+
+/* Space theme title - white text */
+.space-theme .page-title {
+	color: #ffffff !important;
+}
+
+.student-count {
+	color: #52c41a;
+	font-weight: 600;
+}
+
+/* Back button styling */
+.back-button {
+	height: 40px;
+	border-radius: 8px;
+	font-weight: 500;
+	transition: all 0.3s ease;
+}
+
+.space-theme .back-button {
+	background: linear-gradient(135deg, #B5B0C0, #A79EBB);
+	border: 1px solid #8377A0;
+	color: #000;
+}
+
+.space-theme .back-button:hover {
+	background: linear-gradient(135deg, #ACA5C0, #6D5F8F);
+	border-color: #8377A0;
+	color: #000;
+}
+
+.sun-theme .back-button {
+	background: rgba(164, 207, 255, 0.8);
+	border: 1px solid rgba(0, 0, 0, 0.1);
+	color: #000;
+}
+
+.sun-theme .back-button:hover {
+	background: rgba(148, 191, 255, 0.8);
+	border-color: rgba(0, 0, 0, 0.2);
+	color: #000;
+}
+
+/* Search input styling */
+.search-input {
+	height: 40px;
+	border-radius: 20px;
+	border: 1px solid rgb(47, 27, 105);
+	color: #000;
+}
+
+/* Space theme search input */
+.space-theme .search-input {
+	background: rgb(224 217 255 / 90%) !important;
+	border: 1px solid #604B9E;
+	outline: none !important;
+	box-shadow: none !important;
+	backdrop-filter: none;
+}
+
+.space-theme .search-input .ant-input {
+	background: transparent;
+	border: none;
+	outline: none;
+	box-shadow: none;
+	color: #000;
+}
+
+.space-theme .search-input .ant-input:focus {
+	background: transparent;
+	border: none;
+	outline: none;
+	box-shadow: none;
+	color: #000;
+}
+
+.space-theme .search-input .ant-input::placeholder {
+	color: transparent;
+}
+
+/* Sun theme search input */
+.sun-theme .search-input {
+	background: #fefffe;
+	border: 1px solid rgba(0, 0, 0, 0.1);
+	color: #666;
+	border-radius: 20px;
+}
+
+.sun-theme .search-input .ant-input {
+	background: transparent;
+	border: none;
+	outline: none;
+	box-shadow: none;
+	color: #000;
+}
+
+.sun-theme .search-input .ant-input:focus {
+	background: transparent;
+	border: none;
+	outline: none;
+	box-shadow: none;
+	color: #000;
+}
+
+.sun-theme .search-input .ant-input::placeholder {
+	color: #999;
+}
+
+/* Button styling */
+
+.create-button {
+	height: 40px;
+	border-radius: 8px;
+	font-weight: 500;
+	font-size: 16px;
+	border: 1px solid rgba(102, 174, 255, 0.3);
+	background: linear-gradient(135deg, #66AEFF, #3C99FF);
+	color: #fff;
+	backdrop-filter: blur(10px);
+	transition: all 0.3s ease;
+}
+
+.create-button:hover {
+	background: linear-gradient(135deg, #66AEFF, #3C99FF);
+	border-color: rgba(102, 174, 255, 0.6);
+	transform: translateY(-2px);
+	box-shadow: 0 4px 12px rgba(102, 174, 255, 0.4);
+	filter: brightness(1.1);
+}
+
+/* Import button styling */
+.import-button {
+	height: 40px;
+	border-radius: 8px;
+	font-weight: 500;
+	font-size: 16px;
+	border: 1px solid rgba(102, 174, 255, 0.3);
+	background: linear-gradient(135deg, #66AEFF, #3C99FF);
+	color: #fff;
+	backdrop-filter: blur(10px);
+	transition: all 0.3s ease;
+}
+
+.import-button:hover {
+	background: linear-gradient(135deg, #66AEFF, #3C99FF);
+	border-color: rgba(102, 174, 255, 0.6);
+	transform: translateY(-2px);
+	box-shadow: 0 4px 12px rgba(102, 174, 255, 0.4);
+	filter: brightness(1.1);
+}
+
+/* Sun theme import button */
+.sun-import-button {
+	height: 40px;
+	border-radius: 8px;
+	font-weight: 500;
+	font-size: 16px;
+	border: 1px solid rgba(102, 174, 255, 0.3);
+	background: linear-gradient(135deg, #66AEFF, #3C99FF);
+	color: #fff;
+	backdrop-filter: blur(10px);
+	transition: all 0.3s ease;
+}
+
+.sun-import-button:hover {
+	background: linear-gradient(135deg, #66AEFF, #3C99FF);
+	border-color: rgba(102, 174, 255, 0.6);
+	transform: translateY(-2px);
+	box-shadow: 0 4px 12px rgba(102, 174, 255, 0.4);
+	filter: brightness(1.1);
+}
+
+/* Space theme import button */
+.space-import-button {
+	height: 40px;
+	border-radius: 8px;
+	font-weight: 500;
+	font-size: 16px;
+	border: 1px solid rgba(114, 40, 217, 0.3);
+	background: linear-gradient(135deg, #7228d9 0%, #9c88ff 100%);
+	color: #fff;
+	backdrop-filter: blur(10px);
+	transition: all 0.3s ease;
+}
+
+.space-import-button:hover {
+	background: linear-gradient(135deg, #7228d9 0%, #9c88ff 100%);
+	border-color: rgba(114, 40, 217, 0.6);
+	transform: translateY(-2px);
+	box-shadow: 0 4px 12px rgba(114, 40, 217, 0.4);
+	filter: brightness(1.1);
+}
+
+/* Table section styling */
+.table-section {
+	background: transparent;
+	border-radius: 12px;
+	padding: 0;
+}
+
+.space-theme .table-section {
+	background: rgba(26, 26, 46, 0.3);
+	backdrop-filter: blur(10px);
+	border: 1px solid rgba(77, 208, 255, 0.2);
+}
+
+.sun-theme .table-section {
+	background: rgba(255, 255, 255, 0.3);
+	backdrop-filter: blur(10px);
+	border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+/* Table styling */
+.ant-table-thead > tr > th {
+	background-color: #fafafa;
+	font-weight: 600;
+}
+
+.space-theme .ant-table-thead > tr > th {
+	background: rgba(26, 26, 46, 0.8);
+	color: #fff;
+}
+
+.sun-theme .ant-table-thead > tr > th {
+	background: rgba(255, 255, 255, 0.8);
+	color: #000;
+}
+
+/* Action button icons - force black color */
+.ant-btn .anticon {
+	color: #000 !important;
+}
+
+.ant-btn:hover .anticon {
+	color: #000 !important;
+}
+
+.sun-theme .ant-btn .anticon {
+	color: #000 !important;
+}
+
+.sun-theme .ant-btn:hover .anticon {
+	color: #000 !important;
+}
+
+.space-theme .ant-btn .anticon {
+	color: #000 !important;
+}
+
+.space-theme .ant-btn:hover .anticon {
+	color: #000 !important;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+	.page-title {
+		font-size: 20px !important;
+	}
+	
+	.search-input {
+		min-width: 250px !important;
+		max-width: 300px !important;
+	}
+}
