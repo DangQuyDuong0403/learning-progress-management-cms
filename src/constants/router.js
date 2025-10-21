@@ -4,6 +4,7 @@ const ROUTER_PAGE = {
 	LOGIN_STUDENT: '/login-student',
 	FORGOT_PASSWORD_EMAIL: '/forgot-password-email',
 	FORGOT_PASSWORD_PHONE: '/forgot-password-phone',
+	FORGOT_PASSWORD_TEACHER: '/forgot-password-teacher',
 	FORGOT_PASSWORD_SUCCESS: '/forgot-password-success',
 	FORGOT_PASSWORD_FAILURE: '/forgot-password-failure',
 	OTP_VERIFICATION: '/otp-verification',
@@ -58,6 +59,7 @@ const ROUTER_PAGE = {
 	MANAGER_CLASS_ACTIVITIES: '/manager/classes/activities/:id',
 	MANAGER_CLASS_CHAPTERS_LESSONS: '/manager/classes/chapters-lessons/:id',
 	MANAGER_CLASS_CHAPTERS: '/manager/classes/chapters/:classId',
+	MANAGER_CLASS_CHAPTER_LESSONS: '/manager/classes/chapters/:classId/:chapterId/lessons',
 	// Teacher Management Routes
 	TEACHER_DASHBOARD: '/teacher/dashboard',
 	TEACHER_CLASSES: '/teacher/classes',
@@ -80,6 +82,7 @@ const ROUTER_PAGE = {
 	TEACHING_ASSISTANT_CLASS_TEACHERS: '/teaching-assistant/classes/teachers/:id',
 	TEACHING_ASSISTANT_CLASS_ACTIVITIES: '/teaching-assistant/classes/activities/:id',
 	TEACHING_ASSISTANT_CLASS_CHAPTERS_LESSONS: '/teaching-assistant/classes/chapters-lessons/:id',
+	TEACHING_ASSISTANT_CLASS_CHAPTER_LESSONS: '/teaching-assistant/classes/chapters/:classId/:chapterId/lessons',
 	TEACHER_DAILY_CHALLENGES: '/teacher/daily-challenges',
 	TEACHER_DAILY_CHALLENGE_DETAIL: '/teacher/daily-challenges/detail/:id',
 	TEACHER_DAILY_CHALLENGE_CREATE: '/teacher/daily-challenges/create',

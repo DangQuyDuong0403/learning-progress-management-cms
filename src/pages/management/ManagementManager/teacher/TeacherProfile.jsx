@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
-	Card,
 	Row,
 	Col,
 	Button,
@@ -24,6 +23,7 @@ import {
 	UserOutlined,
 	CalendarOutlined,
 	BookOutlined,
+	DeleteOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -50,6 +50,12 @@ const TeacherProfile = () => {
 	const [avatarUploadLoading, setAvatarUploadLoading] = useState(false);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState(null);
+	const [confirmModal, setConfirmModal] = useState({
+		visible: false,
+		title: '',
+		content: '',
+		onConfirm: null
+	});
 
 	// Teacher data from API
 	const [teacher, setTeacher] = useState(null);
@@ -179,6 +185,45 @@ const TeacherProfile = () => {
 		}
 	};
 
+	// Handle auto-deactivate for PENDING teachers (trash button)
+	const handleAutoDeactivatePending = () => {
+		if (!teacher || teacher.status !== 'PENDING') return;
+		
+		const teacherName = teacher.fullName || teacher.userName;
+		
+		setConfirmModal({
+			visible: true,
+			title: t('teacherManagement.deactivateTeacher'),
+			content: `${t('teacherManagement.confirmDeactivatePending')} "${teacherName}"? ${t('teacherManagement.deactivatePendingNote')}`,
+			onConfirm: async () => {
+				try {
+					// Call API to update teacher status to INACTIVE
+					const response = await teacherManagementApi.updateTeacherStatus(teacherId, 'INACTIVE');
+					
+					if (response.success) {
+						// Close modal first
+						setConfirmModal({ visible: false, title: '', content: '', onConfirm: null });
+						
+						// Show success toast
+						spaceToast.success(`${t('teacherManagement.deactivateTeacherSuccess')} "${teacherName}" ${t('teacherManagement.success')}`);
+						
+						// Refresh teacher data
+						fetchTeacherProfile();
+					} else {
+						throw new Error(response.message || 'Failed to update teacher status');
+					}
+				} catch (error) {
+					console.error('Error auto-deactivating PENDING teacher:', error);
+					setConfirmModal({ visible: false, title: '', content: '', onConfirm: null });
+					spaceToast.error(error.response?.data?.error || error.response?.data?.message || error.message || t('teacherManagement.updateStatusError'));
+				}
+			}
+		});
+	};
+
+	const handleConfirmCancel = () => {
+		setConfirmModal({ visible: false, title: '', content: '', onConfirm: null });
+	};
 
 	const classColumns = [
 		{
@@ -281,6 +326,18 @@ const TeacherProfile = () => {
 							{t('common.back')}
 						</Button>
 						<div style={{ display: 'flex', gap: '12px' }}>
+							{teacher?.status === 'PENDING' && (
+								<Button
+									icon={<DeleteOutlined style={{ color: '#ff4d4f' }} />}
+									onClick={handleAutoDeactivatePending}
+									className={`deactivate-button ${theme}-deactivate-button`}
+									style={{ 
+										color: '#ff4d4f',
+										borderColor: '#ff4d4f'
+									}}>
+									{t('teacherManagement.deactivateTeacher')}
+								</Button>
+							)}
 							<Button
 								type='primary'
 								icon={<EditOutlined />}
@@ -425,11 +482,11 @@ const TeacherProfile = () => {
 					{/* Current Classes */}
 					<div 
 						style={{ 
-							background: theme === 'space' ? 'rgb(224 217 255 / 95%)' : theme === 'sun' ? '#E6F5FF' : 'rgba(240, 248, 255, 0.95)',
+							background: '#ffffff',
 							borderRadius: '16px',
 							padding: '20px',
 							boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
-							border: theme === 'space' ? '1px solid rgba(77, 208, 255, 0.3)' : '1px solid rgba(0, 0, 0, 0.1)',
+							border: '1px solid rgba(0, 0, 0, 0.1)',
 							maxWidth: '800px',
 							margin: '24px auto 0 auto',
 							minHeight: 'auto',
@@ -691,6 +748,76 @@ const TeacherProfile = () => {
 							</Col>
 						</Row>
 					</Form>
+				</Modal>
+
+				{/* Confirmation Modal */}
+				<Modal
+					title={
+						<div style={{ 
+							fontSize: '20px', 
+							fontWeight: '600', 
+							color: '#ff4d4f',
+							textAlign: 'center',
+							padding: '10px 0'
+						}}>
+							{confirmModal.title}
+						</div>
+					}
+					open={confirmModal.visible}
+					onOk={confirmModal.onConfirm}
+					onCancel={handleConfirmCancel}
+					okText={t('common.confirm')}
+					cancelText={t('common.cancel')}
+					width={500}
+					centered
+					bodyStyle={{
+						padding: '30px 40px',
+						fontSize: '16px',
+						lineHeight: '1.6',
+						textAlign: 'center'
+					}}
+					okButtonProps={{
+						style: {
+							backgroundColor: '#ff4d4f',
+							borderColor: '#ff4d4f',
+							color: '#ffffff',
+							height: '40px',
+							fontSize: '16px',
+							fontWeight: '500',
+							minWidth: '100px'
+						}
+					}}
+					cancelButtonProps={{
+						style: {
+							height: '40px',
+							fontSize: '16px',
+							fontWeight: '500',
+							minWidth: '100px'
+						}
+					}}
+				>
+					<div style={{
+						display: 'flex',
+						flexDirection: 'column',
+						alignItems: 'center',
+						gap: '20px'
+					}}>
+						<div style={{
+							fontSize: '48px',
+							color: '#ff4d4f',
+							marginBottom: '10px'
+						}}>
+							🗑️
+						</div>
+						<p style={{
+							fontSize: '18px',
+							color: '#333',
+							margin: 0,
+							fontWeight: '500'
+						}}>
+							{confirmModal.content}
+						</p>
+					</div>
 				</Modal>
 
 				{/* Edit Email Modal */}

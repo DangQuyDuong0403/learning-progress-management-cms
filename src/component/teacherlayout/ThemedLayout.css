@@ -197,7 +197,7 @@
 	background-size: contain;
 	background-position: center;
 	background-repeat: no-repeat;
-	z-index: 9999;
+	z-index: 0;
 	pointer-events: none;
 	animation: floatingUpDown 9s ease-in-out infinite reverse;
 }

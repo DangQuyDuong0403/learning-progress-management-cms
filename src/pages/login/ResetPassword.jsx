@@ -58,69 +58,67 @@ export default function ResetPassword() {
 				token: token,
 				newPassword: formData.newPassword
 			});
+			console.log('=== RESET PASSWORD RESPONSE ===');
+			console.log('Full response:', response);
+			console.log('Response data:', response.data);
+			console.log('Response success:', response.data?.success);
+			console.log('Response message:', response.data?.message);
+			console.log('===============================');
 			
-			if (response.success) {
-				spaceToast.success(response.message);
+			if (response.data?.success) {
+				
+				spaceToast.success(response.data.message);
 				
 				// Lưu selectedRole trước khi xóa localStorage
-				const loginRole = localStorage.getItem('selectedRole') || 'teacher';
+				const loginRole = localStorage.getItem('selectedRole') || localStorage.getItem('loginRole') || 'TEACHER';
 				console.log('Saved role before cleanup:', loginRole);
 				
-				// Gọi API logout để logout tất cả sessions trên backend (bỏ qua lỗi)
-				try {
-					const refreshToken = localStorage.getItem('refreshToken');
-					if (refreshToken) {
-						// Không await để tránh bị block bởi lỗi
-						authApi.logout(refreshToken).then(() => {
-							console.log('Successfully logged out all sessions');
-						}).catch((logoutError) => {
-							console.log('Logout API failed, but continuing:', logoutError);
-						});
-					}
-				} catch (logoutError) {
-					console.log('Logout API failed, but continuing with token cleanup:', logoutError);
+				// Xác định redirect URL ngay lập tức
+				let redirectUrl;
+				if (loginRole === 'STUDENT') {
+					redirectUrl = '/login-student';
+					console.log('Redirecting to student login:', redirectUrl);
+				} else if (loginRole === 'TEACHER') {
+					redirectUrl = '/login-teacher';
+					console.log('Redirecting to teacher login:', redirectUrl);
+				} else {
+					// Fallback cho các role khác hoặc không xác định
+					redirectUrl = '/choose-login';
+					console.log('Unknown role, redirecting to choose login:', redirectUrl);
 				}
 				
-				// Xóa tất cả auth tokens để logout các tab khác trong cùng trình duyệt
-				localStorage.removeItem('accessToken');
-				localStorage.removeItem('refreshToken');
-				localStorage.removeItem('user');
-				localStorage.removeItem('mustChangePassword');
-				localStorage.removeItem('mustUpdateProfile');
-				
-				// Chuyển về trang login ngay lập tức dựa trên role đã lưu
-				console.log('Redirecting immediately with role:', loginRole);
-				
-				// Delay ngắn để đảm bảo toast message hiển thị
+				// Delay để user thấy success message trước khi chuyển trang
 				setTimeout(() => {
+					// Force navigation bằng window.location.href để bypass React Router
+					window.location.href = redirectUrl;
+				}, 1500); // Delay 2 giây để user thấy success message
+				
+				// Sau đó mới cleanup localStorage và logout
+				setTimeout(() => {
+					// Gọi API logout để logout tất cả sessions trên backend (bỏ qua lỗi)
 					try {
-						let redirectUrl;
-						if (loginRole === 'STUDENT') {
-							redirectUrl = '/login-student';
-							console.log('Redirecting to student login:', redirectUrl);
-						} else if (loginRole === 'TEACHER') {
-							redirectUrl = '/login-teacher';
-							console.log('Redirecting to teacher login:', redirectUrl);
-						} else {
-							// Fallback cho các role khác hoặc không xác định
-							redirectUrl = '/choose-login';
-							console.log('Unknown role, redirecting to choose login:', redirectUrl);
+						const refreshToken = localStorage.getItem('refreshToken');
+						if (refreshToken) {
+							// Không await để tránh bị block bởi lỗi
+							authApi.logout(refreshToken).then(() => {
+								console.log('Successfully logged out all sessions');
+							}).catch((logoutError) => {
+								console.log('Logout API failed, but continuing:', logoutError);
+							});
 						}
-						
-						// Thử navigate trước, nếu không được thì dùng window.location
-						try {
-							navigate(redirectUrl);
-							console.log('Navigate successful');
-						} catch (navError) {
-							console.log('Navigate failed, using window.location:', navError);
-							window.location.href = redirectUrl;
-						}
-					} catch (error) {
-						console.error('All navigation methods failed:', error);
-						// Fallback cuối cùng
-						window.location.href = '/choose-login';
+					} catch (logoutError) {
+						console.log('Logout API failed, but continuing with token cleanup:', logoutError);
 					}
-				}, 1500); // Delay 1.5 giây để user thấy success message
+					
+					// Xóa tất cả auth tokens để logout các tab khác trong cùng trình duyệt
+					localStorage.removeItem('accessToken');
+					localStorage.removeItem('refreshToken');
+					localStorage.removeItem('user');
+					localStorage.removeItem('mustChangePassword');
+					localStorage.removeItem('mustUpdateProfile');
+					
+					console.log('Cleanup completed after navigation');
+				}, 100); // Delay ngắn để đảm bảo navigation đã hoàn thành
 			}
 		} catch (error) {
 			// Xử lý lỗi từ API - error object có cấu trúc trực tiếp

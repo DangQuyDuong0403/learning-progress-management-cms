@@ -1,6 +1,6 @@
 import React from 'react';
 import { Button } from 'antd';
-import { CheckCircleOutlined, StopOutlined } from '@ant-design/icons';
+import { CheckCircleOutlined, StopOutlined, UserAddOutlined } from '@ant-design/icons';
 import { useTheme } from '../contexts/ThemeContext';
 import './StudentBottomActionBar.css';
 
@@ -9,14 +9,17 @@ const StudentBottomActionBar = ({
 	onSelectAll, 
 	onActiveAll,
 	onDeactiveAll,
+	onAssignAllToClass,
 	onClose,
 	showSelectAll = true,
 	showActiveAll = true,
 	showDeactiveAll = true,
+	showAssignAllToClass = true,
 	showClose = true,
 	selectAllText = "Select all",
 	activeAllText = "Active all",
-	deactiveAllText = "Deactive all"
+	deactiveAllText = "Deactive all",
+	assignAllToClassText = "Assign all to class"
 }) => {
 	const { theme } = useTheme();
 
@@ -58,6 +61,16 @@ const StudentBottomActionBar = ({
 							className="student-deactive-all-button"
 						>
 							{deactiveAllText}
+						</Button>
+					)}
+					{showAssignAllToClass && (
+						<Button
+							type="text"
+							icon={<UserAddOutlined />}
+							onClick={onAssignAllToClass}
+							className="student-assign-all-to-class-button"
+						>
+							{assignAllToClassText}
 						</Button>
 					)}
 				</div>

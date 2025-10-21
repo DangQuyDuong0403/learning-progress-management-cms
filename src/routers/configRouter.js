@@ -4,6 +4,7 @@ import ChooseLogin from '../pages/login/ChooseLogin.jsx';
 import ForgotPassword from '../pages/login/ForgotPassword.jsx';
 import ForgotPasswordSuccess from '../pages/login/ForgotPasswordSuccess.jsx';
 import ForgotPasswordFailure from '../pages/login/ForgotPasswordFailure.jsx';
+import ForgotPasswordTeacher from '../pages/login/ForgotPasswordTeacher.jsx';
 import Login from '../pages/login/LoginStudent.jsx';
 import OTPVerification from '../pages/login/OTPVerification.jsx';
 import ResetPassword from '../pages/login/ResetPassword.jsx';
@@ -58,6 +59,7 @@ import TeacherDashboard from '../pages/management/ManagementTeacher/TeacherDashb
 import AdminDashboard from '../pages/management/managementAdmin/AdminDashboard';
 import ManagerDashboard from '../pages/management/ManagementManager/ManagerDashboard';
 import StudentDashboard from '../pages/management/ManagementStudent/StudentDashboard';
+import StudentClassList from '../pages/management/ManagementStudent/StudentClassList.jsx';
   
 const CONFIG_ROUTER = [
 	//   {
@@ -93,6 +95,14 @@ const CONFIG_ROUTER = [
 		path: ROUTER_PAGE.FORGOT_PASSWORD_PHONE,
 		exact: true,
 		key: 'FORGOT_PASSWORD',
+	},
+	{
+		show: false, // không hiện trên menu
+		component: ForgotPasswordTeacher,
+		// icon: <LogIn size={18} />,
+		path: ROUTER_PAGE.FORGOT_PASSWORD_TEACHER,
+		exact: true,
+		key: 'FORGOT_PASSWORD_TEACHER',
 	},
 	{
 		show: false, // không hiện trên menu
@@ -198,6 +208,18 @@ const CONFIG_ROUTER = [
 		role: 'student',
 	},
 	
+	// Student Class List
+	{
+		show: false,
+		component: StudentClassList,
+		path: '/student/classes',
+		menuName: 'My Classes',
+		exact: true,
+		key: 'STUDENT_CLASSES',
+		private: true,
+		role: 'student',
+	},
+	
 	// Admin Management Routes
 	{
 		show: true,
@@ -249,12 +271,12 @@ const CONFIG_ROUTER = [
 	},
 	{
 		show: true,
-		component: ClassListTable,
-		// icon: <UserOutlined />,
-		path: ROUTER_PAGE.MANAGER_CLASSES,
-		menuName: 'classes management',
+		component: LevelList,
+		// icon: <BookOutlined />,
+		path: ROUTER_PAGE.MANAGER_LEVELS,
+		menuName: 'Levels management',
 		exact: true,
-		key: 'MANAGER_CLASSES',
+		key: 'MANAGER_LEVELS',
 		private: true,
 		role: 'manager',
 	},
@@ -271,12 +293,12 @@ const CONFIG_ROUTER = [
 	},
 	{
 		show: true,
-		component: LevelList,
-		// icon: <BookOutlined />,
-		path: ROUTER_PAGE.MANAGER_LEVELS,
-		menuName: 'Levels management',
+		component: ClassListTable,
+		// icon: <UserOutlined />,
+		path: ROUTER_PAGE.MANAGER_CLASSES,
+		menuName: 'classes management',
 		exact: true,
-		key: 'ADMIN_LEVELS',
+		key: 'MANAGER_CLASSES',
 		private: true,
 		role: 'manager',
 	},
@@ -421,6 +443,17 @@ const CONFIG_ROUTER = [
 		private: true,
 		role: ['manager', 'teacher', 'teaching_assistant'],
 	},
+	{
+		show: false,
+		component: ClassChapterLesson,
+		// icon: <UserOutlined />,
+		path: ROUTER_PAGE.MANAGER_CLASS_CHAPTER_LESSONS,
+		menuName: 'class chapter lessons',
+		exact: true,
+		key: 'MANAGER_CLASS_CHAPTER_LESSONS',
+		private: true,
+		role: ['manager', 'teacher', 'teaching_assistant'],
+	},
 	
 	// Teacher Management Routes
 	{
@@ -508,6 +541,17 @@ const CONFIG_ROUTER = [
 		menuName: 'class chapters lessons',
 		exact: true,
 		key: 'TEACHING_ASSISTANT_CLASS_CHAPTERS_LESSONS',
+		private: true,
+		role: 'teaching_assistant',
+	},
+	{
+		show: false,
+		component: ClassChapterLesson,
+		// icon: <UserOutlined />,
+		path: ROUTER_PAGE.TEACHING_ASSISTANT_CLASS_CHAPTER_LESSONS,
+		menuName: 'class chapter lessons',
+		exact: true,
+		key: 'TEACHING_ASSISTANT_CLASS_CHAPTER_LESSONS',
 		private: true,
 		role: 'teaching_assistant',
 	},
@@ -735,6 +779,17 @@ const CONFIG_ROUTER = [
 		key: 'TEACHER_CLASS_CHAPTERS_EDIT_ORDER',
 		private: true,
 		role: 'teacher',
+	},
+	{
+		show: false,
+		component: ClassChapterLesson,
+		// icon: <UserOutlined />,
+		path: ROUTER_PAGE.TEACHER_CLASS_CHAPTER_LESSONS,
+		menuName: 'class chapter lessons',
+		exact: true,
+		key: 'TEACHER_CLASS_CHAPTER_LESSONS',
+		private: true,
+		role: ['manager', 'teacher', 'teaching_assistant'],
 	},
 	// Daily Challenge Routes for Teacher
 	{

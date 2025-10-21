@@ -126,7 +126,7 @@
 .level-drag-item {
 	display: flex;
 	align-items: flex-start;
-	gap: 12px;
+	gap: 20px;
 	padding: 12px 16px;
 	border: 2px solid #e8e8e8;
 	border-radius: 12px;
@@ -170,19 +170,48 @@
 .level-content {
 	flex: 1;
 	display: flex;
-	gap: 50px;
+	gap: 20px;
 	align-items: center;
+	min-width: 0; /* Allow flex items to shrink below content size */
 }
 
 .level-field {
 	display: flex;
 	align-items: center;
-	gap: 4px;
+	gap: 20px;
 	padding: 4px 0;
+	min-width: 0; /* Allow flex items to shrink */
 }
 
 .level-field .ant-typography {
 	margin: 0;
+}
+
+/* Text truncation styles */
+.level-name-field {
+	flex: 1;
+	min-width: 0; /* Allow shrinking */
+	max-width: 60%; /* Limit maximum width to 60% of container */
+}
+
+.level-name-text {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	max-width: 100%;
+	min-width: 0;
+}
+
+.level-duration-field {
+	flex-shrink: 0; /* Don't shrink duration field */
+	min-width: 120px; /* Minimum width for duration */
+}
+
+.level-duration-text {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	max-width: 100px; /* Limit duration text width */
 }
 
 .level-actions {

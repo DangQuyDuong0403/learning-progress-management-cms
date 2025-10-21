@@ -48,6 +48,7 @@
     "emailChangeRequestSent": "Yêu cầu thay đổi email đã được gửi",
     "emailChangeConfirmationMessage": "Vui lòng kiểm tra hộp thư email của bạn để tìm liên kết xác nhận để hoàn tất quá trình thay đổi email.",
     "emailChangeCheckInbox": "Kiểm tra hộp thư đến và thư mục spam để tìm email xác nhận.",
+    "yourEmailIsNow": "Email của bạn hiện tại là",
     "pendingEmailChange": "Đang chờ thay đổi thành: {{email}}",
     "username": "Tên đăng nhập",
     "usernameRequired": "Vui lòng nhập tên đăng nhập!",
@@ -83,7 +84,8 @@
     "systemAvatars": "Ảnh đại diện hệ thống",
     "uploadCustomAvatar": "Tải lên ảnh đại diện tùy chỉnh",
     "clickToUpload": "Nhấp để tải lên",
-    "maxFileSize": "Kích thước file tối đa"
+    "maxFileSize": "Kích thước file tối đa",
+    "index": "STT"
   },
   "sidebar": {
     "title": "Learning CMS",
@@ -137,7 +139,7 @@
     "chooseRole": "Chọn vai trò để tiếp tục",
     "student": "Học sinh",
     "teacher": "Thành viên của Camkey",
-    "forTeacher": "Dành cho giáo viên",
+    "forTeacher": "Dành cho thành viên camkey",
     "forStudent": "Dành cho học sinh",
     "admin": "Quản trị viên"
   },
@@ -146,12 +148,17 @@
     "description": "Chọn phương thức khôi phục mật khẩu phù hợp với bạn",
     "viaEmail": "Qua email",
     "usernameDescription": "Gửi link đặt lại qua email sử dụng tên đăng nhập",
+    "viaTeacher": "Qua giáo viên",
+    "teacherDescription": "Yêu cầu giáo viên đặt lại mật khẩu cho bạn",
     "viaPhone": "Yêu cầu giáo viên gửi mật khẩu cố định",
     "phoneDescription": "Nhờ giáo viên cung cấp mật khẩu mặc định",
     "footerNote": "Chọn phương thức bạn có thể truy cập dễ dàng nhất",
     "pageTitle": "Quên mật khẩu",
     "send": "Gửi",
     "usernameNotFound": "Tên đăng nhập không tồn tại trong hệ thống!",
+    "usernameRequired": "Vui lòng nhập tên đăng nhập của bạn",
+    "teacherResetSuccess": "Yêu cầu đặt lại mật khẩu đã được gửi đến giáo viên thành công!",
+    "resetError": "Đã xảy ra lỗi. Vui lòng thử lại.",
     "resetLinkSent": "Link đặt lại mật khẩu đã được gửi thành công!"
   },
   "forgotPasswordSuccess": {
@@ -381,6 +388,11 @@
     "address": "Địa chỉ",
     "class": "Lớp",
     "level": "Cấp độ",
+    "deactivateStudent": "Vô hiệu hóa học sinh",
+    "confirmDeactivatePending": "Bạn có chắc chắn muốn vô hiệu hóa học sinh",
+    "deactivatePendingNote": "Học sinh này đang ở trạng thái chờ xử lý và sẽ được chuyển sang trạng thái không hoạt động.",
+    "deactivateStudentSuccess": "Đã vô hiệu hóa học sinh",
+    "success": "thành công",
     "role": "Vai trò",
     "currentLevel": "Cấp độ hiện tại",
     "currentClass": "Lớp hiện tại",
@@ -712,7 +724,12 @@
     "exportInProgress": "Đang xuất dữ liệu...",
     "studentsSelected": "học sinh đã chọn",
     "activeAll": "Kích hoạt tất cả",
-    "deactiveAll": "Vô hiệu hóa tất cả"
+    "deactiveAll": "Vô hiệu hóa tất cả",
+    "assignAllToClass": "Gán tất cả vào lớp",
+    "selectItemsToAssign": "Vui lòng chọn các mục để gán vào lớp",
+    "confirmBulkAssignToClass": "Bạn có chắc chắn muốn gán",
+    "bulkAssignSuccess": "Gán thành công",
+    "bulkAssignError": "Lỗi khi gán học sinh vào lớp"
   },
   "studentProgress": {
     "title": "Tổng quan tiến độ học tập học sinh",
@@ -862,7 +879,10 @@
     "exportAll": "Xuất tất cả lớp",
     "exportError": "Lỗi khi xuất dữ liệu",
     "classes": "lớp",
-    "selected": "Đã chọn"
+    "selected": "Đã chọn",
+    "startDate": "Ngày bắt đầu",
+    "endDate": "Ngày kết thúc",
+    "deleteClass": "Xóa lớp học"
   },
   "classMenu": {
     "loadingClassInfo": "Đang tải thông tin lớp học...",
@@ -878,6 +898,8 @@
     "activitiesDescription": "Xem các hoạt động của lớp và lịch sử thay đổi",
     "chaptersLessons": "Chương & Bài học",
     "chaptersLessonsDescription": "Quản lý chương trình học, chương và bài học",
+    "dailyChallenge": "Thử thách hàng ngày",
+    "dailyChallengeDescription": "Tạo và quản lý thử thách hàng ngày cho học sinh",
     "chapters": "Chương học",
     "chaptersDescription": "Quản lý các chương học, chỉnh sửa thứ tự và nội dung",
     "level": "Cấp độ",
@@ -1405,6 +1427,7 @@
     "updateSyllabusError": "Lỗi khi cập nhật giáo trình",
     "addSyllabusSuccess": "Thêm giáo trình thành công",
     "addSyllabusError": "Lỗi khi thêm giáo trình",
+    "errorFetchingAllSyllabuses": "Lỗi khi tải tất cả giáo trình",
     "paginationText": "của",
     "yes": "Có",
     "no": "Không"
@@ -1759,7 +1782,12 @@
     "confirmDeleteTitle": "Xóa tài khoản",
     "confirmDeleteDescription": "Bạn có chắc chắn muốn xóa tài khoản? Hành động này không thể hoàn tác và tất cả dữ liệu của bạn sẽ bị xóa vĩnh viễn.",
     "accountDeletedSuccess": "Xóa tài khoản thành công",
-    "accountDeletionError": "Không thể xóa tài khoản"
+    "accountDeletionError": "Không thể xóa tài khoản",
+    "confirmDelete": "Xác nhận xóa",
+    "confirmDeleteMessage": "Bạn có chắc chắn muốn xóa tài khoản này?",
+    "deleteAccountSuccess": "Xóa tài khoản thành công",
+    "deleteAccountError": "Không thể xóa tài khoản",
+    "delete": "Xóa"
   },
 
   "teacherManagement": {
@@ -1811,7 +1839,11 @@
     "exportData": "Xuất dữ liệu",
     "chooseExportOption": "Chọn tùy chọn xuất",
     "exportDescription": "Chọn để xuất giáo viên đã chọn hoặc tất cả giáo viên",
-    "exportSelected": "Xuất giáo viên đã chọn",
+    "deactivateTeacher": "Vô hiệu hóa giáo viên",
+    "confirmDeactivatePending": "Bạn có chắc chắn muốn vô hiệu hóa giáo viên",
+    "deactivatePendingNote": "Giáo viên này đang ở trạng thái chờ xử lý và sẽ được chuyển sang trạng thái không hoạt động.",
+    "deactivateTeacherSuccess": "Đã vô hiệu hóa giáo viên",
+    "success": "thành công",
     "exportAll": "Xuất tất cả giáo viên",
     "exportError": "Lỗi khi xuất dữ liệu",
     "exportSuccess": "Xuất dữ liệu thành công",

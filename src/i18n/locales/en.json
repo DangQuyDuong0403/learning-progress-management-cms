@@ -49,6 +49,7 @@
     "emailChangeRequestSent": "Email Change Request Sent",
     "emailChangeConfirmationMessage": "Please check your email inbox for a confirmation link to complete the email change process.",
     "emailChangeCheckInbox": "Check your inbox and spam folder for the confirmation email.",
+    "yourEmailIsNow": "Your email is now",
     "pendingEmailChange": "Pending change to: {{email}}",
     "username": "Username",
     "usernameRequired": "Please enter username!",
@@ -84,7 +85,8 @@
     "systemAvatars": "System Avatars",
     "uploadCustomAvatar": "Upload Custom Avatar",
     "clickToUpload": "Click to upload",
-    "maxFileSize": "Max file size"
+    "maxFileSize": "Max file size",
+    "index": "No"
   },
   "sidebar": {
     "title": "Learning CMS",
@@ -138,7 +140,7 @@
     "chooseRole": "Choose role to continue",
     "student": "Student",
     "teacher": "Camkey member",
-    "forTeacher": "For teacher",
+    "forTeacher": "For camkey member",
     "forStudent": "For student",
     "admin": "Administrator"
   },
@@ -147,12 +149,17 @@
     "description": "Choose the password recovery method that works for you",
     "viaEmail": "Via email",
     "usernameDescription": "Send reset link via email using username",
+    "viaTeacher": "Via teacher",
+    "teacherDescription": "Request your teacher to reset your password",
     "viaPhone": "Request teacher to send default password",
     "phoneDescription": "Ask teacher to provide default password",
     "footerNote": "Choose the method you can access most easily",
     "pageTitle": "Forgot password",
     "send": "Send",
     "usernameNotFound": "Username does not exist in the system!",
+    "usernameRequired": "Please enter your username",
+    "teacherResetSuccess": "Password reset request sent to teacher successfully!",
+    "resetError": "An error occurred. Please try again.",
     "resetLinkSent": "Password reset link has been sent successfully!"
   },
   "forgotPasswordSuccess": {
@@ -381,6 +388,11 @@
     "lastName": "Last Name",
     "email": "Email",
     "phone": "Phone Number",
+    "deactivateStudent": "Deactivate Student",
+    "confirmDeactivatePending": "Are you sure you want to deactivate student",
+    "deactivatePendingNote": "This student is currently pending and will be moved to inactive status.",
+    "deactivateStudentSuccess": "Student deactivated",
+    "success": "successfully",
     "address": "Address",
     "class": "Class",
     "level": "Level",
@@ -715,7 +727,12 @@
     "exportInProgress": "Export in progress...",
     "studentsSelected": "students selected",
     "activeAll": "Active All",
-    "deactiveAll": "Deactive All"
+    "deactiveAll": "Deactive All",
+    "assignAllToClass": "Assign All to Class",
+    "selectItemsToAssign": "Please select items to assign to class",
+    "confirmBulkAssignToClass": "Are you sure you want to assign",
+    "bulkAssignSuccess": "Successfully assigned",
+    "bulkAssignError": "Error assigning students to class"
   },
   "studentProgress": {
     "title": "Student Learning Progress Overview",
@@ -865,7 +882,10 @@
     "exportAll": "Export All Classes",
     "exportError": "Error exporting data",
     "classes": "classes",
-    "selected": "Selected"
+    "selected": "Selected",
+    "startDate": "Start date",
+    "endDate": "End date",
+    "deleteClass": "Delete Class"
   },
   "classMenu": {
     "loadingClassInfo": "Loading class information...",
@@ -881,6 +901,8 @@
     "activitiesDescription": "View class activities and timeline of changes",
     "chaptersLessons": "Chapters & Lessons",
     "chaptersLessonsDescription": "Manage class curriculum, chapters and lessons",
+    "dailyChallenge": "Daily Challenge",
+    "dailyChallengeDescription": "Create and manage daily challenges for students",
     "chapters": "Chapters",
     "chaptersDescription": "Manage class chapters, edit order and content",
     "level": "Level",
@@ -1409,6 +1431,7 @@
     "updateSyllabusError": "Error updating syllabus",
     "addSyllabusSuccess": "Add syllabus successfully",
     "addSyllabusError": "Error adding syllabus",
+    "errorFetchingAllSyllabuses": "Error fetching all syllabuses",
     "paginationText": "of",
     "yes": "Yes",
     "no": "No"
@@ -1762,7 +1785,12 @@
     "confirmDeleteTitle": "Delete Account",
     "confirmDeleteDescription": "Are you sure you want to delete your account? This action cannot be undone and all your data will be permanently removed.",
     "accountDeletedSuccess": "Account deleted successfully",
-    "accountDeletionError": "Failed to delete account"
+    "accountDeletionError": "Failed to delete account",
+    "confirmDelete": "Confirm Delete",
+    "confirmDeleteMessage": "Are you sure you want to delete this account?",
+    "deleteAccountSuccess": "Account deleted successfully",
+    "deleteAccountError": "Failed to delete account",
+    "delete": "Delete"
   },
   "teacherManagement": {
     "title": "Teacher Management",
@@ -1813,7 +1841,11 @@
     "exportData": "Export Data",
     "chooseExportOption": "Choose Export Option",
     "exportDescription": "Choose to export selected teachers or all teachers",
-    "exportSelected": "Export Selected Teachers",
+    "deactivateTeacher": "Deactivate Teacher",
+    "confirmDeactivatePending": "Are you sure you want to deactivate teacher",
+    "deactivatePendingNote": "This teacher is currently pending and will be moved to inactive status.",
+    "deactivateTeacherSuccess": "Teacher deactivated",
+    "success": "successfully",
     "exportAll": "Export All Teachers",
     "exportError": "Error exporting data",
     "exportSuccess": "Data exported successfully",

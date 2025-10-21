@@ -685,7 +685,7 @@ div.student-profile .space-theme .edit-button:hover {
 }
 
 .sun-theme .profile-container-new {
-  background: rgb(230, 245, 255) !important;
+  background: #fff !important;
   border: 1px solid rgba(0, 0, 0, 0.1) !important;
 }
 
@@ -930,7 +930,7 @@ div.student-profile .space-theme .edit-button:hover {
 }
 
 .sun-theme .parent-container-new {
-  background: #E6F5FF !important;
+  background: white !important;
   border: 1px solid rgba(0, 0, 0, 0.1) !important;
 }
 

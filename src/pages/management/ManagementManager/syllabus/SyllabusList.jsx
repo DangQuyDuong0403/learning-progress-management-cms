@@ -73,6 +73,11 @@ const SyllabusList = () => {
 		uploading: false
 	});
 
+	// Loading states for buttons
+	const [templateDownloadLoading, setTemplateDownloadLoading] = useState(false);
+	const [exportSelectedLoading, setExportSelectedLoading] = useState(false);
+	const [exportAllLoading, setExportAllLoading] = useState(false);
+
 	// Pagination state
 	const [pagination, setPagination] = useState({
 		current: 1,
@@ -149,21 +154,29 @@ const SyllabusList = () => {
 
 	// Calculate checkbox states with useMemo
 	const checkboxStates = useMemo(() => {
-		const totalItems = syllabuses.length; // Sử dụng syllabuses.length thay vì totalElements
+		const currentPageKeys = syllabuses.map(syllabus => syllabus.id);
 		const selectedCount = selectedRowKeys.length;
-		const isSelectAll = selectedCount === totalItems && totalItems > 0;
-		const isIndeterminate = false; // Luôn false để không hiển thị indeterminate state
+		
+		// Check if all items on current page are selected
+		const allCurrentPageSelected = currentPageKeys.length > 0 && 
+			currentPageKeys.every(key => selectedRowKeys.includes(key));
+		
+		// For table header checkbox: only check if all current page items are selected
+		const isSelectAll = allCurrentPageSelected;
+		// Never show indeterminate state for table header checkbox
+		const isIndeterminate = false;
 		
 		console.log('Checkbox Debug:', {
-			totalItems,
-			selectedCount,
+			currentPageKeys,
 			selectedRowKeys,
+			allCurrentPageSelected,
 			isSelectAll,
 			isIndeterminate,
+			selectedCount,
 		});
 		
-		return { isSelectAll, isIndeterminate, totalItems, selectedCount };
-	}, [selectedRowKeys, syllabuses.length]);
+		return { isSelectAll, isIndeterminate, totalItems: currentPageKeys.length, selectedCount };
+	}, [selectedRowKeys, syllabuses]);
 
 	// Cleanup timeout on unmount
 	useEffect(() => {
@@ -360,6 +373,7 @@ const SyllabusList = () => {
 	};
 
 	const handleDownloadTemplate = async () => {
+		setTemplateDownloadLoading(true);
 		try {
 			
 			const response = await syllabusManagementApi.downloadSyllabusTemplate();
@@ -390,17 +404,69 @@ const SyllabusList = () => {
 		} catch (error) {
 			console.error('Error downloading template:', error);
 			spaceToast.error(error.response?.data?.error || error.response?.data?.message || error.message || 'Failed to download template');
+		} finally {
+			setTemplateDownloadLoading(false);
 		}
 	};
+
+	// Fetch all syllabus IDs for select all functionality
+	const fetchAllSyllabusIds = useCallback(async () => {
+		try {
+			// Fetch all syllabuses without pagination to get all IDs
+			const params = {
+				page: 0,
+				size: totalElements || 1000, // Use totalElements or a large number
+				sortBy: sortBy,
+				sortDir: sortDir,
+			};
+
+			// Add search parameter if provided
+			if (searchText && searchText.trim()) {
+				params.searchText = searchText.trim();
+			}
+
+			const response = await syllabusManagementApi.getSyllabuses({
+				params: params,
+			});
+
+			return response.data.map(syllabus => syllabus.id);
+		} catch (error) {
+			console.error('Error fetching all syllabus IDs:', error);
+			spaceToast.error(t('syllabusManagement.errorFetchingAllSyllabuses'));
+			return [];
+		}
+	}, [totalElements, sortBy, sortDir, searchText, t]);
 
 	// Checkbox selection handlers
 	const handleSelectAll = async (checked) => {
 		if (checked) {
-			// Select all items currently visible on the page
-			const currentPageKeys = syllabuses.map(syllabus => syllabus.id);
-			setSelectedRowKeys(currentPageKeys);
+			// Fetch all syllabus IDs and select them
+			const allSyllabusIds = await fetchAllSyllabusIds();
+			setSelectedRowKeys(allSyllabusIds);
 		} else {
+			// Clear all selections
 			setSelectedRowKeys([]);
+		}
+	};
+
+	// Handle table header checkbox (only current page)
+	const handleSelectAllCurrentPage = (checked) => {
+		const currentPageKeys = syllabuses.map(syllabus => syllabus.id);
+		
+		if (checked) {
+			// Add all current page items to selection
+			setSelectedRowKeys(prev => {
+				const newKeys = [...prev];
+				currentPageKeys.forEach(key => {
+					if (!newKeys.includes(key)) {
+						newKeys.push(key);
+					}
+				});
+				return newKeys;
+			});
+		} else {
+			// Remove all current page items from selection
+			setSelectedRowKeys(prev => prev.filter(key => !currentPageKeys.includes(key)));
 		}
 	};
 
@@ -462,42 +528,35 @@ const SyllabusList = () => {
 	};
 
 	const handleExportSelected = async () => {
+		setExportSelectedLoading(true);
 		try {
 			if (selectedRowKeys.length === 0) {
 				spaceToast.warning(t('syllabusManagement.selectItemsToExport'));
 				return;
 			}
 
-			// Export each selected syllabus individually
-			for (let i = 0; i < selectedRowKeys.length; i++) {
-				const syllabusId = selectedRowKeys[i];
-				const response = await syllabusManagementApi.exportSyllabusById(syllabusId);
-				
-				// Since we modified axios interceptor to return full response for blob requests,
-				// response.data should contain the blob data directly
-				const blobData = response.data;
-				
-				// Create download link
-				const url = window.URL.createObjectURL(blobData);
-				const link = document.createElement('a');
-				link.href = url;
-				
-				// Get syllabus name for filename
-				const syllabus = syllabuses.find(s => s.id === syllabusId);
-				const filename = syllabus ? `syllabus_${syllabus.name.replace(/[^a-zA-Z0-9]/g, '_')}.xlsx` : `syllabus_${syllabusId}.xlsx`;
-				
-				link.download = filename;
-				link.style.display = 'none';
-				document.body.appendChild(link);
-				link.click();
-				document.body.removeChild(link);
-				window.URL.revokeObjectURL(url);
-				
-				// Add small delay between downloads to avoid browser blocking
-				if (i < selectedRowKeys.length - 1) {
-					await new Promise(resolve => setTimeout(resolve, 500));
-				}
-			}
+			// Export selected syllabuses using new API with ids parameter
+			const response = await syllabusManagementApi.exportSyllabuses(selectedRowKeys, searchText);
+			
+			// Since we modified axios interceptor to return full response for blob requests,
+			// response.data should contain the blob data directly
+			const blobData = response.data;
+			
+			// Create download link
+			const url = window.URL.createObjectURL(blobData);
+			const link = document.createElement('a');
+			link.href = url;
+			
+			// Generate filename with timestamp and count
+			const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-');
+			const filename = `selected_syllabuses_${selectedRowKeys.length}_${timestamp}.xlsx`;
+			
+			link.download = filename;
+			link.style.display = 'none';
+			document.body.appendChild(link);
+			link.click();
+			document.body.removeChild(link);
+			window.URL.revokeObjectURL(url);
 			
 			spaceToast.success(`${t('syllabusManagement.exportSuccess')}: ${selectedRowKeys.length} ${t('syllabusManagement.syllabuses')}`);
 			setIsExportModalVisible(false);
@@ -532,13 +591,16 @@ const SyllabusList = () => {
 			
 			console.error('Final error message:', errorMessage);
 			spaceToast.error(errorMessage);
+		} finally {
+			setExportSelectedLoading(false);
 		}
 	};
 
 	const handleExportAll = async () => {
+		setExportAllLoading(true);
 		try {
-			// Call export all API with current search text
-			const response = await syllabusManagementApi.exportAllSyllabuses(searchText);
+			// Call export all API using new unified API (no ids parameter = export all)
+			const response = await syllabusManagementApi.exportSyllabuses(null, searchText);
 			
 			// Since we modified axios interceptor to return full response for blob requests,
 			// response.data should contain the blob data directly
@@ -593,6 +655,8 @@ const SyllabusList = () => {
 			
 			console.error('Final error message:', errorMessage);
 			spaceToast.error(errorMessage);
+		} finally {
+			setExportAllLoading(false);
 		}
 	};
 
@@ -660,7 +724,7 @@ const SyllabusList = () => {
 					key={`select-all-${checkboxStates.selectedCount}-${checkboxStates.totalItems}`}
 					checked={checkboxStates.isSelectAll}
 					indeterminate={checkboxStates.isIndeterminate}
-					onChange={(e) => handleSelectAll(e.target.checked)}
+					onChange={(e) => handleSelectAllCurrentPage(e.target.checked)}
 					style={{ 
 						transform: 'scale(1.2)',
 						marginRight: '8px'
@@ -1282,6 +1346,8 @@ const SyllabusList = () => {
 							type="dashed"
 							icon={<DownloadOutlined />}
 							onClick={handleDownloadTemplate}
+							loading={templateDownloadLoading}
+							disabled={templateDownloadLoading}
 							style={{
 								borderColor: '#1890ff',
 								color: '#1890ff',
@@ -1419,6 +1485,8 @@ const SyllabusList = () => {
 								type="primary"
 								icon={<UploadOutlined />}
 								onClick={handleExportSelected}
+								loading={exportSelectedLoading}
+								disabled={exportSelectedLoading}
 								style={{
 									height: '48px',
 									fontSize: '16px',
@@ -1437,6 +1505,8 @@ const SyllabusList = () => {
 						<Button
 							icon={<UploadOutlined />}
 							onClick={handleExportAll}
+							loading={exportAllLoading}
+							disabled={exportAllLoading}
 							style={{
 								height: '48px',
 								fontSize: '16px',

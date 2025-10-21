@@ -61,14 +61,14 @@ export default function Login() {
 			localStorage.setItem('mustChangePassword', response.data.mustChangePassword ? 'true' : 'false');
 			localStorage.setItem('mustUpdateProfile', response.data.mustUpdateProfile ? 'true' : 'false');
 			
-			// Check if user must change password
-			if (response.data.mustChangePassword) {
-				// Show security message for password change
-				// Redirect to change password page
-				setTimeout(() => {
-					navigate('/change-password');
-				}, 2000);
-			} else {
+		// Check if user must change password
+		if (response.data.mustChangePassword) {
+			// Show security message for password change
+			// Redirect to reset password page
+			setTimeout(() => {
+				navigate('/reset-password');
+			}, 2000);
+		} else {
 				// Normal login success
 				spaceToast.success(response.message);
 				// Redirect to student dashboard
@@ -90,8 +90,12 @@ export default function Login() {
 		}
 	};
 
-	const handleForgotMethodSelect = () => {
-		navigate('/forgot-password-email');
+	const handleForgotMethodSelect = (method) => {
+		if (method === 'email') {
+			navigate('/forgot-password-email');
+		} else if (method === 'teacher') {
+			navigate('/forgot-password-teacher');
+		}
 	};
 
 	const handleBackToChoose = () => {
