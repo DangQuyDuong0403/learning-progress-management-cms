@@ -4,7 +4,6 @@ import {
 	PlusOutlined,
 	DeleteOutlined,
 	SaveOutlined,
-	ArrowLeftOutlined,
 	EditOutlined,
 	SwapOutlined,
 } from '@ant-design/icons';
@@ -31,6 +30,7 @@ import {
 	SortableContext,
 	sortableKeyboardCoordinates,
 	verticalListSortingStrategy,
+	defaultAnimateLayoutChanges,
 } from '@dnd-kit/sortable';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
@@ -38,7 +38,7 @@ import '../level/LevelDragEdit.css';
 
 const { Text, Title } = Typography;
 
-// Sortable Lesson Item Component - Optimized
+// Optimized: Memoized Sortable Lesson Item Component
 const SortableLessonItem = memo(
 	({
 		lesson,
@@ -47,16 +47,15 @@ const SortableLessonItem = memo(
 		onEditLesson,
 		theme,
 		t,
-		isDraggingGlobal,
 	}) => {
-		// Keep minimal animation for smoother experience
+		// Tối ưu: Chỉ animate khi không drag
 		const animateLayoutChanges = useCallback((args) => {
 			const { isSorting, wasDragging } = args;
-			// Only animate when not actively dragging
-			if (isSorting) {
-				return false; // No animation while dragging
+			// Không animate khi đang drag, chỉ animate sau khi drop
+			if (isSorting || wasDragging) {
+				return defaultAnimateLayoutChanges(args);
 			}
-			return wasDragging; // Smooth animation when dropped
+			return true;
 		}, []);
 
 		const {
@@ -69,41 +68,17 @@ const SortableLessonItem = memo(
 		} = useSortable({
 			id: lesson.id,
 			animateLayoutChanges,
-			transition: {
-				duration: 200, // Giữ animation ngắn 200ms
-				easing: 'cubic-bezier(0.25, 0.1, 0.25, 1)',
-			},
 		});
 
-		// Optimized style with subtle animation
-		const style = useMemo(() => {
-			// When actively dragging this item, no transition
-			if (isDragging) {
-				return {
-					transform: transform ? CSS.Transform.toString(transform) : undefined,
-					transition: 'none',
-					opacity: 0.5,
-					willChange: 'transform',
-					pointerEvents: 'none',
-				};
-			}
-			// When other items are dragging, minimal transition
-			if (isDraggingGlobal) {
-				return {
-					transform: transform ? CSS.Transform.toString(transform) : undefined,
-					transition: transition || 'transform 0.15s ease-out',
-					opacity: 1,
-					willChange: 'transform',
-				};
-			}
-			// Normal state with smooth transition
-			return {
+		const style = useMemo(
+			() => ({
 				transform: transform ? CSS.Transform.toString(transform) : undefined,
-				transition: transition || 'transform 0.2s ease, opacity 0.2s ease',
-				opacity: 1,
-				willChange: 'auto',
-			};
-		}, [transform, transition, isDragging, isDraggingGlobal]);
+				transition: transition || undefined,
+				opacity: isDragging ? 0.5 : 1,
+				willChange: 'transform', // GPU acceleration
+			}),
+			[transform, transition, isDragging]
+		);
 
 		const handleEdit = useCallback(() => {
 			onEditLesson(lesson);
@@ -200,13 +175,13 @@ const SortableLessonItem = memo(
 		);
 	},
 	(prevProps, nextProps) => {
+		// Custom comparison để tránh re-render không cần thiết
 		return (
 			prevProps.lesson.id === nextProps.lesson.id &&
 			prevProps.lesson.name === nextProps.lesson.name &&
 			prevProps.lesson.content === nextProps.lesson.content &&
 			prevProps.lesson.position === nextProps.lesson.position &&
-			prevProps.theme === nextProps.theme &&
-			prevProps.isDraggingGlobal === nextProps.isDraggingGlobal
+			prevProps.theme === nextProps.theme
 		);
 	}
 );
@@ -255,22 +230,18 @@ const LessonDragEdit = () => {
 	const [lessons, setLessons] = useState([]);
 	const [loading, setLoading] = useState(false);
 	const [saving, setSaving] = useState(false);
-	// eslint-disable-next-line no-unused-vars
-	const [activeId, setActiveId] = useState(null); // Keep for future use/debugging
 	const [isModalVisible, setIsModalVisible] = useState(false);
 	const [editingLesson, setEditingLesson] = useState(null);
 	const [insertAtIndex, setInsertAtIndex] = useState(null);
 	const [chapterInfo, setChapterInfo] = useState(null);
 	const [isInitialLoading, setIsInitialLoading] = useState(true);
-	const [isDraggingGlobal, setIsDraggingGlobal] = useState(false);
 
-	// Optimized sensors configuration for better performance
+	// Optimized: Sử dụng passive events và giảm sensitivity
 	const sensors = useSensors(
 		useSensor(PointerSensor, {
 			activationConstraint: {
-				distance: 8, // Reduced for better responsiveness
-				delay: 0,
-				tolerance: 5,
+				distance: 8, // Tăng lên để tránh di chuyển ngoài ý định
+				delay: 0, // Không delay
 			},
 		}),
 		useSensor(KeyboardSensor, {
@@ -406,21 +377,33 @@ const LessonDragEdit = () => {
 						);
 					});
 				} else if (insertAtIndex !== null) {
-					// Insert new lesson at specific position
-					const newLesson = {
-						...newLessonData,
-						id: `new-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-						position: insertAtIndex + 1,
-					};
-
 					setLessons((prev) => {
-						const newLessons = [...prev];
-						newLessons.splice(insertAtIndex, 0, newLesson);
-						return newLessons.map((lesson, i) => ({
+						// Create new lesson with temporary position
+						const newLesson = {
+							...newLessonData,
+							id: `new-${Date.now()}`,
+							position: 0, // Temporary, will be recalculated
+							orderNumber: 0, // Temporary, will be recalculated
+						};
+						
+						// Get only visible lessons (not deleted)
+						const visibleLessons = prev.filter(lesson => !lesson.toBeDeleted);
+						
+						// Insert at the correct position in visible lessons
+						const newVisibleLessons = [...visibleLessons];
+						newVisibleLessons.splice(insertAtIndex, 0, newLesson);
+						
+						// Recalculate positions for visible lessons only
+						const updatedVisibleLessons = newVisibleLessons.map((lesson, i) => ({
 							...lesson,
 							position: i + 1,
-							orderNumber: i + 1, // Cập nhật orderNumber để tuần tự
+							orderNumber: i + 1,
 						}));
+						
+						// Combine with deleted lessons (keep them as-is)
+						const deletedLessons = prev.filter(lesson => lesson.toBeDeleted);
+						
+						return [...updatedVisibleLessons, ...deletedLessons];
 					});
 				}
 			}
@@ -477,53 +460,45 @@ const LessonDragEdit = () => {
 	);
 
 	const handleDragStart = useCallback((event) => {
-		setActiveId(event.active.id);
-		setIsDraggingGlobal(true);
+		// Thêm class để document không bị scroll
 		document.body.style.overflow = 'hidden';
-		// Add class to body to prevent interactions during drag
-		document.body.classList.add('is-dragging');
 	}, []);
 
-	const handleDragCancel = useCallback(() => {
-		setActiveId(null);
-		setIsDraggingGlobal(false);
-		document.body.style.overflow = '';
-		document.body.classList.remove('is-dragging');
-	}, []);
-
+	// Cleanup khi drag end
 	useEffect(() => {
 		return () => {
 			document.body.style.overflow = '';
-			document.body.classList.remove('is-dragging');
 		};
 	}, []);
 
-	// Optimized drag end handler - only re-render once when dropped
 	const handleDragEnd = useCallback((event) => {
 		const { active, over } = event;
-
-		// Reset dragging state immediately
-		setActiveId(null);
-		setIsDraggingGlobal(false);
+		// Reset overflow
 		document.body.style.overflow = '';
-		document.body.classList.remove('is-dragging');
 
-		if (active.id !== over?.id && over) {
-			// Use requestAnimationFrame to batch the update
-			requestAnimationFrame(() => {
-				setLessons((items) => {
-					const oldIndex = items.findIndex((item) => item.id === active.id);
-					const newIndex = items.findIndex((item) => item.id === over.id);
+		if (active.id !== over?.id) {
+			setLessons((items) => {
+				const oldIndex = items.findIndex((item) => item.id === active.id);
+				const newIndex = items.findIndex((item) => item.id === over.id);
 
-					if (oldIndex === -1 || newIndex === -1) return items;
+				if (oldIndex === -1 || newIndex === -1) return items;
 
-					const newItems = arrayMove(items, oldIndex, newIndex);
+				const newItems = arrayMove(items, oldIndex, newIndex);
 
-					return newItems.map((lesson, index) => ({
+				// Chỉ update position cho visible items (không bị xóa)
+				const visibleItems = newItems.filter(lesson => !lesson.toBeDeleted);
+				return newItems.map((lesson) => {
+					if (lesson.toBeDeleted) {
+						return lesson; // Giữ nguyên items đã bị xóa
+					}
+					
+					// Tính position dựa trên thứ tự trong visible items
+					const visibleIndex = visibleItems.findIndex(item => item.id === lesson.id);
+					return {
 						...lesson,
-						position: index + 1,
-						orderNumber: index + 1, // Cập nhật orderNumber để tuần tự
-					}));
+						position: visibleIndex + 1,
+						orderNumber: visibleIndex + 1, // Cập nhật orderNumber để tuần tự
+					};
 				});
 			});
 		}
@@ -565,7 +540,7 @@ const LessonDragEdit = () => {
 						id: isNewRecord ? null : lesson.id, // null cho lesson mới
 						lessonName: lesson.name,
 						content: lesson.content,
-						orderNumber: lesson.orderNumber || lesson.position || 1, // Sử dụng orderNumber từ state
+						orderNumber: lesson.position, // Position hiện tại = orderNumber
 						toBeDeleted: lesson.toBeDeleted || false, // Include toBeDeleted flag
 					};
 				})
@@ -609,9 +584,6 @@ const LessonDragEdit = () => {
 		}
 	}, [lessons, chapterId, syllabusId, t, navigate]);
 
-	const handleGoBack = useCallback(() => {
-		navigate(`/manager/syllabuses/${syllabusId}/chapters/${chapterId}/lessons`);
-	}, [navigate, syllabusId, chapterId]);
 
 	if (!chapterInfo || isInitialLoading) {
 		return (
@@ -664,8 +636,7 @@ const LessonDragEdit = () => {
 										sensors={sensors}
 										collisionDetection={closestCenter}
 										onDragStart={handleDragStart}
-										onDragEnd={handleDragEnd}
-										onDragCancel={handleDragCancel}>
+										onDragEnd={handleDragEnd}>
 										<SortableContext
 											items={lessonIds}
 											strategy={verticalListSortingStrategy}>
@@ -688,7 +659,6 @@ const LessonDragEdit = () => {
 															onEditLesson={handleEditLesson}
 															theme={theme}
 															t={t}
-															isDraggingGlobal={isDraggingGlobal}
 														/>
 													</React.Fragment>
 												))}

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { Table, Button, Space, Modal, Input, Tooltip, Typography, Switch, Upload, Form, Select, Checkbox, DatePicker } from 'antd';
+import { Table, Button, Space, Modal, Input, Tooltip, Typography, Switch, Upload, Form, Select, Checkbox, DatePicker, Avatar, Radio } from 'antd';
 import {
 	PlusOutlined,
 	SearchOutlined,
@@ -9,6 +9,7 @@ import {
 	EditOutlined,
 	DeleteOutlined,
 	FilterOutlined,
+	UserOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -51,15 +52,8 @@ const ClassListTable = () => {
 	
 	// Search and filter state
 	const [searchText, setSearchText] = useState("");
-	const [searchTimeout, setSearchTimeout] = useState(null);
 	
-	// Filter states
-	const [statusFilter, setStatusFilter] = useState("all");
-	const [syllabusFilter, setSyllabusFilter] = useState(null);
-	const [startDateFrom, setStartDateFrom] = useState(null);
-	const [startDateTo, setStartDateTo] = useState(null);
-	const [endDateFrom, setEndDateFrom] = useState(null);
-	const [endDateTo, setEndDateTo] = useState(null);
+	// Filter states - removed old individual states, using appliedFilters instead
 	
 	// Sort state - start with createdAt DESC (newest first)
 	const [sortBy, setSortBy] = useState("createdAt");
@@ -82,6 +76,31 @@ const ClassListTable = () => {
 		uploading: false
 	});
 	
+	// Image upload states
+	const [imageFile, setImageFile] = useState(null);
+	const [imagePreview, setImagePreview] = useState(null);
+	const [selectedAvatarType, setSelectedAvatarType] = useState('system'); // 'system' or 'upload'
+	const [systemAvatars] = useState([
+		'/img/student_avatar/avatar1.png',
+		'/img/student_avatar/avatar2.png',
+		'/img/student_avatar/avatar3.png',
+		'/img/student_avatar/avatar4.png',
+		'/img/student_avatar/avatar5.png',
+		'/img/student_avatar/avatar6.png',
+		'/img/student_avatar/avatar7.png',
+		'/img/student_avatar/avatar8.png',
+		'/img/student_avatar/avatar9.png',
+		'/img/student_avatar/avatar10.png',
+		'/img/student_avatar/avatar11.png',
+		'/img/student_avatar/avatar12.png',
+		'/img/student_avatar/avatar13.png',
+		'/img/student_avatar/avatar14.png',
+		'/img/student_avatar/avatar15.png',
+		'/img/student_avatar/avatar16.png',
+		'/img/student_avatar/avatar17.png',
+		'/img/student_avatar/avatar18.png',
+	]);
+	
 	// Loading states
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [actionLoading, setActionLoading] = useState({
@@ -103,6 +122,19 @@ const ClassListTable = () => {
 		selectedSyllabus: null,
 		selectedStartDateRange: null,
 		selectedEndDateRange: null,
+	});
+	
+	// Flag to prevent closing filter when interacting with components
+	const [isInteractingWithFilter, setIsInteractingWithFilter] = useState(false);
+	
+	// Filter state for immediate application
+	const [appliedFilters, setAppliedFilters] = useState({
+		status: 'all',
+		syllabusId: null,
+		startDateFrom: null,
+		startDateTo: null,
+		endDateFrom: null,
+		endDateTo: null,
 	});
 	
 	// Refs for click outside detection
@@ -149,6 +181,7 @@ const ClassListTable = () => {
 			}
 
 			console.log('Fetching classes with params:', params);
+			console.log('Filter values:', filters);
 			const response = await classManagementApi.getClasses(params);
 			
 			console.log('API Response:', response);
@@ -165,7 +198,7 @@ const ClassListTable = () => {
 						id: classItem.id,
 						name: classItem.className,
 						syllabus: classItem.syllabus?.syllabusName || '-',
-						syllabusId: classItem.syllabusId,
+						syllabusId: classItem.syllabusId || classItem.syllabus?.id || null,
 						level: classItem.syllabus?.level?.levelName || '-',
 						studentCount: classItem.studentCount || 0,
 						status: classItem.status === 'ACTIVE' ? 'active' : 'inactive',
@@ -217,37 +250,67 @@ const ClassListTable = () => {
 		fetchSyllabuses();
 	}, [fetchSyllabuses]);
 
+	// Initial load and filter changes with debounced search
 	useEffect(() => {
-		const filters = {
-			status: statusFilter,
-			syllabusId: syllabusFilter,
-			startDateFrom,
-			startDateTo,
-			endDateFrom,
-			endDateTo,
-		};
-		fetchClasses(1, pagination.pageSize, searchText, sortBy, sortDir, filters);
-	}, [fetchClasses, pagination.pageSize, searchText, sortBy, sortDir, statusFilter, syllabusFilter, startDateFrom, startDateTo, endDateFrom, endDateTo]);
+		// Debounce searchText changes
+		const timeoutId = setTimeout(() => {
+			fetchClasses(1, pagination.pageSize, searchText, sortBy, sortDir, appliedFilters);
+		}, searchText ? 1000 : 0); // No delay for empty search
+
+		return () => clearTimeout(timeoutId);
+	}, [fetchClasses, pagination.pageSize, sortBy, sortDir, appliedFilters, searchText]);
 
 	// Cleanup timeout on unmount
 	useEffect(() => {
 		return () => {
-			if (searchTimeout) {
-				clearTimeout(searchTimeout);
-			}
+			// Cleanup any pending timeouts
 		};
-	}, [searchTimeout]);
+	}, []);
 
 	// Handle click outside to close filter dropdown
 	useEffect(() => {
+		let timeoutId;
+		
 		const handleClickOutside = (event) => {
 			if (filterDropdown.visible && filterContainerRef.current) {
-				// Check if click is outside the filter container
-				if (!filterContainerRef.current.contains(event.target)) {
-					setFilterDropdown(prev => ({
-						...prev,
-						visible: false,
-					}));
+				// Check if click is outside the filter container and not on any Ant Design components
+				const isAntSelect = event.target.closest('.ant-select');
+				const isAntDatePicker = event.target.closest('.ant-picker');
+				const isAntButton = event.target.closest('.ant-btn');
+				const isAntModal = event.target.closest('.ant-modal');
+				const isAntDropdown = event.target.closest('.ant-dropdown');
+				const isAntSelectDropdown = event.target.closest('.ant-select-dropdown');
+				const isAntPickerDropdown = event.target.closest('.ant-picker-dropdown');
+				const isAntSelectSelector = event.target.closest('.ant-select-selector');
+				const isAntPickerInput = event.target.closest('.ant-picker-input');
+				const isAntSelectArrow = event.target.closest('.ant-select-arrow');
+				const isAntPickerSuffix = event.target.closest('.ant-picker-suffix');
+				
+				// Check if click is inside the filter container
+				const isInsideFilter = filterContainerRef.current.contains(event.target);
+				
+				// Check if click is on any Ant Design dropdown/select components
+				const isOnAntComponent = isAntSelect || 
+					isAntDatePicker || 
+					isAntButton || 
+					isAntModal ||
+					isAntDropdown ||
+					isAntSelectDropdown ||
+					isAntPickerDropdown ||
+					isAntSelectSelector ||
+					isAntPickerInput ||
+					isAntSelectArrow ||
+					isAntPickerSuffix;
+				
+				// Only close if click is outside filter container AND not on any Ant Design components AND not interacting with filter
+				if (!isInsideFilter && !isOnAntComponent && !isInteractingWithFilter) {
+					// Add small delay to prevent immediate closing
+					timeoutId = setTimeout(() => {
+						setFilterDropdown(prev => ({
+							...prev,
+							visible: false,
+						}));
+					}, 100);
 				}
 			}
 		};
@@ -257,58 +320,107 @@ const ClassListTable = () => {
 			document.addEventListener('mousedown', handleClickOutside);
 		}
 
-		// Cleanup event listener
+		// Cleanup event listener and timeout
 		return () => {
 			document.removeEventListener('mousedown', handleClickOutside);
+			if (timeoutId) {
+				clearTimeout(timeoutId);
+			}
 		};
-	}, [filterDropdown.visible]);
+	}, [filterDropdown.visible, isInteractingWithFilter]);
 
 	const handleSearch = (value) => {
 		setSearchText(value);
-		
-		// Clear existing timeout
-		if (searchTimeout) {
-			clearTimeout(searchTimeout);
-		}
-		
-		// Set new timeout for 1 second delay
-		const newTimeout = setTimeout(() => {
-			// Reset to first page when searching
-			const filters = {
-				status: statusFilter,
-				syllabusId: syllabusFilter,
-				startDateFrom,
-				startDateTo,
-				endDateFrom,
-				endDateTo,
-			};
-			fetchClasses(1, pagination.pageSize, value, sortBy, sortDir, filters);
-		}, 1000);
-		
-		setSearchTimeout(newTimeout);
+		// Reset to first page when searching
+		setPagination(prev => ({
+			...prev,
+			current: 1,
+		}));
 	};
 
 	const handleTableChange = (pagination, filters, sorter) => {
-		const newSortBy = sorter.field || 'createdAt';
-		const newSortDir = sorter.order === 'ascend' ? 'asc' : 'desc';
+		let newSortBy = sorter.field || 'createdAt';
+		let newSortDir = 'desc'; // Default
+		
+		// Map frontend field names to backend field names
+		if (newSortBy === 'name') {
+			newSortBy = 'className';
+		}
+		
+		// Handle 3-state sorting: ASC -> DESC -> No Sort
+		if (sorter.order === 'ascend') {
+			newSortDir = 'asc';
+		} else if (sorter.order === 'descend') {
+			newSortDir = 'desc';
+		} else {
+			// No sorting - reset to default
+			newSortBy = 'createdAt';
+			newSortDir = 'desc';
+		}
 		
 		setSortBy(newSortBy);
 		setSortDir(newSortDir);
 		
-		const currentFilters = {
-			status: statusFilter,
-			syllabusId: syllabusFilter,
-			startDateFrom,
-			startDateTo,
-			endDateFrom,
-			endDateTo,
-		};
-		
-		fetchClasses(pagination.current, pagination.pageSize, searchText, newSortBy, newSortDir, currentFilters);
+		fetchClasses(pagination.current, pagination.pageSize, searchText, newSortBy, newSortDir, appliedFilters);
 	};
+
+	// Handle image upload
+	const handleImageUpload = (file, fileList) => {
+		// Check if file exists
+		if (!file) {
+			return false;
+		}
+		
+		// Validate file type
+		const isImage = file.type.startsWith('image/');
+		if (!isImage) {
+			spaceToast.error('Please upload an image file');
+			return false; // Prevent default upload
+		}
+		
+		// Validate file size (max 5MB)
+		const isLt5M = file.size / 1024 / 1024 < 5;
+		if (!isLt5M) {
+			spaceToast.error('Image must be smaller than 5MB');
+			return false; // Prevent default upload
+		}
+		
+		setImageFile(file);
+		setSelectedAvatarType('upload');
+		
+		// Create preview URL
+		const reader = new FileReader();
+		reader.onload = (e) => {
+			setImagePreview(e.target.result);
+		};
+		reader.onerror = (e) => {
+			console.error('FileReader error:', e);
+		};
+		reader.readAsDataURL(file);
+		
+		return false; // Prevent default upload behavior
+	};
+	
+	// Handle system avatar selection
+	const handleSystemAvatarSelect = (avatarPath) => {
+		setImagePreview(avatarPath);
+		setImageFile(null);
+		setSelectedAvatarType('system');
+	};
+	
+	// Handle image removal
+	const handleImageRemove = () => {
+		setImageFile(null);
+		setImagePreview(null);
+		setSelectedAvatarType('system');
+	};
+	
 
 	const handleAdd = () => {
 		setEditingClass(null);
+		setImageFile(null);
+		setImagePreview(null);
+		setSelectedAvatarType('system');
 		setIsModalVisible(true);
 	};
 
@@ -320,20 +432,23 @@ const ClassListTable = () => {
 			onConfirm: async () => {
 				setActionLoading(prev => ({ ...prev, delete: record.id }));
 				try {
-					await classManagementApi.deleteClass(record.id);
-					spaceToast.success(t('classManagement.classDeletedSuccess', { className: record.name }));
-					const filters = {
-						status: statusFilter,
-						syllabusId: syllabusFilter,
-						startDateFrom,
-						startDateTo,
-						endDateFrom,
-						endDateTo,
-					};
-					fetchClasses(pagination.current, pagination.pageSize, searchText, sortBy, sortDir, filters);
+					const deleteResponse = await classManagementApi.deleteClass(record.id);
+					
+					// Use BE success message if available, otherwise use i18n
+					const successMessage = deleteResponse?.message || t('classManagement.classDeletedSuccess', { className: record.name });
+					spaceToast.success(successMessage);
+					
+					fetchClasses(pagination.current, pagination.pageSize, searchText, sortBy, sortDir, appliedFilters);
 				} catch (error) {
 					console.error('Error deleting class:', error);
-					spaceToast.error(error.response?.data?.message || error.message || 'Failed to delete class');
+					
+					// Use BE error message if available, otherwise fallback to generic message
+					const errorMessage = error.response?.data?.message || 
+										error.response?.data?.error || 
+										error.message || 
+										'Failed to delete class';
+					
+					spaceToast.error(errorMessage);
 				} finally {
 					setActionLoading(prev => ({ ...prev, delete: null }));
 				}
@@ -353,22 +468,26 @@ const ClassListTable = () => {
 			onConfirm: async () => {
 				setActionLoading(prev => ({ ...prev, toggle: record.id }));
 				try {
-					await classManagementApi.toggleClassStatus(record.id, newStatus);
-					spaceToast.success(newStatus === 'active' 
-						? t('classManagement.classActivatedSuccess', { className: record.name })
-						: t('classManagement.classDeactivatedSuccess', { className: record.name }));
-					const filters = {
-						status: statusFilter,
-						syllabusId: syllabusFilter,
-						startDateFrom,
-						startDateTo,
-						endDateFrom,
-						endDateTo,
-					};
-					fetchClasses(pagination.current, pagination.pageSize, searchText, sortBy, sortDir, filters);
+					const toggleResponse = await classManagementApi.toggleClassStatus(record.id, newStatus);
+					
+					// Use BE success message if available, otherwise use i18n
+					const successMessage = toggleResponse?.message || 
+						(newStatus === 'active' 
+							? t('classManagement.classActivatedSuccess', { className: record.name })
+							: t('classManagement.classDeactivatedSuccess', { className: record.name }));
+					spaceToast.success(successMessage);
+					
+					fetchClasses(pagination.current, pagination.pageSize, searchText, sortBy, sortDir, appliedFilters);
 				} catch (error) {
 					console.error('Error updating class status:', error);
-					spaceToast.error('Failed to update class status');
+					
+					// Use BE error message if available, otherwise fallback to generic message
+					const errorMessage = error.response?.data?.message || 
+										error.response?.data?.error || 
+										error.message || 
+										'Failed to update class status';
+					
+					spaceToast.error(errorMessage);
 				} finally {
 					setActionLoading(prev => ({ ...prev, toggle: null }));
 				}
@@ -380,59 +499,72 @@ const ClassListTable = () => {
 		setIsSubmitting(true);
 		try {
 			const values = await form.validateFields();
+			
+			let avatarUrl = editingClass?.avatarUrl || "string"; // Default fallback
+			
+			// Handle avatar based on type
+			if (selectedAvatarType === 'upload' && imageFile) {
+				// TODO: Implement actual image upload when API is ready
+				// For now, send "string" like StudentList does
+				avatarUrl = "string";
+				// Don't show info message, let BE handle the response
+			} else if (selectedAvatarType === 'system' && imagePreview) {
+				// Use system avatar
+				avatarUrl = imagePreview;
+			}
 
 			if (editingClass) {
 				// Update existing class
 				const updateData = {
 					className: values.name,
-					avatarUrl: "string", // Default as per API requirements
-					startDate: values.startDate ? values.startDate.format('YYYY-MM-DD') : null,
-					endDate: values.endDate ? values.endDate.format('YYYY-MM-DD') : null,
+					avatarUrl: avatarUrl,
+					startDate: values.startDate ? values.startDate.format('YYYY-MM-DDTHH:mm:ss+07:00') : null,
+					endDate: values.endDate ? values.endDate.format('YYYY-MM-DDTHH:mm:ss+07:00') : null,
 				};
 				
-				await classManagementApi.updateClass(editingClass.id, updateData);
+				const updateResponse = await classManagementApi.updateClass(editingClass.id, updateData);
 				
 				// Refresh the list
-				const filters = {
-					status: statusFilter,
-					syllabusId: syllabusFilter,
-					startDateFrom,
-					startDateTo,
-					endDateFrom,
-					endDateTo,
-				};
-				fetchClasses(pagination.current, pagination.pageSize, searchText, sortBy, sortDir, filters);
-				spaceToast.success(t('classManagement.classUpdatedSuccess'));
+				fetchClasses(pagination.current, pagination.pageSize, searchText, sortBy, sortDir, appliedFilters);
+				
+				// Use BE success message if available, otherwise use i18n
+				const successMessage = updateResponse?.message || t('classManagement.classUpdatedSuccess');
+				spaceToast.success(successMessage);
 			} else {
 				// Add new class
 				const newClassData = {
 					className: values.name,
 					syllabusId: values.syllabusId,
-					avatarUrl: "string", // Default as per API requirements
-					startDate: values.startDate ? values.startDate.format('YYYY-MM-DD') : null,
-					endDate: values.endDate ? values.endDate.format('YYYY-MM-DD') : null,
+					avatarUrl: avatarUrl,
+					startDate: values.startDate ? values.startDate.format('YYYY-MM-DDTHH:mm:ss+07:00') : null,
+					endDate: values.endDate ? values.endDate.format('YYYY-MM-DDTHH:mm:ss+07:00') : null,
 				};
 				
-				await classManagementApi.createClass(newClassData);
+				const createResponse = await classManagementApi.createClass(newClassData);
 				
 				// Refresh the list
-				const filters = {
-					status: statusFilter,
-					syllabusId: syllabusFilter,
-					startDateFrom,
-					startDateTo,
-					endDateFrom,
-					endDateTo,
-				};
-				fetchClasses(1, pagination.pageSize, searchText, sortBy, sortDir, filters);
-				spaceToast.success(t('classManagement.classCreatedSuccess'));
+				fetchClasses(1, pagination.pageSize, searchText, sortBy, sortDir, appliedFilters);
+				
+				// Use BE success message if available, otherwise use i18n
+				const successMessage = createResponse?.message || t('classManagement.classCreatedSuccess');
+				spaceToast.success(successMessage);
 			}
 
 			setIsModalVisible(false);
 			form.resetFields();
+			setImageFile(null);
+			setImagePreview(null);
+			setSelectedAvatarType('system');
 		} catch (error) {
 			console.error('Error saving class:', error);
-			spaceToast.error(error.response?.data?.message || error.message || 'Failed to save class. Please try again.');
+			
+			// Use BE message if available, otherwise fallback to generic message
+			const errorMessage = error.response?.data?.message || 
+								error.response?.data?.error || 
+								error.message || 
+								'Failed to save class. Please try again.';
+			
+			spaceToast.error(errorMessage);
 		} finally {
 			setIsSubmitting(false);
 		}
@@ -441,16 +573,40 @@ const ClassListTable = () => {
 	const handleModalCancel = () => {
 		setIsModalVisible(false);
 		form.resetFields();
+		setImageFile(null);
+		setImagePreview(null);
+		setSelectedAvatarType('system');
 	};
 
 	const handleEdit = (record) => {
+		console.log('Editing record:', record);
+		console.log('Record syllabusId:', record.syllabusId);
+		console.log('Record startDate:', record.startDate);
+		console.log('Record endDate:', record.endDate);
+		
 		setEditingClass(record);
 		
 		form.setFieldsValue({
 			name: record.name,
-			startDate: record.startDate ? dayjs(record.startDate) : null,
-			endDate: record.endDate ? dayjs(record.endDate) : null,
+			syllabusId: record.syllabusId, // Add syllabusId to form values
+			startDate: record.startDate && record.startDate !== null && record.startDate !== 'null' ? dayjs(record.startDate) : undefined,
+			endDate: record.endDate && record.endDate !== null && record.endDate !== 'null' ? dayjs(record.endDate) : undefined,
 		});
+		
+		// Set current image preview if exists
+		if (record.avatarUrl && record.avatarUrl !== "string") {
+			setImagePreview(record.avatarUrl);
+			// Check if it's a system avatar or uploaded
+			if (systemAvatars.includes(record.avatarUrl)) {
+				setSelectedAvatarType('system');
+			} else {
+				setSelectedAvatarType('upload');
+			}
+		} else {
+			setImagePreview(null);
+			setSelectedAvatarType('system');
+		}
+		setImageFile(null); // Reset file state
 		
 		setIsModalVisible(true);
 	};
@@ -490,15 +646,7 @@ const ClassListTable = () => {
 			}));
 			
 			// Refresh the data
-			const filters = {
-				status: statusFilter,
-				syllabusId: syllabusFilter,
-				startDateFrom,
-				startDateTo,
-				endDateFrom,
-				endDateTo,
-			};
-			fetchClasses(pagination.current, pagination.pageSize, searchText, sortBy, sortDir, filters);
+				fetchClasses(pagination.current, pagination.pageSize, searchText, sortBy, sortDir, appliedFilters);
 		} catch (error) {
 			console.error('Import error:', error);
 			spaceToast.error('Failed to import classes');
@@ -598,23 +746,23 @@ const ClassListTable = () => {
 				}
 
 				// Add filter parameters
-				if (statusFilter && statusFilter !== 'all') {
-					params.status = statusFilter;
+				if (appliedFilters.status && appliedFilters.status !== 'all') {
+					params.status = appliedFilters.status;
 				}
-				if (syllabusFilter) {
-					params.syllabusId = syllabusFilter;
+				if (appliedFilters.syllabusId) {
+					params.syllabusId = appliedFilters.syllabusId;
 				}
-				if (startDateFrom) {
-					params.startDateFrom = startDateFrom;
+				if (appliedFilters.startDateFrom) {
+					params.startDateFrom = appliedFilters.startDateFrom;
 				}
-				if (startDateTo) {
-					params.startDateTo = startDateTo;
+				if (appliedFilters.startDateTo) {
+					params.startDateTo = appliedFilters.startDateTo;
 				}
-				if (endDateFrom) {
-					params.endDateFrom = endDateFrom;
+				if (appliedFilters.endDateFrom) {
+					params.endDateFrom = appliedFilters.endDateFrom;
 				}
-				if (endDateTo) {
-					params.endDateTo = endDateTo;
+				if (appliedFilters.endDateTo) {
+					params.endDateTo = appliedFilters.endDateTo;
 				}
 
 				const response = await classManagementApi.getClasses(params);
@@ -644,36 +792,25 @@ const ClassListTable = () => {
 		setFilterDropdown(prev => ({
 			...prev,
 			visible: !prev.visible,
-			selectedStatus: prev.visible ? prev.selectedStatus : statusFilter,
-			selectedSyllabus: prev.visible ? prev.selectedSyllabus : syllabusFilter,
-			selectedStartDateRange: prev.visible ? prev.selectedStartDateRange : (startDateFrom && startDateTo ? [startDateFrom, startDateTo] : null),
-			selectedEndDateRange: prev.visible ? prev.selectedEndDateRange : (endDateFrom && endDateTo ? [endDateFrom, endDateTo] : null),
+			selectedStatus: prev.visible ? prev.selectedStatus : appliedFilters.status,
+			selectedSyllabus: prev.visible ? prev.selectedSyllabus : appliedFilters.syllabusId,
+			selectedStartDateRange: prev.visible ? prev.selectedStartDateRange : (appliedFilters.startDateFrom && appliedFilters.startDateTo ? [appliedFilters.startDateFrom, appliedFilters.startDateTo] : null),
+			selectedEndDateRange: prev.visible ? prev.selectedEndDateRange : (appliedFilters.endDateFrom && appliedFilters.endDateTo ? [appliedFilters.endDateFrom, appliedFilters.endDateTo] : null),
 		}));
 	};
 
 	// Handle filter submission
 	const handleFilterSubmit = () => {
-		setStatusFilter(filterDropdown.selectedStatus);
-		setSyllabusFilter(filterDropdown.selectedSyllabus);
+		const newFilters = {
+			status: filterDropdown.selectedStatus,
+			syllabusId: filterDropdown.selectedSyllabus,
+			startDateFrom: filterDropdown.selectedStartDateRange && filterDropdown.selectedStartDateRange[0] ? filterDropdown.selectedStartDateRange[0] : null,
+			startDateTo: filterDropdown.selectedStartDateRange && filterDropdown.selectedStartDateRange[1] ? filterDropdown.selectedStartDateRange[1] : null,
+			endDateFrom: filterDropdown.selectedEndDateRange && filterDropdown.selectedEndDateRange[0] ? filterDropdown.selectedEndDateRange[0] : null,
+			endDateTo: filterDropdown.selectedEndDateRange && filterDropdown.selectedEndDateRange[1] ? filterDropdown.selectedEndDateRange[1] : null,
+		};
 		
-		// Handle start date range
-		if (filterDropdown.selectedStartDateRange && filterDropdown.selectedStartDateRange[0] && filterDropdown.selectedStartDateRange[1]) {
-			setStartDateFrom(filterDropdown.selectedStartDateRange[0]);
-			setStartDateTo(filterDropdown.selectedStartDateRange[1]);
-		} else {
-			setStartDateFrom(null);
-			setStartDateTo(null);
-		}
-		
-		// Handle end date range
-		if (filterDropdown.selectedEndDateRange && filterDropdown.selectedEndDateRange[0] && filterDropdown.selectedEndDateRange[1]) {
-			setEndDateFrom(filterDropdown.selectedEndDateRange[0]);
-			setEndDateTo(filterDropdown.selectedEndDateRange[1]);
-		} else {
-			setEndDateFrom(null);
-			setEndDateTo(null);
-		}
-		
+		setAppliedFilters(newFilters);
 		setFilterDropdown(prev => ({
 			...prev,
 			visible: false,
@@ -686,17 +823,6 @@ const ClassListTable = () => {
 			...prev,
 			current: 1,
 		}));
-		
-		const filters = {
-			status: filterDropdown.selectedStatus,
-			syllabusId: filterDropdown.selectedSyllabus,
-			startDateFrom: filterDropdown.selectedStartDateRange && filterDropdown.selectedStartDateRange[0] ? filterDropdown.selectedStartDateRange[0] : null,
-			startDateTo: filterDropdown.selectedStartDateRange && filterDropdown.selectedStartDateRange[1] ? filterDropdown.selectedStartDateRange[1] : null,
-			endDateFrom: filterDropdown.selectedEndDateRange && filterDropdown.selectedEndDateRange[0] ? filterDropdown.selectedEndDateRange[0] : null,
-			endDateTo: filterDropdown.selectedEndDateRange && filterDropdown.selectedEndDateRange[1] ? filterDropdown.selectedEndDateRange[1] : null,
-		};
-		
-		fetchClasses(1, pagination.pageSize, searchText, sortBy, sortDir, filters);
 	};
 
 	// Handle filter reset
@@ -728,15 +854,7 @@ const ClassListTable = () => {
 					
 					setSelectedRowKeys([]);
 					spaceToast.success(t('classManagement.allClassesActivatedSuccess'));
-					const filters = {
-						status: statusFilter,
-						syllabusId: syllabusFilter,
-						startDateFrom,
-						startDateTo,
-						endDateFrom,
-						endDateTo,
-					};
-					fetchClasses(pagination.current, pagination.pageSize, searchText, sortBy, sortDir, filters);
+				fetchClasses(pagination.current, pagination.pageSize, searchText, sortBy, sortDir, appliedFilters);
 				} catch (error) {
 					console.error('Error activating all classes:', error);
 					spaceToast.error('Failed to activate all classes');
@@ -762,15 +880,7 @@ const ClassListTable = () => {
 					
 					setSelectedRowKeys([]);
 					spaceToast.success(t('classManagement.allClassesDeactivatedSuccess'));
-					const filters = {
-						status: statusFilter,
-						syllabusId: syllabusFilter,
-						startDateFrom,
-						startDateTo,
-						endDateFrom,
-						endDateTo,
-					};
-					fetchClasses(pagination.current, pagination.pageSize, searchText, sortBy, sortDir, filters);
+				fetchClasses(pagination.current, pagination.pageSize, searchText, sortBy, sortDir, appliedFilters);
 				} catch (error) {
 					console.error('Error deactivating all classes:', error);
 					spaceToast.error('Failed to deactivate all classes');
@@ -796,15 +906,7 @@ const ClassListTable = () => {
 					
 					setSelectedRowKeys([]);
 					spaceToast.success(t('classManagement.allClassesDeletedSuccess'));
-					const filters = {
-						status: statusFilter,
-						syllabusId: syllabusFilter,
-						startDateFrom,
-						startDateTo,
-						endDateFrom,
-						endDateTo,
-					};
-					fetchClasses(pagination.current, pagination.pageSize, searchText, sortBy, sortDir, filters);
+				fetchClasses(pagination.current, pagination.pageSize, searchText, sortBy, sortDir, appliedFilters);
 				} catch (error) {
 					console.error('Error deleting all classes:', error);
 					spaceToast.error('Failed to delete all classes');
@@ -883,12 +985,10 @@ const ClassListTable = () => {
 		{
 			title: t('classManagement.className'),
 			dataIndex: 'name',
-			key: 'name',
+			key: 'className',
 			width: '20%',
 			sorter: true,
-			ellipsis: {
-				showTitle: false,
-			},
+			sortOrder: sortBy === 'className' ? (sortDir === 'asc' ? 'ascend' : 'descend') : null,
 			render: (text) => (
 				<Tooltip placement="topLeft" title={text}>
 					<div style={{ 
@@ -907,10 +1007,6 @@ const ClassListTable = () => {
 			dataIndex: 'syllabus',
 			key: 'syllabus',
 			width: '18%',
-			sorter: true,
-			ellipsis: {
-				showTitle: false,
-			},
 			render: (text) => (
 				<Tooltip placement="topLeft" title={text}>
 					<div style={{ 
@@ -929,10 +1025,6 @@ const ClassListTable = () => {
 			dataIndex: 'level',
 			key: 'level',
 			width: '12%',
-			sorter: true,
-			ellipsis: {
-				showTitle: false,
-			},
 			render: (text) => (
 				<Tooltip placement="topLeft" title={text}>
 					<div style={{ 
@@ -1026,7 +1118,7 @@ const ClassListTable = () => {
 									<Button 
 										icon={<FilterOutlined />}
 										onClick={handleFilterToggle}
-										className={`filter-button ${theme}-filter-button ${filterDropdown.visible ? 'active' : ''} ${(statusFilter !== 'all' || syllabusFilter || startDateFrom || endDateFrom) ? 'has-filters' : ''}`}
+										className={`filter-button ${theme}-filter-button ${filterDropdown.visible ? 'active' : ''} ${(appliedFilters.status !== 'all' || appliedFilters.syllabusId || appliedFilters.startDateFrom || appliedFilters.endDateFrom) ? 'has-filters' : ''}`}
 									>
 										{t('common.filter')}
 									</Button>
@@ -1034,66 +1126,44 @@ const ClassListTable = () => {
 									{/* Filter Dropdown Panel */}
 									{filterDropdown.visible && (
 										<div className={`filter-dropdown-panel ${theme}-filter-dropdown`}>
-											<div style={{ padding: '24px' }}>
-												{/* Status and Syllabus on same row */}
-												<div style={{ 
-													display: 'grid', 
-													gridTemplateColumns: '1fr 1fr', 
-													gap: '16px',
-													marginBottom: '20px' 
-												}}>
-													{/* Status Filter */}
-													<div>
-														<Typography.Title 
-															level={5} 
-															style={{ 
-																marginBottom: '12px', 
-																fontSize: '16px',
-																fontWeight: '600',
-																color: theme === 'dark' ? '#ffffff' : '#000000'
-															}}
-														>
-															{t('classManagement.status')}
-														</Typography.Title>
-														<Select
-															value={filterDropdown.selectedStatus}
-															onChange={(value) => setFilterDropdown(prev => ({ ...prev, selectedStatus: value }))}
-															style={{ width: '100%', height: '48px' }}
-														>
-															<Option value="all">{t('classManagement.allStatus')}</Option>
-															<Option value="ACTIVE">{t('classManagement.active')}</Option>
-															<Option value="INACTIVE">{t('classManagement.inactive')}</Option>
-														</Select>
-													</div>
+											<div style={{ padding: '20px' }}>
+												{/* Status Filter */}
+												<div style={{ marginBottom: '20px' }}>
+													<Typography.Title level={5} style={{ marginBottom: '12px', fontSize: '16px' }}>
+														{t('classManagement.status')}
+													</Typography.Title>
+													<Select
+														value={filterDropdown.selectedStatus}
+														onChange={(value) => setFilterDropdown(prev => ({ ...prev, selectedStatus: value }))}
+														onDropdownVisibleChange={(open) => setIsInteractingWithFilter(open)}
+														style={{ width: '100%', height: '40px' }}
+													>
+														<Option value="all">{t('classManagement.allStatus')}</Option>
+														<Option value="ACTIVE">{t('classManagement.active')}</Option>
+														<Option value="INACTIVE">{t('classManagement.inactive')}</Option>
+													</Select>
+												</div>
 
-													{/* Syllabus Filter */}
-													<div>
-														<Typography.Title 
-															level={5} 
-															style={{ 
-																marginBottom: '12px', 
-																fontSize: '16px',
-																fontWeight: '600',
-																color: theme === 'dark' ? '#ffffff' : '#000000'
-															}}
-														>
-															{t('classManagement.syllabus')}
-														</Typography.Title>
-														<Select
-															value={filterDropdown.selectedSyllabus}
-															onChange={(value) => setFilterDropdown(prev => ({ ...prev, selectedSyllabus: value }))}
-															style={{ width: '100%', height: '48px' }}
-															placeholder={t('classManagement.selectSyllabus')}
-															allowClear
-															loading={syllabusLoading}
-														>
-															{syllabuses.map(syllabus => (
-																<Option key={syllabus.id} value={syllabus.id}>
-																	{syllabus.syllabusName}
-																</Option>
-															))}
-														</Select>
-													</div>
+												{/* Syllabus Filter */}
+												<div style={{ marginBottom: '20px' }}>
+													<Typography.Title level={5} style={{ marginBottom: '12px', fontSize: '16px' }}>
+														{t('classManagement.syllabus')}
+													</Typography.Title>
+													<Select
+														value={filterDropdown.selectedSyllabus}
+														onChange={(value) => setFilterDropdown(prev => ({ ...prev, selectedSyllabus: value }))}
+														onDropdownVisibleChange={(open) => setIsInteractingWithFilter(open)}
+														style={{ width: '100%', height: '40px' }}
+														placeholder={t('classManagement.selectSyllabus')}
+														allowClear
+														loading={syllabusLoading}
+													>
+														{syllabuses.map(syllabus => (
+															<Option key={syllabus.id} value={syllabus.id}>
+																{syllabus.syllabusName}
+															</Option>
+														))}
+													</Select>
 												</div>
 
 												{/* Start Date Range Filter */}
@@ -1127,7 +1197,8 @@ const ClassListTable = () => {
 																}));
 															}
 														}}
-														style={{ width: '100%', height: '48px' }}
+														onOpenChange={(open) => setIsInteractingWithFilter(open)}
+														style={{ width: '100%', height: '40px' }}
 														placeholder={[t('classManagement.startDateFrom'), t('classManagement.startDateTo')]}
 													/>
 												</div>
@@ -1163,7 +1234,8 @@ const ClassListTable = () => {
 																}));
 															}
 														}}
-														style={{ width: '100%', height: '48px' }}
+														onOpenChange={(open) => setIsInteractingWithFilter(open)}
+														style={{ width: '100%', height: '40px' }}
 														placeholder={[t('classManagement.endDateFrom'), t('classManagement.endDateTo')]}
 													/>
 												</div>
@@ -1262,9 +1334,29 @@ const ClassListTable = () => {
 				{/* Class Modal */}
 				<Modal
 					title={
-						editingClass
-							? t('classManagement.editClass')
-							: t('classManagement.addClass')
+						<div style={{ 
+							fontSize: '24px', 
+							fontWeight: '600', 
+							color: '#000000',
+							textAlign: 'center',
+							padding: '10px 0',
+							display: 'flex',
+							alignItems: 'center',
+							justifyContent: 'center',
+							gap: '12px'
+						}}>
+							{editingClass ? (
+								<>
+									<EditOutlined style={{ fontSize: '26px', color: '#000000' }} />
+									<span>{t('classManagement.editClass')}</span>
+								</>
+							) : (
+								<>
+									<PlusOutlined style={{ fontSize: '26px', color: '#000000' }} />
+									<span>{t('classManagement.addClass')}</span>
+								</>
+							)}
+						</div>
 					}
 					open={isModalVisible}
 					onOk={handleModalOk}
@@ -1305,7 +1397,7 @@ const ClassListTable = () => {
 						<Form.Item
 							label={
 								<span>
-									 {t('classManagement.className')}<span style={{ color: '#ff4d4f' }}> *</span>
+									{t('classManagement.className')}<span style={{ color: '#ff4d4f' }}> *</span>
 								</span>
 							}
 							name="name"
@@ -1329,15 +1421,188 @@ const ClassListTable = () => {
 							/>
 						</Form.Item>
 
+						{/* Avatar Selection - Show for both create and edit */}
+						<Form.Item
+							label={t('classManagement.avatar')}
+							name="avatar"
+						>
+							<div style={{ marginBottom: '16px' }}>
+								{/* Avatar Type Selection */}
+								<div style={{ marginBottom: '16px' }}>
+									<Radio.Group 
+										value={selectedAvatarType} 
+										onChange={(e) => {
+											setSelectedAvatarType(e.target.value);
+											if (e.target.value === 'system') {
+												setImageFile(null);
+											}
+										}}
+									>
+										<Radio value="system">Choose from System</Radio>
+										<Radio value="upload">Upload from Computer</Radio>
+									</Radio.Group>
+								</div>
+
+								{/* Current Avatar Preview */}
+								<div style={{ 
+									display: 'flex', 
+									alignItems: 'center', 
+									gap: '16px',
+									marginBottom: '16px',
+									padding: '12px',
+									border: '1px solid #f0f0f0',
+									borderRadius: '8px',
+									backgroundColor: '#fafafa'
+								}}>
+									<Avatar
+										size={60}
+										src={imagePreview}
+										icon={<UserOutlined />}
+										style={{
+											backgroundColor: imagePreview ? 'transparent' : '#1890ff',
+											border: '2px solid #f0f0f0'
+										}}
+									/>
+									<div>
+										<div style={{ fontSize: '14px', fontWeight: '500', color: '#666' }}>
+											{imagePreview ? 
+												(selectedAvatarType === 'system' ? 'System Avatar Selected' : 'Custom Image Selected') 
+												: 'No Avatar Selected'
+											}
+										</div>
+										{imageFile && (
+											<div style={{ fontSize: '12px', color: '#1890ff' }}>
+												{imageFile.name} ({(imageFile.size / 1024 / 1024).toFixed(2)} MB)
+											</div>
+										)}
+									</div>
+									{imagePreview && (
+										<Button 
+											type="text"
+											danger
+											onClick={handleImageRemove}
+											style={{
+												height: '32px',
+												fontSize: '12px',
+											}}
+										>
+											Remove
+										</Button>
+									)}
+								</div>
+
+								{/* System Avatar Selection */}
+								{selectedAvatarType === 'system' && (
+									<div>
+										<div style={{ fontSize: '14px', fontWeight: '500', marginBottom: '12px', color: '#666' }}>
+											Choose an avatar:
+										</div>
+										<div style={{ 
+											display: 'grid', 
+											gridTemplateColumns: 'repeat(6, 1fr)', 
+											gap: '8px',
+											maxHeight: '200px',
+											overflowY: 'auto',
+											padding: '8px',
+											border: '1px solid #f0f0f0',
+											borderRadius: '8px'
+										}}>
+											{systemAvatars.map((avatar, index) => (
+												<div
+													key={index}
+													onClick={() => handleSystemAvatarSelect(avatar)}
+													style={{
+														width: '50px',
+														height: '50px',
+														borderRadius: '50%',
+														border: imagePreview === avatar ? '3px solid #1890ff' : '2px solid #f0f0f0',
+														cursor: 'pointer',
+														overflow: 'hidden',
+														display: 'flex',
+														alignItems: 'center',
+														justifyContent: 'center',
+														backgroundColor: '#f5f5f5',
+														transition: 'all 0.2s ease'
+													}}
+												>
+													<img
+														src={avatar}
+														alt={`Avatar ${index + 1}`}
+														style={{
+															width: '100%',
+															height: '100%',
+															objectFit: 'cover'
+														}}
+														onError={(e) => {
+															e.target.style.display = 'none';
+															e.target.nextSibling.style.display = 'flex';
+														}}
+													/>
+													<div style={{ 
+														display: 'none',
+														width: '100%',
+														height: '100%',
+														alignItems: 'center',
+														justifyContent: 'center',
+														backgroundColor: '#f0f0f0',
+														fontSize: '12px',
+														color: '#999'
+													}}>
+														{index + 1}
+													</div>
+												</div>
+											))}
+										</div>
+									</div>
+								)}
+
+								{/* Upload Section */}
+								{selectedAvatarType === 'upload' && (
+									<div>
+										<div style={{ fontSize: '14px', fontWeight: '500', marginBottom: '12px', color: '#666' }}>
+											Upload an image:
+										</div>
+										<Upload
+											name="avatar"
+											listType="text"
+											showUploadList={false}
+											beforeUpload={handleImageUpload}
+											accept="image/*"
+											customRequest={() => {}} // Prevent default upload
+										>
+											<Button 
+												icon={<UploadOutlined />}
+												style={{
+													height: '40px',
+													fontSize: '14px',
+													fontWeight: '500',
+													width: '100%'
+												}}
+											>
+												{imageFile ? 'Change Image' : 'Select Image'}
+											</Button>
+										</Upload>
+										
+										{/* Upload Tips */}
+										<div style={{ 
+											marginTop: '8px', 
+											fontSize: '12px', 
+											color: '#999',
+											lineHeight: '1.4'
+										}}>
+											• Maximum file size: 5MB<br/>
+										</div>
+									</div>
+								)}
+							</div>
+						</Form.Item>
+
 						<Form.Item
 							label={
-								!editingClass ? (
-									<span>
-										 {t('classManagement.syllabus')}<span style={{ color: '#ff4d4f' }}> *</span>
-									</span>
-								) : (
-									t('classManagement.syllabus')
-								)
+								<span>
+									{t('classManagement.syllabus')}
+									{!editingClass && <span style={{ color: '#ff4d4f' }}> *</span>}
+								</span>
 							}
 							name="syllabusId"
 							required={!editingClass}
@@ -1365,13 +1630,10 @@ const ClassListTable = () => {
 						{/* Start Date */}
 						<Form.Item
 							label={
-								!editingClass ? (
-									<span>
-										 {t('classManagement.startDate')}<span style={{ color: '#ff4d4f' }}> *</span>
-									</span>
-								) : (
-									t('classManagement.startDate')
-								)
+								<span>
+									{t('classManagement.startDate')}
+									{!editingClass && <span style={{ color: '#ff4d4f' }}> *</span>}
+								</span>
 							}
 							name="startDate"
 							required={!editingClass}
@@ -1409,13 +1671,10 @@ const ClassListTable = () => {
 						{/* End Date */}
 						<Form.Item
 							label={
-								!editingClass ? (
-									<span>
-										 {t('classManagement.endDate')}<span style={{ color: '#ff4d4f' }}> *</span>
-									</span>
-								) : (
-									t('classManagement.endDate')
-								)
+								<span>
+									{t('classManagement.endDate')}
+									{!editingClass && <span style={{ color: '#ff4d4f' }}> *</span>}
+								</span>
 							}
 							name="endDate"
 							required={!editingClass}
