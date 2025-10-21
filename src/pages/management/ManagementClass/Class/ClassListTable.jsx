@@ -1139,20 +1139,20 @@ const ClassListTable = () => {
 					onClose={() => setSelectedRowKeys([])}
 					selectAllText={t('classManagement.selectAll')}
 					deleteAllText={t('classManagement.deleteAll')}
-					additionalActions={[
-						{
-							key: 'activateAll',
-							label: t('classManagement.activateAll'),
-							onClick: handleActivateAll,
-							type: 'primary'
-						},
-						{
-							key: 'deactivateAll',
-							label: t('classManagement.deactivateAll'),
-							onClick: handleDeactivateAll,
-							type: 'default'
-						}
-					]}
+				additionalActions={[
+					{
+						key: 'activateAll',
+						label: t('classManagement.activateAll'),
+						onClick: handleActivateAll,
+						type: 'text'
+					},
+					{
+						key: 'deactivateAll',
+						label: t('classManagement.deactivateAll'),
+						onClick: handleDeactivateAll,
+						type: 'text'
+					}
+				]}
 				/>
 			</ThemedLayout>
 		</>

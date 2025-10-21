@@ -16,7 +16,6 @@ import {
 } from 'antd';
 import {
 	SearchOutlined,
-	ArrowLeftOutlined,
 	DownloadOutlined,
 	DragOutlined,
 	UploadOutlined,
@@ -33,6 +32,7 @@ import { spaceToast } from '../../../../component/SpaceToastify';
 import './SyllabusList.css';
 import ThemedLayout from '../../../../component/ThemedLayout';
 import { useTheme } from '../../../../contexts/ThemeContext';
+import { useSyllabusMenu } from '../../../../contexts/SyllabusMenuContext';
 import LessonForm from './LessonForm';
 import LoadingWithEffect from '../../../../component/spinner/LoadingWithEffect';
 import BottomActionBar from '../../../../component/BottomActionBar';
@@ -42,6 +42,7 @@ const LessonListPage = () => {
 	const navigate = useNavigate();
 	const { syllabusId, chapterId } = useParams();
 	const { theme } = useTheme();
+	const { enterSyllabusMenu, exitSyllabusMenu } = useSyllabusMenu();
 	const dispatch = useDispatch();
 	const { lessons, loading, lessonsPagination } = useSelector((state) => state.syllabus);
 
@@ -129,6 +130,36 @@ const LessonListPage = () => {
 		fetchData();
 	}, [fetchLessons, fetchChapterInfo, searchText, pagination.pageSize]);
 
+	// Fetch syllabus info for header
+	const fetchSyllabusInfo = useCallback(async () => {
+		if (!syllabusId) return;
+		
+		try {
+			const response = await syllabusManagementApi.getSyllabuses({
+				params: { page: 0, size: 100 }
+			});
+			
+			const syllabus = response.data.find(s => s.id === parseInt(syllabusId));
+			if (syllabus) {
+				enterSyllabusMenu({
+					id: syllabus.id,
+					name: syllabus.syllabusName,
+					description: syllabus.description,
+				});
+			}
+		} catch (error) {
+			console.error('Error fetching syllabus info:', error);
+		}
+	}, [syllabusId, enterSyllabusMenu]);
+
+	useEffect(() => {
+		fetchSyllabusInfo();
+		
+		return () => {
+			exitSyllabusMenu();
+		};
+	}, [fetchSyllabusInfo, exitSyllabusMenu]);
+
 	// Update pagination when Redux state changes
 	useEffect(() => {
 		if (lessonsPagination) {
@@ -148,10 +179,6 @@ const LessonListPage = () => {
 			}
 		};
 	}, [searchTimeout]);
-
-	const handleBackToChapters = () => {
-		navigate(`/manager/syllabuses/${syllabusId}/chapters`);
-	};
 
 	const handleEditOrder = () => {
 		navigate(`/manager/syllabuses/${syllabusId}/chapters/${chapterId}/lessons/edit-order`);
@@ -537,22 +564,14 @@ const LessonListPage = () => {
 			{/* Main Content Panel */}
 			<div className={`main-content-panel ${theme}-main-panel`}>
 				{/* Page Title */}
-				<div className="page-title-container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
-					<Button 
-						icon={<ArrowLeftOutlined />}
-						onClick={handleBackToChapters}
-						className={`back-button ${theme}-back-button`}
-					>
-						{t('common.back')}
-					</Button>
+				<div className="page-title-container" style={{ marginBottom: '24px' }}>
 					<Typography.Title 
 						level={1} 
 						className="page-title"
-						style={{ margin: 0, flex: 1, textAlign: 'center' }}
+						style={{ margin: 0, textAlign: 'center' }}
 					>
 						{chapterInfo.name} - {t('lessonManagement.title')} <span className="student-count">({totalElements})</span>
 					</Typography.Title>
-					<div style={{ width: '100px' }}></div> {/* Spacer để cân bằng layout */}
 				</div>
 
 				{/* Action Bar */}
