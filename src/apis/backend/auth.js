@@ -20,7 +20,7 @@ const authApi = {
 			path: "/reset-password"
 		};
 		console.log('ForgotPassword API - Request Body:', requestBody);
-		return axiosClient.post('/auth/reset-password', requestBody, {
+		return axiosClient.post('/auth/request-reset-password-email', requestBody, {
 			headers: {
 				'Content-Type': 'application/json',
 				'accept': '*/*',
@@ -38,7 +38,7 @@ const authApi = {
 		// Sử dụng axios trực tiếp để tránh interceptor tự động thêm Authorization header
 		const baseURL = process.env.REACT_APP_API_URL;
 		
-		return axios.post(`${baseURL}/auth/confirm-reset-password`, requestBody, {
+		return axios.post(`${baseURL}/auth/reset-password-by-token`, requestBody, {
 			headers: {
 				'Content-Type': 'application/json',
 				'accept': '*/*',
@@ -205,7 +205,21 @@ const authApi = {
 		});
 	},
 
-	// Reset password by teacher
+	// Request password reset by teacher (for student to request)
+	requestPasswordByTeacher: (username) => {
+		const requestBody = {
+			userName: username
+		};
+		console.log('RequestPasswordByTeacher API - Request Body:', requestBody);
+		return axiosClient.post('/auth/request-reset-password-teacher', requestBody, {
+			headers: {
+				'Content-Type': 'application/json',
+				'accept': '*/*',
+			}
+		});
+	},
+
+	// Reset password by teacher (for teacher to actually reset)
 	resetPasswordByTeacher: (username) => {
 		console.log('ResetPasswordByTeacher API - Username:', username);
 		return axiosClient.post(`/auth/reset-password-by-teacher?username=${username}`, {}, {
