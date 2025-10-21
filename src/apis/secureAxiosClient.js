@@ -5,7 +5,7 @@ import { spaceToast } from '../component/SpaceToastify';
 
 // Tạo instance mặc định cho axios
 const axiosClient = axios.create({
-	baseURL: process.env.REACT_APP_API_URL,
+	baseURL: process.env.REACT_APP_API_URL || 'https://learning-progress-management-hndjatgmc3fva3gs.southeastasia-01.azurewebsites.net/learning-progress-management/api/v1',
 	timeout: 30000, // Tăng lên 30 giây để xử lý API chậm
 	// Không set headers mặc định, chỉ gửi token khi cần
 });

@@ -11,7 +11,6 @@ import {
   Typography,
 } from "antd";
 import {
-  ArrowLeftOutlined,
   PlusOutlined,
   SearchOutlined,
   DeleteOutlined,
@@ -20,10 +19,11 @@ import {
 import ThemedLayout from "../../../../component/ThemedLayout";
 import LoadingWithEffect from "../../../../component/spinner/LoadingWithEffect";
 import "./ClassTeachers.css";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { spaceToast } from "../../../../component/SpaceToastify";
 import { useTheme } from "../../../../contexts/ThemeContext";
+import { useClassMenu } from "../../../../contexts/ClassMenuContext";
 import classManagementApi from "../../../../apis/backend/classManagement";
 import usePageTitle from "../../../../hooks/usePageTitle";
 
@@ -33,8 +33,8 @@ const { Title } = Typography;
 const ClassTeachers = () => {
   const { t } = useTranslation();
   const { id } = useParams();
-  const navigate = useNavigate();
   const { theme } = useTheme();
+  const { enterClassMenu, exitClassMenu } = useClassMenu();
   
   // Set page title
   usePageTitle('Class Teachers');
@@ -137,7 +137,21 @@ const ClassTeachers = () => {
     try {
       const response = await classManagementApi.getClassDetail(id);
       console.log('Class detail response:', response);
-      setClassData(response.data);
+      const data = response?.data?.data ?? response?.data ?? null;
+      if (data) {
+        const mapped = {
+          id: data.id ?? id,
+          name:
+            data.name ??
+            data.className ??
+            data.classname ??
+            data.class_name ??
+            data.title ??
+            data.classTitle ??
+            '',
+        };
+        setClassData(mapped);
+      }
     } catch (error) {
       console.error('Error fetching class data:', error);
       spaceToast.error(t('classTeachers.loadingClassInfo'));
@@ -149,10 +163,10 @@ const ClassTeachers = () => {
       const apiParams = {
         page: params.page !== undefined ? params.page : 0,
         size: params.size !== undefined ? params.size : 10,
-        text: params.text !== undefined ? params.text : searchText,
-        status: params.status !== undefined ? params.status : statusFilter,
-        sortBy: params.sortBy !== undefined ? params.sortBy : sortConfig.sortBy,
-        sortDir: params.sortDir !== undefined ? params.sortDir : sortConfig.sortDir,
+        text: params.text !== undefined ? params.text : '',
+        status: params.status !== undefined ? params.status : 'ACTIVE',
+        sortBy: params.sortBy !== undefined ? params.sortBy : 'joinedAt',
+        sortDir: params.sortDir !== undefined ? params.sortDir : 'desc',
       };
       
       console.log('Fetching teachers with params:', apiParams);
@@ -175,32 +189,80 @@ const ClassTeachers = () => {
       spaceToast.error(t('classTeachers.loadingTeachers'));
       setTeachers([]);
     }
-  }, [id, t, searchText, statusFilter, sortConfig.sortBy, sortConfig.sortDir]);
+  }, [id, t]);
 
+  // Initial data loading
   useEffect(() => {
     fetchClassData();
     fetchTeachers();
-  }, [id, fetchClassData, fetchTeachers]);
+  }, [id]);
+
+  // Ensure header back button appears immediately while class info loads
+  useEffect(() => {
+    if (id) {
+      enterClassMenu({ id });
+    }
+    return () => {
+      exitClassMenu();
+    };
+  }, [id]);
+
+  // Enter class menu mode when component mounts
+  useEffect(() => {
+    if (classData) {
+      enterClassMenu({
+        id: classData.id,
+        name: classData.name,
+        description: `${t('classTeachers.teachers')} (${teachers.length})`
+      });
+    }
+    
+    // Cleanup function to exit class menu mode when leaving
+    return () => {
+      exitClassMenu();
+    };
+  }, [classData?.id, classData?.name, teachers.length]);
 
   // Handle search and filter changes with debounce
   useEffect(() => {
-    const timeoutId = setTimeout(() => {
+    const timeoutId = setTimeout(async () => {
       setLoading(true);
-      fetchTeachers({
-        page: 0,
-        size: pagination.pageSize,
-        text: searchText,
-        status: statusFilter,
-        sortBy: sortConfig.sortBy,
-        sortDir: sortConfig.sortDir
-      }).finally(() => {
+      try {
+        const apiParams = {
+          page: 0,
+          size: pagination.pageSize,
+          text: searchText,
+          status: statusFilter,
+          sortBy: sortConfig.sortBy,
+          sortDir: sortConfig.sortDir,
+        };
+        
+        console.log('Fetching teachers with params:', apiParams);
+        const response = await classManagementApi.getClassTeachers(id, apiParams);
+        console.log('Teachers response:', response);
+        
+        if (response.success) {
+          setTeachers(response.data || []);
+          setPagination(prev => ({
+            ...prev,
+            total: response.totalElements || 0,
+            current: 1,
+          }));
+        } else {
+          spaceToast.error(response.message || t('classTeachers.loadingTeachers'));
+          setTeachers([]);
+        }
+      } catch (error) {
+        console.error('Error fetching teachers:', error);
+        spaceToast.error(t('classTeachers.loadingTeachers'));
+        setTeachers([]);
+      } finally {
         setLoading(false);
-      });
-      setPagination(prev => ({ ...prev, current: 1 }));
+      }
     }, 300);
     
     return () => clearTimeout(timeoutId);
-  }, [searchText, statusFilter, sortConfig.sortBy, sortConfig.sortDir, pagination.pageSize, fetchTeachers]);
+  }, [searchText, statusFilter, sortConfig.sortBy, sortConfig.sortDir, pagination.pageSize, id, t]);
 
   const handleAddTeacher = () => {
     form.resetFields();
@@ -287,18 +349,6 @@ const ClassTeachers = () => {
         current: paginationInfo.current,
         pageSize: paginationInfo.pageSize,
       }));
-      
-      setLoading(true);
-      fetchTeachers({ 
-        page: paginationInfo.current - 1, 
-        size: paginationInfo.pageSize,
-        text: searchText,
-        status: statusFilter,
-        sortBy: sortConfig.sortBy,
-        sortDir: sortConfig.sortDir
-      }).finally(() => {
-        setLoading(false);
-      });
     }
     
     // Handle sorting
@@ -332,11 +382,12 @@ const ClassTeachers = () => {
     },
     {
       title: t('classTeachers.fullName'),
-      key: 'fullName',
+      dataIndex: "fullName",
+      key: "fullName",
       sorter: true,
-      render: (_, record) => (
+      render: (text) => (
         <div className="teacher-name-text" style={{ fontSize: "20px" }}>
-          {`${record.firstName || ''} ${record.lastName || ''}`.trim()}
+          {text || '-'}
         </div>
       ),
     },
@@ -392,26 +443,14 @@ const ClassTeachers = () => {
     <ThemedLayout>
         {/* Main Content Panel */}
         <div className={`main-content-panel ${theme}-main-panel`}>
-          {/* Page Title with Back Button */}
-          <div className="page-title-container" style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '24px' }}>
-              <Button
-              icon={<ArrowLeftOutlined />}
-                onClick={() => navigate(`/manager/classes/menu/${id}`)}
-              className={`back-button ${theme}-back-button`}
-              style={{ height: '40px', fontSize: '16px' }}
-              >
-                {t('common.back')}
-              </Button>
-            <div style={{ flex: '1', textAlign: 'center' }}>
-              <Typography.Title 
-                level={1} 
-                className="page-title"
-                style={{ margin: 0 }}
-              >
-                {t('classTeachers.teachers')} <span className="teacher-count">({teachers.length})</span>
-              </Typography.Title>
-            </div>
-            <div style={{ width: '120px' }}></div> {/* Spacer for centering */}
+          {/* Page Title */}
+          <div className="page-title-container">
+            <Typography.Title 
+              level={1} 
+              className="page-title"
+            >
+              Teacher Management <span className="student-count">({pagination.total})</span>
+            </Typography.Title>
           </div>
 
           {/* Search and Action Section */}

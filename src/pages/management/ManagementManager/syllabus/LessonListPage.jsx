@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
 	Table,
 	Button,
@@ -9,7 +9,6 @@ import {
 	Row,
 	Col,
 	Typography,
-	Checkbox,
 	Divider,
 	Alert,
 	Progress,
@@ -211,13 +210,6 @@ const LessonListPage = () => {
 		}
 	};
 
-	const handleSelectRow = (record, checked) => {
-		if (checked) {
-			setSelectedRowKeys(prev => [...prev, record.id]);
-		} else {
-			setSelectedRowKeys(prev => prev.filter(key => key !== record.id));
-		}
-	};
 
 	// Bulk actions
 	const handleDeleteAll = () => {
@@ -476,50 +468,8 @@ const LessonListPage = () => {
 	// Use Redux state for lessons data
 	const filteredLessons = lessons;
 
-	// Calculate checkbox states with useMemo
-	const checkboxStates = useMemo(() => {
-		const totalItems = totalElements; // Sử dụng totalElements thay vì lessons.length
-		const selectedCount = selectedRowKeys.length;
-		const isSelectAll = selectedCount === totalItems && totalItems > 0;
-		const isIndeterminate = false; // Không bao giờ hiển thị indeterminate
-
-		console.log('Checkbox Debug:', {
-			totalItems,
-			selectedCount,
-			selectedRowKeys,
-			isSelectAll,
-			isIndeterminate,
-		});
-
-		return { isSelectAll, isIndeterminate, totalItems, selectedCount };
-	}, [selectedRowKeys, totalElements]);
 
 	const columns = [
-		{
-			title: (
-				<Checkbox
-					key={`select-all-${checkboxStates.selectedCount}-${checkboxStates.totalItems}`}
-					checked={checkboxStates.isSelectAll}
-					indeterminate={checkboxStates.isIndeterminate}
-					onChange={(e) => handleSelectAll(e.target.checked)}
-					style={{
-						transform: 'scale(1.2)',
-						marginRight: '8px'
-					}}
-				/>
-			),
-			key: 'selection',
-			width: '5%',
-			render: (_, record) => (
-				<Checkbox
-					checked={selectedRowKeys.includes(record.id)}
-					onChange={(e) => handleSelectRow(record, e.target.checked)}
-					style={{
-						transform: 'scale(1.2)'
-					}}
-				/>
-			),
-		},
 		{
 			title: 'STT',
 			key: 'index',
@@ -540,7 +490,6 @@ const LessonListPage = () => {
 			dataIndex: 'name',
 			key: 'name',
 			width: '20%',
-			sorter: (a, b) => a.name.localeCompare(b.name),
 			render: (text) => (
 				<div style={{ 
 					fontSize: '20px',
@@ -605,19 +554,9 @@ const LessonListPage = () => {
 					<Typography.Title 
 						level={1} 
 						className="page-title"
-						style={{ margin: 0, flex: 1, textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+						style={{ margin: 0, flex: 1, textAlign: 'center' }}
 					>
-						<span style={{ 
-							maxWidth: '400px',
-							overflow: 'hidden',
-							textOverflow: 'ellipsis',
-							whiteSpace: 'nowrap'
-						}}>
-							{chapterInfo.name}
-						</span>
-						<span style={{ margin: '0 8px', flexShrink: 0 }}>-</span>
-						<span style={{ flexShrink: 0 }}>{t('lessonManagement.title')}</span>
-						<span className="student-count" style={{ flexShrink: 0 }}> ({totalElements})</span>
+						{chapterInfo.name} - {t('lessonManagement.title')} <span className="student-count">({totalElements})</span>
 					</Typography.Title>
 					<div style={{ width: '100px' }}></div> {/* Spacer để cân bằng layout */}
 				</div>

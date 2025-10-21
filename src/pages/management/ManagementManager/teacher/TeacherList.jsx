@@ -518,26 +518,57 @@ const TeacherList = () => {
 
 	// Calculate checkbox states with useMemo
 	const checkboxStates = useMemo(() => {
-		// Filter out PENDING records from total count
+		// Filter out PENDING records from current page
 		const nonPendingTeachers = teachers.filter(teacher => teacher.status !== 'PENDING');
-		const totalItems = nonPendingTeachers.length;
+		const currentPageKeys = nonPendingTeachers.map(teacher => teacher.id);
 		const selectedCount = selectedRowKeys.length;
-		const isSelectAll = selectedCount === totalItems && totalItems > 0;
-		const isIndeterminate = false; // Không bao giờ hiển thị indeterminate
-
+		
+		// Check if all non-PENDING items on current page are selected
+		const allCurrentPageSelected = currentPageKeys.length > 0 && 
+			currentPageKeys.every(key => selectedRowKeys.includes(key));
+		
+		// For table header checkbox: only check if all non-PENDING current page items are selected
+		const isSelectAll = allCurrentPageSelected;
+		// Never show indeterminate state for table header checkbox
+		const isIndeterminate = false;
+		
 		console.log('Checkbox Debug:', {
-			totalItems,
-			selectedCount,
+			currentPageKeys,
 			selectedRowKeys,
+			allCurrentPageSelected,
 			isSelectAll,
 			isIndeterminate,
+			selectedCount,
 			nonPendingTeachers: nonPendingTeachers.length,
 		});
-
-		return { isSelectAll, isIndeterminate, totalItems, selectedCount };
+		
+		return { isSelectAll, isIndeterminate, totalItems: currentPageKeys.length, selectedCount };
 	}, [selectedRowKeys, teachers]);
 
-	// Checkbox logic
+	// Handle table header checkbox (only current page)
+	const handleSelectAllCurrentPage = (checked) => {
+		// Filter out PENDING records from current page
+		const nonPendingTeachers = teachers.filter(teacher => teacher.status !== 'PENDING');
+		const currentPageKeys = nonPendingTeachers.map(teacher => teacher.id);
+		
+		if (checked) {
+			// Add all non-PENDING current page items to selection
+			setSelectedRowKeys(prev => {
+				const newKeys = [...prev];
+				currentPageKeys.forEach(key => {
+					if (!newKeys.includes(key)) {
+						newKeys.push(key);
+					}
+				});
+				return newKeys;
+			});
+		} else {
+			// Remove all current page items from selection
+			setSelectedRowKeys(prev => prev.filter(key => !currentPageKeys.includes(key)));
+		}
+	};
+
+	// Checkbox logic for BottomActionBar (select all in entire dataset)
 	const handleSelectAll = async (checked) => {
 		if (checked) {
 			try {
@@ -751,7 +782,7 @@ const TeacherList = () => {
 					key={`select-all-${checkboxStates.selectedCount}-${checkboxStates.totalItems}`}
 					checked={checkboxStates.isSelectAll}
 					indeterminate={checkboxStates.isIndeterminate}
-					onChange={(e) => handleSelectAll(e.target.checked)}
+					onChange={(e) => handleSelectAllCurrentPage(e.target.checked)}
 					style={{
 						transform: 'scale(1.2)',
 						marginRight: '8px'
@@ -1129,7 +1160,17 @@ const TeacherList = () => {
 
 			{/* Status Change Confirmation Modal */}
 			<Modal
-				title={confirmModal.title}
+				title={
+					<div style={{ 
+						fontSize: '20px', 
+						fontWeight: '600', 
+						color: '#1890ff',
+						textAlign: 'center',
+						padding: '10px 0'
+					}}>
+						{confirmModal.title}
+					</div>
+				}
 				open={confirmModal.visible}
 				onOk={confirmModal.onConfirm}
 				onCancel={handleConfirmCancel}
@@ -1141,25 +1182,27 @@ const TeacherList = () => {
 					padding: '30px 40px',
 					fontSize: '16px',
 					lineHeight: '1.6',
-					textAlign: 'center',
+					textAlign: 'center'
 				}}
 				okButtonProps={{
 					style: {
-						backgroundColor: '#1890ff',
-						borderColor: '#1890ff',
+						backgroundColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
+						background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
+						borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'transparent',
+						color: theme === 'sun' ? '#000000' : '#ffffff',
 						height: '40px',
 						fontSize: '16px',
 						fontWeight: '500',
-						minWidth: '100px',
-					},
+						minWidth: '100px'
+					}
 				}}
 				cancelButtonProps={{
 					style: {
 						height: '40px',
 						fontSize: '16px',
 						fontWeight: '500',
-						minWidth: '100px',
-					},
+						minWidth: '100px'
+					}
 				}}>
 				<div
 					style={{
@@ -1171,8 +1214,8 @@ const TeacherList = () => {
 					<div
 						style={{
 							fontSize: '48px',
-							color: '#1890ff',
-							marginBottom: '10px',
+							color: '#ff4d4f',
+							marginBottom: '10px'
 						}}>
 						⚠️
 					</div>
@@ -1181,7 +1224,7 @@ const TeacherList = () => {
 							fontSize: '18px',
 							color: '#333',
 							margin: 0,
-							fontWeight: '500',
+							fontWeight: '500'
 						}}>
 						{confirmModal.content}
 					</p>

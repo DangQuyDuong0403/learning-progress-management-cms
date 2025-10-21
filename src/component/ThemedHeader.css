@@ -378,12 +378,8 @@
 
 .profile-header {
   padding: 20px;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
 }
 
-.space-theme .profile-header {
-  border-bottom: 1px solid rgba(77, 208, 255, 0.2);
-}
 
 .profile-info {
   display: flex;
@@ -852,4 +848,49 @@
     height: 16px;
     font-size: 9px;
   }
+}
+
+/* ===== CLASS MENU BACK BUTTON STYLES ===== */
+.class-menu-back-button {
+  height: 32px !important;
+  border-radius: 8px !important;
+  font-weight: 500 !important;
+  font-size: 14px !important;
+  border: 1px solid rgba(0, 0, 0, 0.1) !important;
+  backdrop-filter: blur(10px) !important;
+  transition: all 0.3s ease !important;
+  background: #ffffff !important;
+  color: #000000 !important;
+}
+
+/* Space theme for class menu back button */
+.space-theme .class-menu-back-button {
+  background: #ffffff !important;
+  border: 1px solid rgba(0, 0, 0, 0.1) !important;
+  color: #000000 !important;
+}
+
+.space-theme .class-menu-back-button:hover {
+  background: #ffffff !important;
+  border-color: rgba(0, 0, 0, 0.2) !important;
+  transform: translateY(-2px) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+  filter: brightness(0.95) !important;
+  color: #000000 !important;
+}
+
+/* Sun theme for class menu back button */
+.sun-theme .class-menu-back-button {
+  background: #ffffff !important;
+  border: 1px solid rgba(0, 0, 0, 0.1) !important;
+  color: #000000 !important;
+}
+
+.sun-theme .class-menu-back-button:hover {
+  background: #ffffff !important;
+  border-color: rgba(0, 0, 0, 0.2) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+  filter: brightness(0.95) !important;
+  color: #000000 !important;
+  transform: translateY(-2px) !important;
 }

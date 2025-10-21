@@ -5,24 +5,23 @@ import {
 	Space,
 	Modal,
 	Input,
-	Tag,
-	Card,
 	Row,
 	Col,
-	Statistic,
 	Tooltip,
+	Typography,
+	Divider,
+	Alert,
+	Progress,
+	Upload,
 } from 'antd';
 import {
-	PlusOutlined,
 	EditOutlined,
 	DeleteOutlined,
 	SearchOutlined,
-	ReloadOutlined,
-	BookOutlined,
-	EyeOutlined,
-	FileTextOutlined,
-	PlayCircleOutlined,
 	ArrowLeftOutlined,
+	DownloadOutlined,
+	DragOutlined,
+	UploadOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useParams, useNavigate } from 'react-router-dom';
@@ -32,176 +31,199 @@ import { spaceToast } from '../../../../component/SpaceToastify';
 import { useTheme } from '../../../../contexts/ThemeContext';
 import usePageTitle from '../../../../hooks/usePageTitle';
 import ChapterForm from '../../ManagementManager/syllabus/ChapterForm';
-import LessonList from '../../ManagementManager/syllabus/LessonList';
-const { Search } = Input;
+import teacherManagementApi from '../../../../apis/backend/teacherManagement';
+import { useSelector } from 'react-redux';
+import BottomActionBar from '../../../../component/BottomActionBar';
+import './ClassChapterLesson.css';
 
-// Mock class data
-const mockClassData = {
-	id: 1,
-	name: "Rising star 1",
-	studentCount: 3,
-	color: "#00d4ff",
-	status: "active",
-	createdAt: "2024-01-15",
-	teacher: "Nguyễn Văn A",
-	syllabus: {
-		id: 1,
-		name: "Beginner English Course",
-		level: "Beginner",
-	},
-};
-
-// Mock chapters data
-const mockChapters = [
-	{
-		id: 1,
-		order: 1,
-		name: "Chapter 1: Introduction to English",
-		description: "Basic introduction to English language",
-		duration: 2,
-		status: "active",
-		createdAt: "2024-01-15",
-		lessons: [
-			{
-				id: 1,
-				order: 1,
-				name: "Lesson 1: Alphabet and Numbers",
-				description: "Learning the English alphabet and numbers",
-				duration: 1,
-				type: "theory",
-				status: "active",
-				createdAt: "2024-01-15",
-			},
-			{
-				id: 2,
-				order: 2,
-				name: "Lesson 2: Basic Greetings",
-				description: "Common greetings and polite expressions",
-				duration: 1.5,
-				type: "practice",
-				status: "active",
-				createdAt: "2024-01-15",
-			},
-		],
-	},
-	{
-		id: 2,
-		order: 2,
-		name: "Chapter 2: Family and Friends",
-		description: "Vocabulary and expressions about family and friends",
-		duration: 3,
-		status: "active",
-		createdAt: "2024-01-16",
-		lessons: [
-			{
-				id: 3,
-				order: 1,
-				name: "Lesson 1: Family Members",
-				description: "Names and relationships of family members",
-				duration: 1,
-				type: "theory",
-				status: "active",
-				createdAt: "2024-01-16",
-			},
-			{
-				id: 4,
-				order: 2,
-				name: "Lesson 2: Describing People",
-				description: "Adjectives to describe physical appearance",
-				duration: 1.5,
-				type: "mixed",
-				status: "active",
-				createdAt: "2024-01-16",
-			},
-		],
-	},
-];
 
 const ClassChapterLesson = () => {
 	const { t } = useTranslation();
-	const { id } = useParams();
+	const { classId, chapterId } = useParams();
 	const navigate = useNavigate();
 	const { theme } = useTheme();
+	const { user } = useSelector((state) => state.auth);
 	
 	// Set page title
 	usePageTitle('Class Chapter & Lesson');
 
+	// State management
+	const [loading, setLoading] = useState(false);
 	const [classData, setClassData] = useState(null);
-	const [isLoading, setIsLoading] = useState(false);
+	const [chapterData, setChapterData] = useState(null);
+	const [lessons, setLessons] = useState([]);
 	const [searchText, setSearchText] = useState('');
-	const [isChapterModalVisible, setIsChapterModalVisible] = useState(false);
-	const [isViewLessonsModalVisible, setIsViewLessonsModalVisible] = useState(false);
+	const [searchTimeout, setSearchTimeout] = useState(null);
+	const [totalElements, setTotalElements] = useState(0);
+	const [selectedRowKeys, setSelectedRowKeys] = useState([]);
+
+	// Modal states
+	const [isModalVisible, setIsModalVisible] = useState(false);
 	const [isDeleteModalVisible, setIsDeleteModalVisible] = useState(false);
+	const [isBulkDeleteModalVisible, setIsBulkDeleteModalVisible] = useState(false);
 	const [editingChapter, setEditingChapter] = useState(null);
-	const [selectedChapter, setSelectedChapter] = useState(null);
 	const [deleteItem, setDeleteItem] = useState(null);
+	const [importModal, setImportModal] = useState({
+		visible: false,
+		fileList: [],
+		uploading: false,
+		progress: 0,
+		error: null,
+	});
+
+	// Pagination state
+	const [pagination, setPagination] = useState({
+		current: 1,
+		pageSize: 10,
+		total: 0,
+		showSizeChanger: true,
+		showTotal: (total, range) => `${range[0]}-${range[1]} of ${total}`,
+	});
+
+	// Determine route prefix based on user role
+	const getRoutePrefix = () => {
+		const userRole = user?.role?.toLowerCase();
+		switch (userRole) {
+			case 'manager':
+				return '/manager/classes';
+			case 'teacher':
+				return '/teacher/classes';
+			case 'teaching_assistant':
+				return '/teaching-assistant/classes';
+			default:
+				return '/manager/classes';
+		}
+	};
+
+	const routePrefix = getRoutePrefix();
 
 	const fetchClassData = useCallback(async () => {
-		setIsLoading(true);
+		if (!classId) return;
+		
+		setLoading(true);
 		try {
-			// Simulate API call
-			setTimeout(() => {
-				setClassData(mockClassData);
-				setIsLoading(false);
-			}, 1000);
+			const response = await teacherManagementApi.getClassById(classId);
+			const data = response?.data ?? response;
+			setClassData({
+				id: classId,
+				name: data?.name ?? data?.className ?? data?.title ?? '',
+				syllabus: {
+					id: data?.syllabusId,
+					name: data?.syllabusName,
+				}
+			});
 		} catch (error) {
-			spaceToast.error(t('classChapterLesson.loadingClassInfo'));
-			setIsLoading(false);
+			console.error('Error fetching class info:', error);
+			spaceToast.error(t('lessonManagement.loadingClassInfo'));
+		} finally {
+			setLoading(false);
 		}
-	}, [t]);
+	}, [classId, t]);
 
-	const fetchChaptersData = useCallback(async () => {
+	const fetchChapterData = useCallback(async () => {
+		if (!chapterId) return;
+		
 		try {
-			// Simulate API call - in real app, this would fetch chapters for the class's syllabus
-			// dispatch(fetchChaptersBySyllabus(classData?.syllabus?.id));
+			const response = await teacherManagementApi.getClassChapterById(chapterId);
+			const data = response?.data ?? response;
+			setChapterData({
+				id: chapterId,
+				name: data?.classChapterName,
+				description: data?.description,
+				order: data?.orderNumber,
+				createdBy: data?.createdBy,
+				createdAt: data?.createdAt,
+			});
 		} catch (error) {
-			spaceToast.error(t('classChapterLesson.loadingChapters'));
+			console.error('Error fetching chapter info:', error);
+			spaceToast.error(t('lessonManagement.loadingChapterInfo'));
 		}
-	}, [t]);
+	}, [chapterId, t]);
+
+	const fetchLessonsData = useCallback(async (page = 1, size = 10, search = '') => {
+		if (!chapterId) return;
+		
+		setLoading(true);
+		try {
+			const params = {
+				classChapterId: chapterId,
+				page: page - 1, // API uses 0-based indexing
+				size: size,
+			};
+			
+			// Add search parameter if provided
+			if (search && search.trim()) {
+				params.searchText = search.trim();
+			}
+
+			const response = await teacherManagementApi.getClassLessons(params);
+			
+			// Map API response to component format
+			const mappedLessons = response.data.map((lesson) => ({
+				id: lesson.id,
+				name: lesson.classLessonName,
+				content: lesson.classLessonContent,
+				order: lesson.orderNumber,
+				createdBy: lesson.createdBy,
+				createdAt: lesson.createdAt,
+			}));
+
+			setLessons(mappedLessons);
+			setTotalElements(response.totalElements || response.data.length);
+			setPagination(prev => ({
+				...prev,
+				current: page,
+				pageSize: size,
+				total: response.totalElements || response.data.length,
+			}));
+			setLoading(false);
+		} catch (error) {
+			console.error('Error fetching lessons:', error);
+			spaceToast.error(t('lessonManagement.loadingLessons'));
+			setLoading(false);
+		}
+	}, [chapterId, t]);
 
 	useEffect(() => {
 		fetchClassData();
-		fetchChaptersData();
-	}, [id, fetchClassData, fetchChaptersData]);
+		fetchChapterData();
+		fetchLessonsData(1, pagination.pageSize, searchText);
+	}, [fetchClassData, fetchChapterData, fetchLessonsData, searchText, pagination.pageSize]);
 
-	const handleAddChapter = () => {
-		setEditingChapter(null);
-		setIsChapterModalVisible(true);
+	// Cleanup timeout on unmount
+	useEffect(() => {
+		return () => {
+			if (searchTimeout) {
+				clearTimeout(searchTimeout);
+			}
+		};
+	}, [searchTimeout]);
+
+	const handleEditLesson = (lesson) => {
+		setEditingChapter(lesson);
+		setIsModalVisible(true);
 	};
 
-	const handleEditChapter = (chapter) => {
-		setEditingChapter(chapter);
-		setIsChapterModalVisible(true);
-	};
-
-	const handleDeleteChapterClick = (chapter) => {
-		setDeleteItem(chapter);
+	const handleDeleteLessonClick = (lesson) => {
+		setDeleteItem(lesson);
 		setIsDeleteModalVisible(true);
 	};
 
-	const handleDeleteChapter = async () => {
+	const handleDeleteLesson = async () => {
 		try {
-			// await dispatch(deleteChapter(deleteItem.id));
-			spaceToast.success(t('classChapterLesson.deleteChapterSuccess'));
+			// TODO: Implement delete lesson API call
+			// await teacherManagementApi.deleteLesson(deleteItem.id);
+			
+			// Update local state
+			setLessons(lessons.filter(l => l.id !== deleteItem.id));
+			
+			spaceToast.success(t('lessonManagement.deleteLessonSuccess'));
 			setIsDeleteModalVisible(false);
 			setDeleteItem(null);
 		} catch (error) {
-			spaceToast.error(t('classChapterLesson.deleteChapterError'));
+			console.error('Error deleting lesson:', error);
+			spaceToast.error(t('lessonManagement.deleteLessonError'));
 		}
-	};
-
-	const handleViewLessons = (chapter) => {
-		setSelectedChapter(chapter);
-		setIsViewLessonsModalVisible(true);
-	};
-
-
-
-	const handleModalClose = () => {
-		setIsChapterModalVisible(false);
-		setIsViewLessonsModalVisible(false);
-		setEditingChapter(null);
-		setSelectedChapter(null);
 	};
 
 	const handleDeleteModalClose = () => {
@@ -209,125 +231,401 @@ const ClassChapterLesson = () => {
 		setDeleteItem(null);
 	};
 
-	const handleRefresh = () => {
-		fetchChaptersData();
+	const handleModalClose = () => {
+		setIsModalVisible(false);
+		setEditingChapter(null);
 	};
 
-	// Filter chapters based on search
-	const filteredChapters = mockChapters.filter((chapter) => {
-		const matchesSearch =
-			chapter.name.toLowerCase().includes(searchText.toLowerCase()) ||
-			chapter.description.toLowerCase().includes(searchText.toLowerCase());
-		return matchesSearch;
-	});
+	const handleBackToChapters = () => {
+		navigate(`${routePrefix}/chapters/${classId}`);
+	};
+
+	const handleEditOrder = () => {
+		navigate(`${routePrefix}/chapters/${classId}/lessons/edit-order`);
+	};
+
+	// Checkbox logic
+	const handleSelectAll = async (checked) => {
+		if (checked) {
+			try {
+				// Fetch all lesson IDs from API (without pagination)
+				const params = {
+					page: 0,
+					size: totalElements, // Get all items
+				};
+				
+				// Add search parameter if provided
+				if (searchText && searchText.trim()) {
+					params.searchText = searchText.trim();
+				}
+
+				const response = await teacherManagementApi.getClassLessons({
+					classChapterId: chapterId,
+					...params
+				});
+
+				// Get all IDs from the response
+				const allKeys = response.data.map(lesson => lesson.id);
+				setSelectedRowKeys(allKeys);
+			} catch (error) {
+				console.error('Error fetching all lesson IDs:', error);
+				spaceToast.error('Error selecting all items');
+			}
+		} else {
+			setSelectedRowKeys([]);
+		}
+	};
+
+	// Bulk actions
+	const handleDeleteAll = () => {
+		if (selectedRowKeys.length === 0) {
+			spaceToast.warning(t('lessonManagement.selectItemsToDelete'));
+			return;
+		}
+		setIsBulkDeleteModalVisible(true);
+	};
+
+	const handleDeleteAllConfirm = async () => {
+		try {
+			// TODO: Implement bulk delete API call
+			// await teacherManagementApi.bulkDeleteLessons(selectedRowKeys);
+			
+			// Update local state
+			setLessons(lessons.filter(l => !selectedRowKeys.includes(l.id)));
+			setSelectedRowKeys([]);
+			
+			spaceToast.success(t('lessonManagement.deleteAllSuccess'));
+			setIsBulkDeleteModalVisible(false);
+			
+			// Refresh the lesson list
+			fetchLessonsData(pagination.current, pagination.pageSize, searchText);
+		} catch (error) {
+			console.error('Error deleting all lessons:', error);
+			spaceToast.error(t('lessonManagement.deleteAllError'));
+		}
+	};
+
+	const handleDeleteAllModalClose = () => {
+		setIsBulkDeleteModalVisible(false);
+	};
+
+	const handleImportLesson = () => {
+		setImportModal({ 
+			visible: true, 
+			fileList: [], 
+			uploading: false, 
+			progress: 0, 
+			error: null 
+		});
+	};
+
+	const handleDownloadTemplate = async () => {
+		try {
+			const response = await teacherManagementApi.downloadLessonTemplate();
+			
+			// API returns SAS URL directly (due to axios interceptor returning response.data)
+			let downloadUrl;
+			if (typeof response === 'string') {
+				downloadUrl = response;
+			} else if (response && typeof response.data === 'string') {
+				downloadUrl = response.data;
+			} else if (response && response.data && response.data.url) {
+				downloadUrl = response.data.url;
+			} else {
+				console.error('Unexpected response format:', response);
+			}
+			
+			// Create download link directly from SAS URL
+			const link = document.createElement('a');
+			link.setAttribute('href', downloadUrl);
+			link.setAttribute('download', 'lesson_import_template.xlsx');
+			link.setAttribute('target', '_blank');
+			link.style.visibility = 'hidden';
+			document.body.appendChild(link);
+			link.click();
+			document.body.removeChild(link);
+			
+			spaceToast.success('Template downloaded successfully');
+		} catch (error) {
+			console.error('Error downloading template:', error);
+			spaceToast.error(error.response?.data?.error || error.response?.data?.message || error.message || 'Failed to download template');
+		}
+	};
+
+	const handleImportOk = async () => {
+		if (importModal.fileList.length === 0) {
+			spaceToast.warning(t('lessonManagement.selectFileToImport'));
+			return;
+		}
+
+		const file = importModal.fileList[0];
+		
+		// Validate file type
+		const allowedTypes = [
+			'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // .xlsx
+			'application/vnd.ms-excel', // .xls
+		];
+		
+		if (!allowedTypes.includes(file.type) && !file.name.match(/\.(xlsx|xls)$/i)) {
+			spaceToast.error(t('lessonManagement.invalidFileType'));
+			return;
+		}
+
+		// Validate file size (max 10MB)
+		const maxSize = 10 * 1024 * 1024; // 10MB
+		if (file.size > maxSize) {
+			spaceToast.error(t('lessonManagement.fileTooLarge'));
+			return;
+		}
+
+		setImportModal((prev) => ({ 
+			...prev, 
+			uploading: true, 
+			progress: 0, 
+			error: null 
+		}));
+
+		try {
+			const formData = new FormData();
+			formData.append('file', file.originFileObj || file);
+			
+			// Add chapterId to the request
+			formData.append('chapterId', chapterId);
+
+			// Simulate progress for better UX
+			const progressInterval = setInterval(() => {
+				setImportModal((prev) => ({
+					...prev,
+					progress: Math.min(prev.progress + 10, 90)
+				}));
+			}, 200);
+
+			const response = await teacherManagementApi.importLessons(formData);
+			
+			clearInterval(progressInterval);
+			setImportModal((prev) => ({ ...prev, progress: 100 }));
+			
+			// Handle different response formats
+			const importedCount = response.data?.importedCount || 
+								 response.data?.data?.importedCount || 
+								 response.data?.count || 0;
+			
+			const successMessage = importedCount > 0 
+				? `${t('lessonManagement.importSuccess')} ${importedCount} ${t('lessonManagement.lessons')}`
+				: t('lessonManagement.importSuccessNoData');
+
+			spaceToast.success(successMessage);
+
+			// Delay closing modal to show completion
+			setTimeout(() => {
+				setImportModal({ 
+					visible: false, 
+					fileList: [], 
+					uploading: false, 
+					progress: 0, 
+					error: null 
+				});
+				
+				// Refresh the lesson list
+				fetchLessonsData(pagination.current, pagination.pageSize, searchText);
+			}, 1000);
+			
+		} catch (error) {
+			console.error('Error importing lessons:', error);
+			
+			// Handle different error formats
+			let errorMessage = t('lessonManagement.importError');
+			let errorDetails = '';
+			
+			if (error.response?.data?.message) {
+				errorMessage = error.response.data.message;
+			} else if (error.response?.data?.error) {
+				errorMessage = error.response.data.error;
+			} else if (error.message) {
+				errorMessage = error.message;
+			}
+			
+			// Extract more detailed error information
+			if (error.response?.data?.details) {
+				errorDetails = error.response.data.details;
+			} else if (error.response?.data?.errors) {
+				errorDetails = Array.isArray(error.response.data.errors) 
+					? error.response.data.errors.join(', ')
+					: error.response.data.errors;
+			}
+			
+			setImportModal((prev) => ({ 
+				...prev, 
+				uploading: false, 
+				progress: 0,
+				error: errorDetails ? `${errorMessage}: ${errorDetails}` : errorMessage
+			}));
+			
+			spaceToast.error(errorMessage);
+		}
+	};
+
+	const handleImportCancel = () => {
+		setImportModal({ 
+			visible: false, 
+			fileList: [], 
+			uploading: false, 
+			progress: 0, 
+			error: null 
+		});
+	};
+
+	// Handle file selection
+	const handleFileSelect = (file) => {
+		// Validate file type
+		const allowedTypes = [
+			'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // .xlsx
+			'application/vnd.ms-excel', // .xls
+		];
+		
+		if (!allowedTypes.includes(file.type) && !file.name.match(/\.(xlsx|xls)$/i)) {
+			spaceToast.error(t('lessonManagement.invalidFileType'));
+			return false;
+		}
+		
+		// Validate file size (max 10MB)
+		const maxSize = 10 * 1024 * 1024; // 10MB
+		if (file.size > maxSize) {
+			spaceToast.error(t('lessonManagement.fileTooLarge'));
+			return false;
+		}
+		
+		setImportModal(prev => ({
+			...prev,
+			fileList: [file]
+		}));
+		
+		return false; // Prevent default upload behavior
+	};
+
+	const handleSearch = (value) => {
+		setSearchText(value);
+		
+		// Clear existing timeout
+		if (searchTimeout) {
+			clearTimeout(searchTimeout);
+		}
+		
+		// Set new timeout for 1 second delay
+		const newTimeout = setTimeout(() => {
+			// Reset to first page when searching
+			fetchLessonsData(1, pagination.pageSize, value);
+		}, 1000);
+		
+		setSearchTimeout(newTimeout);
+	};
+
+	const handleTableChange = (pagination) => {
+		fetchLessonsData(pagination.current, pagination.pageSize, searchText);
+	};
+
+	// No need for client-side filtering since API handles filtering
+	const filteredLessons = lessons;
 
 
-	// Calculate statistics
-	const totalChapters = mockChapters.length;
-	const totalLessons = mockChapters.reduce(
-		(sum, chapter) => sum + (chapter.lessons?.length || 0),
-		0
-	);
-	const averageLessonsPerChapter =
-		totalChapters > 0 ? Math.round(totalLessons / totalChapters) : 0;
-
-
-	const chapterColumns = [
+	const lessonColumns = [
 		{
-			title: t('classChapterLesson.chapterNumber'),
-			dataIndex: 'order',
-			key: 'order',
-			width: 80,
-			sorter: (a, b) => a.order - b.order,
-			render: (order) => (
-				<Tag color="blue" style={{ textAlign: 'center', minWidth: '30px' }}>
-					{order}
-				</Tag>
-			),
+			title: t('common.index'),
+			key: 'index',
+			width: '10%',
+			render: (_, __, index) => {
+				// Calculate index based on current page and page size
+				const currentPage = pagination.current || 1;
+				const pageSize = pagination.pageSize || 10;
+				return (
+					<span style={{ fontSize: '20px' }}>
+						{(currentPage - 1) * pageSize + index + 1}
+					</span>
+				);
+			},
 		},
 		{
-			title: t('classChapterLesson.chapterName'),
+			title: t('lessonManagement.lessonName'),
 			dataIndex: 'name',
 			key: 'name',
-			sorter: (a, b) => a.name.localeCompare(b.name),
+			width: '40%',
 			render: (text, record) => (
 				<div>
-					<div style={{ fontWeight: 'bold', fontSize: '16px' }}>{text}</div>
-					<div style={{ color: '#666', fontSize: '12px' }}>
-						{record.description}
+					<div style={{ 
+						fontSize: '20px',
+						maxWidth: '300px',
+						overflow: 'hidden',
+						textOverflow: 'ellipsis',
+						whiteSpace: 'nowrap'
+					}}>{text}</div>
+					<div style={{ 
+						color: '#666', 
+						fontSize: '12px',
+						maxWidth: '300px',
+						overflow: 'hidden',
+						textOverflow: 'ellipsis',
+						whiteSpace: 'nowrap'
+					}}>
+						{record.content}
 					</div>
 				</div>
 			),
 		},
 		{
-			title: t('classChapterLesson.lessons'),
-			dataIndex: 'lessons',
-			key: 'lessons',
-			width: 100,
-			render: (lessons) => (
-				<div style={{ textAlign: 'center' }}>
-					<PlayCircleOutlined style={{ marginRight: '4px' }} />
-					{lessons?.length || 0}
-				</div>
-			),
+			title: t('lessonManagement.createdBy'),
+			dataIndex: 'createdBy',
+			key: 'createdBy',
+			width: '20%',
+			render: (createdBy) => createdBy || t('common.notAvailable'),
 		},
 		{
-			title: t('classChapterLesson.duration'),
-			dataIndex: 'duration',
-			key: 'duration',
-			width: 100,
-			render: (duration) => `${duration} ${t('classChapterLesson.hours')}`,
+			title: t('lessonManagement.createdAt'),
+			dataIndex: 'createdAt',
+			key: 'createdAt',
+			width: '20%',
+			render: (date) => new Date(date).toLocaleDateString(),
 		},
 		{
-			title: t('classChapterLesson.status'),
-			dataIndex: 'status',
-			key: 'status',
-			width: 100,
-			render: (status) => (
-				<Tag color={status === 'active' ? 'green' : 'red'}>
-					{t(`classChapterLesson.${status}`)}
-				</Tag>
-			),
-		},
-		{
-			title: t('classChapterLesson.actions'),
+			title: t('lessonManagement.actions'),
 			key: 'actions',
-			width: 200,
+			width: '10%',
 			render: (_, record) => (
 				<Space size="small">
-					<Tooltip title={t('classChapterLesson.viewLessons')}>
-						<Button
-							type="text"
-							size="small"
-							icon={<EyeOutlined style={{ fontSize: '25px' }} />}
-							onClick={() => handleViewLessons(record)}
-						/>
-					</Tooltip>
 					<Tooltip title={t('common.edit')}>
 						<Button
 							type="text"
 							size="small"
 							icon={<EditOutlined style={{ fontSize: '25px' }} />}
-							onClick={() => handleEditChapter(record)}
+							onClick={() => handleEditLesson(record)}
 						/>
 					</Tooltip>
+					<Tooltip title={t('common.delete')}>
 					<Button
 						type="text"
 						size="small"
 						icon={<DeleteOutlined style={{ fontSize: '25px' }} />}
-						onClick={() => handleDeleteChapterClick(record)}
+							onClick={() => handleDeleteLessonClick(record)}
 					/>
+					</Tooltip>
 				</Space>
 			),
 		},
 	];
 
 
-	if (isLoading) {
+	if (!classData || !chapterData) {
 		return (
 			<ThemedLayout>
-				<div className="class-chapter-lesson-container">
-					<LoadingWithEffect loading={true} message={t('classChapterLesson.loadingClassInfo')} />
+				{/* Main Content Panel */}
+				<div className={`main-content-panel ${theme}-main-panel`}>
+					<div style={{ textAlign: 'center', padding: '50px' }}>
+						<LoadingWithEffect
+							loading={true}
+							message={t('common.loading')}
+						>
+							<div></div>
+						</LoadingWithEffect>
+					</div>
 				</div>
 			</ThemedLayout>
 		);
@@ -335,137 +633,99 @@ const ClassChapterLesson = () => {
 
 	return (
 		<ThemedLayout>
-			<div className="class-chapter-lesson-container">
-				{/* Header */}
-				<Card className="header-card">
-					<div className="header-content">
-						<div className="header-left">
+			{/* Main Content Panel */}
+			<div className={`main-content-panel ${theme}-main-panel`}>
+				{/* Page Title */}
+				<div className="page-title-container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
 							<Button
 								icon={<ArrowLeftOutlined />}
-								onClick={() => navigate(`/manager/classes/menu/${id}`)}
-								className="back-button"
+						onClick={handleBackToChapters}
+						className={`back-button ${theme}-back-button`}
 							>
 								{t('common.back')}
 							</Button>
+					<Typography.Title 
+						level={1} 
+						className="page-title"
+						style={{ margin: 0, flex: 1, textAlign: 'center' }}
+					>
+						{chapterData.name} - {t('lessonManagement.title')} <span className="student-count">({totalElements})</span>
+					</Typography.Title>
+					<div style={{ width: '100px' }}></div> {/* Spacer để cân bằng layout */}
 						</div>
 						
-						<div className="header-center">
-							<h2 className="class-title">
-								{classData?.name} - {t('classChapterLesson.chaptersLessons')}
-							</h2>
-							<p className="class-subtitle">
-								{t('classChapterLesson.syllabus')}: {classData?.syllabus?.name}
-							</p>
-						</div>
-						
-						<div className="header-right">
-							<Space>
-							</Space>
-						</div>
-					</div>
-				</Card>
 
-				{/* Statistics Cards */}
-				<Row gutter={16} style={{ marginBottom: '24px' }}>
-					<Col span={8}>
-						<Card>
-							<Statistic
-								title={t('classChapterLesson.totalChapters')}
-								value={totalChapters}
-								prefix={<FileTextOutlined />}
-							/>
-						</Card>
-					</Col>
-					<Col span={8}>
-						<Card>
-							<Statistic
-								title={t('classChapterLesson.totalLessons')}
-								value={totalLessons}
-								prefix={<PlayCircleOutlined />}
-							/>
-						</Card>
-					</Col>
-					<Col span={8}>
-						<Card>
-							<Statistic
-								title={t('classChapterLesson.averageLessonsPerChapter')}
-								value={averageLessonsPerChapter}
-								suffix={t('classChapterLesson.lessons')}
-								prefix={<BookOutlined />}
-							/>
-						</Card>
-					</Col>
-				</Row>
-
-				{/* Control Bar */}
-				<Card style={{ marginBottom: '24px', borderRadius: '12px' }}>
-					<Row gutter={16} align="middle" justify="space-between">
-						<Col>
-							<Search
-								placeholder={t('classChapterLesson.searchChapters')}
-								style={{ width: 300 }}
-								value={searchText}
-								onChange={(e) => setSearchText(e.target.value)}
+				{/* Action Bar */}
+				<Row gutter={16} align="middle" style={{ marginBottom: '16px' }}>
+					<Col flex="auto">
+						<Space size="middle">
+							<Input
 								prefix={<SearchOutlined />}
+								value={searchText}
+								onChange={(e) => handleSearch(e.target.value)}
+								className="search-input"
+								style={{ minWidth: '350px', maxWidth: '500px', height: '40px', fontSize: '16px' }}
 								allowClear
 							/>
+						</Space>
 						</Col>
 						<Col>
 							<Space>
 								<Button
-									icon={<ReloadOutlined />}
-									onClick={handleRefresh}
-									style={{ borderRadius: '8px' }}
-								>
-									{t('classChapterLesson.refresh')}
+								icon={<DownloadOutlined />}
+								className={`import-button ${theme}-import-button`}
+								onClick={handleImportLesson}
+							>
+								{t('lessonManagement.importLessons')}
 								</Button>
 								<Button
-									type="primary"
-									icon={<PlusOutlined />}
-									onClick={handleAddChapter}
-									style={{ 
-										borderRadius: '8px',
-										background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-										border: 'none'
-									}}
-								>
-									{t('classChapterLesson.addChapter')}
+								icon={<DragOutlined />}
+								onClick={handleEditOrder}
+								className="create-button"
+							>
+								{t('common.edit')}
 								</Button>
 							</Space>
 						</Col>
 					</Row>
-				</Card>
 
-				{/* Chapters Content */}
-				<Card className="main-content-card">
-					{/* Chapters Table */}
+				{/* Table Section */}
+				<div className={`table-section ${theme}-table-section`}>
 					<Table
-						columns={chapterColumns}
-						dataSource={filteredChapters}
+						columns={lessonColumns}
+						dataSource={filteredLessons}
 						rowKey="id"
-						loading={false}
+						loading={loading}
 						pagination={{
-							total: filteredChapters.length,
-							pageSize: 10,
-							showSizeChanger: true,
-							showQuickJumper: true,
-							showTotal: (total, range) =>
-								`${range[0]}-${range[1]} ${t(
-									'classChapterLesson.paginationText'
-								)} ${total} ${t('classChapterLesson.chapters')}`,
+							...pagination,
+							showTotal: (total, range) => {
+								return `${range[0]}-${range[1]} ${t('lessonManagement.paginationText')} ${total} ${t('lessonManagement.lessons')}`;
+							},
 						}}
-						scroll={{ x: 800 }}
+						onChange={handleTableChange}
+						scroll={{ x: 1000 }}
 					/>
-				</Card>
+				</div>
+			</div>
 
-				{/* Chapter Modal */}
+			{/* Bottom Action Bar */}
+			<BottomActionBar
+				selectedCount={selectedRowKeys.length}
+				onSelectAll={handleSelectAll}
+				onDeleteAll={handleDeleteAll}
+				onClose={() => setSelectedRowKeys([])}
+				selectAllText={t('classManagement.selectAll')}
+				deleteAllText={t('classManagement.deleteAll')}
+			/>
+
+			{/* Lesson Modal */}
 				<Modal
 					title={
 						editingChapter
-							? t('classChapterLesson.editChapter')
-							: t('classChapterLesson.addChapter')
+						? t('lessonManagement.editLesson')
+						: t('lessonManagement.addLesson')
 					}
-					open={isChapterModalVisible}
+				open={isModalVisible}
 					onCancel={handleModalClose}
 					footer={null}
 					width={600}
@@ -478,45 +738,333 @@ const ClassChapterLesson = () => {
 					/>
 				</Modal>
 
-
-				{/* View Lessons Modal */}
-				<Modal
-					title={`${t('classChapterLesson.lessons')} - ${selectedChapter?.name}`}
-					open={isViewLessonsModalVisible}
-					onCancel={handleModalClose}
-					footer={null}
-					width={1200}
-					destroyOnClose
-				>
-					{selectedChapter && (
-						<LessonList
-							chapter={selectedChapter}
-							onClose={handleModalClose}
-						/>
-					)}
-				</Modal>
-
 				{/* Delete Confirmation Modal */}
 				<Modal
-					title={t('classChapterLesson.confirmDelete')}
+				title={
+					<div style={{ 
+						fontSize: '20px', 
+						fontWeight: '600', 
+						color: '#1890ff',
+						textAlign: 'center',
+						padding: '10px 0'
+					}}>
+						{t('lessonManagement.confirmDelete')}
+					</div>
+				}
 					open={isDeleteModalVisible}
-					onOk={handleDeleteChapter}
+				onOk={handleDeleteLesson}
 					onCancel={handleDeleteModalClose}
-					okText={t('common.yes')}
-					cancelText={t('common.no')}
-					okButtonProps={{ danger: true }}
-				>
-					<p>
-						{t('classChapterLesson.confirmDeleteMessage')} 
-						{t('classChapterLesson.chapter')}?
+				okText={t('common.confirm')}
+				cancelText={t('common.cancel')}
+				width={500}
+				centered
+				bodyStyle={{
+					padding: '30px 40px',
+					fontSize: '16px',
+					lineHeight: '1.6',
+					textAlign: 'center'
+				}}
+				okButtonProps={{
+					style: {
+						backgroundColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
+						background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
+						borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'transparent',
+						color: theme === 'sun' ? '#000000' : '#ffffff',
+						height: '40px',
+						fontSize: '16px',
+						fontWeight: '500',
+						minWidth: '100px'
+					}
+				}}
+				cancelButtonProps={{
+					style: {
+						height: '40px',
+						fontSize: '16px',
+						fontWeight: '500',
+						minWidth: '100px'
+					}
+				}}
+			>
+				<div style={{
+					display: 'flex',
+					flexDirection: 'column',
+					alignItems: 'center',
+					gap: '20px'
+				}}>
+					<div style={{
+						fontSize: '48px',
+						color: '#ff4d4f',
+						marginBottom: '10px'
+					}}>
+						⚠️
+					</div>
+					<p style={{
+						fontSize: '18px',
+						color: '#333',
+						margin: 0,
+						fontWeight: '500'
+					}}>
+						{t('lessonManagement.confirmDeleteMessage')}
 					</p>
 					{deleteItem && (
-						<p>
+						<p style={{
+							fontSize: '20px',
+							color: '#1890ff',
+							margin: 0,
+							fontWeight: '600'
+						}}>
 							<strong>{deleteItem.name}</strong>
 						</p>
 					)}
+				</div>
+			</Modal>
+
+			{/* Delete All Confirmation Modal */}
+			<Modal
+				title={
+					<div style={{
+						fontSize: '20px',
+						fontWeight: '600',
+						color: '#1890ff',
+						textAlign: 'center',
+						padding: '10px 0'
+					}}>
+						{t('lessonManagement.confirmDeleteAll')}
+					</div>
+				}
+				open={isBulkDeleteModalVisible}
+				onOk={handleDeleteAllConfirm}
+				onCancel={handleDeleteAllModalClose}
+				okText={t('common.confirm')}
+				cancelText={t('common.cancel')}
+				width={500}
+				centered
+				bodyStyle={{
+					padding: '30px 40px',
+					fontSize: '16px',
+					lineHeight: '1.6',
+					textAlign: 'center'
+				}}
+				okButtonProps={{
+					style: {
+						backgroundColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
+						background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
+						borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'transparent',
+						color: theme === 'sun' ? '#000000' : '#ffffff',
+						height: '40px',
+						fontSize: '16px',
+						fontWeight: '500',
+						minWidth: '100px'
+					}
+				}}
+				cancelButtonProps={{
+					style: {
+						height: '40px',
+						fontSize: '16px',
+						fontWeight: '500',
+						minWidth: '100px'
+					}
+				}}
+			>
+				<div style={{
+					display: 'flex',
+					flexDirection: 'column',
+					alignItems: 'center',
+					gap: '20px'
+				}}>
+					<div style={{
+						fontSize: '48px',
+						color: '#ff4d4f',
+						marginBottom: '10px'
+					}}>
+						⚠️
+					</div>
+					<p style={{
+						fontSize: '18px',
+						color: '#333',
+						margin: 0,
+						fontWeight: '500'
+					}}>
+						{t('lessonManagement.confirmDeleteAllMessage')}
+					</p>
+					<div style={{
+						fontSize: '20px',
+						color: '#1890ff',
+						margin: 0,
+						fontWeight: '600'
+					}}>
+						<strong>{selectedRowKeys.length} {t('lessonManagement.lessons')}</strong>
+					</div>
+				</div>
 				</Modal>
+
+			{/* Import Modal */}
+			<Modal
+				title={
+					<div style={{
+						fontSize: '20px',
+						fontWeight: '600',
+						color: '#000000',
+						textAlign: 'center',
+						padding: '10px 0',
+						display: 'flex',
+						alignItems: 'center',
+						justifyContent: 'center',
+						gap: '10px',
+					}}>
+						<DownloadOutlined style={{ color: '#000000' }} />
+						{t('lessonManagement.importLessons')}
+					</div>
+				}
+				open={importModal.visible}
+				onOk={handleImportOk}
+				onCancel={handleImportCancel}
+				okText={t('lessonManagement.import')}
+				cancelText={t('common.cancel')}
+				width={600}
+				centered
+				confirmLoading={importModal.uploading}
+				okButtonProps={{
+					disabled: importModal.fileList.length === 0,
+					style: {
+						backgroundColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
+						background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
+						borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'transparent',
+						color: theme === 'sun' ? '#000000' : '#ffffff',
+						height: '40px',
+						fontSize: '16px',
+						fontWeight: '500',
+						minWidth: '120px',
+					},
+				}}
+				cancelButtonProps={{
+					style: {
+						height: '40px',
+						fontSize: '16px',
+						fontWeight: '500',
+						minWidth: '100px',
+					},
+				}}>
+				<div style={{ padding: '20px 0' }}>
+					<div style={{ textAlign: 'center', marginBottom: '20px' }}>
+						<Button
+							type="dashed"
+							icon={<DownloadOutlined />}
+							onClick={handleDownloadTemplate}
+							style={{
+								borderColor: '#1890ff',
+								color: '#1890ff',
+								height: '36px',
+								fontSize: '14px',
+								fontWeight: '500',
+							}}>
+							{t('lessonManagement.downloadTemplate')}
+						</Button>
+					</div>
+
+					<Typography.Title
+						level={5}
+						style={{
+							textAlign: 'center',
+							marginBottom: '20px',
+							color: '#666',
+						}}>
+						{t('lessonManagement.importInstructions')}
+					</Typography.Title>
+
+					<Upload.Dragger
+						name="file"
+						multiple={false}
+						beforeUpload={handleFileSelect}
+						showUploadList={false}
+						accept=".xlsx,.xls,.csv"
+						style={{
+							marginBottom: '20px',
+							border: '2px dashed #d9d9d9',
+							borderRadius: '8px',
+							background: '#fafafa',
+							padding: '40px',
+							textAlign: 'center',
+						}}>
+						<p
+							className='ant-upload-drag-icon'
+							style={{ fontSize: '48px', color: '#1890ff' }}>
+							<UploadOutlined />
+						</p>
+						<p
+							className='ant-upload-text'
+							style={{ fontSize: '16px', fontWeight: '500' }}>
+							{t('lessonManagement.clickOrDragFile')}
+						</p>
+						<p className='ant-upload-hint' style={{ color: '#999' }}>
+							{t('lessonManagement.supportedFormats')}: Excel (.xlsx, .xls)
+						</p>
+					</Upload.Dragger>
+
+					<Divider />
+
+					{importModal.fileList.length > 0 && (
+						<div
+							style={{
+								marginTop: '16px',
+								padding: '12px',
+								background: '#e6f7ff',
+								border: '1px solid #91d5ff',
+								borderRadius: '6px',
+								display: 'flex',
+								justifyContent: 'space-between',
+								alignItems: 'center',
+							}}>
+							<div>
+								<Typography.Text style={{ color: '#1890ff', fontWeight: '500' }}>
+									✅ {t('lessonManagement.fileSelected')}:{' '}
+									{importModal.fileList[0].name}
+								</Typography.Text>
+								<br />
+								<Typography.Text style={{ color: '#666', fontSize: '12px' }}>
+									Size: {importModal.fileList[0].size < 1024 * 1024 
+										? `${(importModal.fileList[0].size / 1024).toFixed(1)} KB`
+										: `${(importModal.fileList[0].size / 1024 / 1024).toFixed(2)} MB`
+									}
+								</Typography.Text>
+							</div>
+							<Button
+								type="text"
+								size="small"
+								onClick={() => setImportModal(prev => ({ ...prev, fileList: [] }))}
+								style={{ color: '#ff4d4f' }}>
+								Remove
+							</Button>
+						</div>
+					)}
+
+					{importModal.uploading && (
+						<div style={{ marginTop: '16px' }}>
+							<Progress 
+								percent={importModal.progress} 
+								status={importModal.progress === 100 ? 'success' : 'active'}
+								strokeColor={{
+									'0%': '#108ee9',
+									'100%': '#87d068',
+								}}
+							/>
+							<div style={{ textAlign: 'center', marginTop: '8px', color: '#666' }}>
+								{importModal.progress < 100 ? t('lessonManagement.uploading') : t('lessonManagement.uploadComplete')}
+							</div>
+						</div>
+					)}
+
+					{importModal.error && (
+						<Alert
+							message={t('lessonManagement.importError')}
+							description={importModal.error}
+							type="error"
+							showIcon
+							style={{ marginTop: '16px' }}
+						/>
+					)}
 			</div>
+			</Modal>
 		</ThemedLayout>
 	);
 };

@@ -259,26 +259,57 @@ const StudentList = () => {
 
   // Calculate checkbox states with useMemo
   const checkboxStates = useMemo(() => {
-    // Filter out PENDING records from total count
+    // Filter out PENDING records from current page
     const nonPendingStudents = students.filter(student => student.status !== 'PENDING');
-    const totalItems = nonPendingStudents.length;
+    const currentPageKeys = nonPendingStudents.map(student => student.id);
     const selectedCount = selectedRowKeys.length;
-    const isSelectAll = selectedCount === totalItems && totalItems > 0;
-    const isIndeterminate = false; // Không bao giờ hiển thị indeterminate
-
+    
+    // Check if all non-PENDING items on current page are selected
+    const allCurrentPageSelected = currentPageKeys.length > 0 && 
+      currentPageKeys.every(key => selectedRowKeys.includes(key));
+    
+    // For table header checkbox: only check if all non-PENDING current page items are selected
+    const isSelectAll = allCurrentPageSelected;
+    // Never show indeterminate state for table header checkbox
+    const isIndeterminate = false;
+    
     console.log('Checkbox Debug:', {
-      totalItems,
-      selectedCount,
+      currentPageKeys,
       selectedRowKeys,
+      allCurrentPageSelected,
       isSelectAll,
       isIndeterminate,
+      selectedCount,
       nonPendingStudents: nonPendingStudents.length,
     });
-
-    return { isSelectAll, isIndeterminate, totalItems, selectedCount };
+    
+    return { isSelectAll, isIndeterminate, totalItems: currentPageKeys.length, selectedCount };
   }, [selectedRowKeys, students]);
 
-  // Checkbox logic
+  // Handle table header checkbox (only current page)
+  const handleSelectAllCurrentPage = (checked) => {
+    // Filter out PENDING records from current page
+    const nonPendingStudents = students.filter(student => student.status !== 'PENDING');
+    const currentPageKeys = nonPendingStudents.map(student => student.id);
+    
+    if (checked) {
+      // Add all non-PENDING current page items to selection
+      setSelectedRowKeys(prev => {
+        const newKeys = [...prev];
+        currentPageKeys.forEach(key => {
+          if (!newKeys.includes(key)) {
+            newKeys.push(key);
+          }
+        });
+        return newKeys;
+      });
+    } else {
+      // Remove all current page items from selection
+      setSelectedRowKeys(prev => prev.filter(key => !currentPageKeys.includes(key)));
+    }
+  };
+
+  // Checkbox logic for BottomActionBar (select all in entire dataset)
   const handleSelectAll = async (checked) => {
     if (checked) {
       try {
@@ -443,6 +474,51 @@ const StudentList = () => {
     });
   };
 
+  const handleBulkAssignToClass = () => {
+    if (selectedRowKeys.length === 0) {
+      spaceToast.warning(t('studentManagement.selectItemsToAssign'));
+      return;
+    }
+    
+    // Filter out PENDING records from selected items
+    const selectedStudents = students.filter(student => selectedRowKeys.includes(student.id));
+    const nonPendingSelected = selectedStudents.filter(student => student.status !== 'PENDING');
+    
+    if (nonPendingSelected.length === 0) {
+      spaceToast.warning('Cannot assign PENDING students to class');
+      return;
+    }
+    
+    const confirmContent = `${t('studentManagement.confirmBulkAssignToClass')} ${nonPendingSelected.length} ${t('studentManagement.students')}? ${selectedStudents.length !== nonPendingSelected.length ? `(${selectedStudents.length - nonPendingSelected.length} PENDING students will be skipped)` : ''}`;
+    
+    setConfirmModal({
+      visible: true,
+      title: `${t('studentManagement.assignAllToClass')} ${t('studentManagement.students')}`,
+      content: confirmContent,
+      onConfirm: async () => {
+        try {
+          // TODO: Implement bulk assign to class API call
+          // await studentManagementApi.bulkAssignStudentsToClass(selectedRowKeys, classId);
+          
+          // Close modal first
+          setConfirmModal({ visible: false, title: '', content: '', onConfirm: null });
+          
+          // Clear selection
+          setSelectedRowKeys([]);
+          
+          // Show success toast
+          spaceToast.success(`${t('studentManagement.bulkAssignSuccess')} ${nonPendingSelected.length} ${t('studentManagement.students')}`);
+          
+          // Refresh the list
+          fetchStudents(pagination.current, pagination.pageSize, searchText, statusFilter, roleNameFilter, sortBy, sortDir);
+        } catch (error) {
+          console.error('Error in bulk assign to class:', error);
+          setConfirmModal({ visible: false, title: '', content: '', onConfirm: null });
+          spaceToast.error(error.response?.data?.error || error.message || t('studentManagement.bulkAssignError'));
+        }
+      }
+    });
+  };
 
   // Table columns
   const columns = [
@@ -452,7 +528,7 @@ const StudentList = () => {
           key={`select-all-${checkboxStates.selectedCount}-${checkboxStates.totalItems}`}
           checked={checkboxStates.isSelectAll}
           indeterminate={checkboxStates.isIndeterminate}
-          onChange={(e) => handleSelectAll(e.target.checked)}
+          onChange={(e) => handleSelectAllCurrentPage(e.target.checked)}
           style={{
             transform: 'scale(1.2)',
             marginRight: '8px'
@@ -1859,10 +1935,12 @@ const StudentList = () => {
           onSelectAll={handleSelectAll}
           onActiveAll={handleBulkActive}
           onDeactiveAll={handleBulkDeactive}
+          onAssignAllToClass={handleBulkAssignToClass}
           onClose={() => setSelectedRowKeys([])}
           selectAllText={t('classManagement.selectAll')}
           activeAllText={t('studentManagement.activeAll')}
           deactiveAllText={t('studentManagement.deactiveAll')}
+          assignAllToClassText={t('studentManagement.assignAllToClass')}
         />
 
     </ThemedLayout> 

@@ -565,31 +565,6 @@ const LessonListBySyllabus = () => {
 
 	const columns = [
 		{
-			title: (
-				<Checkbox
-					key={`select-all-${checkboxStates.selectedCount}-${checkboxStates.totalItems}`}
-					checked={checkboxStates.isSelectAll}
-					indeterminate={checkboxStates.isIndeterminate}
-					onChange={(e) => handleSelectAll(e.target.checked)}
-					style={{
-						transform: 'scale(1.2)',
-						marginRight: '8px'
-					}}
-				/>
-			),
-			key: 'selection',
-			width: '5%',
-			render: (_, record) => (
-				<Checkbox
-					checked={selectedRowKeys.includes(record.id)}
-					onChange={(e) => handleSelectRow(record, e.target.checked)}
-					style={{
-						transform: 'scale(1.2)'
-					}}
-				/>
-			),
-		},
-		{
 			title: 'STT',
 			key: 'index',
 			width: '10%',
@@ -609,7 +584,6 @@ const LessonListBySyllabus = () => {
 			dataIndex: 'name',
 			key: 'name',
 			width: '20%',
-			sorter: (a, b) => a.name.localeCompare(b.name),
 			render: (text) => (
 				<div style={{ fontSize: '20px' }}>
 					{text}
@@ -668,19 +642,9 @@ const LessonListBySyllabus = () => {
 					<Typography.Title 
 						level={1} 
 						className="page-title"
-						style={{ margin: 0, flex: 1, textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+						style={{ margin: 0, flex: 1, textAlign: 'center' }}
 					>
-						<span style={{ 
-							maxWidth: '400px',
-							overflow: 'hidden',
-							textOverflow: 'ellipsis',
-							whiteSpace: 'nowrap'
-						}}>
-							{syllabusInfo.name}
-						</span>
-						<span style={{ margin: '0 8px', flexShrink: 0 }}>-</span>
-						<span style={{ flexShrink: 0 }}>{t('lessonManagement.title')}</span>
-						<span className="student-count" style={{ flexShrink: 0 }}> ({totalElements})</span>
+						{syllabusInfo.name} - {t('lessonManagement.title')} <span className="student-count">({totalElements})</span>
 					</Typography.Title>
 					<div style={{ width: '100px' }}></div> {/* Spacer để cân bằng layout */}
 				</div>

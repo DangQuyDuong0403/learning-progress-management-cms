@@ -1,16 +1,13 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Table, Button, Space, Modal, Input, Tooltip, Typography, Switch, Upload, Divider, Form, Select, Row, Col, Checkbox } from 'antd';
+import { Table, Button, Space, Modal, Input, Tooltip, Typography, Switch, Upload, Form, Select, Checkbox } from 'antd';
 import {
 	PlusOutlined,
 	SearchOutlined,
 	EyeOutlined,
 	DownloadOutlined,
 	UploadOutlined,
-	FilterOutlined,
 	EditOutlined,
 	DeleteOutlined,
-	BookOutlined,
-	CalendarOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -19,17 +16,19 @@ import './ClassList.css';
 import ThemedLayout from '../../../../component/ThemedLayout';
 import LoadingWithEffect from '../../../../component/spinner/LoadingWithEffect';
 import { useTheme } from '../../../../contexts/ThemeContext';
+import { useClassMenu } from '../../../../contexts/ClassMenuContext';
 import { spaceToast } from '../../../../component/SpaceToastify';
 import { classManagementApi, syllabusManagementApi } from '../../../../apis/apis';
 import BottomActionBar from '../../../../component/BottomActionBar';
 
-const { Text, Title } = Typography;
+const { Title } = Typography;
 const { Option } = Select;
 
 const ClassListTable = () => {
 	const { t } = useTranslation();
 	const { theme } = useTheme();
 	const navigate = useNavigate();
+	const { enterClassMenu } = useClassMenu();
 	
 	// Set page title
 	usePageTitle(t('classManagement.title'));
@@ -50,7 +49,6 @@ const ClassListTable = () => {
 	
 	// Search and filter state
 	const [searchText, setSearchText] = useState("");
-	const [statusFilter, setStatusFilter] = useState([]);
 	const [searchTimeout, setSearchTimeout] = useState(null);
 	
 	// Sort state - start with createdAt DESC (newest first)
@@ -84,7 +82,7 @@ const ClassListTable = () => {
 	const [selectedRowKeys, setSelectedRowKeys] = useState([]);
 
 	// Fetch classes from API
-	const fetchClasses = useCallback(async (page = 1, size = 10, search = '', statusFilter = [], sortField = 'createdAt', sortDirection = 'desc') => {
+	const fetchClasses = useCallback(async (page = 1, size = 10, search = '', sortField = 'createdAt', sortDirection = 'desc') => {
 		setLoading(true);
 		try {
 			const params = {
@@ -124,7 +122,7 @@ const ClassListTable = () => {
 					syllabusId: classItem.syllabusId,
 						level: levelMap[classItem.syllabusId] || 'N/A',
 					studentCount: classItem.studentCount || 0,
-						status: classItem.isActive ? 'open' : 'closed',
+						status: classItem.status === 'ACTIVE' ? 'active' : 'inactive',
 					createdAt: classItem.createdAt,
 					updatedAt: classItem.updatedAt,
 					avatarUrl: classItem.avatarUrl,
@@ -185,9 +183,9 @@ const ClassListTable = () => {
 
 	useEffect(() => {
 		if (Object.keys(syllabusMap).length > 0 && Object.keys(levelMap).length > 0) {
-			fetchClasses(1, pagination.pageSize, searchText, statusFilter, sortBy, sortDir);
+			fetchClasses(1, pagination.pageSize, searchText, sortBy, sortDir);
 		}
-	}, [fetchClasses, syllabusMap, levelMap]);
+	}, [fetchClasses, syllabusMap, levelMap, pagination.pageSize, searchText, sortBy, sortDir]);
 
 	// Cleanup timeout on unmount
 	useEffect(() => {
@@ -209,7 +207,7 @@ const ClassListTable = () => {
 		// Set new timeout for 1 second delay
 		const newTimeout = setTimeout(() => {
 			// Reset to first page when searching
-			fetchClasses(1, pagination.pageSize, value, statusFilter, sortBy, sortDir);
+			fetchClasses(1, pagination.pageSize, value, sortBy, sortDir);
 		}, 1000);
 		
 		setSearchTimeout(newTimeout);
@@ -222,7 +220,7 @@ const ClassListTable = () => {
 		setSortBy(newSortBy);
 		setSortDir(newSortDir);
 		
-		fetchClasses(pagination.current, pagination.pageSize, searchText, statusFilter, newSortBy, newSortDir);
+		fetchClasses(pagination.current, pagination.pageSize, searchText, newSortBy, newSortDir);
 	};
 
 	const handleAdd = () => {
@@ -239,7 +237,7 @@ const ClassListTable = () => {
 				try {
 					await classManagementApi.deleteClass(record.id);
 					spaceToast.success(t('classManagement.classDeletedSuccess', { className: record.name }));
-					fetchClasses(pagination.current, pagination.pageSize, searchText, statusFilter, sortBy, sortDir);
+					fetchClasses(pagination.current, pagination.pageSize, searchText, sortBy, sortDir);
 				} catch (error) {
 					console.error('Error deleting class:', error);
 					spaceToast.error(error.response?.data?.message || error.message || 'Failed to delete class');
@@ -249,21 +247,21 @@ const ClassListTable = () => {
 	};
 
 	const handleStatusToggle = (record) => {
-		const newStatus = record.status === 'open' ? 'closed' : 'open';
+		const newStatus = record.status === 'active' ? 'inactive' : 'active';
 		
 		setConfirmModal({
 			visible: true,
 			title: t('classManagement.confirmStatusChange'),
-			content: newStatus === 'open' 
-				? t('classManagement.openClassMessage', { className: record.name })
-				: t('classManagement.closeClassMessage', { className: record.name }),
+			content: newStatus === 'active' 
+				? t('classManagement.activateClassMessage', { className: record.name })
+				: t('classManagement.deactivateClassMessage', { className: record.name }),
 			onConfirm: async () => {
 				try {
 					await classManagementApi.toggleClassStatus(record.id, newStatus);
-					spaceToast.success(newStatus === 'open' 
-						? t('classManagement.classOpenedSuccess', { className: record.name })
-						: t('classManagement.classClosedSuccess', { className: record.name }));
-					fetchClasses(pagination.current, pagination.pageSize, searchText, statusFilter, sortBy, sortDir);
+					spaceToast.success(newStatus === 'active' 
+						? t('classManagement.classActivatedSuccess', { className: record.name })
+						: t('classManagement.classDeactivatedSuccess', { className: record.name }));
+					fetchClasses(pagination.current, pagination.pageSize, searchText, sortBy, sortDir);
 				} catch (error) {
 					console.error('Error updating class status:', error);
 					spaceToast.error('Failed to update class status');
@@ -286,7 +284,7 @@ const ClassListTable = () => {
 				await classManagementApi.updateClass(editingClass.id, updateData);
 				
 				// Refresh the list
-				fetchClasses(pagination.current, pagination.pageSize, searchText, statusFilter, sortBy, sortDir);
+				fetchClasses(pagination.current, pagination.pageSize, searchText, sortBy, sortDir);
 				spaceToast.success(t('classManagement.classUpdatedSuccess'));
 			} else {
 				// Add new class
@@ -299,7 +297,7 @@ const ClassListTable = () => {
 				await classManagementApi.createClass(newClassData);
 				
 				// Refresh the list
-				fetchClasses(1, pagination.pageSize, searchText, statusFilter, sortBy, sortDir);
+				fetchClasses(1, pagination.pageSize, searchText, sortBy, sortDir);
 				spaceToast.success(t('classManagement.classCreatedSuccess'));
 			}
 
@@ -326,6 +324,18 @@ const ClassListTable = () => {
 		setIsModalVisible(true);
 	};
 
+	const handleViewDetail = (record) => {
+		// Enter class menu mode with class data
+		enterClassMenu({
+			id: record.id,
+			name: record.name,
+			description: record.description || ''
+		});
+		
+		// Navigate to class menu
+		navigate(`/manager/classes/menu/${record.id}`);
+	};
+
 	const handleImport = () => {
 		setImportModal(prev => ({
 			...prev,
@@ -349,7 +359,7 @@ const ClassListTable = () => {
 			}));
 			
 			// Refresh the data
-			fetchClasses(pagination.current, pagination.pageSize, searchText, statusFilter, sortBy, sortDir);
+			fetchClasses(pagination.current, pagination.pageSize, searchText, sortBy, sortDir);
 		} catch (error) {
 			console.error('Import error:', error);
 			spaceToast.error('Failed to import classes');
@@ -411,7 +421,28 @@ const ClassListTable = () => {
 		}
 	};
 
-	// Checkbox logic
+	// Handle table header checkbox (only current page)
+	const handleSelectAllCurrentPage = (checked) => {
+		const currentPageKeys = classes.map(classItem => classItem.id);
+		
+		if (checked) {
+			// Add all current page items to selection
+			setSelectedRowKeys(prev => {
+				const newKeys = [...prev];
+				currentPageKeys.forEach(key => {
+					if (!newKeys.includes(key)) {
+						newKeys.push(key);
+					}
+				});
+				return newKeys;
+			});
+		} else {
+			// Remove all current page items from selection
+			setSelectedRowKeys(prev => prev.filter(key => !currentPageKeys.includes(key)));
+		}
+	};
+
+	// Checkbox logic for BottomActionBar (select all in entire dataset)
 	const handleSelectAll = async (checked) => {
 		if (checked) {
 			try {
@@ -450,53 +481,53 @@ const ClassListTable = () => {
 	};
 
 	// Bulk operations
-	const handleOpenAll = async () => {
+	const handleActivateAll = async () => {
 		if (selectedRowKeys.length === 0) {
-			spaceToast.warning(t('classManagement.selectItemsToOpen'));
+			spaceToast.warning(t('classManagement.selectItemsToActivate'));
 			return;
 		}
 		
 		setConfirmModal({
 			visible: true,
-			title: t('classManagement.confirmOpenAll'),
-			content: t('classManagement.openAllMessage', { count: selectedRowKeys.length }),
+			title: t('classManagement.confirmActivateAll'),
+			content: t('classManagement.activateAllMessage', { count: selectedRowKeys.length }),
 			onConfirm: async () => {
 				try {
-					// TODO: Implement bulk open API call
-					// await classManagementApi.bulkOpenClasses(selectedRowKeys);
+					// TODO: Implement bulk activate API call
+					// await classManagementApi.bulkActivateClasses(selectedRowKeys);
 					
 					setSelectedRowKeys([]);
-					spaceToast.success(t('classManagement.allClassesOpenedSuccess'));
-					fetchClasses(pagination.current, pagination.pageSize, searchText, statusFilter, sortBy, sortDir);
+					spaceToast.success(t('classManagement.allClassesActivatedSuccess'));
+					fetchClasses(pagination.current, pagination.pageSize, searchText, sortBy, sortDir);
 				} catch (error) {
-					console.error('Error opening all classes:', error);
-					spaceToast.error('Failed to open all classes');
+					console.error('Error activating all classes:', error);
+					spaceToast.error('Failed to activate all classes');
 				}
 			}
 		});
 	};
 
-	const handleCloseAll = async () => {
+	const handleDeactivateAll = async () => {
 		if (selectedRowKeys.length === 0) {
-			spaceToast.warning(t('classManagement.selectItemsToClose'));
+			spaceToast.warning(t('classManagement.selectItemsToDeactivate'));
 			return;
 		}
 		
 		setConfirmModal({
 			visible: true,
-			title: t('classManagement.confirmCloseAll'),
-			content: t('classManagement.closeAllMessage', { count: selectedRowKeys.length }),
+			title: t('classManagement.confirmDeactivateAll'),
+			content: t('classManagement.deactivateAllMessage', { count: selectedRowKeys.length }),
 			onConfirm: async () => {
 				try {
-					// TODO: Implement bulk close API call
-					// await classManagementApi.bulkCloseClasses(selectedRowKeys);
+					// TODO: Implement bulk deactivate API call
+					// await classManagementApi.bulkDeactivateClasses(selectedRowKeys);
 					
 					setSelectedRowKeys([]);
-					spaceToast.success(t('classManagement.allClassesClosedSuccess'));
-					fetchClasses(pagination.current, pagination.pageSize, searchText, statusFilter, sortBy, sortDir);
+					spaceToast.success(t('classManagement.allClassesDeactivatedSuccess'));
+					fetchClasses(pagination.current, pagination.pageSize, searchText, sortBy, sortDir);
 				} catch (error) {
-					console.error('Error closing all classes:', error);
-					spaceToast.error('Failed to close all classes');
+					console.error('Error deactivating all classes:', error);
+					spaceToast.error('Failed to deactivate all classes');
 				}
 			}
 		});
@@ -519,7 +550,7 @@ const ClassListTable = () => {
 					
 					setSelectedRowKeys([]);
 					spaceToast.success(t('classManagement.allClassesDeletedSuccess'));
-					fetchClasses(pagination.current, pagination.pageSize, searchText, statusFilter, sortBy, sortDir);
+					fetchClasses(pagination.current, pagination.pageSize, searchText, sortBy, sortDir);
 				} catch (error) {
 					console.error('Error deleting all classes:', error);
 					spaceToast.error('Failed to delete all classes');
@@ -530,13 +561,29 @@ const ClassListTable = () => {
 
 	// Calculate checkbox states with useMemo
 	const checkboxStates = useMemo(() => {
-		const totalItems = totalClasses;
+		const currentPageKeys = classes.map(classItem => classItem.id);
 		const selectedCount = selectedRowKeys.length;
-		const isSelectAll = selectedCount === totalItems && totalItems > 0;
-		const isIndeterminate = false; // Không bao giờ hiển thị indeterminate
-
-		return { isSelectAll, isIndeterminate, totalItems, selectedCount };
-	}, [selectedRowKeys, totalClasses]);
+		
+		// Check if all items on current page are selected
+		const allCurrentPageSelected = currentPageKeys.length > 0 && 
+			currentPageKeys.every(key => selectedRowKeys.includes(key));
+		
+		// For table header checkbox: only check if all current page items are selected
+		const isSelectAll = allCurrentPageSelected;
+		// Never show indeterminate state for table header checkbox
+		const isIndeterminate = false;
+		
+		console.log('Checkbox Debug:', {
+			currentPageKeys,
+			selectedRowKeys,
+			allCurrentPageSelected,
+			isSelectAll,
+			isIndeterminate,
+			selectedCount,
+		});
+		
+		return { isSelectAll, isIndeterminate, totalItems: currentPageKeys.length, selectedCount };
+	}, [selectedRowKeys, classes]);
 
 	const columns = [
 		{
@@ -545,7 +592,7 @@ const ClassListTable = () => {
 					key={`select-all-${checkboxStates.selectedCount}-${checkboxStates.totalItems}`}
 					checked={checkboxStates.isSelectAll}
 					indeterminate={checkboxStates.isIndeterminate}
-					onChange={(e) => handleSelectAll(e.target.checked)}
+					onChange={(e) => handleSelectAllCurrentPage(e.target.checked)}
 					style={{
 						transform: 'scale(1.2)',
 						marginRight: '8px'
@@ -622,7 +669,7 @@ const ClassListTable = () => {
 			width: '10%',
 			render: (status, record) => (
 				<Switch
-					checked={status === 'open'}
+					checked={status === 'active'}
 					onChange={() => handleStatusToggle(record)}
 				/>
 			),
@@ -638,7 +685,7 @@ const ClassListTable = () => {
 							type="text"
 							size="small"
 							icon={<EyeOutlined style={{ fontSize: '20px' }} />}
-							onClick={() => navigate(`/manager/classes/menu/${record.id}`)}
+							onClick={() => handleViewDetail(record)}
 						/>
 					</Tooltip>
 					<Tooltip title={t('classManagement.edit')}>
@@ -654,7 +701,7 @@ const ClassListTable = () => {
 							type="text"
 							size="small"
 							danger
-							icon={<DeleteOutlined style={{ fontSize: '20px' }} />}
+							icon={<DeleteOutlined style={{ fontSize: '20px', color: '#ff4d4f' }} />}
 							onClick={() => handleDelete(record)}
 						/>
 					</Tooltip>
@@ -1094,15 +1141,15 @@ const ClassListTable = () => {
 					deleteAllText={t('classManagement.deleteAll')}
 					additionalActions={[
 						{
-							key: 'openAll',
-							label: t('classManagement.openAll'),
-							onClick: handleOpenAll,
+							key: 'activateAll',
+							label: t('classManagement.activateAll'),
+							onClick: handleActivateAll,
 							type: 'primary'
 						},
 						{
-							key: 'closeAll',
-							label: t('classManagement.closeAll'),
-							onClick: handleCloseAll,
+							key: 'deactivateAll',
+							label: t('classManagement.deactivateAll'),
+							onClick: handleDeactivateAll,
 							type: 'default'
 						}
 					]}

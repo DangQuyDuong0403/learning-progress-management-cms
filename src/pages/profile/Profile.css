@@ -35,26 +35,22 @@
 	z-index: 2;
 }
 
-/* ===== PANEL HEADER ===== */
-.profile-page .panel-header {
+/* ===== PROFILE HEADER ===== */
+.profile-header {
 	display: flex;
 	justify-content: space-between;
 	align-items: center;
 	margin-bottom: 24px;
 	gap: 16px;
+	max-width: 900px;
+	margin-left: auto;
+	margin-right: auto;
+	width: 100%;
+	padding: 0 20px;
 }
 
-.profile-page .search-section {
-	flex: 1;
-	max-width: 300px;
-}
-
-.profile-page .action-buttons {
-	display: flex;
-	gap: 12px;
-}
-
-.profile-page .action-buttons .btn {
+/* Back Button Styling */
+.btn-back {
 	height: 40px;
 	border-radius: 8px;
 	font-weight: 500;
@@ -64,21 +60,50 @@
 	backdrop-filter: blur(10px);
 	transition: all 0.3s ease;
 	padding: 0 20px;
+	display: flex;
+	align-items: center;
+	gap: 8px;
 }
 
-.profile-page .action-buttons .btn:hover {
+.btn-back:hover {
 	background: rgba(77, 208, 255, 0.2);
 	border-color: rgba(77, 208, 255, 0.6);
 	transform: translateY(-2px);
 	box-shadow: 0 4px 12px rgba(77, 208, 255, 0.3);
 }
 
-/* ===== CONTENT SECTION ===== */
-.profile-page .content-section {
-	border-radius: 12px;
-	overflow: hidden;
+.action-buttons {
+	display: flex;
+	gap: 12px;
+}
+
+.action-buttons .btn {
+	height: 40px;
+	border-radius: 8px;
+	font-weight: 500;
+	border: 1px solid rgba(77, 208, 255, 0.3);
+	background: rgba(45, 27, 105, 0.8);
+	color: #fff;
 	backdrop-filter: blur(10px);
-	padding: 24px;
+	transition: all 0.3s ease;
+	padding: 0 20px;
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.action-buttons .btn:hover {
+	background: rgba(77, 208, 255, 0.2);
+	border-color: rgba(77, 208, 255, 0.6);
+	transform: translateY(-2px);
+	box-shadow: 0 4px 12px rgba(77, 208, 255, 0.3);
+}
+
+/* ===== PROFILE CONTENT SECTION ===== */
+.profile-content-section {
+	max-width: 900px;
+	margin: 0 auto;
+	width: 100%;
 }
 
 .profile-page.space-theme .content-section {
@@ -219,18 +244,26 @@
 /* ===== SPACE THEME STYLES ===== */
 .space-theme .profile-container {
   font-family: 'Plus Jakarta Sans', system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
-  min-height: 10vh;
-  width: 99%;
-  height: 790px;
+  min-height: 80vh;
+  width: 85%;
+  height: auto;
+  background: #6e5cac80;
+  backdrop-filter: blur(7px);
+  border-radius:16px;
+  border: 1px solid #4dd0ff4d;
+  padding: 24px;
 }
 
 /* ===== SUN THEME STYLES ===== */
 .sun-theme .profile-container {
   font-family: 'Plus Jakarta Sans', system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
-  min-height: 10vh;
-  width: 99%;
-  height: 790px;
-  
+  min-height: 80vh;
+  width: 85%;
+  height: auto;
+  background: #E6F5FF;
+  border: 1px solid #3b82f6;
+  border-radius: 16px;
+  padding: 24px;
 }
 
 
@@ -258,6 +291,13 @@
 }
 
 .profile-content {
+  max-width: 900px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+/* Profile Header Container - Giới hạn width để bằng với content */
+.profile-container .themed-header {
   max-width: 900px;
   margin: 0 auto;
   width: 100%;
@@ -1549,7 +1589,7 @@
 }
 
 .space-theme .parent-name-new {
-  color: #ffffff;
+  color: black;
 }
 
 .parent-relationship-new {
@@ -1557,9 +1597,7 @@
   color: #666666;
 }
 
-.space-theme .parent-relationship-new {
-  color: rgba(255, 255, 255, 0.7);
-}
+
 
 /* Parent Right Section New */
 .parent-right-section-new {
@@ -1582,7 +1620,7 @@
 }
 
 .space-theme .parent-contact-label-new {
-  color: rgba(255, 255, 255, 0.7);
+  color: black;
 }
 
 .parent-contact-value-new {
@@ -1592,7 +1630,7 @@
 }
 
 .space-theme .parent-contact-value-new {
-  color: #ffffff;
+  color: black;
 }
 
 /* Avatar Loading Overlay */

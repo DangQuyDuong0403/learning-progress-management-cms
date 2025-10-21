@@ -2,7 +2,7 @@
   padding: 24px;
   margin: 24px;
   min-height: 100vh;
-  background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+  background: #e6f5ff;
   border-radius: 12px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   transition: background 0.3s ease;
@@ -136,6 +136,24 @@
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
   transition: all 0.3s ease;
   border: 2px solid transparent;
+}
+
+/* Light theme menu card - white background */
+.light-theme .menu-card {
+  background: #ffffff !important;
+}
+
+.light-theme .menu-card .ant-card-body {
+  background: #ffffff !important;
+}
+
+/* Sun theme menu card - white background */
+.sun-theme .menu-card {
+  background: #ffffff !important;
+}
+
+.sun-theme .menu-card .ant-card-body {
+  background: #ffffff !important;
 }
 
 /* Dark theme menu card */

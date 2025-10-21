@@ -23,6 +23,7 @@ import {
 	MailOutlined,
 	FilterOutlined,
 	EyeOutlined,
+	DeleteOutlined,
 } from '@ant-design/icons';
 import ThemedLayout from '../../../../component/ThemedLayout';
 import LoadingWithEffect from '../../../../component/spinner/LoadingWithEffect';
@@ -69,6 +70,8 @@ const AccountList = () => {
 		content: '',
 		onConfirm: null,
 	});
+	const [isDeleteModalVisible, setIsDeleteModalVisible] = useState(false);
+	const [deleteAccount, setDeleteAccount] = useState(null);
 
 	// Filter dropdown state
 	const [filterDropdown, setFilterDropdown] = useState({
@@ -402,6 +405,43 @@ const AccountList = () => {
 		});
 	};
 
+	const handleDeleteAccount = (record) => {
+		setDeleteAccount(record);
+		setIsDeleteModalVisible(true);
+	};
+
+	const handleDeleteConfirm = async () => {
+		try {
+			// TODO: Implement delete account API call
+			// await accountManagementApi.deleteAccount(deleteAccount.id);
+			
+			// Update local state
+			setAccounts(accounts.filter(account => account.id !== deleteAccount.id));
+			setTotalElements(prev => prev - 1);
+			
+			// Show success message
+			spaceToast.success(t('accountManagement.deleteAccountSuccess'));
+			
+			setIsDeleteModalVisible(false);
+			setDeleteAccount(null);
+		} catch (error) {
+			console.error('Error deleting account:', error);
+			
+			// Handle error message from backend
+			let errorMessage = error.response?.data?.error || 
+				error.response?.data?.message || 
+				error.message ||
+				t('accountManagement.deleteAccountError');
+			
+			spaceToast.error(errorMessage);
+		}
+	};
+
+	const handleDeleteModalClose = () => {
+		setIsDeleteModalVisible(false);
+		setDeleteAccount(null);
+	};
+
 	const handleToggleStatus = (id) => {
 		const account = accounts.find((a) => a.id === id);
 		if (account) {
@@ -712,7 +752,12 @@ const AccountList = () => {
 			width: 160,
 			align: 'center',
 			render: (_, record) => (
-				<Space size='small'>
+				<div style={{ 
+					display: 'flex', 
+					alignItems: 'center', 
+					justifyContent: 'center',
+					gap: '8px'
+				}}>
 					{/* View details button - always visible */}
 					<Tooltip title={t('accountManagement.viewDetails')}>
 						<Button
@@ -730,7 +775,7 @@ const AccountList = () => {
 						/>
 					</Tooltip>
 					{/* Only show edit button for MANAGER/ADMIN roles and PENDING status */}
-					{(record.role === 'MANAGER' || record.role === 'ADMIN') && record.status === 'PENDING' && (
+					{(record.role === 'MANAGER' || record.role === 'ADMIN') && record.status === 'PENDING' ? (
 						<Tooltip title={t('accountManagement.edit')}>
 							<Button
 								type='text'
@@ -746,8 +791,30 @@ const AccountList = () => {
 								}}
 							/>
 						</Tooltip>
+					) : (
+						<div style={{ width: '32px', height: '32px' }}></div>
 					)}
-				</Space>
+					{/* Show delete button for PENDING status */}
+					{record.status === 'PENDING' ? (
+						<Tooltip title={t('accountManagement.delete')}>
+							<Button
+								type='text'
+								icon={<DeleteOutlined style={{ fontSize: '26px', color: '#ff4d4f' }} />}
+								size='large'
+								onClick={() => handleDeleteAccount(record)}
+								style={{
+									width: '32px',
+									height: '32px',
+									display: 'flex',
+									alignItems: 'center',
+									justifyContent: 'center'
+								}}
+							/>
+						</Tooltip>
+					) : (
+						<div style={{ width: '32px', height: '32px' }}></div>
+					)}
+				</div>
 			),
 		},
 	];
@@ -1273,13 +1340,46 @@ const AccountList = () => {
 				footer={[
 					<Button 
 						key="close" 
+						type="primary" 
 						onClick={handleCloseViewDetailModal}
 						style={{
+							background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, #7228d9 0%, #9c88ff 100%)',
+							borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : '#7228d9',
+							color: theme === 'sun' ? '#000' : '#fff',
+							borderRadius: '6px',
 							height: '32px',
 							fontWeight: '500',
 							fontSize: '14px',
 							padding: '4px 15px',
-							width: '100px'
+							width: '100px',
+							transition: 'all 0.3s ease',
+							boxShadow: 'none'
+						}}
+						onMouseEnter={(e) => {
+							if (theme === 'sun') {
+								e.target.style.background = 'rgb(95, 160, 240)';
+								e.target.style.borderColor = 'rgb(95, 160, 240)';
+								e.target.style.transform = 'translateY(-1px)';
+								e.target.style.boxShadow = '0 4px 12px rgba(113, 179, 253, 0.4)';
+							} else {
+								e.target.style.background = 'linear-gradient(135deg, #5a1fb8 0%, #8a7aff 100%)';
+								e.target.style.borderColor = '#5a1fb8';
+								e.target.style.transform = 'translateY(-1px)';
+								e.target.style.boxShadow = '0 4px 12px rgba(114, 40, 217, 0.4)';
+							}
+						}}
+						onMouseLeave={(e) => {
+							if (theme === 'sun') {
+								e.target.style.background = 'rgb(113, 179, 253)';
+								e.target.style.borderColor = 'rgb(113, 179, 253)';
+								e.target.style.transform = 'translateY(0)';
+								e.target.style.boxShadow = 'none';
+							} else {
+								e.target.style.background = 'linear-gradient(135deg, #7228d9 0%, #9c88ff 100%)';
+								e.target.style.borderColor = '#7228d9';
+								e.target.style.transform = 'translateY(0)';
+								e.target.style.boxShadow = 'none';
+							}
 						}}>
 						{t('common.close')}
 					</Button>
@@ -1362,6 +1462,87 @@ const AccountList = () => {
 						</Typography.Text>
 					</div>
 				)}
+			</Modal>
+
+			{/* Delete Confirmation Modal */}
+			<Modal
+				title={
+					<div style={{ 
+						fontSize: '20px', 
+						fontWeight: '600', 
+						color: '#1890ff',
+						textAlign: 'center',
+						padding: '10px 0'
+					}}>
+						{t('accountManagement.confirmDelete')}
+					</div>
+				}
+				open={isDeleteModalVisible}
+				onOk={handleDeleteConfirm}
+				onCancel={handleDeleteModalClose}
+				okText={t('common.confirm')}
+				cancelText={t('common.cancel')}
+				width={500}
+				centered
+				bodyStyle={{
+					padding: '30px 40px',
+					fontSize: '16px',
+					lineHeight: '1.6',
+					textAlign: 'center'
+				}}
+				okButtonProps={{
+					style: {
+						backgroundColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
+						background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
+						borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'transparent',
+						color: theme === 'sun' ? '#000000' : '#ffffff',
+						height: '40px',
+						fontSize: '16px',
+						fontWeight: '500',
+						minWidth: '100px'
+					}
+				}}
+				cancelButtonProps={{
+					style: {
+						height: '40px',
+						fontSize: '16px',
+						fontWeight: '500',
+						minWidth: '100px'
+					}
+				}}
+			>
+				<div style={{
+					display: 'flex',
+					flexDirection: 'column',
+					alignItems: 'center',
+					gap: '20px'
+				}}>
+					<div style={{
+						fontSize: '48px',
+						color: '#ff4d4f',
+						marginBottom: '10px'
+					}}>
+						⚠️
+					</div>
+					<p style={{
+						fontSize: '18px',
+						color: '#333',
+						margin: 0,
+						fontWeight: '500'
+					}}>
+						{t('accountManagement.confirmDeleteMessage')}
+					</p>
+					{deleteAccount && (
+						<p style={{
+							fontSize: '20px',
+							color: '#1890ff',
+							margin: 0,
+							fontWeight: '600'
+						}}>
+							<strong>{deleteAccount.fullName}</strong>
+						</p>
+					)}
+				</div>
 			</Modal>
 
 		</ThemedLayout>

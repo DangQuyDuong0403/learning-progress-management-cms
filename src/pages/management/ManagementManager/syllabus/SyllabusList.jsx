@@ -154,21 +154,29 @@ const SyllabusList = () => {
 
 	// Calculate checkbox states with useMemo
 	const checkboxStates = useMemo(() => {
-		const totalItems = syllabuses.length; // Sử dụng syllabuses.length thay vì totalElements
+		const currentPageKeys = syllabuses.map(syllabus => syllabus.id);
 		const selectedCount = selectedRowKeys.length;
-		const isSelectAll = selectedCount === totalItems && totalItems > 0;
-		const isIndeterminate = false; // Luôn false để không hiển thị indeterminate state
+		
+		// Check if all items on current page are selected
+		const allCurrentPageSelected = currentPageKeys.length > 0 && 
+			currentPageKeys.every(key => selectedRowKeys.includes(key));
+		
+		// For table header checkbox: only check if all current page items are selected
+		const isSelectAll = allCurrentPageSelected;
+		// Never show indeterminate state for table header checkbox
+		const isIndeterminate = false;
 		
 		console.log('Checkbox Debug:', {
-			totalItems,
-			selectedCount,
+			currentPageKeys,
 			selectedRowKeys,
+			allCurrentPageSelected,
 			isSelectAll,
 			isIndeterminate,
+			selectedCount,
 		});
 		
-		return { isSelectAll, isIndeterminate, totalItems, selectedCount };
-	}, [selectedRowKeys, syllabuses.length]);
+		return { isSelectAll, isIndeterminate, totalItems: currentPageKeys.length, selectedCount };
+	}, [selectedRowKeys, syllabuses]);
 
 	// Cleanup timeout on unmount
 	useEffect(() => {
@@ -401,14 +409,64 @@ const SyllabusList = () => {
 		}
 	};
 
+	// Fetch all syllabus IDs for select all functionality
+	const fetchAllSyllabusIds = useCallback(async () => {
+		try {
+			// Fetch all syllabuses without pagination to get all IDs
+			const params = {
+				page: 0,
+				size: totalElements || 1000, // Use totalElements or a large number
+				sortBy: sortBy,
+				sortDir: sortDir,
+			};
+
+			// Add search parameter if provided
+			if (searchText && searchText.trim()) {
+				params.searchText = searchText.trim();
+			}
+
+			const response = await syllabusManagementApi.getSyllabuses({
+				params: params,
+			});
+
+			return response.data.map(syllabus => syllabus.id);
+		} catch (error) {
+			console.error('Error fetching all syllabus IDs:', error);
+			spaceToast.error(t('syllabusManagement.errorFetchingAllSyllabuses'));
+			return [];
+		}
+	}, [totalElements, sortBy, sortDir, searchText, t]);
+
 	// Checkbox selection handlers
 	const handleSelectAll = async (checked) => {
 		if (checked) {
-			// Select all items currently visible on the page
-			const currentPageKeys = syllabuses.map(syllabus => syllabus.id);
-			setSelectedRowKeys(currentPageKeys);
+			// Fetch all syllabus IDs and select them
+			const allSyllabusIds = await fetchAllSyllabusIds();
+			setSelectedRowKeys(allSyllabusIds);
 		} else {
+			// Clear all selections
 			setSelectedRowKeys([]);
+		}
+	};
+
+	// Handle table header checkbox (only current page)
+	const handleSelectAllCurrentPage = (checked) => {
+		const currentPageKeys = syllabuses.map(syllabus => syllabus.id);
+		
+		if (checked) {
+			// Add all current page items to selection
+			setSelectedRowKeys(prev => {
+				const newKeys = [...prev];
+				currentPageKeys.forEach(key => {
+					if (!newKeys.includes(key)) {
+						newKeys.push(key);
+					}
+				});
+				return newKeys;
+			});
+		} else {
+			// Remove all current page items from selection
+			setSelectedRowKeys(prev => prev.filter(key => !currentPageKeys.includes(key)));
 		}
 	};
 
@@ -674,7 +732,7 @@ const SyllabusList = () => {
 					key={`select-all-${checkboxStates.selectedCount}-${checkboxStates.totalItems}`}
 					checked={checkboxStates.isSelectAll}
 					indeterminate={checkboxStates.isIndeterminate}
-					onChange={(e) => handleSelectAll(e.target.checked)}
+					onChange={(e) => handleSelectAllCurrentPage(e.target.checked)}
 					style={{ 
 						transform: 'scale(1.2)',
 						marginRight: '8px'

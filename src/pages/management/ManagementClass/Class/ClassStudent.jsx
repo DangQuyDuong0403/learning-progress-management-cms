@@ -3,14 +3,12 @@ import {
   Button,
   Table,
   Space,
-  Tag,
   Input,
   Modal,
   Upload,
   Typography,
 } from "antd";
 import {
-  ArrowLeftOutlined,
   PlusOutlined,
   SearchOutlined,
   DeleteOutlined,
@@ -21,10 +19,11 @@ import {
 import ThemedLayout from "../../../../component/ThemedLayout";
 import LoadingWithEffect from "../../../../component/spinner/LoadingWithEffect";
 import "./ClassStudent.css";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { spaceToast } from "../../../../component/SpaceToastify";
 import { useTheme } from "../../../../contexts/ThemeContext";
+import { useClassMenu } from "../../../../contexts/ClassMenuContext";
 import classManagementApi from "../../../../apis/backend/classManagement";
 import usePageTitle from "../../../../hooks/usePageTitle";
 
@@ -43,8 +42,8 @@ const mockAllStudents = [
 const ClassStudent = () => {
   const { t } = useTranslation();
   const { id } = useParams();
-  const navigate = useNavigate();
   const { theme } = useTheme();
+  const { enterClassMenu, exitClassMenu } = useClassMenu();
   
   // Set page title
   usePageTitle('Class Students');
@@ -153,7 +152,21 @@ const ClassStudent = () => {
     try {
       const response = await classManagementApi.getClassDetail(id);
       console.log('Class detail response:', response);
-      setClassData(response.data);
+      const data = response?.data?.data ?? response?.data ?? null;
+      if (data) {
+        const mapped = {
+          id: data.id ?? id,
+          name:
+            data.name ??
+            data.className ??
+            data.classname ??
+            data.class_name ??
+            data.title ??
+            data.classTitle ??
+            '',
+        };
+        setClassData(mapped);
+      }
     } catch (error) {
       console.error('Error fetching class data:', error);
       spaceToast.error(t('classDetail.loadingClassInfo'));
@@ -193,22 +206,42 @@ const ClassStudent = () => {
     }
   }, [id, t]);
 
-  // Combined initial data loading
-  const fetchInitialData = useCallback(async () => {
-    setLoading(true);
-    try {
-      await Promise.all([
-        fetchClassData(),
-        fetchStudents()
-      ]);
-    } finally {
-      setLoading(false);
-    }
-  }, [fetchClassData, fetchStudents]);
-
+  // Initial data loading
   useEffect(() => {
-    fetchInitialData();
-  }, [fetchInitialData]);
+    setLoading(true);
+    Promise.all([
+      fetchClassData(),
+      fetchStudents()
+    ]).finally(() => {
+      setLoading(false);
+    });
+  }, [id]);
+
+  // Ensure header back button appears immediately while class info loads
+  useEffect(() => {
+    if (id) {
+      enterClassMenu({ id });
+    }
+    return () => {
+      exitClassMenu();
+    };
+  }, [id]);
+
+  // Enter class menu mode when component mounts
+  useEffect(() => {
+    if (classData) {
+      enterClassMenu({
+        id: classData.id,
+        name: classData.name,
+        description: `${t('classDetail.students')} (${students.length})`
+      });
+    }
+    
+    // Cleanup function to exit class menu mode when leaving
+    return () => {
+      exitClassMenu();
+    };
+  }, [classData?.id, classData?.name, students.length]);
 
   const handleAddStudent = () => {
     setStudentSearchValue("");
@@ -273,7 +306,7 @@ const ClassStudent = () => {
         total: prev.total - 1,
       }));
       
-      const fullName = `${studentToDelete.firstName || ''} ${studentToDelete.lastName || ''}`.trim();
+      const fullName = studentToDelete.fullName || `${studentToDelete.firstName || ''} ${studentToDelete.lastName || ''}`.trim();
       spaceToast.success(`${t('classDetail.deleteSuccess')} "${fullName}" ${t('classDetail.fromClass')}`);
       setIsDeleteModalVisible(false);
       setStudentToDelete(null);
@@ -440,24 +473,44 @@ const ClassStudent = () => {
       return;
     }
 
-    const timeoutId = setTimeout(() => {
+    const timeoutId = setTimeout(async () => {
       setLoading(true);
-      fetchStudents({
-        page: 0, // Always reset to first page for search/filter/sort
-        size: pagination.pageSize,
-        text: searchText,
-        status: statusFilter,
-        sortBy: sortConfig.sortBy,
-        sortDir: sortConfig.sortDir
-      }).finally(() => {
+      try {
+        const apiParams = {
+          page: 0,
+          size: pagination.pageSize,
+          text: searchText,
+          status: statusFilter,
+          sortBy: sortConfig.sortBy,
+          sortDir: sortConfig.sortDir,
+        };
+        
+        console.log('Fetching students with params:', apiParams);
+        const response = await classManagementApi.getClassStudents(id, apiParams);
+        console.log('Students response:', response);
+        
+        if (response.success) {
+          setStudents(response.data || []);
+          setPagination(prev => ({
+            ...prev,
+            total: response.totalElements || 0,
+            current: 1,
+          }));
+        } else {
+          spaceToast.error(response.message || t('classDetail.loadingStudents'));
+          setStudents([]);
+        }
+      } catch (error) {
+        console.error('Error fetching students:', error);
+        spaceToast.error(t('classDetail.loadingStudents'));
+        setStudents([]);
+      } finally {
         setLoading(false);
-      });
-      // Reset pagination to first page
-      setPagination(prev => ({ ...prev, current: 1 }));
-    }, 300); // Reduced debounce time
+      }
+    }, 300);
     
     return () => clearTimeout(timeoutId);
-  }, [searchText, statusFilter, sortConfig.sortBy, sortConfig.sortDir, pagination.pageSize, fetchStudents, isInitialLoad]);
+  }, [searchText, statusFilter, sortConfig.sortBy, sortConfig.sortDir, pagination.pageSize, id, t]);
   
   // Handle pagination change
   const handleTableChange = (paginationInfo, filters, sorter) => {
@@ -470,19 +523,6 @@ const ClassStudent = () => {
         current: paginationInfo.current,
         pageSize: paginationInfo.pageSize,
       }));
-      
-      // Call API with new pagination
-      setLoading(true);
-      fetchStudents({ 
-        page: paginationInfo.current - 1, 
-        size: paginationInfo.pageSize,
-        text: searchText,
-        status: statusFilter,
-        sortBy: sortConfig.sortBy,
-        sortDir: sortConfig.sortDir
-      }).finally(() => {
-        setLoading(false);
-      });
     }
     
     // Handle sorting - this will trigger the main useEffect
@@ -507,16 +547,14 @@ const ClassStudent = () => {
     },
     {
       title: t('classDetail.fullName'),
-      key: 'fullName',
+      dataIndex: "fullName",
+      key: "fullName",
       sorter: true,
-      render: (_, record) => {
-        const fullName = `${record.firstName || ''} ${record.lastName || ''}`.trim();
-        return (
-          <div className="student-name-text" style={{ fontSize: "20px" }}>
-            {fullName}
-          </div>
-        );
-      },
+      render: (text) => (
+        <div className="student-name-text" style={{ fontSize: "20px" }}>
+          {text || '-'}
+        </div>
+      ),
     },
     {
       title: t('classDetail.email'),
@@ -575,37 +613,14 @@ const ClassStudent = () => {
     <ThemedLayout>
         {/* Main Content Panel */}
         <div className={`main-content-panel ${theme}-main-panel`}>
-          {/* Page Title with Back Button */}
-          <div className="page-title-container" style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '24px' }}>
-            <Button
-              icon={<ArrowLeftOutlined />}
-              onClick={() => navigate(`/manager/classes/menu/${id}`)}
-              className={`back-button ${theme}-back-button`}
-              style={{ height: '40px', fontSize: '16px' }}
+          {/* Page Title */}
+          <div className="page-title-container">
+            <Typography.Title 
+              level={1} 
+              className="page-title"
             >
-              {t('common.back')}
-            </Button>
-            <div style={{ flex: '1', textAlign: 'center' }}>
-              <Typography.Title 
-                level={1} 
-                className="page-title"
-                style={{ margin: 0 }}
-              >
-                {t('classDetail.students')} <span className="student-count">({students.length})</span>
-              </Typography.Title>
-            </div>
-            <div style={{ width: '120px' }}></div> {/* Spacer for centering */}
-          </div>
-
-          {/* Header Section */}
-          <div className={`panel-header ${theme}-panel-header`}>
-            <div className="search-section" style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-              <div style={{ flex: '1', textAlign: 'center' }}>
-                <h2 className={`class-title ${theme}-class-title`} style={{ margin: 0, fontSize: '36px', fontWeight: '600' }}>
-                  {classData?.name}
-                </h2>
-              </div>
-            </div>
+              Student Management <span className="student-count">({pagination.total})</span>
+            </Typography.Title>
           </div>
 
           {/* Search and Action Section */}
@@ -1060,7 +1075,7 @@ const ClassStudent = () => {
               margin: 0,
               fontWeight: '500'
             }}>
-              {t('classDetail.confirmDeleteMessage')} "{studentToDelete ? `${studentToDelete.firstName || ''} ${studentToDelete.lastName || ''}`.trim() : ''}"?
+              {t('classDetail.confirmDeleteMessage')} "{studentToDelete ? (studentToDelete.fullName || `${studentToDelete.firstName || ''} ${studentToDelete.lastName || ''}`.trim()) : ''}"?
             </p>
           </div>
         </Modal>

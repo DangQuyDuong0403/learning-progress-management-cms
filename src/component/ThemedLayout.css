@@ -733,6 +733,37 @@
 	background: rgba(109, 95, 143, 0.05);
 	border-radius: 8px;
 	overflow: hidden;
+	margin: 16px auto !important;
+	padding: 0 !important;
+	width: calc(100% - 32px) !important;
+	max-width: calc(100% - 32px) !important;
+}
+
+/* Table wrapper padding */
+.themed-content .ant-table-wrapper {
+	margin: 16px auto !important;
+	padding: 0 !important;
+	width: calc(100% - 32px) !important;
+	max-width: calc(100% - 32px) !important;
+}
+
+/* Space theme table background */
+.space-theme .themed-content .ant-table {
+	background: rgba(109, 95, 143, 0.05);
+	border-radius: 8px;
+	overflow: hidden;
+	margin: 16px auto !important;
+	padding: 0 !important;
+	width: calc(100% - 32px) !important;
+	max-width: calc(100% - 32px) !important;
+}
+
+/* Space theme table wrapper */
+.space-theme .themed-content .ant-table-wrapper {
+	margin: 16px auto !important;
+	padding: 0 !important;
+	width: calc(100% - 32px) !important;
+	max-width: calc(100% - 32px) !important;
 }
 
 /* Global table font size settings */
@@ -1128,6 +1159,18 @@
 	border: 1px solid rgba(255, 255, 255, 0.2);
 	border-radius: 12px;
 	overflow: hidden;
+	margin: 16px auto !important;
+	padding: 0 !important;
+	width: calc(100% - 32px) !important;
+	max-width: calc(100% - 32px) !important;
+}
+
+/* Sun theme table wrapper */
+.sun-theme .themed-content .ant-table-wrapper {
+	margin: 16px auto !important;
+	padding: 0 !important;
+	width: calc(100% - 32px) !important;
+	max-width: calc(100% - 32px) !important;
 }
 
 .sun-theme .themed-content .ant-table-thead > tr > th {

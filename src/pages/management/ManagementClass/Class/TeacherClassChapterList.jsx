@@ -6,30 +6,34 @@ import {
 	Modal,
 	message,
 	Input,
-	Card,
 	Row,
 	Col,
 	Tooltip,
+	Typography,
+	Upload,
+	Divider,
 } from 'antd';
 import {
 	PlusOutlined,
 	EditOutlined,
 	DeleteOutlined,
 	SearchOutlined,
-	ReloadOutlined,
 	EyeOutlined,
-	FileTextOutlined,
 	ArrowLeftOutlined,
-	SwapOutlined,
+	DragOutlined,
+	DownloadOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useParams, useNavigate } from 'react-router-dom';
 import ChapterForm from '../../ManagementManager/syllabus/ChapterForm';
-import './ClassStudent.css';
 import ThemedLayout from '../../../../component/ThemedLayout';
+import LoadingWithEffect from '../../../../component/spinner/LoadingWithEffect';
 import { useTheme } from '../../../../contexts/ThemeContext';
+import { useClassMenu } from '../../../../contexts/ClassMenuContext';
 import teacherManagementApi from '../../../../apis/backend/teacherManagement';
 import { useSelector } from 'react-redux';
+import usePageTitle from '../../../../hooks/usePageTitle';
+import { spaceToast } from '../../../../component/SpaceToastify';
 
 const TeacherClassChapterList = () => {
 	const { t } = useTranslation();
@@ -37,6 +41,10 @@ const TeacherClassChapterList = () => {
 	const { classId } = useParams();
 	const { theme } = useTheme();
 	const { user } = useSelector((state) => state.auth);
+	const { enterClassMenu, exitClassMenu } = useClassMenu();
+
+	// Set page title
+	usePageTitle('Chapter Management');
 
 	// State management
 	const [loading, setLoading] = useState(false);
@@ -50,6 +58,11 @@ const TeacherClassChapterList = () => {
 	const [isDeleteModalVisible, setIsDeleteModalVisible] = useState(false);
 	const [editingChapter, setEditingChapter] = useState(null);
 	const [deleteChapter, setDeleteChapter] = useState(null);
+	const [importModal, setImportModal] = useState({
+		visible: false,
+		fileList: [],
+		uploading: false
+	});
 
 	// Pagination state
 	const [pagination, setPagination] = useState({
@@ -83,12 +96,13 @@ const TeacherClassChapterList = () => {
 		
 		try {
 			const response = await teacherManagementApi.getClassById(classId);
+			const data = response?.data ?? response;
 			setClassInfo({
 				id: classId,
-				name: response.data.name,
+				name: data?.name ?? data?.className ?? data?.title ?? '',
 				syllabus: {
-					id: response.data.syllabusId,
-					name: response.data.syllabusName,
+					id: data?.syllabusId,
+					name: data?.syllabusName,
 				}
 			});
 		} catch (error) {
@@ -150,6 +164,26 @@ const TeacherClassChapterList = () => {
 		}
 	}, [fetchChapters, searchText, pagination.pageSize, classId]);
 
+	// Handle class menu updates - separate effects to avoid infinite loops
+	useEffect(() => {
+		if (classId) {
+			enterClassMenu({ id: classId });
+		}
+		return () => exitClassMenu();
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [classId]);
+
+	useEffect(() => {
+		if (classInfo && classId) {
+			enterClassMenu({
+				id: classInfo.id,
+				name: classInfo.name,
+				description: `${t('chapterManagement.title')} - ${classInfo.name}`
+			});
+		}
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [classInfo?.id, classInfo?.name, classId]);
+
 	// Cleanup timeout on unmount
 	useEffect(() => {
 		return () => {
@@ -205,10 +239,6 @@ const TeacherClassChapterList = () => {
 		setEditingChapter(null);
 	};
 
-	const handleRefresh = () => {
-		fetchChapters(pagination.current, pagination.pageSize, searchText);
-	};
-
 	const handleBackToClassMenu = () => {
 		navigate(`${routePrefix}/menu/${classId}`);
 	};
@@ -238,19 +268,140 @@ const TeacherClassChapterList = () => {
 		fetchChapters(pagination.current, pagination.pageSize, searchText);
 	};
 
+	const handleImport = () => {
+		setImportModal(prev => ({
+			...prev,
+			visible: true,
+			fileList: [],
+			uploading: false
+		}));
+	};
+
+	const handleImportOk = async () => {
+		if (importModal.fileList.length === 0) {
+			spaceToast.warning(t('chapterManagement.selectFileToImport'));
+			return;
+		}
+
+		setImportModal(prev => ({ ...prev, uploading: true }));
+		
+		try {
+			const file = importModal.fileList[0];
+			
+			// Create FormData object
+			const formData = new FormData();
+			formData.append('file', file);
+			formData.append('classId', classId);
+			
+			// Call import API with FormData
+			const response = await teacherManagementApi.importClassChapters(formData);
+
+			if (response.success) {
+				// Refresh the list to get updated data from server
+				fetchChapters(pagination.current, pagination.pageSize, searchText);
+				
+				// Use backend message if available, otherwise fallback to translation
+				const successMessage = response.message || t('chapterManagement.importSuccess');
+				spaceToast.success(successMessage);
+				
+				setImportModal({ visible: false, fileList: [], uploading: false });
+			} else {
+				throw new Error(response.message || 'Import failed');
+			}
+		} catch (error) {
+			console.error('Error importing chapters:', error);
+			spaceToast.error(error.response?.data?.error || error.response?.data?.message || error.message || t('chapterManagement.importError'));
+			setImportModal(prev => ({ ...prev, uploading: false }));
+		}
+	};
+
+	const handleImportCancel = () => {
+		setImportModal(prev => ({
+			...prev,
+			visible: false,
+			fileList: [],
+			uploading: false
+		}));
+	};
+
+	const handleDownloadTemplate = async () => {
+		try {
+			const response = await teacherManagementApi.downloadClassChapterTemplate();
+			
+			// API returns SAS URL directly (due to axios interceptor returning response.data)
+			let downloadUrl;
+			if (typeof response === 'string') {
+				downloadUrl = response;
+			} else if (response && typeof response.data === 'string') {
+				downloadUrl = response.data;
+			} else if (response && response.data && response.data.url) {
+				downloadUrl = response.data.url;
+			} else {
+				console.error('Unexpected response format:', response);
+			}
+			
+			// Create download link directly from SAS URL
+			const link = document.createElement('a');
+			link.setAttribute('href', downloadUrl);
+			link.setAttribute('download', 'class_chapter_import_template.xlsx');
+			link.setAttribute('target', '_blank');
+			link.style.visibility = 'hidden';
+			document.body.appendChild(link);
+			link.click();
+			document.body.removeChild(link);
+			
+			spaceToast.success('Template downloaded successfully');
+		} catch (error) {
+			console.error('Error downloading template:', error);
+			spaceToast.error(error.response?.data?.error || error.response?.data?.message || error.message || 'Failed to download template');
+		}
+	};
+
+	// Handle file selection
+	const handleFileSelect = (file) => {
+		// Validate file type
+		const allowedTypes = [
+			'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // .xlsx
+			'application/vnd.ms-excel', // .xls
+		];
+		
+		if (!allowedTypes.includes(file.type)) {
+			spaceToast.error('Please select a valid Excel (.xlsx, .xls) file');
+			return false;
+		}
+		
+		// Validate file size (max 10MB)
+		const maxSize = 10 * 1024 * 1024; // 10MB
+		if (file.size > maxSize) {
+			spaceToast.error('File size must be less than 10MB');
+			return false;
+		}
+		
+		setImportModal(prev => ({
+			...prev,
+			fileList: [file]
+		}));
+		
+		return false; // Prevent default upload behavior
+	};
+
 	// No need for client-side filtering since API handles filtering
 	const filteredChapters = chapters;
 
 	const columns = [
 		{
-			title: 'No',
+			title: 'STT',
 			key: 'index',
 			width: '10%',
 			render: (_, __, index) => {
 				// Calculate index based on current page and page size
 				const currentPage = pagination.current || 1;
 				const pageSize = pagination.pageSize || 10;
-				return (currentPage - 1) * pageSize + index + 1;
+				return (
+					<span style={{ fontSize: '20px' }}>
+						{(currentPage - 1) * pageSize + index + 1}
+					</span>
+				);
 			},
 		},
 		{
@@ -258,11 +409,23 @@ const TeacherClassChapterList = () => {
 			dataIndex: 'name',
 			key: 'name',
 			width: '20%',
-			sorter: (a, b) => a.name.localeCompare(b.name),
 			render: (text, record) => (
 				<div>
-					<div style={{ fontWeight: 'bold', fontSize: '16px' }}>{text}</div>
-					<div style={{ color: '#666', fontSize: '12px' }}>
+					<div style={{ 
+						fontSize: '20px',
+						maxWidth: '200px',
+						overflow: 'hidden',
+						textOverflow: 'ellipsis',
+						whiteSpace: 'nowrap'
+					}}>{text}</div>
+					<div style={{ 
+						color: '#666', 
+						fontSize: '12px',
+						maxWidth: '200px',
+						overflow: 'hidden',
+						textOverflow: 'ellipsis',
+						whiteSpace: 'nowrap'
+					}}>
 						{record.description}
 					</div>
 				</div>
@@ -275,7 +438,6 @@ const TeacherClassChapterList = () => {
 			width: '20%',
 			render: (createdBy) => createdBy || 'N/A',
 		},
-		
 		{
 			title: t('chapterManagement.createdAt'),
 			dataIndex: 'createdAt',
@@ -319,15 +481,16 @@ const TeacherClassChapterList = () => {
 	if (!classInfo) {
 		return (
 			<ThemedLayout>
-				<div className="syllabus-list-container">
-					<Card>
-						<div style={{ textAlign: 'center', padding: '50px' }}>
-							<h3>{t('chapterManagement.classNotFound')}</h3>
-							<Button type="primary" onClick={handleBackToClassMenu}>
-								{t('chapterManagement.backToClassMenu')}
-							</Button>
-						</div>
-					</Card>
+				{/* Main Content Panel */}
+				<div className={`main-content-panel ${theme}-main-panel`}>
+					<div style={{ textAlign: 'center', padding: '50px' }}>
+						<LoadingWithEffect
+							loading={true}
+							message={t('common.loading')}
+						>
+							<div></div>
+						</LoadingWithEffect>
+					</div>
 				</div>
 			</ThemedLayout>
 		);
@@ -335,42 +498,25 @@ const TeacherClassChapterList = () => {
 
 	return (
 		<ThemedLayout>
-			<div className="syllabus-list-container">
-				{/* Main Container Card */}
-				<Card className="main-container-card">
-					{/* Back Button */}
-					<div style={{ marginBottom: '16px' }}>
-						<Button 
-							type="text" 
-							icon={<ArrowLeftOutlined />}
-							onClick={handleBackToClassMenu}
-							style={{ padding: '4px 8px' }}
-						>
-							{t('common.back')}
-						</Button>
-					</div>
+			{/* Main Content Panel */}
+			<div className={`main-content-panel ${theme}-main-panel`}>
+				{/* Page Title */}
+				<div className="page-title-container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
+				
+					<Typography.Title 
+						level={1} 
+						className="page-title"
+						style={{ margin: 0, flex: 1, textAlign: 'center' }}
+					>
+					{t('chapterManagement.title')} <span className="student-count">({pagination.total})</span>
+					</Typography.Title>
+					<div style={{ width: '100px' }}></div> {/* Spacer để cân bằng layout */}
+				</div>
 
-					{/* Header */}
-					<div style={{ marginBottom: '24px' }}>
-						<h2 
-							style={{ 
-								margin: 0, 
-								fontSize: '24px', 
-								fontWeight: 'bold',
-								color: theme === 'space' ? '#ffffff' : '#000000'
-							}}
-						>
-							<FileTextOutlined style={{ marginRight: '8px' }} />
-							{t('chapterManagement.title')} - {classInfo.name}
-						</h2>
-						<p style={{ color: '#666', margin: '8px 0 0 0' }}>
-							{t('chapterManagement.syllabus')}: {classInfo.syllabus?.name}
-						</p>
-					</div>
-
-					{/* Action Bar */}
-					<Row gutter={16} align="middle" style={{ marginBottom: '16px' }}>
-						<Col flex="auto">
+				{/* Action Bar */}
+				<Row gutter={16} align="middle" style={{ marginBottom: '16px' }}>
+					<Col flex="auto">
+						<Space size="middle">
 							<Input
 								prefix={<SearchOutlined />}
 								value={searchText}
@@ -379,59 +525,53 @@ const TeacherClassChapterList = () => {
 								style={{ minWidth: '350px', maxWidth: '500px', height: '40px', fontSize: '16px' }}
 								allowClear
 							/>
-						</Col>
-						<Col>
-							<Space>
-								<Button
-									icon={<ReloadOutlined />}
-									className={`refresh-button ${theme}-refresh-button`}
-									onClick={handleRefresh}
-									loading={loading}
-								>
-									{t('chapterManagement.refresh')}
-								</Button>
-								<Button
-									icon={<SwapOutlined rotate={90} />}
-									onClick={handleEditOrder}
-									style={{
-										background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-										color: '#ffffff',
-										border: 'none',
-										fontWeight: 500,
-									}}
-								>
-									{t('chapterManagement.editOrder')}
-								</Button>
-								<Button
-									icon={<PlusOutlined />}
-									className="create-button"
-									onClick={handleAdd}
-								>
-									{t('chapterManagement.addChapter')}
-								</Button>
-							</Space>
-						</Col>
-					</Row>
+						</Space>
+					</Col>
+					<Col>
+						<Space>
+							<Button
+								icon={<DownloadOutlined />}
+								className={`import-button ${theme}-import-button`}
+								onClick={handleImport}
+							>
+								{t('chapterManagement.importChapters')}
+							</Button>
+							<Button
+								icon={<DragOutlined />}
+								onClick={handleEditOrder}
+								className="create-button"
+							>
+								{t('common.edit')}
+							</Button>
+							<Button
+								icon={<PlusOutlined />}
+								className="create-button"
+								onClick={handleAdd}
+							>
+								{t('chapterManagement.addChapter')}
+							</Button>
+						</Space>
+					</Col>
+				</Row>
 
-					{/* Table Card */}
-					<Card className="table-card">
-						<Table
-							columns={columns}
-							dataSource={filteredChapters}
-							rowKey="id"
-							loading={loading}
-							pagination={{
-								...pagination,
-								showQuickJumper: true,
-								showTotal: (total, range) => {
-									return `${range[0]}-${range[1]} ${t('chapterManagement.paginationText')} ${total} ${t('chapterManagement.chapters')}`;
-								},
-							}}
-							onChange={handleTableChange}
-							scroll={{ x: 1000 }}
-						/>
-					</Card>
-				</Card>
+				{/* Table Section */}
+				<div className={`table-section ${theme}-table-section`}>
+					<Table
+						columns={columns}
+						dataSource={filteredChapters}
+						rowKey="id"
+						loading={loading}
+						pagination={{
+							...pagination,
+							showTotal: (total, range) => {
+								return `${range[0]}-${range[1]} ${t('chapterManagement.paginationText')} ${total} ${t('chapterManagement.chapters')}`;
+							},
+						}}
+						onChange={handleTableChange}
+						scroll={{ x: 1000 }}
+					/>
+				</div>
+			</div>
 
 				{/* Chapter Modal */}
 				<Modal
@@ -453,23 +593,228 @@ const TeacherClassChapterList = () => {
 					/>
 				</Modal>
 
-				{/* Delete Confirmation Modal */}
-				<Modal
-					title={t('chapterManagement.confirmDelete')}
-					open={isDeleteModalVisible}
-					onOk={handleDelete}
-					onCancel={handleDeleteModalClose}
-					okText={t('common.yes')}
-					cancelText={t('common.no')}
-					okButtonProps={{ danger: true }}>
-					<p>{t('chapterManagement.confirmDeleteMessage')}</p>
+			{/* Delete Confirmation Modal */}
+			<Modal
+				title={
+					<div style={{ 
+						fontSize: '20px', 
+						fontWeight: '600', 
+						color: '#1890ff',
+						textAlign: 'center',
+						padding: '10px 0'
+					}}>
+						{t('chapterManagement.confirmDelete')}
+					</div>
+				}
+				open={isDeleteModalVisible}
+				onOk={handleDelete}
+				onCancel={handleDeleteModalClose}
+				okText={t('common.confirm')}
+				cancelText={t('common.cancel')}
+				width={500}
+				centered
+				bodyStyle={{
+					padding: '30px 40px',
+					fontSize: '16px',
+					lineHeight: '1.6',
+					textAlign: 'center'
+				}}
+				okButtonProps={{
+					style: {
+						backgroundColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
+						background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
+						borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'transparent',
+						color: theme === 'sun' ? '#000000' : '#ffffff',
+						height: '40px',
+						fontSize: '16px',
+						fontWeight: '500',
+						minWidth: '100px'
+					}
+				}}
+				cancelButtonProps={{
+					style: {
+						height: '40px',
+						fontSize: '16px',
+						fontWeight: '500',
+						minWidth: '100px'
+					}
+				}}
+			>
+				<div style={{
+					display: 'flex',
+					flexDirection: 'column',
+					alignItems: 'center',
+					gap: '20px'
+				}}>
+					<div style={{
+						fontSize: '48px',
+						color: '#ff4d4f',
+						marginBottom: '10px'
+					}}>
+						⚠️
+					</div>
+					<p style={{
+						fontSize: '18px',
+						color: '#333',
+						margin: 0,
+						fontWeight: '500'
+					}}>
+						{t('chapterManagement.confirmDeleteMessage')}
+					</p>
 					{deleteChapter && (
-						<p>
+						<p style={{
+							fontSize: '20px',
+							color: '#1890ff',
+							margin: 0,
+							fontWeight: '600'
+						}}>
 							<strong>{deleteChapter.name}</strong>
 						</p>
 					)}
-				</Modal>
-			</div>
+				</div>
+			</Modal>
+
+			{/* Import Modal */}
+			<Modal
+				title={
+					<div style={{
+						fontSize: '20px',
+						fontWeight: '600',
+						color: '#000000',
+						textAlign: 'center',
+						padding: '10px 0',
+						display: 'flex',
+						alignItems: 'center',
+						justifyContent: 'center',
+						gap: '10px',
+					}}>
+						<DownloadOutlined style={{ color: '#000000' }} />
+						{t('chapterManagement.importChapters')}
+					</div>
+				}
+				open={importModal.visible}
+				onOk={handleImportOk}
+				onCancel={handleImportCancel}
+				okText={t('chapterManagement.import')}
+				cancelText={t('common.cancel')}
+				width={600}
+				centered
+				confirmLoading={importModal.uploading}
+				okButtonProps={{
+					disabled: importModal.fileList.length === 0,
+					style: {
+						backgroundColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
+						background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
+						borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'transparent',
+						color: theme === 'sun' ? '#000000' : '#ffffff',
+						height: '40px',
+						fontSize: '16px',
+						fontWeight: '500',
+						minWidth: '120px',
+					},
+				}}
+				cancelButtonProps={{
+					style: {
+						height: '40px',
+						fontSize: '16px',
+						fontWeight: '500',
+						minWidth: '100px',
+					},
+				}}>
+				<div style={{ padding: '20px 0' }}>
+					<div style={{ textAlign: 'center', marginBottom: '20px' }}>
+						<Button
+							type="dashed"
+							icon={<DownloadOutlined />}
+							onClick={handleDownloadTemplate}
+							style={{
+								borderColor: '#1890ff',
+								color: '#1890ff',
+								height: '36px',
+								fontSize: '14px',
+								fontWeight: '500',
+							}}>
+							{t('chapterManagement.downloadTemplate')}
+						</Button>
+					</div>
+
+					<Typography.Title
+						level={5}
+						style={{
+							textAlign: 'center',
+							marginBottom: '20px',
+							color: '#666',
+						}}>
+						{t('chapterManagement.importInstructions')}
+					</Typography.Title>
+
+					<Upload.Dragger
+						name="file"
+						multiple={false}
+						beforeUpload={handleFileSelect}
+						showUploadList={false}
+						accept=".xlsx,.xls"
+						style={{
+							marginBottom: '20px',
+							border: '2px dashed #d9d9d9',
+							borderRadius: '8px',
+							background: '#fafafa',
+							padding: '40px',
+							textAlign: 'center',
+						}}>
+						<p
+							className='ant-upload-drag-icon'
+							style={{ fontSize: '48px', color: '#1890ff' }}>
+							<DownloadOutlined />
+						</p>
+						<p
+							className='ant-upload-text'
+							style={{ fontSize: '16px', fontWeight: '500' }}>
+							{t('chapterManagement.clickOrDragFile')}
+						</p>
+						<p className='ant-upload-hint' style={{ color: '#999' }}>
+							{t('chapterManagement.supportedFormats')}: Excel (.xlsx, .xls)
+						</p>
+					</Upload.Dragger>
+
+					<Divider />
+
+					{importModal.fileList.length > 0 && (
+						<div
+							style={{
+								marginTop: '16px',
+								padding: '12px',
+								background: '#e6f7ff',
+								border: '1px solid #91d5ff',
+								borderRadius: '6px',
+								display: 'flex',
+								justifyContent: 'space-between',
+								alignItems: 'center',
+							}}>
+							<div>
+								<Typography.Text style={{ color: '#1890ff', fontWeight: '500' }}>
+									✅ {t('chapterManagement.fileSelected')}:{' '}
+									{importModal.fileList[0].name}
+								</Typography.Text>
+								<br />
+								<Typography.Text style={{ color: '#666', fontSize: '12px' }}>
+									Size: {importModal.fileList[0].size < 1024 * 1024 
+										? `${(importModal.fileList[0].size / 1024).toFixed(1)} KB`
+										: `${(importModal.fileList[0].size / 1024 / 1024).toFixed(2)} MB`
+									}
+								</Typography.Text>
+							</div>
+							<Button
+								type="text"
+								size="small"
+								onClick={() => setImportModal(prev => ({ ...prev, fileList: [] }))}
+								style={{ color: '#ff4d4f' }}>
+								Remove
+							</Button>
+						</div>
+					)}
+				</div>
+			</Modal>
 		</ThemedLayout>
 	);
 };

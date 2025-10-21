@@ -1,21 +1,24 @@
 import React, { useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useSelector, useDispatch } from 'react-redux';
-import { Switch, Tooltip } from 'antd';
-import { SunOutlined, MoonOutlined } from '@ant-design/icons';
+import { Switch, Tooltip, Button } from 'antd';
+import { SunOutlined, MoonOutlined, ArrowLeftOutlined } from '@ant-design/icons';
 import { logoutApi, logout, getUserProfile } from '../redux/auth';
 import { useTheme } from '../contexts/ThemeContext';
+import { useClassMenu } from '../contexts/ClassMenuContext';
 import LanguageToggle from './LanguageToggle';
 import { spaceToast } from './SpaceToastify';
 import './ThemedHeader.css';
 
 export default function ThemedHeader() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { t } = useTranslation();
   const { user, refreshToken, profileData } = useSelector((state) => state.auth);
   const dispatch = useDispatch();
   const { theme, toggleTheme, isSunTheme } = useTheme();
+  const { isInClassMenu, classData } = useClassMenu();
 
   // Fetch user profile data on component mount
   useEffect(() => {
@@ -49,12 +52,98 @@ export default function ThemedHeader() {
     }
   };
 
+  const handleBackToClassList = () => {
+    // Determine route prefix based on user role
+    const userRole = user?.role?.toLowerCase();
+    let routePrefix = '/manager/classes'; // default
+
+    switch (userRole) {
+      case 'manager':
+        routePrefix = '/manager/classes';
+        break;
+      case 'teacher':
+        routePrefix = '/teacher/classes';
+        break;
+      case 'teaching_assistant':
+        routePrefix = '/teaching-assistant/classes';
+        break;
+      default:
+        routePrefix = '/manager/classes';
+    }
+
+    // If currently on class menu, go back to class list; otherwise go to class menu
+    const isOnClassMenu = location.pathname.includes('/menu/');
+    if (isOnClassMenu) {
+      navigate(routePrefix);
+    } else if (classData?.id) {
+      navigate(`${routePrefix}/menu/${classData.id}`);
+    } else {
+      navigate(routePrefix);
+    }
+  };
+
   return (
     <header className={`themed-header ${theme}-header`}>
       <nav className="themed-navbar">
         <div className="themed-navbar-content">
           <div className="themed-navbar-brand">
-          
+            {/* Class Menu Header - Show when in class menu */}
+            {isInClassMenu && classData && (
+              <div className="class-menu-header" style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '16px',
+                padding: '0 20px'
+              }}>
+                <Button
+                  icon={<ArrowLeftOutlined />}
+                  onClick={handleBackToClassList}
+                  className={`class-menu-back-button ${theme}-class-menu-back-button`}
+                  style={{
+                    height: '32px',
+                    borderRadius: '8px',
+                    fontWeight: '500',
+                    fontSize: '14px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    border: '1px solid rgba(0, 0, 0, 0.1)',
+                    background: '#ffffff',
+                    color: '#000000',
+                    backdropFilter: 'blur(10px)',
+                    transition: 'all 0.3s ease'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.target.style.transform = 'translateY(-2px)';
+                    e.target.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.15)';
+                    e.target.style.filter = 'brightness(0.95)';
+                    e.target.style.borderColor = 'rgba(0, 0, 0, 0.2)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.style.transform = 'translateY(0)';
+                    e.target.style.boxShadow = 'none';
+                    e.target.style.filter = 'none';
+                    e.target.style.borderColor = 'rgba(0, 0, 0, 0.1)';
+                  }}
+                >
+                  {t('common.back')}
+                </Button>
+                <div style={{
+                  height: '24px',
+                  width: '1px',
+                  backgroundColor: theme === 'sun' ? 'rgba(30, 64, 175, 0.3)' : 'rgba(255, 255, 255, 0.3)'
+                }} />
+                <h2 style={{
+                  margin: 0,
+                  fontSize: '20px',
+                  fontWeight: '600',
+                  color: theme === 'sun' ? '#1e40af' : '#fff',
+                  textShadow: theme === 'sun' ? '0 0 5px rgba(30, 64, 175, 0.3)' : '0 0 15px rgba(134, 134, 134, 0.8)'
+                }}>
+                  {classData.name}
+                </h2>
+              </div>
+            )}
           </div>
           
           <div className="themed-navbar-actions">
