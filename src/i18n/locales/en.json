@@ -882,7 +882,10 @@
     "exportAll": "Export All Classes",
     "exportError": "Error exporting data",
     "classes": "classes",
-    "selected": "Selected"
+    "selected": "Selected",
+    "startDate": "Start date",
+    "endDate": "End date",
+    "deleteClass": "Delete Class"
   },
   "classMenu": {
     "loadingClassInfo": "Loading class information...",
@@ -898,6 +901,8 @@
     "activitiesDescription": "View class activities and timeline of changes",
     "chaptersLessons": "Chapters & Lessons",
     "chaptersLessonsDescription": "Manage class curriculum, chapters and lessons",
+    "dailyChallenge": "Daily Challenge",
+    "dailyChallengeDescription": "Create and manage daily challenges for students",
     "chapters": "Chapters",
     "chaptersDescription": "Manage class chapters, edit order and content",
     "level": "Level",

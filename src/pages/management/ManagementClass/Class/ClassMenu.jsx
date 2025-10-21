@@ -11,8 +11,10 @@ import {
   SolutionOutlined,
   EyeOutlined,
   BarChartOutlined,
+  TrophyOutlined,
 } from "@ant-design/icons";
-import ThemedLayout from "../../../../component/ThemedLayout";
+import ThemedLayoutWithSidebar from "../../../../component/ThemedLayout";
+import ThemedLayoutNoSidebar from "../../../../component/teacherlayout/ThemedLayout";
 import LoadingWithEffect from "../../../../component/spinner/LoadingWithEffect";
 import "./ClassMenu.css";
 import { useParams, useNavigate } from "react-router-dom";
@@ -31,6 +33,12 @@ const ClassMenu = () => {
   const { user } = useSelector((state) => state.auth);
   const { isSunTheme } = useTheme();
   const { enterClassMenu, exitClassMenu } = useClassMenu();
+  
+  // Determine which layout to use based on user role
+  const userRole = user?.role?.toLowerCase();
+  const ThemedLayout = (userRole === 'teacher' || userRole === 'teaching_assistant') 
+    ? ThemedLayoutNoSidebar 
+    : ThemedLayoutWithSidebar;
   
   // Set page title
   usePageTitle('Class Menu');
@@ -144,6 +152,14 @@ const ClassMenu = () => {
       color: "#722ed1",
     },
     {
+      id: "daily-challenge",
+      title: t('classMenu.dailyChallenge'),
+      description: t('classMenu.dailyChallengeDescription'),
+      icon: <TrophyOutlined style={{ fontSize: '48px', color: '#eb2f96' }} />,
+      path: '/teacher/daily-challenges',
+      color: "#eb2f96",
+    },
+    {
       id: "teachers",
       title: t('classMenu.teachers'),
       description: t('classMenu.teachersDescription'),
@@ -180,7 +196,7 @@ const ClassMenu = () => {
       <div className={`class-menu-container ${isSunTheme ? 'light-theme' : 'dark-theme'}`}>
         {/* Menu Cards */}
         <div className="menu-cards-section">
-          <Row gutter={[24, 24]} justify="center">
+          <Row gutter={[24, 24]} justify="start">
             {menuItems.map((item) => (
               <Col xs={24} sm={12} md={8} lg={6} key={item.id}>
                 <Card

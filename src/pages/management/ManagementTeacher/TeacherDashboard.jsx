@@ -23,7 +23,7 @@ import {
 	SunOutlined,
 	MoonOutlined,
 } from '@ant-design/icons';
-import ThemedLayout from '../../../component/ThemedLayout';
+import ThemedLayout from '../../../component/teacherlayout/ThemedLayout';
 import LoadingWithEffect from '../../../component/spinner/LoadingWithEffect';
 import { useTheme } from '../../../contexts/ThemeContext';
 import { useTranslation } from 'react-i18next';
