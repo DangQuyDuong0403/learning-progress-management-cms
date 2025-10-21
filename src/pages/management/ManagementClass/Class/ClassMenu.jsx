@@ -11,6 +11,7 @@ import {
   SolutionOutlined,
   EyeOutlined,
   BarChartOutlined,
+  TrophyOutlined,
 } from "@ant-design/icons";
 import ThemedLayoutWithSidebar from "../../../../component/ThemedLayout";
 import ThemedLayoutNoSidebar from "../../../../component/teacherlayout/ThemedLayout";
@@ -151,6 +152,14 @@ const ClassMenu = () => {
       color: "#722ed1",
     },
     {
+      id: "daily-challenge",
+      title: t('classMenu.dailyChallenge'),
+      description: t('classMenu.dailyChallengeDescription'),
+      icon: <TrophyOutlined style={{ fontSize: '48px', color: '#eb2f96' }} />,
+      path: '/teacher/daily-challenges',
+      color: "#eb2f96",
+    },
+    {
       id: "teachers",
       title: t('classMenu.teachers'),
       description: t('classMenu.teachersDescription'),
@@ -187,7 +196,7 @@ const ClassMenu = () => {
       <div className={`class-menu-container ${isSunTheme ? 'light-theme' : 'dark-theme'}`}>
         {/* Menu Cards */}
         <div className="menu-cards-section">
-          <Row gutter={[24, 24]} justify="center">
+          <Row gutter={[24, 24]} justify="start">
             {menuItems.map((item) => (
               <Col xs={24} sm={12} md={8} lg={6} key={item.id}>
                 <Card

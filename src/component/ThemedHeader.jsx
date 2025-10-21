@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useSelector, useDispatch } from 'react-redux';
 import { Switch, Tooltip, Button } from 'antd';
-import { SunOutlined, MoonOutlined, ArrowLeftOutlined } from '@ant-design/icons';
+import { SunOutlined, MoonOutlined, ArrowLeftOutlined, SettingOutlined } from '@ant-design/icons';
 import { logoutApi, logout, getUserProfile } from '../redux/auth';
 import { useTheme } from '../contexts/ThemeContext';
 import { useClassMenu } from '../contexts/ClassMenuContext';
@@ -488,10 +488,7 @@ export default function ThemedHeader() {
                         alignItems: 'center', 
                         justifyContent: 'center' 
                       }}>
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <circle cx="12" cy="12" r="3"></circle>
-                          <path d="M12 1v6m0 6v6m5.66-13.66l-4.24 4.24m0 5.66l4.24 4.24M23 12h-6m-6 0H1m19.66 5.66l-4.24-4.24m0-5.66l4.24-4.24"></path>
-                        </svg>
+                        <SettingOutlined style={{ fontSize: '14px' }} />
                       </div>
                       {t('header.settings')}
                     </button>

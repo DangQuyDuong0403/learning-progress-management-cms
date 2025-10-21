@@ -890,6 +890,8 @@
     "activitiesDescription": "View class activities and timeline of changes",
     "chaptersLessons": "Chapters & Lessons",
     "chaptersLessonsDescription": "Manage class curriculum, chapters and lessons",
+    "dailyChallenge": "Daily Challenge",
+    "dailyChallengeDescription": "Create and manage daily challenges for students",
     "chapters": "Chapters",
     "chaptersDescription": "Manage class chapters, edit order and content",
     "level": "Level",
