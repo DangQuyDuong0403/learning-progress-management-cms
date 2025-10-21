@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useSelector, useDispatch } from 'react-redux';
 import { Switch, Tooltip, Button } from 'antd';
-import { SunOutlined, MoonOutlined, ArrowLeftOutlined } from '@ant-design/icons';
+import { SunOutlined, MoonOutlined, ArrowLeftOutlined, SettingOutlined } from '@ant-design/icons';
 import { logoutApi, logout, getUserProfile } from '../redux/auth';
 import { useTheme } from '../contexts/ThemeContext';
 import { useClassMenu } from '../contexts/ClassMenuContext';
@@ -82,11 +82,94 @@ export default function ThemedHeader() {
     }
   };
 
+  const handleBackToDashboard = () => {
+    // Determine dashboard route based on user role
+    const userRole = user?.role?.toLowerCase();
+    let dashboardRoute = '/manager/dashboard'; // default
+
+    switch (userRole) {
+      case 'manager':
+        dashboardRoute = '/manager/dashboard';
+        break;
+      case 'teacher':
+        dashboardRoute = '/teacher/dashboard';
+        break;
+      case 'teaching_assistant':
+        dashboardRoute = '/teaching-assistant/dashboard';
+        break;
+      default:
+        dashboardRoute = '/manager/dashboard';
+    }
+
+    navigate(dashboardRoute);
+  };
+
+  // Check if on teacher/teaching_assistant classes list page
+  const isOnClassesListPage = () => {
+    const userRole = user?.role?.toLowerCase();
+    if (userRole === 'teacher') {
+      return location.pathname === '/teacher/classes';
+    }
+    if (userRole === 'teaching_assistant') {
+      return location.pathname === '/teaching-assistant/classes';
+    }
+    return false;
+  };
+
   return (
     <header className={`themed-header ${theme}-header`}>
       <nav className="themed-navbar">
         <div className="themed-navbar-content">
           <div className="themed-navbar-brand">
+            {/* Back to Dashboard Button - Show when on teacher/teaching_assistant classes list page */}
+            {isOnClassesListPage() && (
+              <div className="class-menu-header" style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '16px',
+                padding: '0 20px'
+              }}>
+                <Button
+                  icon={<ArrowLeftOutlined />}
+                  onClick={handleBackToDashboard}
+                  className={`class-menu-back-button ${theme}-class-menu-back-button`}
+                  style={{
+                    height: '32px',
+                    borderRadius: '8px',
+                    fontWeight: '500',
+                    fontSize: '14px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    border: '1px solid rgba(0, 0, 0, 0.1)',
+                    background: '#ffffff',
+                    color: '#000000',
+                    backdropFilter: 'blur(10px)',
+                    transition: 'all 0.3s ease'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.target.style.transform = 'translateY(-2px)';
+                    e.target.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.15)';
+                    e.target.style.filter = 'brightness(0.95)';
+                    e.target.style.borderColor = 'rgba(0, 0, 0, 0.2)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.style.transform = 'translateY(0)';
+                    e.target.style.boxShadow = 'none';
+                    e.target.style.filter = 'none';
+                    e.target.style.borderColor = 'rgba(0, 0, 0, 0.1)';
+                  }}
+                >
+                  {t('common.back')}
+                </Button>
+                <div style={{
+                  height: '24px',
+                  width: '1px',
+                  backgroundColor: theme === 'sun' ? 'rgba(30, 64, 175, 0.3)' : 'rgba(255, 255, 255, 0.3)'
+                }} />
+              </div>
+            )}
+
             {/* Class Menu Header - Show when in class menu */}
             {isInClassMenu && classData && (
               <div className="class-menu-header" style={{
@@ -379,7 +462,36 @@ export default function ThemedHeader() {
                       {t('header.viewProfile')}
                     </button>
 
-                  
+                    {/* Settings */}
+                    <button 
+                      onClick={() => navigate('/settings')}
+                      style={{
+                        width: '100%',
+                        padding: '10px 16px',
+                        border: 'none',
+                        background: 'none',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '10px',
+                        color: theme === 'sun' ? '#1e40af' : '#fff',
+                        fontSize: '13px',
+                        cursor: 'pointer',
+                        transition: 'background-color 0.2s'
+                      }}
+                      onMouseEnter={(e) => e.target.style.backgroundColor = theme === 'sun' ? 'rgba(30, 64, 175, 0.1)' : 'rgba(77, 208, 255, 0.1)'}
+                      onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
+                    >
+                      <div style={{ 
+                        width: '16px', 
+                        height: '16px', 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        justifyContent: 'center' 
+                      }}>
+                        <SettingOutlined style={{ fontSize: '14px' }} />
+                      </div>
+                      {t('header.settings')}
+                    </button>
 
                     {/* Logout */}
                     <button 

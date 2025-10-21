@@ -4,6 +4,8 @@ import { Menu } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { useSelector } from 'react-redux';
 import { useTheme } from '../contexts/ThemeContext';
+import { OverlayScrollbarsComponent } from 'overlayscrollbars-react';
+import 'overlayscrollbars/overlayscrollbars.css';
 import {
   UserOutlined,
   TeamOutlined,
@@ -13,7 +15,6 @@ import {
   DashboardOutlined,
   TrophyOutlined,
   SecurityScanOutlined,
-  HomeOutlined,
   SolutionOutlined,
   AppstoreOutlined
 } from '@ant-design/icons';
@@ -26,6 +27,8 @@ export default function ThemedSidebar({ collapsed }) {
   const { user } = useSelector((state) => state.auth);
   const { theme } = useTheme();
   const menuRef = useRef(null);
+  const containerRef = useRef(null);
+  const scrollbarRef = useRef(null);
 
   // Map route keys to icons
   const getIcon = (key) => {
@@ -134,50 +137,106 @@ export default function ThemedSidebar({ collapsed }) {
   // Combine route menu items and settings at the end
   const menuItems = [...routeMenuItems, settingsMenuItem];
 
+  // Check if sidebar has scrollable content
+  useEffect(() => {
+    const checkScroll = () => {
+      const sidebarContainer = containerRef.current;
+      
+      if (scrollbarRef.current && sidebarContainer) {
+        const osInstance = scrollbarRef.current.osInstance();
+        if (osInstance) {
+          const state = osInstance.state();
+          const hasScroll = state.hasOverflow.y;
+          
+          if (hasScroll) {
+            sidebarContainer.classList.add('has-scroll');
+          } else {
+            sidebarContainer.classList.remove('has-scroll');
+          }
+        }
+      }
+    };
+
+    // Check on mount and when items change
+    const timer = setTimeout(checkScroll, 100);
+    
+    // Check on window resize
+    window.addEventListener('resize', checkScroll);
+    
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener('resize', checkScroll);
+    };
+  }, [collapsed, user]);
+
   // Auto scroll to selected item when sidebar is expanded
   useEffect(() => {
-    if (!collapsed) {
+    if (!collapsed && scrollbarRef.current) {
       // Use setTimeout to ensure DOM is rendered
       setTimeout(() => {
-        // Find the selected menu item element in the sidebar
-        const selectedElement = document.querySelector('.themed-sidebar-menu .ant-menu-item-selected');
-        const menuContainer = document.querySelector('.themed-sidebar-menu');
-        
-        if (selectedElement && menuContainer) {
-          // Calculate the position to scroll to center the selected item
-          const containerHeight = menuContainer.clientHeight;
-          const itemTop = selectedElement.offsetTop;
-          const itemHeight = selectedElement.offsetHeight;
+        const osInstance = scrollbarRef.current.osInstance();
+        if (osInstance) {
+          const viewport = osInstance.elements().viewport;
+          const selectedElement = viewport.querySelector('.ant-menu-item-selected');
           
-          // Scroll to center the selected item
-          const scrollTop = itemTop - (containerHeight / 2) + (itemHeight / 2);
-          menuContainer.scrollTo({
-            top: Math.max(0, scrollTop),
-            behavior: 'smooth'
-          });
+          if (selectedElement) {
+            // Calculate the position to scroll to center the selected item
+            const containerHeight = viewport.clientHeight;
+            const itemTop = selectedElement.offsetTop;
+            const itemHeight = selectedElement.offsetHeight;
+            
+            // Scroll to center the selected item
+            const scrollTop = itemTop - (containerHeight / 2) + (itemHeight / 2);
+            osInstance.elements().viewport.scrollTo({
+              top: Math.max(0, scrollTop),
+              behavior: 'smooth'
+            });
+          }
         }
-      }, 100);
+      }, 150);
     }
   }, [collapsed, location.pathname]);
 
   return (
-    <div className={`themed-sidebar-container ${theme}-sidebar-container`}>
-      <Menu
-        ref={menuRef}
-        mode="inline"
-        selectedKeys={getSelectedKey()}
-        items={menuItems}
-        onClick={handleMenuClick}
-        onOpenChange={handleMenuOpenChange}
-        style={{
-          border: 'none',
-          background: 'transparent',
-          marginTop: '12px',
-          marginBottom: collapsed ? '48px' : '12px'
+    <div ref={containerRef} className={`themed-sidebar-container ${theme}-sidebar-container`}>
+      <OverlayScrollbarsComponent
+        ref={scrollbarRef}
+        options={{
+          scrollbars: {
+            autoHide: 'leave',
+            autoHideSuspend: false,
+            theme: 'os-theme-custom',
+            visibility: 'auto',
+            pointers: ['mouse', 'touch', 'pen']
+          },
+          overflow: {
+            x: 'hidden',
+            y: 'scroll'
+          }
         }}
-        className={`themed-sidebar-menu ${theme}-sidebar-menu`}
-        inlineCollapsed={collapsed}
-      />
+        style={{
+          height: 'calc(100vh - 120px)',
+          maxHeight: 'calc(72px * 5 + 48px)',
+        }}
+        className={`themed-sidebar-scrollbar ${theme}-sidebar-scrollbar`}
+      >
+        <Menu
+          ref={menuRef}
+          mode="inline"
+          selectedKeys={getSelectedKey()}
+          items={menuItems}
+          onClick={handleMenuClick}
+          onOpenChange={handleMenuOpenChange}
+          style={{
+            border: 'none',
+            background: 'transparent',
+            marginTop: '12px',
+            marginBottom: collapsed ? '48px' : '12px'
+          }}
+          className={`themed-sidebar-menu ${theme}-sidebar-menu`}
+          inlineCollapsed={collapsed}
+        />
+      </OverlayScrollbarsComponent>
       
       
       {/* Background Elements */}

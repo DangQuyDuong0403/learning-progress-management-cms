@@ -868,7 +868,10 @@
     "exportAll": "Xuất tất cả lớp",
     "exportError": "Lỗi khi xuất dữ liệu",
     "classes": "lớp",
-    "selected": "Đã chọn"
+    "selected": "Đã chọn",
+    "startDate": "Ngày bắt đầu",
+    "endDate": "Ngày kết thúc",
+    "deleteClass": "Xóa lớp học"
   },
   "classMenu": {
     "loadingClassInfo": "Đang tải thông tin lớp học...",
@@ -884,6 +887,8 @@
     "activitiesDescription": "Xem các hoạt động của lớp và lịch sử thay đổi",
     "chaptersLessons": "Chương & Bài học",
     "chaptersLessonsDescription": "Quản lý chương trình học, chương và bài học",
+    "dailyChallenge": "Thử thách hàng ngày",
+    "dailyChallengeDescription": "Tạo và quản lý thử thách hàng ngày cho học sinh",
     "chapters": "Chương học",
     "chaptersDescription": "Quản lý các chương học, chỉnh sửa thứ tự và nội dung",
     "level": "Cấp độ",

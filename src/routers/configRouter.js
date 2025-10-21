@@ -58,6 +58,7 @@ import TeacherDashboard from '../pages/management/ManagementTeacher/TeacherDashb
 import AdminDashboard from '../pages/management/managementAdmin/AdminDashboard';
 import ManagerDashboard from '../pages/management/ManagementManager/ManagerDashboard';
 import StudentDashboard from '../pages/management/ManagementStudent/StudentDashboard';
+import StudentClassList from '../pages/management/ManagementStudent/StudentClassList.jsx';
   
 const CONFIG_ROUTER = [
 	//   {
@@ -194,6 +195,18 @@ const CONFIG_ROUTER = [
 		menuName: 'Student Dashboard',
 		exact: true,
 		key: 'STUDENT_DASHBOARD',
+		private: true,
+		role: 'student',
+	},
+	
+	// Student Class List
+	{
+		show: false,
+		component: StudentClassList,
+		path: '/student/classes',
+		menuName: 'My Classes',
+		exact: true,
+		key: 'STUDENT_CLASSES',
 		private: true,
 		role: 'student',
 	},

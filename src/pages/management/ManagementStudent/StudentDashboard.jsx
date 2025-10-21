@@ -9,7 +9,7 @@ import {
   HomeOutlined
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
-import ThemedLayout from '../../../component/ThemedLayout';
+import ThemedLayout from '../../../component/teacherlayout/ThemedLayout';
 import ROUTER_PAGE from '../../../constants/router';
 
 const StudentDashboard = () => {
@@ -55,10 +55,10 @@ const StudentDashboard = () => {
       color: '#1890ff'
     },
     {
-      title: 'Khóa học của tôi',
-      description: 'Xem tiến độ học tập',
+      title: 'Lớp của tôi',
+      description: 'Xem các lớp học đang tham gia',
       icon: <BookOutlined />,
-      action: () => {},
+      action: () => navigate('/student/classes'),
       color: '#52c41a'
     },
     {
