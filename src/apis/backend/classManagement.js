@@ -229,6 +229,12 @@ const classManagementApi = {
 			}
 		});
 	},
+
+	// Upload ảnh avatar cho class - DISABLED until API is ready
+	uploadClassAvatar: (file) => {
+		// TODO: Enable when backend API is ready
+		return Promise.reject(new Error('Image upload API not available yet'));
+	},
 };
 
 export default classManagementApi;

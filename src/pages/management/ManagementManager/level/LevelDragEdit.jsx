@@ -108,18 +108,6 @@ const SortableLevelItem = memo(
 						</Text>
 					</div>
 
-					<div className='level-field level-duration-field'>
-						<Text strong style={{ minWidth: '100px', fontSize: '20px' }}>
-							{t('levelManagement.duration')}:
-						</Text>
-						<Text 
-							className='level-duration-text'
-							style={{ fontSize: '20px' }}
-							title={`${level.estimatedDurationWeeks} weeks`}
-						>
-							{level.estimatedDurationWeeks} weeks
-						</Text>
-					</div>
 				</div>
 
 				<div className='level-actions'>
@@ -158,13 +146,12 @@ const SortableLevelItem = memo(
 	},
 	(prevProps, nextProps) => {
 		// Custom comparison để tránh re-render không cần thiết
-		return (
-			prevProps.level.id === nextProps.level.id &&
-			prevProps.level.levelName === nextProps.level.levelName &&
-			prevProps.level.estimatedDurationWeeks === nextProps.level.estimatedDurationWeeks &&
-			prevProps.level.position === nextProps.level.position &&
-			prevProps.theme === nextProps.theme
-		);
+				return (
+					prevProps.level.id === nextProps.level.id &&
+					prevProps.level.levelName === nextProps.level.levelName &&
+					prevProps.level.position === nextProps.level.position &&
+					prevProps.theme === nextProps.theme
+				);
 	}
 );
 
@@ -262,7 +249,6 @@ const LevelDragEdit = () => {
 				id: level.id,
 				levelName: level.levelName,
 				levelCode: level.levelCode,
-				estimatedDurationWeeks: level.estimatedDurationWeeks,
 				status: level.status, // Use actual status from API
 				orderNumber: level.orderNumber,
 				description: level.description || '',
@@ -496,18 +482,17 @@ const LevelDragEdit = () => {
 				.map((level) => {
 					const isNewRecord = typeof level.id === 'string' && level.id.startsWith('new-');
 					
-					return {
-						id: isNewRecord ? null : level.id, // null for new records
-						levelName: level.levelName,
-						levelCode: level.levelCode,
-						description: level.description || '',
-						promotionCriteria: level.promotionCriteria || '',
-						learningObjectives: level.learningObjectives || '',
-						estimatedDurationWeeks: level.estimatedDurationWeeks || 0,
-						orderNumber: level.position, // Position hiện tại = orderNumber
-						isActive: true, // Đảm bảo tất cả levels đều active
-						toBeDeleted: level.toBeDeleted || false, // Include toBeDeleted flag
-					};
+				return {
+					id: isNewRecord ? null : level.id, // null for new records
+					levelName: level.levelName,
+					levelCode: level.levelCode,
+					description: level.description || '',
+					promotionCriteria: level.promotionCriteria || '',
+					learningObjectives: level.learningObjectives || '',
+					orderNumber: level.position, // Position hiện tại = orderNumber
+					isActive: true, // Đảm bảo tất cả levels đều active
+					toBeDeleted: level.toBeDeleted || false, // Include toBeDeleted flag
+				};
 				})
 				.filter((level) => {
 					// Không gửi các record mới (id: null) mà đã bị xóa (toBeDeleted: true)

@@ -37,17 +37,8 @@ const LevelList = () => {
 	const [loading, setLoading] = useState(false);
 	const [toggleLoading, setToggleLoading] = useState(false);
 	const [isAllPublished, setIsAllPublished] = useState(false); 
-	const [durationDisplayUnit, setDurationDisplayUnit] = useState('weeks');
 	const [totalElements, setTotalElements] = useState(0);
-	const [currentStatus, setCurrentStatus] = useState('');
-	
-	// Cycle through duration units
-	const durationUnits = ['days', 'weeks', 'months', 'years'];
-	const handleDurationUnitClick = () => {
-		const currentIndex = durationUnits.indexOf(durationDisplayUnit);
-		const nextIndex = (currentIndex + 1) % durationUnits.length;
-		setDurationDisplayUnit(durationUnits[nextIndex]);
-	}; 
+	const [currentStatus, setCurrentStatus] = useState(''); 
 	const [levels, setLevels] = useState([]);
 	const [isModalVisible, setIsModalVisible] = useState(false);
 	const [editingLevel, setEditingLevel] = useState(null);
@@ -119,7 +110,6 @@ const LevelList = () => {
 				levelName: level.levelName,
 				levelCode: level.levelCode || 'N/A',
 				prerequisite: level.prerequisite,
-				estimatedDurationWeeks: level.estimatedDurationWeeks,
 				status: level.status,
 				orderNumber: level.orderNumber,
 				createdAt: level.createdAt ? new Date(level.createdAt).toLocaleDateString() : new Date().toLocaleDateString(),
@@ -246,7 +236,6 @@ const LevelList = () => {
 				levelCode: response.data.levelCode,
 				description: response.data.description || '',
 				prerequisite: response.data.prerequisite,
-				estimatedDurationWeeks: response.data.estimatedDurationWeeks,
 				status: response.data.status,
 				orderNumber: response.data.orderNumber,
 				promotionCriteria: response.data.promotionCriteria || '',
@@ -350,39 +339,6 @@ const LevelList = () => {
 		navigate(ROUTER_PAGE.MANAGER_LEVEL_EDIT_POSITIONS);
 	};
 
-	// Convert duration display based on selected unit
-	const formatDuration = (weeks, unit) => {
-		if (!weeks) return '0 weeks';
-		
-		switch (unit) {
-			case 'days':
-				const days = Math.round(weeks * 7 * 100) / 100;
-				return `${days} ${t('levelManagement.days')}`;
-			case 'weeks':
-				return `${weeks} ${t('levelManagement.weeks')}`;
-			case 'months':
-				const months = Math.round(weeks / 4.33 * 100) / 100;
-				return `${months} ${t('levelManagement.months')}`;
-			case 'years':
-				const years = Math.round(weeks / 52 * 100) / 100;
-				return `${years} ${t('levelManagement.years')}`;
-			case 'auto':
-			default:
-				// Auto-detect best unit to display
-				if (weeks >= 52) {
-					const years = Math.round(weeks / 52 * 100) / 100;
-					return `${years} ${t('levelManagement.years')}`;
-				} else if (weeks >= 4.33) {
-					const months = Math.round(weeks / 4.33 * 100) / 100;
-					return `${months} ${t('levelManagement.months')}`;
-				} else if (weeks < 1) {
-					const days = Math.round(weeks * 7 * 100) / 100;
-					return `${days} ${t('levelManagement.days')}`;
-				} else {
-					return `${weeks} ${t('levelManagement.weeks')}`;
-				}
-		}
-	};
 
 
 	const columns = [
@@ -430,32 +386,6 @@ const LevelList = () => {
 				}
 				return prerequisite.levelName || prerequisite;
 			},
-		},
-		{
-			title: (
-				<span
-					onClick={handleDurationUnitClick}
-					style={{
-						cursor: 'pointer',
-						userSelect: 'none',
-						transition: 'color 0.2s ease',
-						fontWeight: '500',
-						whiteSpace: 'nowrap',
-					}}
-					onMouseEnter={(e) => {
-						e.target.style.color = '#1890ff';
-					}}
-					onMouseLeave={(e) => {
-						e.target.style.color = '#000';
-					}}
-				>
-					{t('levelManagement.duration')} ({t(`levelManagement.${durationDisplayUnit}`)})
-				</span>
-			),
-			dataIndex: 'estimatedDurationWeeks',
-			key: 'estimatedDurationWeeks',
-			width: '18%',
-			render: (estimatedDurationWeeks) => formatDuration(estimatedDurationWeeks, durationDisplayUnit),
 		},
 		{
 			title: t('levelManagement.actions'),
