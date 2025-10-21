@@ -1,27 +1,112 @@
 .daily-challenge-list-container {
   padding: 0;
+  margin: 0;
+  border-radius: 0 !important;
+}
+
+/* Main content panel - remove border radius */
+.main-content-panel {
+  border-radius: 0 ;
+}
+
+/* Force override ClassList.css styles for main-content-panel */
+.space-theme .main-content-panel {
+  border-radius: 0 ;
+}
+
+.sun-theme .main-content-panel {
+  border-radius: 0 ;
+}
+
+/* Search and Action Section */
+.search-action-section {
+  background: transparent;
+  border-radius: 0 !important;
+  margin: 0 !important;
+  padding: 20px !important;
+}
+
+/* Override table wrapper styles for full width */
+.table-section {
+  border-radius: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+/* Force override ClassList.css styles for Daily Challenge */
+.space-theme .table-section {
+  background: transparent !important;
+  backdrop-filter: none !important;
+  border-radius: 0 ;
+  border: none !important;
+}
+
+.sun-theme .table-section {
+  background: transparent ;
+  backdrop-filter: none ;
+  border-radius: 0 ;
+}
+
+.table-section .ant-table-wrapper {
+  margin: 0 !important;
+  padding: 0 !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  border-radius: 0 !important;
+}
+
+.table-section .ant-table {
+  margin: 0 !important;
+  padding: 0 !important;
+  border-radius: 0 ;
+}
+
+
+/* Remove border radius from all table cells */
+.table-section .ant-table-thead > tr > th {
+  border-radius: 0 ;
+}
+
+.table-section .ant-table-thead > tr > th:first-child {
+  border-top-left-radius: 0 !important;
+}
+
+.table-section .ant-table-thead > tr > th:last-child {
+  border-top-right-radius: 0 !important;
+}
+
+.table-section .ant-table-tbody > tr > td {
+  border-radius: 0 ;
+}
+
+.table-section .ant-table-tbody > tr:last-child > td:first-child {
+  border-bottom-left-radius: 0 !important;
+}
+
+.table-section .ant-table-tbody > tr:last-child > td:last-child {
+  border-bottom-right-radius: 0 !important;
 }
 
 .header-card {
   margin-bottom: 24px;
-  border-radius: 12px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  border-radius: 0;
+  box-shadow: none;
 }
 
 .filter-card {
   margin-bottom: 24px;
-  border-radius: 12px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  border-radius: 0;
+  box-shadow: none;
 }
 
 .table-card {
-  border-radius: 12px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  border-radius: 0;
+  box-shadow: none;
 }
 
 
 .daily-challenge-table {
-  margin-top: 16px;
+  margin-top: 0;
 }
 
 .daily-challenge-table .challenge-title {
@@ -120,6 +205,107 @@
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
 
+
+/* ===== FILTER BUTTON & DROPDOWN (match AccountList style) ===== */
+.filter-button {
+  height: 40px;
+  border-radius: 8px;
+  font-weight: 500;
+  font-size: 16px;
+  border: 1px solid rgba(77, 208, 255, 0.3);
+  background: rgba(45, 27, 105, 0.8);
+  color: #fff;
+  backdrop-filter: blur(10px);
+  transition: all 0.3s ease;
+}
+
+.filter-button:hover {
+  background: rgba(77, 208, 255, 0.2);
+  border-color: rgba(77, 208, 255, 0.6);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(77, 208, 255, 0.3);
+  filter: brightness(1.1);
+}
+
+.space-theme .filter-button {
+  background: rgb(224 217 255 / 90%);
+  border: 1px solid rgba(77, 208, 255, 0.3);
+  color: #000;
+}
+
+.space-theme .filter-button:hover {
+  background: rgb(224 217 255 / 100%);
+  border-color: rgba(77, 208, 255, 0.6);
+  box-shadow: 0 4px 12px rgba(77, 208, 255, 0.3);
+}
+
+.sun-theme .filter-button {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(0, 0, 0, 0.2);
+  color: #000;
+}
+
+.sun-theme .filter-button:hover {
+  background: rgba(0, 0, 0, 0.1);
+  border-color: rgba(0, 0, 0, 0.3);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.filter-button.active {
+  background: rgba(77, 208, 255, 0.3);
+  border-color: rgba(77, 208, 255, 0.6);
+}
+
+.filter-button.has-filters {
+  background: rgba(24, 144, 255, 0.2);
+  border-color: rgba(24, 144, 255, 0.6);
+  color: #1890ff;
+}
+
+.filter-dropdown-panel {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  z-index: 1000;
+  min-width: 420px;
+  margin-top: 8px;
+}
+
+.space-theme .filter-dropdown-panel {
+  background: rgb(224 217 255 / 90%) !important;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(77, 208, 255, 0.2);
+  box-shadow: 0 8px 32px rgba(77, 208, 255, 0.15);
+  color: #000;
+}
+
+.sun-theme .filter-dropdown-panel {
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+}
+
+.filter-reset-button {
+  height: 36px !important;
+  font-size: 15px !important;
+  font-weight: 500 !important;
+  min-width: 110px !important;
+  border-radius: 8px !important;
+  border: 1px solid #d9d9d9 !important;
+  background: #fff !important;
+  color: #000 !important;
+}
+
+.filter-reset-button:hover {
+  border-color: #40a9ff !important;
+  color: #40a9ff !important;
+  background: #f0f8ff !important;
+}
 
 /* Responsive design */
 @media (max-width: 768px) {

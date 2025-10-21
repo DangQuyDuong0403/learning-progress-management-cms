@@ -463,6 +463,33 @@
 	padding: 40px 0;
 }
 
+/* ===== DELETE BUTTON - TRASH ICON ===== */
+.teacher-table .ant-btn-dangerous .anticon-delete {
+	color: #ff4d4f !important;
+}
+
+.teacher-table .ant-btn-dangerous:hover .anticon-delete {
+	color: #ff1744 !important;
+}
+
+/* Space theme delete button */
+.space-theme .teacher-table .ant-btn-dangerous .anticon-delete {
+	color: #ff4d4f !important;
+}
+
+.space-theme .teacher-table .ant-btn-dangerous:hover .anticon-delete {
+	color: #ff1744 !important;
+}
+
+/* Sun theme delete button */
+.sun-theme .teacher-table .ant-btn-dangerous .anticon-delete {
+	color: #ff4d4f !important;
+}
+
+.sun-theme .teacher-table .ant-btn-dangerous:hover .anticon-delete {
+	color: #ff1744 !important;
+}
+
 /* ===== ACTION BUTTON ICONS ===== */
 .teacher-table .ant-btn .anticon {
 	color: #000;

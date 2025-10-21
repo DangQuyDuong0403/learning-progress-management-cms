@@ -1177,22 +1177,22 @@ const StudentProfile = () => {
 					{/* Credentials Display */}
 					{studentCredentials && (
 						<div style={{
-							backgroundColor: '#f6f8fa',
-							border: '1px solid #e1e4e8',
-							borderRadius: '8px',
-							padding: '20px',
+							backgroundColor: '#ffffff',
+							border: '2px solid #d9d9d9',
+							borderRadius: '24px',
+							padding: '30px 20px',
 							marginBottom: '20px'
 						}}>
 							<div style={{
 								display: 'flex',
 								alignItems: 'center',
 								justifyContent: 'center',
-								marginBottom: '16px',
+								marginBottom: '24px',
 								position: 'relative'
 							}}>
 								<h4 style={{
-									fontSize: '16px',
-									fontWeight: '600',
+									fontSize: '20px',
+									fontWeight: '700',
 									color: '#000000',
 									margin: 0,
 									textAlign: 'center'
@@ -1206,8 +1206,8 @@ const StudentProfile = () => {
 									style={{
 										position: 'absolute',
 										right: '0',
-										color: '#1890ff',
-										fontSize: '16px',
+										color: '#000000',
+										fontSize: '18px',
 										padding: '4px 8px',
 										height: 'auto'
 									}}
@@ -1216,77 +1216,64 @@ const StudentProfile = () => {
 							</div>
 							
 							{/* Username */}
-							<div style={{ marginBottom: '12px' }}>
-								<label style={{
-									fontSize: '14px',
-									fontWeight: '500',
-									color: '#666',
-									display: 'block',
-									marginBottom: '4px'
-								}}>
-									{t('login.username')}:
-								</label>
-								<div style={{
-									backgroundColor: '#ffffff',
-									border: '1px solid #d9d9d9',
-									borderRadius: '4px',
-									padding: '8px 12px',
-									fontSize: '16px',
-									fontWeight: '600',
-									color: '#000000'
-								}}>
-									{studentCredentials.username || studentCredentials.userName || '-'}
+							<div style={{ marginBottom: '16px' }}>
+								<div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+									<label style={{
+										color: '#000000',
+										fontWeight: 500,
+										fontSize: '16px',
+										marginBottom: '8px',
+										width: '90%',
+										textAlign: 'left'
+									}}>
+										{t('login.username')}
+									</label>
+									<div style={{
+										borderRadius: '50px',
+										background: '#ffffff',
+										border: '2px solid #999999',
+										color: '#000000',
+										fontSize: '16px',
+										width: '90%',
+										height: '44px',
+										padding: '0 20px',
+										display: 'flex',
+										alignItems: 'center'
+									}}>
+										{studentCredentials.username || studentCredentials.userName || '-'}
+									</div>
 								</div>
 							</div>
 
 							{/* Password */}
-							<div style={{ marginBottom: '12px' }}>
-								<label style={{
-									fontSize: '14px',
-									fontWeight: '500',
-									color: '#666',
-									display: 'block',
-									marginBottom: '4px'
-								}}>
-									{t('login.password')}:
-								</label>
-								<div style={{
-									backgroundColor: '#ffffff',
-									border: '1px solid #d9d9d9',
-									borderRadius: '4px',
-									padding: '8px 12px',
-									fontSize: '16px',
-									fontWeight: '600',
-									color: '#000000'
-								}}>
-									{studentCredentials.newPassword || studentCredentials.password || '-'}
-								</div>
-							</div>
-
-							{/* Additional Info */}
-							{studentCredentials.email && (
-								<div style={{ marginBottom: '12px' }}>
+							<div style={{ marginBottom: '16px' }}>
+								<div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
 									<label style={{
-										fontSize: '14px',
-										fontWeight: '500',
-										color: '#666',
-										display: 'block',
-										marginBottom: '4px'
+										color: '#000000',
+										fontWeight: 500,
+										fontSize: '16px',
+										marginBottom: '8px',
+										width: '90%',
+										textAlign: 'left'
 									}}>
-										{t('common.email')}:
+										{t('login.password')}
 									</label>
 									<div style={{
-										backgroundColor: '#ffffff',
-										border: '1px solid #d9d9d9',
-										borderRadius: '4px',
-										padding: '8px 12px',
-										fontSize: '14px',
-										color: '#000000'
+										borderRadius: '50px',
+										background: '#ffffff',
+										border: '2px solid #999999',
+										color: '#000000',
+										fontSize: '16px',
+										width: '90%',
+										height: '44px',
+										padding: '0 20px',
+										display: 'flex',
+										alignItems: 'center'
 									}}>
-										{studentCredentials.email}
+										{studentCredentials.newPassword || studentCredentials.password || '-'}
 									</div>
 								</div>
-							)}
+							</div>
 						</div>
 					)}
 
