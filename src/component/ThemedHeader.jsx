@@ -139,53 +139,117 @@ export default function ThemedHeader() {
     return false;
   };
 
+  // Check if on Settings or Profile page for specific roles that need back button
+  const isOnSettingsOrProfilePageWithBackButton = () => {
+    // Role từ Redux được lưu là chữ hoa: TEACHER, TEACHING_ASSISTANT, STUDENT, TEST_TAKER
+    const userRole = user?.role;
+    const shouldShowBack = ['TEACHER', 'TEACHING_ASSISTANT', 'STUDENT', 'TEST_TAKER'].includes(userRole);
+    const isOnTargetPage = location.pathname === '/settings' || location.pathname === '/profile';
+    return isOnTargetPage && shouldShowBack;
+  };
+
+  // Handle back button for Settings/Profile page
+  const handleBackFromSettingsOrProfile = () => {
+    const userRole = user?.role?.toLowerCase();
+    let dashboardRoute = '/manager/dashboard'; // default
+
+    switch (userRole) {
+      case 'teacher':
+        dashboardRoute = '/teacher/dashboard';
+        break;
+      case 'teaching_assistant':
+        dashboardRoute = '/teaching-assistant/dashboard';
+        break;
+      case 'student':
+        dashboardRoute = '/student/dashboard';
+        break;
+      case 'test_taker':
+        dashboardRoute = '/test-taker/dashboard';
+        break;
+      default:
+        dashboardRoute = '/manager/dashboard';
+    }
+
+    navigate(dashboardRoute);
+  };
+
   return (
     <header className={`themed-header ${theme}-header`}>
       <nav className="themed-navbar">
         <div className="themed-navbar-content">
           <div className="themed-navbar-brand">
+            {/* Back to Dashboard Button - Show when on Settings or Profile page for specific roles */}
+            {isOnSettingsOrProfilePageWithBackButton() && (
+              <Button
+                icon={<ArrowLeftOutlined />}
+                onClick={handleBackFromSettingsOrProfile}
+                className={`settings-profile-back-button ${theme}-settings-profile-back-button`}
+                style={{
+                  height: '32px',
+                  borderRadius: '8px',
+                  fontWeight: '500',
+                  fontSize: '14px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  border: '1px solid rgba(0, 0, 0, 0.1)',
+                  background: '#ffffff',
+                  color: '#000000',
+                  backdropFilter: 'blur(10px)',
+                  transition: 'all 0.3s ease'
+                }}
+                onMouseEnter={(e) => {
+                  e.target.style.transform = 'translateY(-2px)';
+                  e.target.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.15)';
+                  e.target.style.filter = 'brightness(0.95)';
+                  e.target.style.borderColor = 'rgba(0, 0, 0, 0.2)';
+                }}
+                onMouseLeave={(e) => {
+                  e.target.style.transform = 'translateY(0)';
+                  e.target.style.boxShadow = 'none';
+                  e.target.style.filter = 'none';
+                  e.target.style.borderColor = 'rgba(0, 0, 0, 0.1)';
+                }}
+              >
+                {t('common.back')}
+              </Button>
+            )}
+
             {/* Back to Dashboard Button - Show when on teacher/teaching_assistant classes list page or daily challenges page */}
             {isOnClassesListPage() && (
-              <div className="class-menu-header" style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '16px',
-                padding: '0 20px'
-              }}>
-                <Button
-                  icon={<ArrowLeftOutlined />}
-                  onClick={handleBackButtonClick}
-                  className={`class-menu-back-button ${theme}-class-menu-back-button`}
-                  style={{
-                    height: '32px',
-                    borderRadius: '8px',
-                    fontWeight: '500',
-                    fontSize: '14px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                    border: '1px solid rgba(0, 0, 0, 0.1)',
-                    background: '#ffffff',
-                    color: '#000000',
-                    backdropFilter: 'blur(10px)',
-                    transition: 'all 0.3s ease'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.target.style.transform = 'translateY(-2px)';
-                    e.target.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.15)';
-                    e.target.style.filter = 'brightness(0.95)';
-                    e.target.style.borderColor = 'rgba(0, 0, 0, 0.2)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.target.style.transform = 'translateY(0)';
-                    e.target.style.boxShadow = 'none';
-                    e.target.style.filter = 'none';
-                    e.target.style.borderColor = 'rgba(0, 0, 0, 0.1)';
-                  }}
-                >
-                  {t('common.back')}
-                </Button>
-              </div>
+              <Button
+                icon={<ArrowLeftOutlined />}
+                onClick={handleBackButtonClick}
+                className={`class-menu-back-button ${theme}-class-menu-back-button`}
+                style={{
+                  height: '32px',
+                  borderRadius: '8px',
+                  fontWeight: '500',
+                  fontSize: '14px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  border: '1px solid rgba(0, 0, 0, 0.1)',
+                  background: '#ffffff',
+                  color: '#000000',
+                  backdropFilter: 'blur(10px)',
+                  transition: 'all 0.3s ease'
+                }}
+                onMouseEnter={(e) => {
+                  e.target.style.transform = 'translateY(-2px)';
+                  e.target.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.15)';
+                  e.target.style.filter = 'brightness(0.95)';
+                  e.target.style.borderColor = 'rgba(0, 0, 0, 0.2)';
+                }}
+                onMouseLeave={(e) => {
+                  e.target.style.transform = 'translateY(0)';
+                  e.target.style.boxShadow = 'none';
+                  e.target.style.filter = 'none';
+                  e.target.style.borderColor = 'rgba(0, 0, 0, 0.1)';
+                }}
+              >
+                {t('common.back')}
+              </Button>
             )}
 
             {/* Class Menu Header - Show when in class menu */}
@@ -433,7 +497,9 @@ export default function ThemedHeader() {
                   {user?.role === 'ADMIN' ? 'Admin' : 
                    user?.role === 'MANAGER' ? 'Manager' : 
                    user?.role === 'TEACHER' ? 'Teacher' :
-                   user?.role === 'TEACHER_ASSITANTS' ? 'Teacher' :  
+                   user?.role === 'TEACHING_ASSISTANTS' ? 'Teaching Assistant' :
+                   user?.role === 'STUDENT' ? 'Student' :
+                   user?.role === 'TEST_TAKER' ? 'Test Taker' :  
                    'User'}
                 </span>
               </li>
