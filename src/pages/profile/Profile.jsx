@@ -6,7 +6,8 @@ import { Typography } from 'antd';
 import { EditOutlined } from '@ant-design/icons';
 import usePageTitle from '../../hooks/usePageTitle';
 import './Profile.css';
-import ThemedLayout from '../../component/ThemedLayout';
+import ThemedLayoutWithSidebar from '../../component/ThemedLayout';
+import ThemedLayoutNoSidebar from '../../component/teacherlayout/ThemedLayout';
 import { useTheme } from '../../contexts/ThemeContext';
 import { getUserProfile, uploadAvatar } from '../../redux/auth';
 import TableSpinner from '../../component/spinner/TableSpinner';
@@ -18,6 +19,12 @@ export default function Profile() {
   const { t } = useTranslation();
   const { user, profileData, profileLoading, profileError, uploadAvatarLoading, uploadAvatarError, uploadAvatarSuccess, confirmEmailChangeSuccess } = useSelector((state) => state.auth);
   const { theme } = useTheme();
+  
+  // Determine which layout to use based on user role
+  // Role từ Redux được lưu là chữ hoa: TEACHER, TEACHING_ASSISTANT, STUDENT, TEST_TAKER
+  const userRole = user?.role;
+  const shouldUseTeacherLayout = ['TEACHER', 'TEACHING_ASSISTANT', 'STUDENT', 'TEST_TAKER'].includes(userRole);
+  const ThemedLayout = shouldUseTeacherLayout ? ThemedLayoutNoSidebar : ThemedLayoutWithSidebar;
   
   // Set page title
   usePageTitle('Profile');

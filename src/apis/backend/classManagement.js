@@ -1,7 +1,7 @@
 import axiosClient from '../index.js';
 
 const classManagementApi = {
-	// Lấy danh sách classes với phân trang và search
+	// Lấy danh sách classes với phân trang, search, filter và sort
 	getClasses: (params) => {
 		const queryParams = new URLSearchParams();
 		
@@ -10,6 +10,24 @@ const classManagementApi = {
 		if (params.size !== undefined) queryParams.append('size', params.size);
 		if (params.searchText && params.searchText.trim()) {
 			queryParams.append('searchText', params.searchText.trim());
+		}
+		if (params.status && params.status !== 'all') {
+			queryParams.append('status', params.status);
+		}
+		if (params.syllabusId) {
+			queryParams.append('syllabusId', params.syllabusId);
+		}
+		if (params.startDateFrom) {
+			queryParams.append('startDateFrom', params.startDateFrom);
+		}
+		if (params.startDateTo) {
+			queryParams.append('startDateTo', params.startDateTo);
+		}
+		if (params.endDateFrom) {
+			queryParams.append('endDateFrom', params.endDateFrom);
+		}
+		if (params.endDateTo) {
+			queryParams.append('endDateTo', params.endDateTo);
 		}
 		if (params.include) {
 			queryParams.append('include', params.include);

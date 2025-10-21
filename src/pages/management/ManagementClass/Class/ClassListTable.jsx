@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Table, Button, Space, Modal, Input, Tooltip, Typography, Switch, Upload, Form, Select, Checkbox } from 'antd';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { Table, Button, Space, Modal, Input, Tooltip, Typography, Switch, Upload, Form, Select, Checkbox, DatePicker } from 'antd';
 import {
 	PlusOutlined,
 	SearchOutlined,
@@ -8,6 +8,7 @@ import {
 	UploadOutlined,
 	EditOutlined,
 	DeleteOutlined,
+	FilterOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -20,6 +21,7 @@ import { useClassMenu } from '../../../../contexts/ClassMenuContext';
 import { spaceToast } from '../../../../component/SpaceToastify';
 import { classManagementApi, syllabusManagementApi } from '../../../../apis/apis';
 import BottomActionBar from '../../../../component/BottomActionBar';
+import dayjs from 'dayjs';
 
 const { Title } = Typography;
 const { Option } = Select;
@@ -51,6 +53,14 @@ const ClassListTable = () => {
 	const [searchText, setSearchText] = useState("");
 	const [searchTimeout, setSearchTimeout] = useState(null);
 	
+	// Filter states
+	const [statusFilter, setStatusFilter] = useState("all");
+	const [syllabusFilter, setSyllabusFilter] = useState(null);
+	const [startDateFrom, setStartDateFrom] = useState(null);
+	const [startDateTo, setStartDateTo] = useState(null);
+	const [endDateFrom, setEndDateFrom] = useState(null);
+	const [endDateTo, setEndDateTo] = useState(null);
+	
 	// Sort state - start with createdAt DESC (newest first)
 	const [sortBy, setSortBy] = useState("createdAt");
 	const [sortDir, setSortDir] = useState("desc");
@@ -72,15 +82,34 @@ const ClassListTable = () => {
 		uploading: false
 	});
 	
+	// Loading states
+	const [isSubmitting, setIsSubmitting] = useState(false);
+	const [actionLoading, setActionLoading] = useState({
+		delete: null,
+		toggle: null,
+	});
+	
 	// Syllabus data for form
 	const [syllabuses, setSyllabuses] = useState([]);
 	const [syllabusLoading, setSyllabusLoading] = useState(false);
 	
 	// Selected rows for bulk operations
 	const [selectedRowKeys, setSelectedRowKeys] = useState([]);
+	
+	// Filter dropdown state
+	const [filterDropdown, setFilterDropdown] = useState({
+		visible: false,
+		selectedStatus: 'all',
+		selectedSyllabus: null,
+		selectedStartDateRange: null,
+		selectedEndDateRange: null,
+	});
+	
+	// Refs for click outside detection
+	const filterContainerRef = useRef(null);
 
 	// Fetch classes from API
-	const fetchClasses = useCallback(async (page = 1, size = 10, search = '', sortField = 'createdAt', sortDirection = 'desc') => {
+	const fetchClasses = useCallback(async (page = 1, size = 10, search = '', sortField = 'createdAt', sortDirection = 'desc', filters = {}) => {
 		setLoading(true);
 		try {
 			const params = {
@@ -97,6 +126,26 @@ const ClassListTable = () => {
 			// Add search parameter if provided
 			if (search && search.trim()) {
 				params.searchText = search.trim();
+			}
+
+			// Add filter parameters
+			if (filters.status && filters.status !== 'all') {
+				params.status = filters.status;
+			}
+			if (filters.syllabusId) {
+				params.syllabusId = filters.syllabusId;
+			}
+			if (filters.startDateFrom) {
+				params.startDateFrom = filters.startDateFrom;
+			}
+			if (filters.startDateTo) {
+				params.startDateTo = filters.startDateTo;
+			}
+			if (filters.endDateFrom) {
+				params.endDateFrom = filters.endDateFrom;
+			}
+			if (filters.endDateTo) {
+				params.endDateTo = filters.endDateTo;
 			}
 
 			console.log('Fetching classes with params:', params);
@@ -123,6 +172,8 @@ const ClassListTable = () => {
 						createdAt: classItem.createdAt,
 						updatedAt: classItem.updatedAt,
 						avatarUrl: classItem.avatarUrl,
+						startDate: classItem.startDate,
+						endDate: classItem.endDate,
 					};
 				});
 
@@ -167,8 +218,16 @@ const ClassListTable = () => {
 	}, [fetchSyllabuses]);
 
 	useEffect(() => {
-		fetchClasses(1, pagination.pageSize, searchText, sortBy, sortDir);
-	}, [fetchClasses, pagination.pageSize, searchText, sortBy, sortDir]);
+		const filters = {
+			status: statusFilter,
+			syllabusId: syllabusFilter,
+			startDateFrom,
+			startDateTo,
+			endDateFrom,
+			endDateTo,
+		};
+		fetchClasses(1, pagination.pageSize, searchText, sortBy, sortDir, filters);
+	}, [fetchClasses, pagination.pageSize, searchText, sortBy, sortDir, statusFilter, syllabusFilter, startDateFrom, startDateTo, endDateFrom, endDateTo]);
 
 	// Cleanup timeout on unmount
 	useEffect(() => {
@@ -178,6 +237,31 @@ const ClassListTable = () => {
 			}
 		};
 	}, [searchTimeout]);
+
+	// Handle click outside to close filter dropdown
+	useEffect(() => {
+		const handleClickOutside = (event) => {
+			if (filterDropdown.visible && filterContainerRef.current) {
+				// Check if click is outside the filter container
+				if (!filterContainerRef.current.contains(event.target)) {
+					setFilterDropdown(prev => ({
+						...prev,
+						visible: false,
+					}));
+				}
+			}
+		};
+
+		// Add event listener when dropdown is visible
+		if (filterDropdown.visible) {
+			document.addEventListener('mousedown', handleClickOutside);
+		}
+
+		// Cleanup event listener
+		return () => {
+			document.removeEventListener('mousedown', handleClickOutside);
+		};
+	}, [filterDropdown.visible]);
 
 	const handleSearch = (value) => {
 		setSearchText(value);
@@ -190,7 +274,15 @@ const ClassListTable = () => {
 		// Set new timeout for 1 second delay
 		const newTimeout = setTimeout(() => {
 			// Reset to first page when searching
-			fetchClasses(1, pagination.pageSize, value, sortBy, sortDir);
+			const filters = {
+				status: statusFilter,
+				syllabusId: syllabusFilter,
+				startDateFrom,
+				startDateTo,
+				endDateFrom,
+				endDateTo,
+			};
+			fetchClasses(1, pagination.pageSize, value, sortBy, sortDir, filters);
 		}, 1000);
 		
 		setSearchTimeout(newTimeout);
@@ -203,7 +295,16 @@ const ClassListTable = () => {
 		setSortBy(newSortBy);
 		setSortDir(newSortDir);
 		
-		fetchClasses(pagination.current, pagination.pageSize, searchText, newSortBy, newSortDir);
+		const currentFilters = {
+			status: statusFilter,
+			syllabusId: syllabusFilter,
+			startDateFrom,
+			startDateTo,
+			endDateFrom,
+			endDateTo,
+		};
+		
+		fetchClasses(pagination.current, pagination.pageSize, searchText, newSortBy, newSortDir, currentFilters);
 	};
 
 	const handleAdd = () => {
@@ -217,13 +318,24 @@ const ClassListTable = () => {
 			title: t('classManagement.confirmDelete'),
 			content: t('classManagement.deleteClassMessage', { className: record.name }),
 			onConfirm: async () => {
+				setActionLoading(prev => ({ ...prev, delete: record.id }));
 				try {
 					await classManagementApi.deleteClass(record.id);
 					spaceToast.success(t('classManagement.classDeletedSuccess', { className: record.name }));
-					fetchClasses(pagination.current, pagination.pageSize, searchText, sortBy, sortDir);
+					const filters = {
+						status: statusFilter,
+						syllabusId: syllabusFilter,
+						startDateFrom,
+						startDateTo,
+						endDateFrom,
+						endDateTo,
+					};
+					fetchClasses(pagination.current, pagination.pageSize, searchText, sortBy, sortDir, filters);
 				} catch (error) {
 					console.error('Error deleting class:', error);
 					spaceToast.error(error.response?.data?.message || error.message || 'Failed to delete class');
+				} finally {
+					setActionLoading(prev => ({ ...prev, delete: null }));
 				}
 			}
 		});
@@ -239,21 +351,33 @@ const ClassListTable = () => {
 				? t('classManagement.activateClassMessage', { className: record.name })
 				: t('classManagement.deactivateClassMessage', { className: record.name }),
 			onConfirm: async () => {
+				setActionLoading(prev => ({ ...prev, toggle: record.id }));
 				try {
 					await classManagementApi.toggleClassStatus(record.id, newStatus);
 					spaceToast.success(newStatus === 'active' 
 						? t('classManagement.classActivatedSuccess', { className: record.name })
 						: t('classManagement.classDeactivatedSuccess', { className: record.name }));
-					fetchClasses(pagination.current, pagination.pageSize, searchText, sortBy, sortDir);
+					const filters = {
+						status: statusFilter,
+						syllabusId: syllabusFilter,
+						startDateFrom,
+						startDateTo,
+						endDateFrom,
+						endDateTo,
+					};
+					fetchClasses(pagination.current, pagination.pageSize, searchText, sortBy, sortDir, filters);
 				} catch (error) {
 					console.error('Error updating class status:', error);
 					spaceToast.error('Failed to update class status');
+				} finally {
+					setActionLoading(prev => ({ ...prev, toggle: null }));
 				}
 			}
 		});
 	};
 
 	const handleModalOk = async () => {
+		setIsSubmitting(true);
 		try {
 			const values = await form.validateFields();
 
@@ -262,12 +386,22 @@ const ClassListTable = () => {
 				const updateData = {
 					className: values.name,
 					avatarUrl: "string", // Default as per API requirements
+					startDate: values.startDate ? values.startDate.format('YYYY-MM-DD') : null,
+					endDate: values.endDate ? values.endDate.format('YYYY-MM-DD') : null,
 				};
 				
 				await classManagementApi.updateClass(editingClass.id, updateData);
 				
 				// Refresh the list
-				fetchClasses(pagination.current, pagination.pageSize, searchText, sortBy, sortDir);
+				const filters = {
+					status: statusFilter,
+					syllabusId: syllabusFilter,
+					startDateFrom,
+					startDateTo,
+					endDateFrom,
+					endDateTo,
+				};
+				fetchClasses(pagination.current, pagination.pageSize, searchText, sortBy, sortDir, filters);
 				spaceToast.success(t('classManagement.classUpdatedSuccess'));
 			} else {
 				// Add new class
@@ -275,12 +409,22 @@ const ClassListTable = () => {
 					className: values.name,
 					syllabusId: values.syllabusId,
 					avatarUrl: "string", // Default as per API requirements
+					startDate: values.startDate ? values.startDate.format('YYYY-MM-DD') : null,
+					endDate: values.endDate ? values.endDate.format('YYYY-MM-DD') : null,
 				};
 				
 				await classManagementApi.createClass(newClassData);
 				
 				// Refresh the list
-				fetchClasses(1, pagination.pageSize, searchText, sortBy, sortDir);
+				const filters = {
+					status: statusFilter,
+					syllabusId: syllabusFilter,
+					startDateFrom,
+					startDateTo,
+					endDateFrom,
+					endDateTo,
+				};
+				fetchClasses(1, pagination.pageSize, searchText, sortBy, sortDir, filters);
 				spaceToast.success(t('classManagement.classCreatedSuccess'));
 			}
 
@@ -289,6 +433,8 @@ const ClassListTable = () => {
 		} catch (error) {
 			console.error('Error saving class:', error);
 			spaceToast.error(error.response?.data?.message || error.message || 'Failed to save class. Please try again.');
+		} finally {
+			setIsSubmitting(false);
 		}
 	};
 
@@ -302,6 +448,8 @@ const ClassListTable = () => {
 		
 		form.setFieldsValue({
 			name: record.name,
+			startDate: record.startDate ? dayjs(record.startDate) : null,
+			endDate: record.endDate ? dayjs(record.endDate) : null,
 		});
 		
 		setIsModalVisible(true);
@@ -342,7 +490,15 @@ const ClassListTable = () => {
 			}));
 			
 			// Refresh the data
-			fetchClasses(pagination.current, pagination.pageSize, searchText, sortBy, sortDir);
+			const filters = {
+				status: statusFilter,
+				syllabusId: syllabusFilter,
+				startDateFrom,
+				startDateTo,
+				endDateFrom,
+				endDateTo,
+			};
+			fetchClasses(pagination.current, pagination.pageSize, searchText, sortBy, sortDir, filters);
 		} catch (error) {
 			console.error('Import error:', error);
 			spaceToast.error('Failed to import classes');
@@ -441,6 +597,26 @@ const ClassListTable = () => {
 					params.searchText = searchText.trim();
 				}
 
+				// Add filter parameters
+				if (statusFilter && statusFilter !== 'all') {
+					params.status = statusFilter;
+				}
+				if (syllabusFilter) {
+					params.syllabusId = syllabusFilter;
+				}
+				if (startDateFrom) {
+					params.startDateFrom = startDateFrom;
+				}
+				if (startDateTo) {
+					params.startDateTo = startDateTo;
+				}
+				if (endDateFrom) {
+					params.endDateFrom = endDateFrom;
+				}
+				if (endDateTo) {
+					params.endDateTo = endDateTo;
+				}
+
 				const response = await classManagementApi.getClasses(params);
 
 				// Get all IDs from the response
@@ -463,6 +639,77 @@ const ClassListTable = () => {
 		}
 	};
 
+	// Handle filter dropdown toggle
+	const handleFilterToggle = () => {
+		setFilterDropdown(prev => ({
+			...prev,
+			visible: !prev.visible,
+			selectedStatus: prev.visible ? prev.selectedStatus : statusFilter,
+			selectedSyllabus: prev.visible ? prev.selectedSyllabus : syllabusFilter,
+			selectedStartDateRange: prev.visible ? prev.selectedStartDateRange : (startDateFrom && startDateTo ? [startDateFrom, startDateTo] : null),
+			selectedEndDateRange: prev.visible ? prev.selectedEndDateRange : (endDateFrom && endDateTo ? [endDateFrom, endDateTo] : null),
+		}));
+	};
+
+	// Handle filter submission
+	const handleFilterSubmit = () => {
+		setStatusFilter(filterDropdown.selectedStatus);
+		setSyllabusFilter(filterDropdown.selectedSyllabus);
+		
+		// Handle start date range
+		if (filterDropdown.selectedStartDateRange && filterDropdown.selectedStartDateRange[0] && filterDropdown.selectedStartDateRange[1]) {
+			setStartDateFrom(filterDropdown.selectedStartDateRange[0]);
+			setStartDateTo(filterDropdown.selectedStartDateRange[1]);
+		} else {
+			setStartDateFrom(null);
+			setStartDateTo(null);
+		}
+		
+		// Handle end date range
+		if (filterDropdown.selectedEndDateRange && filterDropdown.selectedEndDateRange[0] && filterDropdown.selectedEndDateRange[1]) {
+			setEndDateFrom(filterDropdown.selectedEndDateRange[0]);
+			setEndDateTo(filterDropdown.selectedEndDateRange[1]);
+		} else {
+			setEndDateFrom(null);
+			setEndDateTo(null);
+		}
+		
+		setFilterDropdown(prev => ({
+			...prev,
+			visible: false,
+		}));
+		
+		// Clear selected rows when applying filters
+		setSelectedRowKeys([]);
+		// Reset to first page when applying filters
+		setPagination(prev => ({
+			...prev,
+			current: 1,
+		}));
+		
+		const filters = {
+			status: filterDropdown.selectedStatus,
+			syllabusId: filterDropdown.selectedSyllabus,
+			startDateFrom: filterDropdown.selectedStartDateRange && filterDropdown.selectedStartDateRange[0] ? filterDropdown.selectedStartDateRange[0] : null,
+			startDateTo: filterDropdown.selectedStartDateRange && filterDropdown.selectedStartDateRange[1] ? filterDropdown.selectedStartDateRange[1] : null,
+			endDateFrom: filterDropdown.selectedEndDateRange && filterDropdown.selectedEndDateRange[0] ? filterDropdown.selectedEndDateRange[0] : null,
+			endDateTo: filterDropdown.selectedEndDateRange && filterDropdown.selectedEndDateRange[1] ? filterDropdown.selectedEndDateRange[1] : null,
+		};
+		
+		fetchClasses(1, pagination.pageSize, searchText, sortBy, sortDir, filters);
+	};
+
+	// Handle filter reset
+	const handleFilterReset = () => {
+		setFilterDropdown(prev => ({
+			...prev,
+			selectedStatus: 'all',
+			selectedSyllabus: null,
+			selectedStartDateRange: null,
+			selectedEndDateRange: null,
+		}));
+	};
+
 	// Bulk operations
 	const handleActivateAll = async () => {
 		if (selectedRowKeys.length === 0) {
@@ -481,7 +728,15 @@ const ClassListTable = () => {
 					
 					setSelectedRowKeys([]);
 					spaceToast.success(t('classManagement.allClassesActivatedSuccess'));
-					fetchClasses(pagination.current, pagination.pageSize, searchText, sortBy, sortDir);
+					const filters = {
+						status: statusFilter,
+						syllabusId: syllabusFilter,
+						startDateFrom,
+						startDateTo,
+						endDateFrom,
+						endDateTo,
+					};
+					fetchClasses(pagination.current, pagination.pageSize, searchText, sortBy, sortDir, filters);
 				} catch (error) {
 					console.error('Error activating all classes:', error);
 					spaceToast.error('Failed to activate all classes');
@@ -507,7 +762,15 @@ const ClassListTable = () => {
 					
 					setSelectedRowKeys([]);
 					spaceToast.success(t('classManagement.allClassesDeactivatedSuccess'));
-					fetchClasses(pagination.current, pagination.pageSize, searchText, sortBy, sortDir);
+					const filters = {
+						status: statusFilter,
+						syllabusId: syllabusFilter,
+						startDateFrom,
+						startDateTo,
+						endDateFrom,
+						endDateTo,
+					};
+					fetchClasses(pagination.current, pagination.pageSize, searchText, sortBy, sortDir, filters);
 				} catch (error) {
 					console.error('Error deactivating all classes:', error);
 					spaceToast.error('Failed to deactivate all classes');
@@ -533,7 +796,15 @@ const ClassListTable = () => {
 					
 					setSelectedRowKeys([]);
 					spaceToast.success(t('classManagement.allClassesDeletedSuccess'));
-					fetchClasses(pagination.current, pagination.pageSize, searchText, sortBy, sortDir);
+					const filters = {
+						status: statusFilter,
+						syllabusId: syllabusFilter,
+						startDateFrom,
+						startDateTo,
+						endDateFrom,
+						endDateTo,
+					};
+					fetchClasses(pagination.current, pagination.pageSize, searchText, sortBy, sortDir, filters);
 				} catch (error) {
 					console.error('Error deleting all classes:', error);
 					spaceToast.error('Failed to delete all classes');
@@ -615,10 +886,20 @@ const ClassListTable = () => {
 			key: 'name',
 			width: '20%',
 			sorter: true,
+			ellipsis: {
+				showTitle: false,
+			},
 			render: (text) => (
-				<div style={{ fontSize: '16px' }}>
-					{text}
-				</div>
+				<Tooltip placement="topLeft" title={text}>
+					<div style={{ 
+						fontSize: '16px',
+						overflow: 'hidden',
+						textOverflow: 'ellipsis',
+						whiteSpace: 'nowrap'
+					}}>
+						{text}
+					</div>
+				</Tooltip>
 			),
 		},
 		{
@@ -627,10 +908,20 @@ const ClassListTable = () => {
 			key: 'syllabus',
 			width: '18%',
 			sorter: true,
+			ellipsis: {
+				showTitle: false,
+			},
 			render: (text) => (
-				<div style={{ fontSize: '16px' }}>
-					{text}
-				</div>
+				<Tooltip placement="topLeft" title={text}>
+					<div style={{ 
+						fontSize: '16px',
+						overflow: 'hidden',
+						textOverflow: 'ellipsis',
+						whiteSpace: 'nowrap'
+					}}>
+						{text}
+					</div>
+				</Tooltip>
 			),
 		},
 		{
@@ -639,10 +930,20 @@ const ClassListTable = () => {
 			key: 'level',
 			width: '12%',
 			sorter: true,
+			ellipsis: {
+				showTitle: false,
+			},
 			render: (text) => (
-				<div style={{ fontSize: '16px' }}>
-					{text}
-				</div>
+				<Tooltip placement="topLeft" title={text}>
+					<div style={{ 
+						fontSize: '16px',
+						overflow: 'hidden',
+						textOverflow: 'ellipsis',
+						whiteSpace: 'nowrap'
+					}}>
+						{text}
+					</div>
+				</Tooltip>
 			),
 		},
 		{
@@ -717,9 +1018,199 @@ const ClassListTable = () => {
 									value={searchText}
 									onChange={(e) => handleSearch(e.target.value)}
 									className="search-input"
-									style={{ minWidth: '350px', maxWidth: '500px', height: '40px', fontSize: '16px' }}
+									style={{ minWidth: '300px', maxWidth: '400px', height: '40px', fontSize: '16px' }}
 									allowClear
 								/>
+								
+								<div ref={filterContainerRef} style={{ position: 'relative' }}>
+									<Button 
+										icon={<FilterOutlined />}
+										onClick={handleFilterToggle}
+										className={`filter-button ${theme}-filter-button ${filterDropdown.visible ? 'active' : ''} ${(statusFilter !== 'all' || syllabusFilter || startDateFrom || endDateFrom) ? 'has-filters' : ''}`}
+									>
+										{t('common.filter')}
+									</Button>
+									
+									{/* Filter Dropdown Panel */}
+									{filterDropdown.visible && (
+										<div className={`filter-dropdown-panel ${theme}-filter-dropdown`}>
+											<div style={{ padding: '24px' }}>
+												{/* Status and Syllabus on same row */}
+												<div style={{ 
+													display: 'grid', 
+													gridTemplateColumns: '1fr 1fr', 
+													gap: '16px',
+													marginBottom: '20px' 
+												}}>
+													{/* Status Filter */}
+													<div>
+														<Typography.Title 
+															level={5} 
+															style={{ 
+																marginBottom: '12px', 
+																fontSize: '16px',
+																fontWeight: '600',
+																color: theme === 'dark' ? '#ffffff' : '#000000'
+															}}
+														>
+															{t('classManagement.status')}
+														</Typography.Title>
+														<Select
+															value={filterDropdown.selectedStatus}
+															onChange={(value) => setFilterDropdown(prev => ({ ...prev, selectedStatus: value }))}
+															style={{ width: '100%', height: '48px' }}
+														>
+															<Option value="all">{t('classManagement.allStatus')}</Option>
+															<Option value="ACTIVE">{t('classManagement.active')}</Option>
+															<Option value="INACTIVE">{t('classManagement.inactive')}</Option>
+														</Select>
+													</div>
+
+													{/* Syllabus Filter */}
+													<div>
+														<Typography.Title 
+															level={5} 
+															style={{ 
+																marginBottom: '12px', 
+																fontSize: '16px',
+																fontWeight: '600',
+																color: theme === 'dark' ? '#ffffff' : '#000000'
+															}}
+														>
+															{t('classManagement.syllabus')}
+														</Typography.Title>
+														<Select
+															value={filterDropdown.selectedSyllabus}
+															onChange={(value) => setFilterDropdown(prev => ({ ...prev, selectedSyllabus: value }))}
+															style={{ width: '100%', height: '48px' }}
+															placeholder={t('classManagement.selectSyllabus')}
+															allowClear
+															loading={syllabusLoading}
+														>
+															{syllabuses.map(syllabus => (
+																<Option key={syllabus.id} value={syllabus.id}>
+																	{syllabus.syllabusName}
+																</Option>
+															))}
+														</Select>
+													</div>
+												</div>
+
+												{/* Start Date Range Filter */}
+												<div style={{ marginBottom: '20px' }}>
+													<Typography.Title 
+														level={5} 
+														style={{ 
+															marginBottom: '12px', 
+															fontSize: '16px',
+															fontWeight: '600',
+															color: theme === 'dark' ? '#ffffff' : '#000000'
+														}}
+													>
+														{t('classManagement.startDateRange')}
+													</Typography.Title>
+													<DatePicker.RangePicker
+														value={filterDropdown.selectedStartDateRange ? [
+															filterDropdown.selectedStartDateRange[0] ? dayjs(filterDropdown.selectedStartDateRange[0]) : null,
+															filterDropdown.selectedStartDateRange[1] ? dayjs(filterDropdown.selectedStartDateRange[1]) : null
+														] : null}
+														onChange={(dates) => {
+															if (dates && dates[0] && dates[1]) {
+																setFilterDropdown(prev => ({
+																	...prev,
+																	selectedStartDateRange: [dates[0].format('YYYY-MM-DD'), dates[1].format('YYYY-MM-DD')]
+																}));
+															} else {
+																setFilterDropdown(prev => ({
+																	...prev,
+																	selectedStartDateRange: null
+																}));
+															}
+														}}
+														style={{ width: '100%', height: '48px' }}
+														placeholder={[t('classManagement.startDateFrom'), t('classManagement.startDateTo')]}
+													/>
+												</div>
+
+												{/* End Date Range Filter */}
+												<div style={{ marginBottom: '24px' }}>
+													<Typography.Title 
+														level={5} 
+														style={{ 
+															marginBottom: '12px', 
+															fontSize: '16px',
+															fontWeight: '600',
+															color: theme === 'dark' ? '#ffffff' : '#000000'
+														}}
+													>
+														{t('classManagement.endDateRange')}
+													</Typography.Title>
+													<DatePicker.RangePicker
+														value={filterDropdown.selectedEndDateRange ? [
+															filterDropdown.selectedEndDateRange[0] ? dayjs(filterDropdown.selectedEndDateRange[0]) : null,
+															filterDropdown.selectedEndDateRange[1] ? dayjs(filterDropdown.selectedEndDateRange[1]) : null
+														] : null}
+														onChange={(dates) => {
+															if (dates && dates[0] && dates[1]) {
+																setFilterDropdown(prev => ({
+																	...prev,
+																	selectedEndDateRange: [dates[0].format('YYYY-MM-DD'), dates[1].format('YYYY-MM-DD')]
+																}));
+															} else {
+																setFilterDropdown(prev => ({
+																	...prev,
+																	selectedEndDateRange: null
+																}));
+															}
+														}}
+														style={{ width: '100%', height: '48px' }}
+														placeholder={[t('classManagement.endDateFrom'), t('classManagement.endDateTo')]}
+													/>
+												</div>
+
+												{/* Action Buttons */}
+												<div style={{ 
+													display: 'flex', 
+													justifyContent: 'space-between', 
+													gap: '12px',
+													paddingTop: '16px',
+													borderTop: theme === 'dark' ? '1px solid #333' : '1px solid #f0f0f0'
+												}}>
+													<Button
+														onClick={handleFilterReset}
+														className="filter-reset-button"
+														style={{
+															height: '48px',
+															fontSize: '16px',
+															fontWeight: '500',
+															flex: 1,
+															borderRadius: '8px'
+														}}
+													>
+														{t('common.reset')}
+													</Button>
+													<Button
+														type="primary"
+														onClick={handleFilterSubmit}
+														className="filter-submit-button"
+														style={{
+															height: '48px',
+															fontSize: '16px',
+															fontWeight: '500',
+															flex: 1,
+															borderRadius: '8px',
+															backgroundColor: theme === 'sun' ? 'rgb(113, 179, 253)' : '#5a1fb8',
+															borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : '#5a1fb8',
+															color: theme === 'sun' ? '#000000' : '#ffffff'
+														}}
+													>
+														{t('common.viewResults')}
+													</Button>
+												</div>
+											</div>
+										</div>
+									)}
+								</div>
 							</Space>
 							<Space>
 								<Button
@@ -782,6 +1273,7 @@ const ClassListTable = () => {
 					okText={t('common.save')}
 					cancelText={t('common.cancel')}
 					destroyOnClose
+					confirmLoading={isSubmitting}
 					okButtonProps={{
 						style: {
 							backgroundColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
@@ -802,14 +1294,22 @@ const ClassListTable = () => {
 							minWidth: '100px',
 						},
 					}}
+					bodyStyle={{
+						padding: '24px',
+					}}
 				>
 					<Form
 						form={form}
 						layout="vertical"
 					>
 						<Form.Item
-							label={t('classManagement.className')}
+							label={
+								<span>
+									 {t('classManagement.className')}<span style={{ color: '#ff4d4f' }}> *</span>
+								</span>
+							}
 							name="name"
+							required
 							rules={[
 								{ required: true, message: 'Class name is required' },
 								{ min: 3, message: 'Class name must be at least 3 characters' },
@@ -824,13 +1324,23 @@ const ClassListTable = () => {
 									borderRadius: "10px",
 									border: "2px solid #e2e8f0",
 									transition: "all 0.3s ease",
+									height: "40px",
 								}}
 							/>
 						</Form.Item>
 
 						<Form.Item
-							label={t('classManagement.syllabus')}
+							label={
+								!editingClass ? (
+									<span>
+										 {t('classManagement.syllabus')}<span style={{ color: '#ff4d4f' }}> *</span>
+									</span>
+								) : (
+									t('classManagement.syllabus')
+								)
+							}
 							name="syllabusId"
+							required={!editingClass}
 							rules={[
 								{ required: !editingClass, message: 'Please select a syllabus for the class' },
 							]}
@@ -841,6 +1351,7 @@ const ClassListTable = () => {
 								disabled={editingClass}
 								style={{
 									fontSize: "15px",
+									height: "40px",
 								}}
 							>
 								{syllabuses.map(syllabus => (
@@ -849,6 +1360,94 @@ const ClassListTable = () => {
 									</Option>
 								))}
 							</Select>
+						</Form.Item>
+
+						{/* Start Date */}
+						<Form.Item
+							label={
+								!editingClass ? (
+									<span>
+										 {t('classManagement.startDate')}<span style={{ color: '#ff4d4f' }}> *</span>
+									</span>
+								) : (
+									t('classManagement.startDate')
+								)
+							}
+							name="startDate"
+							required={!editingClass}
+							rules={[
+								{ required: !editingClass, message: 'Please select start date' },
+								{
+									validator(_, value) {
+										if (!value) {
+											return Promise.resolve();
+										}
+										const today = dayjs().startOf('day');
+										if (value.isBefore(today)) {
+											return Promise.reject(new Error('Start date cannot be in the past'));
+										}
+										return Promise.resolve();
+									},
+								},
+							]}
+						>
+							<DatePicker 
+								placeholder="Select start date"
+								style={{
+									fontSize: "15px",
+									width: "100%",
+									height: "40px",
+								}}
+								format="YYYY-MM-DD"
+								disabledDate={(current) => {
+									// Disable dates before today
+									return current && current < dayjs().startOf('day');
+								}}
+							/>
+						</Form.Item>
+
+						{/* End Date */}
+						<Form.Item
+							label={
+								!editingClass ? (
+									<span>
+										 {t('classManagement.endDate')}<span style={{ color: '#ff4d4f' }}> *</span>
+									</span>
+								) : (
+									t('classManagement.endDate')
+								)
+							}
+							name="endDate"
+							required={!editingClass}
+							rules={[
+								{ required: !editingClass, message: 'Please select end date' },
+								({ getFieldValue }) => ({
+									validator(_, value) {
+										const startDate = getFieldValue('startDate');
+										if (!value || !startDate) {
+											return Promise.resolve();
+										}
+										if (value.isBefore(startDate)) {
+											return Promise.reject(new Error('End date must be after start date'));
+										}
+										return Promise.resolve();
+									},
+								}),
+							]}
+						>
+							<DatePicker 
+								placeholder="Select end date"
+								style={{
+									fontSize: "15px",
+									width: "100%",
+									height: "40px",
+								}}
+								format="YYYY-MM-DD"
+								disabledDate={(current) => {
+									// Disable dates before today
+									return current && current < dayjs().startOf('day');
+								}}
+							/>
 						</Form.Item>
 					</Form>
 				</Modal>
@@ -873,6 +1472,7 @@ const ClassListTable = () => {
 					cancelText={t('common.cancel')}
 					width={500}
 					centered
+					confirmLoading={actionLoading.delete !== null || actionLoading.toggle !== null}
 					bodyStyle={{
 						padding: '30px 40px',
 						fontSize: '16px',

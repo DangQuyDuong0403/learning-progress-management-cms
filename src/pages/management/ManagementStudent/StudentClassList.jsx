@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import usePageTitle from "../../../hooks/usePageTitle";
 import {
   Input,
@@ -21,6 +21,7 @@ import "../ManagementClass/Class/ClassList.css";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useTheme } from "../../../contexts/ThemeContext";
+import { useClassMenu } from "../../../contexts/ClassMenuContext";
 
 // Predefined colors for classes
 const classColors = [
@@ -148,6 +149,7 @@ const StudentClassList = () => {
   const { t } = useTranslation();
   const { theme } = useTheme();
   const navigate = useNavigate();
+  const { enterClassMenu, exitClassMenu } = useClassMenu();
   
   // Set page title
   usePageTitle('My Classes');
@@ -177,6 +179,19 @@ const StudentClassList = () => {
     // navigate(`/student/classes/${classItem.id}`);
   };
 
+  // Setup ThemedHeader with back button to dashboard
+  useEffect(() => {
+    enterClassMenu({
+      id: 'student-classes',
+      name: '',
+      description: '',
+      backUrl: '/student/dashboard'
+    });
+
+    return () => exitClassMenu();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Filter classes based on search
   const filteredClasses = allClasses.filter(classItem =>
     classItem.name.toLowerCase().includes(searchText.toLowerCase()) ||
@@ -193,12 +208,13 @@ const StudentClassList = () => {
     <ThemedLayout>
       <div className={`class-page main-content-panel ${theme}-main-panel`}>
         {/* Page Title */}
-        <div className="page-title-container">
+        <div className="page-title-container" style={{ textAlign: 'center', marginBottom: '24px' }}>
           <Typography.Title 
             level={1} 
             className="page-title"
+            style={{ margin: 0 }}
           >
-            Lớp của tôi <span className="student-count">({filteredClasses.length})</span>
+            My Classes <span className="student-count">({filteredClasses.length})</span>
           </Typography.Title>
         </div>
 
@@ -210,7 +226,7 @@ const StudentClassList = () => {
                 prefix={<SearchOutlined />}
                 value={searchText}
                 onChange={(e) => handleSearch(e.target.value)}
-                placeholder="Tìm kiếm lớp học..."
+                placeholder="Search classes..."
                 className="search-input"
                 style={{ minWidth: '350px', maxWidth: '500px', height: '40px', fontSize: '16px' }}
                 allowClear
@@ -322,7 +338,7 @@ const StudentClassList = () => {
                               justifyContent: 'space-between',
                               gap: '8px'
                             }}>
-                              <Tooltip title={`Giáo trình: ${classItem.syllabusName}`} placement="top">
+                              <Tooltip title={`Syllabus: ${classItem.syllabusName}`} placement="top">
                                 <span style={{ 
                                   color: '#000000',
                                   overflow: 'hidden', 
@@ -331,17 +347,17 @@ const StudentClassList = () => {
                                   flex: 1
                                 }}>
                                   <BookOutlined style={{ color: '#000000', fontSize: '14px', marginRight: '4px' }} />
-                                  Giáo trình: {classItem.syllabusName}
+                                  Syllabus: {classItem.syllabusName}
                                 </span>
                               </Tooltip>
-                              <Tooltip title={`Cấp độ: ${classItem.levelName}`} placement="top">
+                              <Tooltip title={`Level: ${classItem.levelName}`} placement="top">
                                 <span style={{ 
                                   color: '#000000',
                                   overflow: 'hidden', 
                                   textOverflow: 'ellipsis', 
                                   whiteSpace: 'nowrap'
                                 }}>
-                                  Cấp độ: {classItem.levelName}
+                                  Level: {classItem.levelName}
                                 </span>
                               </Tooltip>
                             </div>
@@ -352,7 +368,7 @@ const StudentClassList = () => {
                               justifyContent: 'space-between',
                               gap: '8px'
                             }}>
-                              <Tooltip title={`Ngày bắt đầu: ${classItem.startDate}`} placement="top">
+                              <Tooltip title={`Start Date: ${classItem.startDate}`} placement="top">
                                 <span style={{ 
                                   color: '#000000',
                                   overflow: 'hidden', 
@@ -361,17 +377,17 @@ const StudentClassList = () => {
                                   flex: 1
                                 }}>
                                   <CalendarOutlined style={{ color: '#000000', fontSize: '14px', marginRight: '4px' }} />
-                                  Bắt đầu: {classItem.startDate}
+                                  Start: {classItem.startDate}
                                 </span>
                               </Tooltip>
-                              <Tooltip title={`Ngày kết thúc: ${classItem.endDate}`} placement="top">
+                              <Tooltip title={`End Date: ${classItem.endDate}`} placement="top">
                                 <span style={{ 
                                   color: '#000000',
                                   overflow: 'hidden', 
                                   textOverflow: 'ellipsis', 
                                   whiteSpace: 'nowrap'
                                 }}>
-                                  Kết thúc: {classItem.endDate}
+                                  End: {classItem.endDate}
                                 </span>
                               </Tooltip>
                             </div>
@@ -412,7 +428,7 @@ const StudentClassList = () => {
               </>
             ) : (
               <div className="empty-state">
-                <p>Không tìm thấy lớp học nào</p>
+                <p>No classes found</p>
               </div>
             )}
           </LoadingWithEffect>
