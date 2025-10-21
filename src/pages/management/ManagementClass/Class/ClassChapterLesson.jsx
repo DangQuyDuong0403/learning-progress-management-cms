@@ -18,7 +18,6 @@ import {
 	EditOutlined,
 	DeleteOutlined,
 	SearchOutlined,
-	ArrowLeftOutlined,
 	DownloadOutlined,
 	DragOutlined,
 	UploadOutlined,
@@ -29,6 +28,7 @@ import ThemedLayout from '../../../../component/ThemedLayout';
 import LoadingWithEffect from '../../../../component/spinner/LoadingWithEffect';
 import { spaceToast } from '../../../../component/SpaceToastify';
 import { useTheme } from '../../../../contexts/ThemeContext';
+import { useClassMenu } from '../../../../contexts/ClassMenuContext';
 import usePageTitle from '../../../../hooks/usePageTitle';
 import ChapterForm from '../../ManagementManager/syllabus/ChapterForm';
 import teacherManagementApi from '../../../../apis/backend/teacherManagement';
@@ -43,6 +43,7 @@ const ClassChapterLesson = () => {
 	const navigate = useNavigate();
 	const { theme } = useTheme();
 	const { user } = useSelector((state) => state.auth);
+	const { enterClassMenu, exitClassMenu } = useClassMenu();
 	
 	// Set page title
 	usePageTitle('Class Chapter & Lesson');
@@ -190,6 +191,27 @@ const ClassChapterLesson = () => {
 		fetchLessonsData(1, pagination.pageSize, searchText);
 	}, [fetchClassData, fetchChapterData, fetchLessonsData, searchText, pagination.pageSize]);
 
+	// Handle class menu updates - separate effects to avoid infinite loops
+	useEffect(() => {
+		if (classId) {
+			enterClassMenu({ id: classId });
+		}
+		return () => exitClassMenu();
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [classId]);
+
+	useEffect(() => {
+		if (classData && chapterData && classId) {
+			enterClassMenu({
+				id: classData.id,
+				name: classData.name, // Display class name in header
+				description: `${t('lessonManagement.title')} - ${classData.name}`,
+				backUrl: `${routePrefix}/chapters/${classId}` // Custom back URL to chapters list
+			});
+		}
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [classData?.id, classData?.name, chapterData?.name, classId]);
+
 	// Cleanup timeout on unmount
 	useEffect(() => {
 		return () => {
@@ -234,10 +256,6 @@ const ClassChapterLesson = () => {
 	const handleModalClose = () => {
 		setIsModalVisible(false);
 		setEditingChapter(null);
-	};
-
-	const handleBackToChapters = () => {
-		navigate(`${routePrefix}/chapters/${classId}`);
 	};
 
 	const handleEditOrder = () => {
@@ -637,22 +655,16 @@ const ClassChapterLesson = () => {
 			<div className={`main-content-panel ${theme}-main-panel`}>
 				{/* Page Title */}
 				<div className="page-title-container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
-							<Button
-								icon={<ArrowLeftOutlined />}
-						onClick={handleBackToChapters}
-						className={`back-button ${theme}-back-button`}
-							>
-								{t('common.back')}
-							</Button>
+				
 					<Typography.Title 
 						level={1} 
 						className="page-title"
 						style={{ margin: 0, flex: 1, textAlign: 'center' }}
 					>
-						{chapterData.name} - {t('lessonManagement.title')} <span className="student-count">({totalElements})</span>
+					{chapterData.name} - {t('lessonManagement.title')} <span className="student-count">({totalElements})</span>
 					</Typography.Title>
 					<div style={{ width: '100px' }}></div> {/* Spacer để cân bằng layout */}
-						</div>
+				</div>
 						
 
 				{/* Action Bar */}

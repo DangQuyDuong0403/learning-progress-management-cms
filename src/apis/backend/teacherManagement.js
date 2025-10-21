@@ -29,7 +29,29 @@ const teacherManagementApi = {
 		});
 	},
 
-	// Cập nhật trạng thái teacher (ACTIVE/INACTIVE)
+	// Bulk update teacher status (ACTIVE/INACTIVE)
+	bulkUpdateTeacherStatus: (userIds, targetStatus) => {
+		const url = `/user/teachers/bulk-status`;
+		console.log('BulkUpdateTeacherStatus API - URL:', url);
+		console.log('BulkUpdateTeacherStatus API - Data:', { userIds, targetStatus });
+		
+		return axiosClient.patch(url, {
+			userIds: userIds,
+			targetStatus: targetStatus
+		}, {
+			headers: {
+				'accept': '*/*',
+				'Content-Type': 'application/json',
+			}
+		}).catch(error => {
+			console.error('BulkUpdateTeacherStatus API Error:', error);
+			console.error('Error response:', error.response?.data);
+			console.error('Error status:', error.response?.status);
+			throw error;
+		});
+	},
+
+	// Cập nhật trạng thái teacher (ACTIVE/INACTIVE) - Single teacher
 	updateTeacherStatus: (userId, status) => {
 		const url = `/user/teachers/${userId}/status?status=${status}`;
 		console.log('UpdateTeacherStatus API - URL:', url);
@@ -41,8 +63,6 @@ const teacherManagementApi = {
 			}
 		});
 	},
-
-	// Lấy profile của một teacher theo ID
 	getTeacherProfile: (userId) => {
 		const url = `/user/profile/${userId}`;
 		console.log('GetTeacherProfile API - URL:', url);

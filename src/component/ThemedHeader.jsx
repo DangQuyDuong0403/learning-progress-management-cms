@@ -7,6 +7,7 @@ import { SunOutlined, MoonOutlined, ArrowLeftOutlined, SettingOutlined } from '@
 import { logoutApi, logout, getUserProfile } from '../redux/auth';
 import { useTheme } from '../contexts/ThemeContext';
 import { useClassMenu } from '../contexts/ClassMenuContext';
+import { useSyllabusMenu } from '../contexts/SyllabusMenuContext';
 import LanguageToggle from './LanguageToggle';
 import { spaceToast } from './SpaceToastify';
 import './ThemedHeader.css';
@@ -19,6 +20,7 @@ export default function ThemedHeader() {
   const dispatch = useDispatch();
   const { theme, toggleTheme, isSunTheme } = useTheme();
   const { isInClassMenu, classData } = useClassMenu();
+  const { isInSyllabusMenu, syllabusData } = useSyllabusMenu();
 
   // Fetch user profile data on component mount
   useEffect(() => {
@@ -53,6 +55,12 @@ export default function ThemedHeader() {
   };
 
   const handleBackToClassList = () => {
+    // If custom back URL is provided, use it
+    if (classData?.backUrl) {
+      navigate(classData.backUrl);
+      return;
+    }
+
     // Determine route prefix based on user role
     const userRole = user?.role?.toLowerCase();
     let routePrefix = '/manager/classes'; // default
@@ -104,11 +112,26 @@ export default function ThemedHeader() {
     navigate(dashboardRoute);
   };
 
-  // Check if on teacher/teaching_assistant classes list page
+  const handleBackToSyllabusList = () => {
+    navigate(-1);
+  };
+
+  // Handle back button click based on current page
+  const handleBackButtonClick = () => {
+    // If on daily challenges page, go back to previous page
+    if (location.pathname === '/teacher/daily-challenges') {
+      navigate(-1);
+    } else {
+      // Otherwise go to dashboard
+      handleBackToDashboard();
+    }
+  };
+
+  // Check if on teacher/teaching_assistant classes list page or daily challenges page
   const isOnClassesListPage = () => {
     const userRole = user?.role?.toLowerCase();
     if (userRole === 'teacher') {
-      return location.pathname === '/teacher/classes';
+      return location.pathname === '/teacher/classes' || location.pathname === '/teacher/daily-challenges';
     }
     if (userRole === 'teaching_assistant') {
       return location.pathname === '/teaching-assistant/classes';
@@ -121,7 +144,7 @@ export default function ThemedHeader() {
       <nav className="themed-navbar">
         <div className="themed-navbar-content">
           <div className="themed-navbar-brand">
-            {/* Back to Dashboard Button - Show when on teacher/teaching_assistant classes list page */}
+            {/* Back to Dashboard Button - Show when on teacher/teaching_assistant classes list page or daily challenges page */}
             {isOnClassesListPage() && (
               <div className="class-menu-header" style={{
                 display: 'flex',
@@ -131,7 +154,7 @@ export default function ThemedHeader() {
               }}>
                 <Button
                   icon={<ArrowLeftOutlined />}
-                  onClick={handleBackToDashboard}
+                  onClick={handleBackButtonClick}
                   className={`class-menu-back-button ${theme}-class-menu-back-button`}
                   style={{
                     height: '32px',
@@ -162,11 +185,6 @@ export default function ThemedHeader() {
                 >
                   {t('common.back')}
                 </Button>
-                <div style={{
-                  height: '24px',
-                  width: '1px',
-                  backgroundColor: theme === 'sun' ? 'rgba(30, 64, 175, 0.3)' : 'rgba(255, 255, 255, 0.3)'
-                }} />
               </div>
             )}
 
@@ -224,6 +242,64 @@ export default function ThemedHeader() {
                   textShadow: theme === 'sun' ? '0 0 5px rgba(30, 64, 175, 0.3)' : '0 0 15px rgba(134, 134, 134, 0.8)'
                 }}>
                   {classData.name}
+                </h2>
+              </div>
+            )}
+
+            {/* Syllabus Menu Header - Show when in syllabus menu */}
+            {isInSyllabusMenu && syllabusData && (
+              <div className="syllabus-menu-header" style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '16px',
+                padding: '0 20px'
+              }}>
+                <Button
+                  icon={<ArrowLeftOutlined />}
+                  onClick={handleBackToSyllabusList}
+                  className={`syllabus-menu-back-button ${theme}-syllabus-menu-back-button`}
+                  style={{
+                    height: '32px',
+                    borderRadius: '8px',
+                    fontWeight: '500',
+                    fontSize: '14px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    border: '1px solid rgba(0, 0, 0, 0.1)',
+                    background: '#ffffff',
+                    color: '#000000',
+                    backdropFilter: 'blur(10px)',
+                    transition: 'all 0.3s ease'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.target.style.transform = 'translateY(-2px)';
+                    e.target.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.15)';
+                    e.target.style.filter = 'brightness(0.95)';
+                    e.target.style.borderColor = 'rgba(0, 0, 0, 0.2)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.style.transform = 'translateY(0)';
+                    e.target.style.boxShadow = 'none';
+                    e.target.style.filter = 'none';
+                    e.target.style.borderColor = 'rgba(0, 0, 0, 0.1)';
+                  }}
+                >
+                  {t('common.back')}
+                </Button>
+                <div style={{
+                  height: '24px',
+                  width: '1px',
+                  backgroundColor: theme === 'sun' ? 'rgba(30, 64, 175, 0.3)' : 'rgba(255, 255, 255, 0.3)'
+                }} />
+                <h2 style={{
+                  margin: 0,
+                  fontSize: '20px',
+                  fontWeight: '600',
+                  color: theme === 'sun' ? '#1e40af' : '#fff',
+                  textShadow: theme === 'sun' ? '0 0 5px rgba(30, 64, 175, 0.3)' : '0 0 15px rgba(134, 134, 134, 0.8)'
+                }}>
+                  {syllabusData.name}
                 </h2>
               </div>
             )}

@@ -66,7 +66,8 @@ const TeacherList = () => {
 		visible: false,
 		title: '',
 		content: '',
-		onConfirm: null
+		onConfirm: null,
+		loading: false,
 	});
 	const [editingTeacher, setEditingTeacher] = useState(null);
 	const [assigningTeacher, setAssigningTeacher] = useState(null);
@@ -85,6 +86,10 @@ const TeacherList = () => {
 	const [exportLoading, setExportLoading] = useState({
 		selected: false,
 		all: false,
+	});
+	const [bulkLoading, setBulkLoading] = useState({
+		active: false,
+		deactive: false,
 	});
 	
 	// Refs for click outside detection
@@ -679,50 +684,43 @@ const TeacherList = () => {
 			return;
 		}
 		
-		// Filter out PENDING records from selected items
-		const selectedTeachers = teachers.filter(teacher => selectedRowKeys.includes(teacher.id));
-		const nonPendingSelected = selectedTeachers.filter(teacher => teacher.status !== 'PENDING');
-		
-		if (nonPendingSelected.length === 0) {
-			spaceToast.warning('Cannot activate PENDING teachers');
-			return;
-		}
-		
-		const confirmContent = `${t('teacherManagement.confirmBulkActivate')} ${nonPendingSelected.length} ${t('teacherManagement.teachers')}? ${selectedTeachers.length !== nonPendingSelected.length ? `(${selectedTeachers.length - nonPendingSelected.length} PENDING teachers will be skipped)` : ''}`;
+		// Get all selected teachers from all pages, not just current page
+		// We need to fetch all teachers to find the selected ones
+		const confirmContent = `${t('teacherManagement.confirmBulkActivate')} ${selectedRowKeys.length} ${t('teacherManagement.teachers')}?`;
 		
 		setConfirmModal({
 			visible: true,
 			title: `${t('teacherManagement.activeAll')} ${t('teacherManagement.teachers')}`,
 			content: confirmContent,
 			onConfirm: async () => {
+				setBulkLoading(prev => ({ ...prev, active: true }));
+				setConfirmModal(prev => ({ ...prev, loading: true }));
 				try {
-					// Call API for bulk update - activate only non-PENDING selected teachers
-					const promises = nonPendingSelected.map(teacher => 
-						teacherManagementApi.updateTeacherStatus(teacher.id, 'ACTIVE')
-					);
+					// Call bulk API to update status for multiple teachers at once
+					// Use all selectedRowKeys directly since they are already filtered for non-PENDING
+					const response = await teacherManagementApi.bulkUpdateTeacherStatus(selectedRowKeys, 'ACTIVE');
 					
-					const results = await Promise.all(promises);
-					const successCount = results.filter(r => r.success).length;
-					
-					if (successCount > 0) {
+					if (response.success) {
 						// Close modal first
-						setConfirmModal({ visible: false, title: '', content: '', onConfirm: null });
+						setConfirmModal({ visible: false, title: '', content: '', onConfirm: null, loading: false });
 						
 						// Clear selection
 						setSelectedRowKeys([]);
 						
 						// Show success toast
-						spaceToast.success(`${t('teacherManagement.bulkUpdateSuccess')} ${successCount}/${selectedRowKeys.length} ${t('teacherManagement.teachers')}`);
+						spaceToast.success(`${t('teacherManagement.bulkUpdateSuccess')} ${selectedRowKeys.length} ${t('teacherManagement.teachers')}`);
 						
 						// Refresh the list
 						fetchTeachers(pagination.current, pagination.pageSize, searchText, statusFilter, roleNameFilter, sortBy, sortDir);
 					} else {
-						throw new Error('No teachers were updated');
+						throw new Error(response.message || 'No teachers were updated');
 					}
 				} catch (error) {
 					console.error('Error in bulk update:', error);
-					setConfirmModal({ visible: false, title: '', content: '', onConfirm: null });
+					setConfirmModal({ visible: false, title: '', content: '', onConfirm: null, loading: false });
 					spaceToast.error(error.response?.data?.error || error.message || t('teacherManagement.bulkUpdateError'));
+				} finally {
+					setBulkLoading(prev => ({ ...prev, active: false }));
 				}
 			}
 		});
@@ -734,50 +732,42 @@ const TeacherList = () => {
 			return;
 		}
 		
-		// Filter out PENDING records from selected items
-		const selectedTeachers = teachers.filter(teacher => selectedRowKeys.includes(teacher.id));
-		const nonPendingSelected = selectedTeachers.filter(teacher => teacher.status !== 'PENDING');
-		
-		if (nonPendingSelected.length === 0) {
-			spaceToast.warning('Cannot deactivate PENDING teachers');
-			return;
-		}
-		
-		const confirmContent = `${t('teacherManagement.confirmBulkDeactivate')} ${nonPendingSelected.length} ${t('teacherManagement.teachers')}? ${selectedTeachers.length !== nonPendingSelected.length ? `(${selectedTeachers.length - nonPendingSelected.length} PENDING teachers will be skipped)` : ''}`;
+		// Get all selected teachers from all pages, not just current page
+		const confirmContent = `${t('teacherManagement.confirmBulkDeactivate')} ${selectedRowKeys.length} ${t('teacherManagement.teachers')}?`;
 		
 		setConfirmModal({
 			visible: true,
 			title: `${t('teacherManagement.deactiveAll')} ${t('teacherManagement.teachers')}`,
 			content: confirmContent,
 			onConfirm: async () => {
+				setBulkLoading(prev => ({ ...prev, deactive: true }));
+				setConfirmModal(prev => ({ ...prev, loading: true }));
 				try {
-					// Call API for bulk update - deactivate only non-PENDING selected teachers
-					const promises = nonPendingSelected.map(teacher => 
-						teacherManagementApi.updateTeacherStatus(teacher.id, 'INACTIVE')
-					);
+					// Call bulk API to update status for multiple teachers at once
+					// Use all selectedRowKeys directly since they are already filtered for non-PENDING
+					const response = await teacherManagementApi.bulkUpdateTeacherStatus(selectedRowKeys, 'INACTIVE');
 					
-					const results = await Promise.all(promises);
-					const successCount = results.filter(r => r.success).length;
-					
-					if (successCount > 0) {
+					if (response.success) {
 						// Close modal first
-						setConfirmModal({ visible: false, title: '', content: '', onConfirm: null });
+						setConfirmModal({ visible: false, title: '', content: '', onConfirm: null, loading: false });
 						
 						// Clear selection
 						setSelectedRowKeys([]);
 						
 						// Show success toast
-						spaceToast.success(`${t('teacherManagement.bulkUpdateSuccess')} ${successCount}/${selectedRowKeys.length} ${t('teacherManagement.teachers')}`);
+						spaceToast.success(`${t('teacherManagement.bulkUpdateSuccess')} ${selectedRowKeys.length} ${t('teacherManagement.teachers')}`);
 						
 						// Refresh the list
 						fetchTeachers(pagination.current, pagination.pageSize, searchText, statusFilter, roleNameFilter, sortBy, sortDir);
 					} else {
-						throw new Error('No teachers were updated');
+						throw new Error(response.message || 'No teachers were updated');
 					}
 				} catch (error) {
 					console.error('Error in bulk update:', error);
-					setConfirmModal({ visible: false, title: '', content: '', onConfirm: null });
+					setConfirmModal({ visible: false, title: '', content: '', onConfirm: null, loading: false });
 					spaceToast.error(error.response?.data?.error || error.message || t('teacherManagement.bulkUpdateError'));
+				} finally {
+					setBulkLoading(prev => ({ ...prev, deactive: false }));
 				}
 			}
 		});
@@ -1282,6 +1272,7 @@ const TeacherList = () => {
 				open={confirmModal.visible}
 				onOk={confirmModal.onConfirm}
 				onCancel={handleConfirmCancel}
+				confirmLoading={confirmModal.loading}
 				okText={t('common.confirm')}
 				cancelText={t('common.cancel')}
 				width={500}
@@ -1579,6 +1570,8 @@ const TeacherList = () => {
 				selectAllText={t('classManagement.selectAll')}
 				activeAllText={t('teacherManagement.activeAll')}
 				deactiveAllText={t('teacherManagement.deactiveAll')}
+				loadingActive={bulkLoading.active}
+				loadingDeactive={bulkLoading.deactive}
 			/>
 		</>
 	);

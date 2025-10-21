@@ -11,6 +11,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useTheme } from '../../../../contexts/ThemeContext';
+import { useSyllabusMenu } from '../../../../contexts/SyllabusMenuContext';
 import { spaceToast } from '../../../../component/SpaceToastify';
 import ThemedLayout from '../../../../component/ThemedLayout';
 import LoadingWithEffect from '../../../../component/spinner/LoadingWithEffect';
@@ -216,6 +217,7 @@ const ChapterDragEdit = () => {
 	const { theme } = useTheme();
 	const navigate = useNavigate();
 	const { syllabusId } = useParams();
+	const { enterSyllabusMenu, exitSyllabusMenu } = useSyllabusMenu();
 	
 	// Set page title
 	usePageTitle('Edit Chapter Positions');
@@ -316,6 +318,21 @@ const ChapterDragEdit = () => {
 		};
 		fetchData();
 	}, [fetchAllChapters, fetchSyllabusInfo]);
+
+	// Enter syllabus menu mode when syllabusInfo is available
+	useEffect(() => {
+		if (syllabusInfo) {
+			enterSyllabusMenu({
+				id: syllabusInfo.id,
+				name: syllabusInfo.name,
+				description: syllabusInfo.description
+			});
+		}
+		
+		return () => {
+			exitSyllabusMenu();
+		};
+	}, [syllabusInfo?.id, enterSyllabusMenu, exitSyllabusMenu]);
 
 	const handleAddChapterAtPosition = useCallback((index) => {
 		setEditingChapter(null);
@@ -590,23 +607,14 @@ const ChapterDragEdit = () => {
 			<div className={`main-content-panel ${theme}-main-panel`}>
 				{/* Header Section */}
 				<div className={`panel-header ${theme}-panel-header`}>
-					<div className='page-header' style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-						<Button
-							icon={<ArrowLeftOutlined />}
-							onClick={handleGoBack}
-							className={`back-button ${theme}-back-button`}>
-							{t('common.back')}
-						</Button>
-						<div className="page-title-container">
-							<Title
-								level={1}
-								className="page-title"
-								style={{ margin: 0 }}
-							>
-								{t('chapterManagement.editPositions')} - {syllabusInfo.name}
-							</Title>
-						</div>
-						<div style={{ width: '100px' }}></div> {/* Spacer để căn giữa */}
+					<div className='page-title-container' style={{ marginBottom: '24px', width: '100%', display: 'flex', justifyContent: 'center' }}>
+						<Title
+							level={1}
+							className="page-title"
+							style={{ margin: 0, textAlign: 'center' }}
+						>
+							{t('chapterManagement.editPositions')}
+						</Title>
 					</div>
 				</div>
 
@@ -714,19 +722,6 @@ const ChapterDragEdit = () => {
 
 						{/* Footer Actions */}
 						<div className={`drag-edit-footer ${theme}-drag-edit-footer`}>
-							<Button
-								icon={<ArrowLeftOutlined />}
-								onClick={handleGoBack}
-								size='large'
-								className={`back-button ${theme}-back-button`}
-								style={{ 
-									marginRight: '12px',
-									borderRadius: '8px',
-									height: '42px',
-									padding: '0 24px',
-								}}>
-								{t('common.back')}
-							</Button>
 							<Button
 								type='primary'
 								icon={<SaveOutlined />}

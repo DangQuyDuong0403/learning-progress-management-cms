@@ -11,6 +11,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useTheme } from '../../../../contexts/ThemeContext';
+import { useSyllabusMenu } from '../../../../contexts/SyllabusMenuContext';
 import { spaceToast } from '../../../../component/SpaceToastify';
 import ThemedLayout from '../../../../component/ThemedLayout';
 import LoadingWithEffect from '../../../../component/spinner/LoadingWithEffect';
@@ -246,6 +247,7 @@ const LessonDragEdit = () => {
 	const { theme } = useTheme();
 	const navigate = useNavigate();
 	const { syllabusId, chapterId } = useParams();
+	const { enterSyllabusMenu, exitSyllabusMenu } = useSyllabusMenu();
 
 	// Set page title
 	usePageTitle('Edit Lesson Positions');
@@ -346,6 +348,36 @@ const LessonDragEdit = () => {
 		};
 		fetchData();
 	}, [fetchAllLessons, fetchChapterInfo]);
+
+	// Fetch syllabus info and enter menu mode
+	const fetchSyllabusInfo = useCallback(async () => {
+		if (!syllabusId) return;
+		
+		try {
+			const response = await syllabusManagementApi.getSyllabuses({
+				params: { page: 0, size: 100 }
+			});
+			
+			const syllabus = response.data.find(s => s.id === parseInt(syllabusId));
+			if (syllabus) {
+				enterSyllabusMenu({
+					id: syllabus.id,
+					name: syllabus.syllabusName,
+					description: syllabus.description,
+				});
+			}
+		} catch (error) {
+			console.error('Error fetching syllabus info:', error);
+		}
+	}, [syllabusId, enterSyllabusMenu]);
+
+	useEffect(() => {
+		fetchSyllabusInfo();
+		
+		return () => {
+			exitSyllabusMenu();
+		};
+	}, [fetchSyllabusInfo, exitSyllabusMenu]);
 
 	const handleAddLessonAtPosition = useCallback((index) => {
 		setEditingLesson(null);
@@ -601,32 +633,13 @@ const LessonDragEdit = () => {
 			<div className={`main-content-panel ${theme}-main-panel`}>
 				{/* Header Section */}
 				<div className={`panel-header ${theme}-panel-header`}>
-					<div
-						className='page-title-container'
-						style={{
-							display: 'grid',
-							gridTemplateColumns: '120px 1fr 120px', // Cột trái và phải có độ rộng bằng nhau
-							alignItems: 'center',
-							marginBottom: '24px',
-							width: '100%',
-						}}>
-						<Button
-							icon={<ArrowLeftOutlined />}
-							onClick={handleGoBack}
-							className={`back-button ${theme}-back-button`}>
-							{t('common.back')}
-						</Button>
+					<div className='page-title-container' style={{ marginBottom: '24px', width: '100%', display: 'flex', justifyContent: 'center' }}>
 						<Title
 							level={1}
 							className='page-title'
-							style={{
-								margin: 0,
-								textAlign: 'center',
-								justifySelf: 'center', // Đảm bảo căn giữa trong grid
-							}}>
+							style={{ margin: 0, textAlign: 'center' }}>
 							{t('lessonManagement.editPositions')} - {chapterInfo.name}
 						</Title>
-						<div></div> {/* Cột trống để cân bằng */}
 					</div>
 				</div>
 
@@ -750,19 +763,6 @@ const LessonDragEdit = () => {
 
 						{/* Footer Actions */}
 						<div className={`drag-edit-footer ${theme}-drag-edit-footer`}>
-							<Button
-								icon={<ArrowLeftOutlined />}
-								onClick={handleGoBack}
-								size='large'
-								className={`back-button ${theme}-back-button`}
-								style={{
-									marginRight: '12px',
-									borderRadius: '8px',
-									height: '42px',
-									padding: '0 24px',
-								}}>
-								{t('common.back')}
-							</Button>
 							<Button
 								type='primary'
 								icon={<SaveOutlined />}
