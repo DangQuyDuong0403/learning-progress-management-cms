@@ -63,10 +63,9 @@ export default function Login() {
 			
 			// Check if user must change password
 			if (response.data.mustChangePassword) {
-				// Show security message for password change
-				// Redirect to change password page
+				// Redirect to reset password page
 				setTimeout(() => {
-					navigate('/change-password');
+					navigate('/reset-password');
 				}, 2000);
 			} else {
 				// Normal login success
@@ -90,8 +89,12 @@ export default function Login() {
 		}
 	};
 
-	const handleForgotMethodSelect = () => {
-		navigate('/forgot-password-email');
+	const handleForgotMethodSelect = (method) => {
+		if (method === 'email') {
+			navigate('/forgot-password-email');
+		} else if (method === 'teacher') {
+			navigate('/forgot-password-teacher');
+		}
 	};
 
 	const handleBackToChoose = () => {

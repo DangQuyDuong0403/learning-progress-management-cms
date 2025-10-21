@@ -4,6 +4,7 @@ import ChooseLogin from '../pages/login/ChooseLogin.jsx';
 import ForgotPassword from '../pages/login/ForgotPassword.jsx';
 import ForgotPasswordSuccess from '../pages/login/ForgotPasswordSuccess.jsx';
 import ForgotPasswordFailure from '../pages/login/ForgotPasswordFailure.jsx';
+import ForgotPasswordTeacher from '../pages/login/ForgotPasswordTeacher.jsx';
 import Login from '../pages/login/LoginStudent.jsx';
 import OTPVerification from '../pages/login/OTPVerification.jsx';
 import ResetPassword from '../pages/login/ResetPassword.jsx';
@@ -93,6 +94,14 @@ const CONFIG_ROUTER = [
 		path: ROUTER_PAGE.FORGOT_PASSWORD_PHONE,
 		exact: true,
 		key: 'FORGOT_PASSWORD',
+	},
+	{
+		show: false, // không hiện trên menu
+		component: ForgotPasswordTeacher,
+		// icon: <LogIn size={18} />,
+		path: ROUTER_PAGE.FORGOT_PASSWORD_TEACHER,
+		exact: true,
+		key: 'FORGOT_PASSWORD_TEACHER',
 	},
 	{
 		show: false, // không hiện trên menu

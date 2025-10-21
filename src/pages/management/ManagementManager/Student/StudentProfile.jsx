@@ -20,6 +20,7 @@ import {
 	KeyOutlined,
 	BarChartOutlined,
 	UploadOutlined,
+	DeleteOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -49,6 +50,12 @@ const StudentProfile = () => {
 	const [avatarModalVisible, setAvatarModalVisible] = useState(false);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState(null);
+	const [confirmModal, setConfirmModal] = useState({
+		visible: false,
+		title: '',
+		content: '',
+		onConfirm: null
+	});
 
 	// Student data from API
 	const [student, setStudent] = useState(null);
@@ -349,6 +356,46 @@ const StudentProfile = () => {
 		});
 	};
 
+	// Handle auto-deactivate for PENDING students (trash button)
+	const handleAutoDeactivatePending = () => {
+		if (!student || student.status !== 'PENDING') return;
+		
+		const studentName = student.fullName || student.userName;
+		
+		setConfirmModal({
+			visible: true,
+			title: t('studentManagement.deactivateStudent'),
+			content: `${t('studentManagement.confirmDeactivatePending')} "${studentName}"? ${t('studentManagement.deactivatePendingNote')}`,
+			onConfirm: async () => {
+				try {
+					// Call API to update student status to INACTIVE
+					const response = await studentManagementApi.updateStudentStatus(id, 'INACTIVE');
+					
+					if (response.success) {
+						// Close modal first
+						setConfirmModal({ visible: false, title: '', content: '', onConfirm: null });
+						
+						// Show success toast
+						spaceToast.success(`${t('studentManagement.deactivateStudentSuccess')} "${studentName}" ${t('studentManagement.success')}`);
+						
+						// Refresh student data
+						fetchStudentProfile();
+					} else {
+						throw new Error(response.message || 'Failed to update student status');
+					}
+				} catch (error) {
+					console.error('Error auto-deactivating PENDING student:', error);
+					setConfirmModal({ visible: false, title: '', content: '', onConfirm: null });
+					spaceToast.error(error.response?.data?.error || error.response?.data?.message || error.message || t('studentManagement.updateStatusError'));
+				}
+			}
+		});
+	};
+
+	const handleConfirmCancel = () => {
+		setConfirmModal({ visible: false, title: '', content: '', onConfirm: null });
+	};
+
 	// Loading state
 	if (loading) {
 		return (
@@ -422,6 +469,18 @@ const StudentProfile = () => {
 						className={`progress-button ${theme}-progress-button`}>
 						{t('studentManagement.studentLearningProgressOverview')}
 					</Button>
+					{student?.status === 'PENDING' && (
+						<Button
+							icon={<DeleteOutlined style={{ color: '#ff4d4f' }} />}
+							onClick={handleAutoDeactivatePending}
+							className={`deactivate-button ${theme}-deactivate-button`}
+							style={{ 
+								color: '#ff4d4f',
+								borderColor: '#ff4d4f'
+							}}>
+							{t('studentManagement.deactivateStudent')}
+						</Button>
+					)}
 					<Button
 						type='primary'
 						icon={<EditOutlined />}
@@ -956,6 +1015,76 @@ const StudentProfile = () => {
 				currentEmail={student?.email}
 				studentId={id}
 			/>
+
+			{/* Confirmation Modal */}
+			<Modal
+				title={
+					<div style={{ 
+						fontSize: '20px', 
+						fontWeight: '600', 
+						color: '#ff4d4f',
+						textAlign: 'center',
+						padding: '10px 0'
+					}}>
+						{confirmModal.title}
+					</div>
+				}
+				open={confirmModal.visible}
+				onOk={confirmModal.onConfirm}
+				onCancel={handleConfirmCancel}
+				okText={t('common.confirm')}
+				cancelText={t('common.cancel')}
+				width={500}
+				centered
+				bodyStyle={{
+					padding: '30px 40px',
+					fontSize: '16px',
+					lineHeight: '1.6',
+					textAlign: 'center'
+				}}
+				okButtonProps={{
+					style: {
+						backgroundColor: '#ff4d4f',
+						borderColor: '#ff4d4f',
+						color: '#ffffff',
+						height: '40px',
+						fontSize: '16px',
+						fontWeight: '500',
+						minWidth: '100px'
+					}
+				}}
+				cancelButtonProps={{
+					style: {
+						height: '40px',
+						fontSize: '16px',
+						fontWeight: '500',
+						minWidth: '100px'
+					}
+				}}
+			>
+				<div style={{
+					display: 'flex',
+					flexDirection: 'column',
+					alignItems: 'center',
+					gap: '20px'
+				}}>
+					<div style={{
+						fontSize: '48px',
+						color: '#ff4d4f',
+						marginBottom: '10px'
+					}}>
+						🗑️
+					</div>
+					<p style={{
+						fontSize: '18px',
+						color: '#333',
+						margin: 0,
+						fontWeight: '500'
+					}}>
+						{confirmModal.content}
+					</p>
+				</div>
+			</Modal>
 
 			{/* Avatar Selection Modal */}
 			<Modal

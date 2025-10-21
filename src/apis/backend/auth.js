@@ -205,6 +205,17 @@ const authApi = {
 		});
 	},
 
+	// Reset password by teacher
+	resetPasswordByTeacher: (username) => {
+		console.log('ResetPasswordByTeacher API - Username:', username);
+		return axiosClient.post(`/auth/reset-password-by-teacher?username=${username}`, {}, {
+			headers: {
+				'Content-Type': 'application/json',
+				'accept': '*/*',
+			}
+		});
+	},
+
 };
 
 export default authApi;
