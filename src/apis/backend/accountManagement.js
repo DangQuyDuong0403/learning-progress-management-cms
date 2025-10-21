@@ -10,6 +10,7 @@ const accountManagementApi = {
     updateAccountStatus: (id, userStatus) => axiosClient.put(`/account/${id}/status`, null, {
         params: { userStatus }
     }),
+    deleteAccount: (id) => axiosClient.delete(`/account/${id}`),
 }
 
 export default accountManagementApi;

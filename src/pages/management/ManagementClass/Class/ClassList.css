@@ -1482,5 +1482,12 @@
   border-top-color: #e2e8f0 !important;
 }
 
+/* Text overflow ellipsis for table cells */
+.ant-table-tbody > tr > td {
+  white-space: nowrap ;
+  overflow: hidden;
+  text-overflow: ellipsis ;
+}
+
 
 

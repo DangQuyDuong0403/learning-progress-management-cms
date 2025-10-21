@@ -36,6 +36,7 @@ import { useTheme } from "../../../../contexts/ThemeContext";
 import "./StudentList.css";
 import { spaceToast } from "../../../../component/SpaceToastify";
 import studentManagementApi from "../../../../apis/backend/StudentManagement";
+import accountManagementApi from "../../../../apis/backend/accountManagement";
 import AssignStudentToClass from "./AssignStudentToClass";
 import levelManagementApi from "../../../../apis/backend/levelManagement";
 import StudentBottomActionBar from "../../../../component/StudentBottomActionBar";
@@ -710,12 +711,12 @@ const StudentList = () => {
             />
           </Tooltip>
           {record.status === 'PENDING' && (
-            <Tooltip title={t('studentManagement.deactivateStudent')}>
+            <Tooltip title={t('studentManagement.deleteStudent')}>
               <Button
                 type="text"
                 icon={<DeleteOutlined style={{ fontSize: '25px', color: '#ff4d4f' }} />}
                 size="small"
-                onClick={() => handleAutoDeactivatePending(record.id)}
+                onClick={() => handleDeletePending(record.id)}
                 style={{ 
                   color: '#ff4d4f',
                   padding: '8px 12px'
@@ -861,8 +862,8 @@ const StudentList = () => {
     }
   };
 
-  // Handle auto-deactivate for PENDING students (trash button)
-  const handleAutoDeactivatePending = (id) => {
+  // Handle delete for PENDING students (trash button)
+  const handleDeletePending = (id) => {
     const student = students.find(s => s.id === id);
     if (!student || student.status !== 'PENDING') return;
     
@@ -870,29 +871,26 @@ const StudentList = () => {
     
     setConfirmModal({
       visible: true,
-      title: t('studentManagement.deactivateStudent'),
-      content: `${t('studentManagement.confirmDeactivatePending')} "${studentName}"? ${t('studentManagement.deactivatePendingNote')}`,
+      title: t('studentManagement.deleteStudent'),
+      content: `${t('studentManagement.confirmDeletePending')} "${studentName}"? ${t('studentManagement.deletePendingNote')}`,
       onConfirm: async () => {
         try {
-          // Call API to update student status to INACTIVE
-          const response = await studentManagementApi.updateStudentStatus(id, 'INACTIVE');
+          // Call API to delete student
+          const response = await accountManagementApi.deleteAccount(id);
           
-          if (response.success) {
-            // Close modal first
-            setConfirmModal({ visible: false, title: '', content: '', onConfirm: null });
-            
-            // Show success toast
-            spaceToast.success(`${t('studentManagement.deactivateStudentSuccess')} "${studentName}" ${t('studentManagement.success')}`);
-            
-            // Refresh the list to get updated data from server
-            fetchStudents(pagination.current, pagination.pageSize, searchValue, statusFilter, roleNameFilter, sortBy, sortDir);
-          } else {
-            throw new Error(response.message || 'Failed to update student status');
-          }
-        } catch (error) {
-          console.error('Error auto-deactivating PENDING student:', error);
+          // Close modal first
           setConfirmModal({ visible: false, title: '', content: '', onConfirm: null });
-          spaceToast.error(error.response?.data?.error || error.response?.data?.message || error.message || t('studentManagement.updateStatusError'));
+          
+          // Use backend message if available, otherwise fallback to translation
+          const successMessage = response.message + ` "${studentName}"`;
+          spaceToast.success(successMessage);
+          
+          // Refresh the list to get updated data from server
+          fetchStudents(pagination.current, pagination.pageSize, searchValue, statusFilter, roleNameFilter, sortBy, sortDir);
+        } catch (error) {
+          console.error('Error deleting PENDING student:', error);
+          setConfirmModal({ visible: false, title: '', content: '', onConfirm: null });
+          spaceToast.error(error.response?.data?.error || error.response?.data?.message || error.message || t('studentManagement.deleteStudentError'));
         }
       }
     });
