@@ -35,7 +35,6 @@ const LevelForm = ({ level, onClose, shouldCallApi = true, showPrerequisiteAndCo
         levelCode: level.levelCode,
         description: level.description,
         prerequisite: level.prerequisite?.levelName || level.prerequisite || '',
-        estimatedDurationWeeks: level.estimatedDurationWeeks, // Direct value in weeks
         status: level.status,
         orderNumber: level.orderNumber,
         promotionCriteria: level.promotionCriteria,
@@ -58,7 +57,6 @@ const LevelForm = ({ level, onClose, shouldCallApi = true, showPrerequisiteAndCo
         description: values.description || '',
         promotionCriteria: values.promotionCriteria || '',
         learningObjectives: values.learningObjectives || '',
-        estimatedDurationWeeks: values.estimatedDurationWeeks, // Direct value in weeks
         orderNumber: values.orderNumber || 0,
       };
 
@@ -123,12 +121,11 @@ const LevelForm = ({ level, onClose, shouldCallApi = true, showPrerequisiteAndCo
       onFinish={onFinish}
       initialValues={{
         status: 'active',
-        estimatedDurationWeeks: 12,
         ...level
       }}
     >
       <Row gutter={16}>
-        <Col span={showPrerequisiteAndCode ? 12 : 12}>
+        <Col span={showPrerequisiteAndCode ? 12 : 24}>
           <Form.Item
             name="levelName"
             label={<span>{t('levelManagement.levelName')} <span style={{ color: 'red' }}>*</span></span>}
@@ -154,25 +151,6 @@ const LevelForm = ({ level, onClose, shouldCallApi = true, showPrerequisiteAndCo
             </Form.Item>
           </Col>
         )}
-        {!showPrerequisiteAndCode && (
-          <Col span={12}>
-            <Form.Item
-              name="estimatedDurationWeeks"
-              label={<span>{t('levelManagement.duration')} <span style={{ color: 'red' }}>*</span></span>}
-              required
-              rules={[{ required: true, message: t('levelManagement.durationRequired') }]}
-            >
-              <InputNumber 
-                min={1}
-                max={260}
-                style={{ width: '100%' }}
-                size="middle"
-                disabled={isPublished}
-                addonAfter="weeks"
-              />
-            </Form.Item>
-          </Col>
-        )}
       </Row>
 
       {showPrerequisiteAndCode && (
@@ -185,23 +163,6 @@ const LevelForm = ({ level, onClose, shouldCallApi = true, showPrerequisiteAndCo
               <Input 
                 size="middle"
                 disabled={true}
-              />
-            </Form.Item>
-          </Col>
-          <Col span={12}>
-            <Form.Item
-              name="estimatedDurationWeeks"
-              label={<span>{t('levelManagement.duration')} <span style={{ color: 'red' }}>*</span></span>}
-              required
-              rules={[{ required: true, message: t('levelManagement.durationRequired') }]}
-            >
-              <InputNumber 
-                min={1}
-                max={104}
-                style={{ width: '100%' }}
-                size="middle"
-                disabled={isPublished}
-                addonAfter="weeks"
               />
             </Form.Item>
           </Col>
