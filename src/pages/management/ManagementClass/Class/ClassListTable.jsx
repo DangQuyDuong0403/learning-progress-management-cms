@@ -886,10 +886,20 @@ const ClassListTable = () => {
 			key: 'name',
 			width: '20%',
 			sorter: true,
+			ellipsis: {
+				showTitle: false,
+			},
 			render: (text) => (
-				<div style={{ fontSize: '16px' }}>
-					{text}
-				</div>
+				<Tooltip placement="topLeft" title={text}>
+					<div style={{ 
+						fontSize: '16px',
+						overflow: 'hidden',
+						textOverflow: 'ellipsis',
+						whiteSpace: 'nowrap'
+					}}>
+						{text}
+					</div>
+				</Tooltip>
 			),
 		},
 		{
@@ -898,10 +908,20 @@ const ClassListTable = () => {
 			key: 'syllabus',
 			width: '18%',
 			sorter: true,
+			ellipsis: {
+				showTitle: false,
+			},
 			render: (text) => (
-				<div style={{ fontSize: '16px' }}>
-					{text}
-				</div>
+				<Tooltip placement="topLeft" title={text}>
+					<div style={{ 
+						fontSize: '16px',
+						overflow: 'hidden',
+						textOverflow: 'ellipsis',
+						whiteSpace: 'nowrap'
+					}}>
+						{text}
+					</div>
+				</Tooltip>
 			),
 		},
 		{
@@ -910,10 +930,20 @@ const ClassListTable = () => {
 			key: 'level',
 			width: '12%',
 			sorter: true,
+			ellipsis: {
+				showTitle: false,
+			},
 			render: (text) => (
-				<div style={{ fontSize: '16px' }}>
-					{text}
-				</div>
+				<Tooltip placement="topLeft" title={text}>
+					<div style={{ 
+						fontSize: '16px',
+						overflow: 'hidden',
+						textOverflow: 'ellipsis',
+						whiteSpace: 'nowrap'
+					}}>
+						{text}
+					</div>
+				</Tooltip>
 			),
 		},
 		{
@@ -1004,47 +1034,79 @@ const ClassListTable = () => {
 									{/* Filter Dropdown Panel */}
 									{filterDropdown.visible && (
 										<div className={`filter-dropdown-panel ${theme}-filter-dropdown`}>
-											<div style={{ padding: '20px' }}>
-												{/* Status Filter */}
-												<div style={{ marginBottom: '20px' }}>
-													<Typography.Title level={5} style={{ marginBottom: '12px', fontSize: '16px' }}>
-														{t('classManagement.status')}
-													</Typography.Title>
-													<Select
-														value={filterDropdown.selectedStatus}
-														onChange={(value) => setFilterDropdown(prev => ({ ...prev, selectedStatus: value }))}
-														style={{ width: '100%', height: '40px' }}
-													>
-														<Option value="all">{t('classManagement.allStatus')}</Option>
-														<Option value="ACTIVE">{t('classManagement.active')}</Option>
-														<Option value="INACTIVE">{t('classManagement.inactive')}</Option>
-													</Select>
-												</div>
+											<div style={{ padding: '24px' }}>
+												{/* Status and Syllabus on same row */}
+												<div style={{ 
+													display: 'grid', 
+													gridTemplateColumns: '1fr 1fr', 
+													gap: '16px',
+													marginBottom: '20px' 
+												}}>
+													{/* Status Filter */}
+													<div>
+														<Typography.Title 
+															level={5} 
+															style={{ 
+																marginBottom: '12px', 
+																fontSize: '16px',
+																fontWeight: '600',
+																color: theme === 'dark' ? '#ffffff' : '#000000'
+															}}
+														>
+															{t('classManagement.status')}
+														</Typography.Title>
+														<Select
+															value={filterDropdown.selectedStatus}
+															onChange={(value) => setFilterDropdown(prev => ({ ...prev, selectedStatus: value }))}
+															style={{ width: '100%', height: '48px' }}
+														>
+															<Option value="all">{t('classManagement.allStatus')}</Option>
+															<Option value="ACTIVE">{t('classManagement.active')}</Option>
+															<Option value="INACTIVE">{t('classManagement.inactive')}</Option>
+														</Select>
+													</div>
 
-												{/* Syllabus Filter */}
-												<div style={{ marginBottom: '20px' }}>
-													<Typography.Title level={5} style={{ marginBottom: '12px', fontSize: '16px' }}>
-														{t('classManagement.syllabus')}
-													</Typography.Title>
-													<Select
-														value={filterDropdown.selectedSyllabus}
-														onChange={(value) => setFilterDropdown(prev => ({ ...prev, selectedSyllabus: value }))}
-														style={{ width: '100%', height: '40px' }}
-														placeholder={t('classManagement.selectSyllabus')}
-														allowClear
-														loading={syllabusLoading}
-													>
-														{syllabuses.map(syllabus => (
-															<Option key={syllabus.id} value={syllabus.id}>
-																{syllabus.syllabusName}
-															</Option>
-														))}
-													</Select>
+													{/* Syllabus Filter */}
+													<div>
+														<Typography.Title 
+															level={5} 
+															style={{ 
+																marginBottom: '12px', 
+																fontSize: '16px',
+																fontWeight: '600',
+																color: theme === 'dark' ? '#ffffff' : '#000000'
+															}}
+														>
+															{t('classManagement.syllabus')}
+														</Typography.Title>
+														<Select
+															value={filterDropdown.selectedSyllabus}
+															onChange={(value) => setFilterDropdown(prev => ({ ...prev, selectedSyllabus: value }))}
+															style={{ width: '100%', height: '48px' }}
+															placeholder={t('classManagement.selectSyllabus')}
+															allowClear
+															loading={syllabusLoading}
+														>
+															{syllabuses.map(syllabus => (
+																<Option key={syllabus.id} value={syllabus.id}>
+																	{syllabus.syllabusName}
+																</Option>
+															))}
+														</Select>
+													</div>
 												</div>
 
 												{/* Start Date Range Filter */}
 												<div style={{ marginBottom: '20px' }}>
-													<Typography.Title level={5} style={{ marginBottom: '12px', fontSize: '16px' }}>
+													<Typography.Title 
+														level={5} 
+														style={{ 
+															marginBottom: '12px', 
+															fontSize: '16px',
+															fontWeight: '600',
+															color: theme === 'dark' ? '#ffffff' : '#000000'
+														}}
+													>
 														{t('classManagement.startDateRange')}
 													</Typography.Title>
 													<DatePicker.RangePicker
@@ -1065,14 +1127,22 @@ const ClassListTable = () => {
 																}));
 															}
 														}}
-														style={{ width: '100%', height: '40px' }}
+														style={{ width: '100%', height: '48px' }}
 														placeholder={[t('classManagement.startDateFrom'), t('classManagement.startDateTo')]}
 													/>
 												</div>
 
 												{/* End Date Range Filter */}
-												<div style={{ marginBottom: '20px' }}>
-													<Typography.Title level={5} style={{ marginBottom: '12px', fontSize: '16px' }}>
+												<div style={{ marginBottom: '24px' }}>
+													<Typography.Title 
+														level={5} 
+														style={{ 
+															marginBottom: '12px', 
+															fontSize: '16px',
+															fontWeight: '600',
+															color: theme === 'dark' ? '#ffffff' : '#000000'
+														}}
+													>
 														{t('classManagement.endDateRange')}
 													</Typography.Title>
 													<DatePicker.RangePicker
@@ -1093,7 +1163,7 @@ const ClassListTable = () => {
 																}));
 															}
 														}}
-														style={{ width: '100%', height: '40px' }}
+														style={{ width: '100%', height: '48px' }}
 														placeholder={[t('classManagement.endDateFrom'), t('classManagement.endDateTo')]}
 													/>
 												</div>
@@ -1102,13 +1172,20 @@ const ClassListTable = () => {
 												<div style={{ 
 													display: 'flex', 
 													justifyContent: 'space-between', 
-													marginTop: '20px',
+													gap: '12px',
 													paddingTop: '16px',
-													borderTop: '1px solid #f0f0f0'
+													borderTop: theme === 'dark' ? '1px solid #333' : '1px solid #f0f0f0'
 												}}>
 													<Button
 														onClick={handleFilterReset}
 														className="filter-reset-button"
+														style={{
+															height: '48px',
+															fontSize: '16px',
+															fontWeight: '500',
+															flex: 1,
+															borderRadius: '8px'
+														}}
 													>
 														{t('common.reset')}
 													</Button>
@@ -1116,6 +1193,16 @@ const ClassListTable = () => {
 														type="primary"
 														onClick={handleFilterSubmit}
 														className="filter-submit-button"
+														style={{
+															height: '48px',
+															fontSize: '16px',
+															fontWeight: '500',
+															flex: 1,
+															borderRadius: '8px',
+															backgroundColor: theme === 'sun' ? 'rgb(113, 179, 253)' : '#5a1fb8',
+															borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : '#5a1fb8',
+															color: theme === 'sun' ? '#000000' : '#ffffff'
+														}}
 													>
 														{t('common.viewResults')}
 													</Button>
