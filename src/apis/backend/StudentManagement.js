@@ -151,6 +151,39 @@ const studentManagementApi = {
 			throw error;
 		});
 	},
+
+	// Export students to Excel with filtering
+	exportStudents: (params = {}) => {
+		const queryParams = new URLSearchParams();
+		
+		// Add filter parameters if provided
+		if (params.text) queryParams.append('text', params.text);
+		if (params.status && params.status.length > 0) {
+			params.status.forEach(status => queryParams.append('status', status));
+		}
+		if (params.roleName && params.roleName.length > 0) {
+			params.roleName.forEach(role => queryParams.append('roleName', role));
+		}
+		if (params.classIds && params.classIds.length > 0) {
+			params.classIds.forEach(classId => queryParams.append('classIds', classId));
+		}
+
+		const url = `/user/students/export${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
+		console.log('ExportStudents API - URL:', url);
+		console.log('ExportStudents API - Params:', params);
+		
+		return axiosClient.get(url, {
+			headers: {
+				'accept': '*/*',
+			},
+			responseType: 'blob' // Important for file download
+		}).catch(error => {
+			console.error('ExportStudents API Error:', error);
+			console.error('Error response:', error.response?.data);
+			console.error('Error status:', error.response?.status);
+			throw error;
+		});
+	},
 };
 
 export default studentManagementApi;

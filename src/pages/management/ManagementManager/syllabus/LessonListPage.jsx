@@ -68,6 +68,9 @@ const LessonListPage = () => {
 		error: null,
 	});
 
+	// Loading states for buttons
+	const [templateDownloadLoading, setTemplateDownloadLoading] = useState(false);
+
 	// Pagination state
 	const [pagination, setPagination] = useState({
 		current: 1,
@@ -273,6 +276,7 @@ const LessonListPage = () => {
 	};
 
 	const handleDownloadTemplate = async () => {
+		setTemplateDownloadLoading(true);
 		try {
 			
 			const response = await syllabusManagementApi.downloadLessonTemplate();
@@ -303,6 +307,8 @@ const LessonListPage = () => {
 		} catch (error) {
 			console.error('Error downloading template:', error);
 			spaceToast.error(error.response?.data?.error || error.response?.data?.message || error.message || 'Failed to download template');
+		} finally {
+			setTemplateDownloadLoading(false);
 		}
 	};
 
@@ -778,6 +784,8 @@ const LessonListPage = () => {
 							type="dashed"
 							icon={<DownloadOutlined />}
 							onClick={handleDownloadTemplate}
+							loading={templateDownloadLoading}
+							disabled={templateDownloadLoading}
 							style={{
 								borderColor: '#1890ff',
 								color: '#1890ff',

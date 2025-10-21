@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Spin } from 'antd';
-import { CheckCircleOutlined, CloseCircleOutlined } from '@ant-design/icons';
+import { CloseCircleOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useDispatch } from 'react-redux';
 import { confirmEmailChange } from '../../redux/auth';
@@ -24,6 +24,7 @@ export default function ConfirmEmailChange() {
 
   
   const [status, setStatus] = useState('loading'); // loading, success, error
+  const [changedEmail, setChangedEmail] = useState(null); // Store the changed email
 
   // Set page title
   usePageTitle(t('common.confirmEmailChange'));
@@ -53,6 +54,11 @@ export default function ConfirmEmailChange() {
           
           if (result.data?.success || result.data?.message) {
             setStatus('success');
+            // Extract email from response if available
+            const emailFromResponse = result.data?.email || result.data?.newEmail || result.data?.data?.email;
+            if (emailFromResponse) {
+              setChangedEmail(emailFromResponse);
+            }
             spaceToast.success(result.data?.message || t('common.emailChangeConfirmed'));
           } else {
             setStatus('error');
@@ -124,19 +130,38 @@ export default function ConfirmEmailChange() {
 
                   {status === 'success' && (
                     <div style={{ textAlign: 'center', padding: '20px 0' }}>
-                      <CheckCircleOutlined 
-                        style={{ 
-                          fontSize: '64px', 
-                          color: '#52c41a',
-                          marginBottom: '20px'
-                        }} 
-                      />
-                      <h3 style={{ color: '#52c41a', marginBottom: '16px', fontSize: '24px' }}>
+                      <div style={{ fontSize: '48px', color: '#1890ff', marginBottom: '16px' }}>
+                        📧
+                      </div>
+                      <h3 style={{ color: '#1890ff', marginBottom: '16px', fontSize: '24px' }}>
                         {t('common.emailChangeConfirmed')}
                       </h3>
-                      <p style={{ color: isSunTheme ? '#666' : '#ffffff', marginBottom: '24px', fontSize: '16px' }}>
+                      <p style={{ color: isSunTheme ? '#666' : '#ffffff', marginBottom: '16px', fontSize: '16px' }}>
                         {t('common.emailChangeSuccessMessage')}
                       </p>
+                      {changedEmail && (
+                        <div style={{ 
+                          background: '#e6f7ff', 
+                          border: '1px solid #91d5ff', 
+                          borderRadius: '8px', 
+                          padding: '12px 16px', 
+                          marginBottom: '24px',
+                          display: 'inline-block'
+                        }}>
+                          <p style={{ margin: 0, fontSize: '14px', color: '#666', marginBottom: '4px' }}>
+                            {t('common.yourEmailIsNow')}:
+                          </p>
+                          <p style={{ 
+                            margin: 0, 
+                            fontSize: '16px', 
+                            color: '#1890ff', 
+                            fontWeight: 'bold',
+                            wordBreak: 'break-all'
+                          }}>
+                            {changedEmail}
+                          </p>
+                        </div>
+                      )}
                       <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
                         <button
                           className='btn w-auto mb-2 rounded-3'

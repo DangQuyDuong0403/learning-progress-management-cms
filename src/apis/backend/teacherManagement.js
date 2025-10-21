@@ -274,6 +274,36 @@ const teacherManagementApi = {
 			throw error;
 		});
 	},
+
+	// Export teachers to Excel with filtering
+	exportTeachers: (params = {}) => {
+		const queryParams = new URLSearchParams();
+		
+		// Add filter parameters if provided
+		if (params.text) queryParams.append('text', params.text);
+		if (params.status && params.status.length > 0) {
+			params.status.forEach(status => queryParams.append('status', status));
+		}
+		if (params.roleName && params.roleName.length > 0) {
+			params.roleName.forEach(role => queryParams.append('roleName', role));
+		}
+
+		const url = `/user/teachers/export${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
+		console.log('ExportTeachers API - URL:', url);
+		console.log('ExportTeachers API - Params:', params);
+		
+		return axiosClient.get(url, {
+			headers: {
+				'accept': '*/*',
+			},
+			responseType: 'blob' // Important for file download
+		}).catch(error => {
+			console.error('ExportTeachers API Error:', error);
+			console.error('Error response:', error.response?.data);
+			console.error('Error status:', error.response?.status);
+			throw error;
+		});
+	},
 };
 
 export default teacherManagementApi;

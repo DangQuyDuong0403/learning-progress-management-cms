@@ -28,6 +28,7 @@ import {
   DownloadOutlined,
   UploadOutlined,
   FilterOutlined,
+  DeleteOutlined,
 } from "@ant-design/icons";
 import ThemedLayout from "../../../../component/ThemedLayout";
 import LoadingWithEffect from "../../../../component/spinner/LoadingWithEffect";
@@ -103,6 +104,10 @@ const StudentList = () => {
     visible: false,
     selectedRoles: [],
     selectedStatuses: [],
+  });
+  const [exportLoading, setExportLoading] = useState({
+    selected: false,
+    all: false,
   });
   
   // Refs for click outside detection
@@ -715,6 +720,20 @@ const StudentList = () => {
               }}
             />
           </Tooltip>
+          {record.status === 'PENDING' && (
+            <Tooltip title={t('studentManagement.deactivateStudent')}>
+              <Button
+                type="text"
+                icon={<DeleteOutlined style={{ fontSize: '25px', color: '#ff4d4f' }} />}
+                size="small"
+                onClick={() => handleAutoDeactivatePending(record.id)}
+                style={{ 
+                  color: '#ff4d4f',
+                  padding: '8px 12px'
+                }}
+              />
+            </Tooltip>
+          )}
         </Space>
       ),
     },
@@ -853,6 +872,43 @@ const StudentList = () => {
     }
   };
 
+  // Handle auto-deactivate for PENDING students (trash button)
+  const handleAutoDeactivatePending = (id) => {
+    const student = students.find(s => s.id === id);
+    if (!student || student.status !== 'PENDING') return;
+    
+    const studentName = student.fullName || student.userName;
+    
+    setConfirmModal({
+      visible: true,
+      title: t('studentManagement.deactivateStudent'),
+      content: `${t('studentManagement.confirmDeactivatePending')} "${studentName}"? ${t('studentManagement.deactivatePendingNote')}`,
+      onConfirm: async () => {
+        try {
+          // Call API to update student status to INACTIVE
+          const response = await studentManagementApi.updateStudentStatus(id, 'INACTIVE');
+          
+          if (response.success) {
+            // Close modal first
+            setConfirmModal({ visible: false, title: '', content: '', onConfirm: null });
+            
+            // Show success toast
+            spaceToast.success(`${t('studentManagement.deactivateStudentSuccess')} "${studentName}" ${t('studentManagement.success')}`);
+            
+            // Refresh the list to get updated data from server
+            fetchStudents(pagination.current, pagination.pageSize, searchValue, statusFilter, roleNameFilter, sortBy, sortDir);
+          } else {
+            throw new Error(response.message || 'Failed to update student status');
+          }
+        } catch (error) {
+          console.error('Error auto-deactivating PENDING student:', error);
+          setConfirmModal({ visible: false, title: '', content: '', onConfirm: null });
+          spaceToast.error(error.response?.data?.error || error.response?.data?.message || error.message || t('studentManagement.updateStatusError'));
+        }
+      }
+    });
+  };
+
   const handleConfirmCancel = () => {
     setConfirmModal({ visible: false, title: '', content: '', onConfirm: null });
   };
@@ -902,8 +958,14 @@ const StudentList = () => {
             // Show success toast
             spaceToast.success(`Add student "${values.fullName}" successfully`);
             
-            // Refresh the list after adding
-            fetchStudents(1, pagination.pageSize, searchValue, statusFilter, roleNameFilter, sortBy, sortDir);
+            // Navigate to student profile if student ID is available
+            if (response.data && response.data.id) {
+              console.log('Navigating to student profile:', response.data.id);
+              navigate(`/manager/student/${response.data.id}/profile`);
+            } else {
+              // Fallback: refresh the list if no ID available
+              fetchStudents(1, pagination.pageSize, searchValue, statusFilter, roleNameFilter, sortBy, sortDir);
+            }
           } else {
             throw new Error(response.message || 'Failed to create student');
           }
@@ -1051,28 +1113,81 @@ const StudentList = () => {
   };
 
   const handleExportSelected = async () => {
+    setExportLoading(prev => ({ ...prev, selected: true }));
+    
     try {
-      // TODO: Implement export selected items API call
-      // await studentManagementApi.exportStudents(selectedRowKeys);
+      // Prepare export parameters with current page filters
+      const exportParams = {
+        text: searchValue || undefined,
+        status: statusFilter.length > 0 ? statusFilter : undefined,
+        roleName: roleNameFilter.length > 0 ? roleNameFilter : undefined,
+        // Note: For selected students, we would need a different API endpoint
+        // that accepts specific student IDs, but for now we'll use current filters
+      };
+
+      console.log('Exporting selected students with current filters:', exportParams);
+      
+      const response = await studentManagementApi.exportStudents(exportParams);
+      
+      // Create blob URL and trigger download
+      const blob = new Blob([response.data], { 
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
+      });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `students_export_${new Date().toISOString().split('T')[0]}.xlsx`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
       
       spaceToast.success(`${t('studentManagement.exportSuccess')}: ${selectedRowKeys.length} ${t('studentManagement.students')}`);
       setIsExportModalVisible(false);
     } catch (error) {
       console.error('Error exporting selected students:', error);
-      spaceToast.error(t('studentManagement.exportError'));
+      spaceToast.error(error.response?.data?.error || error.response?.data?.message || error.message || t('studentManagement.exportError'));
+    } finally {
+      setExportLoading(prev => ({ ...prev, selected: false }));
     }
   };
 
   const handleExportAll = async () => {
+    setExportLoading(prev => ({ ...prev, all: true }));
+    
     try {
-      // TODO: Implement export all items API call
-      // await studentManagementApi.exportAllStudents();
+      // Prepare export parameters with current page filters
+      const exportParams = {
+        text: searchValue || undefined,
+        status: statusFilter.length > 0 ? statusFilter : undefined,
+        roleName: roleNameFilter.length > 0 ? roleNameFilter : undefined,
+        // Export all students (no classIds filter means all)
+      };
+
+      console.log('Exporting all students with current filters:', exportParams);
+      
+      const response = await studentManagementApi.exportStudents(exportParams);
+      
+      // Create blob URL and trigger download
+      const blob = new Blob([response.data], { 
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
+      });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `all_students_export_${new Date().toISOString().split('T')[0]}.xlsx`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
       
       spaceToast.success(`${t('studentManagement.exportSuccess')}: ${totalStudents} ${t('studentManagement.students')}`);
       setIsExportModalVisible(false);
     } catch (error) {
       console.error('Error exporting all students:', error);
-      spaceToast.error(t('studentManagement.exportError'));
+      spaceToast.error(error.response?.data?.error || error.response?.data?.message || error.message || t('studentManagement.exportError'));
+    } finally {
+      setExportLoading(prev => ({ ...prev, all: false }));
     }
   };
 
@@ -1260,6 +1375,8 @@ const StudentList = () => {
                 icon={<UploadOutlined />}
                 className={`export-button ${theme}-export-button`}
                 onClick={handleExportStudents}
+                loading={exportLoading.selected || exportLoading.all}
+                disabled={exportLoading.selected || exportLoading.all}
               >
                 {t('studentManagement.exportData')}
                 {selectedRowKeys.length > 0 && ` (${selectedRowKeys.length})`}
@@ -1882,44 +1999,48 @@ const StudentList = () => {
               </Typography.Text>
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              {selectedRowKeys.length > 0 && (
-                <Button
-                  type="primary"
-                  icon={<UploadOutlined />}
-                  onClick={handleExportSelected}
-                  style={{
-                    height: '48px',
-                    fontSize: '16px',
-                    fontWeight: '500',
-                    background: theme === 'sun' 
-                      ? 'linear-gradient(135deg, #FFFFFF, #B6D8FE 77%, #94C2F5)'
-                      : 'linear-gradient(135deg, #FFFFFF 0%, #9F96B6 46%, #A79EBB 64%, #ACA5C0 75%, #6D5F8F 100%)',
-                    borderColor: theme === 'sun' ? '#B6D8FE' : '#9F96B6',
-                    color: '#000000',
-                    borderRadius: '8px',
-                  }}>
-                  {t('studentManagement.exportSelected')} ({selectedRowKeys.length} {t('studentManagement.students')})
-                </Button>
-              )}
+             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+               {selectedRowKeys.length > 0 && (
+                 <Button
+                   type="primary"
+                   icon={<UploadOutlined />}
+                   onClick={handleExportSelected}
+                   loading={exportLoading.selected}
+                   disabled={exportLoading.all}
+                   style={{
+                     height: '48px',
+                     fontSize: '16px',
+                     fontWeight: '500',
+                     background: theme === 'sun' 
+                       ? 'linear-gradient(135deg, #FFFFFF, #B6D8FE 77%, #94C2F5)'
+                       : 'linear-gradient(135deg, #FFFFFF 0%, #9F96B6 46%, #A79EBB 64%, #ACA5C0 75%, #6D5F8F 100%)',
+                     borderColor: theme === 'sun' ? '#B6D8FE' : '#9F96B6',
+                     color: '#000000',
+                     borderRadius: '8px',
+                   }}>
+                   {t('studentManagement.exportSelected')} ({selectedRowKeys.length} {t('studentManagement.students')})
+                 </Button>
+               )}
 
-              <Button
-                icon={<UploadOutlined />}
-                onClick={handleExportAll}
-                style={{
-                  height: '48px',
-                  fontSize: '16px',
-                  fontWeight: '500',
-                  background: theme === 'sun' 
-                    ? 'linear-gradient(135deg, #FFFFFF, #B6D8FE 77%, #94C2F5)'
-                    : 'linear-gradient(135deg, #FFFFFF 0%, #9F96B6 46%, #A79EBB 64%, #ACA5C0 75%, #6D5F8F 100%)',
-                  borderColor: theme === 'sun' ? '#B6D8FE' : '#9F96B6',
-                  color: '#000000',
-                  borderRadius: '8px',
-                }}>
-                {t('studentManagement.exportAll')} ({totalStudents} {t('studentManagement.students')})
-              </Button>
-            </div>
+               <Button
+                 icon={<UploadOutlined />}
+                 onClick={handleExportAll}
+                 loading={exportLoading.all}
+                 disabled={exportLoading.selected}
+                 style={{
+                   height: '48px',
+                   fontSize: '16px',
+                   fontWeight: '500',
+                   background: theme === 'sun' 
+                     ? 'linear-gradient(135deg, #FFFFFF, #B6D8FE 77%, #94C2F5)'
+                     : 'linear-gradient(135deg, #FFFFFF 0%, #9F96B6 46%, #A79EBB 64%, #ACA5C0 75%, #6D5F8F 100%)',
+                   borderColor: theme === 'sun' ? '#B6D8FE' : '#9F96B6',
+                   color: '#000000',
+                   borderRadius: '8px',
+                 }}>
+                 {t('studentManagement.exportAll')} ({totalStudents} {t('studentManagement.students')})
+               </Button>
+             </div>
           </div>
         </Modal>
 
