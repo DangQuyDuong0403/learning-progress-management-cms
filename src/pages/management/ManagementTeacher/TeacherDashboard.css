@@ -1,18 +1,73 @@
-/* ===== TEACHER DASHBOARD STYLES ===== */
-.teacher-dashboard-container {
-  padding: 0;
-  min-height: 100vh;
-  position: relative;
-}
-
 /* ===== IMPORT GLOBAL VARIABLES ===== */
 @import '../../../styles/variables.css';
 
 /* ===== TEACHER DASHBOARD STYLES ===== */
 .teacher-dashboard-container {
-  padding: 0;
+  padding: 24px;
+  margin: 24px;
   min-height: 100vh;
-  position: relative;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  transition: background 0.3s ease;
+  backdrop-filter: blur(3px);
+}
+
+/* Light theme styles */
+.teacher-dashboard-container.light-theme {
+  background: rgba(230, 245, 255, 0.7);
+  border: 2px solid #3b82f6;
+}
+
+/* Dark theme styles */
+.teacher-dashboard-container.dark-theme {
+  background: rgba(110, 92, 172, 0.5);
+  backdrop-filter: blur(7px);
+  border: 2px solid #9c88ff;
+}
+
+/* ===== PAGE TITLE ===== */
+.teacher-dashboard-container .page-title {
+  margin: 0 0 8px 0;
+  font-size: 28px;
+  font-weight: 700;
+  transition: all 0.3s ease;
+}
+
+/* Light theme title - black */
+.teacher-dashboard-container.light-theme .page-title {
+  color: #000000;
+}
+
+/* Dark theme title - white */
+.teacher-dashboard-container.dark-theme .page-title {
+  color: #ffffff;
+}
+
+/* ===== MENU CARDS ===== */
+.teacher-dashboard-container .menu-cards-section {
+  margin-bottom: 24px;
+}
+
+.teacher-dashboard-container .menu-card {
+  height: 100%;
+  border-radius: 16px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  transition: all 0.3s ease;
+  border: 2px solid transparent;
+}
+
+/* Light theme menu card */
+.teacher-dashboard-container.light-theme .menu-card {
+  background: #ffffff !important;
+}
+
+.teacher-dashboard-container.light-theme .menu-card .ant-card-body {
+  background: #ffffff !important;
+}
+
+.teacher-dashboard-container .menu-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
 }
 
 /* ===== OVERRIDE ANT DESIGN CARD STYLES ===== */

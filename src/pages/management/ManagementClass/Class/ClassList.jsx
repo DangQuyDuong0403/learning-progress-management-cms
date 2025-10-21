@@ -1,34 +1,24 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import usePageTitle from "../../../../hooks/usePageTitle";
 import {
-  Button,
   Input,
-  Space,
   Card,
   Row,
   Col,
-  Select,
-  Modal,
-  Form,
-  Dropdown,
   Typography,
-  Upload,
   Pagination,
   Tooltip,
-  Switch,
+  Button,
+  Select,
+  DatePicker,
 } from "antd";
 import {
-  PlusOutlined,
   SearchOutlined,
-  MoreOutlined,
-  EditOutlined,
-  DeleteOutlined,
-  UploadOutlined,
-  DownloadOutlined,
   CalendarOutlined,
   BookOutlined,
+  FilterOutlined,
 } from "@ant-design/icons";
-import ThemedLayout from "../../../../component/teacherlayout/ThemedLayout";
+import ThemedLayout from "../../../../component/ThemedLayout";
 import LoadingWithEffect from "../../../../component/spinner/LoadingWithEffect";
 import "./ClassList.css";
 import { spaceToast } from "../../../../component/SpaceToastify";
@@ -36,8 +26,7 @@ import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useTheme } from "../../../../contexts/ThemeContext";
 import { classManagementApi, syllabusManagementApi } from "../../../../apis/apis";
-
-const { Option } = Select;
+import dayjs from "dayjs";
 
 // Predefined colors for classes
 const classColors = [
@@ -79,7 +68,6 @@ const ClassList = () => {
   const [classes, setClasses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [syllabuses, setSyllabuses] = useState([]);
-  const [syllabusLoading, setSyllabusLoading] = useState(false);
   
   // Pagination state
   const [pagination, setPagination] = useState({
@@ -94,44 +82,43 @@ const ClassList = () => {
   const [searchText, setSearchText] = useState("");
   const [searchTimeout, setSearchTimeout] = useState(null);
   
-  // Modal states
-  const [isModalVisible, setIsModalVisible] = useState(false);
-  const [editingClass, setEditingClass] = useState(null);
-  const [form] = Form.useForm();
-  const [confirmModal, setConfirmModal] = useState({
+  // Filter state
+  const [filterDropdown, setFilterDropdown] = useState({
     visible: false,
-    title: '',
-    content: '',
-    onConfirm: null
+    selectedStatus: null,
+    selectedSyllabus: null,
+    startDateRange: [null, null],
+    endDateRange: [null, null],
   });
   
-  // Import modal state
-  const [isImportModalVisible, setIsImportModalVisible] = useState(false);
+  // Applied filter state
+  const [statusFilter, setStatusFilter] = useState(null);
+  const [syllabusFilter, setSyllabusFilter] = useState(null);
+  const [startDateRange, setStartDateRange] = useState([null, null]);
+  const [endDateRange, setEndDateRange] = useState([null, null]);
+  
+  const filterContainerRef = useRef(null);
 
-  // Fetch all syllabuses for dropdown
-  const fetchAllSyllabuses = useCallback(async () => {
-    setSyllabusLoading(true);
+  // Fetch syllabuses for filter
+  const fetchSyllabuses = useCallback(async () => {
     try {
       const response = await syllabusManagementApi.getSyllabuses({ 
-        params: { page: 0, size: 1000 } // Get all syllabuses
+        params: { page: 0, size: 1000 } 
       });
       
       if (response.success && response.data) {
         setSyllabuses(response.data);
       } else {
-        console.error('Failed to fetch syllabuses:', response.message);
         setSyllabuses([]);
       }
     } catch (error) {
       console.error('Error fetching syllabuses:', error);
       setSyllabuses([]);
-    } finally {
-      setSyllabusLoading(false);
     }
   }, []);
 
   // Fetch classes from API
-  const fetchClasses = useCallback(async (page = 1, size = 10, search = '') => {
+  const fetchClasses = useCallback(async (page = 1, size = 10, search = '', filters = {}) => {
     setLoading(true);
     try {
       const params = {
@@ -142,6 +129,32 @@ const ClassList = () => {
       // Thêm search text nếu có
       if (search && search.trim()) {
         params.searchText = search.trim();
+      }
+
+      // Thêm status filter nếu có
+      if (filters.status) {
+        params.status = filters.status;
+      }
+
+      // Thêm syllabusId filter nếu có
+      if (filters.syllabusId) {
+        params.syllabusId = filters.syllabusId;
+      }
+
+      // Thêm start date range nếu có
+      if (filters.startDateFrom) {
+        params.startDateFrom = filters.startDateFrom;
+      }
+      if (filters.startDateTo) {
+        params.startDateTo = filters.startDateTo;
+      }
+
+      // Thêm end date range nếu có
+      if (filters.endDateFrom) {
+        params.endDateFrom = filters.endDateFrom;
+      }
+      if (filters.endDateTo) {
+        params.endDateTo = filters.endDateTo;
       }
 
       console.log('Fetching classes with params:', params);
@@ -200,12 +213,20 @@ const ClassList = () => {
   }, [t]);
 
   useEffect(() => {
-    fetchClasses(1, pagination.pageSize, searchText);
-  }, [fetchClasses, searchText, pagination.pageSize]);
+    fetchSyllabuses();
+  }, [fetchSyllabuses]);
 
   useEffect(() => {
-    fetchAllSyllabuses();
-  }, [fetchAllSyllabuses]);
+    const filters = {
+      status: statusFilter,
+      syllabusId: syllabusFilter,
+      startDateFrom: startDateRange[0],
+      startDateTo: startDateRange[1],
+      endDateFrom: endDateRange[0],
+      endDateTo: endDateRange[1],
+    };
+    fetchClasses(1, pagination.pageSize, searchText, filters);
+  }, [fetchClasses, searchText, pagination.pageSize, statusFilter, syllabusFilter, startDateRange, endDateRange]);
 
   // Cleanup timeout on unmount
   useEffect(() => {
@@ -226,165 +247,74 @@ const ClassList = () => {
     
     // Set new timeout for debounced search
     const timeout = setTimeout(() => {
-      fetchClasses(1, pagination.pageSize, value);
+      const filters = {
+        status: statusFilter,
+        syllabusId: syllabusFilter,
+        startDateFrom: startDateRange[0],
+        startDateTo: startDateRange[1],
+        endDateFrom: endDateRange[0],
+        endDateTo: endDateRange[1],
+      };
+      fetchClasses(1, pagination.pageSize, value, filters);
     }, 500);
     
     setSearchTimeout(timeout);
   };
 
-
-  const handleCreateClass = () => {
-    setEditingClass(null);
-    form.resetFields();
-    setIsModalVisible(true);
+  // Filter handlers
+  const handleFilterToggle = () => {
+    setFilterDropdown(prev => ({ 
+      ...prev, 
+      visible: !prev.visible,
+      // Sync with current applied filters
+      selectedStatus: statusFilter,
+      selectedSyllabus: syllabusFilter,
+      startDateRange: startDateRange,
+      endDateRange: endDateRange,
+    }));
   };
 
-  const handleEditClass = (classItem) => {
-    setEditingClass(classItem);
-    
-    form.setFieldsValue({
-      name: classItem.name,
-    });
-    
-    setIsModalVisible(true);
-  };
-
-  const handleToggleStatus = async (classItem) => {
-    const newStatus = !classItem.isActive;
-    const actionText = newStatus ? t('classManagement.activate') : t('classManagement.deactivate');
-    
-    setConfirmModal({
+  const handleFilterReset = () => {
+    setFilterDropdown({
       visible: true,
-      title: t('classManagement.confirmStatusChange'),
-      content: `${t('classManagement.confirmStatusChangeMessage')} ${actionText} ${t('classManagement.class')} "${classItem.name}"?`,
-      onConfirm: async () => {
-        try {
-          await classManagementApi.toggleClassStatus(classItem.id, newStatus);
-          
-          // Refresh the list
-          fetchClasses(pagination.current, pagination.pageSize, searchText);
-        setConfirmModal({ visible: false, title: '', content: '', onConfirm: null });
-        spaceToast.success(`${t('classManagement.class')} "${classItem.name}" ${t('classManagement.statusChangedSuccess')}!`);
-        } catch (error) {
-          console.error('Error updating class status:', error);
-          spaceToast.error(t('classManagement.checkInfoError'));
-        }
-      }
+      selectedStatus: null,
+      selectedSyllabus: null,
+      startDateRange: [null, null],
+      endDateRange: [null, null],
     });
   };
 
-  const handleDeleteClass = (classItem) => {
-    setConfirmModal({
-      visible: true,
-      title: t('classManagement.deleteClass'),
-      content: t('classManagement.deleteClassMessage', { className: classItem.name }),
-      onConfirm: async () => {
-        try {
-          await classManagementApi.deleteClass(classItem.id);
-          
-          // Refresh the list
-          fetchClasses(pagination.current, pagination.pageSize, searchText);
-          setConfirmModal({ visible: false, title: '', content: '', onConfirm: null });
-          spaceToast.success(t('classManagement.classDeletedSuccess', { className: classItem.name }));
-        } catch (error) {
-          console.error('Error deleting class:', error);
-          spaceToast.error(error.response?.data?.message || error.message || t('classManagement.checkInfoError'));
-        }
-      }
-    });
-  };
-
-  // Handle import
-  const handleImport = () => {
-    setIsImportModalVisible(true);
-  };
-
-  // Handle export
-  const handleExport = () => {
-    // TODO: Implement export functionality
-    spaceToast.success(t('classManagement.exportSuccess'));
-  };
-
-  // Handle import modal cancel
-  const handleImportModalCancel = () => {
-    setIsImportModalVisible(false);
-  };
-
-  const handleModalOk = async () => {
-    try {
-      const values = await form.validateFields();
-
-      if (editingClass) {
-        // Update existing class
-        const updateData = {
-          className: values.name,
-          avatarUrl: "string", // Default as per API requirements
-        };
-        
-        await classManagementApi.updateClass(editingClass.id, updateData);
-        
-        // Refresh the list
-        fetchClasses(pagination.current, pagination.pageSize, searchText);
-        spaceToast.success('Class updated successfully!');
-      } else {
-        // Add new class
-        const newClassData = {
-          className: values.name,
-          syllabusId: values.syllabusId,
-          avatarUrl: "string", // Default as per API requirements
-        };
-        
-        await classManagementApi.createClass(newClassData);
-        
-        // Refresh the list
-        fetchClasses(1, pagination.pageSize, searchText);
-        spaceToast.success('Class created successfully!');
-      }
-
-      setIsModalVisible(false);
-      form.resetFields();
-    } catch (error) {
-      console.error('Error saving class:', error);
-      spaceToast.error(error.response?.data?.message || error.message || 'Failed to save class. Please try again.');
-    }
-  };
-
-  const handleModalCancel = () => {
-    setIsModalVisible(false);
-    form.resetFields();
+  const handleFilterSubmit = () => {
+    setStatusFilter(filterDropdown.selectedStatus);
+    setSyllabusFilter(filterDropdown.selectedSyllabus);
+    setStartDateRange(filterDropdown.startDateRange);
+    setEndDateRange(filterDropdown.endDateRange);
+    setFilterDropdown(prev => ({ ...prev, visible: false }));
   };
 
   const handleCardClick = (classItem) => {
     navigate(`/manager/classes/menu/${classItem.id}`);
   };
 
+  // Handle click outside to close filter dropdown
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (filterDropdown.visible && filterContainerRef.current) {
+        if (!filterContainerRef.current.contains(event.target)) {
+          setFilterDropdown(prev => ({ ...prev, visible: false }));
+        }
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [filterDropdown.visible]);
+
   // Filter data based on search and filters - removed client-side filtering
   // Now using server-side filtering through API calls
   const filteredClasses = classes;
-
-  const getMenuItems = (classItem) => [
-    {
-      key: "edit",
-      label: <span style={{ color: '#000000' }}>{t('common.edit')}</span>,
-      icon: <EditOutlined className="edit-icon" style={{ color: '#000000' }} />,
-      onClick: (e) => {
-        e.domEvent.stopPropagation();
-        handleEditClass(classItem);
-      },
-      className: "edit-menu-item",
-    },
-    {
-      key: "delete",
-      label: <span style={{ color: '#ff4d4f' }}>{t('classManagement.deleteClass')}</span>,
-      icon: <DeleteOutlined className="delete-icon" style={{ color: '#ff4d4f' }} />,
-      danger: true,
-      onClick: (e) => {
-        e.domEvent.stopPropagation();
-        handleDeleteClass(classItem);
-      },
-      className: "delete-menu-item",
-    },
-  ];
 
 
   return (
@@ -400,43 +330,140 @@ const ClassList = () => {
           </Typography.Title>
         </div>
 
-        {/* Action Bar */}
-        <div className="action-bar" style={{ marginBottom: '16px' }}>
-          <Space size="middle" style={{ width: '100%', justifyContent: 'space-between' }}>
-            <Space size="middle">
-              <Input
-                prefix={<SearchOutlined />}
-                value={searchText}
-                onChange={(e) => handleSearch(e.target.value)}
-                className="search-input"
-                style={{ minWidth: '350px', maxWidth: '500px', height: '40px', fontSize: '16px' }}
-                allowClear
-              />
-            </Space>
-            <Space>
-              <Button
-                icon={<UploadOutlined />}
-                onClick={handleExport}
-                className="export-button"
+        {/* Header Section */}
+        <div className={`panel-header ${theme}-panel-header`} style={{ marginBottom: '16px' }}>
+          <div className="search-section" style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            <Input
+              prefix={<SearchOutlined />}
+              value={searchText}
+              onChange={(e) => handleSearch(e.target.value)}
+              className={`search-input ${theme}-search-input`}
+              style={{ flex: '1', minWidth: '200px', maxWidth: '300px', width: '250px', height: '40px', fontSize: '16px' }}
+              allowClear
+            />
+            <div ref={filterContainerRef} style={{ position: 'relative' }}>
+              <Button 
+                icon={<FilterOutlined />}
+                onClick={handleFilterToggle}
+                className={`filter-button ${theme}-filter-button ${filterDropdown.visible ? 'active' : ''} ${(statusFilter || syllabusFilter || startDateRange[0] || endDateRange[0]) ? 'has-filters' : ''}`}
               >
-                {t('classManagement.exportData')}
+                {t('common.filter')}
               </Button>
-              <Button
-                icon={<DownloadOutlined />}
-                onClick={handleImport}
-                className="import-button"
-              >
-                {t('classManagement.importClasses')}
-              </Button>
-              <Button
-                icon={<PlusOutlined />}
-                className={`create-button ${theme}-create-button`}
-                onClick={handleCreateClass}
-              >
-                {t('classManagement.addClass')}
-              </Button>
-            </Space>
-          </Space>
+              
+              {/* Filter Dropdown Panel */}
+              {filterDropdown.visible && (
+                <div className={`filter-dropdown-panel ${theme}-filter-dropdown`}>
+                  <div style={{ padding: '20px' }}>
+                    {/* Status and Syllabus Filters */}
+                    <Row gutter={16} style={{ marginBottom: '16px' }}>
+                      <Col span={12}>
+                        <Typography.Title level={5} style={{ marginBottom: '12px', fontSize: '14px' }}>
+                          {t('classManagement.status')}
+                        </Typography.Title>
+                        <Select
+                          value={filterDropdown.selectedStatus}
+                          onChange={(value) => setFilterDropdown(prev => ({ ...prev, selectedStatus: value }))}
+                          style={{ width: '100%' }}
+                          allowClear
+                          placeholder={t('classManagement.allStatus')}
+                        >
+                          <Select.Option value="ACTIVE">{t('classManagement.active')}</Select.Option>
+                          <Select.Option value="INACTIVE">{t('classManagement.inactive')}</Select.Option>
+                        </Select>
+                      </Col>
+                      <Col span={12}>
+                        <Typography.Title level={5} style={{ marginBottom: '12px', fontSize: '14px' }}>
+                          {t('classManagement.syllabus')}
+                        </Typography.Title>
+                        <Select
+                          value={filterDropdown.selectedSyllabus}
+                          onChange={(value) => setFilterDropdown(prev => ({ ...prev, selectedSyllabus: value }))}
+                          style={{ width: '100%' }}
+                          allowClear
+                          placeholder={t('classManagement.selectLevel')}
+                          showSearch
+                          optionFilterProp="children"
+                        >
+                          {syllabuses.map(syllabus => (
+                            <Select.Option key={syllabus.id} value={syllabus.id}>
+                              {syllabus.syllabusName}
+                            </Select.Option>
+                          ))}
+                        </Select>
+                      </Col>
+                    </Row>
+
+                    {/* Date Range Filters */}
+                    <Row gutter={16} style={{ marginBottom: '16px' }}>
+                      <Col span={12}>
+                        <Typography.Title level={5} style={{ marginBottom: '12px', fontSize: '14px' }}>
+                          {t('classManagement.startDate')}
+                        </Typography.Title>
+                        <DatePicker.RangePicker
+                          value={filterDropdown.startDateRange[0] && filterDropdown.startDateRange[1] ? [dayjs(filterDropdown.startDateRange[0]), dayjs(filterDropdown.startDateRange[1])] : null}
+                          onChange={(dates) => {
+                            if (dates && dates[0] && dates[1]) {
+                              setFilterDropdown(prev => ({ 
+                                ...prev, 
+                                startDateRange: [dates[0].format('YYYY-MM-DD'), dates[1].format('YYYY-MM-DD')] 
+                              }));
+                            } else {
+                              setFilterDropdown(prev => ({ ...prev, startDateRange: [null, null] }));
+                            }
+                          }}
+                          style={{ width: '100%' }}
+                          format="YYYY-MM-DD"
+                        />
+                      </Col>
+                      <Col span={12}>
+                        <Typography.Title level={5} style={{ marginBottom: '12px', fontSize: '14px' }}>
+                          {t('classManagement.endDate')}
+                        </Typography.Title>
+                        <DatePicker.RangePicker
+                          value={filterDropdown.endDateRange[0] && filterDropdown.endDateRange[1] ? [dayjs(filterDropdown.endDateRange[0]), dayjs(filterDropdown.endDateRange[1])] : null}
+                          onChange={(dates) => {
+                            if (dates && dates[0] && dates[1]) {
+                              setFilterDropdown(prev => ({ 
+                                ...prev, 
+                                endDateRange: [dates[0].format('YYYY-MM-DD'), dates[1].format('YYYY-MM-DD')] 
+                              }));
+                            } else {
+                              setFilterDropdown(prev => ({ ...prev, endDateRange: [null, null] }));
+                            }
+                          }}
+                          style={{ width: '100%' }}
+                          format="YYYY-MM-DD"
+                        />
+                      </Col>
+                    </Row>
+
+                    {/* Action Buttons */}
+                    <div style={{ 
+                      display: 'flex', 
+                      justifyContent: 'space-between', 
+                      marginTop: '20px',
+                      paddingTop: '16px',
+                      borderTop: '1px solid #f0f0f0'
+                    }}>
+                      <Button
+                        onClick={handleFilterReset}
+                        className="filter-reset-button"
+                      >
+                        {t('common.reset')}
+                      </Button>
+                      <Button
+                        type="primary"
+                        onClick={handleFilterSubmit}
+                        className="filter-submit-button"
+                      >
+                        {t('common.viewResults')}
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
 
         {/* Cards Section */}
@@ -469,18 +496,6 @@ const ClassList = () => {
                             className="class-color-bar" 
                             style={{ backgroundColor: classItem.color }}
                           />
-                          <Dropdown
-                            menu={{ items: getMenuItems(classItem) }}
-                            trigger={["click"]}
-                            placement="bottomRight"
-                          >
-                            <Button
-                              type="text"
-                              icon={<MoreOutlined />}
-                              className="class-menu-button"
-                              onClick={(e) => e.stopPropagation()}
-                            />
-                          </Dropdown>
                         </div>
                         
                         <div className="class-card-content">
@@ -531,16 +546,27 @@ const ClassList = () => {
                               </h3>
                             </Tooltip>
                             
-                            {/* Status Switch */}
-                            <div className="class-stats" style={{ flexShrink: 0 }} onClick={(e) => e.stopPropagation()}>
-                              <Switch
-                                checked={classItem.isActive}
-                                onChange={() => handleToggleStatus(classItem)}
-                                size="default"
+                            {/* Status Display */}
+                            <div className="class-stats" style={{ flexShrink: 0 }}>
+                              <span
                                 style={{
-                                  transform: 'scale(1.1)',
+                                  padding: '4px 12px',
+                                  borderRadius: '12px',
+                                  fontSize: '13px',
+                                  fontWeight: '600',
+                                  backgroundColor: classItem.isActive 
+                                    ? (theme === 'sun' ? '#d4edda' : '#10b981') 
+                                    : (theme === 'sun' ? '#f8d7da' : '#ef4444'),
+                                  color: classItem.isActive
+                                    ? (theme === 'sun' ? '#155724' : '#ffffff')
+                                    : (theme === 'sun' ? '#721c24' : '#ffffff'),
+                                  border: classItem.isActive
+                                    ? (theme === 'sun' ? '1px solid #c3e6cb' : 'none')
+                                    : (theme === 'sun' ? '1px solid #f5c6cb' : 'none'),
                                 }}
-                              />
+                              >
+                                {classItem.isActive ? t('classManagement.active') : t('classManagement.inactive')}
+                              </span>
                             </div>
                           </div>
                           
@@ -629,10 +655,26 @@ const ClassList = () => {
                         `${range[0]}-${range[1]} of ${total} classes`
                       }
                       onChange={(page, pageSize) => {
-                        fetchClasses(page, pageSize, searchText);
+                        const filters = {
+                          status: statusFilter,
+                          syllabusId: syllabusFilter,
+                          startDateFrom: startDateRange[0],
+                          startDateTo: startDateRange[1],
+                          endDateFrom: endDateRange[0],
+                          endDateTo: endDateRange[1],
+                        };
+                        fetchClasses(page, pageSize, searchText, filters);
                       }}
                       onShowSizeChange={(current, size) => {
-                        fetchClasses(1, size, searchText);
+                        const filters = {
+                          status: statusFilter,
+                          syllabusId: syllabusFilter,
+                          startDateFrom: startDateRange[0],
+                          startDateTo: startDateRange[1],
+                          endDateFrom: endDateRange[0],
+                          endDateTo: endDateRange[1],
+                        };
+                        fetchClasses(1, size, searchText, filters);
                       }}
                       pageSizeOptions={['9', '18', '27', '45']}
                     />
@@ -642,280 +684,10 @@ const ClassList = () => {
             ) : (
               <div className="empty-state">
                 <p>{t('classManagement.noClassesFound')}</p>
-                <Button type="primary" onClick={handleCreateClass}>
-                  {t('classManagement.createFirstClass')}
-                </Button>
               </div>
             )}
           </LoadingWithEffect>
         </div>
-
-        {/* Add/Edit Modal */}
-        <Modal
-          title={
-            editingClass
-              ? t('classManagement.editClass')
-              : t('classManagement.addClass')
-          }
-          open={isModalVisible}
-          onOk={handleModalOk}
-          onCancel={handleModalCancel}
-          width={600}
-          okText={t('common.save')}
-          cancelText={t('common.cancel')}
-          destroyOnClose
-          okButtonProps={{
-            style: {
-              backgroundColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
-              background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
-              borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'transparent',
-              color: theme === 'sun' ? '#000000' : '#ffffff',
-              height: '40px',
-              fontSize: '16px',
-              fontWeight: '500',
-              minWidth: '100px',
-            },
-          }}
-          cancelButtonProps={{
-            style: {
-              height: '40px',
-              fontSize: '16px',
-              fontWeight: '500',
-              minWidth: '100px',
-            },
-          }}
-        >
-          <Form
-            form={form}
-            layout="vertical"
-          >
-            <Form.Item
-              label={t('classManagement.className')}
-              name="name"
-              rules={[
-                { required: true, message: t('classManagement.classNameRequired') },
-                { min: 3, message: t('classManagement.classNameRequired') },
-                { max: 100, message: t('classManagement.classNameRequired') },
-              ]}
-            >
-              <Input 
-                placeholder={t('classManagement.enterClassName')} 
-                style={{
-                  fontSize: "15px",
-                  padding: "12px 16px",
-                  borderRadius: "10px",
-                  border: "2px solid #e2e8f0",
-                  transition: "all 0.3s ease",
-                }}
-              />
-            </Form.Item>
-
-            <Form.Item
-              label={t('classManagement.syllabus')}
-              name="syllabusId"
-              rules={[
-                { required: !editingClass, message: t('classManagement.levelRequired') },
-              ]}
-            >
-              <Select 
-                placeholder={t('classManagement.selectLevel')}
-                loading={syllabusLoading}
-                disabled={editingClass}
-                style={{
-                  fontSize: "15px",
-                }}
-              >
-                {syllabuses.map(syllabus => (
-                  <Option key={syllabus.id} value={syllabus.id}>
-                    {syllabus.syllabusName}
-                  </Option>
-                ))}
-              </Select>
-            </Form.Item>
-          </Form>
-        </Modal>
-
-        {/* Confirmation Modal */}
-        <Modal
-          title={
-            <div style={{ 
-              fontSize: '20px', 
-              fontWeight: '600', 
-              color: '#1890ff',
-              textAlign: 'center',
-              padding: '10px 0'
-            }}>
-              {confirmModal.title}
-            </div>
-          }
-          open={confirmModal.visible}
-          onOk={confirmModal.onConfirm}
-          onCancel={() => setConfirmModal({ visible: false, title: '', content: '', onConfirm: null })}
-          okText={t('common.confirm')}
-          cancelText={t('common.cancel')}
-          width={500}
-          centered
-          bodyStyle={{
-            padding: '30px 40px',
-            fontSize: '16px',
-            lineHeight: '1.6',
-            textAlign: 'center'
-          }}
-          okButtonProps={{
-            style: {
-              backgroundColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
-              background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
-              borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'transparent',
-              color: theme === 'sun' ? '#000000' : '#ffffff',
-              height: '40px',
-              fontSize: '16px',
-              fontWeight: '500',
-              minWidth: '100px'
-            }
-          }}
-          cancelButtonProps={{
-            style: {
-              height: '40px',
-              fontSize: '16px',
-              fontWeight: '500',
-              minWidth: '100px'
-            }
-          }}
-        >
-          <div style={{
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            gap: '20px'
-          }}>
-            <div style={{
-              fontSize: '48px',
-              color: '#ff4d4f',
-              marginBottom: '10px'
-            }}>
-              ⚠️
-            </div>
-            <p style={{
-              fontSize: '18px',
-              color: '#333',
-              margin: 0,
-              fontWeight: '500'
-            }}>
-              {confirmModal.content}
-            </p>
-          </div>
-        </Modal>
-
-        {/* Import Modal */}
-        <Modal
-          title={
-            <div
-              style={{
-                fontSize: '20px',
-                fontWeight: '600',
-                color: '#000000',
-                textAlign: 'center',
-                padding: '10px 0',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '10px',
-              }}>
-              <DownloadOutlined style={{ color: '#000000' }} />
-              {t('classManagement.importClasses')}
-            </div>
-          }
-          open={isImportModalVisible}
-          onOk={() => {
-            // TODO: Implement import functionality
-            setIsImportModalVisible(false);
-          }}
-          onCancel={handleImportModalCancel}
-          okText={t('classManagement.importClasses')}
-          cancelText={t('common.cancel')}
-          width={600}
-          centered
-          okButtonProps={{
-            style: {
-              backgroundColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
-              background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
-              borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'transparent',
-              color: theme === 'sun' ? '#000000' : '#ffffff',
-              height: '40px',
-              fontSize: '16px',
-              fontWeight: '500',
-              minWidth: '120px',
-            },
-          }}
-          cancelButtonProps={{
-            style: {
-              height: '40px',
-              fontSize: '16px',
-              fontWeight: '500',
-              minWidth: '100px',
-            },
-          }}
-        >
-          <div style={{ padding: '20px 0' }}>
-            <div style={{ textAlign: 'center', marginBottom: '20px' }}>
-              <Button
-                type="dashed"
-                icon={<DownloadOutlined />}
-                onClick={() => {
-                  // TODO: Implement template download
-                  spaceToast.success(t('classManagement.templateDownloaded'));
-                }}
-                style={{
-                  borderColor: '#1890ff',
-                  color: '#1890ff',
-                  height: '36px',
-                  fontSize: '14px',
-                  fontWeight: '500',
-                }}>
-                {t('classManagement.downloadTemplate')}
-              </Button>
-            </div>
-            
-            <Typography.Title
-              level={5}
-              style={{
-                textAlign: 'center',
-                marginBottom: '20px',
-                color: '#666',
-              }}>
-              {t('classManagement.importInstructions')}
-            </Typography.Title>
-
-            <Upload.Dragger
-              name="file"
-              multiple={false}
-              beforeUpload={() => false}
-              showUploadList={false}
-              accept=".xlsx,.xls,.csv"
-              style={{
-                marginBottom: '20px',
-                border: '2px dashed #d9d9d9',
-                borderRadius: '8px',
-                background: '#fafafa',
-                padding: '40px',
-                textAlign: 'center',
-              }}>
-              <p
-                className='ant-upload-drag-icon'
-                style={{ fontSize: '48px', color: '#1890ff' }}>
-                <DownloadOutlined />
-              </p>
-              <p
-                className='ant-upload-text'
-                style={{ fontSize: '16px', fontWeight: '500' }}>
-                {t('classManagement.clickOrDragFile')}
-              </p>
-              <p className='ant-upload-hint' style={{ color: '#999' }}>
-                {t('classManagement.supportedFormats')}
-              </p>
-            </Upload.Dragger>
-          </div>
-        </Modal>
       </div>
     </ThemedLayout>
   );
