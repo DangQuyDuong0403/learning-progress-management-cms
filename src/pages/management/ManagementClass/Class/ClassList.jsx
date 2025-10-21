@@ -84,7 +84,7 @@ const ClassList = () => {
   // Pagination state
   const [pagination, setPagination] = useState({
     current: 1,
-    pageSize: 10,
+    pageSize: 9,
     total: 0,
     showSizeChanger: true,
     showTotal: (total, range) => `${range[0]}-${range[1]} of ${total}`,
@@ -634,7 +634,7 @@ const ClassList = () => {
                       onShowSizeChange={(current, size) => {
                         fetchClasses(1, size, searchText);
                       }}
-                      pageSizeOptions={['5', '10', '20', '50']}
+                      pageSizeOptions={['9', '18', '27', '45']}
                     />
                   </div>
                 )}

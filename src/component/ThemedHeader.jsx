@@ -55,6 +55,12 @@ export default function ThemedHeader() {
   };
 
   const handleBackToClassList = () => {
+    // If custom back URL is provided, use it
+    if (classData?.backUrl) {
+      navigate(classData.backUrl);
+      return;
+    }
+
     // Determine route prefix based on user role
     const userRole = user?.role?.toLowerCase();
     let routePrefix = '/manager/classes'; // default

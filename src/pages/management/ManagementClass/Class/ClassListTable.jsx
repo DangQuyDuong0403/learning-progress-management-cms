@@ -75,8 +75,6 @@ const ClassListTable = () => {
 	// Syllabus data for form
 	const [syllabuses, setSyllabuses] = useState([]);
 	const [syllabusLoading, setSyllabusLoading] = useState(false);
-	const [syllabusMap, setSyllabusMap] = useState({});
-	const [levelMap, setLevelMap] = useState({});
 	
 	// Selected rows for bulk operations
 	const [selectedRowKeys, setSelectedRowKeys] = useState([]);
@@ -88,7 +86,6 @@ const ClassListTable = () => {
 			const params = {
 				page: page - 1, // API uses 0-based indexing
 				size: size,
-				include: 'ALL', // Include syllabus and level data
 			};
 
 			// Add sort parameters
@@ -116,16 +113,16 @@ const ClassListTable = () => {
 					console.log('Level data:', classItem.syllabus?.level);
 					
 					return {
-					id: classItem.id,
-					name: classItem.className,
-					syllabus: syllabusMap[classItem.syllabusId] || 'N/A',
-					syllabusId: classItem.syllabusId,
-						level: levelMap[classItem.syllabusId] || 'N/A',
-					studentCount: classItem.studentCount || 0,
+						id: classItem.id,
+						name: classItem.className,
+						syllabus: classItem.syllabus?.syllabusName || '-',
+						syllabusId: classItem.syllabusId,
+						level: classItem.syllabus?.level?.levelName || '-',
+						studentCount: classItem.studentCount || 0,
 						status: classItem.status === 'ACTIVE' ? 'active' : 'inactive',
-					createdAt: classItem.createdAt,
-					updatedAt: classItem.updatedAt,
-					avatarUrl: classItem.avatarUrl,
+						createdAt: classItem.createdAt,
+						updatedAt: classItem.updatedAt,
+						avatarUrl: classItem.avatarUrl,
 					};
 				});
 
@@ -144,7 +141,7 @@ const ClassListTable = () => {
 		} finally {
 			setLoading(false);
 		}
-	}, [syllabusMap, levelMap]);
+	}, []);
 
 	// Fetch syllabuses for form
 	const fetchSyllabuses = useCallback(async () => {
@@ -156,18 +153,6 @@ const ClassListTable = () => {
 			
 			if (response.success && response.data) {
 				setSyllabuses(response.data);
-				
-				// Create syllabus map and level map for quick lookup
-				const syllabusMap = {};
-				const levelMap = {};
-				response.data.forEach(syllabus => {
-					syllabusMap[syllabus.id] = syllabus.syllabusName;
-					if (syllabus.level) {
-						levelMap[syllabus.id] = syllabus.level.levelName;
-					}
-				});
-				setSyllabusMap(syllabusMap);
-				setLevelMap(levelMap);
 			}
 		} catch (error) {
 			console.error('Error fetching syllabuses:', error);
@@ -182,10 +167,8 @@ const ClassListTable = () => {
 	}, [fetchSyllabuses]);
 
 	useEffect(() => {
-		if (Object.keys(syllabusMap).length > 0 && Object.keys(levelMap).length > 0) {
-			fetchClasses(1, pagination.pageSize, searchText, sortBy, sortDir);
-		}
-	}, [fetchClasses, syllabusMap, levelMap, pagination.pageSize, searchText, sortBy, sortDir]);
+		fetchClasses(1, pagination.pageSize, searchText, sortBy, sortDir);
+	}, [fetchClasses, pagination.pageSize, searchText, sortBy, sortDir]);
 
 	// Cleanup timeout on unmount
 	useEffect(() => {

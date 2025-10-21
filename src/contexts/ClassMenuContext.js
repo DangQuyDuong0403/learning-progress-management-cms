@@ -18,7 +18,10 @@ export const ClassMenuProvider = ({ children }) => {
   const enterClassMenu = (classInfo) => {
     // Set class menu mode
     setIsInClassMenu(true);
-    setClassData(classInfo);
+    setClassData({
+      ...classInfo,
+      backUrl: classInfo.backUrl || null, // Support custom back URL
+    });
     
     // Auto-collapse sidebar when entering class menu mode
     localStorage.setItem('sidebarCollapsed', JSON.stringify(true));
