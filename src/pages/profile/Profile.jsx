@@ -218,9 +218,26 @@ export default function Profile() {
                   </button>
                 </div>
                 
-                {/* Starter Badge */}
+                {/* Level Badge */}
                 <div className={`starter-badge-new ${theme}-starter-badge-new`}>
-                  Starter
+                  {(() => {
+                    // Debug logging to understand data structure
+                    console.log('Profile Level Debug:', {
+                      profileData,
+                      currentLevelInfo: profileData?.currentLevelInfo,
+                      levelName: profileData?.levelName,
+                      userLevelInfo: user?.currentLevelInfo,
+                      userLevelName: user?.levelName
+                    });
+                    
+                    return profileData?.currentLevelInfo?.levelName || 
+                           profileData?.currentLevelInfo?.name || 
+                           profileData?.levelName || 
+                           user?.currentLevelInfo?.levelName ||
+                           user?.currentLevelInfo?.name ||
+                           user?.levelName ||
+                           'N/A';
+                  })()}
                 </div>
               </div>
 

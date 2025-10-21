@@ -90,8 +90,12 @@ export default function Login() {
 		}
 	};
 
-	const handleForgotMethodSelect = () => {
-		navigate('/forgot-password-email');
+	const handleForgotMethodSelect = (method) => {
+		if (method === 'email') {
+			navigate('/forgot-password-email');
+		} else if (method === 'teacher') {
+			navigate('/forgot-password-teacher');
+		}
 	};
 
 	const handleBackToChoose = () => {

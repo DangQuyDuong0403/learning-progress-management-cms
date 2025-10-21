@@ -73,6 +73,11 @@ const SyllabusList = () => {
 		uploading: false
 	});
 
+	// Loading states for buttons
+	const [templateDownloadLoading, setTemplateDownloadLoading] = useState(false);
+	const [exportSelectedLoading, setExportSelectedLoading] = useState(false);
+	const [exportAllLoading, setExportAllLoading] = useState(false);
+
 	// Pagination state
 	const [pagination, setPagination] = useState({
 		current: 1,
@@ -368,6 +373,7 @@ const SyllabusList = () => {
 	};
 
 	const handleDownloadTemplate = async () => {
+		setTemplateDownloadLoading(true);
 		try {
 			
 			const response = await syllabusManagementApi.downloadSyllabusTemplate();
@@ -398,6 +404,8 @@ const SyllabusList = () => {
 		} catch (error) {
 			console.error('Error downloading template:', error);
 			spaceToast.error(error.response?.data?.error || error.response?.data?.message || error.message || 'Failed to download template');
+		} finally {
+			setTemplateDownloadLoading(false);
 		}
 	};
 
@@ -520,42 +528,35 @@ const SyllabusList = () => {
 	};
 
 	const handleExportSelected = async () => {
+		setExportSelectedLoading(true);
 		try {
 			if (selectedRowKeys.length === 0) {
 				spaceToast.warning(t('syllabusManagement.selectItemsToExport'));
 				return;
 			}
 
-			// Export each selected syllabus individually
-			for (let i = 0; i < selectedRowKeys.length; i++) {
-				const syllabusId = selectedRowKeys[i];
-				const response = await syllabusManagementApi.exportSyllabusById(syllabusId);
-				
-				// Since we modified axios interceptor to return full response for blob requests,
-				// response.data should contain the blob data directly
-				const blobData = response.data;
-				
-				// Create download link
-				const url = window.URL.createObjectURL(blobData);
-				const link = document.createElement('a');
-				link.href = url;
-				
-				// Get syllabus name for filename
-				const syllabus = syllabuses.find(s => s.id === syllabusId);
-				const filename = syllabus ? `syllabus_${syllabus.name.replace(/[^a-zA-Z0-9]/g, '_')}.xlsx` : `syllabus_${syllabusId}.xlsx`;
-				
-				link.download = filename;
-				link.style.display = 'none';
-				document.body.appendChild(link);
-				link.click();
-				document.body.removeChild(link);
-				window.URL.revokeObjectURL(url);
-				
-				// Add small delay between downloads to avoid browser blocking
-				if (i < selectedRowKeys.length - 1) {
-					await new Promise(resolve => setTimeout(resolve, 500));
-				}
-			}
+			// Export selected syllabuses using new API with ids parameter
+			const response = await syllabusManagementApi.exportSyllabuses(selectedRowKeys, searchText);
+			
+			// Since we modified axios interceptor to return full response for blob requests,
+			// response.data should contain the blob data directly
+			const blobData = response.data;
+			
+			// Create download link
+			const url = window.URL.createObjectURL(blobData);
+			const link = document.createElement('a');
+			link.href = url;
+			
+			// Generate filename with timestamp and count
+			const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-');
+			const filename = `selected_syllabuses_${selectedRowKeys.length}_${timestamp}.xlsx`;
+			
+			link.download = filename;
+			link.style.display = 'none';
+			document.body.appendChild(link);
+			link.click();
+			document.body.removeChild(link);
+			window.URL.revokeObjectURL(url);
 			
 			spaceToast.success(`${t('syllabusManagement.exportSuccess')}: ${selectedRowKeys.length} ${t('syllabusManagement.syllabuses')}`);
 			setIsExportModalVisible(false);
@@ -590,13 +591,16 @@ const SyllabusList = () => {
 			
 			console.error('Final error message:', errorMessage);
 			spaceToast.error(errorMessage);
+		} finally {
+			setExportSelectedLoading(false);
 		}
 	};
 
 	const handleExportAll = async () => {
+		setExportAllLoading(true);
 		try {
-			// Call export all API with current search text
-			const response = await syllabusManagementApi.exportAllSyllabuses(searchText);
+			// Call export all API using new unified API (no ids parameter = export all)
+			const response = await syllabusManagementApi.exportSyllabuses(null, searchText);
 			
 			// Since we modified axios interceptor to return full response for blob requests,
 			// response.data should contain the blob data directly
@@ -651,6 +655,8 @@ const SyllabusList = () => {
 			
 			console.error('Final error message:', errorMessage);
 			spaceToast.error(errorMessage);
+		} finally {
+			setExportAllLoading(false);
 		}
 	};
 
@@ -1340,6 +1346,8 @@ const SyllabusList = () => {
 							type="dashed"
 							icon={<DownloadOutlined />}
 							onClick={handleDownloadTemplate}
+							loading={templateDownloadLoading}
+							disabled={templateDownloadLoading}
 							style={{
 								borderColor: '#1890ff',
 								color: '#1890ff',
@@ -1477,6 +1485,8 @@ const SyllabusList = () => {
 								type="primary"
 								icon={<UploadOutlined />}
 								onClick={handleExportSelected}
+								loading={exportSelectedLoading}
+								disabled={exportSelectedLoading}
 								style={{
 									height: '48px',
 									fontSize: '16px',
@@ -1495,6 +1505,8 @@ const SyllabusList = () => {
 						<Button
 							icon={<UploadOutlined />}
 							onClick={handleExportAll}
+							loading={exportAllLoading}
+							disabled={exportAllLoading}
 							style={{
 								height: '48px',
 								fontSize: '16px',

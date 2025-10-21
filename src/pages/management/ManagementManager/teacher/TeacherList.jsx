@@ -7,6 +7,7 @@ import {
 	DownloadOutlined,
 	UploadOutlined,
 	FilterOutlined,
+	DeleteOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -80,6 +81,10 @@ const TeacherList = () => {
 		visible: false,
 		selectedRoles: [],
 		selectedStatuses: [],
+	});
+	const [exportLoading, setExportLoading] = useState({
+		selected: false,
+		all: false,
 	});
 	
 	// Refs for click outside detection
@@ -249,6 +254,43 @@ const TeacherList = () => {
 
 	const handleConfirmCancel = () => {
 		setConfirmModal({ visible: false, title: '', content: '', onConfirm: null });
+	};
+
+	// Handle auto-deactivate for PENDING teachers (trash button)
+	const handleAutoDeactivatePending = (id) => {
+		const teacher = teachers.find(t => t.id === id);
+		if (!teacher || teacher.status !== 'PENDING') return;
+		
+		const teacherName = teacher.fullName || teacher.userName;
+		
+		setConfirmModal({
+			visible: true,
+			title: t('teacherManagement.deactivateTeacher'),
+			content: `${t('teacherManagement.confirmDeactivatePending')} "${teacherName}"? ${t('teacherManagement.deactivatePendingNote')}`,
+			onConfirm: async () => {
+				try {
+					// Call API to update teacher status to INACTIVE
+					const response = await teacherManagementApi.updateTeacherStatus(id, 'INACTIVE');
+					
+					if (response.success) {
+						// Close modal first
+						setConfirmModal({ visible: false, title: '', content: '', onConfirm: null });
+						
+						// Show success toast
+						spaceToast.success(`${t('teacherManagement.deactivateTeacherSuccess')} "${teacherName}" ${t('teacherManagement.success')}`);
+						
+						// Refresh the list to get updated data from server
+						fetchTeachers(pagination.current, pagination.pageSize, searchText, statusFilter, roleNameFilter, sortBy, sortDir);
+					} else {
+						throw new Error(response.message || 'Failed to update teacher status');
+					}
+				} catch (error) {
+					console.error('Error auto-deactivating PENDING teacher:', error);
+					setConfirmModal({ visible: false, title: '', content: '', onConfirm: null });
+					spaceToast.error(error.response?.data?.error || error.response?.data?.message || error.message || t('teacherManagement.updateStatusError'));
+				}
+			}
+		});
 	};
 
 	const handleModalClose = () => {
@@ -750,28 +792,78 @@ const TeacherList = () => {
 	};
 
 	const handleExportSelected = async () => {
+		setExportLoading(prev => ({ ...prev, selected: true }));
+		
 		try {
-			// TODO: Implement export selected items API call
-			// await teacherManagementApi.exportTeachers(selectedRowKeys);
+			// Prepare export parameters with current page filters
+			const exportParams = {
+				text: searchText || undefined,
+				status: statusFilter.length > 0 ? statusFilter : undefined,
+				roleName: roleNameFilter.length > 0 ? roleNameFilter : undefined,
+			};
+
+			console.log('Exporting selected teachers with current filters:', exportParams);
+			
+			const response = await teacherManagementApi.exportTeachers(exportParams);
+			
+			// Create blob URL and trigger download
+			const blob = new Blob([response.data], { 
+				type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
+			});
+			const url = window.URL.createObjectURL(blob);
+			const link = document.createElement('a');
+			link.href = url;
+			link.download = `teachers_export_${new Date().toISOString().split('T')[0]}.xlsx`;
+			document.body.appendChild(link);
+			link.click();
+			document.body.removeChild(link);
+			window.URL.revokeObjectURL(url);
 			
 			spaceToast.success(`${t('teacherManagement.exportSuccess')}: ${selectedRowKeys.length} ${t('teacherManagement.teachers')}`);
 			setIsExportModalVisible(false);
 		} catch (error) {
 			console.error('Error exporting selected teachers:', error);
-			spaceToast.error(t('teacherManagement.exportError'));
+			spaceToast.error(error.response?.data?.error || error.response?.data?.message || error.message || t('teacherManagement.exportError'));
+		} finally {
+			setExportLoading(prev => ({ ...prev, selected: false }));
 		}
 	};
 
 	const handleExportAll = async () => {
+		setExportLoading(prev => ({ ...prev, all: true }));
+		
 		try {
-			// TODO: Implement export all items API call
-			// await teacherManagementApi.exportAllTeachers();
+			// Prepare export parameters with current page filters
+			const exportParams = {
+				text: searchText || undefined,
+				status: statusFilter.length > 0 ? statusFilter : undefined,
+				roleName: roleNameFilter.length > 0 ? roleNameFilter : undefined,
+			};
+
+			console.log('Exporting all teachers with current filters:', exportParams);
+			
+			const response = await teacherManagementApi.exportTeachers(exportParams);
+			
+			// Create blob URL and trigger download
+			const blob = new Blob([response.data], { 
+				type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
+			});
+			const url = window.URL.createObjectURL(blob);
+			const link = document.createElement('a');
+			link.href = url;
+			link.download = `all_teachers_export_${new Date().toISOString().split('T')[0]}.xlsx`;
+			document.body.appendChild(link);
+			link.click();
+			document.body.removeChild(link);
+			window.URL.revokeObjectURL(url);
 			
 			spaceToast.success(`${t('teacherManagement.exportSuccess')}: ${totalTeachers} ${t('teacherManagement.teachers')}`);
 			setIsExportModalVisible(false);
 		} catch (error) {
 			console.error('Error exporting all teachers:', error);
-			spaceToast.error(t('teacherManagement.exportError'));
+			spaceToast.error(error.response?.data?.error || error.response?.data?.message || error.message || t('teacherManagement.exportError'));
+		} finally {
+			setExportLoading(prev => ({ ...prev, all: false }));
 		}
 	};
 
@@ -935,6 +1027,20 @@ const TeacherList = () => {
 							}}
 						/>
 					</Tooltip>
+					{record.status === 'PENDING' && (
+						<Tooltip title={t('teacherManagement.deactivateTeacher')}>
+							<Button
+								type="text"
+								icon={<DeleteOutlined style={{ fontSize: '25px', color: '#ff4d4f' }} />}
+								size="small"
+								onClick={() => handleAutoDeactivatePending(record.id)}
+								style={{ 
+									color: '#ff4d4f',
+									padding: '8px 12px'
+								}}
+							/>
+						</Tooltip>
+					)}
 				</Space>
 			),
 		},
@@ -1058,7 +1164,9 @@ const TeacherList = () => {
 						<Button
 							icon={<UploadOutlined />}
 							className={`export-button ${theme}-export-button`}
-							onClick={handleExportTeachers}>
+							onClick={handleExportTeachers}
+							loading={exportLoading.selected || exportLoading.all}
+							disabled={exportLoading.selected || exportLoading.all}>
 							{t('teacherManagement.exportData')}
 							{selectedRowKeys.length > 0 && ` (${selectedRowKeys.length})`}
 						</Button>
@@ -1125,9 +1233,15 @@ const TeacherList = () => {
 				<TeacherForm 
 					teacher={editingTeacher} 
 					onClose={handleModalClose}
-					onSuccess={() => {
-						// Refresh the teacher list after successful creation/update
-						fetchTeachers(pagination.current, pagination.pageSize, searchText, statusFilter, roleNameFilter, sortBy, sortDir);
+					onSuccess={(teacherData) => {
+						// Navigate to teacher profile if teacher ID is available and it's a new teacher
+						if (teacherData && teacherData.id) {
+							console.log('Navigating to teacher profile:', teacherData.id);
+							navigate(`/manager/teachers/profile/${teacherData.id}`);
+						} else {
+							// Refresh the teacher list after successful creation/update
+							fetchTeachers(pagination.current, pagination.pageSize, searchText, statusFilter, roleNameFilter, sortBy, sortDir);
+						}
 					}}
 				/>
 			</Modal>
@@ -1415,6 +1529,8 @@ const TeacherList = () => {
 								type="primary"
 								icon={<UploadOutlined />}
 								onClick={handleExportSelected}
+								loading={exportLoading.selected}
+								disabled={exportLoading.all}
 								style={{
 									height: '48px',
 									fontSize: '16px',
@@ -1433,6 +1549,8 @@ const TeacherList = () => {
 						<Button
 							icon={<UploadOutlined />}
 							onClick={handleExportAll}
+							loading={exportLoading.all}
+							disabled={exportLoading.selected}
 							style={{
 								height: '48px',
 								fontSize: '16px',

@@ -15,8 +15,8 @@ const authApi = {
 	forgotPassword: (data) => {
 		const requestBody = {
 			userName: data.username,
-			 domain: process.env.REACT_APP_DOMAIN,
-			//domain:'http://localhost:3000',
+			//  domain: process.env.REACT_APP_DOMAIN,
+			domain:'http://localhost:3000',
 			path: "/reset-password"
 		};
 		console.log('ForgotPassword API - Request Body:', requestBody);
@@ -202,6 +202,17 @@ const authApi = {
 			console.error('ConfirmEmailChange API - Error:', error);
 			console.error('ConfirmEmailChange API - Error Response:', error.response);
 			throw error;
+		});
+	},
+
+	// Reset password by teacher
+	resetPasswordByTeacher: (username) => {
+		console.log('ResetPasswordByTeacher API - Username:', username);
+		return axiosClient.post(`/auth/reset-password-by-teacher?username=${username}`, {}, {
+			headers: {
+				'Content-Type': 'application/json',
+				'accept': '*/*',
+			}
 		});
 	},
 

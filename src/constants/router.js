@@ -4,6 +4,7 @@ const ROUTER_PAGE = {
 	LOGIN_STUDENT: '/login-student',
 	FORGOT_PASSWORD_EMAIL: '/forgot-password-email',
 	FORGOT_PASSWORD_PHONE: '/forgot-password-phone',
+	FORGOT_PASSWORD_TEACHER: '/forgot-password-teacher',
 	FORGOT_PASSWORD_SUCCESS: '/forgot-password-success',
 	FORGOT_PASSWORD_FAILURE: '/forgot-password-failure',
 	OTP_VERIFICATION: '/otp-verification',
