@@ -3,29 +3,30 @@ import {
   Button,
   Input,
   Space,
-  Card,
-  Row,
-  Col,
   Select,
   Tag,
   Table,
   Pagination,
+  Typography,
+  Tooltip,
 } from "antd";
 import {
   SearchOutlined,
-  ReloadOutlined,
   PlusOutlined,
   EditOutlined,
   DeleteOutlined,
   EyeOutlined,
+  FilterOutlined,
 } from "@ant-design/icons";
-import ThemedLayout from "../../../../component/ThemedLayout";
+import ThemedLayout from "../../../../component/teacherlayout/ThemedLayout";
 import LoadingWithEffect from "../../../../component/spinner/LoadingWithEffect";
 import CreateDailyChallengeModal from "./CreateDailyChallengeModal";
 import "./DailyChallengeList.css";
 import { spaceToast } from "../../../../component/SpaceToastify";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { useTheme } from "../../../../contexts/ThemeContext";
+import usePageTitle from "../../../../hooks/usePageTitle";
 
 const { Option } = Select;
 
@@ -91,6 +92,11 @@ const mockDailyChallenges = [
 const DailyChallengeList = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const { theme } = useTheme();
+  
+  // Set page title
+  usePageTitle('Daily Challenge Management');
+  
   const [loading, setLoading] = useState(false);
   const [dailyChallenges, setDailyChallenges] = useState([]);
   const [searchText, setSearchText] = useState("");
@@ -210,47 +216,71 @@ const DailyChallengeList = () => {
 
   const columns = [
     {
+      title: 'STT',
+      key: 'stt',
+      width: 70,
+      align: 'center',
+      render: (_, __, index) => startIndex + index + 1,
+    },
+    {
       title: t('dailyChallenge.challengeTitle'),
       dataIndex: 'title',
       key: 'title',
-      render: (text, record) => (
-        <div>
-          <div className="challenge-title">{text}</div>
-          <div className="challenge-description">{record.description}</div>
-        </div>
+      width: 300,
+      align: 'left',
+      ellipsis: {
+        showTitle: false,
+      },
+      render: (text) => (
+        <Tooltip placement="topLeft" title={text}>
+          <span style={{ 
+            display: 'block',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+            textAlign: 'left'
+          }}>
+            {text}
+          </span>
+        </Tooltip>
       ),
     },
     {
       title: t('dailyChallenge.type'),
       dataIndex: 'type',
       key: 'type',
-      width: 150,
+      width: 200,
+      align: 'center',
       render: (type) => getTypeTag(type),
     },
     {
       title: t('dailyChallenge.timeLimit'),
       dataIndex: 'timeLimit',
       key: 'timeLimit',
-      width: 100,
+      width: 120,
+      align: 'center',
       render: (timeLimit) => `${timeLimit} ${t('dailyChallenge.minutes')}`,
     },
     {
       title: t('dailyChallenge.totalQuestions'),
       dataIndex: 'totalQuestions',
       key: 'totalQuestions',
-      width: 130,
+      width: 150,
+      align: 'center',
     },
     {
       title: t('dailyChallenge.status'),
       dataIndex: 'status',
       key: 'status',
-      width: 100,
+      width: 120,
+      align: 'center',
       render: (status) => getStatusTag(status),
     },
     {
       title: t('dailyChallenge.actions'),
       key: 'actions',
       width: 150,
+      align: 'center',
       render: (_, record) => (
         <Space size="small">
           <Button
@@ -278,118 +308,107 @@ const DailyChallengeList = () => {
 
   return (
     <ThemedLayout>
-      <div className="daily-challenge-list-container">
-        {/* Header */}
-        <Card className="header-card">
-          <Row justify="space-between" align="middle">
-            <Col>
-              <h2
-                style={{
-                  margin: 0,
-                  background:
-                    "linear-gradient(135deg, #00d4ff 0%, #9c88ff 50%, #ff6b35 100%)",
-                  WebkitBackgroundClip: "text",
-                  WebkitTextFillColor: "transparent",
-                  fontWeight: 800,
-                  fontSize: "32px",
-                  letterSpacing: "-0.5px",
-                  textShadow: "0 0 30px rgba(0, 212, 255, 0.3)",
-                }}
-              >
-                {t('dailyChallenge.dailyChallengeManagement')}
-              </h2>
-            </Col>
-            <Col>
-              <Button
-                type="primary"
-                icon={<PlusOutlined />}
-                onClick={handleCreateClick}
-              >
-                {t('dailyChallenge.createChallenge')}
-              </Button>
-            </Col>
-          </Row>
-        </Card>
+      {/* Main Content Panel */}
+      <div className={`main-content-panel ${theme}-main-panel`}>
+        {/* Page Title */}
+        <div className="page-title-container">
+          <Typography.Title 
+            level={1} 
+            className="page-title"
+          >
+            {t('dailyChallenge.dailyChallengeManagement')} <span className="student-count">({filteredChallenges.length})</span>
+          </Typography.Title>
+        </div>
 
-        {/* Filters */}
-        <Card className="filter-card">
-          <Row gutter={[16, 16]} align="middle">
-            <Col xs={24} sm={12} md={6} lg={5}>
-              <Input
-                prefix={<SearchOutlined />}
-                value={searchText}
-                onChange={(e) => handleSearch(e.target.value)}
-                allowClear
-              />
-            </Col>
-            <Col xs={24} sm={12} md={6} lg={5}>
-              <Select
-                placeholder={t('dailyChallenge.filterByType')}
-                value={typeFilter}
-                onChange={handleTypeFilter}
-                style={{ width: "100%" }}
-              >
-                <Option value="all">{t('dailyChallenge.allTypes')}</Option>
-                <Option value="Grammar & Vocabulary">Grammar & Vocabulary</Option>
-                <Option value="Reading">Reading</Option>
-                <Option value="Writing">Writing</Option>
-                <Option value="Listening">Listening</Option>
-                <Option value="Speaking">Speaking</Option>
-              </Select>
-            </Col>
-            <Col xs={24} sm={12} md={6} lg={5}>
-              <Select
-                placeholder={t('dailyChallenge.filterByStatus')}
-                value={statusFilter}
-                onChange={handleStatusFilter}
-                style={{ width: "100%" }}
-              >
-                <Option value="all">{t('dailyChallenge.allStatuses')}</Option>
-                <Option value="active">{t('dailyChallenge.active')}</Option>
-                <Option value="inactive">{t('dailyChallenge.inactive')}</Option>
-                <Option value="draft">{t('dailyChallenge.draft')}</Option>
-              </Select>
-            </Col>
-            <Col xs={24} sm={12} md={6} lg={4}>
-              <Space>
-                <Button
-                  icon={<ReloadOutlined />}
-                  onClick={fetchDailyChallenges}
-                >
-                  {t('dailyChallenge.refresh')}
-                </Button>
-              </Space>
-            </Col>
-          </Row>
-        </Card>
+        {/* Search and Action Section */}
+        <div className="search-action-section" style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '24px' }}>
+          <Input
+            prefix={<SearchOutlined />}
+            value={searchText}
+            onChange={(e) => handleSearch(e.target.value)}
+            placeholder={t('dailyChallenge.searchChallenges')}
+            className={`search-input ${theme}-search-input`}
+            style={{ flex: '1', minWidth: '250px', maxWidth: '400px', width: '350px', height: '40px', fontSize: '16px' }}
+            allowClear
+          />
+          
+          <Select
+            placeholder={t('dailyChallenge.filterByType')}
+            value={typeFilter}
+            onChange={handleTypeFilter}
+            style={{ width: '200px', height: '40px' }}
+            className={`filter-select ${theme}-filter-select`}
+          >
+            <Option value="all">{t('dailyChallenge.allTypes')}</Option>
+            <Option value="Grammar & Vocabulary">Grammar & Vocabulary</Option>
+            <Option value="Reading">Reading</Option>
+            <Option value="Writing">Writing</Option>
+            <Option value="Listening">Listening</Option>
+            <Option value="Speaking">Speaking</Option>
+          </Select>
+          
+          <Select
+            placeholder={t('dailyChallenge.filterByStatus')}
+            value={statusFilter}
+            onChange={handleStatusFilter}
+            style={{ width: '150px', height: '40px' }}
+            className={`filter-select ${theme}-filter-select`}
+          >
+            <Option value="all">{t('dailyChallenge.allStatuses')}</Option>
+            <Option value="active">{t('dailyChallenge.active')}</Option>
+            <Option value="inactive">{t('dailyChallenge.inactive')}</Option>
+            <Option value="draft">{t('dailyChallenge.draft')}</Option>
+          </Select>
+          
+          <div style={{ marginLeft: 'auto' }}>
+            <Button
+              icon={<PlusOutlined />}
+              onClick={handleCreateClick}
+              className={`create-button ${theme}-create-button`}
+              style={{ height: '40px', fontSize: '16px', fontWeight: '500' }}
+            >
+              {t('dailyChallenge.createChallenge')}
+            </Button>
+          </div>
+        </div>
 
-
-        {/* Challenges Table */}
-        <Card className="table-card">
-          <LoadingWithEffect loading={loading} message={t('dailyChallenge.loadingChallenges')}>
+        {/* Table Section */}
+        <div className={`table-section ${theme}-table-section`}>
+          <LoadingWithEffect loading={loading}>
             <Table
               columns={columns}
               dataSource={pagChallenges}
               pagination={false}
               rowKey="id"
-              className="daily-challenge-table"
+              className={`custom-table ${theme}-table`}
+              scroll={{ x: 'max-content' }}
             />
-            <div style={{ marginTop: '16px', textAlign: 'right' }}>
-              <Pagination
-                current={currentPage}
-                pageSize={pageSize}
-                total={filteredChallenges.length}
-                onChange={setCurrentPage}
-                onShowSizeChange={(current, size) => setPageSize(size)}
-                showSizeChanger
-                showQuickJumper
-                showTotal={(total, range) =>
-                  `${range[0]}-${range[1]} ${t('dailyChallenge.of')} ${total} ${t('dailyChallenge.challenges')}`
-                }
-              />
-            </div>
+            
+            {/* Pagination */}
+            {filteredChallenges.length > 0 && (
+              <div style={{ 
+                display: 'flex', 
+                justifyContent: 'flex-end', 
+                padding: '0 20px',
+                marginTop: '16px',
+                marginBottom: '16px'
+              }}>
+                <Pagination
+                  current={currentPage}
+                  pageSize={pageSize}
+                  total={filteredChallenges.length}
+                  onChange={setCurrentPage}
+                  onShowSizeChange={(current, size) => setPageSize(size)}
+                  showSizeChanger
+                  showQuickJumper
+                  showTotal={(total, range) =>
+                    `${range[0]}-${range[1]} ${t('dailyChallenge.of')} ${total} ${t('dailyChallenge.challenges')}`
+                  }
+                />
+              </div>
+            )}
           </LoadingWithEffect>
-        </Card>
+        </div>
 
         {/* Create Daily Challenge Modal */}
         <CreateDailyChallengeModal

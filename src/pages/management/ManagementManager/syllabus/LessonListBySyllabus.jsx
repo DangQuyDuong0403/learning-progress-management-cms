@@ -24,7 +24,6 @@ import {
 	SearchOutlined,
 	ReloadOutlined,
 	PlayCircleOutlined,
-	ArrowLeftOutlined,
 	SwapOutlined,
 	UploadOutlined,
 	DownloadOutlined,
@@ -42,6 +41,7 @@ import { spaceToast } from '../../../../component/SpaceToastify';
 import './SyllabusList.css';
 import ThemedLayout from '../../../../component/ThemedLayout';
 import { useTheme } from '../../../../contexts/ThemeContext';
+import { useSyllabusMenu } from '../../../../contexts/SyllabusMenuContext';
 import LessonForm from './LessonForm';
 import LoadingWithEffect from '../../../../component/spinner/LoadingWithEffect';
 import BottomActionBar from '../../../../component/BottomActionBar';
@@ -54,6 +54,7 @@ const LessonListBySyllabus = () => {
 	const navigate = useNavigate();
 	const { syllabusId } = useParams();
 	const { theme } = useTheme();
+	const { enterSyllabusMenu, exitSyllabusMenu } = useSyllabusMenu();
 	const dispatch = useDispatch();
 
 	// Set page title
@@ -176,6 +177,21 @@ const LessonListBySyllabus = () => {
 		fetchData();
 	}, [fetchLessons, fetchSyllabusInfo, searchText, pagination.pageSize]);
 
+	// Enter syllabus menu mode when syllabusInfo is available
+	useEffect(() => {
+		if (syllabusInfo) {
+			enterSyllabusMenu({
+				id: syllabusInfo.id,
+				name: syllabusInfo.name,
+				description: syllabusInfo.description
+			});
+		}
+		
+		return () => {
+			exitSyllabusMenu();
+		};
+	}, [syllabusInfo?.id, enterSyllabusMenu, exitSyllabusMenu]);
+
 	// Cleanup timeout on unmount
 	useEffect(() => {
 		return () => {
@@ -221,10 +237,6 @@ const LessonListBySyllabus = () => {
 
 	const handleRefresh = () => {
 		fetchLessons(pagination.current, pagination.pageSize, searchText);
-	};
-
-	const handleBackToChapters = () => {
-		navigate(`/manager/syllabuses/${syllabusId}/chapters`);
 	};
 
 	const handleTabChange = (key) => {
@@ -631,22 +643,14 @@ const LessonListBySyllabus = () => {
 			{/* Main Content Panel */}
 			<div className={`main-content-panel ${theme}-main-panel`}>
 				{/* Page Title */}
-				<div className="page-title-container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
-					<Button 
-						icon={<ArrowLeftOutlined />}
-						onClick={handleBackToChapters}
-						className={`back-button ${theme}-back-button`}
-					>
-						{t('common.back')}
-					</Button>
+				<div className="page-title-container" style={{ marginBottom: '24px' }}>
 					<Typography.Title 
 						level={1} 
 						className="page-title"
-						style={{ margin: 0, flex: 1, textAlign: 'center' }}
+						style={{ margin: 0, textAlign: 'center' }}
 					>
-						{syllabusInfo.name} - {t('lessonManagement.title')} <span className="student-count">({totalElements})</span>
+						{t('lessonManagement.title')} <span className="student-count">({totalElements})</span>
 					</Typography.Title>
-					<div style={{ width: '100px' }}></div> {/* Spacer để cân bằng layout */}
 				</div>
 
 				{/* Tabs Section */}

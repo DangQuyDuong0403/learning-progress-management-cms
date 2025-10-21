@@ -10,6 +10,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useTheme } from '../../../../contexts/ThemeContext';
+import { useSyllabusMenu } from '../../../../contexts/SyllabusMenuContext';
 import { spaceToast } from '../../../../component/SpaceToastify';
 import ThemedLayout from '../../../../component/ThemedLayout';
 import LoadingWithEffect from '../../../../component/spinner/LoadingWithEffect';
@@ -219,6 +220,7 @@ const LessonDragEditBySyllabus = () => {
 	const { theme } = useTheme();
 	const navigate = useNavigate();
 	const { syllabusId } = useParams();
+	const { enterSyllabusMenu, exitSyllabusMenu } = useSyllabusMenu();
 
 	// Set page title
 	usePageTitle('Edit Syllabus Lesson Positions');
@@ -233,7 +235,6 @@ const LessonDragEditBySyllabus = () => {
 	const [insertAtIndex, setInsertAtIndex] = useState(null);
 	const [syllabusInfo, setSyllabusInfo] = useState(null);
 	const [isInitialLoading, setIsInitialLoading] = useState(true);
-	const [activeTab, setActiveTab] = useState('lessons');
 	// Optimized sensors configuration for better performance
 	const sensors = useSensors(
 		useSensor(PointerSensor, {
@@ -321,6 +322,21 @@ const LessonDragEditBySyllabus = () => {
 		};
 		fetchData();
 	}, [fetchAllLessons, fetchSyllabusInfo]);
+
+	// Enter syllabus menu mode when syllabusInfo is available
+	useEffect(() => {
+		if (syllabusInfo) {
+			enterSyllabusMenu({
+				id: syllabusInfo.id,
+				name: syllabusInfo.name,
+				description: syllabusInfo.description
+			});
+		}
+		
+		return () => {
+			exitSyllabusMenu();
+		};
+	}, [syllabusInfo?.id, enterSyllabusMenu, exitSyllabusMenu]);
 
 	const handleAddLessonAtPosition = useCallback((index) => {
 		setEditingLesson(null);
@@ -524,13 +540,6 @@ const LessonDragEditBySyllabus = () => {
 		navigate(`/manager/syllabuses/${syllabusId}/lessons`);
 	}, [navigate, syllabusId]);
 
-	const handleTabChange = (key) => {
-		setActiveTab(key);
-		if (key === 'chapters') {
-			navigate(`/manager/syllabuses/${syllabusId}/chapters`);
-		}
-	};
-
 	if (!syllabusInfo || isInitialLoading) {
 		return (
 			<ThemedLayout>
@@ -550,26 +559,9 @@ const LessonDragEditBySyllabus = () => {
 		<ThemedLayout>
 			<div className={`main-content-panel ${theme}-main-panel`}>
 				{/* Header Section */}
-				<div
-					className='page-title-container'
-					style={{
-						display: 'flex',
-						alignItems: 'center',
-						justifyContent: 'center',
-						position: 'relative',
-						marginBottom: '24px',
-					}}>
-					<div style={{ position: 'absolute', left: 0 }}>
-						<Button
-							icon={<ArrowLeftOutlined />}
-							onClick={handleGoBack}
-							className={`back-button ${theme}-back-button`}>
-							{t('common.back')}
-						</Button>
-					</div>
-
+				<div className='page-title-container' style={{ marginBottom: '24px' }}>
 					<Title level={1} style={{ margin: 0, textAlign: 'center' }}>
-						{t('lessonManagement.editPositions')} - {syllabusInfo.name}
+						{t('lessonManagement.editPositions')}
 					</Title>
 				</div>
 

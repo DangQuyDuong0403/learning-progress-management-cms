@@ -1,6 +1,7 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { ClassMenuProvider } from "./contexts/ClassMenuContext";
+import { SyllabusMenuProvider } from "./contexts/SyllabusMenuContext";
 import CONFIG_ROUTER from "./routers/configRouter";
 import PrivateRoute from "./routers/PrivateRoute";
 import EnhancedPrivateRoute from "./routers/EnhancedPrivateRoute";
@@ -15,10 +16,11 @@ export default function App() {
   return (
     <ThemeProvider>
       <ClassMenuProvider>
-        <Router>
-          <Routes>
-            {/* redirect "/" -> "/login" */}
-            <Route path="/" element={<Navigate to="/choose-login" replace />} />
+        <SyllabusMenuProvider>
+          <Router>
+            <Routes>
+              {/* redirect "/" -> "/login" */}
+              <Route path="/" element={<Navigate to="/choose-login" replace />} />
 
             {CONFIG_ROUTER.map(({ path, component: Component, key, private: isPrivate, role, roleBased }) => {
               // Xác định loại route protection cần sử dụng
@@ -69,9 +71,10 @@ export default function App() {
                 />
               );
             })}
-          </Routes>
-        </Router>
-        <SpaceToastify />
+            </Routes>
+          </Router>
+          <SpaceToastify />
+        </SyllabusMenuProvider>
       </ClassMenuProvider>
     </ThemeProvider>
   );
