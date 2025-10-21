@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import usePageTitle from "../../../../hooks/usePageTitle";
 import {
   Button,
@@ -11,28 +11,24 @@ import {
   Modal,
   Form,
   Dropdown,
-  Tag,
-  ColorPicker,
   Typography,
   Upload,
   Pagination,
-  Avatar,
+  Tooltip,
+  Switch,
 } from "antd";
 import {
   PlusOutlined,
   SearchOutlined,
-  ReloadOutlined,
   MoreOutlined,
-  UserOutlined,
   EditOutlined,
   DeleteOutlined,
-  FilterOutlined,
   UploadOutlined,
   DownloadOutlined,
   CalendarOutlined,
   BookOutlined,
 } from "@ant-design/icons";
-import ThemedLayout from "../../../../component/ThemedLayout";
+import ThemedLayout from "../../../../component/teacherlayout/ThemedLayout";
 import LoadingWithEffect from "../../../../component/spinner/LoadingWithEffect";
 import "./ClassList.css";
 import { spaceToast } from "../../../../component/SpaceToastify";
@@ -42,13 +38,6 @@ import { useTheme } from "../../../../contexts/ThemeContext";
 import { classManagementApi, syllabusManagementApi } from "../../../../apis/apis";
 
 const { Option } = Select;
-
-// Status options for filter
-const statusOptions = [
-  { key: "active", label: "Active" },
-  { key: "inactive", label: "Inactive" },
-  { key: "pending", label: "Pending" },
-];
 
 // Predefined colors for classes
 const classColors = [
@@ -78,28 +67,6 @@ const getRandomAvatar = () => {
   return `/img/student_avatar/avatar${randomNumber}.png`;
 };
 
-// Available avatar images
-const avatarImages = [
-  'avatar1.png',
-  'avatar2.png',
-  'avatar3.png',
-  'avatar4.png',
-  'avatar5.png',
-  'avatar6.png',
-  'avatar7.png',
-  'avatar8.png',
-  'avatar9.png',
-  'avatar10.png',
-  'avatar11.png',
-  'avatar12.png',
-  'avatar13.png',
-  'avatar14.png',
-  'avatar15.png',
-  'avatar16.png',
-  'avatar17.png',
-  'avatar18.png',
-];
-
 const ClassList = () => {
   const { t } = useTranslation();
   const { theme } = useTheme();
@@ -111,11 +78,8 @@ const ClassList = () => {
   // State for classes data
   const [classes, setClasses] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [loadingComplete, setLoadingComplete] = useState(false);
-  const [syllabusMap, setSyllabusMap] = useState({});
   const [syllabuses, setSyllabuses] = useState([]);
   const [syllabusLoading, setSyllabusLoading] = useState(false);
-  const [selectedAvatar, setSelectedAvatar] = useState(null);
   
   // Pagination state
   const [pagination, setPagination] = useState({
@@ -128,7 +92,6 @@ const ClassList = () => {
   
   // Search and filter state
   const [searchText, setSearchText] = useState("");
-  const [statusFilter, setStatusFilter] = useState([]);
   const [searchTimeout, setSearchTimeout] = useState(null);
   
   // Modal states
@@ -141,73 +104,9 @@ const ClassList = () => {
     content: '',
     onConfirm: null
   });
-
-  // Filter dropdown state
-  const [filterDropdown, setFilterDropdown] = useState({
-    visible: false,
-    selectedStatuses: [],
-  });
   
   // Import modal state
   const [isImportModalVisible, setIsImportModalVisible] = useState(false);
-  const [importLoading, setImportLoading] = useState(false);
-  
-  // Refs for click outside detection
-  const filterContainerRef = useRef(null);
-
-  // Fetch syllabus data
-  const fetchSyllabusData = useCallback(async (syllabusIds) => {
-    if (!syllabusIds || syllabusIds.length === 0) return {};
-    
-    try {
-      const syllabusMap = {};
-      
-      // Fetch all unique syllabus IDs
-      const uniqueSyllabusIds = [...new Set(syllabusIds.filter(id => id))];
-      
-      // Fetch all syllabuses and filter by IDs
-      try {
-        const response = await syllabusManagementApi.getSyllabuses({ 
-          params: { page: 0, size: 1000 } // Get all syllabuses
-        });
-        
-        console.log('All syllabuses response:', response);
-        
-        if (response.success && response.data) {
-          // Create a map of syllabus ID to syllabus name
-          response.data.forEach(syllabus => {
-            if (uniqueSyllabusIds.includes(syllabus.id)) {
-              syllabusMap[syllabus.id] = syllabus.syllabusName || 'Unknown Syllabus';
-            }
-          });
-          
-          // Set default for any missing syllabus IDs
-          uniqueSyllabusIds.forEach(id => {
-            if (!syllabusMap[id]) {
-              syllabusMap[id] = 'Unknown Syllabus';
-            }
-          });
-        } else {
-          // If API fails, set all to unknown
-          uniqueSyllabusIds.forEach(id => {
-            syllabusMap[id] = 'Unknown Syllabus';
-          });
-        }
-      } catch (error) {
-        console.error('Error fetching all syllabuses:', error);
-        // Set all to unknown on error
-        uniqueSyllabusIds.forEach(id => {
-          syllabusMap[id] = 'Unknown Syllabus';
-        });
-      }
-      
-      console.log('Final syllabus map:', syllabusMap);
-      return syllabusMap;
-    } catch (error) {
-      console.error('Error fetching syllabus data:', error);
-      return {};
-    }
-  }, []);
 
   // Fetch all syllabuses for dropdown
   const fetchAllSyllabuses = useCallback(async () => {
@@ -234,7 +133,6 @@ const ClassList = () => {
   // Fetch classes from API
   const fetchClasses = useCallback(async (page = 1, size = 10, search = '') => {
     setLoading(true);
-    setLoadingComplete(false);
     try {
       const params = {
         page: page - 1, // API uses 0-based indexing
@@ -257,24 +155,19 @@ const ClassList = () => {
           studentCount: 0, // API doesn't provide student count, set to 0
           color: getClassColor(classItem.id), // Use predefined color based on ID
           avatar: getRandomAvatar(), // Random avatar for display
-          isActive: classItem.isActive,
-          createdAt: classItem.createdAt ? classItem.createdAt.split('T')[0] : new Date().toISOString().split('T')[0],
-          description: "", // API doesn't provide description
-          teacher: "", // API doesn't provide teacher info
-          level: "", // API doesn't provide level info
-          ageRange: "", // API doesn't provide age range
+          isActive: classItem.status === 'ACTIVE',
+          createdAt: classItem.createdAt ? classItem.createdAt.split('T')[0] : '-',
+          syllabusName: classItem.syllabus?.syllabusName || '-',
+          levelName: classItem.syllabus?.level?.levelName || '-',
+          startDate: classItem.startDate ? classItem.startDate.split('T')[0] : '-',
+          endDate: classItem.endDate ? classItem.endDate.split('T')[0] : '-',
           syllabusId: classItem.syllabusId,
-          createdBy: classItem.createdBy,
+          createdBy: classItem.createdBy || '-',
           updatedBy: classItem.updatedBy,
           updatedAt: classItem.updatedAt,
         }));
         
         setClasses(mappedClasses);
-        
-        // Fetch syllabus data for all classes
-        const syllabusIds = mappedClasses.map(cls => cls.syllabusId).filter(id => id);
-        const syllabusData = await fetchSyllabusData(syllabusIds);
-        setSyllabusMap(syllabusData);
         
         setPagination(prev => ({
           ...prev,
@@ -303,12 +196,8 @@ const ClassList = () => {
       }));
     } finally {
       setLoading(false);
-      // Delay setting loadingComplete to allow LoadingWithEffect animation to finish
-      setTimeout(() => {
-        setLoadingComplete(true);
-      }, 1000); // Adjust this delay based on your LoadingWithEffect animation duration
     }
-  }, [t, fetchSyllabusData]);
+  }, [t]);
 
   useEffect(() => {
     fetchClasses(1, pagination.pageSize, searchText);
@@ -326,32 +215,6 @@ const ClassList = () => {
       }
     };
   }, [searchTimeout]);
-
-  // Handle click outside to close filter dropdown
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (filterDropdown.visible && filterContainerRef.current) {
-        // Check if click is outside the filter container
-        if (!filterContainerRef.current.contains(event.target)) {
-          setFilterDropdown(prev => ({
-            ...prev,
-            visible: false,
-          }));
-        }
-      }
-    };
-
-    // Add event listener when dropdown is visible
-    if (filterDropdown.visible) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-
-    // Cleanup event listener
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [filterDropdown.visible]);
-
 
   const handleSearch = (value) => {
     setSearchText(value);
@@ -379,27 +242,21 @@ const ClassList = () => {
   const handleEditClass = (classItem) => {
     setEditingClass(classItem);
     
-    // Get current avatar filename from classItem.avatar
-    const currentAvatarFilename = classItem.avatar ? classItem.avatar.split('/').pop() : null;
-    
     form.setFieldsValue({
       name: classItem.name,
-      color: classItem.color,
-      avatar: currentAvatarFilename,
     });
     
-    setSelectedAvatar(classItem.avatar);
     setIsModalVisible(true);
   };
 
   const handleToggleStatus = async (classItem) => {
     const newStatus = !classItem.isActive;
-    const actionText = newStatus ? 'open' : 'close';
+    const actionText = newStatus ? t('classManagement.activate') : t('classManagement.deactivate');
     
     setConfirmModal({
       visible: true,
-      title: 'Confirm Status Change',
-      content: `Are you sure you want to ${actionText} the class "${classItem.name}"?`,
+      title: t('classManagement.confirmStatusChange'),
+      content: `${t('classManagement.confirmStatusChangeMessage')} ${actionText} ${t('classManagement.class')} "${classItem.name}"?`,
       onConfirm: async () => {
         try {
           await classManagementApi.toggleClassStatus(classItem.id, newStatus);
@@ -407,10 +264,10 @@ const ClassList = () => {
           // Refresh the list
           fetchClasses(pagination.current, pagination.pageSize, searchText);
         setConfirmModal({ visible: false, title: '', content: '', onConfirm: null });
-        spaceToast.success(`Class "${classItem.name}" has been ${actionText}ed successfully!`);
+        spaceToast.success(`${t('classManagement.class')} "${classItem.name}" ${t('classManagement.statusChangedSuccess')}!`);
         } catch (error) {
           console.error('Error updating class status:', error);
-          spaceToast.error('Failed to update class status. Please try again.');
+          spaceToast.error(t('classManagement.checkInfoError'));
         }
       }
     });
@@ -419,8 +276,8 @@ const ClassList = () => {
   const handleDeleteClass = (classItem) => {
     setConfirmModal({
       visible: true,
-      title: 'Delete Class',
-      content: `Are you sure you want to delete the class "${classItem.name}"? This action cannot be undone.`,
+      title: t('classManagement.deleteClass'),
+      content: t('classManagement.deleteClassMessage', { className: classItem.name }),
       onConfirm: async () => {
         try {
           await classManagementApi.deleteClass(classItem.id);
@@ -428,45 +285,13 @@ const ClassList = () => {
           // Refresh the list
           fetchClasses(pagination.current, pagination.pageSize, searchText);
           setConfirmModal({ visible: false, title: '', content: '', onConfirm: null });
-          spaceToast.success(`Class "${classItem.name}" has been deleted successfully!`);
+          spaceToast.success(t('classManagement.classDeletedSuccess', { className: classItem.name }));
         } catch (error) {
           console.error('Error deleting class:', error);
-          spaceToast.error(error.response?.data?.message || error.message || 'Failed to delete class. Please try again.');
+          spaceToast.error(error.response?.data?.message || error.message || t('classManagement.checkInfoError'));
         }
       }
     });
-  };
-
-  const handleConfirmCancel = () => {
-    setConfirmModal({ visible: false, title: '', content: '', onConfirm: null });
-  };
-
-  // Handle filter dropdown toggle
-  const handleFilterToggle = () => {
-    setFilterDropdown(prev => ({
-      ...prev,
-      visible: !prev.visible,
-      selectedStatuses: prev.visible ? prev.selectedStatuses : [...statusFilter],
-    }));
-  };
-
-  // Handle filter submission
-  const handleFilterSubmit = () => {
-    setStatusFilter(filterDropdown.selectedStatuses);
-    setFilterDropdown(prev => ({
-      ...prev,
-      visible: false,
-    }));
-    // Reset to first page when applying filters
-    fetchClasses(1, pagination.pageSize, searchText);
-  };
-
-  // Handle filter reset
-  const handleFilterReset = () => {
-    setFilterDropdown(prev => ({
-      ...prev,
-      selectedStatuses: [],
-    }));
   };
 
   // Handle import
@@ -480,25 +305,6 @@ const ClassList = () => {
     spaceToast.success(t('classManagement.exportSuccess'));
   };
 
-  // Handle import file upload
-  const handleImportUpload = async (file) => {
-    setImportLoading(true);
-    try {
-      // TODO: Implement actual import logic
-      // Simulate API call
-      setTimeout(() => {
-        setImportLoading(false);
-        setIsImportModalVisible(false);
-        spaceToast.success(t('classManagement.importSuccess'));
-        fetchClasses(1, pagination.pageSize, searchText); // Refresh the list
-      }, 2000);
-    } catch (error) {
-      setImportLoading(false);
-      spaceToast.error(t('classManagement.importError'));
-    }
-    return false; // Prevent default upload behavior
-  };
-
   // Handle import modal cancel
   const handleImportModalCancel = () => {
     setIsImportModalVisible(false);
@@ -508,16 +314,10 @@ const ClassList = () => {
     try {
       const values = await form.validateFields();
 
-      // Handle color conversion
-      const processedValues = {
-        ...values,
-        color: typeof values.color === 'string' ? values.color : values.color?.toHexString(),
-      };
-
       if (editingClass) {
         // Update existing class
         const updateData = {
-          className: processedValues.name,
+          className: values.name,
           avatarUrl: "string", // Default as per API requirements
         };
         
@@ -529,8 +329,8 @@ const ClassList = () => {
       } else {
         // Add new class
         const newClassData = {
-          className: processedValues.name,
-          syllabusId: processedValues.syllabusId,
+          className: values.name,
+          syllabusId: values.syllabusId,
           avatarUrl: "string", // Default as per API requirements
         };
         
@@ -552,28 +352,10 @@ const ClassList = () => {
   const handleModalCancel = () => {
     setIsModalVisible(false);
     form.resetFields();
-    setSelectedAvatar(null);
   };
 
   const handleCardClick = (classItem) => {
     navigate(`/manager/classes/menu/${classItem.id}`);
-  };
-
-  // Function to handle avatar selection from dropdown
-  const handleAvatarSelect = (selectedAvatar) => {
-    if (selectedAvatar) {
-      setSelectedAvatar(`/img/student_avatar/${selectedAvatar}`);
-    }
-  };
-
-  const getStatusTag = (isActive) => {
-    const statusConfig = {
-      true: { color: "green", text: "Open" },
-      false: { color: "red", text: "Close" },
-    };
-
-    const config = statusConfig[isActive] || statusConfig.false;
-    return <Tag color={config.color}>{config.text}</Tag>;
   };
 
   // Filter data based on search and filters - removed client-side filtering
@@ -585,23 +367,21 @@ const ClassList = () => {
       key: "edit",
       label: <span style={{ color: '#000000' }}>{t('common.edit')}</span>,
       icon: <EditOutlined className="edit-icon" style={{ color: '#000000' }} />,
-      onClick: () => handleEditClass(classItem),
+      onClick: (e) => {
+        e.domEvent.stopPropagation();
+        handleEditClass(classItem);
+      },
       className: "edit-menu-item",
     },
     {
-      key: "toggle",
-      label: <span style={{ color: '#000000' }}>{classItem.isActive ? 'Close' : 'Open'}</span>,
-      icon: <DeleteOutlined className="delete-icon" style={{ color: '#000000' }} />,
-      danger: classItem.isActive,
-      onClick: () => handleToggleStatus(classItem),
-      className: "delete-menu-item",
-    },
-    {
       key: "delete",
-      label: <span style={{ color: '#ff4d4f' }}>Delete Class</span>,
+      label: <span style={{ color: '#ff4d4f' }}>{t('classManagement.deleteClass')}</span>,
       icon: <DeleteOutlined className="delete-icon" style={{ color: '#ff4d4f' }} />,
       danger: true,
-      onClick: () => handleDeleteClass(classItem),
+      onClick: (e) => {
+        e.domEvent.stopPropagation();
+        handleDeleteClass(classItem);
+      },
       className: "delete-menu-item",
     },
   ];
@@ -609,242 +389,256 @@ const ClassList = () => {
 
   return (
     <ThemedLayout>
-      <div className={`class-list-container class-page ${theme}-theme`}>
+      <div className={`class-page main-content-panel ${theme}-main-panel`}>
         {/* Page Title */}
         <div className="page-title-container">
           <Typography.Title 
             level={1} 
             className="page-title"
           >
-            {t('classManagement.title')}
+            {t('classManagement.title')} <span className="student-count">({pagination.total})</span>
           </Typography.Title>
         </div>
 
-        {/* Filters */}
-        <Card className="filter-card">
-          <Row gutter={[16, 16]} align="middle">
-            <Col xs={24} sm={12} md={6} lg={4}>
+        {/* Action Bar */}
+        <div className="action-bar" style={{ marginBottom: '16px' }}>
+          <Space size="middle" style={{ width: '100%', justifyContent: 'space-between' }}>
+            <Space size="middle">
               <Input
                 prefix={<SearchOutlined />}
                 value={searchText}
                 onChange={(e) => handleSearch(e.target.value)}
+                className="search-input"
+                style={{ minWidth: '350px', maxWidth: '500px', height: '40px', fontSize: '16px' }}
                 allowClear
               />
-            </Col>
-            <Col xs={24} sm={12} md={6} lg={4}>
-              <div ref={filterContainerRef} style={{ position: 'relative' }}>
-                <Button 
-                  icon={<FilterOutlined />}
-                  onClick={handleFilterToggle}
-                  className={`filter-button ${theme}-filter-button ${filterDropdown.visible ? 'active' : ''} ${(statusFilter.length > 0) ? 'has-filters' : ''}`}
-                  style={{ width: "100%" }}
-                >
-                  Filter
-                </Button>
-                
-                {/* Filter Dropdown Panel */}
-                {filterDropdown.visible && (
-                  <div className={`filter-dropdown-panel ${theme}-filter-dropdown`}>
-                    <div style={{ padding: '20px' }}>
-                      {/* Status Filter */}
-                      <div style={{ marginBottom: '24px' }}>
-                        <Typography.Title level={5} style={{ marginBottom: '12px', fontSize: '16px' }}>
-                          Status
-                        </Typography.Title>
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                          {statusOptions.map(option => (
-                            <Button
-                              key={option.key}
-                              onClick={() => {
-                                const newStatuses = filterDropdown.selectedStatuses.includes(option.key)
-                                  ? filterDropdown.selectedStatuses.filter(status => status !== option.key)
-                                  : [...filterDropdown.selectedStatuses, option.key];
-                                setFilterDropdown(prev => ({ ...prev, selectedStatuses: newStatuses }));
-                              }}
-                              className={`filter-option ${filterDropdown.selectedStatuses.includes(option.key) ? 'selected' : ''}`}
-                            >
-                              {option.label}
-                            </Button>
-                          ))}
-                        </div>
-                      </div>
+            </Space>
+            <Space>
+              <Button
+                icon={<UploadOutlined />}
+                onClick={handleExport}
+                className="export-button"
+              >
+                {t('classManagement.exportData')}
+              </Button>
+              <Button
+                icon={<DownloadOutlined />}
+                onClick={handleImport}
+                className="import-button"
+              >
+                {t('classManagement.importClasses')}
+              </Button>
+              <Button
+                icon={<PlusOutlined />}
+                className={`create-button ${theme}-create-button`}
+                onClick={handleCreateClass}
+              >
+                {t('classManagement.addClass')}
+              </Button>
+            </Space>
+          </Space>
+        </div>
 
-                      {/* Action Buttons */}
-                      <div style={{ 
-                        display: 'flex', 
-                        justifyContent: 'space-between', 
-                        marginTop: '20px',
-                        paddingTop: '16px',
-                        borderTop: '1px solid #f0f0f0'
-                      }}>
-                        <Button
-                          onClick={handleFilterReset}
-                          className="filter-reset-button"
-                        >
-                          Reset
-                        </Button>
-                        <Button
-                          type="primary"
-                          onClick={handleFilterSubmit}
-                          className="filter-submit-button"
-                        >
-                          View Results
-                        </Button>
-                      </div>
-                    </div>
+        {/* Cards Section */}
+        <div 
+          className={`table-section ${theme}-table-section`}
+          style={{
+            backgroundColor: theme === 'sun' ? '#ffffff' : '#1a1a2e99',
+            borderRadius: '8px',
+            padding: '20px'
+          }}
+        >
+          <LoadingWithEffect loading={loading}>
+            {filteredClasses.length > 0 ? (
+              <>
+                <Row gutter={[16, 16]} justify="start" style={{ padding: '0 20px', marginBottom: '24px' }}>
+                  {filteredClasses.map((classItem) => (
+                    <Col xs={24} sm={12} md={8} lg={8} xl={8} key={classItem.id}>
+                      <Card 
+                        className="class-card" 
+                        hoverable
+                        onClick={() => handleCardClick(classItem)}
+                        style={{ 
+                          height: '100%',
+                          backgroundColor: theme === 'sun' ? '#ffffff' : undefined,
+                          cursor: 'pointer'
+                        }}
+                      >
+                        <div className="class-card-header">
+                          <div 
+                            className="class-color-bar" 
+                            style={{ backgroundColor: classItem.color }}
+                          />
+                          <Dropdown
+                            menu={{ items: getMenuItems(classItem) }}
+                            trigger={["click"]}
+                            placement="bottomRight"
+                          >
+                            <Button
+                              type="text"
+                              icon={<MoreOutlined />}
+                              className="class-menu-button"
+                              onClick={(e) => e.stopPropagation()}
+                            />
+                          </Dropdown>
+                        </div>
+                        
+                        <div className="class-card-content">
+                          {/* Class Name and Avatar Row */}
+                          <div style={{ 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            gap: '12px', 
+                            marginBottom: '12px' 
+                          }}>
+                            {/* Class Avatar */}
+                            <img 
+                              src={classItem.avatar} 
+                              alt={`${classItem.name} avatar`}
+                              style={{
+                                width: '60px',
+                                height: '60px',
+                                borderRadius: '50%',
+                                border: `3px solid ${classItem.color}`,
+                                objectFit: 'cover',
+                                boxShadow: `0 4px 12px ${classItem.color}40`,
+                                flexShrink: 0
+                              }}
+                            />
+                            
+                            {/* Class Name */}
+                            <Tooltip title={classItem.name} placement="top">
+                              <h3 
+                                className="class-name"
+                                style={{
+                                  background: "linear-gradient(90deg, #5e17eb 0%, #4dd0ff 100%)",
+                                  WebkitBackgroundClip: "text",
+                                  WebkitTextFillColor: "transparent",
+                                  backgroundClip: "text",
+                                  fontWeight: 700,
+                                  fontSize: "20px",
+                                  letterSpacing: "0.3px",
+                                  margin: 0,
+                                  flex: 1,
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                  display: '-webkit-box',
+                                  WebkitLineClamp: 2,
+                                  WebkitBoxOrient: 'vertical'
+                                }}
+                              >
+                                {classItem.name}
+                              </h3>
+                            </Tooltip>
+                            
+                            {/* Status Switch */}
+                            <div className="class-stats" style={{ flexShrink: 0 }} onClick={(e) => e.stopPropagation()}>
+                              <Switch
+                                checked={classItem.isActive}
+                                onChange={() => handleToggleStatus(classItem)}
+                                size="default"
+                                style={{
+                                  transform: 'scale(1.1)',
+                                }}
+                              />
+                            </div>
+                          </div>
+                          
+                          <div className="class-meta" style={{ fontSize: '16px', gap: '8px' }}>
+                            {/* Syllabus and Level */}
+                            <div style={{ 
+                              display: 'flex', 
+                              justifyContent: 'space-between',
+                              gap: '8px'
+                            }}>
+                              <Tooltip title={`${t('classManagement.syllabus')}: ${classItem.syllabusName}`} placement="top">
+                                <span style={{ 
+                                  color: '#000000',
+                                  overflow: 'hidden', 
+                                  textOverflow: 'ellipsis', 
+                                  whiteSpace: 'nowrap',
+                                  flex: 1
+                                }}>
+                                  <BookOutlined style={{ color: '#000000', fontSize: '14px', marginRight: '4px' }} />
+                                  {t('classManagement.syllabus')}: {classItem.syllabusName}
+                                </span>
+                              </Tooltip>
+                              <Tooltip title={`${t('classManagement.level')}: ${classItem.levelName}`} placement="top">
+                                <span style={{ 
+                                  color: '#000000',
+                                  overflow: 'hidden', 
+                                  textOverflow: 'ellipsis', 
+                                  whiteSpace: 'nowrap'
+                                }}>
+                                  {t('classManagement.level')}: {classItem.levelName}
+                                </span>
+                              </Tooltip>
+                            </div>
+
+                            {/* Start Date and End Date */}
+                            <div style={{ 
+                              display: 'flex', 
+                              justifyContent: 'space-between',
+                              gap: '8px'
+                            }}>
+                              <Tooltip title={`${t('classManagement.startDate')}: ${classItem.startDate}`} placement="top">
+                                <span style={{ 
+                                  color: '#000000',
+                                  overflow: 'hidden', 
+                                  textOverflow: 'ellipsis', 
+                                  whiteSpace: 'nowrap',
+                                  flex: 1
+                                }}>
+                                  <CalendarOutlined style={{ color: '#000000', fontSize: '14px', marginRight: '4px' }} />
+                                  {t('classManagement.startDate')}: {classItem.startDate}
+                                </span>
+                              </Tooltip>
+                              <Tooltip title={`${t('classManagement.endDate')}: ${classItem.endDate}`} placement="top">
+                                <span style={{ 
+                                  color: '#000000',
+                                  overflow: 'hidden', 
+                                  textOverflow: 'ellipsis', 
+                                  whiteSpace: 'nowrap'
+                                }}>
+                                  {t('classManagement.endDate')}: {classItem.endDate}
+                                </span>
+                              </Tooltip>
+                            </div>
+                          </div>
+                        </div>
+                      </Card>
+                    </Col>
+                  ))}
+                </Row>
+                
+                {/* Pagination */}
+                {pagination.total > 0 && (
+                  <div style={{ 
+                    display: 'flex', 
+                    justifyContent: 'flex-end', 
+                    padding: '0 20px',
+                    marginTop: '8px'
+                  }}>
+                    <Pagination
+                      current={pagination.current}
+                      total={pagination.total}
+                      pageSize={pagination.pageSize}
+                      showSizeChanger={true}
+                      showQuickJumper={false}
+                      showTotal={(total, range) => 
+                        `${range[0]}-${range[1]} of ${total} classes`
+                      }
+                      onChange={(page, pageSize) => {
+                        fetchClasses(page, pageSize, searchText);
+                      }}
+                      onShowSizeChange={(current, size) => {
+                        fetchClasses(1, size, searchText);
+                      }}
+                      pageSizeOptions={['5', '10', '20', '50']}
+                    />
                   </div>
                 )}
-              </div>
-            </Col>
-            <Col xs={24} sm={12} md={6} lg={4}>
-              <Button
-                icon={<ReloadOutlined />}
-                onClick={() => fetchClasses(pagination.current, pagination.pageSize, searchText)}
-              >
-                {t('classManagement.refresh')}
-              </Button>
-            </Col>
-            <Col xs={24} sm={24} md={6} lg={12} style={{ textAlign: 'right' }}>
-              <Space>
-                <Button
-                  icon={<UploadOutlined />}
-                  onClick={handleExport}
-                  className={`export-button ${theme}-export-button`}
-                >
-                  {t('classManagement.exportClasses')}
-                </Button>
-                <Button
-                  icon={<DownloadOutlined />}
-                  onClick={handleImport}
-                  className={`import-button ${theme}-import-button`}
-                >
-                  {t('classManagement.importClasses')}
-                </Button>
-                <Button
-                  type="primary"
-                  icon={<PlusOutlined />}
-                  onClick={handleCreateClass}
-                  style={{
-                    background: "linear-gradient(135deg, #00d4ff 0%, #9c88ff 100%)",
-                    borderColor: "transparent",
-                    height: "44px",
-                    fontSize: "16px",
-                    fontWeight: "600",
-                    borderRadius: "12px",
-                    boxShadow: "0 4px 20px rgba(0, 212, 255, 0.4)",
-                  }}
-                >
-                   {t('classManagement.createClass')}
-                </Button>
-              </Space>
-            </Col>
-          </Row>
-        </Card>
-
-        {/* Class Cards */}
-        <div className="classes-grid">
-          <LoadingWithEffect loading={loading} message={t('classManagement.loadingClasses')}>
-            {filteredClasses.length > 0 ? (
-              <Row gutter={[24, 24]} justify="center" style={{ padding: '0 20px' }}>
-                {filteredClasses.map((classItem) => (
-                  <Col xs={22} sm={20} md={12} lg={12} xl={12} key={classItem.id}>
-                    <Card 
-                      className="class-card" 
-                      hoverable
-                    >
-                      <div className="class-card-header">
-                        <div 
-                          className="class-color-bar" 
-                          style={{ backgroundColor: classItem.color }}
-                        />
-                        <Dropdown
-                          menu={{ items: getMenuItems(classItem) }}
-                          trigger={["click"]}
-                          placement="bottomRight"
-                        >
-                          <Button
-                            type="text"
-                            icon={<MoreOutlined />}
-                            className="class-menu-button"
-                          />
-                        </Dropdown>
-                      </div>
-                      
-                      <div className="class-card-content">
-                        {/* Class Name and Avatar Row */}
-                        <div style={{ 
-                          display: 'flex', 
-                          alignItems: 'center', 
-                          gap: '16px', 
-                          marginBottom: '16px' 
-                        }}>
-                          {/* Class Avatar */}
-                          <img 
-                            src={classItem.avatar} 
-                            alt={`${classItem.name} avatar`}
-                            style={{
-                              width: '80px',
-                              height: '80px',
-                              borderRadius: '50%',
-                              border: `3px solid ${classItem.color}`,
-                              objectFit: 'cover',
-                              boxShadow: `0 4px 12px ${classItem.color}40`,
-                              flexShrink: 0
-                            }}
-                          />
-                          
-                          {/* Class Name */}
-                          <h3 
-                            className="class-name clickable-name"
-                            onClick={() => handleCardClick(classItem)}
-                            style={{
-                              background: "linear-gradient(90deg, #5e17eb 0%, #4dd0ff 100%)",
-                              WebkitBackgroundClip: "text",
-                              WebkitTextFillColor: "transparent",
-                              backgroundClip: "text",
-                              fontWeight: 700,
-                              fontSize: "24px",
-                              letterSpacing: "0.3px",
-                              margin: 0,
-                              flex: 1
-                            }}
-                          >
-                            {classItem.name}
-                          </h3>
-                        </div>
-                        
-                        <div className="class-info">
-                          <div className="student-count">
-                            <UserOutlined style={{ color: classItem.color }} />
-                            <span>{classItem.studentCount}</span>
-                          </div>
-                          
-                          <div className="class-stats">
-                            {getStatusTag(classItem.isActive)}
-                          </div>
-                        </div>
-                        
-                        <div className="class-meta">
-                          <span className="created-date">
-                            <CalendarOutlined style={{ color: '#000000' }} />
-                            Created: {classItem.createdAt}
-                          </span>
-                          <span className="created-by" style={{ color: '#000000' }}>
-                            <UserOutlined style={{ color: '#000000' }} />
-                            Created by: {classItem.createdBy}
-                          </span>
-                          {classItem.syllabusId && (
-                            <span className="syllabus-name" style={{ color: '#000000' }}>
-                              <BookOutlined style={{ color: '#000000' }} />
-                              Syllabus: {syllabusMap[classItem.syllabusId] || 'Loading...'}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </Card>
-                  </Col>
-                ))}
-              </Row>
+              </>
             ) : (
               <div className="empty-state">
                 <p>{t('classManagement.noClassesFound')}</p>
@@ -856,55 +650,52 @@ const ClassList = () => {
           </LoadingWithEffect>
         </div>
 
-        {/* Pagination */}
-        {loadingComplete && filteredClasses.length > 0 && pagination.total > 0 && (
-          <Card className="pagination-card">
-            <div style={{ textAlign: 'right' }}>
-              <Pagination
-                current={pagination.current}
-                total={pagination.total}
-                pageSize={pagination.pageSize}
-                showSizeChanger={true}
-                showQuickJumper={false}
-                showTotal={(total, range) => 
-                  `${range[0]}-${range[1]} ${t('common.of')} ${total} ${t('common.classes')}`
-                }
-                onChange={(page, pageSize) => {
-                  fetchClasses(page, pageSize, searchText);
-                }}
-                onShowSizeChange={(current, size) => {
-                  fetchClasses(1, size, searchText);
-                }}
-                pageSizeOptions={['5', '10', '20', '50']}
-              />
-            </div>
-          </Card>
-        )}
-
         {/* Add/Edit Modal */}
         <Modal
-          title={editingClass ? t('classManagement.editClass') : t('classManagement.createClass')}
+          title={
+            editingClass
+              ? t('classManagement.editClass')
+              : t('classManagement.addClass')
+          }
           open={isModalVisible}
           onOk={handleModalOk}
           onCancel={handleModalCancel}
           width={600}
           okText={t('common.save')}
           cancelText={t('common.cancel')}
+          destroyOnClose
+          okButtonProps={{
+            style: {
+              backgroundColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
+              background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
+              borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'transparent',
+              color: theme === 'sun' ? '#000000' : '#ffffff',
+              height: '40px',
+              fontSize: '16px',
+              fontWeight: '500',
+              minWidth: '100px',
+            },
+          }}
+          cancelButtonProps={{
+            style: {
+              height: '40px',
+              fontSize: '16px',
+              fontWeight: '500',
+              minWidth: '100px',
+            },
+          }}
         >
           <Form
             form={form}
             layout="vertical"
-            initialValues={{
-              color: "#00d4ff",
-            }}
           >
             <Form.Item
               label={t('classManagement.className')}
               name="name"
               rules={[
                 { required: true, message: t('classManagement.classNameRequired') },
-                { min: 3, message: 'Class name must be at least 3 characters' },
-                { max: 100, message: 'Class name must not exceed 100 characters' },
+                { min: 3, message: t('classManagement.classNameRequired') },
+                { max: 100, message: t('classManagement.classNameRequired') },
               ]}
             >
               <Input 
@@ -919,65 +710,15 @@ const ClassList = () => {
               />
             </Form.Item>
 
-            {/* Avatar Section - Only show in edit mode */}
-            {editingClass && (
-              <Row gutter={24} style={{ marginBottom: 24 }}>
-                <Col span={24} style={{ textAlign: 'center' }}>
-                  <div className="avatar-section">
-                    <Avatar
-                      size={120}
-                      src={selectedAvatar}
-                      style={{ 
-                        backgroundColor: '#1890ff',
-                        marginBottom: 16,
-                        border: `3px solid ${theme === 'space' ? 'rgba(77, 208, 255, 0.5)' : 'rgba(0, 0, 0, 0.1)'}`,
-                        boxShadow: `0 4px 12px ${theme === 'space' ? 'rgba(77, 208, 255, 0.3)' : 'rgba(0, 0, 0, 0.1)'}`
-                      }}
-                    />
-                    <div>
-                      <Form.Item
-                        name="avatar"
-                        label="Select Avatar"
-                        rules={[{ required: true, message: 'Please select an avatar for the class' }]}
-                      >
-                        <Select
-                          placeholder="Select Avatar"
-                          onChange={handleAvatarSelect}
-                          showSearch
-                          filterOption={(input, option) =>
-                            option.children.toLowerCase().indexOf(input.toLowerCase()) >= 0
-                          }
-                          style={{ width: 200 }}
-                        >
-                          {avatarImages.map((avatar, index) => (
-                            <Select.Option key={index} value={avatar}>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <Avatar
-                                  size={24}
-                                  src={`/img/student_avatar/${avatar}`}
-                                  style={{ flexShrink: 0 }}
-                                />
-                                <span>{avatar.replace('.png', '').replace('avatar', 'Avatar ')}</span>
-                              </div>
-                            </Select.Option>
-                          ))}
-                        </Select>
-                      </Form.Item>
-                    </div>
-                  </div>
-                </Col>
-              </Row>
-            )}
-
             <Form.Item
-              label="Syllabus"
+              label={t('classManagement.syllabus')}
               name="syllabusId"
               rules={[
-                { required: !editingClass, message: 'Please select a syllabus for the class' },
+                { required: !editingClass, message: t('classManagement.levelRequired') },
               ]}
             >
               <Select 
-                placeholder="Select a syllabus"
+                placeholder={t('classManagement.selectLevel')}
                 loading={syllabusLoading}
                 disabled={editingClass}
                 style={{
@@ -991,100 +732,188 @@ const ClassList = () => {
                 ))}
               </Select>
             </Form.Item>
-
-            <Form.Item
-              label={t('classManagement.classColor')}
-              name="color"
-              rules={[
-                { required: true, message: 'Please select a color for the class' },
-              ]}
-            >
-              <ColorPicker 
-                placeholder={t('classManagement.selectClassColor')}
-                style={{
-                  fontSize: "15px",
-                }}
-                showText
-                format="hex"
-              />
-            </Form.Item>
           </Form>
         </Modal>
 
         {/* Confirmation Modal */}
         <Modal
-          title={confirmModal.title}
+          title={
+            <div style={{ 
+              fontSize: '20px', 
+              fontWeight: '600', 
+              color: '#1890ff',
+              textAlign: 'center',
+              padding: '10px 0'
+            }}>
+              {confirmModal.title}
+            </div>
+          }
           open={confirmModal.visible}
           onOk={confirmModal.onConfirm}
-          onCancel={handleConfirmCancel}
+          onCancel={() => setConfirmModal({ visible: false, title: '', content: '', onConfirm: null })}
           okText={t('common.confirm')}
           cancelText={t('common.cancel')}
+          width={500}
+          centered
+          bodyStyle={{
+            padding: '30px 40px',
+            fontSize: '16px',
+            lineHeight: '1.6',
+            textAlign: 'center'
+          }}
+          okButtonProps={{
+            style: {
+              backgroundColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
+              background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
+              borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'transparent',
+              color: theme === 'sun' ? '#000000' : '#ffffff',
+              height: '40px',
+              fontSize: '16px',
+              fontWeight: '500',
+              minWidth: '100px'
+            }
+          }}
+          cancelButtonProps={{
+            style: {
+              height: '40px',
+              fontSize: '16px',
+              fontWeight: '500',
+              minWidth: '100px'
+            }
+          }}
         >
-          <p>{confirmModal.content}</p>
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: '20px'
+          }}>
+            <div style={{
+              fontSize: '48px',
+              color: '#ff4d4f',
+              marginBottom: '10px'
+            }}>
+              ⚠️
+            </div>
+            <p style={{
+              fontSize: '18px',
+              color: '#333',
+              margin: 0,
+              fontWeight: '500'
+            }}>
+              {confirmModal.content}
+            </p>
+          </div>
         </Modal>
 
         {/* Import Modal */}
         <Modal
-          title={t('classManagement.importClasses')}
+          title={
+            <div
+              style={{
+                fontSize: '20px',
+                fontWeight: '600',
+                color: '#000000',
+                textAlign: 'center',
+                padding: '10px 0',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '10px',
+              }}>
+              <DownloadOutlined style={{ color: '#000000' }} />
+              {t('classManagement.importClasses')}
+            </div>
+          }
           open={isImportModalVisible}
+          onOk={() => {
+            // TODO: Implement import functionality
+            setIsImportModalVisible(false);
+          }}
           onCancel={handleImportModalCancel}
-          footer={null}
+          okText={t('classManagement.importClasses')}
+          cancelText={t('common.cancel')}
           width={600}
+          centered
+          okButtonProps={{
+            style: {
+              backgroundColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
+              background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
+              borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'transparent',
+              color: theme === 'sun' ? '#000000' : '#ffffff',
+              height: '40px',
+              fontSize: '16px',
+              fontWeight: '500',
+              minWidth: '120px',
+            },
+          }}
+          cancelButtonProps={{
+            style: {
+              height: '40px',
+              fontSize: '16px',
+              fontWeight: '500',
+              minWidth: '100px',
+            },
+          }}
         >
           <div style={{ padding: '20px 0' }}>
-            <div style={{ marginBottom: '20px' }}>
-              <Typography.Text>
-                {t('classManagement.importInstructions')}
-              </Typography.Text>
+            <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+              <Button
+                type="dashed"
+                icon={<DownloadOutlined />}
+                onClick={() => {
+                  // TODO: Implement template download
+                  spaceToast.success(t('classManagement.templateDownloaded'));
+                }}
+                style={{
+                  borderColor: '#1890ff',
+                  color: '#1890ff',
+                  height: '36px',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                }}>
+                {t('classManagement.downloadTemplate')}
+              </Button>
             </div>
             
+            <Typography.Title
+              level={5}
+              style={{
+                textAlign: 'center',
+                marginBottom: '20px',
+                color: '#666',
+              }}>
+              {t('classManagement.importInstructions')}
+            </Typography.Title>
+
             <Upload.Dragger
               name="file"
               multiple={false}
-              accept=".xlsx,.xls,.csv"
-              beforeUpload={handleImportUpload}
+              beforeUpload={() => false}
               showUploadList={false}
-              disabled={importLoading}
-            >
-              <p className="ant-upload-drag-icon">
-                <UploadOutlined style={{ fontSize: '48px', color: '#1890ff' }} />
+              accept=".xlsx,.xls,.csv"
+              style={{
+                marginBottom: '20px',
+                border: '2px dashed #d9d9d9',
+                borderRadius: '8px',
+                background: '#fafafa',
+                padding: '40px',
+                textAlign: 'center',
+              }}>
+              <p
+                className='ant-upload-drag-icon'
+                style={{ fontSize: '48px', color: '#1890ff' }}>
+                <DownloadOutlined />
               </p>
-              <p className="ant-upload-text">
-                {t('classManagement.dragFileHere')}
+              <p
+                className='ant-upload-text'
+                style={{ fontSize: '16px', fontWeight: '500' }}>
+                {t('classManagement.clickOrDragFile')}
               </p>
-              <p className="ant-upload-hint">
+              <p className='ant-upload-hint' style={{ color: '#999' }}>
                 {t('classManagement.supportedFormats')}
               </p>
             </Upload.Dragger>
-
-            {importLoading && (
-              <div style={{ textAlign: 'center', marginTop: '20px' }}>
-                <Typography.Text type="secondary">
-                  {t('classManagement.importing')}...
-                </Typography.Text>
-              </div>
-            )}
-
-            <div style={{ marginTop: '20px', padding: '16px', backgroundColor: '#f6f8fa', borderRadius: '8px' }}>
-              <Typography.Title level={5} style={{ marginBottom: '8px' }}>
-                {t('classManagement.importTemplate')}
-              </Typography.Title>
-              <Typography.Text type="secondary" style={{ fontSize: '14px' }}>
-                {t('classManagement.templateInstructions')}
-              </Typography.Text>
-              <div style={{ marginTop: '12px' }}>
-                <Button 
-                  type="link" 
-                  icon={<DownloadOutlined />}
-                  onClick={() => {
-                    // TODO: Implement template download
-                    spaceToast.success(t('classManagement.templateDownloaded'));
-                  }}
-                >
-                  {t('classManagement.downloadTemplate')}
-                </Button>
-              </div>
-            </div>
           </div>
         </Modal>
       </div>

@@ -871,7 +871,10 @@
     "exportAll": "Export All Classes",
     "exportError": "Error exporting data",
     "classes": "classes",
-    "selected": "Selected"
+    "selected": "Selected",
+    "startDate": "Start date",
+    "endDate": "End date",
+    "deleteClass": "Delete Class"
   },
   "classMenu": {
     "loadingClassInfo": "Loading class information...",

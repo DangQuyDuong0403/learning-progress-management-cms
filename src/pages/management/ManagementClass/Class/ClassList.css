@@ -1435,6 +1435,52 @@
   color: rgba(255, 255, 255, 0.8);
 }
 
+/* ===== MAIN CONTENT PANEL THEME OVERRIDES ===== */
+.space-theme .main-content-panel {
+  background: #6e5cac80 !important;
+  backdrop-filter: blur(7px) !important;
+  border-radius: 16px !important;
+  border: 1px solid #4dd0ff4d !important;
+  padding: 24px;
+}
+
+.sun-theme .main-content-panel {
+  background: #E6F5FF !important;
+  backdrop-filter: blur(1px) !important;
+  border-radius: 16px !important;
+  border: 1px solid rgba(0, 0, 0, 0.1) !important;
+  padding: 24px;
+}
+
+/* ===== TABLE SECTION THEME OVERRIDES ===== */
+.space-theme .table-section {
+  background: #1a1a2e99 !important;
+  backdrop-filter: none !important;
+  border: none !important;
+  border-radius: 16px !important;
+}
+
+.sun-theme .table-section {
+  background: #ffffff !important;
+  backdrop-filter: none !important;
+  border-radius: 16px !important;
+}
+
+/* ===== CLASS CARD THEME OVERRIDES ===== */
+.space-theme .class-card,
+.class-page.space-theme .class-card {
+  background: #e0d9ffe6 !important;
+  backdrop-filter: blur(5px) !important;
+}
+
+/* Class meta border - theme specific */
+.space-theme .class-meta {
+  border-top-color: #000000 !important;
+}
+
+.sun-theme .class-meta {
+  border-top-color: #e2e8f0 !important;
+}
 
 
 

@@ -868,7 +868,10 @@
     "exportAll": "Xuất tất cả lớp",
     "exportError": "Lỗi khi xuất dữ liệu",
     "classes": "lớp",
-    "selected": "Đã chọn"
+    "selected": "Đã chọn",
+    "startDate": "Ngày bắt đầu",
+    "endDate": "Ngày kết thúc",
+    "deleteClass": "Xóa lớp học"
   },
   "classMenu": {
     "loadingClassInfo": "Đang tải thông tin lớp học...",
