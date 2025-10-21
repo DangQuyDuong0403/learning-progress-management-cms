@@ -89,7 +89,8 @@ const StudentList = () => {
     visible: false,
     title: '',
     content: '',
-    onConfirm: null
+    onConfirm: null,
+    loading: false,
   });
   const [importModal, setImportModal] = useState({
     visible: false,
@@ -108,6 +109,10 @@ const StudentList = () => {
   const [exportLoading, setExportLoading] = useState({
     selected: false,
     all: false,
+  });
+  const [bulkLoading, setBulkLoading] = useState({
+    active: false,
+    deactive: false,
   });
   
   // Refs for click outside detection
@@ -375,50 +380,42 @@ const StudentList = () => {
       return;
     }
     
-    // Filter out PENDING records from selected items
-    const selectedStudents = students.filter(student => selectedRowKeys.includes(student.id));
-    const nonPendingSelected = selectedStudents.filter(student => student.status !== 'PENDING');
-    
-    if (nonPendingSelected.length === 0) {
-      spaceToast.warning('Cannot activate PENDING students');
-      return;
-    }
-    
-    const confirmContent = `${t('studentManagement.confirmBulkActivate')} ${nonPendingSelected.length} ${t('studentManagement.students')}? ${selectedStudents.length !== nonPendingSelected.length ? `(${selectedStudents.length - nonPendingSelected.length} PENDING students will be skipped)` : ''}`;
+    // Get all selected students from all pages, not just current page
+    const confirmContent = `${t('studentManagement.confirmBulkActivate')} ${selectedRowKeys.length} ${t('studentManagement.students')}?`;
     
     setConfirmModal({
       visible: true,
       title: `${t('studentManagement.activeAll')} ${t('studentManagement.students')}`,
       content: confirmContent,
       onConfirm: async () => {
+        setBulkLoading(prev => ({ ...prev, active: true }));
+        setConfirmModal(prev => ({ ...prev, loading: true }));
         try {
-          // Call API for bulk update - activate only non-PENDING selected students
-          const promises = nonPendingSelected.map(student => 
-            studentManagementApi.updateStudentStatus(student.id, 'ACTIVE')
-          );
+          // Call bulk API to update status for multiple students at once
+          // Use all selectedRowKeys directly since they are already filtered for non-PENDING
+          const response = await studentManagementApi.bulkUpdateStudentStatus(selectedRowKeys, 'ACTIVE');
           
-          const results = await Promise.all(promises);
-          const successCount = results.filter(r => r.success).length;
-          
-          if (successCount > 0) {
+          if (response.success) {
             // Close modal first
-            setConfirmModal({ visible: false, title: '', content: '', onConfirm: null });
+            setConfirmModal({ visible: false, title: '', content: '', onConfirm: null, loading: false });
             
             // Clear selection
             setSelectedRowKeys([]);
             
             // Show success toast
-            spaceToast.success(`${t('studentManagement.activateStudentSuccess')} ${successCount} ${t('studentManagement.students')} ${t('studentManagement.success')}`);
+            spaceToast.success(`${t('studentManagement.bulkUpdateSuccess')} ${selectedRowKeys.length} ${t('studentManagement.students')}`);
             
             // Refresh the list
-            fetchStudents(pagination.current, pagination.pageSize, searchText, statusFilter, roleNameFilter, sortBy, sortDir);
+            fetchStudents(pagination.current, pagination.pageSize, searchValue, statusFilter, roleNameFilter, sortBy, sortDir);
           } else {
-            throw new Error('All operations failed');
+            throw new Error(response.message || 'No students were updated');
           }
         } catch (error) {
-          console.error('Error updating student statuses:', error);
-          setConfirmModal({ visible: false, title: '', content: '', onConfirm: null });
-          spaceToast.error(error.response?.data?.error || error.response?.data?.message || error.message || t('studentManagement.bulkUpdateStatusError'));
+          console.error('Error in bulk update:', error);
+          setConfirmModal({ visible: false, title: '', content: '', onConfirm: null, loading: false });
+          spaceToast.error(error.response?.data?.error || error.message || t('studentManagement.bulkUpdateStatusError'));
+        } finally {
+          setBulkLoading(prev => ({ ...prev, active: false }));
         }
       }
     });
@@ -430,50 +427,42 @@ const StudentList = () => {
       return;
     }
     
-    // Filter out PENDING records from selected items
-    const selectedStudents = students.filter(student => selectedRowKeys.includes(student.id));
-    const nonPendingSelected = selectedStudents.filter(student => student.status !== 'PENDING');
-    
-    if (nonPendingSelected.length === 0) {
-      spaceToast.warning('Cannot deactivate PENDING students');
-      return;
-    }
-    
-    const confirmContent = `${t('studentManagement.confirmBulkDeactivate')} ${nonPendingSelected.length} ${t('studentManagement.students')}? ${selectedStudents.length !== nonPendingSelected.length ? `(${selectedStudents.length - nonPendingSelected.length} PENDING students will be skipped)` : ''}`;
+    // Get all selected students from all pages, not just current page
+    const confirmContent = `${t('studentManagement.confirmBulkDeactivate')} ${selectedRowKeys.length} ${t('studentManagement.students')}?`;
     
     setConfirmModal({
       visible: true,
       title: `${t('studentManagement.deactiveAll')} ${t('studentManagement.students')}`,
       content: confirmContent,
       onConfirm: async () => {
+        setBulkLoading(prev => ({ ...prev, deactive: true }));
+        setConfirmModal(prev => ({ ...prev, loading: true }));
         try {
-          // Call API for bulk update - deactivate only non-PENDING selected students
-          const promises = nonPendingSelected.map(student => 
-            studentManagementApi.updateStudentStatus(student.id, 'INACTIVE')
-          );
+          // Call bulk API to update status for multiple students at once
+          // Use all selectedRowKeys directly since they are already filtered for non-PENDING
+          const response = await studentManagementApi.bulkUpdateStudentStatus(selectedRowKeys, 'INACTIVE');
           
-          const results = await Promise.all(promises);
-          const successCount = results.filter(r => r.success).length;
-          
-          if (successCount > 0) {
+          if (response.success) {
             // Close modal first
-            setConfirmModal({ visible: false, title: '', content: '', onConfirm: null });
+            setConfirmModal({ visible: false, title: '', content: '', onConfirm: null, loading: false });
             
             // Clear selection
             setSelectedRowKeys([]);
             
             // Show success toast
-            spaceToast.success(`${t('studentManagement.deactivateStudentSuccess')} ${successCount} ${t('studentManagement.students')} ${t('studentManagement.success')}`);
+            spaceToast.success(`${t('studentManagement.bulkUpdateSuccess')} ${selectedRowKeys.length} ${t('studentManagement.students')}`);
             
             // Refresh the list
-            fetchStudents(pagination.current, pagination.pageSize, searchText, statusFilter, roleNameFilter, sortBy, sortDir);
+            fetchStudents(pagination.current, pagination.pageSize, searchValue, statusFilter, roleNameFilter, sortBy, sortDir);
           } else {
-            throw new Error('All operations failed');
+            throw new Error(response.message || 'No students were updated');
           }
         } catch (error) {
-          console.error('Error updating student statuses:', error);
-          setConfirmModal({ visible: false, title: '', content: '', onConfirm: null });
-          spaceToast.error(error.response?.data?.error || error.response?.data?.message || error.message || t('studentManagement.bulkUpdateStatusError'));
+          console.error('Error in bulk update:', error);
+          setConfirmModal({ visible: false, title: '', content: '', onConfirm: null, loading: false });
+          spaceToast.error(error.response?.data?.error || error.message || t('studentManagement.bulkUpdateStatusError'));
+        } finally {
+          setBulkLoading(prev => ({ ...prev, deactive: false }));
         }
       }
     });
@@ -1732,6 +1721,7 @@ const StudentList = () => {
           open={confirmModal.visible}
           onOk={confirmModal.onConfirm}
           onCancel={handleConfirmCancel}
+          confirmLoading={confirmModal.loading}
           okText={t('common.confirm')}
           cancelText={t('common.cancel')}
           width={500}
@@ -2056,6 +2046,8 @@ const StudentList = () => {
           activeAllText={t('studentManagement.activeAll')}
           deactiveAllText={t('studentManagement.deactiveAll')}
           assignAllToClassText={t('studentManagement.assignAllToClass')}
+          loadingActive={bulkLoading.active}
+          loadingDeactive={bulkLoading.deactive}
         />
 
     </ThemedLayout> 

@@ -21,12 +21,14 @@ import {
 	BarChartOutlined,
 	UploadOutlined,
 	DeleteOutlined,
+	CopyOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useTheme } from '../../../../contexts/ThemeContext';
 import { spaceToast } from '../../../../component/SpaceToastify';
 import studentManagementApi from '../../../../apis/backend/StudentManagement';
+import authApi from '../../../../apis/backend/auth';
 import dayjs from 'dayjs';
 import './StudentList.css';
 import ThemedLayout from '../../../../component/ThemedLayout';
@@ -41,6 +43,8 @@ const StudentProfile = () => {
 	const [editModalVisible, setEditModalVisible] = useState(false);
 	const [editEmailModalVisible, setEditEmailModalVisible] = useState(false);
 	const [resetPasswordModalVisible, setResetPasswordModalVisible] = useState(false);
+	const [credentialsModalVisible, setCredentialsModalVisible] = useState(false);
+	const [studentCredentials, setStudentCredentials] = useState(null);
 	const [editForm] = Form.useForm();
 	const [editLoading, setEditLoading] = useState(false);
 	const [resetPasswordLoading, setResetPasswordLoading] = useState(false);
@@ -125,6 +129,10 @@ const StudentProfile = () => {
 			
 			if (response.success && response.data) {
 				setStudent(response.data);
+				// Debug log to check requestResetPasswordByTeacher field
+				console.log('Student data from API:', response.data);
+				console.log('requestResetPasswordByTeacher:', response.data.requestResetPasswordByTeacher);
+				
 				// Only update avatar from API if no custom avatar is being displayed
 				if (!isCustomAvatar) {
 					setAvatarUrl(response.data.avatarUrl || "/img/avatar_1.png");
@@ -333,16 +341,41 @@ const StudentProfile = () => {
 	const handleResetPasswordSubmit = async () => {
 		setResetPasswordLoading(true);
 		try {
-			// TODO: Implement reset password to default API call
-			// const response = await studentManagementApi.resetPasswordToDefault(id);
+			// Call API to reset student password by teacher
+			const response = await authApi.resetPasswordByTeacher(student.userName);
 			
-			// Simulate API call
-			await new Promise(resolve => setTimeout(resolve, 1000));
+			console.log('Reset password response:', response);
+			console.log('Response data:', response.data);
 			
-			setResetPasswordModalVisible(false);
-			spaceToast.success(t('studentManagement.passwordResetToDefaultSuccess'));
+			// Check if API call was successful
+			if (response.success === true) {
+				setResetPasswordModalVisible(false);
+				// Hide the reset password button by updating student state
+				setStudent(prevStudent => ({
+					...prevStudent,
+					requestResetPasswordByTeacher: false
+				}));
+				
+				// Store credentials from response and show credentials modal
+				if (response.data) {
+					setStudentCredentials(response.data);
+					setCredentialsModalVisible(true);
+				}
+				
+				// Use message from BE response
+				spaceToast.success(response.message);
+			} else {
+				// If success is false or undefined, show error message from BE
+				const errorMessage = response.message || 'Failed to reset password';
+				spaceToast.error(errorMessage);
+			}
 		} catch (error) {
-			spaceToast.error(t('studentManagement.passwordResetError'));
+			console.error('Error resetting password by teacher:', error);
+			// Only show error message from BE response
+			const errorMessage = error.response?.data?.message || 
+								error.response?.data?.error || 
+								error.message;
+			spaceToast.error(errorMessage);
 		} finally {
 			setResetPasswordLoading(false);
 		}
@@ -394,6 +427,28 @@ const StudentProfile = () => {
 
 	const handleConfirmCancel = () => {
 		setConfirmModal({ visible: false, title: '', content: '', onConfirm: null });
+	};
+
+	const handleCopyCredentials = () => {
+		if (!studentCredentials) return;
+		
+		const username = studentCredentials.username || studentCredentials.userName || '';
+		const password = studentCredentials.newPassword || studentCredentials.password || '';
+		
+		const credentialsText = `Username: ${username}\nPassword: ${password}`;
+		
+		navigator.clipboard.writeText(credentialsText).then(() => {
+			spaceToast.success(t('studentManagement.credentialsCopied'));
+		}).catch(() => {
+			// Fallback for older browsers
+			const textArea = document.createElement('textarea');
+			textArea.value = credentialsText;
+			document.body.appendChild(textArea);
+			textArea.select();
+			document.execCommand('copy');
+			document.body.removeChild(textArea);
+			spaceToast.success(t('studentManagement.credentialsCopied'));
+		});
 	};
 
 	// Loading state
@@ -457,12 +512,14 @@ const StudentProfile = () => {
 							{t('common.back')}
 				</Button>
 				<div className="header-actions">
-					<Button
-						icon={<KeyOutlined />}
-						onClick={handleResetPassword}
-						className={`reset-password-button ${theme}-reset-password-button`}>
-						{t('studentManagement.resetPassword')}
-					</Button>
+					{(student?.requestResetPasswordByTeacher === true) && (
+						<Button
+							icon={<KeyOutlined />}
+							onClick={handleResetPassword}
+							className={`reset-password-button ${theme}-reset-password-button`}>
+							{t('studentManagement.resetPasswordByTeacher')}
+						</Button>
+					)}
 					<Button
 						icon={<BarChartOutlined />}
 						onClick={handleViewLearningProgress}
@@ -943,7 +1000,7 @@ const StudentProfile = () => {
 						textAlign: 'center',
 						padding: '8px 0'
 					}}>
-						{t('studentManagement.resetPasswordToDefault')}
+						{t('studentManagement.resetPasswordByTeacher')}
 					</div>
 				}
 				open={resetPasswordModalVisible}
@@ -961,7 +1018,7 @@ const StudentProfile = () => {
 							marginBottom: '16px',
 							lineHeight: '1.5'
 						}}>
-							{t('studentManagement.resetPasswordToDefaultConfirmation')} <strong>{student.fullName}</strong>?
+							{t('studentManagement.resetPasswordByTeacherConfirmation')} <strong>{student.fullName}</strong>?
 						</p>
 						<p style={{ 
 							fontSize: '12px', 
@@ -969,7 +1026,7 @@ const StudentProfile = () => {
 							textAlign: 'center',
 							marginBottom: '16px'
 						}}>
-							{t('studentManagement.resetPasswordToDefaultNote')}
+							{t('studentManagement.resetPasswordByTeacherNote')}
 						</p>
 					</div>
 
@@ -1000,7 +1057,7 @@ const StudentProfile = () => {
 								}}
 								className={`submit-button ${theme}-submit-button`}
 							>
-								{t('studentManagement.confirmResetPassword')}
+								{t('studentManagement.confirmResetPasswordByTeacher')}
 							</Button>
 						</Col>
 					</Row>
@@ -1083,6 +1140,202 @@ const StudentProfile = () => {
 					}}>
 						{confirmModal.content}
 					</p>
+				</div>
+			</Modal>
+
+			{/* Student Credentials Modal */}
+			<Modal
+				title={
+					<div style={{
+						fontSize: '20px',
+						fontWeight: '600',
+						color: '#000000',
+						textAlign: 'center',
+						padding: '10px 0'
+					}}>
+						{t('studentManagement.studentCredentials')}
+					</div>
+				}
+				open={credentialsModalVisible}
+				onCancel={() => setCredentialsModalVisible(false)}
+				footer={null}
+				width={500}
+				centered
+				destroyOnClose
+			>
+				<div style={{ padding: '20px 0' }}>
+					{/* Success Icon */}
+					<div style={{ textAlign: 'center', marginBottom: '20px' }}>
+						<p style={{
+							fontSize: '16px',
+							color: '#52c41a',
+							fontWeight: '600',
+							margin: 0
+						}}>
+							{t('studentManagement.passwordResetSuccess')}
+						</p>
+					</div>
+
+					{/* Credentials Display */}
+					{studentCredentials && (
+						<div style={{
+							backgroundColor: '#f6f8fa',
+							border: '1px solid #e1e4e8',
+							borderRadius: '8px',
+							padding: '20px',
+							marginBottom: '20px'
+						}}>
+							<div style={{
+								display: 'flex',
+								alignItems: 'center',
+								justifyContent: 'center',
+								marginBottom: '16px',
+								position: 'relative'
+							}}>
+								<h4 style={{
+									fontSize: '16px',
+									fontWeight: '600',
+									color: '#000000',
+									margin: 0,
+									textAlign: 'center'
+								}}>
+									{t('studentManagement.newCredentials')}
+								</h4>
+								<Button
+									type="text"
+									icon={<CopyOutlined />}
+									onClick={handleCopyCredentials}
+									style={{
+										position: 'absolute',
+										right: '0',
+										color: '#1890ff',
+										fontSize: '16px',
+										padding: '4px 8px',
+										height: 'auto'
+									}}
+									title={t('studentManagement.copyCredentials')}
+								/>
+							</div>
+							
+							{/* Username */}
+							<div style={{ marginBottom: '12px' }}>
+								<label style={{
+									fontSize: '14px',
+									fontWeight: '500',
+									color: '#666',
+									display: 'block',
+									marginBottom: '4px'
+								}}>
+									{t('login.username')}:
+								</label>
+								<div style={{
+									backgroundColor: '#ffffff',
+									border: '1px solid #d9d9d9',
+									borderRadius: '4px',
+									padding: '8px 12px',
+									fontSize: '16px',
+									fontWeight: '600',
+									color: '#000000'
+								}}>
+									{studentCredentials.username || studentCredentials.userName || '-'}
+								</div>
+							</div>
+
+							{/* Password */}
+							<div style={{ marginBottom: '12px' }}>
+								<label style={{
+									fontSize: '14px',
+									fontWeight: '500',
+									color: '#666',
+									display: 'block',
+									marginBottom: '4px'
+								}}>
+									{t('login.password')}:
+								</label>
+								<div style={{
+									backgroundColor: '#ffffff',
+									border: '1px solid #d9d9d9',
+									borderRadius: '4px',
+									padding: '8px 12px',
+									fontSize: '16px',
+									fontWeight: '600',
+									color: '#000000'
+								}}>
+									{studentCredentials.newPassword || studentCredentials.password || '-'}
+								</div>
+							</div>
+
+							{/* Additional Info */}
+							{studentCredentials.email && (
+								<div style={{ marginBottom: '12px' }}>
+									<label style={{
+										fontSize: '14px',
+										fontWeight: '500',
+										color: '#666',
+										display: 'block',
+										marginBottom: '4px'
+									}}>
+										{t('common.email')}:
+									</label>
+									<div style={{
+										backgroundColor: '#ffffff',
+										border: '1px solid #d9d9d9',
+										borderRadius: '4px',
+										padding: '8px 12px',
+										fontSize: '14px',
+										color: '#000000'
+									}}>
+										{studentCredentials.email}
+									</div>
+								</div>
+							)}
+						</div>
+					)}
+
+					{/* Warning Message */}
+					<div style={{
+						backgroundColor: '#fff7e6',
+						border: '1px solid #ffd591',
+						borderRadius: '6px',
+						padding: '12px',
+						marginBottom: '20px'
+					}}>
+						<div style={{
+							fontSize: '14px',
+							color: '#d46b08',
+							fontWeight: '500',
+							marginBottom: '4px'
+						}}>
+							⚠️ {t('studentManagement.credentialsWarning')}
+						</div>
+						<div style={{
+							fontSize: '12px',
+							color: '#d46b08',
+							lineHeight: '1.4'
+						}}>
+							{t('studentManagement.credentialsNote')}
+						</div>
+					</div>
+
+					{/* Action Button */}
+					<div style={{ textAlign: 'end' }}>
+						<Button
+							type="primary"
+							onClick={() => setCredentialsModalVisible(false)}
+							style={{
+								backgroundColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
+								background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
+								borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'transparent',
+								color: theme === 'sun' ? '#000000' : '#ffffff',
+								height: '40px',
+								fontSize: '16px',
+								fontWeight: '500',
+								minWidth: '120px'
+							}}
+						>
+							{t('common.close')}
+						</Button>
+					</div>
 				</div>
 			</Modal>
 
