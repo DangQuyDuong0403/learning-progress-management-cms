@@ -28,6 +28,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useTheme } from '../../../../contexts/ThemeContext';
 import { spaceToast } from '../../../../component/SpaceToastify';
 import studentManagementApi from '../../../../apis/backend/StudentManagement';
+import accountManagementApi from '../../../../apis/backend/accountManagement';
 import authApi from '../../../../apis/backend/auth';
 import dayjs from 'dayjs';
 import './StudentList.css';
@@ -389,37 +390,34 @@ const StudentProfile = () => {
 		});
 	};
 
-	// Handle auto-deactivate for PENDING students (trash button)
-	const handleAutoDeactivatePending = () => {
+	// Handle delete for PENDING students (trash button)
+	const handleDeletePending = () => {
 		if (!student || student.status !== 'PENDING') return;
 		
 		const studentName = student.fullName || student.userName;
 		
 		setConfirmModal({
 			visible: true,
-			title: t('studentManagement.deactivateStudent'),
-			content: `${t('studentManagement.confirmDeactivatePending')} "${studentName}"? ${t('studentManagement.deactivatePendingNote')}`,
+			title: t('studentManagement.deleteStudent'),
+			content: `${t('studentManagement.confirmDeletePending')} "${studentName}"? ${t('studentManagement.deletePendingNote')}`,
 			onConfirm: async () => {
 				try {
-					// Call API to update student status to INACTIVE
-					const response = await studentManagementApi.updateStudentStatus(id, 'INACTIVE');
+					// Call API to delete student
+					const response = await accountManagementApi.deleteAccount(id);
 					
-					if (response.success) {
-						// Close modal first
-						setConfirmModal({ visible: false, title: '', content: '', onConfirm: null });
-						
-						// Show success toast
-						spaceToast.success(`${t('studentManagement.deactivateStudentSuccess')} "${studentName}" ${t('studentManagement.success')}`);
-						
-						// Refresh student data
-						fetchStudentProfile();
-					} else {
-						throw new Error(response.message || 'Failed to update student status');
-					}
-				} catch (error) {
-					console.error('Error auto-deactivating PENDING student:', error);
+					// Close modal first
 					setConfirmModal({ visible: false, title: '', content: '', onConfirm: null });
-					spaceToast.error(error.response?.data?.error || error.response?.data?.message || error.message || t('studentManagement.updateStatusError'));
+					
+					// Use backend message if available, otherwise fallback to translation
+					const successMessage = response.message + ` "${studentName}"`;
+					spaceToast.success(successMessage);
+					
+					// Navigate back to student list after successful deletion
+					navigate('/manager/students');
+				} catch (error) {
+					console.error('Error deleting PENDING student:', error);
+					setConfirmModal({ visible: false, title: '', content: '', onConfirm: null });
+					spaceToast.error(error.response?.data?.error || error.response?.data?.message || error.message);
 				}
 			}
 		});
@@ -529,13 +527,13 @@ const StudentProfile = () => {
 					{student?.status === 'PENDING' && (
 						<Button
 							icon={<DeleteOutlined style={{ color: '#ff4d4f' }} />}
-							onClick={handleAutoDeactivatePending}
+							onClick={handleDeletePending}
 							className={`deactivate-button ${theme}-deactivate-button`}
 							style={{ 
 								color: '#ff4d4f',
 								borderColor: '#ff4d4f'
 							}}>
-							{t('studentManagement.deactivateStudent')}
+							{t('studentManagement.deleteStudent')}
 						</Button>
 					)}
 					<Button

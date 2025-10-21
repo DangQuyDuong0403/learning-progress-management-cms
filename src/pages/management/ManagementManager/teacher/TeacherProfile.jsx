@@ -30,6 +30,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useTheme } from '../../../../contexts/ThemeContext';
 import { spaceToast } from '../../../../component/SpaceToastify';
 import teacherManagementApi from '../../../../apis/backend/teacherManagement';
+import accountManagementApi from '../../../../apis/backend/accountManagement';
 import dayjs from 'dayjs';
 import './TeacherList.css';
 import ThemedLayout from '../../../../component/ThemedLayout';
@@ -185,37 +186,34 @@ const TeacherProfile = () => {
 		}
 	};
 
-	// Handle auto-deactivate for PENDING teachers (trash button)
-	const handleAutoDeactivatePending = () => {
+	// Handle delete for PENDING teachers (trash button)
+	const handleDeletePending = () => {
 		if (!teacher || teacher.status !== 'PENDING') return;
 		
 		const teacherName = teacher.fullName || teacher.userName;
 		
 		setConfirmModal({
 			visible: true,
-			title: t('teacherManagement.deactivateTeacher'),
-			content: `${t('teacherManagement.confirmDeactivatePending')} "${teacherName}"? ${t('teacherManagement.deactivatePendingNote')}`,
+			title: t('teacherManagement.deleteTeacher'),
+			content: `${t('teacherManagement.confirmDeletePending')} "${teacherName}"? ${t('teacherManagement.deletePendingNote')}`,
 			onConfirm: async () => {
 				try {
-					// Call API to update teacher status to INACTIVE
-					const response = await teacherManagementApi.updateTeacherStatus(teacherId, 'INACTIVE');
+					// Call API to delete teacher
+					const response = await accountManagementApi.deleteAccount(teacherId);
 					
-					if (response.success) {
-						// Close modal first
-						setConfirmModal({ visible: false, title: '', content: '', onConfirm: null });
-						
-						// Show success toast
-						spaceToast.success(`${t('teacherManagement.deactivateTeacherSuccess')} "${teacherName}" ${t('teacherManagement.success')}`);
-						
-						// Refresh teacher data
-						fetchTeacherProfile();
-					} else {
-						throw new Error(response.message || 'Failed to update teacher status');
-					}
-				} catch (error) {
-					console.error('Error auto-deactivating PENDING teacher:', error);
+					// Close modal first
 					setConfirmModal({ visible: false, title: '', content: '', onConfirm: null });
-					spaceToast.error(error.response?.data?.error || error.response?.data?.message || error.message || t('teacherManagement.updateStatusError'));
+					
+					// Use backend message if available, otherwise fallback to translation
+					const successMessage = response.message + ` "${teacherName}"`;
+					spaceToast.success(successMessage);
+					
+					// Navigate back to teacher list after successful deletion
+					navigate('/manager/teachers');
+				} catch (error) {
+					console.error('Error deleting PENDING teacher:', error);
+					setConfirmModal({ visible: false, title: '', content: '', onConfirm: null });
+					spaceToast.error(error.response?.data?.error || error.response?.data?.message || error.message);
 				}
 			}
 		});
@@ -329,13 +327,13 @@ const TeacherProfile = () => {
 							{teacher?.status === 'PENDING' && (
 								<Button
 									icon={<DeleteOutlined style={{ color: '#ff4d4f' }} />}
-									onClick={handleAutoDeactivatePending}
+									onClick={handleDeletePending}
 									className={`deactivate-button ${theme}-deactivate-button`}
 									style={{ 
 										color: '#ff4d4f',
 										borderColor: '#ff4d4f'
 									}}>
-									{t('teacherManagement.deactivateTeacher')}
+									{t('teacherManagement.deleteTeacher')}
 								</Button>
 							)}
 							<Button

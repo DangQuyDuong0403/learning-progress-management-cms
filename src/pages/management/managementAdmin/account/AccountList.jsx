@@ -412,15 +412,16 @@ const AccountList = () => {
 
 	const handleDeleteConfirm = async () => {
 		try {
-			// TODO: Implement delete account API call
-			// await accountManagementApi.deleteAccount(deleteAccount.id);
+			// Call delete account API
+			const response = await accountManagementApi.deleteAccount(deleteAccount.id);
 			
 			// Update local state
 			setAccounts(accounts.filter(account => account.id !== deleteAccount.id));
 			setTotalElements(prev => prev - 1);
 			
-			// Show success message
-			spaceToast.success(t('accountManagement.deleteAccountSuccess'));
+			// Use backend message if available, otherwise fallback to translation
+			const successMessage = response.message;
+			spaceToast.success(successMessage);
 			
 			setIsDeleteModalVisible(false);
 			setDeleteAccount(null);
