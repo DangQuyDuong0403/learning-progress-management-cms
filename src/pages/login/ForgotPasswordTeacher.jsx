@@ -31,7 +31,7 @@ export default function ForgotPasswordTeacher() {
         setLoading(true);
         
         try {
-            const response = await authApi.resetPasswordByTeacher(username);
+            const response = await authApi.requestPasswordByTeacher(username);
             
             // Show success message
             spaceToast.success(response.data.message || t('forgotPassword.teacherResetSuccess') || 'Password reset request sent to teacher successfully!');

@@ -19,7 +19,10 @@ const StudentBottomActionBar = ({
 	selectAllText = "Select all",
 	activeAllText = "Active all",
 	deactiveAllText = "Deactive all",
-	assignAllToClassText = "Assign all to class"
+	assignAllToClassText = "Assign all to class",
+	loadingActive = false,
+	loadingDeactive = false,
+	loadingAssign = false
 }) => {
 	const { theme } = useTheme();
 
@@ -48,6 +51,8 @@ const StudentBottomActionBar = ({
 							type="text"
 							icon={<CheckCircleOutlined />}
 							onClick={onActiveAll}
+							loading={loadingActive}
+							disabled={loadingDeactive || loadingAssign}
 							className="student-active-all-button"
 						>
 							{activeAllText}
@@ -58,6 +63,8 @@ const StudentBottomActionBar = ({
 							type="text"
 							icon={<StopOutlined />}
 							onClick={onDeactiveAll}
+							loading={loadingDeactive}
+							disabled={loadingActive || loadingAssign}
 							className="student-deactive-all-button"
 						>
 							{deactiveAllText}
@@ -68,6 +75,8 @@ const StudentBottomActionBar = ({
 							type="text"
 							icon={<UserAddOutlined />}
 							onClick={onAssignAllToClass}
+							loading={loadingAssign}
+							disabled={loadingActive || loadingDeactive}
 							className="student-assign-all-to-class-button"
 						>
 							{assignAllToClassText}

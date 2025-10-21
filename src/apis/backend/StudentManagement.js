@@ -29,7 +29,29 @@ const studentManagementApi = {
 		});
 	},
 
-	// Cập nhật trạng thái student (ACTIVE/INACTIVE)
+	// Bulk update student status (ACTIVE/INACTIVE)
+	bulkUpdateStudentStatus: (userIds, targetStatus) => {
+		const url = `/user/students/bulk-status`;
+		console.log('BulkUpdateStudentStatus API - URL:', url);
+		console.log('BulkUpdateStudentStatus API - Data:', { userIds, targetStatus });
+		
+		return axiosClient.patch(url, {
+			userIds: userIds,
+			targetStatus: targetStatus
+		}, {
+			headers: {
+				'accept': '*/*',
+				'Content-Type': 'application/json',
+			}
+		}).catch(error => {
+			console.error('BulkUpdateStudentStatus API Error:', error);
+			console.error('Error response:', error.response?.data);
+			console.error('Error status:', error.response?.status);
+			throw error;
+		});
+	},
+
+	// Cập nhật trạng thái student (ACTIVE/INACTIVE) - Single student
 	updateStudentStatus: (userId, status) => {
 		const url = `/user/students/${userId}/status?status=${status}`;
 		console.log('UpdateStudentStatus API - URL:', url);
@@ -41,8 +63,6 @@ const studentManagementApi = {
 			}
 		});
 	},
-
-	// Lấy profile của một student theo ID
 	getStudentProfile: (userId) => {
 		const url = `/user/profile/${userId}`;
 		console.log('GetStudentProfile API - URL:', url);
