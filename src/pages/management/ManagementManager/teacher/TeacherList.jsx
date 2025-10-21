@@ -20,6 +20,7 @@ import LoadingWithEffect from '../../../../component/spinner/LoadingWithEffect';
 import { useTheme } from '../../../../contexts/ThemeContext';
 import { spaceToast } from '../../../../component/SpaceToastify';
 import { teacherManagementApi } from '../../../../apis/apis';
+import accountManagementApi from '../../../../apis/backend/accountManagement';
 import StudentBottomActionBar from '../../../../component/StudentBottomActionBar';
 
 
@@ -261,8 +262,8 @@ const TeacherList = () => {
 		setConfirmModal({ visible: false, title: '', content: '', onConfirm: null });
 	};
 
-	// Handle auto-deactivate for PENDING teachers (trash button)
-	const handleAutoDeactivatePending = (id) => {
+	// Handle delete for PENDING teachers (trash button)
+	const handleDeletePending = (id) => {
 		const teacher = teachers.find(t => t.id === id);
 		if (!teacher || teacher.status !== 'PENDING') return;
 		
@@ -270,29 +271,26 @@ const TeacherList = () => {
 		
 		setConfirmModal({
 			visible: true,
-			title: t('teacherManagement.deactivateTeacher'),
-			content: `${t('teacherManagement.confirmDeactivatePending')} "${teacherName}"? ${t('teacherManagement.deactivatePendingNote')}`,
+			title: t('teacherManagement.deleteTeacher'),
+			content: `${t('teacherManagement.confirmDeletePending')} "${teacherName}"? ${t('teacherManagement.deletePendingNote')}`,
 			onConfirm: async () => {
 				try {
-					// Call API to update teacher status to INACTIVE
-					const response = await teacherManagementApi.updateTeacherStatus(id, 'INACTIVE');
+					// Call API to delete teacher
+					const response = await accountManagementApi.deleteAccount(id);
 					
-					if (response.success) {
-						// Close modal first
-						setConfirmModal({ visible: false, title: '', content: '', onConfirm: null });
-						
-						// Show success toast
-						spaceToast.success(`${t('teacherManagement.deactivateTeacherSuccess')} "${teacherName}" ${t('teacherManagement.success')}`);
-						
-						// Refresh the list to get updated data from server
-						fetchTeachers(pagination.current, pagination.pageSize, searchText, statusFilter, roleNameFilter, sortBy, sortDir);
-					} else {
-						throw new Error(response.message || 'Failed to update teacher status');
-					}
-				} catch (error) {
-					console.error('Error auto-deactivating PENDING teacher:', error);
+					// Close modal first
 					setConfirmModal({ visible: false, title: '', content: '', onConfirm: null });
-					spaceToast.error(error.response?.data?.error || error.response?.data?.message || error.message || t('teacherManagement.updateStatusError'));
+					
+					// Use backend message if available, otherwise fallback to translation
+					const successMessage = response.message + ` "${teacherName}"`;
+					spaceToast.success(successMessage);
+					
+					// Refresh the list to get updated data from server
+					fetchTeachers(pagination.current, pagination.pageSize, searchText, statusFilter, roleNameFilter, sortBy, sortDir);
+				} catch (error) {
+					console.error('Error deleting PENDING teacher:', error);
+					setConfirmModal({ visible: false, title: '', content: '', onConfirm: null });
+					spaceToast.error(error.response?.data?.error || error.response?.data?.message || error.message );
 				}
 			}
 		});
@@ -1018,12 +1016,12 @@ const TeacherList = () => {
 						/>
 					</Tooltip>
 					{record.status === 'PENDING' && (
-						<Tooltip title={t('teacherManagement.deactivateTeacher')}>
+						<Tooltip title={t('teacherManagement.deleteTeacher')}>
 							<Button
 								type="text"
 								icon={<DeleteOutlined style={{ fontSize: '25px', color: '#ff4d4f' }} />}
 								size="small"
-								onClick={() => handleAutoDeactivatePending(record.id)}
+								onClick={() => handleDeletePending(record.id)}
 								style={{ 
 									color: '#ff4d4f',
 									padding: '8px 12px'
