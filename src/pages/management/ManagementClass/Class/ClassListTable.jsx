@@ -990,9 +990,16 @@ const ClassListTable = () => {
 			sorter: true,
 			sortOrder: sortBy === 'className' ? (sortDir === 'asc' ? 'ascend' : 'descend') : null,
 			render: (text) => (
-				<div style={{ fontSize: '16px' }}>
-					{text}
-				</div>
+				<Tooltip placement="topLeft" title={text}>
+					<div style={{ 
+						fontSize: '16px',
+						overflow: 'hidden',
+						textOverflow: 'ellipsis',
+						whiteSpace: 'nowrap'
+					}}>
+						{text}
+					</div>
+				</Tooltip>
 			),
 		},
 		{
@@ -1001,9 +1008,16 @@ const ClassListTable = () => {
 			key: 'syllabus',
 			width: '18%',
 			render: (text) => (
-				<div style={{ fontSize: '16px' }}>
-					{text}
-				</div>
+				<Tooltip placement="topLeft" title={text}>
+					<div style={{ 
+						fontSize: '16px',
+						overflow: 'hidden',
+						textOverflow: 'ellipsis',
+						whiteSpace: 'nowrap'
+					}}>
+						{text}
+					</div>
+				</Tooltip>
 			),
 		},
 		{
@@ -1012,9 +1026,16 @@ const ClassListTable = () => {
 			key: 'level',
 			width: '12%',
 			render: (text) => (
-				<div style={{ fontSize: '16px' }}>
-					{text}
-				</div>
+				<Tooltip placement="topLeft" title={text}>
+					<div style={{ 
+						fontSize: '16px',
+						overflow: 'hidden',
+						textOverflow: 'ellipsis',
+						whiteSpace: 'nowrap'
+					}}>
+						{text}
+					</div>
+				</Tooltip>
 			),
 		},
 		{
@@ -1147,7 +1168,15 @@ const ClassListTable = () => {
 
 												{/* Start Date Range Filter */}
 												<div style={{ marginBottom: '20px' }}>
-													<Typography.Title level={5} style={{ marginBottom: '12px', fontSize: '16px' }}>
+													<Typography.Title 
+														level={5} 
+														style={{ 
+															marginBottom: '12px', 
+															fontSize: '16px',
+															fontWeight: '600',
+															color: theme === 'dark' ? '#ffffff' : '#000000'
+														}}
+													>
 														{t('classManagement.startDateRange')}
 													</Typography.Title>
 													<DatePicker.RangePicker
@@ -1175,8 +1204,16 @@ const ClassListTable = () => {
 												</div>
 
 												{/* End Date Range Filter */}
-												<div style={{ marginBottom: '20px' }}>
-													<Typography.Title level={5} style={{ marginBottom: '12px', fontSize: '16px' }}>
+												<div style={{ marginBottom: '24px' }}>
+													<Typography.Title 
+														level={5} 
+														style={{ 
+															marginBottom: '12px', 
+															fontSize: '16px',
+															fontWeight: '600',
+															color: theme === 'dark' ? '#ffffff' : '#000000'
+														}}
+													>
 														{t('classManagement.endDateRange')}
 													</Typography.Title>
 													<DatePicker.RangePicker
@@ -1207,13 +1244,20 @@ const ClassListTable = () => {
 												<div style={{ 
 													display: 'flex', 
 													justifyContent: 'space-between', 
-													marginTop: '20px',
+													gap: '12px',
 													paddingTop: '16px',
-													borderTop: '1px solid #f0f0f0'
+													borderTop: theme === 'dark' ? '1px solid #333' : '1px solid #f0f0f0'
 												}}>
 													<Button
 														onClick={handleFilterReset}
 														className="filter-reset-button"
+														style={{
+															height: '48px',
+															fontSize: '16px',
+															fontWeight: '500',
+															flex: 1,
+															borderRadius: '8px'
+														}}
 													>
 														{t('common.reset')}
 													</Button>
@@ -1221,6 +1265,16 @@ const ClassListTable = () => {
 														type="primary"
 														onClick={handleFilterSubmit}
 														className="filter-submit-button"
+														style={{
+															height: '48px',
+															fontSize: '16px',
+															fontWeight: '500',
+															flex: 1,
+															borderRadius: '8px',
+															backgroundColor: theme === 'sun' ? 'rgb(113, 179, 253)' : '#5a1fb8',
+															borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : '#5a1fb8',
+															color: theme === 'sun' ? '#000000' : '#ffffff'
+														}}
 													>
 														{t('common.viewResults')}
 													</Button>

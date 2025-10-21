@@ -911,6 +911,7 @@
     "endDate": "End Date"
   },
   "classMenu": {
+    "title": "Class Detail",
     "loadingClassInfo": "Loading class information...",
     "overview": "Overview",
     "overviewDescription": "View class overview, basic information and quick stats",
@@ -2071,6 +2072,7 @@
     "passwordTooShort": "Password must be at least 6 characters"
   },
   "teacherDashboard": {
+    "title": "Teacher Dashboard",
     "welcome": "Welcome",
     "dashboardSubtitle": "Manage your classes and track student progress",
     "loadingDashboard": "Loading dashboard...",
@@ -2115,6 +2117,21 @@
     "studentProgress": "Student Progress",
     "lessonsCompleted": "lessons completed",
     "monthlyPerformance": "Monthly Performance",
-    "averageScoreOverTime": "Average Score Over Time"
+    "averageScoreOverTime": "Average Score Over Time",
+    "syllabusList": "Syllabus List",
+    "syllabusListDescription": "View and manage syllabus content and materials",
+    "classList": "Class List",
+    "classListDescription": "Access your classes and manage student progress",
+    "englishCenterOverview": "English Center Overview",
+    "englishCenterOverviewDescription": "View overall center statistics and performance"
+  },
+  "studentDashboard": {
+    "title": "Student Dashboard",
+    "englishCenterOverview": "English Center Overview",
+    "englishCenterOverviewDescription": "View overall center statistics and performance",
+    "classList": "Class List",
+    "classListDescription": "View your enrolled classes and schedules",
+    "learningProgressOverview": "View Student Learning Progress Overview",
+    "learningProgressOverviewDescription": "Track your learning progress and achievements"
   }
 }

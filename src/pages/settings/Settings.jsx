@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import usePageTitle from '../../hooks/usePageTitle';
 import {
@@ -18,7 +18,8 @@ import {
 	SettingOutlined,
 	EditOutlined,
 } from '@ant-design/icons';
-import ThemedLayout from '../../component/ThemedLayout';
+import ThemedLayoutWithSidebar from '../../component/ThemedLayout';
+import ThemedLayoutNoSidebar from '../../component/teacherlayout/ThemedLayout';
 import { useTheme } from '../../contexts/ThemeContext';
 import { spaceToast } from '../../component/SpaceToastify';
 import { logout } from '../../redux/auth';
@@ -32,6 +33,7 @@ const Settings = () => {
 	const { theme, toggleTheme } = useTheme();
 	const dispatch = useDispatch();
 	const navigate = useNavigate();
+	const { user } = useSelector((state) => state.auth);
 	
 	// Set page title
 	usePageTitle('Settings');
@@ -163,6 +165,11 @@ const Settings = () => {
 		}
 	};
 
+	// Determine which layout to use based on user role
+	// Role từ Redux được lưu là chữ hoa: TEACHER, TEACHING_ASSISTANT, STUDENT, TEST_TAKER
+	const userRole = user?.role;
+	const shouldUseTeacherLayout = ['TEACHER', 'TEACHING_ASSISTANT', 'STUDENT', 'TEST_TAKER'].includes(userRole);
+	const ThemedLayout = shouldUseTeacherLayout ? ThemedLayoutNoSidebar : ThemedLayoutWithSidebar;
 
 	return (
 		<ThemedLayout>

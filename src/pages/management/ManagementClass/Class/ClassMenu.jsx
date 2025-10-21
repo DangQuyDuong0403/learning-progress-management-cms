@@ -3,6 +3,7 @@ import {
   Card,
   Row,
   Col,
+  Typography,
 } from "antd";
 import {
   TeamOutlined,
@@ -194,6 +195,16 @@ const ClassMenu = () => {
   return (
     <ThemedLayout>
       <div className={`class-menu-container ${isSunTheme ? 'light-theme' : 'dark-theme'}`}>
+        {/* Page Title */}
+        <div className="page-title-container" style={{ marginBottom: '24px' }}>
+          <Typography.Title 
+            level={1} 
+            className="page-title"
+          >
+            {t('classMenu.title')}
+          </Typography.Title>
+        </div>
+
         {/* Menu Cards */}
         <div className="menu-cards-section">
           <Row gutter={[24, 24]} justify="start">
@@ -209,6 +220,7 @@ const ClassMenu = () => {
                     transition: 'all 0.3s ease',
                     cursor: 'pointer',
                     backgroundColor: getCardBackgroundColor(),
+                    overflow: 'hidden',
                   }}
                   bodyStyle={{
                     padding: '24px',
