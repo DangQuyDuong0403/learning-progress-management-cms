@@ -18,7 +18,6 @@ import {
   UserOutlined,
   BookOutlined,
   StarOutlined,
-  TeamOutlined,
   CalendarOutlined,
 } from "@ant-design/icons";
 import { useTheme } from "../../../../contexts/ThemeContext";
@@ -39,6 +38,7 @@ const AssignStudentToClass = ({ student, onClose, onSuccess }) => {
 
   // Search and recommendation logic
   const handleSearch = useCallback(async (searchValue) => {
+    
     // Filter statuses for class search - can be easily modified
     const FILTER_STATUSES = ['ACTIVE', 'PENDING', 'UPCOMING_END'];
     if (!searchValue.trim()) {
@@ -51,6 +51,7 @@ const AssignStudentToClass = ({ student, onClose, onSuccess }) => {
     setHasSearched(true);
 
     try {
+      
       // Call API to search classes with multiple status filters
       const response = await classManagementApi.getClasses({
         page: 0,
@@ -59,16 +60,20 @@ const AssignStudentToClass = ({ student, onClose, onSuccess }) => {
         status: FILTER_STATUSES // Filter on backend using array
       });
 
+
       if (response.success && response.data) {
         const classes = response.data;
-
+        
+        // Debug: Log class data structure to understand the fields
         // Add recommendation logic based on student's level
         const recommended = classes.map(cls => {
           let recommendationScore = 0;
           let reasons = [];
 
           // Check if student is already assigned to this class
-          const isAlreadyAssigned = cls.students && cls.students.some(s => s.id === student.id);
+          const studentsList = cls.students || cls.studentInfos || [];
+          const isAlreadyAssigned = studentsList.some(s => s.id === student.id);
+
 
           // Level matching (highest priority)
           if (cls.syllabus && cls.syllabus.level && student?.currentLevelInfo) {
@@ -81,7 +86,8 @@ const AssignStudentToClass = ({ student, onClose, onSuccess }) => {
           }
 
           // Class capacity (prefer classes with more students)
-          if (cls.students && cls.students.length > 15) {
+          const currentStudentCount = cls.studentCount || studentsList.length || 0;
+          if (currentStudentCount > 15) {
             recommendationScore += 30;
             reasons.push(t('studentManagement.goodClassSize'));
           }
@@ -104,7 +110,7 @@ const AssignStudentToClass = ({ student, onClose, onSuccess }) => {
             reasons,
             isRecommended: recommendationScore >= 30,
             isAlreadyAssigned,
-            studentCount: cls.students ? cls.students.length : 0,
+            studentCount: currentStudentCount,
             maxStudents: cls.maxStudents || 25,
             currentTeachers: cls.teacherInfos || []
           };
@@ -171,7 +177,7 @@ const AssignStudentToClass = ({ student, onClose, onSuccess }) => {
       const response = await classManagementApi.addStudentsToClass(selectedClass.id, [student.id]);
       
       if (response.success) {
-        spaceToast.success(t('studentManagement.assignStudentSuccess'));
+        spaceToast.success(response.message);
         onClose(); // Close modal
         if (onSuccess) {
           onSuccess(); // Refresh the student list
@@ -245,9 +251,6 @@ const AssignStudentToClass = ({ student, onClose, onSuccess }) => {
                     {classItem.syllabus.level?.levelName || classItem.syllabus.syllabusName || classItem.syllabus.level || classItem.syllabus.name}
                   </Tag>
                 )}
-                <Tag color="purple">
-                  <TeamOutlined /> {classItem.studentCount || 0}/{classItem.maxStudents || 25}
-                </Tag>
                 <Tag color={
                   classItem.status === 'ACTIVE' ? 'green' : 
                   classItem.status === 'PENDING' ? 'orange' : 
