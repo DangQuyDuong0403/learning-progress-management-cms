@@ -71,6 +71,7 @@ const LessonListPage = () => {
 
 	// Loading states for buttons
 	const [templateDownloadLoading, setTemplateDownloadLoading] = useState(false);
+	const [validateLoading, setValidateLoading] = useState(false);
 
 	// Pagination state
 	const [pagination, setPagination] = useState({
@@ -336,6 +337,100 @@ const LessonListPage = () => {
 			spaceToast.error(error.response?.data?.error || error.response?.data?.message || error.message || 'Failed to download template');
 		} finally {
 			setTemplateDownloadLoading(false);
+		}
+	};
+
+	const handleValidateFile = async () => {
+		if (importModal.fileList.length === 0) {
+			spaceToast.warning(t('lessonManagement.selectFileToValidate'));
+			return;
+		}
+
+		setValidateLoading(true);
+		
+		try {
+			const file = importModal.fileList[0];
+			
+			// Create FormData object
+			const formData = new FormData();
+			formData.append('file', file);
+			formData.append('chapterId', chapterId);
+			
+			// Call validate API with FormData
+			const response = await syllabusManagementApi.validateLessonImportFile(formData);
+
+			// API trả về file validation result dưới dạng blob
+			if (response.data instanceof Blob) {
+				// Tạo URL từ blob để download
+				const downloadUrl = window.URL.createObjectURL(response.data);
+				
+				// Tạo link download
+				const link = document.createElement('a');
+				link.setAttribute('href', downloadUrl);
+				link.setAttribute('download', `lesson_validation_result_${new Date().getTime()}.xlsx`);
+				link.setAttribute('target', '_blank');
+				link.style.visibility = 'hidden';
+				document.body.appendChild(link);
+				link.click();
+				document.body.removeChild(link);
+				
+				// Cleanup URL
+				window.URL.revokeObjectURL(downloadUrl);
+				
+				spaceToast.success(t('lessonManagement.validateSuccess') + ' - ' + t('lessonManagement.fileDownloaded'));
+			} else {
+				// Nếu không phải blob, có thể là JSON response với URL
+				let downloadUrl;
+				
+				if (typeof response.data === 'string') {
+					downloadUrl = response.data;
+				} else if (response.data && response.data.url) {
+					downloadUrl = response.data.url;
+				}
+				
+				if (downloadUrl) {
+					const link = document.createElement('a');
+					link.setAttribute('href', downloadUrl);
+					link.setAttribute('download', `lesson_validation_result_${new Date().getTime()}.xlsx`);
+					link.setAttribute('target', '_blank');
+					link.style.visibility = 'hidden';
+					document.body.appendChild(link);
+					link.click();
+					document.body.removeChild(link);
+					
+					spaceToast.success(t('lessonManagement.validateSuccess') + ' - ' + t('lessonManagement.fileDownloaded'));
+				} else {
+					spaceToast.success(response.message || t('lessonManagement.validateSuccess'));
+				}
+			}
+		} catch (error) {
+			console.error('Error validating file:', error);
+			
+			// Xử lý lỗi chi tiết hơn
+			let errorMessage = t('lessonManagement.validateError');
+			
+			if (error.response?.data) {
+				if (error.response.data instanceof Blob) {
+					// Nếu lỗi trả về dưới dạng blob, đọc text để lấy thông báo lỗi
+					try {
+						const errorText = await error.response.data.text();
+						const errorJson = JSON.parse(errorText);
+						errorMessage = errorJson.error || errorJson.message || errorMessage;
+					} catch (parseError) {
+						errorMessage = error.message || errorMessage;
+					}
+				} else if (error.response.data.error) {
+					errorMessage = error.response.data.error;
+				} else if (error.response.data.message) {
+					errorMessage = error.response.data.message;
+				}
+			} else if (error.message) {
+				errorMessage = error.message;
+			}
+			
+			spaceToast.error(errorMessage);
+		} finally {
+			setValidateLoading(false);
 		}
 	};
 
@@ -769,34 +864,57 @@ const LessonListPage = () => {
 					</div>
 				}
 				open={importModal.visible}
-				onOk={handleImportOk}
 				onCancel={handleImportCancel}
-				okText={t('lessonManagement.import')}
-				cancelText={t('common.cancel')}
 				width={600}
 				centered
-				confirmLoading={importModal.uploading}
-				okButtonProps={{
-					disabled: importModal.fileList.length === 0,
-					style: {
-						backgroundColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
-						background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
-						borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'transparent',
-						color: theme === 'sun' ? '#000000' : '#ffffff',
-						height: '40px',
-						fontSize: '16px',
-						fontWeight: '500',
-						minWidth: '120px',
-					},
-				}}
-				cancelButtonProps={{
-					style: {
-						height: '40px',
-						fontSize: '16px',
-						fontWeight: '500',
-						minWidth: '100px',
-					},
-				}}>
+				footer={[
+					<Button 
+						key="cancel" 
+						onClick={handleImportCancel}
+						style={{
+							height: '40px',
+							fontSize: '16px',
+							fontWeight: '500',
+							minWidth: '100px',
+						}}>
+						{t('common.cancel')}
+					</Button>,
+					<Button 
+						key="validate" 
+						onClick={handleValidateFile}
+						loading={validateLoading}
+						disabled={importModal.fileList.length === 0 || validateLoading}
+						style={{
+							backgroundColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
+							background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
+							borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'transparent',
+							color: theme === 'sun' ? '#000000' : '#ffffff',
+							height: '40px',
+							fontSize: '16px',
+							fontWeight: '500',
+							minWidth: '120px',
+						}}>
+						{t('lessonManagement.validateFile')}
+					</Button>,
+					<Button 
+						key="import" 
+						type="primary"
+						onClick={handleImportOk}
+						loading={importModal.uploading}
+						disabled={importModal.fileList.length === 0 || importModal.uploading}
+						style={{
+							backgroundColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
+							background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
+							borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'transparent',
+							color: theme === 'sun' ? '#000000' : '#ffffff',
+							height: '40px',
+							fontSize: '16px',
+							fontWeight: '500',
+							minWidth: '120px',
+						}}>
+						{t('lessonManagement.import')}
+					</Button>
+				]}>
 				<div style={{ padding: '20px 0' }}>
 					<div style={{ textAlign: 'center', marginBottom: '20px' }}>
 						<Button

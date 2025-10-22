@@ -26,7 +26,8 @@ import {
 import { useTranslation } from 'react-i18next';
 import { useParams, useNavigate } from 'react-router-dom';
 import ChapterForm from '../../ManagementManager/syllabus/ChapterForm';
-import ThemedLayout from '../../../../component/ThemedLayout';
+import ThemedLayoutWithSidebar from '../../../../component/ThemedLayout';
+import ThemedLayoutNoSidebar from '../../../../component/teacherlayout/ThemedLayout';
 import LoadingWithEffect from '../../../../component/spinner/LoadingWithEffect';
 import { useTheme } from '../../../../contexts/ThemeContext';
 import { useClassMenu } from '../../../../contexts/ClassMenuContext';
@@ -42,6 +43,12 @@ const TeacherClassChapterList = () => {
 	const { theme } = useTheme();
 	const { user } = useSelector((state) => state.auth);
 	const { enterClassMenu, exitClassMenu } = useClassMenu();
+	
+	// Determine which layout to use based on user role
+	const userRole = user?.role?.toLowerCase();
+	const ThemedLayout = (userRole === 'teacher' || userRole === 'teaching_assistant') 
+		? ThemedLayoutNoSidebar 
+		: ThemedLayoutWithSidebar;
 
 	// Set page title
 	usePageTitle('Chapter Management');

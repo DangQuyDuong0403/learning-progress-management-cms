@@ -1,9 +1,8 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
   Button,
   Input,
   Space,
-  Select,
   Tag,
   Table,
   Pagination,
@@ -26,9 +25,10 @@ import { spaceToast } from "../../../../component/SpaceToastify";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useTheme } from "../../../../contexts/ThemeContext";
+import { useDailyChallengeMenu } from "../../../../contexts/DailyChallengeMenuContext";
 import usePageTitle from "../../../../hooks/usePageTitle";
 
-const { Option } = Select;
+// Select removed in favor of AccountList-style filter dropdown
 
 // Mock data - thay thế bằng API call thực tế
 const mockDailyChallenges = [
@@ -93,6 +93,7 @@ const DailyChallengeList = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { theme } = useTheme();
+  const { enterDailyChallengeMenu, exitDailyChallengeMenu, updateChallengeCount } = useDailyChallengeMenu();
   
   // Set page title
   usePageTitle('Daily Challenge Management');
@@ -100,11 +101,47 @@ const DailyChallengeList = () => {
   const [loading, setLoading] = useState(false);
   const [dailyChallenges, setDailyChallenges] = useState([]);
   const [searchText, setSearchText] = useState("");
-  const [typeFilter, setTypeFilter] = useState("all");
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [typeFilter, setTypeFilter] = useState([]);
+  const [statusFilter, setStatusFilter] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [showCreateModal, setShowCreateModal] = useState(false);
+
+  // AccountList-style filter dropdown state and refs
+  const [filterDropdown, setFilterDropdown] = useState({
+    visible: false,
+    selectedTypes: [],
+    selectedStatuses: [],
+  });
+  const filterContainerRef = useRef(null);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (filterDropdown.visible && filterContainerRef.current) {
+        if (!filterContainerRef.current.contains(event.target)) {
+          setFilterDropdown((prev) => ({ ...prev, visible: false }));
+        }
+      }
+    };
+
+    if (filterDropdown.visible) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [filterDropdown.visible]);
+
+  // Filter option lists
+  const typeOptions = [
+    "Grammar & Vocabulary",
+    "Reading",
+    "Writing",
+    "Listening",
+    "Speaking",
+  ];
+  const statusOptions = ["active", "inactive", "draft"];
 
   const fetchDailyChallenges = useCallback(async () => {
     setLoading(true);
@@ -124,18 +161,56 @@ const DailyChallengeList = () => {
     fetchDailyChallenges();
   }, [fetchDailyChallenges]);
 
+  // Enter/exit daily challenge menu mode
+  useEffect(() => {
+    // Enter daily challenge menu mode when component mounts
+    enterDailyChallengeMenu(0);
+    
+    // Exit daily challenge menu mode when component unmounts
+    return () => {
+      exitDailyChallengeMenu();
+    };
+  }, [enterDailyChallengeMenu, exitDailyChallengeMenu]);
+
+  // Update challenge count when filters change
+  useEffect(() => {
+    // Calculate filtered challenges count
+    const filteredCount = dailyChallenges.filter((challenge) => {
+      const matchesSearch =
+        searchText === "" ||
+        challenge.title.toLowerCase().includes(searchText.toLowerCase()) ||
+        challenge.description.toLowerCase().includes(searchText.toLowerCase()) ||
+        challenge.teacher.toLowerCase().includes(searchText.toLowerCase());
+
+      const matchesType = typeFilter.length === 0 || typeFilter.includes(challenge.type);
+      const matchesStatus = statusFilter.length === 0 || statusFilter.includes(challenge.status);
+
+      return matchesSearch && matchesType && matchesStatus;
+    }).length;
+    
+    updateChallengeCount(filteredCount);
+  }, [dailyChallenges, searchText, typeFilter, statusFilter, updateChallengeCount]);
+
   const handleSearch = (value) => {
     setSearchText(value);
     setCurrentPage(1);
   };
-
-  const handleTypeFilter = (value) => {
-    setTypeFilter(value);
-    setCurrentPage(1);
+  // Filter dropdown handlers (AccountList-style)
+  const handleFilterToggle = () => {
+    setFilterDropdown((prev) => ({ ...prev, visible: !prev.visible }));
   };
 
-  const handleStatusFilter = (value) => {
-    setStatusFilter(value);
+  const handleFilterSubmit = () => {
+    setTypeFilter(filterDropdown.selectedTypes);
+    setStatusFilter(filterDropdown.selectedStatuses);
+    setCurrentPage(1);
+    setFilterDropdown((prev) => ({ ...prev, visible: false }));
+  };
+
+  const handleFilterReset = () => {
+    setFilterDropdown((prev) => ({ ...prev, selectedTypes: [], selectedStatuses: [] }));
+    setTypeFilter([]);
+    setStatusFilter([]);
     setCurrentPage(1);
   };
 
@@ -203,8 +278,8 @@ const DailyChallengeList = () => {
       challenge.description.toLowerCase().includes(searchText.toLowerCase()) ||
       challenge.teacher.toLowerCase().includes(searchText.toLowerCase());
 
-    const matchesType = typeFilter === "all" || challenge.type === typeFilter;
-    const matchesStatus = statusFilter === "all" || challenge.status === statusFilter;
+    const matchesType = typeFilter.length === 0 || typeFilter.includes(challenge.type);
+    const matchesStatus = statusFilter.length === 0 || statusFilter.includes(challenge.status);
 
     return matchesSearch && matchesType && matchesStatus;
   });
@@ -309,19 +384,21 @@ const DailyChallengeList = () => {
   return (
     <ThemedLayout>
       {/* Main Content Panel */}
-      <div className={`main-content-panel ${theme}-main-panel`}>
-        {/* Page Title */}
-        <div className="page-title-container">
-          <Typography.Title 
-            level={1} 
-            className="page-title"
-          >
-            {t('dailyChallenge.dailyChallengeManagement')} <span className="student-count">({filteredChallenges.length})</span>
-          </Typography.Title>
-        </div>
-
+      <div className={`main-content-panel ${theme}-main-panel`} style={{ 
+        margin: 0, 
+        padding: 0,
+        width: '100%',
+        maxWidth: '100%'
+      }}>
         {/* Search and Action Section */}
-        <div className="search-action-section" style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '24px' }}>
+        <div className="search-action-section" style={{ 
+          display: 'flex', 
+          gap: '8px', 
+          alignItems: 'center', 
+          marginBottom: 0,
+          padding: '20px',
+          borderRadius: 0
+        }}>
           <Input
             prefix={<SearchOutlined />}
             value={searchText}
@@ -331,34 +408,79 @@ const DailyChallengeList = () => {
             style={{ flex: '1', minWidth: '250px', maxWidth: '400px', width: '350px', height: '40px', fontSize: '16px' }}
             allowClear
           />
-          
-          <Select
-            placeholder={t('dailyChallenge.filterByType')}
-            value={typeFilter}
-            onChange={handleTypeFilter}
-            style={{ width: '200px', height: '40px' }}
-            className={`filter-select ${theme}-filter-select`}
-          >
-            <Option value="all">{t('dailyChallenge.allTypes')}</Option>
-            <Option value="Grammar & Vocabulary">Grammar & Vocabulary</Option>
-            <Option value="Reading">Reading</Option>
-            <Option value="Writing">Writing</Option>
-            <Option value="Listening">Listening</Option>
-            <Option value="Speaking">Speaking</Option>
-          </Select>
-          
-          <Select
-            placeholder={t('dailyChallenge.filterByStatus')}
-            value={statusFilter}
-            onChange={handleStatusFilter}
-            style={{ width: '150px', height: '40px' }}
-            className={`filter-select ${theme}-filter-select`}
-          >
-            <Option value="all">{t('dailyChallenge.allStatuses')}</Option>
-            <Option value="active">{t('dailyChallenge.active')}</Option>
-            <Option value="inactive">{t('dailyChallenge.inactive')}</Option>
-            <Option value="draft">{t('dailyChallenge.draft')}</Option>
-          </Select>
+          {/* AccountList-style Filter Dropdown */}
+          <div ref={filterContainerRef} style={{ position: 'relative' }}>
+            <Button 
+              icon={<FilterOutlined />} 
+              onClick={handleFilterToggle}
+              className={`filter-button ${theme}-filter-button ${filterDropdown.visible ? 'active' : ''} ${(statusFilter.length > 0 || typeFilter.length > 0) ? 'has-filters' : ''}`}
+            >
+              {t('filter')}
+            </Button>
+
+            {filterDropdown.visible && (
+              <div className={`filter-dropdown-panel ${theme}-filter-dropdown`}>
+                <div style={{ padding: '16px' }}>
+                  <div style={{ display: 'flex', gap: '16px', marginBottom: '16px' }}>
+                    {/* Type Filter */}
+                    <div style={{ flex: 1 }}>
+                      <Typography.Title level={5} style={{ marginBottom: '10px', fontSize: '15px' }}>
+                        {t('dailyChallenge.type')}
+                      </Typography.Title>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                        {typeOptions.map((opt) => (
+                          <Button
+                            key={opt}
+                            onClick={() => {
+                              const newTypes = filterDropdown.selectedTypes.includes(opt)
+                                ? filterDropdown.selectedTypes.filter((t) => t !== opt)
+                                : [...filterDropdown.selectedTypes, opt];
+                              setFilterDropdown((prev) => ({ ...prev, selectedTypes: newTypes }));
+                            }}
+                            className={`filter-option ${filterDropdown.selectedTypes.includes(opt) ? 'selected' : ''}`}
+                          >
+                            {opt}
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Status Filter */}
+                    <div style={{ flex: 1 }}>
+                      <Typography.Title level={5} style={{ marginBottom: '10px', fontSize: '15px' }}>
+                        {t('dailyChallenge.status')}
+                      </Typography.Title>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                        {statusOptions.map((statusKey) => (
+                          <Button
+                            key={statusKey}
+                            onClick={() => {
+                              const newStatuses = filterDropdown.selectedStatuses.includes(statusKey)
+                                ? filterDropdown.selectedStatuses.filter((s) => s !== statusKey)
+                                : [...filterDropdown.selectedStatuses, statusKey];
+                              setFilterDropdown((prev) => ({ ...prev, selectedStatuses: newStatuses }));
+                            }}
+                            className={`filter-option ${filterDropdown.selectedStatuses.includes(statusKey) ? 'selected' : ''}`}
+                          >
+                            {t(`dailyChallenge.${statusKey}`)}
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '16px', paddingTop: '12px', borderTop: '1px solid #f0f0f0' }}>
+                    <Button onClick={handleFilterReset} className='filter-reset-button'>
+                      {t('reset')}
+                    </Button>
+                    <Button type='primary' onClick={handleFilterSubmit} className='filter-submit-button'>
+                      {t('viewResults')}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
           
           <div style={{ marginLeft: 'auto' }}>
             <Button
@@ -373,7 +495,11 @@ const DailyChallengeList = () => {
         </div>
 
         {/* Table Section */}
-        <div className={`table-section ${theme}-table-section`}>
+        <div className={`table-section ${theme}-table-section`} style={{
+          margin: 0,
+          padding: 0,
+          borderRadius: 0
+        }}>
           <LoadingWithEffect loading={loading}>
             <Table
               columns={columns}
@@ -382,6 +508,9 @@ const DailyChallengeList = () => {
               rowKey="id"
               className={`custom-table ${theme}-table`}
               scroll={{ x: 'max-content' }}
+              style={{
+                borderRadius: 0
+              }}
             />
             
             {/* Pagination */}
@@ -389,9 +518,8 @@ const DailyChallengeList = () => {
               <div style={{ 
                 display: 'flex', 
                 justifyContent: 'flex-end', 
-                padding: '0 20px',
-                marginTop: '16px',
-                marginBottom: '16px'
+                padding: '16px 20px',
+                margin: 0
               }}>
                 <Pagination
                   current={currentPage}

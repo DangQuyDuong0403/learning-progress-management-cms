@@ -2,6 +2,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-d
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { ClassMenuProvider } from "./contexts/ClassMenuContext";
 import { SyllabusMenuProvider } from "./contexts/SyllabusMenuContext";
+import { DailyChallengeMenuProvider } from "./contexts/DailyChallengeMenuContext";
 import CONFIG_ROUTER from "./routers/configRouter";
 import PrivateRoute from "./routers/PrivateRoute";
 import EnhancedPrivateRoute from "./routers/EnhancedPrivateRoute";
@@ -17,7 +18,8 @@ export default function App() {
     <ThemeProvider>
       <ClassMenuProvider>
         <SyllabusMenuProvider>
-          <Router>
+          <DailyChallengeMenuProvider>
+            <Router>
             <Routes>
               {/* redirect "/" -> "/login" */}
               <Route path="/" element={<Navigate to="/choose-login" replace />} />
@@ -72,8 +74,9 @@ export default function App() {
               );
             })}
             </Routes>
+            <SpaceToastify />
           </Router>
-          <SpaceToastify />
+          </DailyChallengeMenuProvider>
         </SyllabusMenuProvider>
       </ClassMenuProvider>
     </ThemeProvider>

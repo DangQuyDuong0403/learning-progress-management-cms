@@ -119,9 +119,9 @@ const classManagementApi = {
 		});
 	},
 
-	// Cập nhật trạng thái class (active/inactive)
+	// Cập nhật trạng thái class (active/inactive) - Updated to use new API format
 	toggleClassStatus: (classId, status) => {
-		const url = `/class/${classId}/toggle?status=${status}`;
+		const url = `/class/${classId}/change-status?status=${status}`;
 		console.log('ToggleClassStatus API - URL:', url);
 		console.log('ToggleClassStatus API - Params:', { classId, status });
 		
@@ -129,6 +129,11 @@ const classManagementApi = {
 			headers: {
 				'accept': '*/*',
 			}
+		}).catch(error => {
+			console.error('ToggleClassStatus API Error:', error);
+			console.error('Error response:', error.response?.data);
+			console.error('Error status:', error.response?.status);
+			throw error;
 		});
 	},
 
@@ -228,6 +233,77 @@ const classManagementApi = {
 				'accept': '*/*',
 			}
 		});
+	},
+
+	// Lấy danh sách teachers có thể thêm vào class
+	getAvailableTeachers: (params) => {
+		const queryParams = new URLSearchParams();
+		
+		// Thêm các tham số nếu có
+		if (params.page !== undefined) queryParams.append('page', params.page);
+		if (params.size !== undefined) queryParams.append('size', params.size);
+		if (params.text && params.text.trim()) {
+			queryParams.append('text', params.text.trim());
+		}
+		if (params.role) {
+			queryParams.append('role', params.role);
+		}
+		if (params.status && params.status !== 'all') {
+			queryParams.append('status', params.status);
+		}
+
+		const url = `/teacher${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
+		console.log('GetAvailableTeachers API - URL:', url);
+		console.log('GetAvailableTeachers API - Params:', params);
+		
+		return axiosClient.get(url, {
+			headers: {
+				'accept': '*/*',
+			}
+		});
+	},
+
+	// Thêm teacher vào class
+	addTeacherToClass: (classId, teacherData) => {
+		const url = `/class-teacher/${classId}/add-teacher`;
+		console.log('AddTeacherToClass API - URL:', url);
+		console.log('AddTeacherToClass API - Data:', JSON.stringify(teacherData, null, 2));
+		
+		return axiosClient.post(url, teacherData, {
+			headers: {
+				'accept': '*/*',
+				'Content-Type': 'application/json',
+			}
+		}).catch(error => {
+			console.error('AddTeacherToClass API Error:', error);
+			console.error('Error response:', error.response?.data);
+			console.error('Error status:', error.response?.status);
+			throw error;
+		});
+	},
+
+	// Xóa teacher khỏi class
+	removeTeacherFromClass: (classId, teacherId) => {
+		const url = `/class-teacher/${classId}/remove-teacher/${teacherId}`;
+		console.log('RemoveTeacherFromClass API - URL:', url);
+		console.log('RemoveTeacherFromClass API - Params:', { classId, teacherId });
+		
+		return axiosClient.delete(url, {
+			headers: {
+				'accept': '*/*',
+			}
+		}).catch(error => {
+			console.error('RemoveTeacherFromClass API Error:', error);
+			console.error('Error response:', error.response?.data);
+			console.error('Error status:', error.response?.status);
+			throw error;
+		});
+	},
+
+	// Upload ảnh avatar cho class - DISABLED until API is ready
+	uploadClassAvatar: (file) => {
+		// TODO: Enable when backend API is ready
+		return Promise.reject(new Error('Image upload API not available yet'));
 	},
 };
 
