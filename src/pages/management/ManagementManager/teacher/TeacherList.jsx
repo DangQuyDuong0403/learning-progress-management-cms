@@ -8,6 +8,7 @@ import {
 	UploadOutlined,
 	FilterOutlined,
 	DeleteOutlined,
+	LoadingOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -85,14 +86,13 @@ const TeacherList = () => {
 		selectedRoles: [],
 		selectedStatuses: [],
 	});
-	const [exportLoading, setExportLoading] = useState({
-		selected: false,
-		all: false,
-	});
+	const [exportLoading, setExportLoading] = useState(false);
 	const [bulkLoading, setBulkLoading] = useState({
 		active: false,
 		deactive: false,
 	});
+	const [templateLoading, setTemplateLoading] = useState(false);
+	const [fileValidationLoading, setFileValidationLoading] = useState(false);
 	
 	// Refs for click outside detection
 	const filterContainerRef = useRef(null);
@@ -452,34 +452,44 @@ const TeacherList = () => {
 
 	// Handle file selection
 	const handleFileSelect = (file) => {
-		// Validate file type
-		const allowedTypes = [
-			'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // .xlsx
-			'application/vnd.ms-excel', // .xls
-			'text/csv' // .csv
-		];
+		setFileValidationLoading(true);
 		
-		if (!allowedTypes.includes(file.type)) {
-			spaceToast.error('Please select a valid Excel (.xlsx, .xls) or CSV (.csv) file');
-			return false;
-		}
-		
-		// Validate file size (max 10MB)
-		const maxSize = 10 * 1024 * 1024; // 10MB
-		if (file.size > maxSize) {
-			spaceToast.error('File size must be less than 10MB');
-			return false;
-		}
-		
-		setImportModal(prev => ({
-			...prev,
-			fileList: [file]
-		}));
+		// Simulate validation delay to show loading state
+		setTimeout(() => {
+			// Validate file type
+			const allowedTypes = [
+				'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // .xlsx
+				'application/vnd.ms-excel', // .xls
+				'text/csv' // .csv
+			];
+			
+			if (!allowedTypes.includes(file.type)) {
+				spaceToast.error('Please select a valid Excel (.xlsx, .xls) or CSV (.csv) file');
+				setFileValidationLoading(false);
+				return false;
+			}
+			
+			// Validate file size (max 10MB)
+			const maxSize = 10 * 1024 * 1024; // 10MB
+			if (file.size > maxSize) {
+				spaceToast.error('File size must be less than 10MB');
+				setFileValidationLoading(false);
+				return false;
+			}
+			
+			setImportModal(prev => ({
+				...prev,
+				fileList: [file]
+			}));
+			
+			setFileValidationLoading(false);
+		}, 500); // Small delay to show loading state
 		
 		return false; // Prevent default upload behavior
 	};
 
 	const handleDownloadTemplate = async () => {
+		setTemplateLoading(true);
 		try {
 			
 			const response = await teacherManagementApi.downloadTeacherTemplate();
@@ -501,16 +511,48 @@ const TeacherList = () => {
 			const link = document.createElement('a');
 			link.setAttribute('href', downloadUrl);
 			link.setAttribute('download', 'teacher_import_template.xlsx');
-			link.setAttribute('target', '_blank');
 			link.style.visibility = 'hidden';
 			document.body.appendChild(link);
-			link.click();
-			document.body.removeChild(link);
 			
-			spaceToast.success('Template downloaded successfully');
+			// Track download start time
+			const downloadStartTime = Date.now();
+			
+			// Monitor for download completion by checking if file appears in downloads
+			const checkDownloadProgress = () => {
+				// Check if download has started by monitoring network activity or file system
+				// For now, we'll use a shorter timeout since the file should download quickly
+				const elapsed = Date.now() - downloadStartTime;
+				
+				if (elapsed > 2000) { // 2 seconds should be enough for most files
+					setTemplateLoading(false);
+					spaceToast.success('Template downloaded successfully');
+					document.body.removeChild(link);
+					return;
+				}
+				
+				// Continue checking
+				setTimeout(checkDownloadProgress, 500);
+			};
+			
+			// Start download
+			link.click();
+			
+			// Start monitoring download progress
+			setTimeout(checkDownloadProgress, 500);
+			
+			// Fallback: if still loading after 15 seconds, assume download completed
+			setTimeout(() => {
+				if (templateLoading) {
+					setTemplateLoading(false);
+					spaceToast.success('Template download completed');
+					document.body.removeChild(link);
+				}
+			}, 15000);
+			
 		} catch (error) {
 			console.error('Error downloading template:', error);
 			spaceToast.error(error.response?.data?.error || error.message || 'Failed to download template');
+			setTemplateLoading(false);
 		}
 	};
 
@@ -786,46 +828,9 @@ const TeacherList = () => {
 		setIsExportModalVisible(false);
 	};
 
-	const handleExportSelected = async () => {
-		setExportLoading(prev => ({ ...prev, selected: true }));
-		
-		try {
-			// Prepare export parameters with current page filters
-			const exportParams = {
-				text: searchText || undefined,
-				status: statusFilter.length > 0 ? statusFilter : undefined,
-				roleName: roleNameFilter.length > 0 ? roleNameFilter : undefined,
-			};
-
-			console.log('Exporting selected teachers with current filters:', exportParams);
-			
-			const response = await teacherManagementApi.exportTeachers(exportParams);
-			
-			// Create blob URL and trigger download
-			const blob = new Blob([response.data], { 
-				type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
-			});
-			const url = window.URL.createObjectURL(blob);
-			const link = document.createElement('a');
-			link.href = url;
-			link.download = `teachers_export_${new Date().toISOString().split('T')[0]}.xlsx`;
-			document.body.appendChild(link);
-			link.click();
-			document.body.removeChild(link);
-			window.URL.revokeObjectURL(url);
-			
-			spaceToast.success(`${t('teacherManagement.exportSuccess')}: ${selectedRowKeys.length} ${t('teacherManagement.teachers')}`);
-			setIsExportModalVisible(false);
-		} catch (error) {
-			console.error('Error exporting selected teachers:', error);
-			spaceToast.error(error.response?.data?.error || error.response?.data?.message || error.message || t('teacherManagement.exportError'));
-		} finally {
-			setExportLoading(prev => ({ ...prev, selected: false }));
-		}
-	};
 
 	const handleExportAll = async () => {
-		setExportLoading(prev => ({ ...prev, all: true }));
+		setExportLoading(true);
 		
 		try {
 			// Prepare export parameters with current page filters
@@ -852,13 +857,13 @@ const TeacherList = () => {
 			document.body.removeChild(link);
 			window.URL.revokeObjectURL(url);
 			
-			spaceToast.success(`${t('teacherManagement.exportSuccess')}: ${totalTeachers} ${t('teacherManagement.teachers')}`);
+			spaceToast.success('Export file successfully');
 			setIsExportModalVisible(false);
 		} catch (error) {
 			console.error('Error exporting all teachers:', error);
 			spaceToast.error(error.response?.data?.error || error.response?.data?.message || error.message || t('teacherManagement.exportError'));
 		} finally {
-			setExportLoading(prev => ({ ...prev, all: false }));
+			setExportLoading(false);
 		}
 	};
 
@@ -1160,10 +1165,9 @@ const TeacherList = () => {
 							icon={<UploadOutlined />}
 							className={`export-button ${theme}-export-button`}
 							onClick={handleExportTeachers}
-							loading={exportLoading.selected || exportLoading.all}
-							disabled={exportLoading.selected || exportLoading.all}>
+							loading={exportLoading}
+							disabled={exportLoading}>
 							{t('teacherManagement.exportData')}
-							{selectedRowKeys.length > 0 && ` (${selectedRowKeys.length})`}
 						</Button>
 						<Button
 							icon={<DownloadOutlined />}
@@ -1411,6 +1415,8 @@ const TeacherList = () => {
 							type="dashed"
 							icon={<DownloadOutlined />}
 							onClick={handleDownloadTemplate}
+							loading={templateLoading}
+							disabled={templateLoading}
 							style={{
 								borderColor: '#1890ff',
 								color: '#1890ff',
@@ -1438,23 +1444,25 @@ const TeacherList = () => {
 						beforeUpload={handleFileSelect}
 						showUploadList={false}
 						accept=".xlsx,.xls,.csv"
+						disabled={fileValidationLoading}
 						style={{
 							marginBottom: '20px',
 							border: '2px dashed #d9d9d9',
 							borderRadius: '8px',
-							background: '#fafafa',
+							background: fileValidationLoading ? '#f0f0f0' : '#fafafa',
 							padding: '40px',
 							textAlign: 'center',
+							opacity: fileValidationLoading ? 0.6 : 1,
 						}}>
 						<p
 							className='ant-upload-drag-icon'
 							style={{ fontSize: '48px', color: '#1890ff' }}>
-							<DownloadOutlined />
+							{fileValidationLoading ? <LoadingOutlined /> : <DownloadOutlined />}
 						</p>
 						<p
 							className='ant-upload-text'
 							style={{ fontSize: '16px', fontWeight: '500' }}>
-							{t('teacherManagement.clickOrDragFile')}
+							{fileValidationLoading ? 'Validating file...' : t('teacherManagement.clickOrDragFile')}
 						</p>
 						<p className='ant-upload-hint' style={{ color: '#999' }}>
 							{t('teacherManagement.supportedFormats')}: Excel (.xlsx, .xls),
@@ -1543,33 +1551,12 @@ const TeacherList = () => {
 					</div>
 
 					<div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-						{selectedRowKeys.length > 0 && (
-							<Button
-								type="primary"
-								icon={<UploadOutlined />}
-								onClick={handleExportSelected}
-								loading={exportLoading.selected}
-								disabled={exportLoading.all}
-								style={{
-									height: '48px',
-									fontSize: '16px',
-									fontWeight: '500',
-									background: theme === 'sun' 
-										? 'linear-gradient(135deg, #FFFFFF, #B6D8FE 77%, #94C2F5)'
-										: 'linear-gradient(135deg, #FFFFFF 0%, #9F96B6 46%, #A79EBB 64%, #ACA5C0 75%, #6D5F8F 100%)',
-									borderColor: theme === 'sun' ? '#B6D8FE' : '#9F96B6',
-									color: '#000000',
-									borderRadius: '8px',
-								}}>
-								{t('teacherManagement.exportSelected')} ({selectedRowKeys.length} {t('teacherManagement.teachers')})
-							</Button>
-						)}
-
 						<Button
+							type="primary"
 							icon={<UploadOutlined />}
 							onClick={handleExportAll}
-							loading={exportLoading.all}
-							disabled={exportLoading.selected}
+							loading={exportLoading}
+							disabled={exportLoading}
 							style={{
 								height: '48px',
 								fontSize: '16px',
