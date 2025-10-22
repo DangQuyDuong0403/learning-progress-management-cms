@@ -604,9 +604,9 @@ const TeacherClassChapterList = () => {
 			<Modal
 				title={
 					<div style={{ 
-						fontSize: '20px', 
+						fontSize: '28px', 
 						fontWeight: '600', 
-						color: '#1890ff',
+						color: 'rgb(24, 144, 255)',
 						textAlign: 'center',
 						padding: '10px 0'
 					}}>
@@ -628,22 +628,26 @@ const TeacherClassChapterList = () => {
 				}}
 				okButtonProps={{
 					style: {
-						backgroundColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
-						background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
-						borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'transparent',
-						color: theme === 'sun' ? '#000000' : '#ffffff',
-						height: '40px',
-						fontSize: '16px',
+						background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, #7228d9 0%, #9c88ff 100%)',
+						borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : '#7228d9',
+						color: theme === 'sun' ? '#000' : '#fff',
+						borderRadius: '6px',
+						height: '32px',
 						fontWeight: '500',
-						minWidth: '100px'
+						fontSize: '16px',
+						padding: '4px 15px',
+						width: '100px',
+						transition: 'all 0.3s ease',
+						boxShadow: 'none'
 					}
 				}}
 				cancelButtonProps={{
 					style: {
-						height: '40px',
-						fontSize: '16px',
+						height: '32px',
 						fontWeight: '500',
-						minWidth: '100px'
+						fontSize: '16px',
+						padding: '4px 15px',
+						width: '100px'
 					}
 				}}
 			>
@@ -660,24 +664,24 @@ const TeacherClassChapterList = () => {
 					}}>
 						⚠️
 					</div>
+				<p style={{
+					fontSize: '18px',
+					color: '#333',
+					margin: 0,
+					fontWeight: '500'
+				}}>
+					{t('chapterManagement.confirmDeleteMessage')}
+				</p>
+				{deleteChapter && (
 					<p style={{
-						fontSize: '18px',
-						color: '#333',
+						fontSize: '20px',
+						color: '#000',
 						margin: 0,
-						fontWeight: '500'
+						fontWeight: '400'
 					}}>
-						{t('chapterManagement.confirmDeleteMessage')}
+						<strong>{deleteChapter.name}</strong>
 					</p>
-					{deleteChapter && (
-						<p style={{
-							fontSize: '20px',
-							color: '#1890ff',
-							margin: 0,
-							fontWeight: '600'
-						}}>
-							<strong>{deleteChapter.name}</strong>
-						</p>
-					)}
+				)}
 				</div>
 			</Modal>
 
@@ -685,9 +689,9 @@ const TeacherClassChapterList = () => {
 			<Modal
 				title={
 					<div style={{
-						fontSize: '20px',
+						fontSize: '28px',
 						fontWeight: '600',
-						color: '#000000',
+						color: 'rgb(24, 144, 255)',
 						textAlign: 'center',
 						padding: '10px 0',
 						display: 'flex',
@@ -695,7 +699,7 @@ const TeacherClassChapterList = () => {
 						justifyContent: 'center',
 						gap: '10px',
 					}}>
-						<DownloadOutlined style={{ color: '#000000' }} />
+						<DownloadOutlined style={{ color: 'rgb(24, 144, 255)' }} />
 						{t('chapterManagement.importChapters')}
 					</div>
 				}
@@ -710,22 +714,26 @@ const TeacherClassChapterList = () => {
 				okButtonProps={{
 					disabled: importModal.fileList.length === 0,
 					style: {
-						backgroundColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
-						background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
-						borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'transparent',
-						color: theme === 'sun' ? '#000000' : '#ffffff',
-						height: '40px',
-						fontSize: '16px',
+						background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, #7228d9 0%, #9c88ff 100%)',
+						borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : '#7228d9',
+						color: theme === 'sun' ? '#000' : '#fff',
+						borderRadius: '6px',
+						height: '32px',
 						fontWeight: '500',
-						minWidth: '120px',
+						fontSize: '16px',
+						padding: '4px 15px',
+						width: '100px',
+						transition: 'all 0.3s ease',
+						boxShadow: 'none'
 					},
 				}}
 				cancelButtonProps={{
 					style: {
-						height: '40px',
-						fontSize: '16px',
+						height: '32px',
 						fontWeight: '500',
-						minWidth: '100px',
+						fontSize: '16px',
+						padding: '4px 15px',
+						width: '100px'
 					},
 				}}>
 				<div style={{ padding: '20px 0' }}>

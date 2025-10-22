@@ -66,6 +66,7 @@ const ClassListTable = () => {
 		visible: false,
 		title: '',
 		content: '',
+		displayData: null,
 		onConfirm: null
 	});
 	const [editingClass, setEditingClass] = useState(null);
@@ -428,7 +429,8 @@ const ClassListTable = () => {
 		setConfirmModal({
 			visible: true,
 			title: t('classManagement.confirmDelete'),
-			content: t('classManagement.deleteClassMessage', { className: record.name }),
+			content: t('classManagement.deleteClassMessage'),
+			displayData: record.name,
 			onConfirm: async () => {
 				setActionLoading(prev => ({ ...prev, delete: record.id }));
 				try {
@@ -439,6 +441,7 @@ const ClassListTable = () => {
 					spaceToast.success(successMessage);
 					
 					fetchClasses(pagination.current, pagination.pageSize, searchText, sortBy, sortDir, appliedFilters);
+					setConfirmModal({ visible: false, title: '', content: '', displayData: null, onConfirm: null });
 				} catch (error) {
 					console.error('Error deleting class:', error);
 					
@@ -449,6 +452,7 @@ const ClassListTable = () => {
 										'Failed to delete class';
 					
 					spaceToast.error(errorMessage);
+					setConfirmModal({ visible: false, title: '', content: '', displayData: null, onConfirm: null });
 				} finally {
 					setActionLoading(prev => ({ ...prev, delete: null }));
 				}
@@ -463,8 +467,9 @@ const ClassListTable = () => {
 			visible: true,
 			title: t('classManagement.confirmStatusChange'),
 			content: newStatus === 'active' 
-				? t('classManagement.activateClassMessage', { className: record.name })
-				: t('classManagement.deactivateClassMessage', { className: record.name }),
+				? t('classManagement.activateClassMessage')
+				: t('classManagement.deactivateClassMessage'),
+			displayData: record.name,
 			onConfirm: async () => {
 				setActionLoading(prev => ({ ...prev, toggle: record.id }));
 				try {
@@ -478,6 +483,7 @@ const ClassListTable = () => {
 					spaceToast.success(successMessage);
 					
 					fetchClasses(pagination.current, pagination.pageSize, searchText, sortBy, sortDir, appliedFilters);
+					setConfirmModal({ visible: false, title: '', content: '', displayData: null, onConfirm: null });
 				} catch (error) {
 					console.error('Error updating class status:', error);
 					
@@ -488,6 +494,7 @@ const ClassListTable = () => {
 										'Failed to update class status';
 					
 					spaceToast.error(errorMessage);
+					setConfirmModal({ visible: false, title: '', content: '', displayData: null, onConfirm: null });
 				} finally {
 					setActionLoading(prev => ({ ...prev, toggle: null }));
 				}
@@ -846,7 +853,8 @@ const ClassListTable = () => {
 		setConfirmModal({
 			visible: true,
 			title: t('classManagement.confirmActivateAll'),
-			content: t('classManagement.activateAllMessage', { count: selectedRowKeys.length }),
+			content: t('classManagement.activateAllMessage'),
+			displayData: `${selectedRowKeys.length} ${t('classManagement.classes')}`,
 			onConfirm: async () => {
 				try {
 					// TODO: Implement bulk activate API call
@@ -854,10 +862,12 @@ const ClassListTable = () => {
 					
 					setSelectedRowKeys([]);
 					spaceToast.success(t('classManagement.allClassesActivatedSuccess'));
-				fetchClasses(pagination.current, pagination.pageSize, searchText, sortBy, sortDir, appliedFilters);
+					fetchClasses(pagination.current, pagination.pageSize, searchText, sortBy, sortDir, appliedFilters);
+					setConfirmModal({ visible: false, title: '', content: '', displayData: null, onConfirm: null });
 				} catch (error) {
 					console.error('Error activating all classes:', error);
 					spaceToast.error('Failed to activate all classes');
+					setConfirmModal({ visible: false, title: '', content: '', displayData: null, onConfirm: null });
 				}
 			}
 		});
@@ -872,7 +882,8 @@ const ClassListTable = () => {
 		setConfirmModal({
 			visible: true,
 			title: t('classManagement.confirmDeactivateAll'),
-			content: t('classManagement.deactivateAllMessage', { count: selectedRowKeys.length }),
+			content: t('classManagement.deactivateAllMessage'),
+			displayData: `${selectedRowKeys.length} ${t('classManagement.classes')}`,
 			onConfirm: async () => {
 				try {
 					// TODO: Implement bulk deactivate API call
@@ -880,10 +891,12 @@ const ClassListTable = () => {
 					
 					setSelectedRowKeys([]);
 					spaceToast.success(t('classManagement.allClassesDeactivatedSuccess'));
-				fetchClasses(pagination.current, pagination.pageSize, searchText, sortBy, sortDir, appliedFilters);
+					fetchClasses(pagination.current, pagination.pageSize, searchText, sortBy, sortDir, appliedFilters);
+					setConfirmModal({ visible: false, title: '', content: '', displayData: null, onConfirm: null });
 				} catch (error) {
 					console.error('Error deactivating all classes:', error);
 					spaceToast.error('Failed to deactivate all classes');
+					setConfirmModal({ visible: false, title: '', content: '', displayData: null, onConfirm: null });
 				}
 			}
 		});
@@ -898,7 +911,8 @@ const ClassListTable = () => {
 		setConfirmModal({
 			visible: true,
 			title: t('classManagement.confirmDeleteAll'),
-			content: t('classManagement.deleteAllMessage', { count: selectedRowKeys.length }),
+			content: t('classManagement.deleteAllMessage'),
+			displayData: `${selectedRowKeys.length} ${t('classManagement.classes')}`,
 			onConfirm: async () => {
 				try {
 					// TODO: Implement bulk delete API call
@@ -906,10 +920,12 @@ const ClassListTable = () => {
 					
 					setSelectedRowKeys([]);
 					spaceToast.success(t('classManagement.allClassesDeletedSuccess'));
-				fetchClasses(pagination.current, pagination.pageSize, searchText, sortBy, sortDir, appliedFilters);
+					fetchClasses(pagination.current, pagination.pageSize, searchText, sortBy, sortDir, appliedFilters);
+					setConfirmModal({ visible: false, title: '', content: '', displayData: null, onConfirm: null });
 				} catch (error) {
 					console.error('Error deleting all classes:', error);
 					spaceToast.error('Failed to delete all classes');
+					setConfirmModal({ visible: false, title: '', content: '', displayData: null, onConfirm: null });
 				}
 			}
 		});
@@ -1335,9 +1351,9 @@ const ClassListTable = () => {
 				<Modal
 					title={
 						<div style={{ 
-							fontSize: '24px', 
+							fontSize: '28px', 
 							fontWeight: '600', 
-							color: '#000000',
+							color: 'rgb(24, 144, 255)',
 							textAlign: 'center',
 							padding: '10px 0',
 							display: 'flex',
@@ -1347,12 +1363,12 @@ const ClassListTable = () => {
 						}}>
 							{editingClass ? (
 								<>
-									<EditOutlined style={{ fontSize: '26px', color: '#000000' }} />
+									<EditOutlined style={{ fontSize: '28px', color: 'rgb(24, 144, 255)' }} />
 									<span>{t('classManagement.editClass')}</span>
 								</>
 							) : (
 								<>
-									<PlusOutlined style={{ fontSize: '26px', color: '#000000' }} />
+									<PlusOutlined style={{ fontSize: '28px', color: 'rgb(24, 144, 255)' }} />
 									<span>{t('classManagement.addClass')}</span>
 								</>
 							)}
@@ -1368,22 +1384,26 @@ const ClassListTable = () => {
 					confirmLoading={isSubmitting}
 					okButtonProps={{
 						style: {
-							backgroundColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
-							background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
-							borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'transparent',
-							color: theme === 'sun' ? '#000000' : '#ffffff',
-							height: '40px',
-							fontSize: '16px',
+							background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, #7228d9 0%, #9c88ff 100%)',
+							borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : '#7228d9',
+							color: theme === 'sun' ? '#000' : '#fff',
+							borderRadius: '6px',
+							height: '32px',
 							fontWeight: '500',
-							minWidth: '100px',
+							fontSize: '16px',
+							padding: '4px 15px',
+							width: '100px',
+							transition: 'all 0.3s ease',
+							boxShadow: 'none'
 						},
 					}}
 					cancelButtonProps={{
 						style: {
-							height: '40px',
-							fontSize: '16px',
+							height: '32px',
 							fontWeight: '500',
-							minWidth: '100px',
+							fontSize: '16px',
+							padding: '4px 15px',
+							width: '100px'
 						},
 					}}
 					bodyStyle={{
@@ -1715,9 +1735,9 @@ const ClassListTable = () => {
 				<Modal
 					title={
 						<div style={{ 
-							fontSize: '20px', 
+							fontSize: '28px', 
 							fontWeight: '600', 
-							color: '#1890ff',
+							color: 'rgb(24, 144, 255)',
 							textAlign: 'center',
 							padding: '10px 0'
 						}}>
@@ -1726,7 +1746,7 @@ const ClassListTable = () => {
 					}
 					open={confirmModal.visible}
 					onOk={confirmModal.onConfirm}
-					onCancel={() => setConfirmModal({ visible: false, title: '', content: '', onConfirm: null })}
+					onCancel={() => setConfirmModal({ visible: false, title: '', content: '', displayData: null, onConfirm: null })}
 					okText={t('common.confirm')}
 					cancelText={t('common.cancel')}
 					width={500}
@@ -1740,22 +1760,26 @@ const ClassListTable = () => {
 					}}
 					okButtonProps={{
 						style: {
-							backgroundColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
-							background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
-							borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'transparent',
-							color: theme === 'sun' ? '#000000' : '#ffffff',
-							height: '40px',
-							fontSize: '16px',
+							background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, #7228d9 0%, #9c88ff 100%)',
+							borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : '#7228d9',
+							color: theme === 'sun' ? '#000' : '#fff',
+							borderRadius: '6px',
+							height: '32px',
 							fontWeight: '500',
-							minWidth: '100px'
+							fontSize: '16px',
+							padding: '4px 15px',
+							width: '100px',
+							transition: 'all 0.3s ease',
+							boxShadow: 'none'
 						}
 					}}
 					cancelButtonProps={{
 						style: {
-							height: '40px',
-							fontSize: '16px',
+							height: '32px',
 							fontWeight: '500',
-							minWidth: '100px'
+							fontSize: '16px',
+							padding: '4px 15px',
+							width: '100px'
 						}
 					}}
 				>
@@ -1780,6 +1804,16 @@ const ClassListTable = () => {
 						}}>
 							{confirmModal.content}
 						</p>
+						{confirmModal.displayData && (
+							<p style={{
+								fontSize: '20px',
+								color: '#000',
+								margin: 0,
+								fontWeight: '400'
+							}}>
+								<strong>{confirmModal.displayData}</strong>
+							</p>
+						)}
 					</div>
 				</Modal>
 
@@ -1788,9 +1822,9 @@ const ClassListTable = () => {
 					title={
 						<div
 							style={{
-								fontSize: '20px',
+								fontSize: '28px',
 								fontWeight: '600',
-								color: '#000000',
+								color: 'rgb(24, 144, 255)',
 								textAlign: 'center',
 								padding: '10px 0',
 								display: 'flex',
@@ -1798,7 +1832,7 @@ const ClassListTable = () => {
 								justifyContent: 'center',
 								gap: '10px',
 							}}>
-							<DownloadOutlined style={{ color: '#000000' }} />
+							<DownloadOutlined style={{ color: 'rgb(24, 144, 255)' }} />
 							{t('classManagement.importClasses')}
 						</div>
 					}
@@ -1810,25 +1844,29 @@ const ClassListTable = () => {
 					width={600}
 					centered
 					confirmLoading={importModal.uploading}
-					okButtonProps={{
-						disabled: importModal.fileList.length === 0,
-						style: {
-							backgroundColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
-							background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
-							borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'transparent',
-							color: theme === 'sun' ? '#000000' : '#ffffff',
-							height: '40px',
-							fontSize: '16px',
-							fontWeight: '500',
-							minWidth: '120px',
-						},
-					}}
+				okButtonProps={{
+					disabled: importModal.fileList.length === 0,
+					style: {
+						background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, #7228d9 0%, #9c88ff 100%)',
+						borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : '#7228d9',
+						color: theme === 'sun' ? '#000' : '#fff',
+						borderRadius: '6px',
+						height: '32px',
+						fontWeight: '500',
+						fontSize: '16px',
+						padding: '4px 15px',
+						width: '150px',
+						transition: 'all 0.3s ease',
+						boxShadow: 'none'
+					},
+				}}
 					cancelButtonProps={{
 						style: {
-							height: '40px',
-							fontSize: '16px',
+							height: '32px',
 							fontWeight: '500',
-							minWidth: '100px',
+							fontSize: '16px',
+							padding: '4px 15px',
+							width: '100px'
 						},
 					}}
 				>
@@ -1895,9 +1933,9 @@ const ClassListTable = () => {
 					title={
 						<div
 							style={{
-								fontSize: '24px',
+								fontSize: '28px',
 								fontWeight: '600',
-								color: theme === 'dark' ? '#ffffff' : '#000000',
+								color: 'rgb(24, 144, 255)',
 								textAlign: 'center',
 								padding: '10px 0',
 							}}>
@@ -1914,7 +1952,7 @@ const ClassListTable = () => {
 							style={{
 								height: '32px',
 								fontWeight: '500',
-								fontSize: '14px',
+								fontSize: '16px',
 								padding: '4px 15px',
 								width: '100px'
 							}}>
