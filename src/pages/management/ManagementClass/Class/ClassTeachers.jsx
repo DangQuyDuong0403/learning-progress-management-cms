@@ -27,6 +27,7 @@ import { spaceToast } from "../../../../component/SpaceToastify";
 import { useTheme } from "../../../../contexts/ThemeContext";
 import { useClassMenu } from "../../../../contexts/ClassMenuContext";
 import classManagementApi from "../../../../apis/backend/classManagement";
+import teacherManagementApi from "../../../../apis/backend/teacherManagement";
 import usePageTitle from "../../../../hooks/usePageTitle";
 
 const { Option } = Select;
@@ -209,20 +210,26 @@ const ClassTeachers = () => {
   const fetchAvailableTeachers = useCallback(async () => {
     setLoadingTeachers(true);
     try {
-      // Fetch teachers
-      const teacherResponse = await classManagementApi.getAvailableTeachers({
+      // Fetch teachers using teacherManagement API
+      const teacherResponse = await teacherManagementApi.getTeachers({
         page: 0,
         size: 100,
-        role: 'teacher',
-        status: 'ACTIVE'
+        text: '', // Empty search text to get all
+        status: ['ACTIVE'], // Only ACTIVE teachers
+        roleName: ['teacher'], // Only teachers
+        sortBy: 'fullName',
+        sortDir: 'asc'
       });
       
-      // Fetch teaching assistants
-      const taResponse = await classManagementApi.getAvailableTeachers({
+      // Fetch teaching assistants using teacherManagement API
+      const taResponse = await teacherManagementApi.getTeachers({
         page: 0,
         size: 100,
-        role: 'teaching_assistant',
-        status: 'ACTIVE'
+        text: '', // Empty search text to get all
+        status: ['ACTIVE'], // Only ACTIVE teaching assistants
+        roleName: ['teaching_assistant'], // Only teaching assistants
+        sortBy: 'fullName',
+        sortDir: 'asc'
       });
       
       console.log('Available teachers response:', teacherResponse);
