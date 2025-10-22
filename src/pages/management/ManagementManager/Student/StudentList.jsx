@@ -153,7 +153,14 @@ const StudentList = () => {
       const response = await studentManagementApi.getStudents(params);
       
       if (response.success && response.data) {
-        setStudents(response.data);
+        // Map API response to include classId field if available
+        const mappedStudents = response.data.map(student => ({
+          ...student,
+          // classId should come from API response
+          // className should also come from API if available
+        }));
+        
+        setStudents(mappedStudents);
         setTotalStudents(response.totalElements || response.data.length);
         setPagination(prev => ({
           ...prev,
@@ -613,11 +620,23 @@ const StudentList = () => {
       width: 120,
       ellipsis: true,
       render: (currentClassInfo, record) => {
-        if (currentClassInfo?.name) {
+        // Check if student has classId (new field) or currentClassInfo
+        const hasClass = record.classId || currentClassInfo?.name;
+        
+        if (hasClass) {
+          // Display class name from classId or currentClassInfo
+          const className = record.className || currentClassInfo?.name || `Class ${record.classId}`;
           return (
-            <span className="class-text">
-              {currentClassInfo.name}
-            </span>
+            <div>
+              <span className="class-text">
+                {className}
+              </span>
+              {record.classId && (
+                <div style={{ fontSize: '10px', color: '#999', marginTop: '2px' }}>
+                  ID: {record.classId}
+                </div>
+              )}
+            </div>
           );
         } else if (record.status === 'ACTIVE') {
           return (

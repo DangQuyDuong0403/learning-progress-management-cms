@@ -39,6 +39,8 @@ const AssignStudentToClass = ({ student, onClose, onSuccess }) => {
 
   // Search and recommendation logic
   const handleSearch = useCallback(async (searchValue) => {
+    // Filter statuses for class search - can be easily modified
+    const FILTER_STATUSES = ['ACTIVE', 'PENDING', 'UPCOMING_END'];
     if (!searchValue.trim()) {
       setSearchResults([]);
       setHasSearched(false);
@@ -54,7 +56,7 @@ const AssignStudentToClass = ({ student, onClose, onSuccess }) => {
         page: 0,
         size: 100,
         searchText: searchValue.trim(),
-        status: ['ACTIVE', 'PENDING', 'UPCOMING_END'] // Filter on backend
+        status: FILTER_STATUSES // Filter on backend using array
       });
 
       if (response.success && response.data) {

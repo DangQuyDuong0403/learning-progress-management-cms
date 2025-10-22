@@ -7,22 +7,22 @@
   margin: 24px;
   min-height: 100vh;
   border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   transition: background 0.3s ease;
-  backdrop-filter: blur(3px);
 }
 
 /* Light theme styles */
 .teacher-dashboard-container.light-theme {
-  background: rgba(230, 245, 255, 0.7);
-  border: 2px solid #3b82f6;
+  background: transparent;
+  border: none;
+  box-shadow: none;
 }
 
 /* Dark theme styles */
 .teacher-dashboard-container.dark-theme {
-  background: rgba(110, 92, 172, 0.5);
-  backdrop-filter: blur(7px);
-  border: 2px solid #9c88ff;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  backdrop-filter: none;
 }
 
 /* ===== PAGE TITLE ===== */
