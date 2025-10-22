@@ -6,7 +6,7 @@ import { CloseCircleOutlined } from '@ant-design/icons';
 import LanguageToggle from '../../component/LanguageToggle';
 import ThemeToggleSwitch from '../../component/ThemeToggleSwitch';
 import { useTheme } from '../../contexts/ThemeContext';
-import ThemedLayoutFullScreen from '../../component/ThemedLayoutFullScreen';
+import ThemeLayoutLogin from '../../component/ThemeLayoutLogin';
 import { clearForgotPasswordState } from '../../redux/auth';
 import './Login.css';
 
@@ -34,7 +34,7 @@ export default function ForgotPasswordFailure() {
 	};
 
 	return (
-		<ThemedLayoutFullScreen>
+		<ThemeLayoutLogin>
 			<div className="main-content" style={{ paddingTop: 80, minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
 				{/* Theme Toggle - Top Right */}
 				<div className={`login-theme-toggle-container ${isSunTheme ? 'sun-theme' : 'space-theme'}`} style={{ position: 'absolute', top: '20px', right: '20px' }}>
@@ -122,7 +122,7 @@ export default function ForgotPasswordFailure() {
 					animation: errorShake 0.6s ease-out;
 				}
 			`}</style>
-		</ThemedLayoutFullScreen>
+		</ThemeLayoutLogin>
 	);
 }
 

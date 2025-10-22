@@ -1043,7 +1043,7 @@ const AccountList = () => {
 						style={{
 							fontSize: '26px',
 							fontWeight: '600',
-							color: '#000000ff',
+							color: editingAccount ? '#000000ff' : 'rgb(113, 179, 253)',
 							textAlign: 'center',
 							padding: '10px 0',
 						}}>
@@ -1218,7 +1218,7 @@ const AccountList = () => {
 						style={{
 							fontSize: '26px',
 							fontWeight: '600',
-							color: '#000000ff',
+							color: 'rgb(113, 179, 253)',
 							textAlign: 'center',
 							padding: '10px 0',
 						}}>
@@ -1328,7 +1328,7 @@ const AccountList = () => {
 						style={{
 							fontSize: '26px',
 							fontWeight: '600',
-							color: '#000000ff',
+							color: 'rgb(113, 179, 253)',
 							textAlign: 'center',
 							padding: '10px 0',
 						}}>

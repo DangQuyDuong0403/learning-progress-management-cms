@@ -53,6 +53,10 @@ import TeacherClassChapterLesson from '../pages/management/ManagementClass/Class
 import TeacherClassChapterList from '../pages/management/ManagementClass/Class/TeacherClassChapterList.jsx';
 import TeacherClassChapterDragEdit from '../pages/management/ManagementClass/Class/TeacherClassChapterDragEdit.jsx';
 import DailyChallengeList from '../pages/management/ManagementTeacher/dailyChallenge/DailyChallengeList.jsx';
+import DailyChallengePerformance from '../pages/management/ManagementTeacher/dailyChallenge/DailyChallengePerformance.jsx';
+import DailyChallengeSubmissionList from '../pages/management/ManagementTeacher/dailyChallenge/DailyChallengeSubmissionList.jsx';
+import DailyChallengeSubmissionDetail from '../pages/management/ManagementTeacher/dailyChallenge/DailyChallengeSubmissionDetail.jsx';
+import DailyChallengeContent from '../pages/management/ManagementTeacher/dailyChallenge/DailyChallengeContent.jsx';
 import CreateGrammarVocabularyChallenge from '../pages/management/ManagementTeacher/dailyChallenge/CreateGrammarVocabularyChallenge.jsx';
 import CreateReadingChallenge from '../pages/management/ManagementTeacher/dailyChallenge/CreateReadingChallenge.jsx';
 import TeacherDashboard from '../pages/management/ManagementTeacher/TeacherDashboard.jsx';
@@ -222,7 +226,7 @@ const CONFIG_ROUTER = [
 	
 	// Admin Management Routes
 	{
-		show: true,
+		show: false, // Tạm thời ẩn dashboard khỏi sidebar
 		component: AdminDashboard,
 		// icon: <DashboardOutlined />,
 		path: ROUTER_PAGE.ADMIN_DASHBOARD,
@@ -799,6 +803,46 @@ const CONFIG_ROUTER = [
 		menuName: 'Daily Challenge Management',
 		exact: true,
 		key: 'TEACHER_DAILY_CHALLENGES',
+		private: true,
+		role: 'teacher',
+	},
+	{
+		show: false,
+		component: DailyChallengePerformance,
+		path: '/teacher/daily-challenges/detail/:id',
+		menuName: 'Daily Challenge Performance',
+		exact: true,
+		key: 'TEACHER_DAILY_CHALLENGE_PERFORMANCE',
+		private: true,
+		role: 'teacher',
+	},
+	{
+		show: false,
+		component: DailyChallengeSubmissionList,
+		path: '/teacher/daily-challenges/detail/:id/submissions',
+		menuName: 'Daily Challenge Submissions',
+		exact: true,
+		key: 'TEACHER_DAILY_CHALLENGE_SUBMISSIONS',
+		private: true,
+		role: 'teacher',
+	},
+	{
+		show: false,
+		component: DailyChallengeSubmissionDetail,
+		path: '/teacher/daily-challenges/detail/:id/submission/:submissionId',
+		menuName: 'Daily Challenge Submission Detail',
+		exact: true,
+		key: 'TEACHER_DAILY_CHALLENGE_SUBMISSION_DETAIL',
+		private: true,
+		role: 'teacher',
+	},
+	{
+		show: false,
+		component: DailyChallengeContent,
+		path: '/teacher/daily-challenges/detail/:id/content',
+		menuName: 'Daily Challenge Content',
+		exact: true,
+		key: 'TEACHER_DAILY_CHALLENGE_CONTENT',
 		private: true,
 		role: 'teacher',
 	},

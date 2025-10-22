@@ -12,7 +12,8 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useTheme } from '../../../../contexts/ThemeContext';
 import { spaceToast } from '../../../../component/SpaceToastify';
-import ThemedLayout from '../../../../component/ThemedLayout';
+import ThemedLayoutWithSidebar from '../../../../component/ThemedLayout';
+import ThemedLayoutNoSidebar from '../../../../component/teacherlayout/ThemedLayout';
 import teacherManagementApi from '../../../../apis/backend/teacherManagement';
 import ChapterForm from '../../ManagementManager/syllabus/ChapterForm';
 import { useSelector } from 'react-redux';
@@ -187,6 +188,13 @@ const TeacherClassChapterDragEdit = () => {
 	const navigate = useNavigate();
 	const { classId } = useParams();
 	const { user } = useSelector((state) => state.auth);
+	
+	// Determine which layout to use based on user role
+	const userRole = user?.role?.toLowerCase();
+	const ThemedLayout = (userRole === 'teacher' || userRole === 'teaching_assistant') 
+		? ThemedLayoutNoSidebar 
+		: ThemedLayoutWithSidebar;
+	
 	const [chapters, setChapters] = useState([]);
 	const [loading, setLoading] = useState(false);
 	const [saving, setSaving] = useState(false);

@@ -16,11 +16,13 @@ import {
   BarChartOutlined,
 } from "@ant-design/icons";
 // Removed recharts import to avoid dependency issues
-import ThemedLayout from "../../../../component/ThemedLayout";
+import ThemedLayoutWithSidebar from "../../../../component/ThemedLayout";
+import ThemedLayoutNoSidebar from "../../../../component/teacherlayout/ThemedLayout";
 import LoadingWithEffect from "../../../../component/spinner/LoadingWithEffect";
 import "./ClassStudent.css";
 import { useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { useSelector } from "react-redux";
 import { spaceToast } from "../../../../component/SpaceToastify";
 import { useClassMenu } from "../../../../contexts/ClassMenuContext";
 import usePageTitle from "../../../../hooks/usePageTitle";
@@ -139,7 +141,14 @@ const mockMonthlyProgress = [
 const ClassDashboard = () => {
   const { t } = useTranslation();
   const { id } = useParams();
+  const { user } = useSelector((state) => state.auth);
   const { enterClassMenu, exitClassMenu } = useClassMenu();
+  
+  // Determine which layout to use based on user role
+  const userRole = user?.role?.toLowerCase();
+  const ThemedLayout = (userRole === 'teacher' || userRole === 'teaching_assistant') 
+    ? ThemedLayoutNoSidebar 
+    : ThemedLayoutWithSidebar;
   
   // Set page title
   usePageTitle('Class Dashboard');

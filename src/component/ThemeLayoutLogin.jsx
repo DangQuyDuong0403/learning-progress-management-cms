@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../contexts/ThemeContext';
 import './ThemedLayout.css';
 
-const ThemedLayoutFullScreen = ({ children }) => {
+const ThemeLayoutLogin = ({ children }) => {
   const navigate = useNavigate();
   const { theme, isSunTheme } = useTheme();
 
@@ -223,4 +223,5 @@ const ThemedLayoutFullScreen = ({ children }) => {
   );
 };
 
-export default ThemedLayoutFullScreen;
+export default ThemeLayoutLogin;
+

@@ -10,7 +10,7 @@ import { useTranslation } from 'react-i18next';
 import LanguageToggle from '../../component/LanguageToggle';
 import ThemeToggleSwitch from '../../component/ThemeToggleSwitch';
 import { useTheme } from '../../contexts/ThemeContext';
-import ThemedLayoutFullScreen from '../../component/ThemedLayoutFullScreen';
+import ThemeLayoutLogin from '../../component/ThemeLayoutLogin';
 import ForgotPasswordModal from './ForgotPasswordModal';
 import usePageTitle from '../../hooks/usePageTitle';
 import './Login.css';
@@ -103,7 +103,7 @@ export default function Login() {
 	};
 
 	return (
-		<ThemedLayoutFullScreen>
+		<ThemeLayoutLogin>
 			<div className="main-content" style={{ paddingTop: 80, minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
 				{/* Theme Toggle - Top Right */}
 				<div className={`login-theme-toggle-container ${isSunTheme ? 'sun-theme' : 'space-theme'}`} style={{ position: 'absolute', top: '20px', right: '20px' }}>
@@ -236,7 +236,7 @@ export default function Login() {
 					onMethodSelect={handleForgotMethodSelect}
 				/>
 			</div>
-		</ThemedLayoutFullScreen>
+		</ThemeLayoutLogin>
 	);
 }
 

@@ -20,7 +20,7 @@ import {
   SearchOutlined,
 } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
-import ThemedLayout from "../../../../component/ThemedLayout";
+import ThemedLayout from "../../../../component/teacherlayout/ThemedLayout";
 import {
   MultipleChoiceModal,
   MultipleSelectModal,
@@ -213,6 +213,7 @@ const DraggableQuestionItem = ({ question, index, onDelete, onMove }) => {
                 <span className="gvc-option-indicator">
                   {option.isCorrect ? '✓' : 'x'}
                 </span>
+                <span className="gvc-option-label">{String.fromCharCode(65 + optIndex)}.</span>
                 <span className="gvc-option-text">{option.text || 'aa'}</span>
               </div>
             ))}

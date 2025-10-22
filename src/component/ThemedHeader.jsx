@@ -8,6 +8,7 @@ import { logoutApi, logout, getUserProfile } from '../redux/auth';
 import { useTheme } from '../contexts/ThemeContext';
 import { useClassMenu } from '../contexts/ClassMenuContext';
 import { useSyllabusMenu } from '../contexts/SyllabusMenuContext';
+import { useDailyChallengeMenu } from '../contexts/DailyChallengeMenuContext';
 import LanguageToggle from './LanguageToggle';
 import { spaceToast } from './SpaceToastify';
 import './ThemedHeader.css';
@@ -21,6 +22,7 @@ export default function ThemedHeader() {
   const { theme, toggleTheme, isSunTheme } = useTheme();
   const { isInClassMenu, classData } = useClassMenu();
   const { isInSyllabusMenu, syllabusData } = useSyllabusMenu();
+  const { isInDailyChallengeMenu, dailyChallengeData } = useDailyChallengeMenu();
 
   // Fetch user profile data on component mount
   useEffect(() => {
@@ -61,77 +63,40 @@ export default function ThemedHeader() {
       return;
     }
 
-    // Determine route prefix based on user role
-    const userRole = user?.role?.toLowerCase();
-    let routePrefix = '/manager/classes'; // default
-
-    switch (userRole) {
-      case 'manager':
-        routePrefix = '/manager/classes';
-        break;
-      case 'teacher':
-        routePrefix = '/teacher/classes';
-        break;
-      case 'teaching_assistant':
-        routePrefix = '/teaching-assistant/classes';
-        break;
-      default:
-        routePrefix = '/manager/classes';
-    }
-
-    // If currently on class menu, go back to class list; otherwise go to class menu
-    const isOnClassMenu = location.pathname.includes('/menu/');
-    if (isOnClassMenu) {
-      navigate(routePrefix);
-    } else if (classData?.id) {
-      navigate(`${routePrefix}/menu/${classData.id}`);
-    } else {
-      navigate(routePrefix);
-    }
+    // Go back to previous page
+    navigate(-1);
   };
 
   const handleBackToDashboard = () => {
-    // Determine dashboard route based on user role
-    const userRole = user?.role?.toLowerCase();
-    let dashboardRoute = '/manager/dashboard'; // default
-
-    switch (userRole) {
-      case 'manager':
-        dashboardRoute = '/manager/dashboard';
-        break;
-      case 'teacher':
-        dashboardRoute = '/teacher/dashboard';
-        break;
-      case 'teaching_assistant':
-        dashboardRoute = '/teaching-assistant/dashboard';
-        break;
-      default:
-        dashboardRoute = '/manager/dashboard';
-    }
-
-    navigate(dashboardRoute);
+    // Go back to previous page
+    navigate(-1);
   };
 
   const handleBackToSyllabusList = () => {
     navigate(-1);
   };
 
-  // Handle back button click based on current page
-  const handleBackButtonClick = () => {
-    // If on daily challenges page, go back to previous page
-    if (location.pathname === '/teacher/daily-challenges') {
-      navigate(-1);
-    } else {
-      // Otherwise go to dashboard
-      handleBackToDashboard();
+  const handleBackToDailyChallengeList = () => {
+    // If custom backPath is provided in context, use it
+    if (dailyChallengeData?.backPath) {
+      navigate(dailyChallengeData.backPath);
+      return;
     }
+
+    // Go back to previous page
+    navigate(-1);
   };
 
-  // Check if on teacher/teaching_assistant classes list page or daily challenges page
+  // Handle back button click - go to dashboard
+  const handleBackButtonClick = () => {
+    handleBackToDashboard();
+  };
+
+  // Check if on teacher/teaching_assistant classes list page
   const isOnClassesListPage = () => {
     const userRole = user?.role?.toLowerCase();
     if (userRole === 'teacher') {
-      return location.pathname === '/teacher/classes' || location.pathname === '/teacher/daily-challenges';
+      return location.pathname === '/teacher/classes';
     }
     if (userRole === 'teaching_assistant') {
       return location.pathname === '/teaching-assistant/classes';
@@ -150,27 +115,8 @@ export default function ThemedHeader() {
 
   // Handle back button for Settings/Profile page
   const handleBackFromSettingsOrProfile = () => {
-    const userRole = user?.role?.toLowerCase();
-    let dashboardRoute = '/manager/dashboard'; // default
-
-    switch (userRole) {
-      case 'teacher':
-        dashboardRoute = '/teacher/dashboard';
-        break;
-      case 'teaching_assistant':
-        dashboardRoute = '/teaching-assistant/dashboard';
-        break;
-      case 'student':
-        dashboardRoute = '/student/dashboard';
-        break;
-      case 'test_taker':
-        dashboardRoute = '/test-taker/dashboard';
-        break;
-      default:
-        dashboardRoute = '/manager/dashboard';
-    }
-
-    navigate(dashboardRoute);
+    // Go back to previous page
+    navigate(-1);
   };
 
   return (
@@ -364,6 +310,72 @@ export default function ThemedHeader() {
                   textShadow: theme === 'sun' ? '0 0 5px rgba(30, 64, 175, 0.3)' : '0 0 15px rgba(134, 134, 134, 0.8)'
                 }}>
                   {syllabusData.name}
+                </h2>
+              </div>
+            )}
+
+            {/* Daily Challenge Menu Header - Show when in daily challenge menu */}
+            {isInDailyChallengeMenu && dailyChallengeData && (
+              <div className="daily-challenge-menu-header" style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '16px',
+                padding: '0 20px'
+              }}>
+                <Button
+                  icon={<ArrowLeftOutlined />}
+                  onClick={handleBackToDailyChallengeList}
+                  className={`daily-challenge-menu-back-button ${theme}-daily-challenge-menu-back-button`}
+                  style={{
+                    height: '32px',
+                    borderRadius: '8px',
+                    fontWeight: '500',
+                    fontSize: '14px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    border: '1px solid rgba(0, 0, 0, 0.1)',
+                    background: '#ffffff',
+                    color: '#000000',
+                    backdropFilter: 'blur(10px)',
+                    transition: 'all 0.3s ease'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.target.style.transform = 'translateY(-2px)';
+                    e.target.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.15)';
+                    e.target.style.filter = 'brightness(0.95)';
+                    e.target.style.borderColor = 'rgba(0, 0, 0, 0.2)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.style.transform = 'translateY(0)';
+                    e.target.style.boxShadow = 'none';
+                    e.target.style.filter = 'none';
+                    e.target.style.borderColor = 'rgba(0, 0, 0, 0.1)';
+                  }}
+                >
+                  {t('common.back')}
+                </Button>
+                <div style={{
+                  height: '24px',
+                  width: '1px',
+                  backgroundColor: theme === 'sun' ? 'rgba(30, 64, 175, 0.3)' : 'rgba(255, 255, 255, 0.3)'
+                }} />
+                <h2 style={{
+                  margin: 0,
+                  fontSize: '20px',
+                  fontWeight: '600',
+                  color: theme === 'sun' ? '#1e40af' : '#fff',
+                  textShadow: theme === 'sun' ? '0 0 5px rgba(30, 64, 175, 0.3)' : '0 0 15px rgba(134, 134, 134, 0.8)'
+                }}>
+                  {t('dailyChallenge.dailyChallengeManagement')}
+                  {dailyChallengeData.subtitle && (
+                    <span style={{
+                      fontWeight: '500',
+                      marginLeft: '8px'
+                    }}>
+                      / {dailyChallengeData.subtitle}
+                    </span>
+                  )}
                 </h2>
               </div>
             )}

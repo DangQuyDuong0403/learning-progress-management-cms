@@ -1022,8 +1022,8 @@ const TeacherList = () => {
 								icon={<DeleteOutlined style={{ fontSize: '25px', color: '#ff4d4f' }} />}
 								size="small"
 								onClick={() => handleDeletePending(record.id)}
+								danger
 								style={{ 
-									color: '#ff4d4f',
 									padding: '8px 12px'
 								}}
 							/>
