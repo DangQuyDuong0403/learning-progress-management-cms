@@ -1258,6 +1258,10 @@ const TeacherList = () => {
 				<AssignTeacherToClass
 					teacher={assigningTeacher}
 					onClose={handleAssignModalClose}
+					onSuccess={() => {
+						// Refresh teacher list to show updated class assignments
+						fetchTeachers(pagination.current, pagination.pageSize, searchText, statusFilter, roleNameFilter, sortBy, sortDir);
+					}}
 				/>
 			</Modal>
 

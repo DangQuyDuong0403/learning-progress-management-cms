@@ -77,6 +77,7 @@ const SyllabusList = () => {
 	const [templateDownloadLoading, setTemplateDownloadLoading] = useState(false);
 	const [exportSelectedLoading, setExportSelectedLoading] = useState(false);
 	const [exportAllLoading, setExportAllLoading] = useState(false);
+	const [validateLoading, setValidateLoading] = useState(false);
 
 	// Pagination state
 	const [pagination, setPagination] = useState({
@@ -341,6 +342,99 @@ const SyllabusList = () => {
 			console.error('Error importing syllabuses:', error);
 			spaceToast.error(error.response?.data?.error || error.response?.data?.message || error.message || t('syllabusManagement.importError'));
 			setImportModal(prev => ({ ...prev, uploading: false }));
+		}
+	};
+
+	const handleValidateFile = async () => {
+		if (importModal.fileList.length === 0) {
+			spaceToast.warning(t('syllabusManagement.selectFileToValidate'));
+			return;
+		}
+
+		setValidateLoading(true);
+		
+		try {
+			const file = importModal.fileList[0];
+			
+			// Create FormData object
+			const formData = new FormData();
+			formData.append('file', file);
+			
+			// Call validate API with FormData
+			const response = await syllabusManagementApi.validateImportFile(formData);
+
+			// API trả về file validation result dưới dạng blob
+			if (response.data instanceof Blob) {
+				// Tạo URL từ blob để download
+				const downloadUrl = window.URL.createObjectURL(response.data);
+				
+				// Tạo link download
+				const link = document.createElement('a');
+				link.setAttribute('href', downloadUrl);
+				link.setAttribute('download', `validation_result_${new Date().getTime()}.xlsx`);
+				link.setAttribute('target', '_blank');
+				link.style.visibility = 'hidden';
+				document.body.appendChild(link);
+				link.click();
+				document.body.removeChild(link);
+				
+				// Cleanup URL
+				window.URL.revokeObjectURL(downloadUrl);
+				
+				spaceToast.success(t('syllabusManagement.validateSuccess') + ' - ' + t('syllabusManagement.fileDownloaded'));
+			} else {
+				// Nếu không phải blob, có thể là JSON response với URL
+				let downloadUrl;
+				
+				if (typeof response.data === 'string') {
+					downloadUrl = response.data;
+				} else if (response.data && response.data.url) {
+					downloadUrl = response.data.url;
+				}
+				
+				if (downloadUrl) {
+					const link = document.createElement('a');
+					link.setAttribute('href', downloadUrl);
+					link.setAttribute('download', `validation_result_${new Date().getTime()}.xlsx`);
+					link.setAttribute('target', '_blank');
+					link.style.visibility = 'hidden';
+					document.body.appendChild(link);
+					link.click();
+					document.body.removeChild(link);
+					
+					spaceToast.success(t('syllabusManagement.validateSuccess') + ' - ' + t('syllabusManagement.fileDownloaded'));
+				} else {
+					spaceToast.success(response.message || t('syllabusManagement.validateSuccess'));
+				}
+			}
+		} catch (error) {
+			console.error('Error validating file:', error);
+			
+			// Xử lý lỗi chi tiết hơn
+			let errorMessage = t('syllabusManagement.validateError');
+			
+			if (error.response?.data) {
+				if (error.response.data instanceof Blob) {
+					// Nếu lỗi trả về dưới dạng blob, đọc text để lấy thông báo lỗi
+					try {
+						const errorText = await error.response.data.text();
+						const errorJson = JSON.parse(errorText);
+						errorMessage = errorJson.error || errorJson.message || errorMessage;
+					} catch (parseError) {
+						errorMessage = error.message || errorMessage;
+					}
+				} else if (error.response.data.error) {
+					errorMessage = error.response.data.error;
+				} else if (error.response.data.message) {
+					errorMessage = error.response.data.message;
+				}
+			} else if (error.message) {
+				errorMessage = error.message;
+			}
+			
+			spaceToast.error(errorMessage);
+		} finally {
+			setValidateLoading(false);
 		}
 	};
 
@@ -1315,10 +1409,7 @@ const SyllabusList = () => {
 				</div>
 				}
 				open={importModal.visible}
-				onOk={handleImportOk}
 				onCancel={handleImportCancel}
-				okText={t('syllabusManagement.import')}
-				cancelText={t('common.cancel')}
 				width={600}
 				centered
 				confirmLoading={importModal.uploading}

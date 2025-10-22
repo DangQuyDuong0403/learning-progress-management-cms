@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { Table, Button, Space, Modal, Input, Tooltip, Typography, Switch, Upload, Form, Select, Checkbox, DatePicker, Avatar, Radio } from 'antd';
+import { Table, Button, Space, Modal, Input, Tooltip, Typography, Upload, Form, Select, Checkbox, DatePicker, Avatar, Radio } from 'antd';
 import {
 	PlusOutlined,
 	SearchOutlined,
@@ -10,6 +10,7 @@ import {
 	DeleteOutlined,
 	FilterOutlined,
 	UserOutlined,
+	SwapOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -66,9 +67,11 @@ const ClassListTable = () => {
 		visible: false,
 		title: '',
 		content: '',
-		displayData: null,
-		onConfirm: null
+		onConfirm: null,
+		type: '' // 'delete', 'status', 'bulkDelete', 'bulkDeactivate'
 	});
+	const [selectedStatus, setSelectedStatus] = useState(null);
+	const [currentRecord, setCurrentRecord] = useState(null); // Store current class being edited
 	const [editingClass, setEditingClass] = useState(null);
 	const [form] = Form.useForm();
 	const [importModal, setImportModal] = useState({
@@ -121,8 +124,6 @@ const ClassListTable = () => {
 		visible: false,
 		selectedStatus: 'all',
 		selectedSyllabus: null,
-		selectedStartDateRange: null,
-		selectedEndDateRange: null,
 	});
 	
 	// Flag to prevent closing filter when interacting with components
@@ -132,10 +133,6 @@ const ClassListTable = () => {
 	const [appliedFilters, setAppliedFilters] = useState({
 		status: 'all',
 		syllabusId: null,
-		startDateFrom: null,
-		startDateTo: null,
-		endDateFrom: null,
-		endDateTo: null,
 	});
 	
 	// Refs for click outside detection
@@ -168,18 +165,6 @@ const ClassListTable = () => {
 			if (filters.syllabusId) {
 				params.syllabusId = filters.syllabusId;
 			}
-			if (filters.startDateFrom) {
-				params.startDateFrom = filters.startDateFrom;
-			}
-			if (filters.startDateTo) {
-				params.startDateTo = filters.startDateTo;
-			}
-			if (filters.endDateFrom) {
-				params.endDateFrom = filters.endDateFrom;
-			}
-			if (filters.endDateTo) {
-				params.endDateTo = filters.endDateTo;
-			}
 
 			console.log('Fetching classes with params:', params);
 			console.log('Filter values:', filters);
@@ -202,7 +187,7 @@ const ClassListTable = () => {
 						syllabusId: classItem.syllabusId || classItem.syllabus?.id || null,
 						level: classItem.syllabus?.level?.levelName || '-',
 						studentCount: classItem.studentCount || 0,
-						status: classItem.status === 'ACTIVE' ? 'active' : 'inactive',
+						status: classItem.status,
 						createdAt: classItem.createdAt,
 						updatedAt: classItem.updatedAt,
 						avatarUrl: classItem.avatarUrl,
@@ -437,8 +422,14 @@ const ClassListTable = () => {
 					const deleteResponse = await classManagementApi.deleteClass(record.id);
 					
 					// Use BE success message if available, otherwise use i18n
-					const successMessage = deleteResponse?.message || t('classManagement.classDeletedSuccess', { className: record.name });
+					const successMessage = deleteResponse?.data?.message || 
+										  deleteResponse?.message || 
+										  t('classManagement.classDeletedSuccess', { className: record.name });
 					spaceToast.success(successMessage);
+					
+					// Close modal
+					setConfirmModal({ visible: false, title: '', content: '', onConfirm: null, type: '' });
+					setSelectedStatus(null);
 					
 					fetchClasses(pagination.current, pagination.pageSize, searchText, sortBy, sortDir, appliedFilters);
 					setConfirmModal({ visible: false, title: '', content: '', displayData: null, onConfirm: null });
@@ -460,27 +451,40 @@ const ClassListTable = () => {
 		});
 	};
 
-	const handleStatusToggle = (record) => {
-		const newStatus = record.status === 'active' ? 'inactive' : 'active';
-		
+	// Helper function to format status display (capitalize first letter only)
+	const formatStatusDisplay = (status) => {
+		if (!status) return '';
+		return status.charAt(0).toUpperCase() + status.slice(1).toLowerCase();
+	};
+
+	const handleStatusChange = (record) => {
+		// Reset selectedStatus to null when opening modal
+		setSelectedStatus(null);
+		setCurrentRecord(record);
 		setConfirmModal({
 			visible: true,
-			title: t('classManagement.confirmStatusChange'),
-			content: newStatus === 'active' 
-				? t('classManagement.activateClassMessage')
-				: t('classManagement.deactivateClassMessage'),
-			displayData: record.name,
+			title: t('classManagement.changeStatus'),
+			type: 'status',
 			onConfirm: async () => {
+				if (!selectedStatus) {
+					spaceToast.warning(t('classManagement.pleaseSelectStatus'));
+					return;
+				}
+
 				setActionLoading(prev => ({ ...prev, toggle: record.id }));
 				try {
-					const toggleResponse = await classManagementApi.toggleClassStatus(record.id, newStatus);
+					const toggleResponse = await classManagementApi.toggleClassStatus(record.id, selectedStatus);
 					
 					// Use BE success message if available, otherwise use i18n
-					const successMessage = toggleResponse?.message || 
-						(newStatus === 'active' 
-							? t('classManagement.classActivatedSuccess', { className: record.name })
-							: t('classManagement.classDeactivatedSuccess', { className: record.name }));
+					const successMessage = toggleResponse?.data?.message || 
+										  toggleResponse?.message;
+						
 					spaceToast.success(successMessage);
+					
+					// Close modal
+					setConfirmModal({ visible: false, title: '', content: '', onConfirm: null, type: '' });
+					setSelectedStatus(null);
+					setCurrentRecord(null);
 					
 					fetchClasses(pagination.current, pagination.pageSize, searchText, sortBy, sortDir, appliedFilters);
 					setConfirmModal({ visible: false, title: '', content: '', displayData: null, onConfirm: null });
@@ -490,8 +494,7 @@ const ClassListTable = () => {
 					// Use BE error message if available, otherwise fallback to generic message
 					const errorMessage = error.response?.data?.message || 
 										error.response?.data?.error || 
-										error.message || 
-										'Failed to update class status';
+										error.message;
 					
 					spaceToast.error(errorMessage);
 					setConfirmModal({ visible: false, title: '', content: '', displayData: null, onConfirm: null });
@@ -759,18 +762,6 @@ const ClassListTable = () => {
 				if (appliedFilters.syllabusId) {
 					params.syllabusId = appliedFilters.syllabusId;
 				}
-				if (appliedFilters.startDateFrom) {
-					params.startDateFrom = appliedFilters.startDateFrom;
-				}
-				if (appliedFilters.startDateTo) {
-					params.startDateTo = appliedFilters.startDateTo;
-				}
-				if (appliedFilters.endDateFrom) {
-					params.endDateFrom = appliedFilters.endDateFrom;
-				}
-				if (appliedFilters.endDateTo) {
-					params.endDateTo = appliedFilters.endDateTo;
-				}
 
 				const response = await classManagementApi.getClasses(params);
 
@@ -801,8 +792,6 @@ const ClassListTable = () => {
 			visible: !prev.visible,
 			selectedStatus: prev.visible ? prev.selectedStatus : appliedFilters.status,
 			selectedSyllabus: prev.visible ? prev.selectedSyllabus : appliedFilters.syllabusId,
-			selectedStartDateRange: prev.visible ? prev.selectedStartDateRange : (appliedFilters.startDateFrom && appliedFilters.startDateTo ? [appliedFilters.startDateFrom, appliedFilters.startDateTo] : null),
-			selectedEndDateRange: prev.visible ? prev.selectedEndDateRange : (appliedFilters.endDateFrom && appliedFilters.endDateTo ? [appliedFilters.endDateFrom, appliedFilters.endDateTo] : null),
 		}));
 	};
 
@@ -811,10 +800,6 @@ const ClassListTable = () => {
 		const newFilters = {
 			status: filterDropdown.selectedStatus,
 			syllabusId: filterDropdown.selectedSyllabus,
-			startDateFrom: filterDropdown.selectedStartDateRange && filterDropdown.selectedStartDateRange[0] ? filterDropdown.selectedStartDateRange[0] : null,
-			startDateTo: filterDropdown.selectedStartDateRange && filterDropdown.selectedStartDateRange[1] ? filterDropdown.selectedStartDateRange[1] : null,
-			endDateFrom: filterDropdown.selectedEndDateRange && filterDropdown.selectedEndDateRange[0] ? filterDropdown.selectedEndDateRange[0] : null,
-			endDateTo: filterDropdown.selectedEndDateRange && filterDropdown.selectedEndDateRange[1] ? filterDropdown.selectedEndDateRange[1] : null,
 		};
 		
 		setAppliedFilters(newFilters);
@@ -838,40 +823,10 @@ const ClassListTable = () => {
 			...prev,
 			selectedStatus: 'all',
 			selectedSyllabus: null,
-			selectedStartDateRange: null,
-			selectedEndDateRange: null,
 		}));
 	};
 
-	// Bulk operations
-	const handleActivateAll = async () => {
-		if (selectedRowKeys.length === 0) {
-			spaceToast.warning(t('classManagement.selectItemsToActivate'));
-			return;
-		}
-		
-		setConfirmModal({
-			visible: true,
-			title: t('classManagement.confirmActivateAll'),
-			content: t('classManagement.activateAllMessage'),
-			displayData: `${selectedRowKeys.length} ${t('classManagement.classes')}`,
-			onConfirm: async () => {
-				try {
-					// TODO: Implement bulk activate API call
-					// await classManagementApi.bulkActivateClasses(selectedRowKeys);
-					
-					setSelectedRowKeys([]);
-					spaceToast.success(t('classManagement.allClassesActivatedSuccess'));
-					fetchClasses(pagination.current, pagination.pageSize, searchText, sortBy, sortDir, appliedFilters);
-					setConfirmModal({ visible: false, title: '', content: '', displayData: null, onConfirm: null });
-				} catch (error) {
-					console.error('Error activating all classes:', error);
-					spaceToast.error('Failed to activate all classes');
-					setConfirmModal({ visible: false, title: '', content: '', displayData: null, onConfirm: null });
-				}
-			}
-		});
-	};
+	// Bulk operations - Remove activate all since ACTIVE is automatic
 
 	const handleDeactivateAll = async () => {
 		if (selectedRowKeys.length === 0) {
@@ -886,17 +841,46 @@ const ClassListTable = () => {
 			displayData: `${selectedRowKeys.length} ${t('classManagement.classes')}`,
 			onConfirm: async () => {
 				try {
-					// TODO: Implement bulk deactivate API call
-					// await classManagementApi.bulkDeactivateClasses(selectedRowKeys);
+					// Deactivate classes one by one since bulk API might not be available
+					const deactivatePromises = selectedRowKeys.map(classId => 
+						classManagementApi.toggleClassStatus(classId, 'INACTIVE')
+					);
+					
+					const responses = await Promise.allSettled(deactivatePromises);
+					
+					// Check if all deactivations were successful
+					const failedDeactivations = responses.filter(response => response.status === 'rejected');
+					const successfulDeactivations = responses.filter(response => response.status === 'fulfilled');
+					
+					if (failedDeactivations.length === 0) {
+						// All successful - use first response message or fallback
+						const successMessage = successfulDeactivations[0]?.value?.data?.message || 
+											  successfulDeactivations[0]?.value?.message || 
+											  t('classManagement.allClassesDeactivatedSuccess');
+						spaceToast.success(successMessage);
+					} else if (successfulDeactivations.length > 0) {
+						// Partial success
+						spaceToast.warning(`${successfulDeactivations.length} classes deactivated successfully, ${failedDeactivations.length} failed`);
+					} else {
+						// All failed - use first error message
+						const errorMessage = failedDeactivations[0]?.reason?.response?.data?.message || 
+											 failedDeactivations[0]?.reason?.response?.data?.error || 
+											 'Failed to deactivate all classes';
+						spaceToast.error(errorMessage);
+					}
 					
 					setSelectedRowKeys([]);
-					spaceToast.success(t('classManagement.allClassesDeactivatedSuccess'));
+					
+					// Close modal
+					setConfirmModal({ visible: false, title: '', content: '', onConfirm: null, type: '' });
+					setSelectedStatus(null);
+					
 					fetchClasses(pagination.current, pagination.pageSize, searchText, sortBy, sortDir, appliedFilters);
-					setConfirmModal({ visible: false, title: '', content: '', displayData: null, onConfirm: null });
 				} catch (error) {
 					console.error('Error deactivating all classes:', error);
-					spaceToast.error('Failed to deactivate all classes');
-					setConfirmModal({ visible: false, title: '', content: '', displayData: null, onConfirm: null });
+					const errorMessage = error.response?.data?.message || 
+										 error.response?.data?.error;
+					spaceToast.error(errorMessage);
 				}
 			}
 		});
@@ -915,17 +899,47 @@ const ClassListTable = () => {
 			displayData: `${selectedRowKeys.length} ${t('classManagement.classes')}`,
 			onConfirm: async () => {
 				try {
-					// TODO: Implement bulk delete API call
-					// await classManagementApi.bulkDeleteClasses(selectedRowKeys);
+					// Delete classes one by one since bulk delete API might not be available
+					const deletePromises = selectedRowKeys.map(classId => 
+						classManagementApi.deleteClass(classId)
+					);
+					
+					const responses = await Promise.allSettled(deletePromises);
+					
+					// Check if all deletions were successful
+					const failedDeletions = responses.filter(response => response.status === 'rejected');
+					const successfulDeletions = responses.filter(response => response.status === 'fulfilled');
+					
+					if (failedDeletions.length === 0) {
+						// All successful - use first response message or fallback
+						const successMessage = successfulDeletions[0]?.value?.data?.message || 
+											  successfulDeletions[0]?.value?.message || 
+											  t('classManagement.allClassesDeletedSuccess');
+						spaceToast.success(successMessage);
+					} else if (successfulDeletions.length > 0) {
+						// Partial success
+						spaceToast.warning(`${successfulDeletions.length} classes deleted successfully, ${failedDeletions.length} failed`);
+					} else {
+						// All failed - use first error message
+						const errorMessage = failedDeletions[0]?.reason?.response?.data?.message || 
+											 failedDeletions[0]?.reason?.response?.data?.error || 
+											 'Failed to delete all classes';
+						spaceToast.error(errorMessage);
+					}
 					
 					setSelectedRowKeys([]);
-					spaceToast.success(t('classManagement.allClassesDeletedSuccess'));
+					
+					// Close modal
+					setConfirmModal({ visible: false, title: '', content: '', onConfirm: null, type: '' });
+					setSelectedStatus(null);
+					
 					fetchClasses(pagination.current, pagination.pageSize, searchText, sortBy, sortDir, appliedFilters);
-					setConfirmModal({ visible: false, title: '', content: '', displayData: null, onConfirm: null });
 				} catch (error) {
 					console.error('Error deleting all classes:', error);
-					spaceToast.error('Failed to delete all classes');
-					setConfirmModal({ visible: false, title: '', content: '', displayData: null, onConfirm: null });
+					const errorMessage = error.response?.data?.message || 
+										 error.response?.data?.error || 
+										 'Failed to delete all classes';
+					spaceToast.error(errorMessage);
 				}
 			}
 		});
@@ -1058,18 +1072,24 @@ const ClassListTable = () => {
 			title: t('classManagement.status'),
 			dataIndex: 'status',
 			key: 'status',
-			width: '10%',
-			render: (status, record) => (
-				<Switch
-					checked={status === 'active'}
-					onChange={() => handleStatusToggle(record)}
-				/>
+			width: '12%',
+			render: (text) => (
+				<Tooltip placement="topLeft" title={formatStatusDisplay(text)}>
+					<div style={{ 
+						fontSize: '16px',
+						overflow: 'hidden',
+						textOverflow: 'ellipsis',
+						whiteSpace: 'nowrap'
+					}}>
+						{formatStatusDisplay(text)}
+					</div>
+				</Tooltip>
 			),
 		},
 		{
 			title: t('classManagement.actions'),
 			key: 'actions',
-			width: '15%',
+			width: '18%',
 			render: (_, record) => (
 				<Space size="small">
 					<Tooltip title={t('classManagement.viewDetails')}>
@@ -1080,14 +1100,24 @@ const ClassListTable = () => {
 							onClick={() => handleViewDetail(record)}
 						/>
 					</Tooltip>
-					<Tooltip title={t('classManagement.edit')}>
+					<Tooltip title={t('classManagement.changeStatus')}>
 						<Button
 							type="text"
 							size="small"
-							icon={<EditOutlined style={{ fontSize: '20px' }} />}
-							onClick={() => handleEdit(record)}
+							icon={<SwapOutlined style={{ fontSize: '20px', color: '#1890ff' }} />}
+							onClick={() => handleStatusChange(record)}
 						/>
 					</Tooltip>
+					{record.status !== 'FINISHED' && (
+						<Tooltip title={t('classManagement.edit')}>
+							<Button
+								type="text"
+								size="small"
+								icon={<EditOutlined style={{ fontSize: '20px' }} />}
+								onClick={() => handleEdit(record)}
+							/>
+						</Tooltip>
+					)}
 					<Tooltip title={t('classManagement.delete')}>
 						<Button
 							type="text"
@@ -1134,7 +1164,7 @@ const ClassListTable = () => {
 									<Button 
 										icon={<FilterOutlined />}
 										onClick={handleFilterToggle}
-										className={`filter-button ${theme}-filter-button ${filterDropdown.visible ? 'active' : ''} ${(appliedFilters.status !== 'all' || appliedFilters.syllabusId || appliedFilters.startDateFrom || appliedFilters.endDateFrom) ? 'has-filters' : ''}`}
+										className={`filter-button ${theme}-filter-button ${filterDropdown.visible ? 'active' : ''} ${(appliedFilters.status !== 'all' || appliedFilters.syllabusId) ? 'has-filters' : ''}`}
 									>
 										{t('common.filter')}
 									</Button>
@@ -1156,12 +1186,15 @@ const ClassListTable = () => {
 													>
 														<Option value="all">{t('classManagement.allStatus')}</Option>
 														<Option value="ACTIVE">{t('classManagement.active')}</Option>
+														<Option value="PENDING">{t('classManagement.pending')}</Option>
+														<Option value="UPCOMING_END">{t('classManagement.upcomingEnd')}</Option>
+														<Option value="FINISHED">{t('classManagement.finished')}</Option>
 														<Option value="INACTIVE">{t('classManagement.inactive')}</Option>
 													</Select>
 												</div>
 
 												{/* Syllabus Filter */}
-												<div style={{ marginBottom: '20px' }}>
+												<div style={{ marginBottom: '24px' }}>
 													<Typography.Title level={5} style={{ marginBottom: '12px', fontSize: '16px' }}>
 														{t('classManagement.syllabus')}
 													</Typography.Title>
@@ -1182,79 +1215,6 @@ const ClassListTable = () => {
 													</Select>
 												</div>
 
-												{/* Start Date Range Filter */}
-												<div style={{ marginBottom: '20px' }}>
-													<Typography.Title 
-														level={5} 
-														style={{ 
-															marginBottom: '12px', 
-															fontSize: '16px',
-															fontWeight: '600',
-															color: theme === 'dark' ? '#ffffff' : '#000000'
-														}}
-													>
-														{t('classManagement.startDateRange')}
-													</Typography.Title>
-													<DatePicker.RangePicker
-														value={filterDropdown.selectedStartDateRange ? [
-															filterDropdown.selectedStartDateRange[0] ? dayjs(filterDropdown.selectedStartDateRange[0]) : null,
-															filterDropdown.selectedStartDateRange[1] ? dayjs(filterDropdown.selectedStartDateRange[1]) : null
-														] : null}
-														onChange={(dates) => {
-															if (dates && dates[0] && dates[1]) {
-																setFilterDropdown(prev => ({
-																	...prev,
-																	selectedStartDateRange: [dates[0].format('YYYY-MM-DD'), dates[1].format('YYYY-MM-DD')]
-																}));
-															} else {
-																setFilterDropdown(prev => ({
-																	...prev,
-																	selectedStartDateRange: null
-																}));
-															}
-														}}
-														onOpenChange={(open) => setIsInteractingWithFilter(open)}
-														style={{ width: '100%', height: '40px' }}
-														placeholder={[t('classManagement.startDateFrom'), t('classManagement.startDateTo')]}
-													/>
-												</div>
-
-												{/* End Date Range Filter */}
-												<div style={{ marginBottom: '24px' }}>
-													<Typography.Title 
-														level={5} 
-														style={{ 
-															marginBottom: '12px', 
-															fontSize: '16px',
-															fontWeight: '600',
-															color: theme === 'dark' ? '#ffffff' : '#000000'
-														}}
-													>
-														{t('classManagement.endDateRange')}
-													</Typography.Title>
-													<DatePicker.RangePicker
-														value={filterDropdown.selectedEndDateRange ? [
-															filterDropdown.selectedEndDateRange[0] ? dayjs(filterDropdown.selectedEndDateRange[0]) : null,
-															filterDropdown.selectedEndDateRange[1] ? dayjs(filterDropdown.selectedEndDateRange[1]) : null
-														] : null}
-														onChange={(dates) => {
-															if (dates && dates[0] && dates[1]) {
-																setFilterDropdown(prev => ({
-																	...prev,
-																	selectedEndDateRange: [dates[0].format('YYYY-MM-DD'), dates[1].format('YYYY-MM-DD')]
-																}));
-															} else {
-																setFilterDropdown(prev => ({
-																	...prev,
-																	selectedEndDateRange: null
-																}));
-															}
-														}}
-														onOpenChange={(open) => setIsInteractingWithFilter(open)}
-														style={{ width: '100%', height: '40px' }}
-														placeholder={[t('classManagement.endDateFrom'), t('classManagement.endDateTo')]}
-													/>
-												</div>
 
 												{/* Action Buttons */}
 												<div style={{ 
@@ -1746,7 +1706,11 @@ const ClassListTable = () => {
 					}
 					open={confirmModal.visible}
 					onOk={confirmModal.onConfirm}
-					onCancel={() => setConfirmModal({ visible: false, title: '', content: '', displayData: null, onConfirm: null })}
+					onCancel={() => {
+						setConfirmModal({ visible: false, title: '', content: '', onConfirm: null, type: '' });
+						setSelectedStatus(null);
+						setCurrentRecord(null);
+					}}
 					okText={t('common.confirm')}
 					cancelText={t('common.cancel')}
 					width={500}
@@ -1783,6 +1747,51 @@ const ClassListTable = () => {
 						}
 					}}
 				>
+					{confirmModal.type === 'status' ? (
+						// Status change modal content
+						<div>
+							<p style={{ marginBottom: '16px', textAlign: 'center', fontSize: '16px' }}>
+								{currentRecord && t('classManagement.changeStatusMessage', { className: currentRecord.name })}
+							</p>
+							<Select
+								placeholder={t('classManagement.selectNewStatus')}
+								style={{ width: '100%' }}
+								value={selectedStatus}
+								onChange={(value) => {
+									setSelectedStatus(value);
+								}}
+							>
+								{currentRecord && (() => {
+									// Get available status options based on current status
+									const getAvailableStatuses = (currentStatus) => {
+										switch (currentStatus) {
+											case 'PENDING':
+												return [
+													{ value: 'INACTIVE', label: t('classManagement.inactive') }
+												];
+											case 'ACTIVE':
+											case 'UPCOMING_END':
+												return [
+													{ value: 'FINISHED', label: t('classManagement.finished') }
+												];
+											default:
+												return [
+													{ value: 'INACTIVE', label: t('classManagement.inactive') }
+												];
+										}
+									};
+									
+									const availableStatuses = getAvailableStatuses(currentRecord.status);
+									return availableStatuses.map(status => (
+										<Option key={status.value} value={status.value}>
+											{status.label}
+										</Option>
+									));
+								})()}
+							</Select>
+						</div>
+				) : (
+					// Default confirmation modal content
 					<div style={{
 						display: 'flex',
 						flexDirection: 'column',
@@ -1815,6 +1824,7 @@ const ClassListTable = () => {
 							</p>
 						)}
 					</div>
+				)}
 				</Modal>
 
 				{/* Import Modal */}
@@ -2020,12 +2030,6 @@ const ClassListTable = () => {
 					selectAllText={t('classManagement.selectAll')}
 					deleteAllText={t('classManagement.deleteAll')}
 				additionalActions={[
-					{
-						key: 'activateAll',
-						label: t('classManagement.activateAll'),
-						onClick: handleActivateAll,
-						type: 'text'
-					},
 					{
 						key: 'deactivateAll',
 						label: t('classManagement.deactivateAll'),

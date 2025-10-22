@@ -27,6 +27,7 @@ import { spaceToast } from "../../../../component/SpaceToastify";
 import { useTheme } from "../../../../contexts/ThemeContext";
 import { useClassMenu } from "../../../../contexts/ClassMenuContext";
 import classManagementApi from "../../../../apis/backend/classManagement";
+import teacherManagementApi from "../../../../apis/backend/teacherManagement";
 import usePageTitle from "../../../../hooks/usePageTitle";
 
 const { Option } = Select;
@@ -76,6 +77,11 @@ const ClassTeachers = () => {
   const [teacherToDelete, setTeacherToDelete] = useState(null);
   const [isImportModalVisible, setIsImportModalVisible] = useState(false);
   const [fileList, setFileList] = useState([]);
+  
+  // Available teachers state
+  const [availableTeachers, setAvailableTeachers] = useState([]);
+  const [availableTeachingAssistants, setAvailableTeachingAssistants] = useState([]);
+  const [loadingTeachers, setLoadingTeachers] = useState(false);
   
   // Refs for click outside detection
   const filterContainerRef = useRef(null);
@@ -183,6 +189,8 @@ const ClassTeachers = () => {
       console.log('Teachers response:', response);
       
       if (response.success) {
+        console.log('Teachers data structure:', response.data);
+        console.log('First teacher sample:', response.data?.[0]);
         setTeachers(response.data || []);
         setPagination(prev => ({
           ...prev,
@@ -200,6 +208,56 @@ const ClassTeachers = () => {
     }
   }, [id, t]);
 
+  // Fetch available teachers for adding to class
+  const fetchAvailableTeachers = useCallback(async () => {
+    setLoadingTeachers(true);
+    try {
+      // Fetch teachers using teacherManagement API - same format as TeacherList.jsx
+      const teacherParams = {
+        page: 0,
+        size: 100,
+        text: '', // Empty search text to get all
+        status: ['ACTIVE'], // Only ACTIVE teachers
+        roleName: ['TEACHER'], // Only teachers - use uppercase
+        sortBy: 'fullName',
+        sortDir: 'asc'
+      };
+      
+      const teacherResponse = await teacherManagementApi.getTeachers(teacherParams);
+      
+      // Fetch teaching assistants using teacherManagement API - same format as TeacherList.jsx
+      const taParams = {
+        page: 0,
+        size: 100,
+        text: '', // Empty search text to get all
+        status: ['ACTIVE'], // Only ACTIVE teaching assistants
+        roleName: ['TEACHING_ASSISTANT'], // Only teaching assistants - use uppercase
+        sortBy: 'fullName',
+        sortDir: 'asc'
+      };
+      
+      const taResponse = await teacherManagementApi.getTeachers(taParams);
+      
+      console.log('Available teachers response:', teacherResponse);
+      console.log('Available TAs response:', taResponse);
+      console.log('Teacher request params:', teacherParams);
+      console.log('TA request params:', taParams);
+      
+      if (teacherResponse.success) {
+        setAvailableTeachers(teacherResponse.data || []);
+      }
+      
+      if (taResponse.success) {
+        setAvailableTeachingAssistants(taResponse.data || []);
+      }
+    } catch (error) {
+      console.error('Error fetching available teachers:', error);
+      spaceToast.error('Failed to load available teachers');
+    } finally {
+      setLoadingTeachers(false);
+    }
+  }, []);
+
   // Initial data loading
   useEffect(() => {
     fetchClassData();
@@ -208,7 +266,7 @@ const ClassTeachers = () => {
 
   // Ensure header back button appears immediately while class info loads
   useEffect(() => {
-    if (id) {
+    if (id) { 
       enterClassMenu({ id });
     }
     return () => {
@@ -251,6 +309,8 @@ const ClassTeachers = () => {
         console.log('Teachers response:', response);
         
         if (response.success) {
+          console.log('Teachers data structure in useEffect:', response.data);
+          console.log('First teacher sample in useEffect:', response.data?.[0]);
           setTeachers(response.data || []);
           setPagination(prev => ({
             ...prev,
@@ -276,6 +336,7 @@ const ClassTeachers = () => {
   const handleAddTeacher = () => {
     form.resetFields();
     setIsModalVisible(true);
+    fetchAvailableTeachers(); // Fetch available teachers when opening modal
   };
 
   const handleImportModalOk = () => {
@@ -305,13 +366,37 @@ const ClassTeachers = () => {
     setIsDeleteModalVisible(true);
   };
 
-  const handleConfirmDelete = () => {
+  const handleConfirmDelete = async () => {
     if (teacherToDelete) {
       console.log("Confirm delete for teacher:", teacherToDelete);
-      const updatedTeachers = teachers.filter(t => t.id !== teacherToDelete.id);
-      console.log("Updated teachers:", updatedTeachers);
-      setTeachers(updatedTeachers);
-      spaceToast.success(`${t('classTeachers.deleteSuccess')} ${teacherToDelete.role === 'teacher' ? t('classTeachers.teacher') : t('classTeachers.teachingAssistant')} "${teacherToDelete.name}"`);
+      
+      try {
+        const response = await classManagementApi.removeTeacherFromClass(id, teacherToDelete.userId);
+        
+        console.log('Remove teacher response:', response);
+        
+        if (response.success) {
+          const isTeacher = teacherToDelete.role === 'teacher' || teacherToDelete.roleInClass === 'TEACHER' || teacherToDelete.roleName === 'TEACHER';
+          const teacherName = teacherToDelete.fullName || teacherToDelete.userName || teacherToDelete.name;
+          spaceToast.success(`${t('classTeachers.deleteSuccess')} ${isTeacher ? t('classTeachers.teacher') : t('classTeachers.teachingAssistant')} "${teacherName}"`);
+          
+          // Refresh the teachers list
+          fetchTeachers();
+        } else {
+          spaceToast.error(response.message || t('classTeachers.deleteError'));
+        }
+      } catch (error) {
+        console.error('Error removing teacher:', error);
+        
+        // Use BE error message if available, otherwise fallback to generic message
+        const errorMessage = error.response?.data?.message || 
+                            error.response?.data?.error || 
+                            error.message || 
+                            t('classTeachers.deleteError');
+        
+        spaceToast.error(errorMessage);
+      }
+      
       setIsDeleteModalVisible(false);
       setTeacherToDelete(null);
     }
@@ -328,16 +413,59 @@ const ClassTeachers = () => {
       const values = await form.validateFields();
       console.log("Form values:", values);
 
-      // TODO: Implement real API call to add teachers
-      spaceToast.success(t('classTeachers.addSuccess'));
+      // Prepare teachers data according to API spec
+      const teachersToAdd = [];
+      
+      // Add selected teacher
+      if (values.selectedTeacher) {
+        teachersToAdd.push({
+          userId: values.selectedTeacher,
+          roleInClass: "TEACHER"
+        });
+      }
+      
+      // Add selected teaching assistants
+      if (values.selectedTeachingAssistants && values.selectedTeachingAssistants.length > 0) {
+        values.selectedTeachingAssistants.forEach(taId => {
+          teachersToAdd.push({
+            userId: taId,
+            roleInClass: "TEACHING_ASSISTANT"
+          });
+        });
+      }
+      
+      if (teachersToAdd.length === 0) {
+        spaceToast.warning(t('classTeachers.selectAtLeastOneTeacher'));
+        return;
+      }
+      
+      // Call API to add teachers
+      const response = await classManagementApi.addTeacherToClass(id, {
+        teachers: teachersToAdd
+      });
+      
+      console.log('Add teachers response:', response);
+      
+      if (response.success) {
+        spaceToast.success(t('classTeachers.addSuccess'));
         setIsModalVisible(false);
         form.resetFields();
-      
-      // Refresh the teachers list
-      fetchTeachers();
+        
+        // Refresh the teachers list
+        fetchTeachers();
+      } else {
+        spaceToast.error(response.message || t('classTeachers.addError'));
+      }
     } catch (error) {
-      console.error("Error adding staff:", error);
-      spaceToast.error(t('classTeachers.checkInfoError'));
+      console.error("Error adding teachers:", error);
+      
+      // Use BE error message if available, otherwise fallback to generic message
+      const errorMessage = error.response?.data?.message || 
+                          error.response?.data?.error || 
+                          error.message || 
+                          t('classTeachers.addError');
+      
+      spaceToast.error(errorMessage);
     }
   };
 
@@ -627,12 +755,35 @@ const ClassTeachers = () => {
             <div style={{ fontSize: '14px', color: '#24292e' }}>
               <strong>{t('classTeachers.currentClassStatus')}</strong>
             </div>
+          
             <div style={{ fontSize: '13px', color: '#586069', marginTop: '4px' }}>
-              • {t('classTeachers.teacher')}: {teachers.some(t => t.role === "teacher") ? t('classTeachers.assigned') : t('classTeachers.notAssigned')} 
-              {teachers.some(t => t.role === "teacher") && ` (${teachers.find(t => t.role === "teacher")?.name})`}
+              • {t('classTeachers.teacher')}: {(() => {
+                // Simple logic: if there are teachers in the class, show assigned
+                if (teachers.length > 0) {
+                  // Try to find teacher by role first, then by username pattern, then just take first one
+                  const teacher = teachers.find(t => 
+                    t.role === "teacher" || 
+                    t.roleInClass === "TEACHER" || 
+                    t.roleName === "TEACHER"
+                  ) || teachers.find(t => t.userName?.startsWith('TC')) || teachers[0];
+                  
+                  return `${t('classTeachers.assigned')} (${teacher?.fullName || teacher?.userName || 'Unknown'})`;
+                } else {
+                  return t('classTeachers.notAssigned');
+                }
+              })()}
             </div>
             <div style={{ fontSize: '13px', color: '#586069' }}>
-              • {t('classTeachers.teachingAssistant')}: {teachers.filter(t => t.role === "teaching_assistant").length} {t('classTeachers.people')}
+              • {t('classTeachers.teachingAssistant')}: {(() => {
+                // Count teaching assistants (excluding the main teacher)
+                const tas = teachers.filter(t => 
+                  t.role === "teaching_assistant" || 
+                  t.roleInClass === "TEACHING_ASSISTANT" || 
+                  t.roleName === "TEACHING_ASSISTANT" ||
+                  (t.userName?.startsWith('TA') && teachers.length > 1)
+                );
+                return `${tas.length} ${t('classTeachers.people')}`;
+              })()}
             </div>
             <div style={{ fontSize: '13px', color: '#586069' }}>
               • {t('classTeachers.total')} {teachers.length} {t('classTeachers.members')}
@@ -653,8 +804,18 @@ const ClassTeachers = () => {
                   fontSize: "15px",
                 }}
                 allowClear
+                loading={loadingTeachers}
+                showSearch
+                optionFilterProp="children"
+                filterOption={(input, option) =>
+                  (option?.children ?? '').toLowerCase().includes(input.toLowerCase())
+                }
               >
-                <Option value="placeholder">Coming Soon...</Option>
+                {availableTeachers.map(teacher => (
+                  <Option key={teacher.id} value={teacher.id}>
+                    {teacher.fullName || teacher.userName} ({teacher.email})
+                  </Option>
+                ))}
               </Select>
             </Form.Item>
 
@@ -669,8 +830,18 @@ const ClassTeachers = () => {
                   fontSize: "15px",
                 }}
                 allowClear
+                loading={loadingTeachers}
+                showSearch
+                optionFilterProp="children"
+                filterOption={(input, option) =>
+                  (option?.children ?? '').toLowerCase().includes(input.toLowerCase())
+                }
               >
-                <Option value="placeholder">Coming Soon...</Option>
+                {availableTeachingAssistants.map(ta => (
+                  <Option key={ta.id} value={ta.id}>
+                    {ta.fullName || ta.userName} ({ta.email})
+                  </Option>
+                ))}
               </Select>
             </Form.Item>
            </Form>

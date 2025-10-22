@@ -4,7 +4,6 @@ import {
 	PlusOutlined,
 	DeleteOutlined,
 	SaveOutlined,
-	ArrowLeftOutlined,
 	EditOutlined,
 	SwapOutlined,
 } from '@ant-design/icons';
@@ -24,7 +23,6 @@ import {
 	PointerSensor,
 	useSensor,
 	useSensors,
-	DragOverlay,
 } from '@dnd-kit/core';
 import {
 	arrayMove,
@@ -198,7 +196,6 @@ const TeacherClassChapterDragEdit = () => {
 	const [chapters, setChapters] = useState([]);
 	const [loading, setLoading] = useState(false);
 	const [saving, setSaving] = useState(false);
-	const [activeId, setActiveId] = useState(null);
 	const [isModalVisible, setIsModalVisible] = useState(false);
 	const [editingChapter, setEditingChapter] = useState(null);
 	const [insertAtIndex, setInsertAtIndex] = useState(null);
@@ -237,17 +234,22 @@ const TeacherClassChapterDragEdit = () => {
 		if (!classId) return;
 
 		try {
+			console.log('Fetching class info for classId:', classId);
 			const response = await teacherManagementApi.getClassById(classId);
+			console.log('Class info response:', response);
+			
+			const data = response?.data ?? response;
 			setClassInfo({
 				id: classId,
-				name: response.data.name,
+				name: data?.name ?? data?.className ?? data?.title ?? 'Unknown Class',
 				syllabus: {
-					id: response.data.syllabusId,
-					name: response.data.syllabusName,
+					id: data?.syllabusId,
+					name: data?.syllabusName,
 				}
 			});
 		} catch (error) {
 			console.error('Error fetching class info:', error);
+			spaceToast.error(error.response?.data?.error);
 		}
 	}, [classId]);
 
@@ -377,7 +379,6 @@ const TeacherClassChapterDragEdit = () => {
 	);
 
 	const handleDragStart = useCallback((event) => {
-		setActiveId(event.active.id);
 		document.body.style.overflow = 'hidden';
 	}, []);
 
@@ -389,7 +390,6 @@ const TeacherClassChapterDragEdit = () => {
 
 	const handleDragEnd = useCallback((event) => {
 		const { active, over } = event;
-		setActiveId(null);
 		document.body.style.overflow = '';
 
 		if (active.id !== over?.id) {
@@ -446,32 +446,6 @@ const TeacherClassChapterDragEdit = () => {
 		}
 	}, [chapters, classId, t, navigate, routePrefix]);
 
-	const handleGoBack = useCallback(() => {
-		navigate(`${routePrefix}/chapters/${classId}`);
-	}, [navigate, routePrefix, classId]);
-
-	const activeChapterData = useMemo(
-		() => chapters.find((chapter) => chapter.id === activeId),
-		[activeId, chapters]
-	);
-
-	const offsetModifier = useCallback((args) => {
-		if (!args || !args.transform) {
-			return {
-				x: 0,
-				y: 0,
-				scaleX: 1,
-				scaleY: 1,
-			};
-		}
-
-		return {
-			...args.transform,
-			y: args.transform.y - 300,
-			x: args.transform.x - 300,
-		};
-	}, []);
-
 	if (!classInfo) {
 		return (
 			<ThemedLayout>
@@ -487,39 +461,14 @@ const TeacherClassChapterDragEdit = () => {
 			<div className={`main-content-panel ${theme}-main-panel`}>
 				{/* Header Section */}
 				<div className={`panel-header ${theme}-panel-header`}>
-					<div className='page-header'>
-						<div
-							style={{
-								display: 'flex',
-								alignItems: 'center',
-								gap: '12px',
-								padding: '12px 24px',
-								borderRadius: '12px',
-								background:
-									theme === 'space'
-										? 'linear-gradient(135deg, #4c1d95 0%, #5b21b6 100%)'
-										: 'rgb(101 191 253)',
-								boxShadow:
-									theme === 'space'
-										? '0 4px 12px rgba(76, 29, 149, 0.4)'
-										: '0 4px 12px rgba(173, 219, 250, 0.3)',
-							}}>
-							<SwapOutlined
-								rotate={90}
-								style={{
-									fontSize: '28px',
-									color: '#ffffff',
-								}}
-							/>
-							<Title
-								level={2}
-								style={{
-									margin: 0,
-									color: '#ffffff',
-								}}>
-								{t('chapterManagement.editPositions')} - {classInfo.name}
-							</Title>
-						</div>
+					<div className='page-title-container' style={{ marginBottom: '24px', width: '100%', display: 'flex', justifyContent: 'center' }}>
+						<Title
+							level={1}
+							className="page-title"
+							style={{ margin: 0, textAlign: 'center' }}
+						>
+							{t('chapterManagement.editPositions')}
+						</Title>
 					</div>
 				</div>
 
@@ -544,12 +493,7 @@ const TeacherClassChapterDragEdit = () => {
 										sensors={sensors}
 										collisionDetection={closestCenter}
 										onDragStart={handleDragStart}
-										onDragEnd={handleDragEnd}
-										measuring={{
-											droppable: {
-												strategy: 'always',
-											},
-										}}>
+										onDragEnd={handleDragEnd}>
 										<SortableContext
 											items={chapterIds}
 											strategy={verticalListSortingStrategy}>
@@ -573,59 +517,54 @@ const TeacherClassChapterDragEdit = () => {
 													/>
 												</React.Fragment>
 											))}
-										</SortableContext>
-
-										{/* Drag Overlay */}
-										<DragOverlay
-											dropAnimation={null}
-											modifiers={[offsetModifier]}>
-											{activeChapterData ? (
-												<div
-													className={`level-drag-item ${theme}-level-drag-item`}
-													style={{
-														opacity: 0.95,
-														boxShadow: '0 12px 32px rgba(24, 144, 255, 0.5)',
-														border: '2px solid #1890ff',
-														background: theme === 'dark' ? '#2a2a2a' : '#ffffff',
-														cursor: 'grabbing',
-														transform: 'rotate(3deg)',
-														maxWidth: '800px',
+											
+											{/* Always show Add button at the end if there are chapters */}
+											{chapters.length > 0 && (
+												<AddChapterButton
+													theme={theme}
+													index={chapters.length}
+													onAddAtPosition={handleAddChapterAtPosition}
+												/>
+											)}
+											
+											{/* Show fixed Add button when no chapters exist */}
+											{chapters.length === 0 && (
+												<div className={`add-level-empty ${theme}-add-level-empty`} style={{ 
+													marginTop: '40px', 
+													textAlign: 'center',
+													padding: '40px 20px'
+												}}>
+													<Button
+														type='primary'
+														icon={<PlusOutlined />}
+														size='large'
+														onClick={() => handleAddChapterAtPosition(0)}
+														style={{
+															height: '60px',
+															padding: '0 40px',
+															fontSize: '18px',
+															fontWeight: '600',
+															borderRadius: '12px',
+															backgroundColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
+															background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
+															borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'transparent',
+															color: theme === 'sun' ? '#000000' : '#ffffff',
+															boxShadow: theme === 'sun' 
+																? '0 6px 20px rgba(113, 179, 253, 0.4)' 
+																: '0 6px 20px rgba(90, 31, 184, 0.4)',
+														}}
+													>
+														{t('chapterManagement.addChapter')}
+													</Button>
+													<div style={{ 
+														marginTop: '16px', 
+														color: '#666', 
+														fontSize: '14px' 
 													}}>
-													<div className='level-position'>
-														<Text
-															strong
-															style={{ fontSize: '18px', color: 'black' }}>
-															{activeChapterData.position}
-														</Text>
-													</div>
-													<div className='drag-handle'></div>
-													<div className='level-content'>
-														<div className='level-field'>
-															<Text strong style={{ minWidth: '120px' }}>
-																{t('chapterManagement.chapterName')}:
-															</Text>
-															<Text
-																style={{
-																	color: theme === 'dark' ? '#ffffff' : '#000000',
-																}}>
-																{activeChapterData.name}
-															</Text>
-														</div>
-														<div className='level-field'>
-															<Text strong style={{ minWidth: '120px' }}>
-																{t('chapterManagement.createdBy')}:
-															</Text>
-															<Text
-																style={{
-																	color: theme === 'dark' ? '#ffffff' : '#000000',
-																}}>
-																{activeChapterData.createdBy || 'N/A'}
-															</Text>
-														</div>
 													</div>
 												</div>
-											) : null}
-										</DragOverlay>
+											)}
+										</SortableContext>
 									</DndContext>
 								)}
 							</div>
@@ -634,23 +573,16 @@ const TeacherClassChapterDragEdit = () => {
 						{/* Footer Actions */}
 						<div className={`drag-edit-footer ${theme}-drag-edit-footer`}>
 							<Button
-								icon={<ArrowLeftOutlined />}
-								onClick={handleGoBack}
-								size='large'
-								style={{ 
-									marginRight: '12px',
-									borderRadius: '8px',
-									height: '42px',
-									padding: '0 24px',
-								}}>
-								{t('common.back')}
-							</Button>
-							<Button
 								type='primary'
 								icon={<SaveOutlined />}
 								onClick={handleSave}
 								loading={saving}
-								className='save-button'>
+								className='save-button'
+								style={{
+									height: '42px',
+									borderRadius: '8px',
+									fontWeight: '500'
+								}}>
 								{t('common.save')}
 							</Button>
 						</div>

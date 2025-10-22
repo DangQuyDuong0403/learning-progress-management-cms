@@ -489,35 +489,9 @@ const StudentList = () => {
       return;
     }
     
-    const confirmContent = `${t('studentManagement.confirmBulkAssignToClass')} ${nonPendingSelected.length} ${t('studentManagement.students')}? ${selectedStudents.length !== nonPendingSelected.length ? `(${selectedStudents.length - nonPendingSelected.length} PENDING students will be skipped)` : ''}`;
-    
-    setConfirmModal({
-      visible: true,
-      title: `${t('studentManagement.assignAllToClass')} ${t('studentManagement.students')}`,
-      content: confirmContent,
-      onConfirm: async () => {
-        try {
-          // TODO: Implement bulk assign to class API call
-          // await studentManagementApi.bulkAssignStudentsToClass(selectedRowKeys, classId);
-          
-          // Close modal first
-          setConfirmModal({ visible: false, title: '', content: '', onConfirm: null });
-          
-          // Clear selection
-          setSelectedRowKeys([]);
-          
-          // Show success toast
-          spaceToast.success(`${t('studentManagement.bulkAssignSuccess')} ${nonPendingSelected.length} ${t('studentManagement.students')}`);
-          
-          // Refresh the list
-          fetchStudents(pagination.current, pagination.pageSize, searchText, statusFilter, roleNameFilter, sortBy, sortDir);
-        } catch (error) {
-          console.error('Error in bulk assign to class:', error);
-          setConfirmModal({ visible: false, title: '', content: '', onConfirm: null });
-          spaceToast.error(error.response?.data?.error || error.message || t('studentManagement.bulkAssignError'));
-        }
-      }
-    });
+    // For bulk assign, we'll show a message to use individual assign for now
+    // since bulk assign requires selecting a specific class
+    spaceToast.info('Please use individual "Assign to Class" button for each student to select a specific class');
   };
 
   // Table columns
@@ -1018,6 +992,11 @@ const StudentList = () => {
       visible: false,
       student: null,
     });
+  };
+
+  // Handle successful assignment - refresh the student list
+  const handleAssignStudentSuccess = () => {
+    fetchStudents(pagination.current, pagination.pageSize, searchValue, statusFilter, roleNameFilter, sortBy, sortDir);
   };
 
   // Handle filter dropdown toggle
@@ -1970,6 +1949,7 @@ const StudentList = () => {
             <AssignStudentToClass
               student={assignClassModal.student}
               onClose={handleAssignClassClose}
+              onSuccess={handleAssignStudentSuccess}
             />
           )}
         </Modal>
