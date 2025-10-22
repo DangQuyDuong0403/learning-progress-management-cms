@@ -6,7 +6,7 @@ import { useTranslation } from 'react-i18next';
 import LanguageToggle from '../../component/LanguageToggle';
 import ThemeToggleSwitch from '../../component/ThemeToggleSwitch';
 import { useTheme } from '../../contexts/ThemeContext';
-import ThemedLayoutFullScreen from '../../component/ThemedLayoutFullScreen';
+import ThemeLayoutLogin from '../../component/ThemeLayoutLogin';
 import { spaceToast } from '../../component/SpaceToastify';
 import authApi from '../../apis/backend/auth';
 import usePageTitle from '../../hooks/usePageTitle';
@@ -95,7 +95,7 @@ export default function ChangePassword() {
 
 
 	return (
-		<ThemedLayoutFullScreen>
+		<ThemeLayoutLogin>
 			<style>{darkThemeAlertStyle}</style>
 			<div className="main-content" style={{ paddingTop: 80, minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
 				{/* Theme Toggle - Top Right */}
@@ -257,7 +257,7 @@ export default function ChangePassword() {
 					</div>
 				</div>
 			</div>
-		</ThemedLayoutFullScreen>
+		</ThemeLayoutLogin>
 	);
 }
 

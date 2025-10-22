@@ -4,7 +4,7 @@ import { Input, Button } from 'antd';
 import { UserOutlined, ArrowLeftOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../contexts/ThemeContext';
-import ThemedLayoutFullScreen from '../../component/ThemedLayoutFullScreen';
+import ThemeLayoutLogin from '../../component/ThemeLayoutLogin';
 import authApi from '../../apis/backend/auth';
 import { spaceToast } from '../../component/SpaceToastify';
 import usePageTitle from '../../hooks/usePageTitle';
@@ -61,7 +61,7 @@ export default function ForgotPasswordTeacher() {
     };
 
     return (
-        <ThemedLayoutFullScreen>
+        <ThemeLayoutLogin>
             <div className="main-content" style={{ paddingTop: 80, minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
                 <div className='d-flex align-items-center justify-content-center w-100'>
                     <div className='row justify-content-center w-100'>
@@ -149,7 +149,7 @@ export default function ForgotPasswordTeacher() {
                     </div>
                 </div>
             </div>
-        </ThemedLayoutFullScreen>
+        </ThemeLayoutLogin>
     );
 }
 

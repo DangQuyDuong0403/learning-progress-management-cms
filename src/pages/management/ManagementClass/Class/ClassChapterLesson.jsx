@@ -24,7 +24,8 @@ import {
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useParams, useNavigate } from 'react-router-dom';
-import ThemedLayout from '../../../../component/ThemedLayout';
+import ThemedLayoutWithSidebar from '../../../../component/ThemedLayout';
+import ThemedLayoutNoSidebar from '../../../../component/teacherlayout/ThemedLayout';
 import LoadingWithEffect from '../../../../component/spinner/LoadingWithEffect';
 import { spaceToast } from '../../../../component/SpaceToastify';
 import { useTheme } from '../../../../contexts/ThemeContext';
@@ -44,6 +45,12 @@ const ClassChapterLesson = () => {
 	const { theme } = useTheme();
 	const { user } = useSelector((state) => state.auth);
 	const { enterClassMenu, exitClassMenu } = useClassMenu();
+	
+	// Determine which layout to use based on user role
+	const userRole = user?.role?.toLowerCase();
+	const ThemedLayout = (userRole === 'teacher' || userRole === 'teaching_assistant') 
+		? ThemedLayoutNoSidebar 
+		: ThemedLayoutWithSidebar;
 	
 	// Set page title
 	usePageTitle('Class Chapter & Lesson');

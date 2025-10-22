@@ -27,7 +27,7 @@ import {
   HolderOutlined,
 } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
-import ThemedLayout from "../../../../component/ThemedLayout";
+import ThemedLayout from "../../../../component/teacherlayout/ThemedLayout";
 import { extractTextFromPDF, isValidPDF } from "../../../../utils/pdfUtils";
 import {
   MultipleChoiceModal,

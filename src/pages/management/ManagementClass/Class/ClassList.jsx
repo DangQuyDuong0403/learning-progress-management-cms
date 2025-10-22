@@ -18,7 +18,7 @@ import {
   BookOutlined,
   FilterOutlined,
 } from "@ant-design/icons";
-import ThemedLayout from "../../../../component/ThemedLayout";
+import ThemedLayout from "../../../../component/teacherlayout/ThemedLayout";
 import LoadingWithEffect from "../../../../component/spinner/LoadingWithEffect";
 import "./ClassList.css";
 import { spaceToast } from "../../../../component/SpaceToastify";

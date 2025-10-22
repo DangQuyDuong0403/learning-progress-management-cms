@@ -906,12 +906,30 @@
 /* ===== CONTENT ELEMENTS STYLES ===== */
 .themed-content .ant-table {
 	background: rgba(109, 95, 143, 0.05);
-	border-radius: 8px;
+	border-radius: 12px;
 	overflow: hidden;
 	margin: 16px auto !important;
 	padding: 0 !important;
 	width: calc(100% - 32px) !important;
 	max-width: calc(100% - 32px) !important;
+}
+
+/* Table rounded corners for header */
+.themed-content .ant-table-thead > tr:first-child > th:first-child {
+	border-top-left-radius: 12px !important;
+}
+
+.themed-content .ant-table-thead > tr:first-child > th:last-child {
+	border-top-right-radius: 12px !important;
+}
+
+/* Table rounded corners for body last row */
+.themed-content .ant-table-tbody > tr:last-child > td:first-child {
+	border-bottom-left-radius: 12px !important;
+}
+
+.themed-content .ant-table-tbody > tr:last-child > td:last-child {
+	border-bottom-right-radius: 12px !important;
 }
 
 /* Table wrapper padding */
@@ -925,12 +943,30 @@
 /* Space theme table background */
 .space-theme .themed-content .ant-table {
 	background: rgba(109, 95, 143, 0.05);
-	border-radius: 8px;
+	border-radius: 12px;
 	overflow: hidden;
 	margin: 16px auto !important;
 	padding: 0 !important;
 	width: calc(100% - 32px) !important;
 	max-width: calc(100% - 32px) !important;
+}
+
+/* Space theme table rounded corners for header */
+.space-theme .themed-content .ant-table-thead > tr:first-child > th:first-child {
+	border-top-left-radius: 12px !important;
+}
+
+.space-theme .themed-content .ant-table-thead > tr:first-child > th:last-child {
+	border-top-right-radius: 12px !important;
+}
+
+/* Space theme table rounded corners for body last row */
+.space-theme .themed-content .ant-table-tbody > tr:last-child > td:first-child {
+	border-bottom-left-radius: 12px !important;
+}
+
+.space-theme .themed-content .ant-table-tbody > tr:last-child > td:last-child {
+	border-bottom-right-radius: 12px !important;
 }
 
 /* Space theme table wrapper */
@@ -953,17 +989,7 @@
 	font-size: 20px;
 }
 
-/* Remove all table borders */
-.themed-content .ant-table,
-.themed-content .ant-table table,
-.themed-content .ant-table-thead > tr > th,
-.themed-content .ant-table-tbody > tr > td {
-	border: none !important;
-	border-bottom: none !important;
-	border-top: none !important;
-	border-left: none !important;
-	border-right: none !important;
-}
+
 
 .themed-content .ant-table-thead > tr > th {
 	background: rgb(75, 65, 119) !important;
@@ -1338,6 +1364,24 @@
 	padding: 0 !important;
 	width: calc(100% - 32px) !important;
 	max-width: calc(100% - 32px) !important;
+}
+
+/* Sun theme table rounded corners for header */
+.sun-theme .themed-content .ant-table-thead > tr:first-child > th:first-child {
+	border-top-left-radius: 12px !important;
+}
+
+.sun-theme .themed-content .ant-table-thead > tr:first-child > th:last-child {
+	border-top-right-radius: 12px !important;
+}
+
+/* Sun theme table rounded corners for body last row */
+.sun-theme .themed-content .ant-table-tbody > tr:last-child > td:first-child {
+	border-bottom-left-radius: 12px !important;
+}
+
+.sun-theme .themed-content .ant-table-tbody > tr:last-child > td:last-child {
+	border-bottom-right-radius: 12px !important;
 }
 
 /* Sun theme table wrapper */
@@ -2050,16 +2094,48 @@
 	}
 }
 
-/* Checkbox column styling - Common styles for all tables */
-.ant-table-thead > tr > th:first-child {
-	background-color: #E6F5FF ;
+/* Checkbox column styling - Sun theme (default) */
+.sun-theme .ant-table-thead > tr > th:first-child,
+.sun-theme .ant-table-thead > tr > th:nth-child(2) {
+	background-color: #C2E6FF !important;
+	border: none !important;
+	padding: 8px 12px !important;
+	text-align: center !important;
+	color: #000000 !important;
+	font-weight: 600;
+}
+
+.sun-theme .ant-table-tbody > tr > td:first-child,
+.sun-theme .ant-table-tbody > tr > td:nth-child(2) {
+	background-color: #E6F5FF !important;
 	border: none !important;
 	padding: 8px 12px !important;
 	text-align: center !important;
 }
 
-.ant-table-tbody > tr > td:first-child {
-	background-color: #E6F5FF !important;
+/* Ensure checkbox column follows table border-radius */
+.ant-table-thead > tr:first-child > th:first-child {
+	border-top-left-radius: 12px !important;
+}
+
+.ant-table-tbody > tr:last-child > td:first-child {
+	border-bottom-left-radius: 12px !important;
+}
+
+/* Space theme checkbox column and STT column */
+.space-theme .ant-table-thead > tr > th:first-child,
+.space-theme .ant-table-thead > tr > th:nth-child(2) {
+	background-color: rgb(75, 65, 119) !important;
+	border: none !important;
+	padding: 8px 12px !important;
+	text-align: center !important;
+	color: #fff !important;
+	font-weight: 600;
+}
+
+.space-theme .ant-table-tbody > tr > td:first-child,
+.space-theme .ant-table-tbody > tr > td:nth-child(2) {
+	background-color: rgb(224 217 255 / 90%) !important;
 	border: none !important;
 	padding: 8px 12px !important;
 	text-align: center !important;
