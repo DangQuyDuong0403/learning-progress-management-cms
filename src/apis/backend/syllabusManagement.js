@@ -53,6 +53,12 @@ const syllabusManagementApi = {
             'Content-Type': 'multipart/form-data',
         },
     }),
+    validateImportFile: (formData) => axiosClient.post('/syllabus/validate-import', formData, {
+        headers: {
+            'Content-Type': 'multipart/form-data',
+        },
+        responseType: 'blob', // Quan trọng để nhận file từ server
+    }),
     downloadSyllabusTemplate: () => axiosClient.get('/syllabus/download-template'),
     
     // Export APIs
