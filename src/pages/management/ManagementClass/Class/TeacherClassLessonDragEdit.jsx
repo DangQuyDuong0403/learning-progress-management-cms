@@ -752,15 +752,15 @@ const TeacherClassLessonDragEdit = () => {
 					<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px' }}>
 						{editingLesson ? (
 							<>
-								<EditOutlined style={{ fontSize: '26px', color: '#000000' }} />
-								<Title level={4} style={{ margin: 0, color: '#000000', fontSize: '26px' }}>
+								<EditOutlined style={{ fontSize: '28px', color: 'rgb(24, 144, 255)' }} />
+								<Title level={4} style={{ margin: 0, color: 'rgb(24, 144, 255)', fontSize: '28px' }}>
 									{t('lessonManagement.editLesson')}
 								</Title>
 							</>
 						) : (
 							<>
-								<PlusOutlined style={{ fontSize: '20px', color: '#000000' }} />
-								<Title level={4} style={{ margin: 0, color: '#000000' }}>
+								<PlusOutlined style={{ fontSize: '28px', color: 'rgb(24, 144, 255)' }} />
+								<Title level={4} style={{ margin: 0, color: 'rgb(24, 144, 255)', fontSize: '28px' }}>
 									{t('lessonManagement.addLesson')}
 								</Title>
 							</>

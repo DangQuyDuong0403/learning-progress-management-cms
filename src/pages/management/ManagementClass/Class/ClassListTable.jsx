@@ -414,7 +414,8 @@ const ClassListTable = () => {
 		setConfirmModal({
 			visible: true,
 			title: t('classManagement.confirmDelete'),
-			content: t('classManagement.deleteClassMessage', { className: record.name }),
+			content: t('classManagement.deleteClassMessage'),
+			displayData: record.name,
 			onConfirm: async () => {
 				setActionLoading(prev => ({ ...prev, delete: record.id }));
 				try {
@@ -431,6 +432,7 @@ const ClassListTable = () => {
 					setSelectedStatus(null);
 					
 					fetchClasses(pagination.current, pagination.pageSize, searchText, sortBy, sortDir, appliedFilters);
+					setConfirmModal({ visible: false, title: '', content: '', displayData: null, onConfirm: null });
 				} catch (error) {
 					console.error('Error deleting class:', error);
 					
@@ -441,6 +443,7 @@ const ClassListTable = () => {
 										'Failed to delete class';
 					
 					spaceToast.error(errorMessage);
+					setConfirmModal({ visible: false, title: '', content: '', displayData: null, onConfirm: null });
 				} finally {
 					setActionLoading(prev => ({ ...prev, delete: null }));
 				}
@@ -484,6 +487,7 @@ const ClassListTable = () => {
 					setCurrentRecord(null);
 					
 					fetchClasses(pagination.current, pagination.pageSize, searchText, sortBy, sortDir, appliedFilters);
+					setConfirmModal({ visible: false, title: '', content: '', displayData: null, onConfirm: null });
 				} catch (error) {
 					console.error('Error updating class status:', error);
 					
@@ -493,6 +497,7 @@ const ClassListTable = () => {
 										error.message;
 					
 					spaceToast.error(errorMessage);
+					setConfirmModal({ visible: false, title: '', content: '', displayData: null, onConfirm: null });
 				} finally {
 					setActionLoading(prev => ({ ...prev, toggle: null }));
 				}
@@ -832,7 +837,8 @@ const ClassListTable = () => {
 		setConfirmModal({
 			visible: true,
 			title: t('classManagement.confirmDeactivateAll'),
-			content: t('classManagement.deactivateAllMessage', { count: selectedRowKeys.length }),
+			content: t('classManagement.deactivateAllMessage'),
+			displayData: `${selectedRowKeys.length} ${t('classManagement.classes')}`,
 			onConfirm: async () => {
 				try {
 					// Deactivate classes one by one since bulk API might not be available
@@ -889,7 +895,8 @@ const ClassListTable = () => {
 		setConfirmModal({
 			visible: true,
 			title: t('classManagement.confirmDeleteAll'),
-			content: t('classManagement.deleteAllMessage', { count: selectedRowKeys.length }),
+			content: t('classManagement.deleteAllMessage'),
+			displayData: `${selectedRowKeys.length} ${t('classManagement.classes')}`,
 			onConfirm: async () => {
 				try {
 					// Delete classes one by one since bulk delete API might not be available
@@ -1304,9 +1311,9 @@ const ClassListTable = () => {
 				<Modal
 					title={
 						<div style={{ 
-							fontSize: '24px', 
+							fontSize: '28px', 
 							fontWeight: '600', 
-							color: '#000000',
+							color: 'rgb(24, 144, 255)',
 							textAlign: 'center',
 							padding: '10px 0',
 							display: 'flex',
@@ -1316,12 +1323,12 @@ const ClassListTable = () => {
 						}}>
 							{editingClass ? (
 								<>
-									<EditOutlined style={{ fontSize: '26px', color: '#000000' }} />
+									<EditOutlined style={{ fontSize: '28px', color: 'rgb(24, 144, 255)' }} />
 									<span>{t('classManagement.editClass')}</span>
 								</>
 							) : (
 								<>
-									<PlusOutlined style={{ fontSize: '26px', color: '#000000' }} />
+									<PlusOutlined style={{ fontSize: '28px', color: 'rgb(24, 144, 255)' }} />
 									<span>{t('classManagement.addClass')}</span>
 								</>
 							)}
@@ -1337,22 +1344,26 @@ const ClassListTable = () => {
 					confirmLoading={isSubmitting}
 					okButtonProps={{
 						style: {
-							backgroundColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
-							background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
-							borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'transparent',
-							color: theme === 'sun' ? '#000000' : '#ffffff',
-							height: '40px',
-							fontSize: '16px',
+							background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, #7228d9 0%, #9c88ff 100%)',
+							borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : '#7228d9',
+							color: theme === 'sun' ? '#000' : '#fff',
+							borderRadius: '6px',
+							height: '32px',
 							fontWeight: '500',
-							minWidth: '100px',
+							fontSize: '16px',
+							padding: '4px 15px',
+							width: '100px',
+							transition: 'all 0.3s ease',
+							boxShadow: 'none'
 						},
 					}}
 					cancelButtonProps={{
 						style: {
-							height: '40px',
-							fontSize: '16px',
+							height: '32px',
 							fontWeight: '500',
-							minWidth: '100px',
+							fontSize: '16px',
+							padding: '4px 15px',
+							width: '100px'
 						},
 					}}
 					bodyStyle={{
@@ -1684,9 +1695,9 @@ const ClassListTable = () => {
 				<Modal
 					title={
 						<div style={{ 
-							fontSize: '20px', 
+							fontSize: '28px', 
 							fontWeight: '600', 
-							color: '#1890ff',
+							color: 'rgb(24, 144, 255)',
 							textAlign: 'center',
 							padding: '10px 0'
 						}}>
@@ -1713,22 +1724,26 @@ const ClassListTable = () => {
 					}}
 					okButtonProps={{
 						style: {
-							backgroundColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
-							background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
-							borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'transparent',
-							color: theme === 'sun' ? '#000000' : '#ffffff',
-							height: '40px',
-							fontSize: '16px',
+							background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, #7228d9 0%, #9c88ff 100%)',
+							borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : '#7228d9',
+							color: theme === 'sun' ? '#000' : '#fff',
+							borderRadius: '6px',
+							height: '32px',
 							fontWeight: '500',
-							minWidth: '100px'
+							fontSize: '16px',
+							padding: '4px 15px',
+							width: '100px',
+							transition: 'all 0.3s ease',
+							boxShadow: 'none'
 						}
 					}}
 					cancelButtonProps={{
 						style: {
-							height: '40px',
-							fontSize: '16px',
+							height: '32px',
 							fontWeight: '500',
-							minWidth: '100px'
+							fontSize: '16px',
+							padding: '4px 15px',
+							width: '100px'
 						}
 					}}
 				>
@@ -1775,31 +1790,41 @@ const ClassListTable = () => {
 								})()}
 							</Select>
 						</div>
-					) : (
-						// Default confirmation modal content
+				) : (
+					// Default confirmation modal content
+					<div style={{
+						display: 'flex',
+						flexDirection: 'column',
+						alignItems: 'center',
+						gap: '20px'
+					}}>
 						<div style={{
-							display: 'flex',
-							flexDirection: 'column',
-							alignItems: 'center',
-							gap: '20px'
+							fontSize: '48px',
+							color: '#ff4d4f',
+							marginBottom: '10px'
 						}}>
-							<div style={{
-								fontSize: '48px',
-								color: '#ff4d4f',
-								marginBottom: '10px'
-							}}>
-								⚠️
-							</div>
-							<p style={{
-								fontSize: '18px',
-								color: '#333',
-								margin: 0,
-								fontWeight: '500'
-							}}>
-								{confirmModal.content}
-							</p>
+							⚠️
 						</div>
-					)}
+						<p style={{
+							fontSize: '18px',
+							color: '#333',
+							margin: 0,
+							fontWeight: '500'
+						}}>
+							{confirmModal.content}
+						</p>
+						{confirmModal.displayData && (
+							<p style={{
+								fontSize: '20px',
+								color: '#000',
+								margin: 0,
+								fontWeight: '400'
+							}}>
+								<strong>{confirmModal.displayData}</strong>
+							</p>
+						)}
+					</div>
+				)}
 				</Modal>
 
 				{/* Import Modal */}
@@ -1807,9 +1832,9 @@ const ClassListTable = () => {
 					title={
 						<div
 							style={{
-								fontSize: '20px',
+								fontSize: '28px',
 								fontWeight: '600',
-								color: '#000000',
+								color: 'rgb(24, 144, 255)',
 								textAlign: 'center',
 								padding: '10px 0',
 								display: 'flex',
@@ -1817,7 +1842,7 @@ const ClassListTable = () => {
 								justifyContent: 'center',
 								gap: '10px',
 							}}>
-							<DownloadOutlined style={{ color: '#000000' }} />
+							<DownloadOutlined style={{ color: 'rgb(24, 144, 255)' }} />
 							{t('classManagement.importClasses')}
 						</div>
 					}
@@ -1829,25 +1854,29 @@ const ClassListTable = () => {
 					width={600}
 					centered
 					confirmLoading={importModal.uploading}
-					okButtonProps={{
-						disabled: importModal.fileList.length === 0,
-						style: {
-							backgroundColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
-							background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
-							borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'transparent',
-							color: theme === 'sun' ? '#000000' : '#ffffff',
-							height: '40px',
-							fontSize: '16px',
-							fontWeight: '500',
-							minWidth: '120px',
-						},
-					}}
+				okButtonProps={{
+					disabled: importModal.fileList.length === 0,
+					style: {
+						background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, #7228d9 0%, #9c88ff 100%)',
+						borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : '#7228d9',
+						color: theme === 'sun' ? '#000' : '#fff',
+						borderRadius: '6px',
+						height: '32px',
+						fontWeight: '500',
+						fontSize: '16px',
+						padding: '4px 15px',
+						width: '150px',
+						transition: 'all 0.3s ease',
+						boxShadow: 'none'
+					},
+				}}
 					cancelButtonProps={{
 						style: {
-							height: '40px',
-							fontSize: '16px',
+							height: '32px',
 							fontWeight: '500',
-							minWidth: '100px',
+							fontSize: '16px',
+							padding: '4px 15px',
+							width: '100px'
 						},
 					}}
 				>
@@ -1914,9 +1943,9 @@ const ClassListTable = () => {
 					title={
 						<div
 							style={{
-								fontSize: '24px',
+								fontSize: '28px',
 								fontWeight: '600',
-								color: theme === 'dark' ? '#ffffff' : '#000000',
+								color: 'rgb(24, 144, 255)',
 								textAlign: 'center',
 								padding: '10px 0',
 							}}>
@@ -1933,7 +1962,7 @@ const ClassListTable = () => {
 							style={{
 								height: '32px',
 								fontWeight: '500',
-								fontSize: '14px',
+								fontSize: '16px',
 								padding: '4px 15px',
 								width: '100px'
 							}}>

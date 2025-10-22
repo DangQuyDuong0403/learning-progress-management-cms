@@ -593,18 +593,18 @@ const TeacherClassChapterDragEdit = () => {
 			{/* Add/Edit Chapter Modal */}
 			<Modal
 				title={
-					<div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+					<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px' }}>
 						{editingChapter ? (
 							<>
-								<EditOutlined style={{ fontSize: '20px', color: '#1890ff' }} />
-								<Title level={4} style={{ margin: 0, color: '#1890ff' }}>
+								<EditOutlined style={{ fontSize: '28px', color: 'rgb(24, 144, 255)' }} />
+								<Title level={4} style={{ margin: 0, color: 'rgb(24, 144, 255)', fontSize: '28px' }}>
 									{t('chapterManagement.editChapter')}
 								</Title>
 							</>
 						) : (
 							<>
-								<PlusOutlined style={{ fontSize: '20px', color: '#1890ff' }} />
-								<Title level={4} style={{ margin: 0, color: '#1890ff' }}>
+								<PlusOutlined style={{ fontSize: '28px', color: 'rgb(24, 144, 255)' }} />
+								<Title level={4} style={{ margin: 0, color: 'rgb(24, 144, 255)', fontSize: '28px' }}>
 									{t('chapterManagement.addChapter')}
 								</Title>
 							</>

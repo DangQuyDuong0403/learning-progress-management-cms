@@ -105,27 +105,26 @@ const ClassOverview = () => {
     <ThemedLayout>
       <div className={`class-overview ${theme}-class-overview`}>
         <div className="overview-container">
-          {/* Page Title */}
-          <div className="page-title-container">
-            <Typography.Title 
-              level={1} 
-              className="page-title"
-            >
-              {t('classMenu.overview')}
-            </Typography.Title>
-          </div>
-
           {/* Main Container */}
           <div className={`overview-main-container ${theme}-overview-main-container`}>
+            {/* Page Title */}
+            <div className="page-title-container">
+              <Typography.Title 
+                level={1} 
+                className="page-title"
+              >
+                {t('classMenu.overview')}
+              </Typography.Title>
+            </div>
 
             {/* Overview Content */}
             <div className={`overview-content ${theme}-overview-content`}>
           {/* Class Information Section */}
           <div className={`info-section ${theme}-info-section`}>
-            <h2 className={`section-title ${theme}-section-title`}>
-              {t('classOverview.classInformation')}
-            </h2>
             <div className={`section-content ${theme}-section-content`}>
+              <h2 className={`section-title ${theme}-section-title`}>
+                {t('classOverview.classInformation')}
+              </h2>
               <div className="info-text">
                 <span className="info-label">{t('classOverview.className')}:</span>
                 <span className="info-value">{classData?.name}</span>
@@ -151,10 +150,10 @@ const ClassOverview = () => {
 
           {/* Teachers Section */}
           <div className={`info-section ${theme}-info-section`}>
-            <h2 className={`section-title ${theme}-section-title`}>
-              {t('classOverview.teachers')}
-            </h2>
             <div className={`section-content ${theme}-section-content`}>
+              <h2 className={`section-title ${theme}-section-title`}>
+                {t('classOverview.teachers')}
+              </h2>
               <div className="info-text">
                 <span className="info-label">{t('classOverview.teacher')}:</span>
                 <span className="info-value">{classData?.teachers ? 'Available' : '-'}</span>
@@ -168,10 +167,10 @@ const ClassOverview = () => {
 
           {/* Schedule Section */}
           <div className={`info-section ${theme}-info-section`}>
-            <h2 className={`section-title ${theme}-section-title`}>
-              {t('classOverview.schedule')}
-            </h2>
             <div className={`section-content ${theme}-section-content`}>
+              <h2 className={`section-title ${theme}-section-title`}>
+                {t('classOverview.schedule')}
+              </h2>
               <div className="info-text">
                 <span className="info-label">{t('classOverview.startDateLabel')}:</span>
                 <span className="info-value">{classData?.startDate}</span>
