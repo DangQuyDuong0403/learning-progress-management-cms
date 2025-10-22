@@ -15,13 +15,15 @@ export const DailyChallengeMenuProvider = ({ children }) => {
   const [dailyChallengeData, setDailyChallengeData] = useState(null);
 
   // Function to enter daily challenge menu mode
-  const enterDailyChallengeMenu = (challengeCount) => {
+  const enterDailyChallengeMenu = useCallback((challengeCount, subtitle = null, backPath = null) => {
     // Set daily challenge menu mode
     setIsInDailyChallengeMenu(true);
     setDailyChallengeData({
       count: challengeCount,
+      subtitle: subtitle,
+      backPath: backPath,
     });
-  };
+  }, []);
 
   // Function to exit daily challenge menu mode
   const exitDailyChallengeMenu = useCallback(() => {

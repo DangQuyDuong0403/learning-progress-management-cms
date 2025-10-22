@@ -63,55 +63,13 @@ export default function ThemedHeader() {
       return;
     }
 
-    // Determine route prefix based on user role
-    const userRole = user?.role?.toLowerCase();
-    let routePrefix = '/manager/classes'; // default
-
-    switch (userRole) {
-      case 'manager':
-        routePrefix = '/manager/classes';
-        break;
-      case 'teacher':
-        routePrefix = '/teacher/classes';
-        break;
-      case 'teaching_assistant':
-        routePrefix = '/teaching-assistant/classes';
-        break;
-      default:
-        routePrefix = '/manager/classes';
-    }
-
-    // If currently on class menu, go back to class list; otherwise go to class menu
-    const isOnClassMenu = location.pathname.includes('/menu/');
-    if (isOnClassMenu) {
-      navigate(routePrefix);
-    } else if (classData?.id) {
-      navigate(`${routePrefix}/menu/${classData.id}`);
-    } else {
-      navigate(routePrefix);
-    }
+    // Go back to previous page
+    navigate(-1);
   };
 
   const handleBackToDashboard = () => {
-    // Determine dashboard route based on user role
-    const userRole = user?.role?.toLowerCase();
-    let dashboardRoute = '/manager/dashboard'; // default
-
-    switch (userRole) {
-      case 'manager':
-        dashboardRoute = '/manager/dashboard';
-        break;
-      case 'teacher':
-        dashboardRoute = '/teacher/dashboard';
-        break;
-      case 'teaching_assistant':
-        dashboardRoute = '/teaching-assistant/dashboard';
-        break;
-      default:
-        dashboardRoute = '/manager/dashboard';
-    }
-
-    navigate(dashboardRoute);
+    // Go back to previous page
+    navigate(-1);
   };
 
   const handleBackToSyllabusList = () => {
@@ -119,45 +77,14 @@ export default function ThemedHeader() {
   };
 
   const handleBackToDailyChallengeList = () => {
-    // If in class menu context, go back to class menu
-    if (isInClassMenu && classData?.id) {
-      const userRole = user?.role?.toLowerCase();
-      let classRoutePrefix = '/manager/classes'; // default
-
-      switch (userRole) {
-        case 'manager':
-          classRoutePrefix = '/manager/classes';
-          break;
-        case 'teacher':
-          classRoutePrefix = '/teacher/classes';
-          break;
-        case 'teaching_assistant':
-          classRoutePrefix = '/teaching-assistant/classes';
-          break;
-        default:
-          classRoutePrefix = '/manager/classes';
-      }
-
-      navigate(`${classRoutePrefix}/menu/${classData.id}`);
+    // If custom backPath is provided in context, use it
+    if (dailyChallengeData?.backPath) {
+      navigate(dailyChallengeData.backPath);
       return;
     }
 
-    // Otherwise, go back to daily challenges list or dashboard
-    const userRole = user?.role?.toLowerCase();
-    let routePrefix = '/teacher/daily-challenges'; // default
-
-    switch (userRole) {
-      case 'teacher':
-        routePrefix = '/teacher/daily-challenges';
-        break;
-      case 'teaching_assistant':
-        routePrefix = '/teaching-assistant/daily-challenges';
-        break;
-      default:
-        routePrefix = '/teacher/daily-challenges';
-    }
-
-    navigate(routePrefix);
+    // Go back to previous page
+    navigate(-1);
   };
 
   // Handle back button click - go to dashboard
@@ -188,27 +115,8 @@ export default function ThemedHeader() {
 
   // Handle back button for Settings/Profile page
   const handleBackFromSettingsOrProfile = () => {
-    const userRole = user?.role?.toLowerCase();
-    let dashboardRoute = '/manager/dashboard'; // default
-
-    switch (userRole) {
-      case 'teacher':
-        dashboardRoute = '/teacher/dashboard';
-        break;
-      case 'teaching_assistant':
-        dashboardRoute = '/teaching-assistant/dashboard';
-        break;
-      case 'student':
-        dashboardRoute = '/student/dashboard';
-        break;
-      case 'test_taker':
-        dashboardRoute = '/test-taker/dashboard';
-        break;
-      default:
-        dashboardRoute = '/manager/dashboard';
-    }
-
-    navigate(dashboardRoute);
+    // Go back to previous page
+    navigate(-1);
   };
 
   return (
@@ -459,7 +367,15 @@ export default function ThemedHeader() {
                   color: theme === 'sun' ? '#1e40af' : '#fff',
                   textShadow: theme === 'sun' ? '0 0 5px rgba(30, 64, 175, 0.3)' : '0 0 15px rgba(134, 134, 134, 0.8)'
                 }}>
-                  {t('dailyChallenge.dailyChallengeManagement')} ({dailyChallengeData.count})
+                  {t('dailyChallenge.dailyChallengeManagement')}
+                  {dailyChallengeData.subtitle && (
+                    <span style={{
+                      fontWeight: '500',
+                      marginLeft: '8px'
+                    }}>
+                      / {dailyChallengeData.subtitle}
+                    </span>
+                  )}
                 </h2>
               </div>
             )}
