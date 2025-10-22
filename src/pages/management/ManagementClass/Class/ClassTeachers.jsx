@@ -77,6 +77,11 @@ const ClassTeachers = () => {
   const [isImportModalVisible, setIsImportModalVisible] = useState(false);
   const [fileList, setFileList] = useState([]);
   
+  // Available teachers state
+  const [availableTeachers, setAvailableTeachers] = useState([]);
+  const [availableTeachingAssistants, setAvailableTeachingAssistants] = useState([]);
+  const [loadingTeachers, setLoadingTeachers] = useState(false);
+  
   // Refs for click outside detection
   const filterContainerRef = useRef(null);
 
@@ -200,6 +205,44 @@ const ClassTeachers = () => {
     }
   }, [id, t]);
 
+  // Fetch available teachers for adding to class
+  const fetchAvailableTeachers = useCallback(async () => {
+    setLoadingTeachers(true);
+    try {
+      // Fetch teachers
+      const teacherResponse = await classManagementApi.getAvailableTeachers({
+        page: 0,
+        size: 100,
+        role: 'teacher',
+        status: 'ACTIVE'
+      });
+      
+      // Fetch teaching assistants
+      const taResponse = await classManagementApi.getAvailableTeachers({
+        page: 0,
+        size: 100,
+        role: 'teaching_assistant',
+        status: 'ACTIVE'
+      });
+      
+      console.log('Available teachers response:', teacherResponse);
+      console.log('Available TAs response:', taResponse);
+      
+      if (teacherResponse.success) {
+        setAvailableTeachers(teacherResponse.data || []);
+      }
+      
+      if (taResponse.success) {
+        setAvailableTeachingAssistants(taResponse.data || []);
+      }
+    } catch (error) {
+      console.error('Error fetching available teachers:', error);
+      spaceToast.error('Failed to load available teachers');
+    } finally {
+      setLoadingTeachers(false);
+    }
+  }, []);
+
   // Initial data loading
   useEffect(() => {
     fetchClassData();
@@ -276,6 +319,7 @@ const ClassTeachers = () => {
   const handleAddTeacher = () => {
     form.resetFields();
     setIsModalVisible(true);
+    fetchAvailableTeachers(); // Fetch available teachers when opening modal
   };
 
   const handleImportModalOk = () => {
@@ -305,13 +349,35 @@ const ClassTeachers = () => {
     setIsDeleteModalVisible(true);
   };
 
-  const handleConfirmDelete = () => {
+  const handleConfirmDelete = async () => {
     if (teacherToDelete) {
       console.log("Confirm delete for teacher:", teacherToDelete);
-      const updatedTeachers = teachers.filter(t => t.id !== teacherToDelete.id);
-      console.log("Updated teachers:", updatedTeachers);
-      setTeachers(updatedTeachers);
-      spaceToast.success(`${t('classTeachers.deleteSuccess')} ${teacherToDelete.role === 'teacher' ? t('classTeachers.teacher') : t('classTeachers.teachingAssistant')} "${teacherToDelete.name}"`);
+      
+      try {
+        const response = await classManagementApi.removeTeacherFromClass(id, teacherToDelete.userId);
+        
+        console.log('Remove teacher response:', response);
+        
+        if (response.success) {
+          spaceToast.success(`${t('classTeachers.deleteSuccess')} ${teacherToDelete.role === 'teacher' ? t('classTeachers.teacher') : t('classTeachers.teachingAssistant')} "${teacherToDelete.name}"`);
+          
+          // Refresh the teachers list
+          fetchTeachers();
+        } else {
+          spaceToast.error(response.message || t('classTeachers.deleteError'));
+        }
+      } catch (error) {
+        console.error('Error removing teacher:', error);
+        
+        // Use BE error message if available, otherwise fallback to generic message
+        const errorMessage = error.response?.data?.message || 
+                            error.response?.data?.error || 
+                            error.message || 
+                            t('classTeachers.deleteError');
+        
+        spaceToast.error(errorMessage);
+      }
+      
       setIsDeleteModalVisible(false);
       setTeacherToDelete(null);
     }
@@ -328,16 +394,59 @@ const ClassTeachers = () => {
       const values = await form.validateFields();
       console.log("Form values:", values);
 
-      // TODO: Implement real API call to add teachers
-      spaceToast.success(t('classTeachers.addSuccess'));
+      // Prepare teachers data according to API spec
+      const teachersToAdd = [];
+      
+      // Add selected teacher
+      if (values.selectedTeacher) {
+        teachersToAdd.push({
+          userId: values.selectedTeacher,
+          roleInClass: "TEACHER"
+        });
+      }
+      
+      // Add selected teaching assistants
+      if (values.selectedTeachingAssistants && values.selectedTeachingAssistants.length > 0) {
+        values.selectedTeachingAssistants.forEach(taId => {
+          teachersToAdd.push({
+            userId: taId,
+            roleInClass: "TEACHING_ASSISTANT"
+          });
+        });
+      }
+      
+      if (teachersToAdd.length === 0) {
+        spaceToast.warning(t('classTeachers.selectAtLeastOneTeacher'));
+        return;
+      }
+      
+      // Call API to add teachers
+      const response = await classManagementApi.addTeacherToClass(id, {
+        teachers: teachersToAdd
+      });
+      
+      console.log('Add teachers response:', response);
+      
+      if (response.success) {
+        spaceToast.success(t('classTeachers.addSuccess'));
         setIsModalVisible(false);
         form.resetFields();
-      
-      // Refresh the teachers list
-      fetchTeachers();
+        
+        // Refresh the teachers list
+        fetchTeachers();
+      } else {
+        spaceToast.error(response.message || t('classTeachers.addError'));
+      }
     } catch (error) {
-      console.error("Error adding staff:", error);
-      spaceToast.error(t('classTeachers.checkInfoError'));
+      console.error("Error adding teachers:", error);
+      
+      // Use BE error message if available, otherwise fallback to generic message
+      const errorMessage = error.response?.data?.message || 
+                          error.response?.data?.error || 
+                          error.message || 
+                          t('classTeachers.addError');
+      
+      spaceToast.error(errorMessage);
     }
   };
 
@@ -639,8 +748,18 @@ const ClassTeachers = () => {
                   fontSize: "15px",
                 }}
                 allowClear
+                loading={loadingTeachers}
+                showSearch
+                optionFilterProp="children"
+                filterOption={(input, option) =>
+                  (option?.children ?? '').toLowerCase().includes(input.toLowerCase())
+                }
               >
-                <Option value="placeholder">Coming Soon...</Option>
+                {availableTeachers.map(teacher => (
+                  <Option key={teacher.id} value={teacher.id}>
+                    {teacher.fullName || teacher.userName} ({teacher.email})
+                  </Option>
+                ))}
               </Select>
             </Form.Item>
 
@@ -655,8 +774,18 @@ const ClassTeachers = () => {
                   fontSize: "15px",
                 }}
                 allowClear
+                loading={loadingTeachers}
+                showSearch
+                optionFilterProp="children"
+                filterOption={(input, option) =>
+                  (option?.children ?? '').toLowerCase().includes(input.toLowerCase())
+                }
               >
-                <Option value="placeholder">Coming Soon...</Option>
+                {availableTeachingAssistants.map(ta => (
+                  <Option key={ta.id} value={ta.id}>
+                    {ta.fullName || ta.userName} ({ta.email})
+                  </Option>
+                ))}
               </Select>
             </Form.Item>
            </Form>

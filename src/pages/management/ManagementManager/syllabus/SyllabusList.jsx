@@ -1427,9 +1427,10 @@ const SyllabusList = () => {
 						loading={validateLoading}
 						disabled={importModal.fileList.length === 0 || validateLoading}
 						style={{
-							backgroundColor: '#52c41a',
-							borderColor: '#52c41a',
-							color: '#ffffff',
+							backgroundColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
+							background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
+							borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'transparent',
+							color: theme === 'sun' ? '#000000' : '#ffffff',
 							height: '40px',
 							fontSize: '16px',
 							fontWeight: '500',

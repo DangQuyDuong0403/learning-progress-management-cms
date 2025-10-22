@@ -37,6 +37,12 @@ const syllabusManagementApi = {
             'Content-Type': 'multipart/form-data',
         },
     }),
+    validateLessonImportFile: (formData) => axiosClient.post('/lesson/validate-import', formData, {
+        headers: {
+            'Content-Type': 'multipart/form-data',
+        },
+        responseType: 'blob', // Quan trọng để nhận file từ server
+    }),
     downloadLessonTemplate: () => axiosClient.get('/lesson/download-template'),
     
     // Chapter Import/Export APIs
@@ -44,6 +50,12 @@ const syllabusManagementApi = {
         headers: {
             'Content-Type': 'multipart/form-data',
         },
+    }),
+    validateChapterImportFile: (formData) => axiosClient.post('/chapter/validate-import', formData, {
+        headers: {
+            'Content-Type': 'multipart/form-data',
+        },
+        responseType: 'blob', // Quan trọng để nhận file từ server
     }),
     downloadChapterTemplate: () => axiosClient.get('/chapter/download-template'),
     
