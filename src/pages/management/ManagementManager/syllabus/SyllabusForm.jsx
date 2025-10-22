@@ -8,60 +8,148 @@ import {
 	Space,
 	Row,
 	Col,
-	InputNumber,
 } from 'antd';
 import { useTranslation } from 'react-i18next';
-import { useDispatch, useSelector } from 'react-redux';
-import {
-	createSyllabus,
-	updateSyllabus,
-} from '../../../../redux/syllabus';
-import { fetchLevels } from '../../../../redux/level';
+import { useNavigate } from 'react-router-dom';
+import { useTheme } from '../../../../contexts/ThemeContext';
+import usePageTitle from '../../../../hooks/usePageTitle';
+import syllabusManagementApi from '../../../../apis/backend/syllabusManagement';
+import levelManagementApi from '../../../../apis/backend/levelManagement';
+import { spaceToast } from '../../../../component/SpaceToastify';
 
 const { TextArea } = Input;
 const { Option } = Select;
 
-const SyllabusForm = ({ syllabus, onClose }) => {
+const SyllabusForm = ({ syllabus, onClose, onSuccess }) => {
 	const { t } = useTranslation();
-	const dispatch = useDispatch();
-	const { loading } = useSelector((state) => state.syllabus);
-	const { levels } = useSelector((state) => state.level);
-
+	const navigate = useNavigate();
+	const { theme } = useTheme();
+	
+	// Set page title
+	usePageTitle(syllabus ? 'Edit Syllabus' : 'Add Syllabus');
+	
 	const [form] = Form.useForm();
 	const [isSubmitting, setIsSubmitting] = useState(false);
+	const [isButtonDisabled, setIsButtonDisabled] = useState(false);
+	const [loading, setLoading] = useState(false);
+	const [levels, setLevels] = useState([]);
 
 	const isEdit = !!syllabus;
 
 	useEffect(() => {
-		if (syllabus) {
-			form.setFieldsValue(syllabus);
-		}
-	}, [syllabus, form]);
+		// Load published levels when component mounts
+		const fetchPublishedLevels = async () => {
+			setLoading(true);
+			try {
+				const params = {
+					page: 0,
+					size: 100, // Get all published levels
+				};
+				
+				const response = await levelManagementApi.getPublishedLevels({
+					params: params,
+				});
+				
+				// Handle different response structures
+				const levelsData = response.data?.content || response.data || [];
+				setLevels(levelsData);
+				
+				console.log('Fetched published levels:', levelsData);
+			} catch (error) {
+				console.error('Error fetching published levels:', error);
+				
+				// Handle error message from backend
+				let errorMessage = error.response?.data?.error || 
+					error.response?.data?.message || 
+					error.message ||
+					t('levelManagement.loadLevelsError') || 'Failed to load levels';
+				
+				message.error(errorMessage);
+				setLevels([]); // Set empty array on error
+			} finally {
+				setLoading(false);
+			}
+		};
+		fetchPublishedLevels();
+	}, [t]);
 
+	// Set form values after levels are loaded (for edit mode)
 	useEffect(() => {
-		// Load levels when component mounts
-		dispatch(fetchLevels());
-	}, [dispatch]);
+		if (syllabus && levels.length > 0) {
+			// Map syllabus data to form format
+			const formData = {
+				...syllabus,
+				levelId: syllabus.level?.id || syllabus.levelId // Use level.id if available, fallback to levelId
+			};
+			form.setFieldsValue(formData);
+			console.log('Setting form values for edit:', formData);
+		}
+	}, [syllabus, levels, form]);
 
 	const onFinish = async (values) => {
+		if (isButtonDisabled) return; // Prevent multiple submissions
+		
 		setIsSubmitting(true);
+		setIsButtonDisabled(true);
+		
 		try {
+			// Map form values to API request body format
+			const requestBody = {
+				syllabusName: values.name,
+				levelId: values.levelId,
+				description: values.description,
+				// Add other fields if needed
+				...(values.duration && { duration: values.duration }),
+				...(values.status && { status: values.status }),
+				...(values.objectives && { objectives: values.objectives }),
+				...(values.learningOutcomes && { learningOutcomes: values.learningOutcomes }),
+				...(values.assessmentCriteria && { assessmentCriteria: values.assessmentCriteria }),
+			};
+
+			console.log('Sending request body:', requestBody);
+
+			let response;
 			if (isEdit) {
-				await dispatch(updateSyllabus({ id: syllabus.id, ...values }));
-				message.success(t('syllabusManagement.updateSyllabusSuccess'));
+				response = await syllabusManagementApi.updateSyllabus(syllabus.id, requestBody);
+				
+				// Call onSuccess callback to refresh the list
+				if (onSuccess) {
+					onSuccess();
+				}
+				
+				onClose();
 			} else {
-				await dispatch(createSyllabus(values));
-				message.success(t('syllabusManagement.addSyllabusSuccess'));
+				response = await syllabusManagementApi.createSyllabus(requestBody);
+				spaceToast.success(response.message);
+				
+				// Navigate to chapter list of the newly created syllabus
+				if (response.data && response.data.id) {
+					console.log('Navigating to chapter list for syllabus:', response.data.id);
+					navigate(`/manager/syllabuses/${response.data.id}/chapters`);
+				} else {
+					// Fallback: call onSuccess callback to refresh the list
+					if (onSuccess) {
+						onSuccess();
+					}
+					onClose();
+				}
 			}
-			onClose();
 		} catch (error) {
-			message.error(
-				isEdit
-					? t('syllabusManagement.updateSyllabusError')
-					: t('syllabusManagement.addSyllabusError')
-			);
+			console.error('Error saving syllabus:', error);
+			
+			// Handle error message from backend
+			let errorMessage = error.response?.data?.error || 
+				error.response?.data?.message || 
+				error.message ||
+				(isEdit ? t('syllabusManagement.updateSyllabusError') : t('syllabusManagement.addSyllabusError'));
+			
+				spaceToast.error(errorMessage);
 		} finally {
 			setIsSubmitting(false);
+			// Re-enable button after 0.5 seconds
+			setTimeout(() => {
+				setIsButtonDisabled(false);
+			}, 500);
 		}
 	};
 
@@ -70,10 +158,6 @@ const SyllabusForm = ({ syllabus, onClose }) => {
 		onClose();
 	};
 
-	const statusOptions = [
-		{ value: 'active', label: t('syllabusManagement.active') },
-		{ value: 'inactive', label: t('syllabusManagement.inactive') },
-	];
 
 	return (
 		<Form
@@ -90,7 +174,7 @@ const SyllabusForm = ({ syllabus, onClose }) => {
 				<Col span={12}>
 					<Form.Item
 						name="name"
-						label={t('syllabusManagement.syllabusName')}
+						label={<span>{t('syllabusManagement.syllabusName')} <span style={{ color: 'red' }}>*</span></span>}
 						rules={[
 							{
 								required: true,
@@ -100,18 +184,24 @@ const SyllabusForm = ({ syllabus, onClose }) => {
 								min: 2,
 								message: t('syllabusManagement.syllabusNameMinLength'),
 							},
+							{
+								max: 100,
+								message: t('syllabusManagement.syllabusNameTooLong'),
+							},
 						]}
 					>
 						<Input
 							placeholder={t('syllabusManagement.syllabusNamePlaceholder')}
 							size="large"
+							maxLength={100}
+							showCount
 						/>
 					</Form.Item>
 				</Col>
 				<Col span={12}>
 					<Form.Item
 						name="levelId"
-						label={t('syllabusManagement.level')}
+						label={<span>{t('syllabusManagement.level')} <span style={{ color: 'red' }}>*</span></span>}
 						rules={[
 							{
 								required: true,
@@ -120,18 +210,23 @@ const SyllabusForm = ({ syllabus, onClose }) => {
 						]}
 					>
 						<Select
-							placeholder={t('syllabusManagement.selectLevel')}
+							placeholder={loading ? t('common.loading') : t('syllabusManagement.selectLevel')}
 							size="large"
-							showSearch
-							filterOption={(input, option) =>
-								option.children.toLowerCase().includes(input.toLowerCase())
-							}
+							loading={loading}
+							disabled={loading}
+							notFoundContent={loading ? t('common.loading') : t('syllabusManagement.noLevelsFound')}
 						>
-							{levels.map((level) => (
-								<Option key={level.id} value={level.id}>
-									{level.name} ({level.code})
-								</Option>
-							))}
+							{levels.map((level) => {
+								// Handle different field names that might come from API
+								const levelName = level.name || level.levelName || level.title || 'Unknown Level';
+								const levelCode = level.code || level.levelCode || '';
+								
+								return (
+									<Option key={level.id} value={level.id}>
+										{levelName} {levelCode ? `(${levelCode})` : ''}
+									</Option>
+								);
+							})}
 						</Select>
 					</Form.Item>
 				</Col>
@@ -140,16 +235,6 @@ const SyllabusForm = ({ syllabus, onClose }) => {
 			<Form.Item
 				name="description"
 				label={t('syllabusManagement.description')}
-				rules={[
-					{
-						required: true,
-						message: t('syllabusManagement.descriptionRequired'),
-					},
-					{
-						min: 10,
-						message: t('syllabusManagement.descriptionMinLength'),
-					},
-				]}
 			>
 				<TextArea
 					rows={3}
@@ -159,7 +244,7 @@ const SyllabusForm = ({ syllabus, onClose }) => {
 				/>
 			</Form.Item>
 
-			<Row gutter={16}>
+			{/* <Row gutter={16}>
 				<Col span={8}>
 					<Form.Item
 						name="duration"
@@ -267,7 +352,7 @@ const SyllabusForm = ({ syllabus, onClose }) => {
 					maxLength={500}
 					showCount
 				/>
-			</Form.Item>
+			</Form.Item> */}
 
 			<Form.Item style={{ marginBottom: 0, textAlign: 'right' }}>
 				<Space>
@@ -278,7 +363,17 @@ const SyllabusForm = ({ syllabus, onClose }) => {
 						type="primary"
 						htmlType="submit"
 						loading={isSubmitting || loading}
+						disabled={isButtonDisabled}
 						size="large"
+						style={{
+							background: theme === 'sun' 
+								? 'rgb(113, 179, 253)' 
+								: 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
+							color: theme === 'sun' ? '#000' : '#fff',
+							borderColor: theme === 'sun' 
+								? 'rgb(113, 179, 253)' 
+								: 'transparent'
+						}}
 					>
 						{isEdit ? t('common.update') : t('common.save')}
 					</Button>

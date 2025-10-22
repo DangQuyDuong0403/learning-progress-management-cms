@@ -31,12 +31,10 @@ import ChapterForm from './ChapterForm';
 import LessonList from './LessonList';
 import {
 	fetchChaptersBySyllabus,
-	deleteChapter,
 	updateChapterStatus,
 } from '../../../../redux/syllabus';
 
 const { Search } = Input;
-const { Panel } = Collapse;
 
 const ChapterList = ({ syllabus, onClose }) => {
 	const { t } = useTranslation();
@@ -93,14 +91,6 @@ const ChapterList = ({ syllabus, onClose }) => {
 		setIsLessonModalVisible(true);
 	};
 
-	const handleStatusChange = async (id, status) => {
-		try {
-			await dispatch(updateChapterStatus({ id, status }));
-			message.success(t('chapterManagement.updateChapterSuccess'));
-		} catch (error) {
-			message.error(t('chapterManagement.updateChapterError'));
-		}
-	};
 
 	const handleModalClose = () => {
 		setIsModalVisible(false);
@@ -276,7 +266,6 @@ const ChapterList = ({ syllabus, onClose }) => {
 				<Row gutter={16} align="middle">
 					<Col flex="auto">
 						<Search
-							placeholder={t('chapterManagement.searchPlaceholder')}
 							style={{ width: 300 }}
 							value={searchText}
 							onChange={(e) => setSearchText(e.target.value)}

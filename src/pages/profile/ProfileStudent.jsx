@@ -1,7 +1,6 @@
 import React, { useRef, useState } from 'react';
 import { toast } from 'react-toastify';
-import Header from '../../component/Header';
-import Sidebar from '../../component/Sidebar';
+import ThemedHeader from '../../component/ThemedHeader';
 import './Profile.css';
 
 export default function Profile() {
@@ -9,8 +8,7 @@ export default function Profile() {
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const lastNameRef = useRef();
-  const firstNameRef = useRef();
+  const fullNameRef = useRef();
   const emailRef = useRef();
   const birthDateRef = useRef();
   const newPasswordRef = useRef();
@@ -36,21 +34,16 @@ export default function Profile() {
 
   const handleUpdate = (e) => {
     e.preventDefault();
-    const lastName = lastNameRef.current.value.trim();
-    const firstName = firstNameRef.current.value.trim();
+    const fullName = fullNameRef.current.value.trim();
     const email = emailRef.current.value.trim();
     const birthDate = birthDateRef.current.value;
 
-    if (!lastName || !firstName || !email || !birthDate) {
+    if (!fullName || !email || !birthDate) {
       toast.error('Fields cannot be empty!');
       return;
     }
-    if (!validateName(lastName)) {
-      toast.error('Last name must be at least 2 letters, no numbers or special characters!');
-      return;
-    }
-    if (!validateName(firstName)) {
-      toast.error('First name must be at least 2 letters, no numbers or special characters!');
+    if (!validateName(fullName)) {
+      toast.error('Full name must be at least 2 letters, no numbers or special characters!');
       return;
     }
     if (!validateEmail(email)) {
@@ -59,6 +52,12 @@ export default function Profile() {
     }
     if (isFutureDate(birthDate)) {
       toast.error('Date of birth cannot be in the future!');
+      return;
+    }
+    // Check if date is before 1920
+    const birthYear = new Date(birthDate).getFullYear();
+    if (birthYear < 1920) {
+      toast.error('Date of birth must be from 1920 onwards!');
       return;
     }
     toast.success('Profile updated successfully!');
@@ -84,7 +83,7 @@ export default function Profile() {
 
   return (
     <div className="profile-container">
-      <Header />
+      <ThemedHeader />
       <div className="main-layout">
        
         <div className="content-area">
@@ -129,23 +128,13 @@ export default function Profile() {
                         {/* Right side - Form Fields */}
                         <div className="profile-right">
                           <div className="form-group">
-                            <label htmlFor="lastName">Last Name</label>
+                            <label htmlFor="fullName">Full Name</label>
                             <input 
                               type="text" 
-                              id="lastName" 
+                              id="fullName" 
                               className="form-input" 
-                              defaultValue="Nguyen Duc"
-                              ref={lastNameRef}
-                            />
-                          </div>
-                          <div className="form-group">
-                            <label htmlFor="firstName">First Name</label>
-                            <input 
-                              type="text" 
-                              id="firstName" 
-                              className="form-input" 
-                              defaultValue="Anh"
-                              ref={firstNameRef}
+                              defaultValue="Nguyen Duc Anh"
+                              ref={fullNameRef}
                             />
                           </div>
                           <div className="form-group">
@@ -154,7 +143,7 @@ export default function Profile() {
                               type="email" 
                               id="email" 
                               className="form-input" 
-                              defaultValue="anhtony2003@gmail.com"
+                              defaultValue="email"
                               ref={emailRef}
                             />
                           </div>
@@ -182,6 +171,7 @@ export default function Profile() {
                                 className="form-input" 
                                 defaultValue="2003-05-16"
                                 ref={birthDateRef}
+                                min="1920-01-01"
                               />
                               <i className="ti ti-calendar date-icon"></i>
                             </div>

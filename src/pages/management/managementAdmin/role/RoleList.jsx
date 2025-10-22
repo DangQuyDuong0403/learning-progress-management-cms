@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { Collapse, Checkbox } from "antd";
 import {
@@ -11,9 +11,6 @@ import {
   Form,
   Select,
   Tooltip,
-  Card,
-  Row,
-  Col,
 } from "antd";
 import {
   EditOutlined,
@@ -23,7 +20,9 @@ import {
   CheckOutlined,
   StopOutlined,
 } from "@ant-design/icons";
-import Layout from "../../../../component/Layout";
+import ThemedLayout from "../../../../component/ThemedLayout";
+import LoadingWithEffect from "../../../../component/spinner/LoadingWithEffect";
+import { useTheme } from "../../../../contexts/ThemeContext";
 import "./RoleList.css";
 import { spaceToast } from "../../../../component/SpaceToastify";
 
@@ -70,9 +69,11 @@ const mockRoles = [
 
 const RoleList = () => {
   const { t } = useTranslation();
-  const [roles, setRoles] = useState(mockRoles);
+  const { theme } = useTheme();
+  const [loading, setLoading] = useState(true);
+  const [roles, setRoles] = useState([]);
   const [searchText, setSearchText] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [statusFilter] = useState("all");
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [editingRole, setEditingRole] = useState(null);
   const [form] = Form.useForm();
@@ -83,6 +84,24 @@ const RoleList = () => {
     content: '',
     onConfirm: null
   });
+
+  const fetchRoles = useCallback(async () => {
+    setLoading(true);
+    try {
+      // Simulate API call
+      setTimeout(() => {
+        setRoles(mockRoles);
+        setLoading(false);
+      }, 1000);
+    } catch (error) {
+      spaceToast.error(t('roleManagement.loadRolesError'));
+      setLoading(false);
+    }
+  }, [t]);
+
+  useEffect(() => {
+    fetchRoles();
+  }, [fetchRoles]);
 
   // Role options with translations
   const roleOptions = [
@@ -176,9 +195,9 @@ const RoleList = () => {
       dataIndex: "role",
       key: "role",
       render: (role) => (
-        <Tag color="blue" style={{ fontWeight: 600 }}>
+        <span className="role-name-text" style={{ fontSize: '20px' }}>
           {translateRole(role)}
-        </Tag>
+        </span>
       ),
       sorter: (a, b) => a.role.localeCompare(b.role),
     },
@@ -188,9 +207,9 @@ const RoleList = () => {
       key: "active",
       render: (active) =>
         active ? (
-          <Tag color="green">{t('roleManagement.active')}</Tag>
+          <Tag color="green" style={{ fontSize: '14px' }}>{t('roleManagement.active')}</Tag>
         ) : (
-          <Tag color="red">{t('roleManagement.inactive')}</Tag>
+          <Tag color="red" style={{ fontSize: '14px' }}>{t('roleManagement.inactive')}</Tag>
         ),
       filters: [
         { text: t('roleManagement.active'), value: true },
@@ -202,12 +221,13 @@ const RoleList = () => {
       title: t('roleManagement.permissions'),
       dataIndex: "permissions",
       key: "permissions",
-      render: (permissions) =>
-        permissions.map((p, idx) => (
-          <Tag key={idx} color="purple">
-            {translatePermission(p)}
-          </Tag>
-        )),
+       render: (permissions) =>
+         permissions.map((p, idx) => (
+           <span key={idx} className="permission-text" style={{ display: 'inline-block', marginRight: '8px', fontSize: '20px' }}>
+             {translatePermission(p)}
+             {idx < permissions.length - 1 && ', '}
+           </span>
+         )),
     },
     {
       title: t('roleManagement.actions'),
@@ -326,92 +346,76 @@ const RoleList = () => {
   };
 
   return (
-    <Layout>
-      <div className="account-list-container">
-        <Card className="header-card">
-          <Row justify="space-between" align="middle">
-            <Col>
-              <h2
-                style={{
-                  margin: 0,
-                  background:
-                    "linear-gradient(90deg, #5e17eb 0%, #4dd0ff 100%)",
-                  WebkitBackgroundClip: "text",
-                  WebkitTextFillColor: "transparent",
-                  fontWeight: 700,
-                }}
-              >
-                {t('roleManagement.title')}
-              </h2>
-              <p style={{ margin: "4px 0 0 0", color: "#666" }}>
-                {t('roleManagement.totalRoles')}: {filteredRoles.length} {t('roleManagement.roles')}
-              </p>
-            </Col>
-            <Col>
-              <Space>
-                <Button
-                  type="primary"
-                  icon={<PlusOutlined />}
-                  onClick={handleAddRole}
-                >
-                  {t('roleManagement.addRole')}
-                </Button>
-                <Button
-                  icon={<ReloadOutlined />}
-                  onClick={() => setRoles(mockRoles)}
-                >
-                  {t('roleManagement.refresh')}
-                </Button>
-              </Space>
-            </Col>
-          </Row>
-        </Card>
-
-        <Card className="filter-card">
-          <Row gutter={[16, 16]} align="middle">
-            <Col xs={24} sm={12} md={8} lg={6}>
+    <ThemedLayout>
+        {/* Main Content Panel */}
+        <div className={`main-content-panel ${theme}-main-panel`}>
+          {/* Header Section */}
+          <div className={`panel-header ${theme}-panel-header`}>
+            <div className="search-section">
               <Input
-                placeholder={t('roleManagement.searchPlaceholder')}
                 prefix={<SearchOutlined />}
                 value={searchText}
                 onChange={(e) => setSearchText(e.target.value)}
+                className={`search-input ${theme}-search-input`}
+                style={{ flex: '1', minWidth: '250px', maxWidth: '400px', width: '350px', height: '40px', fontSize: '16px' }}
                 allowClear
               />
-            </Col>
-            <Col xs={24} sm={12} md={8} lg={6}>
-              <Select
-                placeholder={t('roleManagement.filterByStatus')}
-                value={statusFilter}
-                onChange={setStatusFilter}
-                style={{ width: "100%" }}
+            </div>
+            <div className="action-buttons">
+              <Button 
+                icon={<ReloadOutlined />}
+                className={`export-button ${theme}-export-button`}
+                onClick={fetchRoles}
               >
-                <Option value="all">{t('roleManagement.allStatuses')}</Option>
-                <Option value="active">{t('roleManagement.active')}</Option>
-                <Option value="inactive">{t('roleManagement.inactive')}</Option>
-              </Select>
-            </Col>
-          </Row>
-        </Card>
+                Refresh
+              </Button>
+              <Button 
+                icon={<PlusOutlined />}
+                className={`create-button ${theme}-create-button`}
+                onClick={handleAddRole}
+              >
+                Create Role
+              </Button>
+            </div>
+          </div>
 
-        <Card>
-          <Table
-            columns={columns}
-            dataSource={filteredRoles}
-            rowKey="id"
-            pagination={{
-              total: filteredRoles.length,
-              pageSize: 10,
-              showSizeChanger: true,
-              showQuickJumper: true,
-              showTotal: (total, range) =>
-                `${range[0]}-${range[1]} ${t('roleManagement.paginationText')} ${total} ${t('roleManagement.rolesText')}`,
-            }}
-            scroll={{ x: 800 }}
-          />
-        </Card>
+          {/* Table Section */}
+          <div className={`table-section ${theme}-table-section`}>
+            <LoadingWithEffect
+              loading={loading}
+              message={t('roleManagement.loadingRoles')}>
+              <Table
+                columns={columns}
+                dataSource={filteredRoles}
+                rowKey="id"
+                pagination={{
+                  total: filteredRoles.length,
+                  pageSize: 10,
+                  showSizeChanger: true,
+                  showQuickJumper: true,
+                  showTotal: (total, range) =>
+                    `${range[0]}-${range[1]} of ${total}`,
+                  className: `${theme}-pagination`
+                }}
+                scroll={{ x: 800 }}
+                className={`role-table ${theme}-role-table`}
+              />
+            </LoadingWithEffect>
+          </div>
+        </div>
 
         <Modal
-          title={editingRole ? t('roleManagement.editRole') : t('roleManagement.addNewRole')}
+          title={
+            <div style={{ 
+              fontSize: '20px', 
+              fontWeight: '600', 
+              color: '#000000ff',
+              textAlign: 'center',
+              padding: '10px 0'
+            }}>
+              {editingRole ? t('roleManagement.editRole') : t('roleManagement.addNewRole')}
+            </div>
+          }
           open={isModalVisible}
           onOk={handleModalOk}
           onCancel={handleModalCancel}
@@ -421,11 +425,17 @@ const RoleList = () => {
         >
           <Form form={form} layout="vertical">
             <Form.Item
-              label={t('roleManagement.roleName')}
+              label={
+                <span style={{ fontSize: '20px' }}>
+                  {t('roleManagement.roleName')}
+                  <span style={{ color: 'red', marginLeft: '4px' }}>*</span>
+                </span>
+              }
               name="role"
               rules={[
                 { required: true, message: t('roleManagement.roleRequired') },
               ]}
+              required={false}
             >
               <Select placeholder={t('roleManagement.selectRole')}>
                 {roleOptions.map((opt) => (
@@ -435,19 +445,9 @@ const RoleList = () => {
                 ))}
               </Select>
             </Form.Item>
-            <Form.Item
-              label={t('roleManagement.active')}
-              name="active"
-              rules={[{ required: true, message: t('roleManagement.statusRequired') }]}
-            >
-              <Select placeholder={t('roleManagement.selectStatus')}>
-                <Option value={true}>{t('roleManagement.active')}</Option>
-                <Option value={false}>{t('roleManagement.inactive')}</Option>
-              </Select>
-            </Form.Item>
             <div style={{ marginBottom: 16 }}>
               <label
-                style={{ fontWeight: 500, marginBottom: 8, display: "block" }}
+                style={{ fontWeight: 500, marginBottom: 8, display: "block", color: '#000', fontSize: '20px' }}
               >
                 {t('roleManagement.permissions')}
               </label>
@@ -455,7 +455,7 @@ const RoleList = () => {
                 {permissionGroups.map((group, idx) => (
                   <Collapse.Panel
                     header={
-                      <span style={{ fontWeight: 600 }}>
+                      <span style={{ fontWeight: 600, color: '#000', fontSize: '20px' }}>
                         {group.group}
                       </span>
                     }
@@ -483,7 +483,7 @@ const RoleList = () => {
                       }}
                     >
                       {group.permissions.map((perm) => (
-                        <Checkbox key={perm} value={perm}>
+                        <Checkbox key={perm} value={perm} style={{ color: '#000', fontSize: '20px' }}>
                           {translatePermission(perm)}
                         </Checkbox>
                       ))}
@@ -497,17 +497,74 @@ const RoleList = () => {
 
         {/* Confirmation Modal */}
         <Modal
-          title={confirmModal.title}
+          title={
+            <div style={{ 
+              fontSize: '20px', 
+              fontWeight: '600', 
+              color: '#1890ff',
+              textAlign: 'center',
+              padding: '10px 0'
+            }}>
+              {confirmModal.title}
+            </div>
+          }
           open={confirmModal.visible}
           onOk={confirmModal.onConfirm}
           onCancel={handleConfirmCancel}
           okText={t('common.confirm')}
           cancelText={t('common.cancel')}
+          width={500}
+          centered
+          bodyStyle={{
+            padding: '30px 40px',
+            fontSize: '16px',
+            lineHeight: '1.6',
+            textAlign: 'center'
+          }}
+          okButtonProps={{
+            style: {
+              backgroundColor: '#ff4d4f',
+              borderColor: '#ff4d4f',
+              height: '40px',
+              fontSize: '16px',
+              fontWeight: '500',
+              minWidth: '100px'
+            }
+          }}
+          cancelButtonProps={{
+            style: {
+              height: '40px',
+              fontSize: '16px',
+              fontWeight: '500',
+              minWidth: '100px'
+            }
+          }}
         >
-          <p>{confirmModal.content}</p>
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: '20px'
+          }}>
+            <div style={{
+              fontSize: '48px',
+              color: '#ff4d4f',
+              marginBottom: '10px'
+            }}>
+              ⚠️
+            </div>
+            <p style={{
+              fontSize: '20px',
+              color: '#333',
+              margin: 0,
+              fontWeight: '500'
+            }}>
+              {confirmModal.content}
+            </p>
+       
+          </div>
         </Modal>
-      </div>
-    </Layout>
+    </ThemedLayout>
   );
 };
 

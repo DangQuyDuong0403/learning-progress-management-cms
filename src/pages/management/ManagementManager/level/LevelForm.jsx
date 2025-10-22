@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { 
   Form, 
   Input, 
-  Select, 
   Button, 
   message, 
   Space,
@@ -10,65 +9,110 @@ import {
   Col,
   InputNumber
 } from 'antd';
+import { spaceToast } from '../../../../component/SpaceToastify';
 import { useTranslation } from 'react-i18next';
-import { useDispatch, useSelector } from 'react-redux';
-import { 
-  createLevel, 
-  updateLevel 
-} from '../../../../redux/level';
+import { useTheme } from '../../../../contexts/ThemeContext';
+import levelManagementApi from '../../../../apis/backend/levelManagement';
 
 const { TextArea } = Input;
-const { Option } = Select;
 
-const LevelForm = ({ level, onClose }) => {
+const LevelForm = ({ level, onClose, shouldCallApi = true, showPrerequisiteAndCode = true }) => {
   const { t } = useTranslation();
-  const dispatch = useDispatch();
-  const { loading } = useSelector(state => state.level);
+  const { theme } = useTheme();
   
   const [form] = Form.useForm();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isButtonDisabled, setIsButtonDisabled] = useState(false);
 
   const isEdit = !!level;
+  const isPublished = level?.status === 'PUBLISHED';
 
   useEffect(() => {
     if (level) {
-      form.setFieldsValue(level);
+      // Map API data to form fields
+      form.setFieldsValue({
+        levelName: level.levelName,
+        levelCode: level.levelCode,
+        description: level.description,
+        prerequisite: level.prerequisite?.levelName || level.prerequisite || '',
+        status: level.status,
+        orderNumber: level.orderNumber,
+        promotionCriteria: level.promotionCriteria,
+        learningObjectives: level.learningObjectives,
+      });
     }
   }, [level, form]);
 
   const onFinish = async (values) => {
+    if (isButtonDisabled) return; // Prevent multiple submissions
+    
     setIsSubmitting(true);
+    setIsButtonDisabled(true);
+    
     try {
-      if (isEdit) {
-        await dispatch(updateLevel({ id: level.id, ...values }));
-        message.success(t('levelManagement.updateLevelSuccess'));
+      // Map form values to API format
+      const apiData = {
+        levelName: values.levelName,
+        levelCode: values.levelCode,
+        description: values.description || '',
+        promotionCriteria: values.promotionCriteria || '',
+        learningObjectives: values.learningObjectives || '',
+        orderNumber: values.orderNumber || 0,
+      };
+
+      console.log('LevelForm onFinish:', { isEdit, level, apiData, shouldCallApi });
+
+      if (shouldCallApi) {
+        // Call API (for LevelList usage)
+        let response;
+        if (isEdit) {
+          // Update existing level
+          console.log('Updating level with ID:', level.id);
+          response = await levelManagementApi.updateLevel(level.id, apiData);
+        } else {
+          // Create new level
+          console.log('Creating new level');
+          response = await levelManagementApi.createLevel(apiData);
+        }
+        
+        // Use backend message if available, otherwise fallback to translation
+        const successMessage = response.message || response.data?.message ;
+       
+        onClose(true, successMessage); // Tell parent to refresh data and show success message
       } else {
-        await dispatch(createLevel(values));
-        message.success(t('levelManagement.addLevelSuccess'));
+        // Don't call API (for LevelDragEdit usage)
+        console.log('Not calling API, returning data to parent');
+        const successMessage = isEdit ? t('levelManagement.updateLevelSuccess') : t('levelManagement.addLevelSuccess');
+        onClose(true, apiData, successMessage); // Pass data and message to parent
       }
-      onClose();
     } catch (error) {
-      message.error(isEdit ? t('levelManagement.updateLevelError') : t('levelManagement.addLevelError'));
+      console.error('Error saving level:', error);
+      
+      // Handle API errors with backend messages
+      let errorMessage;
+      if (error.response) {
+        errorMessage = error.response.data.error || error.response.data?.message || error.message;
+      } else {
+        errorMessage = error.message;
+      }
+      
+      console.log('Final error message:', errorMessage);
+      spaceToast.error(errorMessage);
+      
+      // Don't close modal on error - let user retry
     } finally {
       setIsSubmitting(false);
+      // Re-enable button after 0.5 seconds
+      setTimeout(() => {
+        setIsButtonDisabled(false);
+      }, 500);
     }
   };
 
   const onCancel = () => {
     form.resetFields();
-    onClose();
+    onClose(false); // Pass false to indicate no refresh needed
   };
-
-  const difficultyOptions = [
-    { value: 'beginner', label: t('levelManagement.beginner') },
-    { value: 'intermediate', label: t('levelManagement.intermediate') },
-    { value: 'advanced', label: t('levelManagement.advanced') },
-  ];
-
-  const statusOptions = [
-    { value: 'active', label: t('levelManagement.active') },
-    { value: 'inactive', label: t('levelManagement.inactive') },
-  ];
 
   return (
     <Form
@@ -77,207 +121,153 @@ const LevelForm = ({ level, onClose }) => {
       onFinish={onFinish}
       initialValues={{
         status: 'active',
-        difficulty: 'beginner',
-        duration: 12,
         ...level
       }}
     >
       <Row gutter={16}>
-        <Col span={12}>
+        <Col span={showPrerequisiteAndCode ? 12 : 24}>
           <Form.Item
-            name="name"
-            label={t('levelManagement.levelName')}
-            rules={[
-              { required: true, message: t('levelManagement.levelNameRequired') },
-              { min: 2, message: t('levelManagement.levelNameMinLength') }
-            ]}
+            name="levelName"
+            label={<span>{t('levelManagement.levelName')} <span style={{ color: 'red' }}>*</span></span>}
+            required
+            rules={[{ required: true, message: t('levelManagement.levelNameRequired') }]}
           >
             <Input 
-              placeholder={t('levelManagement.levelNamePlaceholder')}
-              size="large"
+              size="middle"
+              disabled={isPublished}
             />
           </Form.Item>
         </Col>
-        <Col span={12}>
-          <Form.Item
-            name="code"
-            label={t('levelManagement.levelCode')}
-            rules={[
-              { required: true, message: t('levelManagement.levelCodeRequired') },
-              { 
-                pattern: /^[A-Z0-9_]+$/, 
-                message: t('levelManagement.levelCodePattern') 
-              }
-            ]}
-          >
-            <Input 
-              placeholder={t('levelManagement.levelCodePlaceholder')}
-              size="large"
-              style={{ textTransform: 'uppercase' }}
-            />
-          </Form.Item>
-        </Col>
+        {showPrerequisiteAndCode && (
+          <Col span={12}>
+            <Form.Item
+              name="levelCode"
+              label={t('levelManagement.levelCode')}
+            >
+              <Input 
+                size="middle"
+                disabled={true}
+              />
+            </Form.Item>
+          </Col>
+        )}
       </Row>
+
+      {showPrerequisiteAndCode && (
+        <Row gutter={16}>
+          <Col span={12}>
+            <Form.Item
+              name="prerequisite"
+              label={t('levelManagement.prerequisite')}
+            >
+              <Input 
+                size="middle"
+                disabled={true}
+              />
+            </Form.Item>
+          </Col>
+        </Row>
+      )}
 
       <Form.Item
         name="description"
         label={t('levelManagement.description')}
-        rules={[
-          { required: true, message: t('levelManagement.descriptionRequired') },
-          { min: 10, message: t('levelManagement.descriptionMinLength') }
-        ]}
       >
         <TextArea 
-          rows={3}
+          rows={2}
           placeholder={t('levelManagement.descriptionPlaceholder')}
           maxLength={500}
           showCount
+          size="middle"
         />
       </Form.Item>
 
-      <Row gutter={16}>
-        <Col span={8}>
-          <Form.Item
-            name="difficulty"
-            label={t('levelManagement.difficulty')}
-            rules={[{ required: true, message: t('levelManagement.difficultyRequired') }]}
-          >
-            <Select 
-              placeholder={t('levelManagement.selectDifficulty')}
-              size="large"
-            >
-              {difficultyOptions.map(option => (
-                <Option key={option.value} value={option.value}>
-                  {option.label}
-                </Option>
-              ))}
-            </Select>
-          </Form.Item>
-        </Col>
-        <Col span={8}>
-          <Form.Item
-            name="duration"
-            label={t('levelManagement.duration')}
-            rules={[
-              { required: true, message: t('levelManagement.durationRequired') },
-              { type: 'number', min: 1, max: 52, message: t('levelManagement.durationRange') }
-            ]}
-          >
-            <InputNumber 
-              min={1}
-              max={52}
-              placeholder={t('levelManagement.durationPlaceholder')}
-              style={{ width: '100%' }}
-              size="large"
-              addonAfter={t('levelManagement.weeks')}
-            />
-          </Form.Item>
-        </Col>
-        <Col span={8}>
-          <Form.Item
-            name="status"
-            label={t('levelManagement.status')}
-            rules={[{ required: true, message: t('levelManagement.statusRequired') }]}
-          >
-            <Select 
-              placeholder={t('levelManagement.selectStatus')}
-              size="large"
-            >
-              {statusOptions.map(option => (
-                <Option key={option.value} value={option.value}>
-                  {option.label}
-                </Option>
-              ))}
-            </Select>
-          </Form.Item>
-        </Col>
-      </Row>
-
-      <Row gutter={16}>
-        <Col span={12}>
-          <Form.Item
-            name="minAge"
-            label={t('levelManagement.minAge')}
-            rules={[
-              { type: 'number', min: 3, max: 18, message: t('levelManagement.minAgeRange') }
-            ]}
-          >
-            <InputNumber 
-              min={3}
-              max={18}
-              placeholder={t('levelManagement.minAgePlaceholder')}
-              style={{ width: '100%' }}
-              size="large"
-              addonAfter={t('levelManagement.years')}
-            />
-          </Form.Item>
-        </Col>
-        <Col span={12}>
-          <Form.Item
-            name="maxAge"
-            label={t('levelManagement.maxAge')}
-            rules={[
-              { type: 'number', min: 3, max: 18, message: t('levelManagement.maxAgeRange') }
-            ]}
-          >
-            <InputNumber 
-              min={3}
-              max={18}
-              placeholder={t('levelManagement.maxAgePlaceholder')}
-              style={{ width: '100%' }}
-              size="large"
-              addonAfter={t('levelManagement.years')}
-            />
-          </Form.Item>
-        </Col>
-      </Row>
 
       <Form.Item
-        name="objectives"
-        label={t('levelManagement.objectives')}
-      >
-        <TextArea 
-          rows={4}
-          placeholder={t('levelManagement.objectivesPlaceholder')}
-          maxLength={1000}
-          showCount
-        />
-      </Form.Item>
-
-      <Form.Item
-        name="prerequisites"
-        label={t('levelManagement.prerequisites')}
+        name="learningObjectives"
+        label={t('levelManagement.learningObjectives')}
       >
         <TextArea 
           rows={3}
-          placeholder={t('levelManagement.prerequisitesPlaceholder')}
-          maxLength={500}
+          placeholder={t('levelManagement.learningObjectivesPlaceholder')}
+          maxLength={1000}
           showCount
+          size="middle"
         />
       </Form.Item>
 
       <Form.Item
-        name="learningOutcomes"
-        label={t('levelManagement.learningOutcomes')}
+        name="promotionCriteria"
+        label={t('levelManagement.promotionCriteria')}
       >
         <TextArea 
-          rows={4}
-          placeholder={t('levelManagement.learningOutcomesPlaceholder')}
-          maxLength={1000}
+          rows={2}
+          placeholder={t('levelManagement.promotionCriteriaPlaceholder')}
+          maxLength={500}
           showCount
+          size="middle"
         />
       </Form.Item>
 
       <Form.Item style={{ marginBottom: 0, textAlign: 'right' }}>
         <Space>
-          <Button onClick={onCancel} size="large">
+          <Button 
+            onClick={onCancel} 
+            size="middle"
+            style={{
+              height: '40px',
+              width: '120px',
+              fontSize: '14px',
+              fontWeight: '500',
+              borderRadius: '6px',
+              transition: 'all 0.3s ease',
+            }}
+          >
             {t('common.cancel')}
           </Button>
           <Button 
             type="primary" 
             htmlType="submit" 
-            loading={isSubmitting || loading}
-            size="large"
+            loading={isSubmitting}
+            disabled={isButtonDisabled}
+            size="middle"
+            style={{
+              background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, #7228d9 0%, #9c88ff 100%)',
+              borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : '#7228d9',
+              color: theme === 'sun' ? '#000000' : '#ffffff',
+              height: '40px',
+              width: '120px',
+              fontSize: '14px',
+              fontWeight: '500',
+              borderRadius: '6px',
+              transition: 'all 0.3s ease',
+            }}
+            onMouseEnter={(e) => {
+              if (theme === 'sun') {
+                e.target.style.background = 'rgb(95, 160, 240)';
+                e.target.style.borderColor = 'rgb(95, 160, 240)';
+                e.target.style.transform = 'translateY(-2px)';
+                e.target.style.boxShadow = '0 6px 16px rgba(113, 179, 253, 0.6)';
+              } else {
+                e.target.style.background = 'linear-gradient(135deg, #5a1fb8 0%, #8a7aff 100%)';
+                e.target.style.borderColor = '#5a1fb8';
+                e.target.style.transform = 'translateY(-2px)';
+                e.target.style.boxShadow = '0 6px 16px rgba(114, 40, 217, 0.6)';
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (theme === 'sun') {
+                e.target.style.background = 'rgb(113, 179, 253)';
+                e.target.style.borderColor = 'rgb(113, 179, 253)';
+                e.target.style.transform = 'translateY(0)';
+                e.target.style.boxShadow = 'none';
+              } else {
+                e.target.style.background = 'linear-gradient(135deg, #7228d9 0%, #9c88ff 100%)';
+                e.target.style.borderColor = '#7228d9';
+                e.target.style.transform = 'translateY(0)';
+                e.target.style.boxShadow = 'none';
+              }
+            }}
           >
             {isEdit ? t('common.update') : t('common.save')}
           </Button>

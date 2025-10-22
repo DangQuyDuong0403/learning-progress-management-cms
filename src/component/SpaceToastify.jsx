@@ -1,12 +1,15 @@
 import React from 'react';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import { useTheme } from '../contexts/ThemeContext';
 
 const SpaceToastify = () => {
+  const { theme } = useTheme();
+  
   return (
     <ToastContainer
       position="bottom-right"
-      autoClose={4000}
+      autoClose={2000}
       hideProgressBar={false}
       newestOnTop={false}
       closeOnClick
@@ -14,17 +17,17 @@ const SpaceToastify = () => {
       pauseOnFocusLoss
       draggable
       pauseOnHover
-      theme="dark"
+      theme={theme === 'space' ? 'dark' : 'light'}
       toastStyle={{
         background: 'transparent',
         boxShadow: 'none',
-        padding: '20px 24px',
-        margin: '0 0 16px 0',
-        minHeight: '88px',
+        padding: '16px 20px',
+        margin: '0 0 12px 0',
+        minHeight: '70px',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        borderRadius: '20px',
+        borderRadius: '16px',
       }}
       progressStyle={{
         background: 'linear-gradient(90deg, #00d4ff 0%, #5e17eb 50%, #ff6b6b 100%)',
@@ -46,7 +49,86 @@ const SpaceToastify = () => {
 // Custom toast functions with enhanced space theme
 export const spaceToast = {
   success: (message) => {
-    toast.success(message, {
+    // Lấy theme hiện tại từ localStorage
+    const currentTheme = localStorage.getItem('theme') || 'sun';
+    
+    // Nếu là theme space (tối), sử dụng UI hiện tại
+    if (currentTheme === 'space') {
+      return toast.success(message, {
+        icon: () => (
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: '40px',
+            height: '40px',
+            borderRadius: '50%',
+            background: 'linear-gradient(135deg, rgba(0, 255, 136, 0.15) 0%, rgba(0, 255, 136, 0.05) 100%)',
+            border: '2px solid rgba(0, 255, 136, 0.6)',
+            position: 'relative',
+            animation: 'pulse 2s infinite',
+            boxShadow: '0 0 20px rgba(0, 255, 136, 0.4), inset 0 0 20px rgba(0, 255, 136, 0.1)',
+            flexShrink: 0
+          }}>
+            <img 
+              src="/img/astro.png" 
+              alt="Astro Success" 
+              style={{
+                width: '26px',
+                height: '26px',
+                objectFit: 'contain',
+                filter: 'brightness(1.3) contrast(1.2) drop-shadow(0 0 8px rgba(0, 255, 136, 0.6))',
+                animation: 'float 3s ease-in-out infinite'
+              }} 
+            />
+            <div style={{
+              position: 'absolute',
+              top: '-3px',
+              right: '-3px',
+              width: '12px',
+              height: '12px',
+              borderRadius: '50%',
+              background: 'radial-gradient(circle, #00ff88 0%, transparent 70%)',
+              animation: 'sparkle 1.5s ease-in-out infinite'
+            }} />
+          </div>
+        ),
+        style: {
+          background: 'linear-gradient(135deg, rgba(10, 14, 39, 0.95) 0%, rgba(30, 20, 90, 0.9) 30%, rgba(94, 23, 235, 0.85) 70%, rgba(0, 212, 255, 0.8) 100%)',
+          border: '1px solid rgba(0, 255, 136, 0.3)',
+          borderRadius: '16px',
+          boxShadow: '0 12px 40px rgba(0, 0, 0, 0.6), 0 0 30px rgba(0, 255, 136, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.1)',
+          color: '#ffffff',
+          fontFamily: '"Orbitron", "Exo 2", system-ui, sans-serif',
+          fontWeight: '500',
+          fontSize: '14px',
+          letterSpacing: '0.5px',
+          backdropFilter: 'blur(10px)',
+          position: 'relative',
+          overflow: 'hidden',
+          width: '360px',
+          minWidth: '360px',
+          maxWidth: '400px',
+          minHeight: '70px',
+          display: 'flex',
+          alignItems: 'center',
+          padding: '16px 20px',
+          gap: '20px'
+        },
+        bodyStyle: {
+          position: 'relative',
+          zIndex: 2,
+          flex: 1,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          width: '100%'
+        }
+      });
+    }
+    
+    //lighttheme
+    return toast.success(message, {
       icon: () => (
         <div style={{
           display: 'flex',
@@ -55,11 +137,11 @@ export const spaceToast = {
           width: '48px',
           height: '48px',
           borderRadius: '50%',
-          background: 'linear-gradient(135deg, rgba(0, 255, 136, 0.15) 0%, rgba(0, 255, 136, 0.05) 100%)',
-          border: '2px solid rgba(0, 255, 136, 0.6)',
+          background: 'linear-gradient(135deg, rgba(0, 255, 136, 0.25) 0%, rgba(0, 255, 136, 0.1) 100%)',
+          border: '2px solid rgba(12, 192, 108, 0.8)',
           position: 'relative',
           animation: 'pulse 2s infinite',
-          boxShadow: '0 0 20px rgba(0, 255, 136, 0.4), inset 0 0 20px rgba(0, 255, 136, 0.1)',
+          boxShadow: '0 0 20px rgba(0, 255, 136, 0.6), inset 0 0 20px rgba(0, 255, 136, 0.2)',
           flexShrink: 0
         }}>
           <img 
@@ -86,25 +168,26 @@ export const spaceToast = {
         </div>
       ),
       style: {
-        background: 'linear-gradient(135deg, rgba(10, 14, 39, 0.95) 0%, rgba(30, 20, 90, 0.9) 30%, rgba(94, 23, 235, 0.85) 70%, rgba(0, 212, 255, 0.8) 100%)',
-        border: '1px solid rgba(0, 255, 136, 0.3)',
-        borderRadius: '20px',
-        boxShadow: '0 12px 40px rgba(0, 0, 0, 0.6), 0 0 30px rgba(0, 255, 136, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.1)',
-        color: '#ffffff',
+        background: '#ffffff',
+        border: '1px solid rgba(0, 0, 0, 0.1)',
+        borderRadius: '16px',
+        boxShadow: '0 12px 40px rgba(0, 0, 0, 0.1), 0 0 30px rgba(0, 0, 0, 0.05), inset 0 1px 0 rgba(255, 255, 255, 0.8)',
+        color: '#000000',
         fontFamily: '"Orbitron", "Exo 2", system-ui, sans-serif',
-        fontWeight: '500',
+        fontWeight: '600',
         fontSize: '14px',
         letterSpacing: '0.5px',
         backdropFilter: 'blur(10px)',
         position: 'relative',
         overflow: 'hidden',
-        width: '100%',
+        width: '360px',
+        minWidth: '360px',
         maxWidth: '400px',
-        minHeight: '88px',
+        minHeight: '70px',
         display: 'flex',
         alignItems: 'center',
-        padding: '20px 24px',
-        gap: '24px'
+        padding: '16px 20px',
+        gap: '20px'
       },
       bodyStyle: {
         position: 'relative',
@@ -166,13 +249,14 @@ export const spaceToast = {
         color: '#ffffff',
         fontFamily: '"Orbitron", "Exo 2", system-ui, sans-serif',
         fontWeight: '500',
-        fontSize: '14px',
+        fontSize: '16px',
         letterSpacing: '0.5px',
         backdropFilter: 'blur(10px)',
         position: 'relative',
         overflow: 'hidden',
-        width: '100%',
-        maxWidth: '400px',
+        width: '450px',
+        minWidth: '450px',
+        maxWidth: '500px',
         minHeight: '88px',
         display: 'flex',
         alignItems: 'center',
@@ -239,13 +323,14 @@ export const spaceToast = {
         color: '#ffffff',
         fontFamily: '"Orbitron", "Exo 2", system-ui, sans-serif',
         fontWeight: '500',
-        fontSize: '14px',
+        fontSize: '16px',
         letterSpacing: '0.5px',
         backdropFilter: 'blur(10px)',
         position: 'relative',
         overflow: 'hidden',
-        width: '100%',
-        maxWidth: '400px',
+        width: '450px',
+        minWidth: '450px',
+        maxWidth: '500px',
         minHeight: '88px',
         display: 'flex',
         alignItems: 'center',
@@ -312,13 +397,14 @@ export const spaceToast = {
         color: '#ffffff',
         fontFamily: '"Orbitron", "Exo 2", system-ui, sans-serif',
         fontWeight: '500',
-        fontSize: '14px',
+        fontSize: '16px',
         letterSpacing: '0.5px',
         backdropFilter: 'blur(10px)',
         position: 'relative',
         overflow: 'hidden',
-        width: '100%',
-        maxWidth: '400px',
+        width: '450px',
+        minWidth: '450px',
+        maxWidth: '500px',
         minHeight: '88px',
         display: 'flex',
         alignItems: 'center',

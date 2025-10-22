@@ -1,0 +1,324 @@
+.class-menu-container {
+  padding: 24px;
+  margin: 24px;
+  min-height: 100vh;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  transition: background 0.3s ease;
+  backdrop-filter: blur(3px);
+}
+
+/* Light theme styles */
+.class-menu-container.light-theme {
+  background: rgba(230, 245, 255, 0.7);
+  border: 2px solid #3b82f6;
+}
+
+/* Dark theme styles */
+.class-menu-container.dark-theme {
+  background: rgba(110, 92, 172, 0.5);
+  backdrop-filter: blur(7px);
+  border: 2px solid #9c88ff;
+}
+
+.header-card {
+  margin-bottom: 24px;
+  border-radius: 16px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  border: none;
+  transition: all 0.3s ease;
+}
+
+
+/* Dark theme header card body */
+.dark-theme .header-card .ant-card-body {
+  background-color: rgb(224 217 255 / 90%);
+  border-radius: 7px;
+}
+.light-theme .header-card .ant-card-body {
+  background-color: #E6F5FF;
+  border-radius: 7px;
+}
+
+/* Dark theme header card */
+.dark-theme .header-card {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.header-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 0;
+}
+
+.header-left {
+  flex-shrink: 0;
+}
+
+.header-center {
+  flex: 1;
+  text-align: center;
+  margin: 0 24px;
+}
+
+.header-right {
+  flex-shrink: 0;
+}
+
+.back-button {
+  height: 40px;
+  border-radius: 8px;
+  font-weight: 500;
+  border: 2px solid #e2e8f0;
+  color: #64748b;
+  transition: all 0.3s ease;
+}
+
+.back-button:hover {
+  border-color: #00d4ff;
+  color: #00d4ff;
+  transform: translateX(-2px);
+}
+
+/* Dark theme back button - Higher specificity to override TeacherList.css */
+.class-menu-container.dark-theme .header-card .back-button {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+  border-color: #ffffff !important;
+}
+
+.class-menu-container.dark-theme .header-card .back-button:hover {
+  background-color: #f0f0f0 !important;
+  color: #000000 !important;
+  border-color: #f0f0f0 !important;
+}
+
+.class-menu-container.dark-theme .header-card .back-button .anticon {
+  color: #000000 !important;
+}
+
+.class-title {
+  margin: 0 0 8px 0;
+  font-size: 28px;
+  font-weight: 700;
+  color: #1e293b;
+  background: linear-gradient(135deg, #00d4ff 0%, #9c88ff 50%, #ff6b35 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  transition: all 0.3s ease;
+}
+
+/* Dark theme title */
+.dark-theme .class-title {
+  background: linear-gradient(135deg, #00d4ff 0%, #9c88ff 50%, #ff6b35 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.class-subtitle {
+  margin: 0;
+  font-size: 16px;
+  color: #64748b;
+  font-weight: 400;
+  transition: color 0.3s ease;
+}
+
+/* Dark theme subtitle */
+.dark-theme .class-subtitle {
+  color: #94a3b8;
+}
+
+.menu-cards-section {
+  margin-bottom: 24px;
+}
+
+.menu-card {
+  height: 100%;
+  border-radius: 16px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  transition: all 0.3s ease;
+  border: 2px solid transparent;
+}
+
+/* Light theme menu card - white background */
+.light-theme .menu-card {
+  background: #ffffff !important;
+}
+
+.light-theme .menu-card .ant-card-body {
+  background: #ffffff !important;
+}
+
+/* Sun theme menu card - white background */
+.sun-theme .menu-card {
+  background: #ffffff !important;
+}
+
+.sun-theme .menu-card .ant-card-body {
+  background: #ffffff !important;
+}
+
+/* Dark theme menu card */
+.dark-theme .menu-card {
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.menu-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+}
+
+/* Dark theme hover */
+.dark-theme .menu-card:hover {
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+}
+
+.menu-card:hover .menu-icon-wrapper {
+  transform: scale(1.1);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+}
+
+.menu-card-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  height: 100%;
+}
+
+.menu-icon-wrapper {
+  transition: all 0.3s ease;
+}
+
+.menu-title {
+  transition: color 0.3s ease;
+}
+
+.menu-card:hover .menu-title {
+  color: #1e293b;
+}
+
+.menu-description {
+  transition: color 0.3s ease;
+}
+
+.menu-card:hover .menu-description {
+  color: #475569;
+}
+
+.class-info-card {
+  border-radius: 16px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  border: none;
+  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+}
+
+.info-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 16px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid #e2e8f0;
+  transition: all 0.3s ease;
+}
+
+.info-item:hover {
+  background: rgba(255, 255, 255, 0.9);
+  border-color: #00d4ff;
+  transform: translateY(-2px);
+}
+
+.info-label {
+  font-size: 14px;
+  color: #64748b;
+  font-weight: 500;
+  margin-bottom: 4px;
+}
+
+.info-value {
+  font-size: 16px;
+  color: #1e293b;
+  font-weight: 600;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .class-menu-container {
+    padding: 16px;
+    margin: 16px;
+  }
+  
+  .header-content {
+    flex-direction: column;
+    gap: 16px;
+    text-align: center;
+  }
+  
+  .header-center {
+    margin: 0;
+  }
+  
+  .class-title {
+    font-size: 24px;
+  }
+  
+  .class-subtitle {
+    font-size: 14px;
+  }
+  
+  .menu-card {
+    margin-bottom: 16px;
+  }
+  
+  .menu-icon-wrapper {
+    width: 80px;
+    height: 80px;
+  }
+  
+  .menu-icon-wrapper .anticon {
+    font-size: 36px !important;
+  }
+  
+  .menu-title {
+    font-size: 16px;
+  }
+  
+  .menu-description {
+    font-size: 13px;
+  }
+}
+
+@media (max-width: 480px) {
+  .class-menu-container {
+    padding: 12px;
+    margin: 12px;
+  }
+  
+  .class-title {
+    font-size: 20px;
+  }
+  
+  .menu-icon-wrapper {
+    width: 70px;
+    height: 70px;
+  }
+  
+  .menu-icon-wrapper .anticon {
+    font-size: 32px !important;
+  }
+  
+  .menu-title {
+    font-size: 15px;
+  }
+  
+  .menu-description {
+    font-size: 12px;
+  }
+}

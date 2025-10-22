@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
 	Table,
 	Button,
@@ -22,34 +22,87 @@ import {
 	PlayCircleOutlined,
 	ClockCircleOutlined,
 	BookOutlined,
+	ArrowLeftOutlined,
+	SwapOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useDispatch, useSelector } from 'react-redux';
 import LessonForm from './LessonForm';
 import {
 	fetchLessonsByChapter,
-	deleteLesson,
 	updateLessonStatus,
+	createLesson,
+	updateLesson,
+	deleteLesson,
 } from '../../../../redux/syllabus';
+import syllabusManagementApi from '../../../../apis/backend/syllabusManagement';
+import './SyllabusList.css';
 
 const { Search } = Input;
 
 const LessonList = ({ chapter, onClose }) => {
 	const { t } = useTranslation();
 	const dispatch = useDispatch();
-	const { lessons, loading } = useSelector((state) => state.syllabus);
+	const { lessons, loading, lessonsPagination } = useSelector((state) => state.syllabus);
 
+	// State management
+	const [searchText, setSearchText] = useState('');
+	const [searchTimeout, setSearchTimeout] = useState(null);
+
+	// Modal states
 	const [isModalVisible, setIsModalVisible] = useState(false);
 	const [isDeleteModalVisible, setIsDeleteModalVisible] = useState(false);
 	const [editingLesson, setEditingLesson] = useState(null);
 	const [deleteLesson, setDeleteLesson] = useState(null);
-	const [searchText, setSearchText] = useState('');
+
+	// Pagination state
+	const [pagination, setPagination] = useState({
+		current: 1,
+		pageSize: 10,
+		total: 0,
+		showSizeChanger: true,
+		showTotal: (total, range) => `${range[0]}-${range[1]} of ${total}`,
+	});
+
+	// Fetch lessons from API using Redux
+	const fetchLessons = useCallback(async (page = 1, size = 10, search = '') => {
+		if (!chapter?.id) return;
+		
+		const params = {
+			page: page - 1, // API uses 0-based indexing
+			size: size,
+		};
+		
+		// Add search parameter if provided
+		if (search && search.trim()) {
+			params.searchText = search.trim();
+		}
+
+		dispatch(fetchLessonsByChapter({ chapterId: chapter.id, params }));
+	}, [chapter?.id, dispatch]);
 
 	useEffect(() => {
-		if (chapter?.id) {
-			dispatch(fetchLessonsByChapter(chapter.id));
+		fetchLessons(1, pagination.pageSize, searchText);
+	}, [fetchLessons, searchText, pagination.pageSize]);
+
+	// Update pagination when Redux state changes
+	useEffect(() => {
+		if (lessonsPagination) {
+			setPagination(prev => ({
+				...prev,
+				total: lessonsPagination.totalElements || 0,
+			}));
 		}
-	}, [dispatch, chapter?.id]);
+	}, [lessonsPagination]);
+
+	// Cleanup timeout on unmount
+	useEffect(() => {
+		return () => {
+			if (searchTimeout) {
+				clearTimeout(searchTimeout);
+			}
+		};
+	}, [searchTimeout]);
 
 	const handleAdd = () => {
 		setEditingLesson(null);
@@ -72,7 +125,10 @@ const LessonList = ({ chapter, onClose }) => {
 			message.success(t('lessonManagement.deleteLessonSuccess'));
 			setIsDeleteModalVisible(false);
 			setDeleteLesson(null);
+			// Refresh the list
+			fetchLessons(pagination.current, pagination.pageSize, searchText);
 		} catch (error) {
+			console.error('Error deleting lesson:', error);
 			message.error(t('lessonManagement.deleteLessonError'));
 		}
 	};
@@ -82,14 +138,6 @@ const LessonList = ({ chapter, onClose }) => {
 		setDeleteLesson(null);
 	};
 
-	const handleStatusChange = async (id, status) => {
-		try {
-			await dispatch(updateLessonStatus({ id, status }));
-			message.success(t('lessonManagement.updateLessonSuccess'));
-		} catch (error) {
-			message.error(t('lessonManagement.updateLessonError'));
-		}
-	};
 
 	const handleModalClose = () => {
 		setIsModalVisible(false);
@@ -97,16 +145,32 @@ const LessonList = ({ chapter, onClose }) => {
 	};
 
 	const handleRefresh = () => {
-		dispatch(fetchLessonsByChapter(chapter.id));
+		fetchLessons(pagination.current, pagination.pageSize, searchText);
 	};
 
-	// Filter lessons based on search
-	const filteredLessons = lessons.filter((lesson) => {
-		const matchesSearch =
-			lesson.name.toLowerCase().includes(searchText.toLowerCase()) ||
-			lesson.description.toLowerCase().includes(searchText.toLowerCase());
-		return matchesSearch;
-	});
+	const handleSearch = (value) => {
+		setSearchText(value);
+		
+		// Clear existing timeout
+		if (searchTimeout) {
+			clearTimeout(searchTimeout);
+		}
+		
+		// Set new timeout for 1 second delay
+		const newTimeout = setTimeout(() => {
+			// Reset to first page when searching
+			fetchLessons(1, pagination.pageSize, value);
+		}, 1000);
+		
+		setSearchTimeout(newTimeout);
+	};
+
+	const handleTableChange = (pagination) => {
+		fetchLessons(pagination.current, pagination.pageSize, searchText);
+	};
+
+	// Use Redux state for lessons data
+	const filteredLessons = lessons;
 
 	// Calculate statistics
 	const totalLessons = lessons.length;
@@ -115,21 +179,21 @@ const LessonList = ({ chapter, onClose }) => {
 
 	const columns = [
 		{
-			title: t('lessonManagement.lessonNumber'),
-			dataIndex: 'order',
-			key: 'order',
-			width: 80,
-			sorter: (a, b) => a.order - b.order,
-			render: (order) => (
-				<Tag color="green" style={{ textAlign: 'center', minWidth: '30px' }}>
-					{order}
-				</Tag>
-			),
+			title: 'No',
+			key: 'index',
+			width: '10%',
+			render: (_, __, index) => {
+				// Calculate index based on current page and page size
+				const currentPage = pagination.current || 1;
+				const pageSize = pagination.pageSize || 10;
+				return (currentPage - 1) * pageSize + index + 1;
+			},
 		},
 		{
 			title: t('lessonManagement.lessonName'),
 			dataIndex: 'name',
 			key: 'name',
+			width: '25%',
 			sorter: (a, b) => a.name.localeCompare(b.name),
 			render: (text, record) => (
 				<div>
@@ -144,7 +208,7 @@ const LessonList = ({ chapter, onClose }) => {
 			title: t('lessonManagement.duration'),
 			dataIndex: 'duration',
 			key: 'duration',
-			width: 100,
+			width: '15%',
 			render: (duration) => (
 				<div style={{ textAlign: 'center' }}>
 					<ClockCircleOutlined style={{ marginRight: '4px' }} />
@@ -156,7 +220,7 @@ const LessonList = ({ chapter, onClose }) => {
 			title: t('lessonManagement.lessonType'),
 			dataIndex: 'type',
 			key: 'type',
-			width: 120,
+			width: '15%',
 			render: (type) => (
 				<Tag color={type === 'theory' ? 'blue' : type === 'practice' ? 'green' : 'orange'}>
 					{t(`lessonManagement.${type}`)}
@@ -164,27 +228,23 @@ const LessonList = ({ chapter, onClose }) => {
 			),
 		},
 		{
-			title: t('lessonManagement.status'),
-			dataIndex: 'status',
-			key: 'status',
-			width: 100,
-			render: (status) => (
-				<Tag color={status === 'active' ? 'green' : 'red'}>
-					{t(`lessonManagement.${status}`)}
-				</Tag>
-			),
+			title: t('lessonManagement.createdBy'),
+			dataIndex: 'createdBy',
+			key: 'createdBy',
+			width: '15%',
+			render: (createdBy) => createdBy || 'N/A',
 		},
 		{
 			title: t('lessonManagement.createdAt'),
 			dataIndex: 'createdAt',
 			key: 'createdAt',
-			width: 120,
+			width: '15%',
 			render: (date) => new Date(date).toLocaleDateString(),
 		},
 		{
 			title: t('lessonManagement.actions'),
 			key: 'actions',
-			width: 150,
+			width: '15%',
 			render: (_, record) => (
 				<Space size="small">
 					<Tooltip title={t('common.edit')}>
@@ -208,70 +268,105 @@ const LessonList = ({ chapter, onClose }) => {
 
 	return (
 		<div className="lesson-list-container">
-			<div className="lesson-list-header">
-				<h3>
-					<PlayCircleOutlined style={{ marginRight: '8px' }} />
-					{t('lessonManagement.title')} - {chapter?.name}
-				</h3>
-			</div>
+			{/* Main Container Card */}
+			<Card className="main-container-card">
+				{/* Back Button */}
+				<div style={{ marginBottom: '16px' }}>
+					<Button 
+						type="text" 
+						icon={<ArrowLeftOutlined />}
+						onClick={onClose}
+						style={{ padding: '4px 8px' }}
+					>
+						{t('common.back')}
+					</Button>
+				</div>
 
-			{/* Statistics Cards */}
-			<Row gutter={16} style={{ marginBottom: '24px' }}>
-				<Col span={8}>
-					<Card>
-						<Statistic
-							title={t('lessonManagement.totalLessons')}
-							value={totalLessons}
-							prefix={<PlayCircleOutlined />}
-						/>
-					</Card>
-				</Col>
-				<Col span={8}>
-					<Card>
-						<Statistic
-							title={t('lessonManagement.totalDuration')}
-							value={totalDuration}
-							suffix={t('lessonManagement.hours')}
-							prefix={<ClockCircleOutlined />}
-						/>
-					</Card>
-				</Col>
-				<Col span={8}>
-					<Card>
-						<Statistic
-							title={t('lessonManagement.averageDuration')}
-							value={averageDuration}
-							suffix={t('lessonManagement.hours')}
-							prefix={<BookOutlined />}
-						/>
-					</Card>
-				</Col>
-			</Row>
+				{/* Header */}
+				<div style={{ marginBottom: '24px' }}>
+					<h2 
+						style={{ 
+							margin: 0, 
+							fontSize: '24px', 
+							fontWeight: 'bold',
+							color: '#000000'
+						}}
+					>
+						<PlayCircleOutlined style={{ marginRight: '8px' }} />
+						{t('lessonManagement.title')} - {chapter?.name}
+					</h2>
+				</div>
 
-			{/* Action Bar */}
-			<Card style={{ marginBottom: '16px' }}>
-				<Row gutter={16} align="middle">
+				{/* Statistics Cards */}
+				<Row gutter={16} style={{ marginBottom: '24px' }}>
+					<Col span={8}>
+						<Card>
+							<Statistic
+								title={t('lessonManagement.totalLessons')}
+								value={totalLessons}
+								prefix={<PlayCircleOutlined />}
+							/>
+						</Card>
+					</Col>
+					<Col span={8}>
+						<Card>
+							<Statistic
+								title={t('lessonManagement.totalDuration')}
+								value={totalDuration}
+								suffix={t('lessonManagement.hours')}
+								prefix={<ClockCircleOutlined />}
+							/>
+						</Card>
+					</Col>
+					<Col span={8}>
+						<Card>
+							<Statistic
+								title={t('lessonManagement.averageDuration')}
+								value={averageDuration}
+								suffix={t('lessonManagement.hours')}
+								prefix={<BookOutlined />}
+							/>
+						</Card>
+					</Col>
+				</Row>
+
+				{/* Action Bar */}
+				<Row gutter={16} align="middle" style={{ marginBottom: '16px' }}>
 					<Col flex="auto">
-						<Search
-							placeholder={t('lessonManagement.searchPlaceholder')}
-							style={{ width: 300 }}
-							value={searchText}
-							onChange={(e) => setSearchText(e.target.value)}
+						<Input
 							prefix={<SearchOutlined />}
+							value={searchText}
+							onChange={(e) => handleSearch(e.target.value)}
+							className="search-input"
+							style={{ minWidth: '350px', maxWidth: '500px', height: '40px', fontSize: '16px' }}
+							placeholder={t('lessonManagement.searchLessons')}
+							allowClear
 						/>
 					</Col>
 					<Col>
 						<Space>
 							<Button
 								icon={<ReloadOutlined />}
+								className="refresh-button"
 								onClick={handleRefresh}
 								loading={loading}
 							>
 								{t('lessonManagement.refresh')}
 							</Button>
 							<Button
-								type="primary"
+								icon={<SwapOutlined rotate={90} />}
+								style={{
+									background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+									color: '#ffffff',
+									border: 'none',
+									fontWeight: 500,
+								}}
+							>
+								{t('lessonManagement.editOrder')}
+							</Button>
+							<Button
 								icon={<PlusOutlined />}
+								className="create-button"
 								onClick={handleAdd}
 							>
 								{t('lessonManagement.addLesson')}
@@ -279,27 +374,25 @@ const LessonList = ({ chapter, onClose }) => {
 						</Space>
 					</Col>
 				</Row>
-			</Card>
 
-			{/* Table */}
-			<Card>
-				<Table
-					columns={columns}
-					dataSource={filteredLessons}
-					rowKey="id"
-					loading={loading}
-					pagination={{
-						total: filteredLessons.length,
-						pageSize: 10,
-						showSizeChanger: true,
-						showQuickJumper: true,
-						showTotal: (total, range) =>
-							`${range[0]}-${range[1]} ${t(
-								'lessonManagement.paginationText'
-							)} ${total} ${t('lessonManagement.lessons')}`,
-					}}
-					scroll={{ x: 800 }}
-				/>
+				{/* Table Card */}
+				<Card className="table-card">
+					<Table
+						columns={columns}
+						dataSource={filteredLessons}
+						rowKey="id"
+						loading={loading}
+						pagination={{
+							...pagination,
+							showQuickJumper: true,
+							showTotal: (total, range) => {
+								return `${range[0]}-${range[1]} ${t('lessonManagement.paginationText')} ${total} ${t('lessonManagement.lessons')}`;
+							},
+						}}
+						onChange={handleTableChange}
+						scroll={{ x: 1000 }}
+					/>
+				</Card>
 			</Card>
 
 			{/* Lesson Modal */}

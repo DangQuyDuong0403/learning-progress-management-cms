@@ -1,363 +1,610 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
 	Table,
 	Button,
 	Space,
 	Modal,
-	message,
 	Input,
-	Select,
-	Tag,
-	Card,
-	Row,
-	Col,
-	Statistic,
 	Tooltip,
+	Typography,
 } from 'antd';
 import {
-	PlusOutlined,
 	EditOutlined,
-	DeleteOutlined,
 	SearchOutlined,
-	ReloadOutlined,
-	BookOutlined,
+	DragOutlined,
+	SendOutlined,
+	FileTextOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
-import { useDispatch, useSelector } from 'react-redux';
+import usePageTitle from '../../../../hooks/usePageTitle';
+import { useNavigate } from 'react-router-dom';
+import ThemedLayout from '../../../../component/ThemedLayout';
+import LoadingWithEffect from '../../../../component/spinner/LoadingWithEffect';
+import { useTheme } from '../../../../contexts/ThemeContext';
+import { spaceToast } from '../../../../component/SpaceToastify';
+import levelManagementApi from '../../../../apis/backend/levelManagement';
 import LevelForm from './LevelForm';
-import './LevelList.css';
-import {
-	fetchLevels,
-	deleteLevel as deleteLevelAction,
-} from '../../../../redux/level';
-import Layout from '../../../../component/Layout';
-
-const { Search } = Input;
-const { Option } = Select;
+import ROUTER_PAGE from '../../../../constants/router';
 
 const LevelList = () => {
 	const { t } = useTranslation();
-	const dispatch = useDispatch();
-	const { levels, loading } = useSelector((state) => state.level);
-
+	const { theme } = useTheme();
+	const navigate = useNavigate();
+	
+	// Set page title
+	usePageTitle('Level Management');
+	
+	const [loading, setLoading] = useState(false);
+	const [toggleLoading, setToggleLoading] = useState(false);
+	const [isAllPublished, setIsAllPublished] = useState(false); 
+	const [totalElements, setTotalElements] = useState(0);
+	const [currentStatus, setCurrentStatus] = useState(''); 
+	const [levels, setLevels] = useState([]);
 	const [isModalVisible, setIsModalVisible] = useState(false);
-	const [isDeleteModalVisible, setIsDeleteModalVisible] = useState(false);
 	const [editingLevel, setEditingLevel] = useState(null);
-	const [deleteLevel, setDeleteLevel] = useState(null);
 	const [searchText, setSearchText] = useState('');
-	const [statusFilter, setStatusFilter] = useState('all');
+	const [searchTimeout, setSearchTimeout] = useState(null);
+	const [confirmModal, setConfirmModal] = useState({
+		visible: false,
+		title: '',
+		content: '',
+		onConfirm: null
+	});
+	
+	// Pagination state
+	const [pagination, setPagination] = useState({
+		current: 1,
+		pageSize: 10,
+		total: 0,
+		showSizeChanger: true,
+		showTotal: (total, range) => `${range[0]}-${range[1]} of ${total}`,
+	});
+
+	const fetchLevels = useCallback(async (page = 1, size = 10, search = '') => {
+		setLoading(true);
+		try {
+			const params = {
+				page: page - 1, // API uses 0-based indexing
+				size: size,
+			};
+			
+			// Add search parameter if provided (API uses 'text' parameter)
+			if (search && search.trim()) {
+				params.text = search.trim();
+			}
+
+			console.log('Level API Request Params:', params);
+
+			const response = await levelManagementApi.getLevels(params);
+
+			console.log('Level API Response:', response);
+			console.log('Response structure check:', {
+				isArray: Array.isArray(response.data),
+				hasContent: response.data?.content,
+				totalElements: response.totalElements,
+				dataLength: response.data?.length
+			});
+
+			// Handle different response structures
+			let levelsData = [];
+			let totalElements = 0;
+
+			if (response && response.data) {
+				// Check if it's a paginated response with direct array
+				if (Array.isArray(response.data)) {
+					levelsData = response.data;
+					// Get totalElements from response metadata (not from data array length)
+					totalElements = response.totalElements || response.data.length;
+				} else if (response.data.content && Array.isArray(response.data.content)) {
+					levelsData = response.data.content;
+					totalElements = response.data.totalElements || response.data.total || 0;
+				} else {
+					levelsData = [];
+					totalElements = 0;
+				}
+			}
+
+			// Map API response to component format 
+			const mappedLevels = levelsData.map((level) => ({
+				id: level.id,
+				levelName: level.levelName,
+				levelCode: level.levelCode || 'N/A',
+				prerequisite: level.prerequisite,
+				status: level.status,
+				orderNumber: level.orderNumber,
+				createdAt: level.createdAt ? new Date(level.createdAt).toLocaleDateString() : new Date().toLocaleDateString(),
+				description: level.description || '',
+			}));
+
+			// Debug: Log actual level data to see what fields are available
+			if (levelsData.length > 0) {
+				console.log('Level Data Sample:', levelsData[0]);
+				console.log('Mapped Level Sample:', mappedLevels[0]);
+			}
+
+			setLevels(mappedLevels);
+			setTotalElements(totalElements);
+			
+			// Detect current status to determine button action
+			detectPublishStatus(mappedLevels);
+			
+			// Set current status based on actual data
+			if (mappedLevels.length === 0) {
+				setCurrentStatus('');
+			} else if (mappedLevels.every(level => level.status === 'PUBLISHED')) {
+				setCurrentStatus(t('levelManagement.published'));
+			} else if (mappedLevels.every(level => level.status === 'DRAFT')) {
+				setCurrentStatus(t('levelManagement.draft'));
+			} else {
+				setCurrentStatus(t('levelManagement.mixed'));
+			}
+			
+			setPagination(prev => ({
+				...prev,
+				current: page,
+				pageSize: size,
+				total: totalElements,
+			}));
+			
+			console.log('Level Pagination Updated:', {
+				current: page,
+				pageSize: size,
+				total: totalElements,
+				levelsCount: mappedLevels.length,
+				responseTotalElements: response.totalElements,
+				responseTotalPages: response.totalPages
+			});
+			setLoading(false);
+		} catch (error) {
+			console.error('Error fetching levels:', error);
+			
+			// Handle API errors with backend messages
+			let errorMessage;
+			if (error.response) {
+				errorMessage = error.response.data.error || error.response.data?.message || error.message;
+			} else {
+				errorMessage = error.message;
+			}
+			
+			spaceToast.error(errorMessage);
+			setLoading(false);
+		}
+	}, [t]);
 
 	useEffect(() => {
-		dispatch(fetchLevels());
-	}, [dispatch]);
+		console.log('Level useEffect triggered:', {
+			searchText,
+			pageSize: pagination.pageSize
+		});
+		fetchLevels(1, pagination.pageSize, searchText);
+	}, [fetchLevels, searchText, pagination.pageSize]);
 
-	const handleAdd = () => {
-		setEditingLevel(null);
-		setIsModalVisible(true);
+	// Cleanup timeout on unmount
+	useEffect(() => {
+		return () => {
+			if (searchTimeout) {
+				clearTimeout(searchTimeout);
+			}
+		};
+	}, [searchTimeout]);
+
+	const handleSearch = (value) => {
+		console.log('Level Search:', value);
+		setSearchText(value);
+		
+		// Clear existing timeout
+		if (searchTimeout) {
+			clearTimeout(searchTimeout);
+		}
+		
+		// Set new timeout for 1 second delay
+		const newTimeout = setTimeout(() => {
+			console.log('Level Search executing:', value);
+			// Reset to first page when searching
+			fetchLevels(1, pagination.pageSize, value);
+		}, 1000);
+		
+		setSearchTimeout(newTimeout);
 	};
 
-	const handleEdit = (level) => {
-		setEditingLevel(level);
-		setIsModalVisible(true);
+	const handleTableChange = (pagination) => {
+		console.log('Level handleTableChange called:', { pagination });
+		
+		// Handle pagination only
+		console.log('Level Pagination only:', {
+			current: pagination.current,
+			pageSize: pagination.pageSize,
+			total: pagination.total
+		});
+		fetchLevels(pagination.current, pagination.pageSize, searchText);
 	};
 
-	const handleDeleteClick = (level) => {
-		setDeleteLevel(level);
-		setIsDeleteModalVisible(true);
-	};
 
-	const handleDelete = async () => {
+	const handleEdit = async (level) => {
 		try {
-			await dispatch(deleteLevelAction(deleteLevel.id));
-			message.success(t('levelManagement.deleteLevelSuccess'));
-			setIsDeleteModalVisible(false);
-			setDeleteLevel(null);
+			console.log('Level Edit clicked for:', level);
+			setIsModalVisible(true); // Mở modal ngay lập tức
+			
+			// Fetch full level details from API
+			const response = await levelManagementApi.getLevelById(level.id);
+			console.log('Level details response:', response);
+			
+			// Map API response to form format
+			const levelDetails = {
+				id: response.data.id,
+				levelName: response.data.levelName,
+				levelCode: response.data.levelCode,
+				description: response.data.description || '',
+				prerequisite: response.data.prerequisite,
+				status: response.data.status,
+				orderNumber: response.data.orderNumber,
+				promotionCriteria: response.data.promotionCriteria || '',
+				learningObjectives: response.data.learningObjectives || '',
+			};
+			console.log('Level details:', levelDetails);
+			
+			setEditingLevel(levelDetails);
 		} catch (error) {
-			message.error(t('levelManagement.deleteLevelError'));
+			console.error('Error fetching level details:', error);
+			
+			// Handle API errors with backend messages
+			let errorMessage;
+			if (error.response) {
+				errorMessage = error.response.data.error || error.response.data?.message || error.message;
+			} else {
+				errorMessage = error.message;
+			}
+			
+			spaceToast.error(errorMessage);
+			setIsModalVisible(false); // Đóng modal nếu có lỗi
 		}
 	};
 
-	const handleDeleteModalClose = () => {
-		setIsDeleteModalVisible(false);
-		setDeleteLevel(null);
-	};
 
-	const handleModalClose = () => {
+	const handleModalClose = (shouldRefresh = false, successMessage = null) => {
 		setIsModalVisible(false);
 		setEditingLevel(null);
+		
+		// Only refresh data if save was successful
+		if (shouldRefresh === true) {
+			// Only show success message if provided from LevelForm
+			if (successMessage) {
+				spaceToast.success(successMessage);
+			}
+			fetchLevels(pagination.current, pagination.pageSize, searchText);
+		}
 	};
 
-	const handleRefresh = () => {
-		dispatch(fetchLevels());
+	// Detect current action based on levels status
+	const detectPublishStatus = (levelsData) => {
+		if (!levelsData || levelsData.length === 0) {
+			setIsAllPublished(false);
+			return;
+		}
+
+		// Check if all levels are in PUBLISHED status (active)
+		const allPublished = levelsData.every(level => level.status === 'PUBLISHED');
+		setIsAllPublished(allPublished);
+		
+		console.log('Detected publish status:', {
+			allPublished,
+			levelsStatuses: levelsData.map(l => l.status)
+		});
 	};
 
-	// Filter levels based on search and status
-	const filteredLevels = levels.filter((level) => {
-		const matchesSearch =
-			level.name.toLowerCase().includes(searchText.toLowerCase()) ||
-			level.description.toLowerCase().includes(searchText.toLowerCase());
-		const matchesStatus =
-			statusFilter === 'all' || level.status === statusFilter;
-		return matchesSearch && matchesStatus;
-	});
 
-	// Calculate statistics
-	const totalLevels = levels.length;
-	const activeLevels = levels.filter(
-		(level) => level.status === 'active'
-	).length;
-	const inactiveLevels = levels.filter(
-		(level) => level.status === 'inactive'
-	).length;
+	const handlePublishAll = () => {
+		setConfirmModal({
+			visible: true,
+			title: t('levelManagement.confirmPublishAll'),
+			content: t('levelManagement.confirmPublishAllMessage'),
+			onConfirm: async () => {
+				setToggleLoading(true);
+				try {
+					const response = await levelManagementApi.publishAllLevels();
+					const successMessage = response.message || t('levelManagement.publishAllSuccess');
+					
+					// Close modal first
+					setConfirmModal({ visible: false, title: '', content: '', onConfirm: null });
+					
+					spaceToast.success(successMessage);
+					
+					// Refresh the list after action
+					fetchLevels(pagination.current, pagination.pageSize, searchText);
+				} catch (error) {
+					console.error('Error publishing all levels:', error);
+					
+					// Handle API errors with backend messages
+					let errorMessage;
+					if (error.response) {
+						errorMessage = error.response.data.error || error.response.data?.message || error.message;
+					} else {
+						errorMessage = error.message;
+					}
+					
+					setConfirmModal({ visible: false, title: '', content: '', onConfirm: null });
+					spaceToast.error(errorMessage);
+				} finally {
+					setToggleLoading(false);
+				}
+			}
+		});
+	};
+
+	const handleConfirmCancel = () => {
+		setConfirmModal({ visible: false, title: '', content: '', onConfirm: null });
+	};
+
+	const handleEditPositions = () => {
+		navigate(ROUTER_PAGE.MANAGER_LEVEL_EDIT_POSITIONS);
+	};
+
+
 
 	const columns = [
 		{
+			title: t('levelManagement.stt'),
+			key: 'index',
+			width: '5%',
+			render: (_, __, index) => {
+				// Calculate index based on current page and page size
+				const currentPage = pagination.current || 1;
+				const pageSize = pagination.pageSize || 10;
+				return (currentPage - 1) * pageSize + index + 1;
+			},
+		},
+		{
 			title: t('levelManagement.levelName'),
-			dataIndex: 'name',
-			key: 'name',
-			sorter: (a, b) => a.name.localeCompare(b.name),
-			render: (text, record) => (
+			dataIndex: 'levelName',
+			key: 'levelName',
+			width: '20%',
+			render: (text) => (
 				<div>
-					<div style={{ fontWeight: 'bold', fontSize: '16px' }}>{text}</div>
-					<div style={{ color: '#666', fontSize: '12px' }}>
-						{record.description}
-					</div>
+					<div>{text}</div>
 				</div>
 			),
 		},
 		{
 			title: t('levelManagement.levelCode'),
-			dataIndex: 'code',
-			key: 'code',
-			width: 120,
-			sorter: (a, b) => a.code.localeCompare(b.code),
-		},
-		{
-			title: t('levelManagement.difficulty'),
-			dataIndex: 'difficulty',
-			key: 'difficulty',
-			width: 120,
-			render: (difficulty) => (
-				<Tag
-					color={
-						difficulty === 'beginner'
-							? 'green'
-							: difficulty === 'intermediate'
-							? 'orange'
-							: 'red'
-					}>
-					{difficulty}
-				</Tag>
+			dataIndex: 'levelCode',
+			key: 'levelCode',
+			width: '15%',
+			render: (text) => (
+				<div>
+					<div>{text}</div>
+				</div>
 			),
 		},
 		{
-			title: t('levelManagement.status'),
-			dataIndex: 'status',
-			key: 'status',
-			width: 100,
-			render: (status, record) => (
-				<Tag color={status === 'active' ? 'green' : 'red'}>{status}</Tag>
-			),
-		},
-		{
-			title: t('levelManagement.duration'),
-			dataIndex: 'duration',
-			key: 'duration',
-			width: 100,
-			render: (duration) => `${duration} week`,
-		},
-		{
-			title: t('levelManagement.createdAt'),
-			dataIndex: 'createdAt',
-			key: 'createdAt',
-			width: 120,
-			render: (date) => new Date(date).toLocaleDateString(),
+			title: t('levelManagement.prerequisite'),
+			dataIndex: 'prerequisite',
+			key: 'prerequisite',
+			width: '20%',
+			render: (prerequisite) => {
+				if (!prerequisite) {
+					return <span style={{ color: '#000000', textAlign: 'center' }}>-</span>;
+				}
+				return prerequisite.levelName || prerequisite;
+			},
 		},
 		{
 			title: t('levelManagement.actions'),
 			key: 'actions',
-			width: 150,
+			width: '20%',
 			render: (_, record) => (
 				<Space size='small'>
-					<Tooltip title={t('accountManagement.edit')}>
+					<Tooltip title={t('levelManagement.edit')}>
 						<Button
 							type='text'
-							icon={<EditOutlined style={{ fontSize: '25px' }} />}
+							icon={<EditOutlined style={{ fontSize: '25px', color: '#000000' }} />}
 							size='small'
 							onClick={() => handleEdit(record)}
 						/>
 					</Tooltip>
-					<Button
-						type='text'
-						size='small'
-						icon={<DeleteOutlined style={{ fontSize: '25px' }} />}
-						onClick={() => handleDeleteClick(record)}>
-					</Button>
 				</Space>
 			),
 		},
 	];
 
 	return (
-		<Layout>
-			<div className='level-list-container'>
-				<div className='level-list-header'>
-					<h2>
-						<BookOutlined style={{ marginRight: '8px' }} />
-						{t('levelManagement.title')}
-					</h2>
+		<ThemedLayout>
+			{/* Main Content Panel */}
+			<div className={`main-content-panel ${theme}-main-panel`}>
+				{/* Page Title */}
+				<div className="page-title-container">
+					<Typography.Title 
+						level={1} 
+						className="page-title"
+					>
+						{t('levelManagement.title')} <span className="student-count">({totalElements})</span>
+					</Typography.Title>
+				</div>
+				{/* Header Section */}
+				<div className={`panel-header ${theme}-panel-header`}>
+					<div
+						className='search-section'
+						style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+						<Input
+							prefix={<SearchOutlined />}
+							value={searchText}
+							onChange={(e) => handleSearch(e.target.value)}
+							className={`search-input ${theme}-search-input`}
+							style={{
+								minWidth: '200px',
+								maxWidth: '300px',
+								width: '250px',
+								height: '40px',
+								fontSize: '16px',
+							}}
+							allowClear
+						/>
+					</div>
+					<div className='action-buttons'>
+						<Button
+							icon={isAllPublished ? null : <SendOutlined />}
+							onClick={isAllPublished ? null : handlePublishAll}
+							loading={toggleLoading}
+							disabled={isAllPublished}
+							className={`publish-all-button ${theme}-publish-all-button`}
+							style={{
+								height: '40px',
+								borderRadius: '8px',
+								fontWeight: '500',
+								border: theme === 'space' 
+									? '1px solid rgba(77, 208, 255, 0.3)' 
+									: '1px solid #0000001a',
+								background: theme === 'space'
+									? 'linear-gradient(135deg, #b5b0c0 19%, #a79ebb 64%, #8377a0 75%, #aca5c0 97%, #6d5f8f)'
+									: '#71b3fd',
+								color: '#000',
+								backdropFilter: 'blur(10px)',
+								transition: 'all 0.3s ease',
+								boxShadow: theme === 'space'
+									? '0 4px 12px rgba(76, 29, 149, 0.3)'
+									: '0 4px 12px rgba(24, 144, 255, 0.3)',
+								opacity: isAllPublished ? 0.5 : 1,
+								cursor: isAllPublished ? 'not-allowed' : 'pointer',
+							}}>
+							{isAllPublished ? t('levelManagement.published') : t('levelManagement.publishAll')}
+						</Button>
+						{!isAllPublished && (
+							<Button
+								icon={<DragOutlined />}
+								className={`edit-positions-button ${theme}-edit-positions-button`}
+								onClick={handleEditPositions}
+								style={{
+									height: '40px',
+									borderRadius: '8px',
+									fontWeight: '500',
+									border: theme === 'space' 
+										? '1px solid rgba(77, 208, 255, 0.3)' 
+										: '1px solid #0000001a',
+									background: theme === 'space'
+										? 'linear-gradient(135deg, #b5b0c0 19%, #a79ebb 64%, #8377a0 75%, #aca5c0 97%, #6d5f8f)'
+										: '#71b3fd',
+									color: '#000',
+									backdropFilter: 'blur(10px)',
+									transition: 'all 0.3s ease',
+									boxShadow: theme === 'space'
+										? '0 4px 12px rgba(76, 29, 149, 0.3)'
+										: '0 4px 12px rgba(24, 144, 255, 0.3)',
+								}}
+							>
+								{t('levelManagement.edit')}
+							</Button>
+						)}
+					</div>
 				</div>
 
-				{/* Statistics Cards */}
-				<Row gutter={16} style={{ marginBottom: '24px' }}>
-					<Col span={6}>
-						<Card>
-							<Statistic
-								title={t('levelManagement.totalLevels')}
-								value={totalLevels}
-								prefix={<BookOutlined />}
-							/>
-						</Card>
-					</Col>
-					<Col span={6}>
-						<Card>
-							<Statistic
-								title={t('levelManagement.activeLevels')}
-								value={activeLevels}
-								valueStyle={{ color: '#3f8600' }}
-								prefix={<BookOutlined />}
-							/>
-						</Card>
-					</Col>
-					<Col span={6}>
-						<Card>
-							<Statistic
-								title={t('levelManagement.inactiveLevels')}
-								value={inactiveLevels}
-								valueStyle={{ color: '#cf1322' }}
-								prefix={<BookOutlined />}
-							/>
-						</Card>
-					</Col>
-					<Col span={6}>
-						<Card>
-							<Statistic
-								title={t('levelManagement.averageDuration')}
-								value={
-									levels.length > 0
-										? Math.round(
-												levels.reduce((sum, level) => sum + level.duration, 0) /
-													levels.length
-										  )
-										: 0
-								}
-								suffix={t('levelManagement.weeks')}
-								prefix={<BookOutlined />}
-							/>
-						</Card>
-					</Col>
-				</Row>
-
-				{/* Action Bar */}
-				<Card style={{ marginBottom: '16px' }}>
-					<Row gutter={16} align='middle'>
-						<Col flex='auto'>
-							<Space size='middle'>
-								<Search
-									placeholder={t('levelManagement.searchPlaceholder')}
-									style={{ width: 300 }}
-									value={searchText}
-									onChange={(e) => setSearchText(e.target.value)}
-									prefix={<SearchOutlined />}
-								/>
-								<Select
-									style={{ width: 150 }}
-									value={statusFilter}
-									onChange={setStatusFilter}
-									placeholder={t('levelManagement.filterByStatus')}>
-									<Option value='all'>
-										{t('levelManagement.allStatuses')}
-									</Option>
-									<Option value='active'>{t('levelManagement.active')}</Option>
-									<Option value='inactive'>
-										{t('levelManagement.inactive')}
-									</Option>
-								</Select>
-							</Space>
-						</Col>
-						<Col>
-							<Space>
-								<Button
-									icon={<ReloadOutlined />}
-									onClick={handleRefresh}
-									loading={loading}>
-									{t('levelManagement.refresh')}
-								</Button>
-								<Button
-									type='primary'
-									icon={<PlusOutlined />}
-									onClick={handleAdd}>
-									{t('levelManagement.addLevel')}
-								</Button>
-							</Space>
-						</Col>
-					</Row>
-				</Card>
-
-				{/* Table */}
-				<Card>
-					<Table
-						columns={columns}
-						dataSource={filteredLevels}
-						rowKey='id'
+				{/* Table Section */}
+				<div className={`table-section ${theme}-table-section`}>
+					<LoadingWithEffect
 						loading={loading}
-						pagination={{
-							total: filteredLevels.length,
-							pageSize: 10,
-							showSizeChanger: true,
-							showQuickJumper: true,
-							showTotal: (total, range) =>
-								`${range[0]}-${range[1]} ${t(
-									'levelManagement.paginationText'
-								)} ${total} ${t('levelManagement.levels')}`,
-						}}
-						scroll={{ x: 800 }}
-					/>
-				</Card>
-
-				{/* Modal */}
-				<Modal
-					title={
-						editingLevel
-							? t('levelManagement.editLevel')
-							: t('levelManagement.addLevel')
-					}
-					open={isModalVisible}
-					onCancel={handleModalClose}
-					footer={null}
-					width={600}
-					destroyOnClose>
-					<LevelForm level={editingLevel} onClose={handleModalClose} />
-				</Modal>
-
-				{/* Delete Confirmation Modal */}
-				<Modal
-					title={t('levelManagement.confirmDelete')}
-					open={isDeleteModalVisible}
-					onOk={handleDelete}
-					onCancel={handleDeleteModalClose}
-					okText={t('common.yes')}
-					cancelText={t('common.no')}
-					okButtonProps={{ danger: true }}>
-					<p>{t('levelManagement.confirmDeleteMessage')}</p>
-					{deleteLevel && (
-						<p>
-							<strong>{deleteLevel.name}</strong>
-						</p>
-					)}
-				</Modal>
+						message={t('levelManagement.loadingLevels')}>
+						<Table
+							columns={columns}
+							dataSource={levels}
+							rowKey='id'
+							pagination={{
+								...pagination,
+								className: `${theme}-pagination`,
+							}}
+							onChange={handleTableChange}
+							scroll={{ x: 1200 }}
+							className={`level-table ${theme}-level-table`}
+						/>
+					</LoadingWithEffect>
+				</div>
 			</div>
-		</Layout>
+
+			{/* Modal */}
+			<Modal
+				title={
+					<div style={{ textAlign: 'center', fontSize: '30px', fontWeight: '600' }}>
+						{editingLevel
+							? t('levelManagement.editLevel')
+							: t('levelManagement.addLevel')}
+					</div>
+				}
+				open={isModalVisible}
+				onCancel={() => {
+					setIsModalVisible(false);
+					setEditingLevel(null);
+				}}
+				footer={null}
+				width={800}
+				destroyOnClose
+				style={{ top: 20 }}
+				bodyStyle={{
+					maxHeight: '70vh',
+					overflowY: 'auto',
+					padding: '24px',
+				}}>
+				<LevelForm level={editingLevel} onClose={handleModalClose} showPrerequisiteAndCode={true} />
+			</Modal>
+
+			{/* Confirm Modal */}
+			<Modal
+				title={confirmModal.title}
+				open={confirmModal.visible}
+				onOk={confirmModal.onConfirm}
+				onCancel={handleConfirmCancel}
+				okText={t('common.confirm')}
+				cancelText={t('common.cancel')}
+				width={500}
+				centered
+				bodyStyle={{
+					padding: '30px 40px',
+					fontSize: '16px',
+					lineHeight: '1.6',
+					textAlign: 'center',
+				}}
+				okButtonProps={{
+					style: {
+						backgroundColor: '#1890ff',
+						borderColor: '#1890ff',
+						height: '40px',
+						fontSize: '16px',
+						fontWeight: '500',
+						minWidth: '100px',
+					},
+				}}
+				cancelButtonProps={{
+					style: {
+						height: '40px',
+						fontSize: '16px',
+						fontWeight: '500',
+						minWidth: '100px',
+					},
+				}}>
+				<div
+					style={{
+						display: 'flex',
+						flexDirection: 'column',
+						alignItems: 'center',
+						gap: '20px',
+					}}>
+					<div
+						style={{
+							fontSize: '48px',
+							color: '#1890ff',
+							marginBottom: '10px',
+						}}>
+						⚠️
+					</div>
+					<p
+						style={{
+							fontSize: '18px',
+							color: '#333',
+							margin: 0,
+							fontWeight: '500',
+						}}>
+						{confirmModal.content}
+					</p>
+				</div>
+			</Modal>
+
+		</ThemedLayout>
 	);
 };
 

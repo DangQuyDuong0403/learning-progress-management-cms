@@ -2,28 +2,16 @@ import React, { useState, useEffect } from 'react';
 import {
 	Form,
 	Input,
-	Select,
 	Button,
 	message,
 	Space,
-	Row,
-	Col,
-	InputNumber,
 } from 'antd';
 import { useTranslation } from 'react-i18next';
-import { useDispatch, useSelector } from 'react-redux';
-import {
-	createChapter,
-	updateChapter,
-} from '../../../../redux/syllabus';
-
-const { TextArea } = Input;
-const { Option } = Select;
+import { useTheme } from '../../../../contexts/ThemeContext';
 
 const ChapterForm = ({ chapter, syllabus, onClose }) => {
 	const { t } = useTranslation();
-	const dispatch = useDispatch();
-	const { loading } = useSelector((state) => state.syllabus);
+	const { theme } = useTheme();
 
 	const [form] = Form.useForm();
 	const [isSubmitting, setIsSubmitting] = useState(false);
@@ -39,19 +27,18 @@ const ChapterForm = ({ chapter, syllabus, onClose }) => {
 	const onFinish = async (values) => {
 		setIsSubmitting(true);
 		try {
+			// Map form values to API format - chỉ cần chapterName
 			const chapterData = {
-				...values,
-				syllabusId: syllabus.id,
+				name: values.name,
 			};
 
-			if (isEdit) {
-				await dispatch(updateChapter({ id: chapter.id, ...chapterData }));
-				message.success(t('chapterManagement.updateChapterSuccess'));
-			} else {
-				await dispatch(createChapter(chapterData));
-				message.success(t('chapterManagement.addChapterSuccess'));
-			}
-			onClose();
+			// Return data to parent component instead of calling API
+			message.success(
+				isEdit
+					? t('chapterManagement.updateChapterSuccess')
+					: t('chapterManagement.addChapterSuccess')
+			);
+			onClose(true, chapterData); // Pass data to parent
 		} catch (error) {
 			message.error(
 				isEdit
@@ -68,78 +55,15 @@ const ChapterForm = ({ chapter, syllabus, onClose }) => {
 		onClose();
 	};
 
-	const statusOptions = [
-		{ value: 'active', label: t('chapterManagement.active') },
-		{ value: 'inactive', label: t('chapterManagement.inactive') },
-	];
-
 	return (
 		<Form
 			form={form}
 			layout="vertical"
 			onFinish={onFinish}
 			initialValues={{
-				status: 'active',
-				duration: 2,
-				order: 1,
 				...chapter,
 			}}
 		>
-			<Row gutter={16}>
-				<Col span={12}>
-					<Form.Item
-						name="order"
-						label={t('chapterManagement.chapterNumber')}
-						rules={[
-							{
-								required: true,
-								message: t('chapterManagement.orderRequired'),
-							},
-							{
-								type: 'number',
-								min: 1,
-								message: t('chapterManagement.orderMin'),
-							},
-						]}
-					>
-						<InputNumber
-							min={1}
-							placeholder={t('chapterManagement.orderPlaceholder')}
-							style={{ width: '100%' }}
-							size="large"
-						/>
-					</Form.Item>
-				</Col>
-				<Col span={12}>
-					<Form.Item
-						name="duration"
-						label={t('chapterManagement.duration')}
-						rules={[
-							{
-								required: true,
-								message: t('chapterManagement.durationRequired'),
-							},
-							{
-								type: 'number',
-								min: 0.5,
-								max: 20,
-								message: t('chapterManagement.durationRange'),
-							},
-						]}
-					>
-						<InputNumber
-							min={0.5}
-							max={20}
-							step={0.5}
-							placeholder={t('chapterManagement.durationPlaceholder')}
-							style={{ width: '100%' }}
-							size="large"
-							addonAfter={t('chapterManagement.hours')}
-						/>
-					</Form.Item>
-				</Col>
-			</Row>
-
 			<Form.Item
 				name="name"
 				label={t('chapterManagement.chapterName')}
@@ -152,95 +76,16 @@ const ChapterForm = ({ chapter, syllabus, onClose }) => {
 						min: 2,
 						message: t('chapterManagement.chapterNameMinLength'),
 					},
+					{
+						max: 100,
+						message: t('chapterManagement.chapterNameTooLong'),
+					},
 				]}
 			>
 				<Input
 					placeholder={t('chapterManagement.chapterNamePlaceholder')}
 					size="large"
-				/>
-			</Form.Item>
-
-			<Form.Item
-				name="description"
-				label={t('chapterManagement.description')}
-				rules={[
-					{
-						required: true,
-						message: t('chapterManagement.descriptionRequired'),
-					},
-					{
-						min: 10,
-						message: t('chapterManagement.descriptionMinLength'),
-					},
-				]}
-			>
-				<TextArea
-					rows={3}
-					placeholder={t('chapterManagement.descriptionPlaceholder')}
-					maxLength={500}
-					showCount
-				/>
-			</Form.Item>
-
-			<Row gutter={16}>
-				<Col span={12}>
-					<Form.Item
-						name="objectives"
-						label={t('chapterManagement.objectives')}
-					>
-						<TextArea
-							rows={3}
-							placeholder={t('chapterManagement.objectivesPlaceholder')}
-							maxLength={500}
-							showCount
-						/>
-					</Form.Item>
-				</Col>
-				<Col span={12}>
-					<Form.Item
-						name="status"
-						label={t('chapterManagement.status')}
-						rules={[
-							{
-								required: true,
-								message: t('chapterManagement.statusRequired'),
-							},
-						]}
-					>
-						<Select
-							placeholder={t('chapterManagement.selectStatus')}
-							size="large"
-						>
-							{statusOptions.map((option) => (
-								<Option key={option.value} value={option.value}>
-									{option.label}
-								</Option>
-							))}
-						</Select>
-					</Form.Item>
-				</Col>
-			</Row>
-
-			<Form.Item
-				name="learningOutcomes"
-				label={t('chapterManagement.learningOutcomes')}
-			>
-				<TextArea
-					rows={4}
-					placeholder={t('chapterManagement.learningOutcomesPlaceholder')}
-					maxLength={1000}
-					showCount
-				/>
-			</Form.Item>
-
-			<Form.Item
-				name="assessmentCriteria"
-				label={t('chapterManagement.assessmentCriteria')}
-			>
-				<TextArea
-					rows={3}
-					placeholder={t('chapterManagement.assessmentCriteriaPlaceholder')}
-					maxLength={500}
+					maxLength={100}
 					showCount
 				/>
 			</Form.Item>
@@ -253,8 +98,14 @@ const ChapterForm = ({ chapter, syllabus, onClose }) => {
 					<Button
 						type="primary"
 						htmlType="submit"
-						loading={isSubmitting || loading}
+						loading={isSubmitting}
 						size="large"
+						style={{
+							backgroundColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
+							background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
+							borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'transparent',
+							color: theme === 'sun' ? '#000000' : '#ffffff',
+						}}
 					>
 						{isEdit ? t('common.update') : t('common.save')}
 					</Button>
