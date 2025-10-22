@@ -70,6 +70,12 @@ const ClassStudent = () => {
     fileList: [],
     uploading: false
   });
+  const [buttonLoading, setButtonLoading] = useState({
+    add: false,
+    delete: false,
+    import: false,
+    export: false,
+  });
   const [filterDropdown, setFilterDropdown] = useState({
     visible: false,
     selectedStatuses: [],
@@ -313,10 +319,14 @@ const ClassStudent = () => {
   }, [classData?.id, classData?.name, students.length]);
 
   const handleAddStudent = () => {
-    setSelectedStudents([]);
-    setIsModalVisible(true);
-    // Fetch available students when opening modal
-    fetchAvailableStudents("");
+    setButtonLoading(prev => ({ ...prev, add: true }));
+    setTimeout(() => {
+      setSelectedStudents([]);
+      setIsModalVisible(true);
+      // Fetch available students when opening modal
+      fetchAvailableStudents("");
+      setButtonLoading(prev => ({ ...prev, add: false }));
+    }, 100);
   };
 
 
@@ -354,8 +364,12 @@ const ClassStudent = () => {
 
   const handleDeleteStudent = (student) => {
     console.log("Delete button clicked for student:", student);
-    setStudentToDelete(student);
-    setIsDeleteModalVisible(true);
+    setButtonLoading(prev => ({ ...prev, delete: true }));
+    setTimeout(() => {
+      setStudentToDelete(student);
+      setIsDeleteModalVisible(true);
+      setButtonLoading(prev => ({ ...prev, delete: false }));
+    }, 100);
   };
 
   const handleConfirmDelete = async () => {
@@ -398,12 +412,16 @@ const ClassStudent = () => {
   };
 
   const handleImport = () => {
-    setImportModal(prev => ({
-      ...prev,
-      visible: true,
-      fileList: [],
-      uploading: false
-    }));
+    setButtonLoading(prev => ({ ...prev, import: true }));
+    setTimeout(() => {
+      setImportModal(prev => ({
+        ...prev,
+        visible: true,
+        fileList: [],
+        uploading: false
+      }));
+      setButtonLoading(prev => ({ ...prev, import: false }));
+    }, 100);
   };
 
   const handleImportOk = async () => {
@@ -456,11 +474,16 @@ const ClassStudent = () => {
   };
 
   const handleExport = () => {
-    // TODO: Implement export functionality
-    spaceToast.success(t('classDetail.exportSuccess'));
+    setButtonLoading(prev => ({ ...prev, export: true }));
+    setTimeout(() => {
+      // TODO: Implement export functionality
+      spaceToast.success(t('classDetail.exportSuccess'));
+      setButtonLoading(prev => ({ ...prev, export: false }));
+    }, 100);
   };
 
   const handleModalOk = async () => {
+    setButtonLoading(prev => ({ ...prev, add: true }));
     try {
       console.log("Add students clicked");
       console.log("selectedStudents:", selectedStudents);
@@ -499,6 +522,8 @@ const ClassStudent = () => {
     } catch (error) {
       console.error("Error adding students:", error);
       spaceToast.error(error.response?.data?.error);
+    } finally {
+      setButtonLoading(prev => ({ ...prev, add: false }));
     }
   };
 
@@ -653,6 +678,7 @@ const ClassStudent = () => {
             onClick={() => handleDeleteStudent(record)}
             style={{ color: "#ff4d4f" }}
             title={t('classDetail.removeFromClass')}
+            loading={buttonLoading.delete}
           />
         </Space>
       ),
@@ -760,6 +786,7 @@ const ClassStudent = () => {
                 icon={<UploadOutlined />}
                 className={`export-button ${theme}-export-button`}
                 onClick={handleExport}
+                loading={buttonLoading.export}
               >
                 {t('classDetail.exportData')}
               </Button>
@@ -767,6 +794,7 @@ const ClassStudent = () => {
                 icon={<DownloadOutlined />}
                 className={`import-button ${theme}-import-button`}
                 onClick={handleImport}
+                loading={buttonLoading.import}
               >
                 {t('classDetail.importData')}
               </Button>
@@ -774,6 +802,7 @@ const ClassStudent = () => {
                 icon={<PlusOutlined />}
                 className={`create-button ${theme}-create-button`}
                 onClick={handleAddStudent}
+                loading={buttonLoading.add}
               >
                 {t('classDetail.addStudent')}
               </Button>

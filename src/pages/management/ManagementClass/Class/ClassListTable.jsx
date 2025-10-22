@@ -111,6 +111,12 @@ const ClassListTable = () => {
 		delete: null,
 		toggle: null,
 	});
+	const [buttonLoading, setButtonLoading] = useState({
+		add: false,
+		export: false,
+		import: false,
+		deleteAll: false,
+	});
 	
 	// Syllabus data for form
 	const [syllabuses, setSyllabuses] = useState([]);
@@ -122,7 +128,7 @@ const ClassListTable = () => {
 	// Filter dropdown state
 	const [filterDropdown, setFilterDropdown] = useState({
 		visible: false,
-		selectedStatus: 'all',
+		selectedStatus: [], // Changed to array to support multiple status selection
 		selectedSyllabus: null,
 	});
 	
@@ -131,7 +137,7 @@ const ClassListTable = () => {
 	
 	// Filter state for immediate application
 	const [appliedFilters, setAppliedFilters] = useState({
-		status: 'all',
+		status: [], // Changed to array to support multiple status selection
 		syllabusId: null,
 	});
 	
@@ -159,8 +165,8 @@ const ClassListTable = () => {
 			}
 
 			// Add filter parameters
-			if (filters.status && filters.status !== 'all') {
-				params.status = filters.status;
+			if (filters.status && filters.status.length > 0) {
+				params.status = filters.status; // Send array of status values
 			}
 			if (filters.syllabusId) {
 				params.syllabusId = filters.syllabusId;
@@ -634,12 +640,16 @@ const ClassListTable = () => {
 	};
 
 	const handleImport = () => {
-		setImportModal(prev => ({
-			...prev,
-			visible: true,
-			fileList: [],
-			uploading: false
-		}));
+		setButtonLoading(prev => ({ ...prev, import: true }));
+		setTimeout(() => {
+			setImportModal(prev => ({
+				...prev,
+				visible: true,
+				fileList: [],
+				uploading: false
+			}));
+			setButtonLoading(prev => ({ ...prev, import: false }));
+		}, 100);
 	};
 
 	const handleImportOk = async () => {
@@ -675,7 +685,11 @@ const ClassListTable = () => {
 	};
 
 	const handleExport = () => {
-		setIsExportModalVisible(true);
+		setButtonLoading(prev => ({ ...prev, export: true }));
+		setTimeout(() => {
+			setIsExportModalVisible(true);
+			setButtonLoading(prev => ({ ...prev, export: false }));
+		}, 100);
 	};
 
 	const handleExportModalClose = () => {
@@ -756,7 +770,7 @@ const ClassListTable = () => {
 				}
 
 				// Add filter parameters
-				if (appliedFilters.status && appliedFilters.status !== 'all') {
+				if (appliedFilters.status && appliedFilters.status.length > 0) {
 					params.status = appliedFilters.status;
 				}
 				if (appliedFilters.syllabusId) {
@@ -790,7 +804,7 @@ const ClassListTable = () => {
 		setFilterDropdown(prev => ({
 			...prev,
 			visible: !prev.visible,
-			selectedStatus: prev.visible ? prev.selectedStatus : appliedFilters.status,
+			selectedStatus: prev.visible ? prev.selectedStatus : [...appliedFilters.status], // Copy array
 			selectedSyllabus: prev.visible ? prev.selectedSyllabus : appliedFilters.syllabusId,
 		}));
 	};
@@ -821,76 +835,20 @@ const ClassListTable = () => {
 	const handleFilterReset = () => {
 		setFilterDropdown(prev => ({
 			...prev,
-			selectedStatus: 'all',
+			selectedStatus: [], // Reset to empty array
 			selectedSyllabus: null,
 		}));
 	};
 
-	// Bulk operations - Remove activate all since ACTIVE is automatic
-
-	const handleDeactivateAll = async () => {
-		if (selectedRowKeys.length === 0) {
-			spaceToast.warning(t('classManagement.selectItemsToDeactivate'));
-			return;
-		}
-		
-		setConfirmModal({
-			visible: true,
-			title: t('classManagement.confirmDeactivateAll'),
-			content: t('classManagement.deactivateAllMessage'),
-			displayData: `${selectedRowKeys.length} ${t('classManagement.classes')}`,
-			onConfirm: async () => {
-				try {
-					// Deactivate classes one by one since bulk API might not be available
-					const deactivatePromises = selectedRowKeys.map(classId => 
-						classManagementApi.toggleClassStatus(classId, 'INACTIVE')
-					);
-					
-					const responses = await Promise.allSettled(deactivatePromises);
-					
-					// Check if all deactivations were successful
-					const failedDeactivations = responses.filter(response => response.status === 'rejected');
-					const successfulDeactivations = responses.filter(response => response.status === 'fulfilled');
-					
-					if (failedDeactivations.length === 0) {
-						// All successful - use first response message or fallback
-						const successMessage = successfulDeactivations[0]?.value?.data?.message || 
-											  successfulDeactivations[0]?.value?.message || 
-											  t('classManagement.allClassesDeactivatedSuccess');
-						spaceToast.success(successMessage);
-					} else if (successfulDeactivations.length > 0) {
-						// Partial success
-						spaceToast.warning(`${successfulDeactivations.length} classes deactivated successfully, ${failedDeactivations.length} failed`);
-					} else {
-						// All failed - use first error message
-						const errorMessage = failedDeactivations[0]?.reason?.response?.data?.message || 
-											 failedDeactivations[0]?.reason?.response?.data?.error || 
-											 'Failed to deactivate all classes';
-						spaceToast.error(errorMessage);
-					}
-					
-					setSelectedRowKeys([]);
-					
-					// Close modal
-					setConfirmModal({ visible: false, title: '', content: '', onConfirm: null, type: '' });
-					setSelectedStatus(null);
-					
-					fetchClasses(pagination.current, pagination.pageSize, searchText, sortBy, sortDir, appliedFilters);
-				} catch (error) {
-					console.error('Error deactivating all classes:', error);
-					const errorMessage = error.response?.data?.message || 
-										 error.response?.data?.error;
-					spaceToast.error(errorMessage);
-				}
-			}
-		});
-	};
+	// Bulk operations
 
 	const handleDeleteAll = async () => {
 		if (selectedRowKeys.length === 0) {
 			spaceToast.warning(t('classManagement.selectItemsToDelete'));
 			return;
 		}
+		
+		setButtonLoading(prev => ({ ...prev, deleteAll: true }));
 		
 		setConfirmModal({
 			visible: true,
@@ -940,6 +898,8 @@ const ClassListTable = () => {
 										 error.response?.data?.error || 
 										 'Failed to delete all classes';
 					spaceToast.error(errorMessage);
+				} finally {
+					setButtonLoading(prev => ({ ...prev, deleteAll: false }));
 				}
 			}
 		});
@@ -1164,7 +1124,7 @@ const ClassListTable = () => {
 									<Button 
 										icon={<FilterOutlined />}
 										onClick={handleFilterToggle}
-										className={`filter-button ${theme}-filter-button ${filterDropdown.visible ? 'active' : ''} ${(appliedFilters.status !== 'all' || appliedFilters.syllabusId) ? 'has-filters' : ''}`}
+										className={`filter-button ${theme}-filter-button ${filterDropdown.visible ? 'active' : ''} ${(appliedFilters.status.length > 0 || appliedFilters.syllabusId) ? 'has-filters' : ''}`}
 									>
 										{t('common.filter')}
 									</Button>
@@ -1179,12 +1139,14 @@ const ClassListTable = () => {
 														{t('classManagement.status')}
 													</Typography.Title>
 													<Select
+														mode="multiple"
 														value={filterDropdown.selectedStatus}
 														onChange={(value) => setFilterDropdown(prev => ({ ...prev, selectedStatus: value }))}
 														onDropdownVisibleChange={(open) => setIsInteractingWithFilter(open)}
 														style={{ width: '100%', height: '40px' }}
+														placeholder={t('classManagement.selectStatus')}
+														allowClear
 													>
-														<Option value="all">{t('classManagement.allStatus')}</Option>
 														<Option value="ACTIVE">{t('classManagement.active')}</Option>
 														<Option value="PENDING">{t('classManagement.pending')}</Option>
 														<Option value="UPCOMING_END">{t('classManagement.upcomingEnd')}</Option>
@@ -1265,6 +1227,7 @@ const ClassListTable = () => {
 									icon={<UploadOutlined />}
 									onClick={handleExport}
 									className="export-button"
+									loading={buttonLoading.export}
 								>
 									{t('classManagement.exportData')}
 									{selectedRowKeys.length > 0 && ` (${selectedRowKeys.length})`}
@@ -1273,6 +1236,7 @@ const ClassListTable = () => {
 									icon={<DownloadOutlined />}
 									onClick={handleImport}
 									className="import-button"
+									loading={buttonLoading.import}
 								>
 									{t('classManagement.importClasses')}
 								</Button>
@@ -2029,14 +1993,7 @@ const ClassListTable = () => {
 					onClose={() => setSelectedRowKeys([])}
 					selectAllText={t('classManagement.selectAll')}
 					deleteAllText={t('classManagement.deleteAll')}
-				additionalActions={[
-					{
-						key: 'deactivateAll',
-						label: t('classManagement.deactivateAll'),
-						onClick: handleDeactivateAll,
-						type: 'text'
-					}
-				]}
+					deleteAllLoading={buttonLoading.deleteAll}
 				/>
 			</ThemedLayout>
 		</>
