@@ -126,11 +126,65 @@ export default function ThemedHeader() {
     navigate(-1);
   };
 
+  // Check if current user has no sidebar (teacher, student, teaching_assistant, test_taker)
+  const hasNoSidebar = () => {
+    const userRole = user?.role;
+    return ['TEACHER', 'TEACHING_ASSISTANT', 'STUDENT', 'TEST_TAKER'].includes(userRole);
+  };
+
+  // Check if should show logo - always show for users without sidebar
+  const shouldShowLogo = () => {
+    return hasNoSidebar();
+  };
+
   return (
     <header className={`themed-header ${theme}-header`}>
       <nav className="themed-navbar">
         <div className="themed-navbar-content">
-          <div className="themed-navbar-brand">
+          <div className="themed-navbar-brand" style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '16px'
+          }}>
+            {/* Logo and CAMKEY Text - Show for users without sidebar when not in special menus */}
+            {shouldShowLogo() && (
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px',
+                padding: '0 20px'
+              }}>
+                {theme === 'space' ? (
+                  <img 
+                    src="/img/logo-dark.png"
+                    alt="CAMKEY Logo"
+                    style={{
+                      width: '40px',
+                      height: '40px',
+                      filter: 'drop-shadow(0 0 15px rgba(125, 211, 252, 0.8))'
+                    }}
+                  />
+                ) : (
+                  <img 
+                    src="/img/logo-blue.png"
+                    alt="CAMKEY Logo"
+                    style={{
+                      width: '40px',
+                      height: '40px'
+                    }}
+                  />
+                )}
+                <span style={{
+                  fontSize: '32px',
+                  fontWeight: 700,
+                  color: theme === 'sun' ? '#1E40AF' : '#FFFFFF',
+                  textShadow: theme === 'sun' ? '0 0 5px rgba(30, 64, 175, 0.3)' : '0 0 15px rgba(134, 134, 134, 0.8)'
+                }}>
+                  CAMKEY
+                </span>
+              </div>
+            )}
+
             {/* Back to Dashboard Button - Show when on Settings or Profile page for specific roles */}
             {isOnSettingsOrProfilePageWithBackButton() && (
               <Button
