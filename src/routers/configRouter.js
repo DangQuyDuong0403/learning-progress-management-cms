@@ -728,7 +728,7 @@ const CONFIG_ROUTER = [
 		exact: true,
 		key: 'TEACHER_DASHBOARD',
 		private: true,
-		role: 'teacher',
+		role: ['teacher', 'teaching_assistant'],
 	},
 	{
 		show: true,
@@ -739,7 +739,7 @@ const CONFIG_ROUTER = [
 		exact: true,
 		key: 'TEACHER_CLASSES',
 		private: true,
-		role: 'teacher',
+		role: ['teacher', 'teaching_assistant'],
 	},
 	{
 		show: false,
@@ -750,7 +750,7 @@ const CONFIG_ROUTER = [
 		exact: true,
 		key: 'TEACHER_CLASS_MENU',
 		private: true,
-		role: 'teacher',
+		role: ['teacher', 'teaching_assistant'],
 	},
 	{
 		show: false,
@@ -761,7 +761,7 @@ const CONFIG_ROUTER = [
 		exact: true,
 		key: 'TEACHER_CLASS_DASHBOARD',
 		private: true,
-		role: 'teacher',
+		role: ['teacher', 'teaching_assistant'],
 	},
 	{
 		show: false,
@@ -772,7 +772,7 @@ const CONFIG_ROUTER = [
 		exact: true,
 		key: 'TEACHER_CLASS_OVERVIEW',
 		private: true,
-		role: 'teacher',
+		role: ['teacher', 'teaching_assistant'],
 	},
 	{
 		show: false,
@@ -783,7 +783,7 @@ const CONFIG_ROUTER = [
 		exact: true,
 		key: 'TEACHER_CLASS_STUDENTS',
 		private: true,
-		role: 'teacher',
+		role: ['teacher', 'teaching_assistant'],
 	},
 	{
 		show: false,
@@ -794,7 +794,7 @@ const CONFIG_ROUTER = [
 		exact: true,
 		key: 'TEACHER_CLASS_TEACHERS',
 		private: true,
-		role: 'teacher',
+		role: ['teacher', 'teaching_assistant'],
 	},
 	{
 		show: false,
@@ -805,7 +805,7 @@ const CONFIG_ROUTER = [
 		exact: true,
 		key: 'TEACHER_CLASS_ACTIVITIES',
 		private: true,
-		role: 'teacher',
+		role: ['teacher', 'teaching_assistant'],
 	},
 	{
 		show: false,
@@ -816,7 +816,7 @@ const CONFIG_ROUTER = [
 		exact: true,
 		key: 'TEACHER_CLASS_CHAPTERS_LESSONS',
 		private: true,
-		role: 'teacher',
+		role: ['teacher', 'teaching_assistant'],
 	},
 	{
 		show: false,
@@ -827,7 +827,7 @@ const CONFIG_ROUTER = [
 		exact: true,
 		key: 'TEACHER_CLASS_CHAPTERS',
 		private: true,
-		role: 'teacher',
+		role: ['teacher', 'teaching_assistant'],
 	},
 	{
 		show: false,
@@ -838,7 +838,7 @@ const CONFIG_ROUTER = [
 		exact: true,
 		key: 'TEACHER_CLASS_CHAPTERS_EDIT_ORDER',
 		private: true,
-		role: 'teacher',
+		role: ['teacher', 'teaching_assistant'],
 	},
 	{
 		show: false,
@@ -871,7 +871,7 @@ const CONFIG_ROUTER = [
 		exact: true,
 		key: 'TEACHER_DAILY_CHALLENGES',
 		private: true,
-		role: 'teacher',
+		role: ['teacher', 'teaching_assistant'],
 	},
 	{
 		show: false,
@@ -881,7 +881,7 @@ const CONFIG_ROUTER = [
 		exact: true,
 		key: 'TEACHER_DAILY_CHALLENGE_PERFORMANCE',
 		private: true,
-		role: 'teacher',
+		role: ['teacher', 'teaching_assistant'],
 	},
 	{
 		show: false,
@@ -891,7 +891,7 @@ const CONFIG_ROUTER = [
 		exact: true,
 		key: 'TEACHER_DAILY_CHALLENGE_SUBMISSIONS',
 		private: true,
-		role: 'teacher',
+		role: ['teacher', 'teaching_assistant'],
 	},
 	{
 		show: false,
@@ -901,7 +901,7 @@ const CONFIG_ROUTER = [
 		exact: true,
 		key: 'TEACHER_DAILY_CHALLENGE_SUBMISSION_DETAIL',
 		private: true,
-		role: 'teacher',
+		role: ['teacher', 'teaching_assistant'],
 	},
 	{
 		show: false,
@@ -911,7 +911,7 @@ const CONFIG_ROUTER = [
 		exact: true,
 		key: 'TEACHER_DAILY_CHALLENGE_CONTENT',
 		private: true,
-		role: 'teacher',
+		role: ['teacher', 'teaching_assistant'],
 	},
 	{
 		show: false,
@@ -921,7 +921,7 @@ const CONFIG_ROUTER = [
 		exact: true,
 		key: 'TEACHER_CREATE_GRAMMAR_VOCAB_CHALLENGE',
 		private: true,
-		role: 'teacher',
+		role: ['teacher', 'teaching_assistant'],
 	},
 	{
 		show: false,
@@ -931,7 +931,7 @@ const CONFIG_ROUTER = [
 		exact: true,
 		key: 'TEACHER_CREATE_READING_CHALLENGE',
 		private: true,
-		role: 'teacher',
+		role: ['teacher', 'teaching_assistant'],
 	},
 	
 ];

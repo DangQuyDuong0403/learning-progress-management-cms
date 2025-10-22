@@ -82,6 +82,11 @@ const ClassTeachers = () => {
   const [availableTeachers, setAvailableTeachers] = useState([]);
   const [availableTeachingAssistants, setAvailableTeachingAssistants] = useState([]);
   const [loadingTeachers, setLoadingTeachers] = useState(false);
+  const [buttonLoading, setButtonLoading] = useState({
+    add: false,
+    delete: false,
+    import: false,
+  });
   
   // Refs for click outside detection
   const filterContainerRef = useRef(null);
@@ -334,9 +339,13 @@ const ClassTeachers = () => {
   }, [searchText, statusFilter, sortConfig.sortBy, sortConfig.sortDir, pagination.pageSize, id, t]);
 
   const handleAddTeacher = () => {
-    form.resetFields();
-    setIsModalVisible(true);
-    fetchAvailableTeachers(); // Fetch available teachers when opening modal
+    setButtonLoading(prev => ({ ...prev, add: true }));
+    setTimeout(() => {
+      form.resetFields();
+      setIsModalVisible(true);
+      fetchAvailableTeachers(); // Fetch available teachers when opening modal
+      setButtonLoading(prev => ({ ...prev, add: false }));
+    }, 100);
   };
 
   const handleImportModalOk = () => {
@@ -362,8 +371,12 @@ const ClassTeachers = () => {
 
   const handleDeleteTeacher = (teacher) => {
     console.log("Delete button clicked for teacher:", teacher);
-    setTeacherToDelete(teacher);
-    setIsDeleteModalVisible(true);
+    setButtonLoading(prev => ({ ...prev, delete: true }));
+    setTimeout(() => {
+      setTeacherToDelete(teacher);
+      setIsDeleteModalVisible(true);
+      setButtonLoading(prev => ({ ...prev, delete: false }));
+    }, 100);
   };
 
   const handleConfirmDelete = async () => {
@@ -409,6 +422,7 @@ const ClassTeachers = () => {
   };
 
   const handleModalOk = async () => {
+    setButtonLoading(prev => ({ ...prev, add: true }));
     try {
       const values = await form.validateFields();
       console.log("Form values:", values);
@@ -466,6 +480,8 @@ const ClassTeachers = () => {
                           t('classTeachers.addError');
       
       spaceToast.error(errorMessage);
+    } finally {
+      setButtonLoading(prev => ({ ...prev, add: false }));
     }
   };
 
@@ -560,6 +576,7 @@ const ClassTeachers = () => {
             onClick={() => handleDeleteTeacher(record)}
             style={{ color: "#ff4d4f" }}
             title={t('classTeachers.delete')}
+            loading={buttonLoading.delete}
           />
         </Space>
       ),
@@ -667,6 +684,7 @@ const ClassTeachers = () => {
                 icon={<PlusOutlined />}
                 className={`create-button ${theme}-create-button`}
                 onClick={handleAddTeacher}
+                loading={buttonLoading.add}
               >
                 {t('common.add')}
               </Button>

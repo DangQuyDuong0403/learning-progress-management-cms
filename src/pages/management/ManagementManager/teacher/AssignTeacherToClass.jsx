@@ -42,11 +42,14 @@ const AssignTeacherToClass = ({ teacher, onClose, onSuccess }) => {
 
 	// Fetch all available classes
 	const fetchAllClasses = useCallback(async () => {
+		// Filter statuses for class search - can be easily modified
+		const FILTER_STATUSES = ['ACTIVE', 'PENDING', 'UPCOMING_END'];
+		
 		try {
 			const response = await classManagementApi.getClasses({
 				page: 0,
 				size: 100, // Get all classes
-				status: ['ACTIVE', 'PENDING', 'UPCOMING_END'] // Filter on backend
+				status: FILTER_STATUSES // Filter on backend using array
 			});
 			
 			if (response.message && response.data) {
@@ -114,6 +117,9 @@ const AssignTeacherToClass = ({ teacher, onClose, onSuccess }) => {
 
 	// Search and recommendation logic
 	const handleSearch = useCallback(async (searchValue) => {
+		// Filter statuses for class search - can be easily modified
+		const FILTER_STATUSES = ['ACTIVE', 'PENDING', 'UPCOMING_END'];
+		
 		if (!searchValue.trim()) {
 			setSearchResults([]);
 			setHasSearched(false);
@@ -129,7 +135,7 @@ const AssignTeacherToClass = ({ teacher, onClose, onSuccess }) => {
 				page: 0,
 				size: 100,
 				searchText: searchValue.trim(),
-				status: ['ACTIVE', 'PENDING', 'UPCOMING_END'] // Filter on backend
+				status: FILTER_STATUSES // Filter on backend using array
 			});
 
 			if (response.message && response.data) {
