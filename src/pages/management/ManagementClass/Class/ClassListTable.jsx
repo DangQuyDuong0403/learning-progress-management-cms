@@ -124,8 +124,6 @@ const ClassListTable = () => {
 		visible: false,
 		selectedStatus: 'all',
 		selectedSyllabus: null,
-		selectedStartDateRange: null,
-		selectedEndDateRange: null,
 	});
 	
 	// Flag to prevent closing filter when interacting with components
@@ -135,10 +133,6 @@ const ClassListTable = () => {
 	const [appliedFilters, setAppliedFilters] = useState({
 		status: 'all',
 		syllabusId: null,
-		startDateFrom: null,
-		startDateTo: null,
-		endDateFrom: null,
-		endDateTo: null,
 	});
 	
 	// Refs for click outside detection
@@ -170,18 +164,6 @@ const ClassListTable = () => {
 			}
 			if (filters.syllabusId) {
 				params.syllabusId = filters.syllabusId;
-			}
-			if (filters.startDateFrom) {
-				params.startDateFrom = filters.startDateFrom;
-			}
-			if (filters.startDateTo) {
-				params.startDateTo = filters.startDateTo;
-			}
-			if (filters.endDateFrom) {
-				params.endDateFrom = filters.endDateFrom;
-			}
-			if (filters.endDateTo) {
-				params.endDateTo = filters.endDateTo;
 			}
 
 			console.log('Fetching classes with params:', params);
@@ -775,18 +757,6 @@ const ClassListTable = () => {
 				if (appliedFilters.syllabusId) {
 					params.syllabusId = appliedFilters.syllabusId;
 				}
-				if (appliedFilters.startDateFrom) {
-					params.startDateFrom = appliedFilters.startDateFrom;
-				}
-				if (appliedFilters.startDateTo) {
-					params.startDateTo = appliedFilters.startDateTo;
-				}
-				if (appliedFilters.endDateFrom) {
-					params.endDateFrom = appliedFilters.endDateFrom;
-				}
-				if (appliedFilters.endDateTo) {
-					params.endDateTo = appliedFilters.endDateTo;
-				}
 
 				const response = await classManagementApi.getClasses(params);
 
@@ -817,8 +787,6 @@ const ClassListTable = () => {
 			visible: !prev.visible,
 			selectedStatus: prev.visible ? prev.selectedStatus : appliedFilters.status,
 			selectedSyllabus: prev.visible ? prev.selectedSyllabus : appliedFilters.syllabusId,
-			selectedStartDateRange: prev.visible ? prev.selectedStartDateRange : (appliedFilters.startDateFrom && appliedFilters.startDateTo ? [appliedFilters.startDateFrom, appliedFilters.startDateTo] : null),
-			selectedEndDateRange: prev.visible ? prev.selectedEndDateRange : (appliedFilters.endDateFrom && appliedFilters.endDateTo ? [appliedFilters.endDateFrom, appliedFilters.endDateTo] : null),
 		}));
 	};
 
@@ -827,10 +795,6 @@ const ClassListTable = () => {
 		const newFilters = {
 			status: filterDropdown.selectedStatus,
 			syllabusId: filterDropdown.selectedSyllabus,
-			startDateFrom: filterDropdown.selectedStartDateRange && filterDropdown.selectedStartDateRange[0] ? filterDropdown.selectedStartDateRange[0] : null,
-			startDateTo: filterDropdown.selectedStartDateRange && filterDropdown.selectedStartDateRange[1] ? filterDropdown.selectedStartDateRange[1] : null,
-			endDateFrom: filterDropdown.selectedEndDateRange && filterDropdown.selectedEndDateRange[0] ? filterDropdown.selectedEndDateRange[0] : null,
-			endDateTo: filterDropdown.selectedEndDateRange && filterDropdown.selectedEndDateRange[1] ? filterDropdown.selectedEndDateRange[1] : null,
 		};
 		
 		setAppliedFilters(newFilters);
@@ -854,8 +818,6 @@ const ClassListTable = () => {
 			...prev,
 			selectedStatus: 'all',
 			selectedSyllabus: null,
-			selectedStartDateRange: null,
-			selectedEndDateRange: null,
 		}));
 	};
 
@@ -1195,7 +1157,7 @@ const ClassListTable = () => {
 									<Button 
 										icon={<FilterOutlined />}
 										onClick={handleFilterToggle}
-										className={`filter-button ${theme}-filter-button ${filterDropdown.visible ? 'active' : ''} ${(appliedFilters.status !== 'all' || appliedFilters.syllabusId || appliedFilters.startDateFrom || appliedFilters.endDateFrom) ? 'has-filters' : ''}`}
+										className={`filter-button ${theme}-filter-button ${filterDropdown.visible ? 'active' : ''} ${(appliedFilters.status !== 'all' || appliedFilters.syllabusId) ? 'has-filters' : ''}`}
 									>
 										{t('common.filter')}
 									</Button>
@@ -1217,12 +1179,15 @@ const ClassListTable = () => {
 													>
 														<Option value="all">{t('classManagement.allStatus')}</Option>
 														<Option value="ACTIVE">{t('classManagement.active')}</Option>
+														<Option value="PENDING">{t('classManagement.pending')}</Option>
+														<Option value="UPCOMING_END">{t('classManagement.upcomingEnd')}</Option>
+														<Option value="FINISHED">{t('classManagement.finished')}</Option>
 														<Option value="INACTIVE">{t('classManagement.inactive')}</Option>
 													</Select>
 												</div>
 
 												{/* Syllabus Filter */}
-												<div style={{ marginBottom: '20px' }}>
+												<div style={{ marginBottom: '24px' }}>
 													<Typography.Title level={5} style={{ marginBottom: '12px', fontSize: '16px' }}>
 														{t('classManagement.syllabus')}
 													</Typography.Title>
@@ -1243,79 +1208,6 @@ const ClassListTable = () => {
 													</Select>
 												</div>
 
-												{/* Start Date Range Filter */}
-												<div style={{ marginBottom: '20px' }}>
-													<Typography.Title 
-														level={5} 
-														style={{ 
-															marginBottom: '12px', 
-															fontSize: '16px',
-															fontWeight: '600',
-															color: theme === 'dark' ? '#ffffff' : '#000000'
-														}}
-													>
-														{t('classManagement.startDateRange')}
-													</Typography.Title>
-													<DatePicker.RangePicker
-														value={filterDropdown.selectedStartDateRange ? [
-															filterDropdown.selectedStartDateRange[0] ? dayjs(filterDropdown.selectedStartDateRange[0]) : null,
-															filterDropdown.selectedStartDateRange[1] ? dayjs(filterDropdown.selectedStartDateRange[1]) : null
-														] : null}
-														onChange={(dates) => {
-															if (dates && dates[0] && dates[1]) {
-																setFilterDropdown(prev => ({
-																	...prev,
-																	selectedStartDateRange: [dates[0].format('YYYY-MM-DD'), dates[1].format('YYYY-MM-DD')]
-																}));
-															} else {
-																setFilterDropdown(prev => ({
-																	...prev,
-																	selectedStartDateRange: null
-																}));
-															}
-														}}
-														onOpenChange={(open) => setIsInteractingWithFilter(open)}
-														style={{ width: '100%', height: '40px' }}
-														placeholder={[t('classManagement.startDateFrom'), t('classManagement.startDateTo')]}
-													/>
-												</div>
-
-												{/* End Date Range Filter */}
-												<div style={{ marginBottom: '24px' }}>
-													<Typography.Title 
-														level={5} 
-														style={{ 
-															marginBottom: '12px', 
-															fontSize: '16px',
-															fontWeight: '600',
-															color: theme === 'dark' ? '#ffffff' : '#000000'
-														}}
-													>
-														{t('classManagement.endDateRange')}
-													</Typography.Title>
-													<DatePicker.RangePicker
-														value={filterDropdown.selectedEndDateRange ? [
-															filterDropdown.selectedEndDateRange[0] ? dayjs(filterDropdown.selectedEndDateRange[0]) : null,
-															filterDropdown.selectedEndDateRange[1] ? dayjs(filterDropdown.selectedEndDateRange[1]) : null
-														] : null}
-														onChange={(dates) => {
-															if (dates && dates[0] && dates[1]) {
-																setFilterDropdown(prev => ({
-																	...prev,
-																	selectedEndDateRange: [dates[0].format('YYYY-MM-DD'), dates[1].format('YYYY-MM-DD')]
-																}));
-															} else {
-																setFilterDropdown(prev => ({
-																	...prev,
-																	selectedEndDateRange: null
-																}));
-															}
-														}}
-														onOpenChange={(open) => setIsInteractingWithFilter(open)}
-														style={{ width: '100%', height: '40px' }}
-														placeholder={[t('classManagement.endDateFrom'), t('classManagement.endDateTo')]}
-													/>
-												</div>
 
 												{/* Action Buttons */}
 												<div style={{ 

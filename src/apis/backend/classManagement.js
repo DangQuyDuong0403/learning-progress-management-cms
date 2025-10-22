@@ -12,7 +12,12 @@ const classManagementApi = {
 			queryParams.append('searchText', params.searchText.trim());
 		}
 		if (params.status && params.status !== 'all') {
-			queryParams.append('status', params.status);
+			// Support both single status and array of statuses
+			if (Array.isArray(params.status)) {
+				params.status.forEach(status => queryParams.append('status', status));
+			} else {
+				queryParams.append('status', params.status);
+			}
 		}
 		if (params.syllabusId) {
 			queryParams.append('syllabusId', params.syllabusId);
@@ -283,10 +288,10 @@ const classManagementApi = {
 	},
 
 	// Xóa teacher khỏi class
-	removeTeacherFromClass: (classId, teacherId) => {
-		const url = `/class-teacher/${classId}/remove-teacher/${teacherId}`;
+	removeTeacherFromClass: (classId, userId) => {
+		const url = `/class-teacher/${classId}/remove-teacher/${userId}`;
 		console.log('RemoveTeacherFromClass API - URL:', url);
-		console.log('RemoveTeacherFromClass API - Params:', { classId, teacherId });
+		console.log('RemoveTeacherFromClass API - Params:', { classId, userId });
 		
 		return axiosClient.delete(url, {
 			headers: {
@@ -294,6 +299,48 @@ const classManagementApi = {
 			}
 		}).catch(error => {
 			console.error('RemoveTeacherFromClass API Error:', error);
+			console.error('Error response:', error.response?.data);
+			console.error('Error status:', error.response?.status);
+			throw error;
+		});
+	},
+
+	// Thêm students vào class
+	addStudentsToClass: (classId, userIds) => {
+		const url = `/class-student/${classId}/add-student`;
+		console.log('AddStudentsToClass API - URL:', url);
+		console.log('AddStudentsToClass API - Data:', { userIds });
+		
+		return axiosClient.post(url, {
+			userIds: userIds
+		}, {
+			headers: {
+				'accept': '*/*',
+				'Content-Type': 'application/json',
+			}
+		}).catch(error => {
+			console.error('AddStudentsToClass API Error:', error);
+			console.error('Error response:', error.response?.data);
+			console.error('Error status:', error.response?.status);
+			throw error;
+		});
+	},
+
+	// Xóa student khỏi class
+	removeStudentFromClass: (classId, userId) => {
+		const url = `/class-student/${classId}/remove-student/${userId}`;
+		console.log('RemoveStudentFromClass API - URL:', url);
+		console.log('RemoveStudentFromClass API - Params:', { classId, userId });
+		
+		return axiosClient.delete(url, {
+			headers: {
+				'accept': '*/*',
+			}
+		}).then(response => {
+			console.log('RemoveStudentFromClass API Success:', response);
+			return response;
+		}).catch(error => {
+			console.error('RemoveStudentFromClass API Error:', error);
 			console.error('Error response:', error.response?.data);
 			console.error('Error status:', error.response?.status);
 			throw error;

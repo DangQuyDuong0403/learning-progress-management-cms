@@ -266,7 +266,7 @@ const ClassChapterLesson = () => {
 	};
 
 	const handleEditOrder = () => {
-		navigate(`${routePrefix}/chapters/${classId}/lessons/edit-order`);
+		navigate(`${routePrefix}/chapters/${classId}/lessons/${chapterId}/edit-order`);
 	};
 
 	// Checkbox logic
