@@ -1,194 +1,389 @@
-import React, { useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import { toast } from 'react-toastify';
 import { useTranslation } from 'react-i18next';
+import { useSelector, useDispatch } from 'react-redux';
+import { Typography } from 'antd';
+import { EditOutlined } from '@ant-design/icons';
+import usePageTitle from '../../hooks/usePageTitle';
 import './Profile.css';
-import Layout from '../../component/Layout';
+import ThemedLayoutWithSidebar from '../../component/ThemedLayout';
+import ThemedLayoutNoSidebar from '../../component/teacherlayout/ThemedLayout';
+import { useTheme } from '../../contexts/ThemeContext';
+import { getUserProfile, uploadAvatar } from '../../redux/auth';
+import TableSpinner from '../../component/spinner/TableSpinner';
+import EditEmailModal from './EditEmailModal';
+import EditPersonalInfoModal from './EditPersonalInfoModal';
+import { spaceToast } from '../../component/SpaceToastify';
 
 export default function Profile() {
   const { t } = useTranslation();
+  const { user, profileData, profileLoading, profileError, uploadAvatarLoading, uploadAvatarError, uploadAvatarSuccess, confirmEmailChangeSuccess } = useSelector((state) => state.auth);
+  const { theme } = useTheme();
   
-  const lastNameRef = useRef();
-  const firstNameRef = useRef();
-  const emailRef = useRef();
-  const birthDateRef = useRef();
+  // Determine which layout to use based on user role
+  // Role từ Redux được lưu là chữ hoa: TEACHER, TEACHING_ASSISTANT, STUDENT, TEST_TAKER
+  const userRole = user?.role;
+  const shouldUseTeacherLayout = ['TEACHER', 'TEACHING_ASSISTANT', 'STUDENT', 'TEST_TAKER'].includes(userRole);
+  const ThemedLayout = shouldUseTeacherLayout ? ThemedLayoutNoSidebar : ThemedLayoutWithSidebar;
+  
+  // Set page title
+  usePageTitle('Profile');
+  const dispatch = useDispatch();
+  
+  // Modal state
+  const [isEditEmailModalVisible, setIsEditEmailModalVisible] = useState(false);
+  const [isEditPersonalInfoModalVisible, setIsEditPersonalInfoModalVisible] = useState(false);
+  
+  // Spinner state
+  const [showSpinner, setShowSpinner] = useState(true);
+  const [spinnerCompleted, setSpinnerCompleted] = useState(false);
 
+  // Fetch user profile data on component mount
+  useEffect(() => {
+    dispatch(getUserProfile());
+  }, [dispatch]);
 
-  function validateName(name) {
-    // Only letters (including Vietnamese), spaces, at least 2 chars
-    return /^[A-Za-zÀ-ỹà-ỹ\s]{2,}$/u.test(name);
-  }
-
-  function validateEmail(email) {
-    // Simple email regex
-    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-  }
-
-  function isFutureDate(dateStr) {
-    if (!dateStr) return false;
-    const today = new Date();
-    today.setHours(0,0,0,0);
-    const inputDate = new Date(dateStr);
-    return inputDate > today;
-  }
-
-  const handleUpdate = (e) => {
-    e.preventDefault();
-    const lastName = lastNameRef.current.value.trim();
-    const firstName = firstNameRef.current.value.trim();
-    const email = emailRef.current.value.trim();
-    const birthDate = birthDateRef.current.value;
-
-    if (!lastName || !firstName || !email || !birthDate) {
-      toast.error(t('messages.required'));
-      return;
+  // Handle profile error
+  useEffect(() => {
+    if (profileError) {
+      toast.error('Failed to load profile data');
     }
-    if (!validateName(lastName)) {
-      toast.error('Last name must be at least 2 letters, no numbers or special characters!');
-      return;
+  }, [profileError]);
+
+  // Handle upload avatar success and error
+  useEffect(() => {
+    if (uploadAvatarSuccess) {
+      spaceToast.success('Avatar updated successfully!');
+      // Reload profile data to get updated avatar
+      dispatch(getUserProfile());
     }
-    if (!validateName(firstName)) {
-      toast.error('First name must be at least 2 letters, no numbers or special characters!');
-      return;
+  }, [uploadAvatarSuccess, dispatch]);
+
+  useEffect(() => {
+    if (uploadAvatarError) {
+      spaceToast.error('Failed to upload avatar');
     }
-    if (!validateEmail(email)) {
-      toast.error(t('messages.invalidEmail'));
-      return;
+  }, [uploadAvatarError]);
+
+  // Handle email confirmation success
+  useEffect(() => {
+    if (confirmEmailChangeSuccess) {
+      spaceToast.success('Email updated successfully!');
+      // Reload profile data to get updated email
+      dispatch(getUserProfile());
     }
-    if (isFutureDate(birthDate)) {
-      toast.error('Date of birth cannot be in the future!');
-      return;
+  }, [confirmEmailChangeSuccess, dispatch]);
+
+  // Handle spinner completion when profile data is loaded
+  useEffect(() => {
+    if (!profileLoading && profileData) {
+      // Add 100 second delay before starting fade out animation
+      setTimeout(() => {
+        setSpinnerCompleted(true);
+      }, 1000);
     }
-    toast.success(t('messages.updateSuccess'));
-    // ...submit logic here
+  }, [profileLoading, profileData]);
+
+  // Handle spinner animation end
+  const handleSpinnerAnimationEnd = () => {
+    setShowSpinner(false);
+  };
+
+
+  const handleEditPersonalInfo = () => {
+    setIsEditPersonalInfoModalVisible(true);
+  };
+
+  const handleAvatarUpload = (event) => {
+    const file = event.target.files[0];
+    if (file) {
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        toast.error('Please select an image file');
+        return;
+      }
+      
+      // Validate file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error('File size must be less than 5MB');
+        return;
+      }
+      
+      dispatch(uploadAvatar(file));
+    }
+  };
+
+  const handleEmailUpdateSuccess = (newEmail) => {
+    // Handle email update success - không cần làm gì vì email chưa confirm
+    console.log('Email change request sent for:', newEmail);
+    // Email sẽ được cập nhật khi confirm thành công
+  };
+
+  const handlePersonalInfoUpdateSuccess = (updatedData) => {
+    // Handle personal info update success
+    console.log('Personal info updated:', updatedData);
+    // You can dispatch an action to update the profile data here
+  };
+
+  const handleEditEmail = () => {
+    setIsEditEmailModalVisible(true);
   };
 
   
 
+  // Show TableSpinner while fetching profile data or during fade animation
+  if (showSpinner) {
+    return (
+      <ThemedLayout>
+        <div className={`profile-container profile-page ${theme}-profile-container`} style={{
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center'
+        }}>
+          <TableSpinner 
+            message={t('common.loading') || "Đang tải..."}
+            isCompleted={spinnerCompleted}
+            onAnimationEnd={handleSpinnerAnimationEnd}
+          />
+        </div>
+      </ThemedLayout>
+    );
+  }
+
   return (
-     <Layout>
-    <div className="profile-container">
-      {/* Floating Planets */}
-      <img src="/img/planet-1.png" alt="Planet" className="planet-1" />
-      <img src="/img/planet-2.png" alt="Planet" className="planet-2" />
-      <img src="/img/planet-3.png" alt="Planet" className="planet-3" />
-      <img src="/img/planet-4.png" alt="Planet" className="planet-4" />
-      <img src="/img/planet-5.png" alt="Planet" className="planet-5" />
-      <img src="/img/planet-6.png" alt="Planet" className="planet-6" />
-     
-     
-      <div className="main-layout">
-       
-        <div className="content-area">
-          <div className="profile-content">
-            <div className="profile-cards">
-                  {/* Personal Information Card */}
-                  <div className="profile-card personal-info-card">
-                    <div className="card-header">
-                      <h3
-                        style={{
-                          fontWeight: 700,
-                          fontSize: '1.5rem',
-                          letterSpacing: '0.5px',
-                          margin: 0,
-                          color: '#fff'
-                        }}
-                      >
-                        {t('profile.personalInfo')}
-                      </h3>
-                      <i className="ti ti-user"></i>
+    <ThemedLayout>
+      <div className={`profile-container ${theme}-profile-container`}>
+        {/* Page Title */}
+        <div className="page-title-container">
+          <Typography.Title 
+            level={1} 
+            className="page-title"
+          >
+            {t('profile.title')}
+          </Typography.Title>
+        </div>
+        
+        {/* Header Section */}
+        <div className={`profile-header ${theme}-profile-header`} style={{ display: 'flex', justifyContent: 'flex-end' }}>
+          <div className='action-buttons'>
+            <button className={`btn btn-primary ${theme}-btn-primary`} onClick={handleEditPersonalInfo}>
+              <i className="ti ti-edit"></i>
+              {t('common.editProfile')}
+            </button>
+          </div>
+        </div>
+
+        {/* Content Section */}
+        <div className={`content-section ${theme}-content-section`}>
+          {/* Profile Card */}
+          <div className={`profile-container-new ${theme}-profile-container-new`}>
+            {/* Profile Title */}
+            <div className={`profile-title-new ${theme}-profile-title-new`}>
+              {t('common.profile')}
+            </div>
+            
+            <div className={`profile-content-new ${theme}-profile-content-new`}>
+              {/* Left Section - Avatar */}
+              <div className={`avatar-section-new ${theme}-avatar-section-new`}>
+                <div 
+                  className="profile-picture-new" 
+                  onClick={() => document.getElementById('avatar-upload').click()}
+                >
+                  <img 
+                    src={profileData?.avatarUrl || "/img/avatar_1.png"} 
+                    alt="Profile" 
+                    style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} 
+                  />
+                  {uploadAvatarLoading && (
+                    <div className="avatar-loading-overlay">
+                      Uploading...
                     </div>
-                    <div className="card-content">
-                      <div className="profile-info-layout">
-                        {/* Left side - Profile Picture and Name */}
-                        <div className="profile-left">
-                          <div className="profile-picture-container">
-                            <div className="profile-picture-placeholder">
-                              <img src="/img/avatar_1.png" alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} />
-                            </div>
-                          </div>
-                          <div className="profile-name-section">
-                            <h4 className="profile-full-name">Nguyen Duc Anh</h4>
-                            <p className="profile-role">Admin</p>
-                          
-                          </div>
-                        </div>
-                        {/* Right side - Form Fields */}
-                        <div className="profile-right">
-                          <div className="form-row">
-                            <div className="form-group" style={{ flex: 1 }}>
-                              <label htmlFor="lastName">{t('common.lastName')}</label>
-                              <input 
-                                type="text" 
-                                id="lastName" 
-                                className="form-input" 
-                                defaultValue="Nguyen Duc"
-                                ref={lastNameRef}
-                              />
-                            </div>
-                            <div className="form-group" style={{ flex: 1, marginLeft: '1rem' }}>
-                              <label htmlFor="firstName">{t('common.firstName')}</label>
-                              <input 
-                                type="text" 
-                                id="firstName" 
-                                className="form-input" 
-                                defaultValue="Anh"
-                                ref={firstNameRef}
-                              />
-                            </div>
-                          </div>
-                          <div className="form-group">
-                            <label htmlFor="email">{t('common.email')}</label>
-                            <input 
-                              type="email" 
-                              id="email" 
-                              className="form-input" 
-                              defaultValue="anhtony2003@gmail.com"
-                              ref={emailRef}
-                            />
-                          </div>
-                          <div className="form-group">
-                            <label>{t('common.gender')}</label>
-                            <div className="radio-group">
-                              <label className="radio-label">
-                                <input type="radio" name="gender" value="male" defaultChecked />
-                                <span className="radio-custom"></span>
-                                {t('common.male')}
-                              </label>
-                              <label className="radio-label">
-                                <input type="radio" name="gender" value="female" />
-                                <span className="radio-custom"></span>
-                                {t('common.female')}
-                              </label>
-                            </div>
-                          </div>
-                          <div className="form-group">
-                            <label htmlFor="birthDate">{t('common.dateOfBirth')}</label>
-                            <div className="date-input-container">
-                              <input 
-                                type="date" 
-                                id="birthDate" 
-                                className="form-input" 
-                                defaultValue="2003-05-16"
-                                ref={birthDateRef}
-                              />
-                              <i className="ti ti-calendar date-icon"></i>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="form-actions">
-                        <button className="btn btn-secondary">{t('common.back')}</button>
-                        <button className="btn btn-primary" onClick={handleUpdate}>{t('common.update')}</button>
-                      </div>
-                    </div>
-                  </div>
+                  )}
+                </div>
                 
+                {/* Email */}
+                <div className={`email-section-new ${theme}-email-section-new`}>
+                  <span className={`email-text-new ${theme}-email-text-new`}>
+                    {profileData?.email || '-'}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleEditEmail}
+                    className={`email-edit-icon ${theme}-email-edit-icon`}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      padding: '4px',
+                      borderRadius: '4px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}
+                  >
+                    <EditOutlined />
+                  </button>
+                </div>
+                
+                {/* Level Badge */}
+                <div className={`starter-badge-new ${theme}-starter-badge-new`}>
+                  {(() => {
+                    // Debug logging to understand data structure
+                    console.log('Profile Level Debug:', {
+                      profileData,
+                      currentLevelInfo: profileData?.currentLevelInfo,
+                      levelName: profileData?.levelName,
+                      userLevelInfo: user?.currentLevelInfo,
+                      userLevelName: user?.levelName
+                    });
+                    
+                    return profileData?.currentLevelInfo?.levelName || 
+                           profileData?.currentLevelInfo?.name || 
+                           profileData?.levelName || 
+                           user?.currentLevelInfo?.levelName ||
+                           user?.currentLevelInfo?.name ||
+                           user?.levelName ||
+                           'N/A';
+                  })()}
+                </div>
+              </div>
+
+              {/* Right Section - Profile Info */}
+              <div className={`student-info-new ${theme}-student-info-new`}>
+                {/* Name and Status Row */}
+                <div className={`name-status-row-new ${theme}-name-status-row-new`}>
+                  <h2 className={`student-name-new ${theme}-student-name-new`}>
+                    Hello {profileData?.fullName || user?.fullName || ''}
+                  </h2>
+                  <div className={`status-badges-new ${theme}-status-badges-new`}>
+                    <span className={`role-badge-new ${theme}-role-badge-new`}>
+                      {profileData?.roleName || user?.role || 'Admin'}
+                    </span>
+                    <span className={`status-badge-new ${theme}-status-badge-new active`}>
+                      {profileData?.status || 'ACTIVE'}
+                    </span>
+                  </div>
+                </div>
+                
+                {/* User ID */}
+                <div className={`student-id-new ${theme}-student-id-new`}>
+                  {profileData?.userName || user?.userName || '-'}
+                </div>
+
+                {/* Personal Information Grid */}
+                <div className={`personal-info-grid-new ${theme}-personal-info-grid-new`}>
+                  <div className={`info-item-new ${theme}-info-item-new`}>
+                    <span className={`info-label-new ${theme}-info-label-new`}>{t('common.phoneNumber')}</span>
+                    <span className={`info-value-new ${theme}-info-value-new`}>{profileData?.phoneNumber || '-'}</span>
+                  </div>
+                  <div className={`info-item-new ${theme}-info-item-new`}>
+                    <span className={`info-label-new ${theme}-info-label-new`}>{t('common.gender')}</span>
+                    <span className={`info-value-new ${theme}-info-value-new`}>
+                      {profileData?.gender === 'MALE' ? t('common.male') : 
+                       profileData?.gender === 'FEMALE' ? t('common.female') : 
+                       profileData?.gender === 'OTHER' ? t('common.other') : 
+                       profileData?.gender || '-'}
+                    </span>
+                  </div>
+                  <div className={`info-item-new ${theme}-info-item-new`}>
+                    <span className={`info-label-new ${theme}-info-label-new`}>{t('common.dateOfBirth')}</span>
+                    <span className={`info-value-new ${theme}-info-value-new`}>
+                      {profileData?.dateOfBirth ? new Date(profileData.dateOfBirth).toLocaleDateString('vi-VN') : '-'}
+                    </span>
+                  </div>
+                  <div className={`info-item-new ${theme}-info-item-new`}>
+                    <span className={`info-label-new ${theme}-info-label-new`}>{t('common.address')}</span>
+                    <span className={`info-value-new ${theme}-info-value-new`}>{profileData?.address || '-'}</span>
+                  </div>
                 </div>
               </div>
             </div>
+            
+            {/* Hidden file input for avatar upload */}
+            <input
+              id="avatar-upload"
+              type="file"
+              accept="image/*"
+              onChange={handleAvatarUpload}
+              style={{ display: 'none' }}
+            />
           </div>
+
+          {/* Parent Information Card - Show for students */}
+          {(profileData?.roleName === 'STUDENT' || user?.role === 'STUDENT') && (
+            <div className={`parent-container-new ${theme}-parent-container-new`}>
+              {/* Parent Title */}
+              <div className={`parent-title-new ${theme}-parent-title-new`}>
+                {t('common.parentInformation')}
+              </div>
+              
+              {/* Parent Content */}
+              <div className={`parent-content-new ${theme}-parent-content-new`}>
+                {/* Left Section - Personal Info */}
+                <div className={`parent-left-section-new ${theme}-parent-left-section-new`}>
+                  {/* Family Icon */}
+                  <div className={`family-icon-new ${theme}-family-icon-new`}>
+                    <img 
+                      src="/img/family-icon.png" 
+                      alt="Family Icon" 
+                      style={{ width: '60px', height: '60px' }}
+                    />
+                  </div>
+                  
+                  {/* Parent Name and Relationship */}
+                  <div className={`parent-name-section-new ${theme}-parent-name-section-new`}>
+                    <div className={`parent-name-new ${theme}-parent-name-new`}>
+                      {profileData?.parentInfo?.parentName || '-'}
+                    </div>
+                    <div className={`parent-relationship-new ${theme}-parent-relationship-new`}>
+                      {profileData?.parentInfo?.relationship || '-'}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Right Section - Contact Info */}
+                <div className={`parent-right-section-new ${theme}-parent-right-section-new`}>
+                  {/* Phone */}
+                  <div className={`parent-contact-item-new ${theme}-parent-contact-item-new`}>
+                    <div className={`parent-contact-label-new ${theme}-parent-contact-label-new`}>
+                      {t('common.parentPhone')}
+                    </div>
+                    <div className={`parent-contact-value-new ${theme}-parent-contact-value-new`}>
+                      {profileData?.parentInfo?.parentPhone || '-'}
+                    </div>
+                  </div>
+                  
+                  {/* Email */}
+                  <div className={`parent-contact-item-new ${theme}-parent-contact-item-new`}>
+                    <div className={`parent-contact-label-new ${theme}-parent-contact-label-new`}>
+                      {t('common.parentEmail')}
+                    </div>
+                    <div className={`parent-contact-value-new ${theme}-parent-contact-value-new`}>
+                      {profileData?.parentInfo?.parentEmail || '-'}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
-        </Layout>
-      );
+
+        {/* Edit Email Modal */}
+        <EditEmailModal
+          isVisible={isEditEmailModalVisible}
+          onCancel={() => setIsEditEmailModalVisible(false)}
+          onSuccess={handleEmailUpdateSuccess}
+          currentEmail={profileData?.email}
+        />
+
+        {/* Edit Personal Info Modal */}
+        <EditPersonalInfoModal
+          isVisible={isEditPersonalInfoModalVisible}
+          onCancel={() => setIsEditPersonalInfoModalVisible(false)}
+          onSuccess={handlePersonalInfoUpdateSuccess}
+          profileData={profileData}
+        />
+      </div>
+    </ThemedLayout>
+  );
     }
-                        <div className="password-strength-bar"></div>

@@ -240,7 +240,8 @@ export const fetchChaptersBySyllabus = createAsyncThunk(
 	async (syllabusId, { rejectWithValue }) => {
 		try {
 			await delay(800);
-			const syllabus = mockSyllabuses.find(s => s.id === syllabusId);
+			const id = parseInt(syllabusId);
+			const syllabus = mockSyllabuses.find(s => s.id === id);
 			return syllabus ? syllabus.chapters || [] : [];
 		} catch (error) {
 			return rejectWithValue(error.message);
@@ -333,16 +334,31 @@ export const updateChapterStatus = createAsyncThunk(
 // Async thunks for Lessons
 export const fetchLessonsByChapter = createAsyncThunk(
 	'syllabus/fetchLessonsByChapter',
-	async (chapterId, { rejectWithValue }) => {
+	async ({ chapterId, params = {} }, { rejectWithValue }) => {
 		try {
-			await delay(800);
-			for (const syllabus of mockSyllabuses) {
-				const chapter = syllabus.chapters?.find(c => c.id === chapterId);
-				if (chapter) {
-					return chapter.lessons || [];
-				}
-			}
-			return [];
+			// Import API dynamically to avoid circular dependency
+			const syllabusManagementApi = (await import('../apis/backend/syllabusManagement')).default;
+			const response = await syllabusManagementApi.getLessonsByChapterId(chapterId, params);
+			
+			// Map API response to component format
+			const mappedLessons = response.data.map((lesson) => ({
+				id: lesson.id,
+				name: lesson.lessonName || lesson.name,
+				content: lesson.content,
+				description: lesson.description,
+				order: lesson.orderNumber || lesson.order,
+				duration: lesson.duration,
+				type: lesson.type,
+				status: lesson.status,
+				createdBy: lesson.createdBy || lesson.createdByUser || 'N/A',
+				createdAt: lesson.createdAt,
+			}));
+
+			return {
+				lessons: mappedLessons,
+				totalElements: response.totalElements || response.data.length,
+				totalPages: response.totalPages || Math.ceil((response.totalElements || response.data.length) / (params.size || 10)),
+			};
 		} catch (error) {
 			return rejectWithValue(error.message);
 		}
@@ -353,23 +369,25 @@ export const createLesson = createAsyncThunk(
 	'syllabus/createLesson',
 	async (lessonData, { rejectWithValue }) => {
 		try {
-			await delay(800);
-			const newLesson = {
-				id: Date.now(),
-				...lessonData,
-				createdAt: new Date().toISOString(),
+			// Import API dynamically to avoid circular dependency
+			const syllabusManagementApi = (await import('../apis/backend/syllabusManagement')).default;
+			const response = await syllabusManagementApi.createLesson(lessonData);
+			
+			// Map API response to component format
+			const mappedLesson = {
+				id: response.id,
+				name: response.lessonName || response.name,
+				content: response.content,
+				description: response.description,
+				order: response.orderNumber || response.order,
+				duration: response.duration,
+				type: response.type,
+				status: response.status,
+				createdBy: response.createdBy || response.createdByUser || 'N/A',
+				createdAt: response.createdAt,
 			};
-			
-			for (const syllabus of mockSyllabuses) {
-				const chapter = syllabus.chapters?.find(c => c.id === lessonData.chapterId);
-				if (chapter) {
-					chapter.lessons = chapter.lessons || [];
-					chapter.lessons.push(newLesson);
-					return newLesson;
-				}
-			}
-			
-			throw new Error('Chapter not found');
+
+			return mappedLesson;
 		} catch (error) {
 			return rejectWithValue(error.message);
 		}
@@ -380,17 +398,25 @@ export const updateLesson = createAsyncThunk(
 	'syllabus/updateLesson',
 	async ({ id, ...updateData }, { rejectWithValue }) => {
 		try {
-			await delay(800);
-			for (const syllabus of mockSyllabuses) {
-				for (const chapter of syllabus.chapters || []) {
-					const lessonIndex = chapter.lessons?.findIndex(lesson => lesson.id === id);
-					if (lessonIndex !== -1) {
-						chapter.lessons[lessonIndex] = { ...chapter.lessons[lessonIndex], ...updateData };
-						return chapter.lessons[lessonIndex];
-					}
-				}
-			}
-			throw new Error('Lesson not found');
+			// Import API dynamically to avoid circular dependency
+			const syllabusManagementApi = (await import('../apis/backend/syllabusManagement')).default;
+			const response = await syllabusManagementApi.updateLesson(id, updateData);
+			
+			// Map API response to component format
+			const mappedLesson = {
+				id: response.id,
+				name: response.lessonName || response.name,
+				content: response.content,
+				description: response.description,
+				order: response.orderNumber || response.order,
+				duration: response.duration,
+				type: response.type,
+				status: response.status,
+				createdBy: response.createdBy || response.createdByUser || 'N/A',
+				createdAt: response.createdAt,
+			};
+
+			return mappedLesson;
 		} catch (error) {
 			return rejectWithValue(error.message);
 		}
@@ -401,17 +427,10 @@ export const deleteLesson = createAsyncThunk(
 	'syllabus/deleteLesson',
 	async (id, { rejectWithValue }) => {
 		try {
-			await delay(800);
-			for (const syllabus of mockSyllabuses) {
-				for (const chapter of syllabus.chapters || []) {
-					const lessonIndex = chapter.lessons?.findIndex(lesson => lesson.id === id);
-					if (lessonIndex !== -1) {
-						chapter.lessons.splice(lessonIndex, 1);
-						return id;
-					}
-				}
-			}
-			throw new Error('Lesson not found');
+			// Import API dynamically to avoid circular dependency
+			const syllabusManagementApi = (await import('../apis/backend/syllabusManagement')).default;
+			await syllabusManagementApi.deleteLesson(id);
+			return id;
 		} catch (error) {
 			return rejectWithValue(error.message);
 		}
@@ -422,17 +441,25 @@ export const updateLessonStatus = createAsyncThunk(
 	'syllabus/updateLessonStatus',
 	async ({ id, status }, { rejectWithValue }) => {
 		try {
-			await delay(500);
-			for (const syllabus of mockSyllabuses) {
-				for (const chapter of syllabus.chapters || []) {
-					const lessonIndex = chapter.lessons?.findIndex(lesson => lesson.id === id);
-					if (lessonIndex !== -1) {
-						chapter.lessons[lessonIndex].status = status;
-						return chapter.lessons[lessonIndex];
-					}
-				}
-			}
-			throw new Error('Lesson not found');
+			// Import API dynamically to avoid circular dependency
+			const syllabusManagementApi = (await import('../apis/backend/syllabusManagement')).default;
+			const response = await syllabusManagementApi.updateLesson(id, { status });
+			
+			// Map API response to component format
+			const mappedLesson = {
+				id: response.id,
+				name: response.lessonName || response.name,
+				content: response.content,
+				description: response.description,
+				order: response.orderNumber || response.order,
+				duration: response.duration,
+				type: response.type,
+				status: response.status,
+				createdBy: response.createdBy || response.createdByUser || 'N/A',
+				createdAt: response.createdAt,
+			};
+
+			return mappedLesson;
 		} catch (error) {
 			return rejectWithValue(error.message);
 		}
@@ -444,6 +471,10 @@ const initialState = {
 	syllabuses: [],
 	chapters: [],
 	lessons: [],
+	lessonsPagination: {
+		totalElements: 0,
+		totalPages: 0,
+	},
 	loading: false,
 	error: null,
 	selectedSyllabus: null,
@@ -624,7 +655,11 @@ const syllabusSlice = createSlice({
 			})
 			.addCase(fetchLessonsByChapter.fulfilled, (state, action) => {
 				state.loading = false;
-				state.lessons = action.payload;
+				state.lessons = action.payload.lessons;
+				state.lessonsPagination = {
+					totalElements: action.payload.totalElements,
+					totalPages: action.payload.totalPages,
+				};
 			})
 			.addCase(fetchLessonsByChapter.rejected, (state, action) => {
 				state.loading = false;

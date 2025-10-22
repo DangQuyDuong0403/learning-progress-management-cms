@@ -8,11 +8,13 @@ import {
   ArrowRightOutlined 
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
-import Layout from '../../../component/Layout';
+import { useTheme } from '../../../contexts/ThemeContext';
+import ThemedLayout from '../../../component/ThemedLayout';
 import ROUTER_PAGE from '../../../constants/router';
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
+  const { theme } = useTheme();
 
   const handleNavigateToAccounts = () => {
     navigate(ROUTER_PAGE.ADMIN_ACCOUNTS);
@@ -70,10 +72,17 @@ const AdminDashboard = () => {
   ];
 
   return (
-    <Layout>
+    <ThemedLayout>
       <div className="admin-dashboard">
         {/* Welcome Header */}
-        <Card className="welcome-card" style={{ marginBottom: 24 }}>
+        <Card 
+          className="welcome-card" 
+          style={{ 
+            marginBottom: 24,
+            backgroundColor: theme === 'sun' ? '#ffffff' : undefined,
+            border: theme === 'sun' ? '1px solid #d9d9d9' : undefined
+          }}
+        >
           <Row justify="space-between" align="middle">
             <Col>
               <h1 style={{ margin: 0, color: '#1890ff' }}>Chào mừng Admin!</h1>
@@ -98,7 +107,13 @@ const AdminDashboard = () => {
         <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
           {statsData.map((stat, index) => (
             <Col xs={24} sm={12} lg={6} key={index}>
-              <Card hoverable>
+              <Card 
+                hoverable
+                style={{
+                  backgroundColor: theme === 'sun' ? '#ffffff' : undefined,
+                  border: theme === 'sun' ? '1px solid #d9d9d9' : undefined
+                }}
+              >
                 <Statistic
                   title={stat.title}
                   value={stat.value}
@@ -111,7 +126,14 @@ const AdminDashboard = () => {
         </Row>
 
         {/* Quick Actions */}
-        <Card title="Thao tác nhanh" style={{ marginBottom: 24 }}>
+        <Card 
+          title="Thao tác nhanh" 
+          style={{ 
+            marginBottom: 24,
+            backgroundColor: theme === 'sun' ? '#ffffff' : undefined,
+            border: theme === 'sun' ? '1px solid #d9d9d9' : undefined
+          }}
+        >
           <Row gutter={[16, 16]}>
             {quickActions.map((action, index) => (
               <Col xs={24} sm={12} lg={8} key={index}>
@@ -122,7 +144,8 @@ const AdminDashboard = () => {
                   style={{ 
                     cursor: 'pointer',
                     border: `2px solid ${action.color}`,
-                    borderRadius: '8px'
+                    borderRadius: '8px',
+                    backgroundColor: theme === 'sun' ? '#ffffff' : undefined
                   }}
                 >
                   <Space direction="vertical" size="middle" style={{ width: '100%', textAlign: 'center' }}>
@@ -150,14 +173,20 @@ const AdminDashboard = () => {
         </Card>
 
         {/* Recent Activities */}
-        <Card title="Hoạt động gần đây">
+        <Card 
+          title="Hoạt động gần đây"
+          style={{
+            backgroundColor: theme === 'sun' ? '#ffffff' : undefined,
+            border: theme === 'sun' ? '1px solid #d9d9d9' : undefined
+          }}
+        >
           <div style={{ textAlign: 'center', padding: '40px 0', color: '#999' }}>
             <BarChartOutlined style={{ fontSize: '48px', marginBottom: '16px' }} />
             <p>Chưa có hoạt động nào</p>
           </div>
         </Card>
       </div>
-    </Layout>
+    </ThemedLayout>
   );
 };
 

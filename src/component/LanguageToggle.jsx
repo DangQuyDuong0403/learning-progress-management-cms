@@ -4,10 +4,10 @@ import './LanguageToggle.css';
 
 const LanguageToggle = () => {
   const { i18n } = useTranslation();
-  const [isEnglish, setIsEnglish] = useState(i18n.language === 'en');
+  const [isEnglish, setIsEnglish] = useState((i18n.language || 'en') === 'en'); // Mặc định là tiếng Anh
 
   useEffect(() => {
-    setIsEnglish(i18n.language === 'en');
+    setIsEnglish((i18n.language || 'en') === 'en'); // Mặc định là tiếng Anh
   }, [i18n.language]);
 
   const toggleLanguage = () => {

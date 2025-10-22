@@ -1,0 +1,61 @@
+/* Timeline Section Styling */
+.timeline-section {
+  background: rgba(26, 26, 46, 0.6);
+  border-radius: 12px;
+  overflow: hidden;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 24px;
+}
+
+/* Space theme timeline section */
+.space-theme .timeline-section {
+  background: #e0d9ffe6;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Sun theme timeline section */
+.sun-theme .timeline-section {
+  background: #ffffffb3;
+  backdrop-filter: blur(1px);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+/* Timeline text colors for space theme */
+.space-theme .timeline-section span {
+  color: #000 !important;
+}
+
+/* Timeline text colors for sun theme */
+.sun-theme .timeline-section span {
+  color: #000 !important;
+}
+
+/* Sort by text colors for different themes */
+.sort-by-text {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+/* Space theme - dark background, white text */
+.space-theme .sort-by-text {
+  color: #fff !important;
+}
+
+/* Sun theme - light background, black text */
+.sun-theme .sort-by-text {
+  color: #000 !important;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .timeline-section {
+    padding: 20px 24px;
+  }
+}
+
+@media (max-width: 576px) {
+  .timeline-section {
+    padding: 16px 20px;
+  }
+}

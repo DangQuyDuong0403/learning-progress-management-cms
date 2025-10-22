@@ -4,7 +4,7 @@ import { Dropdown, Button } from 'antd';
 import { GlobalOutlined } from '@ant-design/icons';
 
 const LanguageSwitcher = () => {
-  const { i18n } = useTranslation();
+  const { i18n, t } = useTranslation();
 
   const changeLanguage = (lng) => {
     i18n.changeLanguage(lng);
@@ -17,7 +17,7 @@ const LanguageSwitcher = () => {
         label: (
           <div className="d-flex align-items-center">
             <span className="me-2">🇻🇳</span>
-            Tiếng Việt
+            {t('common.vietnamese')}
           </div>
         ),
         onClick: () => changeLanguage('vi'),
@@ -27,7 +27,7 @@ const LanguageSwitcher = () => {
         label: (
           <div className="d-flex align-items-center">
             <span className="me-2">🇺🇸</span>
-            English
+            {t('common.english')}
           </div>
         ),
         onClick: () => changeLanguage('en'),
@@ -36,13 +36,14 @@ const LanguageSwitcher = () => {
   };
 
   const getCurrentLanguageLabel = () => {
-    switch (i18n.language) {
+    const currentLang = i18n.language || 'en'; // Mặc định là 'en' nếu không có
+    switch (currentLang) {
       case 'vi':
-        return '🇻🇳 Tiếng Việt';
+        return `🇻🇳 ${t('common.vietnamese')}`;
       case 'en':
-        return '🇺🇸 English';
+        return `🇺🇸 ${t('common.english')}`;
       default:
-        return '🇻🇳 Tiếng Việt';
+        return `🇺🇸 ${t('common.english')}`; // Mặc định về tiếng Anh
     }
   };
 

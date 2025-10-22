@@ -1,0 +1,533 @@
+/* Level Drag Edit Styles */
+.level-drag-edit-container {
+	padding: 0;
+	max-width: 100%;
+}
+
+.page-header {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 100%;
+	position: relative;
+}
+
+.drag-edit-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	margin-bottom: 16px;
+}
+
+.add-level-button {
+	height: 40px;
+	font-weight: 500;
+	box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+}
+
+.add-level-button:hover {
+	box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.levels-drag-container {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	margin: 24px 0;
+	overflow: visible !important;
+	/* Prevent layout thrashing during drag */
+	contain: layout style;
+	will-change: contents;
+}
+
+.levels-scroll-container {
+	max-height: 60vh; /* Chiều cao tối đa 60% viewport */
+	overflow-y: auto;
+	overflow-x: hidden;
+	padding-right: 8px;
+	margin-bottom: 20px;
+	/* Custom scrollbar styling */
+	scrollbar-width: thin;
+	scrollbar-color: #c1c1c1 #f1f1f1;
+}
+
+.levels-scroll-container::-webkit-scrollbar {
+	width: 8px;
+}
+
+.levels-scroll-container::-webkit-scrollbar-track {
+	background: #f1f1f1;
+	border-radius: 4px;
+}
+
+.levels-scroll-container::-webkit-scrollbar-thumb {
+	background: #c1c1c1;
+	border-radius: 4px;
+	transition: background 0.2s ease;
+}
+
+.levels-scroll-container::-webkit-scrollbar-thumb:hover {
+	background: #a8a8a8;
+}
+
+.add-level-between {
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	margin: 8px 0;
+	position: relative;
+	height: 1px;
+	opacity: 0;
+	transition: opacity 0.2s;
+	cursor: pointer;
+}
+
+.add-level-between:hover {
+	opacity: 1;
+}
+
+.add-level-between::before {
+	content: '';
+	position: absolute;
+	top: -10px;
+	left: 0;
+	right: 0;
+	bottom: -10px;
+	background: transparent;
+	z-index: 1;
+}
+
+.add-level-between-btn {
+	width: 48px;
+	height: 48px;
+	font-size: 20px;
+	background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+	border: none !important;
+	box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+	position: relative;
+	z-index: 2;
+	color: #000000 !important;
+}
+
+.add-level-between-btn .anticon {
+	color: #000000 !important;
+}
+
+.add-level-between-btn:hover {
+	transform: scale(1.05);
+	box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4) !important;
+}
+
+.add-level-between-btn:active {
+	transform: scale(0.95);
+}
+
+/* Base Level Drag Item - Optimized for performance */
+.level-drag-item {
+	display: flex;
+	align-items: flex-start;
+	gap: 20px;
+	padding: 12px 16px;
+	border: 2px solid #e8e8e8;
+	border-radius: 12px;
+	background: rgb(224 217 255 / 90%);
+	cursor: grab;
+	position: relative;
+	min-height: 50px;
+	/* Performance optimizations */
+	will-change: transform;
+	backface-visibility: hidden;
+	transform: translateZ(0);
+}
+
+.level-drag-item:hover {
+	border-color: #1890ff;
+	box-shadow: 0 4px 12px rgba(24, 144, 255, 0.15);
+}
+
+.level-drag-item.dragging {
+	opacity: 0.4;
+	border-color: #1890ff;
+	cursor: grabbing;
+	/* Smooth visual feedback without layout shift */
+	z-index: 1;
+}
+
+.level-position {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 40px;
+	height: 40px;
+	border-radius: 50%;
+	background-color: #bfa1ef;
+	color: black !important;
+	font-weight: bold;
+	font-size: 18px;
+	flex-shrink: 0;
+}
+
+.level-content {
+	flex: 1;
+	display: flex;
+	gap: 20px;
+	align-items: center;
+	min-width: 0; /* Allow flex items to shrink below content size */
+}
+
+.level-field {
+	display: flex;
+	align-items: center;
+	gap: 20px;
+	padding: 4px 0;
+	min-width: 0; /* Allow flex items to shrink */
+}
+
+.level-field .ant-typography {
+	margin: 0;
+}
+
+/* Text truncation styles */
+.level-name-field {
+	flex: 1;
+	min-width: 0; /* Allow shrinking */
+	max-width: 60%; /* Limit maximum width to 60% of container */
+}
+
+.level-name-text {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	max-width: 100%;
+	min-width: 0;
+}
+
+.level-duration-field {
+	flex-shrink: 0; /* Don't shrink duration field */
+	min-width: 120px; /* Minimum width for duration */
+}
+
+.level-duration-text {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	max-width: 100px; /* Limit duration text width */
+}
+
+.level-actions {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	flex-shrink: 0;
+}
+
+.drag-edit-footer {
+	display: flex;
+	justify-content: flex-end;
+	align-items: center;
+	padding: 20px 0;
+	border-top: 1px solid #f0f0f0;
+	margin-top: 24px;
+	position: sticky;
+	bottom: 0;
+	background: inherit;
+	z-index: 10;
+}
+
+/* Space Theme */
+.space-theme .table-section{
+	background: #2d2346e8;
+	border-radius: 20px;
+	/* backdrop-filter: blur(20px); */
+}
+
+.space-level-drag-edit-container {
+	background: #9865d146;
+	border-radius: 20px;
+}
+
+.space-level-drag-item {
+	background: rgb(224 217 255 / 90%);
+	border-color: #404040;
+	color: #000000;
+}
+
+.space-level-drag-item:hover {
+	border-color: #1890ff;
+	box-shadow: 0 4px 12px rgba(24, 144, 255, 0.2);
+}
+
+.space-level-drag-item .level-position {
+	background-color: #bfa1ef;
+	color: black;
+}
+
+.space-level-drag-item .ant-typography {
+	color: #000000;
+}
+
+.space-drag-edit-footer {
+	border-top-color: #404040;
+	background: #9765d100;
+}
+
+.space-add-level-between:hover {
+	background: rgba(255, 255, 255, 0.05);
+	border-radius: 8px;
+}
+
+/* Space theme add button */
+.space-theme .add-level-between-btn {
+	background: linear-gradient(135deg, #b5b0c0 19%, #a79ebb 64%, #8377a0 75%, #aca5c0 97%, #6d5f8f) !important;
+	color: #000000 !important;
+}
+
+.space-theme .add-level-between-btn .anticon {
+	color: #000000 !important;
+}
+
+/* Space theme scrollbar */
+.space-levels-scroll-container {
+	scrollbar-color: #555 #333;
+}
+
+.space-levels-scroll-container::-webkit-scrollbar-track {
+	background: #333;
+}
+
+.space-levels-scroll-container::-webkit-scrollbar-thumb {
+	background: #555;
+}
+
+.space-levels-scroll-container::-webkit-scrollbar-thumb:hover {
+	background: #777;
+}
+
+/* Sun Theme */
+.sun-level-drag-edit-container {
+	background: #ffffff;
+}
+
+.sun-level-drag-item {
+	background: #E6F5FF;
+	border-color: #e8e8e8;
+	color: #000000;
+} 
+
+.sun-level-drag-item:hover {
+	border-color: #1890ff;
+	box-shadow: 0 4px 12px rgba(24, 144, 255, 0.15);
+}
+
+.sun-level-drag-item .level-position {
+	background-color: #a5d0ff !important;
+	color: black !important;
+}
+
+.sun-level-drag-item .ant-typography {
+	color: #000000;
+}
+
+.sun-drag-edit-footer {
+	border-top-color: #f0f0f0;
+	background: #ffffff;
+}
+
+.sun-add-level-between:hover {
+	background: rgba(0, 0, 0, 0.02);
+	border-radius: 8px;
+}
+
+/* Sun theme add button */
+.sun-theme .add-level-between-btn {
+	background: #71b3fd !important;
+	color: #000000 !important;
+}
+
+.sun-theme .add-level-between-btn .anticon {
+	color: #000000 !important;
+}
+
+/* Back Button Styles */
+.sun-theme .back-button {
+	background: #ffffff !important;
+	border-color: #0000001a !important;
+	color: #000000 !important;
+}
+
+.sun-theme .back-button:hover {
+	background: #f5f5f5 !important;
+	border-color: #0000001a !important;
+	color: #000000 !important;
+}
+
+.space-theme .back-button {
+	background: #ffffff !important;
+	border-color: #0000001a !important;
+	color: #000000 !important;
+}
+
+.space-theme .back-button:hover {
+	background: #f5f5f5 !important;
+	border-color: #0000001a !important;
+	color: #000000 !important;
+}
+
+/* Save Button Styles */
+.save-button {
+	height: 42px !important;
+	padding: 0 32px !important;
+	font-size: 16px !important;
+	font-weight: 500 !important;
+	border-radius: 8px !important;
+	transition: all 0.3s ease !important;
+}
+
+.space-theme .save-button {
+	background: linear-gradient(135deg, #7228d9 0%, #9c88ff 100%) !important;
+	border-color: #7228d9 !important;
+	box-shadow: 0 4px 12px rgba(114, 40, 217, 0.4) !important;
+}
+
+.space-theme .save-button:hover {
+	background: linear-gradient(135deg, #5a1fb8 0%, #8a7aff 100%) !important;
+	border-color: #5a1fb8 !important;
+	transform: translateY(-2px) !important;
+	box-shadow: 0 6px 16px rgba(114, 40, 217, 0.6) !important;
+}
+
+.sun-theme .save-button {
+	background: rgb(113, 179, 253) !important;
+	border-color: #298EFE !important;
+	color: #000000 !important;
+}
+
+.sun-theme .save-button:hover {
+	background: #1a7ce8 !important;
+	border-color: #1a7ce8 !important;
+	transform: translateY(-2px) !important;
+	box-shadow: 0 6px 16px rgba(41, 142, 254, 0.6) !important;
+}
+
+/* Drag Handle */
+.drag-handle {
+	cursor: grab;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	flex-shrink: 0;
+	padding: 8px;
+	border-radius: 6px;
+	user-select: none;
+	background: rgba(24, 144, 255, 0.05);
+	transition: all 0.2s ease;
+}
+
+.drag-handle:hover {
+	background: rgba(24, 144, 255, 0.15);
+	transform: scale(1.05);
+}
+
+.drag-handle:active {
+	cursor: grabbing;
+	background: rgba(24, 144, 255, 0.25);
+	transform: scale(0.98);
+}
+
+/* Fix DragOverlay positioning - ensure it follows cursor */
+.level-drag-edit-container {
+	position: relative;
+	isolation: isolate;
+}
+
+[data-dnd-kit-drag-overlay] .level-drag-item {
+	pointer-events: none;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+	.level-drag-item {
+		flex-direction: column;
+		align-items: stretch;
+		gap: 12px;
+	}
+
+	.level-position {
+		align-self: flex-start;
+	}
+
+	.drag-handle {
+		align-self: flex-end;
+	}
+
+	.level-field {
+		flex-direction: column;
+		align-items: stretch;
+		gap: 8px;
+	}
+
+	.level-field .ant-typography {
+		min-width: auto !important;
+	}
+}
+
+/* Performance Optimizations for Dragging */
+body.is-dragging {
+	user-select: none;
+	cursor: grabbing !important;
+}
+
+body.is-dragging * {
+	cursor: grabbing !important;
+	pointer-events: none;
+}
+
+body.is-dragging .drag-handle {
+	pointer-events: auto;
+}
+
+body.is-dragging .level-drag-item {
+	pointer-events: auto;
+}
+
+/* GPU Acceleration for smooth drag */
+.level-drag-item {
+	transform: translate3d(0, 0, 0);
+	-webkit-transform: translate3d(0, 0, 0);
+	backface-visibility: hidden;
+	-webkit-backface-visibility: hidden;
+	perspective: 1000px;
+	-webkit-perspective: 1000px;
+}
+
+/* Light transitions for non-dragging items during drag */
+body.is-dragging .level-drag-item:not(.dragging) {
+	transition: transform 0.15s ease-out !important;
+}
+
+/* Optimize rendering during drag */
+.levels-drag-container {
+	transform: translate3d(0, 0, 0);
+	-webkit-transform: translate3d(0, 0, 0);
+}
+
+/* Smooth GPU-accelerated transform only */
+.level-drag-item.dragging {
+	will-change: transform;
+	transition: none !important;
+	animation: none !important;
+}
+
+/* Prevent layout shifts */
+.level-drag-item {
+	contain: layout style paint;
+}
+
+/* Optimize inputs during drag */
+body.is-dragging .ant-input {
+	pointer-events: none;
+}
+
+body.is-dragging .ant-btn {
+	pointer-events: none;
+}
