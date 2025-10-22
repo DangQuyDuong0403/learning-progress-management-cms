@@ -7,6 +7,7 @@ import {
   Modal,
   Upload,
   Typography,
+  Select,
 } from "antd";
 import {
   PlusOutlined,
@@ -27,22 +28,19 @@ import { spaceToast } from "../../../../component/SpaceToastify";
 import { useTheme } from "../../../../contexts/ThemeContext";
 import { useClassMenu } from "../../../../contexts/ClassMenuContext";
 import classManagementApi from "../../../../apis/backend/classManagement";
+import studentManagementApi from "../../../../apis/backend/StudentManagement";
 import usePageTitle from "../../../../hooks/usePageTitle";
 
 const { Title } = Typography;
+const { Option } = Select;
 
-// Mock data for all available students (for autocomplete) - keeping for add student functionality
-const mockAllStudents = [
-  { id: 10, code: "HE176502", name: "Nguyễn Đức Anh", email: "anhndhe176502@fpt.edu.vn" },
-  { id: 11, code: "HE176501", name: "Nguyễn Đức Anh", email: "anhndhe176501@fpt.edu.vn" },
-  { id: 12, code: "HE176503", name: "Trần Văn Bình", email: "binhtvhe176503@fpt.edu.vn" },
-  { id: 13, code: "HE176504", name: "Lê Thị Cường", email: "cuonglthe176504@fpt.edu.vn" },
-  { id: 14, code: "HE176505", name: "Phạm Văn Dũng", email: "dungpvhe176505@fpt.edu.vn" },
-  { id: 15, code: "HE176506", name: "Hoàng Thị Em", email: "emhthe176506@fpt.edu.vn" },
-];
+
 
 const ClassStudent = () => {
   const { t } = useTranslation();
+  // State for available students from API
+  const [availableStudents, setAvailableStudents] = useState([]);
+  const [searchLoading, setSearchLoading] = useState(false);
   const { id } = useParams();
   const { theme } = useTheme();
   const { user } = useSelector((state) => state.auth);
@@ -63,10 +61,8 @@ const ClassStudent = () => {
   const [searchText, setSearchText] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [isModalVisible, setIsModalVisible] = useState(false);
-  const [studentSearchValue, setStudentSearchValue] = useState("");
-  const [suggestions, setSuggestions] = useState([]);
-  const [showSuggestions, setShowSuggestions] = useState(false);
   const [selectedStudents, setSelectedStudents] = useState([]);
+  const searchTimeoutRef = useRef(null);
   const [isDeleteModalVisible, setIsDeleteModalVisible] = useState(false);
   const [studentToDelete, setStudentToDelete] = useState(null);
   const [importModal, setImportModal] = useState({
@@ -178,7 +174,7 @@ const ClassStudent = () => {
       }
     } catch (error) {
       console.error('Error fetching class data:', error);
-      spaceToast.error(t('classDetail.loadingClassInfo'));
+      spaceToast.error(error.response?.data?.error);
     }
   }, [id, t]);
 
@@ -204,16 +200,80 @@ const ClassStudent = () => {
           total: response.totalElements || 0,
           current: (response.page || 0) + 1, // Convert 0-based to 1-based
         }));
-      } else {
-        spaceToast.error(response.message || t('classDetail.loadingStudents'));
-        setStudents([]);
-      }
+      } 
     } catch (error) {
       console.error('Error fetching students:', error);
-      spaceToast.error(t('classDetail.loadingStudents'));
+      spaceToast.error(error.response?.data?.error );
       setStudents([]);
     }
   }, [id, t]);
+
+  // Fetch available students for adding to class
+  const fetchAvailableStudents = useCallback(async (searchText = '') => {
+    try {
+      setSearchLoading(true);
+      const params = {
+        page: 0,
+        size: 100, // Get more results for better search experience
+        text: searchText,
+        status: ['ACTIVE'], // Only get active students
+        roleName: ['STUDENT', 'TEST_TAKER'], // Get both students and test takers
+      };
+      
+      console.log('Fetching available students with params:', params);
+      const response = await studentManagementApi.getStudents(params);
+      console.log('Available students response:', response);
+      
+      if (response.success) {
+        const allStudents = response.data || [];
+        console.log('All students:', allStudents);
+        // Filter out students who are already in the class
+        const currentStudentIds = students.map(s => s.userId);
+        const filteredStudents = allStudents.filter(student => 
+          !currentStudentIds.includes(student.userId)
+        );
+        
+        // Map the response to match our expected format
+        const mappedStudents = filteredStudents.map(student => {
+          console.log('Mapping student:', student);
+          const userId = student.userId || student.id;
+          if (!userId) {
+            console.warn('Student without userId:', student);
+          }
+          return {
+            id: userId,
+            userId: userId,
+            code: student.studentCode || student.code,
+            name: student.fullName || `${student.firstName || ''} ${student.lastName || ''}`.trim(),
+            fullName: student.fullName || `${student.firstName || ''} ${student.lastName || ''}`.trim(),
+            email: student.email,
+            firstName: student.firstName,
+            lastName: student.lastName,
+            status: student.status,
+          };
+        });
+        setAvailableStudents(mappedStudents);
+      } else {
+        console.error('Failed to fetch available students:', response.message);
+        setAvailableStudents([]);
+      }
+    } catch (error) {
+      console.error('Error fetching available students:', error);
+      setAvailableStudents([]);
+      spaceToast.error(error.response?.data?.error || error.message);
+    } finally {
+      setSearchLoading(false);
+    }
+  }, [students]);
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+    };
+  }, []);
 
   // Initial data loading
   useEffect(() => {
@@ -253,48 +313,44 @@ const ClassStudent = () => {
   }, [classData?.id, classData?.name, students.length]);
 
   const handleAddStudent = () => {
-    setStudentSearchValue("");
-    setSuggestions([]);
-    setShowSuggestions(false);
     setSelectedStudents([]);
     setIsModalVisible(true);
+    // Fetch available students when opening modal
+    fetchAvailableStudents("");
   };
 
 
   const handleStudentSearch = (value) => {
-    setStudentSearchValue(value);
-    if (value.length > 0) {
-      const filtered = mockAllStudents.filter(student => 
-        student.name.toLowerCase().includes(value.toLowerCase()) ||
-        student.code.toLowerCase().includes(value.toLowerCase())
-      );
-      setSuggestions(filtered);
-      setShowSuggestions(true);
-    } else {
-      setSuggestions([]);
-      setShowSuggestions(false);
-    }
-  };
-
-  const handleSelectStudent = (student) => {
-    console.log("Student selected:", student);
+    console.log('Search input:', value);
     
-    // Check if student is already selected
-    const isAlreadySelected = selectedStudents.some(s => s.id === student.id);
-    if (isAlreadySelected) {
-      spaceToast.warning(t('classDetail.alreadyInClass'));
-      return;
+    // Clear previous timeout
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
     }
     
-    // Add to selected students
-    setSelectedStudents([...selectedStudents, student]);
-    setStudentSearchValue("");
-    setShowSuggestions(false);
+    // Set new timeout for debounced search
+    searchTimeoutRef.current = setTimeout(() => {
+      console.log('Executing search after timeout for:', value);
+      if (value.length >= 2) {
+        fetchAvailableStudents(value);
+      } else if (value.length === 0) {
+        fetchAvailableStudents("");
+      }
+      // Don't call API for single character
+    }, 500);
   };
 
-  const handleRemoveSelectedStudent = (studentId) => {
-    setSelectedStudents(selectedStudents.filter(s => s.id !== studentId));
+  const handleSelectStudent = (selectedIds) => {
+    console.log("Students selected:", selectedIds);
+    
+    // Convert selected IDs to student objects
+    const newSelectedStudents = selectedIds.map(id => 
+      availableStudents.find(s => s.userId === id)
+    ).filter(Boolean); // Remove any undefined values
+    
+    setSelectedStudents(newSelectedStudents);
   };
+
 
   const handleDeleteStudent = (student) => {
     console.log("Delete button clicked for student:", student);
@@ -302,26 +358,36 @@ const ClassStudent = () => {
     setIsDeleteModalVisible(true);
   };
 
-  const handleConfirmDelete = () => {
+  const handleConfirmDelete = async () => {
     if (studentToDelete) {
-      console.log("Confirm delete for student:", studentToDelete);
-      // Remove student from local state immediately for better UX
-      const updatedStudents = students.filter(s => s.userId !== studentToDelete.userId);
-      setStudents(updatedStudents);
-      
-      // Update pagination total
-      setPagination(prev => ({
-        ...prev,
-        total: prev.total - 1,
-      }));
-      
-      const fullName = studentToDelete.fullName || `${studentToDelete.firstName || ''} ${studentToDelete.lastName || ''}`.trim();
-      spaceToast.success(`${t('classDetail.deleteSuccess')} "${fullName}" ${t('classDetail.fromClass')}`);
-      setIsDeleteModalVisible(false);
-      setStudentToDelete(null);
-      
-      // TODO: Call API to remove student from class
-      // await classManagementApi.removeStudentFromClass(id, studentToDelete.userId);
+      try {
+        console.log("Confirm delete for student:", studentToDelete);
+        
+        // Call API to remove student from class
+        const response = await classManagementApi.removeStudentFromClass(id, studentToDelete.userId);
+        console.log("Remove student response:", response);
+        
+        if (response.success) {
+          // Remove student from local state for better UX
+          const updatedStudents = students.filter(s => s.userId !== studentToDelete.userId);
+          setStudents(updatedStudents);
+          
+          // Update pagination total
+          setPagination(prev => ({
+            ...prev,
+            total: prev.total - 1,
+          }));
+          
+          const fullName = studentToDelete.fullName || `${studentToDelete.firstName || ''} ${studentToDelete.lastName || ''}`.trim();
+          spaceToast.success(`${t('classDetail.deleteSuccess')} "${fullName}" ${t('classDetail.fromClass')}`);
+        }
+      } catch (error) {
+        console.error("Error removing student:", error);
+        spaceToast.error(error.response?.data?.error);
+      } finally {
+        setIsDeleteModalVisible(false);
+        setStudentToDelete(null);
+      }
     }
   };
 
@@ -364,7 +430,7 @@ const ClassStudent = () => {
       });
     } catch (error) {
       console.error('Import error:', error);
-      spaceToast.error('Failed to import students');
+      spaceToast.error(error.response?.data?.error);
     } finally {
       setImportModal(prev => ({ ...prev, uploading: false }));
     }
@@ -385,7 +451,7 @@ const ClassStudent = () => {
       spaceToast.success(t('classDetail.templateDownloaded'));
     } catch (error) {
       console.error('Error downloading template:', error);
-      spaceToast.error('Failed to download template');
+      spaceToast.error(error.response?.data?.error);
     }
   };
 
@@ -404,60 +470,45 @@ const ClassStudent = () => {
         return;
       }
 
-      const newStudents = [];
-      const existingStudents = [];
-      
-      selectedStudents.forEach(selectedStudent => {
-        console.log("Checking student:", selectedStudent);
-        console.log("Current students in class:", students);
-        
-        // Check if student already exists in class
-        const exists = students.some(s => s.id === selectedStudent.id);
-        console.log("Student exists:", exists);
-        
-        if (exists) {
-          existingStudents.push(selectedStudent.name);
-        } else {
-          // Add new student to class
-          const newStudent = {
-            id: selectedStudent.id,
-            name: selectedStudent.name,
-            email: selectedStudent.email,
-            phone: "0123456789", // Default phone
-            status: "active",
-            joinDate: new Date().toISOString().split("T")[0],
-            gender: "male", // Default gender
-          };
-          newStudents.push(newStudent);
-        }
-      });
+      // Extract userIds from selected students
+      const userIds = selectedStudents.map(student => student.userId);
+      console.log("Adding students with userIds:", userIds);
 
-      if (newStudents.length > 0) {
-        setStudents([...newStudents, ...students]);
-        spaceToast.success(`${t('classDetail.addStudentsSuccess')} ${newStudents.length} ${t('classDetail.studentsToClass')}`);
-      }
+      // Call API to add students to class
+      const response = await classManagementApi.addStudentsToClass(id, userIds);
+      console.log("Add students response:", response);
 
-      if (existingStudents.length > 0) {
-        spaceToast.warning(`${t('classDetail.alreadyInClass')} ${existingStudents.join(", ")}`);
+      if (response.success) {
+        spaceToast.success(`${t('classDetail.addStudentsSuccess')} ${selectedStudents.length} ${t('classDetail.studentsToClass')}`);
+        
+        // Refresh the students list
+        await fetchStudents({
+          page: pagination.current - 1,
+          size: pagination.pageSize,
+          text: searchText,
+          status: statusFilter,
+          sortBy: sortConfig.sortBy,
+          sortDir: sortConfig.sortDir
+        });
+      } else {
+        spaceToast.error(response.message || t('classDetail.checkInfoError'));
       }
 
       setIsModalVisible(false);
-      setStudentSearchValue("");
-      setSuggestions([]);
-      setShowSuggestions(false);
       setSelectedStudents([]);
     } catch (error) {
       console.error("Error adding students:", error);
-      spaceToast.error(t('classDetail.checkInfoError'));
+      spaceToast.error(error.response?.data?.error);
     }
   };
 
   const handleModalCancel = () => {
     setIsModalVisible(false);
-    setStudentSearchValue("");
-    setSuggestions([]);
-    setShowSuggestions(false);
     setSelectedStudents([]);
+    // Clear any pending search timeout
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
   };
 
   const getStatusTag = (status) => {
@@ -511,7 +562,7 @@ const ClassStudent = () => {
         }
       } catch (error) {
         console.error('Error fetching students:', error);
-        spaceToast.error(t('classDetail.loadingStudents'));
+        spaceToast.error(error.response?.data?.error);
         setStudents([]);
       } finally {
         setLoading(false);
@@ -758,7 +809,17 @@ const ClassStudent = () => {
 
         {/* Add Student Modal */}
         <Modal
-          title={`${t('classDetail.addStudentsToClass')} (${selectedStudents.length} ${t('classDetail.selectedStudents')})`}
+          title={
+            <div style={{ 
+              fontSize: '28px', 
+              fontWeight: '600', 
+              color: 'rgb(24, 144, 255)',
+              textAlign: 'center',
+              padding: '10px 0'
+            }}>
+              {`${t('classDetail.addStudentsToClass')} (${selectedStudents.length} ${t('classDetail.selectedStudents')})`}
+            </div>
+          }
           open={isModalVisible}
           onOk={handleModalOk}
           onCancel={handleModalCancel}
@@ -766,23 +827,28 @@ const ClassStudent = () => {
           okText={`${t('classDetail.addStudents')} ${selectedStudents.length} ${t('classDetail.studentsAdded')}`}
           cancelText={t('common.cancel')}
           okButtonProps={{
+            disabled: selectedStudents.length === 0,
             style: {
-              backgroundColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
-              background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
-              borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'transparent',
-              color: theme === 'sun' ? '#000000' : '#ffffff',
-              height: '40px',
-              fontSize: '16px',
+              background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, #7228d9 0%, #9c88ff 100%)',
+              borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : '#7228d9',
+              color: theme === 'sun' ? '#000' : '#fff',
+              borderRadius: '6px',
+              height: '32px',
               fontWeight: '500',
-              minWidth: '120px',
+              fontSize: '16px',
+              padding: '4px 15px',
+              width: '100px',
+              transition: 'all 0.3s ease',
+              boxShadow: 'none'
             },
           }}
           cancelButtonProps={{
             style: {
-              height: '40px',
-              fontSize: '16px',
+              height: '32px',
               fontWeight: '500',
-              minWidth: '100px',
+              fontSize: '16px',
+              padding: '4px 15px',
+              width: '100px'
             },
           }}
         >
@@ -796,118 +862,34 @@ const ClassStudent = () => {
               }}>
                 {t('classDetail.searchAndSelectStudents')}
               </label>
-              <Input
-                value={studentSearchValue}
-                onChange={(e) => handleStudentSearch(e.target.value)}
+              <Select
+                mode="multiple"
+                showSearch
                 placeholder={t('classDetail.typeStudentNameOrCode')}
+                value={selectedStudents.map(s => s.userId)}
+                onChange={handleSelectStudent}
+                onSearch={handleStudentSearch}
+                loading={searchLoading}
                 style={{
+                  width: '100%',
                   fontSize: "15px",
-                  padding: "12px 16px",
-                  borderRadius: "10px",
-                  border: "2px solid #e2e8f0",
-                  transition: "all 0.3s ease",
                 }}
-                allowClear
-              />
+                optionFilterProp="children"
+                filterOption={(input, option) => {
+                  const inputStr = String(input || '').toLowerCase();
+                  const optionStr = String(option?.children || '').toLowerCase();
+                  return optionStr.includes(inputStr);
+                }}
+                notFoundContent={searchLoading ? 'Loading...' : 'No students found'}
+              >
+                {availableStudents.filter(student => student.userId).map((student) => (
+                  <Option key={student.userId} value={student.userId}>
+                    {student.code} {student.fullName} ({student.email})
+                  </Option>
+                ))}
+              </Select>
             </div>
 
-            {/* Selected Students List */}
-            {selectedStudents.length > 0 && (
-              <div style={{ marginBottom: '16px' }}>
-                <label style={{ 
-                  display: 'block', 
-                  marginBottom: '8px', 
-                  fontWeight: '500',
-                  color: '#1e293b'
-                }}>
-                  {t('classDetail.selectedStudentsList')} ({selectedStudents.length})
-                </label>
-                <div style={{
-                  maxHeight: '150px',
-                  overflowY: 'auto',
-                  border: '1px solid #e2e8f0',
-                  borderRadius: '8px',
-                  padding: '8px'
-                }}>
-                  {selectedStudents.map((student) => (
-                    <div
-                      key={student.id}
-                      style={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        padding: '8px 12px',
-                        marginBottom: '4px',
-                        backgroundColor: '#f8fafc',
-                        borderRadius: '6px',
-                        border: '1px solid #e2e8f0'
-                      }}
-                    >
-                      <div>
-                        <div style={{ fontWeight: '500', color: '#1e293b' }}>
-                          {student.code} - {student.name}
-                        </div>
-                        <div style={{ fontSize: '12px', color: '#64748b' }}>
-                          {student.email}
-                        </div>
-                      </div>
-                      <Button
-                        type="text"
-                        size="small"
-                        danger
-                        onClick={() => handleRemoveSelectedStudent(student.id)}
-                        style={{ color: '#ef4444' }}
-                      >
-                        {t('classDetail.remove')}
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Suggestions Dropdown */}
-            {showSuggestions && suggestions.length > 0 && (
-              <div style={{
-                position: 'absolute',
-                top: '100%',
-                left: 0,
-                right: 0,
-                backgroundColor: 'white',
-                border: '1px solid #e2e8f0',
-                borderRadius: '8px',
-                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
-                zIndex: 1000,
-                maxHeight: '200px',
-                overflowY: 'auto'
-              }}>
-                {suggestions.map((student) => (
-                  <div
-                    key={student.id}
-                    onClick={() => handleSelectStudent(student)}
-                    style={{
-                      padding: '12px 16px',
-                      cursor: 'pointer',
-                      borderBottom: '1px solid #f1f5f9',
-                      transition: 'background-color 0.2s',
-                    }}
-                    onMouseEnter={(e) => {
-                      e.target.style.backgroundColor = '#f8fafc';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.target.style.backgroundColor = 'white';
-                    }}
-                  >
-                    <div style={{ fontWeight: '500', color: '#1e293b' }}>
-                      {student.code} - {student.name}
-                    </div>
-                    <div style={{ fontSize: '13px', color: '#64748b' }}>
-                      {student.email}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
           </div>
         </Modal>
 
@@ -916,9 +898,9 @@ const ClassStudent = () => {
           title={
             <div
               style={{
-                fontSize: '20px',
+                fontSize: '28px',
                 fontWeight: '600',
-                color: '#000000',
+                color: 'rgb(24, 144, 255)',
                 textAlign: 'center',
                 padding: '10px 0',
                 display: 'flex',
@@ -926,7 +908,7 @@ const ClassStudent = () => {
                 justifyContent: 'center',
                 gap: '10px',
               }}>
-              <DownloadOutlined style={{ color: '#000000' }} />
+              <DownloadOutlined style={{ color: 'rgb(24, 144, 255)' }} />
               {t('classDetail.importStudentsList')}
             </div>
           }
@@ -941,22 +923,26 @@ const ClassStudent = () => {
           okButtonProps={{
             disabled: importModal.fileList.length === 0,
             style: {
-              backgroundColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
-              background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
-              borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'transparent',
-              color: theme === 'sun' ? '#000000' : '#ffffff',
-              height: '40px',
-              fontSize: '16px',
+              background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, #7228d9 0%, #9c88ff 100%)',
+              borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : '#7228d9',
+              color: theme === 'sun' ? '#000' : '#fff',
+              borderRadius: '6px',
+              height: '32px',
               fontWeight: '500',
-              minWidth: '120px',
+              fontSize: '16px',
+              padding: '4px 15px',
+              width: '200px',
+              transition: 'all 0.3s ease',
+              boxShadow: 'none'
             },
           }}
           cancelButtonProps={{
             style: {
-              height: '40px',
-              fontSize: '16px',
+              height: '32px',
               fontWeight: '500',
-              minWidth: '100px',
+              fontSize: '16px',
+              padding: '4px 15px',
+              width: '100px'
             },
           }}
         >
@@ -1022,9 +1008,9 @@ const ClassStudent = () => {
         <Modal
           title={
             <div style={{ 
-              fontSize: '20px', 
+              fontSize: '28px', 
               fontWeight: '600', 
-              color: '#1890ff',
+              color: 'rgb(24, 144, 255)',
               textAlign: 'center',
               padding: '10px 0'
             }}>
@@ -1046,22 +1032,26 @@ const ClassStudent = () => {
           }}
           okButtonProps={{
             style: {
-              backgroundColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
-              background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
-              borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'transparent',
-              color: theme === 'sun' ? '#000000' : '#ffffff',
-              height: '40px',
-              fontSize: '16px',
+              background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, #7228d9 0%, #9c88ff 100%)',
+              borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : '#7228d9',
+              color: theme === 'sun' ? '#000' : '#fff',
+              borderRadius: '6px',
+              height: '32px',
               fontWeight: '500',
-              minWidth: '100px'
+              fontSize: '16px',
+              padding: '4px 15px',
+              width: '100px',
+              transition: 'all 0.3s ease',
+              boxShadow: 'none'
             }
           }}
           cancelButtonProps={{
             style: {
-              height: '40px',
-              fontSize: '16px',
+              height: '32px',
               fontWeight: '500',
-              minWidth: '100px'
+              fontSize: '16px',
+              padding: '4px 15px',
+              width: '100px'
             }
           }}
         >
@@ -1078,14 +1068,24 @@ const ClassStudent = () => {
             }}>
               ⚠️
             </div>
-            <p style={{
-              fontSize: '18px',
-              color: '#333',
-              margin: 0,
-              fontWeight: '500'
-            }}>
-              {t('classDetail.confirmDeleteMessage')} "{studentToDelete ? (studentToDelete.fullName || `${studentToDelete.firstName || ''} ${studentToDelete.lastName || ''}`.trim()) : ''}"?
-            </p>
+					<p style={{
+						fontSize: '18px',
+						color: '#333',
+						margin: 0,
+						fontWeight: '500'
+					}}>
+						{t('classDetail.confirmDeleteMessage')}
+					</p>
+					{studentToDelete && (
+						<p style={{
+							fontSize: '20px',
+							color: '#000',
+							margin: 0,
+							fontWeight: '400'
+						}}>
+							<strong>"{studentToDelete.fullName || `${studentToDelete.firstName || ''} ${studentToDelete.lastName || ''}`.trim()}"</strong>
+						</p>
+					)}
           </div>
         </Modal>
     </ThemedLayout>

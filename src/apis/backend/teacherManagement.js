@@ -205,6 +205,22 @@ const teacherManagementApi = {
 		});
 	},
 
+	syncClassLessons: (chapterId, lessonsData) => {
+		const url = `/class-lesson/sync/${chapterId}`;
+		
+		return axiosClient.put(url, lessonsData, {
+			headers: {
+				'accept': '*/*',
+				'Content-Type': 'application/json',
+			}
+		}).catch(error => {
+			console.error('SyncClassLessons API Error:', error);
+			console.error('Error response:', error.response?.data);
+			console.error('Error status:', error.response?.status);
+			throw error;
+		});
+	},
+
 	importClassChapters: (importData) => {
 		const url = `/class-chapter/import`;
 		

@@ -124,8 +124,6 @@ const ClassListTable = () => {
 		visible: false,
 		selectedStatus: 'all',
 		selectedSyllabus: null,
-		selectedStartDateRange: null,
-		selectedEndDateRange: null,
 	});
 	
 	// Flag to prevent closing filter when interacting with components
@@ -135,10 +133,6 @@ const ClassListTable = () => {
 	const [appliedFilters, setAppliedFilters] = useState({
 		status: 'all',
 		syllabusId: null,
-		startDateFrom: null,
-		startDateTo: null,
-		endDateFrom: null,
-		endDateTo: null,
 	});
 	
 	// Refs for click outside detection
@@ -170,18 +164,6 @@ const ClassListTable = () => {
 			}
 			if (filters.syllabusId) {
 				params.syllabusId = filters.syllabusId;
-			}
-			if (filters.startDateFrom) {
-				params.startDateFrom = filters.startDateFrom;
-			}
-			if (filters.startDateTo) {
-				params.startDateTo = filters.startDateTo;
-			}
-			if (filters.endDateFrom) {
-				params.endDateFrom = filters.endDateFrom;
-			}
-			if (filters.endDateTo) {
-				params.endDateTo = filters.endDateTo;
 			}
 
 			console.log('Fetching classes with params:', params);
@@ -432,7 +414,8 @@ const ClassListTable = () => {
 		setConfirmModal({
 			visible: true,
 			title: t('classManagement.confirmDelete'),
-			content: t('classManagement.deleteClassMessage', { className: record.name }),
+			content: t('classManagement.deleteClassMessage'),
+			displayData: record.name,
 			onConfirm: async () => {
 				setActionLoading(prev => ({ ...prev, delete: record.id }));
 				try {
@@ -449,6 +432,7 @@ const ClassListTable = () => {
 					setSelectedStatus(null);
 					
 					fetchClasses(pagination.current, pagination.pageSize, searchText, sortBy, sortDir, appliedFilters);
+					setConfirmModal({ visible: false, title: '', content: '', displayData: null, onConfirm: null });
 				} catch (error) {
 					console.error('Error deleting class:', error);
 					
@@ -459,6 +443,7 @@ const ClassListTable = () => {
 										'Failed to delete class';
 					
 					spaceToast.error(errorMessage);
+					setConfirmModal({ visible: false, title: '', content: '', displayData: null, onConfirm: null });
 				} finally {
 					setActionLoading(prev => ({ ...prev, delete: null }));
 				}
@@ -502,6 +487,7 @@ const ClassListTable = () => {
 					setCurrentRecord(null);
 					
 					fetchClasses(pagination.current, pagination.pageSize, searchText, sortBy, sortDir, appliedFilters);
+					setConfirmModal({ visible: false, title: '', content: '', displayData: null, onConfirm: null });
 				} catch (error) {
 					console.error('Error updating class status:', error);
 					
@@ -511,6 +497,7 @@ const ClassListTable = () => {
 										error.message;
 					
 					spaceToast.error(errorMessage);
+					setConfirmModal({ visible: false, title: '', content: '', displayData: null, onConfirm: null });
 				} finally {
 					setActionLoading(prev => ({ ...prev, toggle: null }));
 				}
@@ -775,18 +762,6 @@ const ClassListTable = () => {
 				if (appliedFilters.syllabusId) {
 					params.syllabusId = appliedFilters.syllabusId;
 				}
-				if (appliedFilters.startDateFrom) {
-					params.startDateFrom = appliedFilters.startDateFrom;
-				}
-				if (appliedFilters.startDateTo) {
-					params.startDateTo = appliedFilters.startDateTo;
-				}
-				if (appliedFilters.endDateFrom) {
-					params.endDateFrom = appliedFilters.endDateFrom;
-				}
-				if (appliedFilters.endDateTo) {
-					params.endDateTo = appliedFilters.endDateTo;
-				}
 
 				const response = await classManagementApi.getClasses(params);
 
@@ -817,8 +792,6 @@ const ClassListTable = () => {
 			visible: !prev.visible,
 			selectedStatus: prev.visible ? prev.selectedStatus : appliedFilters.status,
 			selectedSyllabus: prev.visible ? prev.selectedSyllabus : appliedFilters.syllabusId,
-			selectedStartDateRange: prev.visible ? prev.selectedStartDateRange : (appliedFilters.startDateFrom && appliedFilters.startDateTo ? [appliedFilters.startDateFrom, appliedFilters.startDateTo] : null),
-			selectedEndDateRange: prev.visible ? prev.selectedEndDateRange : (appliedFilters.endDateFrom && appliedFilters.endDateTo ? [appliedFilters.endDateFrom, appliedFilters.endDateTo] : null),
 		}));
 	};
 
@@ -827,10 +800,6 @@ const ClassListTable = () => {
 		const newFilters = {
 			status: filterDropdown.selectedStatus,
 			syllabusId: filterDropdown.selectedSyllabus,
-			startDateFrom: filterDropdown.selectedStartDateRange && filterDropdown.selectedStartDateRange[0] ? filterDropdown.selectedStartDateRange[0] : null,
-			startDateTo: filterDropdown.selectedStartDateRange && filterDropdown.selectedStartDateRange[1] ? filterDropdown.selectedStartDateRange[1] : null,
-			endDateFrom: filterDropdown.selectedEndDateRange && filterDropdown.selectedEndDateRange[0] ? filterDropdown.selectedEndDateRange[0] : null,
-			endDateTo: filterDropdown.selectedEndDateRange && filterDropdown.selectedEndDateRange[1] ? filterDropdown.selectedEndDateRange[1] : null,
 		};
 		
 		setAppliedFilters(newFilters);
@@ -854,8 +823,6 @@ const ClassListTable = () => {
 			...prev,
 			selectedStatus: 'all',
 			selectedSyllabus: null,
-			selectedStartDateRange: null,
-			selectedEndDateRange: null,
 		}));
 	};
 
@@ -870,7 +837,8 @@ const ClassListTable = () => {
 		setConfirmModal({
 			visible: true,
 			title: t('classManagement.confirmDeactivateAll'),
-			content: t('classManagement.deactivateAllMessage', { count: selectedRowKeys.length }),
+			content: t('classManagement.deactivateAllMessage'),
+			displayData: `${selectedRowKeys.length} ${t('classManagement.classes')}`,
 			onConfirm: async () => {
 				try {
 					// Deactivate classes one by one since bulk API might not be available
@@ -927,7 +895,8 @@ const ClassListTable = () => {
 		setConfirmModal({
 			visible: true,
 			title: t('classManagement.confirmDeleteAll'),
-			content: t('classManagement.deleteAllMessage', { count: selectedRowKeys.length }),
+			content: t('classManagement.deleteAllMessage'),
+			displayData: `${selectedRowKeys.length} ${t('classManagement.classes')}`,
 			onConfirm: async () => {
 				try {
 					// Delete classes one by one since bulk delete API might not be available
@@ -1195,7 +1164,7 @@ const ClassListTable = () => {
 									<Button 
 										icon={<FilterOutlined />}
 										onClick={handleFilterToggle}
-										className={`filter-button ${theme}-filter-button ${filterDropdown.visible ? 'active' : ''} ${(appliedFilters.status !== 'all' || appliedFilters.syllabusId || appliedFilters.startDateFrom || appliedFilters.endDateFrom) ? 'has-filters' : ''}`}
+										className={`filter-button ${theme}-filter-button ${filterDropdown.visible ? 'active' : ''} ${(appliedFilters.status !== 'all' || appliedFilters.syllabusId) ? 'has-filters' : ''}`}
 									>
 										{t('common.filter')}
 									</Button>
@@ -1217,12 +1186,15 @@ const ClassListTable = () => {
 													>
 														<Option value="all">{t('classManagement.allStatus')}</Option>
 														<Option value="ACTIVE">{t('classManagement.active')}</Option>
+														<Option value="PENDING">{t('classManagement.pending')}</Option>
+														<Option value="UPCOMING_END">{t('classManagement.upcomingEnd')}</Option>
+														<Option value="FINISHED">{t('classManagement.finished')}</Option>
 														<Option value="INACTIVE">{t('classManagement.inactive')}</Option>
 													</Select>
 												</div>
 
 												{/* Syllabus Filter */}
-												<div style={{ marginBottom: '20px' }}>
+												<div style={{ marginBottom: '24px' }}>
 													<Typography.Title level={5} style={{ marginBottom: '12px', fontSize: '16px' }}>
 														{t('classManagement.syllabus')}
 													</Typography.Title>
@@ -1243,79 +1215,6 @@ const ClassListTable = () => {
 													</Select>
 												</div>
 
-												{/* Start Date Range Filter */}
-												<div style={{ marginBottom: '20px' }}>
-													<Typography.Title 
-														level={5} 
-														style={{ 
-															marginBottom: '12px', 
-															fontSize: '16px',
-															fontWeight: '600',
-															color: theme === 'dark' ? '#ffffff' : '#000000'
-														}}
-													>
-														{t('classManagement.startDateRange')}
-													</Typography.Title>
-													<DatePicker.RangePicker
-														value={filterDropdown.selectedStartDateRange ? [
-															filterDropdown.selectedStartDateRange[0] ? dayjs(filterDropdown.selectedStartDateRange[0]) : null,
-															filterDropdown.selectedStartDateRange[1] ? dayjs(filterDropdown.selectedStartDateRange[1]) : null
-														] : null}
-														onChange={(dates) => {
-															if (dates && dates[0] && dates[1]) {
-																setFilterDropdown(prev => ({
-																	...prev,
-																	selectedStartDateRange: [dates[0].format('YYYY-MM-DD'), dates[1].format('YYYY-MM-DD')]
-																}));
-															} else {
-																setFilterDropdown(prev => ({
-																	...prev,
-																	selectedStartDateRange: null
-																}));
-															}
-														}}
-														onOpenChange={(open) => setIsInteractingWithFilter(open)}
-														style={{ width: '100%', height: '40px' }}
-														placeholder={[t('classManagement.startDateFrom'), t('classManagement.startDateTo')]}
-													/>
-												</div>
-
-												{/* End Date Range Filter */}
-												<div style={{ marginBottom: '24px' }}>
-													<Typography.Title 
-														level={5} 
-														style={{ 
-															marginBottom: '12px', 
-															fontSize: '16px',
-															fontWeight: '600',
-															color: theme === 'dark' ? '#ffffff' : '#000000'
-														}}
-													>
-														{t('classManagement.endDateRange')}
-													</Typography.Title>
-													<DatePicker.RangePicker
-														value={filterDropdown.selectedEndDateRange ? [
-															filterDropdown.selectedEndDateRange[0] ? dayjs(filterDropdown.selectedEndDateRange[0]) : null,
-															filterDropdown.selectedEndDateRange[1] ? dayjs(filterDropdown.selectedEndDateRange[1]) : null
-														] : null}
-														onChange={(dates) => {
-															if (dates && dates[0] && dates[1]) {
-																setFilterDropdown(prev => ({
-																	...prev,
-																	selectedEndDateRange: [dates[0].format('YYYY-MM-DD'), dates[1].format('YYYY-MM-DD')]
-																}));
-															} else {
-																setFilterDropdown(prev => ({
-																	...prev,
-																	selectedEndDateRange: null
-																}));
-															}
-														}}
-														onOpenChange={(open) => setIsInteractingWithFilter(open)}
-														style={{ width: '100%', height: '40px' }}
-														placeholder={[t('classManagement.endDateFrom'), t('classManagement.endDateTo')]}
-													/>
-												</div>
 
 												{/* Action Buttons */}
 												<div style={{ 
@@ -1412,9 +1311,9 @@ const ClassListTable = () => {
 				<Modal
 					title={
 						<div style={{ 
-							fontSize: '24px', 
+							fontSize: '28px', 
 							fontWeight: '600', 
-							color: '#000000',
+							color: 'rgb(24, 144, 255)',
 							textAlign: 'center',
 							padding: '10px 0',
 							display: 'flex',
@@ -1424,12 +1323,12 @@ const ClassListTable = () => {
 						}}>
 							{editingClass ? (
 								<>
-									<EditOutlined style={{ fontSize: '26px', color: '#000000' }} />
+									<EditOutlined style={{ fontSize: '28px', color: 'rgb(24, 144, 255)' }} />
 									<span>{t('classManagement.editClass')}</span>
 								</>
 							) : (
 								<>
-									<PlusOutlined style={{ fontSize: '26px', color: '#000000' }} />
+									<PlusOutlined style={{ fontSize: '28px', color: 'rgb(24, 144, 255)' }} />
 									<span>{t('classManagement.addClass')}</span>
 								</>
 							)}
@@ -1445,22 +1344,26 @@ const ClassListTable = () => {
 					confirmLoading={isSubmitting}
 					okButtonProps={{
 						style: {
-							backgroundColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
-							background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
-							borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'transparent',
-							color: theme === 'sun' ? '#000000' : '#ffffff',
-							height: '40px',
-							fontSize: '16px',
+							background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, #7228d9 0%, #9c88ff 100%)',
+							borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : '#7228d9',
+							color: theme === 'sun' ? '#000' : '#fff',
+							borderRadius: '6px',
+							height: '32px',
 							fontWeight: '500',
-							minWidth: '100px',
+							fontSize: '16px',
+							padding: '4px 15px',
+							width: '100px',
+							transition: 'all 0.3s ease',
+							boxShadow: 'none'
 						},
 					}}
 					cancelButtonProps={{
 						style: {
-							height: '40px',
-							fontSize: '16px',
+							height: '32px',
 							fontWeight: '500',
-							minWidth: '100px',
+							fontSize: '16px',
+							padding: '4px 15px',
+							width: '100px'
 						},
 					}}
 					bodyStyle={{
@@ -1792,9 +1695,9 @@ const ClassListTable = () => {
 				<Modal
 					title={
 						<div style={{ 
-							fontSize: '20px', 
+							fontSize: '28px', 
 							fontWeight: '600', 
-							color: '#1890ff',
+							color: 'rgb(24, 144, 255)',
 							textAlign: 'center',
 							padding: '10px 0'
 						}}>
@@ -1821,22 +1724,26 @@ const ClassListTable = () => {
 					}}
 					okButtonProps={{
 						style: {
-							backgroundColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
-							background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
-							borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'transparent',
-							color: theme === 'sun' ? '#000000' : '#ffffff',
-							height: '40px',
-							fontSize: '16px',
+							background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, #7228d9 0%, #9c88ff 100%)',
+							borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : '#7228d9',
+							color: theme === 'sun' ? '#000' : '#fff',
+							borderRadius: '6px',
+							height: '32px',
 							fontWeight: '500',
-							minWidth: '100px'
+							fontSize: '16px',
+							padding: '4px 15px',
+							width: '100px',
+							transition: 'all 0.3s ease',
+							boxShadow: 'none'
 						}
 					}}
 					cancelButtonProps={{
 						style: {
-							height: '40px',
-							fontSize: '16px',
+							height: '32px',
 							fontWeight: '500',
-							minWidth: '100px'
+							fontSize: '16px',
+							padding: '4px 15px',
+							width: '100px'
 						}
 					}}
 				>
@@ -1883,31 +1790,41 @@ const ClassListTable = () => {
 								})()}
 							</Select>
 						</div>
-					) : (
-						// Default confirmation modal content
+				) : (
+					// Default confirmation modal content
+					<div style={{
+						display: 'flex',
+						flexDirection: 'column',
+						alignItems: 'center',
+						gap: '20px'
+					}}>
 						<div style={{
-							display: 'flex',
-							flexDirection: 'column',
-							alignItems: 'center',
-							gap: '20px'
+							fontSize: '48px',
+							color: '#ff4d4f',
+							marginBottom: '10px'
 						}}>
-							<div style={{
-								fontSize: '48px',
-								color: '#ff4d4f',
-								marginBottom: '10px'
-							}}>
-								⚠️
-							</div>
-							<p style={{
-								fontSize: '18px',
-								color: '#333',
-								margin: 0,
-								fontWeight: '500'
-							}}>
-								{confirmModal.content}
-							</p>
+							⚠️
 						</div>
-					)}
+						<p style={{
+							fontSize: '18px',
+							color: '#333',
+							margin: 0,
+							fontWeight: '500'
+						}}>
+							{confirmModal.content}
+						</p>
+						{confirmModal.displayData && (
+							<p style={{
+								fontSize: '20px',
+								color: '#000',
+								margin: 0,
+								fontWeight: '400'
+							}}>
+								<strong>{confirmModal.displayData}</strong>
+							</p>
+						)}
+					</div>
+				)}
 				</Modal>
 
 				{/* Import Modal */}
@@ -1915,9 +1832,9 @@ const ClassListTable = () => {
 					title={
 						<div
 							style={{
-								fontSize: '20px',
+								fontSize: '28px',
 								fontWeight: '600',
-								color: '#000000',
+								color: 'rgb(24, 144, 255)',
 								textAlign: 'center',
 								padding: '10px 0',
 								display: 'flex',
@@ -1925,7 +1842,7 @@ const ClassListTable = () => {
 								justifyContent: 'center',
 								gap: '10px',
 							}}>
-							<DownloadOutlined style={{ color: '#000000' }} />
+							<DownloadOutlined style={{ color: 'rgb(24, 144, 255)' }} />
 							{t('classManagement.importClasses')}
 						</div>
 					}
@@ -1937,25 +1854,29 @@ const ClassListTable = () => {
 					width={600}
 					centered
 					confirmLoading={importModal.uploading}
-					okButtonProps={{
-						disabled: importModal.fileList.length === 0,
-						style: {
-							backgroundColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
-							background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
-							borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'transparent',
-							color: theme === 'sun' ? '#000000' : '#ffffff',
-							height: '40px',
-							fontSize: '16px',
-							fontWeight: '500',
-							minWidth: '120px',
-						},
-					}}
+				okButtonProps={{
+					disabled: importModal.fileList.length === 0,
+					style: {
+						background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, #7228d9 0%, #9c88ff 100%)',
+						borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : '#7228d9',
+						color: theme === 'sun' ? '#000' : '#fff',
+						borderRadius: '6px',
+						height: '32px',
+						fontWeight: '500',
+						fontSize: '16px',
+						padding: '4px 15px',
+						width: '150px',
+						transition: 'all 0.3s ease',
+						boxShadow: 'none'
+					},
+				}}
 					cancelButtonProps={{
 						style: {
-							height: '40px',
-							fontSize: '16px',
+							height: '32px',
 							fontWeight: '500',
-							minWidth: '100px',
+							fontSize: '16px',
+							padding: '4px 15px',
+							width: '100px'
 						},
 					}}
 				>
@@ -2022,9 +1943,9 @@ const ClassListTable = () => {
 					title={
 						<div
 							style={{
-								fontSize: '24px',
+								fontSize: '28px',
 								fontWeight: '600',
-								color: theme === 'dark' ? '#ffffff' : '#000000',
+								color: 'rgb(24, 144, 255)',
 								textAlign: 'center',
 								padding: '10px 0',
 							}}>
@@ -2041,7 +1962,7 @@ const ClassListTable = () => {
 							style={{
 								height: '32px',
 								fontWeight: '500',
-								fontSize: '14px',
+								fontSize: '16px',
 								padding: '4px 15px',
 								width: '100px'
 							}}>

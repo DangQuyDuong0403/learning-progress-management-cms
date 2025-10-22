@@ -52,7 +52,12 @@ import TeacherClassActivities from '../pages/management/ManagementClass/Class/Cl
 import TeacherClassChapterLesson from '../pages/management/ManagementClass/Class/ClassChapterLesson.jsx';
 import TeacherClassChapterList from '../pages/management/ManagementClass/Class/TeacherClassChapterList.jsx';
 import TeacherClassChapterDragEdit from '../pages/management/ManagementClass/Class/TeacherClassChapterDragEdit.jsx';
+import TeacherClassLessonDragEdit from '../pages/management/ManagementClass/Class/TeacherClassLessonDragEdit.jsx';
 import DailyChallengeList from '../pages/management/ManagementTeacher/dailyChallenge/DailyChallengeList.jsx';
+import DailyChallengePerformance from '../pages/management/ManagementTeacher/dailyChallenge/DailyChallengePerformance.jsx';
+import DailyChallengeSubmissionList from '../pages/management/ManagementTeacher/dailyChallenge/DailyChallengeSubmissionList.jsx';
+import DailyChallengeSubmissionDetail from '../pages/management/ManagementTeacher/dailyChallenge/DailyChallengeSubmissionDetail.jsx';
+import DailyChallengeContent from '../pages/management/ManagementTeacher/dailyChallenge/DailyChallengeContent.jsx';
 import CreateGrammarVocabularyChallenge from '../pages/management/ManagementTeacher/dailyChallenge/CreateGrammarVocabularyChallenge.jsx';
 import CreateReadingChallenge from '../pages/management/ManagementTeacher/dailyChallenge/CreateReadingChallenge.jsx';
 import TeacherDashboard from '../pages/management/ManagementTeacher/TeacherDashboard.jsx';
@@ -222,7 +227,7 @@ const CONFIG_ROUTER = [
 	
 	// Admin Management Routes
 	{
-		show: true,
+		show: false, // Tạm thời ẩn dashboard khỏi sidebar
 		component: AdminDashboard,
 		// icon: <DashboardOutlined />,
 		path: ROUTER_PAGE.ADMIN_DASHBOARD,
@@ -258,7 +263,7 @@ const CONFIG_ROUTER = [
 	// },
 	// Manager Dashboard
 	{
-		show: true,
+		show: false,
 		component: ManagerDashboard,
 		// icon: <DashboardOutlined />,
 		path: ROUTER_PAGE.MANAGER_DASHBOARD,
@@ -445,12 +450,34 @@ const CONFIG_ROUTER = [
 	},
 	{
 		show: false,
+		component: TeacherClassChapterDragEdit,
+		// icon: <UserOutlined />,
+		path: ROUTER_PAGE.MANAGER_CLASS_CHAPTERS_EDIT_ORDER,
+		menuName: 'class chapters edit order',
+		exact: true,
+		key: 'MANAGER_CLASS_CHAPTERS_EDIT_ORDER',
+		private: true,
+		role: ['manager', 'teacher', 'teaching_assistant'],
+	},
+	{
+		show: false,
 		component: ClassChapterLesson,
 		// icon: <UserOutlined />,
 		path: ROUTER_PAGE.MANAGER_CLASS_CHAPTER_LESSONS,
 		menuName: 'class chapter lessons',
 		exact: true,
 		key: 'MANAGER_CLASS_CHAPTER_LESSONS',
+		private: true,
+		role: ['manager', 'teacher', 'teaching_assistant'],
+	},
+	{
+		show: false,
+		component: TeacherClassLessonDragEdit,
+		// icon: <UserOutlined />,
+		path: ROUTER_PAGE.MANAGER_CLASS_CHAPTER_LESSONS_EDIT_ORDER,
+		menuName: 'class chapter lessons edit order',
+		exact: true,
+		key: 'MANAGER_CLASS_CHAPTER_LESSONS_EDIT_ORDER',
 		private: true,
 		role: ['manager', 'teacher', 'teaching_assistant'],
 	},
@@ -546,12 +573,45 @@ const CONFIG_ROUTER = [
 	},
 	{
 		show: false,
+		component: TeacherClassChapterList,
+		// icon: <UserOutlined />,
+		path: ROUTER_PAGE.TEACHING_ASSISTANT_CLASS_CHAPTERS,
+		menuName: 'class chapters',
+		exact: true,
+		key: 'TEACHING_ASSISTANT_CLASS_CHAPTERS',
+		private: true,
+		role: 'teaching_assistant',
+	},
+	{
+		show: false,
+		component: TeacherClassChapterDragEdit,
+		// icon: <UserOutlined />,
+		path: ROUTER_PAGE.TEACHING_ASSISTANT_CLASS_CHAPTERS_EDIT_ORDER,
+		menuName: 'class chapters edit order',
+		exact: true,
+		key: 'TEACHING_ASSISTANT_CLASS_CHAPTERS_EDIT_ORDER',
+		private: true,
+		role: 'teaching_assistant',
+	},
+	{
+		show: false,
 		component: ClassChapterLesson,
 		// icon: <UserOutlined />,
 		path: ROUTER_PAGE.TEACHING_ASSISTANT_CLASS_CHAPTER_LESSONS,
 		menuName: 'class chapter lessons',
 		exact: true,
 		key: 'TEACHING_ASSISTANT_CLASS_CHAPTER_LESSONS',
+		private: true,
+		role: 'teaching_assistant',
+	},
+	{
+		show: false,
+		component: TeacherClassLessonDragEdit,
+		// icon: <UserOutlined />,
+		path: ROUTER_PAGE.TEACHING_ASSISTANT_CLASS_CHAPTER_LESSONS_EDIT_ORDER,
+		menuName: 'class chapter lessons edit order',
+		exact: true,
+		key: 'TEACHING_ASSISTANT_CLASS_CHAPTER_LESSONS_EDIT_ORDER',
 		private: true,
 		role: 'teaching_assistant',
 	},
@@ -791,6 +851,17 @@ const CONFIG_ROUTER = [
 		private: true,
 		role: ['manager', 'teacher', 'teaching_assistant'],
 	},
+	{
+		show: false,
+		component: TeacherClassLessonDragEdit,
+		// icon: <UserOutlined />,
+		path: ROUTER_PAGE.TEACHER_CLASS_CHAPTER_LESSONS_EDIT_ORDER,
+		menuName: 'class chapter lessons edit order',
+		exact: true,
+		key: 'TEACHER_CLASS_CHAPTER_LESSONS_EDIT_ORDER',
+		private: true,
+		role: ['manager', 'teacher', 'teaching_assistant'],
+	},
 	// Daily Challenge Routes for Teacher
 	{
 		show: true,
@@ -799,6 +870,46 @@ const CONFIG_ROUTER = [
 		menuName: 'Daily Challenge Management',
 		exact: true,
 		key: 'TEACHER_DAILY_CHALLENGES',
+		private: true,
+		role: 'teacher',
+	},
+	{
+		show: false,
+		component: DailyChallengePerformance,
+		path: '/teacher/daily-challenges/detail/:id',
+		menuName: 'Daily Challenge Performance',
+		exact: true,
+		key: 'TEACHER_DAILY_CHALLENGE_PERFORMANCE',
+		private: true,
+		role: 'teacher',
+	},
+	{
+		show: false,
+		component: DailyChallengeSubmissionList,
+		path: '/teacher/daily-challenges/detail/:id/submissions',
+		menuName: 'Daily Challenge Submissions',
+		exact: true,
+		key: 'TEACHER_DAILY_CHALLENGE_SUBMISSIONS',
+		private: true,
+		role: 'teacher',
+	},
+	{
+		show: false,
+		component: DailyChallengeSubmissionDetail,
+		path: '/teacher/daily-challenges/detail/:id/submission/:submissionId',
+		menuName: 'Daily Challenge Submission Detail',
+		exact: true,
+		key: 'TEACHER_DAILY_CHALLENGE_SUBMISSION_DETAIL',
+		private: true,
+		role: 'teacher',
+	},
+	{
+		show: false,
+		component: DailyChallengeContent,
+		path: '/teacher/daily-challenges/detail/:id/content',
+		menuName: 'Daily Challenge Content',
+		exact: true,
+		key: 'TEACHER_DAILY_CHALLENGE_CONTENT',
 		private: true,
 		role: 'teacher',
 	},

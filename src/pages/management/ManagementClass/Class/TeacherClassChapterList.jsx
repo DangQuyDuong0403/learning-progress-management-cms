@@ -14,18 +14,13 @@ import {
 	Divider,
 } from 'antd';
 import {
-	PlusOutlined,
-	EditOutlined,
-	DeleteOutlined,
 	SearchOutlined,
 	EyeOutlined,
-	ArrowLeftOutlined,
 	DragOutlined,
 	DownloadOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useParams, useNavigate } from 'react-router-dom';
-import ChapterForm from '../../ManagementManager/syllabus/ChapterForm';
 import ThemedLayoutWithSidebar from '../../../../component/ThemedLayout';
 import ThemedLayoutNoSidebar from '../../../../component/teacherlayout/ThemedLayout';
 import LoadingWithEffect from '../../../../component/spinner/LoadingWithEffect';
@@ -61,10 +56,6 @@ const TeacherClassChapterList = () => {
 	const [searchTimeout, setSearchTimeout] = useState(null);
 
 	// Modal states
-	const [isModalVisible, setIsModalVisible] = useState(false);
-	const [isDeleteModalVisible, setIsDeleteModalVisible] = useState(false);
-	const [editingChapter, setEditingChapter] = useState(null);
-	const [deleteChapter, setDeleteChapter] = useState(null);
 	const [importModal, setImportModal] = useState({
 		visible: false,
 		fileList: [],
@@ -200,54 +191,8 @@ const TeacherClassChapterList = () => {
 		};
 	}, [searchTimeout]);
 
-	const handleAdd = () => {
-		setEditingChapter(null);
-		setIsModalVisible(true);
-	};
-
-	const handleEdit = (chapter) => {
-		setEditingChapter(chapter);
-		setIsModalVisible(true);
-	};
-
-	const handleDeleteClick = (chapter) => {
-		setDeleteChapter(chapter);
-		setIsDeleteModalVisible(true);
-	};
-
-	const handleDelete = async () => {
-		try {
-			// TODO: Implement delete chapter API call
-			// await syllabusManagementApi.deleteChapter(deleteChapter.id);
-			
-			// Update local state
-			setChapters(chapters.filter(c => c.id !== deleteChapter.id));
-			
-			message.success(t('chapterManagement.deleteChapterSuccess'));
-			setIsDeleteModalVisible(false);
-			setDeleteChapter(null);
-		} catch (error) {
-			console.error('Error deleting chapter:', error);
-			message.error(t('chapterManagement.deleteChapterError'));
-		}
-	};
-
-	const handleDeleteModalClose = () => {
-		setIsDeleteModalVisible(false);
-		setDeleteChapter(null);
-	};
-
 	const handleViewLessons = (chapter) => {
 		navigate(`${routePrefix}/chapters/${classId}/${chapter.id}/lessons`);
-	};
-
-	const handleModalClose = () => {
-		setIsModalVisible(false);
-		setEditingChapter(null);
-	};
-
-	const handleBackToClassMenu = () => {
-		navigate(`${routePrefix}/menu/${classId}`);
 	};
 
 	const handleEditOrder = () => {
@@ -466,20 +411,6 @@ const TeacherClassChapterList = () => {
 							onClick={() => handleViewLessons(record)}
 						/>
 					</Tooltip>
-					<Tooltip title={t('common.edit')}>
-						<Button
-							type="text"
-							size="small"
-							icon={<EditOutlined style={{ fontSize: '25px' }} />}
-							onClick={() => handleEdit(record)}
-						/>
-					</Tooltip>
-					<Button
-						type="text"
-						size="small"
-						icon={<DeleteOutlined style={{ fontSize: '25px' }} />}
-						onClick={() => handleDeleteClick(record)}
-					/>
 				</Space>
 			),
 		},
@@ -550,13 +481,6 @@ const TeacherClassChapterList = () => {
 							>
 								{t('common.edit')}
 							</Button>
-							<Button
-								icon={<PlusOutlined />}
-								className="create-button"
-								onClick={handleAdd}
-							>
-								{t('chapterManagement.addChapter')}
-							</Button>
 						</Space>
 					</Col>
 				</Row>
@@ -580,114 +504,13 @@ const TeacherClassChapterList = () => {
 				</div>
 			</div>
 
-				{/* Chapter Modal */}
-				<Modal
-					title={
-						editingChapter
-							? t('chapterManagement.editChapter')
-							: t('chapterManagement.addChapter')
-					}
-					open={isModalVisible}
-					onCancel={handleModalClose}
-					footer={null}
-					width={600}
-					destroyOnClose
-				>
-					<ChapterForm
-						chapter={editingChapter}
-						syllabus={classInfo.syllabus}
-						onClose={handleModalClose}
-					/>
-				</Modal>
-
-			{/* Delete Confirmation Modal */}
-			<Modal
-				title={
-					<div style={{ 
-						fontSize: '20px', 
-						fontWeight: '600', 
-						color: '#1890ff',
-						textAlign: 'center',
-						padding: '10px 0'
-					}}>
-						{t('chapterManagement.confirmDelete')}
-					</div>
-				}
-				open={isDeleteModalVisible}
-				onOk={handleDelete}
-				onCancel={handleDeleteModalClose}
-				okText={t('common.confirm')}
-				cancelText={t('common.cancel')}
-				width={500}
-				centered
-				bodyStyle={{
-					padding: '30px 40px',
-					fontSize: '16px',
-					lineHeight: '1.6',
-					textAlign: 'center'
-				}}
-				okButtonProps={{
-					style: {
-						backgroundColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
-						background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
-						borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'transparent',
-						color: theme === 'sun' ? '#000000' : '#ffffff',
-						height: '40px',
-						fontSize: '16px',
-						fontWeight: '500',
-						minWidth: '100px'
-					}
-				}}
-				cancelButtonProps={{
-					style: {
-						height: '40px',
-						fontSize: '16px',
-						fontWeight: '500',
-						minWidth: '100px'
-					}
-				}}
-			>
-				<div style={{
-					display: 'flex',
-					flexDirection: 'column',
-					alignItems: 'center',
-					gap: '20px'
-				}}>
-					<div style={{
-						fontSize: '48px',
-						color: '#ff4d4f',
-						marginBottom: '10px'
-					}}>
-						⚠️
-					</div>
-					<p style={{
-						fontSize: '18px',
-						color: '#333',
-						margin: 0,
-						fontWeight: '500'
-					}}>
-						{t('chapterManagement.confirmDeleteMessage')}
-					</p>
-					{deleteChapter && (
-						<p style={{
-							fontSize: '20px',
-							color: '#1890ff',
-							margin: 0,
-							fontWeight: '600'
-						}}>
-							<strong>{deleteChapter.name}</strong>
-						</p>
-					)}
-				</div>
-			</Modal>
-
 			{/* Import Modal */}
 			<Modal
 				title={
 					<div style={{
-						fontSize: '20px',
+						fontSize: '28px',
 						fontWeight: '600',
-						color: '#000000',
+						color: 'rgb(24, 144, 255)',
 						textAlign: 'center',
 						padding: '10px 0',
 						display: 'flex',
@@ -695,7 +518,7 @@ const TeacherClassChapterList = () => {
 						justifyContent: 'center',
 						gap: '10px',
 					}}>
-						<DownloadOutlined style={{ color: '#000000' }} />
+						<DownloadOutlined style={{ color: 'rgb(24, 144, 255)' }} />
 						{t('chapterManagement.importChapters')}
 					</div>
 				}
@@ -710,22 +533,26 @@ const TeacherClassChapterList = () => {
 				okButtonProps={{
 					disabled: importModal.fileList.length === 0,
 					style: {
-						backgroundColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
-						background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
-						borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'transparent',
-						color: theme === 'sun' ? '#000000' : '#ffffff',
-						height: '40px',
-						fontSize: '16px',
+						background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, #7228d9 0%, #9c88ff 100%)',
+						borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : '#7228d9',
+						color: theme === 'sun' ? '#000' : '#fff',
+						borderRadius: '6px',
+						height: '32px',
 						fontWeight: '500',
-						minWidth: '120px',
+						fontSize: '16px',
+						padding: '4px 15px',
+						width: '100px',
+						transition: 'all 0.3s ease',
+						boxShadow: 'none'
 					},
 				}}
 				cancelButtonProps={{
 					style: {
-						height: '40px',
-						fontSize: '16px',
+						height: '32px',
 						fontWeight: '500',
-						minWidth: '100px',
+						fontSize: '16px',
+						padding: '4px 15px',
+						width: '100px'
 					},
 				}}>
 				<div style={{ padding: '20px 0' }}>

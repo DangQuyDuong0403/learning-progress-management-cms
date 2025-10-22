@@ -189,6 +189,8 @@ const ClassTeachers = () => {
       console.log('Teachers response:', response);
       
       if (response.success) {
+        console.log('Teachers data structure:', response.data);
+        console.log('First teacher sample:', response.data?.[0]);
         setTeachers(response.data || []);
         setPagination(prev => ({
           ...prev,
@@ -210,30 +212,36 @@ const ClassTeachers = () => {
   const fetchAvailableTeachers = useCallback(async () => {
     setLoadingTeachers(true);
     try {
-      // Fetch teachers using teacherManagement API
-      const teacherResponse = await teacherManagementApi.getTeachers({
+      // Fetch teachers using teacherManagement API - same format as TeacherList.jsx
+      const teacherParams = {
         page: 0,
         size: 100,
         text: '', // Empty search text to get all
         status: ['ACTIVE'], // Only ACTIVE teachers
-        roleName: ['teacher'], // Only teachers
+        roleName: ['TEACHER'], // Only teachers - use uppercase
         sortBy: 'fullName',
         sortDir: 'asc'
-      });
+      };
       
-      // Fetch teaching assistants using teacherManagement API
-      const taResponse = await teacherManagementApi.getTeachers({
+      const teacherResponse = await teacherManagementApi.getTeachers(teacherParams);
+      
+      // Fetch teaching assistants using teacherManagement API - same format as TeacherList.jsx
+      const taParams = {
         page: 0,
         size: 100,
         text: '', // Empty search text to get all
         status: ['ACTIVE'], // Only ACTIVE teaching assistants
-        roleName: ['teaching_assistant'], // Only teaching assistants
+        roleName: ['TEACHING_ASSISTANT'], // Only teaching assistants - use uppercase
         sortBy: 'fullName',
         sortDir: 'asc'
-      });
+      };
+      
+      const taResponse = await teacherManagementApi.getTeachers(taParams);
       
       console.log('Available teachers response:', teacherResponse);
       console.log('Available TAs response:', taResponse);
+      console.log('Teacher request params:', teacherParams);
+      console.log('TA request params:', taParams);
       
       if (teacherResponse.success) {
         setAvailableTeachers(teacherResponse.data || []);
@@ -258,7 +266,7 @@ const ClassTeachers = () => {
 
   // Ensure header back button appears immediately while class info loads
   useEffect(() => {
-    if (id) {
+    if (id) { 
       enterClassMenu({ id });
     }
     return () => {
@@ -301,6 +309,8 @@ const ClassTeachers = () => {
         console.log('Teachers response:', response);
         
         if (response.success) {
+          console.log('Teachers data structure in useEffect:', response.data);
+          console.log('First teacher sample in useEffect:', response.data?.[0]);
           setTeachers(response.data || []);
           setPagination(prev => ({
             ...prev,
@@ -366,7 +376,9 @@ const ClassTeachers = () => {
         console.log('Remove teacher response:', response);
         
         if (response.success) {
-          spaceToast.success(`${t('classTeachers.deleteSuccess')} ${teacherToDelete.role === 'teacher' ? t('classTeachers.teacher') : t('classTeachers.teachingAssistant')} "${teacherToDelete.name}"`);
+          const isTeacher = teacherToDelete.role === 'teacher' || teacherToDelete.roleInClass === 'TEACHER' || teacherToDelete.roleName === 'TEACHER';
+          const teacherName = teacherToDelete.fullName || teacherToDelete.userName || teacherToDelete.name;
+          spaceToast.success(`${t('classTeachers.deleteSuccess')} ${isTeacher ? t('classTeachers.teacher') : t('classTeachers.teachingAssistant')} "${teacherName}"`);
           
           // Refresh the teachers list
           fetchTeachers();
@@ -690,7 +702,17 @@ const ClassTeachers = () => {
 
         {/* Add Staff Modal */}
         <Modal
-          title={t('classTeachers.addMembersToClass')}
+          title={
+            <div style={{ 
+              fontSize: '28px', 
+              fontWeight: '600', 
+              color: 'rgb(24, 144, 255)',
+              textAlign: 'center',
+              padding: '10px 0'
+            }}>
+              {t('classTeachers.addMembersToClass')}
+            </div>
+          }
           open={isModalVisible}
           onOk={handleModalOk}
           onCancel={handleModalCancel}
@@ -699,22 +721,26 @@ const ClassTeachers = () => {
           cancelText={t('common.cancel')}
           okButtonProps={{
             style: {
-              backgroundColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
-              background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
-              borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'transparent',
-              color: theme === 'sun' ? '#000000' : '#ffffff',
-              height: '40px',
-              fontSize: '16px',
+              background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, #7228d9 0%, #9c88ff 100%)',
+              borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : '#7228d9',
+              color: theme === 'sun' ? '#000' : '#fff',
+              borderRadius: '6px',
+              height: '32px',
               fontWeight: '500',
-              minWidth: '120px',
+              fontSize: '16px',
+              padding: '4px 15px',
+              width: '100px',
+              transition: 'all 0.3s ease',
+              boxShadow: 'none'
             },
           }}
           cancelButtonProps={{
             style: {
-              height: '40px',
-              fontSize: '16px',
+              height: '32px',
               fontWeight: '500',
-              minWidth: '100px',
+              fontSize: '16px',
+              padding: '4px 15px',
+              width: '100px'
             },
           }}
         >
@@ -729,12 +755,35 @@ const ClassTeachers = () => {
             <div style={{ fontSize: '14px', color: '#24292e' }}>
               <strong>{t('classTeachers.currentClassStatus')}</strong>
             </div>
+          
             <div style={{ fontSize: '13px', color: '#586069', marginTop: '4px' }}>
-              • {t('classTeachers.teacher')}: {teachers.some(t => t.role === "teacher") ? t('classTeachers.assigned') : t('classTeachers.notAssigned')} 
-              {teachers.some(t => t.role === "teacher") && ` (${teachers.find(t => t.role === "teacher")?.name})`}
+              • {t('classTeachers.teacher')}: {(() => {
+                // Simple logic: if there are teachers in the class, show assigned
+                if (teachers.length > 0) {
+                  // Try to find teacher by role first, then by username pattern, then just take first one
+                  const teacher = teachers.find(t => 
+                    t.role === "teacher" || 
+                    t.roleInClass === "TEACHER" || 
+                    t.roleName === "TEACHER"
+                  ) || teachers.find(t => t.userName?.startsWith('TC')) || teachers[0];
+                  
+                  return `${t('classTeachers.assigned')} (${teacher?.fullName || teacher?.userName || 'Unknown'})`;
+                } else {
+                  return t('classTeachers.notAssigned');
+                }
+              })()}
             </div>
             <div style={{ fontSize: '13px', color: '#586069' }}>
-              • {t('classTeachers.teachingAssistant')}: {teachers.filter(t => t.role === "teaching_assistant").length} {t('classTeachers.people')}
+              • {t('classTeachers.teachingAssistant')}: {(() => {
+                // Count teaching assistants (excluding the main teacher)
+                const tas = teachers.filter(t => 
+                  t.role === "teaching_assistant" || 
+                  t.roleInClass === "TEACHING_ASSISTANT" || 
+                  t.roleName === "TEACHING_ASSISTANT" ||
+                  (t.userName?.startsWith('TA') && teachers.length > 1)
+                );
+                return `${tas.length} ${t('classTeachers.people')}`;
+              })()}
             </div>
             <div style={{ fontSize: '13px', color: '#586069' }}>
               • {t('classTeachers.total')} {teachers.length} {t('classTeachers.members')}
@@ -802,9 +851,9 @@ const ClassTeachers = () => {
          <Modal
            title={
              <div style={{ 
-               fontSize: '20px', 
+               fontSize: '28px', 
                fontWeight: '600', 
-               color: '#1890ff',
+               color: 'rgb(24, 144, 255)',
                textAlign: 'center',
                padding: '10px 0'
              }}>
@@ -826,22 +875,26 @@ const ClassTeachers = () => {
            }}
            okButtonProps={{
              style: {
-               backgroundColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
-               background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
-               borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'transparent',
-               color: theme === 'sun' ? '#000000' : '#ffffff',
-               height: '40px',
-               fontSize: '16px',
+               background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, #7228d9 0%, #9c88ff 100%)',
+               borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : '#7228d9',
+               color: theme === 'sun' ? '#000' : '#fff',
+               borderRadius: '6px',
+               height: '32px',
                fontWeight: '500',
-               minWidth: '100px'
+               fontSize: '16px',
+               padding: '4px 15px',
+               width: '100px',
+               transition: 'all 0.3s ease',
+               boxShadow: 'none'
              }
            }}
            cancelButtonProps={{
              style: {
-               height: '40px',
-               fontSize: '16px',
+               height: '32px',
                fontWeight: '500',
-               minWidth: '100px'
+               fontSize: '16px',
+               padding: '4px 15px',
+               width: '100px'
              }
            }}
          >
@@ -858,14 +911,24 @@ const ClassTeachers = () => {
              }}>
                ⚠️
              </div>
-             <p style={{
-               fontSize: '18px',
-               color: '#333',
-               margin: 0,
-               fontWeight: '500'
-             }}>
-               {teacherToDelete?.role === 'teacher' ? t('classTeachers.confirmDeleteTeacher') : t('classTeachers.confirmDeleteTA')} "{teacherToDelete?.name}"?
-             </p>
+			<p style={{
+				fontSize: '18px',
+				color: '#333',
+				margin: 0,
+				fontWeight: '500'
+			}}>
+				{teacherToDelete?.role === 'teacher' ? t('classTeachers.confirmDeleteTeacher') : t('classTeachers.confirmDeleteTA')}
+			</p>
+			{teacherToDelete && (
+				<p style={{
+					fontSize: '20px',
+					color: '#000',
+					margin: 0,
+					fontWeight: '400'
+				}}>
+					<strong>"{teacherToDelete.name}"</strong>
+				</p>
+			)}
            </div>
          </Modal>
 
@@ -874,9 +937,9 @@ const ClassTeachers = () => {
            title={
              <div
                style={{
-                 fontSize: '20px',
+                 fontSize: '28px',
                  fontWeight: '600',
-                 color: '#000000',
+                 color: 'rgb(24, 144, 255)',
                  textAlign: 'center',
                  padding: '10px 0',
                  display: 'flex',
@@ -884,7 +947,7 @@ const ClassTeachers = () => {
                  justifyContent: 'center',
                  gap: '10px',
                }}>
-               <PlusOutlined style={{ color: '#000000' }} />
+               <PlusOutlined style={{ color: 'rgb(24, 144, 255)' }} />
                {t('classTeachers.importTeachersList')}
              </div>
            }
@@ -898,22 +961,26 @@ const ClassTeachers = () => {
            okButtonProps={{
              disabled: fileList.length === 0,
              style: {
-               backgroundColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
-               background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
-               borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'transparent',
-               color: theme === 'sun' ? '#000000' : '#ffffff',
-               height: '40px',
-               fontSize: '16px',
+               background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, #7228d9 0%, #9c88ff 100%)',
+               borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : '#7228d9',
+               color: theme === 'sun' ? '#000' : '#fff',
+               borderRadius: '6px',
+               height: '32px',
                fontWeight: '500',
-               minWidth: '120px',
+               fontSize: '16px',
+               padding: '4px 15px',
+               width: '100px',
+               transition: 'all 0.3s ease',
+               boxShadow: 'none'
              },
            }}
            cancelButtonProps={{
              style: {
-               height: '40px',
-               fontSize: '16px',
+               height: '32px',
                fontWeight: '500',
-               minWidth: '100px',
+               fontSize: '16px',
+               padding: '4px 15px',
+               width: '100px'
              },
            }}
          >

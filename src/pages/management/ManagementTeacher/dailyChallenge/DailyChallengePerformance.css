@@ -1,0 +1,220 @@
+/* ===== WRAPPER TO MATCH DAILY CHALLENGE LIST ===== */
+.daily-challenge-performance-wrapper {
+  margin: -20px -20px 0 -20px;
+  padding: 0;
+  width: 100%;
+  box-sizing: border-box;
+  background: rgba(45, 27, 105, 0.75);
+  backdrop-filter: none;
+  position: relative;
+  z-index: 2;
+}
+
+.space-theme .daily-challenge-performance-wrapper {
+  background: rgba(110, 92, 172, 0.5);
+  backdrop-filter: blur(7px);
+}
+
+.sun-theme .daily-challenge-performance-wrapper {
+  background: #E6F5FF !important;
+  backdrop-filter: blur(1px);
+}
+
+/* ===== PERFORMANCE CONTENT ===== */
+.performance-content {
+  background: transparent;
+}
+
+/* ===== PERFORMANCE CARD ===== */
+.performance-card {
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 12px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.space-theme .performance-card {
+  background: rgba(224, 217, 255, 0.95);
+  border: 1px solid rgba(77, 208, 255, 0.2);
+  box-shadow: 0 4px 12px rgba(77, 208, 255, 0.15);
+}
+
+.sun-theme .performance-card {
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+/* ===== STAT CARD ===== */
+.stat-card {
+  background: rgba(255, 255, 255, 0.5);
+  border-radius: 8px;
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  transition: all 0.3s ease;
+}
+
+.stat-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
+}
+
+.space-theme .stat-card {
+  background: rgba(255, 255, 255, 0.5);
+  border: 1px solid rgba(77, 208, 255, 0.1);
+}
+
+.space-theme .stat-card:hover {
+  box-shadow: 0 6px 16px rgba(77, 208, 255, 0.2);
+}
+
+.sun-theme .stat-card {
+  background: rgba(255, 255, 255, 0.5);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.sun-theme .stat-card:hover {
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
+}
+
+/* ===== CHART CARD ===== */
+.chart-card {
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 12px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.space-theme .chart-card {
+  background: rgba(224, 217, 255, 0.95);
+  border: 1px solid rgba(77, 208, 255, 0.2);
+  box-shadow: 0 4px 12px rgba(77, 208, 255, 0.15);
+}
+
+.sun-theme .chart-card {
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+/* ===== TIME RANGE SELECT ===== */
+.time-range-select {
+  border-radius: 8px;
+}
+
+.time-range-select .ant-select-selector {
+  background: #d2cbf2 !important;
+  border: 1px solid rgba(210, 203, 242, 0.5) !important;
+}
+
+.space-theme .time-range-select .ant-select-selector {
+  background: #d2cbf2 !important;
+  border: 1px solid rgba(210, 203, 242, 0.5) !important;
+}
+
+.sun-theme .time-range-select .ant-select-selector {
+  background: #d4ebff !important;
+  border: 1px solid rgba(100, 181, 246, 0.6) !important;
+}
+
+/* ===== TAB BUTTONS ===== */
+.tab-button {
+  height: 40px;
+  padding: 0 24px;
+  border-radius: 8px;
+  border: none;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+/* Default theme (dark) tab buttons */
+.tab-button {
+  background: linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%);
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(131, 119, 160, 0.3);
+}
+
+.tab-button:hover {
+  filter: brightness(1.15);
+  box-shadow: 0 2px 8px rgba(131, 119, 160, 0.4);
+}
+
+/* Space theme tab buttons */
+.space-theme .tab-button {
+  background: linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%);
+  color: black;
+  box-shadow: 0 2px 8px rgba(131, 119, 160, 0.3);
+}
+
+.space-theme .tab-button:hover {
+  filter: brightness(1.15);
+  box-shadow: 0 2px 8px rgba(131, 119, 160, 0.4);
+}
+
+/* Sun theme tab buttons */
+.sun-theme .tab-button {
+  background: linear-gradient(135deg, #66AEFF, #3C99FF);
+  color: #000;
+  box-shadow: 0 2px 8px rgba(60, 153, 255, 0.3);
+}
+
+.sun-theme .tab-button:hover {
+  filter: brightness(1.15);
+  box-shadow: 0 2px 8px rgba(60, 153, 255, 0.4);
+}
+
+/* ===== STATISTIC STYLES ===== */
+.ant-statistic-title {
+  font-size: 16px;
+  font-weight: 500;
+  color: rgba(0, 0, 0, 0.65);
+  margin-bottom: 8px;
+}
+
+.ant-statistic-content {
+  font-size: 36px;
+  font-weight: 700;
+}
+
+/* ===== RESPONSIVE DESIGN ===== */
+@media (max-width: 768px) {
+  .daily-challenge-performance-wrapper {
+    margin: -20px -20px 0 -20px;
+  }
+  
+  .search-action-section {
+    flex-direction: column !important;
+    gap: 12px !important;
+    padding: 16px !important;
+  }
+
+  .search-action-section > div:last-child {
+    margin-left: 0 !important;
+    width: 100%;
+  }
+
+  .time-range-select {
+    width: 100% !important;
+  }
+  
+  .performance-content {
+    padding: 0 16px 16px 16px !important;
+  }
+
+  .ant-statistic-content {
+    font-size: 28px;
+  }
+}
+
+@media (max-width: 576px) {
+  .ant-statistic-content {
+    font-size: 24px;
+  }
+
+  .tab-button {
+    padding: 0 16px;
+    font-size: 14px;
+  }
+}
+
