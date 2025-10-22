@@ -262,7 +262,7 @@ const CONFIG_ROUTER = [
 	// },
 	// Manager Dashboard
 	{
-		show: true,
+		show: false,
 		component: ManagerDashboard,
 		// icon: <DashboardOutlined />,
 		path: ROUTER_PAGE.MANAGER_DASHBOARD,

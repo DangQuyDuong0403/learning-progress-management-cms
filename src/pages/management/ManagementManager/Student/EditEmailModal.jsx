@@ -98,9 +98,9 @@ export default function EditEmailModal({
       title={
         <div
           style={{
-            fontSize: '26px',
+            fontSize: '28px',
             fontWeight: '600',
-            color: '#000000ff',
+            color: 'rgb(24, 144, 255)',
             textAlign: 'center',
             padding: '10px 0',
           }}>
@@ -116,22 +116,26 @@ export default function EditEmailModal({
       confirmLoading={loading}
       okButtonProps={{
         style: {
-          backgroundColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
-          background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
-          borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'transparent',
-          color: theme === 'sun' ? '#000000' : '#ffffff',
-          height: '40px',
-          fontSize: '16px',
+          background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, #7228d9 0%, #9c88ff 100%)',
+          borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : '#7228d9',
+          color: theme === 'sun' ? '#000' : '#fff',
+          borderRadius: '6px',
+          height: '32px',
           fontWeight: '500',
-          minWidth: '100px',
+          fontSize: '16px',
+          padding: '4px 15px',
+          width: '100px',
+          transition: 'all 0.3s ease',
+          boxShadow: 'none'
         },
       }}
       cancelButtonProps={showConfirmationMessage ? { style: { display: 'none' } } : {
         style: {
-          height: '40px',
-          fontSize: '16px',
+          height: '32px',
           fontWeight: '500',
-          minWidth: '100px',
+          fontSize: '16px',
+          padding: '4px 15px',
+          width: '100px'
         },
       }}>
       {!showConfirmationMessage ? (

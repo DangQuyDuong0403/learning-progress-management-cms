@@ -73,6 +73,13 @@ export default function ThemedHeader() {
   };
 
   const handleBackToSyllabusList = () => {
+    // If custom back URL is provided, use it
+    if (syllabusData?.backUrl) {
+      navigate(syllabusData.backUrl);
+      return;
+    }
+    
+    // Go back to previous page
     navigate(-1);
   };
 
@@ -309,7 +316,7 @@ export default function ThemedHeader() {
                   color: theme === 'sun' ? '#1e40af' : '#fff',
                   textShadow: theme === 'sun' ? '0 0 5px rgba(30, 64, 175, 0.3)' : '0 0 15px rgba(134, 134, 134, 0.8)'
                 }}>
-                  {syllabusData.name}
+                  {syllabusData.chapterName ? `${syllabusData.name} / ${syllabusData.chapterName}` : syllabusData.name}
                 </h2>
               </div>
             )}

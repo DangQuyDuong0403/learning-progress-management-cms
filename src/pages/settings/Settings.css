@@ -903,6 +903,9 @@
 .sun-theme .modal-title {
 	color: #1a1a1a !important;
 }
+.space-theme .settings-container .settings-content .anticon{
+	color: #fff ;
+}
 
 .modal-content {
 	padding: 20px 0;

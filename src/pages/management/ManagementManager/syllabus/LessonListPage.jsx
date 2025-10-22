@@ -133,35 +133,36 @@ const LessonListPage = () => {
 		fetchData();
 	}, [fetchLessons, fetchChapterInfo, searchText, pagination.pageSize]);
 
-	// Fetch syllabus info for header
-	const fetchSyllabusInfo = useCallback(async () => {
-		if (!syllabusId) return;
-		
-		try {
-			const response = await syllabusManagementApi.getSyllabuses({
-				params: { page: 0, size: 100 }
-			});
-			
-			const syllabus = response.data.find(s => s.id === parseInt(syllabusId));
-			if (syllabus) {
-				enterSyllabusMenu({
-					id: syllabus.id,
-					name: syllabus.syllabusName,
-					description: syllabus.description,
-				});
-			}
-		} catch (error) {
-			console.error('Error fetching syllabus info:', error);
-		}
-	}, [syllabusId, enterSyllabusMenu]);
-
+	// Fetch syllabus info for header and enter syllabus menu
 	useEffect(() => {
+		const fetchSyllabusInfo = async () => {
+			if (!syllabusId || !chapterInfo) return;
+			
+			try {
+				const response = await syllabusManagementApi.getSyllabuses({
+					params: { page: 0, size: 100 }
+				});
+				
+				const syllabus = response.data.find(s => s.id === parseInt(syllabusId));
+				if (syllabus) {
+					enterSyllabusMenu({
+						id: syllabus.id,
+						name: syllabus.syllabusName,
+						description: syllabus.description,
+						chapterName: chapterInfo.name,
+					});
+				}
+			} catch (error) {
+				console.error('Error fetching syllabus info:', error);
+			}
+		};
+
 		fetchSyllabusInfo();
 		
 		return () => {
 			exitSyllabusMenu();
 		};
-	}, [fetchSyllabusInfo, exitSyllabusMenu]);
+	}, [syllabusId, chapterInfo, enterSyllabusMenu, exitSyllabusMenu]);
 
 	// Update pagination when Redux state changes
 	useEffect(() => {
@@ -569,16 +570,16 @@ const LessonListPage = () => {
 		<ThemedLayout>
 			{/* Main Content Panel */}
 			<div className={`main-content-panel ${theme}-main-panel`}>
-				{/* Page Title */}
-				<div className="page-title-container" style={{ marginBottom: '24px' }}>
-					<Typography.Title 
-						level={1} 
-						className="page-title"
-						style={{ margin: 0, textAlign: 'center' }}
-					>
-						{chapterInfo.name} - {t('lessonManagement.title')} <span className="student-count">({totalElements})</span>
-					</Typography.Title>
-				</div>
+			{/* Page Title */}
+			<div className="page-title-container" style={{ marginBottom: '24px' }}>
+				<Typography.Title 
+					level={1} 
+					className="page-title"
+					style={{ margin: 0, textAlign: 'center' }}
+				>
+					{t('lessonManagement.title')} <span className="student-count">({totalElements})</span>
+				</Typography.Title>
+			</div>
 
 				{/* Action Bar */}
 				<Row gutter={16} align="middle" style={{ marginBottom: '16px' }}>
@@ -645,20 +646,20 @@ const LessonListPage = () => {
 				deleteAllText={t('classManagement.deleteAll')}
 			/>
 
-			{/* Delete All Confirmation Modal */}
-			<Modal
-				title={
-					<div style={{
-						fontSize: '20px',
-						fontWeight: '600',
-						color: '#1890ff',
-						textAlign: 'center',
-						padding: '10px 0'
-					}}>
-						{t('lessonManagement.confirmDeleteAll')}
-					</div>
-				}
-				open={isBulkDeleteModalVisible}
+		{/* Delete All Confirmation Modal */}
+		<Modal
+			title={
+				<div style={{
+					fontSize: '28px',
+					fontWeight: '600',
+					color: 'rgb(24, 144, 255)',
+					textAlign: 'center',
+					padding: '10px 0'
+				}}>
+					{t('lessonManagement.confirmDeleteAll')}
+				</div>
+			}
+			open={isBulkDeleteModalVisible}
 				onOk={handleDeleteAllConfirm}
 				onCancel={handleDeleteAllModalClose}
 				okText={t('common.confirm')}
@@ -673,22 +674,26 @@ const LessonListPage = () => {
 				}}
 				okButtonProps={{
 					style: {
-						backgroundColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
-						background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
-						borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'transparent',
-						color: theme === 'sun' ? '#000000' : '#ffffff',
-						height: '40px',
-						fontSize: '16px',
+						background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, #7228d9 0%, #9c88ff 100%)',
+						borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : '#7228d9',
+						color: theme === 'sun' ? '#000' : '#fff',
+						borderRadius: '6px',
+						height: '32px',
 						fontWeight: '500',
-						minWidth: '100px'
+						fontSize: '16px',
+						padding: '4px 15px',
+						width: '100px',
+						transition: 'all 0.3s ease',
+						boxShadow: 'none'
 					}
 				}}
 				cancelButtonProps={{
 					style: {
-						height: '40px',
-						fontSize: '16px',
+						height: '32px',
 						fontWeight: '500',
-						minWidth: '100px'
+						fontSize: '16px',
+						padding: '4px 15px',
+						width: '100px'
 					}
 				}}
 			>
@@ -715,33 +720,35 @@ const LessonListPage = () => {
 					</p>
 					<div style={{
 						fontSize: '20px',
-						color: '#1890ff',
+						color: '#000',
 						margin: 0,
-						fontWeight: '600'
+						fontWeight: '400'
 					}}>
 						<strong>{selectedRowKeys.length} {t('lessonManagement.lessons')}</strong>
 					</div>
 				</div>
 			</Modal>
 
-			{/* Lesson Form Modal */}
-			<Modal
-				title={
-					editingLesson
+		{/* Lesson Form Modal */}
+		<Modal
+			title={
+				<div style={{ textAlign: 'center', fontSize: '28px', fontWeight: '600', color: 'rgb(24, 144, 255)' }}>
+					{editingLesson
 						? t('lessonManagement.editLesson')
-						: t('lessonManagement.addLesson')
-				}
-				open={isFormModalVisible}
-				onCancel={handleFormModalClose}
-				footer={null}
-				width={600}
-				destroyOnClose
-				bodyStyle={{
-					padding: '30px 40px',
-					fontSize: '16px',
-					lineHeight: '1.6'
-				}}
-			>
+						: t('lessonManagement.addLesson')}
+				</div>
+			}
+			open={isFormModalVisible}
+			onCancel={handleFormModalClose}
+			footer={null}
+			width={600}
+			destroyOnClose
+			bodyStyle={{
+				padding: '30px 40px',
+				fontSize: '16px',
+				lineHeight: '1.6'
+			}}
+		>
 				<LessonForm
 					lesson={editingLesson}
 					chapter={chapterInfo}
@@ -750,25 +757,20 @@ const LessonListPage = () => {
 				/>
 			</Modal>
 
-			{/* Import Modal */}
-			<Modal
-				title={
-					<div style={{
-						fontSize: '20px',
-						fontWeight: '600',
-						color: '#000000',
-						textAlign: 'center',
-						padding: '10px 0',
-						display: 'flex',
-						alignItems: 'center',
-						justifyContent: 'center',
-						gap: '10px',
-					}}>
-						<DownloadOutlined style={{ color: '#000000' }} />
-						{t('lessonManagement.importLessons')}
-					</div>
-				}
-				open={importModal.visible}
+		{/* Import Modal */}
+		<Modal
+			title={
+				<div style={{
+					fontSize: '28px',
+					fontWeight: '600',
+					color: 'rgb(24, 144, 255)',
+					textAlign: 'center',
+					padding: '10px 0',
+				}}>
+					<DownloadOutlined style={{ color: 'rgb(24, 144, 255)' }} /> {t('lessonManagement.importLessons')}
+				</div>
+			}
+			open={importModal.visible}
 				onOk={handleImportOk}
 				onCancel={handleImportCancel}
 				okText={t('lessonManagement.import')}
@@ -779,22 +781,26 @@ const LessonListPage = () => {
 				okButtonProps={{
 					disabled: importModal.fileList.length === 0,
 					style: {
-						backgroundColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
-						background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
-						borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'transparent',
-						color: theme === 'sun' ? '#000000' : '#ffffff',
-						height: '40px',
-						fontSize: '16px',
+						background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, #7228d9 0%, #9c88ff 100%)',
+						borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : '#7228d9',
+						color: theme === 'sun' ? '#000' : '#fff',
+						borderRadius: '6px',
+						height: '32px',
 						fontWeight: '500',
-						minWidth: '120px',
+						fontSize: '16px',
+						padding: '4px 15px',
+						width: '100px',
+						transition: 'all 0.3s ease',
+						boxShadow: 'none'
 					},
 				}}
 				cancelButtonProps={{
 					style: {
-						height: '40px',
-						fontSize: '16px',
+						height: '32px',
 						fontWeight: '500',
-						minWidth: '100px',
+						fontSize: '16px',
+						padding: '4px 15px',
+						width: '100px'
 					},
 				}}>
 				<div style={{ padding: '20px 0' }}>

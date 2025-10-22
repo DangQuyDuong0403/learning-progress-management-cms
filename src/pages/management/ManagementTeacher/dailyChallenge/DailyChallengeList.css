@@ -34,7 +34,7 @@
 }
 
 .space-theme .page-title {
-  color: #000 !important;
+  color: #000 ;
 }
 
 .sun-theme .page-title {
@@ -48,13 +48,6 @@
   margin-left: 8px;
 }
 
-.space-theme .page-title .student-count {
-  color: #000;
-}
-
-.sun-theme .page-title .student-count {
-  color: #000;
-}
 
 .daily-challenge-list-container {
   padding: 0;
@@ -237,7 +230,6 @@
 
 .daily-challenge-table .ant-table-thead > tr > th {
   background: #f5f7fa;
-  border-bottom: 2px solid #e8eaed;
   font-weight: 600;
   color: #202124;
 }
@@ -532,39 +524,7 @@
   filter: brightness(1.1);
 }
 
-.sun-theme .create-button {
-  background: linear-gradient(135deg, #1890ff, #52c41a);
-  border: 1px solid rgba(24, 144, 255, 0.3);
-  color: #fff;
-}
 
-.sun-theme .create-button:hover {
-  background: linear-gradient(135deg, #40a9ff, #73d13d);
-  border-color: rgba(24, 144, 255, 0.6);
-  box-shadow: 0 4px 12px rgba(24, 144, 255, 0.3);
-}
-
-/* Responsive design */
-/* ===== STATUS SWITCH ===== */
-.status-switch.ant-switch-checked {
-  background-color: #52c41a !important;
-}
-
-.status-switch.ant-switch {
-  background-color: rgba(0, 0, 0, 0.25) !important;
-}
-
-.space-theme .status-switch.ant-switch-checked {
-  background-color: #52c41a !important;
-}
-
-.space-theme .status-switch.ant-switch {
-  background-color: rgba(0, 0, 0, 0.25) !important;
-}
-
-.sun-theme .status-switch.ant-switch-checked {
-  background-color: #52c41a !important;
-}
 
 .sun-theme .status-switch.ant-switch {
   background-color: rgba(0, 0, 0, 0.25) !important;

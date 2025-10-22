@@ -76,7 +76,7 @@ export default function LoginTeacher() {
                 if (response.data.role === 'ADMIN') {
                     redirectPath = '/admin/accounts';
                 } else if (response.data.role === 'MANAGER') {
-                    redirectPath = '/manager/dashboard';
+                    redirectPath = '/manager/levels';
                 } else if (response.data.role === 'TEACHER') {
                     redirectPath = '/teacher/dashboard';
                 } else if (response.data.role === 'TEACHING_ASSISTANT') {
