@@ -125,25 +125,27 @@ const ClassOverview = () => {
               <h2 className={`section-title ${theme}-section-title`}>
                 {t('classOverview.classInformation')}
               </h2>
-              <div className="info-text">
-                <span className="info-label">{t('classOverview.className')}:</span>
-                <span className="info-value">{classData?.name}</span>
-              </div>
-              <div className="info-text">
-                <span className="info-label">{t('classOverview.classCode')}:</span>
-                <span className="info-value">{classData?.classCode}</span>
-              </div>
-              <div className="info-text">
-                <span className="info-label">{t('classOverview.status')}:</span>
-                <span className="info-value">{classData?.status}</span>
-              </div>
-              <div className="info-text">
-                <span className="info-label">{t('classOverview.syllabus')}:</span>
-                <span className="info-value">{classData?.syllabus}</span>
-              </div>
-              <div className="info-text">
-                <span className="info-label">{t('classOverview.level')}:</span>
-                <span className="info-value">{classData?.level}</span>
+              <div className={`personal-info-grid-new ${theme}-personal-info-grid-new`}>
+                <div className={`info-item-new ${theme}-info-item-new`}>
+                  <span className={`info-label-new ${theme}-info-label-new`}>{t('classOverview.className')}</span>
+                  <span className={`info-value-new ${theme}-info-value-new`}>{classData?.name}</span>
+                </div>
+                <div className={`info-item-new ${theme}-info-item-new`}>
+                  <span className={`info-label-new ${theme}-info-label-new`}>{t('classOverview.classCode')}</span>
+                  <span className={`info-value-new ${theme}-info-value-new`}>{classData?.classCode}</span>
+                </div>
+                <div className={`info-item-new ${theme}-info-item-new`}>
+                  <span className={`info-label-new ${theme}-info-label-new`}>{t('classOverview.status')}</span>
+                  <span className={`info-value-new ${theme}-info-value-new`}>{classData?.status}</span>
+                </div>
+                <div className={`info-item-new ${theme}-info-item-new`}>
+                  <span className={`info-label-new ${theme}-info-label-new`}>{t('classOverview.syllabus')}</span>
+                  <span className={`info-value-new ${theme}-info-value-new`}>{classData?.syllabus}</span>
+                </div>
+                <div className={`info-item-new ${theme}-info-item-new`}>
+                  <span className={`info-label-new ${theme}-info-label-new`}>{t('classOverview.level')}</span>
+                  <span className={`info-value-new ${theme}-info-value-new`}>{classData?.level}</span>
+                </div>
               </div>
             </div>
           </div>
@@ -154,13 +156,15 @@ const ClassOverview = () => {
               <h2 className={`section-title ${theme}-section-title`}>
                 {t('classOverview.teachers')}
               </h2>
-              <div className="info-text">
-                <span className="info-label">{t('classOverview.teacher')}:</span>
-                <span className="info-value">{classData?.teachers ? 'Available' : '-'}</span>
-              </div>
-              <div className="info-text">
-                <span className="info-label">{t('classOverview.teachingAssistants')}:</span>
-                <span className="info-value">{classData?.teachingAssistants?.length > 0 ? `${classData.teachingAssistants.length} assistant(s)` : '-'}</span>
+              <div className={`personal-info-grid-new ${theme}-personal-info-grid-new`}>
+                <div className={`info-item-new ${theme}-info-item-new`}>
+                  <span className={`info-label-new ${theme}-info-label-new`}>{t('classOverview.teacher')}</span>
+                  <span className={`info-value-new ${theme}-info-value-new`}>{classData?.teachers ? 'Available' : '-'}</span>
+                </div>
+                <div className={`info-item-new ${theme}-info-item-new`}>
+                  <span className={`info-label-new ${theme}-info-label-new`}>{t('classOverview.teachingAssistants')}</span>
+                  <span className={`info-value-new ${theme}-info-value-new`}>{classData?.teachingAssistants?.length > 0 ? `${classData.teachingAssistants.length} assistant(s)` : '-'}</span>
+                </div>
               </div>
             </div>
           </div>
@@ -171,13 +175,15 @@ const ClassOverview = () => {
               <h2 className={`section-title ${theme}-section-title`}>
                 {t('classOverview.schedule')}
               </h2>
-              <div className="info-text">
-                <span className="info-label">{t('classOverview.startDateLabel')}:</span>
-                <span className="info-value">{classData?.startDate}</span>
-              </div>
-              <div className="info-text">
-                <span className="info-label">{t('classOverview.endDateLabel')}:</span>
-                <span className="info-value">{classData?.endDate}</span>
+              <div className={`personal-info-grid-new ${theme}-personal-info-grid-new`}>
+                <div className={`info-item-new ${theme}-info-item-new`}>
+                  <span className={`info-label-new ${theme}-info-label-new`}>{t('classOverview.startDateLabel')}</span>
+                  <span className={`info-value-new ${theme}-info-value-new`}>{classData?.startDate}</span>
+                </div>
+                <div className={`info-item-new ${theme}-info-item-new`}>
+                  <span className={`info-label-new ${theme}-info-label-new`}>{t('classOverview.endDateLabel')}</span>
+                  <span className={`info-value-new ${theme}-info-value-new`}>{classData?.endDate}</span>
+                </div>
               </div>
             </div>
           </div>

@@ -196,6 +196,50 @@
   color: #000;
 }
 
+/* ===== PERSONAL INFO GRID ===== */
+.personal-info-grid-new {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  width: 80%;
+  margin-top: 8px;
+}
+
+.info-item-new {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.info-label-new {
+  font-size: 14px;
+  font-weight: 500;
+  color: #666;
+}
+
+.info-value-new {
+  font-size: 16px;
+  font-weight: 400;
+  color: #000;
+  word-wrap: break-word;
+}
+
+.space-theme .info-label-new {
+  color: #666;
+}
+
+.space-theme .info-value-new {
+  color: #000;
+}
+
+.sun-theme .info-label-new {
+  color: #666;
+}
+
+.sun-theme .info-value-new {
+  color: #000;
+}
+
 /* ===== RESPONSIVE DESIGN ===== */
 @media (max-width: 768px) {
   .overview-header {
@@ -226,6 +270,18 @@
   .info-value {
     font-size: 14px;
   }
+
+  .personal-info-grid-new {
+    gap: 16px;
+  }
+
+  .info-label-new {
+    font-size: 13px;
+  }
+
+  .info-value-new {
+    font-size: 14px;
+  }
 }
 
 @media (max-width: 480px) {
@@ -248,5 +304,18 @@
 
   .overview-main-container {
     padding: 12px;
+  }
+
+  .personal-info-grid-new {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .info-label-new {
+    font-size: 12px;
+  }
+
+  .info-value-new {
+    font-size: 13px;
   }
 }

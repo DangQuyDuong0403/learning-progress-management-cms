@@ -128,14 +128,15 @@ const ClassMenu = () => {
       path: `${routePrefix}/overview/${id}`,
       color: "#13c2c2",
     },
-    {
-      id: "report",
-      title: t('classMenu.report'),
-      description: t('classMenu.reportDescription'),
-      icon: <BarChartOutlined style={{ fontSize: '48px', color: '#00d4ff' }} />,
-      path: `${routePrefix}/dashboard/${id}`,
-      color: "#00d4ff",
-    },
+    // Temporarily hidden
+    // {
+    //   id: "report",
+    //   title: t('classMenu.report'),
+    //   description: t('classMenu.reportDescription'),
+    //   icon: <BarChartOutlined style={{ fontSize: '48px', color: '#00d4ff' }} />,
+    //   path: `${routePrefix}/dashboard/${id}`,
+    //   color: "#00d4ff",
+    // },
     {
       id: "activities",
       title: t('classMenu.activities'),
