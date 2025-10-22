@@ -207,19 +207,7 @@
 	border: none;
 }
 
-/* Button Styles */
-.ant-btn-primary {
-	background: #1890ff;
-	border-color: #1890ff;
-	border-radius: 6px;
-	height: 36px;
-	font-weight: 500;
-}
 
-.ant-btn-primary:hover {
-	background: #40a9ff;
-	border-color: #40a9ff;
-}
 
 .ant-btn {
 	border-radius: 6px;

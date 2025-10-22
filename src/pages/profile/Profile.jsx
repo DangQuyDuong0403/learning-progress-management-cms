@@ -224,28 +224,6 @@ export default function Profile() {
                     <EditOutlined />
                   </button>
                 </div>
-                
-                {/* Level Badge */}
-                <div className={`starter-badge-new ${theme}-starter-badge-new`}>
-                  {(() => {
-                    // Debug logging to understand data structure
-                    console.log('Profile Level Debug:', {
-                      profileData,
-                      currentLevelInfo: profileData?.currentLevelInfo,
-                      levelName: profileData?.levelName,
-                      userLevelInfo: user?.currentLevelInfo,
-                      userLevelName: user?.levelName
-                    });
-                    
-                    return profileData?.currentLevelInfo?.levelName || 
-                           profileData?.currentLevelInfo?.name || 
-                           profileData?.levelName || 
-                           user?.currentLevelInfo?.levelName ||
-                           user?.currentLevelInfo?.name ||
-                           user?.levelName ||
-                           'N/A';
-                  })()}
-                </div>
               </div>
 
               {/* Right Section - Profile Info */}
@@ -257,10 +235,28 @@ export default function Profile() {
                   </h2>
                   <div className={`status-badges-new ${theme}-status-badges-new`}>
                     <span className={`role-badge-new ${theme}-role-badge-new`}>
-                      {profileData?.roleName || user?.role || 'Admin'}
+                      {(() => {
+                        const role = (profileData?.roleName || user?.role || 'ADMIN').toUpperCase();
+                        const roleMap = {
+                          'ADMIN': t('common.admin'),
+                          'TEACHER': t('common.teacher'),
+                          'TEACHING_ASSISTANT': t('common.teachingAssistant'),
+                          'STUDENT': t('common.student'),
+                          'TEST_TAKER': t('common.testTaker')
+                        };
+                        return roleMap[role] || role;
+                      })()}
                     </span>
                     <span className={`status-badge-new ${theme}-status-badge-new active`}>
-                      {profileData?.status || 'ACTIVE'}
+                      {(() => {
+                        const status = (profileData?.status || 'ACTIVE').toUpperCase();
+                        const statusMap = {
+                          'ACTIVE': t('accountManagement.active'),
+                          'INACTIVE': t('accountManagement.inactive'),
+                          'PENDING': t('accountManagement.pending')
+                        };
+                        return statusMap[status] || status;
+                      })()}
                     </span>
                   </div>
                 </div>

@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import {
   Modal,
   Form,
@@ -42,6 +42,42 @@ const MultipleSelectModal = ({ visible, onCancel, onSave, questionData = null })
   const [questionImage, setQuestionImage] = useState(null);
   const [optionImages, setOptionImages] = useState({});
   const questionImageInputRef = useRef(null);
+
+  // Load question data when editing
+  useEffect(() => {
+    if (visible) {
+      // Use setTimeout to ensure form is mounted
+      setTimeout(() => {
+        if (questionData) {
+          // Edit mode - load existing data
+          form.setFieldsValue({
+            question: questionData.question || '',
+          });
+          setOptions(questionData.options || [
+            { id: 1, text: "", isCorrect: false, color: '#1890ff' },
+            { id: 2, text: "", isCorrect: false, color: '#13c2c2' },
+            { id: 3, text: "", isCorrect: false, color: '#faad14' },
+            { id: 4, text: "", isCorrect: false, color: '#eb2f96' },
+          ]);
+          setPoints(questionData.points || 1);
+          setTimeLimit(questionData.timeLimit || 30);
+        } else {
+          // Add mode - reset to defaults
+          form.resetFields();
+          setOptions([
+            { id: 1, text: "", isCorrect: false, color: '#1890ff' },
+            { id: 2, text: "", isCorrect: false, color: '#13c2c2' },
+            { id: 3, text: "", isCorrect: false, color: '#faad14' },
+            { id: 4, text: "", isCorrect: false, color: '#eb2f96' },
+          ]);
+          setPoints(1);
+          setTimeLimit(30);
+          setQuestionImage(null);
+          setOptionImages({});
+        }
+      }, 0);
+    }
+  }, [questionData, visible, form]);
 
   const handleAddOption = () => {
     const newId = Math.max(...options.map(opt => opt.id)) + 1;
@@ -98,7 +134,10 @@ const MultipleSelectModal = ({ visible, onCancel, onSave, questionData = null })
         type: "multiple-select",
         title: "Multiple select",
         question: values.question,
-        options: options,
+        options: options.map((opt, index) => ({
+          ...opt,
+          key: String.fromCharCode(65 + index), // A, B, C, D, ...
+        })),
         correctAnswer: correctAnswers.map(opt => opt.text).join(", "),
       };
 
@@ -202,6 +241,8 @@ const MultipleSelectModal = ({ visible, onCancel, onSave, questionData = null })
       footer={null}
       style={{ top: 20 }}
       bodyStyle={{ height: '85vh', overflow: 'hidden', position: 'relative' }}
+      key={questionData?.id || 'new'}
+      destroyOnClose
     >
       {/* Top Control Bar */}
       <div
@@ -399,9 +440,6 @@ const MultipleSelectModal = ({ visible, onCancel, onSave, questionData = null })
             <Form
               form={form}
               layout='vertical'
-              initialValues={{
-                question: questionData?.question || '',
-              }}
               style={{ width: '100%' }}>
               <Form.Item
                 name='question'
@@ -719,23 +757,6 @@ const MultipleSelectModal = ({ visible, onCancel, onSave, questionData = null })
             padding: 0,
           }}>
           Thêm giải thích cho đáp án
-        </Button>
-      </div>
-
-      {/* Bottom Action Buttons */}
-      <div
-        style={{
-          position: 'absolute',
-          bottom: 15,
-          right: 15,
-          display: 'flex',
-          justifyContent: 'flex-end',
-          gap: 12,
-          padding: '12px 16px',
-        }}>
-        <Button onClick={handleCancel}>Cancel</Button>
-        <Button type='primary' onClick={handleSave}>
-          Save Question
         </Button>
       </div>
     </Modal>

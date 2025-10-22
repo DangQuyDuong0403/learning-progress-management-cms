@@ -215,9 +215,9 @@ const LevelForm = ({ level, onClose, shouldCallApi = true, showPrerequisiteAndCo
             onClick={onCancel} 
             size="middle"
             style={{
-              height: '40px',
-              width: '120px',
-              fontSize: '14px',
+              height: '32px',
+              width: '100px',
+              fontSize: '16px',
               fontWeight: '500',
               borderRadius: '6px',
               transition: 'all 0.3s ease',
@@ -234,10 +234,10 @@ const LevelForm = ({ level, onClose, shouldCallApi = true, showPrerequisiteAndCo
             style={{
               background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, #7228d9 0%, #9c88ff 100%)',
               borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : '#7228d9',
-              color: theme === 'sun' ? '#000000' : '#ffffff',
-              height: '40px',
-              width: '120px',
-              fontSize: '14px',
+              color: theme === 'sun' ? '#000' : '#fff',
+              height: '32px',
+              width: '100px',
+              fontSize: '16px',
               fontWeight: '500',
               borderRadius: '6px',
               transition: 'all 0.3s ease',

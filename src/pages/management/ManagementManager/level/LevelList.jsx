@@ -517,16 +517,14 @@ const LevelList = () => {
 				</div>
 			</div>
 
-			{/* Modal */}
-			<Modal
-				title={
-					<div style={{ textAlign: 'center', fontSize: '30px', fontWeight: '600' }}>
-						{editingLevel
-							? t('levelManagement.editLevel')
-							: t('levelManagement.addLevel')}
-					</div>
-				}
-				open={isModalVisible}
+		{/* Modal */}
+		<Modal
+		title={
+			<div style={{ textAlign: 'center', fontSize: '28px', fontWeight: '600', color: 'rgb(24, 144, 255)' }}>
+				{t('levelManagement.editLevel')}
+			</div>
+		}
+			open={isModalVisible}
 				onCancel={() => {
 					setIsModalVisible(false);
 					setEditingLevel(null);
@@ -543,10 +541,14 @@ const LevelList = () => {
 				<LevelForm level={editingLevel} onClose={handleModalClose} showPrerequisiteAndCode={true} />
 			</Modal>
 
-			{/* Confirm Modal */}
-			<Modal
-				title={confirmModal.title}
-				open={confirmModal.visible}
+		{/* Confirm Modal */}
+		<Modal
+			title={
+				<div style={{ textAlign: 'center', fontSize: '28px', fontWeight: '600', color: 'rgb(24, 144, 255)' }}>
+					{confirmModal.title}
+				</div>
+			}
+			open={confirmModal.visible}
 				onOk={confirmModal.onConfirm}
 				onCancel={handleConfirmCancel}
 				okText={t('common.confirm')}
@@ -559,22 +561,28 @@ const LevelList = () => {
 					lineHeight: '1.6',
 					textAlign: 'center',
 				}}
-				okButtonProps={{
-					style: {
-						backgroundColor: '#1890ff',
-						borderColor: '#1890ff',
-						height: '40px',
-						fontSize: '16px',
-						fontWeight: '500',
-						minWidth: '100px',
-					},
-				}}
+			okButtonProps={{
+				style: {
+					background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, #7228d9 0%, #9c88ff 100%)',
+					borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : '#7228d9',
+					color: theme === 'sun' ? '#000' : '#fff',
+					borderRadius: '6px',
+					height: '32px',
+					fontWeight: '500',
+					fontSize: '16px',
+					padding: '4px 15px',
+					width: '100px',
+					transition: 'all 0.3s ease',
+					boxShadow: 'none'
+				},
+			}}
 				cancelButtonProps={{
 					style: {
-						height: '40px',
-						fontSize: '16px',
+						height: '32px',
 						fontWeight: '500',
-						minWidth: '100px',
+						fontSize: '16px',
+						padding: '4px 15px',
+						width: '100px'
 					},
 				}}>
 				<div

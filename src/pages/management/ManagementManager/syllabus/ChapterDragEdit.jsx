@@ -712,28 +712,28 @@ const ChapterDragEdit = () => {
 				</div>
 			</div>
 
-			{/* Add/Edit Chapter Modal */}
-			<Modal
-				title={
-					<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px' }}>
-						{editingChapter ? (
-							<>
-								<EditOutlined style={{ fontSize: '26px', color: '#000000' }} />
-								<Title level={4} style={{ margin: 0, color: '#000000', fontSize: '26px' }}>
-									{t('chapterManagement.editChapter')}
-								</Title>
-							</>
-						) : (
-							<>
-								<PlusOutlined style={{ fontSize: '20px', color: '#000000' }} />
-								<Title level={4} style={{ margin: 0, color: '#000000' }}>
-									{t('chapterManagement.addChapter')}
-								</Title>
-							</>
-						)}
-					</div>
-				}
-				open={isModalVisible}
+		{/* Add/Edit Chapter Modal */}
+		<Modal
+			title={
+				<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px' }}>
+					{editingChapter ? (
+						<>
+							<EditOutlined style={{ fontSize: '28px', color: 'rgb(24, 144, 255)' }} />
+							<Title level={4} style={{ margin: 0, color: 'rgb(24, 144, 255)', fontSize: '28px' }}>
+								{t('chapterManagement.editChapter')}
+							</Title>
+						</>
+					) : (
+						<>
+							<PlusOutlined style={{ fontSize: '28px', color: 'rgb(24, 144, 255)' }} />
+							<Title level={4} style={{ margin: 0, color: 'rgb(24, 144, 255)', fontSize: '28px' }}>
+								{t('chapterManagement.addChapter')}
+							</Title>
+						</>
+					)}
+				</div>
+			}
+			open={isModalVisible}
 				onCancel={() => handleModalClose(false)}
 				footer={null}
 				width={800}

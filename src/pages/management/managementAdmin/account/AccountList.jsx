@@ -1041,9 +1041,9 @@ const AccountList = () => {
 				title={
 					<div
 						style={{
-							fontSize: '26px',
+							fontSize: '28px',
 							fontWeight: '600',
-							color: '#000000ff',
+							color: 'rgb(24, 144, 255)',
 							textAlign: 'center',
 							padding: '10px 0',
 						}}>
@@ -1064,7 +1064,7 @@ const AccountList = () => {
 						style={{
 							height: '32px',
 							fontWeight: '500',
-							fontSize: '14px',
+							fontSize: '16px',
 							padding: '4px 15px',
 							width: '100px'
 						}}>
@@ -1082,7 +1082,7 @@ const AccountList = () => {
 							borderRadius: '6px',
 							height: '32px',
 							fontWeight: '500',
-							fontSize: '14px',
+							fontSize: '16px',
 							padding: '4px 15px',
 							width: '100px',
 							transition: 'all 0.3s ease',
@@ -1216,9 +1216,9 @@ const AccountList = () => {
 				title={
 					<div
 						style={{
-							fontSize: '26px',
+							fontSize: '28px',
 							fontWeight: '600',
-							color: '#000000ff',
+							color: 'rgb(24, 144, 255)',
 							textAlign: 'center',
 							padding: '10px 0',
 						}}>
@@ -1240,11 +1240,11 @@ const AccountList = () => {
 						key="cancel" 
 						onClick={handleConfirmCancel}
 						style={{
-							height: '28px',
+							height: '32px',
 							fontWeight: '500',
-							fontSize: '13px',
-							padding: '4px 12px',
-							width: '80px'
+							fontSize: '16px',
+							padding: '4px 15px',
+							width: '100px'
 						}}>
 						{t('common.cancel')}
 					</Button>,
@@ -1256,12 +1256,12 @@ const AccountList = () => {
 							background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, #7228d9 0%, #9c88ff 100%)',
 							borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : '#7228d9',
 							color: theme === 'sun' ? '#000' : '#fff',
-							borderRadius: '5px',
-							height: '28px',
+							borderRadius: '6px',
+							height: '32px',
 							fontWeight: '500',
-							fontSize: '13px',
-							padding: '4px 12px',
-							width: '80px',
+							fontSize: '16px',
+							padding: '4px 15px',
+							width: '100px',
 							transition: 'all 0.3s ease',
 							boxShadow: 'none'
 						}}
@@ -1328,7 +1328,7 @@ const AccountList = () => {
 						style={{
 							fontSize: '26px',
 							fontWeight: '600',
-							color: '#000000ff',
+							color: 'rgb(113, 179, 253)',
 							textAlign: 'center',
 							padding: '10px 0',
 						}}>
@@ -1350,7 +1350,7 @@ const AccountList = () => {
 							borderRadius: '6px',
 							height: '32px',
 							fontWeight: '500',
-							fontSize: '14px',
+							fontSize: '16px',
 							padding: '4px 15px',
 							width: '100px',
 							transition: 'all 0.3s ease',
@@ -1469,9 +1469,9 @@ const AccountList = () => {
 			<Modal
 				title={
 					<div style={{ 
-						fontSize: '20px', 
+						fontSize: '28px', 
 						fontWeight: '600', 
-						color: '#1890ff',
+						color: 'rgb(24, 144, 255)',
 						textAlign: 'center',
 						padding: '10px 0'
 					}}>
@@ -1536,9 +1536,9 @@ const AccountList = () => {
 					{deleteAccount && (
 						<p style={{
 							fontSize: '20px',
-							color: '#1890ff',
+							color: '#000',
 							margin: 0,
-							fontWeight: '600'
+							fontWeight: '400'
 						}}>
 							<strong>{deleteAccount.fullName}</strong>
 						</p>

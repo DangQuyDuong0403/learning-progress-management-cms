@@ -695,28 +695,14 @@ const LevelDragEdit = () => {
 				</div>
 			</div>
 
-			{/* Add/Edit Level Modal */}
-			<Modal
-				title={
-					<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px' }}>
-						{editingLevel ? (
-							<>
-								<EditOutlined style={{ fontSize: '26px', color: '#000000' }} />
-								<Title level={4} style={{ margin: 0, color: '#000000', fontSize: '26px' }}>
-									{t('levelManagement.editLevel')}
-								</Title>
-							</>
-						) : (
-							<>
-								<PlusOutlined style={{ fontSize: '20px', color: '#000000' }} />
-								<Title level={4} style={{ margin: 0, color: '#000000' }}>
-									{t('levelManagement.addLevel')}
-								</Title>
-							</>
-						)}
-					</div>
-				}
-				open={isModalVisible}
+		{/* Add/Edit Level Modal */}
+		<Modal
+			title={
+				<div style={{ textAlign: 'center', fontSize: '28px', fontWeight: '600', color: 'rgb(24, 144, 255)' }}>
+					{t('levelManagement.editLevel')}
+				</div>
+			}
+			open={isModalVisible}
 				onCancel={() => handleModalClose(false)}
 				footer={null}
 				width={800}

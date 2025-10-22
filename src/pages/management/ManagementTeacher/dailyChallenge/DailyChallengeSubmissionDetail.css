@@ -1,0 +1,483 @@
+/* ===== WRAPPER ===== */
+.sdc-wrapper {
+  margin: -20px -20px 0 -20px;
+  padding: 0;
+  width: 100%;
+  box-sizing: border-box;
+  background: rgba(45, 27, 105, 0.75);
+  backdrop-filter: none;
+  position: relative;
+  z-index: 2;
+  min-height: calc(100vh - 64px);
+  padding-bottom: 40px;
+}
+
+.sun-sdc-wrapper {
+  background: #E6F5FF !important;
+  backdrop-filter: blur(1px);
+}
+
+/* ===== HEADER ===== */
+.sdc-header {
+  margin-bottom: 0;
+}
+
+.sdc-back-button,
+.space-sdc-back-button {
+  background: linear-gradient(135deg, #ffffff, #aa8bf9, #1d0161);
+  border: 1px solid rgba(170, 139, 249, 0.3);
+  color: #fff;
+  height: 40px;
+  font-size: 16px;
+  font-weight: 500;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+}
+
+.sdc-back-button:hover,
+.space-sdc-back-button:hover {
+  background: linear-gradient(135deg, #ffffff, #aa8bf9, #1d0161);
+  border-color: rgba(170, 139, 249, 0.6);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(170, 139, 249, 0.4);
+  filter: brightness(1.1);
+  color: #fff;
+}
+
+.sun-sdc-back-button {
+  background: linear-gradient(135deg, #1890ff, #52c41a);
+  border: 1px solid rgba(24, 144, 255, 0.3);
+  color: #fff;
+}
+
+.sun-sdc-back-button:hover {
+  background: linear-gradient(135deg, #40a9ff, #73d13d);
+  border-color: rgba(24, 144, 255, 0.6);
+  box-shadow: 0 4px 12px rgba(24, 144, 255, 0.3);
+  color: #fff;
+}
+
+/* ===== STUDENT INFO CARD ===== */
+.sdc-student-info-card {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  padding: 24px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 12px;
+  backdrop-filter: blur(10px);
+}
+
+.space-sdc-student-info-card {
+  background: rgb(224 217 255 / 90%);
+  border: 1px solid #604B9E;
+}
+
+.sun-sdc-student-info-card {
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.sdc-student-avatar-section {
+  flex-shrink: 0;
+}
+
+.sdc-student-details {
+  flex: 1;
+}
+
+.sdc-action-buttons {
+  flex-shrink: 0;
+}
+
+.sdc-export-button,
+.sdc-print-button,
+.space-sdc-export-button,
+.space-sdc-print-button {
+  height: 36px;
+  font-size: 14px;
+  font-weight: 500;
+  border-radius: 6px;
+  background: linear-gradient(135deg, #ffffff, #aa8bf9, #1d0161);
+  border: 1px solid rgba(170, 139, 249, 0.3);
+  color: #fff;
+  transition: all 0.3s ease;
+}
+
+.sdc-export-button:hover,
+.sdc-print-button:hover,
+.space-sdc-export-button:hover,
+.space-sdc-print-button:hover {
+  background: linear-gradient(135deg, #ffffff, #aa8bf9, #1d0161);
+  border-color: rgba(170, 139, 249, 0.6);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(170, 139, 249, 0.4);
+  filter: brightness(1.1);
+  color: #fff;
+}
+
+.sun-sdc-export-button,
+.sun-sdc-print-button {
+  background: linear-gradient(135deg, #1890ff, #52c41a);
+  border: 1px solid rgba(24, 144, 255, 0.3);
+  color: #fff;
+}
+
+.sun-sdc-export-button:hover,
+.sun-sdc-print-button:hover {
+  background: linear-gradient(135deg, #40a9ff, #73d13d);
+  border-color: rgba(24, 144, 255, 0.6);
+  box-shadow: 0 4px 12px rgba(24, 144, 255, 0.3);
+  color: #fff;
+}
+
+/* ===== PERFORMANCE CARDS ===== */
+.sdc-performance-cards-section {
+  margin-bottom: 0;
+}
+
+.sdc-performance-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+}
+
+.sdc-performance-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 20px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 12px;
+  backdrop-filter: blur(10px);
+  transition: all 0.3s ease;
+}
+
+.sdc-performance-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+}
+
+.space-sdc-performance-card {
+  background: rgb(224 217 255 / 90%);
+  border: 1px solid #604B9E;
+}
+
+.sun-sdc-performance-card {
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.sdc-performance-card.sdc-summary-card {
+  grid-column: span 1;
+}
+
+.sdc-card-icon {
+  flex-shrink: 0;
+}
+
+.sdc-card-content {
+  flex: 1;
+}
+
+/* ===== FILTER TABS ===== */
+.sdc-filter-tabs-section {
+  margin-bottom: 0;
+}
+
+.sdc-filter-tab,
+.space-sdc-filter-tab {
+  height: 36px;
+  font-size: 14px;
+  font-weight: 500;
+  border-radius: 6px;
+  transition: all 0.3s ease;
+}
+
+.sdc-filter-tab.sdc-active,
+.space-sdc-filter-tab.sdc-active {
+  background: linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%);
+  border: 1px solid rgba(170, 139, 249, 0.3);
+  color: #000 !important;
+}
+
+.sun-sdc-filter-tab.sdc-active {
+  background: linear-gradient(135deg, #66AEFF, #3C99FF);
+  border: 1px solid rgba(102, 174, 255, 0.3);
+  color: #000 !important;
+}
+
+/* ===== QUESTION REVIEW CARDS ===== */
+.sdc-questions-review-section {
+  margin-top: 0;
+}
+
+.sdc-question-review-card {
+  padding: 24px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 12px;
+  backdrop-filter: blur(10px);
+  transition: all 0.3s ease;
+}
+
+.space-sdc-question-review-card {
+  background: rgb(224 217 255 / 90%);
+  border: 1px solid #604B9E;
+}
+
+.sun-sdc-question-review-card {
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+/* Status-specific styles */
+.sdc-question-review-card.sdc-correct {
+  border-left: 4px solid #52c41a;
+  background: rgba(82, 196, 26, 0.05);
+}
+
+.space-sdc-question-review-card.sdc-correct {
+  background: rgba(224, 217, 255, 0.95);
+  border-color: #52c41a;
+  border-left: 4px solid #52c41a;
+}
+
+.sun-sdc-question-review-card.sdc-correct {
+  background: #f6ffed;
+  border-color: #52c41a;
+}
+
+.sdc-question-review-card.sdc-incorrect {
+  border-left: 4px solid #ff4d4f;
+  background: rgba(255, 77, 79, 0.05);
+}
+
+.space-sdc-question-review-card.sdc-incorrect {
+  background: rgba(224, 217, 255, 0.95);
+  border-color: #ff4d4f;
+  border-left: 4px solid #ff4d4f;
+}
+
+.sun-sdc-question-review-card.sdc-incorrect {
+  background: #fff2f0;
+  border-color: #ff4d4f;
+}
+
+.sdc-question-review-card.sdc-unanswered {
+  border-left: 4px solid #8c8c8c;
+  background: rgba(140, 140, 140, 0.05);
+}
+
+.space-sdc-question-review-card.sdc-unanswered {
+  background: rgba(224, 217, 255, 0.95);
+  border-color: #8c8c8c;
+  border-left: 4px solid #8c8c8c;
+}
+
+.sun-sdc-question-review-card.sdc-unanswered {
+  background: #fafafa;
+  border-color: #d9d9d9;
+}
+
+.sdc-question-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.space-sdc-question-review-card .sdc-question-header {
+  border-bottom: 1px solid rgba(96, 75, 158, 0.3);
+}
+
+.sdc-question-status {
+  display: flex;
+  align-items: center;
+}
+
+.space-sdc-question-review-card .sdc-question-status .ant-typography {
+  color: #262626;
+}
+
+.sdc-question-meta {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.sdc-question-content {
+  margin-top: 16px;
+}
+
+.space-sdc-question-review-card .sdc-question-content .ant-typography {
+  color: #262626;
+}
+
+.sdc-question-options {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.sdc-option-item {
+  display: flex;
+  align-items: center;
+  padding: 12px 16px;
+  background: rgba(0, 0, 0, 0.02);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  border-radius: 8px;
+  transition: all 0.2s ease;
+}
+
+.space-sdc-question-review-card .sdc-option-item {
+  background: rgba(255, 255, 255, 0.6);
+  border: 1px solid rgba(96, 75, 158, 0.2);
+}
+
+.space-sdc-question-review-card .sdc-option-item .ant-typography {
+  color: #262626;
+}
+
+.sdc-option-key {
+  font-weight: bold;
+  margin-right: 8px;
+  min-width: 24px;
+  color: #000;
+}
+
+.space-sdc-question-review-card .sdc-option-key {
+  color: #1a1a1a;
+}
+
+.sdc-option-item.sdc-student-correct {
+  background: rgba(82, 196, 26, 0.1);
+  border-color: #52c41a;
+  border-width: 2px;
+}
+
+.space-sdc-question-review-card .sdc-option-item.sdc-student-correct {
+  background: rgba(82, 196, 26, 0.25);
+  border-color: #52c41a;
+  border-width: 2px;
+}
+
+.sdc-option-item.sdc-student-incorrect {
+  background: rgba(255, 77, 79, 0.1);
+  border-color: #ff4d4f;
+  border-width: 2px;
+}
+
+.space-sdc-question-review-card .sdc-option-item.sdc-student-incorrect {
+  background: rgba(255, 77, 79, 0.25);
+  border-color: #ff4d4f;
+  border-width: 2px;
+}
+
+.sdc-option-item.sdc-correct-answer {
+  background: rgba(82, 196, 26, 0.05);
+  border-color: #52c41a;
+  border-style: dashed;
+}
+
+.space-sdc-question-review-card .sdc-option-item.sdc-correct-answer {
+  background: rgba(82, 196, 26, 0.15);
+  border-color: #52c41a;
+  border-width: 2px;
+  border-style: dashed;
+}
+
+.sdc-unanswered-notice {
+  margin-top: 16px;
+  padding: 12px;
+  background: rgba(140, 140, 140, 0.1);
+  border-radius: 8px;
+  text-align: center;
+}
+
+.space-sdc-question-review-card .sdc-unanswered-notice {
+  background: rgba(255, 255, 255, 0.4);
+  border: 1px solid rgba(96, 75, 158, 0.3);
+}
+
+.space-sdc-question-review-card .sdc-unanswered-notice .ant-typography {
+  color: #595959;
+}
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 768px) {
+  .sdc-student-info-card {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .sdc-action-buttons {
+    width: 100%;
+  }
+
+  .sdc-action-buttons .ant-space {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+  }
+
+  .sdc-performance-cards-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .sdc-filter-tabs-section .ant-space {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .sdc-filter-tab {
+    flex: 1;
+    min-width: 100px;
+  }
+}
+
+@media (max-width: 480px) {
+  .sdc-question-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .sdc-question-meta {
+    width: 100%;
+    justify-content: flex-start;
+  }
+}
+
+/* ===== PRINT STYLES ===== */
+@media print {
+  .sdc-back-button,
+  .sdc-action-buttons,
+  .sdc-filter-tabs-section {
+    display: none !important;
+  }
+
+  .sdc-wrapper {
+    background: white !important;
+    margin: 0 !important;
+    padding: 20px !important;
+  }
+
+  .sdc-question-review-card {
+    page-break-inside: avoid;
+    border: 1px solid #ddd !important;
+    background: white !important;
+    margin-bottom: 20px;
+  }
+
+  .sdc-performance-card {
+    border: 1px solid #ddd !important;
+    background: white !important;
+  }
+}
+
