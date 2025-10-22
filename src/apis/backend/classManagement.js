@@ -352,6 +352,94 @@ const classManagementApi = {
 		// TODO: Enable when backend API is ready
 		return Promise.reject(new Error('Image upload API not available yet'));
 	},
+
+	// Class Students Import/Export APIs
+	// Download class students import template
+	downloadClassStudentsTemplate: (classId) => {
+		const url = `/class-student/download-template`;
+		console.log('DownloadClassStudentsTemplate API - URL:', url);
+		console.log('DownloadClassStudentsTemplate API - ClassId:', classId);
+		
+		return axiosClient.get(url, {
+			headers: {
+				'accept': '*/*',
+			}
+		}).catch(error => {
+			console.error('DownloadClassStudentsTemplate API Error:', error);
+			console.error('Error response:', error.response?.data);
+			console.error('Error status:', error.response?.status);
+			throw error;
+		});
+	},
+
+	// Validate class students import file
+	validateClassStudentsImport: (classId, formData) => {
+		const url = `/class-student/validate-import`;
+		console.log('ValidateClassStudentsImport API - URL:', url);
+		console.log('ValidateClassStudentsImport API - ClassId:', classId);
+		
+		return axiosClient.post(url, formData, {
+			headers: {
+				'Content-Type': 'multipart/form-data',
+			},
+			responseType: 'blob' // Important for file download
+		}).catch(error => {
+			console.error('ValidateClassStudentsImport API Error:', error);
+			console.error('Error response:', error.response?.data);
+			console.error('Error status:', error.response?.status);
+			throw error;
+		});
+	},
+
+	// Import class students from Excel file
+	importClassStudents: (classId, formData) => {
+		const url = `/class-student/import-students`;
+		console.log('ImportClassStudents API - URL:', url);
+		console.log('ImportClassStudents API - ClassId:', classId);
+		console.log('ImportClassStudents API - FormData:', formData);
+		
+		return axiosClient.post(url, formData, {
+			headers: {
+				'accept': '*/*',
+				// Don't set Content-Type, let axios handle it for FormData
+			}
+		}).catch(error => {
+			console.error('ImportClassStudents API Error:', error);
+			console.error('Error response:', error.response?.data);
+			console.error('Error status:', error.response?.status);
+			throw error;
+		});
+	},
+
+	// Export class students to Excel with filtering
+	exportClassStudents: (classId, params = {}) => {
+		const queryParams = new URLSearchParams();
+		
+		// Add filter parameters if provided
+		if (params.text) queryParams.append('text', params.text);
+		if (params.status && params.status !== 'all') {
+			queryParams.append('status', params.status);
+		}
+		if (params.sortBy) queryParams.append('sortBy', params.sortBy);
+		if (params.sortDir) queryParams.append('sortDir', params.sortDir);
+
+		const url = `/class-student/${classId}/export${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
+		console.log('ExportClassStudents API - URL:', url);
+		console.log('ExportClassStudents API - ClassId:', classId);
+		console.log('ExportClassStudents API - Params:', params);
+		
+		return axiosClient.get(url, {
+			headers: {
+				'accept': '*/*',
+			},
+			responseType: 'blob' // Important for file download
+		}).catch(error => {
+			console.error('ExportClassStudents API Error:', error);
+			console.error('Error response:', error.response?.data);
+			console.error('Error status:', error.response?.status);
+			throw error;
+		});
+	},
 };
 
 export default classManagementApi;
