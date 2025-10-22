@@ -238,14 +238,12 @@
   }
 }
 /* Profile Page Styles - Đồng bộ với theme Camkey */
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@200;300;400;500;600;700;800&display=swap');
 @import url('https://cdnjs.cloudflare.com/ajax/libs/tabler-icons/1.35.0/tabler-icons.min.css');
 
 /* ===== SPACE THEME STYLES ===== */
 .space-theme .profile-container {
-  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
   min-height: 80vh;
-  width: 85%;
+  width: 80%;
   height: auto;
   background: #6e5cac80;
   backdrop-filter: blur(7px);
@@ -256,9 +254,8 @@
 
 /* ===== SUN THEME STYLES ===== */
 .sun-theme .profile-container {
-  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
   min-height: 80vh;
-  width: 85%;
+  width: 80%;
   height: auto;
   background: #E6F5FF;
   border: 1px solid #3b82f6;

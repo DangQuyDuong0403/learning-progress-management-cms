@@ -3,17 +3,14 @@ import {
   Button,
   Input,
   Space,
-  Tag,
   Table,
-  Pagination,
   Typography,
   Tooltip,
+  Switch,
 } from "antd";
 import {
   SearchOutlined,
   PlusOutlined,
-  EditOutlined,
-  DeleteOutlined,
   EyeOutlined,
   FilterOutlined,
 } from "@ant-design/icons";
@@ -141,7 +138,7 @@ const DailyChallengeList = () => {
     "Listening",
     "Speaking",
   ];
-  const statusOptions = ["active", "inactive", "draft"];
+  const statusOptions = ["active", "inactive", "pending"];
 
   const fetchDailyChallenges = useCallback(async () => {
     setLoading(true);
@@ -164,7 +161,8 @@ const DailyChallengeList = () => {
   // Enter/exit daily challenge menu mode
   useEffect(() => {
     // Enter daily challenge menu mode when component mounts
-    enterDailyChallengeMenu(0);
+    // Set backPath to class menu
+    enterDailyChallengeMenu(0, null, '/teacher/classes');
     
     // Exit daily challenge menu mode when component unmounts
     return () => {
@@ -188,6 +186,7 @@ const DailyChallengeList = () => {
       return matchesSearch && matchesType && matchesStatus;
     }).length;
     
+    // Update count in context
     updateChallengeCount(filteredCount);
   }, [dailyChallenges, searchText, typeFilter, statusFilter, updateChallengeCount]);
 
@@ -241,33 +240,24 @@ const DailyChallengeList = () => {
     navigate(`/teacher/daily-challenges/detail/${challenge.id}`);
   };
 
-  const handleEditClick = (challenge) => {
-    navigate(`/teacher/daily-challenges/edit/${challenge.id}`);
+  const handleToggleStatus = (id) => {
+    const challenge = dailyChallenges.find(c => c.id === id);
+    const newStatus = challenge.status === 'active' ? 'inactive' : 'active';
+    
+    // Update local state
+    setDailyChallenges(
+      dailyChallenges.map((c) =>
+        c.id === id ? { ...c, status: newStatus } : c
+      )
+    );
+    
+    spaceToast.success(
+      `Challenge ${newStatus === 'active' ? 'activated' : 'deactivated'} successfully`
+    );
   };
 
-  const getStatusTag = (status) => {
-    const statusConfig = {
-      active: { color: "green", text: t('dailyChallenge.active') },
-      inactive: { color: "red", text: t('dailyChallenge.inactive') },
-      draft: { color: "orange", text: t('dailyChallenge.draft') },
-    };
-
-    const config = statusConfig[status] || statusConfig.inactive;
-    return <Tag color={config.color}>{config.text}</Tag>;
-  };
-
-
-  const getTypeTag = (type) => {
-    const typeConfig = {
-      "Grammar & Vocabulary": { color: "purple", text: type },
-      "Reading": { color: "blue", text: type },
-      "Writing": { color: "green", text: type },
-      "Listening": { color: "orange", text: type },
-      "Speaking": { color: "red", text: type },
-    };
-
-    const config = typeConfig[type] || { color: "default", text: type };
-    return <Tag color={config.color}>{config.text}</Tag>;
+  const getTypeText = (type) => {
+    return type.toLowerCase();
   };
 
   // Filter data based on search and filters
@@ -284,18 +274,14 @@ const DailyChallengeList = () => {
     return matchesSearch && matchesType && matchesStatus;
   });
 
-  // Pagination
-  const startIndex = (currentPage - 1) * pageSize;
-  const endIndex = startIndex + pageSize;
-  const pagChallenges = filteredChallenges.slice(startIndex, endIndex);
 
   const columns = [
     {
-      title: 'STT',
+      title: 'No',
       key: 'stt',
       width: 70,
       align: 'center',
-      render: (_, __, index) => startIndex + index + 1,
+      render: (_, __, index) => (currentPage - 1) * pageSize + index + 1,
     },
     {
       title: t('dailyChallenge.challengeTitle'),
@@ -326,7 +312,7 @@ const DailyChallengeList = () => {
       key: 'type',
       width: 200,
       align: 'center',
-      render: (type) => getTypeTag(type),
+      render: (type) => getTypeText(type),
     },
     {
       title: t('dailyChallenge.timeLimit'),
@@ -349,32 +335,31 @@ const DailyChallengeList = () => {
       key: 'status',
       width: 120,
       align: 'center',
-      render: (status) => getStatusTag(status),
+      render: (status, record) => (
+        <Switch
+          checked={status === 'active'}
+          onChange={() => handleToggleStatus(record.id)}
+          size="large"
+          style={{
+            transform: 'scale(1.2)',
+          }}
+          className={`status-switch ${theme}-status-switch`}
+        />
+      ),
     },
     {
       title: t('dailyChallenge.actions'),
       key: 'actions',
-      width: 150,
+      width: 100,
       align: 'center',
       render: (_, record) => (
         <Space size="small">
           <Button
             type="text"
-            icon={<EyeOutlined />}
+            icon={<EyeOutlined style={{ fontSize: '18px' }} />}
             onClick={() => handleViewClick(record)}
             title={t('dailyChallenge.viewDetails')}
-          />
-          <Button
-            type="text"
-            icon={<EditOutlined />}
-            onClick={() => handleEditClick(record)}
-            title={t('dailyChallenge.editChallenge')}
-          />
-          <Button
-            type="text"
-            danger
-            icon={<DeleteOutlined />}
-            title={t('dailyChallenge.deleteChallenge')}
+            className="action-btn-view"
           />
         </Space>
       ),
@@ -383,48 +368,34 @@ const DailyChallengeList = () => {
 
   return (
     <ThemedLayout>
-      {/* Main Content Panel */}
-      <div className={`main-content-panel ${theme}-main-panel`} style={{ 
-        margin: 0, 
-        padding: 0,
-        width: '100%',
-        maxWidth: '100%'
-      }}>
+      <div className="daily-challenge-list-wrapper">
         {/* Search and Action Section */}
-        <div className="search-action-section" style={{ 
-          display: 'flex', 
-          gap: '8px', 
-          alignItems: 'center', 
-          marginBottom: 0,
-          padding: '20px',
-          borderRadius: 0
-        }}>
+        <div className="search-action-section" style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '24px', padding: '24px 24px 0 24px' }}>
           <Input
             prefix={<SearchOutlined />}
             value={searchText}
             onChange={(e) => handleSearch(e.target.value)}
-            placeholder={t('dailyChallenge.searchChallenges')}
             className={`search-input ${theme}-search-input`}
             style={{ flex: '1', minWidth: '250px', maxWidth: '400px', width: '350px', height: '40px', fontSize: '16px' }}
             allowClear
           />
-          {/* AccountList-style Filter Dropdown */}
           <div ref={filterContainerRef} style={{ position: 'relative' }}>
             <Button 
-              icon={<FilterOutlined />} 
+              icon={<FilterOutlined />}
               onClick={handleFilterToggle}
               className={`filter-button ${theme}-filter-button ${filterDropdown.visible ? 'active' : ''} ${(statusFilter.length > 0 || typeFilter.length > 0) ? 'has-filters' : ''}`}
             >
-              {t('filter')}
+              Filter
             </Button>
-
+            
+            {/* Filter Dropdown Panel */}
             {filterDropdown.visible && (
               <div className={`filter-dropdown-panel ${theme}-filter-dropdown`}>
-                <div style={{ padding: '16px' }}>
-                  <div style={{ display: 'flex', gap: '16px', marginBottom: '16px' }}>
+                <div style={{ padding: '20px' }}>
+                  <div style={{ display: 'flex', gap: '16px', marginBottom: '24px' }}>
                     {/* Type Filter */}
                     <div style={{ flex: 1 }}>
-                      <Typography.Title level={5} style={{ marginBottom: '10px', fontSize: '15px' }}>
+                      <Typography.Title level={5} style={{ marginBottom: '12px', fontSize: '16px' }}>
                         {t('dailyChallenge.type')}
                       </Typography.Title>
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
@@ -447,7 +418,7 @@ const DailyChallengeList = () => {
 
                     {/* Status Filter */}
                     <div style={{ flex: 1 }}>
-                      <Typography.Title level={5} style={{ marginBottom: '10px', fontSize: '15px' }}>
+                      <Typography.Title level={5} style={{ marginBottom: '12px', fontSize: '16px' }}>
                         {t('dailyChallenge.status')}
                       </Typography.Title>
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
@@ -469,25 +440,37 @@ const DailyChallengeList = () => {
                     </div>
                   </div>
 
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '16px', paddingTop: '12px', borderTop: '1px solid #f0f0f0' }}>
-                    <Button onClick={handleFilterReset} className='filter-reset-button'>
-                      {t('reset')}
+                  {/* Action Buttons */}
+                  <div style={{ 
+                    display: 'flex', 
+                    justifyContent: 'space-between', 
+                    marginTop: '20px',
+                    paddingTop: '16px',
+                    borderTop: '1px solid #f0f0f0'
+                  }}>
+                    <Button
+                      onClick={handleFilterReset}
+                      className="filter-reset-button"
+                    >
+                      {t('common.reset')}
                     </Button>
-                    <Button type='primary' onClick={handleFilterSubmit} className='filter-submit-button'>
-                      {t('viewResults')}
+                    <Button
+                      type="primary"
+                      onClick={handleFilterSubmit}
+                      className="filter-submit-button"
+                    >
+                      {t('common.viewResults')}
                     </Button>
                   </div>
                 </div>
               </div>
             )}
           </div>
-          
-          <div style={{ marginLeft: 'auto' }}>
-            <Button
+          <div className="action-buttons" style={{ marginLeft: 'auto' }}>
+            <Button 
               icon={<PlusOutlined />}
-              onClick={handleCreateClick}
               className={`create-button ${theme}-create-button`}
-              style={{ height: '40px', fontSize: '16px', fontWeight: '500' }}
+              onClick={handleCreateClick}
             >
               {t('dailyChallenge.createChallenge')}
             </Button>
@@ -495,46 +478,28 @@ const DailyChallengeList = () => {
         </div>
 
         {/* Table Section */}
-        <div className={`table-section ${theme}-table-section`} style={{
-          margin: 0,
-          padding: 0,
-          borderRadius: 0
-        }}>
-          <LoadingWithEffect loading={loading}>
+        <div className={`table-section ${theme}-table-section`} style={{ paddingBottom: '24px' }}>
+          <LoadingWithEffect loading={loading} message={t('dailyChallenge.loadingChallenges')}>
             <Table
               columns={columns}
-              dataSource={pagChallenges}
-              pagination={false}
+              dataSource={filteredChallenges}
               rowKey="id"
-              className={`custom-table ${theme}-table`}
-              scroll={{ x: 'max-content' }}
-              style={{
-                borderRadius: 0
+              pagination={{
+                current: currentPage,
+                pageSize: pageSize,
+                total: filteredChallenges.length,
+                onChange: setCurrentPage,
+                onShowSizeChange: (current, size) => setPageSize(size),
+                showSizeChanger: true,
+                showQuickJumper: true,
+                showTotal: (total, range) =>
+                  `${range[0]}-${range[1]} ${t('dailyChallenge.of')} ${total} ${t('dailyChallenge.challenges')}`,
+                className: `${theme}-pagination`,
+                pageSizeOptions: ['10', '20', '50', '100'],
               }}
+              scroll={{ x: 800 }}
+              className={`daily-challenge-table ${theme}-daily-challenge-table`}
             />
-            
-            {/* Pagination */}
-            {filteredChallenges.length > 0 && (
-              <div style={{ 
-                display: 'flex', 
-                justifyContent: 'flex-end', 
-                padding: '16px 20px',
-                margin: 0
-              }}>
-                <Pagination
-                  current={currentPage}
-                  pageSize={pageSize}
-                  total={filteredChallenges.length}
-                  onChange={setCurrentPage}
-                  onShowSizeChange={(current, size) => setPageSize(size)}
-                  showSizeChanger
-                  showQuickJumper
-                  showTotal={(total, range) =>
-                    `${range[0]}-${range[1]} ${t('dailyChallenge.of')} ${total} ${t('dailyChallenge.challenges')}`
-                  }
-                />
-              </div>
-            )}
           </LoadingWithEffect>
         </div>
 

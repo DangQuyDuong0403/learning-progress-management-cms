@@ -922,12 +922,12 @@ const SyllabusList = () => {
 							onClick={() => handleEdit(record)}
 						/>
 					</Tooltip>
-					<Button
-						type="text"
-						size="small"
-						icon={<DeleteOutlined style={{ fontSize: '25px' }} />}
-						onClick={() => handleDeleteClick(record)}
-					/>
+				<Button
+					type="text"
+					size="small"
+					icon={<DeleteOutlined style={{ fontSize: '25px', color: '#ff4d4f' }} />}
+					onClick={() => handleDeleteClick(record)}
+				/>
 				</Space>
 			),
 		},
@@ -1205,14 +1205,14 @@ const SyllabusList = () => {
 				/>
 			)}
 
-			{/* Syllabus Modal */}
-			<Modal
-				title={
-					editingSyllabus
-						? t('syllabusManagement.editSyllabus')
-						: t('syllabusManagement.addSyllabus')
-				}
-				open={isModalVisible}
+		{/* Syllabus Modal */}
+		<Modal
+			title={
+				<div style={{ textAlign: 'center', fontSize: '28px', fontWeight: '600', color: 'rgb(24, 144, 255)' }}>
+					{t('syllabusManagement.editSyllabus')}
+				</div>
+			}
+			open={isModalVisible}
 				onCancel={handleModalClose}
 				footer={null}
 				width={600}
@@ -1226,20 +1226,20 @@ const SyllabusList = () => {
 			</Modal>
 
 
-			{/* Delete Confirmation Modal */}
-			<Modal
-				title={
-					<div style={{ 
-						fontSize: '20px', 
-						fontWeight: '600', 
-						color: '#1890ff',
-						textAlign: 'center',
-						padding: '10px 0'
-					}}>
-						{t('syllabusManagement.confirmDelete')}
-					</div>
-				}
-				open={isDeleteModalVisible}
+		{/* Delete Confirmation Modal */}
+		<Modal
+			title={
+				<div style={{ 
+					fontSize: '28px', 
+					fontWeight: '600', 
+					color: 'rgb(24, 144, 255)',
+					textAlign: 'center',
+					padding: '10px 0'
+				}}>
+					{t('syllabusManagement.confirmDelete')}
+				</div>
+			}
+			open={isDeleteModalVisible}
 				onOk={handleDelete}
 				onCancel={handleDeleteModalClose}
 				okText={t('common.confirm')}
@@ -1254,22 +1254,26 @@ const SyllabusList = () => {
 				}}
 				okButtonProps={{
 					style: {
-						backgroundColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
-						background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
-						borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'transparent',
-						color: theme === 'sun' ? '#000000' : '#ffffff',
-						height: '40px',
-						fontSize: '16px',
+						background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, #7228d9 0%, #9c88ff 100%)',
+						borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : '#7228d9',
+						color: theme === 'sun' ? '#000' : '#fff',
+						borderRadius: '6px',
+						height: '32px',
 						fontWeight: '500',
-						minWidth: '100px'
+						fontSize: '16px',
+						padding: '4px 15px',
+						width: '100px',
+						transition: 'all 0.3s ease',
+						boxShadow: 'none'
 					}
 				}}
 				cancelButtonProps={{
 					style: {
-						height: '40px',
-						fontSize: '16px',
+						height: '32px',
 						fontWeight: '500',
-						minWidth: '100px'
+						fontSize: '16px',
+						padding: '4px 15px',
+						width: '100px'
 					}
 				}}
 			>
@@ -1297,9 +1301,9 @@ const SyllabusList = () => {
 					{deleteSyllabus && (
 						<p style={{
 							fontSize: '20px',
-							color: '#1890ff',
+							color: '#000',
 							margin: 0,
-							fontWeight: '600'
+							fontWeight: '400'
 						}}>
 							<strong>{deleteSyllabus.name}</strong>
 						</p>
@@ -1307,20 +1311,20 @@ const SyllabusList = () => {
 				</div>
 			</Modal>
 
-			{/* Bulk Delete Confirmation Modal */}
-			<Modal
-				title={
-					<div style={{ 
-						fontSize: '20px', 
-						fontWeight: '600', 
-						color: '#1890ff',
-						textAlign: 'center',
-						padding: '10px 0'
-					}}>
-						{t('syllabusManagement.confirmBulkDelete')}
-					</div>
-				}
-				open={isBulkDeleteModalVisible}
+		{/* Bulk Delete Confirmation Modal */}
+		<Modal
+			title={
+				<div style={{ 
+					fontSize: '28px', 
+					fontWeight: '600', 
+					color: 'rgb(24, 144, 255)',
+					textAlign: 'center',
+					padding: '10px 0'
+				}}>
+					{t('syllabusManagement.confirmBulkDelete')}
+				</div>
+			}
+			open={isBulkDeleteModalVisible}
 				onOk={handleBulkDeleteConfirm}
 				onCancel={handleBulkDeleteModalClose}
 				okText={t('common.confirm')}
@@ -1335,22 +1339,26 @@ const SyllabusList = () => {
 				}}
 				okButtonProps={{
 					style: {
-						backgroundColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
-						background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
-						borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'transparent',
-						color: theme === 'sun' ? '#000000' : '#ffffff',
-						height: '40px',
-						fontSize: '16px',
+						background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, #7228d9 0%, #9c88ff 100%)',
+						borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : '#7228d9',
+						color: theme === 'sun' ? '#000' : '#fff',
+						borderRadius: '6px',
+						height: '32px',
 						fontWeight: '500',
-						minWidth: '100px'
+						fontSize: '16px',
+						padding: '4px 15px',
+						width: '100px',
+						transition: 'all 0.3s ease',
+						boxShadow: 'none'
 					}
 				}}
 				cancelButtonProps={{
 					style: {
-						height: '40px',
-						fontSize: '16px',
+						height: '32px',
 						fontWeight: '500',
-						minWidth: '100px'
+						fontSize: '16px',
+						padding: '4px 15px',
+						width: '100px'
 					}
 				}}
 			>
@@ -1377,86 +1385,59 @@ const SyllabusList = () => {
 					</p>
 					<div style={{
 						fontSize: '20px',
-						color: '#1890ff',
+						color: '#000',
 						margin: 0,
-						fontWeight: '600'
+						fontWeight: '400'
 					}}>
 						<strong>{selectedRowKeys.length} {t('syllabusManagement.syllabuses')}</strong>
 					</div>
 				</div>
 			</Modal>
 
-			{/* Import Modal */}
-			<Modal
-				title={
-					<div
-						style={{
-							fontSize: '20px',
-							fontWeight: '600',
-							color: '#000000',
-							textAlign: 'center',
-							padding: '10px 0',
-							display: 'flex',
-							alignItems: 'center',
-							justifyContent: 'center',
-							gap: '10px',
-						}}>
-						<DownloadOutlined style={{ color: '#000000' }} />
-						{t('syllabusManagement.importSyllabuses')}
-					</div>
+		{/* Import Modal */}
+		<Modal
+			title={
+				<div
+					style={{
+						fontSize: '28px',
+						fontWeight: '600',
+						color: 'rgb(24, 144, 255)',
+						textAlign: 'center',
+						padding: '10px 0',
+					}}>
+					<DownloadOutlined style={{ color: 'rgb(24, 144, 255)' }} /> {t('syllabusManagement.importSyllabuses')}
+				</div>
 				}
 				open={importModal.visible}
 				onCancel={handleImportCancel}
 				width={600}
 				centered
-				footer={[
-					<Button 
-						key="cancel" 
-						onClick={handleImportCancel}
-						style={{
-							height: '40px',
-							fontSize: '16px',
-							fontWeight: '500',
-							minWidth: '100px',
-						}}>
-						{t('common.cancel')}
-					</Button>,
-					<Button 
-						key="validate" 
-						onClick={handleValidateFile}
-						loading={validateLoading}
-						disabled={importModal.fileList.length === 0 || validateLoading}
-						style={{
-							backgroundColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
-							background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
-							borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'transparent',
-							color: theme === 'sun' ? '#000000' : '#ffffff',
-							height: '40px',
-							fontSize: '16px',
-							fontWeight: '500',
-							minWidth: '120px',
-						}}>
-						{t('syllabusManagement.validateFile')}
-					</Button>,
-					<Button 
-						key="import" 
-						type="primary"
-						onClick={handleImportOk}
-						loading={importModal.uploading}
-						disabled={importModal.fileList.length === 0 || importModal.uploading}
-						style={{
-							backgroundColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
-							background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
-							borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'transparent',
-							color: theme === 'sun' ? '#000000' : '#ffffff',
-							height: '40px',
-							fontSize: '16px',
-							fontWeight: '500',
-							minWidth: '120px',
-						}}>
-						{t('syllabusManagement.import')}
-					</Button>
-				]}>
+				confirmLoading={importModal.uploading}
+				okButtonProps={{
+					disabled: importModal.fileList.length === 0,
+					style: {
+						background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, #7228d9 0%, #9c88ff 100%)',
+						borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : '#7228d9',
+						color: theme === 'sun' ? '#000' : '#fff',
+						borderRadius: '6px',
+						height: '32px',
+						fontWeight: '500',
+						fontSize: '16px',
+						padding: '4px 15px',
+						width: '100px',
+						transition: 'all 0.3s ease',
+						boxShadow: 'none'
+					},
+				}}
+				cancelButtonProps={{
+					style: {
+						height: '32px',
+						fontWeight: '500',
+						fontSize: '16px',
+						padding: '4px 15px',
+						width: '100px'
+					},
+				}}>
 				<div style={{ padding: '20px 0' }}>
 					<div style={{ textAlign: 'center', marginBottom: '20px' }}>
 						<Button
@@ -1554,21 +1535,21 @@ const SyllabusList = () => {
 				</div>
 			</Modal>
 
-			{/* Export Data Modal */}
-			<Modal
-				title={
-					<div
-						style={{
-							fontSize: '24px',
-							fontWeight: '600',
-							color: '#000000',
-							textAlign: 'center',
-							padding: '10px 0',
-						}}>
-						{t('syllabusManagement.exportData')}
-					</div>
-				}
-				open={isExportModalVisible}
+		{/* Export Data Modal */}
+		<Modal
+			title={
+				<div
+					style={{
+						fontSize: '28px',
+						fontWeight: '600',
+						color: 'rgb(24, 144, 255)',
+						textAlign: 'center',
+						padding: '10px 0',
+					}}>
+					{t('syllabusManagement.exportData')}
+				</div>
+			}
+			open={isExportModalVisible}
 				onCancel={handleExportModalClose}
 				width={500}
 				footer={[
@@ -1578,7 +1559,7 @@ const SyllabusList = () => {
 						style={{
 							height: '32px',
 							fontWeight: '500',
-							fontSize: '14px',
+							fontSize: '16px',
 							padding: '4px 15px',
 							width: '100px'
 						}}>

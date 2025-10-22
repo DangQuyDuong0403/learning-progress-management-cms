@@ -751,18 +751,20 @@ const LessonDragEdit = () => {
 				</div>
 			</div>
 
-			{/* Add/Edit Lesson Modal */}
-			<Modal
-				title={
-					editingLesson
+		{/* Add/Edit Lesson Modal */}
+		<Modal
+			title={
+				<div style={{ textAlign: 'center', fontSize: '28px', fontWeight: '600', color: 'rgb(24, 144, 255)' }}>
+					{editingLesson
 						? t('lessonManagement.editLesson')
-						: t('lessonManagement.addLesson')
-				}
-				open={isModalVisible}
-				onCancel={() => handleModalClose(false)}
-				footer={null}
-				width={600}
-				destroyOnClose>
+						: t('lessonManagement.addLesson')}
+				</div>
+			}
+			open={isModalVisible}
+			onCancel={() => handleModalClose(false)}
+			footer={null}
+			width={600}
+			destroyOnClose>
 				<LessonForm
 					lesson={editingLesson}
 					chapter={chapterInfo}

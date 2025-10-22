@@ -597,11 +597,11 @@
 }
 
 .space-theme .stat-card .ant-statistic-content {
-	color: #000 !important;
+	color: #000 ;
 }
 
 .sun-theme .stat-card .ant-statistic-content {
-	color: #333 !important;
+	color: #333 ;
 }
 
 /* ===== RESPONSIVE DESIGN ===== */

@@ -485,23 +485,6 @@ const RewriteModal = ({ visible, onCancel, onSave, questionData = null }) => {
           → Đáp án: "Con chuột bị con mèo đuổi."
         </Text>
       </div>
-
-      {/* Bottom Action Buttons */}
-      <div
-        style={{
-          position: 'absolute',
-          bottom: 15,
-          right: 15,
-          display: 'flex',
-          justifyContent: 'flex-end',
-          gap: 12,
-          padding: '12px 16px',
-        }}>
-        <Button onClick={handleCancel}>Cancel</Button>
-        <Button type='primary' onClick={handleSave}>
-          Save Question
-        </Button>
-      </div>
     </Modal>
   );
 };

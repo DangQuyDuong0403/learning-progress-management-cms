@@ -566,20 +566,47 @@ const TeacherProfile = () => {
 				<Modal
 					title={
 						<div style={{ 
-							fontSize: '18px', 
+							fontSize: '28px', 
 							fontWeight: '600', 
-							color: '#000000',
+							color: 'rgb(24, 144, 255)',
 							textAlign: 'center',
-							padding: '8px 0'
+							padding: '10px 0'
 						}}>
 							{t('teacherManagement.editProfile')}
 						</div>
 					}
 					open={editModalVisible}
+					onOk={() => editForm.submit()}
 					onCancel={() => setEditModalVisible(false)}
-					footer={null}
+					okText={t('teacherManagement.updateProfile')}
+					cancelText={t('common.cancel')}
+					confirmLoading={editLoading}
 					width={600}
 					className={`edit-modal ${theme}-edit-modal`}
+					okButtonProps={{
+						style: {
+							background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, #7228d9 0%, #9c88ff 100%)',
+							borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : '#7228d9',
+							color: theme === 'sun' ? '#000' : '#fff',
+							borderRadius: '6px',
+							height: '32px',
+							fontWeight: '500',
+							fontSize: '16px',
+							padding: '4px 15px',
+							minWidth: '130px',
+							transition: 'all 0.3s ease',
+							boxShadow: 'none'
+						}
+					}}
+					cancelButtonProps={{
+						style: {
+							height: '32px',
+							fontWeight: '500',
+							fontSize: '16px',
+							padding: '4px 15px',
+							minWidth: '100px'
+						}
+					}}
 				>
 					<Form
 						form={editForm}
@@ -715,36 +742,6 @@ const TeacherProfile = () => {
 								</Form.Item>
 							</Col>
 						</Row>
-
-						{/* Action Buttons */}
-						<Row gutter={16} style={{ marginTop: 24 }}>
-							<Col span={12}>
-								<Button
-									type="default"
-									onClick={() => setEditModalVisible(false)}
-									style={{ width: '100%', height: 32 }}
-								>
-									{t('common.cancel')}
-								</Button>
-							</Col>
-							<Col span={12}>
-								<Button
-									type="primary"
-									htmlType="submit"
-									loading={editLoading}
-									style={{ 
-										width: '100%', 
-										height: 32,
-										backgroundColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
-										background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
-										borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'transparent',
-										color: theme === 'sun' ? '#000000' : '#ffffff',
-									}}
-								>
-									{t('teacherManagement.updateProfile')}
-								</Button>
-							</Col>
-						</Row>
 					</Form>
 				</Modal>
 
@@ -752,9 +749,9 @@ const TeacherProfile = () => {
 				<Modal
 					title={
 						<div style={{ 
-							fontSize: '20px', 
+							fontSize: '28px', 
 							fontWeight: '600', 
-							color: '#ff4d4f',
+							color: 'rgb(24, 144, 255)',
 							textAlign: 'center',
 							padding: '10px 0'
 						}}>
@@ -776,21 +773,26 @@ const TeacherProfile = () => {
 					}}
 					okButtonProps={{
 						style: {
-							backgroundColor: '#ff4d4f',
+							background: '#ff4d4f',
 							borderColor: '#ff4d4f',
-							color: '#ffffff',
-							height: '40px',
-							fontSize: '16px',
+							color: '#fff',
+							borderRadius: '6px',
+							height: '32px',
 							fontWeight: '500',
-							minWidth: '100px'
+							fontSize: '16px',
+							padding: '4px 15px',
+							width: '100px',
+							transition: 'all 0.3s ease',
+							boxShadow: 'none'
 						}
 					}}
 					cancelButtonProps={{
 						style: {
-							height: '40px',
-							fontSize: '16px',
+							height: '32px',
 							fontWeight: '500',
-							minWidth: '100px'
+							fontSize: '16px',
+							padding: '4px 15px',
+							width: '100px'
 						}
 					}}
 				>

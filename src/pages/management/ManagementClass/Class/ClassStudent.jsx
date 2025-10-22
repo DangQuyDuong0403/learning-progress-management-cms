@@ -809,7 +809,17 @@ const ClassStudent = () => {
 
         {/* Add Student Modal */}
         <Modal
-          title={`${t('classDetail.addStudentsToClass')} (${selectedStudents.length} ${t('classDetail.selectedStudents')})`}
+          title={
+            <div style={{ 
+              fontSize: '28px', 
+              fontWeight: '600', 
+              color: 'rgb(24, 144, 255)',
+              textAlign: 'center',
+              padding: '10px 0'
+            }}>
+              {`${t('classDetail.addStudentsToClass')} (${selectedStudents.length} ${t('classDetail.selectedStudents')})`}
+            </div>
+          }
           open={isModalVisible}
           onOk={handleModalOk}
           onCancel={handleModalCancel}
@@ -819,22 +829,26 @@ const ClassStudent = () => {
           okButtonProps={{
             disabled: selectedStudents.length === 0,
             style: {
-              backgroundColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
-              background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
-              borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'transparent',
-              color: theme === 'sun' ? '#000000' : '#ffffff',
-              height: '40px',
-              fontSize: '16px',
+              background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, #7228d9 0%, #9c88ff 100%)',
+              borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : '#7228d9',
+              color: theme === 'sun' ? '#000' : '#fff',
+              borderRadius: '6px',
+              height: '32px',
               fontWeight: '500',
-              minWidth: '120px',
+              fontSize: '16px',
+              padding: '4px 15px',
+              width: '100px',
+              transition: 'all 0.3s ease',
+              boxShadow: 'none'
             },
           }}
           cancelButtonProps={{
             style: {
-              height: '40px',
-              fontSize: '16px',
+              height: '32px',
               fontWeight: '500',
-              minWidth: '100px',
+              fontSize: '16px',
+              padding: '4px 15px',
+              width: '100px'
             },
           }}
         >
@@ -884,9 +898,9 @@ const ClassStudent = () => {
           title={
             <div
               style={{
-                fontSize: '20px',
+                fontSize: '28px',
                 fontWeight: '600',
-                color: '#000000',
+                color: 'rgb(24, 144, 255)',
                 textAlign: 'center',
                 padding: '10px 0',
                 display: 'flex',
@@ -894,7 +908,7 @@ const ClassStudent = () => {
                 justifyContent: 'center',
                 gap: '10px',
               }}>
-              <DownloadOutlined style={{ color: '#000000' }} />
+              <DownloadOutlined style={{ color: 'rgb(24, 144, 255)' }} />
               {t('classDetail.importStudentsList')}
             </div>
           }
@@ -909,22 +923,26 @@ const ClassStudent = () => {
           okButtonProps={{
             disabled: importModal.fileList.length === 0,
             style: {
-              backgroundColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
-              background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
-              borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'transparent',
-              color: theme === 'sun' ? '#000000' : '#ffffff',
-              height: '40px',
-              fontSize: '16px',
+              background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, #7228d9 0%, #9c88ff 100%)',
+              borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : '#7228d9',
+              color: theme === 'sun' ? '#000' : '#fff',
+              borderRadius: '6px',
+              height: '32px',
               fontWeight: '500',
-              minWidth: '120px',
+              fontSize: '16px',
+              padding: '4px 15px',
+              width: '200px',
+              transition: 'all 0.3s ease',
+              boxShadow: 'none'
             },
           }}
           cancelButtonProps={{
             style: {
-              height: '40px',
-              fontSize: '16px',
+              height: '32px',
               fontWeight: '500',
-              minWidth: '100px',
+              fontSize: '16px',
+              padding: '4px 15px',
+              width: '100px'
             },
           }}
         >
@@ -990,9 +1008,9 @@ const ClassStudent = () => {
         <Modal
           title={
             <div style={{ 
-              fontSize: '20px', 
+              fontSize: '28px', 
               fontWeight: '600', 
-              color: '#1890ff',
+              color: 'rgb(24, 144, 255)',
               textAlign: 'center',
               padding: '10px 0'
             }}>
@@ -1014,22 +1032,26 @@ const ClassStudent = () => {
           }}
           okButtonProps={{
             style: {
-              backgroundColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
-              background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
-              borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'transparent',
-              color: theme === 'sun' ? '#000000' : '#ffffff',
-              height: '40px',
-              fontSize: '16px',
+              background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, #7228d9 0%, #9c88ff 100%)',
+              borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : '#7228d9',
+              color: theme === 'sun' ? '#000' : '#fff',
+              borderRadius: '6px',
+              height: '32px',
               fontWeight: '500',
-              minWidth: '100px'
+              fontSize: '16px',
+              padding: '4px 15px',
+              width: '100px',
+              transition: 'all 0.3s ease',
+              boxShadow: 'none'
             }
           }}
           cancelButtonProps={{
             style: {
-              height: '40px',
-              fontSize: '16px',
+              height: '32px',
               fontWeight: '500',
-              minWidth: '100px'
+              fontSize: '16px',
+              padding: '4px 15px',
+              width: '100px'
             }
           }}
         >
@@ -1046,14 +1068,24 @@ const ClassStudent = () => {
             }}>
               ⚠️
             </div>
-            <p style={{
-              fontSize: '18px',
-              color: '#333',
-              margin: 0,
-              fontWeight: '500'
-            }}>
-              {t('classDetail.confirmDeleteMessage')} "{studentToDelete ? (studentToDelete.fullName || `${studentToDelete.firstName || ''} ${studentToDelete.lastName || ''}`.trim()) : ''}"?
-            </p>
+					<p style={{
+						fontSize: '18px',
+						color: '#333',
+						margin: 0,
+						fontWeight: '500'
+					}}>
+						{t('classDetail.confirmDeleteMessage')}
+					</p>
+					{studentToDelete && (
+						<p style={{
+							fontSize: '20px',
+							color: '#000',
+							margin: 0,
+							fontWeight: '400'
+						}}>
+							<strong>"{studentToDelete.fullName || `${studentToDelete.firstName || ''} ${studentToDelete.lastName || ''}`.trim()}"</strong>
+						</p>
+					)}
           </div>
         </Modal>
     </ThemedLayout>

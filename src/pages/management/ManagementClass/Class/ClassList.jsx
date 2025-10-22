@@ -478,7 +478,7 @@ const ClassList = () => {
           <LoadingWithEffect loading={loading}>
             {filteredClasses.length > 0 ? (
               <>
-                <Row gutter={[16, 16]} justify="start" style={{ padding: '0 20px', marginBottom: '24px' }}>
+                <Row gutter={[16, 16]} justify="start" style={{ padding: '0 20px', marginTop: '20px', marginBottom: '24px' }}>
                   {filteredClasses.map((classItem) => (
                     <Col xs={24} sm={12} md={8} lg={8} xl={8} key={classItem.id}>
                       <Card 
@@ -643,7 +643,8 @@ const ClassList = () => {
                     display: 'flex', 
                     justifyContent: 'flex-end', 
                     padding: '0 20px',
-                    marginTop: '8px'
+                    marginTop: '8px',
+                    marginBottom: '20px'
                   }}>
                     <Pagination
                       current={pagination.current}

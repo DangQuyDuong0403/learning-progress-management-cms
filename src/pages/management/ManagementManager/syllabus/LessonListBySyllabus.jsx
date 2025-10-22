@@ -183,7 +183,8 @@ const LessonListBySyllabus = () => {
 			enterSyllabusMenu({
 				id: syllabusInfo.id,
 				name: syllabusInfo.name,
-				description: syllabusInfo.description
+				description: syllabusInfo.description,
+				backUrl: '/manager/syllabuses'
 			});
 		}
 		
@@ -800,9 +801,9 @@ const LessonListBySyllabus = () => {
 					{deleteLesson && (
 						<p style={{
 							fontSize: '20px',
-							color: '#1890ff',
+							color: '#000',
 							margin: 0,
-							fontWeight: '600'
+							fontWeight: '400'
 						}}>
 							<strong>{deleteLesson.name}</strong>
 						</p>
@@ -880,9 +881,9 @@ const LessonListBySyllabus = () => {
 					</p>
 					<div style={{
 						fontSize: '20px',
-						color: '#1890ff',
+						color: '#000',
 						margin: 0,
-						fontWeight: '600'
+						fontWeight: '400'
 					}}>
 						<strong>{selectedRowKeys.length} {t('lessonManagement.lessons')}</strong>
 					</div>

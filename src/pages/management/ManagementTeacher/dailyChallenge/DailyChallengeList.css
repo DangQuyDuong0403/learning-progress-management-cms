@@ -1,50 +1,126 @@
+/* ===== WRAPPER TO OVERRIDE THEMED LAYOUT CONTENT ===== */
+.daily-challenge-list-wrapper {
+  margin: -20px -20px 0 -20px;
+  padding: 0;
+  width: 100%;
+  box-sizing: border-box;
+  background: rgba(45, 27, 105, 0.75);
+  backdrop-filter: none;
+  position: relative;
+  z-index: 2;
+}
+
+.space-theme .daily-challenge-list-wrapper {
+  background: rgba(110, 92, 172, 0.5);
+  backdrop-filter: blur(7px);
+}
+
+.sun-theme .daily-challenge-list-wrapper {
+  background: #E6F5FF !important;
+  backdrop-filter: blur(1px);
+}
+
+/* ===== PAGE TITLE STYLES ===== */
+.page-title-container {
+  margin-bottom: 24px;
+}
+
+.page-title {
+  margin: 0 !important;
+  font-size: 32px !important;
+  font-weight: 700 !important;
+  color: #fff !important;
+  line-height: 1.2 !important;
+}
+
+.space-theme .page-title {
+  color: #000 ;
+}
+
+.sun-theme .page-title {
+  color: #000 !important;
+}
+
+.page-title .student-count {
+  font-size: 28px;
+  font-weight: 600;
+  opacity: 0.8;
+  margin-left: 8px;
+}
+
+
 .daily-challenge-list-container {
   padding: 0;
   margin: 0;
   border-radius: 0 !important;
 }
 
-/* Main content panel - remove border radius */
-.main-content-panel {
-  border-radius: 0 ;
-}
+/* ===== MAIN CONTENT PANEL - NOT USED ANYMORE ===== */
+/* Removed - styles moved to wrapper */
 
-/* Force override ClassList.css styles for main-content-panel */
-.space-theme .main-content-panel {
-  border-radius: 0 ;
-}
-
-.sun-theme .main-content-panel {
-  border-radius: 0 ;
-}
-
-/* Search and Action Section */
+/* ===== SEARCH AND ACTION SECTION ===== */
 .search-action-section {
   background: transparent;
-  border-radius: 0 !important;
-  margin: 0 !important;
-  padding: 20px !important;
+  margin-bottom: 24px;
 }
 
-/* Override table wrapper styles for full width */
+.search-input {
+  flex: 1;
+  min-width: 250px;
+  max-width: 400px;
+  width: 350px;
+  height: 40px;
+  font-size: 16px;
+}
+
+.space-theme .search-input {
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(77, 208, 255, 0.3);
+}
+
+.space-theme .search-input:hover,
+.space-theme .search-input:focus {
+  border-color: rgba(77, 208, 255, 0.6);
+  box-shadow: 0 0 8px rgba(77, 208, 255, 0.3);
+}
+
+.sun-theme .search-input {
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(0, 0, 0, 0.2);
+}
+
+.sun-theme .search-input:hover,
+.sun-theme .search-input:focus {
+  border-color: rgba(0, 0, 0, 0.3);
+  box-shadow: 0 0 8px rgba(0, 0, 0, 0.1);
+}
+
+/* ===== TABLE SECTION ===== */
 .table-section {
-  border-radius: 0 !important;
-  margin: 0 !important;
-  padding: 0 !important;
+  background: transparent;
+  border-radius: 0;
+  overflow: hidden;
+  backdrop-filter: none;
+  margin: 0;
+  padding: 0;
 }
 
-/* Force override ClassList.css styles for Daily Challenge */
 .space-theme .table-section {
-  background: transparent !important;
-  backdrop-filter: none !important;
-  border-radius: 0 ;
-  border: none !important;
+  background: transparent;
+  margin: 0;
+  padding: 0;
 }
 
 .sun-theme .table-section {
-  background: transparent ;
-  backdrop-filter: none ;
-  border-radius: 0 ;
+  position: relative;
+  background: transparent;
+  backdrop-filter: none;
+  border-radius: 0;
+  overflow: hidden;
+  border: none;
+  z-index: 2;
+  margin: 0;
+  padding: 0;
 }
 
 .table-section .ant-table-wrapper {
@@ -53,12 +129,18 @@
   width: 100% !important;
   max-width: 100% !important;
   border-radius: 0 !important;
+  background: transparent !important;
 }
 
 .table-section .ant-table {
   margin: 0 !important;
   padding: 0 !important;
-  border-radius: 0 ;
+  border-radius: 0;
+  background: transparent !important;
+}
+
+.table-section .ant-table-container {
+  background: transparent !important;
 }
 
 
@@ -107,6 +189,28 @@
 
 .daily-challenge-table {
   margin-top: 0;
+  background: transparent !important;
+}
+
+.daily-challenge-table .ant-table-content {
+  background: transparent !important;
+}
+
+/* Override ThemedLayout table styles for DailyChallengeList */
+.daily-challenge-list-wrapper .ant-table {
+  background: transparent !important;
+}
+
+.daily-challenge-list-wrapper .ant-table-wrapper {
+  background: transparent !important;
+}
+
+.daily-challenge-list-wrapper .ant-table-container {
+  background: transparent !important;
+}
+
+.daily-challenge-list-wrapper .ant-table-content {
+  background: transparent !important;
 }
 
 .daily-challenge-table .challenge-title {
@@ -126,13 +230,11 @@
 
 .daily-challenge-table .ant-table-thead > tr > th {
   background: #f5f7fa;
-  border-bottom: 2px solid #e8eaed;
   font-weight: 600;
   color: #202124;
 }
 
 .daily-challenge-table .ant-table-tbody > tr > td {
-  border-bottom: 1px solid #e8eaed;
   vertical-align: middle;
 }
 
@@ -203,6 +305,56 @@
 .daily-challenge-table .ant-btn:hover {
   transform: translateY(-1px);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+/* Action buttons styles */
+.action-btn-view,
+.action-btn-edit,
+.action-btn-delete {
+  padding: 4px 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.action-btn-view:hover {
+  background: rgba(24, 144, 255, 0.1);
+}
+
+.action-btn-edit:hover {
+  background: rgba(82, 196, 26, 0.1);
+}
+
+.action-btn-delete {
+  color: #ff4d4f;
+}
+
+.action-btn-delete:hover {
+  background: rgba(255, 77, 79, 0.1);
+  color: #ff4d4f;
+}
+
+.action-btn-delete .anticon {
+  color: #ff4d4f !important;
+}
+
+/* Override for all themes */
+.space-theme .action-btn-delete,
+.sun-theme .action-btn-delete,
+.action-btn-delete.ant-btn-dangerous {
+  color: #ff4d4f !important;
+}
+
+.space-theme .action-btn-delete .anticon,
+.sun-theme .action-btn-delete .anticon,
+.action-btn-delete.ant-btn-dangerous .anticon {
+  color: #ff4d4f !important;
+}
+
+.space-theme .action-btn-delete:hover,
+.sun-theme .action-btn-delete:hover {
+  background: rgba(255, 77, 79, 0.1) !important;
+  color: #ff4d4f !important;
 }
 
 
@@ -290,11 +442,41 @@
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
 }
 
-.filter-reset-button {
+/* Filter Options */
+.filter-option {
   height: 36px !important;
-  font-size: 15px !important;
+  font-size: 14px !important;
   font-weight: 500 !important;
-  min-width: 110px !important;
+  border-radius: 8px !important;
+  border: 1px solid #d9d9d9 !important;
+  background: #fff !important;
+  color: #000 !important;
+  transition: all 0.3s ease !important;
+}
+
+.filter-option:hover {
+  border-color: #40a9ff !important;
+  color: #40a9ff !important;
+  background: #f0f8ff !important;
+}
+
+.filter-option.selected {
+  background: #1890ff !important;
+  border-color: #1890ff !important;
+  color: #fff !important;
+}
+
+.filter-option.selected:hover {
+  background: #40a9ff !important;
+  border-color: #40a9ff !important;
+  color: #fff !important;
+}
+
+.filter-reset-button {
+  height: 40px !important;
+  font-size: 16px !important;
+  font-weight: 500 !important;
+  min-width: 120px !important;
   border-radius: 8px !important;
   border: 1px solid #d9d9d9 !important;
   background: #fff !important;
@@ -307,8 +489,84 @@
   background: #f0f8ff !important;
 }
 
-/* Responsive design */
+.filter-submit-button {
+  height: 40px !important;
+  font-size: 16px !important;
+  font-weight: 500 !important;
+  min-width: 120px !important;
+  border-radius: 8px !important;
+}
+
+/* ===== ACTION BUTTONS STYLES ===== */
+.action-buttons {
+  display: flex;
+  gap: 12px;
+}
+
+/* Create Button */
+.create-button {
+  height: 40px;
+  border-radius: 8px;
+  font-weight: 500;
+  font-size: 16px;
+  border: 1px solid rgba(170, 139, 249, 0.3);
+  background: linear-gradient(135deg, #ffffff, #aa8bf9, #1d0161);
+  color: #fff;
+  backdrop-filter: blur(10px);
+  transition: all 0.3s ease;
+}
+
+.create-button:hover {
+  background: linear-gradient(135deg, #ffffff, #aa8bf9, #1d0161);
+  border-color: rgba(170, 139, 249, 0.6);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(170, 139, 249, 0.4);
+  filter: brightness(1.1);
+}
+
+
+
+.sun-theme .status-switch.ant-switch {
+  background-color: rgba(0, 0, 0, 0.25) !important;
+}
+
+/* ===== RESPONSIVE DESIGN ===== */
 @media (max-width: 768px) {
+  .daily-challenge-list-wrapper {
+    margin: -20px -20px 0 -20px;
+  }
+  
+  .search-action-section {
+    padding: 16px 16px 0 16px !important;
+  }
+  
+  .table-section {
+    padding: 0 !important;
+    padding-bottom: 16px !important;
+  }
+
+  .page-title {
+    font-size: 24px !important;
+  }
+
+  .page-title .student-count {
+    font-size: 20px;
+  }
+
+  .search-action-section {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 16px;
+  }
+
+  .search-input {
+    max-width: 100%;
+  }
+
+  .action-buttons {
+    justify-content: center;
+  }
+
   .daily-challenge-table .ant-table-thead > tr > th {
     padding: 8px 4px;
   }

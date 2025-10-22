@@ -271,27 +271,27 @@
 
 /* Action button icons - force black color */
 .ant-btn .anticon {
-	color: #000 !important;
+	color: #000 ;
 }
 
 .ant-btn:hover .anticon {
-	color: #000 !important;
+	color: #000 ;
 }
 
 .sun-theme .ant-btn .anticon {
-	color: #000 !important;
+	color: #000 ;
 }
 
 .sun-theme .ant-btn:hover .anticon {
-	color: #000 !important;
+	color: #000 ;
 }
 
 .space-theme .ant-btn .anticon {
-	color: #000 !important;
+	color: #000 ;
 }
 
 .space-theme .ant-btn:hover .anticon {
-	color: #000 !important;
+	color: #000 ;
 }
 
 /* Responsive design */
