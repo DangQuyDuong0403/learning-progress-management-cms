@@ -67,6 +67,7 @@ const TeacherList = () => {
 		visible: false,
 		title: '',
 		content: '',
+		displayData: null,
 		onConfirm: null,
 		loading: false,
 	});
@@ -229,7 +230,8 @@ const TeacherList = () => {
 		setConfirmModal({
 			visible: true,
 			title: t('teacherManagement.changeStatus'),
-			content: `${t('teacherManagement.confirmStatusChange')} ${actionText} ${t('teacherManagement.teacher')} "${teacherName}"?`,
+			content: `${t('teacherManagement.confirmStatusChange')} ${actionText} ${t('teacherManagement.teacher')}?`,
+			displayData: teacherName,
 			onConfirm: async () => {
 				try {
 					// Call API to update teacher status
@@ -237,7 +239,7 @@ const TeacherList = () => {
 					
 					if (response.success) {
 						// Close modal first
-						setConfirmModal({ visible: false, title: '', content: '', onConfirm: null });
+						setConfirmModal({ visible: false, title: '', content: '', displayData: null, onConfirm: null });
 						
 						// Show success toast
 						spaceToast.success(newStatus === 'ACTIVE' 
@@ -251,7 +253,7 @@ const TeacherList = () => {
 					}
 				} catch (error) {
 					console.error('Error updating teacher status:', error);
-					setConfirmModal({ visible: false, title: '', content: '', onConfirm: null });
+					setConfirmModal({ visible: false, title: '', content: '', displayData: null, onConfirm: null });
 					spaceToast.error(error.response?.data?.error || error.message || t('teacherManagement.updateStatusError'));
 				}
 			}
@@ -259,7 +261,7 @@ const TeacherList = () => {
 	};
 
 	const handleConfirmCancel = () => {
-		setConfirmModal({ visible: false, title: '', content: '', onConfirm: null });
+		setConfirmModal({ visible: false, title: '', content: '', displayData: null, onConfirm: null });
 	};
 
 	// Handle delete for PENDING teachers (trash button)
@@ -272,14 +274,15 @@ const TeacherList = () => {
 		setConfirmModal({
 			visible: true,
 			title: t('teacherManagement.deleteTeacher'),
-			content: `${t('teacherManagement.confirmDeletePending')} "${teacherName}"? ${t('teacherManagement.deletePendingNote')}`,
+			content: `${t('teacherManagement.confirmDeletePending')}? ${t('teacherManagement.deletePendingNote')}`,
+			displayData: teacherName,
 			onConfirm: async () => {
 				try {
 					// Call API to delete teacher
 					const response = await accountManagementApi.deleteAccount(id);
 					
 					// Close modal first
-					setConfirmModal({ visible: false, title: '', content: '', onConfirm: null });
+					setConfirmModal({ visible: false, title: '', content: '', displayData: null, onConfirm: null });
 					
 					// Use backend message if available, otherwise fallback to translation
 					const successMessage = response.message + ` "${teacherName}"`;
@@ -289,7 +292,7 @@ const TeacherList = () => {
 					fetchTeachers(pagination.current, pagination.pageSize, searchText, statusFilter, roleNameFilter, sortBy, sortDir);
 				} catch (error) {
 					console.error('Error deleting PENDING teacher:', error);
-					setConfirmModal({ visible: false, title: '', content: '', onConfirm: null });
+					setConfirmModal({ visible: false, title: '', content: '', displayData: null, onConfirm: null });
 					spaceToast.error(error.response?.data?.error || error.response?.data?.message || error.message );
 				}
 			}
@@ -684,12 +687,14 @@ const TeacherList = () => {
 		
 		// Get all selected teachers from all pages, not just current page
 		// We need to fetch all teachers to find the selected ones
-		const confirmContent = `${t('teacherManagement.confirmBulkActivate')} ${selectedRowKeys.length} ${t('teacherManagement.teachers')}?`;
+		const confirmContent = t('teacherManagement.confirmBulkActivate');
+		const displayData = `${selectedRowKeys.length} ${t('teacherManagement.teachers')}`;
 		
 		setConfirmModal({
 			visible: true,
 			title: `${t('teacherManagement.activeAll')} ${t('teacherManagement.teachers')}`,
 			content: confirmContent,
+			displayData: displayData,
 			onConfirm: async () => {
 				setBulkLoading(prev => ({ ...prev, active: true }));
 				setConfirmModal(prev => ({ ...prev, loading: true }));
@@ -700,7 +705,7 @@ const TeacherList = () => {
 					
 					if (response.success) {
 						// Close modal first
-						setConfirmModal({ visible: false, title: '', content: '', onConfirm: null, loading: false });
+						setConfirmModal({ visible: false, title: '', content: '', displayData: null, onConfirm: null, loading: false });
 						
 						// Clear selection
 						setSelectedRowKeys([]);
@@ -715,7 +720,7 @@ const TeacherList = () => {
 					}
 				} catch (error) {
 					console.error('Error in bulk update:', error);
-					setConfirmModal({ visible: false, title: '', content: '', onConfirm: null, loading: false });
+					setConfirmModal({ visible: false, title: '', content: '', displayData: null, onConfirm: null, loading: false });
 					spaceToast.error(error.response?.data?.error || error.message || t('teacherManagement.bulkUpdateError'));
 				} finally {
 					setBulkLoading(prev => ({ ...prev, active: false }));
@@ -731,12 +736,14 @@ const TeacherList = () => {
 		}
 		
 		// Get all selected teachers from all pages, not just current page
-		const confirmContent = `${t('teacherManagement.confirmBulkDeactivate')} ${selectedRowKeys.length} ${t('teacherManagement.teachers')}?`;
+		const confirmContent = t('teacherManagement.confirmBulkDeactivate');
+		const displayData = `${selectedRowKeys.length} ${t('teacherManagement.teachers')}`;
 		
 		setConfirmModal({
 			visible: true,
 			title: `${t('teacherManagement.deactiveAll')} ${t('teacherManagement.teachers')}`,
 			content: confirmContent,
+			displayData: displayData,
 			onConfirm: async () => {
 				setBulkLoading(prev => ({ ...prev, deactive: true }));
 				setConfirmModal(prev => ({ ...prev, loading: true }));
@@ -747,7 +754,7 @@ const TeacherList = () => {
 					
 					if (response.success) {
 						// Close modal first
-						setConfirmModal({ visible: false, title: '', content: '', onConfirm: null, loading: false });
+						setConfirmModal({ visible: false, title: '', content: '', displayData: null, onConfirm: null, loading: false });
 						
 						// Clear selection
 						setSelectedRowKeys([]);
@@ -762,7 +769,7 @@ const TeacherList = () => {
 					}
 				} catch (error) {
 					console.error('Error in bulk update:', error);
-					setConfirmModal({ visible: false, title: '', content: '', onConfirm: null, loading: false });
+					setConfirmModal({ visible: false, title: '', content: '', displayData: null, onConfirm: null, loading: false });
 					spaceToast.error(error.response?.data?.error || error.message || t('teacherManagement.bulkUpdateError'));
 				} finally {
 					setBulkLoading(prev => ({ ...prev, deactive: false }));
@@ -1258,9 +1265,9 @@ const TeacherList = () => {
 			<Modal
 				title={
 					<div style={{ 
-						fontSize: '20px', 
+						fontSize: '28px', 
 						fontWeight: '600', 
-						color: '#1890ff',
+						color: 'rgb(24, 144, 255)',
 						textAlign: 'center',
 						padding: '10px 0'
 					}}>
@@ -1283,22 +1290,26 @@ const TeacherList = () => {
 				}}
 				okButtonProps={{
 					style: {
-						backgroundColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
-						background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
-						borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'transparent',
-						color: theme === 'sun' ? '#000000' : '#ffffff',
-						height: '40px',
-						fontSize: '16px',
+						background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, #7228d9 0%, #9c88ff 100%)',
+						borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : '#7228d9',
+						color: theme === 'sun' ? '#000' : '#fff',
+						borderRadius: '6px',
+						height: '32px',
 						fontWeight: '500',
-						minWidth: '100px'
+						fontSize: '16px',
+						padding: '4px 15px',
+						width: '100px',
+						transition: 'all 0.3s ease',
+						boxShadow: 'none'
 					}
 				}}
 				cancelButtonProps={{
 					style: {
-						height: '40px',
-						fontSize: '16px',
+						height: '32px',
 						fontWeight: '500',
-						minWidth: '100px'
+						fontSize: '16px',
+						padding: '4px 15px',
+						width: '100px'
 					}
 				}}>
 				<div
@@ -1325,6 +1336,17 @@ const TeacherList = () => {
 						}}>
 						{confirmModal.content}
 					</p>
+					{confirmModal.displayData && (
+						<p
+							style={{
+								fontSize: '20px',
+								color: '#000',
+								margin: 0,
+								fontWeight: '400'
+							}}>
+							<strong>{confirmModal.displayData}</strong>
+						</p>
+					)}
 				</div>
 			</Modal>
 			{/* Import Modal */}
@@ -1332,9 +1354,9 @@ const TeacherList = () => {
 				title={
 					<div
 						style={{
-							fontSize: '20px',
+							fontSize: '28px',
 							fontWeight: '600',
-							color: '#000000',
+							color: 'rgb(24, 144, 255)',
 							textAlign: 'center',
 							padding: '10px 0',
 							display: 'flex',
@@ -1342,7 +1364,7 @@ const TeacherList = () => {
 							justifyContent: 'center',
 							gap: '10px',
 						}}>
-						<DownloadOutlined style={{ color: '#000000' }} />
+						<DownloadOutlined style={{ color: 'rgb(24, 144, 255)' }} />
 						{t('teacherManagement.importTeachers')}
 					</div>
 				}
@@ -1357,22 +1379,26 @@ const TeacherList = () => {
 				okButtonProps={{
 					disabled: importModal.fileList.length === 0,
 					style: {
-						backgroundColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
-						background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
-						borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'transparent',
-						color: theme === 'sun' ? '#000000' : '#ffffff',
-						height: '40px',
-						fontSize: '16px',
+						background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, #7228d9 0%, #9c88ff 100%)',
+						borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : '#7228d9',
+						color: theme === 'sun' ? '#000' : '#fff',
+						borderRadius: '6px',
+						height: '32px',
 						fontWeight: '500',
-						minWidth: '120px',
+						fontSize: '16px',
+						padding: '4px 15px',
+						width: '100px',
+						transition: 'all 0.3s ease',
+						boxShadow: 'none'
 					},
 				}}
 				cancelButtonProps={{
 					style: {
-						height: '40px',
-						fontSize: '16px',
+						height: '32px',
 						fontWeight: '500',
-						minWidth: '100px',
+						fontSize: '16px',
+						padding: '4px 15px',
+						width: '100px'
 					},
 				}}>
 				<div style={{ padding: '20px 0' }}>
@@ -1475,9 +1501,9 @@ const TeacherList = () => {
 				title={
 					<div
 						style={{
-							fontSize: '24px',
+							fontSize: '28px',
 							fontWeight: '600',
-							color: theme === 'dark' ? '#ffffff' : '#000000',
+							color: 'rgb(24, 144, 255)',
 							textAlign: 'center',
 							padding: '10px 0',
 						}}>
@@ -1494,7 +1520,7 @@ const TeacherList = () => {
 						style={{
 							height: '32px',
 							fontWeight: '500',
-							fontSize: '14px',
+							fontSize: '16px',
 							padding: '4px 15px',
 							width: '100px'
 						}}>

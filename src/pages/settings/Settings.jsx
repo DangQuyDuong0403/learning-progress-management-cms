@@ -279,14 +279,20 @@ const Settings = () => {
 				</div>
 			</div>
 									
-			{/* Password Change Modal */}
-			<Modal
-				title={
-					<div className={`modal-title ${theme}-modal-title`}>
-						{t('settings.changePassword')}
-					</div>
-				}
-				open={modals.password}
+		{/* Password Change Modal */}
+		<Modal
+			title={
+				<div className={`modal-title ${theme}-modal-title`} style={{ 
+					color: 'rgb(24, 144, 255)',
+					fontSize: '28px',
+					fontWeight: '600',
+					textAlign: 'center',
+					padding: '10px 0'
+				}}>
+					{t('settings.changePassword')}
+				</div>
+			}
+			open={modals.password}
 				onOk={handlePasswordChange}
 				onCancel={() => closeModal('password')}
 				okText={t('common.save')}
@@ -300,29 +306,25 @@ const Settings = () => {
 						background: theme === 'sun' 
 							? 'rgb(113, 179, 253)' 
 							: 'linear-gradient(135deg, #7228d9 0%, #9c88ff 100%)',
-						border: 'none',
-						color: theme === 'sun' ? '#000000' : '#ffffff',
-						fontWeight: '600',
-						borderRadius: '8px',
+						borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : '#7228d9',
+						color: theme === 'sun' ? '#000' : '#fff',
+						fontWeight: '500',
+						borderRadius: '6px',
 						height: '32px',
-						padding: '0 16px',
-						boxShadow: theme === 'sun' 
-							? '0 4px 12px rgba(113, 179, 253, 0.3)' 
-							: '0 4px 12px rgba(114, 40, 217, 0.3)',
+						fontSize: '16px',
+						padding: '4px 15px',
+						width: '100px',
 						transition: 'all 0.3s ease',
-						minWidth: '80px',
-						width: '80px'
+						boxShadow: 'none'
 					}
 				}}
 				cancelButtonProps={{
 					style: {
 						height: '32px',
-						padding: '0 16px',
-						borderRadius: '8px',
-						fontWeight: '600',
-						minWidth: '80px',
-						width: '80px',
-						transition: 'all 0.3s ease'
+						fontWeight: '500',
+						fontSize: '16px',
+						padding: '4px 15px',
+						width: '100px'
 					}
 				}}
 			>

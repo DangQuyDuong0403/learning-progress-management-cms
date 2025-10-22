@@ -217,7 +217,6 @@ const ThemedLayout = ({ children }) => {
         <Content
           className={`themed-content ${theme}-content`}
           style={{
-            margin: '20px',
             padding: '20px',
             borderRadius: '8px',
             minHeight: 'calc(100vh - 112px)',

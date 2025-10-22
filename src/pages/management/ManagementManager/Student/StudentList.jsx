@@ -90,6 +90,7 @@ const StudentList = () => {
     visible: false,
     title: '',
     content: '',
+    displayData: null,
     onConfirm: null,
     loading: false,
   });
@@ -382,12 +383,14 @@ const StudentList = () => {
     }
     
     // Get all selected students from all pages, not just current page
-    const confirmContent = `${t('studentManagement.confirmBulkActivate')} ${selectedRowKeys.length} ${t('studentManagement.students')}?`;
+    const confirmContent = t('studentManagement.confirmBulkActivate');
+    const displayData = `${selectedRowKeys.length} ${t('studentManagement.students')}`;
     
     setConfirmModal({
       visible: true,
       title: `${t('studentManagement.activeAll')} ${t('studentManagement.students')}`,
       content: confirmContent,
+      displayData: displayData,
       onConfirm: async () => {
         setBulkLoading(prev => ({ ...prev, active: true }));
         setConfirmModal(prev => ({ ...prev, loading: true }));
@@ -398,7 +401,7 @@ const StudentList = () => {
           
           if (response.success) {
             // Close modal first
-            setConfirmModal({ visible: false, title: '', content: '', onConfirm: null, loading: false });
+            setConfirmModal({ visible: false, title: '', content: '', displayData: null, onConfirm: null, loading: false });
             
             // Clear selection
             setSelectedRowKeys([]);
@@ -413,7 +416,7 @@ const StudentList = () => {
           }
         } catch (error) {
           console.error('Error in bulk update:', error);
-          setConfirmModal({ visible: false, title: '', content: '', onConfirm: null, loading: false });
+          setConfirmModal({ visible: false, title: '', content: '', displayData: null, onConfirm: null, loading: false });
           spaceToast.error(error.response?.data?.error || error.message || t('studentManagement.bulkUpdateStatusError'));
         } finally {
           setBulkLoading(prev => ({ ...prev, active: false }));
@@ -429,12 +432,14 @@ const StudentList = () => {
     }
     
     // Get all selected students from all pages, not just current page
-    const confirmContent = `${t('studentManagement.confirmBulkDeactivate')} ${selectedRowKeys.length} ${t('studentManagement.students')}?`;
+    const confirmContent = t('studentManagement.confirmBulkDeactivate');
+    const displayData = `${selectedRowKeys.length} ${t('studentManagement.students')}`;
     
     setConfirmModal({
       visible: true,
       title: `${t('studentManagement.deactiveAll')} ${t('studentManagement.students')}`,
       content: confirmContent,
+      displayData: displayData,
       onConfirm: async () => {
         setBulkLoading(prev => ({ ...prev, deactive: true }));
         setConfirmModal(prev => ({ ...prev, loading: true }));
@@ -445,7 +450,7 @@ const StudentList = () => {
           
           if (response.success) {
             // Close modal first
-            setConfirmModal({ visible: false, title: '', content: '', onConfirm: null, loading: false });
+            setConfirmModal({ visible: false, title: '', content: '', displayData: null, onConfirm: null, loading: false });
             
             // Clear selection
             setSelectedRowKeys([]);
@@ -460,7 +465,7 @@ const StudentList = () => {
           }
         } catch (error) {
           console.error('Error in bulk update:', error);
-          setConfirmModal({ visible: false, title: '', content: '', onConfirm: null, loading: false });
+          setConfirmModal({ visible: false, title: '', content: '', displayData: null, onConfirm: null, loading: false });
           spaceToast.error(error.response?.data?.error || error.message || t('studentManagement.bulkUpdateStatusError'));
         } finally {
           setBulkLoading(prev => ({ ...prev, deactive: false }));
@@ -830,7 +835,8 @@ const StudentList = () => {
       setConfirmModal({
         visible: true,
         title: t('studentManagement.changeStatus'),
-        content: `${t('studentManagement.confirmStatusChange')} ${actionText} ${t('studentManagement.student')} "${studentName}"?`,
+        content: `${t('studentManagement.confirmStatusChange')} ${actionText} ${t('studentManagement.student')}?`,
+        displayData: studentName,
         onConfirm: async () => {
           try {
             // Call API to update student status
@@ -838,7 +844,7 @@ const StudentList = () => {
             
             if (response.success) {
               // Close modal first
-              setConfirmModal({ visible: false, title: '', content: '', onConfirm: null });
+              setConfirmModal({ visible: false, title: '', content: '', displayData: null, onConfirm: null });
               
               // Show success toast
               if (newStatus === 'ACTIVE') {
@@ -854,7 +860,7 @@ const StudentList = () => {
             }
           } catch (error) {
             console.error('Error updating student status:', error);
-            setConfirmModal({ visible: false, title: '', content: '', onConfirm: null });
+            setConfirmModal({ visible: false, title: '', content: '', displayData: null, onConfirm: null });
             spaceToast.error(error.response?.data?.error || error.response?.data?.message || error.message || t('studentManagement.updateStatusError'));
           }
         }
@@ -872,14 +878,15 @@ const StudentList = () => {
     setConfirmModal({
       visible: true,
       title: t('studentManagement.deleteStudent'),
-      content: `${t('studentManagement.confirmDeletePending')} "${studentName}"? ${t('studentManagement.deletePendingNote')}`,
+      content: `${t('studentManagement.confirmDeletePending')}? ${t('studentManagement.deletePendingNote')}`,
+      displayData: studentName,
       onConfirm: async () => {
         try {
           // Call API to delete student
           const response = await accountManagementApi.deleteAccount(id);
           
           // Close modal first
-          setConfirmModal({ visible: false, title: '', content: '', onConfirm: null });
+          setConfirmModal({ visible: false, title: '', content: '', displayData: null, onConfirm: null });
           
           // Use backend message if available, otherwise fallback to translation
           const successMessage = response.message + ` "${studentName}"`;
@@ -889,7 +896,7 @@ const StudentList = () => {
           fetchStudents(pagination.current, pagination.pageSize, searchValue, statusFilter, roleNameFilter, sortBy, sortDir);
         } catch (error) {
           console.error('Error deleting PENDING student:', error);
-          setConfirmModal({ visible: false, title: '', content: '', onConfirm: null });
+          setConfirmModal({ visible: false, title: '', content: '', displayData: null, onConfirm: null });
           spaceToast.error(error.response?.data?.error || error.response?.data?.message || error.message || t('studentManagement.deleteStudentError'));
         }
       }
@@ -897,7 +904,7 @@ const StudentList = () => {
   };
 
   const handleConfirmCancel = () => {
-    setConfirmModal({ visible: false, title: '', content: '', onConfirm: null });
+    setConfirmModal({ visible: false, title: '', content: '', displayData: null, onConfirm: null });
   };
 
   const handleModalOk = async () => {
@@ -1411,11 +1418,11 @@ const StudentList = () => {
         <Modal
           title={
             <div style={{ 
-              fontSize: '22px', 
+              fontSize: '28px', 
               fontWeight: '600', 
-              color: '#000000ff',
+              color: 'rgb(24, 144, 255)',
               textAlign: 'center',
-              padding: '8px 0'
+              padding: '10px 0'
             }}>
               {editingStudent ? t('studentManagement.editStudent') : t('studentManagement.addNewStudent')}
             </div>
@@ -1429,22 +1436,26 @@ const StudentList = () => {
           okButtonProps={{
             disabled: isButtonDisabled,
             style: {
-              backgroundColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
-              background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
-              borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'transparent',
-              color: theme === 'sun' ? '#000000' : '#ffffff',
-              height: '36px',
-              fontSize: '14px',
+              background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, #7228d9 0%, #9c88ff 100%)',
+              borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : '#7228d9',
+              color: theme === 'sun' ? '#000' : '#fff',
+              borderRadius: '6px',
+              height: '32px',
               fontWeight: '500',
-              minWidth: '100px',
+              fontSize: '16px',
+              padding: '4px 15px',
+              width: '100px',
+              transition: 'all 0.3s ease',
+              boxShadow: 'none'
             },
           }}
           cancelButtonProps={{
             style: {
-              height: '36px',
-              fontSize: '14px',
+              height: '32px',
               fontWeight: '500',
-              minWidth: '80px',
+              fontSize: '16px',
+              padding: '4px 15px',
+              width: '100px'
             },
           }}
         >
@@ -1707,9 +1718,9 @@ const StudentList = () => {
         <Modal
           title={
             <div style={{ 
-              fontSize: '20px', 
+              fontSize: '28px', 
               fontWeight: '600', 
-              color: '#1890ff',
+              color: 'rgb(24, 144, 255)',
               textAlign: 'center',
               padding: '10px 0'
             }}>
@@ -1732,22 +1743,26 @@ const StudentList = () => {
           }}
           okButtonProps={{
             style: {
-              backgroundColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
-              background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
-              borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'transparent',
-              color: theme === 'sun' ? '#000000' : '#ffffff',
-              height: '40px',
-              fontSize: '16px',
+              background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, #7228d9 0%, #9c88ff 100%)',
+              borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : '#7228d9',
+              color: theme === 'sun' ? '#000' : '#fff',
+              borderRadius: '6px',
+              height: '32px',
               fontWeight: '500',
-              minWidth: '100px'
+              fontSize: '16px',
+              padding: '4px 15px',
+              width: '100px',
+              transition: 'all 0.3s ease',
+              boxShadow: 'none'
             }
           }}
           cancelButtonProps={{
             style: {
-              height: '40px',
-              fontSize: '16px',
+              height: '32px',
               fontWeight: '500',
-              minWidth: '100px'
+              fontSize: '16px',
+              padding: '4px 15px',
+              width: '100px'
             }
           }}
         >
@@ -1772,6 +1787,16 @@ const StudentList = () => {
             }}>
               {confirmModal.content}
             </p>
+            {confirmModal.displayData && (
+              <p style={{
+                fontSize: '20px',
+                color: '#000',
+                margin: 0,
+                fontWeight: '400'
+              }}>
+                <strong>{confirmModal.displayData}</strong>
+              </p>
+            )}
           </div>
         </Modal>
 
@@ -1780,9 +1805,9 @@ const StudentList = () => {
           title={
             <div
               style={{
-                fontSize: '20px',
+                fontSize: '28px',
                 fontWeight: '600',
-                color: '#000000',
+                color: 'rgb(24, 144, 255)',
                 textAlign: 'center',
                 padding: '10px 0',
                 display: 'flex',
@@ -1790,7 +1815,7 @@ const StudentList = () => {
                 justifyContent: 'center',
                 gap: '10px',
               }}>
-              <DownloadOutlined style={{ color: '#000000' }} />
+              <DownloadOutlined style={{ color: 'rgb(24, 144, 255)' }} />
               {t('studentManagement.importStudents')}
             </div>
           }
@@ -1805,22 +1830,26 @@ const StudentList = () => {
           okButtonProps={{
             disabled: importModal.fileList.length === 0,
             style: {
-              backgroundColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
-              background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
-              borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'transparent',
-              color: theme === 'sun' ? '#000000' : '#ffffff',
-              height: '40px',
-              fontSize: '16px',
+              background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, #7228d9 0%, #9c88ff 100%)',
+              borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : '#7228d9',
+              color: theme === 'sun' ? '#000' : '#fff',
+              borderRadius: '6px',
+              height: '32px',
               fontWeight: '500',
-              minWidth: '120px',
+              fontSize: '16px',
+              padding: '4px 15px',
+              width: '100px',
+              transition: 'all 0.3s ease',
+              boxShadow: 'none'
             },
           }}
           cancelButtonProps={{
             style: {
-              height: '40px',
-              fontSize: '16px',
+              height: '32px',
               fontWeight: '500',
-              minWidth: '100px',
+              fontSize: '16px',
+              padding: '4px 15px',
+              width: '100px'
             },
           }}>
           <div style={{ padding: '20px 0' }}>
@@ -1922,9 +1951,9 @@ const StudentList = () => {
         <Modal
           title={
             <div style={{ 
-              fontSize: '20px', 
+              fontSize: '28px', 
               fontWeight: '600', 
-              color: '#1890ff',
+              color: 'rgb(24, 144, 255)',
               textAlign: 'center',
               padding: '10px 0'
             }}>
@@ -1950,9 +1979,9 @@ const StudentList = () => {
           title={
             <div
               style={{
-                fontSize: '24px',
+                fontSize: '28px',
                 fontWeight: '600',
-                color: theme === 'dark' ? '#ffffff' : '#000000',
+                color: 'rgb(24, 144, 255)',
                 textAlign: 'center',
                 padding: '10px 0',
               }}>
@@ -1969,7 +1998,7 @@ const StudentList = () => {
               style={{
                 height: '32px',
                 fontWeight: '500',
-                fontSize: '14px',
+                fontSize: '16px',
                 padding: '4px 15px',
                 width: '100px'
               }}>
