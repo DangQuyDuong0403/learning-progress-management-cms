@@ -189,6 +189,8 @@ const ClassTeachers = () => {
       console.log('Teachers response:', response);
       
       if (response.success) {
+        console.log('Teachers data structure:', response.data);
+        console.log('First teacher sample:', response.data?.[0]);
         setTeachers(response.data || []);
         setPagination(prev => ({
           ...prev,
@@ -210,30 +212,36 @@ const ClassTeachers = () => {
   const fetchAvailableTeachers = useCallback(async () => {
     setLoadingTeachers(true);
     try {
-      // Fetch teachers using teacherManagement API
-      const teacherResponse = await teacherManagementApi.getTeachers({
+      // Fetch teachers using teacherManagement API - same format as TeacherList.jsx
+      const teacherParams = {
         page: 0,
         size: 100,
         text: '', // Empty search text to get all
         status: ['ACTIVE'], // Only ACTIVE teachers
-        roleName: ['teacher'], // Only teachers
+        roleName: ['TEACHER'], // Only teachers - use uppercase
         sortBy: 'fullName',
         sortDir: 'asc'
-      });
+      };
       
-      // Fetch teaching assistants using teacherManagement API
-      const taResponse = await teacherManagementApi.getTeachers({
+      const teacherResponse = await teacherManagementApi.getTeachers(teacherParams);
+      
+      // Fetch teaching assistants using teacherManagement API - same format as TeacherList.jsx
+      const taParams = {
         page: 0,
         size: 100,
         text: '', // Empty search text to get all
         status: ['ACTIVE'], // Only ACTIVE teaching assistants
-        roleName: ['teaching_assistant'], // Only teaching assistants
+        roleName: ['TEACHING_ASSISTANT'], // Only teaching assistants - use uppercase
         sortBy: 'fullName',
         sortDir: 'asc'
-      });
+      };
+      
+      const taResponse = await teacherManagementApi.getTeachers(taParams);
       
       console.log('Available teachers response:', teacherResponse);
       console.log('Available TAs response:', taResponse);
+      console.log('Teacher request params:', teacherParams);
+      console.log('TA request params:', taParams);
       
       if (teacherResponse.success) {
         setAvailableTeachers(teacherResponse.data || []);
@@ -258,7 +266,7 @@ const ClassTeachers = () => {
 
   // Ensure header back button appears immediately while class info loads
   useEffect(() => {
-    if (id) {
+    if (id) { 
       enterClassMenu({ id });
     }
     return () => {
@@ -301,6 +309,8 @@ const ClassTeachers = () => {
         console.log('Teachers response:', response);
         
         if (response.success) {
+          console.log('Teachers data structure in useEffect:', response.data);
+          console.log('First teacher sample in useEffect:', response.data?.[0]);
           setTeachers(response.data || []);
           setPagination(prev => ({
             ...prev,
@@ -366,7 +376,9 @@ const ClassTeachers = () => {
         console.log('Remove teacher response:', response);
         
         if (response.success) {
-          spaceToast.success(`${t('classTeachers.deleteSuccess')} ${teacherToDelete.role === 'teacher' ? t('classTeachers.teacher') : t('classTeachers.teachingAssistant')} "${teacherToDelete.name}"`);
+          const isTeacher = teacherToDelete.role === 'teacher' || teacherToDelete.roleInClass === 'TEACHER' || teacherToDelete.roleName === 'TEACHER';
+          const teacherName = teacherToDelete.fullName || teacherToDelete.userName || teacherToDelete.name;
+          spaceToast.success(`${t('classTeachers.deleteSuccess')} ${isTeacher ? t('classTeachers.teacher') : t('classTeachers.teachingAssistant')} "${teacherName}"`);
           
           // Refresh the teachers list
           fetchTeachers();
@@ -729,12 +741,35 @@ const ClassTeachers = () => {
             <div style={{ fontSize: '14px', color: '#24292e' }}>
               <strong>{t('classTeachers.currentClassStatus')}</strong>
             </div>
+          
             <div style={{ fontSize: '13px', color: '#586069', marginTop: '4px' }}>
-              • {t('classTeachers.teacher')}: {teachers.some(t => t.role === "teacher") ? t('classTeachers.assigned') : t('classTeachers.notAssigned')} 
-              {teachers.some(t => t.role === "teacher") && ` (${teachers.find(t => t.role === "teacher")?.name})`}
+              • {t('classTeachers.teacher')}: {(() => {
+                // Simple logic: if there are teachers in the class, show assigned
+                if (teachers.length > 0) {
+                  // Try to find teacher by role first, then by username pattern, then just take first one
+                  const teacher = teachers.find(t => 
+                    t.role === "teacher" || 
+                    t.roleInClass === "TEACHER" || 
+                    t.roleName === "TEACHER"
+                  ) || teachers.find(t => t.userName?.startsWith('TC')) || teachers[0];
+                  
+                  return `${t('classTeachers.assigned')} (${teacher?.fullName || teacher?.userName || 'Unknown'})`;
+                } else {
+                  return t('classTeachers.notAssigned');
+                }
+              })()}
             </div>
             <div style={{ fontSize: '13px', color: '#586069' }}>
-              • {t('classTeachers.teachingAssistant')}: {teachers.filter(t => t.role === "teaching_assistant").length} {t('classTeachers.people')}
+              • {t('classTeachers.teachingAssistant')}: {(() => {
+                // Count teaching assistants (excluding the main teacher)
+                const tas = teachers.filter(t => 
+                  t.role === "teaching_assistant" || 
+                  t.roleInClass === "TEACHING_ASSISTANT" || 
+                  t.roleName === "TEACHING_ASSISTANT" ||
+                  (t.userName?.startsWith('TA') && teachers.length > 1)
+                );
+                return `${tas.length} ${t('classTeachers.people')}`;
+              })()}
             </div>
             <div style={{ fontSize: '13px', color: '#586069' }}>
               • {t('classTeachers.total')} {teachers.length} {t('classTeachers.members')}
@@ -864,7 +899,7 @@ const ClassTeachers = () => {
                margin: 0,
                fontWeight: '500'
              }}>
-               {teacherToDelete?.role === 'teacher' ? t('classTeachers.confirmDeleteTeacher') : t('classTeachers.confirmDeleteTA')} "{teacherToDelete?.name}"?
+               {(teacherToDelete?.role === 'teacher' || teacherToDelete?.roleInClass === 'TEACHER' || teacherToDelete?.roleName === 'TEACHER') ? t('classTeachers.confirmDeleteTeacher') : t('classTeachers.confirmDeleteTA')} "{teacherToDelete?.fullName || teacherToDelete?.userName || teacherToDelete?.name}"?
              </p>
            </div>
          </Modal>

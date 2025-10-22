@@ -59,7 +59,9 @@ const ROUTER_PAGE = {
 	MANAGER_CLASS_ACTIVITIES: '/manager/classes/activities/:id',
 	MANAGER_CLASS_CHAPTERS_LESSONS: '/manager/classes/chapters-lessons/:id',
 	MANAGER_CLASS_CHAPTERS: '/manager/classes/chapters/:classId',
+	MANAGER_CLASS_CHAPTERS_EDIT_ORDER: '/manager/classes/chapters/:classId/edit-order',
 	MANAGER_CLASS_CHAPTER_LESSONS: '/manager/classes/chapters/:classId/:chapterId/lessons',
+	MANAGER_CLASS_CHAPTER_LESSONS_EDIT_ORDER: '/manager/classes/chapters/:classId/lessons/:chapterId/edit-order',
 	// Teacher Management Routes
 	TEACHER_DASHBOARD: '/teacher/dashboard',
 	TEACHER_CLASSES: '/teacher/classes',
@@ -73,6 +75,7 @@ const ROUTER_PAGE = {
 	TEACHER_CLASS_CHAPTERS: '/teacher/classes/chapters/:classId',
 	TEACHER_CLASS_CHAPTERS_EDIT_ORDER: '/teacher/classes/chapters/:classId/edit-order',
 	TEACHER_CLASS_CHAPTER_LESSONS: '/teacher/classes/chapters/:classId/:chapterId/lessons',
+	TEACHER_CLASS_CHAPTER_LESSONS_EDIT_ORDER: '/teacher/classes/chapters/:classId/:chapterId/lessons/edit-order',
 	// Teaching Assistant Management Routes
 	TEACHING_ASSISTANT_CLASSES: '/teaching-assistant/classes',
 	TEACHING_ASSISTANT_CLASS_MENU: '/teaching-assistant/classes/menu/:id',
@@ -82,7 +85,9 @@ const ROUTER_PAGE = {
 	TEACHING_ASSISTANT_CLASS_TEACHERS: '/teaching-assistant/classes/teachers/:id',
 	TEACHING_ASSISTANT_CLASS_ACTIVITIES: '/teaching-assistant/classes/activities/:id',
 	TEACHING_ASSISTANT_CLASS_CHAPTERS_LESSONS: '/teaching-assistant/classes/chapters-lessons/:id',
+	TEACHING_ASSISTANT_CLASS_CHAPTERS_EDIT_ORDER: '/teaching-assistant/classes/chapters/:classId/edit-order',
 	TEACHING_ASSISTANT_CLASS_CHAPTER_LESSONS: '/teaching-assistant/classes/chapters/:classId/:chapterId/lessons',
+	TEACHING_ASSISTANT_CLASS_CHAPTER_LESSONS_EDIT_ORDER: '/teaching-assistant/classes/chapters/:classId/:chapterId/lessons/edit-order',
 	TEACHER_DAILY_CHALLENGES: '/teacher/daily-challenges',
 	TEACHER_DAILY_CHALLENGE_DETAIL: '/teacher/daily-challenges/detail/:id',
 	TEACHER_DAILY_CHALLENGE_CREATE: '/teacher/daily-challenges/create',

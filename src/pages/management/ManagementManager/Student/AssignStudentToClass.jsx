@@ -1,489 +1,459 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import {
-	Form,
-	Button,
-	Row,
-	Col,
-	Card,
-	Tag,
-	Input,
-	List,
-	Avatar,
-	Empty,
-	Spin,
-} from 'antd';
+  Input,
+  Button,
+  Row,
+  Col,
+  Card,
+  Tag,
+  Spin,
+  Empty,
+  List,
+  Avatar,
+} from "antd";
 import {
-	UserOutlined,
-	TeamOutlined,
-	CheckOutlined,
-	SearchOutlined,
-	StarOutlined,
-	ClockCircleOutlined,
-	BookOutlined,
-} from '@ant-design/icons';
-import { useTranslation } from 'react-i18next';
-import { useTheme } from '../../../../contexts/ThemeContext';
-import { spaceToast } from '../../../../component/SpaceToastify';
+  SearchOutlined,
+  CheckOutlined,
+  UserOutlined,
+  BookOutlined,
+  StarOutlined,
+  TeamOutlined,
+  CalendarOutlined,
+} from "@ant-design/icons";
+import { useTheme } from "../../../../contexts/ThemeContext";
+import { spaceToast } from "../../../../component/SpaceToastify";
+import classManagementApi from "../../../../apis/backend/classManagement";
 
-
-const AssignStudentToClass = ({ student, onClose }) => {
+const AssignStudentToClass = ({ student, onClose, onSuccess }) => {
 	const { t } = useTranslation();
 	const { theme } = useTheme();
-	const [form] = Form.useForm();
-	const [loading, setLoading] = useState(false);
-	const [searchText, setSearchText] = useState('');
+  
+  // State management
+  const [searchText, setSearchText] = useState("");
+  const [searchResults, setSearchResults] = useState([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [hasSearched, setHasSearched] = useState(false);
+  const [selectedClass, setSelectedClass] = useState(null);
+  const [assigningLoading, setAssigningLoading] = useState(false);
 
-	// Mock data for all available classes - replace with actual API calls
-	const [allClasses] = useState([
-		{
-			id: 1,
-			name: 'Lớp 10A1 - Beginner',
-			level: 'Beginner',
-			ageRange: '15-16 years',
-			currentTeacher: 'Nguyễn Văn B',
-			studentCount: 15,
-			maxStudents: 25,
-			status: 'active',
-			assigned: false,
-			rating: 4.5,
-			schedule: 'Mon, Wed, Fri - 8:00-9:30',
-		},
-		{
-			id: 2,
-			name: 'Lớp 10A2 - Intermediate',
-			level: 'Intermediate',
-			ageRange: '15-16 years',
-			currentTeacher: 'Trần Thị C',
-			studentCount: 20,
-			maxStudents: 25,
-			status: 'active',
-			assigned: false,
-			rating: 4.8,
-			schedule: 'Tue, Thu, Sat - 9:00-10:30',
-		},
-		{
-			id: 3,
-			name: 'Lớp 11B1 - Advanced',
-			level: 'Advanced',
-			ageRange: '16-17 years',
-			currentTeacher: 'Lê Văn D',
-			studentCount: 18,
-			maxStudents: 25,
-			status: 'active',
-			assigned: true,
-			rating: 4.9,
-			schedule: 'Mon, Wed, Fri - 10:00-11:30',
-		},
-		{
-			id: 4,
-			name: 'Lớp 9C1 - Beginner',
-			level: 'Beginner',
-			ageRange: '14-15 years',
-			currentTeacher: 'Phạm Thị E',
-			studentCount: 12,
-			maxStudents: 25,
-			status: 'active',
-			assigned: false,
-			rating: 4.3,
-			schedule: 'Tue, Thu, Sat - 14:00-15:30',
-		},
-		{
-			id: 5,
-			name: 'Lớp 12A1 - Advanced',
-			level: 'Advanced',
-			ageRange: '17-18 years',
-			currentTeacher: 'Hoàng Văn F',
-			studentCount: 22,
-			maxStudents: 25,
-			status: 'active',
-			assigned: false,
-			rating: 4.7,
-			schedule: 'Mon, Wed, Fri - 15:00-16:30',
-		},
-		{
-			id: 6,
-			name: 'Lớp 10B1 - Intermediate',
-			level: 'Intermediate',
-			ageRange: '15-16 years',
-			currentTeacher: 'Vũ Thị G',
-			studentCount: 16,
-			maxStudents: 25,
-			status: 'active',
-			assigned: false,
-			rating: 4.6,
-			schedule: 'Tue, Thu, Sat - 16:00-17:30',
-		},
-		{
-			id: 7,
-			name: 'Lớp 11A1 - Beginner',
-			level: 'Beginner',
-			ageRange: '16-17 years',
-			currentTeacher: 'Đỗ Văn H',
-			studentCount: 14,
-			maxStudents: 25,
-			status: 'active',
-			assigned: false,
-			rating: 4.4,
-			schedule: 'Mon, Wed, Fri - 17:00-18:30',
-		},
-	]);
+  // Search and recommendation logic
+  const handleSearch = useCallback(async (searchValue) => {
+    if (!searchValue.trim()) {
+      setSearchResults([]);
+      setHasSearched(false);
+      return;
+    }
 
-	// State for search and recommendations
-	const [searchResults, setSearchResults] = useState([]);
-	const [isSearching, setIsSearching] = useState(false);
-	const [hasSearched, setHasSearched] = useState(false);
+    setIsSearching(true);
+    setHasSearched(true);
 
-	const [selectedClass, setSelectedClass] = useState(null);
+    try {
+      // Call API to search classes with multiple status filters
+      const response = await classManagementApi.getClasses({
+        page: 0,
+        size: 100,
+        searchText: searchValue.trim(),
+        status: ['ACTIVE', 'PENDING', 'UPCOMING_END'] // Filter on backend
+      });
 
-	useEffect(() => {
-		if (student) {
-			// Pre-select class where this student is already assigned
-			const assignedClass = allClasses.find(cls => cls.assigned);
-			setSelectedClass(assignedClass ? assignedClass.id : null);
-		}
-	}, [student, allClasses]);
+      if (response.success && response.data) {
+        const classes = response.data;
 
-	const handleSubmit = async (values) => {
-		setLoading(true);
-		try {
-			// Simulate API call
-			await new Promise(resolve => setTimeout(resolve, 1000));
-			
-			spaceToast.success(t('studentManagement.assignStudentSuccess'));
-			onClose();
-		} catch (error) {
-			spaceToast.error(t('studentManagement.assignStudentError'));
-		} finally {
-			setLoading(false);
-		}
-	};
+        // Add recommendation logic based on student's level
+        const recommended = classes.map(cls => {
+          let recommendationScore = 0;
+          let reasons = [];
 
-	const handleClassSelection = (classId) => {
-		setSelectedClass(classId);
-	};
+          // Check if student is already assigned to this class
+          const isAlreadyAssigned = cls.students && cls.students.some(s => s.id === student.id);
 
-	// Search and recommendation logic
-	const handleSearch = useCallback(async (searchValue) => {
-		if (!searchValue.trim()) {
-			setSearchResults([]);
-			setHasSearched(false);
-			return;
-		}
+          // Level matching (highest priority)
+          if (cls.syllabus && cls.syllabus.level && student?.currentLevelInfo) {
+            const classLevel = cls.syllabus.level.levelName || cls.syllabus.level;
+            const studentLevel = student.currentLevelInfo.levelName || student.currentLevelInfo.name;
+            if (classLevel && studentLevel && classLevel.toLowerCase() === studentLevel.toLowerCase()) {
+              recommendationScore += 50;
+              reasons.push(t('studentManagement.levelMatch'));
+            }
+          }
 
-		setIsSearching(true);
-		setHasSearched(true);
+          // Class capacity (prefer classes with more students)
+          if (cls.students && cls.students.length > 15) {
+            recommendationScore += 30;
+            reasons.push(t('studentManagement.goodClassSize'));
+          }
 
-		try {
-			// Simulate API call delay
-			await new Promise(resolve => setTimeout(resolve, 800));
+          // Class status scoring
+          if (cls.status === 'ACTIVE') {
+            recommendationScore += 30;
+            reasons.push(t('studentManagement.activeClass'));
+          } else if (cls.status === 'PENDING') {
+            recommendationScore += 20;
+            reasons.push(t('studentManagement.pendingClass'));
+          } else if (cls.status === 'UPCOMING_END') {
+            recommendationScore += 10;
+            reasons.push(t('studentManagement.upcomingEndClass'));
+          }
 
-			// Filter classes based on search
-			const filtered = allClasses.filter((cls) => {
-				const matchesSearch =
-					cls.name.toLowerCase().includes(searchValue.toLowerCase()) ||
-					cls.level.toLowerCase().includes(searchValue.toLowerCase()) ||
-					(cls.currentTeacher && cls.currentTeacher.toLowerCase().includes(searchValue.toLowerCase()));
-				return matchesSearch && cls.status === 'active';
-			});
+          return {
+            ...cls,
+            recommendationScore,
+            reasons,
+            isRecommended: recommendationScore >= 30,
+            isAlreadyAssigned,
+            studentCount: cls.students ? cls.students.length : 0,
+            maxStudents: cls.maxStudents || 25,
+            currentTeachers: cls.teacherInfos || []
+          };
+        });
 
-			// Add recommendation logic based on student's level and age
-			const recommended = filtered.map(cls => {
-				let recommendationScore = 0;
-				let reasons = [];
+        // Sort by recommendation score (highest first), then by name
+        recommended.sort((a, b) => {
+          if (b.recommendationScore !== a.recommendationScore) {
+            return b.recommendationScore - a.recommendationScore;
+          }
+          // Use className instead of name, with fallback to empty string
+          const nameA = a.className || a.name || '';
+          const nameB = b.className || b.name || '';
+          return nameA.localeCompare(nameB);
+        });
 
-				// Level matching (highest priority)
-				if (cls.level === student?.level) {
-					recommendationScore += 50;
-					reasons.push(t('studentManagement.levelMatch'));
-				}
+        setSearchResults(recommended);
+      } else {
+        setSearchResults([]);
+      }
+    } catch (error) {
+      console.error('Error searching classes:', error);
+      const errorMessage = error.response?.data?.error || error.response?.data?.message || error.message || t('studentManagement.searchError');
+      spaceToast.error(errorMessage);
+      setSearchResults([]);
+    } finally {
+      setIsSearching(false);
+    }
+  }, [student, t]);
 
-				// Age range matching
-				const studentAge = student?.age || 16; // Default age if not provided
-				const ageRange = cls.ageRange.match(/(\d+)-(\d+)/);
-				if (ageRange) {
-					const minAge = parseInt(ageRange[1]);
-					const maxAge = parseInt(ageRange[2]);
-					if (studentAge >= minAge && studentAge <= maxAge) {
-						recommendationScore += 30;
-						reasons.push(t('studentManagement.ageMatch'));
-					}
-				}
+  // Debounced search
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      handleSearch(searchText);
+    }, 500);
 
-				// Class capacity (prefer classes with more available spots)
-				const availableSpots = cls.maxStudents - cls.studentCount;
-				if (availableSpots > 5) {
-					recommendationScore += 20;
-					reasons.push(t('studentManagement.goodCapacity'));
-				}
+    return () => clearTimeout(timeoutId);
+  }, [searchText, handleSearch]);
 
-				// Teacher rating
-				if (cls.rating >= 4.5) {
-					recommendationScore += 10;
-					reasons.push(t('studentManagement.highRatedTeacher'));
-				}
+  // Handle class selection (single selection only)
+  const handleClassSelection = (classId) => {
+    if (selectedClass?.id === classId) {
+      setSelectedClass(null);
+    } else {
+      const classItem = searchResults.find(cls => cls.id === classId);
+      setSelectedClass(classItem);
+    }
+  };
 
-				return {
-					...cls,
-					recommendationScore,
-					reasons,
-					isRecommended: recommendationScore >= 30
-				};
-			});
+  // Handle assign student to class
+  const handleAssignToClass = async () => {
+    if (!selectedClass) {
+      spaceToast.warning(t('studentManagement.selectAtLeastOneClass'));
+      return;
+    }
 
-			// Sort by recommendation score (highest first)
-			recommended.sort((a, b) => b.recommendationScore - a.recommendationScore);
+    if (!student || !student.id) {
+      spaceToast.error('Student information is missing');
+      return;
+    }
 
-			setSearchResults(recommended);
-		} catch (error) {
-			spaceToast.error(t('studentManagement.searchError'));
-		} finally {
-			setIsSearching(false);
-		}
-	}, [allClasses, student, t]);
+    setAssigningLoading(true);
+    try {
+      const response = await classManagementApi.addStudentsToClass(selectedClass.id, [student.id]);
+      
+      if (response.success) {
+        spaceToast.success(t('studentManagement.assignStudentSuccess'));
+        onClose(); // Close modal
+        if (onSuccess) {
+          onSuccess(); // Refresh the student list
+        }
+      } 
+    } catch (error) {
+      console.error('Error assigning student to class:', error);
+      const errorMessage = error.response?.data?.error || error.response?.data?.message || error.message || t('studentManagement.assignStudentError');
+      spaceToast.error(errorMessage);
+    } finally {
+      setAssigningLoading(false);
+    }
+  };
 
-	// Debounced search
-	useEffect(() => {
-		const timeoutId = setTimeout(() => {
-			handleSearch(searchText);
-		}, 500);
-
-		return () => clearTimeout(timeoutId);
-	}, [searchText, handleSearch]);
-
-	// Render class recommendation item
-	const renderClassItem = (classItem) => (
-		<List.Item
-			key={classItem.id}
-			className={`class-recommendation-item ${theme}-class-recommendation-item`}
-			style={{
-				background: selectedClass === classItem.id ? 'rgba(24, 144, 255, 0.1)' : 'transparent',
-				border: selectedClass === classItem.id ? '2px solid #1890ff' : '1px solid #d9d9d9',
-				borderRadius: '8px',
-				marginBottom: '12px',
-				padding: '16px',
-				cursor: 'pointer',
-			}}
-			onClick={() => handleClassSelection(classItem.id)}
-		>
-			<List.Item.Meta
-				avatar={
-					<Avatar 
-						icon={<BookOutlined />} 
-						style={{ 
-							backgroundColor: classItem.isRecommended ? '#52c41a' : '#1890ff',
-							color: 'white'
-						}} 
-					/>
-				}
-				title={
-					<div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-						<span style={{ fontWeight: 'bold', fontSize: '16px' }}>
-							{classItem.name}
-						</span>
-						{classItem.isRecommended && (
-							<Tag color="green" icon={<StarOutlined />}>
-								{t('studentManagement.recommended')}
-							</Tag>
-						)}
-					</div>
-				}
-				description={
-					<div>
-						<div style={{ marginBottom: '8px' }}>
-							<Tag color="blue">{classItem.level}</Tag>
-							<Tag color="orange">{classItem.ageRange}</Tag>
-							<Tag color="purple">
-								<TeamOutlined /> {classItem.studentCount}/{classItem.maxStudents}
-							</Tag>
-						</div>
-						<div style={{ marginBottom: '8px' }}>
-							<span style={{ color: '#666' }}>
-								<ClockCircleOutlined /> {classItem.schedule}
-							</span>
-						</div>
-						<div style={{ marginBottom: '8px' }}>
-							<span style={{ color: '#666' }}>
-								{t('studentManagement.teacher')}: {classItem.currentTeacher}
-							</span>
-							<span style={{ marginLeft: '16px', color: '#faad14' }}>
-								<StarOutlined /> {classItem.rating}/5.0
-							</span>
-						</div>
-						{classItem.reasons && classItem.reasons.length > 0 && (
-							<div>
-								<span style={{ color: '#52c41a', fontSize: '12px' }}>
-									{t('studentManagement.recommendationReasons')}: {classItem.reasons.join(', ')}
-								</span>
-							</div>
-						)}
-					</div>
-				}
-			/>
-			<div>
-				{selectedClass === classItem.id ? (
-					<Button
-						type="primary"
-						icon={<CheckOutlined />}
-						size="small"
-						onClick={(e) => {
-							e.stopPropagation();
-							setSelectedClass(null);
-						}}
-					>
-						{t('studentManagement.selected')}
-					</Button>
-				) : (
-					<Button
-						type="default"
-						icon={<CheckOutlined />}
-						size="small"
-						disabled={classItem.studentCount >= classItem.maxStudents}
-						style={{
-							backgroundColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
-							background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
-							borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'transparent',
-							color: theme === 'sun' ? '#000000' : '#ffffff',
-						}}
-						onClick={(e) => {
-							e.stopPropagation();
-							handleClassSelection(classItem.id);
-						}}
-					>
-						{t('studentManagement.select')}
-					</Button>
-				)}
-			</div>
-		</List.Item>
-	);
-
-	return (
-		<div className={`assign-student-form ${theme}-assign-student-form`}>
-			{/* Student Info Card */}
-			<Card 
-				title={t('studentManagement.studentInfo')}
-				className={`student-info-card ${theme}-student-info-card`}
-				style={{ marginBottom: 24 }}
-			>
-				<Row gutter={16}>
-					<Col span={8}>
-						<div style={{ textAlign: 'center' }}>
-							<UserOutlined style={{ fontSize: '48px', color: '#1890ff' }} />
-						</div>
-					</Col>
-					<Col span={16}>
-						<div>
-							<h3 style={{ margin: 0, fontSize: '20px', fontWeight: 'bold' }}>
-								{student?.firstName} {student?.lastName}
-							</h3>
-							<p style={{ margin: '8px 0', color: '#666' }}>
-								{student?.email}
-							</p>
-							<p style={{ margin: '8px 0', color: '#666' }}>
-								{student?.phoneNumber}
-							</p>
-							<Tag color="blue">
-								{student?.userName}
-							</Tag>
-							<Tag color="orange" style={{ marginLeft: 8 }}>
-								{student?.currentLevelInfo?.name || 'N/A'}
-							</Tag>
-						</div>
-					</Col>
-				</Row>
-			</Card>
-
-			<Form
-				form={form}
-				layout="vertical"
-				onFinish={handleSubmit}
-			>
-				{/* Search Classes */}
-				<Card 
-					title={t('studentManagement.searchAndRecommendClasses')}
-					className={`search-card ${theme}-search-card`}
-					style={{ marginBottom: 24 }}
-				>
-					<Row gutter={16}>
-						<Col span={24}>
-							<Input
-								prefix={<SearchOutlined />}
-								value={searchText}
-								onChange={(e) => setSearchText(e.target.value)}
-								className={`search-input ${theme}-search-input`}
-								style={{ height: '40px', fontSize: '16px' }}
-								allowClear
-								size="large"
-							/>
-						</Col>
-					</Row>
-					
-					{/* Search Results */}
-					{hasSearched && (
-						<div style={{ marginTop: '16px' }}>
-							{isSearching ? (
-								<div style={{ textAlign: 'center', padding: '40px 0' }}>
-									<Spin size="large" />
-									<div style={{ marginTop: '16px', color: '#666' }}>
-										{t('studentManagement.searchingClasses')}
-									</div>
-								</div>
-							) : searchResults.length > 0 ? (
-								<div>
-									<div style={{ marginBottom: '16px', color: '#666' }}>
-										{t('studentManagement.foundClasses', { count: searchResults.length })}
-									</div>
-									<List
-										dataSource={searchResults}
-										renderItem={renderClassItem}
-										className={`search-results-list ${theme}-search-results-list`}
-									/>
-								</div>
-							) : (
-								<Empty
-									description={t('studentManagement.noClassesFound')}
-									image={Empty.PRESENTED_IMAGE_SIMPLE}
-								/>
-							)}
-						</div>
-					)}
-				</Card>
+  // Render class recommendation item
+  const renderClassItem = (classItem) => {
+    const isSelected = selectedClass?.id === classItem.id;
+    const isAlreadyAssigned = classItem.isAlreadyAssigned;
+    
+    return (
+      <List.Item
+        key={classItem.id}
+        className={`class-recommendation-item ${theme}-class-recommendation-item`}
+        style={{
+          background: isSelected ? 'rgba(24, 144, 255, 0.1)' : 'transparent',
+          border: isSelected ? '2px solid #1890ff' : '1px solid #d9d9d9',
+          borderRadius: '8px',
+          marginBottom: '12px',
+          padding: '16px',
+          cursor: isAlreadyAssigned ? 'not-allowed' : 'pointer',
+          opacity: isAlreadyAssigned ? 0.6 : 1,
+        }}
+        onClick={() => !isAlreadyAssigned && handleClassSelection(classItem.id)}
+      >
+        <List.Item.Meta
+          avatar={
+            <Avatar 
+              icon={<BookOutlined />} 
+              style={{ 
+                backgroundColor: isAlreadyAssigned ? '#ff4d4f' : 
+                                classItem.isRecommended ? '#52c41a' : '#1890ff',
+                color: 'white'
+              }} 
+            />
+          }
+          title={
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ fontWeight: 'bold', fontSize: '16px' }}>
+                {classItem.className || classItem.name || 'Unnamed Class'}
+              </span>
+              {classItem.isRecommended && !isAlreadyAssigned && (
+                <Tag color="green" icon={<StarOutlined />}>
+                  {t('studentManagement.recommended')}
+                </Tag>
+              )}
+              {isAlreadyAssigned && (
+                <Tag color="red">
+                  {t('studentManagement.alreadyAssigned')}
+                </Tag>
+              )}
+            </div>
+          }
+          description={
+            <div>
+              <div style={{ marginBottom: '8px' }}>
+                <div style={{ fontSize: '12px', color: theme === 'dark' ? '#cccccc' : '#666666', marginBottom: '4px' }}>
+                  <span style={{ fontWeight: '500' }}>Code:</span> {classItem.classCode}
+                </div>
+                {classItem.syllabus && (
+                  <Tag color="blue">
+                    {classItem.syllabus.level?.levelName || classItem.syllabus.syllabusName || classItem.syllabus.level || classItem.syllabus.name}
+                  </Tag>
+                )}
+                <Tag color="purple">
+                  <TeamOutlined /> {classItem.studentCount || 0}/{classItem.maxStudents || 25}
+                </Tag>
+                <Tag color={
+                  classItem.status === 'ACTIVE' ? 'green' : 
+                  classItem.status === 'PENDING' ? 'orange' : 
+                  classItem.status === 'UPCOMING_END' ? 'blue' : 'default'
+                }>
+                  {classItem.status === 'ACTIVE' ? t('common.active') : 
+                   classItem.status === 'PENDING' ? t('common.pending') : 
+                   classItem.status === 'UPCOMING_END' ? t('classManagement.upcomingEnd') : t('common.inactive')}
+                </Tag>
+              </div>
+              
+              {classItem.startDate && (
+                <div style={{ marginBottom: '8px' }}>
+                  <span style={{ color: '#666' }}>
+                    <CalendarOutlined /> {t('studentManagement.startDate')}: {new Date(classItem.startDate).toLocaleDateString()}
+                  </span>
+                </div>
+              )}
+              
+              <div style={{ marginBottom: '8px' }}>
+                <span style={{ color: '#666' }}>
+                  {t('studentManagement.currentTeachers')}: {
+                    classItem.teacherInfos && classItem.teacherInfos.length > 0 
+                      ? classItem.teacherInfos.map(t => t.fullName || t.userName).join(', ')
+                      : t('studentManagement.noTeacher')
+                  }
+                </span>
+              </div>
+              
+              {classItem.reasons && classItem.reasons.length > 0 && !isAlreadyAssigned && (
+                <div>
+                  <span style={{ color: '#52c41a', fontSize: '12px' }}>
+                    {t('studentManagement.recommendationReasons')}: {classItem.reasons.join(', ')}
+                  </span>
+                </div>
+              )}
+            </div>
+          }
+        />
+        <div>
+          {isAlreadyAssigned ? (
+            <Button
+              type="default"
+              disabled
+              size="small"
+              style={{ color: '#ff4d4f', borderColor: '#ff4d4f' }}
+            >
+              {t('studentManagement.alreadyAssigned')}
+            </Button>
+          ) : isSelected ? (
+            <Button
+              type="primary"
+              icon={<CheckOutlined />}
+              size="small"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleClassSelection(classItem.id);
+              }}
+            >
+              {t('common.selected')}
+            </Button>
+          ) : (
+            <Button
+              type="default"
+              icon={<CheckOutlined />}
+              size="small"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleClassSelection(classItem.id);
+              }}
+            >
+              {t('common.select')}
+            </Button>
+          )}
+        </div>
+      </List.Item>
+    );
+  };
 
 
-				{/* Action Buttons */}
-				<Row gutter={16} style={{ marginTop: 32 }}>
-					<Col span={12}>
-						<Button
-							type="default"
-							onClick={onClose}
-							style={{ width: '100%', height: 40 }}
-							className={`cancel-button ${theme}-cancel-button`}
-						>
-							{t('common.cancel')}
-						</Button>
-					</Col>
-					<Col span={12}>
-						<Button
-							type="primary"
-							htmlType="submit"
-							loading={loading}
-							disabled={!selectedClass}
-							style={{ 
-								width: '100%', 
-								height: 40,
-								backgroundColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
-								background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
-								borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'transparent',
-								color: theme === 'sun' ? '#000000' : '#ffffff',
-							}}
-							className={`submit-button ${theme}-submit-button`}
-						>
-							{t('studentManagement.assignToSelectedClass')}
-						</Button>
-					</Col>
-				</Row>
-			</Form>
-		</div>
-	);
+  return (
+    <div className={`assign-student-form ${theme}-assign-student-form`}>
+      {/* Student Info Card */}
+      <Card 
+        title={t('studentManagement.studentInfo')}
+        className={`student-info-card ${theme}-student-info-card`}
+        style={{ marginBottom: 24 }}
+      >
+        <Row gutter={16}>
+          <Col span={8}>
+            <div style={{ textAlign: 'center' }}>
+              <UserOutlined style={{ fontSize: '48px', color: '#1890ff' }} />
+            </div>
+          </Col>
+          <Col span={16}>
+            <div>
+              <h3 style={{ margin: 0, fontSize: '20px' }}>
+                {student?.fullName || student?.userName || student?.name}
+              </h3>
+              <Tag color={student?.roleName === 'STUDENT' ? 'blue' : 'green'}>
+                {student?.roleName === 'STUDENT' 
+                  ? t('common.student') 
+                  : t('common.testTaker')
+                }
+              </Tag>
+              {student?.currentLevelInfo && (
+                <Tag color="orange" style={{ marginLeft: 8 }}>
+                  {student.currentLevelInfo.levelName || student.currentLevelInfo.name}
+                </Tag>
+              )}
+              {student?.email && (
+                <div style={{ marginTop: '8px', color: '#666' }}>
+                  {student.email}
+                </div>
+              )}
+            </div>
+          </Col>
+        </Row>
+      </Card>
+
+      {/* Search Classes */}
+      <Card 
+        title={t('studentManagement.searchAndRecommendClasses')}
+        className={`search-card ${theme}-search-card`}
+        style={{ marginBottom: 24 }}
+      >
+        <Row gutter={16}>
+          <Col span={24}>
+            <Input
+              prefix={<SearchOutlined />}
+              value={searchText}
+              onChange={(e) => setSearchText(e.target.value)}
+              className={`search-input ${theme}-search-input`}
+              style={{ height: '40px', fontSize: '16px' }}
+              allowClear
+              size="large"
+            />
+          </Col>
+        </Row>
+        
+        {/* Search Results */}
+        {hasSearched && (
+          <div style={{ marginTop: '16px' }}>
+            {isSearching ? (
+              <div style={{ textAlign: 'center', padding: '40px 0' }}>
+                <Spin size="large" />
+                <div style={{ marginTop: '16px', color: '#666' }}>
+                  {t('studentManagement.searchingClasses')}
+                </div>
+              </div>
+            ) : searchResults.length > 0 ? (
+              <div>
+                <div style={{ marginBottom: '16px', color: '#666' }}>
+                  {t('studentManagement.foundClasses', { count: searchResults.length })}
+                </div>
+                <List
+                  dataSource={searchResults}
+                  renderItem={renderClassItem}
+                  className={`search-results-list ${theme}-search-results-list`}
+                />
+              </div>
+            ) : (
+              <Empty
+                description={t('studentManagement.noClassesFound')}
+                image={Empty.PRESENTED_IMAGE_SIMPLE}
+              />
+            )}
+          </div>
+        )}
+      </Card>
+
+      {/* Action Buttons */}
+      <Row gutter={16} style={{ marginTop: 32 }}>
+        <Col span={12}>
+          <Button
+            type="default"
+            onClick={onClose}
+            style={{ width: '100%', height: 40 }}
+            className={`cancel-button ${theme}-cancel-button`}
+          >
+            {t('common.cancel')}
+          </Button>
+        </Col>
+        <Col span={12}>
+          <Button
+            type="primary"
+            onClick={handleAssignToClass}
+            loading={assigningLoading}
+            disabled={!selectedClass || assigningLoading}
+            style={{ 
+              width: '100%', 
+              height: 40,
+              backgroundColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
+              background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
+              borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'transparent',
+              color: theme === 'sun' ? '#000000' : '#ffffff',
+            }}
+            className={`submit-button ${theme}-submit-button`}
+          >
+            {selectedClass 
+              ? `${t('studentManagement.assignToSelectedClass')}`
+              : t('studentManagement.assignToSelectedClass')
+            }
+          </Button>
+        </Col>
+      </Row>
+    </div>
+  );
 };
 
 export default AssignStudentToClass;
