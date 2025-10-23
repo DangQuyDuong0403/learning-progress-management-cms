@@ -962,14 +962,16 @@ const ClassListTable = () => {
 							onClick={() => handleViewDetail(record)}
 						/>
 					</Tooltip>
-					<Tooltip title={t('classManagement.changeStatus')}>
-						<Button
-							type="text"
-							size="small"
-							icon={<SwapOutlined style={{ fontSize: '20px', color: '#1890ff' }} />}
-							onClick={() => handleStatusChange(record)}
-						/>
-					</Tooltip>
+					{record.status !== 'FINISHED' && (
+						<Tooltip title={t('classManagement.changeStatus')}>
+							<Button
+								type="text"
+								size="small"
+								icon={<SwapOutlined style={{ fontSize: '20px', color: '#1890ff' }} />}
+								onClick={() => handleStatusChange(record)}
+							/>
+						</Tooltip>
+					)}
 					{record.status !== 'FINISHED' && (
 						<Tooltip title={t('classManagement.edit')}>
 							<Button
@@ -1468,18 +1470,6 @@ const ClassListTable = () => {
 							required={!editingClass}
 							rules={[
 								{ required: !editingClass, message: 'Please select start date' },
-								{
-									validator(_, value) {
-										if (!value) {
-											return Promise.resolve();
-										}
-										const today = dayjs().startOf('day');
-										if (value.isBefore(today)) {
-											return Promise.reject(new Error('Start date cannot be in the past'));
-										}
-										return Promise.resolve();
-									},
-								},
 							]}
 						>
 							<DatePicker 
@@ -1490,10 +1480,7 @@ const ClassListTable = () => {
 									height: "40px",
 								}}
 								format="YYYY-MM-DD"
-								disabledDate={(current) => {
-									// Disable dates before today
-									return current && current < dayjs().startOf('day');
-								}}
+								// Allow all dates including past dates
 							/>
 						</Form.Item>
 
