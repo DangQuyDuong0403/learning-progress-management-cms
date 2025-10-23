@@ -1409,7 +1409,10 @@ const SyllabusList = () => {
 				</div>
 				}
 				open={importModal.visible}
+				onOk={handleImportOk}
 				onCancel={handleImportCancel}
+				okText={t('syllabusManagement.import')}
+				cancelText={t('common.cancel')}
 				width={600}
 				centered
 				confirmLoading={importModal.uploading}

@@ -1540,7 +1540,7 @@ const AccountList = () => {
 							margin: 0,
 							fontWeight: '400'
 						}}>
-							<strong>{deleteAccount.fullName}</strong>
+							<strong>{deleteAccount.username}</strong>
 						</p>
 					)}
 				</div>
