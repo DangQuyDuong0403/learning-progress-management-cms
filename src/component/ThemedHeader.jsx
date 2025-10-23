@@ -312,7 +312,7 @@ export default function ThemedHeader() {
                   color: theme === 'sun' ? '#1e40af' : '#fff',
                   textShadow: theme === 'sun' ? '0 0 5px rgba(30, 64, 175, 0.3)' : '0 0 15px rgba(134, 134, 134, 0.8)'
                 }}>
-                  {classData.name}
+                  {classData.description || classData.name}
                 </h2>
               </div>
             )}
