@@ -812,7 +812,8 @@ const StudentList = () => {
     setEditingStudent(null);
     form.resetFields();
     form.setFieldsValue({
-      status: 'active' // Set default status
+      status: 'active', // Set default status
+      gender: 'MALE' // Set default gender to Male
     });
     setIsModalVisible(true);
   };
@@ -1444,7 +1445,7 @@ const StudentList = () => {
               fontWeight: '500',
               fontSize: '16px',
               padding: '4px 15px',
-              width: '100px',
+              width: '140px',
               transition: 'all 0.3s ease',
               boxShadow: 'none'
             },

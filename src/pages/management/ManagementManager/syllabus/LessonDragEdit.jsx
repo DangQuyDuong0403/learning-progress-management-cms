@@ -321,34 +321,35 @@ const LessonDragEdit = () => {
 	}, [fetchAllLessons, fetchChapterInfo]);
 
 	// Fetch syllabus info and enter menu mode
-	const fetchSyllabusInfo = useCallback(async () => {
-		if (!syllabusId) return;
-		
-		try {
-			const response = await syllabusManagementApi.getSyllabuses({
-				params: { page: 0, size: 100 }
-			});
-			
-			const syllabus = response.data.find(s => s.id === parseInt(syllabusId));
-			if (syllabus) {
-				enterSyllabusMenu({
-					id: syllabus.id,
-					name: syllabus.syllabusName,
-					description: syllabus.description,
-				});
-			}
-		} catch (error) {
-			console.error('Error fetching syllabus info:', error);
-		}
-	}, [syllabusId, enterSyllabusMenu]);
-
 	useEffect(() => {
+		const fetchSyllabusInfo = async () => {
+			if (!syllabusId || !chapterInfo) return;
+			
+			try {
+				const response = await syllabusManagementApi.getSyllabuses({
+					params: { page: 0, size: 100 }
+				});
+				
+				const syllabus = response.data.find(s => s.id === parseInt(syllabusId));
+				if (syllabus) {
+					enterSyllabusMenu({
+						id: syllabus.id,
+						name: syllabus.syllabusName,
+						description: syllabus.description,
+						chapterName: chapterInfo.name,
+					});
+				}
+			} catch (error) {
+				console.error('Error fetching syllabus info:', error);
+			}
+		};
+
 		fetchSyllabusInfo();
 		
 		return () => {
 			exitSyllabusMenu();
 		};
-	}, [fetchSyllabusInfo, exitSyllabusMenu]);
+	}, [syllabusId, chapterInfo, enterSyllabusMenu, exitSyllabusMenu]);
 
 	const handleAddLessonAtPosition = useCallback((index) => {
 		setEditingLesson(null);

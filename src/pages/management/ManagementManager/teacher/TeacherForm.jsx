@@ -7,6 +7,7 @@ import {
 	Row,
 	Col,
 	DatePicker,
+	Radio,
 } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../../../contexts/ThemeContext';
@@ -95,7 +96,7 @@ const TeacherForm = ({ teacher, onClose, onSuccess }) => {
 				layout="vertical"
 				onFinish={handleSubmit}
 				initialValues={{
-					// No default values - user must select
+					gender: 'MALE' // Default to Male
 				}}
 			>
 
@@ -231,14 +232,11 @@ const TeacherForm = ({ teacher, onClose, onSuccess }) => {
 							}
 							rules={[{ required: true, message: t('teacherManagement.genderRequired') }]}
 						>
-							<Select 
-								placeholder={t('teacherManagement.genderPlaceholder')}
-								className={`custom-dropdown ${theme}-custom-dropdown`}
-							>
-								<Option value="MALE">{t('teacherManagement.male')}</Option>
-								<Option value="FEMALE">{t('teacherManagement.female')}</Option>
-								<Option value="OTHER">{t('teacherManagement.other')}</Option>
-							</Select>
+							<Radio.Group>
+								<Radio value="MALE">{t('teacherManagement.male')}</Radio>
+								<Radio value="FEMALE">{t('teacherManagement.female')}</Radio>
+								<Radio value="OTHER">{t('teacherManagement.other')}</Radio>
+							</Radio.Group>
 						</Form.Item>
 					</Col>
 				</Row>

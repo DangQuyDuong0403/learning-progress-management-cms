@@ -10,6 +10,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useTheme } from '../../../../contexts/ThemeContext';
+import { useClassMenu } from '../../../../contexts/ClassMenuContext';
 import { spaceToast } from '../../../../component/SpaceToastify';
 import ThemedLayoutWithSidebar from '../../../../component/ThemedLayout';
 import ThemedLayoutNoSidebar from '../../../../component/teacherlayout/ThemedLayout';
@@ -186,6 +187,7 @@ const TeacherClassChapterDragEdit = () => {
 	const navigate = useNavigate();
 	const { classId } = useParams();
 	const { user } = useSelector((state) => state.auth);
+	const { enterClassMenu, exitClassMenu } = useClassMenu();
 	
 	// Determine which layout to use based on user role
 	const userRole = user?.role?.toLowerCase();
@@ -297,6 +299,27 @@ const TeacherClassChapterDragEdit = () => {
 			fetchAllChapters();
 		}
 	}, [fetchAllChapters, classId]);
+
+	// Handle class menu updates - separate effects to avoid infinite loops
+	useEffect(() => {
+		if (classId) {
+			enterClassMenu({ id: classId });
+		}
+		return () => exitClassMenu();
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [classId]);
+
+	useEffect(() => {
+		if (classInfo && classId) {
+			enterClassMenu({
+				id: classInfo.id,
+				name: classInfo.name,
+				description: classInfo.name,
+				backUrl: `${routePrefix}/chapters/${classId}`
+			});
+		}
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [classInfo?.id, classInfo?.name, classId]);
 
 	const handleAddChapterAtPosition = useCallback((index) => {
 		setEditingChapter(null);

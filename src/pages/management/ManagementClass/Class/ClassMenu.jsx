@@ -11,7 +11,6 @@ import {
   BookOutlined,
   SolutionOutlined,
   EyeOutlined,
-  BarChartOutlined,
   TrophyOutlined,
 } from "@ant-design/icons";
 import ThemedLayoutWithSidebar from "../../../../component/ThemedLayout";
@@ -101,10 +100,25 @@ const ClassMenu = () => {
   // Enter class menu mode when component mounts
   useEffect(() => {
     if (classData) {
+      // Determine back URL based on user role
+      const getBackUrl = () => {
+        const userRole = user?.role?.toLowerCase();
+        switch (userRole) {
+          case 'teacher':
+          case 'teaching_assistant':
+            return '/teacher/classes';
+          case 'manager':
+            return '/manager/classes';
+          default:
+            return '/manager/classes';
+        }
+      };
+
       enterClassMenu({
         id: classData.id,
         name: classData.name,
-        description: classData.description
+        description: classData.description,
+        backUrl: getBackUrl()
       });
     }
     
@@ -112,7 +126,7 @@ const ClassMenu = () => {
     return () => {
       exitClassMenu();
     };
-  }, [classData, enterClassMenu, exitClassMenu]);
+  }, [classData, enterClassMenu, exitClassMenu, user]);
 
   // Theme-based colors for cards
   const getCardBackgroundColor = () => {
