@@ -18,6 +18,10 @@ const ROUTER_PAGE = {
 	SETTINGS: '/settings',
 	// Student Dashboard
 	STUDENT_DASHBOARD: '/student/dashboard',
+	STUDENT_CLASS_MENU: '/student/classes/menu/:id',
+	STUDENT_CLASS_CHAPTERS_LESSONS: '/student/classes/chapters-lessons/:id',
+	STUDENT_CLASS_CHAPTERS: '/student/classes/chapters/:classId',
+	STUDENT_CLASS_CHAPTER_LESSONS: '/student/classes/chapters/:classId/:chapterId/lessons',
 	// Admin Management Routes
 	ADMIN_DASHBOARD: '/admin/dashboard',
 	ADMIN_ACCOUNTS: '/admin/accounts',
@@ -96,6 +100,7 @@ const ROUTER_PAGE = {
 	TEACHER_DAILY_CHALLENGES_FORM: '/teacher/daily-challenges/forms',
 	TEACHER_CREATE_GRAMMAR_VOCAB_CHALLENGE: '/teacher/daily-challenges/create/grammar-vocabulary',
 	TEACHER_CREATE_READING_CHALLENGE: '/teacher/daily-challenges/create/reading',
+	TEACHER_CLASS_DAILY_CHALLENGES: '/teacher/classes/daily-challenges/:classId',
 };
 
 export default ROUTER_PAGE;

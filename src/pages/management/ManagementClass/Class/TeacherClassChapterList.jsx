@@ -30,6 +30,7 @@ import teacherManagementApi from '../../../../apis/backend/teacherManagement';
 import { useSelector } from 'react-redux';
 import usePageTitle from '../../../../hooks/usePageTitle';
 import { spaceToast } from '../../../../component/SpaceToastify';
+import { decodeJWT, getRoleFromToken } from '../../../../utils/jwtUtils';
 
 const TeacherClassChapterList = () => {
 	const { t } = useTranslation();
@@ -41,12 +42,25 @@ const TeacherClassChapterList = () => {
 	
 	// Determine which layout to use based on user role
 	const userRole = user?.role?.toLowerCase();
-	const ThemedLayout = (userRole === 'teacher' || userRole === 'teaching_assistant') 
+	const ThemedLayout = (userRole === 'teacher' || userRole === 'teaching_assistant' || userRole === 'student') 
 		? ThemedLayoutNoSidebar 
 		: ThemedLayoutWithSidebar;
 	
-	// Check if user is MANAGER (view-only access)
+	// Check if user is MANAGER or STUDENT (view-only access)
 	const isManager = userRole === 'manager';
+	const isStudent = userRole === 'student';
+
+	// Check URL path and redirect if student tries to access manager routes
+	useEffect(() => {
+		const currentPath = window.location.pathname;
+		const isStudentAccessingManagerRoute = isStudent && currentPath.includes('/manager/');
+		
+		if (isStudentAccessingManagerRoute) {
+			console.log('Student trying to access manager route, redirecting to 404');
+			navigate('/404', { replace: true });
+			return;
+		}
+	}, [isStudent, navigate]);
 
 	// Set page title
 	usePageTitle('Chapter Management');
@@ -89,6 +103,8 @@ const TeacherClassChapterList = () => {
 				return '/teacher/classes';
 			case 'teaching_assistant':
 				return '/teaching-assistant/classes';
+			case 'student':
+				return '/student/classes';
 			default:
 				return '/manager/classes';
 		}
@@ -451,7 +467,7 @@ const TeacherClassChapterList = () => {
 
 	const columns = [
 		{
-			title: 'STT',
+			title: t('common.stt'),
 			key: 'index',
 			width: '10%',
 			render: (_, __, index) => {
@@ -595,7 +611,7 @@ const TeacherClassChapterList = () => {
 						</Space>
 					</Col>
 					<Col>
-						{!isManager && (
+						{!isManager && !isStudent && (
 							<Space>
 								<Button
 									icon={<DownloadOutlined />}

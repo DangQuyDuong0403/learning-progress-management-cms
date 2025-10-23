@@ -6,10 +6,12 @@ import {
   Input,
   Select,
   Pagination,
+  DatePicker,
 } from "antd";
 import {
   SearchOutlined,
 } from "@ant-design/icons";
+import dayjs from 'dayjs';
 import ThemedLayoutWithSidebar from "../../../../component/ThemedLayout";
 import ThemedLayoutNoSidebar from "../../../../component/teacherlayout/ThemedLayout";
 import LoadingWithEffect from "../../../../component/spinner/LoadingWithEffect";
@@ -100,6 +102,13 @@ const ClassActivities = () => {
     sortDir: 'desc',
   });
 
+  // Filter state
+  const [filters, setFilters] = useState({
+    startDate: null,
+    endDate: null,
+    actionBy: null,
+  });
+
   const fetchClassData = useCallback(async () => {
     try {
       const response = await classManagementApi.getClassDetail(id);
@@ -136,53 +145,59 @@ const ClassActivities = () => {
         page: params.page !== undefined ? params.page : pagination.current - 1,
         size: params.size !== undefined ? params.size : pagination.pageSize,
         sortBy: params.sortBy !== undefined ? params.sortBy : sortConfig.sortBy,
-        sortDir: params.sortDir !== undefined ? params.sortDir : sortConfig.sortDir
+        sortDir: params.sortDir !== undefined ? params.sortDir : sortConfig.sortDir,
+        startDate: filters.startDate ? filters.startDate.format('YYYY-MM-DDTHH:mm:ss[Z]') : undefined,
+        endDate: filters.endDate ? filters.endDate.format('YYYY-MM-DDTHH:mm:ss[Z]') : undefined,
+        actionBy: filters.actionBy || undefined
       };
       
-      const response = await classManagementApi.getClassActivities(id, apiParams);
-      console.log('🔍 API Response:', response);
-      console.log('🔍 Response total:', response?.total);
-      console.log('🔍 Response data length:', response?.data?.length);
+      const response = await classManagementApi.getClassHistory(id, apiParams);
+      console.log('🔍 Class History API Response:', response);
+      console.log('🔍 Response data:', response?.data);
       
-      // Check if response is successful
-      if (response && response.success) {
-        // Handle different response structures
-        let activitiesData = [];
-        if (response.data && Array.isArray(response.data)) {
+      // Handle different response structures
+      let activitiesData = [];
+      let totalElements = 0;
+      
+      if (response && response.data) {
+        // Check if response has pagination structure
+        if (response.data.content && Array.isArray(response.data.content)) {
+          activitiesData = response.data.content;
+          totalElements = response.data.totalElements || response.data.total || 0;
+        } 
+        // Check if response is direct array
+        else if (Array.isArray(response.data)) {
           activitiesData = response.data;
-        } else if (Array.isArray(response)) {
-          activitiesData = response;
+          totalElements = response.data.length;
         }
-        
-        console.log('🔍 Activities data:', activitiesData);
-        setActivities(activitiesData);
-        
-        // Update pagination if available
-        if (response.total !== undefined) {
-          console.log('🔍 Setting total to:', response.total);
-          setPagination(prev => ({
-            ...prev,
-            total: response.total
-          }));
-        } else {
-          console.log('🔍 No total in response, setting total to activities length:', activitiesData.length);
-          setPagination(prev => ({
-            ...prev,
-            total: activitiesData.length
-          }));
+        // Check if response has data property
+        else if (response.data.data && Array.isArray(response.data.data)) {
+          activitiesData = response.data.data;
+          totalElements = response.data.totalElements || response.data.total || response.data.data.length;
         }
-      } else {
-        spaceToast.error(t('classActivities.loadingActivities'));
-        setActivities([]);
       }
+      
+      console.log('🔍 Activities data:', activitiesData);
+      console.log('🔍 Total elements:', totalElements);
+      
+      setActivities(activitiesData);
+      setPagination(prev => ({
+        ...prev,
+        total: totalElements
+      }));
+      
     } catch (error) {
-      console.error('Error fetching activities:', error);
+      console.error('Error fetching class history:', error);
       spaceToast.error(t('classActivities.loadingActivities'));
       setActivities([]);
+      setPagination(prev => ({
+        ...prev,
+        total: 0
+      }));
     } finally {
       setLoading(false);
     }
-  }, [id, t]);
+  }, [id, t, pagination.current, pagination.pageSize, sortConfig.sortBy, sortConfig.sortDir, filters]);
 
   // Initial data loading
   useEffect(() => {
@@ -250,6 +265,32 @@ const ClassActivities = () => {
     }));
   };
 
+  // Handle filter changes
+  const handleFilterChange = (filterType, value) => {
+    setFilters(prev => ({
+      ...prev,
+      [filterType]: value
+    }));
+    // Reset to first page when filters change
+    setPagination(prev => ({
+      ...prev,
+      current: 1,
+    }));
+  };
+
+  // Clear all filters
+  const handleClearFilters = () => {
+    setFilters({
+      startDate: null,
+      endDate: null,
+      actionBy: null,
+    });
+    setPagination(prev => ({
+      ...prev,
+      current: 1,
+    }));
+  };
+
   // Filter activities based on search text
   const filteredActivities = activities.filter(activity => 
     (activity.actionByFullName && activity.actionByFullName.toLowerCase().includes(searchText.toLowerCase())) ||
@@ -282,7 +323,7 @@ const ClassActivities = () => {
             </Typography.Title>
         </div>
 
-        {/* Search and Sort Section */}
+        {/* Search and Filter Section */}
         <div className="search-section" style={{ display: 'flex', gap: '12px', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap' }}>
           <Input
             prefix={<SearchOutlined />}
@@ -291,23 +332,73 @@ const ClassActivities = () => {
             className={`search-input ${theme}-search-input`}
             style={{ minWidth: '250px', maxWidth: '400px', width: '350px', height: '40px', fontSize: '16px' }}
             allowClear
+            placeholder={t('classActivities.searchPlaceholder')}
           />
           
-           {/* Sort Controls */}
-           <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-             <span className="sort-by-text">
-               {t('classActivities.sortBy')}:
-             </span>
-             <Select
-               value={sortConfig.sortBy}
-               onChange={(value) => handleSortChange(value, sortConfig.sortDir)}
-               style={{ width: '140px', height: '40px' }}
-               options={[
-                 { value: 'actionAt', label: t('classActivities.actionAt') },
-                 { value: 'actionType', label: t('classActivities.actionType') },
-               ]}
-             />
-           </div>
+          {/* Date Range Filters */}
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            <span className="filter-text">
+              {t('classActivities.startDate')}:
+            </span>
+            <DatePicker
+              value={filters.startDate}
+              onChange={(date) => handleFilterChange('startDate', date)}
+              placeholder={t('classActivities.selectStartDate')}
+              style={{ height: '40px' }}
+              format="YYYY-MM-DD"
+            />
+          </div>
+
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            <span className="filter-text">
+              {t('classActivities.endDate')}:
+            </span>
+            <DatePicker
+              value={filters.endDate}
+              onChange={(date) => handleFilterChange('endDate', date)}
+              placeholder={t('classActivities.selectEndDate')}
+              style={{ height: '40px' }}
+              format="YYYY-MM-DD"
+            />
+          </div>
+
+          {/* Action By Filter */}
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            <span className="filter-text">
+              {t('classActivities.actionBy')}:
+            </span>
+            <Input
+              value={filters.actionBy}
+              onChange={(e) => handleFilterChange('actionBy', e.target.value)}
+              placeholder={t('classActivities.actionByPlaceholder')}
+              style={{ width: '120px', height: '40px' }}
+              allowClear
+            />
+          </div>
+
+          {/* Sort Controls */}
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            <span className="sort-by-text">
+              {t('classActivities.sortBy')}:
+            </span>
+            <Select
+              value={sortConfig.sortBy}
+              onChange={(value) => handleSortChange(value, sortConfig.sortDir)}
+              style={{ width: '140px', height: '40px' }}
+              options={[
+                { value: 'actionAt', label: t('classActivities.actionAt') },
+                { value: 'actionType', label: t('classActivities.actionType') },
+              ]}
+            />
+          </div>
+
+          {/* Clear Filters Button */}
+          <Button
+            onClick={handleClearFilters}
+            style={{ height: '40px' }}
+          >
+            {t('classActivities.clearFilters')}
+          </Button>
         </div>
 
         {/* Activities Timeline Section */}

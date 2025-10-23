@@ -37,6 +37,7 @@ import teacherManagementApi from '../../../../apis/backend/teacherManagement';
 import { useSelector } from 'react-redux';
 import BottomActionBar from '../../../../component/BottomActionBar';
 import './ClassChapterLesson.css';
+import { decodeJWT, getRoleFromToken } from '../../../../utils/jwtUtils';
 
 
 const ClassChapterLesson = () => {
@@ -49,13 +50,26 @@ const ClassChapterLesson = () => {
 	
 	// Determine which layout to use based on user role
 	const userRole = user?.role?.toLowerCase();
-	const ThemedLayout = (userRole === 'teacher' || userRole === 'teaching_assistant') 
+	const ThemedLayout = (userRole === 'teacher' || userRole === 'teaching_assistant' || userRole === 'student') 
 		? ThemedLayoutNoSidebar 
 		: ThemedLayoutWithSidebar;
 	
-	// Check if user is MANAGER (view-only access)
+	// Check if user is MANAGER or STUDENT (view-only access)
 	const isManager = userRole === 'manager';
-	
+	const isStudent = userRole === 'student';
+
+	// Check URL path and redirect if student tries to access manager routes
+	useEffect(() => {
+		const currentPath = window.location.pathname;
+		const isStudentAccessingManagerRoute = isStudent && currentPath.includes('/manager/');
+		
+		if (isStudentAccessingManagerRoute) {
+			console.log('Student trying to access manager route, redirecting to 404');
+			navigate('/404', { replace: true });
+			return;
+		}
+	}, [isStudent, navigate]);
+
 	// Set page title
 	usePageTitle('Class Chapter & Lesson');
 
@@ -108,6 +122,8 @@ const ClassChapterLesson = () => {
 				return '/teacher/classes';
 			case 'teaching_assistant':
 				return '/teaching-assistant/classes';
+			case 'student':
+				return '/student/classes';
 			default:
 				return '/manager/classes';
 		}
@@ -722,7 +738,7 @@ const ClassChapterLesson = () => {
 			key: 'actions',
 			width: '10%',
 			render: (_, record) => (
-				!isManager ? (
+				!isManager && !isStudent ? (
 					<Space size="small">
 						<Tooltip title={t('common.edit')}>
 							<Button
@@ -808,7 +824,7 @@ const ClassChapterLesson = () => {
 						</Space>
 						</Col>
 						<Col>
-							{!isManager && (
+							{!isManager && !isStudent && (
 								<Space>
 									<Button
 									icon={<DownloadOutlined />}
@@ -836,7 +852,7 @@ const ClassChapterLesson = () => {
 						dataSource={filteredLessons}
 						rowKey="id"
 						loading={loading}
-						rowSelection={!isManager ? {
+						rowSelection={!isManager && !isStudent ? {
 							selectedRowKeys,
 							onChange: setSelectedRowKeys,
 							onSelectAll: handleSelectAll,
@@ -853,8 +869,8 @@ const ClassChapterLesson = () => {
 				</div>
 			</div>
 
-			{/* Bottom Action Bar - Only show for non-manager roles */}
-			{!isManager && (
+			{/* Bottom Action Bar - Only show for non-manager and non-student roles */}
+			{!isManager && !isStudent && (
 				<BottomActionBar
 					selectedCount={selectedRowKeys.length}
 					onSelectAll={handleSelectAll}

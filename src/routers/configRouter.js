@@ -225,6 +225,54 @@ const CONFIG_ROUTER = [
 		role: 'student',
 	},
 	
+	// Student Class Menu
+	{
+		show: false,
+		component: ClassMenu,
+		path: ROUTER_PAGE.STUDENT_CLASS_MENU,
+		menuName: 'Class Menu',
+		exact: true,
+		key: 'STUDENT_CLASS_MENU',
+		private: true,
+		role: 'student',
+	},
+	
+	// Student Class Chapters/Lessons
+	{
+		show: false,
+		component: ClassChapterLesson,
+		path: ROUTER_PAGE.STUDENT_CLASS_CHAPTERS_LESSONS,
+		menuName: 'Class Chapters/Lessons',
+		exact: true,
+		key: 'STUDENT_CLASS_CHAPTERS_LESSONS',
+		private: true,
+		role: 'student',
+	},
+	
+	// Student Class Chapters List
+	{
+		show: false,
+		component: TeacherClassChapterList,
+		path: ROUTER_PAGE.STUDENT_CLASS_CHAPTERS,
+		menuName: 'Class Chapters',
+		exact: true,
+		key: 'STUDENT_CLASS_CHAPTERS',
+		private: true,
+		role: 'student',
+	},
+	
+	// Student Class Chapter Lessons List
+	{
+		show: false,
+		component: ClassChapterLesson,
+		path: ROUTER_PAGE.STUDENT_CLASS_CHAPTER_LESSONS,
+		menuName: 'Class Chapter Lessons',
+		exact: true,
+		key: 'STUDENT_CLASS_CHAPTER_LESSONS',
+		private: true,
+		role: 'student',
+	},
+	
 	// Admin Management Routes
 	{
 		show: false, // Tạm thời ẩn dashboard khỏi sidebar
@@ -930,6 +978,16 @@ const CONFIG_ROUTER = [
 		menuName: 'Create Reading Challenge',
 		exact: true,
 		key: 'TEACHER_CREATE_READING_CHALLENGE',
+		private: true,
+		role: ['teacher', 'teaching_assistant'],
+	},
+	{
+		show: false,
+		component: DailyChallengeList,
+		path: ROUTER_PAGE.TEACHER_CLASS_DAILY_CHALLENGES,
+		menuName: 'Class Daily Challenges',
+		exact: true,
+		key: 'TEACHER_CLASS_DAILY_CHALLENGES',
 		private: true,
 		role: ['teacher', 'teaching_assistant'],
 	},
