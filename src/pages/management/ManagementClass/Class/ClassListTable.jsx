@@ -1465,18 +1465,6 @@ const ClassListTable = () => {
 							required={!editingClass}
 							rules={[
 								{ required: !editingClass, message: 'Please select start date' },
-								{
-									validator(_, value) {
-										if (!value) {
-											return Promise.resolve();
-										}
-										const today = dayjs().startOf('day');
-										if (value.isBefore(today)) {
-											return Promise.reject(new Error('Start date cannot be in the past'));
-										}
-										return Promise.resolve();
-									},
-								},
 							]}
 						>
 							<DatePicker 
@@ -1487,10 +1475,7 @@ const ClassListTable = () => {
 									height: "40px",
 								}}
 								format="YYYY-MM-DD"
-								disabledDate={(current) => {
-									// Disable dates before today
-									return current && current < dayjs().startOf('day');
-								}}
+								// Allow all dates including past dates
 							/>
 						</Form.Item>
 
