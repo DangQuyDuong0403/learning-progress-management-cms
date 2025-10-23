@@ -355,6 +355,28 @@ const DailyChallengeSubmissionDetail = () => {
           </div>
         </div>
 
+        {/* Action Buttons */}
+        <div className="sdc-action-section" style={{ padding: '0 24px 16px 24px', display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+          <Button
+            className={`tab-button ${theme}-tab-button`}
+            onClick={() => {
+              // Handle add score/feedback
+              spaceToast.info('Add score/feedback feature coming soon');
+            }}
+          >
+            {t('dailyChallenge.addScoreFeedback')}
+          </Button>
+          <Button
+            className={`tab-button ${theme}-tab-button`}
+            onClick={() => {
+              // Handle edit score/feedback
+              spaceToast.info('Edit score/feedback feature coming soon');
+            }}
+          >
+            {t('dailyChallenge.editScoreFeedback')}
+          </Button>
+        </div>
+
         {/* Filter Tabs */}
         <div className="sdc-filter-tabs-section" style={{ padding: '0 24px 16px 24px' }}>
           <Space size="middle">
