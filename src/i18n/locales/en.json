@@ -1131,7 +1131,7 @@
   "classChapterLesson": {
     "title": "Class Chapters and Lessons",
     "chaptersLessons": "Chapters/Lessons",
-    "syllabus": "Syllabus",
+    "syllabusCode": "Syllabus Code",
     "loadingClassInfo": "Loading class information...",
     "loadingChapters": "Loading chapters...",
     "loadingLessons": "Loading lessons...",
@@ -1421,6 +1421,8 @@
     "addSyllabus": "Add Syllabus",
     "editSyllabus": "Edit Syllabus",
     "deleteSyllabus": "Delete Syllabus",
+    "syllabus": "Syllabus",
+    "syllabusCode": "Syllabus Code",
     "syllabusList": "Syllabus List",
     "stt": "No",
     "syllabusName": "Syllabus Name",

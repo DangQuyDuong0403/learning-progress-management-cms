@@ -100,6 +100,7 @@ const ChapterListPage = () => {
 			const mappedChapters = response.data.map((chapter) => ({
 				id: chapter.id,
 				name: chapter.chapterName,
+				chapterCode: chapter.chapterCode,
 				description: chapter.description,
 				order: chapter.orderNumber,
 				status: chapter.status,
@@ -553,17 +554,28 @@ const ChapterListPage = () => {
 				);
 			},
 		},
-	{
-		title: t('chapterManagement.chapterName'),
-		dataIndex: 'name',
-		key: 'name',
-		width: '20%',
-		render: (text) => (
-			<div style={{ fontSize: '20px' }}>
-				{text}
-			</div>
-		),
-	},
+		{
+			title: t('chapterManagement.chapterCode'),
+			dataIndex: 'chapterCode',
+			key: 'chapterCode',
+			width: '15%',
+			render: (text) => (
+				<div style={{ fontSize: '20px' }}>
+					{text}
+				</div>
+			),
+		},
+		{
+			title: t('chapterManagement.chapterName'),
+			dataIndex: 'name',
+			key: 'name',
+			width: '20%',
+			render: (text) => (
+				<div style={{ fontSize: '20px' }}>
+					{text}
+				</div>
+			),
+		},
 		{
 			title: t('chapterManagement.actions'),
 			key: 'actions',
