@@ -480,7 +480,7 @@ const TeacherProfile = () => {
 					{/* Current Classes */}
 					<div 
 						style={{ 
-							background: '#ffffff',
+							background: theme === 'sun' ? '#ffffff' : 'rgb(224, 217, 255, 0.95)',
 							borderRadius: '16px',
 							padding: '20px',
 							boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',

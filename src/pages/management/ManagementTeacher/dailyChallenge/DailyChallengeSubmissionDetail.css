@@ -182,6 +182,54 @@
   flex: 1;
 }
 
+/* ===== ACTION BUTTONS ===== */
+.tab-button {
+  height: 40px;
+  padding: 0 24px;
+  border-radius: 8px;
+  border: none;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+/* Default theme (dark) tab buttons */
+.tab-button {
+  background: linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%);
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(131, 119, 160, 0.3);
+}
+
+.tab-button:hover {
+  filter: brightness(1.15);
+  box-shadow: 0 2px 8px rgba(131, 119, 160, 0.4);
+}
+
+/* Space theme tab buttons */
+.space-theme .tab-button {
+  background: linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%);
+  color: black;
+  box-shadow: 0 2px 8px rgba(131, 119, 160, 0.3);
+}
+
+.space-theme .tab-button:hover {
+  filter: brightness(1.15);
+  box-shadow: 0 2px 8px rgba(131, 119, 160, 0.4);
+}
+
+/* Sun theme tab buttons */
+.sun-theme .tab-button {
+  background: linear-gradient(135deg, #66AEFF, #3C99FF);
+  color: #000;
+  box-shadow: 0 2px 8px rgba(60, 153, 255, 0.3);
+}
+
+.sun-theme .tab-button:hover {
+  filter: brightness(1.15);
+  box-shadow: 0 2px 8px rgba(60, 153, 255, 0.4);
+}
+
 /* ===== FILTER TABS ===== */
 .sdc-filter-tabs-section {
   margin-bottom: 0;
@@ -438,6 +486,15 @@
   .sdc-filter-tab {
     flex: 1;
     min-width: 100px;
+  }
+
+  .sdc-action-section {
+    flex-wrap: wrap;
+  }
+
+  .tab-button {
+    padding: 0 16px;
+    font-size: 14px;
   }
 }
 
