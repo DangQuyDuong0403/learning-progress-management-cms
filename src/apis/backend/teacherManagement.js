@@ -221,16 +221,81 @@ const teacherManagementApi = {
 		});
 	},
 
-	importClassChapters: (importData) => {
-		const url = `/class-chapter/import`;
+	importClassLessons: (classId, formData) => {
+		const url = `/class-lesson/import?classId=${classId}`;
 		
-		return axiosClient.post(url, importData, {
+		return axiosClient.post(url, formData, {
 			headers: {
 				'accept': '*/*',
-				'Content-Type': 'application/json',
+				'Content-Type': 'multipart/form-data',
+			}
+		}).catch(error => {
+			console.error('ImportClassLessons API Error:', error);
+			console.error('Error response:', error.response?.data);
+			console.error('Error status:', error.response?.status);
+			throw error;
+		});
+	},
+
+	validateClassLessonImportFile: (classId, formData) => {
+		const url = `/class-lesson/validate-import?classId=${classId}`;
+		
+		return axiosClient.post(url, formData, {
+			headers: {
+				'accept': '*/*',
+				'Content-Type': 'multipart/form-data',
+			},
+			responseType: 'blob', // Important to receive file from server
+		}).catch(error => {
+			console.error('ValidateClassLessonImportFile API Error:', error);
+			console.error('Error response:', error.response?.data);
+			console.error('Error status:', error.response?.status);
+			throw error;
+		});
+	},
+
+	downloadClassLessonTemplate: () => {
+		const url = `/class-lesson/download-template`;
+		
+		return axiosClient.get(url, {
+			headers: {
+				'accept': '*/*',
+			}
+		}).catch(error => {
+			console.error('DownloadClassLessonTemplate API Error:', error);
+			console.error('Error response:', error.response?.data);
+			console.error('Error status:', error.response?.status);
+			throw error;
+		});
+	},
+
+	importClassChapters: (classId, formData) => {
+		const url = `/class-chapter/import?classId=${classId}`;
+		
+		return axiosClient.post(url, formData, {
+			headers: {
+				'accept': '*/*',
+				'Content-Type': 'multipart/form-data',
 			}
 		}).catch(error => {
 			console.error('ImportClassChapters API Error:', error);
+			console.error('Error response:', error.response?.data);
+			console.error('Error status:', error.response?.status);
+			throw error;
+		});
+	},
+
+	validateClassChapterImportFile: (classId, formData) => {
+		const url = `/class-chapter/validate-import?classId=${classId}`;
+		
+		return axiosClient.post(url, formData, {
+			headers: {
+				'accept': '*/*',
+				'Content-Type': 'multipart/form-data',
+			},
+			responseType: 'blob', // Important to receive file from server
+		}).catch(error => {
+			console.error('ValidateClassChapterImportFile API Error:', error);
 			console.error('Error response:', error.response?.data);
 			console.error('Error status:', error.response?.status);
 			throw error;
