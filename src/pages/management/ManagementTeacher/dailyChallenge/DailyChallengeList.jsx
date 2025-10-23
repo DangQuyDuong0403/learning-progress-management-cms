@@ -20,11 +20,12 @@ import LoadingWithEffect from "../../../../component/spinner/LoadingWithEffect";
 import SimpleDailyChallengeModal from "./SimpleDailyChallengeModal"; // New simple modal
 import "./DailyChallengeList.css";
 import { spaceToast } from "../../../../component/SpaceToastify";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useTheme } from "../../../../contexts/ThemeContext";
 import { useDailyChallengeMenu } from "../../../../contexts/DailyChallengeMenuContext";
 import usePageTitle from "../../../../hooks/usePageTitle";
+import { useSelector } from "react-redux";
 
 // Select removed in favor of AccountList-style filter dropdown
 
@@ -90,7 +91,9 @@ const mockDailyChallenges = [
 const DailyChallengeList = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const location = useLocation();
   const { theme } = useTheme();
+  const { user } = useSelector((state) => state.auth);
   const { enterDailyChallengeMenu, exitDailyChallengeMenu, updateChallengeCount } = useDailyChallengeMenu();
   
   // Set page title
@@ -161,15 +164,35 @@ const DailyChallengeList = () => {
 
   // Enter/exit daily challenge menu mode
   useEffect(() => {
+    // Get classId from location state (if coming from class menu)
+    const classId = location.state?.classId;
+    
+    // Determine back path based on user role and classId
+    const getBackPath = () => {
+      if (classId) {
+        // If coming from class menu, go back to that class menu
+        const userRole = user?.role?.toLowerCase();
+        const routePrefix = userRole === 'teacher' || userRole === 'teaching_assistant' 
+          ? '/teacher/classes' 
+          : '/manager/classes';
+        return `${routePrefix}/menu/${classId}`;
+      } else {
+        // Otherwise, go back to classes list
+        const userRole = user?.role?.toLowerCase();
+        return userRole === 'teacher' || userRole === 'teaching_assistant' 
+          ? '/teacher/classes' 
+          : '/manager/classes';
+      }
+    };
+    
     // Enter daily challenge menu mode when component mounts
-    // Set backPath to class menu
-    enterDailyChallengeMenu(0, null, '/teacher/classes');
+    enterDailyChallengeMenu(0, null, getBackPath());
     
     // Exit daily challenge menu mode when component unmounts
     return () => {
       exitDailyChallengeMenu();
     };
-  }, [enterDailyChallengeMenu, exitDailyChallengeMenu]);
+  }, [enterDailyChallengeMenu, exitDailyChallengeMenu, location.state, user]);
 
   // Update challenge count when filters change
   useEffect(() => {
