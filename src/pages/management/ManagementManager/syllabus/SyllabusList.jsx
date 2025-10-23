@@ -112,6 +112,7 @@ const SyllabusList = () => {
 			const mappedSyllabuses = response.data.map((syllabus) => ({
 				id: syllabus.id,
 				name: syllabus.syllabusName,
+				syllabusCode: syllabus.syllabusCode,
 				description: syllabus.description,
 				levelId: syllabus.levelId,
 				level: syllabus.level,
@@ -847,6 +848,17 @@ const SyllabusList = () => {
 				const pageSize = pagination.pageSize || 10;
 				return (currentPage - 1) * pageSize + index + 1;
 			},
+		},
+		{
+			title: t('syllabusManagement.syllabusCode'),
+			dataIndex: 'syllabusCode',
+			key: 'syllabusCode',
+			width: '12%',
+			render: (text) => (
+				<div style={{ fontSize: '20px' }}>
+					{text}
+				</div>
+			),
 		},
 		{
 			title: t('syllabusManagement.syllabusName'),
