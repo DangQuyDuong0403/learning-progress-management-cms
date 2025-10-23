@@ -68,8 +68,18 @@ const ClassStudent = () => {
   const [importModal, setImportModal] = useState({
     visible: false,
     fileList: [],
-    uploading: false
+    uploading: false,
+    validating: false
   });
+  const [isExportModalVisible, setIsExportModalVisible] = useState(false);
+  const [buttonLoading, setButtonLoading] = useState({
+    add: false,
+    delete: false,
+    import: false,
+    export: false,
+  });
+  const [exportLoading, setExportLoading] = useState(false);
+  const [templateLoading, setTemplateLoading] = useState(false);
   const [filterDropdown, setFilterDropdown] = useState({
     visible: false,
     selectedStatuses: [],
@@ -176,7 +186,7 @@ const ClassStudent = () => {
       console.error('Error fetching class data:', error);
       spaceToast.error(error.response?.data?.error);
     }
-  }, [id, t]);
+  }, [id]);
 
   const fetchStudents = useCallback(async (params = {}) => {
     try {
@@ -206,7 +216,7 @@ const ClassStudent = () => {
       spaceToast.error(error.response?.data?.error );
       setStudents([]);
     }
-  }, [id, t]);
+  }, [id]);
 
   // Fetch available students for adding to class
   const fetchAvailableStudents = useCallback(async (searchText = '') => {
@@ -284,7 +294,8 @@ const ClassStudent = () => {
     ]).finally(() => {
       setLoading(false);
     });
-  }, [id]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]); // Only run when id changes
 
   // Ensure header back button appears immediately while class info loads
   useEffect(() => {
@@ -294,7 +305,8 @@ const ClassStudent = () => {
     return () => {
       exitClassMenu();
     };
-  }, [id]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]); // Only run when id changes
 
   // Enter class menu mode when component mounts
   useEffect(() => {
@@ -310,13 +322,18 @@ const ClassStudent = () => {
     return () => {
       exitClassMenu();
     };
-  }, [classData?.id, classData?.name, students.length]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [classData?.id, classData?.name, students.length]); // Only run when these specific values change
 
   const handleAddStudent = () => {
-    setSelectedStudents([]);
-    setIsModalVisible(true);
-    // Fetch available students when opening modal
-    fetchAvailableStudents("");
+    setButtonLoading(prev => ({ ...prev, add: true }));
+    setTimeout(() => {
+      setSelectedStudents([]);
+      setIsModalVisible(true);
+      // Fetch available students when opening modal
+      fetchAvailableStudents("");
+      setButtonLoading(prev => ({ ...prev, add: false }));
+    }, 100);
   };
 
 
@@ -354,8 +371,12 @@ const ClassStudent = () => {
 
   const handleDeleteStudent = (student) => {
     console.log("Delete button clicked for student:", student);
-    setStudentToDelete(student);
-    setIsDeleteModalVisible(true);
+    setButtonLoading(prev => ({ ...prev, delete: true }));
+    setTimeout(() => {
+      setStudentToDelete(student);
+      setIsDeleteModalVisible(true);
+      setButtonLoading(prev => ({ ...prev, delete: false }));
+    }, 100);
   };
 
   const handleConfirmDelete = async () => {
@@ -398,39 +419,152 @@ const ClassStudent = () => {
   };
 
   const handleImport = () => {
-    setImportModal(prev => ({
-      ...prev,
-      visible: true,
-      fileList: [],
-      uploading: false
-    }));
-  };
-
-  const handleImportOk = async () => {
-    setImportModal(prev => ({ ...prev, uploading: true }));
-    
-    try {
-      // TODO: Implement import functionality
-      spaceToast.success(t('classDetail.importSuccess'));
+    setButtonLoading(prev => ({ ...prev, import: true }));
+    setTimeout(() => {
       setImportModal(prev => ({
         ...prev,
-        visible: false,
+        visible: true,
         fileList: [],
         uploading: false
       }));
+      setButtonLoading(prev => ({ ...prev, import: false }));
+    }, 100);
+  };
+
+  const handleValidateImport = async () => {
+    if (importModal.fileList.length === 0) {
+      spaceToast.warning(t('classDetail.selectFileToImportError'));
+      return;
+    }
+
+    setImportModal(prev => ({ ...prev, validating: true }));
+
+    try {
+      const file = importModal.fileList[0];
       
-      // Refresh the data
-      fetchStudents({
-        page: pagination.current - 1,
-        size: pagination.pageSize,
-        text: searchText,
-        status: statusFilter,
-        sortBy: sortConfig.sortBy,
-        sortDir: sortConfig.sortDir
-      });
+      // Create FormData object
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      // Call validate API with FormData
+      const response = await classManagementApi.validateClassStudentsImport(id, formData);
+
+      console.log('DEBUG - Validation response:', response);
+      console.log('DEBUG - Response type:', typeof response);
+      console.log('DEBUG - Response data:', response?.data);
+
+      // API returns full response object when responseType: 'blob' is set
+      // The blob data is in response.data
+      if (response && response.data && response.data instanceof Blob) {
+        console.log('DEBUG - Response data is blob, creating download...');
+        
+        // Create download link directly from blob
+        const url = window.URL.createObjectURL(response.data);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `validation_result_${new Date().toISOString().split('T')[0]}.xlsx`;
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        
+        // Track download start time
+        const downloadStartTime = Date.now();
+        
+        // Monitor for download completion
+        const checkDownloadProgress = () => {
+          const elapsed = Date.now() - downloadStartTime;
+          
+          if (elapsed > 2000) { // 2 seconds should be enough for most files
+            console.log('DEBUG - Validation download completed');
+            setImportModal(prev => ({ ...prev, validating: false }));
+            spaceToast.success('Validation completed successfully');
+            document.body.removeChild(link);
+            return;
+          }
+          
+          // Continue checking
+          setTimeout(checkDownloadProgress, 500);
+        };
+        
+        // Start download
+        link.click();
+        
+        // Start monitoring download progress
+        setTimeout(checkDownloadProgress, 500);
+        
+        // Fallback: if still loading after 15 seconds, assume download completed
+        setTimeout(() => {
+          if (importModal.validating) {
+            console.log('DEBUG - Fallback timeout reached for validation');
+            setImportModal(prev => ({ ...prev, validating: false }));
+            spaceToast.success('Validation download completed');
+            document.body.removeChild(link);
+          }
+        }, 15000);
+        
+      } else {
+        console.error('DEBUG - Unexpected response format:', response);
+        throw new Error('No validation file received from server');
+      }
     } catch (error) {
-      console.error('Import error:', error);
-      spaceToast.error(error.response?.data?.error);
+      console.error('DEBUG - Error validating import file:', error);
+      console.error('DEBUG - Error details:', {
+        message: error.message,
+        response: error.response,
+        status: error.response?.status,
+        data: error.response?.data
+      });
+      spaceToast.error(error.response?.data?.error || error.message || 'Validation failed');
+      setImportModal(prev => ({ ...prev, validating: false }));
+    }
+  };
+
+  const handleImportOk = async () => {
+    if (importModal.fileList.length === 0) {
+      spaceToast.warning(t('classDetail.selectFileToImportError'));
+      return;
+    }
+
+    setImportModal(prev => ({ ...prev, uploading: true }));
+
+    try {
+      const file = importModal.fileList[0];
+      
+      // Create FormData object
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      // Call import API with FormData
+      const response = await classManagementApi.importClassStudents(id, formData);
+
+      if (response.success) {
+        // Close modal first
+        setImportModal(prev => ({
+          ...prev,
+          visible: false,
+          fileList: [],
+          uploading: false,
+          validating: false
+        }));
+        
+        // Use backend message if available, otherwise fallback to translation
+        const successMessage = response.message || t('classDetail.importSuccess');
+        spaceToast.success(successMessage);
+        
+        // Refresh the students list
+        fetchStudents({
+          page: pagination.current - 1,
+          size: pagination.pageSize,
+          text: searchText,
+          status: statusFilter,
+          sortBy: sortConfig.sortBy,
+          sortDir: sortConfig.sortDir
+        });
+      } else {
+        throw new Error(response.message || 'Import failed');
+      }
+    } catch (error) {
+      console.error('Error importing class students:', error);
+      spaceToast.error(error.response?.data?.error || error.message || t('classDetail.importError'));
     } finally {
       setImportModal(prev => ({ ...prev, uploading: false }));
     }
@@ -445,22 +579,154 @@ const ClassStudent = () => {
     }));
   };
 
+  // Handle file selection with validation
+  const handleFileSelect = (file) => {
+    // Validate file type - only Excel files
+    const allowedTypes = [
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // .xlsx
+      'application/vnd.ms-excel', // .xls
+    ];
+    
+    if (!allowedTypes.includes(file.type)) {
+      spaceToast.error('Please select a valid Excel file (.xlsx, .xls)');
+      return false;
+    }
+    
+    // Validate file size (max 10MB)
+    const maxSize = 10 * 1024 * 1024; // 10MB
+    if (file.size > maxSize) {
+      spaceToast.error('File size must be less than 10MB');
+      return false;
+    }
+    
+    setImportModal(prev => ({
+      ...prev,
+      fileList: [file]
+    }));
+    
+    return false; // Prevent default upload behavior
+  };
+
   const handleDownloadTemplate = async () => {
+    setTemplateLoading(true);
+    
     try {
-      // TODO: Implement template download functionality
-      spaceToast.success(t('classDetail.templateDownloaded'));
+      const response = await classManagementApi.downloadClassStudentsTemplate(id);
+      
+      // API returns SAS URL directly (due to axios interceptor returning response.data)
+      let downloadUrl;
+      if (typeof response === 'string') {
+        downloadUrl = response;
+      } else if (response && typeof response.data === 'string') {
+        downloadUrl = response.data;
+      } else if (response && response.data && response.data.url) {
+        downloadUrl = response.data.url;
+      } else {
+        console.error('Unexpected response format:', response);
+        throw new Error('No download URL received from server');
+      }
+      
+      // Create download link directly from SAS URL
+      const link = document.createElement('a');
+      link.setAttribute('href', downloadUrl);
+      link.setAttribute('download', 'class_students_import_template.xlsx');
+      link.setAttribute('target', '_blank');
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      
+      // Track download start time
+      const downloadStartTime = Date.now();
+      
+      // Monitor for download completion by checking if file appears in downloads
+      const checkDownloadProgress = () => {
+        // Check if download has started by monitoring network activity or file system
+        // For now, we'll use a shorter timeout since the file should download quickly
+        const elapsed = Date.now() - downloadStartTime;
+        
+        if (elapsed > 2000) { // 2 seconds should be enough for most files
+          setTemplateLoading(false);
+          spaceToast.success('Template downloaded successfully');
+          document.body.removeChild(link);
+          return;
+        }
+        
+        // Continue checking
+        setTimeout(checkDownloadProgress, 500);
+      };
+      
+      // Start download
+      link.click();
+      
+      // Start monitoring download progress
+      setTimeout(checkDownloadProgress, 500);
+      
+      // Fallback: if still loading after 15 seconds, assume download completed
+      setTimeout(() => {
+        if (templateLoading) {
+          console.log('DEBUG - Fallback timeout reached, removing loading state');
+          setTemplateLoading(false);
+          spaceToast.success('Template download completed');
+          document.body.removeChild(link);
+        }
+      }, 15000);
+      
     } catch (error) {
-      console.error('Error downloading template:', error);
-      spaceToast.error(error.response?.data?.error);
+   
+      spaceToast.error(error.response?.data?.error || error.message || 'Failed to download template');
+      setTemplateLoading(false);
     }
   };
 
   const handleExport = () => {
-    // TODO: Implement export functionality
-    spaceToast.success(t('classDetail.exportSuccess'));
+    setButtonLoading(prev => ({ ...prev, export: true }));
+    setTimeout(() => {
+      setIsExportModalVisible(true);
+      setButtonLoading(prev => ({ ...prev, export: false }));
+    }, 100);
+  };
+
+  const handleExportModalClose = () => {
+    setIsExportModalVisible(false);
+  };
+
+  const handleExportAll = async () => {
+    setExportLoading(true);
+    
+    try {
+      // Prepare export parameters with current page filters
+      const exportParams = {
+        text: searchText || undefined,
+        status: statusFilter !== 'all' ? statusFilter : undefined,
+        sortBy: sortConfig.sortBy,
+        sortDir: sortConfig.sortDir,
+      };
+
+      console.log('Exporting all class students with current filters:', exportParams);
+      
+      const response = await classManagementApi.exportClassStudents(id, exportParams);
+      
+      // response.data is already a Blob from the API
+      const url = window.URL.createObjectURL(response.data);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `class_${id}_students_export_${new Date().toISOString().split('T')[0]}.xlsx`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      
+      spaceToast.success('Export file successfully');
+      setIsExportModalVisible(false);
+    } catch (error) {
+      console.error('Error exporting class students:', error);
+      spaceToast.error(error.response?.data?.error || error.response?.data?.message || error.message || t('classDetail.exportError'));
+    } finally {
+      setExportLoading(false);
+    }
   };
 
   const handleModalOk = async () => {
+    setButtonLoading(prev => ({ ...prev, add: true }));
     try {
       console.log("Add students clicked");
       console.log("selectedStudents:", selectedStudents);
@@ -499,6 +765,8 @@ const ClassStudent = () => {
     } catch (error) {
       console.error("Error adding students:", error);
       spaceToast.error(error.response?.data?.error);
+    } finally {
+      setButtonLoading(prev => ({ ...prev, add: false }));
     }
   };
 
@@ -522,14 +790,10 @@ const ClassStudent = () => {
     return <span style={{ color: '#000000', fontSize: '20px' }}>{config.text}</span>;
   };
 
-  // Track if this is the initial load
-  const [isInitialLoad, setIsInitialLoad] = useState(true);
-
   // Single useEffect to handle all changes with debounce
   useEffect(() => {
-    // Skip the first load since it's handled by the initial useEffect
-    if (isInitialLoad) {
-      setIsInitialLoad(false);
+    // Skip if this is the initial load (handled by the first useEffect)
+    if (!searchText && statusFilter === 'all' && sortConfig.sortBy === 'joinedAt' && sortConfig.sortDir === 'desc') {
       return;
     }
 
@@ -570,7 +834,8 @@ const ClassStudent = () => {
     }, 300);
     
     return () => clearTimeout(timeoutId);
-  }, [searchText, statusFilter, sortConfig.sortBy, sortConfig.sortDir, pagination.pageSize, id, t]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchText, statusFilter, sortConfig.sortBy, sortConfig.sortDir, pagination.pageSize, id]);
   
   // Handle pagination change
   const handleTableChange = (paginationInfo, filters, sorter) => {
@@ -653,6 +918,7 @@ const ClassStudent = () => {
             onClick={() => handleDeleteStudent(record)}
             style={{ color: "#ff4d4f" }}
             title={t('classDetail.removeFromClass')}
+            loading={buttonLoading.delete}
           />
         </Space>
       ),
@@ -760,6 +1026,8 @@ const ClassStudent = () => {
                 icon={<UploadOutlined />}
                 className={`export-button ${theme}-export-button`}
                 onClick={handleExport}
+                loading={buttonLoading.export}
+                disabled={buttonLoading.export || buttonLoading.import}
               >
                 {t('classDetail.exportData')}
               </Button>
@@ -767,6 +1035,8 @@ const ClassStudent = () => {
                 icon={<DownloadOutlined />}
                 className={`import-button ${theme}-import-button`}
                 onClick={handleImport}
+                loading={buttonLoading.import}
+                disabled={buttonLoading.import || buttonLoading.export}
               >
                 {t('classDetail.importData')}
               </Button>
@@ -774,6 +1044,8 @@ const ClassStudent = () => {
                 icon={<PlusOutlined />}
                 className={`create-button ${theme}-create-button`}
                 onClick={handleAddStudent}
+                loading={buttonLoading.add}
+                disabled={buttonLoading.add || buttonLoading.import || buttonLoading.export}
               >
                 {t('classDetail.addStudent')}
               </Button>
@@ -913,38 +1185,64 @@ const ClassStudent = () => {
             </div>
           }
           open={importModal.visible}
-          onOk={handleImportOk}
           onCancel={handleImportCancel}
-          okText={t('classDetail.importStudentsList')}
-          cancelText={t('common.cancel')}
+          footer={[
+            <Button 
+              key="cancel" 
+              onClick={handleImportCancel}
+              style={{
+                height: '32px',
+                fontWeight: '500',
+                fontSize: '16px',
+                padding: '4px 15px',
+                width: '100px'
+              }}>
+              {t('common.cancel')}
+            </Button>,
+            <Button 
+              key="validate" 
+              onClick={handleValidateImport}
+              loading={importModal.validating}
+              disabled={importModal.fileList.length === 0 || importModal.uploading || importModal.validating}
+              style={{
+                background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, #7228d9 0%, #9c88ff 100%)',
+                borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : '#7228d9',
+                color: theme === 'sun' ? '#000' : '#fff',
+                borderRadius: '6px',
+                height: '32px',
+                fontWeight: '500',
+                fontSize: '16px',
+                padding: '4px 15px',
+                width: '120px',
+                transition: 'all 0.3s ease',
+                boxShadow: 'none'
+              }}>
+              {t('classDetail.validateFile')}
+            </Button>,
+            <Button 
+              key="import" 
+              type="primary"
+              onClick={handleImportOk}
+              loading={importModal.uploading}
+              disabled={importModal.fileList.length === 0 || importModal.uploading || importModal.validating}
+              style={{
+                background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, #7228d9 0%, #9c88ff 100%)',
+                borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : '#7228d9',
+                color: theme === 'sun' ? '#000' : '#fff',
+                borderRadius: '6px',
+                height: '32px',
+                fontWeight: '500',
+                fontSize: '16px',
+                padding: '4px 15px',
+                width: '120px',
+                transition: 'all 0.3s ease',
+                boxShadow: 'none'
+              }}>
+              {t('classDetail.importStudentsList')}
+            </Button>
+          ]}
           width={600}
           centered
-          confirmLoading={importModal.uploading}
-          okButtonProps={{
-            disabled: importModal.fileList.length === 0,
-            style: {
-              background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, #7228d9 0%, #9c88ff 100%)',
-              borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : '#7228d9',
-              color: theme === 'sun' ? '#000' : '#fff',
-              borderRadius: '6px',
-              height: '32px',
-              fontWeight: '500',
-              fontSize: '16px',
-              padding: '4px 15px',
-              width: '200px',
-              transition: 'all 0.3s ease',
-              boxShadow: 'none'
-            },
-          }}
-          cancelButtonProps={{
-            style: {
-              height: '32px',
-              fontWeight: '500',
-              fontSize: '16px',
-              padding: '4px 15px',
-              width: '100px'
-            },
-          }}
         >
           <div style={{ padding: '20px 0' }}>
             <div style={{ textAlign: 'center', marginBottom: '20px' }}>
@@ -952,6 +1250,8 @@ const ClassStudent = () => {
                 type="dashed"
                 icon={<DownloadOutlined />}
                 onClick={handleDownloadTemplate}
+                loading={templateLoading}
+                disabled={templateLoading}
                 style={{
                   borderColor: '#1890ff',
                   color: '#1890ff',
@@ -976,9 +1276,9 @@ const ClassStudent = () => {
             <Upload.Dragger
               name="file"
               multiple={false}
-              beforeUpload={() => false}
+              beforeUpload={handleFileSelect}
               showUploadList={false}
-              accept=".xlsx,.xls,.csv"
+              accept=".xlsx,.xls"
               style={{
                 marginBottom: '20px',
                 border: '2px dashed #d9d9d9',
@@ -998,9 +1298,44 @@ const ClassStudent = () => {
                 {t('classDetail.clickOrDragFile')}
               </p>
               <p className='ant-upload-hint' style={{ color: '#999' }}>
-                {t('classDetail.supportedFormats')}
+                {t('classDetail.supportedFormats')}: Excel (.xlsx, .xls)
               </p>
             </Upload.Dragger>
+
+            {importModal.fileList.length > 0 && (
+              <div
+                style={{
+                  marginTop: '16px',
+                  padding: '12px',
+                  background: '#e6f7ff',
+                  border: '1px solid #91d5ff',
+                  borderRadius: '6px',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                }}>
+                <div>
+                  <Typography.Text style={{ color: '#1890ff', fontWeight: '500' }}>
+                    ✅ {t('classDetail.fileSelected')}:{' '}
+                    {importModal.fileList[0].name}
+                  </Typography.Text>
+                  <br />
+                  <Typography.Text style={{ color: '#666', fontSize: '12px' }}>
+                    Size: {importModal.fileList[0].size < 1024 * 1024 
+                      ? `${(importModal.fileList[0].size / 1024).toFixed(1)} KB`
+                      : `${(importModal.fileList[0].size / 1024 / 1024).toFixed(2)} MB`
+                    }
+                  </Typography.Text>
+                </div>
+                <Button
+                  type="text"
+                  size="small"
+                  onClick={() => setImportModal(prev => ({ ...prev, fileList: [] }))}
+                  style={{ color: '#ff4d4f' }}>
+                  Remove
+                </Button>
+              </div>
+            )}
           </div>
         </Modal>
 
@@ -1086,6 +1421,72 @@ const ClassStudent = () => {
 							<strong>"{studentToDelete.fullName || `${studentToDelete.firstName || ''} ${studentToDelete.lastName || ''}`.trim()}"</strong>
 						</p>
 					)}
+          </div>
+        </Modal>
+
+        {/* Export Data Modal */}
+        <Modal
+          title={
+            <div
+              style={{
+                fontSize: '28px',
+                fontWeight: '600',
+                color: 'rgb(24, 144, 255)',
+                textAlign: 'center',
+                padding: '10px 0',
+              }}>
+              {t('classDetail.exportData')}
+            </div>
+          }
+          open={isExportModalVisible}
+          onCancel={handleExportModalClose}
+          width={500}
+          footer={[
+            <Button 
+              key="cancel" 
+              onClick={handleExportModalClose}
+              style={{
+                height: '32px',
+                fontWeight: '500',
+                fontSize: '16px',
+                padding: '4px 15px',
+                width: '100px'
+              }}>
+              {t('common.cancel')}
+            </Button>
+          ]}>
+          <div style={{ padding: '20px 0' }}>
+            <div style={{ textAlign: 'center', marginBottom: '30px' }}>
+              <UploadOutlined style={{ fontSize: '48px', color: '#1890ff', marginBottom: '16px' }} />
+              <Typography.Title level={4} style={{ color: theme === 'dark' ? '#cccccc' : '#666', marginBottom: '8px' }}>
+                {t('classDetail.chooseExportOption')}
+              </Typography.Title>
+              <Typography.Text style={{ color: theme === 'dark' ? '#999999' : '#999' }}>
+                {t('classDetail.exportDescription')}
+              </Typography.Text>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <Button
+                type="primary"
+                icon={<UploadOutlined />}
+                onClick={handleExportAll}
+                loading={exportLoading}
+                disabled={exportLoading}
+                style={{
+                  height: '48px',
+                  fontSize: '16px',
+                  fontWeight: '500',
+                  background: theme === 'sun' 
+                    ? 'linear-gradient(135deg, #FFFFFF, #B6D8FE 77%, #94C2F5)'
+                    : 'linear-gradient(135deg, #FFFFFF 0%, #9F96B6 46%, #A79EBB 64%, #ACA5C0 75%, #6D5F8F 100%)',
+                  borderColor: theme === 'sun' ? '#B6D8FE' : '#9F96B6',
+                  color: '#000000',
+                  borderRadius: '8px',
+                }}>
+                {t('classDetail.exportAll')} ({pagination.total} {t('classDetail.students')})
+              </Button>
+            </div>
           </div>
         </Modal>
     </ThemedLayout>
