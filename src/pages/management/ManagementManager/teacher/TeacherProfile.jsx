@@ -633,7 +633,10 @@ const TeacherProfile = () => {
 										{ required: true, message: t('teacherManagement.roleRequired') },
 									]}
 								>
-									<Select placeholder={t('teacherManagement.rolePlaceholder')}>
+									<Select 
+										placeholder={t('teacherManagement.rolePlaceholder')}
+										disabled={teacher?.roleName === 'TEACHER'}
+									>
 										<Select.Option 
 											value="TEACHER"
 											disabled={
@@ -649,10 +652,8 @@ const TeacherProfile = () => {
 											value="TEACHING_ASSISTANT"
 											disabled={
 												// Disable TEACHING_ASSISTANT option if:
-												// 1. Current role is TEACHER (cannot downgrade)
-												// 2. Status is ACTIVE and current role is TEACHER (cannot downgrade)
-												teacher?.roleName === 'TEACHER' || 
-												(teacher?.status === 'ACTIVE' && teacher?.roleName === 'TEACHER')
+												// 1. Current role is TEACHER and status is ACTIVE (cannot downgrade)
+												teacher?.roleName === 'TEACHER' && teacher?.status === 'ACTIVE'
 											}
 										>
 											{t('teacherManagement.teacherAssistant')}
