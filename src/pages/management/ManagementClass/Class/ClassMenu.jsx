@@ -203,8 +203,13 @@ const ClassMenu = () => {
     return true;
   });
 
-  const handleCardClick = (path) => {
-    navigate(path);
+  const handleCardClick = (path, itemId) => {
+    // If navigating to daily challenge, pass classId in state
+    if (itemId === 'daily-challenge') {
+      navigate(path, { state: { classId: id } });
+    } else {
+      navigate(path);
+    }
   };
 
   if (loading) {
@@ -238,7 +243,7 @@ const ClassMenu = () => {
                 <Card
                   className="menu-card"
                   hoverable
-                  onClick={() => handleCardClick(item.path)}
+                  onClick={() => handleCardClick(item.path, item.id)}
                   style={{
                     border: `2px solid ${item.color}20`,
                     borderRadius: '16px',
