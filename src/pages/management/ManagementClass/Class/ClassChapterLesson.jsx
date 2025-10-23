@@ -52,6 +52,9 @@ const ClassChapterLesson = () => {
 		? ThemedLayoutNoSidebar 
 		: ThemedLayoutWithSidebar;
 	
+	// Check if user is MANAGER (view-only access)
+	const isManager = userRole === 'manager';
+	
 	// Set page title
 	usePageTitle('Class Chapter & Lesson');
 
@@ -615,24 +618,28 @@ const ClassChapterLesson = () => {
 			key: 'actions',
 			width: '10%',
 			render: (_, record) => (
-				<Space size="small">
-					<Tooltip title={t('common.edit')}>
+				!isManager ? (
+					<Space size="small">
+						<Tooltip title={t('common.edit')}>
+							<Button
+								type="text"
+								size="small"
+								icon={<EditOutlined style={{ fontSize: '25px' }} />}
+								onClick={() => handleEditLesson(record)}
+							/>
+						</Tooltip>
+						<Tooltip title={t('common.delete')}>
 						<Button
 							type="text"
 							size="small"
-							icon={<EditOutlined style={{ fontSize: '25px' }} />}
-							onClick={() => handleEditLesson(record)}
+							icon={<DeleteOutlined style={{ fontSize: '25px' }} />}
+								onClick={() => handleDeleteLessonClick(record)}
 						/>
-					</Tooltip>
-					<Tooltip title={t('common.delete')}>
-					<Button
-						type="text"
-						size="small"
-						icon={<DeleteOutlined style={{ fontSize: '25px' }} />}
-							onClick={() => handleDeleteLessonClick(record)}
-					/>
-					</Tooltip>
-				</Space>
+						</Tooltip>
+					</Space>
+				) : (
+					<span style={{ color: '#999', fontSize: '14px' }}>{t('common.view')}</span>
+				)
 			),
 		},
 	];
@@ -689,22 +696,24 @@ const ClassChapterLesson = () => {
 						</Space>
 						</Col>
 						<Col>
-							<Space>
-								<Button
-								icon={<DownloadOutlined />}
-								className={`import-button ${theme}-import-button`}
-								onClick={handleImportLesson}
-							>
-								{t('lessonManagement.importLessons')}
-								</Button>
-								<Button
-								icon={<DragOutlined />}
-								onClick={handleEditOrder}
-								className="create-button"
-							>
-								{t('common.edit')}
-								</Button>
-							</Space>
+							{!isManager && (
+								<Space>
+									<Button
+									icon={<DownloadOutlined />}
+									className={`import-button ${theme}-import-button`}
+									onClick={handleImportLesson}
+								>
+									{t('lessonManagement.importLessons')}
+									</Button>
+									<Button
+									icon={<DragOutlined />}
+									onClick={handleEditOrder}
+									className="create-button"
+								>
+									{t('common.edit')}
+									</Button>
+								</Space>
+							)}
 						</Col>
 					</Row>
 
@@ -715,6 +724,11 @@ const ClassChapterLesson = () => {
 						dataSource={filteredLessons}
 						rowKey="id"
 						loading={loading}
+						rowSelection={!isManager ? {
+							selectedRowKeys,
+							onChange: setSelectedRowKeys,
+							onSelectAll: handleSelectAll,
+						} : null}
 						pagination={{
 							...pagination,
 							showTotal: (total, range) => {
@@ -727,15 +741,17 @@ const ClassChapterLesson = () => {
 				</div>
 			</div>
 
-			{/* Bottom Action Bar */}
-			<BottomActionBar
-				selectedCount={selectedRowKeys.length}
-				onSelectAll={handleSelectAll}
-				onDeleteAll={handleDeleteAll}
-				onClose={() => setSelectedRowKeys([])}
-				selectAllText={t('classManagement.selectAll')}
-				deleteAllText={t('classManagement.deleteAll')}
-			/>
+			{/* Bottom Action Bar - Only show for non-manager roles */}
+			{!isManager && (
+				<BottomActionBar
+					selectedCount={selectedRowKeys.length}
+					onSelectAll={handleSelectAll}
+					onDeleteAll={handleDeleteAll}
+					onClose={() => setSelectedRowKeys([])}
+					selectAllText={t('classManagement.selectAll')}
+					deleteAllText={t('classManagement.deleteAll')}
+				/>
+			)}
 
 			{/* Lesson Modal */}
 				<Modal
