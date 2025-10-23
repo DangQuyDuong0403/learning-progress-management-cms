@@ -634,8 +634,29 @@ const TeacherProfile = () => {
 									]}
 								>
 									<Select placeholder={t('teacherManagement.rolePlaceholder')}>
-										<Select.Option value="TEACHER">{t('teacherManagement.teacher')}</Select.Option>
-										<Select.Option value="TEACHING_ASSISTANT">{t('teacherManagement.teacherAssistant')}</Select.Option>
+										<Select.Option 
+											value="TEACHER"
+											disabled={
+												// Disable TEACHER option if:
+												// 1. Current role is TEACHER (cannot change to same role)
+												// 2. Status is PENDING (can only change to TEACHING_ASSISTANT)
+												teacher?.roleName === 'TEACHER' || teacher?.status === 'PENDING'
+											}
+										>
+											{t('teacherManagement.teacher')}
+										</Select.Option>
+										<Select.Option 
+											value="TEACHING_ASSISTANT"
+											disabled={
+												// Disable TEACHING_ASSISTANT option if:
+												// 1. Current role is TEACHER (cannot downgrade)
+												// 2. Status is ACTIVE and current role is TEACHER (cannot downgrade)
+												teacher?.roleName === 'TEACHER' || 
+												(teacher?.status === 'ACTIVE' && teacher?.roleName === 'TEACHER')
+											}
+										>
+											{t('teacherManagement.teacherAssistant')}
+										</Select.Option>
 									</Select>
 								</Form.Item>
 							</Col>
