@@ -471,44 +471,44 @@ const ClassListTable = () => {
 			visible: true,
 			title: t('classManagement.changeStatus'),
 			type: 'status',
-			onConfirm: async () => {
-				if (!selectedStatus) {
-					spaceToast.warning(t('classManagement.pleaseSelectStatus'));
-					return;
-				}
-
-				setActionLoading(prev => ({ ...prev, toggle: record.id }));
-				try {
-					const toggleResponse = await classManagementApi.toggleClassStatus(record.id, selectedStatus);
-					
-					// Use BE success message if available, otherwise use i18n
-					const successMessage = toggleResponse?.data?.message || 
-										  toggleResponse?.message;
-						
-					spaceToast.success(successMessage);
-					
-					// Close modal
-					setConfirmModal({ visible: false, title: '', content: '', onConfirm: null, type: '' });
-					setSelectedStatus(null);
-					setCurrentRecord(null);
-					
-					fetchClasses(pagination.current, pagination.pageSize, searchText, sortBy, sortDir, appliedFilters);
-					setConfirmModal({ visible: false, title: '', content: '', displayData: null, onConfirm: null });
-				} catch (error) {
-					console.error('Error updating class status:', error);
-					
-					// Use BE error message if available, otherwise fallback to generic message
-					const errorMessage = error.response?.data?.message || 
-										error.response?.data?.error || 
-										error.message;
-					
-					spaceToast.error(errorMessage);
-					setConfirmModal({ visible: false, title: '', content: '', displayData: null, onConfirm: null });
-				} finally {
-					setActionLoading(prev => ({ ...prev, toggle: null }));
-				}
-			}
+			onConfirm: null // Set to null initially, will be handled by separate function
 		});
+	};
+
+	const handleConfirmStatusChange = async () => {
+		if (!selectedStatus) {
+			spaceToast.warning(t('classManagement.pleaseSelectStatus'));
+			return;
+		}
+
+		setActionLoading(prev => ({ ...prev, toggle: currentRecord.id }));
+		try {
+			const toggleResponse = await classManagementApi.toggleClassStatus(currentRecord.id, selectedStatus);
+			
+			// Use BE success message if available, otherwise use i18n
+			const successMessage = toggleResponse?.data?.message || 
+								  toggleResponse?.message;
+				
+			spaceToast.success(successMessage);
+			
+			// Close modal
+			setConfirmModal({ visible: false, title: '', content: '', onConfirm: null, type: '' });
+			setSelectedStatus(null);
+			setCurrentRecord(null);
+			
+			fetchClasses(pagination.current, pagination.pageSize, searchText, sortBy, sortDir, appliedFilters);
+		} catch (error) {
+			console.error('Error updating class status:', error);
+			
+			// Use BE error message if available, otherwise fallback to generic message
+			const errorMessage = error.response?.data?.message || 
+								error.response?.data?.error || 
+								error.message;
+			
+			spaceToast.error(errorMessage);
+		} finally {
+			setActionLoading(prev => ({ ...prev, toggle: null }));
+		}
 	};
 
 	const handleModalOk = async () => {
@@ -1669,7 +1669,7 @@ const ClassListTable = () => {
 						</div>
 					}
 					open={confirmModal.visible}
-					onOk={confirmModal.onConfirm}
+					onOk={confirmModal.type === 'status' ? handleConfirmStatusChange : confirmModal.onConfirm}
 					onCancel={() => {
 						setConfirmModal({ visible: false, title: '', content: '', onConfirm: null, type: '' });
 						setSelectedStatus(null);

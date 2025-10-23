@@ -44,6 +44,9 @@ const TeacherClassChapterList = () => {
 	const ThemedLayout = (userRole === 'teacher' || userRole === 'teaching_assistant') 
 		? ThemedLayoutNoSidebar 
 		: ThemedLayoutWithSidebar;
+	
+	// Check if user is MANAGER (view-only access)
+	const isManager = userRole === 'manager';
 
 	// Set page title
 	usePageTitle('Chapter Management');
@@ -503,24 +506,26 @@ const TeacherClassChapterList = () => {
 						</Space>
 					</Col>
 					<Col>
-						<Space>
-							<Button
-								icon={<DownloadOutlined />}
-								className={`import-button ${theme}-import-button`}
-								onClick={handleImport}
-							>
-								{t('chapterManagement.importChapters')}
-							</Button>
-							<Button
-								icon={<DragOutlined />}
-								onClick={handleEditOrder}
-								className="create-button"
-								loading={navigating}
-								disabled={navigating}
-							>
-								{t('common.edit')}
-							</Button>
-						</Space>
+						{!isManager && (
+							<Space>
+								<Button
+									icon={<DownloadOutlined />}
+									className={`import-button ${theme}-import-button`}
+									onClick={handleImport}
+								>
+									{t('chapterManagement.importChapters')}
+								</Button>
+								<Button
+									icon={<DragOutlined />}
+									onClick={handleEditOrder}
+									className="create-button"
+									loading={navigating}
+									disabled={navigating}
+								>
+									{t('common.edit')}
+								</Button>
+							</Space>
+						)}
 					</Col>
 				</Row>
 
