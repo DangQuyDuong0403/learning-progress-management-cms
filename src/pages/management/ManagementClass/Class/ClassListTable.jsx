@@ -30,7 +30,7 @@ const ClassListTable = () => {
 	const { t } = useTranslation();
 	const { theme } = useTheme();
 	const navigate = useNavigate();
-	const { enterClassMenu } = useClassMenu();
+	const { enterClassMenu, exitClassMenu } = useClassMenu();
 	
 	// Set page title
 	usePageTitle(t('classManagement.title'));
@@ -231,6 +231,11 @@ const ClassListTable = () => {
 	useEffect(() => {
 		fetchSyllabuses();
 	}, [fetchSyllabuses]);
+
+	// Exit class menu mode when entering this page (to remove back button)
+	useEffect(() => {
+		exitClassMenu();
+	}, [exitClassMenu]);
 
 	// Initial load and filter changes with debounced search
 	useEffect(() => {

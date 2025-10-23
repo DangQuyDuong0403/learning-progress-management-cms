@@ -133,9 +133,7 @@ export default function ThemedHeader() {
     if (userRole === 'student') {
       return location.pathname === '/student/classes';
     }
-    if (userRole === 'manager') {
-      return location.pathname === '/manager/classes';
-    }
+    // Manager classes page does not need back button
     return false;
   };
 
