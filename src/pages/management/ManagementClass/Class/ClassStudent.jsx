@@ -1109,7 +1109,7 @@ const ClassStudent = () => {
               fontWeight: '500',
               fontSize: '16px',
               padding: '4px 15px',
-              width: '100px',
+              minWidth: '200px',
               transition: 'all 0.3s ease',
               boxShadow: 'none'
             },
@@ -1234,7 +1234,7 @@ const ClassStudent = () => {
                 fontWeight: '500',
                 fontSize: '16px',
                 padding: '4px 15px',
-                width: '120px',
+                width: '200px',
                 transition: 'all 0.3s ease',
                 boxShadow: 'none'
               }}>

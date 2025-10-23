@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Modal, Form, Input, Button, message } from 'antd';
+import { Modal, Form, Input } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../../../contexts/ThemeContext';
 import { spaceToast } from '../../../../component/SpaceToastify';
@@ -21,33 +21,55 @@ const EditEmailModal = ({ isVisible, onClose, teacherId, currentEmail }) => {
     }
   }, [isVisible, currentEmail, form]);
 
-  const handleSubmit = async (values) => {
-    setLoading(true);
+  function validateEmail(email) {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  }
+
+  const handleOk = async () => {
+    if (showConfirmationMessage) {
+      handleCancel(); // Close modal when OK is clicked on confirmation
+      return;
+    }
+
     try {
-      console.log('Teacher EditEmailModal - TeacherId:', teacherId);
-      console.log('Teacher EditEmailModal - Current Email:', currentEmail);
-      console.log('Teacher EditEmailModal - New Email:', values.email);
+      const values = await form.validateFields();
+      
+      console.log('Teacher EditEmailModal - Form values:', values);
+      console.log('Teacher EditEmailModal - Current email:', currentEmail);
+      console.log('Teacher EditEmailModal - Teacher ID:', teacherId);
+      
+      if (!validateEmail(values.email)) {
+        spaceToast.error(t('messages.invalidEmail'));
+        return;
+      }
+
+      setLoading(true);
+
+      console.log('=== DEBUG EMAIL CHANGE ===');
+      console.log('teacherId:', teacherId);
+      console.log('currentEmail (from props):', currentEmail);
+      console.log('newEmail (from form):', values.email);
       
       // Call API to change email for specific teacher
       const response = await authApi.changeUserEmail(teacherId, { email: values.email });
       
       console.log('Teacher EditEmailModal - API Response:', response);
+      console.log('=== END DEBUG ===');
       
-      if (response.success || response.message) {
-        spaceToast.success(response.message || t('teacherManagement.updateEmailSuccess'));
+      if (response.success) {
+        spaceToast.success('Email update request sent successfully!');
         setShowConfirmationMessage(true); // Show confirmation message instead of closing
       } else {
-        spaceToast.error(response.message || t('teacherManagement.updateEmailError'));
+        spaceToast.error(response.message || 'Failed to update email');
       }
     } catch (error) {
       console.error('Teacher EditEmailModal - Error:', error);
       console.error('Teacher EditEmailModal - Error response:', error.response?.data);
-      console.error('Teacher EditEmailModal - Error status:', error.response?.status);
       
       // Show backend error message if available
-      const errorMessage = error.response?.data?.error || 
-                          error.message || 
-                          t('teacherManagement.updateEmailError');
+      const errorMessage = error.response?.data?.message || 
+                          error.response?.data?.error || 
+                          error.message;
       spaceToast.error(errorMessage);
     } finally {
       setLoading(false);
@@ -61,94 +83,81 @@ const EditEmailModal = ({ isVisible, onClose, teacherId, currentEmail }) => {
     onClose(false);
   };
 
-  const handleOk = () => {
-    if (showConfirmationMessage) {
-      handleCancel(); // Close modal when OK is clicked on confirmation
-    }
-  };
-
   return (
     <Modal
       title={
-        <div style={{ 
-          fontSize: '20px', 
-          fontWeight: '600', 
-          color: '#000000',
+        <div style={{
+          fontSize: '28px',
+          fontWeight: '600',
+          color: 'rgb(24, 144, 255)',
           textAlign: 'center',
-          padding: '10px 0'
+          padding: '10px 0',
         }}>
-          {t('teacherManagement.editEmail')}
+          {t('common.editEmail')}
         </div>
       }
       open={isVisible}
-      onOk={showConfirmationMessage ? handleOk : undefined}
-      onCancel={showConfirmationMessage ? undefined : handleCancel}
-      okText={showConfirmationMessage ? t('common.ok') : undefined}
-      cancelText={showConfirmationMessage ? undefined : t('common.cancel')}
-      footer={showConfirmationMessage ? null : undefined}
+      onOk={showConfirmationMessage ? handleOk : handleOk}
+      onCancel={handleCancel}
       width={500}
+      okText={showConfirmationMessage ? t('common.ok') : t('common.update')}
+      cancelText={showConfirmationMessage ? undefined : t('common.close')}
+      confirmLoading={loading}
+      okButtonProps={{
+        style: {
+          background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, #7228d9 0%, #9c88ff 100%)',
+          borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : '#7228d9',
+          color: theme === 'sun' ? '#000' : '#fff',
+          borderRadius: '6px',
+          height: '32px',
+          fontWeight: '500',
+          fontSize: '16px',
+          padding: '4px 15px',
+          width: showConfirmationMessage ? '150px' : '100px',
+          transition: 'all 0.3s ease',
+          boxShadow: 'none'
+        },
+      }}
+      cancelButtonProps={showConfirmationMessage ? { style: { display: 'none' } } : {
+        style: {
+          height: '32px',
+          fontWeight: '500',
+          fontSize: '16px',
+          padding: '4px 15px',
+          width: '100px'
+        },
+      }}
       centered
       destroyOnClose
     >
       {!showConfirmationMessage ? (
         <Form
           form={form}
-          layout="vertical"
-          onFinish={handleSubmit}
-          initialValues={{ email: currentEmail }}
-        >
+          layout='vertical'
+          initialValues={{
+            email: currentEmail,
+          }}>
           <Form.Item
             label={
               <span>
-                {t('teacherManagement.newEmail')}
+                {t('common.email')}
                 <span style={{ color: 'red', marginLeft: '4px' }}>*</span>
               </span>
             }
-            name="email"
+            name='email'
             rules={[
-              { required: true, message: t('teacherManagement.emailRequired') },
-              { type: 'email', message: t('teacherManagement.emailInvalid') },
-              { max: 255, message: t('teacherManagement.emailMaxLength') },
+              {
+                required: true,
+                message: 'Email is required',
+              },
+              {
+                type: 'email',
+                message: 'Please enter a valid email',
+              },
             ]}
-          >
-            <Input placeholder={t('teacherManagement.enterNewEmail')} />
+            required={false}>
+            <Input placeholder="Enter email" />
           </Form.Item>
-
-          <div style={{ 
-            display: 'flex', 
-            justifyContent: 'space-between', 
-            marginTop: '24px',
-            gap: '12px'
-          }}>
-            <Button
-              onClick={handleCancel}
-              style={{
-                flex: 1,
-                height: '40px',
-                fontSize: '14px',
-                fontWeight: '500',
-              }}
-            >
-              {t('common.cancel')}
-            </Button>
-            <Button
-              type="primary"
-              htmlType="submit"
-              loading={loading}
-              style={{
-                flex: 1,
-                height: '40px',
-                fontSize: '14px',
-                fontWeight: '500',
-                backgroundColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
-                background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
-                borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'transparent',
-                color: theme === 'sun' ? '#000000' : '#ffffff',
-              }}
-            >
-              {t('common.save')}
-            </Button>
-          </div>
         </Form>
       ) : (
         <div style={{ textAlign: 'center', padding: '20px' }}>

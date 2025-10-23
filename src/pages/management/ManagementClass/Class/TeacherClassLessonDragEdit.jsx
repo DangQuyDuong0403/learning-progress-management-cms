@@ -10,6 +10,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useTheme } from '../../../../contexts/ThemeContext';
+import { useClassMenu } from '../../../../contexts/ClassMenuContext';
 import { spaceToast } from '../../../../component/SpaceToastify';
 import ThemedLayoutWithSidebar from '../../../../component/ThemedLayout';
 import ThemedLayoutNoSidebar from '../../../../component/teacherlayout/ThemedLayout';
@@ -190,6 +191,7 @@ const TeacherClassLessonDragEdit = () => {
 	const navigate = useNavigate();
 	const { classId, chapterId } = useParams();
 	const { user } = useSelector((state) => state.auth);
+	const { enterClassMenu, exitClassMenu } = useClassMenu();
 	
 	console.log('TeacherClassLessonDragEdit - Component mounted');
 	console.log('TeacherClassLessonDragEdit - classId:', classId);
@@ -339,6 +341,26 @@ const TeacherClassLessonDragEdit = () => {
 		};
 		fetchData();
 	}, [fetchClassData, fetchChapterData, fetchAllLessons]);
+
+	// Handle class menu updates - separate effects to avoid infinite loops
+	useEffect(() => {
+		if (classId) {
+			enterClassMenu({ id: classId });
+		}
+		return () => exitClassMenu();
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [classId]);
+
+	useEffect(() => {
+		if (classData && chapterData && classId) {
+			enterClassMenu({
+				id: classData.id,
+				name: classData.name,
+				description: `${classData.name} / ${chapterData.name}`,
+			});
+		}
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [classData?.id, classData?.name, chapterData?.name, classId]);
 
 	const handleAddLessonAtPosition = useCallback((index) => {
 		setEditingLesson(null);

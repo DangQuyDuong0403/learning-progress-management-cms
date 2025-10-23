@@ -109,7 +109,7 @@ export default function EditEmailModal({
       }
       open={isVisible}
       onOk={showConfirmationMessage ? handleCancel : handleOk}
-      onCancel={showConfirmationMessage ? undefined : handleCancel}
+      onCancel={handleCancel}
       width={500}
       okText={showConfirmationMessage ? t('common.ok') : t('common.update')}
       cancelText={showConfirmationMessage ? undefined : t('common.close')}
@@ -124,7 +124,7 @@ export default function EditEmailModal({
           fontWeight: '500',
           fontSize: '16px',
           padding: '4px 15px',
-          width: '100px',
+          width: showConfirmationMessage ? '150px' : '100px',
           transition: 'all 0.3s ease',
           boxShadow: 'none'
         },

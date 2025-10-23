@@ -176,7 +176,8 @@ const TeacherClassChapterList = () => {
 			enterClassMenu({
 				id: classInfo.id,
 				name: classInfo.name,
-				description: `${t('chapterManagement.title')} - ${classInfo.name}`
+				description: classInfo.name,
+				backUrl: `${routePrefix}/menu/${classId}`
 			});
 		}
 		// eslint-disable-next-line react-hooks/exhaustive-deps

@@ -21,12 +21,7 @@ export default function ForgotPasswordModal({ visible, onCancel, onMethodSelect 
                         style={{
                             margin: 0,
                             fontWeight: 600,
-                            background: isSunTheme 
-                                ? 'linear-gradient(90deg, #3b82f6 0%, #1d4ed8 100%)'
-                                : 'linear-gradient(90deg, #5e17eb 0%, #4dd0ff 100%)',
-                            WebkitBackgroundClip: 'text',
-                            WebkitTextFillColor: 'transparent',
-                            backgroundClip: 'text',
+                            color: isSunTheme ? '#3b82f6' : '#5e17eb',
                         }}>
                         {t('forgotPassword.title')}
                     </h4>
@@ -37,6 +32,15 @@ export default function ForgotPasswordModal({ visible, onCancel, onMethodSelect 
             onCancel={onCancel}
             centered
             width={500}
+            styles={{
+                header: {
+                    background: isSunTheme ? '#ffffff' : '#ffffff',
+                    borderBottom: isSunTheme ? '1px solid #e5e7eb' : '1px solid #f0f0f0',
+                },
+                body: {
+                    background: isSunTheme ? '#ffffff' : '#ffffff',
+                }
+            }}
             style={{ borderRadius: '12px' }}>
             <div style={{ padding: '6px 0' }}>
                 <p

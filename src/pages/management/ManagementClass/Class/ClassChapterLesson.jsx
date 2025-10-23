@@ -211,8 +211,8 @@ const ClassChapterLesson = () => {
 		if (classData && chapterData && classId) {
 			enterClassMenu({
 				id: classData.id,
-				name: classData.name, // Display class name in header
-				description: `${t('lessonManagement.title')} - ${classData.name}`,
+				name: classData.name,
+				description: `${classData.name} / ${chapterData.name}`,
 				backUrl: `${routePrefix}/chapters/${classId}` // Custom back URL to chapters list
 			});
 		}
@@ -668,7 +668,7 @@ const ClassChapterLesson = () => {
 						className="page-title"
 						style={{ margin: 0, flex: 1, textAlign: 'center' }}
 					>
-					{chapterData.name} - {t('lessonManagement.title')} <span className="student-count">({totalElements})</span>
+					{t('lessonManagement.title')} <span className="student-count">({totalElements})</span>
 					</Typography.Title>
 					<div style={{ width: '100px' }}></div> {/* Spacer để cân bằng layout */}
 				</div>
