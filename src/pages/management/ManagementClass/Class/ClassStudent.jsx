@@ -945,7 +945,7 @@ const ClassStudent = () => {
               level={1} 
               className="page-title"
             >
-              Student Management <span className="student-count">({pagination.total})</span>
+              {t('classDetail.studentManagement')} <span className="student-count">({pagination.total})</span>
             </Typography.Title>
           </div>
 

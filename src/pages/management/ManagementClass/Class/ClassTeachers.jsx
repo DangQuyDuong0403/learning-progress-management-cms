@@ -603,7 +603,7 @@ const ClassTeachers = () => {
               level={1} 
               className="page-title"
             >
-              Teacher Management <span className="student-count">({pagination.total})</span>
+              {t('classTeachers.teacherManagement')} <span className="student-count">({pagination.total})</span>
             </Typography.Title>
           </div>
 

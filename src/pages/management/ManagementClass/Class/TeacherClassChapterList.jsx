@@ -50,6 +50,7 @@ const TeacherClassChapterList = () => {
 
 	// State management
 	const [loading, setLoading] = useState(false);
+	const [navigating, setNavigating] = useState(false);
 	const [chapters, setChapters] = useState([]);
 	const [classInfo, setClassInfo] = useState(null);
 	const [searchText, setSearchText] = useState('');
@@ -61,6 +62,9 @@ const TeacherClassChapterList = () => {
 		fileList: [],
 		uploading: false
 	});
+
+	// Loading states for buttons
+	const [templateDownloadLoading, setTemplateDownloadLoading] = useState(false);
 
 	// Pagination state
 	const [pagination, setPagination] = useState({
@@ -158,9 +162,9 @@ const TeacherClassChapterList = () => {
 
 	useEffect(() => {
 		if (classId) {
-			fetchChapters(1, pagination.pageSize, searchText);
+			fetchChapters(1, pagination.pageSize, '');
 		}
-	}, [fetchChapters, searchText, pagination.pageSize, classId]);
+	}, [fetchChapters, pagination.pageSize, classId]);
 
 	// Handle class menu updates - separate effects to avoid infinite loops
 	useEffect(() => {
@@ -189,6 +193,8 @@ const TeacherClassChapterList = () => {
 			if (searchTimeout) {
 				clearTimeout(searchTimeout);
 			}
+			// Reset navigating state on unmount
+			setNavigating(false);
 		};
 	}, [searchTimeout]);
 
@@ -197,7 +203,11 @@ const TeacherClassChapterList = () => {
 	};
 
 	const handleEditOrder = () => {
-		navigate(`${routePrefix}/chapters/${classId}/edit-order`);
+		setNavigating(true);
+		// Add slight delay for smooth transition
+		setTimeout(() => {
+			navigate(`${routePrefix}/chapters/${classId}/edit-order`);
+		}, 300);
 	};
 
 	const handleSearch = (value) => {
@@ -278,6 +288,7 @@ const TeacherClassChapterList = () => {
 	};
 
 	const handleDownloadTemplate = async () => {
+		setTemplateDownloadLoading(true);
 		try {
 			const response = await teacherManagementApi.downloadClassChapterTemplate();
 			
@@ -307,6 +318,8 @@ const TeacherClassChapterList = () => {
 		} catch (error) {
 			console.error('Error downloading template:', error);
 			spaceToast.error(error.response?.data?.error || error.response?.data?.message || error.message || 'Failed to download template');
+		} finally {
+			setTemplateDownloadLoading(false);
 		}
 	};
 
@@ -437,6 +450,29 @@ const TeacherClassChapterList = () => {
 
 	return (
 		<ThemedLayout>
+			{/* Loading Overlay for Navigation */}
+			{navigating && (
+				<div style={{
+					position: 'fixed',
+					top: 0,
+					left: 0,
+					right: 0,
+					bottom: 0,
+					backgroundColor: 'rgba(0, 0, 0, 0.5)',
+					zIndex: 9999,
+					display: 'flex',
+					justifyContent: 'center',
+					alignItems: 'center'
+				}}>
+					<LoadingWithEffect
+						loading={true}
+						message={t('common.loading')}
+					>
+						<div></div>
+					</LoadingWithEffect>
+				</div>
+			)}
+			
 			{/* Main Content Panel */}
 			<div className={`main-content-panel ${theme}-main-panel`}>
 				{/* Page Title */}
@@ -479,6 +515,8 @@ const TeacherClassChapterList = () => {
 								icon={<DragOutlined />}
 								onClick={handleEditOrder}
 								className="create-button"
+								loading={navigating}
+								disabled={navigating}
 							>
 								{t('common.edit')}
 							</Button>
@@ -562,6 +600,8 @@ const TeacherClassChapterList = () => {
 							type="dashed"
 							icon={<DownloadOutlined />}
 							onClick={handleDownloadTemplate}
+							loading={templateDownloadLoading}
+							disabled={templateDownloadLoading}
 							style={{
 								borderColor: '#1890ff',
 								color: '#1890ff',
