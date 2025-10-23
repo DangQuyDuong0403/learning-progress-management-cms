@@ -1,16 +1,15 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { Table, Button, Space, Modal, Input, Tooltip, Typography, Upload, Form, Select, Checkbox, DatePicker, Avatar, Radio } from 'antd';
+import { Table, Button, Space, Modal, Input, Tooltip, Typography, Form, Select, Checkbox, DatePicker, Avatar, Radio, Upload } from 'antd';
 import {
 	PlusOutlined,
 	SearchOutlined,
 	EyeOutlined,
-	DownloadOutlined,
-	UploadOutlined,
 	EditOutlined,
 	DeleteOutlined,
 	FilterOutlined,
 	UserOutlined,
 	SwapOutlined,
+	UploadOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -25,7 +24,6 @@ import { classManagementApi, syllabusManagementApi } from '../../../../apis/apis
 import BottomActionBar from '../../../../component/BottomActionBar';
 import dayjs from 'dayjs';
 
-const { Title } = Typography;
 const { Option } = Select;
 
 const ClassListTable = () => {
@@ -62,7 +60,6 @@ const ClassListTable = () => {
 	
 	// Modal states
 	const [isModalVisible, setIsModalVisible] = useState(false);
-	const [isExportModalVisible, setIsExportModalVisible] = useState(false);
 	const [confirmModal, setConfirmModal] = useState({
 		visible: false,
 		title: '',
@@ -74,11 +71,6 @@ const ClassListTable = () => {
 	const [currentRecord, setCurrentRecord] = useState(null); // Store current class being edited
 	const [editingClass, setEditingClass] = useState(null);
 	const [form] = Form.useForm();
-	const [importModal, setImportModal] = useState({
-		visible: false,
-		fileList: [],
-		uploading: false
-	});
 	
 	// Image upload states
 	const [imageFile, setImageFile] = useState(null);
@@ -113,8 +105,6 @@ const ClassListTable = () => {
 	});
 	const [buttonLoading, setButtonLoading] = useState({
 		add: false,
-		export: false,
-		import: false,
 		deleteAll: false,
 	});
 	
@@ -639,99 +629,6 @@ const ClassListTable = () => {
 		navigate(`/manager/classes/menu/${record.id}`);
 	};
 
-	const handleImport = () => {
-		setButtonLoading(prev => ({ ...prev, import: true }));
-		setTimeout(() => {
-			setImportModal(prev => ({
-				...prev,
-				visible: true,
-				fileList: [],
-				uploading: false
-			}));
-			setButtonLoading(prev => ({ ...prev, import: false }));
-		}, 100);
-	};
-
-	const handleImportOk = async () => {
-		setImportModal(prev => ({ ...prev, uploading: true }));
-		
-		try {
-			// TODO: Implement import functionality
-			spaceToast.success('Classes imported successfully!');
-			setImportModal(prev => ({
-				...prev,
-				visible: false,
-				fileList: [],
-				uploading: false
-			}));
-			
-			// Refresh the data
-				fetchClasses(pagination.current, pagination.pageSize, searchText, sortBy, sortDir, appliedFilters);
-		} catch (error) {
-			console.error('Import error:', error);
-			spaceToast.error('Failed to import classes');
-		} finally {
-			setImportModal(prev => ({ ...prev, uploading: false }));
-		}
-	};
-
-	const handleImportCancel = () => {
-		setImportModal(prev => ({
-			...prev,
-			visible: false,
-			fileList: [],
-			uploading: false
-		}));
-	};
-
-	const handleExport = () => {
-		setButtonLoading(prev => ({ ...prev, export: true }));
-		setTimeout(() => {
-			setIsExportModalVisible(true);
-			setButtonLoading(prev => ({ ...prev, export: false }));
-		}, 100);
-	};
-
-	const handleExportModalClose = () => {
-		setIsExportModalVisible(false);
-	};
-
-	const handleExportSelected = async () => {
-		try {
-			// TODO: Implement export selected items API call
-			// await classManagementApi.exportClasses(selectedRowKeys);
-			
-			spaceToast.success(`${t('classManagement.classesExportedSuccess')}: ${selectedRowKeys.length} ${t('classManagement.classes')}`);
-			setIsExportModalVisible(false);
-		} catch (error) {
-			console.error('Error exporting selected classes:', error);
-			spaceToast.error(t('classManagement.exportError'));
-		}
-	};
-
-	const handleExportAll = async () => {
-		try {
-			// TODO: Implement export all items API call
-			// await classManagementApi.exportAllClasses();
-			
-			spaceToast.success(`${t('classManagement.classesExportedSuccess')}: ${totalClasses} ${t('classManagement.classes')}`);
-			setIsExportModalVisible(false);
-		} catch (error) {
-			console.error('Error exporting all classes:', error);
-			spaceToast.error(t('classManagement.exportError'));
-		}
-	};
-
-	const handleDownloadTemplate = async () => {
-		try {
-			// TODO: Implement template download functionality
-			spaceToast.success(t('classManagement.templateDownloaded'));
-		} catch (error) {
-			console.error('Error downloading template:', error);
-			spaceToast.error('Failed to download template');
-		}
-	};
-
 	// Handle table header checkbox (only current page)
 	const handleSelectAllCurrentPage = (checked) => {
 		const currentPageKeys = classes.map(classItem => classItem.id);
@@ -1225,23 +1122,6 @@ const ClassListTable = () => {
 								</div>
 							</Space>
 							<Space>
-								<Button
-									icon={<UploadOutlined />}
-									onClick={handleExport}
-									className="export-button"
-									loading={buttonLoading.export}
-								>
-									{t('classManagement.exportData')}
-									{selectedRowKeys.length > 0 && ` (${selectedRowKeys.length})`}
-								</Button>
-								<Button
-									icon={<DownloadOutlined />}
-									onClick={handleImport}
-									className="import-button"
-									loading={buttonLoading.import}
-								>
-									{t('classManagement.importClasses')}
-								</Button>
 								<Button
 									icon={<PlusOutlined />}
 									className={`create-button ${theme}-create-button`}
@@ -1791,200 +1671,6 @@ const ClassListTable = () => {
 						)}
 					</div>
 				)}
-				</Modal>
-
-				{/* Import Modal */}
-				<Modal
-					title={
-						<div
-							style={{
-								fontSize: '28px',
-								fontWeight: '600',
-								color: 'rgb(24, 144, 255)',
-								textAlign: 'center',
-								padding: '10px 0',
-								display: 'flex',
-								alignItems: 'center',
-								justifyContent: 'center',
-								gap: '10px',
-							}}>
-							<DownloadOutlined style={{ color: 'rgb(24, 144, 255)' }} />
-							{t('classManagement.importClasses')}
-						</div>
-					}
-					open={importModal.visible}
-					onOk={handleImportOk}
-					onCancel={handleImportCancel}
-					okText={t('classManagement.importClasses')}
-					cancelText={t('common.cancel')}
-					width={600}
-					centered
-					confirmLoading={importModal.uploading}
-				okButtonProps={{
-					disabled: importModal.fileList.length === 0,
-					style: {
-						background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, #7228d9 0%, #9c88ff 100%)',
-						borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : '#7228d9',
-						color: theme === 'sun' ? '#000' : '#fff',
-						borderRadius: '6px',
-						height: '32px',
-						fontWeight: '500',
-						fontSize: '16px',
-						padding: '4px 15px',
-						width: '150px',
-						transition: 'all 0.3s ease',
-						boxShadow: 'none'
-					},
-				}}
-					cancelButtonProps={{
-						style: {
-							height: '32px',
-							fontWeight: '500',
-							fontSize: '16px',
-							padding: '4px 15px',
-							width: '100px'
-						},
-					}}
-				>
-					<div style={{ padding: '20px 0' }}>
-						<div style={{ textAlign: 'center', marginBottom: '20px' }}>
-							<Button
-								type="dashed"
-								icon={<DownloadOutlined />}
-								onClick={handleDownloadTemplate}
-								style={{
-									borderColor: '#1890ff',
-									color: '#1890ff',
-									height: '36px',
-									fontSize: '14px',
-									fontWeight: '500',
-								}}>
-								{t('classManagement.downloadTemplate')}
-							</Button>
-						</div>
-						
-						<Title
-							level={5}
-							style={{
-								textAlign: 'center',
-								marginBottom: '20px',
-								color: '#666',
-							}}>
-							{t('classManagement.importInstructions')}
-						</Title>
-
-						<Upload.Dragger
-							name="file"
-							multiple={false}
-							beforeUpload={() => false}
-							showUploadList={false}
-							accept=".xlsx,.xls,.csv"
-							style={{
-								marginBottom: '20px',
-							border: '2px dashed #d9d9d9',
-							borderRadius: '8px',
-								background: '#fafafa',
-								padding: '40px',
-							textAlign: 'center',
-						}}>
-							<p
-								className='ant-upload-drag-icon'
-								style={{ fontSize: '48px', color: '#1890ff' }}>
-								<DownloadOutlined />
-							</p>
-							<p
-								className='ant-upload-text'
-								style={{ fontSize: '16px', fontWeight: '500' }}>
-								{t('classManagement.clickOrDragFile')}
-							</p>
-							<p className='ant-upload-hint' style={{ color: '#999' }}>
-								{t('classManagement.supportedFormats')}
-							</p>
-						</Upload.Dragger>
-					</div>
-				</Modal>
-
-				{/* Export Data Modal */}
-				<Modal
-					title={
-						<div
-							style={{
-								fontSize: '28px',
-								fontWeight: '600',
-								color: 'rgb(24, 144, 255)',
-								textAlign: 'center',
-								padding: '10px 0',
-							}}>
-							{t('classManagement.exportData')}
-						</div>
-					}
-					open={isExportModalVisible}
-					onCancel={handleExportModalClose}
-					width={500}
-					footer={[
-						<Button 
-							key="cancel" 
-							onClick={handleExportModalClose}
-							style={{
-								height: '32px',
-								fontWeight: '500',
-								fontSize: '16px',
-								padding: '4px 15px',
-								width: '100px'
-							}}>
-							{t('common.cancel')}
-						</Button>
-					]}>
-					<div style={{ padding: '20px 0' }}>
-						<div style={{ textAlign: 'center', marginBottom: '30px' }}>
-							<UploadOutlined style={{ fontSize: '48px', color: '#1890ff', marginBottom: '16px' }} />
-							<Typography.Title level={4} style={{ color: theme === 'dark' ? '#cccccc' : '#666', marginBottom: '8px' }}>
-								{t('classManagement.chooseExportOption')}
-							</Typography.Title>
-							<Typography.Text style={{ color: theme === 'dark' ? '#999999' : '#999' }}>
-								{t('classManagement.exportDescription')}
-							</Typography.Text>
-						</div>
-
-						<div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-							{selectedRowKeys.length > 0 && (
-								<Button
-									type="primary"
-									icon={<UploadOutlined />}
-									onClick={handleExportSelected}
-									style={{
-										height: '48px',
-										fontSize: '16px',
-										fontWeight: '500',
-										background: theme === 'sun' 
-											? 'linear-gradient(135deg, #FFFFFF, #B6D8FE 77%, #94C2F5)'
-											: 'linear-gradient(135deg, #FFFFFF 0%, #9F96B6 46%, #A79EBB 64%, #ACA5C0 75%, #6D5F8F 100%)',
-										borderColor: theme === 'sun' ? '#B6D8FE' : '#9F96B6',
-										color: '#000000',
-										borderRadius: '8px',
-									}}>
-									{t('classManagement.exportSelected')} ({selectedRowKeys.length} {t('classManagement.classes')})
-								</Button>
-							)}
-
-							<Button
-								icon={<UploadOutlined />}
-								onClick={handleExportAll}
-								style={{
-									height: '48px',
-									fontSize: '16px',
-									fontWeight: '500',
-									background: theme === 'sun' 
-										? 'linear-gradient(135deg, #FFFFFF, #B6D8FE 77%, #94C2F5)'
-										: 'linear-gradient(135deg, #FFFFFF 0%, #9F96B6 46%, #A79EBB 64%, #ACA5C0 75%, #6D5F8F 100%)',
-									borderColor: theme === 'sun' ? '#B6D8FE' : '#9F96B6',
-									color: '#000000',
-									borderRadius: '8px',
-								}}>
-								{t('classManagement.exportAll')} ({totalClasses} {t('classManagement.classes')})
-							</Button>
-						</div>
-					</div>
 				</Modal>
 
 				{/* Bottom Action Bar */}

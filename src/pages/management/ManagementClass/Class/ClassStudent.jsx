@@ -314,7 +314,7 @@ const ClassStudent = () => {
       enterClassMenu({
         id: classData.id,
         name: classData.name,
-        description: `${t('classDetail.students')} (${students.length})`
+        description: classData.name
       });
     }
     
@@ -323,7 +323,7 @@ const ClassStudent = () => {
       exitClassMenu();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [classData?.id, classData?.name, students.length]); // Only run when these specific values change
+  }, [classData?.id, classData?.name]); // Only run when these specific values change
 
   const handleAddStudent = () => {
     setButtonLoading(prev => ({ ...prev, add: true }));

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import usePageTitle from "../../../hooks/usePageTitle";
 import {
   Input,
@@ -18,10 +18,7 @@ import {
 import ThemedLayout from "../../../component/teacherlayout/ThemedLayout";
 import LoadingWithEffect from "../../../component/spinner/LoadingWithEffect";
 import "../ManagementClass/Class/ClassList.css";
-import { useNavigate } from "react-router-dom";
-import { useTranslation } from "react-i18next";
 import { useTheme } from "../../../contexts/ThemeContext";
-import { useClassMenu } from "../../../contexts/ClassMenuContext";
 
 // Predefined colors for classes
 const classColors = [
@@ -146,10 +143,7 @@ const generateFakeClasses = () => {
 };
 
 const StudentClassList = () => {
-  const { t } = useTranslation();
   const { theme } = useTheme();
-  const navigate = useNavigate();
-  const { enterClassMenu, exitClassMenu } = useClassMenu();
   
   // Set page title
   usePageTitle('My Classes');
@@ -178,19 +172,6 @@ const StudentClassList = () => {
     console.log('Navigate to class:', classItem.id);
     // navigate(`/student/classes/${classItem.id}`);
   };
-
-  // Setup ThemedHeader with back button to dashboard
-  useEffect(() => {
-    enterClassMenu({
-      id: 'student-classes',
-      name: '',
-      description: '',
-      backUrl: '/student/dashboard'
-    });
-
-    return () => exitClassMenu();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   // Filter classes based on search
   const filteredClasses = allClasses.filter(classItem =>

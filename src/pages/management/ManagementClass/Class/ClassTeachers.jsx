@@ -285,7 +285,7 @@ const ClassTeachers = () => {
       enterClassMenu({
         id: classData.id,
         name: classData.name,
-        description: `${t('classTeachers.teachers')} (${teachers.length})`
+        description: classData.name
       });
     }
     
@@ -293,7 +293,7 @@ const ClassTeachers = () => {
     return () => {
       exitClassMenu();
     };
-  }, [classData?.id, classData?.name, teachers.length]);
+  }, [classData?.id, classData?.name]);
 
   // Handle search and filter changes with debounce
   useEffect(() => {
