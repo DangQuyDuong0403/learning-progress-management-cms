@@ -348,16 +348,34 @@ const ClassTeachers = () => {
     }, 100);
   };
 
-  const handleImportModalOk = () => {
+  const handleImportModalOk = async () => {
     if (fileList.length === 0) {
       spaceToast.warning(t('classTeachers.selectFileToImportError'));
       return;
     }
     
-    // Simulate file processing
-    spaceToast.success(t('classTeachers.importSuccess'));
-    setIsImportModalVisible(false);
-    setFileList([]);
+    if (buttonLoading.import) {
+      return; // Prevent multiple clicks
+    }
+    
+    setButtonLoading(prev => ({ ...prev, import: true }));
+    
+    try {
+      // Simulate file processing - replace with actual API call when ready
+      await new Promise(resolve => setTimeout(resolve, 2000)); // Simulate API delay
+      
+      spaceToast.success(t('classTeachers.importSuccess'));
+      setIsImportModalVisible(false);
+      setFileList([]);
+      
+      // Refresh the teachers list after import
+      fetchTeachers();
+    } catch (error) {
+      console.error('Error importing teachers:', error);
+      spaceToast.error(t('classTeachers.importError'));
+    } finally {
+      setButtonLoading(prev => ({ ...prev, import: false }));
+    }
   };
 
   const handleImportModalCancel = () => {
@@ -380,8 +398,10 @@ const ClassTeachers = () => {
   };
 
   const handleConfirmDelete = async () => {
-    if (teacherToDelete) {
+    if (teacherToDelete && !buttonLoading.delete) {
       console.log("Confirm delete for teacher:", teacherToDelete);
+      
+      setButtonLoading(prev => ({ ...prev, delete: true }));
       
       try {
         const response = await classManagementApi.removeTeacherFromClass(id, teacherToDelete.userId);
@@ -408,10 +428,11 @@ const ClassTeachers = () => {
                             t('classTeachers.deleteError');
         
         spaceToast.error(errorMessage);
+      } finally {
+        setButtonLoading(prev => ({ ...prev, delete: false }));
+        setIsDeleteModalVisible(false);
+        setTeacherToDelete(null);
       }
-      
-      setIsDeleteModalVisible(false);
-      setTeacherToDelete(null);
     }
   };
 
@@ -422,6 +443,10 @@ const ClassTeachers = () => {
   };
 
   const handleModalOk = async () => {
+    if (buttonLoading.add) {
+      return; // Prevent multiple clicks
+    }
+    
     setButtonLoading(prev => ({ ...prev, add: true }));
     try {
       const values = await form.validateFields();
@@ -753,6 +778,8 @@ const ClassTeachers = () => {
           okText={t('classTeachers.add')}
           cancelText={t('common.cancel')}
           okButtonProps={{
+            loading: buttonLoading.add,
+            disabled: buttonLoading.add,
             style: {
               background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, #7228d9 0%, #9c88ff 100%)',
               borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : '#7228d9',
@@ -907,6 +934,8 @@ const ClassTeachers = () => {
              textAlign: 'center'
            }}
            okButtonProps={{
+             loading: buttonLoading.delete,
+             disabled: buttonLoading.delete,
              style: {
                background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, #7228d9 0%, #9c88ff 100%)',
                borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : '#7228d9',
@@ -992,7 +1021,8 @@ const ClassTeachers = () => {
            width={600}
            centered
            okButtonProps={{
-             disabled: fileList.length === 0,
+             loading: buttonLoading.import,
+             disabled: fileList.length === 0 || buttonLoading.import,
              style: {
                background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, #7228d9 0%, #9c88ff 100%)',
                borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : '#7228d9',

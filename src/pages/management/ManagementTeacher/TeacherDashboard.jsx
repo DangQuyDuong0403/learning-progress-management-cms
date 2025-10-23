@@ -54,7 +54,8 @@ const TeacherDashboard = () => {
       icon: <TeamOutlined style={{ fontSize: '48px', color: '#00d4ff' }} />,
       path: '/teacher/classes',
       color: "#00d4ff",
-    },
+    }
+
   ];
 
   const handleCardClick = (path) => {
