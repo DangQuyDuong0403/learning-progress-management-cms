@@ -113,6 +113,7 @@ const SortableChapterItem = memo(
 							size="small"
 							style={{ width: '200px', fontSize: '16px' }}
 							placeholder={t('chapterManagement.chapterNamePlaceholder')}
+							maxLength={100}
 						/>
 					</div>
 				</div>
@@ -342,22 +343,35 @@ const TeacherClassChapterDragEdit = () => {
 						);
 					});
 				} else if (insertAtIndex !== null) {
-					// Insert new chapter at specific position
-					const newChapter = {
-						...newChapterData,
-						id: `new-${Date.now()}`,
-						position: insertAtIndex + 1,
-						order: insertAtIndex + 1,
-					};
-
 					setChapters((prev) => {
-						const newChapters = [...prev];
-						newChapters.splice(insertAtIndex, 0, newChapter);
-						return newChapters.map((chapter, i) => ({
+						// Create new chapter with temporary position
+						const newChapter = {
+							...newChapterData,
+							id: `new-${Date.now()}`,
+							position: 0, // Temporary, will be recalculated
+							order: 0, // Temporary, will be recalculated
+							orderNumber: 0, // Temporary, will be recalculated
+						};
+						
+						// Get only visible chapters (not deleted)
+						const visibleChapters = prev.filter(chapter => !chapter.toBeDeleted);
+						
+						// Insert at the correct position in visible chapters
+						const newVisibleChapters = [...visibleChapters];
+						newVisibleChapters.splice(insertAtIndex, 0, newChapter);
+						
+						// Recalculate positions for visible chapters only
+						const updatedVisibleChapters = newVisibleChapters.map((chapter, i) => ({
 							...chapter,
 							position: i + 1,
 							order: i + 1,
+							orderNumber: i + 1,
 						}));
+						
+						// Combine with deleted chapters (keep them as-is)
+						const deletedChapters = prev.filter(chapter => chapter.toBeDeleted);
+						
+						return [...updatedVisibleChapters, ...deletedChapters];
 					});
 				}
 			}
@@ -370,32 +384,70 @@ const TeacherClassChapterDragEdit = () => {
 
 	const handleDeleteChapter = useCallback(
 		(index) => {
-			if (chapters.length <= 1) {
-				message.warning(t('chapterManagement.minChaptersRequired'));
+			const visibleChapters = chapters.filter(chapter => !chapter.toBeDeleted);
+
+			// Get the actual chapter from visible chapters using the index
+			const chapterToDelete = visibleChapters[index];
+			if (!chapterToDelete) {
+				console.error('Chapter not found at index:', index);
 				return;
 			}
 
+			// Set toBeDeleted: true but keep in state
 			setChapters((prev) => {
-				const newChapters = prev.filter((_, i) => i !== index);
-				return newChapters.map((chapter, i) => ({
-					...chapter,
-					position: i + 1,
-					order: i + 1,
-				}));
+				const newChapters = prev.map((chapter) => {
+					if (chapter.id === chapterToDelete.id) {
+						return {
+							...chapter,
+							toBeDeleted: true
+						};
+					}
+					return chapter;
+				});
+				
+				// Recalculate positions only for visible items
+				const visibleItems = newChapters.filter(chapter => !chapter.toBeDeleted);
+				return newChapters.map((chapter) => {
+					if (chapter.toBeDeleted) {
+						return chapter; // Keep deleted items as-is
+					}
+					
+					// Update position for visible items
+					const visibleIndex = visibleItems.findIndex(item => item.id === chapter.id);
+					return {
+						...chapter,
+						position: visibleIndex + 1,
+						order: visibleIndex + 1,
+						orderNumber: visibleIndex + 1, // Cập nhật orderNumber để tuần tự
+					};
+				});
 			});
 		},
-		[chapters.length, t]
+		[chapters]
 	);
 
 	const handleUpdateChapterName = useCallback(
 		(index, newName) => {
 			setChapters((prev) => {
-				const newChapters = [...prev];
-				newChapters[index] = {
-					...newChapters[index],
-					name: newName,
-				};
-				return newChapters;
+				// Get visible chapters to find the correct chapter by index
+				const visibleChapters = prev.filter(chapter => !chapter.toBeDeleted);
+				const chapterToUpdate = visibleChapters[index];
+				
+				if (!chapterToUpdate) {
+					console.error('Chapter not found at index:', index);
+					return prev;
+				}
+
+				// Update the chapter by its ID
+				return prev.map((chapter) => {
+					if (chapter.id === chapterToUpdate.id) {
+						return {
+							...chapter,
+							name: newName,
+						};
+					}
+					return chapter;
+				});
 			});
 		},
 		[]
@@ -413,6 +465,7 @@ const TeacherClassChapterDragEdit = () => {
 
 	const handleDragEnd = useCallback((event) => {
 		const { active, over } = event;
+		// Reset overflow
 		document.body.style.overflow = '';
 
 		if (active.id !== over?.id) {
@@ -424,46 +477,93 @@ const TeacherClassChapterDragEdit = () => {
 
 				const newItems = arrayMove(items, oldIndex, newIndex);
 
-				return newItems.map((chapter, index) => ({
-					...chapter,
-					position: index + 1,
-					order: index + 1,
-				}));
+				// Chỉ update position cho visible items (không bị xóa)
+				const visibleItems = newItems.filter(chapter => !chapter.toBeDeleted);
+				return newItems.map((chapter) => {
+					if (chapter.toBeDeleted) {
+						return chapter; // Giữ nguyên items đã bị xóa
+					}
+					
+					// Tính position dựa trên thứ tự trong visible items
+					const visibleIndex = visibleItems.findIndex(item => item.id === chapter.id);
+					return {
+						...chapter,
+						position: visibleIndex + 1,
+						order: visibleIndex + 1,
+						orderNumber: visibleIndex + 1, // Cập nhật orderNumber để tuần tự
+					};
+				});
 			});
 		}
 	}, []);
 
-	const chapterIds = useMemo(() => chapters.map((chapter) => chapter.id), [chapters]);
+	const chapterIds = useMemo(() => 
+		chapters.filter(chapter => !chapter.toBeDeleted).map((chapter) => chapter.id), 
+		[chapters]
+	);
 
 	const handleSave = useCallback(async () => {
-		const invalidChapters = chapters.filter((chapter) => !chapter.name.trim());
+		const visibleChapters = chapters.filter(chapter => !chapter.toBeDeleted);
+		const invalidChapters = visibleChapters.filter((chapter) => !chapter.name.trim());
 		if (invalidChapters.length > 0) {
 			message.error(t('chapterManagement.chapterNameRequired'));
+			return;
+		}
+
+		// Kiểm tra độ dài tên chapter
+		const longNameChapters = visibleChapters.filter((chapter) => chapter.name.length > 100);
+		if (longNameChapters.length > 0) {
+			message.error(t('chapterManagement.chapterNameTooLong'));
 			return;
 		}
 
 		setSaving(true);
 		try {
 			// Chuẩn bị dữ liệu theo format của API /class-chapter/sync
-			const syncData = chapters.map((chapter, index) => {
-				const isNewRecord = typeof chapter.id === 'string' && chapter.id.startsWith('new-');
-				
-				return {
-					id: isNewRecord ? null : chapter.id, // null cho chapter mới
-					classChapterName: chapter.name,
-					orderNumber: index + 1, // Thứ tự từ 1
-					toBeDeleted: false, // Mặc định không xóa
-				};
+			const syncData = chapters
+				.map((chapter) => {
+					const isNewRecord = typeof chapter.id === 'string' && chapter.id.startsWith('new-');
+					
+					return {
+						id: isNewRecord ? null : chapter.id, // null cho chapter mới
+						classChapterName: chapter.name,
+						orderNumber: chapter.position, // Position hiện tại = orderNumber
+						toBeDeleted: chapter.toBeDeleted || false, // Include toBeDeleted flag
+					};
+				})
+				.filter((chapter) => {
+					// Không gửi các record mới (id: null) mà đã bị xóa (toBeDeleted: true)
+					// Vì chúng chưa tồn tại trên backend nên không cần xóa
+					return !(chapter.id === null && chapter.toBeDeleted === true);
+				});
+
+			console.log('TeacherClassChapterDragEdit - Sending sync data:', {
+				count: syncData.length,
+				chapters: syncData.map(c => ({ 
+					id: c.id, 
+					classChapterName: c.classChapterName, 
+					orderNumber: c.orderNumber,
+					toBeDeleted: c.toBeDeleted 
+				}))
 			});
 
 			// Gọi API sync với classId và dữ liệu chapters
-			await teacherManagementApi.syncClassChapters(classId, syncData);
+			const response = await teacherManagementApi.syncClassChapters(classId, syncData);
 
-			spaceToast.success(t('chapterManagement.updatePositionsSuccess'));
+			// Use backend message if available, otherwise fallback to translation
+			const successMessage = response.message || t('chapterManagement.updatePositionsSuccess');
+			spaceToast.success(successMessage);
 			navigate(`${routePrefix}/chapters/${classId}`);
 		} catch (error) {
 			console.error('Error syncing chapters:', error);
-			spaceToast.error(t('chapterManagement.updatePositionsError'));
+			
+			// Handle API errors with backend messages
+			if (error.response) {
+				const errorMessage = error.response.data?.error || error.response.data?.message || error.message;
+				spaceToast.error(errorMessage);
+			} else {
+				spaceToast.error(error.message || t('chapterManagement.updatePositionsError'));
+			}
 		} finally {
 			setSaving(false);
 		}
@@ -520,7 +620,9 @@ const TeacherClassChapterDragEdit = () => {
 										<SortableContext
 											items={chapterIds}
 											strategy={verticalListSortingStrategy}>
-											{chapters.map((chapter, index) => (
+											{chapters
+												.filter(chapter => !chapter.toBeDeleted)
+												.map((chapter, index) => (
 												<React.Fragment key={chapter.id}>
 													{index > 0 && (
 														<AddChapterButton
@@ -542,16 +644,16 @@ const TeacherClassChapterDragEdit = () => {
 											))}
 											
 											{/* Always show Add button at the end if there are chapters */}
-											{chapters.length > 0 && (
+											{chapters.filter(chapter => !chapter.toBeDeleted).length > 0 && (
 												<AddChapterButton
 													theme={theme}
-													index={chapters.length}
+													index={chapters.filter(chapter => !chapter.toBeDeleted).length}
 													onAddAtPosition={handleAddChapterAtPosition}
 												/>
 											)}
 											
 											{/* Show fixed Add button when no chapters exist */}
-											{chapters.length === 0 && (
+											{chapters.filter(chapter => !chapter.toBeDeleted).length === 0 && (
 												<div className={`add-level-empty ${theme}-add-level-empty`} style={{ 
 													marginTop: '40px', 
 													textAlign: 'center',

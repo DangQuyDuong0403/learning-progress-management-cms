@@ -68,8 +68,30 @@ export default function ThemedHeader() {
   };
 
   const handleBackToDashboard = () => {
-    // Go back to previous page
-    navigate(-1);
+    // Navigate to appropriate dashboard based on user role
+    const userRole = user?.role?.toLowerCase();
+    
+    switch (userRole) {
+      case 'student':
+        navigate('/student/dashboard');
+        break;
+      case 'teacher':
+        navigate('/teacher/dashboard');
+        break;
+      case 'teaching_assistant':
+        navigate('/teaching-assistant/dashboard');
+        break;
+      case 'test_taker':
+        navigate('/test-taker/dashboard');
+        break;
+      case 'manager':
+        navigate('/manager/dashboard');
+        break;
+      default:
+        // Fallback to going back if role is not recognized
+        navigate(-1);
+        break;
+    }
   };
 
   const handleBackToSyllabusList = () => {
@@ -99,7 +121,7 @@ export default function ThemedHeader() {
     handleBackToDashboard();
   };
 
-  // Check if on teacher/teaching_assistant classes list page
+  // Check if on teacher/teaching_assistant/student classes list page
   const isOnClassesListPage = () => {
     const userRole = user?.role?.toLowerCase();
     if (userRole === 'teacher') {
@@ -107,6 +129,12 @@ export default function ThemedHeader() {
     }
     if (userRole === 'teaching_assistant') {
       return location.pathname === '/teaching-assistant/classes';
+    }
+    if (userRole === 'student') {
+      return location.pathname === '/student/classes';
+    }
+    if (userRole === 'manager') {
+      return location.pathname === '/manager/classes';
     }
     return false;
   };
