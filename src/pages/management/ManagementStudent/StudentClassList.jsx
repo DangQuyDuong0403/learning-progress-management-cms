@@ -1,4 +1,6 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
+import { useTranslation } from "react-i18next";
+import { useNavigate } from "react-router-dom";
 import usePageTitle from "../../../hooks/usePageTitle";
 import {
   Input,
@@ -19,6 +21,8 @@ import ThemedLayout from "../../../component/teacherlayout/ThemedLayout";
 import LoadingWithEffect from "../../../component/spinner/LoadingWithEffect";
 import "../ManagementClass/Class/ClassList.css";
 import { useTheme } from "../../../contexts/ThemeContext";
+import { spaceToast } from "../../../component/SpaceToastify";
+import classManagementApi from "../../../apis/backend/classManagement";
 
 // Predefined colors for classes
 const classColors = [
@@ -48,142 +52,143 @@ const getRandomAvatar = () => {
   return `/img/student_avatar/avatar${randomNumber}.png`;
 };
 
-// Fake data for student classes
-const generateFakeClasses = () => {
-  return [
-    {
-      id: 1,
-      name: "English Level A1 - Morning Class",
-      color: getClassColor(1),
-      avatar: getRandomAvatar(),
-      isActive: true,
-      syllabusName: "Cambridge English A1",
-      levelName: "Starters",
-      startDate: "2025-01-15",
-      endDate: "2025-06-30",
-    },
-    {
-      id: 2,
-      name: "Mathematics Basic",
-      color: getClassColor(2),
-      avatar: getRandomAvatar(),
-      isActive: true,
-      syllabusName: "Basic Math Course",
-      levelName: "Movers",
-      startDate: "2025-02-01",
-      endDate: "2025-07-15",
-    },
-    {
-      id: 3,
-      name: "English Conversation A2",
-      color: getClassColor(3),
-      avatar: getRandomAvatar(),
-      isActive: true,
-      syllabusName: "Cambridge English A2",
-      levelName: "Flyers",
-      startDate: "2025-01-20",
-      endDate: "2025-06-20",
-    },
-    {
-      id: 4,
-      name: "Writing Skills Development",
-      color: getClassColor(4),
-      avatar: getRandomAvatar(),
-      isActive: false,
-      syllabusName: "Advanced Writing",
-      levelName: "Pre A1",
-      startDate: "2024-09-01",
-      endDate: "2024-12-31",
-    },
-    {
-      id: 5,
-      name: "English Grammar Fundamentals",
-      color: getClassColor(5),
-      avatar: getRandomAvatar(),
-      isActive: true,
-      syllabusName: "Grammar Basics",
-      levelName: "Starters",
-      startDate: "2025-01-10",
-      endDate: "2025-06-10",
-    },
-    {
-      id: 6,
-      name: "Reading Comprehension B1",
-      color: getClassColor(6),
-      avatar: getRandomAvatar(),
-      isActive: true,
-      syllabusName: "Reading Skills B1",
-      levelName: "KET",
-      startDate: "2025-02-15",
-      endDate: "2025-08-15",
-    },
-    {
-      id: 7,
-      name: "Listening Practice A2",
-      color: getClassColor(7),
-      avatar: getRandomAvatar(),
-      isActive: true,
-      syllabusName: "Listening A2 Course",
-      levelName: "Flyers",
-      startDate: "2025-01-25",
-      endDate: "2025-07-25",
-    },
-    {
-      id: 8,
-      name: "Speaking Confidence Builder",
-      color: getClassColor(8),
-      avatar: getRandomAvatar(),
-      isActive: false,
-      syllabusName: "Speaking Workshop",
-      levelName: "Movers",
-      startDate: "2024-10-01",
-      endDate: "2024-12-31",
-    },
-  ];
-};
 
 const StudentClassList = () => {
+  const { t } = useTranslation();
   const { theme } = useTheme();
+  const navigate = useNavigate();
   
   // Set page title
-  usePageTitle('My Classes');
+  usePageTitle(t('studentClassList.title'));
   
   // State for classes data
-  const [allClasses] = useState(generateFakeClasses());
-  const [loading] = useState(false);
+  const [allClasses, setAllClasses] = useState([]);
+  const [loading, setLoading] = useState(true);
   
   // Pagination state
   const [pagination, setPagination] = useState({
     current: 1,
     pageSize: 9,
-    total: generateFakeClasses().length,
+    total: 0,
   });
   
   // Search state
   const [searchText, setSearchText] = useState("");
+  const [searchValue, setSearchValue] = useState(""); // Actual search value used for API calls
+
+  // Fetch student classes from API
+  const fetchStudentClasses = useCallback(async (page = 1, size = 9, search = '') => {
+    setLoading(true);
+    try {
+      const params = {
+        page: page - 1, // API uses 0-based indexing
+        size: size,
+      };
+
+      // Add search parameter if provided
+      if (search && search.trim()) {
+        params.text = search.trim();
+      }
+
+      console.log('Fetching student classes with params:', params);
+      const response = await classManagementApi.getStudentClasses(params);
+      
+      // Handle different response structures from /api/v1/class
+      let classesData = [];
+      let totalElements = 0;
+      
+      if (response && response.data) {
+        // Check if response has content array (pagination structure)
+        if (response.data.content && Array.isArray(response.data.content)) {
+          classesData = response.data.content;
+          totalElements = response.data.totalElements || 0;
+        } 
+        // Check if response.data is directly an array
+        else if (Array.isArray(response.data)) {
+          classesData = response.data;
+          totalElements = response.data.length;
+        }
+        // Check if response.data has data property
+        else if (response.data.data && Array.isArray(response.data.data)) {
+          classesData = response.data.data;
+          totalElements = response.data.totalElements || response.data.data.length;
+        }
+      }
+      
+      console.log('Classes data received:', classesData);
+      
+      if (classesData.length > 0) {
+        // Map API response to include required fields
+        const mappedClasses = classesData.map(classItem => ({
+          id: classItem.id,
+          name: classItem.className || classItem.name || 'Unknown Class',
+          color: getClassColor(classItem.id),
+          avatar: classItem.avatarUrl || getRandomAvatar(),
+          isActive: classItem.status === 'ACTIVE',
+          syllabusName: classItem.syllabus?.syllabusName || classItem.syllabusInfo?.name || classItem.syllabusName || 'Unknown Syllabus',
+          levelName: classItem.syllabus?.level?.levelName || classItem.levelInfo?.name || classItem.levelName || 'Unknown Level',
+          startDate: classItem.startDate ? classItem.startDate.split('T')[0] : 'N/A',
+          endDate: classItem.endDate ? classItem.endDate.split('T')[0] : 'N/A',
+        }));
+        
+        setAllClasses(mappedClasses);
+        setPagination(prev => ({
+          ...prev,
+          current: page,
+          pageSize: size,
+          total: totalElements,
+        }));
+      } else {
+        setAllClasses([]);
+        setPagination(prev => ({
+          ...prev,
+          current: page,
+          pageSize: size,
+          total: 0,
+        }));
+      }
+    } catch (error) {
+      console.error('Error fetching student classes:', error);
+      spaceToast.error(t('studentClassList.loadClassesError'));
+      setAllClasses([]);
+      setPagination(prev => ({
+        ...prev,
+        current: page,
+        pageSize: size,
+        total: 0,
+      }));
+    } finally {
+      setLoading(false);
+    }
+  }, [t]);
+
+  // Fetch classes on component mount and when search changes
+  useEffect(() => {
+    fetchStudentClasses(1, pagination.pageSize, searchValue);
+  }, [fetchStudentClasses, pagination.pageSize, searchValue]);
 
   const handleSearch = (value) => {
     setSearchText(value);
-    setPagination(prev => ({ ...prev, current: 1 }));
+    
+    // Debounce search to avoid too many API calls
+    const timeout = setTimeout(() => {
+      setSearchValue(value);
+      setPagination(prev => ({ ...prev, current: 1 }));
+    }, 500);
+    
+    return () => clearTimeout(timeout);
   };
 
   const handleCardClick = (classItem) => {
-    // TODO: Navigate to class detail page for student
-    console.log('Navigate to class:', classItem.id);
-    // navigate(`/student/classes/${classItem.id}`);
+    // Navigate to class menu for student
+    console.log('Navigate to class menu:', classItem.id);
+    navigate(`/student/classes/menu/${classItem.id}`);
   };
 
-  // Filter classes based on search
-  const filteredClasses = allClasses.filter(classItem =>
-    classItem.name.toLowerCase().includes(searchText.toLowerCase()) ||
-    classItem.syllabusName.toLowerCase().includes(searchText.toLowerCase()) ||
-    classItem.levelName.toLowerCase().includes(searchText.toLowerCase())
-  );
-
-  // Paginate filtered classes
-  const startIndex = (pagination.current - 1) * pagination.pageSize;
-  const endIndex = startIndex + pagination.pageSize;
-  const paginatedClasses = filteredClasses.slice(startIndex, endIndex);
+  const handlePaginationChange = (page, pageSize) => {
+    setPagination(prev => ({ ...prev, current: page, pageSize }));
+    fetchStudentClasses(page, pageSize, searchValue);
+  };
 
   return (
     <ThemedLayout>
@@ -195,7 +200,7 @@ const StudentClassList = () => {
             className="page-title"
             style={{ margin: 0 }}
           >
-            My Classes <span className="student-count">({filteredClasses.length})</span>
+            {t('studentClassList.title')} <span className="student-count">({pagination.total})</span>
           </Typography.Title>
         </div>
 
@@ -207,7 +212,6 @@ const StudentClassList = () => {
                 prefix={<SearchOutlined />}
                 value={searchText}
                 onChange={(e) => handleSearch(e.target.value)}
-                placeholder="Search classes..."
                 className="search-input"
                 style={{ minWidth: '350px', maxWidth: '500px', height: '40px', fontSize: '16px' }}
                 allowClear
@@ -226,10 +230,10 @@ const StudentClassList = () => {
           }}
         >
           <LoadingWithEffect loading={loading}>
-            {paginatedClasses.length > 0 ? (
+            {allClasses.length > 0 ? (
               <>
                 <Row gutter={[16, 16]} justify="start" style={{ padding: '0 20px', marginBottom: '24px' }}>
-                  {paginatedClasses.map((classItem) => (
+                  {allClasses.map((classItem) => (
                     <Col xs={24} sm={12} md={8} lg={8} xl={8} key={classItem.id}>
                       <Card 
                         className="class-card" 
@@ -308,7 +312,7 @@ const StudentClassList = () => {
                                 fontWeight: '600'
                               }}
                             >
-                              {classItem.isActive ? 'Active' : 'Inactive'}
+                              {classItem.isActive ? t('common.active') : t('common.inactive')}
                             </div>
                           </div>
                           
@@ -319,7 +323,7 @@ const StudentClassList = () => {
                               justifyContent: 'space-between',
                               gap: '8px'
                             }}>
-                              <Tooltip title={`Syllabus: ${classItem.syllabusName}`} placement="top">
+                              <Tooltip title={`${t('common.syllabus')}: ${classItem.syllabusName}`} placement="top">
                                 <span style={{ 
                                   color: '#000000',
                                   overflow: 'hidden', 
@@ -328,17 +332,17 @@ const StudentClassList = () => {
                                   flex: 1
                                 }}>
                                   <BookOutlined style={{ color: '#000000', fontSize: '14px', marginRight: '4px' }} />
-                                  Syllabus: {classItem.syllabusName}
+                                  {t('common.syllabus')}: {classItem.syllabusName}
                                 </span>
                               </Tooltip>
-                              <Tooltip title={`Level: ${classItem.levelName}`} placement="top">
+                              <Tooltip title={`${t('common.level')}: ${classItem.levelName}`} placement="top">
                                 <span style={{ 
                                   color: '#000000',
                                   overflow: 'hidden', 
                                   textOverflow: 'ellipsis', 
                                   whiteSpace: 'nowrap'
                                 }}>
-                                  Level: {classItem.levelName}
+                                  {t('common.level')}: {classItem.levelName}
                                 </span>
                               </Tooltip>
                             </div>
@@ -349,7 +353,7 @@ const StudentClassList = () => {
                               justifyContent: 'space-between',
                               gap: '8px'
                             }}>
-                              <Tooltip title={`Start Date: ${classItem.startDate}`} placement="top">
+                              <Tooltip title={`${t('common.startDate')}: ${classItem.startDate}`} placement="top">
                                 <span style={{ 
                                   color: '#000000',
                                   overflow: 'hidden', 
@@ -358,17 +362,17 @@ const StudentClassList = () => {
                                   flex: 1
                                 }}>
                                   <CalendarOutlined style={{ color: '#000000', fontSize: '14px', marginRight: '4px' }} />
-                                  Start: {classItem.startDate}
+                                  {t('common.start')}: {classItem.startDate}
                                 </span>
                               </Tooltip>
-                              <Tooltip title={`End Date: ${classItem.endDate}`} placement="top">
+                              <Tooltip title={`${t('common.endDate')}: ${classItem.endDate}`} placement="top">
                                 <span style={{ 
                                   color: '#000000',
                                   overflow: 'hidden', 
                                   textOverflow: 'ellipsis', 
                                   whiteSpace: 'nowrap'
                                 }}>
-                                  End: {classItem.endDate}
+                                  {t('common.end')}: {classItem.endDate}
                                 </span>
                               </Tooltip>
                             </div>
@@ -380,7 +384,7 @@ const StudentClassList = () => {
                 </Row>
                 
                 {/* Pagination */}
-                {filteredClasses.length > 0 && (
+                {pagination.total > 0 && (
                   <div style={{ 
                     display: 'flex', 
                     justifyContent: 'flex-end', 
@@ -389,18 +393,17 @@ const StudentClassList = () => {
                   }}>
                     <Pagination
                       current={pagination.current}
-                      total={filteredClasses.length}
+                      total={pagination.total}
                       pageSize={pagination.pageSize}
                       showSizeChanger={true}
                       showQuickJumper={false}
                       showTotal={(total, range) => 
-                        `${range[0]}-${range[1]} of ${total} classes`
+                        `${range[0]}-${range[1]} ${t('common.of')} ${total} ${t('studentClassList.classes')}`
                       }
-                      onChange={(page, pageSize) => {
-                        setPagination(prev => ({ ...prev, current: page, pageSize }));
-                      }}
+                      onChange={handlePaginationChange}
                       onShowSizeChange={(current, size) => {
                         setPagination(prev => ({ ...prev, current: 1, pageSize: size }));
+                        fetchStudentClasses(1, size, searchValue);
                       }}
                       pageSizeOptions={['6', '9', '12', '18']}
                     />
@@ -409,7 +412,7 @@ const StudentClassList = () => {
               </>
             ) : (
               <div className="empty-state">
-                <p>No classes found</p>
+                <p>{t('studentClassList.noClassesFound')}</p>
               </div>
             )}
           </LoadingWithEffect>

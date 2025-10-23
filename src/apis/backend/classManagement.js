@@ -440,6 +440,73 @@ const classManagementApi = {
 			throw error;
 		});
 	},
+
+	// Lấy danh sách lớp học của học sinh hiện tại
+	// Backend sẽ check JWT token để lấy student ID và chỉ trả về classes mà student đang tham gia
+	getStudentClasses: (params = {}) => {
+		const queryParams = new URLSearchParams();
+		
+		// Thêm các tham số nếu có
+		if (params.page !== undefined) queryParams.append('page', params.page);
+		if (params.size !== undefined) queryParams.append('size', params.size);
+		if (params.text && params.text.trim()) {
+			queryParams.append('searchText', params.text.trim());
+		}
+		if (params.status && params.status !== 'all') {
+			queryParams.append('status', params.status);
+		}
+		if (params.sortBy) {
+			queryParams.append('sortBy', params.sortBy);
+		}
+		if (params.sortDir) {
+			queryParams.append('sortDir', params.sortDir);
+		}
+
+		const url = `/class${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
+		console.log('GetStudentClasses API - URL:', url);
+		console.log('GetStudentClasses API - Params:', params);
+		
+		return axiosClient.get(url, {
+			headers: {
+				'accept': '*/*',
+			}
+		}).catch(error => {
+			console.error('GetStudentClasses API Error:', error);
+			console.error('Error response:', error.response?.data);
+			console.error('Error status:', error.response?.status);
+			throw error;
+		});
+	},
+
+	// Lấy lịch sử lớp học
+	getClassHistory: (classId, params = {}) => {
+		const queryParams = new URLSearchParams();
+		
+		// Thêm các tham số nếu có
+		if (params.page !== undefined) queryParams.append('page', params.page);
+		if (params.size !== undefined) queryParams.append('size', params.size);
+		if (params.sortBy) queryParams.append('sortBy', params.sortBy);
+		if (params.sortDir) queryParams.append('sortDir', params.sortDir);
+		if (params.startDate) queryParams.append('startDate', params.startDate);
+		if (params.endDate) queryParams.append('endDate', params.endDate);
+		if (params.actionBy) queryParams.append('actionBy', params.actionBy);
+
+		const url = `/class-history/history${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
+		console.log('GetClassHistory API - URL:', url);
+		console.log('GetClassHistory API - ClassId:', classId);
+		console.log('GetClassHistory API - Params:', params);
+		
+		return axiosClient.get(url, {
+			headers: {
+				'accept': '*/*',
+			}
+		}).catch(error => {
+			console.error('GetClassHistory API Error:', error);
+			console.error('Error response:', error.response?.data);
+			console.error('Error status:', error.response?.status);
+			throw error;
+		});
+	},
 };
 
 export default classManagementApi;

@@ -56,6 +56,8 @@ const ClassMenu = () => {
         return '/teacher/classes';
       case 'teaching_assistant':
         return '/teaching-assistant/classes';
+      case 'student':
+        return '/student/classes';
       default:
         return '/manager/classes';
     }
@@ -173,9 +175,9 @@ const ClassMenu = () => {
       title: t('classMenu.dailyChallenge'),
       description: t('classMenu.dailyChallengeDescription'),
       icon: <TrophyOutlined style={{ fontSize: '48px', color: '#eb2f96' }} />,
-      path: '/teacher/daily-challenges',
+      path: userRole === 'student' ? `${routePrefix}/daily-challenges/${id}` : `${routePrefix}/daily-challenges/${id}`,
       color: "#eb2f96",
-      hideForRoles: ['manager'], // Hide for manager
+      hideForRoles: ['manager'], // Only hide for manager, allow student, teacher, and teaching_assistant to see
     },
     {
       id: "teachers",
@@ -184,6 +186,7 @@ const ClassMenu = () => {
       icon: <SolutionOutlined style={{ fontSize: '48px', color: '#52c41a' }} />,
       path: `${routePrefix}/teachers/${id}`,
       color: "#52c41a",
+      hideForRoles: ['student'], // Hide for student
     },
     {
       id: "students",
@@ -192,6 +195,7 @@ const ClassMenu = () => {
       icon: <TeamOutlined style={{ fontSize: '48px', color: '#1890ff' }} />,
       path: `${routePrefix}/student/${id}`,
       color: "#1890ff",
+      hideForRoles: ['student'], // Hide for student
     },
   ];
 

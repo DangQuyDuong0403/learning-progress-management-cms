@@ -20,12 +20,13 @@ import LoadingWithEffect from "../../../../component/spinner/LoadingWithEffect";
 import SimpleDailyChallengeModal from "./SimpleDailyChallengeModal"; // New simple modal
 import "./DailyChallengeList.css";
 import { spaceToast } from "../../../../component/SpaceToastify";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate, useLocation, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useTheme } from "../../../../contexts/ThemeContext";
 import { useDailyChallengeMenu } from "../../../../contexts/DailyChallengeMenuContext";
 import usePageTitle from "../../../../hooks/usePageTitle";
 import { useSelector } from "react-redux";
+import { dailyChallengeApi } from "../../../../apis/apis";
 
 // Select removed in favor of AccountList-style filter dropdown
 
@@ -92,12 +93,13 @@ const DailyChallengeList = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
+  const { classId } = useParams(); // Get classId from URL params
   const { theme } = useTheme();
   const { user } = useSelector((state) => state.auth);
   const { enterDailyChallengeMenu, exitDailyChallengeMenu, updateChallengeCount } = useDailyChallengeMenu();
   
-  // Set page title
-  usePageTitle('Daily Challenge Management');
+  // Set page title based on whether it's class-specific or general
+  usePageTitle(classId ? `Class ${classId} Daily Challenges` : 'Daily Challenge Management');
   
   const [loading, setLoading] = useState(false);
   const [dailyChallenges, setDailyChallenges] = useState([]);
@@ -106,7 +108,9 @@ const DailyChallengeList = () => {
   const [statusFilter, setStatusFilter] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+  const [totalItems, setTotalItems] = useState(0);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [searchDebounce, setSearchDebounce] = useState("");
 
   // AccountList-style filter dropdown state and refs
   const [filterDropdown, setFilterDropdown] = useState({
@@ -147,35 +151,83 @@ const DailyChallengeList = () => {
   const fetchDailyChallenges = useCallback(async () => {
     setLoading(true);
     try {
-      // Simulate API call
-      setTimeout(() => {
-        setDailyChallenges(mockDailyChallenges);
-        setLoading(false);
-      }, 1000);
+      let response;
+      
+      if (classId) {
+        // Lấy daily challenges cho class cụ thể
+        response = await dailyChallengeApi.getDailyChallengesByClass(classId, {
+          page: currentPage - 1, // API sử dụng 0-based pagination
+          size: pageSize,
+          text: searchDebounce,
+          sortBy: 'createdAt',
+          sortDir: 'desc'
+        });
+      } else {
+        // Lấy tất cả daily challenges của teacher
+        response = await dailyChallengeApi.getAllDailyChallenges({
+          page: currentPage - 1, // API sử dụng 0-based pagination
+          size: pageSize,
+          text: searchDebounce,
+          sortBy: 'createdAt',
+          sortDir: 'desc'
+        });
+      }
+
+      console.log('Daily Challenges API Response:', response.data);
+      
+      // Xử lý response data
+      if (response.data && response.data.content) {
+        setDailyChallenges(response.data.content);
+        setTotalItems(response.data.totalElements || 0);
+      } else if (response.data && Array.isArray(response.data)) {
+        setDailyChallenges(response.data);
+        setTotalItems(response.data.length);
+      } else {
+        setDailyChallenges([]);
+        setTotalItems(0);
+      }
+      
+      setLoading(false);
     } catch (error) {
+      console.error('Error fetching daily challenges:', error);
+      
+      // Fallback to mock data if API fails
+      console.log('Falling back to mock data due to API error');
+      setDailyChallenges(mockDailyChallenges);
+      
       spaceToast.error(t('dailyChallenge.loadChallengesError'));
       setLoading(false);
     }
-  }, [t]);
+  }, [classId, currentPage, pageSize, searchDebounce, t]);
 
   useEffect(() => {
     fetchDailyChallenges();
   }, [fetchDailyChallenges]);
 
+  // Debounce search text
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setSearchDebounce(searchText);
+      setCurrentPage(1);
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [searchText]);
+
   // Enter/exit daily challenge menu mode
   useEffect(() => {
-    // Get classId from location state (if coming from class menu)
-    const classId = location.state?.classId;
+    // Get classId from URL params or location state
+    const currentClassId = classId || location.state?.classId;
     
     // Determine back path based on user role and classId
     const getBackPath = () => {
-      if (classId) {
+      if (currentClassId) {
         // If coming from class menu, go back to that class menu
         const userRole = user?.role?.toLowerCase();
         const routePrefix = userRole === 'teacher' || userRole === 'teaching_assistant' 
           ? '/teacher/classes' 
           : '/manager/classes';
-        return `${routePrefix}/menu/${classId}`;
+        return `${routePrefix}/menu/${currentClassId}`;
       } else {
         // Otherwise, go back to classes list
         const userRole = user?.role?.toLowerCase();
@@ -192,7 +244,7 @@ const DailyChallengeList = () => {
     return () => {
       exitDailyChallengeMenu();
     };
-  }, [enterDailyChallengeMenu, exitDailyChallengeMenu, location.state, user]);
+  }, [enterDailyChallengeMenu, exitDailyChallengeMenu, classId, location.state, user]);
 
   // Update challenge count when filters change
   useEffect(() => {
@@ -217,6 +269,7 @@ const DailyChallengeList = () => {
   const handleSearch = (value) => {
     setSearchText(value);
     setCurrentPage(1);
+    // fetchDailyChallenges will be called automatically due to dependency on searchText
   };
   // Filter dropdown handlers (AccountList-style)
   const handleFilterToggle = () => {
@@ -246,56 +299,60 @@ const DailyChallengeList = () => {
     setShowCreateModal(false);
   };
 
-  const handleCreateSuccess = (newChallenge) => {
-    // Add new challenge to the list
-    const updatedChallenges = [
-      {
-        ...newChallenge,
-        id: Math.max(...dailyChallenges.map(c => c.id)) + 1,
-        teacher: "Current Teacher", // Would be from user context
-      },
-      ...dailyChallenges,
-    ];
-    setDailyChallenges(updatedChallenges);
-    setShowCreateModal(false);
+  const handleCreateSuccess = async (newChallenge) => {
+    try {
+      // Call API to create challenge
+      await dailyChallengeApi.createDailyChallenge(newChallenge);
+      
+      // Refresh the list from API
+      await fetchDailyChallenges();
+      
+      setShowCreateModal(false);
+      spaceToast.success(t('dailyChallenge.createSuccess'));
+    } catch (error) {
+      console.error('Error creating challenge:', error);
+      spaceToast.error(t('dailyChallenge.createError'));
+    }
   };
 
   const handleViewClick = (challenge) => {
     navigate(`/teacher/daily-challenges/detail/${challenge.id}`);
   };
 
-  const handleToggleStatus = (id) => {
+  const handleToggleStatus = async (id) => {
     const challenge = dailyChallenges.find(c => c.id === id);
     const newStatus = challenge.status === 'active' ? 'inactive' : 'active';
     
-    // Update local state
-    setDailyChallenges(
-      dailyChallenges.map((c) =>
-        c.id === id ? { ...c, status: newStatus } : c
-      )
-    );
-    
-    spaceToast.success(
-      `Challenge ${newStatus === 'active' ? 'activated' : 'deactivated'} successfully`
-    );
+    try {
+      // Call API to toggle status
+      await dailyChallengeApi.toggleDailyChallengeStatus(id);
+      
+      // Update local state on success
+      setDailyChallenges(
+        dailyChallenges.map((c) =>
+          c.id === id ? { ...c, status: newStatus } : c
+        )
+      );
+      
+      spaceToast.success(
+        `Challenge ${newStatus === 'active' ? 'activated' : 'deactivated'} successfully`
+      );
+    } catch (error) {
+      console.error('Error toggling challenge status:', error);
+      spaceToast.error(t('dailyChallenge.toggleStatusError'));
+    }
   };
 
   const getTypeText = (type) => {
     return type.toLowerCase();
   };
 
-  // Filter data based on search and filters
+  // Filter data based on type and status filters (search is handled by API)
   const filteredChallenges = dailyChallenges.filter((challenge) => {
-    const matchesSearch =
-      searchText === "" ||
-      challenge.title.toLowerCase().includes(searchText.toLowerCase()) ||
-      challenge.description.toLowerCase().includes(searchText.toLowerCase()) ||
-      challenge.teacher.toLowerCase().includes(searchText.toLowerCase());
-
     const matchesType = typeFilter.length === 0 || typeFilter.includes(challenge.type);
     const matchesStatus = statusFilter.length === 0 || statusFilter.includes(challenge.status);
 
-    return matchesSearch && matchesType && matchesStatus;
+    return matchesType && matchesStatus;
   });
 
 
@@ -511,9 +568,17 @@ const DailyChallengeList = () => {
               pagination={{
                 current: currentPage,
                 pageSize: pageSize,
-                total: filteredChallenges.length,
-                onChange: setCurrentPage,
-                onShowSizeChange: (current, size) => setPageSize(size),
+                total: totalItems,
+                onChange: (page, size) => {
+                  setCurrentPage(page);
+                  if (size !== pageSize) {
+                    setPageSize(size);
+                  }
+                },
+                onShowSizeChange: (current, size) => {
+                  setPageSize(size);
+                  setCurrentPage(1);
+                },
                 showSizeChanger: true,
                 showQuickJumper: true,
                 showTotal: (total, range) =>
