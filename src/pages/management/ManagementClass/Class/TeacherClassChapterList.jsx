@@ -451,7 +451,7 @@ const TeacherClassChapterList = () => {
 
 	const columns = [
 		{
-			title: 'STT',
+			title: t('common.stt'),
 			key: 'index',
 			width: '10%',
 			render: (_, __, index) => {
