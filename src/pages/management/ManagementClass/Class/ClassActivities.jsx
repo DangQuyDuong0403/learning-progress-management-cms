@@ -206,7 +206,7 @@ const ClassActivities = () => {
       enterClassMenu({
         id: classData.id,
         name: classData.name,
-        description: t('classActivities.title')
+        description: classData.name
       });
     }
     

@@ -314,7 +314,7 @@ const ClassStudent = () => {
       enterClassMenu({
         id: classData.id,
         name: classData.name,
-        description: `${t('classDetail.students')} (${students.length})`
+        description: classData.name
       });
     }
     
@@ -323,7 +323,7 @@ const ClassStudent = () => {
       exitClassMenu();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [classData?.id, classData?.name, students.length]); // Only run when these specific values change
+  }, [classData?.id, classData?.name]); // Only run when these specific values change
 
   const handleAddStudent = () => {
     setButtonLoading(prev => ({ ...prev, add: true }));
@@ -693,17 +693,27 @@ const ClassStudent = () => {
     setExportLoading(true);
     
     try {
-      // Prepare export parameters with current page filters
+      // Prepare export parameters using the new API format
       const exportParams = {
-        text: searchText || undefined,
-        status: statusFilter !== 'all' ? statusFilter : undefined,
-        sortBy: sortConfig.sortBy,
-        sortDir: sortConfig.sortDir,
+        classIds: [id], // Filter by current class ID
       };
+
+      // Add text search if available
+      if (searchText) {
+        exportParams.text = searchText;
+      }
+
+      // Add status filter if not 'all'
+      if (statusFilter !== 'all') {
+        exportParams.status = [statusFilter];
+      }
+
+      // Add roleName filter for students
+      exportParams.roleName = ['STUDENT', 'TEST_TAKER'];
 
       console.log('Exporting all class students with current filters:', exportParams);
       
-      const response = await classManagementApi.exportClassStudents(id, exportParams);
+      const response = await studentManagementApi.exportStudents(exportParams);
       
       // response.data is already a Blob from the API
       const url = window.URL.createObjectURL(response.data);
@@ -831,7 +841,7 @@ const ClassStudent = () => {
       } finally {
         setLoading(false);
       }
-    }, 300);
+    }, searchText ? 1000 : 0);
     
     return () => clearTimeout(timeoutId);
     // eslint-disable-next-line react-hooks/exhaustive-deps

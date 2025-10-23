@@ -75,7 +75,7 @@ const ClassOverview = () => {
       enterClassMenu({
         id: classData.id,
         name: classData.name,
-        description: t('classMenu.overviewDescription')
+        description: classData.name
       });
     }
     
