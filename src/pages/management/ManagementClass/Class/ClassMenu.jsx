@@ -133,7 +133,8 @@ const ClassMenu = () => {
     return isSunTheme ? '#E6F5FF' : 'rgb(224 217 255 / 90%)';
   };
 
-  const menuItems = [
+  // Filter menu items based on user role
+  const allMenuItems = [
     {
       id: "overview",
       title: t('classMenu.overview'),
@@ -174,6 +175,7 @@ const ClassMenu = () => {
       icon: <TrophyOutlined style={{ fontSize: '48px', color: '#eb2f96' }} />,
       path: '/teacher/daily-challenges',
       color: "#eb2f96",
+      hideForRoles: ['manager'], // Hide for manager
     },
     {
       id: "teachers",
@@ -192,6 +194,14 @@ const ClassMenu = () => {
       color: "#1890ff",
     },
   ];
+
+  // Filter menu items based on user role
+  const menuItems = allMenuItems.filter(item => {
+    if (item.hideForRoles && item.hideForRoles.includes(userRole)) {
+      return false;
+    }
+    return true;
+  });
 
   const handleCardClick = (path) => {
     navigate(path);

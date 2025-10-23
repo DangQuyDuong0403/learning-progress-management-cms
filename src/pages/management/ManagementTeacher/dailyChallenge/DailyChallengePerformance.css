@@ -97,13 +97,23 @@
 }
 
 /* ===== TIME RANGE SELECT ===== */
-.time-range-select {
-  border-radius: 8px;
+.time-range-select.ant-select {
+  border: none !important;
+  box-shadow: none !important;
 }
 
 .time-range-select .ant-select-selector {
   background: #d2cbf2 !important;
   border: 1px solid rgba(210, 203, 242, 0.5) !important;
+  box-shadow: none !important;
+  border-radius: 8px !important;
+  height: 40px !important;
+  display: flex !important;
+  align-items: center !important;
+}
+
+.time-range-select .ant-select-selection-item {
+  line-height: 38px !important;
 }
 
 .space-theme .time-range-select .ant-select-selector {
@@ -177,6 +187,113 @@
   font-weight: 700;
 }
 
+/* ===== STUDENT LIST CARD ===== */
+.student-list-card {
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 12px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.student-list-card .ant-card-body {
+  padding: 24px;
+}
+
+.space-theme .student-list-card {
+  background: rgba(224, 217, 255, 0.95);
+  border: 1px solid rgba(77, 208, 255, 0.2);
+  box-shadow: 0 4px 12px rgba(77, 208, 255, 0.15);
+}
+
+.sun-theme .student-list-card {
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+/* ===== STUDENT FILTER SELECT ===== */
+.student-filter-select.ant-select {
+  border: none !important;
+  box-shadow: none !important;
+}
+
+.student-filter-select .ant-select-selector {
+  background: #d2cbf2 !important;
+  border: 1px solid rgba(210, 203, 242, 0.5) !important;
+  box-shadow: none !important;
+  border-radius: 8px !important;
+  height: 40px !important;
+  display: flex !important;
+  align-items: center !important;
+}
+
+.student-filter-select .ant-select-selection-item {
+  line-height: 38px !important;
+}
+
+.space-theme .student-filter-select .ant-select-selector {
+  background: #d2cbf2 !important;
+  border: 1px solid rgba(210, 203, 242, 0.5) !important;
+}
+
+.sun-theme .student-filter-select .ant-select-selector {
+  background: #d4ebff !important;
+  border: 1px solid rgba(100, 181, 246, 0.6) !important;
+}
+
+/* ===== STUDENT LIST ITEM ===== */
+.student-list-item {
+  border-radius: 8px;
+  margin-bottom: 4px;
+}
+
+.student-list-item:hover {
+  background: rgba(0, 0, 0, 0.02) !important;
+}
+
+.space-theme .student-list-item:hover {
+  background: rgba(77, 208, 255, 0.08) !important;
+}
+
+.sun-theme .student-list-item:hover {
+  background: rgba(24, 144, 255, 0.05) !important;
+}
+
+/* Custom scrollbar for student list */
+.student-list-card .ant-card-body > div:last-child::-webkit-scrollbar {
+  width: 6px;
+}
+
+.student-list-card .ant-card-body > div:last-child::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.05);
+  border-radius: 3px;
+}
+
+.student-list-card .ant-card-body > div:last-child::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 3px;
+}
+
+.student-list-card .ant-card-body > div:last-child::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.3);
+}
+
+.space-theme .student-list-card .ant-card-body > div:last-child::-webkit-scrollbar-thumb {
+  background: rgba(77, 208, 255, 0.3);
+}
+
+.space-theme .student-list-card .ant-card-body > div:last-child::-webkit-scrollbar-thumb:hover {
+  background: rgba(77, 208, 255, 0.5);
+}
+
+.sun-theme .student-list-card .ant-card-body > div:last-child::-webkit-scrollbar-thumb {
+  background: rgba(24, 144, 255, 0.3);
+}
+
+.sun-theme .student-list-card .ant-card-body > div:last-child::-webkit-scrollbar-thumb:hover {
+  background: rgba(24, 144, 255, 0.5);
+}
+
 /* ===== RESPONSIVE DESIGN ===== */
 @media (max-width: 768px) {
   .daily-challenge-performance-wrapper {
@@ -204,6 +321,11 @@
 
   .ant-statistic-content {
     font-size: 28px;
+  }
+
+  .student-list-card {
+    height: auto !important;
+    max-height: 400px;
   }
 }
 

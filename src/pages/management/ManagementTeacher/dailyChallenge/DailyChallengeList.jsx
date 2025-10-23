@@ -16,7 +16,8 @@ import {
 } from "@ant-design/icons";
 import ThemedLayout from "../../../../component/teacherlayout/ThemedLayout";
 import LoadingWithEffect from "../../../../component/spinner/LoadingWithEffect";
-import CreateDailyChallengeModal from "./CreateDailyChallengeModal";
+// import CreateDailyChallengeModal from "./CreateDailyChallengeModal"; // Keep old modal (not deleted, just commented)
+import SimpleDailyChallengeModal from "./SimpleDailyChallengeModal"; // New simple modal
 import "./DailyChallengeList.css";
 import { spaceToast } from "../../../../component/SpaceToastify";
 import { useNavigate } from "react-router-dom";
@@ -503,12 +504,19 @@ const DailyChallengeList = () => {
           </LoadingWithEffect>
         </div>
 
-        {/* Create Daily Challenge Modal */}
-        <CreateDailyChallengeModal
+        {/* Create Daily Challenge Modal - Using Simple Modal */}
+        <SimpleDailyChallengeModal
           visible={showCreateModal}
           onCancel={handleCreateModalCancel}
           onCreateSuccess={handleCreateSuccess}
         />
+        
+        {/* Old CreateDailyChallengeModal - Kept for reference (not deleted) */}
+        {/* <CreateDailyChallengeModal
+          visible={showCreateModal}
+          onCancel={handleCreateModalCancel}
+          onCreateSuccess={handleCreateSuccess}
+        /> */}
       </div>
     </ThemedLayout>
   );
