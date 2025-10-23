@@ -1060,14 +1060,16 @@ const ClassListTable = () => {
 							onClick={() => handleViewDetail(record)}
 						/>
 					</Tooltip>
-					<Tooltip title={t('classManagement.changeStatus')}>
-						<Button
-							type="text"
-							size="small"
-							icon={<SwapOutlined style={{ fontSize: '20px', color: '#1890ff' }} />}
-							onClick={() => handleStatusChange(record)}
-						/>
-					</Tooltip>
+					{record.status !== 'FINISHED' && (
+						<Tooltip title={t('classManagement.changeStatus')}>
+							<Button
+								type="text"
+								size="small"
+								icon={<SwapOutlined style={{ fontSize: '20px', color: '#1890ff' }} />}
+								onClick={() => handleStatusChange(record)}
+							/>
+						</Tooltip>
+					)}
 					{record.status !== 'FINISHED' && (
 						<Tooltip title={t('classManagement.edit')}>
 							<Button

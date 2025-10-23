@@ -68,6 +68,7 @@ const TeacherClassChapterList = () => {
 
 	// Loading states for buttons
 	const [templateDownloadLoading, setTemplateDownloadLoading] = useState(false);
+	const [validateLoading, setValidateLoading] = useState(false);
 
 	// Pagination state
 	const [pagination, setPagination] = useState({
@@ -137,6 +138,7 @@ const TeacherClassChapterList = () => {
 			const mappedChapters = response.data.map((chapter) => ({
 				id: chapter.id,
 				name: chapter.classChapterName,
+				code: chapter.classChapterCode,
 				description: chapter.description,
 				order: chapter.orderNumber,
 				status: chapter.status,
@@ -243,6 +245,99 @@ const TeacherClassChapterList = () => {
 		}));
 	};
 
+	const handleValidateFile = async () => {
+		if (importModal.fileList.length === 0) {
+			spaceToast.warning(t('chapterManagement.selectFileToValidate'));
+			return;
+		}
+
+		setValidateLoading(true);
+		
+		try {
+			const file = importModal.fileList[0];
+			
+			// Create FormData object
+			const formData = new FormData();
+			formData.append('file', file);
+			
+			// Call validate API with classId as parameter and FormData
+			const response = await teacherManagementApi.validateClassChapterImportFile(classId, formData);
+
+			// API returns validation result file as blob
+			if (response.data instanceof Blob) {
+				// Create URL from blob to download
+				const downloadUrl = window.URL.createObjectURL(response.data);
+				
+				// Create download link
+				const link = document.createElement('a');
+				link.setAttribute('href', downloadUrl);
+				link.setAttribute('download', `class_chapter_validation_result_${new Date().getTime()}.xlsx`);
+				link.setAttribute('target', '_blank');
+				link.style.visibility = 'hidden';
+				document.body.appendChild(link);
+				link.click();
+				document.body.removeChild(link);
+				
+				// Cleanup URL
+				window.URL.revokeObjectURL(downloadUrl);
+				
+				spaceToast.success(t('chapterManagement.validateSuccess') + ' - ' + t('chapterManagement.fileDownloaded'));
+			} else {
+				// If not blob, might be JSON response with URL
+				let downloadUrl;
+				
+				if (typeof response.data === 'string') {
+					downloadUrl = response.data;
+				} else if (response.data && response.data.url) {
+					downloadUrl = response.data.url;
+				}
+				
+				if (downloadUrl) {
+					const link = document.createElement('a');
+					link.setAttribute('href', downloadUrl);
+					link.setAttribute('download', `class_chapter_validation_result_${new Date().getTime()}.xlsx`);
+					link.setAttribute('target', '_blank');
+					link.style.visibility = 'hidden';
+					document.body.appendChild(link);
+					link.click();
+					document.body.removeChild(link);
+					
+					spaceToast.success(t('chapterManagement.validateSuccess') + ' - ' + t('chapterManagement.fileDownloaded'));
+				} else {
+					spaceToast.success(response.message || t('chapterManagement.validateSuccess'));
+				}
+			}
+		} catch (error) {
+			console.error('Error validating file:', error);
+			
+			// Handle error in more detail
+			let errorMessage = t('chapterManagement.validateError');
+			
+			if (error.response?.data) {
+				if (error.response.data instanceof Blob) {
+					// If error returns as blob, read text to get error message
+					try {
+						const errorText = await error.response.data.text();
+						const errorJson = JSON.parse(errorText);
+						errorMessage = errorJson.error || errorJson.message || errorMessage;
+					} catch (parseError) {
+						errorMessage = error.message || errorMessage;
+					}
+				} else if (error.response.data.error) {
+					errorMessage = error.response.data.error;
+				} else if (error.response.data.message) {
+					errorMessage = error.response.data.message;
+				}
+			} else if (error.message) {
+				errorMessage = error.message;
+			}
+			
+			spaceToast.error(errorMessage);
+		} finally {
+			setValidateLoading(false);
+		}
+	};
+
 	const handleImportOk = async () => {
 		if (importModal.fileList.length === 0) {
 			spaceToast.warning(t('chapterManagement.selectFileToImport'));
@@ -257,10 +352,9 @@ const TeacherClassChapterList = () => {
 			// Create FormData object
 			const formData = new FormData();
 			formData.append('file', file);
-			formData.append('classId', classId);
 			
-			// Call import API with FormData
-			const response = await teacherManagementApi.importClassChapters(formData);
+			// Call import API with classId as parameter and FormData
+			const response = await teacherManagementApi.importClassChapters(classId, formData);
 
 			if (response.success) {
 				// Refresh the list to get updated data from server
@@ -361,7 +455,7 @@ const TeacherClassChapterList = () => {
 		{
 			title: 'STT',
 			key: 'index',
-			width: '10%',
+			width: '8%',
 			render: (_, __, index) => {
 				// Calculate index based on current page and page size
 				const currentPage = pagination.current || 1;
@@ -374,10 +468,21 @@ const TeacherClassChapterList = () => {
 			},
 		},
 		{
+			title: t('chapterManagement.chapterCode'),
+			dataIndex: 'code',
+			key: 'code',
+			width: '15%',
+			render: (text) => (
+				<span style={{ fontSize: '18px'}}>
+					{text || 'N/A'}
+				</span>
+			),
+		},
+		{
 			title: t('chapterManagement.chapterName'),
 			dataIndex: 'name',
 			key: 'name',
-			width: '20%',
+			width: '24%',
 			render: (text, record) => (
 				<div>
 					<div style={{ 
@@ -404,20 +509,20 @@ const TeacherClassChapterList = () => {
 			title: t('chapterManagement.createdBy'),
 			dataIndex: 'createdBy',
 			key: 'createdBy',
-			width: '20%',
+			width: '15%',
 			render: (createdBy) => createdBy || 'N/A',
 		},
 		{
 			title: t('chapterManagement.createdAt'),
 			dataIndex: 'createdAt',
 			key: 'createdAt',
-			width: '20%',
+			width: '15%',
 			render: (date) => new Date(date).toLocaleDateString(),
 		},
 		{
 			title: t('chapterManagement.actions'),
 			key: 'actions',
-			width: '20%',
+			width: '18%',
 			render: (_, record) => (
 				<Space size="small">
 					<Tooltip title={t('chapterManagement.viewLessons')}>
@@ -567,38 +672,67 @@ const TeacherClassChapterList = () => {
 					</div>
 				}
 				open={importModal.visible}
-				onOk={handleImportOk}
 				onCancel={handleImportCancel}
-				okText={t('chapterManagement.import')}
-				cancelText={t('common.cancel')}
 				width={600}
 				centered
 				confirmLoading={importModal.uploading}
-				okButtonProps={{
-					disabled: importModal.fileList.length === 0,
-					style: {
-						background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, #7228d9 0%, #9c88ff 100%)',
-						borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : '#7228d9',
-						color: theme === 'sun' ? '#000' : '#fff',
-						borderRadius: '6px',
-						height: '32px',
-						fontWeight: '500',
-						fontSize: '16px',
-						padding: '4px 15px',
-						width: '100px',
-						transition: 'all 0.3s ease',
-						boxShadow: 'none'
-					},
-				}}
-				cancelButtonProps={{
-					style: {
-						height: '32px',
-						fontWeight: '500',
-						fontSize: '16px',
-						padding: '4px 15px',
-						width: '100px'
-					},
-				}}>
+				footer={[
+					<Button 
+						key="cancel" 
+						onClick={handleImportCancel}
+						style={{
+							height: '32px',
+							fontWeight: '500',
+							fontSize: '16px',
+							padding: '4px 15px',
+							width: '100px'
+						}}>
+						{t('common.cancel')}
+					</Button>,
+					<Button 
+						key="validate" 
+						onClick={handleValidateFile}
+						loading={validateLoading}
+						disabled={importModal.fileList.length === 0 || validateLoading}
+						style={{
+							background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, #7228d9 0%, #9c88ff 100%)',
+							borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : '#7228d9',
+							color: theme === 'sun' ? '#000' : '#fff',
+							borderRadius: '6px',
+							height: '32px',
+							fontWeight: '500',
+							fontSize: '16px',
+							padding: '4px 15px',
+							width: '120px',
+							transition: 'all 0.3s ease',
+							boxShadow: 'none',
+							marginLeft: '8px'
+						}}>
+						{t('chapterManagement.validateFile')}
+					</Button>,
+					<Button 
+						key="import" 
+						type="primary"
+						onClick={handleImportOk}
+						loading={importModal.uploading}
+						disabled={importModal.fileList.length === 0 || importModal.uploading}
+						style={{
+							background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, #7228d9 0%, #9c88ff 100%)',
+							borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : '#7228d9',
+							color: theme === 'sun' ? '#000' : '#fff',
+							borderRadius: '6px',
+							height: '32px',
+							fontWeight: '500',
+							fontSize: '16px',
+							padding: '4px 15px',
+							width: '100px',
+							transition: 'all 0.3s ease',
+							boxShadow: 'none',
+							marginLeft: '8px'
+						}}>
+						{t('chapterManagement.import')}
+					</Button>
+				]}>
 				<div style={{ padding: '20px 0' }}>
 					<div style={{ textAlign: 'center', marginBottom: '20px' }}>
 						<Button

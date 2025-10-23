@@ -333,7 +333,7 @@ const ClassTeachers = () => {
       } finally {
         setLoading(false);
       }
-    }, 300);
+    }, searchText ? 1000 : 0);
     
     return () => clearTimeout(timeoutId);
   }, [searchText, statusFilter, sortConfig.sortBy, sortConfig.sortDir, pagination.pageSize, id, t]);
@@ -514,7 +514,8 @@ const ClassTeachers = () => {
     }
   };
 
-  const columns = [
+  // Define all columns
+  const allColumns = [
     {
       title: t('classTeachers.no'),
       key: 'no',
@@ -528,7 +529,6 @@ const ClassTeachers = () => {
       title: t('classTeachers.username'),
       dataIndex: "userName",
       key: "userName",
-      sorter: true,
       render: (text) => (
         <div className="teacher-name-text" style={{ fontSize: "20px" }}>{text}</div>
       ),
@@ -537,7 +537,6 @@ const ClassTeachers = () => {
       title: t('classTeachers.fullName'),
       dataIndex: "fullName",
       key: "fullName",
-      sorter: true,
       render: (text) => (
         <div className="teacher-name-text" style={{ fontSize: "20px" }}>
           {text || '-'}
@@ -548,16 +547,24 @@ const ClassTeachers = () => {
       title: t('classTeachers.email'),
       dataIndex: "email",
       key: "email",
-      sorter: true,
       render: (text) => (
         <span style={{ fontSize: "20px" }}>{text || 'N/A'}</span>
+      ),
+    },
+    {
+      title: t('classTeachers.roleInClass'),
+      dataIndex: "roleInClass",
+      key: "roleInClass",
+      render: (role) => (
+        <span style={{ fontSize: "20px" }}>
+          {role === 'TEACHER' ? t('classTeachers.teacher') : role === 'TEACHING_ASSISTANT' ? t('classTeachers.teachingAssistant') : role || '-'}
+        </span>
       ),
     },
     {
       title: t('classTeachers.status'),
       dataIndex: "status",
       key: "status",
-      sorter: true,
       render: (status) => (
         <span style={{ fontSize: "20px" }}>
           {status === 'ACTIVE' ? t('classTeachers.active') : status === 'INACTIVE' ? t('classTeachers.inactive') : t('classTeachers.removed')}
@@ -582,6 +589,11 @@ const ClassTeachers = () => {
       ),
     },
   ];
+
+  // Filter columns based on user role - hide Actions column for TEACHER and TEACHING_ASSISTANT
+  const columns = (userRole === 'teacher' || userRole === 'teaching_assistant')
+    ? allColumns.filter(col => col.key !== 'actions')
+    : allColumns;
 
   if (loading) {
     return (
@@ -679,16 +691,19 @@ const ClassTeachers = () => {
                 </div>
               )}
             </div>
-            <div className="action-buttons" style={{ marginLeft: 'auto' }}>
-              <Button 
-                icon={<PlusOutlined />}
-                className={`create-button ${theme}-create-button`}
-                onClick={handleAddTeacher}
-                loading={buttonLoading.add}
-              >
-                {t('common.add')}
-              </Button>
-            </div>
+            {/* Hide Add button for TEACHER and TEACHING_ASSISTANT - they can only view */}
+            {(userRole !== 'teacher' && userRole !== 'teaching_assistant') && (
+              <div className="action-buttons" style={{ marginLeft: 'auto' }}>
+                <Button 
+                  icon={<PlusOutlined />}
+                  className={`create-button ${theme}-create-button`}
+                  onClick={handleAddTeacher}
+                  loading={buttonLoading.add}
+                >
+                  {t('common.add')}
+                </Button>
+              </div>
+            )}
           </div>
 
           {/* Table Section */}
@@ -935,7 +950,7 @@ const ClassTeachers = () => {
 				margin: 0,
 				fontWeight: '500'
 			}}>
-				{teacherToDelete?.role === 'teacher' ? t('classTeachers.confirmDeleteTeacher') : t('classTeachers.confirmDeleteTA')}
+				{teacherToDelete?.role === 'teacher' || teacherToDelete?.roleInClass === 'TEACHER' || teacherToDelete?.roleName === 'TEACHER' ? t('classTeachers.confirmDeleteTeacher') : t('classTeachers.confirmDeleteTA')}
 			</p>
 			{teacherToDelete && (
 				<p style={{
@@ -944,7 +959,7 @@ const ClassTeachers = () => {
 					margin: 0,
 					fontWeight: '400'
 				}}>
-					<strong>"{teacherToDelete.name}"</strong>
+					<strong>"{teacherToDelete.fullName || teacherToDelete.userName || teacherToDelete.name}"</strong>
 				</p>
 			)}
            </div>
