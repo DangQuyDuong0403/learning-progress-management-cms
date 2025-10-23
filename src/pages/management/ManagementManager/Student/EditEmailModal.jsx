@@ -175,12 +175,6 @@ export default function EditEmailModal({
           <h3 style={{ color: '#1890ff', marginBottom: '16px' }}>
             {t('common.emailChangeRequestSent')}
           </h3>
-          <p style={{ color: '#666', marginBottom: '20px' }}>
-            {t('common.emailChangeConfirmationMessage')}
-          </p>
-          <p style={{ color: '#999', fontSize: '14px' }}>
-            {t('common.emailChangeCheckInbox')}
-          </p>
         </div>
       )}
     </Modal>
