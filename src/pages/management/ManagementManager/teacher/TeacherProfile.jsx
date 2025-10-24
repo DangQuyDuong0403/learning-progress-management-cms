@@ -635,15 +635,20 @@ const TeacherProfile = () => {
 								>
 									<Select 
 										placeholder={t('teacherManagement.rolePlaceholder')}
-										disabled={teacher?.roleName === 'TEACHER'}
+										disabled={
+											// Disable dropdown if:
+											// 1. Current role is TEACHER and status is ACTIVE (cannot change role when active)
+											// 2. Current role is TEACHER and status is INACTIVE (cannot change role when inactive)
+											teacher?.roleName === 'TEACHER' && (teacher?.status === 'ACTIVE' || teacher?.status === 'INACTIVE')
+										}
 									>
 										<Select.Option 
 											value="TEACHER"
 											disabled={
 												// Disable TEACHER option if:
-												// 1. Current role is TEACHER (cannot change to same role)
-												// 2. Status is PENDING (can only change to TEACHING_ASSISTANT)
-												teacher?.roleName === 'TEACHER' || teacher?.status === 'PENDING'
+												// 1. Current role is TEACHER and status is ACTIVE (cannot change to same role when active)
+												// 2. Current role is TEACHER and status is INACTIVE (cannot change to same role when inactive)
+												teacher?.roleName === 'TEACHER' && (teacher?.status === 'ACTIVE' || teacher?.status === 'INACTIVE')
 											}
 										>
 											{t('teacherManagement.teacher')}
@@ -653,7 +658,8 @@ const TeacherProfile = () => {
 											disabled={
 												// Disable TEACHING_ASSISTANT option if:
 												// 1. Current role is TEACHER and status is ACTIVE (cannot downgrade)
-												teacher?.roleName === 'TEACHER' && teacher?.status === 'ACTIVE'
+												// 2. Current role is TEACHER and status is INACTIVE (cannot downgrade)
+												teacher?.roleName === 'TEACHER' && (teacher?.status === 'ACTIVE' || teacher?.status === 'INACTIVE')
 											}
 										>
 											{t('teacherManagement.teacherAssistant')}
