@@ -674,33 +674,40 @@ const DailyChallengeList = () => {
       key: 'actions',
       width: 180,
       align: 'center',
-      render: (_, record) => (
-        <Space size="small">
-          <Button
-            type="text"
-            icon={<EyeOutlined style={{ fontSize: '24px' }} />}
-            onClick={() => handleViewClick(record)}
-            title={t('dailyChallenge.viewDetails')}
-            className="action-btn-view"
-          />
-          <Button
-            type="text"
-            icon={<EditOutlined style={{ fontSize: '24px' }} />}
-            onClick={() => handleEditClick(record)}
-            title={t('dailyChallenge.editChallenge')}
-            className="action-btn-edit"
-            style={{ color: '#1890ff' }}
-          />
-          <Button
-            type="text"
-            icon={<DeleteOutlined style={{ fontSize: '24px', color: '#ff4d4f' }} />}
-            onClick={() => handleDeleteClick(record)}
-            title={t('dailyChallenge.deleteChallenge')}
-            className="action-btn-delete"
-            style={{ color: '#ff4d4f' }}
-          />
-        </Space>
-      ),
+      render: (_, record) => {
+        // Ẩn action buttons nếu lesson không có challenge (title = "No challenges")
+        if (record.title === 'No challenges') {
+          return <span style={{ color: '#999', fontSize: '14px' }}>-</span>;
+        }
+        
+        return (
+          <Space size="small">
+            <Button
+              type="text"
+              icon={<EyeOutlined style={{ fontSize: '24px' }} />}
+              onClick={() => handleViewClick(record)}
+              title={t('dailyChallenge.viewDetails')}
+              className="action-btn-view"
+            />
+            <Button
+              type="text"
+              icon={<EditOutlined style={{ fontSize: '24px' }} />}
+              onClick={() => handleEditClick(record)}
+              title={t('dailyChallenge.editChallenge')}
+              className="action-btn-edit"
+              style={{ color: '#1890ff' }}
+            />
+            <Button
+              type="text"
+              icon={<DeleteOutlined style={{ fontSize: '24px', color: '#ff4d4f' }} />}
+              onClick={() => handleDeleteClick(record)}
+              title={t('dailyChallenge.deleteChallenge')}
+              className="action-btn-delete"
+              style={{ color: '#ff4d4f' }}
+            />
+          </Space>
+        );
+      },
     },
   ];
 
