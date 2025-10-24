@@ -23,14 +23,13 @@ import { useTranslation } from 'react-i18next';
 import { useParams, useNavigate } from 'react-router-dom';
 import ThemedLayoutWithSidebar from '../../../../component/ThemedLayout';
 import ThemedLayoutNoSidebar from '../../../../component/teacherlayout/ThemedLayout';
-import LoadingWithEffect from '../../../../component/spinner/LoadingWithEffect';
+import TableSpinner from '../../../../component/spinner/TableSpinner';
 import { useTheme } from '../../../../contexts/ThemeContext';
 import { useClassMenu } from '../../../../contexts/ClassMenuContext';
 import teacherManagementApi from '../../../../apis/backend/teacherManagement';
 import { useSelector } from 'react-redux';
 import usePageTitle from '../../../../hooks/usePageTitle';
 import { spaceToast } from '../../../../component/SpaceToastify';
-import { decodeJWT, getRoleFromToken } from '../../../../utils/jwtUtils';
 
 const TeacherClassChapterList = () => {
 	const { t } = useTranslation();
@@ -543,14 +542,7 @@ const TeacherClassChapterList = () => {
 			<ThemedLayout>
 				{/* Main Content Panel */}
 				<div className={`main-content-panel ${theme}-main-panel`}>
-					<div style={{ textAlign: 'center', padding: '50px' }}>
-						<LoadingWithEffect
-							loading={true}
-							message={t('common.loading')}
-						>
-							<div></div>
-						</LoadingWithEffect>
-					</div>
+					<TableSpinner />
 				</div>
 			</ThemedLayout>
 		);
@@ -572,12 +564,7 @@ const TeacherClassChapterList = () => {
 					justifyContent: 'center',
 					alignItems: 'center'
 				}}>
-					<LoadingWithEffect
-						loading={true}
-						message={t('common.loading')}
-					>
-						<div></div>
-					</LoadingWithEffect>
+					<TableSpinner />
 				</div>
 			)}
 			
