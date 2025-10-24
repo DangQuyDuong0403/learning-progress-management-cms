@@ -4,28 +4,6 @@
 	padding: 24px;
 }
 
-/* Main content panel styling */
-.main-content-panel {
-	background: transparent;
-	border-radius: 12px;
-	padding: 24px;
-	min-height: calc(100vh - 120px);
-}
-
-/* Space theme main panel */
-.space-theme .main-content-panel {
-	background: rgba(26, 26, 46, 0.3);
-	backdrop-filter: blur(10px);
-	border: 1px solid rgba(77, 208, 255, 0.2);
-}
-
-/* Sun theme main panel */
-.sun-theme .main-content-panel {
-	background: rgba(255, 255, 255, 0.3);
-	backdrop-filter: blur(10px);
-	border: 1px solid rgba(0, 0, 0, 0.1);
-}
-
 /* Page title styling */
 .page-title-container {
 	margin-bottom: 24px;

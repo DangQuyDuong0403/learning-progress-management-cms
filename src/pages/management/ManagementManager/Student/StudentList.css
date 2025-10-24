@@ -15,52 +15,6 @@
 }
 
 
-/* ===== MAIN CONTENT PANEL ===== */
-.main-content-panel {
-	background: rgba(45, 27, 105, 0.75);
-	backdrop-filter: none;
-	border-radius: 16px;
-	padding: 24px;
-	margin: 24px;
-	box-shadow: 0 8px 32px rgba(77, 208, 255, 0.15);
-	border: 1px solid rgba(77, 208, 255, 0.3);
-	position: relative;
-	z-index: 2;
-}
-
-.space-theme .main-content-panel {
-	position: relative;
-	background: rgba(110, 92, 172, 0.05); /* Rất trong suốt để nhìn xuyên qua */
-	backdrop-filter: blur(1px); /* Blur nhẹ để tạo hiệu ứng glass */
-	border-radius: 16px;
-	padding: 24px;
-	margin: 24px;
-	/* Không dùng opacity để tránh làm mờ nội dung bên trong */
-
-	/* Hiệu ứng viền + bóng */
-	border: 1px solid rgba(77, 208, 255, 0.3);
-	box-shadow: 0 8px 32px rgba(77, 208, 255, 0.15);
-
-	z-index: 2;
-}
-
-/* Sun theme main content panel */
-.sun-theme .main-content-panel {
-  position: relative;
-  background: #E6F5FF !important; /* Nền màu E6F5FF */
-  backdrop-filter: blur(1px); /* Blur nhẹ để tạo hiệu ứng glass */
-  border-radius: 16px;
-  padding: 24px;
-  margin: 24px;
-  /* Không dùng opacity để tránh làm mờ nội dung bên trong */
-  
-  /* Hiệu ứng viền + bóng */
-  border: 1px solid rgba(0, 0, 0, 0.1);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-  
-  z-index: 2;
-}
-
 /* ===== PANEL HEADER ===== */
 .panel-header {
 	display: flex;

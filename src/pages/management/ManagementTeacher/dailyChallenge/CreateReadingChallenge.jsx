@@ -8,8 +8,6 @@ import {
   Typography,
   Input,
   Upload,
-  Select,
-  message,
   Divider,
   Dropdown,
   Menu,
@@ -17,7 +15,6 @@ import {
 import {
   ArrowLeftOutlined,
   SaveOutlined,
-  EyeOutlined,
   PlusOutlined,
   FileTextOutlined,
   UploadOutlined,
@@ -25,10 +22,15 @@ import {
   LoadingOutlined,
   DownOutlined,
   HolderOutlined,
+  EditOutlined,
+  CopyOutlined,
 } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
+import { useTheme } from "../../../../contexts/ThemeContext";
 import ThemedLayout from "../../../../component/teacherlayout/ThemedLayout";
 import { extractTextFromPDF, isValidPDF } from "../../../../utils/pdfUtils";
+import { spaceToast } from "../../../../component/SpaceToastify";
 import {
   MultipleChoiceModal,
   MultipleSelectModal,
@@ -42,50 +44,14 @@ import "./CreateReadingChallenge.css";
 
 const { Title, Text } = Typography;
 const { TextArea } = Input;
-const { Option } = Select;
-
-
-// Mock data cho chapters và lessons
-const mockChapters = [
-  {
-    id: 1,
-    name: "Chapter 1: Basic Grammar",
-    lessons: [
-      { id: 1, name: "Lesson 1.1: Present Simple Tense" },
-      { id: 2, name: "Lesson 1.2: Present Continuous Tense" },
-      { id: 3, name: "Lesson 1.3: Past Simple Tense" },
-    ],
-  },
-  {
-    id: 2,
-    name: "Chapter 2: Advanced Grammar",
-    lessons: [
-      { id: 4, name: "Lesson 2.1: Present Perfect Tense" },
-      { id: 5, name: "Lesson 2.2: Past Perfect Tense" },
-      { id: 6, name: "Lesson 2.3: Future Tense" },
-    ],
-  },
-  {
-    id: 3,
-    name: "Chapter 3: Reading Comprehension",
-    lessons: [
-      { id: 7, name: "Lesson 3.1: Short Stories" },
-      { id: 8, name: "Lesson 3.2: News Articles" },
-      { id: 9, name: "Lesson 3.3: Academic Texts" },
-    ],
-  },
-];
-
 
 const CreateReadingChallenge = () => {
   const navigate = useNavigate();
+  const { t } = useTranslation();
+  const { theme } = useTheme();
   
-  const [challengeName, setChallengeName] = useState("");
-  const [selectedChapter, setSelectedChapter] = useState(null);
-  const [selectedLesson, setSelectedLesson] = useState(null);
-  const [availableLessons, setAvailableLessons] = useState([]);
   const [passages, setPassages] = useState([
-    { id: 1, title: "Passage 1", content: "", type: null }
+    { id: 1, title: "Passage 1", content: "", type: null, questions: [] }
   ]);
   const [activePassage, setActivePassage] = useState(1);
   const [passageContent, setPassageContent] = useState("");
@@ -93,42 +59,27 @@ const CreateReadingChallenge = () => {
   const [uploadedFileName, setUploadedFileName] = useState("");
   
   // Question management state
-  const [questions, setQuestions] = useState([]);
   const [activeModal, setActiveModal] = useState(null);
   const [editingQuestion, setEditingQuestion] = useState(null);
+  
+  // Get current passage
+  const currentPassage = passages.find(p => p.id === activePassage);
+  const questions = currentPassage?.questions || [];
 
-  // useEffect để cập nhật lessons khi chapter thay đổi
+  // Update passageContent khi chuyển passage
   React.useEffect(() => {
-    if (selectedChapter) {
-      const chapter = mockChapters.find(ch => ch.id === selectedChapter);
-      if (chapter) {
-        setAvailableLessons(chapter.lessons);
-        setSelectedLesson(null);
-      }
-    } else {
-      setAvailableLessons([]);
-      setSelectedLesson(null);
+    const passage = passages.find(p => p.id === activePassage);
+    if (passage) {
+      setPassageContent(passage.content || "");
     }
-  }, [selectedChapter]);
+  }, [activePassage, passages]);
 
   const handleBack = () => {
     navigate("/teacher/daily-challenges");
   };
 
   const handleSave = () => {
-    if (!challengeName || !selectedChapter || !selectedLesson) {
-      message.error("Please fill in all required fields");
-      return;
-    }
-    message.success("Reading challenge saved successfully!");
-  };
-
-  const handlePreview = () => {
-    if (!challengeName || !selectedChapter || !selectedLesson) {
-      message.error("Please fill in all required fields before preview");
-      return;
-    }
-    message.info("Preview functionality coming soon!");
+    spaceToast.success("Reading challenge saved successfully!");
   };
 
   const handleAddPassage = () => {
@@ -137,15 +88,17 @@ const CreateReadingChallenge = () => {
       id: newPassageId,
       title: `Passage ${newPassageId}`,
       content: "",
-      type: null
+      type: null,
+      questions: []
     };
     setPassages([...passages, newPassage]);
     setActivePassage(newPassageId);
+    setPassageContent(""); // Reset content khi chuyển passage
   };
 
   const handleDiscardPassage = () => {
     if (passages.length <= 1) {
-      message.warning("Không thể xóa passage cuối cùng!");
+      spaceToast.warning("Không thể xóa passage cuối cùng!");
       return;
     }
 
@@ -161,7 +114,7 @@ const CreateReadingChallenge = () => {
       setPassageContent(updatedPassages[0].content || "");
     }
     
-    message.success("Đã xóa passage thành công!");
+    spaceToast.success("Đã xóa passage thành công!");
   };
 
   const handlePassageContentChange = (content) => {
@@ -175,7 +128,7 @@ const CreateReadingChallenge = () => {
     try {
       // Kiểm tra file có hợp lệ không
       if (!isValidPDF(file)) {
-        message.error("Vui lòng chọn file PDF hợp lệ (tối đa 10MB)");
+        spaceToast.error("Vui lòng chọn file PDF hợp lệ (tối đa 10MB)");
         return false;
       }
 
@@ -186,7 +139,7 @@ const CreateReadingChallenge = () => {
       const extractedText = await extractTextFromPDF(file);
       
       if (!extractedText || extractedText.trim().length === 0) {
-        message.warning("Không thể trích xuất text từ file PDF này. File có thể bị mã hóa hoặc không chứa text.");
+        spaceToast.warning("Không thể trích xuất text từ file PDF này. File có thể bị mã hóa hoặc không chứa text.");
         return false;
       }
 
@@ -198,11 +151,11 @@ const CreateReadingChallenge = () => {
         p.id === activePassage ? { ...p, type: "manual", content: extractedText } : p
       ));
 
-      message.success(`Đã trích xuất text từ file "${file.name}" thành công!`);
+      spaceToast.success(`Đã trích xuất text từ file "${file.name}" thành công!`);
       
     } catch (error) {
       console.error('Error processing PDF:', error);
-      message.error(error.message || "Có lỗi xảy ra khi xử lý file PDF");
+      spaceToast.error(error.message || "Có lỗi xảy ra khi xử lý file PDF");
     } finally {
       setIsProcessingPDF(false);
     }
@@ -222,26 +175,41 @@ const CreateReadingChallenge = () => {
   };
 
   const handleDeleteQuestion = (questionId) => {
-    setQuestions(questions.filter(q => q.id !== questionId));
-    message.success("Question deleted successfully!");
+    setPassages(passages.map(p => 
+      p.id === activePassage 
+        ? { ...p, questions: p.questions.filter(q => q.id !== questionId) }
+        : p
+    ));
+    spaceToast.success("Question deleted successfully!");
   };
 
   const handleSaveQuestion = (questionData) => {
-    if (editingQuestion) {
-      // Update existing question
-      setQuestions(questions.map(q => 
-        q.id === editingQuestion.id ? { ...questionData, id: editingQuestion.id } : q
-      ));
-      message.success("Question updated successfully!");
-    } else {
-      // Add new question
-      const newQuestion = {
-        ...questionData,
-        id: Date.now(),
-      };
-      setQuestions([...questions, newQuestion]);
-      message.success("Question added successfully!");
-    }
+    setPassages(passages.map(p => {
+      if (p.id === activePassage) {
+        if (editingQuestion) {
+          // Update existing question
+          return {
+            ...p,
+            questions: p.questions.map(q => 
+              q.id === editingQuestion.id ? { ...questionData, id: editingQuestion.id } : q
+            )
+          };
+        } else {
+          // Add new question
+          const newQuestion = {
+            ...questionData,
+            id: Date.now(),
+          };
+          return {
+            ...p,
+            questions: [...p.questions, newQuestion]
+          };
+        }
+      }
+      return p;
+    }));
+    
+    spaceToast.success(editingQuestion ? "Question updated successfully!" : "Question added successfully!");
     setActiveModal(null);
     setEditingQuestion(null);
   };
@@ -264,109 +232,109 @@ const CreateReadingChallenge = () => {
     };
     return typeMap[type] || type.toUpperCase();
   };
-
-
-
-
-  const currentPassage = passages.find(p => p.id === activePassage);
-
-  return (
-    <ThemedLayout>
-      <div className="rc-create-reading-challenge-container">
-        {/* Header */}
-        <Card className="rc-header-card">
-          <Row justify="space-between">
-            <Col>
-              <Space align="center">
+  // Custom Header Component
+  const customHeader = (
+    <header className={`themed-header ${theme}-header`}>
+      <nav className="themed-navbar">
+        <div className="themed-navbar-content" style={{ justifyContent: 'space-between', width: '100%' }}>
+          {/* Left: Back Button + Title */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
                 <Button 
                   icon={<ArrowLeftOutlined />} 
                   onClick={handleBack}
-                  type="text"
-                />
-                <Title level={2} style={{ margin: 0, color: "#1890ff" }}>
-                  Create Reading Challenge
-                </Title>
-              </Space>
-            </Col>
-            <Col>
-              <Space>
-                <Button icon={<EyeOutlined />} onClick={handlePreview}>
-                  Preview
+              className={`class-menu-back-button ${theme}-class-menu-back-button`}
+              style={{
+                height: '32px',
+                borderRadius: '8px',
+                fontWeight: '500',
+                fontSize: '14px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                border: '1px solid rgba(0, 0, 0, 0.1)',
+                background: '#ffffff',
+                color: '#000000',
+                backdropFilter: 'blur(10px)',
+                transition: 'all 0.3s ease'
+              }}
+            >
+              {t('common.back') || 'Back'}
                 </Button>
+            <div style={{
+              fontSize: '18px',
+              fontWeight: 600,
+              color: theme === 'sun' ? '#1E40AF' : '#FFFFFF',
+              textShadow: theme === 'sun' ? 'none' : '0 0 10px rgba(134, 134, 134, 0.5)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '12px'
+            }}>
+              <span style={{ 
+                fontSize: '24px',
+                fontWeight: 300,
+                opacity: 0.5
+              }}>|</span>
+              <span>Create Reading Challenge</span>
+            </div>
+          </div>
+
+          {/* Right: Action Buttons */}
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            {/* Save Challenge */}
                 <Button 
-                  type="primary" 
                   icon={<SaveOutlined />} 
+              className={`create-button ${theme}-create-button`}
                   onClick={handleSave}
-                >
-                  Save Challenge
+              style={{
+                height: '40px',
+                borderRadius: '8px',
+                fontWeight: 500,
+                fontSize: '16px',
+                padding: '0 24px',
+                border: 'none',
+                transition: 'all 0.3s ease',
+                background: theme === 'sun' 
+                  ? 'linear-gradient(135deg, #66AEFF, #3C99FF)'
+                  : 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)',
+                color: '#000000',
+                boxShadow: theme === 'sun' ? '0 2px 8px rgba(60, 153, 255, 0.3)' : '0 2px 8px rgba(131, 119, 160, 0.3)'
+              }}
+            >
+              {t('common.saveChanges') || 'Save Challenge'}
                 </Button>
-              </Space>
-            </Col>
-          </Row>
-        </Card>
+          </div>
+        </div>
+      </nav>
+    </header>
+  );
 
-        {/* Configuration Section */}
-        <Card className="rc-config-card">
-          <Row gutter={24} align="middle">
-            <Col span={8}>
-              <Space direction="vertical" style={{ width: "100%" }}>
-                <Text strong>Challenge Name:</Text>
-                <Input
-                  placeholder="Enter challenge name"
-                  value={challengeName}
-                  onChange={(e) => setChallengeName(e.target.value)}
-                  size="large"
-                />
-              </Space>
-            </Col>
-            <Col span={8}>
-              <Space direction="vertical" style={{ width: "100%" }}>
-                <Text strong>Chapter:</Text>
-                <Select
-                  placeholder="Select chapter"
-                  value={selectedChapter}
-                  onChange={setSelectedChapter}
-                  style={{ width: "100%" }}
-                  size="large"
-                >
-                  {mockChapters.map((chapter) => (
-                    <Option key={chapter.id} value={chapter.id}>
-                      {chapter.name}
-                    </Option>
-                  ))}
-                </Select>
-              </Space>
-            </Col>
-            <Col span={8}>
-              <Space direction="vertical" style={{ width: "100%" }}>
-                <Text strong>Lesson:</Text>
-                <Select
-                  placeholder="Select lesson"
-                  value={selectedLesson}
-                  onChange={setSelectedLesson}
-                  style={{ width: "100%" }}
-                  size="large"
-                  disabled={!selectedChapter}
-                >
-                  {availableLessons.map((lesson) => (
-                    <Option key={lesson.id} value={lesson.id}>
-                      {lesson.name}
-                    </Option>
-                  ))}
-                </Select>
-              </Space>
-            </Col>
-          </Row>
-        </Card>
-
+  return (
+    <ThemedLayout customHeader={customHeader}>
+      <div className={`daily-challenge-content-wrapper ${theme}-daily-challenge-content-wrapper`}>
+        <div style={{ padding: '24px' }}>
         {/* Main Content */}
-        <div className="rc-main-content-container">
-          <Row gutter={24} style={{ height: "calc(100vh - 380px)" }}>
+        <Row gutter={24} style={{ minHeight: "calc(100vh - 280px)" }}>
             {/* Passage Creation - Left Side (2/3) */}
             <Col span={16} className="rc-passage-section">
-              <Card className="rc-passage-card" style={{ height: "100%" }}>
+              <Card 
+                className={`rc-passage-card ${theme}-rc-passage-card`}
+                style={{ 
+                  height: "100%",
+                  borderRadius: '16px',
+                  border: theme === 'sun' 
+                    ? '2px solid rgba(113, 179, 253, 0.25)' 
+                    : '2px solid rgba(138, 122, 255, 0.2)',
+                  boxShadow: theme === 'sun' 
+                    ? '0 4px 16px rgba(113, 179, 253, 0.1)' 
+                    : '0 4px 16px rgba(138, 122, 255, 0.12)',
+                  background: theme === 'sun'
+                    ? 'linear-gradient(135deg, rgba(255, 255, 255, 1) 0%, rgba(240, 249, 255, 0.95) 100%)'
+                    : 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(244, 240, 255, 0.95) 100%)',
+                  backdropFilter: 'blur(10px)'
+                }}
+              >
                 {/* Passage Tabs with Discard Button */}
-                <div className="rc-passage-tabs">
+                <div className="rc-passage-tabs" style={{ marginBottom: '16px' }}>
                   <div className="rc-passage-tabs-left">
                     {passages.map((passage) => (
                       <Button
@@ -374,6 +342,16 @@ const CreateReadingChallenge = () => {
                         type={activePassage === passage.id ? "primary" : "text"}
                         onClick={() => setActivePassage(passage.id)}
                         className="rc-passage-tab"
+                        style={activePassage === passage.id ? {
+                          background: theme === 'sun' 
+                            ? 'linear-gradient(135deg, #66AEFF, #3C99FF)'
+                            : 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)',
+                          color: '#000000',
+                          borderRadius: '8px',
+                          fontWeight: 500
+                        } : {
+                          color: theme === 'sun' ? '#1E40AF' : '#8377A0'
+                        }}
                       >
                         {passage.title}
                       </Button>
@@ -383,6 +361,11 @@ const CreateReadingChallenge = () => {
                       icon={<PlusOutlined />}
                       onClick={handleAddPassage}
                       className="rc-add-passage-btn"
+                      style={{
+                        borderColor: theme === 'sun' ? '#66AEFF' : '#8377A0',
+                        color: theme === 'sun' ? '#1E40AF' : '#8377A0',
+                        borderRadius: '8px'
+                      }}
                     >
                       Add passage set
                     </Button>
@@ -394,6 +377,9 @@ const CreateReadingChallenge = () => {
                     className="rc-discard-btn"
                     onClick={handleDiscardPassage}
                     disabled={passages.length <= 1}
+                    style={{
+                      borderRadius: '8px'
+                    }}
                   >
                     Discard passage
                   </Button>
@@ -406,7 +392,7 @@ const CreateReadingChallenge = () => {
                    {currentPassage?.type === "manual" ? (
                      /* Text Editor - Full space when manual is selected */
                      <div className="rc-text-editor-full">
-                       <div className="rc-text-editor-header">
+                       <div className="rc-text-editor-header" style={{ marginBottom: '12px' }}>
                          <Button 
                            type="text" 
                            icon={<ArrowLeftOutlined />}
@@ -416,6 +402,10 @@ const CreateReadingChallenge = () => {
                              ));
                            }}
                            className="rc-back-to-options-btn"
+                           style={{
+                             color: theme === 'sun' ? '#1E40AF' : '#8377A0',
+                             fontWeight: 500
+                           }}
                          >
                            Back to options
                          </Button>
@@ -425,13 +415,26 @@ const CreateReadingChallenge = () => {
                          value={passageContent}
                          onChange={(e) => handlePassageContentChange(e.target.value)}
                          rows={20}
-                         style={{ fontSize: 14, lineHeight: 1.6, height: "100%" }}
+                         style={{ 
+                           fontSize: 14, 
+                           lineHeight: 1.6, 
+                           height: "100%",
+                           borderRadius: '8px',
+                           border: theme === 'sun' ? '2px solid rgba(113, 179, 253, 0.3)' : '2px solid rgba(138, 122, 255, 0.3)',
+                           background: theme === 'sun'
+                             ? 'linear-gradient(135deg, rgba(230, 245, 255, 0.95) 0%, rgba(186, 231, 255, 0.85) 100%)'
+                             : 'rgba(255, 255, 255, 0.9)'
+                         }}
                        />
                      </div>
                    ) : (
                      /* Initial Options - Show when no type selected */
                      <>
-                       <Title level={3} style={{ textAlign: "center", marginBottom: 32 }}>
+                       <Title level={3} style={{ 
+                         textAlign: "center", 
+                         marginBottom: 32,
+                         color: theme === 'sun' ? '#1E40AF' : '#8377A0'
+                       }}>
                          Add passage
                        </Title>
                        
@@ -445,10 +448,25 @@ const CreateReadingChallenge = () => {
                                p.id === activePassage ? { ...p, type: "manual" } : p
                              ));
                            }}
+                           style={{
+                             borderRadius: '12px',
+                             border: theme === 'sun' 
+                               ? '2px solid rgba(113, 179, 253, 0.3)' 
+                               : '2px solid rgba(138, 122, 255, 0.3)',
+                             background: theme === 'sun'
+                               ? 'linear-gradient(135deg, rgba(230, 245, 255, 0.5) 0%, rgba(186, 231, 255, 0.4) 100%)'
+                               : 'rgba(255, 255, 255, 0.5)',
+                             cursor: 'pointer'
+                           }}
                          >
                            <Space>
-                             <FileTextOutlined style={{ fontSize: 24, color: "#1890ff" }} />
-                             <Text strong>Add text & media manually</Text>
+                             <FileTextOutlined style={{ 
+                               fontSize: 24, 
+                               color: theme === 'sun' ? "#1890ff" : "#8377A0" 
+                             }} />
+                             <Text strong style={{ 
+                               color: theme === 'sun' ? '#1E40AF' : '#8377A0' 
+                             }}>Add text & media manually</Text>
                            </Space>
                          </Card>
 
@@ -456,7 +474,17 @@ const CreateReadingChallenge = () => {
                          <Card 
                            hoverable 
                            className="rc-passage-option-card"
-                           style={{ opacity: isProcessingPDF ? 0.6 : 1 }}
+                           style={{ 
+                             opacity: isProcessingPDF ? 0.6 : 1,
+                             borderRadius: '12px',
+                             border: theme === 'sun' 
+                               ? '2px solid rgba(82, 196, 26, 0.3)' 
+                               : '2px solid rgba(138, 122, 255, 0.3)',
+                             background: theme === 'sun'
+                               ? 'linear-gradient(135deg, rgba(237, 250, 230, 0.5) 0%, rgba(207, 244, 192, 0.4) 100%)'
+                               : 'rgba(255, 255, 255, 0.5)',
+                             cursor: isProcessingPDF ? 'not-allowed' : 'pointer'
+                           }}
                          >
                            <Upload
                              accept=".pdf"
@@ -470,7 +498,9 @@ const CreateReadingChallenge = () => {
                                ) : (
                                  <UploadOutlined style={{ fontSize: 24, color: "#52c41a" }} />
                                )}
-                               <Text strong>
+                               <Text strong style={{ 
+                                 color: theme === 'sun' ? '#1E40AF' : '#8377A0' 
+                               }}>
                                  {isProcessingPDF ? `Đang xử lý "${uploadedFileName}"...` : "Upload PDF"}
                                </Text>
                              </Space>
@@ -485,91 +515,226 @@ const CreateReadingChallenge = () => {
 
             {/* Questions Section - Right Side (1/3) */}
             <Col span={8} className="rc-questions-section">
-              <div className="rc-questions-container" style={{ height: "100%" }}>
-                {/* Question Type Section - Top 1/3 */}
-                <div className="rc-question-type-section">
-                  <Card className="rc-question-type-card">
-                    <div className="rc-question-type-header">
-                      <Title level={4} style={{ margin: 0, color: "#4dd0ff" }}>
-                        Question Type
+              <Card 
+                className={`rc-questions-card ${theme}-rc-questions-card`}
+                style={{
+                  height: '100%',
+                  borderRadius: '16px',
+                  border: theme === 'sun' 
+                    ? '2px solid rgba(113, 179, 253, 0.25)' 
+                    : '2px solid rgba(138, 122, 255, 0.2)',
+                  boxShadow: theme === 'sun' 
+                    ? '0 4px 16px rgba(113, 179, 253, 0.1)' 
+                    : '0 4px 16px rgba(138, 122, 255, 0.12)',
+                  background: theme === 'sun'
+                    ? 'linear-gradient(135deg, rgba(255, 255, 255, 1) 0%, rgba(240, 249, 255, 0.95) 100%)'
+                    : 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(244, 240, 255, 0.95) 100%)',
+                  backdropFilter: 'blur(10px)',
+                  display: 'flex',
+                  flexDirection: 'column'
+                }}
+              >
+                {/* Questions Header */}
+                <div className="rc-questions-header" style={{ marginBottom: '20px' }}>
+                  <Title level={4} style={{ 
+                    margin: 0, 
+                    color: theme === 'sun' ? '#1E40AF' : '#8377A0',
+                    textAlign: 'center'
+                  }}>
+                    Questions ({questions.length})
                       </Title>
                     </div>
-                    <div className="rc-add-question-section">
+
+                {/* Add Question Button */}
+                <div className="rc-add-question-section" style={{ marginBottom: '20px' }}>
                       <Dropdown
                         overlay={
-                          <Menu className="rc-question-type-menu">
-                            <Menu.Item key="multiple-choice" onClick={() => handleAddQuestion('multiple-choice')}>
-                              Multiple Choice
+                      <Menu 
+                        className="rc-question-type-menu"
+                        style={{
+                          background: '#ffffff',
+                          borderRadius: '8px',
+                          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)'
+                        }}
+                      >
+                        <Menu.Item 
+                          key="multiple-choice" 
+                          onClick={() => handleAddQuestion('multiple-choice')}
+                          style={{ color: '#000000' }}
+                        >
+                          <span style={{ color: '#000000' }}>Multiple Choice</span>
                             </Menu.Item>
-                            <Menu.Item key="multiple-select" onClick={() => handleAddQuestion('multiple-select')}>
-                              Multiple Select
+                        <Menu.Item 
+                          key="multiple-select" 
+                          onClick={() => handleAddQuestion('multiple-select')}
+                          style={{ color: '#000000' }}
+                        >
+                          <span style={{ color: '#000000' }}>Multiple Select</span>
                             </Menu.Item>
-                            <Menu.Item key="true-false" onClick={() => handleAddQuestion('true-false')}>
-                              True or False
+                        <Menu.Item 
+                          key="true-false" 
+                          onClick={() => handleAddQuestion('true-false')}
+                          style={{ color: '#000000' }}
+                        >
+                          <span style={{ color: '#000000' }}>True or False</span>
                             </Menu.Item>
-                            <Menu.Item key="fill-blank" onClick={() => handleAddQuestion('fill-blank')}>
-                              Fill in the Blank
+                        <Menu.Item 
+                          key="fill-blank" 
+                          onClick={() => handleAddQuestion('fill-blank')}
+                          style={{ color: '#000000' }}
+                        >
+                          <span style={{ color: '#000000' }}>Fill in the Blank</span>
                             </Menu.Item>
-                            <Menu.Item key="dropdown" onClick={() => handleAddQuestion('dropdown')}>
-                              Dropdown
+                        <Menu.Item 
+                          key="dropdown" 
+                          onClick={() => handleAddQuestion('dropdown')}
+                          style={{ color: '#000000' }}
+                        >
+                          <span style={{ color: '#000000' }}>Dropdown</span>
                             </Menu.Item>
-                            <Menu.Item key="drag-drop" onClick={() => handleAddQuestion('drag-drop')}>
-                              Drag and Drop
+                        <Menu.Item 
+                          key="drag-drop" 
+                          onClick={() => handleAddQuestion('drag-drop')}
+                          style={{ color: '#000000' }}
+                        >
+                          <span style={{ color: '#000000' }}>Drag and Drop</span>
                             </Menu.Item>
-                            <Menu.Item key="reorder" onClick={() => handleAddQuestion('reorder')}>
-                              Reorder
+                        <Menu.Item 
+                          key="reorder" 
+                          onClick={() => handleAddQuestion('reorder')}
+                          style={{ color: '#000000' }}
+                        >
+                          <span style={{ color: '#000000' }}>Reorder</span>
                             </Menu.Item>
-                            
                           </Menu>
                         }
                         trigger={['click']}
                       >
-                        <Button className="rc-add-question-btn">
+                    <Button 
+                      className="rc-add-question-btn"
+                      style={{
+                        width: '100%',
+                        height: '40px',
+                        borderRadius: '8px',
+                        fontWeight: 500,
+                        fontSize: '14px',
+                        background: theme === 'sun' 
+                          ? 'linear-gradient(135deg, #66AEFF, #3C99FF)'
+                          : 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)',
+                        color: '#000000',
+                        border: 'none',
+                        boxShadow: theme === 'sun' ? '0 2px 8px rgba(60, 153, 255, 0.3)' : '0 2px 8px rgba(131, 119, 160, 0.3)'
+                      }}
+                    >
                           <PlusOutlined />
                           Add a Question
                           <DownOutlined />
                         </Button>
                       </Dropdown>
-                    </div>
-                  </Card>
                 </div>
 
-                {/* Questions List Section - Bottom 2/3 */}
-                <div className="rc-questions-list-section">
-                  <Card className="rc-questions-card">
-                    <div className="rc-questions-header">
-                      <Title level={4} style={{ margin: 0, color: "#4dd0ff" }}>
-                        Questions ({questions.length})
-                      </Title>
-                    </div>
-                    
-                    <div className="rc-questions-list">
+                <Divider style={{ margin: '0 0 20px 0' }} />
+                
+                {/* Questions List */}
+                <div className="rc-questions-list" style={{ flex: 1, overflowY: 'auto' }}>
                       {questions.length === 0 ? (
-                        <div className="rc-empty-questions">
-                          <div className="rc-empty-icon">🚀</div>
-                          <div className="rc-empty-text">No questions added yet</div>
-                          <div className="rc-empty-subtext">Click "Add a Question" above to get started</div>
+                    <div className="rc-empty-questions" style={{ 
+                      padding: '40px 20px',
+                      textAlign: 'center'
+                    }}>
+                      <div className="rc-empty-icon" style={{ fontSize: '48px', marginBottom: '16px' }}>🚀</div>
+                      <div className="rc-empty-text" style={{ 
+                        fontSize: '16px',
+                        fontWeight: 500,
+                        color: theme === 'sun' ? '#1E40AF' : '#8377A0',
+                        marginBottom: '8px'
+                      }}>No questions added yet</div>
+                      <div className="rc-empty-subtext" style={{ 
+                        fontSize: '14px',
+                        color: '#999'
+                      }}>Click "Add a Question" above to get started</div>
                         </div>
                       ) : (
                         questions.map((question, index) => (
-                          <div key={question.id} className="rc-question-item">
+                      <div 
+                        key={question.id} 
+                        className={`rc-question-item ${theme}-rc-question-item`}
+                        style={{
+                          padding: '16px',
+                          marginBottom: '12px',
+                          borderRadius: '12px',
+                          border: theme === 'sun' 
+                            ? '2px solid rgba(113, 179, 253, 0.2)' 
+                            : '2px solid rgba(138, 122, 255, 0.2)',
+                          background: theme === 'sun'
+                            ? 'linear-gradient(135deg, rgba(230, 245, 255, 0.3) 0%, rgba(186, 231, 255, 0.2) 100%)'
+                            : 'rgba(255, 255, 255, 0.5)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '12px',
+                          transition: 'all 0.3s ease'
+                        }}
+                      >
                             <div className="rc-question-handle">
-                              <HolderOutlined style={{ color: "#b9c6ff", cursor: "grab" }} />
+                          <HolderOutlined style={{ 
+                            color: theme === 'sun' ? '#66AEFF' : '#8377A0',
+                            cursor: "grab",
+                            fontSize: '16px'
+                          }} />
                             </div>
                             <div onClick={() => handleEditQuestion(question)} style={{ flex: 1, cursor: "pointer" }}>
-                              <div className="rc-question-type">
+                          <div className="rc-question-type" style={{
+                            fontSize: '12px',
+                            fontWeight: 600,
+                            color: theme === 'sun' ? '#1890ff' : '#8377A0',
+                            marginBottom: '4px'
+                          }}>
                                 Q{index + 1}: {getQuestionTypeLabel(question.type)}
                               </div>
-                              <div className="rc-question-text">
+                          <div className="rc-question-text" style={{
+                            fontSize: '14px',
+                            color: theme === 'sun' ? '#1E40AF' : '#333'
+                          }}>
                                 {question.question || "the question is"}
                               </div>
                             </div>
-                            <div className="rc-question-actions">
+                        <div className="rc-question-actions" style={{ display: 'flex', gap: '4px' }}>
+                          <Button
+                            type="text"
+                            icon={<EditOutlined />}
+                            onClick={() => handleEditQuestion(question)}
+                            size="small"
+                            style={{ 
+                              color: theme === 'sun' ? '#1890ff' : '#8377A0'
+                            }}
+                          />
+                          <Button
+                            type="text"
+                            icon={<CopyOutlined />}
+                            onClick={() => {
+                              const newQuestion = {
+                                ...question,
+                                id: Date.now(),
+                                question: `${question.question} (Copy)`
+                              };
+                              setPassages(passages.map(p => 
+                                p.id === activePassage 
+                                  ? { ...p, questions: [...p.questions, newQuestion] }
+                                  : p
+                              ));
+                              spaceToast.success("Question duplicated!");
+                            }}
+                            size="small"
+                            style={{ 
+                              color: theme === 'sun' ? '#1890ff' : '#8377A0'
+                            }}
+                          />
                               <Button
                                 type="text"
                                 danger
                                 icon={<DeleteOutlined />}
                                 onClick={() => handleDeleteQuestion(question.id)}
+                            size="small"
                                 style={{ color: "#ff6b6b" }}
                               />
                             </div>
@@ -578,11 +743,9 @@ const CreateReadingChallenge = () => {
                       )}
                     </div>
                   </Card>
-                </div>
-              </div>
             </Col>
-
           </Row>
+        </div>
         </div>
 
         {/* Question Modals */}
@@ -634,10 +797,6 @@ const CreateReadingChallenge = () => {
           onSave={handleSaveQuestion}
           questionData={editingQuestion}
         />
-        
-     
-
-      </div>
     </ThemedLayout>
   );
 };

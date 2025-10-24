@@ -540,7 +540,7 @@ const ChapterListPage = () => {
 
 	const columns = [
 		{
-			title: t('syllabusManagement.stt'),
+			title: t('chapterManagement.stt'),
 			key: 'index',
 			width: '10%',
 			render: (_, __, index) => {
