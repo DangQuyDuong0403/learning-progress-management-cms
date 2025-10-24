@@ -140,14 +140,16 @@
   display: flex;
   flex-direction: column;
   position: relative;
+  overflow: hidden;
 }
 
 /* CKEditor top section */
 .ck.ck-editor__top {
   position: sticky;
   top: 0;
-  z-index: 10;
+  z-index: 100;
   background: transparent;
+  flex-shrink: 0;
 }
 
 /* CKEditor toolbar */
@@ -156,17 +158,12 @@
   border: none !important;
   border-bottom: 2px solid rgba(24, 144, 255, 0.2) !important;
   padding: 8px 12px !important;
-  position: sticky !important;
-  top: 0 !important;
-  z-index: 10 !important;
-  border-radius: 8px;
+  border-radius: 8px 8px 0 0;
 }
 
 /* CKEditor sticky panel */
 .ck.ck-editor__top .ck-sticky-panel {
-  position: sticky !important;
-  top: 0 !important;
-  z-index: 10 !important;
+  z-index: 100 !important;
 }
 
 /* CKEditor sticky panel content - remove border */
@@ -189,16 +186,26 @@
   color: #1890ff !important;
 }
 
+/* CKEditor main area */
+.ck.ck-editor__main {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
 /* CKEditor editing area */
 .ck.ck-editor__main > .ck-editor__editable {
   background: rgba(255, 255, 255, 0.8) !important;
   border: none !important;
-  min-height: 200px !important;
-  max-height: 400px !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  height: 100% !important;
   overflow-y: auto !important;
   padding: 16px !important;
   font-size: 16px !important;
   line-height: 1.6 !important;
+  flex: 1;
 }
 
 /* Scrollbar for CKEditor content */

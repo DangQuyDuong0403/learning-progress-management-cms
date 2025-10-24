@@ -224,12 +224,11 @@ const MultipleChoiceModal = ({
 			open={visible}
 			onCancel={handleCancel}
 			width={1600}
-			height={900}
 			footer={null}
 			style={{ top: 10 }}
 			bodyStyle={{ 
-				height: '88vh', 
-				overflow: 'auto', 
+				maxHeight: 'calc(100vh - 120px)',
+				overflow: 'hidden', 
 				position: 'relative',
 				padding: 0,
 				background: 'linear-gradient(135deg, #f0f7ff 0%, #e6f4ff 100%)'
@@ -286,7 +285,7 @@ const MultipleChoiceModal = ({
 			{/* Main Split Layout */}
 			<div style={{ 
 				display: 'flex', 
-				height: 'calc(88vh - 90px)', 
+				height: 'calc(100vh - 210px)', 
 				padding: '24px',
 				gap: '24px'
 			}}>
@@ -295,7 +294,8 @@ const MultipleChoiceModal = ({
 					flex: '0 0 38%',
 					display: 'flex',
 					flexDirection: 'column',
-					gap: '16px'
+					gap: '16px',
+					minHeight: 0
 				}}>
 					{/* Question Card */}
 					<div style={{
@@ -309,7 +309,8 @@ const MultipleChoiceModal = ({
 						display: 'flex',
 						flexDirection: 'column',
 						position: 'relative',
-						overflow: 'visible'
+						overflow: 'hidden',
+						minHeight: 0
 					}}>
 						{/* Decorative background elements */}
 						<div style={{
@@ -330,15 +331,19 @@ const MultipleChoiceModal = ({
 						display: 'flex',
 							flexDirection: 'column',
 							position: 'relative',
-							zIndex: 1
+							zIndex: 1,
+							minHeight: 0,
+							overflow: 'hidden'
 						}}>
 							<div style={{
 								flex: 1,
 								borderRadius: '12px',
 								border: '2px solid rgba(24, 144, 255, 0.2)',
-								overflow: 'visible',
+								overflow: 'hidden',
 								background: 'rgba(240, 247, 255, 0.5)',
 								position: 'relative',
+								display: 'flex',
+								flexDirection: 'column'
 							}}>
 								<CKEditor
 									editor={ClassicEditor}
@@ -400,13 +405,6 @@ const MultipleChoiceModal = ({
 									}}
 									onReady={(editor) => {
 										editorRef.current = editor;
-										// Enable sticky toolbar
-										const toolbarElement = editor.ui.view.toolbar.element;
-										if (toolbarElement) {
-											toolbarElement.style.position = 'sticky';
-											toolbarElement.style.top = '0';
-											toolbarElement.style.zIndex = '10';
-										}
 									}}
 								/>
 					</div>

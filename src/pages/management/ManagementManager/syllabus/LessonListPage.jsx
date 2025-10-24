@@ -606,7 +606,7 @@ const LessonListPage = () => {
 
 	const columns = [
 		{
-			title: 'STT',
+			title: t('lessonManagement.stt'),
 			key: 'index',
 			width: '10%',
 			render: (_, __, index) => {
