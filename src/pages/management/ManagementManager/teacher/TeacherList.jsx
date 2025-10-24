@@ -218,6 +218,17 @@ const TeacherList = () => {
 		setIsAssignModalVisible(true);
 	};
 
+	// Handle navigate to class management
+	const handleNavigateToClass = (classInfo) => {
+		if (!classInfo || !classInfo.id) {
+			spaceToast.warning('Class information not available');
+			return;
+		}
+		
+		console.log('Navigating to class:', classInfo);
+		navigate(`/manager/classes/menu/${classInfo.id}`);
+	};
+
 	// Handle toggle teacher status (ACTIVE/INACTIVE)
 	const handleToggleStatus = (teacherId) => {
 		const teacher = teachers.find(t => t.id === teacherId);
@@ -948,11 +959,25 @@ const TeacherList = () => {
 					// Show class names if teacher has classes
 					return (
 						<div className="classes-text">
-							{classList.map((cls, index) => (
-								<span key={cls.id || index} style={{ display: 'block', marginBottom: '2px' }}>
-									{cls.name || cls.className || `Class ${index + 1}`}
-								</span>
-							))}
+							{classList.map((cls, index) => {
+								const className = cls.name || cls.className || `Class ${index + 1}`;
+								return (
+									<span 
+										key={cls.id || index} 
+										className="clickable-class-name"
+										onClick={() => handleNavigateToClass(cls)}
+										style={{ 
+											display: 'block', 
+											marginBottom: '2px',
+											cursor: 'pointer',
+											textDecoration: 'underline',
+										}}
+										title={`Click to view class: ${className}`}
+									>
+										{className}
+									</span>
+								);
+							})}
 						</div>
 					);
 				} else if (record.status === 'ACTIVE') {
