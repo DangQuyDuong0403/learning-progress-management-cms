@@ -27,7 +27,7 @@ import { useTranslation } from 'react-i18next';
 import { useParams, useNavigate } from 'react-router-dom';
 import ThemedLayoutWithSidebar from '../../../../component/ThemedLayout';
 import ThemedLayoutNoSidebar from '../../../../component/teacherlayout/ThemedLayout';
-import LoadingWithEffect from '../../../../component/spinner/LoadingWithEffect';
+import TableSpinner from '../../../../component/spinner/TableSpinner';
 import { spaceToast } from '../../../../component/SpaceToastify';
 import { useTheme } from '../../../../contexts/ThemeContext';
 import { useClassMenu } from '../../../../contexts/ClassMenuContext';
@@ -37,7 +37,6 @@ import teacherManagementApi from '../../../../apis/backend/teacherManagement';
 import { useSelector } from 'react-redux';
 import BottomActionBar from '../../../../component/BottomActionBar';
 import './ClassChapterLesson.css';
-import { decodeJWT, getRoleFromToken } from '../../../../utils/jwtUtils';
 
 
 const ClassChapterLesson = () => {
@@ -148,7 +147,7 @@ const ClassChapterLesson = () => {
 			});
 		} catch (error) {
 			console.error('Error fetching class info:', error);
-			spaceToast.error(t('lessonManagement.loadingClassInfo'));
+			spaceToast.error(error.response?.data?.error || error.response?.data?.message || error.message || 'Error fetching class info');
 		} finally {
 			setLoading(false);
 		}
@@ -170,7 +169,7 @@ const ClassChapterLesson = () => {
 			});
 		} catch (error) {
 			console.error('Error fetching chapter info:', error);
-			spaceToast.error(t('lessonManagement.loadingChapterInfo'));
+			spaceToast.error(error.response?.data?.error || error.response?.data?.message || error.message || 'Error fetching chapter info');
 		}
 	}, [chapterId, t]);
 
@@ -192,8 +191,29 @@ const ClassChapterLesson = () => {
 
 			const response = await teacherManagementApi.getClassLessons(params);
 			
+			// Handle different response structures
+			let lessonsData = [];
+			if (response.data) {
+				// Check if response.data is an array
+				if (Array.isArray(response.data)) {
+					lessonsData = response.data;
+				} 
+				// Check if response.data has a data property (nested structure)
+				else if (response.data.data && Array.isArray(response.data.data)) {
+					lessonsData = response.data.data;
+				}
+				// Check if response.data has content property (Spring Boot pagination)
+				else if (response.data.content && Array.isArray(response.data.content)) {
+					lessonsData = response.data.content;
+				}
+				// If it's a single object, wrap it in array
+				else if (response.data.id) {
+					lessonsData = [response.data];
+				}
+			}
+			
 			// Map API response to component format
-			const mappedLessons = response.data.map((lesson) => ({
+			const mappedLessons = lessonsData.map((lesson) => ({
 				id: lesson.id,
 				name: lesson.classLessonName,
 				content: lesson.classLessonContent,
@@ -203,17 +223,17 @@ const ClassChapterLesson = () => {
 			}));
 
 			setLessons(mappedLessons);
-			setTotalElements(response.totalElements || response.data.length);
+			setTotalElements(response.totalElements || lessonsData.length);
 			setPagination(prev => ({
 				...prev,
 				current: page,
 				pageSize: size,
-				total: response.totalElements || response.data.length,
+				total: response.totalElements || lessonsData.length,
 			}));
 			setLoading(false);
 		} catch (error) {
 			console.error('Error fetching lessons:', error);
-			spaceToast.error(t('lessonManagement.loadingLessons'));
+			spaceToast.error(error.response?.data?.error || error.response?.data?.message || error.message || 'Error fetching lessons');
 			setLoading(false);
 		}
 	}, [chapterId, t]);
@@ -778,14 +798,7 @@ const ClassChapterLesson = () => {
 			<ThemedLayout>
 				{/* Main Content Panel */}
 				<div className={`main-content-panel ${theme}-main-panel`}>
-					<div style={{ textAlign: 'center', padding: '50px' }}>
-						<LoadingWithEffect
-							loading={true}
-							message={t('common.loading')}
-						>
-							<div></div>
-						</LoadingWithEffect>
-					</div>
+					<TableSpinner />
 				</div>
 			</ThemedLayout>
 		);

@@ -7,17 +7,21 @@ import {
   Typography,
   Tooltip,
   Switch,
+  Modal,
 } from "antd";
 import {
   SearchOutlined,
   PlusOutlined,
   EyeOutlined,
   FilterOutlined,
+  DeleteOutlined,
+  EditOutlined,
 } from "@ant-design/icons";
 import ThemedLayout from "../../../../component/teacherlayout/ThemedLayout";
 import LoadingWithEffect from "../../../../component/spinner/LoadingWithEffect";
 // import CreateDailyChallengeModal from "./CreateDailyChallengeModal"; // Keep old modal (not deleted, just commented)
 import SimpleDailyChallengeModal from "./SimpleDailyChallengeModal"; // New simple modal
+import EditDailyChallengeModal from "./EditDailyChallengeModal"; // Edit modal
 import "./DailyChallengeList.css";
 import { spaceToast } from "../../../../component/SpaceToastify";
 import { useNavigate, useLocation, useParams } from "react-router-dom";
@@ -110,7 +114,18 @@ const DailyChallengeList = () => {
   const [pageSize, setPageSize] = useState(10);
   const [totalItems, setTotalItems] = useState(0);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [createModalData, setCreateModalData] = useState(null); // Store lesson data for create modal
   const [searchDebounce, setSearchDebounce] = useState("");
+  const [deleteModal, setDeleteModal] = useState({
+    visible: false,
+    challengeId: null,
+    challengeTitle: '',
+  });
+  const [editModal, setEditModal] = useState({
+    visible: false,
+    challengeId: null,
+    challengeData: null,
+  });
 
   // AccountList-style filter dropdown state and refs
   const [filterDropdown, setFilterDropdown] = useState({
@@ -138,15 +153,15 @@ const DailyChallengeList = () => {
     };
   }, [filterDropdown.visible]);
 
-  // Filter option lists
+  // Filter option lists - Updated for new data structure
   const typeOptions = [
-    "Grammar & Vocabulary",
+    "GV", // Grammar & Vocabulary
     "Reading",
-    "Writing",
+    "Writing", 
     "Listening",
     "Speaking",
   ];
-  const statusOptions = ["active", "inactive", "pending"];
+  const statusOptions = ["DRAFT", "PUBLISHED"];
 
   const fetchDailyChallenges = useCallback(async () => {
     setLoading(true);
@@ -158,7 +173,7 @@ const DailyChallengeList = () => {
         response = await dailyChallengeApi.getDailyChallengesByClass(classId, {
           page: currentPage - 1, // API sử dụng 0-based pagination
           size: pageSize,
-          text: searchDebounce,
+          text: searchDebounce || undefined, // Chỉ gửi text nếu có giá trị
           sortBy: 'createdAt',
           sortDir: 'desc'
         });
@@ -167,7 +182,7 @@ const DailyChallengeList = () => {
         response = await dailyChallengeApi.getAllDailyChallenges({
           page: currentPage - 1, // API sử dụng 0-based pagination
           size: pageSize,
-          text: searchDebounce,
+          text: searchDebounce || undefined, // Chỉ gửi text nếu có giá trị
           sortBy: 'createdAt',
           sortDir: 'desc'
         });
@@ -175,13 +190,63 @@ const DailyChallengeList = () => {
 
       console.log('Daily Challenges API Response:', response.data);
       
-      // Xử lý response data
-      if (response.data && response.data.content) {
-        setDailyChallenges(response.data.content);
-        setTotalItems(response.data.totalElements || 0);
-      } else if (response.data && Array.isArray(response.data)) {
-        setDailyChallenges(response.data);
-        setTotalItems(response.data.length);
+      // Xử lý response data - Data structure: lessons with dailyChallenges array
+      if (response.data && Array.isArray(response.data)) {
+        // Flatten lessons and their daily challenges into a single array for table display
+        const flattenedData = [];
+        
+        response.data.forEach((lesson, lessonIndex) => {
+          if (lesson.dailyChallenges && lesson.dailyChallenges.length > 0) {
+            lesson.dailyChallenges.forEach((challenge, challengeIndex) => {
+              flattenedData.push({
+                ...challenge,
+                // Challenge fields
+                id: challenge.id,
+                title: challenge.challengeName || 'Untitled Challenge',
+                type: challenge.challengeType || 'Unknown',
+                status: challenge.challengeStatus || 'DRAFT',
+                startDate: challenge.startDate,
+                endDate: challenge.endDate,
+                // Lesson fields for display
+                lessonId: lesson.id,
+                lessonName: lesson.classLessonName || 'Untitled Lesson',
+                lessonOrder: lesson.orderNumber || lessonIndex + 1,
+                // Row metadata for merge cell logic
+                isFirstChallengeInLesson: challengeIndex === 0,
+                totalChallengesInLesson: lesson.dailyChallenges.length,
+                rowSpan: challengeIndex === 0 ? lesson.dailyChallenges.length : 0,
+                // Additional fields for compatibility
+                description: '',
+                teacher: 'Unknown Teacher',
+                timeLimit: 30,
+                totalQuestions: 0,
+                createdAt: new Date().toISOString().split('T')[0],
+              });
+            });
+          } else {
+            // Lesson without challenges - still show lesson row
+            flattenedData.push({
+              id: `lesson-${lesson.id}`,
+              title: 'No challenges',
+              type: 'N/A',
+              status: 'DRAFT',
+              lessonId: lesson.id,
+              lessonName: lesson.classLessonName || 'Untitled Lesson',
+              lessonOrder: lesson.orderNumber || lessonIndex + 1,
+              isFirstChallengeInLesson: true,
+              totalChallengesInLesson: 0,
+              rowSpan: 1,
+              description: '',
+              teacher: 'Unknown Teacher',
+              timeLimit: 0,
+              totalQuestions: 0,
+              createdAt: new Date().toISOString().split('T')[0],
+            });
+          }
+        });
+        
+        setDailyChallenges(flattenedData);
+        setTotalItems(flattenedData.length);
       } else {
         setDailyChallenges([]);
         setTotalItems(0);
@@ -195,7 +260,8 @@ const DailyChallengeList = () => {
       console.log('Falling back to mock data due to API error');
       setDailyChallenges(mockDailyChallenges);
       
-      spaceToast.error(t('dailyChallenge.loadChallengesError'));
+      const errorMessage = error.response?.data?.error || error.message || t('dailyChallenge.loadChallengesError');
+      spaceToast.error(errorMessage);
       setLoading(false);
     }
   }, [classId, currentPage, pageSize, searchDebounce, t]);
@@ -203,6 +269,14 @@ const DailyChallengeList = () => {
   useEffect(() => {
     fetchDailyChallenges();
   }, [fetchDailyChallenges]);
+
+  // Debug logging for dailyChallenges data
+  useEffect(() => {
+    if (dailyChallenges.length > 0) {
+      console.log('Daily Challenges Data:', dailyChallenges);
+      console.log('First Challenge:', dailyChallenges[0]);
+    }
+  }, [dailyChallenges]);
 
   // Debounce search text
   useEffect(() => {
@@ -250,16 +324,21 @@ const DailyChallengeList = () => {
   useEffect(() => {
     // Calculate filtered challenges count
     const filteredCount = dailyChallenges.filter((challenge) => {
-      const matchesSearch =
-        searchText === "" ||
-        challenge.title.toLowerCase().includes(searchText.toLowerCase()) ||
-        challenge.description.toLowerCase().includes(searchText.toLowerCase()) ||
-        challenge.teacher.toLowerCase().includes(searchText.toLowerCase());
+      try {
+        const matchesSearch =
+          searchText === "" ||
+          (challenge.title && challenge.title.toLowerCase().includes(searchText.toLowerCase())) ||
+          (challenge.lessonName && challenge.lessonName.toLowerCase().includes(searchText.toLowerCase())) ||
+          (challenge.description && challenge.description.toLowerCase().includes(searchText.toLowerCase()));
 
-      const matchesType = typeFilter.length === 0 || typeFilter.includes(challenge.type);
-      const matchesStatus = statusFilter.length === 0 || statusFilter.includes(challenge.status);
+        const matchesType = typeFilter.length === 0 || typeFilter.includes(challenge.type);
+        const matchesStatus = statusFilter.length === 0 || statusFilter.includes(challenge.status);
 
-      return matchesSearch && matchesType && matchesStatus;
+        return matchesSearch && matchesType && matchesStatus;
+      } catch (error) {
+        console.error('Error filtering challenge:', error, challenge);
+        return false;
+      }
     }).length;
     
     // Update count in context
@@ -292,6 +371,16 @@ const DailyChallengeList = () => {
 
 
   const handleCreateClick = () => {
+    setCreateModalData(null); // No specific lesson
+    setShowCreateModal(true);
+  };
+
+  const handleCreateClickWithLesson = (lessonRecord) => {
+    setCreateModalData({
+      lessonId: lessonRecord.lessonId,
+      lessonName: lessonRecord.lessonName,
+      classLessonId: lessonRecord.lessonId
+    });
     setShowCreateModal(true);
   };
 
@@ -308,10 +397,10 @@ const DailyChallengeList = () => {
       await fetchDailyChallenges();
       
       setShowCreateModal(false);
-      spaceToast.success(t('dailyChallenge.createSuccess'));
     } catch (error) {
       console.error('Error creating challenge:', error);
-      spaceToast.error(t('dailyChallenge.createError'));
+      const errorMessage = error.response?.data?.error || error.message || t('dailyChallenge.createError');
+      spaceToast.error(errorMessage);
     }
   };
 
@@ -321,11 +410,11 @@ const DailyChallengeList = () => {
 
   const handleToggleStatus = async (id) => {
     const challenge = dailyChallenges.find(c => c.id === id);
-    const newStatus = challenge.status === 'active' ? 'inactive' : 'active';
+    const newStatus = challenge.status === 'PUBLISHED' ? 'DRAFT' : 'PUBLISHED';
     
     try {
-      // Call API to toggle status
-      await dailyChallengeApi.toggleDailyChallengeStatus(id);
+      // Call API to update status with specific challengeStatus parameter
+      await dailyChallengeApi.updateDailyChallengeStatus(id, newStatus);
       
       // Update local state on success
       setDailyChallenges(
@@ -335,17 +424,75 @@ const DailyChallengeList = () => {
       );
       
       spaceToast.success(
-        `Challenge ${newStatus === 'active' ? 'activated' : 'deactivated'} successfully`
+        `Challenge ${newStatus === 'PUBLISHED' ? 'published' : 'drafted'} successfully`
       );
     } catch (error) {
-      console.error('Error toggling challenge status:', error);
-      spaceToast.error(t('dailyChallenge.toggleStatusError'));
+      console.error('Error updating challenge status:', error);
+      const errorMessage = error.response?.data?.error || error.message || t('dailyChallenge.toggleStatusError');
+      spaceToast.error(errorMessage);
     }
   };
 
-  const getTypeText = (type) => {
-    return type.toLowerCase();
+  const handleDeleteClick = (challenge) => {
+    setDeleteModal({
+      visible: true,
+      challengeId: challenge.id,
+      challengeTitle: challenge.title,
+    });
   };
+
+  const handleDeleteConfirm = async () => {
+    try {
+      // Call API to delete challenge
+      await dailyChallengeApi.deleteDailyChallenge(deleteModal.challengeId);
+      
+      // Refresh the entire list to recalculate rowSpan and metadata
+      await fetchDailyChallenges();
+      
+      // Close modal
+      setDeleteModal({ visible: false, challengeId: null, challengeTitle: '' });
+      
+      spaceToast.success(t('dailyChallenge.deleteSuccess'));
+    } catch (error) {
+      console.error('Error deleting challenge:', error);
+      const errorMessage = error.response?.data?.error || error.message || t('dailyChallenge.deleteError');
+      spaceToast.error(errorMessage);
+    }
+  };
+
+  const handleDeleteCancel = () => {
+    setDeleteModal({ visible: false, challengeId: null, challengeTitle: '' });
+  };
+
+  const handleEditClick = (challenge) => {
+    setEditModal({
+      visible: true,
+      challengeId: challenge.id,
+      challengeData: challenge,
+    });
+  };
+
+  const handleEditModalCancel = () => {
+    setEditModal({ visible: false, challengeId: null, challengeData: null });
+  };
+
+  const handleEditSuccess = async (updatedChallenge) => {
+    try {
+      // Call API to update challenge
+      await dailyChallengeApi.updateDailyChallenge(editModal.challengeId, updatedChallenge);
+      
+      // Refresh the list from API
+      await fetchDailyChallenges();
+      
+      setEditModal({ visible: false, challengeId: null, challengeData: null });
+      spaceToast.success(t('dailyChallenge.updateSuccess'));
+    } catch (error) {
+      console.error('Error updating challenge:', error);
+      const errorMessage = error.response?.data?.error || error.message || t('dailyChallenge.updateError');
+      spaceToast.error(errorMessage);
+    }
+  };
+
 
   // Filter data based on type and status filters (search is handled by API)
   const filteredChallenges = dailyChallenges.filter((challenge) => {
@@ -365,6 +512,77 @@ const DailyChallengeList = () => {
       render: (_, __, index) => (currentPage - 1) * pageSize + index + 1,
     },
     {
+      title: 'Lesson',
+      dataIndex: 'lessonName',
+      key: 'lessonName',
+      width: 200,
+      align: 'center',
+      render: (text, record) => {
+        // Only render lesson name for the first challenge in each lesson
+        if (record.isFirstChallengeInLesson) {
+          return {
+            children: (
+              <div 
+                className="lesson-cell-container"
+                style={{
+                  fontSize: '18px',
+                  color: '#333',
+                  padding: '8px 12px',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                  borderRadius: '4px',
+                  textAlign: 'center',
+                  position: 'relative',
+                  cursor: 'pointer',
+                  height: '100%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+              >
+                <span className="lesson-text" style={{ transition: 'opacity 0.3s ease' }}>
+                  {text}
+                </span>
+                <Button
+                  className="lesson-create-btn"
+                  icon={<PlusOutlined />}
+                  style={{
+                    fontSize: '16px',
+                    height: '40px',
+                    padding: '0 20px',
+                    borderRadius: '8px',
+                    background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)',
+                    borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : '#7228d9',
+                    color: theme === 'sun' ? '#000' : '#000',
+                    fontWeight: '500',
+                    border: 'none',
+                    minWidth: '160px',
+                    margin: '0'
+                  }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleCreateClickWithLesson(record);
+                  }}
+                  title={`Create Daily Challenge for ${text}`}
+                >
+                  Create Challenge
+                </Button>
+              </div>
+            ),
+            props: {
+              rowSpan: record.rowSpan,
+            },
+          };
+        }
+        return {
+          children: null,
+          props: {
+            rowSpan: 0,
+          },
+        };
+      },
+    },
+    {
       title: t('dailyChallenge.challengeTitle'),
       dataIndex: 'title',
       key: 'title',
@@ -380,7 +598,7 @@ const DailyChallengeList = () => {
             overflow: 'hidden',
             textOverflow: 'ellipsis',
             whiteSpace: 'nowrap',
-            textAlign: 'left'
+            textAlign: 'left',
           }}>
             {text}
           </span>
@@ -391,24 +609,47 @@ const DailyChallengeList = () => {
       title: t('dailyChallenge.type'),
       dataIndex: 'type',
       key: 'type',
-      width: 200,
-      align: 'center',
-      render: (type) => getTypeText(type),
-    },
-    {
-      title: t('dailyChallenge.timeLimit'),
-      dataIndex: 'timeLimit',
-      key: 'timeLimit',
-      width: 120,
-      align: 'center',
-      render: (timeLimit) => `${timeLimit} ${t('dailyChallenge.minutes')}`,
-    },
-    {
-      title: t('dailyChallenge.totalQuestions'),
-      dataIndex: 'totalQuestions',
-      key: 'totalQuestions',
       width: 150,
       align: 'center',
+      render: (type) => {
+        const getTypeLabel = (typeCode) => {
+          switch(typeCode) {
+            case 'GV': return 'Grammar & Vocabulary';
+            case 'RE': return 'Reading';
+            case 'LI': return 'Listening';
+            case 'WR': return 'Writing';
+            case 'SP': return 'Speaking';
+            default: return typeCode;
+          }
+        };
+
+        return (
+          <span style={{
+            padding: '4px 8px',
+            borderRadius: '4px',
+            fontSize: '18px',
+            color: '#000000'
+          }}>
+            {getTypeLabel(type)}
+          </span>
+        );
+      },
+    },
+    {
+      title: 'Start Date',
+      dataIndex: 'startDate',
+      key: 'startDate',
+      width: 120,
+      align: 'center',
+      render: (startDate) => startDate ? new Date(startDate).toLocaleDateString() : '-',
+    },
+    {
+      title: 'End Date',
+      dataIndex: 'endDate',
+      key: 'endDate',
+      width: 120,
+      align: 'center',
+      render: (endDate) => endDate ? new Date(endDate).toLocaleDateString() : '-',
     },
     {
       title: t('dailyChallenge.status'),
@@ -418,7 +659,7 @@ const DailyChallengeList = () => {
       align: 'center',
       render: (status, record) => (
         <Switch
-          checked={status === 'active'}
+          checked={status === 'PUBLISHED'}
           onChange={() => handleToggleStatus(record.id)}
           size="large"
           style={{
@@ -431,19 +672,42 @@ const DailyChallengeList = () => {
     {
       title: t('dailyChallenge.actions'),
       key: 'actions',
-      width: 100,
+      width: 180,
       align: 'center',
-      render: (_, record) => (
-        <Space size="small">
-          <Button
-            type="text"
-            icon={<EyeOutlined style={{ fontSize: '18px' }} />}
-            onClick={() => handleViewClick(record)}
-            title={t('dailyChallenge.viewDetails')}
-            className="action-btn-view"
-          />
-        </Space>
-      ),
+      render: (_, record) => {
+        // Ẩn action buttons nếu lesson không có challenge (title = "No challenges")
+        if (record.title === 'No challenges') {
+          return <span style={{ color: '#999', fontSize: '14px' }}>-</span>;
+        }
+        
+        return (
+          <Space size="small">
+            <Button
+              type="text"
+              icon={<EyeOutlined style={{ fontSize: '24px' }} />}
+              onClick={() => handleViewClick(record)}
+              title={t('dailyChallenge.viewDetails')}
+              className="action-btn-view"
+            />
+            <Button
+              type="text"
+              icon={<EditOutlined style={{ fontSize: '24px' }} />}
+              onClick={() => handleEditClick(record)}
+              title={t('dailyChallenge.editChallenge')}
+              className="action-btn-edit"
+              style={{ color: '#1890ff' }}
+            />
+            <Button
+              type="text"
+              icon={<DeleteOutlined style={{ fontSize: '24px', color: '#ff4d4f' }} />}
+              onClick={() => handleDeleteClick(record)}
+              title={t('dailyChallenge.deleteChallenge')}
+              className="action-btn-delete"
+              style={{ color: '#ff4d4f' }}
+            />
+          </Space>
+        );
+      },
     },
   ];
 
@@ -491,7 +755,7 @@ const DailyChallengeList = () => {
                             }}
                             className={`filter-option ${filterDropdown.selectedTypes.includes(opt) ? 'selected' : ''}`}
                           >
-                            {opt}
+                            {opt === 'GV' ? 'Grammar & Vocabulary' : opt}
                           </Button>
                         ))}
                       </div>
@@ -597,7 +861,104 @@ const DailyChallengeList = () => {
           visible={showCreateModal}
           onCancel={handleCreateModalCancel}
           onCreateSuccess={handleCreateSuccess}
+          lessonData={createModalData}
         />
+
+        {/* Edit Daily Challenge Modal */}
+        <EditDailyChallengeModal
+          visible={editModal.visible}
+          onCancel={handleEditModalCancel}
+          onUpdateSuccess={handleEditSuccess}
+          challengeData={{
+            ...editModal.challengeData,
+            lessonId: editModal.challengeData?.lessonId,
+            lessonName: editModal.challengeData?.lessonName,
+            classLessonId: editModal.challengeData?.lessonId,
+          }}
+        />
+
+        {/* Delete Confirmation Modal */}
+        <Modal
+          title={
+            <div style={{ 
+              fontSize: '28px', 
+              fontWeight: '600', 
+              color: 'rgb(24, 144, 255)',
+              textAlign: 'center',
+              padding: '10px 0'
+            }}>
+              {t('dailyChallenge.deleteChallenge')}
+            </div>
+          }
+          open={deleteModal.visible}
+          onOk={handleDeleteConfirm}
+          onCancel={handleDeleteCancel}
+          okText={t('common.confirm')}
+          cancelText={t('common.cancel')}
+          width={500}
+          centered
+          bodyStyle={{
+            padding: '30px 40px',
+            fontSize: '16px',
+            lineHeight: '1.6',
+            textAlign: 'center'
+          }}
+          okButtonProps={{
+            style: {
+              background: '#ff4d4f',
+              borderColor: '#ff4d4f',
+              color: '#fff',
+              borderRadius: '6px',
+              height: '32px',
+              fontWeight: '500',
+              fontSize: '16px',
+              padding: '4px 15px',
+              width: '100px',
+              transition: 'all 0.3s ease',
+              boxShadow: 'none'
+            }
+          }}
+          cancelButtonProps={{
+            style: {
+              height: '32px',
+              fontWeight: '500',
+              fontSize: '16px',
+              padding: '4px 15px',
+              width: '100px'
+            }
+          }}
+        >
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: '20px'
+          }}>
+            <div style={{
+              fontSize: '48px',
+              color: '#ff4d4f',
+              marginBottom: '10px'
+            }}>
+              🗑️
+            </div>
+            <p style={{
+              fontSize: '18px',
+              color: '#333',
+              margin: 0,
+              fontWeight: '500'
+            }}>
+              {t('dailyChallenge.confirmDeleteChallenge')} "{deleteModal.challengeTitle}"?
+            </p>
+            <p style={{
+              fontSize: '14px',
+              color: '#666',
+              margin: 0,
+              fontStyle: 'italic'
+            }}>
+              {t('dailyChallenge.deleteWarning')}
+            </p>
+          </div>
+        </Modal>
         
         {/* Old CreateDailyChallengeModal - Kept for reference (not deleted) */}
         {/* <CreateDailyChallengeModal

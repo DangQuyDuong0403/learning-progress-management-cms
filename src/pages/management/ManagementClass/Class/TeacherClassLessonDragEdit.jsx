@@ -14,6 +14,7 @@ import { useClassMenu } from '../../../../contexts/ClassMenuContext';
 import { spaceToast } from '../../../../component/SpaceToastify';
 import ThemedLayoutWithSidebar from '../../../../component/ThemedLayout';
 import ThemedLayoutNoSidebar from '../../../../component/teacherlayout/ThemedLayout';
+import TableSpinner from '../../../../component/spinner/TableSpinner';
 import teacherManagementApi from '../../../../apis/backend/teacherManagement';
 import ChapterForm from '../../ManagementManager/syllabus/ChapterForm';
 import { useSelector } from 'react-redux';
@@ -297,24 +298,47 @@ const TeacherClassLessonDragEdit = () => {
 		try {
 			console.log('Fetching lessons for chapterId:', chapterId);
 			const params = {
-				classChapterId: chapterId,
+				classChapterId: chapterId, // Keep classChapterId parameter
 				page: 0,
 				size: 100,
 			};
 
-			const response = await teacherManagementApi.getClassLessons(params);
-			console.log('Lessons response:', response);
-			
-			// Map API response to component format
-			const mappedLessons = response.data.map((lesson, index) => ({
-				id: lesson.id,
-				name: lesson.classLessonName,
-				content: lesson.classLessonContent,
-				order: lesson.orderNumber,
-				createdBy: lesson.createdBy,
-				createdAt: lesson.createdAt,
-				position: index + 1,
-			}));
+		const response = await teacherManagementApi.getClassLessons(params);
+		console.log('Lessons response:', response);
+		
+		// Handle different response structures
+		let lessonsData = [];
+		if (response.data) {
+			// Check if response.data is an array
+			if (Array.isArray(response.data)) {
+				lessonsData = response.data;
+			} 
+			// Check if response.data has a data property (nested structure)
+			else if (response.data.data && Array.isArray(response.data.data)) {
+				lessonsData = response.data.data;
+			}
+			// Check if response.data has content property (Spring Boot pagination)
+			else if (response.data.content && Array.isArray(response.data.content)) {
+				lessonsData = response.data.content;
+			}
+			// If it's a single object, wrap it in array
+			else if (response.data.id) {
+				lessonsData = [response.data];
+			}
+		}
+		
+		console.log('Extracted lessons data:', lessonsData);
+		
+		// Map API response to component format
+		const mappedLessons = lessonsData.map((lesson, index) => ({
+			id: lesson.id,
+			name: lesson.classLessonName,
+			content: lesson.classLessonContent,
+			order: lesson.orderNumber,
+			createdBy: lesson.createdBy,
+			createdAt: lesson.createdAt,
+			position: index + 1,
+		}));
 
 			console.log('Mapped lessons:', mappedLessons);
 			setLessons(mappedLessons);
@@ -589,13 +613,13 @@ const TeacherClassLessonDragEdit = () => {
 				}))
 			});
 
-			// Gọi API sync với chapterId và dữ liệu lessons
+			// Gọi API sync với classChapterId và dữ liệu lessons
 			const response = await teacherManagementApi.syncClassLessons(chapterId, syncData);
 
 			// Use backend message if available, otherwise fallback to translation
 			const successMessage = response.message || t('lessonManagement.updatePositionsSuccess');
 			spaceToast.success(successMessage);
-			navigate(`${routePrefix}/chapters/${classId}/lessons/${chapterId}`);
+			navigate(`${routePrefix}/chapters/${classId}/${chapterId}/lessons`);
 		} catch (error) {
 			console.error('Error syncing lessons:', error);
 			
@@ -621,9 +645,7 @@ const TeacherClassLessonDragEdit = () => {
 			<ThemedLayout>
 				{/* Main Content Panel */}
 				<div className={`main-content-panel ${theme}-main-panel`}>
-					<div style={{ textAlign: 'center', padding: '50px' }}>
-						<Text>Loading lesson data...</Text>
-					</div>
+					<TableSpinner />
 				</div>
 			</ThemedLayout>
 		);
@@ -659,11 +681,7 @@ const TeacherClassLessonDragEdit = () => {
 						<div className={`levels-scroll-container ${theme}-levels-scroll-container`}>
 							<div className='levels-drag-container'>
 								{loading ? (
-									<div style={{ textAlign: 'center', padding: '40px' }}>
-										<Text type='secondary'>
-											{t('common.loading')}
-										</Text>
-									</div>
+									<TableSpinner />
 								) : (
 									<DndContext
 										sensors={sensors}

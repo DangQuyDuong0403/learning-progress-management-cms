@@ -29,7 +29,7 @@ const dailyChallengeApi = {
 		});
 	},
 
-	// Lấy danh sách tất cả daily challenges (cho teacher dashboard)
+	// Lấy tất cả daily challenges của teacher (không theo class cụ thể)
 	getAllDailyChallenges: (params = {}) => {
 		const queryParams = new URLSearchParams();
 		
@@ -105,7 +105,22 @@ const dailyChallengeApi = {
 		});
 	},
 
-	// Kích hoạt/vô hiệu hóa daily challenge
+	// Cập nhật status của daily challenge
+	updateDailyChallengeStatus: (id, challengeStatus) => {
+		const url = `/daily-challenges/${id}/status`;
+		console.log('UpdateDailyChallengeStatus API - URL:', url, 'Status:', challengeStatus);
+		
+		return axiosClient.put(url, null, {
+			params: {
+				challengeStatus: challengeStatus
+			},
+			headers: {
+				'accept': '*/*',
+			}
+		});
+	},
+
+	// Kích hoạt/vô hiệu hóa daily challenge (legacy method - kept for backward compatibility)
 	toggleDailyChallengeStatus: (id) => {
 		const url = `/daily-challenges/${id}/toggle-status`;
 		console.log('ToggleDailyChallengeStatus API - URL:', url);
