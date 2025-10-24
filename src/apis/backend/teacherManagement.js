@@ -187,16 +187,19 @@ const teacherManagementApi = {
 		});
 	},
 
-	// Class Lesson Management APIs
+	// Class Lesson Management APIs - Using /class-lesson endpoint
 	getClassLessons: (params = {}) => {
 		const queryParams = new URLSearchParams();
 		
+		// classChapterId parameter for /class-lesson endpoint
 		if (params.classChapterId) queryParams.append('classChapterId', params.classChapterId);
 		if (params.page !== undefined) queryParams.append('page', params.page);
 		if (params.size !== undefined) queryParams.append('size', params.size);
 		if (params.searchText) queryParams.append('searchText', params.searchText);
 
 		const url = `/class-lesson${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
+		console.log('GetClassLessons API - URL:', url);
+		console.log('GetClassLessons API - Params:', params);
 		
 		return axiosClient.get(url, {
 			headers: {
@@ -205,8 +208,10 @@ const teacherManagementApi = {
 		});
 	},
 
-	syncClassLessons: (chapterId, lessonsData) => {
-		const url = `/class-lesson/sync/${chapterId}`;
+	syncClassLessons: (classChapterId, lessonsData) => {
+		const url = `/class-lesson/sync/${classChapterId}`;
+		console.log('SyncClassLessons API - URL:', url);
+		console.log('SyncClassLessons API - Data:', lessonsData);
 		
 		return axiosClient.put(url, lessonsData, {
 			headers: {
@@ -223,6 +228,7 @@ const teacherManagementApi = {
 
 	importClassLessons: (classId, formData) => {
 		const url = `/class-lesson/import?classId=${classId}`;
+		console.log('ImportClassLessons API - URL:', url);
 		
 		return axiosClient.post(url, formData, {
 			headers: {
@@ -239,6 +245,7 @@ const teacherManagementApi = {
 
 	validateClassLessonImportFile: (classId, formData) => {
 		const url = `/class-lesson/validate-import?classId=${classId}`;
+		console.log('ValidateClassLessonImportFile API - URL:', url);
 		
 		return axiosClient.post(url, formData, {
 			headers: {
@@ -256,11 +263,13 @@ const teacherManagementApi = {
 
 	downloadClassLessonTemplate: () => {
 		const url = `/class-lesson/download-template`;
+		console.log('DownloadClassLessonTemplate API - URL:', url);
 		
 		return axiosClient.get(url, {
 			headers: {
 				'accept': '*/*',
-			}
+			},
+			responseType: 'blob'
 		}).catch(error => {
 			console.error('DownloadClassLessonTemplate API Error:', error);
 			console.error('Error response:', error.response?.data);

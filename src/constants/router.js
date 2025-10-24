@@ -18,6 +18,10 @@ const ROUTER_PAGE = {
 	SETTINGS: '/settings',
 	// Student Dashboard
 	STUDENT_DASHBOARD: '/student/dashboard',
+	STUDENT_CLASS_MENU: '/student/classes/menu/:id',
+	STUDENT_CLASS_CHAPTERS_LESSONS: '/student/classes/chapters-lessons/:id',
+	STUDENT_CLASS_CHAPTERS: '/student/classes/chapters/:classId',
+	STUDENT_CLASS_CHAPTER_LESSONS: '/student/classes/chapters/:classId/:chapterId/lessons',
 	// Admin Management Routes
 	ADMIN_DASHBOARD: '/admin/dashboard',
 	ADMIN_ACCOUNTS: '/admin/accounts',
@@ -76,6 +80,9 @@ const ROUTER_PAGE = {
 	TEACHER_CLASS_CHAPTERS_EDIT_ORDER: '/teacher/classes/chapters/:classId/edit-order',
 	TEACHER_CLASS_CHAPTER_LESSONS: '/teacher/classes/chapters/:classId/:chapterId/lessons',
 	TEACHER_CLASS_CHAPTER_LESSONS_EDIT_ORDER: '/teacher/classes/chapters/:classId/:chapterId/lessons/edit-order',
+	TEACHER_CLASS_LESSONS_EDIT_ORDER: '/teacher/classes/chapters/:classId/lessons/:chapterId/edit-order',
+	TEACHER_CLASS_LESSON_FORM: '/teacher/classes/chapters/:classId/:chapterId/lessons/form',
+	TEACHER_CLASS_LESSON_EDIT: '/teacher/classes/chapters/:classId/:chapterId/lessons/:lessonId/edit',
 	// Teaching Assistant Management Routes
 	TEACHING_ASSISTANT_CLASSES: '/teaching-assistant/classes',
 	TEACHING_ASSISTANT_CLASS_MENU: '/teaching-assistant/classes/menu/:id',
@@ -85,9 +92,12 @@ const ROUTER_PAGE = {
 	TEACHING_ASSISTANT_CLASS_TEACHERS: '/teaching-assistant/classes/teachers/:id',
 	TEACHING_ASSISTANT_CLASS_ACTIVITIES: '/teaching-assistant/classes/activities/:id',
 	TEACHING_ASSISTANT_CLASS_CHAPTERS_LESSONS: '/teaching-assistant/classes/chapters-lessons/:id',
+	TEACHING_ASSISTANT_CLASS_CHAPTERS: '/teaching-assistant/classes/chapters/:classId',
 	TEACHING_ASSISTANT_CLASS_CHAPTERS_EDIT_ORDER: '/teaching-assistant/classes/chapters/:classId/edit-order',
 	TEACHING_ASSISTANT_CLASS_CHAPTER_LESSONS: '/teaching-assistant/classes/chapters/:classId/:chapterId/lessons',
 	TEACHING_ASSISTANT_CLASS_CHAPTER_LESSONS_EDIT_ORDER: '/teaching-assistant/classes/chapters/:classId/:chapterId/lessons/edit-order',
+	TEACHING_ASSISTANT_CLASS_LESSON_FORM: '/teaching-assistant/classes/chapters/:classId/:chapterId/lessons/form',
+	TEACHING_ASSISTANT_CLASS_LESSON_EDIT: '/teaching-assistant/classes/chapters/:classId/lessons/:lessonId/edit-order',
 	TEACHER_DAILY_CHALLENGES: '/teacher/daily-challenges',
 	TEACHER_DAILY_CHALLENGE_DETAIL: '/teacher/daily-challenges/detail/:id',
 	TEACHER_DAILY_CHALLENGE_CREATE: '/teacher/daily-challenges/create',
@@ -96,6 +106,17 @@ const ROUTER_PAGE = {
 	TEACHER_DAILY_CHALLENGES_FORM: '/teacher/daily-challenges/forms',
 	TEACHER_CREATE_GRAMMAR_VOCAB_CHALLENGE: '/teacher/daily-challenges/create/grammar-vocabulary',
 	TEACHER_CREATE_READING_CHALLENGE: '/teacher/daily-challenges/create/reading',
+	TEACHER_CLASS_DAILY_CHALLENGES: '/teacher/classes/daily-challenges/:classId',
+	// Teaching Assistant Daily Challenge Routes
+	TEACHING_ASSISTANT_DAILY_CHALLENGES: '/teaching-assistant/daily-challenges',
+	TEACHING_ASSISTANT_DAILY_CHALLENGE_DETAIL: '/teaching-assistant/daily-challenges/detail/:id',
+	TEACHING_ASSISTANT_DAILY_CHALLENGE_CREATE: '/teaching-assistant/daily-challenges/create',
+	TEACHING_ASSISTANT_DAILY_CHALLENGE_EDIT: '/teaching-assistant/daily-challenges/edit/:id',
+	TEACHING_ASSISTANT_DAILY_CHALLENGE_FORM: '/teaching-assistant/daily-challenges/form',
+	TEACHING_ASSISTANT_DAILY_CHALLENGES_FORM: '/teaching-assistant/daily-challenges/forms',
+	TEACHING_ASSISTANT_CREATE_GRAMMAR_VOCAB_CHALLENGE: '/teaching-assistant/daily-challenges/create/grammar-vocabulary',
+	TEACHING_ASSISTANT_CREATE_READING_CHALLENGE: '/teaching-assistant/daily-challenges/create/reading',
+	TEACHING_ASSISTANT_CLASS_DAILY_CHALLENGES: '/teaching-assistant/classes/daily-challenges/:classId',
 };
 
 export default ROUTER_PAGE;

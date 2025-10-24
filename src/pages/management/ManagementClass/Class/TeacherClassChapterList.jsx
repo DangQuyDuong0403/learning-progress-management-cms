@@ -23,7 +23,7 @@ import { useTranslation } from 'react-i18next';
 import { useParams, useNavigate } from 'react-router-dom';
 import ThemedLayoutWithSidebar from '../../../../component/ThemedLayout';
 import ThemedLayoutNoSidebar from '../../../../component/teacherlayout/ThemedLayout';
-import LoadingWithEffect from '../../../../component/spinner/LoadingWithEffect';
+import TableSpinner from '../../../../component/spinner/TableSpinner';
 import { useTheme } from '../../../../contexts/ThemeContext';
 import { useClassMenu } from '../../../../contexts/ClassMenuContext';
 import teacherManagementApi from '../../../../apis/backend/teacherManagement';
@@ -41,12 +41,25 @@ const TeacherClassChapterList = () => {
 	
 	// Determine which layout to use based on user role
 	const userRole = user?.role?.toLowerCase();
-	const ThemedLayout = (userRole === 'teacher' || userRole === 'teaching_assistant') 
+	const ThemedLayout = (userRole === 'teacher' || userRole === 'teaching_assistant' || userRole === 'student') 
 		? ThemedLayoutNoSidebar 
 		: ThemedLayoutWithSidebar;
 	
-	// Check if user is MANAGER (view-only access)
+	// Check if user is MANAGER or STUDENT (view-only access)
 	const isManager = userRole === 'manager';
+	const isStudent = userRole === 'student';
+
+	// Check URL path and redirect if student tries to access manager routes
+	useEffect(() => {
+		const currentPath = window.location.pathname;
+		const isStudentAccessingManagerRoute = isStudent && currentPath.includes('/manager/');
+		
+		if (isStudentAccessingManagerRoute) {
+			console.log('Student trying to access manager route, redirecting to 404');
+			navigate('/404', { replace: true });
+			return;
+		}
+	}, [isStudent, navigate]);
 
 	// Set page title
 	usePageTitle('Chapter Management');
@@ -89,6 +102,8 @@ const TeacherClassChapterList = () => {
 				return '/teacher/classes';
 			case 'teaching_assistant':
 				return '/teaching-assistant/classes';
+			case 'student':
+				return '/student/classes';
 			default:
 				return '/manager/classes';
 		}
@@ -142,8 +157,6 @@ const TeacherClassChapterList = () => {
 				description: chapter.description,
 				order: chapter.orderNumber,
 				status: chapter.status,
-				createdBy: chapter.createdBy || chapter.createdByUser || 'N/A',
-				createdAt: chapter.createdAt,
 			}));
 
 			setChapters(mappedChapters);
@@ -453,9 +466,9 @@ const TeacherClassChapterList = () => {
 
 	const columns = [
 		{
-			title: 'STT',
+			title: t('common.stt'),
 			key: 'index',
-			width: '8%',
+			width: '10%',
 			render: (_, __, index) => {
 				// Calculate index based on current page and page size
 				const currentPage = pagination.current || 1;
@@ -471,10 +484,10 @@ const TeacherClassChapterList = () => {
 			title: t('chapterManagement.chapterCode'),
 			dataIndex: 'code',
 			key: 'code',
-			width: '15%',
+			width: '20%',
 			render: (text) => (
-				<span style={{ fontSize: '18px'}}>
-					{text || 'N/A'}
+				<span style={{ fontSize: '20px'}}>
+					{text || '-'}
 				</span>
 			),
 		},
@@ -482,12 +495,12 @@ const TeacherClassChapterList = () => {
 			title: t('chapterManagement.chapterName'),
 			dataIndex: 'name',
 			key: 'name',
-			width: '24%',
+			width: '50%',
 			render: (text, record) => (
 				<div>
 					<div style={{ 
 						fontSize: '20px',
-						maxWidth: '200px',
+						maxWidth: '400px',
 						overflow: 'hidden',
 						textOverflow: 'ellipsis',
 						whiteSpace: 'nowrap'
@@ -495,7 +508,7 @@ const TeacherClassChapterList = () => {
 					<div style={{ 
 						color: '#666', 
 						fontSize: '12px',
-						maxWidth: '200px',
+						maxWidth: '400px',
 						overflow: 'hidden',
 						textOverflow: 'ellipsis',
 						whiteSpace: 'nowrap'
@@ -506,23 +519,9 @@ const TeacherClassChapterList = () => {
 			),
 		},
 		{
-			title: t('chapterManagement.createdBy'),
-			dataIndex: 'createdBy',
-			key: 'createdBy',
-			width: '15%',
-			render: (createdBy) => createdBy || 'N/A',
-		},
-		{
-			title: t('chapterManagement.createdAt'),
-			dataIndex: 'createdAt',
-			key: 'createdAt',
-			width: '15%',
-			render: (date) => new Date(date).toLocaleDateString(),
-		},
-		{
 			title: t('chapterManagement.actions'),
 			key: 'actions',
-			width: '18%',
+			width: '20%',
 			render: (_, record) => (
 				<Space size="small">
 					<Tooltip title={t('chapterManagement.viewLessons')}>
@@ -543,14 +542,7 @@ const TeacherClassChapterList = () => {
 			<ThemedLayout>
 				{/* Main Content Panel */}
 				<div className={`main-content-panel ${theme}-main-panel`}>
-					<div style={{ textAlign: 'center', padding: '50px' }}>
-						<LoadingWithEffect
-							loading={true}
-							message={t('common.loading')}
-						>
-							<div></div>
-						</LoadingWithEffect>
-					</div>
+					<TableSpinner />
 				</div>
 			</ThemedLayout>
 		);
@@ -572,12 +564,7 @@ const TeacherClassChapterList = () => {
 					justifyContent: 'center',
 					alignItems: 'center'
 				}}>
-					<LoadingWithEffect
-						loading={true}
-						message={t('common.loading')}
-					>
-						<div></div>
-					</LoadingWithEffect>
+					<TableSpinner />
 				</div>
 			)}
 			
@@ -611,7 +598,7 @@ const TeacherClassChapterList = () => {
 						</Space>
 					</Col>
 					<Col>
-						{!isManager && (
+						{!isManager && !isStudent && (
 							<Space>
 								<Button
 									icon={<DownloadOutlined />}

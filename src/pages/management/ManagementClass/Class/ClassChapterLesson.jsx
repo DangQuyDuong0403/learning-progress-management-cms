@@ -27,7 +27,7 @@ import { useTranslation } from 'react-i18next';
 import { useParams, useNavigate } from 'react-router-dom';
 import ThemedLayoutWithSidebar from '../../../../component/ThemedLayout';
 import ThemedLayoutNoSidebar from '../../../../component/teacherlayout/ThemedLayout';
-import LoadingWithEffect from '../../../../component/spinner/LoadingWithEffect';
+import TableSpinner from '../../../../component/spinner/TableSpinner';
 import { spaceToast } from '../../../../component/SpaceToastify';
 import { useTheme } from '../../../../contexts/ThemeContext';
 import { useClassMenu } from '../../../../contexts/ClassMenuContext';
@@ -49,13 +49,26 @@ const ClassChapterLesson = () => {
 	
 	// Determine which layout to use based on user role
 	const userRole = user?.role?.toLowerCase();
-	const ThemedLayout = (userRole === 'teacher' || userRole === 'teaching_assistant') 
+	const ThemedLayout = (userRole === 'teacher' || userRole === 'teaching_assistant' || userRole === 'student') 
 		? ThemedLayoutNoSidebar 
 		: ThemedLayoutWithSidebar;
 	
-	// Check if user is MANAGER (view-only access)
+	// Check if user is MANAGER or STUDENT (view-only access)
 	const isManager = userRole === 'manager';
-	
+	const isStudent = userRole === 'student';
+
+	// Check URL path and redirect if student tries to access manager routes
+	useEffect(() => {
+		const currentPath = window.location.pathname;
+		const isStudentAccessingManagerRoute = isStudent && currentPath.includes('/manager/');
+		
+		if (isStudentAccessingManagerRoute) {
+			console.log('Student trying to access manager route, redirecting to 404');
+			navigate('/404', { replace: true });
+			return;
+		}
+	}, [isStudent, navigate]);
+
 	// Set page title
 	usePageTitle('Class Chapter & Lesson');
 
@@ -108,6 +121,8 @@ const ClassChapterLesson = () => {
 				return '/teacher/classes';
 			case 'teaching_assistant':
 				return '/teaching-assistant/classes';
+			case 'student':
+				return '/student/classes';
 			default:
 				return '/manager/classes';
 		}
@@ -132,7 +147,7 @@ const ClassChapterLesson = () => {
 			});
 		} catch (error) {
 			console.error('Error fetching class info:', error);
-			spaceToast.error(t('lessonManagement.loadingClassInfo'));
+			spaceToast.error(error.response?.data?.error || error.response?.data?.message || error.message || 'Error fetching class info');
 		} finally {
 			setLoading(false);
 		}
@@ -154,7 +169,7 @@ const ClassChapterLesson = () => {
 			});
 		} catch (error) {
 			console.error('Error fetching chapter info:', error);
-			spaceToast.error(t('lessonManagement.loadingChapterInfo'));
+			spaceToast.error(error.response?.data?.error || error.response?.data?.message || error.message || 'Error fetching chapter info');
 		}
 	}, [chapterId, t]);
 
@@ -176,8 +191,29 @@ const ClassChapterLesson = () => {
 
 			const response = await teacherManagementApi.getClassLessons(params);
 			
+			// Handle different response structures
+			let lessonsData = [];
+			if (response.data) {
+				// Check if response.data is an array
+				if (Array.isArray(response.data)) {
+					lessonsData = response.data;
+				} 
+				// Check if response.data has a data property (nested structure)
+				else if (response.data.data && Array.isArray(response.data.data)) {
+					lessonsData = response.data.data;
+				}
+				// Check if response.data has content property (Spring Boot pagination)
+				else if (response.data.content && Array.isArray(response.data.content)) {
+					lessonsData = response.data.content;
+				}
+				// If it's a single object, wrap it in array
+				else if (response.data.id) {
+					lessonsData = [response.data];
+				}
+			}
+			
 			// Map API response to component format
-			const mappedLessons = response.data.map((lesson) => ({
+			const mappedLessons = lessonsData.map((lesson) => ({
 				id: lesson.id,
 				name: lesson.classLessonName,
 				content: lesson.classLessonContent,
@@ -187,17 +223,17 @@ const ClassChapterLesson = () => {
 			}));
 
 			setLessons(mappedLessons);
-			setTotalElements(response.totalElements || response.data.length);
+			setTotalElements(response.totalElements || lessonsData.length);
 			setPagination(prev => ({
 				...prev,
 				current: page,
 				pageSize: size,
-				total: response.totalElements || response.data.length,
+				total: response.totalElements || lessonsData.length,
 			}));
 			setLoading(false);
 		} catch (error) {
 			console.error('Error fetching lessons:', error);
-			spaceToast.error(t('lessonManagement.loadingLessons'));
+			spaceToast.error(error.response?.data?.error || error.response?.data?.message || error.message || 'Error fetching lessons');
 			setLoading(false);
 		}
 	}, [chapterId, t]);
@@ -722,7 +758,7 @@ const ClassChapterLesson = () => {
 			key: 'actions',
 			width: '10%',
 			render: (_, record) => (
-				!isManager ? (
+				!isManager && !isStudent ? (
 					<Space size="small">
 						<Tooltip title={t('common.edit')}>
 							<Button
@@ -762,14 +798,7 @@ const ClassChapterLesson = () => {
 			<ThemedLayout>
 				{/* Main Content Panel */}
 				<div className={`main-content-panel ${theme}-main-panel`}>
-					<div style={{ textAlign: 'center', padding: '50px' }}>
-						<LoadingWithEffect
-							loading={true}
-							message={t('common.loading')}
-						>
-							<div></div>
-						</LoadingWithEffect>
-					</div>
+					<TableSpinner />
 				</div>
 			</ThemedLayout>
 		);
@@ -808,7 +837,7 @@ const ClassChapterLesson = () => {
 						</Space>
 						</Col>
 						<Col>
-							{!isManager && (
+							{!isManager && !isStudent && (
 								<Space>
 									<Button
 									icon={<DownloadOutlined />}
@@ -836,7 +865,7 @@ const ClassChapterLesson = () => {
 						dataSource={filteredLessons}
 						rowKey="id"
 						loading={loading}
-						rowSelection={!isManager ? {
+						rowSelection={!isManager && !isStudent ? {
 							selectedRowKeys,
 							onChange: setSelectedRowKeys,
 							onSelectAll: handleSelectAll,
@@ -853,8 +882,8 @@ const ClassChapterLesson = () => {
 				</div>
 			</div>
 
-			{/* Bottom Action Bar - Only show for non-manager roles */}
-			{!isManager && (
+			{/* Bottom Action Bar - Only show for non-manager and non-student roles */}
+			{!isManager && !isStudent && (
 				<BottomActionBar
 					selectedCount={selectedRowKeys.length}
 					onSelectAll={handleSelectAll}
