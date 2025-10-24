@@ -27,7 +27,7 @@ const StudentDashboard = () => {
 
   // Theme-based colors for cards
   const getCardBackgroundColor = () => {
-    return isSunTheme ? '#E6F5FF' : 'rgb(224 217 255 / 90%)';
+    return isSunTheme ? '#E6F5FF' : 'rgb(224 217 255)';
   };
 
   const menuItems = [

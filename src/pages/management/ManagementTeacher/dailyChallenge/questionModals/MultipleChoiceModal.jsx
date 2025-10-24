@@ -1,20 +1,14 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Modal, Form, Input, Button, message, Select } from 'antd';
+import { Modal, Button, message, Select, Tooltip } from 'antd';
 import {
 	PlusOutlined,
 	DeleteOutlined,
-	PictureOutlined,
-	AudioOutlined,
-	VideoCameraOutlined,
 	CheckOutlined,
-	ClockCircleOutlined,
-	BoldOutlined,
-	ItalicOutlined,
-	UnderlineOutlined,
-	StrikethroughOutlined,
-	FontSizeOutlined,
-	FunctionOutlined,
+	ThunderboltOutlined,
+	SaveOutlined,
 } from '@ant-design/icons';
+import { CKEditor } from '@ckeditor/ckeditor5-react';
+import ClassicEditor from '@ckeditor/ckeditor5-build-classic';
 import './MultipleChoiceModal.css';
 
 const MultipleChoiceModal = ({
@@ -23,70 +17,91 @@ const MultipleChoiceModal = ({
 	onSave,
 	questionData = null,
 }) => {
-	const [form] = Form.useForm();
+	
+	// Custom upload adapter for CKEditor to convert images to base64
+	function CustomUploadAdapterPlugin(editor) {
+		editor.plugins.get('FileRepository').createUploadAdapter = (loader) => {
+			return {
+				upload: () => {
+					return loader.file.then(file => new Promise((resolve, reject) => {
+						const reader = new FileReader();
+						reader.onload = () => {
+							resolve({ default: reader.result });
+						};
+						reader.onerror = error => reject(error);
+						reader.readAsDataURL(file);
+					}));
+				},
+				abort: () => {}
+			};
+		};
+	}
+	
+	// Option colors for sun theme
+	const getOptionColors = React.useCallback(() => {
+		return [
+			'#1890ff', // Blue
+			'#52c41a', // Green
+			'#faad14', // Orange
+			'#eb2f96', // Pink
+			'#13c2c2', // Cyan
+			'#722ed1', // Purple
+			'#fa8c16', // Dark Orange
+			'#2f54eb', // Dark Blue
+		];
+	}, []);
+
 	const [options, setOptions] = useState(
 		questionData?.options || [
-			{ id: 1, text: '', isCorrect: false, color: '#1890ff' },
-			{ id: 2, text: '', isCorrect: false, color: '#13c2c2' },
-			{ id: 3, text: '', isCorrect: false, color: '#faad14' },
-			{ id: 4, text: '', isCorrect: false, color: '#eb2f96' },
+			{ id: 1, text: '', isCorrect: false, color: getOptionColors()[0] },
+			{ id: 2, text: '', isCorrect: false, color: getOptionColors()[1] },
+			{ id: 3, text: '', isCorrect: false, color: getOptionColors()[2] },
+			{ id: 4, text: '', isCorrect: false, color: getOptionColors()[3] },
 		]
 	);
 	const [answerType, setAnswerType] = useState('single'); // "single" or "multiple"
 	const [points, setPoints] = useState(1);
-	const [timeLimit, setTimeLimit] = useState(30);
-	const [questionImage, setQuestionImage] = useState(null);
-	const [optionImages, setOptionImages] = useState({});
-	const questionImageInputRef = useRef(null);
+	const [hoveredOption, setHoveredOption] = useState(null);
+	const [editorData, setEditorData] = useState('');
+	const editorRef = useRef(null);
+	
+	// Sun theme colors (fixed)
+	const primaryColor = '#1890ff';
 
 	// Load question data when editing
 	useEffect(() => {
 		if (visible) {
 			// Use setTimeout to ensure form is mounted
 			setTimeout(() => {
+				const colors = getOptionColors();
 				if (questionData) {
 					// Edit mode - load existing data
-					form.setFieldsValue({
-						question: questionData.question || '',
-					});
+					setEditorData(questionData.question || '');
 					setOptions(questionData.options || [
-						{ id: 1, text: '', isCorrect: false, color: '#1890ff' },
-						{ id: 2, text: '', isCorrect: false, color: '#13c2c2' },
-						{ id: 3, text: '', isCorrect: false, color: '#faad14' },
-						{ id: 4, text: '', isCorrect: false, color: '#eb2f96' },
+						{ id: 1, text: '', isCorrect: false, color: colors[0] },
+						{ id: 2, text: '', isCorrect: false, color: colors[1] },
+						{ id: 3, text: '', isCorrect: false, color: colors[2] },
+						{ id: 4, text: '', isCorrect: false, color: colors[3] },
 					]);
 					setPoints(questionData.points || 1);
-					setTimeLimit(questionData.timeLimit || 30);
 				} else {
 					// Add mode - reset to defaults
-					form.resetFields();
+					setEditorData('');
 					setOptions([
-						{ id: 1, text: '', isCorrect: false, color: '#1890ff' },
-						{ id: 2, text: '', isCorrect: false, color: '#13c2c2' },
-						{ id: 3, text: '', isCorrect: false, color: '#faad14' },
-						{ id: 4, text: '', isCorrect: false, color: '#eb2f96' },
+						{ id: 1, text: '', isCorrect: false, color: colors[0] },
+						{ id: 2, text: '', isCorrect: false, color: colors[1] },
+						{ id: 3, text: '', isCorrect: false, color: colors[2] },
+						{ id: 4, text: '', isCorrect: false, color: colors[3] },
 					]);
 					setPoints(1);
-					setTimeLimit(30);
-					setQuestionImage(null);
-					setOptionImages({});
 				}
 			}, 0);
 		}
-	}, [questionData, visible, form]);
+	}, [questionData, visible, getOptionColors]);
 
 	const handleAddOption = () => {
 		const newId = Math.max(...options.map((opt) => opt.id)) + 1;
-		const colors = [
-			'#1890ff',
-			'#13c2c2',
-			'#fa8c16',
-			'#eb2f96',
-			'#52c41a',
-			'#722ed1',
-			'#f5222d',
-			'#faad14',
-		];
+		const colors = getOptionColors();
 		const newColor = colors[options.length % colors.length];
 		setOptions([
 			...options,
@@ -114,45 +129,13 @@ const MultipleChoiceModal = ({
 		);
 	};
 
-	const handleQuestionImageUpload = (e) => {
-		const file = e.target.files[0];
-		if (file) {
-			const reader = new FileReader();
-			reader.onload = (event) => {
-				setQuestionImage(event.target.result);
-			};
-			reader.readAsDataURL(file);
-		}
-	};
-
-	const handleOptionImageUpload = (optionId, e) => {
-		const file = e.target.files[0];
-		if (file) {
-			const reader = new FileReader();
-			reader.onload = (event) => {
-				setOptionImages(prev => ({
-					...prev,
-					[optionId]: event.target.result
-				}));
-			};
-			reader.readAsDataURL(file);
-		}
-	};
-
-	const removeQuestionImage = () => {
-		setQuestionImage(null);
-	};
-
-	const removeOptionImage = (optionId) => {
-		setOptionImages(prev => {
-			const newImages = { ...prev };
-			delete newImages[optionId];
-			return newImages;
-		});
-	};
-
 	const handleSave = () => {
-		form.validateFields().then((values) => {
+		// Validate editor data
+		if (!editorData || !editorData.trim()) {
+			message.error('Please enter the question text');
+			return;
+		}
+
 			const hasCorrectAnswer = options.some((opt) => opt.isCorrect);
 			if (!hasCorrectAnswer) {
 				message.error('Please select at least one correct answer');
@@ -169,7 +152,7 @@ const MultipleChoiceModal = ({
 			id: questionData?.id || Date.now(),
 			type: answerType === 'single' ? 'multiple-choice' : 'multiple-select',
 			title: answerType === 'single' ? 'Multiple choice' : 'Multiple select',
-			question: values.question,
+			question: editorData,
 			options: options.map((opt, index) => ({
 				...opt,
 				key: String.fromCharCode(65 + index), // A, B, C, D, ...
@@ -181,24 +164,25 @@ const MultipleChoiceModal = ({
 		};
 
 			onSave(newQuestionData);
-			form.resetFields();
+		const colors = getOptionColors();
+		setEditorData('');
 			setOptions([
-				{ id: 1, text: '', isCorrect: false, color: '#1890ff' },
-				{ id: 2, text: '', isCorrect: false, color: '#13c2c2' },
-				{ id: 3, text: '', isCorrect: false, color: '#fa8c16' },
-				{ id: 4, text: '', isCorrect: false, color: '#eb2f96' },
+			{ id: 1, text: '', isCorrect: false, color: colors[0] },
+			{ id: 2, text: '', isCorrect: false, color: colors[1] },
+			{ id: 3, text: '', isCorrect: false, color: colors[2] },
+			{ id: 4, text: '', isCorrect: false, color: colors[3] },
 			]);
 			setAnswerType('single');
-		});
 	};
 
 	const handleCancel = () => {
-		form.resetFields();
+		const colors = getOptionColors();
+		setEditorData('');
 		setOptions([
-			{ id: 1, text: '', isCorrect: false, color: '#1890ff' },
-			{ id: 2, text: '', isCorrect: false, color: '#13c2c2' },
-			{ id: 3, text: '', isCorrect: false, color: '#fa8c16' },
-			{ id: 4, text: '', isCorrect: false, color: '#eb2f96' },
+			{ id: 1, text: '', isCorrect: false, color: colors[0] },
+			{ id: 2, text: '', isCorrect: false, color: colors[1] },
+			{ id: 3, text: '', isCorrect: false, color: colors[2] },
+			{ id: 4, text: '', isCorrect: false, color: colors[3] },
 		]);
 		setAnswerType('single');
 		onCancel();
@@ -208,555 +192,464 @@ const MultipleChoiceModal = ({
 		<Select
 			value={points}
 			onChange={setPoints}
-			style={{ width: 80 }}
+			style={{ width: 90 }}
 			options={[
-				{ value: 1, label: '1 điểm' },
-				{ value: 2, label: '2 điểm' },
-				{ value: 3, label: '3 điểm' },
-				{ value: 5, label: '5 điểm' },
-			]}
-		/>
-	);
-
-	const timeMenu = (
-		<Select
-			value={timeLimit}
-			onChange={setTimeLimit}
-			style={{ width: 100 }}
-			options={[
-				{ value: 15, label: '15 giây' },
-				{ value: 30, label: '30 giây' },
-				{ value: 60, label: '1 phút' },
-				{ value: 120, label: '2 phút' },
-				{ value: 300, label: '5 phút' },
+				{ value: 1, label: '1 point' },
+				{ value: 2, label: '2 points' },
+				{ value: 3, label: '3 points' },
+				{ value: 5, label: '5 points' },
 			]}
 		/>
 	);
 
 	return (
 		<Modal
-			title='Create Multiple Choice Question'
-			open={visible}
-			onCancel={handleCancel}
-			width={1400}
-			height={800}
-			footer={null}
-			style={{ top: 20 }}
-			bodyStyle={{ height: '85vh', overflow: 'hidden', position: 'relative' }}
-			key={questionData?.id || 'new'}
-			destroyOnClose>
-			{/* Top Control Bar */}
-			<div
-				style={{
-					display: 'flex',
-					justifyContent: 'space-between',
-					alignItems: 'center',
-					marginBottom: 16,
-					padding: '12px 16px',
-					background: '#f5f5f5',
-					borderRadius: 8,
-					border: '1px solid #e0e0e0',
+			title={
+				<div style={{ 
+					display: 'flex', 
+					alignItems: 'center', 
+					justifyContent: 'center',
+					gap: '12px'
 				}}>
-				<div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-					<Button
-						type='text'
-						icon={<BoldOutlined />}
-						style={{ color: '#666' }}
-					/>
-					<Button
-						type='text'
-						icon={<ItalicOutlined />}
-						style={{ color: '#666' }}
-					/>
-					<Button
-						type='text'
-						icon={<UnderlineOutlined />}
-						style={{ color: '#666' }}
-					/>
-					<Button
-						type='text'
-						icon={<StrikethroughOutlined />}
-						style={{ color: '#666' }}
-					/>
-					<Button
-						type='text'
-						icon={<FontSizeOutlined />}
-						style={{ color: '#666' }}
-					/>
-					<div
-						style={{
-							width: 1,
-							height: 20,
-							background: '#e0e0e0',
-							margin: '0 8px',
-						}}
-					/>
-					<Button
-						type='text'
-						icon={<FunctionOutlined />}
-						style={{ color: '#666' }}
-					/>
-					<span style={{ fontSize: 12, color: '#666' }}>
-						Chèn kí hiệu toán học
+					<ThunderboltOutlined style={{ 
+						fontSize: '30px', 
+						color: primaryColor,
+						animation: 'pulse 2s infinite'
+					}} />
+					<span style={{ fontSize: '24px', fontWeight: 600 }}>
+						Create Multiple Choice Question
 					</span>
 				</div>
-
-				<div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-					<div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-						<CheckOutlined style={{ color: '#52c41a' }} />
+			}
+			open={visible}
+			onCancel={handleCancel}
+			width={1600}
+			height={900}
+			footer={null}
+			style={{ top: 10 }}
+			bodyStyle={{ 
+				height: '88vh', 
+				overflow: 'auto', 
+				position: 'relative',
+				padding: 0,
+				background: 'linear-gradient(135deg, #f0f7ff 0%, #e6f4ff 100%)'
+			}}
+			key={questionData?.id || 'new'}
+			destroyOnClose>
+			{/* Modern Top Toolbar */}
+			<div style={{
+				position: 'sticky',
+				top: 0,
+				left: 0,
+				right: 0,
+				zIndex: 1000,
+				background: 'rgba(255, 255, 255, 0.95)',
+				backdropFilter: 'blur(20px)',
+				borderBottom: '2px solid rgba(24, 144, 255, 0.1)',
+				padding: '16px 24px',
+				boxShadow: '0 4px 12px rgba(0,0,0,0.05)'
+			}}>
+				<div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center' }}>
+					{/* Points & Save Button */}
+					<div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
+						<div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+							<CheckOutlined style={{ color: '#52c41a', fontSize: '16px' }} />
 						{pointsMenu}
-					</div>
-
-					<div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-						<ClockCircleOutlined style={{ color: '#1890ff' }} />
-						{timeMenu}
 					</div>
 
 					<Button
 						type='primary'
 						onClick={handleSave}
+							size="large"
 						style={{
-							background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+								height: '44px',
+								borderRadius: '12px',
+								fontWeight: 600,
+								fontSize: '16px',
+								padding: '0 32px',
 							border: 'none',
-							borderRadius: 6,
-						}}>
-						Lưu câu hỏi
+								transition: 'all 0.3s ease',
+								background: 'linear-gradient(135deg, #66AEFF, #3C99FF)',
+								color: '#000000',
+								boxShadow: '0 4px 16px rgba(60, 153, 255, 0.4)',
+								transform: 'scale(1)',
+							}}
+							onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
+							onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+						>
+							<SaveOutlined /> Save Question
 					</Button>
-				</div>
-			</div>
-
-			<div
-				style={{
-					background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-					borderRadius: 12,
-					padding: 24,
-					marginBottom: 24,
-					position: 'relative',
-				}}>
-				{/* Media Icons */}
-				<div
-					style={{
-						position: 'absolute',
-						top: 16,
-						left: 16,
-						display: 'flex',
-						gap: 8,
-						zIndex: 10,
-					}}>
-					<Button
-						type='text'
-						icon={<PictureOutlined />}
-						onClick={() => questionImageInputRef.current?.click()}
-						style={{
-							color: 'white',
-							border: '1px solid rgba(255,255,255,0.3)',
-							zIndex: 11,
-						}}
-					/>
-					<Button
-						type='text'
-						icon={<AudioOutlined />}
-						style={{
-							color: 'white',
-							border: '1px solid rgba(255,255,255,0.3)',
-							zIndex: 11,
-						}}
-					/>
-					<Button
-						type='text'
-						icon={<VideoCameraOutlined />}
-						style={{
-							color: 'white',
-							border: '1px solid rgba(255,255,255,0.3)',
-							zIndex: 11,
-						}}
-					/>
-				</div>
-
-				{/* Question Container - Split Layout */}
-				<div
-					style={{
-						display: 'flex',
-						marginTop: 40,
-						height: questionImage ? 200 : 120,
-						alignItems: 'center',
-						gap: 20,
-						padding: 16,
-					}}>
-					
-					{/* Left Side - Question Image */}
-					{questionImage && (
-						<div style={{ 
-							flex: '0 0 15%',
-							display: 'flex',
-							justifyContent: 'center',
-							alignItems: 'center'
-						}}>
-							<div style={{ position: 'relative' }}>
-								<img
-									src={questionImage}
-									alt="Question"
-									style={{
-										width: 180,
-										height: 180,
-										objectFit: 'cover',
-										borderRadius: 12,
-										border: '2px solid rgba(255,255,255,0.3)',
-										boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
-									}}
-								/>
-								<Button
-									type="text"
-									icon={<DeleteOutlined />}
-									onClick={removeQuestionImage}
-									style={{
-										position: 'absolute',
-										top: -8,
-										right: -8,
-										background: 'rgba(255,0,0,0.8)',
-										color: 'white',
-										border: 'none',
-										borderRadius: '50%',
-										width: 28,
-										height: 28,
-										minWidth: 28,
-										display: 'flex',
-										alignItems: 'center',
-										justifyContent: 'center',
-										zIndex: 12,
-									}}
-								/>
-							</div>
-						</div>
-					)}
-
-					{/* Right Side - Question Input */}
-					<div style={{ 
-						flex: questionImage ? '0 0 85%' : '1',
-						display: 'flex',
-						alignItems: 'center',
-						justifyContent: 'center'
-					}}>
-						<Form
-							form={form}
-							layout='vertical'
-							style={{ width: '100%' }}>
-							<Form.Item
-								name='question'
-								rules={[
-									{ required: true, message: 'Please enter the question text' },
-								]}
-								style={{ marginBottom: 0 }}>
-								<div
-									style={{
-										display: 'flex',
-										height: questionImage ? 175 : 135,
-										alignItems: 'center',
-										background: 'transparent',
-										border: '1px solid #ccc',
-										borderRadius: '6px',
-										padding: 16,
-										zIndex: 1,
-									}}>
-									<Input.TextArea
-										placeholder='Nhập câu hỏi vào đây'
-										className='question-textarea'
-										style={{
-											textAlign: 'center',
-											background: 'transparent',
-											border: 'none',
-											color: 'white',
-											fontSize: 16,
-											resize: 'none',
-											boxShadow: 'none',
-											height: '100%',
-											overflow: 'hidden',
-											width: '100%',
-										}}
-									/>
-								</div>
-							</Form.Item>
-						</Form>
 					</div>
 				</div>
-
-				{/* Hidden file input for question image */}
-				<input
-					ref={questionImageInputRef}
-					type="file"
-					accept="image/*"
-					onChange={handleQuestionImageUpload}
-					style={{ display: 'none' }}
-				/>
 			</div>
 
-			{/* Answer Options Grid */}
-			<div
-				style={{
+			{/* Main Split Layout */}
+			<div style={{ 
+				display: 'flex', 
+				height: 'calc(88vh - 90px)', 
+				padding: '24px',
+				gap: '24px'
+			}}>
+				{/* Left Panel - Question Editor */}
+				<div style={{ 
+					flex: '0 0 38%',
 					display: 'flex',
-					flexDirection: 'row',
-					gap: 20,
-					marginBottom: 20,
-					position: 'relative',
-					overflowX: 'auto',
-					paddingBottom: 10,
-          paddingTop: 10,
-					minHeight: 250,
+					flexDirection: 'column',
+					gap: '16px'
+				}}>
+					{/* Question Card */}
+					<div style={{
+						flex: 1,
+						background: 'rgba(255, 255, 255, 0.95)',
+						borderRadius: '20px',
+						padding: '24px',
+						boxShadow: '0 8px 32px rgba(24, 144, 255, 0.15)',
+						border: '2px solid rgba(24, 144, 255, 0.1)',
+						backdropFilter: 'blur(20px)',
+						display: 'flex',
+						flexDirection: 'column',
+						position: 'relative',
+						overflow: 'visible'
+					}}>
+						{/* Decorative background elements */}
+						<div style={{
+							position: 'absolute',
+							top: -50,
+							right: -50,
+							width: '200px',
+							height: '200px',
+							background: primaryColor,
+							opacity: 0.05,
+							borderRadius: '50%',
+							filter: 'blur(40px)'
+						}} />
+
+						{/* Question Input - CKEditor */}
+					<div style={{ 
+							flex: 1, 
+						display: 'flex',
+							flexDirection: 'column',
+							position: 'relative',
+							zIndex: 1
+						}}>
+							<div style={{
+								flex: 1,
+								borderRadius: '12px',
+								border: '2px solid rgba(24, 144, 255, 0.2)',
+								overflow: 'visible',
+								background: 'rgba(240, 247, 255, 0.5)',
+								position: 'relative',
+							}}>
+								<CKEditor
+									editor={ClassicEditor}
+									data={editorData}
+									config={{
+										placeholder: 'Enter your question here...',
+										extraPlugins: [CustomUploadAdapterPlugin],
+										toolbar: {
+											items: [
+												'heading',
+												'|',
+												'bold',
+												'italic',
+												'underline',
+												'|',
+												'link',
+												'imageUpload',
+												'|',
+												'bulletedList',
+												'numberedList',
+												'|',
+												'blockQuote',
+												'insertTable',
+											'|',
+											'undo',
+											'redo'
+										],
+										shouldNotGroupWhenFull: false
+									},
+										heading: {
+											options: [
+												{ model: 'paragraph', title: 'Paragraph', class: 'ck-heading_paragraph' },
+												{ model: 'heading1', view: 'h1', title: 'Heading 1', class: 'ck-heading_heading1' },
+												{ model: 'heading2', view: 'h2', title: 'Heading 2', class: 'ck-heading_heading2' },
+												{ model: 'heading3', view: 'h3', title: 'Heading 3', class: 'ck-heading_heading3' }
+											]
+										},
+										table: {
+											contentToolbar: ['tableColumn', 'tableRow', 'mergeTableCells']
+										},
+										image: {
+											toolbar: [
+												'imageTextAlternative',
+												'|',
+												'imageStyle:alignLeft',
+												'imageStyle:full',
+												'imageStyle:alignRight'
+											],
+											styles: [
+												'full',
+												'alignLeft',
+												'alignRight'
+											]
+										}
+									}}
+									onChange={(event, editor) => {
+										const data = editor.getData();
+										setEditorData(data);
+									}}
+									onReady={(editor) => {
+										editorRef.current = editor;
+										// Enable sticky toolbar
+										const toolbarElement = editor.ui.view.toolbar.element;
+										if (toolbarElement) {
+											toolbarElement.style.position = 'sticky';
+											toolbarElement.style.top = '0';
+											toolbarElement.style.zIndex = '10';
+										}
+									}}
+								/>
+					</div>
+				</div>
+					</div>
+			</div>
+
+				{/* Right Panel - Answer Options Grid */}
+				<div style={{ 
+					flex: 1,
+					display: 'flex',
+					flexDirection: 'column',
+					gap: '16px',
+					position: 'relative'
+				}}>
+					{/* Options Grid Header */}
+					<div style={{
+						display: 'flex',
+						justifyContent: 'space-between',
+						alignItems: 'center',
+						padding: '0 4px'
+					}}>
+						<span style={{ 
+							fontSize: '16px', 
+							fontWeight: 600,
+							color: '#1890ff'
+						}}>
+							Answer Options ({options.length})
+						</span>
+						<Button
+							icon={<PlusOutlined />}
+							onClick={handleAddOption}
+							style={{
+								height: '40px',
+								borderRadius: '8px',
+								fontWeight: 500,
+								fontSize: '16px',
+								padding: '0 24px',
+								border: 'none',
+								transition: 'all 0.3s ease',
+								background: 'linear-gradient(135deg, rgba(102, 174, 255, 0.6), rgba(60, 153, 255, 0.6))',
+								color: '#000000',
+								boxShadow: '0 2px 8px rgba(60, 153, 255, 0.2)',
+								opacity: 0.9
+							}}
+						>
+							Add Option
+						</Button>
+					</div>
+
+					{/* Options Grid Container - 2x2 Layout */}
+					<div style={{
+						display: 'grid',
+						gridTemplateColumns: 'repeat(2, 1fr)',
+						gap: '16px',
+						flex: 1,
+						overflowY: 'auto',
+						padding: '4px'
 				}}>
 				{options.map((option, index) => (
 					<div
 						key={option.id}
+								onMouseEnter={() => setHoveredOption(option.id)}
+								onMouseLeave={() => setHoveredOption(null)}
 						style={{
-							background: `linear-gradient(135deg, ${option.color} 0%, ${option.color}dd 100%)`,
-							borderRadius: 16,
-							padding: 24,
-							minHeight: 270,
-							minWidth: 270,
-							width: 270,
+									background: `linear-gradient(135deg, ${option.color}dd 0%, ${option.color} 100%)`,
+									borderRadius: '16px',
+									padding: '24px',
+									minHeight: '320px',
 							position: 'relative',
 							display: 'flex',
 							flexDirection: 'column',
-							justifyContent: 'space-between',
-							boxShadow: '0 8px 32px rgba(0,0,0,0.1)',
-							border: '2px solid rgba(255,255,255,0.2)',
-							transition: 'all 0.3s ease',
+									boxShadow: hoveredOption === option.id
+										? `0 12px 32px ${option.color}50`
+										: '0 4px 16px rgba(0,0,0,0.1)',
+									border: option.isCorrect
+										? '3px solid #52c41a'
+										: '2px solid rgba(255,255,255,0.3)',
+									transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+									transform: hoveredOption === option.id ? 'translateY(-4px) scale(1.02)' : 'translateY(0) scale(1)',
 							cursor: 'pointer',
-							flexShrink: 0,
-						}}
-						onMouseEnter={(e) => {
-							e.currentTarget.style.transform = 'translateY(-4px)';
-							e.currentTarget.style.boxShadow = '0 12px 40px rgba(0,0,0,0.15)';
-						}}
-						onMouseLeave={(e) => {
-							e.currentTarget.style.transform = 'translateY(0)';
-							e.currentTarget.style.boxShadow = '0 8px 32px rgba(0,0,0,0.1)';
-						}}>
-						{/* Action Icons */}
-						<div
-							style={{
-								position: 'absolute',
-								top: 16,
-								left: 16,
-								display: 'flex',
-								gap: 8,
-							}}>
+									overflow: 'visible'
+								}}>
+								{/* Option Label */}
+								<div style={{
+									position: 'absolute',
+									top: '16px',
+									left: '16px',
+									width: '40px',
+									height: '40px',
+									borderRadius: '50%',
+									background: 'rgba(255,255,255,0.9)',
+									display: 'flex',
+									alignItems: 'center',
+									justifyContent: 'center',
+									fontWeight: 700,
+									fontSize: '18px',
+									color: option.color,
+									boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
+								}}>
+									{String.fromCharCode(65 + index)}
+								</div>
+
+								{/* Action Buttons */}
+								<div style={{
+									position: 'absolute',
+									top: '16px',
+									right: '16px',
+									display: 'flex',
+									gap: '8px',
+									alignItems: 'center'
+								}}>
+									{/* Correct Answer Badge */}
+									<Tooltip title={option.isCorrect ? "Correct Answer" : "Mark as Correct"}>
+										<div
+											onClick={(e) => {
+												e.stopPropagation();
+												handleOptionChange(option.id, 'isCorrect', !option.isCorrect);
+											}}
+											style={{
+												background: option.isCorrect ? '#52c41a' : 'rgba(255,255,255,0.3)',
+												color: 'white',
+												padding: '6px 12px',
+												borderRadius: '20px',
+												fontSize: '13px',
+												fontWeight: 600,
+												cursor: 'pointer',
+												transition: 'all 0.3s ease',
+												display: 'flex',
+												alignItems: 'center',
+												gap: '4px',
+												boxShadow: option.isCorrect ? '0 2px 8px rgba(82, 196, 26, 0.5)' : 'none',
+												opacity: hoveredOption === option.id || option.isCorrect ? 1 : 0
+											}}
+										>
+											<CheckOutlined />
+											{option.isCorrect ? 'Correct' : 'Mark'}
+										</div>
+									</Tooltip>
+									
+									<div style={{
+										display: 'flex',
+										gap: '8px',
+										opacity: hoveredOption === option.id ? 1 : 0,
+										transition: 'opacity 0.2s ease'
+									}}>
+										<Tooltip title="Delete Option">
 							<Button
-								type='text'
+												size="small"
+												danger
 								icon={<DeleteOutlined />}
 								onClick={(e) => {
 									e.stopPropagation();
 									handleRemoveOption(option.id);
 								}}
 								style={{
+													background: 'rgba(255, 77, 79, 0.9)',
 									color: 'white',
-									background: 'rgba(255,255,255,0.2)',
 									border: 'none',
-									borderRadius: 8,
-									width: 32,
-									height: 32,
+													borderRadius: '8px',
+													width: '32px',
+													height: '32px',
 									display: 'flex',
 									alignItems: 'center',
 									justifyContent: 'center',
-								}}
-								size='small'
-							/>
-							<Button
-								type='text'
-								icon={<PictureOutlined />}
-								onClick={() => document.getElementById(`option-image-upload-${option.id}`).click()}
-								style={{
-									color: 'white',
-									background: 'rgba(255,255,255,0.2)',
-									border: 'none',
-									borderRadius: 8,
-									width: 32,
-									height: 32,
-									display: 'flex',
-									alignItems: 'center',
-									justifyContent: 'center',
-								}}
-								size='small'
-							/>
-							<input
-								id={`option-image-upload-${option.id}`}
-								type="file"
-								accept="image/*"
-								onChange={(e) => handleOptionImageUpload(option.id, e)}
-								style={{ display: 'none' }}
-							/>
+													fontSize: '16px'
+												}}
+											/>
+										</Tooltip>
+									</div>
 						</div>
 
-						{/* Correct Answer Indicator */}
-						<div
-							style={{
-								position: 'absolute',
-								top: 16,
-								right: 16,
-							}}>
-							<Button
-								type='text'
-								icon={<CheckOutlined />}
-								onClick={(e) => {
-									e.stopPropagation();
-									handleOptionChange(option.id, 'isCorrect', !option.isCorrect);
-								}}
-								style={{
-									color: option.isCorrect ? 'white' : 'rgba(255,255,255,0.7)',
-									background: option.isCorrect
-										? '#52c41a'
-										: 'rgba(255,255,255,0.2)',
-									border: option.isCorrect 
-										? '2px solid white' 
-										: '2px solid rgba(255,255,255,0.5)',
-									borderRadius: '50%',
-									width: 40,
-									height: 40,
-									display: 'flex',
-									alignItems: 'center',
-									justifyContent: 'center',
-									transition: 'all 0.3s ease',
-									boxShadow: option.isCorrect 
-										? '0 2px 8px rgba(82, 196, 26, 0.4)' 
-										: '0 2px 4px rgba(0,0,0,0.1)',
-								}}
-							/>
-						</div>
-
-						{/* Option Image */}
-						{optionImages[option.id] && (
-							<div style={{ 
-								position: 'relative', 
-								marginTop: 28,
-								display: 'flex',
-								justifyContent: 'center'
-							}}>
-								<img
-									src={optionImages[option.id]}
-									alt={`Option ${option.id}`}
-									style={{
-										width: 120,
-										height: 120,
-										objectFit: 'cover',
-										borderRadius: 12,
-										border: '2px solid rgba(255,255,255,0.3)',
-										boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
-									}}
-								/>
-								<Button
-									type="text"
-									icon={<DeleteOutlined />}
-									onClick={() => removeOptionImage(option.id)}
-									style={{
-										position: 'absolute',
-										top: -8,
-										right: 'calc(50% - 60px - 8px)',
-										background: 'rgba(255,0,0,0.8)',
-										color: 'white',
-										border: 'none',
-										borderRadius: '50%',
-										width: 24,
-										height: 24,
-										minWidth: 24,
-										display: 'flex',
-										alignItems: 'center',
-										justifyContent: 'center',
-									}}
-								/>
-							</div>
-						)}
-
-						{/* Input Field */}
-						<div
-							style={{
+						{/* Input Field - CKEditor */}
+								<div style={{
 								flex: 1,
 								display: 'flex',
-								alignItems: 'center',
-								marginTop: optionImages[option.id] ? 10 : 40,
-							}}>
-							<Input
-								value={option.text}
-								onChange={(e) =>
-									handleOptionChange(option.id, 'text', e.target.value)
-								}
-								placeholder='Nhập tùy chọn trả lời ở đây'
-								className='option-input'
+									flexDirection: 'column',
+									justifyContent: 'center',
+									marginTop: '60px',
+									marginBottom: '55px',
+									position: 'relative',
+									zIndex: 1
+								}}>
+									<div 
+										className={`option-editor option-editor-${option.id}`}
 								style={{
-									background: 'rgba(240, 235, 235, 0.1)',
-									border: '2px solid rgba(255,255,255,0.3)',
-									color: 'white',
-									fontSize: 15,
-									fontWeight: '500',
-									textAlign: 'center',
-									borderRadius: 12,
-									padding: '16px 20px',
+											borderRadius: '12px',
+											overflow: 'hidden',
+											background: 'rgba(255, 255, 255, 0.15)',
+											border: '2px solid rgba(255,255,255,0.4)',
 									backdropFilter: 'blur(10px)',
-									height: 50,
-								}}
-								onFocus={(e) => {
-									e.target.style.background = 'rgba(255,255,255,0.2)';
-									e.target.style.borderColor = 'rgba(255,255,255,0.5)';
-								}}
-								onBlur={(e) => {
-									e.target.style.background = 'rgba(255,255,255,0.1)';
-									e.target.style.borderColor = 'rgba(255,255,255,0.3)';
-								}}
-							/>
+										}}
+									>
+										<CKEditor
+											editor={ClassicEditor}
+											data={option.text}
+											config={{
+												placeholder: 'Type your answer here...',
+												extraPlugins: [CustomUploadAdapterPlugin],
+												toolbar: {
+													items: [
+														'bold',
+														'italic',
+														'underline',
+														'|',
+														'link',
+														'imageUpload',
+														'|',
+														'bulletedList',
+														'numberedList',
+														'|',
+														'undo',
+														'redo'
+													],
+													shouldNotGroupWhenFull: false
+												},
+												image: {
+													toolbar: [
+														'imageTextAlternative',
+														'|',
+														'imageStyle:alignLeft',
+														'imageStyle:full',
+														'imageStyle:alignRight'
+													],
+													styles: [
+														'full',
+														'alignLeft',
+														'alignRight'
+													]
+												}
+											}}
+											onChange={(event, editor) => {
+												const data = editor.getData();
+												handleOptionChange(option.id, 'text', data);
+											}}
+										/>
+									</div>
 						</div>
 					</div>
 				))}
 
-				{/* Add Option Button */}
-				<div
-					style={{
-						display: 'flex',
-						alignItems: 'center',
-						justifyContent: 'center',
-						minWidth: 80,
-						minHeight: 180,
-					}}>
-					<Button
-						type='primary'
-						icon={<PlusOutlined />}
-						onClick={handleAddOption}
-						style={{
-							width: 40,
-							height: 40,
-							borderRadius: '50%',
-							background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-							border: 'none',
-							boxShadow: '0 4px 16px rgba(102, 126, 234, 0.4)',
-							display: 'flex',
-							alignItems: 'center',
-							justifyContent: 'center',
-							fontSize: 16,
-							transition: 'all 0.3s ease',
-						}}
-						onMouseEnter={(e) => {
-							e.target.style.transform = 'scale(1.1)';
-							e.target.style.boxShadow = '0 6px 20px rgba(102, 126, 234, 0.6)';
-						}}
-						onMouseLeave={(e) => {
-							e.target.style.transform = 'scale(1)';
-							e.target.style.boxShadow = '0 4px 16px rgba(102, 126, 234, 0.4)';
-						}}
-					/>
+					</div>
 				</div>
-			</div>
-
-			{/* Additional Options */}
-			<div
-				style={{
-					textAlign: 'left',
-				}}>
-				<Button
-					type='link'
-					style={{
-						color: '#1890ff',
-						fontSize: 12,
-						padding: 0,
-					}}>
-					Thêm giải thích cho đáp án
-				</Button>
 			</div>
 		</Modal>
 	);

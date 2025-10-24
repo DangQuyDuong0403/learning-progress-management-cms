@@ -230,35 +230,57 @@ const DailyChallengeSubmissionDetail = () => {
       <div className={`sdc-wrapper ${theme}-sdc-wrapper`}>
         {/* Student Info Card */}
         <div className="sdc-student-info-section" style={{ padding: '24px' }}>
-          <div className={`sdc-student-info-card ${theme}-sdc-student-info-card`}>
-            <div className="sdc-student-avatar-section">
-              <Avatar
-                size={80}
-                src={student.avatar}
-                style={{
-                  backgroundColor: theme === 'sun' ? '#1890ff' : '#722ed1',
-                  fontSize: '32px',
-                  fontWeight: 'bold',
+          <div className={`sdc-student-info-card ${theme}-sdc-student-info-card`} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ display: 'flex', alignItems: 'center', flex: 1 }}>
+              <div className="sdc-student-avatar-section">
+                <Avatar
+                  size={80}
+                  src={student.avatar}
+                  style={{
+                    backgroundColor: theme === 'sun' ? '#1890ff' : '#722ed1',
+                    fontSize: '32px',
+                    fontWeight: 'bold',
+                  }}
+                >
+                  {student.name.charAt(0)}
+                </Avatar>
+              </div>
+              <div className="sdc-student-details">
+                <Typography.Title level={3} style={{ margin: 0, marginBottom: '4px' }}>
+                  {student.name}
+                </Typography.Title>
+                <Typography.Text type="secondary" style={{ fontSize: '16px', display: 'block', marginBottom: '8px' }}>
+                  {student.id} • {student.email}
+                </Typography.Text>
+                <Space size="middle">
+                  <Tag color="blue" style={{ fontSize: '14px', padding: '4px 12px' }}>
+                    {student.class}
+                  </Tag>
+                  <Tag color="green" style={{ fontSize: '14px', padding: '4px 12px' }}>
+                    {student.level}
+                  </Tag>
+                </Space>
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <Button
+                className={`tab-button ${theme}-tab-button`}
+                onClick={() => {
+                  // Handle add score/feedback
+                  spaceToast.info('Add score/feedback feature coming soon');
                 }}
               >
-                {student.name.charAt(0)}
-              </Avatar>
-            </div>
-            <div className="sdc-student-details">
-              <Typography.Title level={3} style={{ margin: 0, marginBottom: '4px' }}>
-                {student.name}
-              </Typography.Title>
-              <Typography.Text type="secondary" style={{ fontSize: '16px', display: 'block', marginBottom: '8px' }}>
-                {student.id} • {student.email}
-              </Typography.Text>
-              <Space size="middle">
-                <Tag color="blue" style={{ fontSize: '14px', padding: '4px 12px' }}>
-                  {student.class}
-                </Tag>
-                <Tag color="green" style={{ fontSize: '14px', padding: '4px 12px' }}>
-                  {student.level}
-                </Tag>
-              </Space>
+                {t('dailyChallenge.addScoreFeedback')}
+              </Button>
+              <Button
+                className={`tab-button ${theme}-tab-button`}
+                onClick={() => {
+                  // Handle edit score/feedback
+                  spaceToast.info('Edit score/feedback feature coming soon');
+                }}
+              >
+                {t('dailyChallenge.editScoreFeedback')}
+              </Button>
             </div>
           </div>
         </div>
@@ -353,28 +375,6 @@ const DailyChallengeSubmissionDetail = () => {
               </div>
             </div>
           </div>
-        </div>
-
-        {/* Action Buttons */}
-        <div className="sdc-action-section" style={{ padding: '0 24px 16px 24px', display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
-          <Button
-            className={`tab-button ${theme}-tab-button`}
-            onClick={() => {
-              // Handle add score/feedback
-              spaceToast.info('Add score/feedback feature coming soon');
-            }}
-          >
-            {t('dailyChallenge.addScoreFeedback')}
-          </Button>
-          <Button
-            className={`tab-button ${theme}-tab-button`}
-            onClick={() => {
-              // Handle edit score/feedback
-              spaceToast.info('Edit score/feedback feature coming soon');
-            }}
-          >
-            {t('dailyChallenge.editScoreFeedback')}
-          </Button>
         </div>
 
         {/* Filter Tabs */}
