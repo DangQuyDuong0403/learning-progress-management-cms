@@ -628,7 +628,16 @@ const StudentList = () => {
           const className = classInfo?.className || classInfo?.name;
           return (
             <div>
-              <span className="class-text">
+              <span 
+                className="class-text clickable-class-name"
+                onClick={() => handleNavigateToClass(classInfo)}
+                style={{
+                  cursor: 'pointer',
+                  color: '#1890ff',
+                  textDecoration: 'underline',
+                }}
+                title={`Click to view class: ${className}`}
+              >
                 {className}
               </span>
               {classInfo?.id && (
@@ -1003,6 +1012,17 @@ const StudentList = () => {
       visible: true,
       student: record,
     });
+  };
+
+  // Handle navigate to class management
+  const handleNavigateToClass = (classInfo) => {
+    if (!classInfo || !classInfo.id) {
+      spaceToast.warning('Class information not available');
+      return;
+    }
+    
+    console.log('Navigating to class:', classInfo);
+    navigate(`/manager/classes/menu/${classInfo.id}`);
   };
 
 

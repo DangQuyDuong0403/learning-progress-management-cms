@@ -9,6 +9,10 @@ import {
   Modal,
   Upload,
   Divider,
+  Card,
+  Row,
+  Col,
+  Dropdown,
 } from "antd";
 import {
   SearchOutlined,
@@ -21,6 +25,13 @@ import {
   ImportOutlined,
   ExportOutlined,
   DownloadOutlined,
+  ArrowLeftOutlined,
+  DownOutlined,
+  CheckCircleOutlined,
+  FileTextOutlined,
+  SettingOutlined,
+  MenuFoldOutlined,
+  MenuUnfoldOutlined,
 } from "@ant-design/icons";
 import { useParams, useNavigate } from "react-router-dom";
 import ThemedLayout from "../../../../component/teacherlayout/ThemedLayout";
@@ -31,6 +42,7 @@ import { useTranslation } from "react-i18next";
 import { useTheme } from "../../../../contexts/ThemeContext";
 import { useDailyChallengeMenu } from "../../../../contexts/DailyChallengeMenuContext";
 import usePageTitle from "../../../../hooks/usePageTitle";
+import ChallengeSettingsModal from "./ChallengeSettingsModal";
 import {
   DndContext,
   closestCenter,
@@ -263,13 +275,19 @@ const DailyChallengeContent = () => {
   const [questions, setQuestions] = useState([]);
   const [searchText, setSearchText] = useState("");
   
-  // Daily Challenge Info states
-  const [challengeName, setChallengeName] = useState("");
-  const [selectedChapter, setSelectedChapter] = useState(null);
-  const [selectedLesson, setSelectedLesson] = useState(null);
-  const [timeLimit, setTimeLimit] = useState("");
-  const [chapters, setChapters] = useState([]);
-  const [lessons, setLessons] = useState([]);
+  // Challenge Settings states
+  const [challengeMode, setChallengeMode] = useState('normal'); // normal, exam
+  const [durationMinutes, setDurationMinutes] = useState(null);
+  const [startDate, setStartDate] = useState(null);
+  const [endDate, setEndDate] = useState(null);
+  const [shuffleAnswers, setShuffleAnswers] = useState(false);
+  const [translateOnScreen, setTranslateOnScreen] = useState(false);
+  const [aiFeedbackEnabled, setAiFeedbackEnabled] = useState(false);
+  const [antiCheatModeEnabled, setAntiCheatModeEnabled] = useState(false);
+  
+  // Status state
+  const [status, setStatus] = useState('draft'); // 'draft' or 'published'
+  const [isCollapsed, setIsCollapsed] = useState(false); // Sidebar collapse state
   
   // Modal states
   const [modalVisible, setModalVisible] = useState(false);
@@ -278,6 +296,7 @@ const DailyChallengeContent = () => {
   const [editingQuestion, setEditingQuestion] = useState(null);
   const [isDeleteModalVisible, setIsDeleteModalVisible] = useState(false);
   const [deleteQuestion, setDeleteQuestion] = useState(null);
+  const [settingsModalVisible, setSettingsModalVisible] = useState(false);
   const [importModal, setImportModal] = useState({
     visible: false,
     fileList: [],
@@ -314,59 +333,9 @@ const DailyChallengeContent = () => {
     }
   }, []);
 
-  // Fetch chapters
-  const fetchChapters = useCallback(async () => {
-    try {
-      // TODO: Call API to fetch chapters
-      // const response = await syllabusApi.getChapters();
-      
-      // Mock data for now
-      const mockChapters = [
-        { id: 1, name: 'Chapter 1: Introduction', chapterNumber: 1 },
-        { id: 2, name: 'Chapter 2: Basic Grammar', chapterNumber: 2 },
-        { id: 3, name: 'Chapter 3: Vocabulary', chapterNumber: 3 },
-      ];
-      setChapters(mockChapters);
-    } catch (error) {
-      console.error('Error fetching chapters:', error);
-      spaceToast.error('Error loading chapters');
-    }
-  }, []);
-
-  // Fetch lessons when chapter is selected
-  const fetchLessons = useCallback(async (chapterId) => {
-    try {
-      // TODO: Call API to fetch lessons by chapter
-      // const response = await syllabusApi.getLessonsByChapter(chapterId);
-      
-      // Mock data for now
-      const mockLessons = [
-        { id: 1, name: 'Lesson 1: Greetings', lessonNumber: 1, chapterId },
-        { id: 2, name: 'Lesson 2: Introductions', lessonNumber: 2, chapterId },
-        { id: 3, name: 'Lesson 3: Daily Activities', lessonNumber: 3, chapterId },
-      ];
-      setLessons(mockLessons);
-    } catch (error) {
-      console.error('Error fetching lessons:', error);
-      spaceToast.error('Error loading lessons');
-    }
-  }, []);
-
   useEffect(() => {
     fetchQuestions();
-    fetchChapters();
-  }, [fetchQuestions, fetchChapters]);
-
-  // Fetch lessons when chapter changes
-  useEffect(() => {
-    if (selectedChapter) {
-      fetchLessons(selectedChapter);
-      setSelectedLesson(null); // Reset selected lesson
-    } else {
-      setLessons([]);
-      setSelectedLesson(null);
-    }
-  }, [selectedChapter, fetchLessons]);
+  }, [fetchQuestions]);
 
   // Enter/exit daily challenge menu mode
   useEffect(() => {
@@ -477,6 +446,36 @@ const DailyChallengeContent = () => {
 
   const handleSaveChanges = useCallback(() => {
     spaceToast.success('Changes saved successfully!');
+  }, []);
+
+  const handleToggleStatus = useCallback(() => {
+    const newStatus = status === 'draft' ? 'published' : 'draft';
+    setStatus(newStatus);
+    spaceToast.success(
+      newStatus === 'published' 
+        ? t('dailyChallenge.publishedSuccess') || 'Challenge published successfully!'
+        : t('dailyChallenge.draftSuccess') || 'Changed to draft successfully!'
+    );
+  }, [status, t]);
+
+  const handleOpenSettings = useCallback(() => {
+    setSettingsModalVisible(true);
+  }, []);
+
+  const handleCloseSettings = useCallback(() => {
+    setSettingsModalVisible(false);
+  }, []);
+
+  const handleSaveSettings = useCallback((settingsData) => {
+    setChallengeMode(settingsData.challengeMode);
+    setDurationMinutes(settingsData.durationMinutes);
+    setStartDate(settingsData.startDate);
+    setEndDate(settingsData.endDate);
+    setShuffleAnswers(settingsData.shuffleAnswers);
+    setTranslateOnScreen(settingsData.translateOnScreen);
+    setAiFeedbackEnabled(settingsData.aiFeedbackEnabled);
+    setAntiCheatModeEnabled(settingsData.antiCheatModeEnabled);
+    setSettingsModalVisible(false);
   }, []);
 
   const handleImportData = useCallback(() => {
@@ -648,154 +647,537 @@ const DailyChallengeContent = () => {
     });
   }, [questions, searchText]);
 
-  const totalPoints = useMemo(() => {
-    return filteredQuestions.reduce((sum, q) => sum + q.points, 0);
-  }, [filteredQuestions]);
-
   const questionIds = useMemo(() => 
     filteredQuestions.map((question) => question.id), 
     [filteredQuestions]
   );
 
-  return (
-    <ThemedLayout>
-      <div className={`daily-challenge-content-wrapper ${theme}-daily-challenge-content-wrapper`}>
-        {/* Search and Action Section */}
-        <div className="search-action-section" style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '24px', padding: '24px 24px 0 24px' }}>
-          <Input
-            prefix={<SearchOutlined />}
-            value={searchText}
-            onChange={(e) => handleSearch(e.target.value)}
-            className={`search-input ${theme}-search-input`}
-            allowClear
-          />
-          <div style={{ marginLeft: 'auto', display: 'flex', gap: '8px' }}>
+  // Handle back button click
+  const handleBackToDailyChallenges = () => {
+    navigate('/teacher/daily-challenges/detail/' + id);
+  };
+
+  // Import/Export dropdown menu items
+  const importExportMenuItems = [
+    {
+      key: 'import',
+      label: <span style={{ color: '#000000' }}>{t('common.import')}</span>,
+      icon: <ImportOutlined style={{ color: '#000000' }} />,
+      onClick: handleImportData,
+    },
+    {
+      key: 'export',
+      label: <span style={{ color: '#000000' }}>{t('common.export')}</span>,
+      icon: <ExportOutlined style={{ color: '#000000' }} />,
+      onClick: handleExportData,
+    },
+  ];
+
+  // Custom Header Component
+  const customHeader = (
+    <header className={`themed-header ${theme}-header`}>
+      <nav className="themed-navbar">
+        <div className="themed-navbar-content" style={{ justifyContent: 'space-between', width: '100%' }}>
+          {/* Left: Back Button + Title */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
             <Button 
-              icon={<ImportOutlined />}
-              className={`create-button ${theme}-create-button`}
-              onClick={handleImportData}
+              icon={<ArrowLeftOutlined />}
+              onClick={handleBackToDailyChallenges}
+              className={`class-menu-back-button ${theme}-class-menu-back-button`}
+              style={{
+                height: '32px',
+                borderRadius: '8px',
+                fontWeight: '500',
+                fontSize: '14px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                border: '1px solid rgba(0, 0, 0, 0.1)',
+                background: '#ffffff',
+                color: '#000000',
+                backdropFilter: 'blur(10px)',
+                transition: 'all 0.3s ease'
+              }}
             >
-              {t('common.import')}
+              {t('common.back')}
             </Button>
+            <div style={{
+              fontSize: '18px',
+              fontWeight: 600,
+              color: theme === 'sun' ? '#1E40AF' : '#FFFFFF',
+              textShadow: theme === 'sun' ? 'none' : '0 0 10px rgba(134, 134, 134, 0.5)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '12px'
+            }}>
+              <span style={{ 
+                fontSize: '24px',
+                fontWeight: 300,
+                opacity: 0.5
+              }}>|</span>
+              <span>{t('dailyChallenge.dailyChallengeManagement')} / {t('dailyChallenge.content')}</span>
+            </div>
+          </div>
+
+          {/* Right: Action Buttons */}
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            {/* Import/Export Dropdown */}
+            <Dropdown
+              menu={{ items: importExportMenuItems }}
+              trigger={['click']}
+            >
+              <Button 
+                icon={<DownloadOutlined />}
+              className={`create-button ${theme}-create-button`}
+                style={{
+                  height: '40px',
+                  borderRadius: '8px',
+                  fontWeight: 500,
+                  fontSize: '16px',
+                  padding: '0 24px',
+                  border: 'none',
+                  transition: 'all 0.3s ease',
+                  background: theme === 'sun' 
+                    ? 'linear-gradient(135deg, rgba(102, 174, 255, 0.6), rgba(60, 153, 255, 0.6))'
+                    : 'linear-gradient(135deg, rgba(181, 176, 192, 0.7), rgba(163, 158, 187, 0.7), rgba(131, 119, 160, 0.7), rgba(172, 165, 192, 0.7), rgba(109, 95, 143, 0.7))',
+                  color: theme === 'sun' ? '#000000' : '#000000',
+                  boxShadow: theme === 'sun' ? '0 2px 8px rgba(60, 153, 255, 0.2)' : '0 2px 8px rgba(131, 119, 160, 0.3)',
+                  opacity: 0.9
+                }}
+              >
+                {t('dailyChallenge.importExport')} <DownOutlined />
+            </Button>
+            </Dropdown>
+
+            {/* Status Toggle Button */}
             <Button 
-              icon={<ExportOutlined />}
+              icon={status === 'published' ? <CheckCircleOutlined /> : <FileTextOutlined />}
               className={`create-button ${theme}-create-button`}
-              onClick={handleExportData}
+              onClick={handleToggleStatus}
+              style={{
+                height: '40px',
+                borderRadius: '8px',
+                fontWeight: 500,
+                fontSize: '16px',
+                padding: '0 24px',
+                border: 'none',
+                transition: 'all 0.3s ease',
+                background: theme === 'sun' 
+                  ? 'linear-gradient(135deg, rgba(102, 174, 255, 0.6), rgba(60, 153, 255, 0.6))'
+                  : 'linear-gradient(135deg, rgba(181, 176, 192, 0.7), rgba(163, 158, 187, 0.7), rgba(131, 119, 160, 0.7), rgba(172, 165, 192, 0.7), rgba(109, 95, 143, 0.7))',
+                color: theme === 'sun' ? '#000000' : '#000000',
+                boxShadow: theme === 'sun' ? '0 2px 8px rgba(60, 153, 255, 0.2)' : '0 2px 8px rgba(131, 119, 160, 0.3)',
+                opacity: 0.9
+              }}
             >
-              {t('common.export')}
+              {status === 'published' ? t('dailyChallenge.published') : t('dailyChallenge.draft')}
             </Button>
+
             <Button 
               icon={<PlusOutlined />}
               className={`create-button ${theme}-create-button`}
               onClick={handleAddQuestion}
+              style={{
+                height: '40px',
+                borderRadius: '8px',
+                fontWeight: 500,
+                fontSize: '16px',
+                padding: '0 24px',
+                border: 'none',
+                transition: 'all 0.3s ease',
+                background: theme === 'sun' 
+                  ? 'linear-gradient(135deg, rgba(102, 174, 255, 0.6), rgba(60, 153, 255, 0.6))'
+                  : 'linear-gradient(135deg, rgba(181, 176, 192, 0.7), rgba(163, 158, 187, 0.7), rgba(131, 119, 160, 0.7), rgba(172, 165, 192, 0.7), rgba(109, 95, 143, 0.7))',
+                color: theme === 'sun' ? '#000000' : '#000000',
+                boxShadow: theme === 'sun' ? '0 2px 8px rgba(60, 153, 255, 0.2)' : '0 2px 8px rgba(131, 119, 160, 0.3)',
+                opacity: 0.9
+              }}
             >
               {t('dailyChallenge.addQuestion')}
             </Button>
+            
+            {/* Save Changes - Keep original bright color */}
             <Button 
               icon={<SaveOutlined />}
               className={`create-button ${theme}-create-button`}
               onClick={handleSaveChanges}
+              style={{
+                height: '40px',
+                borderRadius: '8px',
+                fontWeight: 500,
+                fontSize: '16px',
+                padding: '0 24px',
+                border: 'none',
+                transition: 'all 0.3s ease',
+                background: theme === 'sun' 
+                  ? 'linear-gradient(135deg, #66AEFF, #3C99FF)'
+                  : 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)',
+                color: '#000000',
+                boxShadow: theme === 'sun' ? '0 2px 8px rgba(60, 153, 255, 0.3)' : '0 2px 8px rgba(131, 119, 160, 0.3)'
+              }}
             >
               {t('common.saveChanges')}
             </Button>
           </div>
         </div>
+      </nav>
+    </header>
+  );
 
-        {/* Challenge Information Section */}
-        <div className="challenge-info-section" style={{ 
-          display: 'flex', 
-          gap: '16px', 
-          alignItems: 'flex-end', 
-          marginBottom: '24px', 
-          padding: '0 24px',
-          flexWrap: 'wrap'
-        }}>
-          <div style={{ flex: '1 1 0', minWidth: '200px' }}>
-            <label style={{ 
-              display: 'block', 
-              marginBottom: '8px', 
-              fontWeight: '500',
-              fontSize: '14px'
-            }}>
-              {t('dailyChallenge.challengeName') || 'Challenge Name'}
-            </label>
-            <Input
-              value={challengeName}
-              onChange={(e) => setChallengeName(e.target.value)}
-              className={`${theme}-challenge-info-input`}
-              style={{ width: '100%' }}
-            />
-          </div>
+  return (
+    <ThemedLayout customHeader={customHeader}>
+      <div className={`daily-challenge-content-wrapper ${theme}-daily-challenge-content-wrapper`}>
+        <div style={{ padding: '24px' }}>
 
-          <div style={{ flex: '1 1 0', minWidth: '200px' }}>
-            <label style={{ 
-              display: 'block', 
-              marginBottom: '8px', 
-              fontWeight: '500',
-              fontSize: '14px'
-            }}>
-              {t('dailyChallenge.chapter') || 'Chapter'}
-            </label>
-            <Select
-              value={selectedChapter}
-              onChange={(value) => setSelectedChapter(value)}
-              placeholder={t('dailyChallenge.selectChapter') || 'Select chapter'}
-              className={`${theme}-challenge-info-select`}
-              style={{ width: '100%' }}
-              allowClear
+          <Row gutter={24}>
+            {/* Left Section - Settings (View Only) */}
+            <Col 
+              xs={24} 
+              lg={isCollapsed ? 2 : 6}
+              style={{ 
+                transition: 'all 0.3s ease'
+              }}
             >
-              {chapters.map((chapter) => (
-                <Select.Option key={chapter.id} value={chapter.id}>
-                  {chapter.name}
-                </Select.Option>
-              ))}
-            </Select>
-          </div>
+              <div className="settings-scroll-container" style={{ 
+                position: 'sticky', 
+                top: '0px', 
+                height: isCollapsed ? 'calc(100vh - 40px)' : 'auto',
+                maxHeight: 'calc(100vh - 40px)', 
+                overflowY: isCollapsed ? 'hidden' : 'auto', 
+                paddingBottom: isCollapsed ? '0px' : '80px', 
+                paddingLeft: isCollapsed ? '12px' : '24px', 
+                paddingRight: isCollapsed ? '0px' : '24px', 
+                transition: 'all 0.3s ease',
+                display: isCollapsed ? 'flex' : 'block',
+                alignItems: isCollapsed ? 'center' : 'flex-start',
+                justifyContent: isCollapsed ? 'flex-start' : 'flex-start'
+              }}>
+                {/* Collapsed State - Show only toggle button */}
+                {isCollapsed ? (
+                  <Tooltip title={t('common.expand') || 'Expand'} placement="right">
+                    <div
+                      onClick={() => setIsCollapsed(false)}
+                      style={{
+                        width: '40px',
+                        height: '40px',
+                        borderRadius: '50%',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        cursor: 'pointer',
+                        transition: 'all 0.3s ease',
+                        flexShrink: 0,
+                        background: theme === 'sun'
+                          ? 'linear-gradient(135deg, rgba(102, 174, 255, 0.2), rgba(60, 153, 255, 0.2))'
+                          : 'linear-gradient(135deg, rgba(181, 176, 192, 0.25), rgba(131, 119, 160, 0.25))',
+                        border: theme === 'sun'
+                          ? '2px solid rgba(102, 174, 255, 0.4)'
+                          : '2px solid rgba(181, 176, 192, 0.4)',
+                        boxShadow: theme === 'sun'
+                          ? '0 2px 8px rgba(60, 153, 255, 0.2)'
+                          : '0 2px 8px rgba(131, 119, 160, 0.25)',
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.transform = 'scale(1.1)';
+                        e.currentTarget.style.background = theme === 'sun'
+                          ? 'linear-gradient(135deg, rgba(102, 174, 255, 0.35), rgba(60, 153, 255, 0.35))'
+                          : 'linear-gradient(135deg, rgba(181, 176, 192, 0.4), rgba(131, 119, 160, 0.4))';
+                        e.currentTarget.style.boxShadow = theme === 'sun'
+                          ? '0 4px 12px rgba(60, 153, 255, 0.35)'
+                          : '0 4px 12px rgba(131, 119, 160, 0.4)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.transform = 'scale(1)';
+                        e.currentTarget.style.background = theme === 'sun'
+                          ? 'linear-gradient(135deg, rgba(102, 174, 255, 0.2), rgba(60, 153, 255, 0.2))'
+                          : 'linear-gradient(135deg, rgba(181, 176, 192, 0.25), rgba(131, 119, 160, 0.25))';
+                        e.currentTarget.style.boxShadow = theme === 'sun'
+                          ? '0 2px 8px rgba(60, 153, 255, 0.2)'
+                          : '0 2px 8px rgba(131, 119, 160, 0.25)';
+                      }}
+                    >
+                      <MenuUnfoldOutlined
+                        style={{
+                          fontSize: '20px',
+                          color: theme === 'sun' ? '#1890ff' : '#8377A0',
+                        }}
+                      />
+                          </div>
+                  </Tooltip>
+                ) : (
+                  /* Expanded State - Show full settings */
+                  <Card
+                    className={`settings-container-card ${theme}-settings-container-card`}
+                    style={{
+                      borderRadius: '16px',
+                      border: theme === 'sun' 
+                        ? '2px solid rgba(113, 179, 253, 0.25)' 
+                        : '2px solid rgba(138, 122, 255, 0.2)',
+                      boxShadow: theme === 'sun' 
+                        ? '0 4px 16px rgba(113, 179, 253, 0.1)' 
+                        : '0 4px 16px rgba(138, 122, 255, 0.12)',
+                      background: theme === 'sun'
+                        ? 'linear-gradient(135deg, rgba(255, 255, 255, 1) 0%, rgba(240, 249, 255, 0.95) 100%)'
+                        : 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(244, 240, 255, 0.95) 100%)',
+                      backdropFilter: 'blur(10px)'
+                    }}
+                  >
+                    {/* Settings Header with Icons */}
+                    <div style={{ 
+                      display: 'flex', 
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      marginBottom: '20px',
+                      paddingBottom: '16px',
+                      borderBottom: theme === 'sun' 
+                        ? '2px solid rgba(113, 179, 253, 0.15)' 
+                        : '2px solid rgba(138, 122, 255, 0.15)'
+                    }}>
+                      {/* Settings Icon - Left */}
+                      <Tooltip title={t('dailyChallenge.editSettings') || 'Edit Settings'} placement="right">
+                        <div
+                          onClick={handleOpenSettings}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            cursor: 'pointer',
+                            transition: 'all 0.3s ease',
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.transform = 'rotate(90deg) scale(1.15)';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.transform = 'rotate(0deg) scale(1)';
+                          }}
+                        >
+                          <SettingOutlined
+                            style={{
+                              fontSize: '24px',
+                              color: theme === 'sun' ? '#1890ff' : '#8377A0',
+                            }}
+                          />
+                          </div>
+                      </Tooltip>
 
-          <div style={{ flex: '1 1 0', minWidth: '200px' }}>
-            <label style={{ 
-              display: 'block', 
-              marginBottom: '8px', 
-              fontWeight: '500',
-              fontSize: '14px'
-            }}>
-              {t('dailyChallenge.lesson') || 'Lesson'}
-            </label>
-            <Select
-              value={selectedLesson}
-              onChange={(value) => setSelectedLesson(value)}
-              placeholder={t('dailyChallenge.selectLesson') || 'Select lesson'}
-              className={`${theme}-challenge-info-select`}
-              style={{ width: '100%' }}
-              disabled={!selectedChapter}
-              allowClear
+                      {/* Collapse Icon - Right */}
+                      <Tooltip title={t('common.collapse') || 'Collapse'} placement="left">
+                        <div
+                          onClick={() => setIsCollapsed(true)}
+                          style={{
+                            width: '40px',
+                            height: '40px',
+                            borderRadius: '50%',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            cursor: 'pointer',
+                            transition: 'all 0.3s ease',
+                            background: theme === 'sun'
+                              ? 'linear-gradient(135deg, rgba(102, 174, 255, 0.15), rgba(60, 153, 255, 0.15))'
+                              : 'linear-gradient(135deg, rgba(181, 176, 192, 0.2), rgba(131, 119, 160, 0.2))',
+                            border: theme === 'sun'
+                              ? '2px solid rgba(102, 174, 255, 0.3)'
+                              : '2px solid rgba(181, 176, 192, 0.3)',
+                            boxShadow: theme === 'sun'
+                              ? '0 2px 8px rgba(60, 153, 255, 0.15)'
+                              : '0 2px 8px rgba(131, 119, 160, 0.2)',
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.transform = 'scale(1.1)';
+                            e.currentTarget.style.background = theme === 'sun'
+                              ? 'linear-gradient(135deg, rgba(102, 174, 255, 0.25), rgba(60, 153, 255, 0.25))'
+                              : 'linear-gradient(135deg, rgba(181, 176, 192, 0.3), rgba(131, 119, 160, 0.3))';
+                            e.currentTarget.style.boxShadow = theme === 'sun'
+                              ? '0 4px 12px rgba(60, 153, 255, 0.3)'
+                              : '0 4px 12px rgba(131, 119, 160, 0.35)';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.transform = 'scale(1)';
+                            e.currentTarget.style.background = theme === 'sun'
+                              ? 'linear-gradient(135deg, rgba(102, 174, 255, 0.15), rgba(60, 153, 255, 0.15))'
+                              : 'linear-gradient(135deg, rgba(181, 176, 192, 0.2), rgba(131, 119, 160, 0.2))';
+                            e.currentTarget.style.boxShadow = theme === 'sun'
+                              ? '0 2px 8px rgba(60, 153, 255, 0.15)'
+                              : '0 2px 8px rgba(131, 119, 160, 0.2)';
+                          }}
+                        >
+                          <MenuFoldOutlined
+                            style={{
+                              fontSize: '18px',
+                              color: theme === 'sun' ? '#1890ff' : '#8377A0',
+                            }}
+                          />
+                              </div>
+                      </Tooltip>
+                            </div>
+
+                  {/* Challenge Mode (View Only) */}
+                  <div style={{ marginBottom: '16px' }}>
+                    <Typography.Title level={5} style={{ marginTop: 0, marginBottom: '12px', fontSize: '16px', fontWeight: 600, textAlign: 'center' }}>
+                      {t('dailyChallenge.mode')}
+                  </Typography.Title>
+                    <div style={{ 
+                      padding: '12px', 
+                      background: challengeMode === 'normal' ? 'rgba(139, 92, 246, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+                      borderRadius: '8px',
+                      border: challengeMode === 'normal' ? '2px solid #8B5CF6' : '2px solid #EF4444'
+                    }}>
+                      <Typography.Text strong style={{ fontSize: '14px' }}>
+                        {challengeMode === 'normal' ? t('dailyChallenge.normalMode') : t('dailyChallenge.examMode')}
+                                  </Typography.Text>
+                              </div>
+                            </div>
+
+                  <Divider style={{ margin: '16px 0' }} />
+
+                  {/* Challenge Configuration (View Only) */}
+                  <div style={{ marginBottom: '16px' }}>
+                    <Typography.Title level={5} style={{ marginTop: 0, marginBottom: '12px', fontSize: '16px', fontWeight: 600, textAlign: 'center' }}>
+                      {t('dailyChallenge.configuration')}
+                  </Typography.Title>
+                  <div>
+                      {/* Duration */}
+                      <div style={{ marginBottom: '12px', paddingBottom: '12px', borderBottom: '1px solid #f0f0f0' }}>
+                        <Typography.Text style={{ fontSize: '12px', color: '#666', display: 'block', marginBottom: '4px' }}>
+                          {t('dailyChallenge.duration')}
+                                </Typography.Text>
+                        <Typography.Text strong style={{ fontSize: '14px' }}>
+                          {durationMinutes ? `${durationMinutes} ${t('dailyChallenge.minutes')}` : t('common.notSet')}
+                                </Typography.Text>
+                            </div>
+
+                      {/* Start Date */}
+                      <div style={{ marginBottom: '12px', paddingBottom: '12px', borderBottom: '1px solid #f0f0f0' }}>
+                        <Typography.Text style={{ fontSize: '12px', color: '#666', display: 'block', marginBottom: '4px' }}>
+                          {t('dailyChallenge.startDate')}
+                                  </Typography.Text>
+                        <Typography.Text strong style={{ fontSize: '14px' }}>
+                          {startDate ? new Date(startDate).toLocaleDateString('vi-VN') : t('common.notSet')}
+                                  </Typography.Text>
+                            </div>
+
+                      {/* End Date */}
+                      <div style={{ marginBottom: '12px', paddingBottom: '12px', borderBottom: '1px solid #f0f0f0' }}>
+                        <Typography.Text style={{ fontSize: '12px', color: '#666', display: 'block', marginBottom: '4px' }}>
+                          {t('dailyChallenge.endDate')}
+                                </Typography.Text>
+                        <Typography.Text strong style={{ fontSize: '14px' }}>
+                          {endDate ? new Date(endDate).toLocaleDateString('vi-VN') : t('common.notSet')}
+                                </Typography.Text>
+                              </div>
+                            </div>
+                                </div>
+
+                  <Divider style={{ margin: '16px 0' }} />
+
+                  {/* Settings (View Only) */}
+                  <div>
+                    <Typography.Title level={5} style={{ marginTop: 0, marginBottom: '12px', fontSize: '16px', fontWeight: 600, textAlign: 'center' }}>
+                      {t('common.settings')}
+                  </Typography.Title>
+                  <div>
+                      {/* Translate On Screen */}
+                      <div style={{ marginBottom: '12px', paddingBottom: '12px', borderBottom: '1px solid #f0f0f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Typography.Text style={{ fontSize: '13px' }}>
+                          {t('dailyChallenge.translateOnScreen')}
+                                    </Typography.Text>
+                        <Typography.Text strong style={{ 
+                          fontSize: '13px',
+                          color: translateOnScreen ? '#52c41a' : '#d9d9d9'
+                        }}>
+                          {translateOnScreen ? '✓ ON' : '✗ OFF'}
+                                  </Typography.Text>
+                            </div>
+
+                      {/* AI Feedback */}
+                      <div style={{ marginBottom: '12px', paddingBottom: '12px', borderBottom: '1px solid #f0f0f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Typography.Text style={{ fontSize: '13px' }}>
+                          {t('dailyChallenge.aiFeedback')}
+                                  </Typography.Text>
+                        <Typography.Text strong style={{ 
+                          fontSize: '13px',
+                          color: aiFeedbackEnabled ? '#52c41a' : '#d9d9d9'
+                        }}>
+                          {aiFeedbackEnabled ? '✓ ON' : '✗ OFF'}
+                                </Typography.Text>
+                            </div>
+
+                      {/* Shuffle Answers */}
+                      <div style={{ marginBottom: '12px', paddingBottom: '12px', borderBottom: '1px solid #f0f0f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Typography.Text style={{ fontSize: '13px' }}>
+                          {t('dailyChallenge.shuffleAnswers')}
+                                  </Typography.Text>
+                        <Typography.Text strong style={{ 
+                          fontSize: '13px',
+                          color: shuffleAnswers ? '#52c41a' : '#d9d9d9'
+                        }}>
+                          {shuffleAnswers ? '✓ ON' : '✗ OFF'}
+                                  </Typography.Text>
+                            </div>
+
+                      {/* Anti-Cheat Mode */}
+                      <div style={{ marginBottom: '12px', paddingBottom: '12px', borderBottom: '1px solid #f0f0f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Typography.Text style={{ fontSize: '13px' }}>
+                          🔒 {t('dailyChallenge.antiCheatMode')}
+                                  </Typography.Text>
+                        <Typography.Text strong style={{ 
+                          fontSize: '13px',
+                          color: antiCheatModeEnabled ? '#52c41a' : '#d9d9d9'
+                        }}>
+                          {antiCheatModeEnabled ? '✓ ON' : '✗ OFF'}
+                                  </Typography.Text>
+                              </div>
+                            </div>
+                  </div>
+                </Card>
+                )}
+              </div>
+            </Col>
+
+            {/* Right Section - Questions List */}
+            <Col 
+              xs={24} 
+              lg={isCollapsed ? 22 : 18}
+              style={{ 
+                transition: 'all 0.3s ease'
+              }}
             >
-              {lessons.map((lesson) => (
-                <Select.Option key={lesson.id} value={lesson.id}>
-                  {lesson.name}
-                </Select.Option>
-              ))}
-            </Select>
-          </div>
-
-          <div style={{ flex: '1 1 0', minWidth: '150px' }}>
-            <label style={{ 
-              display: 'block', 
-              marginBottom: '8px', 
-              fontWeight: '500',
-              fontSize: '14px'
-            }}>
-              {t('dailyChallenge.timeLimit') || 'Time Limit'} ({t('dailyChallenge.minutes') || 'minutes'})
-            </label>
+              {/* Search Section */}
+              <div style={{ paddingLeft: '24px', paddingRight: '24px', marginBottom: '24px' }}>
+                <Card 
+                  className={`search-card ${theme}-search-card`}
+                  style={{
+                    borderRadius: '16px',
+                    border: theme === 'sun' 
+                      ? '2px solid rgba(113, 179, 253, 0.25)' 
+                      : '2px solid rgba(138, 122, 255, 0.2)',
+                    boxShadow: theme === 'sun' 
+                      ? '0 4px 16px rgba(113, 179, 253, 0.1)' 
+                      : '0 4px 16px rgba(138, 122, 255, 0.12)',
+                    background: theme === 'sun'
+                      ? 'linear-gradient(135deg, rgba(255, 255, 255, 1) 0%, rgba(240, 249, 255, 0.95) 100%)'
+                      : 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(244, 240, 255, 0.95) 100%)',
+                    backdropFilter: 'blur(10px)'
+                  }}
+                >
             <Input
-              type="number"
-              value={timeLimit}
-              onChange={(e) => setTimeLimit(e.target.value)}
-              className={`${theme}-challenge-info-input`}
-              style={{ width: '100%' }}
-              min={1}
-            />
-          </div>
+                  prefix={<SearchOutlined />}
+                  value={searchText}
+                  onChange={(e) => handleSearch(e.target.value)}
+                  className={`search-input ${theme}-search-input`}
+                    style={{ 
+                      width: '100%', 
+                      height: '40px', 
+                      fontSize: '16px',
+                      border: theme === 'sun' ? '2px solid rgba(113, 179, 253, 0.3)' : undefined,
+                      background: theme === 'sun'
+                        ? 'linear-gradient(135deg, rgba(230, 245, 255, 0.95) 0%, rgba(186, 231, 255, 0.85) 100%)'
+                        : undefined
+                    }}
+              allowClear
+                />
+                </Card>
         </div>
 
         {/* Questions List */}
@@ -835,6 +1217,9 @@ const DailyChallengeContent = () => {
               )}
             </div>
           </LoadingWithEffect>
+              </div>
+            </Col>
+          </Row>
         </div>
       </div>
 
@@ -1161,6 +1546,23 @@ const DailyChallengeContent = () => {
           )}
         </div>
       </Modal>
+
+      {/* Challenge Settings Modal */}
+      <ChallengeSettingsModal
+        visible={settingsModalVisible}
+        onCancel={handleCloseSettings}
+        onSave={handleSaveSettings}
+        initialValues={{
+          challengeMode,
+          durationMinutes,
+          startDate,
+          endDate,
+          shuffleAnswers,
+          translateOnScreen,
+          aiFeedbackEnabled,
+          antiCheatModeEnabled,
+        }}
+      />
     </ThemedLayout>
   );
 };

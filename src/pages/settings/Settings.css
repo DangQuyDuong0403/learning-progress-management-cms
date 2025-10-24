@@ -262,7 +262,7 @@
 }
 
 .space-theme .settings-card-title {
-	color: #fff;
+	color: black;
 }
 
 .sun-theme .settings-card-title {
@@ -305,7 +305,7 @@
 }
 
 .space-theme .settings-field-label {
-	color: #fff;
+	color: black;
 }
 
 .sun-theme .settings-field-label {
@@ -904,7 +904,7 @@
 	color: #1a1a1a !important;
 }
 .space-theme .settings-container .settings-content .anticon{
-	color: #fff ;
+	color: black ;
 }
 
 .modal-content {

@@ -339,6 +339,48 @@
 	z-index: 2;
 }
 
+/* ===== MAIN CONTENT PANEL GLOBAL STYLES ===== */
+.main-content-panel {
+	background: rgba(45, 27, 105, 0.75);
+	backdrop-filter: none;
+	border-radius: 16px;
+	padding: 24px;
+	margin: 24px;
+	box-shadow: 0 8px 32px rgba(77, 208, 255, 0.15);
+	border: 1px solid rgba(77, 208, 255, 0.3);
+	position: relative;
+	z-index: 2;
+	min-height: calc(100vh - 120px);
+}
+
+/* Sun theme main content panel */
+.sun-theme .main-content-panel,
+.sun-main-panel {
+	position: relative;
+	background: #E6F5FF;
+	backdrop-filter: blur(1px);
+	border-radius: 16px;
+	padding: 24px;
+	margin: 24px;
+	border: 1px solid rgba(0, 0, 0, 0.1);
+	box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+	z-index: 2;
+}
+
+/* Space theme main content panel */
+.space-theme .main-content-panel,
+.space-main-panel {
+	position: relative;
+	background: rgba(110, 92, 172, 0.5);
+	backdrop-filter: blur(7px);
+	border-radius: 16px;
+	padding: 24px;
+	margin: 24px;
+	border: 1px solid rgba(77, 208, 255, 0.3);
+	box-shadow: 0 8px 32px rgba(77, 208, 255, 0.15);
+	z-index: 2;
+}
+
 /* ===== MOON ICON STYLES ===== */
 .themed-sidebar-container {
 	position: relative;
@@ -1050,7 +1092,7 @@
 
 .space-theme .themed-content .ant-table-tbody > tr > td {
 	background: rgb(224 217 255 / 90%) !important;
-	border-bottom: none;
+	border: 1px solid #7c6d90 !important;
 	color: #000;
 	font-size: 20px;
 	backdrop-filter: blur(5px);
@@ -1066,6 +1108,7 @@
 	color: #000;
 	font-size: 18px;
 	backdrop-filter: blur(5px);
+	border: 1px solid #7c6d90 !important;
 }
 
 .space-theme .themed-content .ant-table .ant-table-tbody > tr:hover > td {
@@ -1405,6 +1448,7 @@
 	background: #E6F5FF;
 	color: #000;
 	font-size: 20px;
+	border: 1px solid #a8d7f8 !important;
 }
 
 .sun-theme .themed-content .ant-table-tbody > tr:hover > td {
@@ -1422,6 +1466,7 @@
 	background: #E6F5FF;
 	color: #000;
 	font-size: 18px;
+	border: 1px solid #a8d7f8 !important;
 }
 
 .sun-theme .themed-content .ant-table .ant-table-tbody > tr:hover > td {
@@ -2108,7 +2153,7 @@
 .sun-theme .ant-table-tbody > tr > td:first-child,
 .sun-theme .ant-table-tbody > tr > td:nth-child(2) {
 	background-color: #E6F5FF !important;
-	border: none !important;
+	border: 1px solid #a8d7f8 !important;
 	padding: 8px 12px !important;
 	text-align: center !important;
 }
@@ -2136,7 +2181,7 @@
 .space-theme .ant-table-tbody > tr > td:first-child,
 .space-theme .ant-table-tbody > tr > td:nth-child(2) {
 	background-color: rgb(224 217 255 / 90%) !important;
-	border: none !important;
+	border: 1px solid #7c6d90 !important;
 	padding: 8px 12px !important;
 	text-align: center !important;
 }
