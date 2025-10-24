@@ -635,15 +635,14 @@ const TeacherProfile = () => {
 								>
 									<Select 
 										placeholder={t('teacherManagement.rolePlaceholder')}
-										disabled={teacher?.roleName === 'TEACHER'}
+										disabled={teacher?.roleName === 'TEACHER' && teacher?.status === 'ACTIVE'}
 									>
 										<Select.Option 
 											value="TEACHER"
 											disabled={
 												// Disable TEACHER option if:
-												// 1. Current role is TEACHER (cannot change to same role)
-												// 2. Status is PENDING (can only change to TEACHING_ASSISTANT)
-												teacher?.roleName === 'TEACHER' || teacher?.status === 'PENDING'
+												// 1. Current role is TEACHER and status is ACTIVE (cannot change to same role when active)
+												teacher?.roleName === 'TEACHER' && teacher?.status === 'ACTIVE'
 											}
 										>
 											{t('teacherManagement.teacher')}
