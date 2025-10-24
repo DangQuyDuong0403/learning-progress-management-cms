@@ -224,13 +224,16 @@ const TeacherList = () => {
 		if (!teacher) return;
 
 		const newStatus = teacher.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
-		const actionText = newStatus === 'ACTIVE' ? t('teacherManagement.activate') : t('teacherManagement.deactivate');
 		const teacherName = teacher.fullName || teacher.userName;
 		
 		setConfirmModal({
 			visible: true,
-			title: t('teacherManagement.changeStatus'),
-			content: `${t('teacherManagement.confirmStatusChange')} ${actionText} ${t('teacherManagement.teacher')}?`,
+			title: newStatus === 'ACTIVE' 
+				? t('accountManagement.activate') + ' ' + t('common.teacher')
+				: t('accountManagement.deactivate') + ' ' + t('common.teacher'),
+			content: newStatus === 'ACTIVE' 
+				? t('teacherManagement.confirmActivateTeacher')
+				: t('teacherManagement.confirmDeactivateTeacher'),
 			displayData: teacherName,
 			onConfirm: async () => {
 				try {

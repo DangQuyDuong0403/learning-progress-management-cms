@@ -6,7 +6,7 @@ import './ThemedLayout.css';
 
 const { Content } = AntLayout;
 
-const ThemedLayout = ({ children }) => {
+const ThemedLayout = ({ children, customHeader }) => {
   const { theme } = useTheme();
 
   return (
@@ -39,7 +39,7 @@ const ThemedLayout = ({ children }) => {
       >
         {/* Themed Header */}
         <div style={{ position: 'relative', zIndex: 10000 }}>
-          <ThemedHeader />
+          {customHeader || <ThemedHeader />}
         </div>
 
         {/* Background Elements */}

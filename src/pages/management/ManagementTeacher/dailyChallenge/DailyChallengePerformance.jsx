@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { Card, Row, Col, Select, Statistic, Button, List } from "antd";
+import { Card, Row, Col, Statistic, Button, List } from "antd";
 import { TrophyOutlined } from "@ant-design/icons";
 import ThemedLayout from "../../../../component/teacherlayout/ThemedLayout";
 import LoadingWithEffect from "../../../../component/spinner/LoadingWithEffect";
-import { Line } from '@ant-design/charts';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import "./DailyChallengePerformance.css";
 import { useTranslation } from "react-i18next";
 import { useTheme } from "../../../../contexts/ThemeContext";
@@ -22,60 +22,87 @@ const DailyChallengePerformance = () => {
   usePageTitle('Daily Challenge Management / Performance');
   
   const [loading, setLoading] = useState(false);
-  const [timeRange, setTimeRange] = useState('15days');
-  const [studentFilter, setStudentFilter] = useState('all'); // all, highest, lowest
   const [performanceData, setPerformanceData] = useState({
     average: 0,
     highest: 0,
     lowest: 0,
-    trend: []
+    scoreDistribution: []
   });
   const [studentScores, setStudentScores] = useState([]);
 
-  // Mock data - thay thế bằng API call thực tế
-  const mockPerformanceData = {
-    average: 7.5,
-    highest: 9.5,
-    lowest: 5.0,
-    trend: [
-      { date: '2024-01-01', score: 6.5 },
-      { date: '2024-01-02', score: 7.0 },
-      { date: '2024-01-03', score: 7.5 },
-      { date: '2024-01-04', score: 6.8 },
-      { date: '2024-01-05', score: 8.0 },
-      { date: '2024-01-06', score: 7.2 },
-      { date: '2024-01-07', score: 8.5 },
-      { date: '2024-01-08', score: 7.8 },
-      { date: '2024-01-09', score: 9.0 },
-      { date: '2024-01-10', score: 8.2 },
-      { date: '2024-01-11', score: 7.5 },
-      { date: '2024-01-12', score: 6.5 },
-      { date: '2024-01-13', score: 7.0 },
-      { date: '2024-01-14', score: 8.5 },
-      { date: '2024-01-15', score: 9.5 },
-    ]
-  };
-
   const mockStudentScores = [
-    { id: 1, name: 'Nguyễn Văn A', email: 'nguyenvana@example.com', score: 9.5, avatar: null },
-    { id: 2, name: 'Trần Thị B', email: 'tranthib@example.com', score: 9.0, avatar: null },
-    { id: 3, name: 'Lê Văn C', email: 'levanc@example.com', score: 8.5, avatar: null },
-    { id: 4, name: 'Phạm Thị D', email: 'phamthid@example.com', score: 8.2, avatar: null },
-    { id: 5, name: 'Hoàng Văn E', email: 'hoangvane@example.com', score: 8.0, avatar: null },
-    { id: 6, name: 'Đỗ Thị F', email: 'dothif@example.com', score: 7.5, avatar: null },
-    { id: 7, name: 'Vũ Văn G', email: 'vuvang@example.com', score: 7.2, avatar: null },
-    { id: 8, name: 'Bùi Thị H', email: 'buithih@example.com', score: 7.0, avatar: null },
-    { id: 9, name: 'Đặng Văn I', email: 'dangvani@example.com', score: 6.5, avatar: null },
-    { id: 10, name: 'Ngô Thị K', email: 'ngothik@example.com', score: 5.0, avatar: null },
+    { id: 1, name: 'Nguyễn Văn A', email: 'nguyenvana@example.com', score: 9.5, avatar: null, completionTime: 15 },
+    { id: 2, name: 'Trần Thị B', email: 'tranthib@example.com', score: 9.0, avatar: null, completionTime: 18 },
+    { id: 3, name: 'Lê Văn C', email: 'levanc@example.com', score: 8.5, avatar: null, completionTime: 20 },
+    { id: 4, name: 'Phạm Thị D', email: 'phamthid@example.com', score: 8.2, avatar: null, completionTime: 22 },
+    { id: 5, name: 'Hoàng Văn E', email: 'hoangvane@example.com', score: 8.0, avatar: null, completionTime: 25 },
+    { id: 6, name: 'Đỗ Thị F', email: 'dothif@example.com', score: 7.5, avatar: null, completionTime: 28 },
+    { id: 7, name: 'Vũ Văn G', email: 'vuvang@example.com', score: 7.2, avatar: null, completionTime: 30 },
+    { id: 8, name: 'Bùi Thị H', email: 'buithih@example.com', score: 7.0, avatar: null, completionTime: 32 },
+    { id: 9, name: 'Đặng Văn I', email: 'dangvani@example.com', score: 6.5, avatar: null, completionTime: 35 },
+    { id: 10, name: 'Ngô Thị K', email: 'ngothik@example.com', score: 5.0, avatar: null, completionTime: 40 },
   ];
+
+  // Calculate score distribution by range (0-1, 1-2, 2-3, ..., 9-10)
+  const calculateScoreDistribution = (scores) => {
+    // Create distribution for score ranges
+    const ranges = [
+      { range: '0-1', min: 0, max: 1, studentCount: 0 },
+      { range: '1-2', min: 1, max: 2, studentCount: 0 },
+      { range: '2-3', min: 2, max: 3, studentCount: 0 },
+      { range: '3-4', min: 3, max: 4, studentCount: 0 },
+      { range: '4-5', min: 4, max: 5, studentCount: 0 },
+      { range: '5-6', min: 5, max: 6, studentCount: 0 },
+      { range: '6-7', min: 6, max: 7, studentCount: 0 },
+      { range: '7-8', min: 7, max: 8, studentCount: 0 },
+      { range: '8-9', min: 8, max: 9, studentCount: 0 },
+      { range: '9-10', min: 9, max: 10, studentCount: 0 },
+    ];
+
+    // Count students for each range
+    scores.forEach(student => {
+      const score = student.score;
+      for (let i = 0; i < ranges.length; i++) {
+        // For the last range (9-10), include 10
+        if (i === ranges.length - 1) {
+          if (score >= ranges[i].min && score <= ranges[i].max) {
+            ranges[i].studentCount++;
+            break;
+          }
+        } else {
+          // For other ranges, include min but exclude max
+          if (score >= ranges[i].min && score < ranges[i].max) {
+            ranges[i].studentCount++;
+            break;
+          }
+        }
+      }
+    });
+
+    return ranges;
+  };
 
   const fetchPerformanceData = async () => {
     setLoading(true);
     try {
       // Simulate API call
       setTimeout(() => {
-        setPerformanceData(mockPerformanceData);
         setStudentScores(mockStudentScores);
+
+        // Calculate statistics
+        const scores = mockStudentScores.map(s => s.score);
+        const average = scores.reduce((a, b) => a + b, 0) / scores.length;
+        const highest = Math.max(...scores);
+        const lowest = Math.min(...scores);
+        const scoreDistribution = calculateScoreDistribution(mockStudentScores);
+
+        setPerformanceData({
+          average: parseFloat(average.toFixed(1)),
+          highest,
+          lowest,
+          scoreDistribution
+        });
+
         setLoading(false);
       }, 1000);
     } catch (error) {
@@ -84,19 +111,9 @@ const DailyChallengePerformance = () => {
     }
   };
 
-  // Filter students based on selected filter
-  const getFilteredStudents = () => {
-    const sortedStudents = [...studentScores].sort((a, b) => b.score - a.score);
-    
-    if (studentFilter === 'highest') {
-      // Top 3 highest scores
-      return sortedStudents.slice(0, 3);
-    } else if (studentFilter === 'lowest') {
-      // Bottom 3 lowest scores
-      return sortedStudents.slice(-3).reverse();
-    }
-    // All students (sorted by score desc)
-    return sortedStudents;
+  // Sort students by score (highest to lowest)
+  const getSortedStudents = () => {
+    return [...studentScores].sort((a, b) => b.score - a.score);
   };
 
   // Enter/exit daily challenge menu mode
@@ -113,84 +130,57 @@ const DailyChallengePerformance = () => {
   useEffect(() => {
     fetchPerformanceData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id, timeRange]);
+  }, [id]);
 
-  const chartConfig = {
-    data: performanceData.trend,
-    xField: 'date',
-    yField: 'score',
-    smooth: true,
-    height: 300,
-    xAxis: {
-      title: {
-        text: t('dailyChallenge.date'),
-      },
-    },
-    yAxis: {
-      title: {
-        text: t('dailyChallenge.scoreLabel'), 
-      },
-      min: 0,
-      max: 10,
-      tickCount: 11,
-    },
-    color: '#1890ff',
-    lineStyle: {
-      lineWidth: 2,
-    },
-    point: {
-      size: 4,
-      shape: 'circle',
-    },
+  // Custom Tooltip for Recharts
+  const CustomTooltip = ({ active, payload }) => {
+    if (active && payload && payload.length) {
+      const data = payload[0].payload;
+      return (
+        <div style={{
+          backgroundColor: theme === 'sun' ? '#fff' : '#2d1b69',
+          border: `1px solid ${theme === 'sun' ? '#d9d9d9' : '#4dd0ff'}`,
+          borderRadius: '8px',
+          padding: '12px',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
+        }}>
+          <p style={{ 
+            margin: 0, 
+            fontWeight: 600, 
+            marginBottom: '4px',
+            color: theme === 'sun' ? '#000' : '#fff'
+          }}>
+            {t('dailyChallenge.scoreRange')}: {data.range}
+          </p>
+          <p style={{ 
+            margin: 0, 
+            color: theme === 'sun' ? '#666' : '#d2cbf2'
+          }}>
+            {t('class.studentCount')}: {data.studentCount}
+          </p>
+        </div>
+      );
+    }
+    return null;
   };
 
   return (
     <ThemedLayout>
       <div className="daily-challenge-performance-wrapper">
         {/* Action Section */}
-        <div className="search-action-section" style={{ display: 'flex', gap: '12px', alignItems: 'center', marginBottom: '24px', padding: '24px 24px 0 24px' }}>
-          <Select
-            value={timeRange}
-            onChange={setTimeRange}
-            className={`time-range-select ${theme}-time-range-select`}
-            style={{ width: 220 }}
+        <div className="search-action-section" style={{ display: 'flex', gap: '12px', alignItems: 'center', justifyContent: 'flex-end', marginBottom: '24px', padding: '24px 24px 0 24px' }}>
+          <Button
+            className={`tab-button ${theme}-tab-button`}
+            onClick={() => navigate(`/teacher/daily-challenges/detail/${id}/content`)}
           >
-            <Select.Option value="7days">{t('dailyChallenge.last7Days')}</Select.Option>
-            <Select.Option value="15days">{t('dailyChallenge.last15Days')}</Select.Option>
-            <Select.Option value="30days">{t('dailyChallenge.last30Days')}</Select.Option>
-            <Select.Option value="90days">{t('dailyChallenge.last90Days')}</Select.Option>
-          </Select>
-          <Select
-            value={studentFilter}
-            onChange={setStudentFilter}
-            className={`student-filter-select ${theme}-student-filter-select`}
-            style={{ width: 220 }}
+            {t('dailyChallenge.content')}
+          </Button>
+          <Button
+            className={`tab-button ${theme}-tab-button`}
+            onClick={() => navigate(`/teacher/daily-challenges/detail/${id}/submissions`)}
           >
-            <Select.Option value="all">
-              {t('dailyChallenge.allStudents') || 'All Students'}
-            </Select.Option>
-            <Select.Option value="highest">
-              <TrophyOutlined style={{ marginRight: 8, color: '#faad14' }} />
-              {t('dailyChallenge.topPerformers') || 'Top Performers'}
-            </Select.Option>
-            <Select.Option value="lowest">
-              {t('dailyChallenge.needsImprovement') || 'Needs Improvement'}
-            </Select.Option>
-          </Select>
-          <div style={{ marginLeft: 'auto', display: 'flex', gap: '8px' }}>
-            <Button
-              className={`tab-button ${theme}-tab-button`}
-              onClick={() => navigate(`/teacher/daily-challenges/detail/${id}/content`)}
-            >
-              {t('dailyChallenge.content')}
-            </Button>
-            <Button
-              className={`tab-button ${theme}-tab-button`}
-              onClick={() => navigate(`/teacher/daily-challenges/detail/${id}/submissions`)}
-            >
-              {t('dailyChallenge.submission')}
-            </Button>
-          </div>
+            {t('dailyChallenge.submission')}
+          </Button>
         </div>
 
         {/* Performance Content */}
@@ -214,10 +204,10 @@ const DailyChallengePerformance = () => {
                     marginBottom: '16px', 
                     fontSize: '20px', 
                     fontWeight: 600, 
-                    color: '#000',
+                    color: theme === 'sun' ? '#000' : '#000',
                     textAlign: 'center'
                   }}>
-                    {t('dailyChallenge.studentName')}
+                    {t('dailyChallenge.topRank')}
                   </h2>
                   
                   <div style={{ 
@@ -226,50 +216,69 @@ const DailyChallengePerformance = () => {
                     maxHeight: '480px' // Chiều cao cho khoảng 6 học sinh (mỗi item ~80px)
                   }}>
                     <List
-                      dataSource={getFilteredStudents()}
+                      dataSource={getSortedStudents()}
                       renderItem={(student, index) => {
-                        const isTopScore = index === 0 && studentFilter !== 'lowest';
+                        const isTopScore = index === 0;
                         
                         return (
                           <List.Item
                             style={{
                               padding: '12px 16px',
-                              borderBottom: theme === 'sun' ? '1px solid #f0f0f0' : '1px solid #3a3458',
-                              background: 'transparent',
+                              borderBottom: theme === 'sun' ? '1px solid #f0f0f0' : '1px solid rgba(58, 52, 88, 0.3)',
+                              background: isTopScore 
+                                ? (theme === 'sun' ? 'linear-gradient(135deg, #e6f7ff 0%, #bae7ff 100%)' : 'linear-gradient(135deg, #5a4a8f 0%, #6b5aa0 100%)')
+                                : 'transparent',
                               transition: 'all 0.3s ease',
                               cursor: 'pointer',
                               display: 'flex',
                               justifyContent: 'space-between',
-                              alignItems: 'center'
+                              alignItems: 'center',
+                              border: isTopScore ? (theme === 'sun' ? '2px solid #1890ff' : '2px solid #8b7dd8') : 'none',
+                              borderRadius: isTopScore ? '8px' : '0',
+                              boxShadow: isTopScore ? (theme === 'sun' ? '0 4px 12px rgba(24, 144, 255, 0.3)' : '0 4px 12px rgba(139, 125, 216, 0.3)') : 'none'
                             }}
                             className={`student-list-item ${theme}-student-list-item`}
                           >
                             <div style={{ 
                               display: 'flex',
                               alignItems: 'center',
-                              gap: '8px',
+                              gap: '12px',
                               flex: 1
                             }}>
                               {isTopScore && (
                                 <TrophyOutlined 
                                   style={{ 
-                                    color: '#faad14',
-                                    fontSize: '18px'
+                                    color: theme === 'sun' ? '#1890ff' : '#ffc53d',
+                                    fontSize: '20px',
+                                    animation: 'pulse 2s infinite'
                                   }} 
                                 />
                               )}
                               <span style={{ 
-                                fontWeight: 600,
-                                fontSize: '16px',
-                                color: '#000'
+                                fontWeight: isTopScore ? 700 : 600,
+                                fontSize: isTopScore ? '17px' : '16px',
+                                color: isTopScore 
+                                  ? (theme === 'sun' ? '#1890ff' : '#ffc53d')
+                                  : (theme === 'sun' ? '#000' : '#000')
                               }}>
                                 {student.name}
                               </span>
+                              <span style={{ 
+                                fontSize: '15px',
+                                color: theme === 'sun' ? '#666' : '#999',
+                                fontWeight: 500,
+                                marginLeft: 'auto',
+                                marginRight: '16px'
+                              }}>
+                                {student.completionTime} {t('dailyChallenge.minutes')}
+                              </span>
                             </div>
                             <span style={{ 
-                              fontWeight: 700,
-                              fontSize: '18px',
-                              color: student.score >= 8 
+                              fontWeight: isTopScore ? 800 : 700,
+                              fontSize: isTopScore ? '20px' : '18px',
+                              color: isTopScore
+                                ? (theme === 'sun' ? '#1890ff' : '#ffc53d')
+                                : student.score >= 8 
                                 ? '#52c41a' 
                                 : student.score >= 6 
                                 ? '#faad14' 
@@ -343,19 +352,42 @@ const DailyChallengePerformance = () => {
                   </Row>
                 </Card>
 
-                {/* Trend Chart */}
+                {/* Score Distribution Chart */}
                 <Card className={`chart-card ${theme}-chart-card`} style={{ flex: 1, marginBottom: '24px' }}>
                   <h2 style={{ 
                     margin: 0, 
                     marginBottom: '24px', 
                     fontSize: '20px', 
                     fontWeight: 600, 
-                    color: '#000',
+                    color: theme === 'sun' ? '#000' : '#000',
                     textAlign: 'center'
                   }}>
-                    {t('dailyChallenge.trendChart')}
+                    {t('dailyChallenge.scoreDistribution')}
                   </h2>
-                  <Line {...chartConfig} />
+                  <ResponsiveContainer width="100%" height={300}>
+                    <BarChart 
+                      data={performanceData.scoreDistribution}
+                      margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
+                    >
+                      <XAxis 
+                        dataKey="range" 
+                        stroke={theme === 'sun' ? '#000' : '#000'}
+                        style={{ fontSize: '14px' }}
+                      />
+                      <YAxis 
+                        stroke={theme === 'sun' ? '#000' : '#000'}
+                        style={{ fontSize: '14px' }}
+                        allowDecimals={false}
+                        domain={[0, 'auto']}
+                      />
+                      <Tooltip content={<CustomTooltip />} />
+                      <Bar 
+                        dataKey="studentCount" 
+                        fill={theme === 'sun' ? '#1890ff' : '#8b7dd8'}
+                        radius={[8, 8, 0, 0]}
+                      />
+                    </BarChart>
+                  </ResponsiveContainer>
                 </Card>
               </Col>
             </Row>
