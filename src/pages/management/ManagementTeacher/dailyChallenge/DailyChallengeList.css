@@ -601,19 +601,31 @@
   }
 }
 
-/* Dark mode support */
-@media (prefers-color-scheme: dark) {
-  .daily-challenge-table .ant-table-thead > tr > th {
-    background: #1f1f1f;
-    color: #e8eaed;
-    border-bottom-color: #333;
-  }
-  
-  .daily-challenge-table .ant-table-tbody > tr:hover > td {
-    background: #2a2a2a;
-  }
-  
-  .daily-challenge-table .challenge-description {
-    color: #999;
-  }
+/* Lesson create button positioning */
+.lesson-create-btn {
+  position: absolute !important;
+  top: 50% !important;
+  left: 50% !important;
+  transform: translate(-50%, -50%) scale(0.9) !important;
+  margin: 0 !important;
+  right: auto !important;
+  opacity: 0 !important;
+  transition: all 0.2s ease !important;
+  pointer-events: none !important;
+}
+
+/* Lesson text transition */
+.lesson-text {
+  transition: opacity 0.2s ease !important;
+}
+
+/* Lesson cell hover effect */
+.lesson-cell-container:hover .lesson-text {
+  opacity: 0 !important;
+}
+
+.lesson-cell-container:hover .lesson-create-btn {
+  opacity: 1 !important;
+  transform: translate(-50%, -50%) scale(1) !important;
+  pointer-events: auto !important;
 }

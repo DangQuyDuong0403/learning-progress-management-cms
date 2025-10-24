@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Modal,
   Form,
@@ -7,12 +7,13 @@ import {
   Button,
   Row,
   Col,
+  Switch,
+  DatePicker,
 } from "antd";
 import { useTranslation } from "react-i18next";
 import { useTheme } from "../../../../contexts/ThemeContext";
 import { spaceToast } from "../../../../component/SpaceToastify";
-import { useParams } from "react-router-dom";
-import teacherManagementApi from "../../../../apis/backend/teacherManagement";
+import dayjs from 'dayjs';
 
 const { TextArea } = Input;
 const { Option } = Select;
@@ -25,124 +26,36 @@ const questionTypeOptions = [
   { value: "SP", label: "Speaking" },
 ];
 
-const SimpleDailyChallengeModal = ({
+const EditDailyChallengeModal = ({
   visible,
   onCancel,
-  onCreateSuccess,
-  lessonData,
+  onUpdateSuccess,
+  challengeData,
 }) => {
   const { t } = useTranslation();
   const { theme } = useTheme();
-  const { classId } = useParams();
   const [form] = Form.useForm();
   const [isButtonDisabled, setIsButtonDisabled] = useState(false);
-  const [lessons, setLessons] = useState([]);
-  const [loadingLessons, setLoadingLessons] = useState(false);
 
-  const fetchLessons = useCallback(async () => {
-    if (!classId) return;
-    
-    setLoadingLessons(true);
-    try {
-      // First, get all chapters of the class
-      const chaptersResponse = await teacherManagementApi.getClassChapters(classId, {
-        page: 0,
-        size: 100
-      });
-      
-      console.log('Class Chapters API Response:', chaptersResponse.data);
-      
-      let allLessons = [];
-      
-      if (chaptersResponse.data && chaptersResponse.data.content) {
-        const chapters = chaptersResponse.data.content;
-        
-        // Get lessons for each chapter
-        for (const chapter of chapters) {
-          try {
-            const lessonsResponse = await teacherManagementApi.getClassLessons({
-              classChapterId: chapter.id,
-              page: 0,
-              size: 100
-            });
-            
-            if (lessonsResponse.data && lessonsResponse.data.content) {
-              allLessons = allLessons.concat(lessonsResponse.data.content);
-            } else if (lessonsResponse.data && Array.isArray(lessonsResponse.data)) {
-              allLessons = allLessons.concat(lessonsResponse.data);
-            }
-          } catch (error) {
-            console.error(`Error fetching lessons for chapter ${chapter.id}:`, error);
-          }
-        }
-      } else if (chaptersResponse.data && Array.isArray(chaptersResponse.data)) {
-        const chapters = chaptersResponse.data;
-        
-        // Get lessons for each chapter
-        for (const chapter of chapters) {
-          try {
-            const lessonsResponse = await teacherManagementApi.getClassLessons({
-              classChapterId: chapter.id,
-              page: 0,
-              size: 100
-            });
-            
-            if (lessonsResponse.data && lessonsResponse.data.content) {
-              allLessons = allLessons.concat(lessonsResponse.data.content);
-            } else if (lessonsResponse.data && Array.isArray(lessonsResponse.data)) {
-              allLessons = allLessons.concat(lessonsResponse.data);
-            }
-          } catch (error) {
-            console.error(`Error fetching lessons for chapter ${chapter.id}:`, error);
-          }
-        }
-      }
-      
-      console.log('All Class Lessons:', allLessons);
-      
-      const mappedLessons = allLessons.map((lesson) => {
-        // Try to get lesson name from various possible fields
-        const lessonName = lesson.classLessonName || 
-                          lesson.name || 
-                          lesson.title || 
-                          lesson.lessonTitle ||
-                          lesson.chapterName ||
-                          `Lesson ${lesson.id}`;
-        
-        return {
-          id: lesson.id,
-          name: lessonName,
-          lessonName: lessonName,
-          content: lesson.content || '',
-        };
-      });
-      
-      console.log('Raw Lesson Data:', allLessons);
-      console.log('Mapped Lessons:', mappedLessons);
-      setLessons(mappedLessons);
-    } catch (error) {
-      console.error('Error fetching class lessons:', error);
-      spaceToast.error(t('lessonManagement.loadLessonsError'));
-    } finally {
-      setLoadingLessons(false);
-    }
-  }, [classId, t]);
 
-  // Fetch lessons when modal opens
+  // Set form values when challengeData changes
   useEffect(() => {
-    if (visible && classId) {
-      fetchLessons();
-    }
-  }, [visible, classId, fetchLessons]);
-
-  // Auto-populate lesson when lessonData is provided
-  useEffect(() => {
-    if (visible && lessonData) {
+    if (visible && challengeData) {
       form.setFieldsValue({
-        classLessonId: lessonData.classLessonId,
+        challengeName: challengeData.title || challengeData.challengeName,
+        classLessonId: challengeData.lessonId || challengeData.classLessonId,
+        description: challengeData.description,
+        challengeType: challengeData.type || challengeData.challengeType,
+        durationMinutes: challengeData.timeLimit || challengeData.durationMinutes,
+        hasAntiCheat: challengeData.hasAntiCheat || false,
+        shuffleAnswers: challengeData.shuffleAnswers || false,
+        translateOnScreen: challengeData.translateOnScreen || false,
+        aiFeedbackEnabled: challengeData.aiFeedbackEnabled || false,
+        startDate: challengeData.startDate ? dayjs(challengeData.startDate) : null,
+        endDate: challengeData.endDate ? dayjs(challengeData.endDate) : null,
       });
     }
-  }, [visible, lessonData, form]);
+  }, [visible, challengeData, form]);
 
   const handleModalOk = async () => {
     if (isButtonDisabled) return;
@@ -152,27 +65,30 @@ const SimpleDailyChallengeModal = ({
     try {
       const values = await form.validateFields();
       
-      console.log('Creating challenge with data:', values);
-      
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      console.log('Updating challenge with data:', values);
       
       const challengeData = {
         challengeName: values.challengeName,
         classLessonId: values.classLessonId,
         description: values.description,
         challengeType: values.challengeType,
+        durationMinutes: values.durationMinutes || 30,
+        hasAntiCheat: values.hasAntiCheat || false,
+        shuffleAnswers: values.shuffleAnswers || false,
+        translateOnScreen: values.translateOnScreen || false,
+        aiFeedbackEnabled: values.aiFeedbackEnabled || false,
+        startDate: values.startDate ? values.startDate.toISOString() : null,
+        endDate: values.endDate ? values.endDate.toISOString() : null,
       };
 
-      spaceToast.success(t('dailyChallenge.createChallengeSuccess'));
-      form.resetFields();
-      onCreateSuccess(challengeData);
+      spaceToast.success(t('dailyChallenge.updateChallengeSuccess'));
+      onUpdateSuccess(challengeData);
     } catch (error) {
       console.error('Validation error:', error);
       if (error.errorFields) {
         spaceToast.error(t('common.pleaseFillAllRequiredFields'));
       } else {
-        spaceToast.error(t('dailyChallenge.createChallengeError'));
+        spaceToast.error(t('dailyChallenge.updateChallengeError'));
       }
     } finally {
       setIsButtonDisabled(false);
@@ -196,12 +112,12 @@ const SimpleDailyChallengeModal = ({
             textAlign: 'center',
             padding: '10px 0',
           }}>
-          {t('dailyChallenge.createNewChallenge')}
+          {t('dailyChallenge.editChallenge')}
         </div>
       }
       open={visible}
       onCancel={handleModalCancel}
-      width={800}
+      width={900}
       footer={[
         <Button 
           key="cancel" 
@@ -216,7 +132,7 @@ const SimpleDailyChallengeModal = ({
           {t('common.cancel')}
         </Button>,
         <Button 
-          key="save" 
+          key="update" 
           type="primary" 
           onClick={handleModalOk}
           disabled={isButtonDisabled}
@@ -259,7 +175,7 @@ const SimpleDailyChallengeModal = ({
               e.target.style.boxShadow = 'none';
             }
           }}>
-          {t('dailyChallenge.createChallenge')}
+          {t('dailyChallenge.updateChallenge')}
         </Button>,
       ]}
       centered
@@ -294,42 +210,24 @@ const SimpleDailyChallengeModal = ({
           </Col>
           <Col span={12}>
             <Form.Item
-              label={
-                <span>
-                  {t('dailyChallenge.classLesson')}
-                  <span style={{ color: 'red', marginLeft: '4px' }}>*</span>
-                </span>
-              }
-              name='classLessonId'
-              rules={[
-                {
-                  required: true,
-                  message: t('dailyChallenge.classLessonRequired'),
-                },
-              ]}>
+              label={t('dailyChallenge.classLesson')}
+              name='classLessonId'>
               <Select 
                 placeholder={t('dailyChallenge.selectClassLesson')}
                 style={{ height: '40px' }}
-                loading={loadingLessons}
-                showSearch
-                optionFilterProp="children"
-                filterOption={(input, option) =>
-                  option.children.toLowerCase().indexOf(input.toLowerCase()) >= 0
-                }
-                disabled={!!lessonData}
+                disabled={true}
+                value={challengeData?.lessonId || challengeData?.classLessonId}
               >
-                {lessons.map(lesson => (
-                  <Option key={lesson.id} value={lesson.id}>
-                    {lesson.lessonName}
-                  </Option>
-                ))}
+                <Option value={challengeData?.lessonId || challengeData?.classLessonId}>
+                  {challengeData?.lessonName || 'Selected Lesson'}
+                </Option>
               </Select>
             </Form.Item>
           </Col>
         </Row>
         
         <Row gutter={16}>
-          <Col span={24}>
+          <Col span={12}>
             <Form.Item
               label={
                 <span>
@@ -356,21 +254,134 @@ const SimpleDailyChallengeModal = ({
               </Select>
             </Form.Item>
           </Col>
+          <Col span={12}>
+            <Form.Item
+              label={
+                <span>
+                  {t('dailyChallenge.durationMinutes')}
+                  <span style={{ color: 'red', marginLeft: '4px' }}>*</span>
+                </span>
+              }
+              name='durationMinutes'
+              rules={[
+                {
+                  required: true,
+                  message: t('dailyChallenge.durationMinutesRequired'),
+                },
+                {
+                  type: 'number',
+                  min: 1,
+                  max: 300,
+                  message: t('dailyChallenge.durationMinutesRange'),
+                },
+              ]}>
+              <Input 
+                type="number"
+                placeholder={t('dailyChallenge.durationMinutesPlaceholder')}
+                style={{ height: '40px' }}
+              />
+            </Form.Item>
+          </Col>
         </Row>
 
         <Row gutter={16}>
           <Col span={24}>
             <Form.Item
-              label={
-                <span>
-                  {t('dailyChallenge.description')}
-                </span>
-              }
+              label={t('dailyChallenge.description')}
               name='description'>
               <TextArea 
                 rows={4}
+                placeholder={t('dailyChallenge.descriptionPlaceholder')}
                 maxLength={500}
                 showCount
+              />
+            </Form.Item>
+          </Col>
+        </Row>
+
+        {/* Advanced Settings */}
+        <Row gutter={16}>
+          <Col span={12}>
+            <Form.Item
+              label={t('dailyChallenge.hasAntiCheat')}
+              name='hasAntiCheat'
+              valuePropName="checked">
+              <Switch />
+            </Form.Item>
+          </Col>
+          <Col span={12}>
+            <Form.Item
+              label={t('dailyChallenge.shuffleAnswers')}
+              name='shuffleAnswers'
+              valuePropName="checked">
+              <Switch />
+            </Form.Item>
+          </Col>
+        </Row>
+
+        <Row gutter={16}>
+          <Col span={12}>
+            <Form.Item
+              label={t('dailyChallenge.translateOnScreen')}
+              name='translateOnScreen'
+              valuePropName="checked">
+              <Switch />
+            </Form.Item>
+          </Col>
+          <Col span={12}>
+            <Form.Item
+              label={t('dailyChallenge.aiFeedbackEnabled')}
+              name='aiFeedbackEnabled'
+              valuePropName="checked">
+              <Switch />
+            </Form.Item>
+          </Col>
+        </Row>
+
+        <Row gutter={16}>
+          <Col span={12}>
+            <Form.Item
+              label={
+                <span>
+                  {t('dailyChallenge.startDate')}
+                  <span style={{ color: 'red', marginLeft: '4px' }}>*</span>
+                </span>
+              }
+              name='startDate'
+              rules={[
+                {
+                  required: true,
+                  message: t('dailyChallenge.startDateRequired'),
+                },
+              ]}>
+              <DatePicker 
+                style={{ width: '100%', height: '40px' }}
+                placeholder={t('dailyChallenge.selectStartDate')}
+                format="YYYY-MM-DD HH:mm"
+                showTime
+              />
+            </Form.Item>
+          </Col>
+          <Col span={12}>
+            <Form.Item
+              label={
+                <span>
+                  {t('dailyChallenge.endDate')}
+                  <span style={{ color: 'red', marginLeft: '4px' }}>*</span>
+                </span>
+              }
+              name='endDate'
+              rules={[
+                {
+                  required: true,
+                  message: t('dailyChallenge.endDateRequired'),
+                },
+              ]}>
+              <DatePicker 
+                style={{ width: '100%', height: '40px' }}
+                placeholder={t('dailyChallenge.selectEndDate')}
+                format="YYYY-MM-DD HH:mm"
+                showTime
               />
             </Form.Item>
           </Col>
@@ -380,5 +391,4 @@ const SimpleDailyChallengeModal = ({
   );
 };
 
-export default SimpleDailyChallengeModal;
-
+export default EditDailyChallengeModal;
