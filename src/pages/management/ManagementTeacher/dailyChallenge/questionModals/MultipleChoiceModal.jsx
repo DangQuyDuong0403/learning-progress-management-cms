@@ -309,7 +309,7 @@ const MultipleChoiceModal = ({
 
 		const newQuestionData = {
 			id: questionData?.id || Date.now(),
-			type: answerType === 'single' ? 'multiple-choice' : 'multiple-select',
+			type: answerType === 'single' ? 'MULTIPLE_CHOICE' : 'MULTIPLE_SELECT',
 			title: answerType === 'single' ? 'Multiple choice' : 'Multiple select',
 			question: editorData,
 			options: options.map((opt, index) => ({

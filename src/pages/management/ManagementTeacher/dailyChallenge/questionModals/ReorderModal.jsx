@@ -575,7 +575,7 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
 
     const newQuestionData = {
       id: questionData?.id || Date.now(),
-      type: 'reorder',
+      type: 'REORDER',
       title: 'Reorder',
       questionText: questionHTML,
       correctAnswer: questionText,

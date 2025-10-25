@@ -155,7 +155,7 @@ const TrueFalseModal = ({ visible, onCancel, onSave, questionData = null }) => {
 
 		const newQuestionData = {
 			id: questionData?.id || Date.now(),
-			type: 'true-false',
+			type: 'TRUE_OR_FALSE',
 			title: 'True or false',
 			question: editorData,
 			options: [

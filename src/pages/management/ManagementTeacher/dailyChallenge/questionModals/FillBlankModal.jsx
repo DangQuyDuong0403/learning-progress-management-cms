@@ -1180,7 +1180,7 @@ const FillBlankModal = ({ visible, onCancel, onSave, questionData = null }) => {
 
 		const newQuestionData = {
 			id: questionData?.id || Date.now(),
-			type: 'fill-blank',
+			type: 'FILL_BLANK',
 			title: 'Fill in the blank',
 			questionText: questionText,
 			content: {

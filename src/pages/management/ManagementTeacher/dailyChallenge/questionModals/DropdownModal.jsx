@@ -1218,7 +1218,7 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 
       const newQuestionData = {
         id: questionData?.id || Date.now(),
-			type: 'dropdown',
+			type: 'DROPDOWN',
 			title: 'Dropdown',
 			questionText: questionText,
 			dropdowns: dropdownsData,
