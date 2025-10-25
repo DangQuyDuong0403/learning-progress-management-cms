@@ -1128,6 +1128,7 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 							id: `ans${answerIndex}`,
 							value: blank.answer,
 							positionId: blank.positionId,
+							positionOrder: answerIndex,
 							correct: true
 						});
 						answerIndex++;
@@ -1200,20 +1201,32 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 		// Clean up multiple line breaks
 		questionText = questionText.replace(/\n/g, '<br>');
 
+		// Add incorrect options to contentData (those without positionId)
+		const filteredIncorrectOptions = incorrectOptions.filter(opt => opt.text.trim());
+		filteredIncorrectOptions.forEach((option, index) => {
+			contentData.push({
+				id: `opt${answerIndex + index}`,
+				value: option.text,
+				positionId: null, // No position for incorrect options
+				positionOrder: answerIndex + index,
+				correct: false
+			});
+		});
+
       const newQuestionData = {
         id: questionData?.id || Date.now(),
-			type: 'DRAG_DROP',
+			type: 'DRAG_AND_DROP', // Use uppercase for API format
 			title: 'Drag and Drop',
 			questionText: questionText,
 			content: {
 				data: contentData
 			},
-			incorrectOptions: incorrectOptions.filter(opt => opt.text.trim()),
+			incorrectOptions: filteredIncorrectOptions,
 			points: points,
 			// For backward compatibility
 			question: questionText,
 			blanks: blanks,
-			correctAnswer: contentData.map(d => d.value).join(', '),
+			correctAnswer: contentData.filter(d => d.correct === true).map(d => d.value).join(', '),
       };
 
 		// Log HTML output for debugging

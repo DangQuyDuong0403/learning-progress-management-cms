@@ -437,7 +437,7 @@ const SortableQuestionItem = memo(
 
     // Helper function to render Drag and Drop question
     const renderDragDropQuestion = useCallback(() => {
-      if (question.type !== 'drag-drop' || !question.questionText) {
+      if (question.type !== 'DRAG_AND_DROP' || !question.questionText) {
         return null;
       }
 
@@ -458,19 +458,37 @@ const SortableQuestionItem = memo(
       const answerTextColor = theme === 'sun' ? '#333' : '#e0e0e0';
       const incorrectTextColor = theme === 'sun' ? '#666' : '#b0b0b0';
 
-      // Parse questionText and replace [[pos_xxx]] with (1)____, (2)____, etc.
+      // Parse questionText and replace [[pos_xxx]] with styled blanks
       let displayText = question.questionText;
       const answerChoices = [];
+      const incorrectOptions = [];
+      
+      console.log('DragDrop question:', question);
+      console.log('question.content:', question.content);
       
       if (question.content && question.content.data) {
-        question.content.data.forEach((item, idx) => {
+        // Filter correct options (those with positionId and correct: true)
+        const correctOptions = question.content.data.filter(item => 
+          item.positionId && item.correct === true
+        );
+         
+        // Filter incorrect options (those with positionId: null or correct: false)
+        const incorrectOpts = question.content.data.filter(item => 
+          !item.positionId || item.correct === false
+        );
+        
+        // Process correct options only for blanks
+        correctOptions.forEach((item, idx) => {
           const number = idx + 1; // 1, 2, 3, 4...
           const pattern = `[[pos_${item.positionId}]]`;
           
-          // Replace pattern with (1)____ format
+          // Replace pattern with styled blank format
           displayText = displayText.replace(
             pattern,
-            `<span style="color: ${blankColor}; font-weight: 600;">(${number})</span><span style="text-decoration: underline; padding: 0 2px;">____</span>`
+            `<span style="display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; background: linear-gradient(135deg, ${blankBgColor}, ${blankBgColor.replace('0.08', '0.15').replace('0.15', '0.25')}); border: 2px solid ${blankBorderColor}; border-radius: 8px; font-weight: 600; color: ${blankColor}; margin: 0 4px;">
+              <span style="width: 18px; height: 18px; border-radius: 50%; background: ${blankColor}; color: white; display: inline-flex; align-items: center; justify-content: center; font-size: 11px;">${number}</span>
+              <span style="text-decoration: underline; padding: 0 2px;">____</span>
+            </span>`
           );
           
           // Add to answer choices
@@ -479,10 +497,17 @@ const SortableQuestionItem = memo(
             value: item.value
           });
         });
+        
+        // Process incorrect options (only those without positionId)
+        incorrectOpts.forEach(item => {
+          if (!item.positionId && item.value) {
+            incorrectOptions.push({
+              id: item.id || Date.now(),
+              text: item.value
+            });
+          }
+        });
       }
-
-      // Get incorrect options
-      const incorrectOptions = question.incorrectOptions || [];
 
       return (
         <>
@@ -859,11 +884,11 @@ const SortableQuestionItem = memo(
             renderFillBlankQuestion()
           ) : question.type === 'DROPDOWN' ? (
             renderDropdownQuestion()
-          ) : question.type === 'drag-drop' ? (
+          ) : question.type === 'DRAG_AND_DROP' ? (
             renderDragDropQuestion()
-          ) : question.type === 'reorder' ? (
+          ) : question.type === 'REARRANGE' ? (
             renderReorderQuestion()
-          ) : question.type === 'rewrite' ? (
+          ) : question.type === 'REWRITE' ? (
             renderRewriteQuestion()
           ) : (
             <>
@@ -1078,19 +1103,33 @@ const DailyChallengeContent = () => {
               isCorrect: contentItem.correct || false,
             }));
 
-            return {
+            const mappedQuestion = {
               id: question.id || `${section.id}-${qIndex}`,
-              type: question.questionType ,
+              type: question.questionType,
               question: question.questionText || '',
               questionText: question.questionText || '', // Add this for FillBlank
               options: options,
               content: question.content, // Preserve original content for FillBlank
+              incorrectOptions: [], // Will be set from content.data for DRAG_AND_DROP
               points: question.score || 1,
               timeLimit: 1,
               sectionId: section.id,
               sectionTitle: section.sectionTitle,
               orderNumber: question.orderNumber || qIndex + 1,
             };
+
+            // Log specific question types for debugging
+            if (question.questionType === 'FILL_IN_THE_BLANK') {
+              console.log('FillBlank question:', mappedQuestion);
+            } else if (question.questionType === 'DROPDOWN') {
+              console.log('Dropdown question:', mappedQuestion);
+            } else if (question.questionType === 'DRAG_AND_DROP') {
+              console.log('DragDrop question:', mappedQuestion);
+            } else {
+              console.log(`${question.questionType} question:`, mappedQuestion);
+            }
+
+            return mappedQuestion;
           });
         }).flat(); // Flatten the array to get all questions
 
@@ -1185,8 +1224,9 @@ const DailyChallengeContent = () => {
         // Transform question to API format based on question type
         let apiQuestion;
         
-        // Calculate the next order number
-        const nextOrderNumber = questions.length + 1;
+        // Calculate the next order number (start from 1 for each new section)
+        // Since each section should only have 1 question, always use 1
+        const nextOrderNumber = 1;
         
         if (questionData.type === 'FILL_IN_THE_BLANK') {
           // Fill in the blank question
@@ -1226,6 +1266,18 @@ const DailyChallengeContent = () => {
               data: questionData.content?.data || []
             }
           };
+        } else if (questionData.type === 'DRAG_AND_DROP') {
+          // Drag and Drop question - DRAG_AND_DROP type
+          // contentData already contains both correct answers (with positionId) and incorrect options (positionId: null)
+          apiQuestion = {
+            questionText: questionData.questionText || questionData.question,
+            orderNumber: nextOrderNumber,
+            score: questionData.points || 1,
+            questionType: 'DRAG_AND_DROP',
+            content: {
+              data: questionData.content?.data || []
+            }
+          };
         } else {
           // Multiple choice, Multiple select, or other types
           apiQuestion = {
@@ -1245,9 +1297,23 @@ const DailyChallengeContent = () => {
         }
 
         // Create section data with single question
+        // Set appropriate section content based on question type
+        let sectionContent = 'Choose one correct answer.';
+        if (questionData.type === 'DRAG_AND_DROP') {
+          sectionContent = 'Drag and drop the correct word into each blank to complete the passage.';
+        } else if (questionData.type === 'DROPDOWN') {
+          sectionContent = 'Select the correct answer from the dropdown menu.';
+        } else if (questionData.type === 'FILL_IN_THE_BLANK') {
+          sectionContent = 'Fill in the blank with the correct answer.';
+        } else if (questionData.type === 'MULTIPLE_SELECT') {
+          sectionContent = 'Select all correct answers.';
+        } else if (questionData.type === 'TRUE_OR_FALSE') {
+          sectionContent = 'Choose True or False.';
+        }
+        
         const sectionData = {
           section: {
-            sectionsContent: 'Choose one correct answer.',
+            sectionsContent: sectionContent,
             resourceType: 'NONE'
           },
           questions: [apiQuestion]
@@ -1279,7 +1345,7 @@ const DailyChallengeContent = () => {
       // Always reset loading state
       setSavingQuestion(false);
     }
-  }, [editingQuestion, id, fetchQuestions, questions.length]);
+  }, [editingQuestion, id, fetchQuestions]);
 
   const handleModalCancel = useCallback(() => {
     setModalVisible(false);
