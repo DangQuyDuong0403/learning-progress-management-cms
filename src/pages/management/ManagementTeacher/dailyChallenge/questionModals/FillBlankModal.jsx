@@ -22,8 +22,7 @@ import {
 import './MultipleChoiceModal.css';
 
 const FillBlankModal = ({ visible, onCancel, onSave, questionData = null }) => {
-	const [editorContent, setEditorContent] = useState([]);
-	const [blanks, setBlanks] = useState([]);
+	const [blanks, setBlanksState] = useState([]);
 	const [points, setPoints] = useState(1);
 	const [selectedImage, setSelectedImage] = useState(null);
 	const [tableDropdownOpen, setTableDropdownOpen] = useState(false);
@@ -33,6 +32,21 @@ const FillBlankModal = ({ visible, onCancel, onSave, questionData = null }) => {
 	const editorRef = useRef(null);
 	const fileInputRef = useRef(null);
 	const savedRangeRef = useRef(null);
+	const blanksRef = useRef([]);
+
+	// Custom setBlanks that also updates ref
+	const setBlanks = useCallback((newBlanks) => {
+		if (typeof newBlanks === 'function') {
+			setBlanksState(prev => {
+				const result = newBlanks(prev);
+				blanksRef.current = result;
+				return result;
+			});
+		} else {
+			setBlanksState(newBlanks);
+			blanksRef.current = newBlanks;
+		}
+	}, []);
 
 	// Colors for blanks
 	const blankColors = useMemo(() => [
@@ -94,9 +108,10 @@ const FillBlankModal = ({ visible, onCancel, onSave, questionData = null }) => {
 			parsed.push({ type: 'text', content: '', id: Date.now() });
 		}
 
-		setEditorContent(parsed);
 		setBlanks(blanksData);
-	}, [blankColors]);
+		editorContentRef.current = parsed;
+		blanksRef.current = blanksData;
+	}, [blankColors, setBlanks]);
 
 	// Initialize editor content from questionData
 	useEffect(() => {
@@ -106,12 +121,11 @@ const FillBlankModal = ({ visible, onCancel, onSave, questionData = null }) => {
 				parseQuestionText(questionData.questionText, questionData.content.data);
 				} else {
 				// New question
-				setEditorContent([{ type: 'text', content: '', id: Date.now() }]);
 				setBlanks([]);
 			}
 			setPoints(questionData?.points || 1);
 		}
-	}, [questionData, visible, parseQuestionText]);
+	}, [questionData, visible, parseQuestionText, setBlanks]);
 
 	// Generate position ID
 	const generatePositionId = () => {
@@ -598,7 +612,7 @@ const FillBlankModal = ({ visible, onCancel, onSave, questionData = null }) => {
 		setBlanks(prev => prev.map(blank => 
 				blank.id === blankId ? { ...blank, answer: value } : blank
 		));
-	}, []);
+	}, [setBlanks]);
 
 	// Update blank numbers based on DOM order
 	const updateBlankNumbers = useCallback(() => {
@@ -635,7 +649,7 @@ const FillBlankModal = ({ visible, onCancel, onSave, questionData = null }) => {
 		
 		// Refocus editor
 		editorRef.current.focus();
-	}, [updateBlankNumbers]);
+	}, [setBlanks, updateBlankNumbers]);
 
 	// Create blank element
 	const createBlankElement = useCallback((blank, index) => {
@@ -666,6 +680,8 @@ const FillBlankModal = ({ visible, onCancel, onSave, questionData = null }) => {
 			color: ${blank.color};
 			transition: all 0.2s ease;
 			cursor: pointer;
+			min-width: 0;
+			flex: 1;
 		`;
 
 		// Number badge
@@ -693,6 +709,11 @@ const FillBlankModal = ({ visible, onCancel, onSave, questionData = null }) => {
 			font-weight: 500;
 			font-size: 14px;
 			display: inline;
+			flex: 1;
+			min-width: 0;
+			overflow: hidden;
+			text-overflow: ellipsis;
+			white-space: nowrap;
 		`;
 		answerText.textContent = blank.answer || 'empty';
 
@@ -714,6 +735,8 @@ const FillBlankModal = ({ visible, onCancel, onSave, questionData = null }) => {
 			color: #333;
 			font-weight: 500;
 			display: none;
+			flex: 1;
+			margin-right: 8px;
 		`;
 		input.addEventListener('input', (e) => {
 			handleBlankAnswerChange(blank.id, e.target.value);
@@ -721,6 +744,9 @@ const FillBlankModal = ({ visible, onCancel, onSave, questionData = null }) => {
 			answerText.textContent = e.target.value || 'empty';
 		});
 		input.addEventListener('click', (e) => {
+			e.stopPropagation();
+		});
+		input.addEventListener('mousedown', (e) => {
 			e.stopPropagation();
 		});
 		input.addEventListener('blur', () => {
@@ -746,10 +772,20 @@ const FillBlankModal = ({ visible, onCancel, onSave, questionData = null }) => {
 			transition: all 0.2s ease;
 			font-size: 18px;
 			font-weight: bold;
+			position: relative;
+			z-index: 1000;
+			flex-shrink: 0;
 		`;
 		deleteBtn.addEventListener('click', (e) => {
+			e.preventDefault();
 			e.stopPropagation();
+			e.stopImmediatePropagation();
 			handleDeleteBlankElement(blank.id);
+		});
+		deleteBtn.addEventListener('mousedown', (e) => {
+			e.preventDefault();
+			e.stopPropagation();
+			e.stopImmediatePropagation();
 		});
 		deleteBtn.addEventListener('mouseenter', (e) => {
 			e.target.style.background = 'rgba(255,77,79,1)';
@@ -873,7 +909,7 @@ const FillBlankModal = ({ visible, onCancel, onSave, questionData = null }) => {
 
 		// Hide popup
 		setShowBlankPopup(false);
-	}, [blanks, blankColors, createBlankElement, isCursorInsideBlank, updateBlankNumbers]);
+	}, [blanks, blankColors, createBlankElement, isCursorInsideBlank, updateBlankNumbers, setBlanks]);
 
 	// Handle editor click to deselect image and ensure cursor
 	const handleEditorClick = useCallback((e) => {
@@ -1103,9 +1139,10 @@ const FillBlankModal = ({ visible, onCancel, onSave, questionData = null }) => {
 					const blank = blanks.find(b => b.id === blankId);
 					if (blank) {
 						contentData.push({
-							id: `ans${answerIndex}`,
+							id: `opt${answerIndex}`,
 							value: blank.answer,
 							positionId: blank.positionId,
+							positionOrder: 1, // Always 1 for FILL_IN_THE_BLANK (only one answer per blank)
 							correct: true
 						});
 						answerIndex++;
@@ -1180,7 +1217,8 @@ const FillBlankModal = ({ visible, onCancel, onSave, questionData = null }) => {
 
 		const newQuestionData = {
 			id: questionData?.id || Date.now(),
-			type: 'FILL_BLANK',
+			type: 'FILL_IN_THE_BLANK', // For UI modal identification
+			questionType: 'FILL_IN_THE_BLANK', // For API backend format
 			title: 'Fill in the blank',
 			questionText: questionText,
 			content: {
@@ -1216,6 +1254,7 @@ const FillBlankModal = ({ visible, onCancel, onSave, questionData = null }) => {
 
 	// Track if editor has been initialized
 	const editorInitializedRef = useRef(false);
+	const editorContentRef = useRef([]);
 
 	// Populate editor only when modal opens (initial load)
 	useEffect(() => {
@@ -1229,17 +1268,20 @@ const FillBlankModal = ({ visible, onCancel, onSave, questionData = null }) => {
 		// Clear editor first
 		editorRef.current.innerHTML = '';
 
-		if (editorContent.length === 0) {
+		const currentEditorContent = editorContentRef.current;
+		const currentBlanks = blanksRef.current;
+
+		if (currentEditorContent.length === 0) {
 			editorInitializedRef.current = true;
 			return;
 		}
 
 		// Build editor DOM from editorContent (only on initial load)
-		editorContent.forEach((item, index) => {
+		currentEditorContent.forEach((item, index) => {
 			if (item.type === 'text') {
 				editorRef.current.appendChild(document.createTextNode(item.content));
 			} else if (item.type === 'blank') {
-				const blankIndex = blanks.findIndex(b => b.id === item.id);
+				const blankIndex = currentBlanks.findIndex(b => b.id === item.id);
 				const blankElement = createBlankElement(item, blankIndex >= 0 ? blankIndex : index);
 				editorRef.current.appendChild(blankElement);
 			}
@@ -1251,7 +1293,7 @@ const FillBlankModal = ({ visible, onCancel, onSave, questionData = null }) => {
 		}, 50);
 		
 		editorInitializedRef.current = true;
-	}, [visible, editorContent, blanks, createBlankElement, updateBlankNumbers]);
+	}, [visible, createBlankElement, updateBlankNumbers]);
 
 	// Get blanks ordered by DOM position
 	const orderedBlanks = useMemo(() => {
@@ -1327,12 +1369,14 @@ const FillBlankModal = ({ visible, onCancel, onSave, questionData = null }) => {
 			width={1400}
 			footer={null}
 			style={{ top: 10 }}
-			bodyStyle={{ 
+			styles={{
+				body: { 
 				maxHeight: 'calc(100vh - 120px)',
 				overflow: 'hidden', 
 				position: 'relative',
 				padding: 0,
 				background: 'linear-gradient(135deg, #f0f7ff 0%, #e6f4ff 100%)'
+				}
 			}}
 			key={questionData?.id || 'new'}
 			destroyOnClose>

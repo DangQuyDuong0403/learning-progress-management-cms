@@ -201,6 +201,20 @@ const dailyChallengeApi = {
 				'accept': '*/*',
 			}
 		});
+	},
+
+	// Bulk update sections (delete, reorder) for a challenge
+	bulkUpdateSections: (challengeId, sectionsData) => {
+		const url = `/sections/bulk/${challengeId}`;
+		console.log('BulkUpdateSections API - URL:', url);
+		console.log('BulkUpdateSections API - Data:', sectionsData);
+		
+		return axiosClient.post(url, sectionsData, {
+			headers: {
+				'Content-Type': 'application/json',
+				'accept': '*/*',
+			}
+		});
 	}
 };
 

@@ -973,9 +973,21 @@ const TeacherList = () => {
 											display: 'block', 
 											marginBottom: '2px',
 											cursor: 'pointer',
-											textDecoration: 'underline',
+											textDecoration: 'none',
+											transition: 'all 0.2s ease',
+											padding: '2px 4px',
+											borderRadius: '4px',
 										}}
 										title={`Click to view class: ${className}`}
+										onMouseEnter={(e) => {
+											e.target.style.color = '#40a9ff';
+											e.target.style.transform = 'translateY(-1px)';
+										}}
+										onMouseLeave={(e) => {
+											e.target.style.color = '#000000';
+											e.target.style.transform = 'translateY(0)';
+											e.target.style.boxShadow = 'none';
+										}}
 									>
 										{className}
 									</span>

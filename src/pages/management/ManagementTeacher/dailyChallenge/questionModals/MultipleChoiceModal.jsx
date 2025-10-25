@@ -16,6 +16,7 @@ const MultipleChoiceModal = ({
 	onCancel,
 	onSave,
 	questionData = null,
+	saving = false,
 }) => {
 	
 	// Custom upload adapter for CKEditor to convert images to base64
@@ -312,6 +313,7 @@ const MultipleChoiceModal = ({
 			type: answerType === 'single' ? 'MULTIPLE_CHOICE' : 'MULTIPLE_SELECT',
 			title: answerType === 'single' ? 'Multiple choice' : 'Multiple select',
 			question: editorData,
+			points: points,
 			options: options.map((opt, index) => ({
 				...opt,
 				key: String.fromCharCode(65 + index), // A, B, C, D, ...
@@ -420,6 +422,8 @@ const MultipleChoiceModal = ({
 						onClick={handleSave}
 						size="large"
 						className="save-question-btn"
+						loading={saving}
+						disabled={saving}
 						style={{
 							height: '44px',
 							borderRadius: '12px',
