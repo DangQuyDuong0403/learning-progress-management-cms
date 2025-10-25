@@ -666,23 +666,24 @@ const FillBlankModal = ({ visible, onCancel, onSave, questionData = null }) => {
 			-webkit-user-select: none;
 		`;
 
-		const chip = document.createElement('span');
-		chip.style.cssText = `
-			display: inline-flex;
-			align-items: center;
-			gap: 6px;
-			padding: 6px 12px;
-			background: linear-gradient(135deg, ${blank.color}20, ${blank.color}40);
-			border: 2px solid ${blank.color};
-			border-radius: 8px;
-			font-size: 14px;
-			font-weight: 500;
-			color: ${blank.color};
-			transition: all 0.2s ease;
-			cursor: pointer;
-			min-width: 0;
-			flex: 1;
-		`;
+	const chip = document.createElement('span');
+	chip.style.cssText = `
+		display: inline-flex;
+		align-items: center;
+		gap: 6px;
+		padding: 6px 12px;
+		background: linear-gradient(135deg, ${blank.color}20, ${blank.color}40);
+		border: 2px solid ${blank.color};
+		border-radius: 8px;
+		font-size: 14px;
+		font-weight: 500;
+		color: ${blank.color};
+		transition: all 0.2s ease;
+		cursor: pointer;
+		min-width: 0;
+		max-width: 220px;
+		flex: 1;
+	`;
 
 		// Number badge
 		const badge = document.createElement('span');
@@ -701,21 +702,23 @@ const FillBlankModal = ({ visible, onCancel, onSave, questionData = null }) => {
 		`;
 		badge.textContent = index + 1;
 
-		// Compact mode: Display answer text
-		const answerText = document.createElement('span');
-		answerText.className = 'blank-answer-text';
-		answerText.style.cssText = `
-			color: #333;
-			font-weight: 500;
-			font-size: 14px;
-			display: inline;
-			flex: 1;
-			min-width: 0;
-			overflow: hidden;
-			text-overflow: ellipsis;
-			white-space: nowrap;
-		`;
-		answerText.textContent = blank.answer || 'empty';
+	// Compact mode: Display answer text
+	const answerText = document.createElement('span');
+	answerText.className = 'blank-answer-text';
+	answerText.style.cssText = `
+		color: #333;
+		font-weight: 500;
+		font-size: 14px;
+		display: inline-block;
+		flex: 1;
+		min-width: 0;
+		max-width: 150px;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+		vertical-align: middle;
+	`;
+	answerText.textContent = blank.answer || '';
 
 		// Input field (hidden by default in compact mode)
 		const input = document.createElement('input');
@@ -738,21 +741,26 @@ const FillBlankModal = ({ visible, onCancel, onSave, questionData = null }) => {
 			flex: 1;
 			margin-right: 8px;
 		`;
-		input.addEventListener('input', (e) => {
-			handleBlankAnswerChange(blank.id, e.target.value);
-			// Update answer text in real-time
-			answerText.textContent = e.target.value || 'empty';
-		});
+	input.addEventListener('input', (e) => {
+		handleBlankAnswerChange(blank.id, e.target.value);
+		// Update answer text in real-time
+		answerText.textContent = e.target.value || '';
+	});
 		input.addEventListener('click', (e) => {
 			e.stopPropagation();
 		});
 		input.addEventListener('mousedown', (e) => {
 			e.stopPropagation();
 		});
-		input.addEventListener('blur', () => {
-			// When input loses focus, collapse back to compact mode
-			collapseBlank();
-		});
+	input.addEventListener('blur', (e) => {
+		// If input is empty, delete the blank
+		if (!e.target.value || !e.target.value.trim()) {
+			handleDeleteBlankElement(blank.id);
+			return;
+		}
+		// When input loses focus, collapse back to compact mode
+		collapseBlank();
+	});
 
 		// Delete button (hidden by default in compact mode)
 		const deleteBtn = document.createElement('button');
@@ -1920,9 +1928,17 @@ const FillBlankModal = ({ visible, onCancel, onSave, questionData = null }) => {
 										}}>
 											{index + 1}
 										</span>
-										<span style={{ fontWeight: 500, color: '#333' }}>
-											{blank.answer || '(empty)'}
-										</span>
+									<span style={{ 
+										fontWeight: 500, 
+										color: '#333',
+										maxWidth: '200px',
+										overflow: 'hidden',
+										textOverflow: 'ellipsis',
+										whiteSpace: 'nowrap',
+										display: 'inline-block'
+									}}>
+										{blank.answer || '(empty)'}
+									</span>
 							</div>
 						))}
 					</div>

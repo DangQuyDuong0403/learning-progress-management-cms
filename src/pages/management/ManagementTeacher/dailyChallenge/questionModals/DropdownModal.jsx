@@ -36,10 +36,18 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 	const fileInputRef = useRef(null);
 	const savedRangeRef = useRef(null);
 
-	// Colors for dropdowns
+	// Colors for dropdowns - matching ReorderModal color palette
 	const dropdownColors = useMemo(() => [
-		'#0ea5e9', '#06b6d4', '#3b82f6', '#8b5cf6',
-		'#ec4899', '#f59e0b', '#10b981', '#6366f1',
+		'#e63946', // Red
+		'#2563eb', // Blue
+		'#059669', // Green
+		'#9333ea', // Purple
+		'#ea580c', // Orange
+		'#dc2626', // Bright Red
+		'#0891b2', // Cyan
+		'#d946ef', // Magenta
+		'#84cc16', // Lime
+		'#f59e0b', // Amber
 	], []);
 
 	// Parse backend format to editor format
@@ -898,21 +906,23 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 			-webkit-user-select: none;
 		`;
 
-		const chip = document.createElement('span');
-		chip.style.cssText = `
-			display: inline-flex;
-			align-items: center;
-			gap: 6px;
-			padding: 6px 12px;
-			background: linear-gradient(135deg, ${dropdown.color}20, ${dropdown.color}40);
-			border: 2px solid ${dropdown.color};
-			border-radius: 8px;
-			font-size: 14px;
-			font-weight: 500;
-			color: ${dropdown.color};
-			transition: all 0.2s ease;
-			cursor: pointer;
-		`;
+	const chip = document.createElement('span');
+	chip.style.cssText = `
+		display: inline-flex;
+		align-items: center;
+		gap: 6px;
+		padding: 6px 12px;
+		background: linear-gradient(135deg, ${dropdown.color}20, ${dropdown.color}40);
+		border: 2px solid ${dropdown.color};
+		border-radius: 8px;
+		font-size: 14px;
+		font-weight: 500;
+		color: ${dropdown.color};
+		transition: all 0.2s ease;
+		cursor: pointer;
+		min-width: 0;
+		max-width: 220px;
+	`;
 
 		// Number badge
 		const badge = document.createElement('span');
@@ -931,16 +941,21 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 		`;
 		badge.textContent = index + 1;
 
-		// Compact mode: Display answer text
-		const answerText = document.createElement('span');
-		answerText.className = 'dropdown-answer-text';
-		answerText.style.cssText = `
-			color: #333;
-			font-weight: 500;
-			font-size: 14px;
-			display: inline;
-		`;
-		answerText.textContent = dropdown.correctAnswer || 'empty';
+	// Compact mode: Display answer text
+	const answerText = document.createElement('span');
+	answerText.className = 'dropdown-answer-text';
+	answerText.style.cssText = `
+		color: #333;
+		font-weight: 500;
+		font-size: 14px;
+		display: inline-block;
+		max-width: 150px;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+		vertical-align: middle;
+	`;
+	answerText.textContent = dropdown.correctAnswer || '';
 
 		// Input field (hidden by default in compact mode)
 		const input = document.createElement('input');
@@ -961,18 +976,23 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 			font-weight: 500;
 			display: none;
 		`;
-		input.addEventListener('input', (e) => {
-			handleDropdownAnswerChange(dropdown.id, e.target.value);
-			// Update answer text in real-time
-			answerText.textContent = e.target.value || 'empty';
-		});
+	input.addEventListener('input', (e) => {
+		handleDropdownAnswerChange(dropdown.id, e.target.value);
+		// Update answer text in real-time
+		answerText.textContent = e.target.value || '';
+	});
 		input.addEventListener('click', (e) => {
 			e.stopPropagation();
 		});
-		input.addEventListener('blur', () => {
-			// When input loses focus, collapse back to compact mode
-			collapseDropdown();
-		});
+	input.addEventListener('blur', (e) => {
+		// If input is empty, delete the dropdown
+		if (!e.target.value || !e.target.value.trim()) {
+			handleDeleteDropdownElement(dropdown.id);
+			return;
+		}
+		// When input loses focus, collapse back to compact mode
+		collapseDropdown();
+	});
 
 		// Delete button (always visible for easier deletion)
 		const deleteBtn = document.createElement('button');
