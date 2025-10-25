@@ -33,7 +33,7 @@ import {
   MenuFoldOutlined,
   MenuUnfoldOutlined,
 } from "@ant-design/icons";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import ThemedLayout from "../../../../component/teacherlayout/ThemedLayout";
 import LoadingWithEffect from "../../../../component/spinner/LoadingWithEffect";
 import "./DailyChallengeContent.css";
@@ -44,6 +44,7 @@ import { useDailyChallengeMenu } from "../../../../contexts/DailyChallengeMenuCo
 import usePageTitle from "../../../../hooks/usePageTitle";
 import ChallengeSettingsModal from "./ChallengeSettingsModal";
 import { dailyChallengeApi } from "../../../../apis/apis";
+import { useSelector } from "react-redux";
 import {
   DndContext,
   closestCenter,
@@ -934,9 +935,20 @@ const questionTypes = [
 const DailyChallengeContent = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const location = useLocation();
   const { theme } = useTheme();
   const { id } = useParams();
+  const { user } = useSelector((state) => state.auth);
   const { enterDailyChallengeMenu, exitDailyChallengeMenu, updateChallengeCount } = useDailyChallengeMenu();
+  
+  // Get data from navigation state or fetch from API
+  const [challengeInfo, setChallengeInfo] = useState({
+    classId: location.state?.classId || null,
+    className: location.state?.className || null,
+    challengeId: location.state?.challengeId || id,
+    challengeName: location.state?.challengeName || null,
+    lessonName: location.state?.lessonName || null,
+  });
   
   // Set page title
   usePageTitle('Daily Challenge Management / Content');
@@ -1127,14 +1139,79 @@ const DailyChallengeContent = () => {
   }, [fetchChallengeDetails, fetchQuestions]);
 
   // Enter/exit daily challenge menu mode
+  // Fetch challenge info from API if not available in state
+  const fetchChallengeInfo = useCallback(async () => {
+    // If we already have all info, no need to fetch
+    if (challengeInfo.challengeName && challengeInfo.className) {
+      return;
+    }
+
+    try {
+      // Fetch challenge detail from API
+      const response = await dailyChallengeApi.getDailyChallengeById(id);
+      console.log('Challenge detail response:', response);
+      
+      const data = response?.data;
+      if (data) {
+        setChallengeInfo(prev => ({
+          ...prev,
+          challengeId: data.id || id,
+          challengeName: data.challengeName || data.name || data.title || prev.challengeName,
+        }));
+      }
+    } catch (error) {
+      console.error('Error fetching challenge info:', error);
+    }
+  }, [id, challengeInfo.challengeName, challengeInfo.className]);
+
+  // Fetch challenge info if needed
   useEffect(() => {
-    // Back to Performance page (detail page)
-    enterDailyChallengeMenu(questions.length, null, `/teacher/daily-challenges/detail/${id}`);
+    fetchChallengeInfo();
+  }, [fetchChallengeInfo]);
+
+  useEffect(() => {
+    // Determine back path based on classId
+    const getBackPath = () => {
+      if (challengeInfo.classId) {
+        // If coming from class-specific daily challenges, go back to that list
+        // Route: /teacher/classes/daily-challenges/:classId
+        const userRole = user?.role?.toLowerCase();
+        if (userRole === 'teacher' || userRole === 'teaching_assistant') {
+          return `/teacher/classes/daily-challenges/${challengeInfo.classId}`;
+        } else {
+          return `/manager/classes/daily-challenges/${challengeInfo.classId}`;
+        }
+      } else {
+        // Otherwise, go back to general daily challenges list
+        const userRole = user?.role?.toLowerCase();
+        return userRole === 'teacher' || userRole === 'teaching_assistant' 
+          ? '/teacher/daily-challenges' 
+          : '/manager/daily-challenges';
+      }
+    };
+
+    // Determine subtitle for header
+    const getSubtitle = () => {
+      if (challengeInfo.className && challengeInfo.challengeName) {
+        return `${challengeInfo.className} / ${challengeInfo.challengeName}`;
+      } else if (challengeInfo.challengeName) {
+        return challengeInfo.challengeName;
+      }
+      return null;
+    };
+    
+    // Enter daily challenge menu mode with backPath and subtitle
+    enterDailyChallengeMenu(
+      questions.length, 
+      getSubtitle(), 
+      getBackPath(), 
+      challengeInfo.className
+    );
     
     return () => {
       exitDailyChallengeMenu();
     };
-  }, [enterDailyChallengeMenu, exitDailyChallengeMenu, questions.length, id]);
+  }, [enterDailyChallengeMenu, exitDailyChallengeMenu, questions.length, challengeInfo, user]);
 
   // Update challenge count when questions change
   useEffect(() => {
@@ -1642,9 +1719,11 @@ const DailyChallengeContent = () => {
     [filteredQuestions]
   );
 
-  // Handle back button click
+  // Handle back button click - Navigate to Performance page with state
   const handleBackToDailyChallenges = () => {
-    navigate('/teacher/daily-challenges/detail/' + id);
+    navigate(`/teacher/daily-challenges/detail/${id}`, {
+      state: challengeInfo
+    });
   };
 
   // Import/Export dropdown menu items
@@ -1705,7 +1784,14 @@ const DailyChallengeContent = () => {
                 fontWeight: 300,
                 opacity: 0.5
               }}>|</span>
-              <span>{t('dailyChallenge.dailyChallengeManagement')} / {t('dailyChallenge.content')}</span>
+              <span>
+                {challengeInfo.className && challengeInfo.challengeName 
+                  ? `${challengeInfo.className} / ${challengeInfo.challengeName}` 
+                  : challengeInfo.challengeName 
+                  ? challengeInfo.challengeName
+                  : `${t('dailyChallenge.dailyChallengeManagement')} / ${t('dailyChallenge.content')}`
+                }
+              </span>
             </div>
           </div>
 
