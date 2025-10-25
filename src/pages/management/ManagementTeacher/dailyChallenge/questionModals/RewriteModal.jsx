@@ -68,7 +68,7 @@ const RewriteModal = ({ visible, onCancel, onSave, questionData = null }) => {
 
       const newQuestionData = {
         id: questionData?.id || Date.now(),
-        type: "rewrite",
+        type: "REWRITE",
         title: "Re-write",
         question: values.question,
         correctAnswers: correctAnswers,

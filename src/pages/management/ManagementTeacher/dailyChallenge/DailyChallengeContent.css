@@ -536,6 +536,18 @@
   margin-top: 16px;
 }
 
+/* Limit image size in questions */
+.question-content img,
+.question-options img {
+  max-width: 300px;
+  max-height: 300px;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
 .question-content .ant-typography {
   font-size: 15px;
   line-height: 1.8;

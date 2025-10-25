@@ -43,6 +43,7 @@ import { useTheme } from "../../../../contexts/ThemeContext";
 import { useDailyChallengeMenu } from "../../../../contexts/DailyChallengeMenuContext";
 import usePageTitle from "../../../../hooks/usePageTitle";
 import ChallengeSettingsModal from "./ChallengeSettingsModal";
+import { dailyChallengeApi } from "../../../../apis/apis";
 import {
   DndContext,
   closestCenter,
@@ -70,6 +71,22 @@ import {
   ReorderModal,
   RewriteModal,
 } from "./questionModals";
+
+// Helper function to get question type label
+const getQuestionTypeLabel = (questionType, t) => {
+  const typeMap = {
+    'multiple-choice': t('dailyChallenge.multipleChoice') || 'Multiple Choice',
+    'multiple-select': t('dailyChallenge.multipleSelect') || 'Multiple Select',
+    'true-false': t('dailyChallenge.trueFalse') || 'True/False',
+    'fill-blank': t('dailyChallenge.fillBlank') || 'Fill in the Blank',
+    'dropdown': t('dailyChallenge.dropdown') || 'Dropdown',
+    'drag-drop': t('dailyChallenge.dragDrop') || 'Drag and Drop',
+    'reorder': t('dailyChallenge.reorder') || 'Reorder',
+    'rewrite': t('dailyChallenge.rewrite') || 'Rewrite',
+  };
+  
+  return typeMap[questionType] || questionType || 'Question';
+};
 
 // Sortable Question Item Component
 const SortableQuestionItem = memo(
@@ -354,35 +371,6 @@ const questionTypes = [
   { id: 8, name: "Re-write", type: "rewrite" },
 ];
 
-// Mock data - danh sách câu hỏi
-const mockQuestions = [
-  {
-    id: 1,
-    question: "Hàm f(x) xác định với mọi số x với f(x) = |x+3| + |x+2|. Với giá trị nào của x thì f(x) = f(x-1) ?",
-    options: [
-      { key: "A", text: "-3", isCorrect: false },
-      { key: "B", text: "-2", isCorrect: true },
-      { key: "C", text: "-1", isCorrect: false },
-      { key: "D", text: "1", isCorrect: false },
-      { key: "E", text: "2", isCorrect: false },
-    ],
-    timeLimit: 1, // minutes
-    points: 1,
-  },
-  {
-    id: 2,
-    question: "Tại đại học FPT, 40% sinh viên là thành viên của cả câu lạc bộ cờ vua và câu lạc bộ bơi lội. Nếu 20% thành viên của câu lạc bộ bơi không phải là thành viên của câu lạc bộ cờ vua, thì bao nhiêu phần trăm tổng số học sinh FPT là thành viên của câu lạc bộ bơi?",
-    options: [
-      { key: "A", text: "20%", isCorrect: false },
-      { key: "B", text: "30%", isCorrect: false },
-      { key: "C", text: "40%", isCorrect: false },
-      { key: "D", text: "50%", isCorrect: true },
-    ],
-    timeLimit: 1,
-    points: 1,
-  },
-];
-
 const DailyChallengeContent = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -442,18 +430,82 @@ const DailyChallengeContent = () => {
   );
 
   const fetchQuestions = useCallback(async () => {
+    if (!id) {
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     try {
-      // Simulate API call
-      setTimeout(() => {
-        setQuestions(mockQuestions);
-        setLoading(false);
-      }, 1000);
+      console.log('Fetching sections for challenge:', id);
+      
+      // Call API to get sections (questions) for this challenge
+      const response = await dailyChallengeApi.getSectionsByChallenge(id, {
+        page: 0,
+        size: 100, // Get all questions for now
+      });
+
+      console.log('API Response:', response);
+
+      // Transform API response to match component format
+      if (response && response.data) {
+        const apiQuestions = response.data;
+        
+        // Map API data to question format
+        const mappedQuestions = apiQuestions.map((item, index) => {
+          // Get section info
+          const section = item.section || {};
+          
+          // Get questions from this section
+          const questionsList = item.questions || [];
+          
+          // Map each question
+          return questionsList.map((question, qIndex) => {
+            // Get question content - parse from content.data array
+            const contentData = question.content?.data || [];
+            const options = contentData.map((contentItem, idx) => ({
+              key: String.fromCharCode(65 + idx), // A, B, C, D...
+              text: contentItem.value || '',
+              isCorrect: contentItem.correct || false,
+            }));
+
+            return {
+              id: question.id || `${section.id}-${qIndex}`,
+              type: question.questionType ,
+              question: question.questionText || '',
+              options: options,
+              points: question.score || 1,
+              timeLimit: 1,
+              sectionId: section.id,
+              sectionTitle: section.sectionTitle,
+              orderNumber: question.orderNumber || qIndex + 1,
+            };
+          });
+        }).flat(); // Flatten the array to get all questions
+
+        console.log('Mapped Questions:', mappedQuestions);
+
+        if (mappedQuestions.length > 0) {
+          setQuestions(mappedQuestions);
+        } else {
+          // If no questions, set empty array
+          setQuestions([]);
+        }
+      } else {
+        // If API response is unexpected, set empty array
+        setQuestions([]);
+      }
+      
+      setLoading(false);
     } catch (error) {
-      spaceToast.error('Error loading questions');
+      console.error('Error fetching questions:', error);
+      spaceToast.error(error.response?.data?.message);
+      
+      // On error, set empty array
+      setQuestions([]);
       setLoading(false);
     }
-  }, []);
+  }, [id, t]);
 
   useEffect(() => {
     fetchQuestions();
@@ -566,19 +618,85 @@ const DailyChallengeContent = () => {
     setDeleteQuestion(null);
   }, []);
 
-  const handleSaveChanges = useCallback((saveAsStatus) => {
-    // Update status when saving
-    if (saveAsStatus) {
-      setStatus(saveAsStatus);
-      spaceToast.success(
-        saveAsStatus === 'published' 
-          ? t('dailyChallenge.savedAsPublished') || 'Saved and published successfully!'
-          : t('dailyChallenge.savedAsDraft') || 'Saved as draft successfully!'
-      );
-    } else {
-      spaceToast.success('Changes saved successfully!');
+  const handleSaveChanges = useCallback(async (saveAsStatus) => {
+
+    if (questions.length === 0) {
+      spaceToast.warning('Please add at least one question before saving');
+      return;
     }
-  }, [t]);
+
+    try {
+      setLoading(true);
+
+      // Transform questions to API format
+      // Group questions by section (for now, we'll use a single default section)
+      const apiQuestions = questions.map((question, index) => {
+        // Transform options to content.data format
+        const contentData = question.options ? question.options.map((option, optIndex) => ({
+          id: option.key ? `opt${optIndex + 1}` : `opt${optIndex + 1}`, // opt1, opt2, opt3, opt4
+          value: option.text, // HTML content from CKEditor
+          positionOrder: optIndex + 1,
+          correct: option.isCorrect || false
+        })) : [];
+
+        return {
+          // Don't include id for new questions
+          questionText: question.question, // HTML content from CKEditor
+          orderNumber: index + 1,
+          score: question.points || 0.5, // Default to 0.5 like in sample
+          questionType: question.type ? question.type.toUpperCase().replace(/-/g, '_') : 'MULTIPLE_CHOICE', // Convert to UPPER_SNAKE_CASE
+          content: {
+            data: contentData
+          }
+        };
+      });
+
+      // Create section data
+      const sectionData = {
+        section: {
+          sectionsContent: 'Choose one correct answer.',
+          resourceType: 'NONE'
+        },
+        questions: apiQuestions
+      };
+
+      console.log('Saving section with questions:', sectionData);
+
+      // Step 1: Call API to save section with questions
+      await dailyChallengeApi.saveSectionWithQuestions(id, sectionData);
+
+      // Step 2: If saveAsStatus is provided, update challenge status
+      if (saveAsStatus) {
+        // Convert saveAsStatus to API format (DRAFT or PUBLISHED)
+        const challengeStatus = saveAsStatus === 'published' ? 'PUBLISHED' : 'DRAFT';
+        
+        console.log('Updating challenge status:', challengeStatus);
+        
+        // Call API to update challenge status
+        await dailyChallengeApi.updateDailyChallengeStatus(id, challengeStatus);
+        
+        // Update local status
+        setStatus(saveAsStatus);
+        
+        spaceToast.success(
+          saveAsStatus === 'published' 
+            ? t('dailyChallenge.savedAsPublished') || 'Saved and published successfully!'
+            : t('dailyChallenge.savedAsDraft') || 'Saved as draft successfully!'
+        );
+      } else {
+        spaceToast.success('Changes saved successfully!');
+      }
+
+      // Refresh questions from API
+      await fetchQuestions();
+
+    } catch (error) {
+      console.error('Error saving questions:', error);
+      spaceToast.error(error.response?.data?.error || error.message || 'Failed to save questions');
+    } finally {
+      setLoading(false);
+    }
+  }, [id, questions, t, fetchQuestions]);
 
   const handleOpenSettings = useCallback(() => {
     setSettingsModalVisible(true);
