@@ -899,18 +899,53 @@ const ClassListTable = () => {
 			dataIndex: 'syllabus',
 			key: 'syllabus',
 			width: '18%',
-			render: (text) => (
-				<Tooltip placement="topLeft" title={text}>
-					<div style={{ 
-						fontSize: '16px',
-						overflow: 'hidden',
-						textOverflow: 'ellipsis',
-						whiteSpace: 'nowrap'
-					}}>
-						{text}
-					</div>
-				</Tooltip>
-			),
+			render: (text, record) => {
+				// Check if syllabus has ID for navigation
+				const hasSyllabus = record.syllabusId;
+				
+				if (hasSyllabus) {
+					// Display syllabus name with clickable styling
+					return (
+						<div>
+							<span 
+								className="syllabus-text clickable-syllabus-name"
+								onClick={() => navigate(`/manager/syllabuses/${record.syllabusId}/chapters`)}
+								style={{
+									cursor: 'pointer',
+									textDecoration: 'none',
+									transition: 'all 0.2s ease',
+									padding: '2px 4px',
+									borderRadius: '4px',
+									fontSize: '16px',
+									overflow: 'hidden',
+									textOverflow: 'ellipsis',
+									whiteSpace: 'nowrap',
+									display: 'block'
+								}}
+								title={`Click to view syllabus: ${text}`}
+								onMouseEnter={(e) => {
+									e.target.style.color = '#40a9ff';
+									e.target.style.transform = 'translateY(-1px)';
+								}}
+								onMouseLeave={(e) => {
+									e.target.style.color = '#000000';
+									e.target.style.transform = 'translateY(0)';
+									e.target.style.boxShadow = 'none';
+								}}
+							>
+								{text}
+							</span>
+						</div>
+					);
+				} else {
+					// Display dash for no syllabus
+					return (
+						<span className="syllabus-text" style={{ fontSize: '16px' }}>
+							-
+						</span>
+					);
+				}
+			},
 		},
 		{
 			title: t('classManagement.level'),
