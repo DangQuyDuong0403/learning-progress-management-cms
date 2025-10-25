@@ -73,20 +73,17 @@ import {
   RewriteModal,
 } from "./questionModals";
 
-// Helper function to get question type label
-const getQuestionTypeLabel = (questionType, t) => {
+// Helper function to get full challenge type name
+const getChallengeTypeName = (typeCode) => {
   const typeMap = {
-    'multiple-choice': t('dailyChallenge.multipleChoice') || 'Multiple Choice',
-    'multiple-select': t('dailyChallenge.multipleSelect') || 'Multiple Select',
-    'true-false': t('dailyChallenge.trueFalse') || 'True/False',
-    'fill-blank': t('dailyChallenge.fillBlank') || 'Fill in the Blank',
-    'dropdown': t('dailyChallenge.dropdown') || 'Dropdown',
-    'drag-drop': t('dailyChallenge.dragDrop') || 'Drag and Drop',
-    'reorder': t('dailyChallenge.reorder') || 'Reorder',
-    'rewrite': t('dailyChallenge.rewrite') || 'Rewrite',
+    'GV': 'Grammar & Vocabulary',
+    'RE': 'Reading',
+    'LI': 'Listening',
+    'WR': 'Writing',
+    'SP': 'Speaking',
   };
   
-  return typeMap[questionType] || questionType || 'Question';
+  return typeMap[typeCode] || typeCode || 'Unknown';
 };
 
 // Sortable Question Item Component
@@ -140,7 +137,7 @@ const SortableQuestionItem = memo(
 
     // Helper function to render Fill in the Blank question
     const renderFillBlankQuestion = useCallback(() => {
-      if (question.type !== 'fill-blank' || !question.questionText) {
+      if (question.type !== 'FILL_IN_THE_BLANK' || !question.questionText) {
         return null;
       }
 
@@ -157,6 +154,9 @@ const SortableQuestionItem = memo(
       // Parse questionText and replace [[pos_xxx]] with (1)____, (2)____, etc.
       let displayText = question.questionText;
       const answerChoices = [];
+      
+      console.log('FillBlank question:', question);
+      console.log('question.content:', question.content);
       
       if (question.content && question.content.data) {
         question.content.data.forEach((item, idx) => {
@@ -233,7 +233,7 @@ const SortableQuestionItem = memo(
 
     // Helper function to render Dropdown question
     const renderDropdownQuestion = useCallback(() => {
-      if (question.type !== 'dropdown' || !question.questionText) {
+      if (question.type !== 'DROPDOWN' || !question.questionText) {
         return null;
       }
 
@@ -268,19 +268,36 @@ const SortableQuestionItem = memo(
         ? 'rgba(0, 0, 0, 0.1)' 
         : 'rgba(255, 255, 255, 0.15)';
 
-      // Parse questionText and replace [[dropdown_xxx]] with styled dropdown
+      // Parse questionText and replace [[pos_xxx]] with styled dropdown
       let displayText = question.questionText;
       const dropdownsData = [];
       
-      if (question.dropdowns) {
-        question.dropdowns.forEach((dropdown, idx) => {
+      console.log('Dropdown question:', question);
+      console.log('question.content:', question.content);
+      
+      if (question.content && question.content.data) {
+        // Group options by positionId
+        const positionGroups = {};
+        question.content.data.forEach((item) => {
+          if (!positionGroups[item.positionId]) {
+            positionGroups[item.positionId] = [];
+          }
+          positionGroups[item.positionId].push(item);
+        });
+        
+        // Process each position group
+        Object.keys(positionGroups).forEach((positionId, idx) => {
           const number = idx + 1; // 1, 2, 3, 4...
-          const pattern = `[[dropdown_${dropdown.positionId}]]`;
+          const pattern = `[[pos_${positionId}]]`;
+          
+          const group = positionGroups[positionId];
+          const correctOption = group.find(opt => opt.correct === true);
+          const incorrectOptions = group.filter(opt => opt.correct === false);
           
           // Get all options (correct + incorrect)
           const allOptions = [
-            dropdown.correctAnswer,
-            ...(dropdown.incorrectOptions || []).map(opt => opt.text).filter(text => text)
+            correctOption?.value || '',
+            ...incorrectOptions.map(opt => opt.value).filter(value => value)
           ];
           
           // Replace pattern with dropdown display
@@ -295,7 +312,7 @@ const SortableQuestionItem = memo(
           // Store dropdown data
           dropdownsData.push({
             number: number,
-            correctAnswer: dropdown.correctAnswer,
+            correctAnswer: correctOption?.value || '',
             allOptions: allOptions
           });
         });
@@ -754,21 +771,21 @@ const SortableQuestionItem = memo(
     // Get question type label
     const getQuestionTypeLabel = useCallback(() => {
       switch(question.type) {
-        case 'multiple-choice':
+        case 'MULTIPLE_CHOICE':
           return t('dailyChallenge.multipleChoice') || 'Multiple Choice';
-        case 'multiple-select':
+        case 'MULTIPLE_SELECT':
           return t('dailyChallenge.multipleSelect') || 'Multiple Select';
-        case 'true-false':
+        case 'TRUE_OR_FALSE':
           return t('dailyChallenge.trueFalse') || 'True/False';
-        case 'fill-blank':
+        case 'FILL_IN_THE_BLANK':
           return t('dailyChallenge.fillBlank') || 'Fill in the Blank';
-        case 'dropdown':
+        case 'DROPDOWN':
           return 'Dropdown';
-        case 'drag-drop':
+        case 'DRAG_AND_DROP':
           return 'Drag and Drop';
-        case 'reorder':
+        case 'REARRANGE':
           return 'Reorder';
-        case 'rewrite':
+        case 'REWRITE':
           return 'Re-write';
         default:
           return t('dailyChallenge.multipleChoice') || 'Multiple Choice';
@@ -839,9 +856,9 @@ const SortableQuestionItem = memo(
 
         <div className="question-content">
           {/* Render based on question type */}
-          {question.type === 'fill-blank' ? (
+          {question.type === 'FILL_IN_THE_BLANK' ? (
             renderFillBlankQuestion()
-          ) : question.type === 'dropdown' ? (
+          ) : question.type === 'DROPDOWN' ? (
             renderDropdownQuestion()
           ) : question.type === 'drag-drop' ? (
             renderDragDropQuestion()
@@ -940,6 +957,10 @@ const DailyChallengeContent = () => {
   const [questions, setQuestions] = useState([]);
   const [searchText, setSearchText] = useState("");
   
+  // Challenge Details states
+  const [challengeDetails, setChallengeDetails] = useState(null);
+  const [challengeLoading, setChallengeLoading] = useState(false);
+  
   // Challenge Settings states
   const [challengeMode, setChallengeMode] = useState('normal'); // normal, exam
   const [durationMinutes, setDurationMinutes] = useState(null);
@@ -970,6 +991,7 @@ const DailyChallengeContent = () => {
 
   // Loading states for buttons
   const [templateDownloadLoading, setTemplateDownloadLoading] = useState(false);
+  const [savingQuestion, setSavingQuestion] = useState(false); // Loading state for saving question
 
   // Sensors for drag and drop
   const sensors = useSensors(
@@ -983,6 +1005,50 @@ const DailyChallengeContent = () => {
       coordinateGetter: sortableKeyboardCoordinates,
     })
   );
+
+  const fetchChallengeDetails = useCallback(async () => {
+    if (!id) {
+      setChallengeLoading(false);
+      return;
+    }
+
+    setChallengeLoading(true);
+    try {
+      console.log('Fetching challenge details for ID:', id);
+      
+      // Call API to get challenge details
+      const response = await dailyChallengeApi.getDailyChallengeById(id);
+      console.log('Challenge Details API Response:', response);
+
+      if (response && response.data) {
+        const challengeData = response.data;
+        setChallengeDetails(challengeData);
+        
+        // Update challenge settings states with API data
+        setDurationMinutes(challengeData.durationMinutes);
+        setStartDate(challengeData.startDate);
+        setEndDate(challengeData.endDate);
+        setShuffleAnswers(challengeData.shuffleAnswers || false);
+        setTranslateOnScreen(challengeData.translateOnScreen || false);
+        setAiFeedbackEnabled(challengeData.aiFeedbackEnabled || false);
+        setAntiCheatModeEnabled(challengeData.hasAntiCheat || false);
+        
+        // Set challenge mode based on challengeType or other logic
+        setChallengeMode('normal'); // Default to normal mode
+        
+        // Set status based on challengeStatus
+        setStatus(challengeData.challengeStatus === 'PUBLISHED' ? 'published' : 'draft');
+        
+        console.log('Challenge details loaded:', challengeData);
+      }
+      
+      setChallengeLoading(false);
+    } catch (error) {
+      console.error('Error fetching challenge details:', error);
+      spaceToast.error(error.response?.data?.message || 'Failed to load challenge details');
+      setChallengeLoading(false);
+    }
+  }, [id]);
 
   const fetchQuestions = useCallback(async () => {
     if (!id) {
@@ -1028,7 +1094,9 @@ const DailyChallengeContent = () => {
               id: question.id || `${section.id}-${qIndex}`,
               type: question.questionType ,
               question: question.questionText || '',
+              questionText: question.questionText || '', // Add this for FillBlank
               options: options,
+              content: question.content, // Preserve original content for FillBlank
               points: question.score || 1,
               timeLimit: 1,
               sectionId: section.id,
@@ -1041,7 +1109,10 @@ const DailyChallengeContent = () => {
         console.log('Mapped Questions:', mappedQuestions);
 
         if (mappedQuestions.length > 0) {
-          setQuestions(mappedQuestions);
+          // Sort questions by orderNumber to ensure correct order
+          const sortedQuestions = mappedQuestions.sort((a, b) => (a.orderNumber || 0) - (b.orderNumber || 0));
+          console.log('Sorted Questions:', sortedQuestions);
+          setQuestions(sortedQuestions);
         } else {
           // If no questions, set empty array
           setQuestions([]);
@@ -1060,11 +1131,12 @@ const DailyChallengeContent = () => {
       setQuestions([]);
       setLoading(false);
     }
-  }, [id, t]);
+  }, [id]);
 
   useEffect(() => {
+    fetchChallengeDetails();
     fetchQuestions();
-  }, [fetchQuestions]);
+  }, [fetchChallengeDetails, fetchQuestions]);
 
   // Enter/exit daily challenge menu mode
   // Fetch challenge info from API if not available in state
@@ -1167,22 +1239,124 @@ const DailyChallengeContent = () => {
     setQuestionTypeModalVisible(false);
   }, []);
 
-  const handleModalSave = useCallback((questionData) => {
-    if (editingQuestion) {
-      // Update existing question
-      setQuestions(prev => prev.map(q => 
-        q.id === editingQuestion.id ? { ...questionData, id: editingQuestion.id } : q
-      ));
-      spaceToast.success(`${questionData.title} question updated successfully!`);
-    } else {
-      // Add new question
-      setQuestions(prev => [...prev, questionData]);
-      spaceToast.success(`${questionData.title} question added successfully!`);
+  const handleModalSave = useCallback(async (questionData) => {
+    try {
+      if (editingQuestion) {
+        // Update existing question - chỉ update local state, chưa gọi API update
+        setQuestions(prev => prev.map(q => 
+          q.id === editingQuestion.id ? { ...questionData, id: editingQuestion.id } : q
+        ));
+        spaceToast.success(`${questionData.title} question updated successfully!`);
+        
+        // Close modal immediately for edit mode
+        setModalVisible(false);
+        setCurrentModalType(null);
+        setEditingQuestion(null);
+      } else {
+        // Add new question - Gọi API để lưu vào database ngay
+        setSavingQuestion(true);
+        
+        // Close modal immediately to show loading on the list
+        setModalVisible(false);
+        
+        // Transform question to API format based on question type
+        let apiQuestion;
+        
+        // Calculate the next order number
+        const nextOrderNumber = questions.length + 1;
+        
+        if (questionData.type === 'FILL_IN_THE_BLANK') {
+          // Fill in the blank question
+          apiQuestion = {
+            questionText: questionData.questionText || questionData.question,
+            orderNumber: nextOrderNumber,
+            score: questionData.points || 0.5,
+            questionType: questionData.questionType || 'FILL_IN_THE_BLANK',
+            content: {
+              data: questionData.content?.data || []
+            }
+          };
+        } else if (questionData.type === 'TRUE_OR_FALSE') {
+          // True/False question
+          apiQuestion = {
+            questionText: questionData.question,
+            orderNumber: nextOrderNumber,
+            score: questionData.points || 0.5,
+            questionType: 'TRUE_OR_FALSE',
+            content: {
+              data: questionData.options ? questionData.options.map((option, optIndex) => ({
+                id: `opt${optIndex + 1}`,
+                value: option.text,
+                positionOrder: optIndex + 1,
+                correct: option.isCorrect || false
+              })) : []
+            }
+          };
+        } else if (questionData.type === 'DROPDOWN') {
+          // Dropdown question
+          apiQuestion = {
+            questionText: questionData.questionText || questionData.question,
+            orderNumber: nextOrderNumber,
+            score: questionData.points || 0.5,
+            questionType: 'DROPDOWN',
+            content: {
+              data: questionData.content?.data || []
+            }
+          };
+        } else {
+          // Multiple choice, Multiple select, or other types
+          apiQuestion = {
+            questionText: questionData.question,
+            orderNumber: nextOrderNumber,
+            score: questionData.points || 0.5,
+            questionType: questionData.type ? questionData.type.toUpperCase().replace(/-/g, '_') : 'MULTIPLE_CHOICE',
+            content: {
+              data: questionData.options ? questionData.options.map((option, optIndex) => ({
+                id: option.key ? `opt${optIndex + 1}` : `opt${optIndex + 1}`,
+                value: option.text,
+                positionOrder: optIndex + 1,
+                correct: option.isCorrect || false
+              })) : []
+            }
+          };
+        }
+
+        // Create section data with single question
+        const sectionData = {
+          section: {
+            sectionsContent: 'Choose one correct answer.',
+            resourceType: 'NONE'
+          },
+          questions: [apiQuestion]
+        };
+
+        console.log('Saving new question to API:', sectionData);
+
+        // Call API to save the question
+        const response = await dailyChallengeApi.saveSectionWithQuestions(id, sectionData);
+        
+        // Refresh questions from API to get the saved question with ID
+        await fetchQuestions();
+        
+        spaceToast.success(response.message);
+        
+        // Reset modal states
+        setCurrentModalType(null);
+        setEditingQuestion(null);
+      }
+    } catch (error) {
+      console.error('Error saving question:', error);
+      spaceToast.error(error.response?.data?.error || error.message || 'Failed to save question');
+      
+      // Reset modal states even on error
+      setModalVisible(false);
+      setCurrentModalType(null);
+      setEditingQuestion(null);
+    } finally {
+      // Always reset loading state
+      setSavingQuestion(false);
     }
-    setModalVisible(false);
-    setCurrentModalType(null);
-    setEditingQuestion(null);
-  }, [editingQuestion]);
+  }, [editingQuestion, id, fetchQuestions, questions.length]);
 
   const handleModalCancel = useCallback(() => {
     setModalVisible(false);
@@ -1220,16 +1394,20 @@ const DailyChallengeContent = () => {
 
   const handleDeleteConfirm = useCallback(async () => {
     try {
-      // Update local state - remove question
-      setQuestions(prev => prev.filter(q => q.id !== deleteQuestion.id));
+      // Mark question as toBeDeleted instead of removing it
+      setQuestions(prev => prev.map(q => 
+        q.id === deleteQuestion.id 
+          ? { ...q, toBeDeleted: true }
+          : q
+      ));
       
-      spaceToast.success('Question deleted successfully!');
+      spaceToast.success('Question marked for deletion. Click Save to apply changes.');
       
       setIsDeleteModalVisible(false);
       setDeleteQuestion(null);
     } catch (error) {
-      console.error('Error deleting question:', error);
-      spaceToast.error('Failed to delete question');
+      console.error('Error marking question for deletion:', error);
+      spaceToast.error('Failed to mark question for deletion');
     }
   }, [deleteQuestion]);
 
@@ -1239,8 +1417,10 @@ const DailyChallengeContent = () => {
   }, []);
 
   const handleSaveChanges = useCallback(async (saveAsStatus) => {
-
-    if (questions.length === 0) {
+    // Check if there are any visible questions (not deleted)
+    const visibleQuestions = questions.filter(q => !q.toBeDeleted);
+    
+    if (visibleQuestions.length === 0) {
       spaceToast.warning('Please add at least one question before saving');
       return;
     }
@@ -1248,44 +1428,49 @@ const DailyChallengeContent = () => {
     try {
       setLoading(true);
 
-      // Transform questions to API format
-      // Group questions by section (for now, we'll use a single default section)
-      const apiQuestions = questions.map((question, index) => {
-        // Transform options to content.data format
-        const contentData = question.options ? question.options.map((option, optIndex) => ({
-          id: option.key ? `opt${optIndex + 1}` : `opt${optIndex + 1}`, // opt1, opt2, opt3, opt4
-          value: option.text, // HTML content from CKEditor
-          positionOrder: optIndex + 1,
-          correct: option.isCorrect || false
-        })) : [];
-
-        return {
-          // Don't include id for new questions
-          questionText: question.question, // HTML content from CKEditor
-          orderNumber: index + 1,
-          score: question.points || 0.5, // Default to 0.5 like in sample
-          questionType: question.type ? question.type.toUpperCase().replace(/-/g, '_') : 'MULTIPLE_CHOICE', // Convert to UPPER_SNAKE_CASE
-          content: {
-            data: contentData
+      // Prepare bulk update data based on visible questions order
+      // Group questions by sectionId to get unique sections
+      const sectionsMap = new Map();
+      
+      // First, collect all sections (including deleted ones)
+      questions.forEach((question) => {
+        if (question.sectionId !== undefined && question.sectionId !== null) {
+          const sectionId = question.sectionId;
+          if (!sectionsMap.has(sectionId)) {
+            sectionsMap.set(sectionId, {
+              id: sectionId, // This is the section ID to send to API
+              toBeDeleted: false,
+              hasVisibleQuestions: false
+            });
           }
-        };
+          
+          // If this question is marked for deletion, mark the section for deletion too
+          if (question.toBeDeleted) {
+            sectionsMap.get(sectionId).toBeDeleted = true;
+          } else {
+            // If this question is not deleted, mark that section has visible questions
+            sectionsMap.get(sectionId).hasVisibleQuestions = true;
+          }
+        }
+      });
+      
+      // Set order numbers for visible sections only
+      let orderNumber = 1;
+      const bulkUpdateData = Array.from(sectionsMap.values()).map(section => ({
+        ...section,
+        orderNumber: section.hasVisibleQuestions ? orderNumber++ : section.orderNumber
+      }));
+
+      console.log('Bulk update sections data:', {
+        count: bulkUpdateData.length,
+        sections: bulkUpdateData
       });
 
-      // Create section data
-      const sectionData = {
-        section: {
-          sectionsContent: 'Choose one correct answer.',
-          resourceType: 'NONE'
-        },
-        questions: apiQuestions
-      };
+      // Step 1: Call bulk update API to save/reorder sections
+      const bulkResponse = await dailyChallengeApi.bulkUpdateSections(id, bulkUpdateData);
+      console.log('Bulk update response:', bulkResponse);
 
-      console.log('Saving section with questions:', sectionData);
-
-      // Step 1: Call API to save section with questions
-      await dailyChallengeApi.saveSectionWithQuestions(id, sectionData);
-
-      // Step 2: If saveAsStatus is provided, update challenge status
+      // Step 2: Update challenge status if saveAsStatus is provided
       if (saveAsStatus) {
         // Convert saveAsStatus to API format (DRAFT or PUBLISHED)
         const challengeStatus = saveAsStatus === 'published' ? 'PUBLISHED' : 'DRAFT';
@@ -1307,12 +1492,12 @@ const DailyChallengeContent = () => {
         spaceToast.success('Changes saved successfully!');
       }
 
-      // Refresh questions from API
+      // Refresh questions from API to get updated data
       await fetchQuestions();
 
     } catch (error) {
-      console.error('Error saving questions:', error);
-      spaceToast.error(error.response?.data?.error || error.message || 'Failed to save questions');
+      console.error('Error saving changes:', error);
+      spaceToast.error(error.response?.data?.error || error.message || 'Failed to save changes');
     } finally {
       setLoading(false);
     }
@@ -1327,6 +1512,7 @@ const DailyChallengeContent = () => {
   }, []);
 
   const handleSaveSettings = useCallback((settingsData) => {
+    // Update local state with new settings
     setChallengeMode(settingsData.challengeMode);
     setDurationMinutes(settingsData.durationMinutes);
     setStartDate(settingsData.startDate);
@@ -1492,14 +1678,35 @@ const DailyChallengeContent = () => {
 
         if (oldIndex === -1 || newIndex === -1) return items;
 
-        return arrayMove(items, oldIndex, newIndex);
+        const newItems = arrayMove(items, oldIndex, newIndex);
+
+        // Update orderNumber based on visible items (not deleted)
+        const visibleItems = newItems.filter(q => !q.toBeDeleted);
+        return newItems.map((question) => {
+          if (question.toBeDeleted) {
+            return question; // Keep deleted items as-is
+          }
+          
+          // Update orderNumber based on visible items order
+          const visibleIndex = visibleItems.findIndex(item => item.id === question.id);
+          return {
+            ...question,
+            orderNumber: visibleIndex + 1,
+          };
+        });
       });
     }
   }, []);
 
-  // Filter questions
+  // Filter questions (exclude deleted ones and apply search filter)
   const filteredQuestions = useMemo(() => {
     return questions.filter((question) => {
+      // Exclude deleted questions
+      if (question.toBeDeleted) {
+        return false;
+      }
+      
+      // Apply search filter
       const matchesSearch =
         searchText === "" ||
         question.question.toLowerCase().includes(searchText.toLowerCase());
@@ -1813,6 +2020,7 @@ const DailyChallengeContent = () => {
                         : 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(244, 240, 255, 0.95) 100%)',
                       backdropFilter: 'blur(10px)'
                     }}
+                    loading={challengeLoading}
                   >
                     {/* Settings Header with Icons */}
                     <div style={{ 
@@ -1929,6 +2137,26 @@ const DailyChallengeContent = () => {
                       {t('dailyChallenge.configuration')}
                   </Typography.Title>
                   <div>
+                      {/* Challenge Name */}
+                      <div style={{ marginBottom: '12px', paddingBottom: '12px', borderBottom: '1px solid #f0f0f0' }}>
+                        <Typography.Text style={{ fontSize: '12px', color: '#666', display: 'block', marginBottom: '4px' }}>
+                          {t('dailyChallenge.challengeName')}
+                                </Typography.Text>
+                        <Typography.Text strong style={{ fontSize: '14px' }}>
+                          {challengeDetails?.challengeName || t('common.notSet')}
+                                </Typography.Text>
+                            </div>
+
+                      {/* Challenge Type */}
+                      <div style={{ marginBottom: '12px', paddingBottom: '12px', borderBottom: '1px solid #f0f0f0' }}>
+                        <Typography.Text style={{ fontSize: '12px', color: '#666', display: 'block', marginBottom: '4px' }}>
+                          {t('dailyChallenge.questionType')}
+                                </Typography.Text>
+                        <Typography.Text strong style={{ fontSize: '14px' }}>
+                          {challengeDetails?.challengeType ? getChallengeTypeName(challengeDetails.challengeType) : t('common.notSet')}
+                                </Typography.Text>
+                            </div>
+
                       {/* Duration */}
                       <div style={{ marginBottom: '12px', paddingBottom: '12px', borderBottom: '1px solid #f0f0f0' }}>
                         <Typography.Text style={{ fontSize: '12px', color: '#666', display: 'block', marginBottom: '4px' }}>
@@ -2163,6 +2391,7 @@ const DailyChallengeContent = () => {
         onCancel={handleModalCancel}
         onSave={handleModalSave}
         questionData={editingQuestion}
+        saving={savingQuestion}
       />
       
       <MultipleSelectModal
@@ -2170,6 +2399,7 @@ const DailyChallengeContent = () => {
         onCancel={handleModalCancel}
         onSave={handleModalSave}
         questionData={editingQuestion}
+        saving={savingQuestion}
       />
       
       <TrueFalseModal
@@ -2177,6 +2407,7 @@ const DailyChallengeContent = () => {
         onCancel={handleModalCancel}
         onSave={handleModalSave}
         questionData={editingQuestion}
+        saving={savingQuestion}
       />
       
       <FillBlankModal
@@ -2184,6 +2415,7 @@ const DailyChallengeContent = () => {
         onCancel={handleModalCancel}
         onSave={handleModalSave}
         questionData={editingQuestion}
+        saving={savingQuestion}
       />
       
       <DropdownModal
@@ -2191,6 +2423,7 @@ const DailyChallengeContent = () => {
         onCancel={handleModalCancel}
         onSave={handleModalSave}
         questionData={editingQuestion}
+        saving={savingQuestion}
       />
       
       <DragDropModal
@@ -2198,6 +2431,7 @@ const DailyChallengeContent = () => {
         onCancel={handleModalCancel}
         onSave={handleModalSave}
         questionData={editingQuestion}
+        saving={savingQuestion}
       />
       
       <ReorderModal
@@ -2205,6 +2439,7 @@ const DailyChallengeContent = () => {
         onCancel={handleModalCancel}
         onSave={handleModalSave}
         questionData={editingQuestion}
+        saving={savingQuestion}
       />
       
       <RewriteModal
@@ -2212,6 +2447,7 @@ const DailyChallengeContent = () => {
         onCancel={handleModalCancel}
         onSave={handleModalSave}
         questionData={editingQuestion}
+        saving={savingQuestion}
       />
 
       {/* Delete Confirmation Modal */}
@@ -2444,7 +2680,11 @@ const DailyChallengeContent = () => {
         visible={settingsModalVisible}
         onCancel={handleCloseSettings}
         onSave={handleSaveSettings}
+        challengeId={id}
         initialValues={{
+          challengeName: challengeDetails?.challengeName,
+          description: challengeDetails?.description,
+          challengeType: challengeDetails?.challengeType,
           challengeMode,
           durationMinutes,
           startDate,

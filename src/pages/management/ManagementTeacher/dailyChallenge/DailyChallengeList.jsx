@@ -6,7 +6,6 @@ import {
   Table,
   Typography,
   Tooltip,
-  Switch,
   Modal,
 } from "antd";
 import {
@@ -16,6 +15,7 @@ import {
   FilterOutlined,
   DeleteOutlined,
   EditOutlined,
+  CheckCircleOutlined,
 } from "@ant-design/icons";
 import ThemedLayout from "../../../../component/teacherlayout/ThemedLayout";
 import LoadingWithEffect from "../../../../component/spinner/LoadingWithEffect";
@@ -727,15 +727,12 @@ const DailyChallengeList = () => {
       width: 120,
       align: 'center',
       render: (status, record) => (
-        <Switch
-          checked={status === 'PUBLISHED'}
-          onChange={() => handleToggleStatus(record.id)}
-          size="large"
-          style={{
-            transform: 'scale(1.2)',
-          }}
-          className={`status-switch ${theme}-status-switch`}
-        />
+        <span style={{
+          fontSize: '20px',
+          color: '#000000'
+        }}>
+          {status === 'PUBLISHED' ? t('dailyChallenge.published') : t('dailyChallenge.draft')}
+        </span>
       ),
     },
     {
@@ -766,6 +763,15 @@ const DailyChallengeList = () => {
               className="action-btn-edit"
               style={{ color: '#1890ff' }}
             />
+            {record.status === 'DRAFT' && (
+              <Button
+                type="text"
+                icon={<CheckCircleOutlined style={{ fontSize: '24px'}} />}
+                onClick={() => handleToggleStatus(record.id)}
+                title="Publish"
+                className="action-btn-status"
+              />
+            )}
             <Button
               type="text"
               icon={<DeleteOutlined style={{ fontSize: '24px', color: '#ff4d4f' }} />}
