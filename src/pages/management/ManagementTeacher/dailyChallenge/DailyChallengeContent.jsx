@@ -616,7 +616,7 @@ const SortableQuestionItem = memo(
 
     // Helper function to render Reorder question
     const renderReorderQuestion = useCallback(() => {
-      if (question.type !== 'reorder' || !question.shuffledWords) {
+      if (question.type !== 'REARRANGE' || !question.content?.data) {
         return null;
       }
 
@@ -637,33 +637,102 @@ const SortableQuestionItem = memo(
         : 'rgba(115, 209, 61, 0.4)';
       const textColor = theme === 'sun' ? '#333' : '#e0e0e0';
 
+      // Parse questionText and replace [[pos_xxx]] with styled blanks
+      let displayText = question.questionText || '';
+      const wordsData = [];
+      
+      console.log('REARRANGE question:', question);
+      console.log('question.content:', question.content);
+      
+      if (question.content && question.content.data) {
+        // Sort by positionOrder to get correct order
+        const sortedData = question.content.data.sort((a, b) => (a.positionOrder || 0) - (b.positionOrder || 0));
+        
+        sortedData.forEach((item, idx) => {
+          const number = idx + 1; // 1, 2, 3, 4...
+          const pattern = `[[pos_${item.positionId}]]`;
+          
+          // Replace pattern with styled blank format
+          displayText = displayText.replace(
+            pattern,
+            `<span style="display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; background: linear-gradient(135deg, ${wordBgStart}, ${wordBgEnd}); border: 2px solid ${wordBorderColor}; border-radius: 8px; font-weight: 600; color: ${wordBorderColor}; margin: 0 4px;">
+              <span style="width: 18px; height: 18px; border-radius: 50%; background: ${wordBorderColor}; color: white; display: inline-flex; align-items: center; justify-content: center; font-size: 11px;">${number}</span>
+              <span style="text-decoration: underline; padding: 0 2px;">____</span>
+            </span>`
+          );
+          
+          // Add to words data
+          wordsData.push({
+            number: number,
+            value: item.value,
+            positionId: item.positionId,
+            positionOrder: item.positionOrder
+          });
+        });
+      }
+
       return (
         <>
-          {/* Shuffled Words */}
-          <div style={{ 
-            display: 'flex',
-            flexWrap: 'wrap',
-            gap: '10px',
-            marginBottom: '16px'
-          }}>
-            {question.shuffledWords.map((word, idx) => (
-              <div 
-                key={word.id || idx}
-                style={{
-                  padding: '10px 16px',
-                  background: `linear-gradient(135deg, ${wordBgStart} 0%, ${wordBgEnd} 100%)`,
-                  border: `2px solid ${wordBorderColor}`,
-                  borderRadius: '8px',
-                  fontSize: '14px',
-                  fontWeight: 500,
-                  color: textColor,
-                  boxShadow: '0 2px 6px rgba(24, 144, 255, 0.12)'
-                }}
-              >
-                {word.text}
+          {/* Question Text with blanks */}
+          <div 
+            style={{ 
+              marginBottom: '16px', 
+              fontSize: '15px', 
+              fontWeight: 500,
+              lineHeight: '1.8'
+            }}
+            dangerouslySetInnerHTML={{ __html: displayText }}
+          />
+
+          {/* Words to Rearrange */}
+          {wordsData.length > 0 && (
+            <div style={{ 
+              marginTop: '16px',
+              marginBottom: '16px'
+            }}>
+              <div style={{
+                fontSize: '13px',
+                fontWeight: 600,
+                color: wordBorderColor,
+                marginBottom: '8px'
+              }}>
+                🔀 Words to rearrange:
               </div>
-            ))}
-          </div>
+              <div style={{ 
+                display: 'flex', 
+                flexWrap: 'wrap', 
+                gap: '12px'
+              }}>
+                {wordsData.map((word, idx) => (
+                  <div 
+                    key={idx}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      padding: '8px 16px',
+                      background: wordBgStart,
+                      border: `2px solid ${wordBorderColor}`,
+                      borderRadius: '8px',
+                      fontSize: '14px',
+                      fontWeight: 500
+                    }}
+                  >
+                    <span style={{ 
+                      fontWeight: 700, 
+                      color: wordBorderColor,
+                      fontSize: '15px'
+                    }}>
+                      ({word.number})
+                    </span>
+                    <span style={{ color: textColor }}>
+                      {word.value}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Correct Answer */}
           <div style={{ 
@@ -691,7 +760,7 @@ const SortableQuestionItem = memo(
                 lineHeight: '1.8'
               }}
             >
-              {question.correctAnswer}
+              {wordsData.map(word => word.value).join(' ')}
             </div>
           </div>
         </>
@@ -700,7 +769,7 @@ const SortableQuestionItem = memo(
 
     // Helper function to render Rewrite question
     const renderRewriteQuestion = useCallback(() => {
-      if (question.type !== 'rewrite' || !question.questionText) {
+      if (question.type !== 'REWRITE' || !question.questionText) {
         return null;
       }
 
@@ -721,6 +790,16 @@ const SortableQuestionItem = memo(
       const answerBorderColor = theme === 'sun' ? '#22c55e' : '#73d13d';
       const textColor = theme === 'sun' ? '#333' : '#e0e0e0';
 
+      // Parse questionText and remove positionId markers for display
+      let displayText = question.questionText;
+      if (question.content && question.content.data) {
+        // Remove positionId markers like [[pos_a1b2c3]] from display
+        question.content.data.forEach((item) => {
+          const pattern = `[[pos_${item.positionId}]]`;
+          displayText = displayText.replace(pattern, '');
+        });
+      }
+
       return (
         <>
           {/* Question Text */}
@@ -731,11 +810,74 @@ const SortableQuestionItem = memo(
               fontWeight: 500,
               lineHeight: '1.8'
             }}
-            dangerouslySetInnerHTML={{ __html: question.questionText }}
+            dangerouslySetInnerHTML={{ __html: displayText }}
           />
 
-          {/* Correct Answers */}
-          {question.correctAnswers && question.correctAnswers.length > 0 && (
+          {/* Correct Answers from content.data */}
+          {question.content && question.content.data && question.content.data.length > 0 && (
+            <div style={{ 
+              background: correctBgColor,
+              border: `2px solid ${correctBorderColor}`,
+              borderRadius: '12px',
+              padding: '16px'
+            }}>
+              <div style={{ 
+                fontSize: '14px', 
+                fontWeight: 600, 
+                color: correctColor,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}>
+                ✓ Correct Answers:
+              </div>
+              <div style={{ 
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '10px'
+              }}>
+                {question.content.data.map((item, idx) => (
+                  <div 
+                    key={item.id || idx}
+                    style={{
+                      padding: '10px 16px',
+                      background: `linear-gradient(135deg, ${answerBgStart} 0%, ${answerBgEnd} 100%)`,
+                      border: `2px solid ${answerBorderColor}`,
+                      borderRadius: '8px',
+                      fontSize: '14px',
+                      fontWeight: 500,
+                      color: textColor,
+                      display: 'flex',
+                      alignItems: 'flex-start',
+                      gap: '10px',
+                      boxShadow: '0 2px 6px rgba(34, 197, 94, 0.12)'
+                    }}
+                  >
+                    <span style={{
+                      fontWeight: 700,
+                      color: correctColor,
+                      fontSize: '13px',
+                      minWidth: '20px',
+                      lineHeight: '1.4'
+                    }}>
+                      {idx + 1}.
+                    </span>
+                    <div 
+                      style={{ 
+                        flex: 1,
+                        lineHeight: '1.4'
+                      }}
+                      dangerouslySetInnerHTML={{ __html: item.value }} 
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Fallback: Show correctAnswers if content.data is not available */}
+          {(!question.content || !question.content.data || question.content.data.length === 0) && 
+           question.correctAnswers && question.correctAnswers.length > 0 && (
             <div style={{ 
               background: correctBgColor,
               border: `2px solid ${correctBorderColor}`,
@@ -770,7 +912,7 @@ const SortableQuestionItem = memo(
                       fontWeight: 500,
                       color: textColor,
                       display: 'flex',
-                      alignItems: 'center',
+                      alignItems: 'flex-start',
                       gap: '10px',
                       boxShadow: '0 2px 6px rgba(34, 197, 94, 0.12)'
                     }}
@@ -779,11 +921,19 @@ const SortableQuestionItem = memo(
                       fontWeight: 700,
                       color: correctColor,
                       fontSize: '13px',
-                      minWidth: '20px'
+                      minWidth: '20px',
+                      lineHeight: '1.4'
                     }}>
                       {idx + 1}.
                     </span>
-                    <span>{ans.answer}</span>
+                    <div 
+                      style={{ 
+                        flex: 1,
+                        lineHeight: '1.4',
+                        marginBottom: '0px',
+                      }}
+                      dangerouslySetInnerHTML={{ __html: ans.answer }} 
+                    />
                   </div>
                 ))}
               </div>
@@ -809,7 +959,7 @@ const SortableQuestionItem = memo(
         case 'DRAG_AND_DROP':
           return 'Drag and Drop';
         case 'REARRANGE':
-          return 'Reorder';
+          return 'Rearrange';
         case 'REWRITE':
           return 'Re-write';
         default:
@@ -1355,6 +1505,28 @@ const DailyChallengeContent = () => {
               data: questionData.content?.data || []
             }
           };
+        } else if (questionData.type === 'REARRANGE') {
+          // Rearrange question - REARRANGE type
+          apiQuestion = {
+            questionText: questionData.questionText || questionData.question,
+            orderNumber: nextOrderNumber,
+            score: questionData.points || 1,
+            questionType: 'REARRANGE',
+            content: {
+              data: questionData.content?.data || []
+            }
+          };
+        } else if (questionData.type === 'REWRITE') {
+          // Rewrite question - REWRITE type
+          apiQuestion = {
+            questionText: questionData.questionText || questionData.question,
+            orderNumber: nextOrderNumber,
+            score: questionData.points || 1,
+            questionType: 'REWRITE',
+            content: {
+              data: questionData.content?.data || []
+            }
+          };
         } else {
           // Multiple choice, Multiple select, or other types
           apiQuestion = {
@@ -1386,6 +1558,10 @@ const DailyChallengeContent = () => {
           sectionContent = 'Select all correct answers.';
         } else if (questionData.type === 'TRUE_OR_FALSE') {
           sectionContent = 'Choose True or False.';
+        } else if (questionData.type === 'REARRANGE') {
+          sectionContent = 'Rearrange the words to make a correct sentence.';
+        } else if (questionData.type === 'REWRITE') {
+          sectionContent = 'Rewrite the sentences as instructed.';
         }
         
         const sectionData = {

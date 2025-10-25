@@ -255,6 +255,8 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
       color: ${blank.color};
       transition: all 0.2s ease;
       cursor: pointer;
+      min-width: 0;
+      flex: 1;
     `;
 
     // Number badge
@@ -303,6 +305,8 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
       color: #333;
       font-weight: 500;
       display: none;
+      flex: 1;
+      margin-right: 8px;
     `;
     input.addEventListener('input', (e) => {
       handleBlankAnswerChange(blank.id, e.target.value);
@@ -310,6 +314,9 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
       answerText.textContent = e.target.value || 'empty';
     });
     input.addEventListener('click', (e) => {
+      e.stopPropagation();
+    });
+    input.addEventListener('mousedown', (e) => {
       e.stopPropagation();
     });
     input.addEventListener('blur', (e) => {
@@ -344,43 +351,48 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
     });
 
     // Delete button (hidden by default in compact mode)
-    const deleteBtn = document.createElement('button');
-    deleteBtn.innerHTML = '×';
-    deleteBtn.className = 'blank-delete-btn';
-    deleteBtn.setAttribute('data-delete-btn', 'true'); // Mark as delete button
-    deleteBtn.style.cssText = `
-      border: none;
-      background: rgba(255,77,79,0.9);
-      color: white;
-      border-radius: 4px;
-      width: 24px;
-      height: 24px;
-      display: none;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-      transition: all 0.2s ease;
-      font-size: 18px;
-      font-weight: bold;
-    `;
-    deleteBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      e.preventDefault();
-      // Prevent any parent handlers from being notified of the event
-      handleDeleteBlankElement(blank.id);
-    });
-    deleteBtn.addEventListener('mousedown', (e) => {
-      e.stopPropagation();
-      e.preventDefault();
-    });
-    deleteBtn.addEventListener('mouseenter', (e) => {
-      e.target.style.background = 'rgba(255,77,79,1)';
-      e.target.style.transform = 'scale(1.1)';
-    });
-    deleteBtn.addEventListener('mouseleave', (e) => {
-      e.target.style.background = 'rgba(255,77,79,0.9)';
-        e.target.style.transform = 'scale(1)';
-    });
+		const deleteBtn = document.createElement('button');
+		deleteBtn.innerHTML = '×';
+		deleteBtn.className = 'blank-delete-btn';
+		deleteBtn.type = 'button';
+		deleteBtn.style.cssText = `
+			border: none;
+			background: rgba(255,77,79,0.9);
+			color: white;
+			border-radius: 4px;
+			width: 24px;
+			height: 24px;
+			display: none;
+			align-items: center;
+			justify-content: center;
+			cursor: pointer;
+			transition: all 0.2s ease;
+			font-size: 18px;
+			font-weight: bold;
+			position: relative;
+			z-index: 1000;
+			flex-shrink: 0;
+		`;
+		deleteBtn.addEventListener('click', (e) => {
+			e.preventDefault();
+			e.stopPropagation();
+			e.stopImmediatePropagation();
+			console.log('Delete button clicked for blank:', blank.id);
+			handleDeleteBlankElement(blank.id);
+		});
+		deleteBtn.addEventListener('mousedown', (e) => {
+			e.preventDefault();
+			e.stopPropagation();
+			e.stopImmediatePropagation();
+		});
+		deleteBtn.addEventListener('mouseenter', (e) => {
+			e.target.style.background = 'rgba(255,77,79,1)';
+			e.target.style.transform = 'scale(1.1)';
+		});
+		deleteBtn.addEventListener('mouseleave', (e) => {
+			e.target.style.background = 'rgba(255,77,79,0.9)';
+			e.target.style.transform = 'scale(1)';
+		});
 
     // Function to expand blank (show input and delete button)
     const expandBlank = () => {
@@ -399,10 +411,6 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
 
     // Click on chip to expand
     chip.addEventListener('click', (e) => {
-      // Don't expand if clicking on delete button
-      if (e.target.hasAttribute('data-delete-btn') || e.target.classList.contains('blank-delete-btn')) {
-        return;
-      }
       e.stopPropagation();
       expandBlank();
     });
@@ -742,19 +750,36 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
     // Build correct answer from blanks in order
     const correctAnswer = blanks.map(blank => blank.answer).join(' ');
 
+    // Create questionText with [[pos_xxx]] format for API
+    const questionText = blanks.map(blank => `[[pos_${blank.positionId}]]`).join(' ');
+
+    // Create content.data array with positionId and positionOrder
+    const contentData = blanks.map((blank, index) => ({
+      id: `opt${index + 1}`,
+      value: blank.answer,
+      positionId: blank.positionId,
+      positionOrder: index + 1, // 1-based order
+      correct: true
+    }));
+
     const newQuestionData = {
       id: questionData?.id || Date.now(),
-      type: 'REORDER',
-      title: 'Reorder',
-      questionText: correctAnswer, // Store the correct order
-      correctAnswer: correctAnswer,
+      type: 'REARRANGE',
+      title: 'Rearrange',
+      questionText: questionText, // Format: "[[pos_a1b2c3]] [[pos_d4e5f6]] ..."
+      correctAnswer: correctAnswer, // Human readable: "I go to school every day"
       shuffledWords: shuffledWords,
       blanks: blanks, // Store blanks info
       points: points,
+      content: {
+        data: contentData
+      }
     };
 
-    console.log('=== REORDER QUESTION DATA ===');
-    console.log('Correct Answer:', correctAnswer);
+    console.log('=== REARRANGE QUESTION DATA ===');
+    console.log('Question Text (API format):', questionText);
+    console.log('Correct Answer (human readable):', correctAnswer);
+    console.log('Content Data:', contentData);
     console.log('Shuffled Words:', shuffledWords);
     console.log('Blanks:', blanks);
     console.log('Full Question Data:', newQuestionData);

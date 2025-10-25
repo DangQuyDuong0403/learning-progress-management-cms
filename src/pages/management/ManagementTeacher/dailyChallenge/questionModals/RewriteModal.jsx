@@ -158,13 +158,37 @@ const RewriteModal = ({ visible, onCancel, onSave, questionData = null }) => {
         const colors = getAnswerColors();
         if (questionData) {
           // Edit mode - load existing data
-          setEditorData(questionData.questionText || '');
-          const answers = questionData.correctAnswers 
-            ? questionData.correctAnswers.map((ans, idx) => ({
-                ...ans,
-                color: ans.color || colors[idx % colors.length]
-              }))
-            : [{ id: 1, answer: "", color: colors[0] }];
+          let questionText = questionData.questionText || '';
+          
+          // Remove positionId markers for editing
+          if (questionData.content && questionData.content.data) {
+            questionData.content.data.forEach((item) => {
+              const pattern = `[[pos_${item.positionId}]]`;
+              questionText = questionText.replace(pattern, '');
+            });
+          }
+          
+          setEditorData(questionText);
+          
+          // Load answers from content.data if available, otherwise from correctAnswers
+          let answers = [];
+          if (questionData.content && questionData.content.data && questionData.content.data.length > 0) {
+            // Load from content.data (API format)
+            answers = questionData.content.data.map((item, idx) => ({
+              id: idx + 1,
+              answer: item.value,
+              color: colors[idx % colors.length]
+            }));
+          } else if (questionData.correctAnswers) {
+            // Fallback to correctAnswers format
+            answers = questionData.correctAnswers.map((ans, idx) => ({
+              ...ans,
+              color: ans.color || colors[idx % colors.length]
+            }));
+          } else {
+            answers = [{ id: 1, answer: "", color: colors[0] }];
+          }
+          
           setCorrectAnswers(answers);
           setPoints(questionData?.points || 1);
         } else {
@@ -259,19 +283,41 @@ const RewriteModal = ({ visible, onCancel, onSave, questionData = null }) => {
       return;
     }
 
+    // Generate unique positionId for REWRITE question
+    const positionId = `a1b2c3${Date.now()}`;
+    
+    // Create content.data array with correct answers
+    const contentData = correctAnswers.map((ans, index) => ({
+      id: `item${index + 1}`,
+      value: ans.answer,
+      positionId: positionId,
+      correct: true
+    }));
+
+    // Add positionId marker to questionText if not already present
+    let questionTextWithPosition = editorData;
+    if (!questionTextWithPosition.includes(`[[pos_${positionId}]]`)) {
+      questionTextWithPosition += `<br>[[pos_${positionId}]]`;
+    }
+
     const newQuestionData = {
       id: questionData?.id || Date.now(),
       type: 'REWRITE',
       title: 'Re-write',
-      questionText: editorData,
+      questionText: questionTextWithPosition,
+      question: questionTextWithPosition, // For backward compatibility
       correctAnswers: correctAnswers,
       correctAnswer: correctAnswers.map(ans => ans.answer).join(', '),
       points: points,
+      content: {
+        data: contentData
+      }
     };
 
     console.log('=== REWRITE QUESTION HTML ===');
-    console.log('Question HTML:', editorData);
+    console.log('Question HTML:', questionTextWithPosition);
     console.log('Correct Answers:', correctAnswers);
+    console.log('Content Data:', contentData);
     console.log('Full Question Data:', newQuestionData);
     console.log('================================');
 

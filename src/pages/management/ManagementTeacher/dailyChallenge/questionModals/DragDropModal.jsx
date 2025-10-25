@@ -674,6 +674,8 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 			color: ${blank.color};
 			transition: all 0.2s ease;
 			cursor: pointer;
+			min-width: 0;
+			flex: 1;
 		`;
 
 		// Number badge
@@ -722,6 +724,8 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 			color: #333;
 			font-weight: 500;
 			display: none;
+			flex: 1;
+			margin-right: 8px;
 		`;
 		input.addEventListener('input', (e) => {
 			handleBlankAnswerChange(blank.id, e.target.value);
@@ -729,6 +733,9 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 			answerText.textContent = e.target.value || 'empty';
 		});
 		input.addEventListener('click', (e) => {
+			e.stopPropagation();
+		});
+		input.addEventListener('mousedown', (e) => {
 			e.stopPropagation();
 		});
 		input.addEventListener('blur', () => {
@@ -740,6 +747,7 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 		const deleteBtn = document.createElement('button');
 		deleteBtn.innerHTML = '×';
 		deleteBtn.className = 'blank-delete-btn';
+		deleteBtn.type = 'button';
 		deleteBtn.style.cssText = `
 			border: none;
 			background: rgba(255,77,79,0.9);
@@ -754,10 +762,21 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 			transition: all 0.2s ease;
 			font-size: 18px;
 			font-weight: bold;
+			position: relative;
+			z-index: 1000;
+			flex-shrink: 0;
 		`;
 		deleteBtn.addEventListener('click', (e) => {
+			e.preventDefault();
 			e.stopPropagation();
+			e.stopImmediatePropagation();
+			console.log('Delete button clicked for blank:', blank.id);
 			handleDeleteBlankElement(blank.id);
+		});
+		deleteBtn.addEventListener('mousedown', (e) => {
+			e.preventDefault();
+			e.stopPropagation();
+			e.stopImmediatePropagation();
 		});
 		deleteBtn.addEventListener('mouseenter', (e) => {
 			e.target.style.background = 'rgba(255,77,79,1)';
