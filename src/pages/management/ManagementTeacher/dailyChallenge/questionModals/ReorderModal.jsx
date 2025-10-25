@@ -1,43 +1,27 @@
-import React, { useState, useRef, useCallback, useEffect } from "react";
+import React, { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import {
   Modal,
   Button,
   message,
   Select,
-  Tooltip,
-  Dropdown,
 } from "antd";
 import { 
-  DeleteOutlined, 
   DragOutlined,
   CheckOutlined,
   ThunderboltOutlined,
   SaveOutlined,
-  BoldOutlined,
-  ItalicOutlined,
-  UnderlineOutlined,
-  OrderedListOutlined,
-  UnorderedListOutlined,
-  LinkOutlined,
-  UndoOutlined,
-  RedoOutlined,
-  PictureOutlined,
-  TableOutlined,
-  AlignLeftOutlined,
-  AlignCenterOutlined,
-  AlignRightOutlined,
-  FontSizeOutlined,
+  RetweetOutlined,
 } from "@ant-design/icons";
 import './MultipleChoiceModal.css';
 
 const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
   const [points, setPoints] = useState(1);
-  const [selectedImage, setSelectedImage] = useState(null);
-  const [tableDropdownOpen, setTableDropdownOpen] = useState(false);
-  const [hoveredCell, setHoveredCell] = useState({ row: 0, col: 0 });
   const [shuffledWords, setShuffledWords] = useState([]);
+  const [showBlankPopup, setShowBlankPopup] = useState(false);
+  const [popupPosition, setPopupPosition] = useState({ x: 0, y: 0 });
+  const [blanks, setBlanks] = useState([]);
   const editorRef = useRef(null);
-  const fileInputRef = useRef(null);
+  const savedRangeRef = useRef(null);
 
   // Initialize from questionData
   useEffect(() => {
@@ -52,353 +36,502 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
     }
   }, [questionData, visible]);
 
-  // Formatting functions for toolbar
-  const handleFormat = useCallback((command, value = null) => {
-    if (!editorRef.current) return;
-    editorRef.current.focus();
-    document.execCommand(command, false, value);
+  const handlePaste = useCallback((e) => {
+    // Prevent all paste
+    e.preventDefault();
+    return false;
   }, []);
 
-  const handleInsertLink = useCallback(() => {
-    if (!editorRef.current) return;
-    const url = prompt('Enter URL:');
-    if (url) {
-      handleFormat('createLink', url);
-    }
-  }, [handleFormat]);
+  // Check if cursor is inside a blank element
+  const isCursorInsideBlank = useCallback(() => {
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0) return false;
 
-  // Insert image into editor
-  const insertImageIntoEditor = useCallback((base64Image) => {
+    let node = selection.anchorNode;
+    while (node && node !== editorRef.current) {
+      if (node.nodeType === Node.ELEMENT_NODE && node.hasAttribute('data-blank-id')) {
+        return true;
+      }
+      node = node.parentNode;
+    }
+    return false;
+  }, []);
+
+  // Update popup position based on current cursor
+  const updatePopupPosition = useCallback(() => {
     if (!editorRef.current) return;
-    
-    editorRef.current.focus();
-    
-    // Create wrapper for image with resize handles
-    const wrapper = document.createElement('div');
-    wrapper.className = 'image-wrapper';
-    wrapper.style.cssText = `
-      position: relative;
-      display: inline-block;
-      max-width: 100%;
-      margin: 10px 0;
-      user-select: none;
-    `;
-    wrapper.setAttribute('contenteditable', 'false');
-    wrapper.setAttribute('data-image-wrapper', 'true');
-    
-    // Create image element
-    const img = document.createElement('img');
-    img.src = base64Image;
-    img.style.cssText = `
-      display: block;
-      width: 300px;
-      height: auto;
-      border-radius: 8px;
-      cursor: pointer;
-    `;
-    img.setAttribute('data-image-id', `img-${Date.now()}`);
-    
-    // Create 4 resize handles
-    const handles = ['nw', 'ne', 'sw', 'se'];
-    const handleElements = {};
-    
-    handles.forEach(position => {
-      const handle = document.createElement('div');
-      handle.className = `resize-handle resize-handle-${position}`;
-      handle.style.cssText = `
-        position: absolute;
-        width: 12px;
-        height: 12px;
-        background: #1890ff;
-        border: 2px solid white;
-        border-radius: 50%;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-        z-index: 1000;
-        opacity: 0;
-        transition: all 0.2s ease;
-      `;
-      
-      // Position handles
-      if (position === 'nw') {
-        handle.style.top = '-6px';
-        handle.style.left = '-6px';
-        handle.style.cursor = 'nwse-resize';
-      } else if (position === 'ne') {
-        handle.style.top = '-6px';
-        handle.style.right = '-6px';
-        handle.style.cursor = 'nesw-resize';
-      } else if (position === 'sw') {
-        handle.style.bottom = '-6px';
-        handle.style.left = '-6px';
-        handle.style.cursor = 'nesw-resize';
-      } else if (position === 'se') {
-        handle.style.bottom = '-6px';
-        handle.style.right = '-6px';
-        handle.style.cursor = 'nwse-resize';
-      }
-      
-      handleElements[position] = handle;
-      wrapper.appendChild(handle);
-    });
-    
-    wrapper.appendChild(img);
-    
-    // Make wrapper selectable
-    wrapper.onclick = function(e) {
-      e.stopPropagation();
-      setSelectedImage(img);
-      Object.values(handleElements).forEach(h => h.style.opacity = '1');
-      wrapper.style.outline = '2px solid #1890ff';
-      wrapper.style.outlineOffset = '2px';
-    };
-    
-    wrapper.onmouseleave = function() {
-      if (selectedImage !== img) {
-        Object.values(handleElements).forEach(h => h.style.opacity = '0');
-      }
-    };
-    
-    wrapper.onmouseenter = function() {
-      Object.values(handleElements).forEach(h => h.style.opacity = '1');
-    };
-    
-    // Resize functionality
-    let isResizing = false;
-    let startWidth, startX, currentHandle;
-    
-    const startResize = (e, handle) => {
-      e.preventDefault();
-      e.stopPropagation();
-      isResizing = true;
-      currentHandle = handle;
-      startWidth = img.offsetWidth;
-      startX = e.clientX;
-      
-      document.addEventListener('mousemove', doResize);
-      document.addEventListener('mouseup', stopResize);
-    };
-    
-    const doResize = (e) => {
-      if (!isResizing) return;
-      
-      const deltaX = e.clientX - startX;
-      let newWidth = startWidth;
-      
-      if (currentHandle === 'se' || currentHandle === 'ne') {
-        newWidth = startWidth + deltaX;
-      } else if (currentHandle === 'sw' || currentHandle === 'nw') {
-        newWidth = startWidth - deltaX;
-      }
-      
-      if (newWidth < 100) newWidth = 100;
-      if (newWidth > 800) newWidth = 800;
-      
-      img.style.width = newWidth + 'px';
-      
-      if (wrapper.style.display === 'block' && wrapper.style.width) {
-        wrapper.style.width = newWidth + 'px';
-      }
-    };
-    
-    const stopResize = () => {
-      isResizing = false;
-      document.removeEventListener('mousemove', doResize);
-      document.removeEventListener('mouseup', stopResize);
-    };
-    
-    Object.entries(handleElements).forEach(([position, handle]) => {
-      handle.onmousedown = (e) => startResize(e, position);
-      handle.onmouseenter = (e) => {
-        e.target.style.transform = 'scale(1.3)';
-        e.target.style.background = '#40a9ff';
-      };
-      handle.onmouseleave = (e) => {
-        e.target.style.transform = 'scale(1)';
-        e.target.style.background = '#1890ff';
-      };
-    });
     
     const selection = window.getSelection();
-    if (selection.rangeCount > 0) {
-      const range = selection.getRangeAt(0);
-      range.insertNode(wrapper);
-      const br = document.createElement('br');
-      wrapper.parentNode.insertBefore(br, wrapper.nextSibling);
-      range.setStartAfter(br);
-      range.setEndAfter(br);
+    if (!selection || selection.rangeCount === 0) {
+      setShowBlankPopup(false);
+      return;
+    }
+
+    // Don't show popup if cursor is inside a blank
+    if (isCursorInsideBlank()) {
+      setShowBlankPopup(false);
+      return;
+    }
+
+    const range = selection.getRangeAt(0);
+    const rect = range.getBoundingClientRect();
+    const editorRect = editorRef.current.getBoundingClientRect();
+
+    if (rect.width === 0 && rect.height === 0) {
+      // Cursor is at a position, get its location
+      const tempSpan = document.createElement('span');
+      tempSpan.textContent = '\u200B'; // Zero-width space
+      range.insertNode(tempSpan);
+      const tempRect = tempSpan.getBoundingClientRect();
+      tempSpan.remove();
+
+      const popupX = tempRect.left - editorRect.left;
+      const popupY = tempRect.top - editorRect.top + tempRect.height + 5;
+
+      setPopupPosition({ x: popupX, y: popupY });
+      savedRangeRef.current = range.cloneRange();
+      setShowBlankPopup(true);
+    } else {
+      const popupX = rect.left - editorRect.left;
+      const popupY = rect.top - editorRect.top + rect.height + 5;
+
+      setPopupPosition({ x: popupX, y: popupY });
+      savedRangeRef.current = range.cloneRange();
+      setShowBlankPopup(true);
+    }
+  }, [isCursorInsideBlank]);
+
+  // Generate position ID
+  const generatePositionId = () => {
+    return Math.random().toString(36).substring(2, 8);
+  };
+
+  // Colors for blanks - using distinct, high-contrast colors
+  const blankColors = useMemo(() => [
+    '#e63946', // Red
+    '#2563eb', // Blue
+    '#059669', // Green
+    '#9333ea', // Purple
+    '#ea580c', // Orange
+    '#dc2626', // Bright Red
+    '#0891b2', // Cyan
+    '#d946ef', // Magenta
+    '#84cc16', // Lime
+    '#f59e0b', // Amber
+  ], []);
+
+  // Handle blank answer change
+  const handleBlankAnswerChange = useCallback((blankId, value) => {
+    setBlanks(prev => {
+      const newBlanks = prev.map(blank => 
+        blank.id === blankId ? { ...blank, answer: value } : blank
+      );
+      
+      // Update shuffled words immediately with new blanks
+      setTimeout(() => {
+        const words = newBlanks
+          .filter(blank => blank.answer && blank.answer.trim())
+          .map((blank, index) => ({
+            id: blank.id,
+            text: blank.answer,
+            originalIndex: index,
+            currentIndex: index,
+            color: blank.color
+          }));
+        
+        // Shuffle array
+        const shuffled = [...words];
+        for (let i = shuffled.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+        }
+        
+        // Update currentIndex after shuffle
+        const finalWords = shuffled.map((word, index) => ({
+          ...word,
+          currentIndex: index
+        }));
+        
+        setShuffledWords(finalWords);
+      }, 50);
+      
+      return newBlanks;
+    });
+  }, []);
+
+  // Update blank numbers based on DOM order
+  const updateBlankNumbers = useCallback(() => {
+    if (!editorRef.current) return;
+    
+    const blankElements = editorRef.current.querySelectorAll('[data-blank-id]');
+    blankElements.forEach((element, index) => {
+      const badge = element.querySelector('.blank-badge');
+      if (badge) {
+        badge.textContent = index + 1;
+      }
+    });
+  }, []);
+
+  // Handle delete blank from DOM
+  const handleDeleteBlankElement = useCallback((blankId) => {
+    if (!editorRef.current) return;
+
+    // Find and remove the blank element from DOM
+    const blankElement = editorRef.current.querySelector(`[data-blank-id="${blankId}"]`);
+    if (blankElement) {
+      blankElement.remove();
+    }
+
+    // Update state
+    setBlanks(prev => {
+      const newBlanks = prev.filter(blank => blank.id !== blankId);
+      
+      // Update blank numbers and shuffled words after deletion
+      setTimeout(() => {
+        updateBlankNumbers();
+        
+        // Update shuffled words from new blanks
+        const words = newBlanks
+          .filter(blank => blank.answer && blank.answer.trim())
+          .map((blank, index) => ({
+            id: blank.id,
+            text: blank.answer,
+            originalIndex: index,
+            currentIndex: index,
+            color: blank.color
+          }));
+        
+        // Shuffle array
+        const shuffled = [...words];
+        for (let i = shuffled.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+        }
+        
+        // Update currentIndex after shuffle
+        const finalWords = shuffled.map((word, index) => ({
+          ...word,
+          currentIndex: index
+        }));
+        
+        setShuffledWords(finalWords);
+      }, 10);
+      
+      return newBlanks;
+    });
+    
+    message.success('Item removed');
+    
+    // Refocus editor
+    editorRef.current.focus();
+  }, [updateBlankNumbers]);
+
+  // Create blank element
+  const createBlankElement = useCallback((blank, index) => {
+    const span = document.createElement('span');
+    span.setAttribute('contenteditable', 'false');
+    span.setAttribute('data-blank-id', blank.id);
+    span.style.cssText = `
+      display: inline-flex;
+      align-items: center;
+      margin: 0 4px;
+      position: relative;
+      vertical-align: middle;
+      user-select: none;
+      -webkit-user-select: none;
+    `;
+
+    const chip = document.createElement('span');
+    chip.style.cssText = `
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      background: linear-gradient(135deg, ${blank.color}20, ${blank.color}40);
+      border: 2px solid ${blank.color};
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      color: ${blank.color};
+      transition: all 0.2s ease;
+      cursor: pointer;
+    `;
+
+    // Number badge
+    const badge = document.createElement('span');
+    badge.className = 'blank-badge';
+    badge.style.cssText = `
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: ${blank.color};
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-weight: 700;
+    `;
+    badge.textContent = index + 1;
+
+    // Compact mode: Display answer text
+    const answerText = document.createElement('span');
+    answerText.className = 'blank-answer-text';
+    answerText.style.cssText = `
+      color: #333;
+      font-weight: 500;
+      font-size: 14px;
+      display: inline;
+    `;
+    answerText.textContent = blank.answer || 'empty';
+
+    // Input field (hidden by default in compact mode)
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.placeholder = 'type answer...';
+    input.value = blank.answer || '';
+    input.className = 'blank-input';
+    input.style.cssText = `
+      border: none;
+      outline: none;
+      background: rgba(255,255,255,0.9);
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 14px;
+      min-width: 120px;
+      max-width: 200px;
+      color: #333;
+      font-weight: 500;
+      display: none;
+    `;
+    input.addEventListener('input', (e) => {
+      handleBlankAnswerChange(blank.id, e.target.value);
+      // Update answer text in real-time
+      answerText.textContent = e.target.value || 'empty';
+    });
+    input.addEventListener('click', (e) => {
+      e.stopPropagation();
+    });
+    input.addEventListener('blur', (e) => {
+      // Don't collapse if clicking on delete button
+      setTimeout(() => {
+        // Check if the blank still exists (not deleted)
+        if (document.body.contains(span)) {
+          collapseBlank();
+          // Focus editor and update popup position after collapsing
+          if (editorRef.current) {
+            editorRef.current.focus();
+            // Set cursor position after the blank
+            const selection = window.getSelection();
+            const range = document.createRange();
+            // Try to position cursor after the blank
+            if (span.nextSibling) {
+              range.setStart(span.nextSibling, 0);
+              range.collapse(true);
+            } else if (span.parentNode) {
+              range.setStartAfter(span);
+              range.collapse(true);
+            }
+            selection.removeAllRanges();
+            selection.addRange(range);
+            // Update popup position
+            setTimeout(() => {
+              updatePopupPosition();
+            }, 50);
+          }
+        }
+      }, 100);
+    });
+
+    // Delete button (hidden by default in compact mode)
+    const deleteBtn = document.createElement('button');
+    deleteBtn.innerHTML = '×';
+    deleteBtn.className = 'blank-delete-btn';
+    deleteBtn.setAttribute('data-delete-btn', 'true'); // Mark as delete button
+    deleteBtn.style.cssText = `
+      border: none;
+      background: rgba(255,77,79,0.9);
+      color: white;
+      border-radius: 4px;
+      width: 24px;
+      height: 24px;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      font-size: 18px;
+      font-weight: bold;
+    `;
+    deleteBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      // Prevent any parent handlers from being notified of the event
+      handleDeleteBlankElement(blank.id);
+    });
+    deleteBtn.addEventListener('mousedown', (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+    });
+    deleteBtn.addEventListener('mouseenter', (e) => {
+      e.target.style.background = 'rgba(255,77,79,1)';
+      e.target.style.transform = 'scale(1.1)';
+    });
+    deleteBtn.addEventListener('mouseleave', (e) => {
+      e.target.style.background = 'rgba(255,77,79,0.9)';
+        e.target.style.transform = 'scale(1)';
+    });
+
+    // Function to expand blank (show input and delete button)
+    const expandBlank = () => {
+      answerText.style.display = 'none';
+      input.style.display = 'inline';
+      deleteBtn.style.display = 'flex';
+      setTimeout(() => input.focus(), 10);
+    };
+
+    // Function to collapse blank (show only answer text)
+    const collapseBlank = () => {
+      answerText.style.display = 'inline';
+      input.style.display = 'none';
+      deleteBtn.style.display = 'none';
+    };
+
+    // Click on chip to expand
+    chip.addEventListener('click', (e) => {
+      // Don't expand if clicking on delete button
+      if (e.target.hasAttribute('data-delete-btn') || e.target.classList.contains('blank-delete-btn')) {
+        return;
+      }
+      e.stopPropagation();
+      expandBlank();
+    });
+
+    chip.appendChild(badge);
+    chip.appendChild(answerText);
+    chip.appendChild(input);
+    chip.appendChild(deleteBtn);
+    span.appendChild(chip);
+
+    // Store expand function for external use
+    span.expandBlank = expandBlank;
+
+    return span;
+  }, [handleBlankAnswerChange, handleDeleteBlankElement, updatePopupPosition]);
+
+  // Insert blank at saved cursor position
+  const insertBlankAtCursor = useCallback(() => {
+    if (!editorRef.current || !savedRangeRef.current) return;
+
+    // Don't insert blank if cursor is inside another blank
+    if (isCursorInsideBlank()) {
+      message.warning('Cannot insert item inside another item');
+      setShowBlankPopup(false);
+      return;
+    }
+    
+    // Create blank
+    const positionId = generatePositionId();
+    const blankId = `blank-${Date.now()}-${positionId}`;
+    const color = blankColors[blanks.length % blankColors.length];
+
+    const newBlank = {
+      id: blankId,
+      positionId: positionId,
+      answer: '',
+      color: color
+    };
+
+    // Create blank element
+    const blankElement = createBlankElement(newBlank, blanks.length);
+
+    // Restore saved range
+        const selection = window.getSelection();
+        selection.removeAllRanges();
+    selection.addRange(savedRangeRef.current);
+
+    // Insert blank at cursor
+    try {
+      const range = savedRangeRef.current.cloneRange();
+      
+      // Add space before blank if needed
+      const textBefore = range.startContainer.textContent?.substring(0, range.startOffset) || '';
+      if (textBefore && !textBefore.endsWith(' ')) {
+        range.insertNode(document.createTextNode(' '));
+        range.collapse(false);
+      }
+
+      // Insert blank
+      range.insertNode(blankElement);
+        range.collapse(false);
+
+      // Add space after blank
+      range.insertNode(document.createTextNode(' '));
+      range.collapse(false);
+
+      // Update selection
       selection.removeAllRanges();
       selection.addRange(range);
-    } else {
-      editorRef.current.appendChild(wrapper);
-      const br = document.createElement('br');
-      editorRef.current.appendChild(br);
-    }
-    
-    message.success('Image inserted successfully');
-  }, [selectedImage]);
 
-  const handleImageUpload = useCallback(() => {
-    if (fileInputRef.current) {
-      fileInputRef.current.click();
-    }
-  }, []);
-
-  const handleFileChange = useCallback((e) => {
-    const file = e.target.files?.[0];
-    if (file && file.type.startsWith('image/')) {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        insertImageIntoEditor(event.target.result);
-      };
-      reader.readAsDataURL(file);
-    } else if (file) {
-      message.error('Please select an image file');
-    }
-    if (e.target) {
-      e.target.value = '';
-    }
-  }, [insertImageIntoEditor]);
-
-  const handlePaste = useCallback((e) => {
-    const items = e.clipboardData?.items;
-    if (items) {
-      for (let i = 0; i < items.length; i++) {
-        if (items[i].type.indexOf('image') !== -1) {
-          e.preventDefault();
-          const blob = items[i].getAsFile();
-          const reader = new FileReader();
-          reader.onload = (event) => {
-            insertImageIntoEditor(event.target.result);
-          };
-          reader.readAsDataURL(blob);
-          return;
-        }
-      }
-    }
-    
-    e.preventDefault();
-    const text = e.clipboardData.getData('text/plain');
-    document.execCommand('insertText', false, text);
-  }, [insertImageIntoEditor]);
-
-  const handleImageAlign = useCallback((alignment) => {
-    if (!selectedImage) {
-      message.warning('Please select an image first');
-      return;
-    }
-    
-    const wrapper = selectedImage.parentElement;
-    if (!wrapper || !wrapper.hasAttribute('data-image-wrapper')) {
-      message.warning('Image wrapper not found');
-      return;
-    }
-    
-    const currentWidth = selectedImage.offsetWidth;
-    
-    switch(alignment) {
-      case 'left':
-        wrapper.style.display = 'block';
-        wrapper.style.width = `${currentWidth}px`;
-        wrapper.style.marginLeft = '0';
-        wrapper.style.marginRight = 'auto';
-        break;
-      case 'center':
-        wrapper.style.display = 'block';
-        wrapper.style.width = `${currentWidth}px`;
-        wrapper.style.marginLeft = 'auto';
-        wrapper.style.marginRight = 'auto';
-        break;
-      case 'right':
-        wrapper.style.display = 'block';
-        wrapper.style.width = `${currentWidth}px`;
-        wrapper.style.marginLeft = 'auto';
-        wrapper.style.marginRight = '0';
-        break;
-      default:
-        break;
-    }
-    
-    message.success(`Image aligned to ${alignment}`);
-    
-    setTimeout(() => {
-      if (editorRef.current) {
-        editorRef.current.focus();
-        const selection = window.getSelection();
-        const range = document.createRange();
-        range.selectNodeContents(editorRef.current);
-        range.collapse(false);
-        selection.removeAllRanges();
-        selection.addRange(range);
-      }
-    }, 100);
-  }, [selectedImage]);
-
-  const handleInsertTable = useCallback((numRows, numCols) => {
-    if (!editorRef.current) return;
-    
-    if (numRows > 0 && numCols > 0 && numRows <= 10 && numCols <= 10) {
-      editorRef.current.focus();
-      
-      const table = document.createElement('table');
-      table.style.borderCollapse = 'collapse';
-      table.style.width = '100%';
-      table.style.margin = '10px 0';
-      table.style.border = '1px solid #000000';
-      
-      for (let i = 0; i < numRows; i++) {
-        const tr = document.createElement('tr');
-        for (let j = 0; j < numCols; j++) {
-          const td = document.createElement(i === 0 ? 'th' : 'td');
-          td.contentEditable = 'true';
-          td.style.border = '1px solid #000000';
-          td.style.padding = '8px';
-          td.style.minWidth = '50px';
-          if (i === 0) {
-            td.style.background = 'rgba(24, 144, 255, 0.1)';
-            td.style.fontWeight = '600';
-          }
-          td.innerHTML = '&nbsp;';
-          tr.appendChild(td);
-        }
-        table.appendChild(tr);
-      }
-      
-      const selection = window.getSelection();
-      if (selection.rangeCount > 0) {
-        const range = selection.getRangeAt(0);
-        range.insertNode(table);
-        range.collapse(false);
+      // Update blanks state
+      setBlanks(prev => {
+        const newBlanks = [...prev, newBlank];
+        
+        // Update blank numbers and expand the newly created blank
+        setTimeout(() => {
+          try {
+            // Update all blank numbers first
+            updateBlankNumbers();
+            
+            const insertedBlank = editorRef.current.querySelector(`[data-blank-id="${blankId}"]`);
+            if (insertedBlank && insertedBlank.expandBlank) {
+              insertedBlank.expandBlank();
       } else {
-        editorRef.current.appendChild(table);
-      }
-      
-      setTableDropdownOpen(false);
-      message.success(`Table ${numRows}x${numCols} inserted successfully`);
+              editorRef.current.focus();
+            }
+            
+            // Update shuffled words from new blanks
+            const words = newBlanks
+              .filter(blank => blank.answer && blank.answer.trim())
+              .map((blank, index) => ({
+                id: blank.id,
+                text: blank.answer,
+                originalIndex: index,
+                currentIndex: index,
+                color: blank.color
+              }));
+            
+            // Shuffle array
+            const shuffled = [...words];
+            for (let i = shuffled.length - 1; i > 0; i--) {
+              const j = Math.floor(Math.random() * (i + 1));
+              [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+            }
+            
+            // Update currentIndex after shuffle
+            const finalWords = shuffled.map((word, index) => ({
+              ...word,
+              currentIndex: index
+            }));
+            
+            setShuffledWords(finalWords);
+          } catch (error) {
+            console.error('Error expanding blank:', error);
+            editorRef.current.focus();
+          }
+        }, 10);
+        
+        return newBlanks;
+      });
+    } catch (error) {
+      console.error('Error inserting blank:', error);
     }
-  }, []);
 
-  const handleHeading = useCallback((level) => {
-    if (!editorRef.current) return;
-    editorRef.current.focus();
-    
-    if (level === 'paragraph') {
-      document.execCommand('formatBlock', false, 'p');
-    } else {
-      document.execCommand('formatBlock', false, level);
-    }
-  }, []);
+    // Hide popup
+    setShowBlankPopup(false);
+  }, [blanks, blankColors, createBlankElement, isCursorInsideBlank, updateBlankNumbers]);
 
   const handleEditorClick = useCallback((e) => {
-    if (e.target.tagName !== 'IMG') {
-      if (editorRef.current) {
-        const wrappers = editorRef.current.querySelectorAll('[data-image-wrapper]');
-        wrappers.forEach(wrapper => {
-          wrapper.style.outline = 'none';
-        });
-      }
-      setSelectedImage(null);
-    }
-    
     // Only set cursor if there's no current selection
     // This allows drag-to-select to work properly
     if (e.target === editorRef.current) {
@@ -411,52 +544,137 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
             selection.removeAllRanges();
             selection.addRange(range);
           }
+          // Update popup position at cursor
+          updatePopupPosition();
         }
       }, 0);
     }
-  }, []);
+  }, [updatePopupPosition]);
+
+  const handleEditorFocus = useCallback(() => {
+    setTimeout(() => {
+      updatePopupPosition();
+    }, 50);
+  }, [updatePopupPosition]);
 
   const handleEditorKeyDown = useCallback((e) => {
-    if ((e.key === 'Backspace' || e.key === 'Delete') && selectedImage) {
-      e.preventDefault();
-      
-      const wrapper = selectedImage.parentElement;
-      if (wrapper && wrapper.hasAttribute('data-image-wrapper')) {
-        wrapper.remove();
-        setSelectedImage(null);
+    // Allow all keys in blank input fields (including Backspace/Delete)
+    if (e.target.classList?.contains('blank-input')) {
+      return; // Allow normal input in blank fields
+    }
+    
+    // Allow clicking delete button on blank chips
+    if (e.target.classList?.contains('blank-delete-btn')) {
+      return; // Allow delete button to work
+    }
+    
+    // Handle Backspace to delete blank element
+    if (e.key === 'Backspace') {
+      const selection = window.getSelection();
+      if (selection && selection.rangeCount > 0) {
+        const range = selection.getRangeAt(0);
         
-        if (editorRef.current) {
-          editorRef.current.focus();
+        // Check if cursor is at the start of a text node and previous sibling is a blank
+        if (range.collapsed && range.startOffset === 0) {
+          let node = range.startContainer;
+          
+          // If we're in a text node, check its previous sibling
+          if (node.nodeType === Node.TEXT_NODE) {
+            let prevSibling = node.previousSibling;
+            
+            // Find the previous blank element
+            while (prevSibling) {
+              if (prevSibling.nodeType === Node.ELEMENT_NODE && 
+                  prevSibling.hasAttribute('data-blank-id')) {
+                // Found a blank element, delete it
+                e.preventDefault();
+                const blankId = prevSibling.getAttribute('data-blank-id');
+                handleDeleteBlankElement(blankId);
+                return false;
+              }
+              // Skip text nodes that are just spaces
+              if (prevSibling.nodeType === Node.TEXT_NODE && 
+                  prevSibling.textContent.trim() === '') {
+                prevSibling = prevSibling.previousSibling;
+                continue;
+              }
+              break;
+            }
+          }
+          // If we're directly after a blank element
+          else if (node.nodeType === Node.ELEMENT_NODE) {
+            // Check if previous sibling is a blank
+            let prevSibling = node.previousSibling;
+            while (prevSibling) {
+              if (prevSibling.nodeType === Node.ELEMENT_NODE && 
+                  prevSibling.hasAttribute('data-blank-id')) {
+                e.preventDefault();
+                const blankId = prevSibling.getAttribute('data-blank-id');
+                handleDeleteBlankElement(blankId);
+                return false;
+              }
+              if (prevSibling.nodeType === Node.TEXT_NODE && 
+                  prevSibling.textContent.trim() === '') {
+                prevSibling = prevSibling.previousSibling;
+                continue;
+              }
+              break;
+            }
+            
+            // Check if we're in the editor and the last child is a blank
+            if (node === editorRef.current) {
+              const children = Array.from(node.childNodes);
+              for (let i = children.length - 1; i >= 0; i--) {
+                const child = children[i];
+                if (child.nodeType === Node.ELEMENT_NODE && 
+                    child.hasAttribute('data-blank-id')) {
+                  e.preventDefault();
+                  const blankId = child.getAttribute('data-blank-id');
+                  handleDeleteBlankElement(blankId);
+                  return false;
+                }
+                if (child.nodeType === Node.TEXT_NODE && 
+                    child.textContent.trim() !== '') {
+                  break;
+                }
+              }
+            }
+          }
         }
-        
-        message.success('Image deleted');
       }
+      
+      // Prevent backspace if not deleting a blank
+      e.preventDefault();
+      return false;
     }
-  }, [selectedImage]);
+    
+    // Prevent all text input in editor, only allow navigation and selection
+    if (e.key.length === 1 || e.key === 'Enter' || e.key === 'Delete') {
+      e.preventDefault();
+      return false;
+    }
+  }, [handleDeleteBlankElement]);
 
-  // Extract words from editor content and shuffle them
-  const extractAndShuffleWords = useCallback(() => {
-    if (!editorRef.current) return [];
+  // Shuffle words
+  const handleShuffleWords = useCallback(() => {
+    setShuffledWords(prev => {
+      if (prev.length === 0) return prev;
+      
+      // Create a copy and shuffle
+      const shuffled = [...prev];
+      for (let i = shuffled.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+      }
+      
+      // Update currentIndex after shuffle
+      return shuffled.map((word, index) => ({
+        ...word,
+        currentIndex: index
+      }));
+    });
     
-    const text = editorRef.current.textContent.trim();
-    if (!text) return [];
-    
-    // Split by spaces and filter out empty strings
-    const words = text.split(/\s+/).filter(w => w.length > 0);
-    
-    // Shuffle array
-    const shuffled = [...words];
-    for (let i = shuffled.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-    }
-    
-    return shuffled.map((word, index) => ({
-      id: `word-${index}-${Date.now()}`,
-      text: word,
-      originalIndex: words.indexOf(word),
-      currentIndex: index
-    }));
+    message.success('Words shuffled!');
   }, []);
 
   // Handle word drag
@@ -496,96 +714,49 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
     });
   };
 
-  // Generate preview when editor changes
-  const handleEditorInput = useCallback(() => {
-    const words = extractAndShuffleWords();
-    setShuffledWords(words);
-  }, [extractAndShuffleWords]);
+  // Handle editor input - prevent text input
+  const handleEditorInput = useCallback((e) => {
+    // Allow input in blank fields
+    if (e.target.classList?.contains('blank-input')) {
+      return; // Allow typing in blank input fields
+    }
+    
+    // Prevent text input in editor
+    e.preventDefault();
+    return false;
+  }, []);
 
   const handleSave = () => {
-    if (!editorRef.current) return;
-
-    const questionText = editorRef.current.textContent.trim();
-    if (!questionText) {
-      message.error('Please enter the question text');
+    if (blanks.length === 0) {
+      message.error('Please add at least one item');
         return;
       }
 
-    if (shuffledWords.length === 0) {
-      message.error('Question must contain at least one word');
+    // Check if all blanks have answers
+    const hasEmptyBlanks = blanks.some(blank => !blank.answer || !blank.answer.trim());
+    if (hasEmptyBlanks) {
+      message.error('Please fill in all item answers');
       return;
     }
 
-    // Build HTML
-    let questionHTML = '';
-    const processNode = (node) => {
-      if (node.nodeType === Node.TEXT_NODE) {
-        return node.textContent;
-      } else if (node.nodeType === Node.ELEMENT_NODE) {
-        const tagName = node.tagName.toLowerCase();
-        
-        if (node.hasAttribute('data-image-wrapper')) {
-          const img = node.querySelector('img');
-          if (img) {
-            const src = img.getAttribute('src');
-            const imgWidth = img.style.width || '300px';
-            const wrapperDisplay = node.style.display || 'inline-block';
-            const wrapperWidth = node.style.width || '';
-            const marginLeft = node.style.marginLeft || '0';
-            const marginRight = node.style.marginRight || '0';
-            const wrapperStyle = `position:relative;display:${wrapperDisplay};${wrapperWidth ? `width:${wrapperWidth};` : 'max-width:100%;'}margin:10px ${marginRight} 10px ${marginLeft};user-select:none;`;
-            return `<div class="image-wrapper" style="${wrapperStyle}"><img src="${src}" style="width:${imgWidth};height:auto;display:block;border-radius:8px;" /></div>`;
-          }
-          return '';
-        }
-        
-        if (tagName === 'img') {
-          const src = node.getAttribute('src');
-          const style = node.getAttribute('style') || '';
-          return `<img src="${src}" style="${style}" />`;
-        }
-        
-        if (tagName === 'table') {
-          return node.outerHTML;
-        }
-        
-        let innerContent = '';
-        node.childNodes.forEach(child => {
-          innerContent += processNode(child);
-        });
-        
-        if (tagName === 'div' || tagName === 'br') {
-          return innerContent + (tagName === 'br' ? '<br>' : '');
-        }
-        
-        if (innerContent || ['ul', 'ol', 'li', 'h1', 'h2', 'h3'].includes(tagName)) {
-          return `<${tagName}>${innerContent}</${tagName}>`;
-        }
-        
-        return innerContent;
-      }
-      return '';
-    };
-
-    editorRef.current.childNodes.forEach(node => {
-      questionHTML += processNode(node);
-    });
-
-    questionHTML = questionHTML.replace(/\n/g, '<br>');
+    // Build correct answer from blanks in order
+    const correctAnswer = blanks.map(blank => blank.answer).join(' ');
 
     const newQuestionData = {
       id: questionData?.id || Date.now(),
       type: 'REORDER',
       title: 'Reorder',
-      questionText: questionHTML,
-      correctAnswer: questionText,
+      questionText: correctAnswer, // Store the correct order
+      correctAnswer: correctAnswer,
       shuffledWords: shuffledWords,
+      blanks: blanks, // Store blanks info
       points: points,
     };
 
-    console.log('=== REORDER QUESTION HTML ===');
-    console.log('Question HTML:', questionHTML);
+    console.log('=== REORDER QUESTION DATA ===');
+    console.log('Correct Answer:', correctAnswer);
     console.log('Shuffled Words:', shuffledWords);
+    console.log('Blanks:', blanks);
     console.log('Full Question Data:', newQuestionData);
     console.log('================================');
 
@@ -598,9 +769,31 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
       editorRef.current.innerHTML = '';
     }
     setShuffledWords([]);
+    setBlanks([]);
     setPoints(1);
     onCancel();
   };
+
+  // Hide popup when clicking outside
+  useEffect(() => {
+    if (!showBlankPopup) return;
+
+    const handleClickOutside = (e) => {
+      // Check if click is on editor or popup
+      if (
+        editorRef.current &&
+        !editorRef.current.contains(e.target) &&
+        !e.target.closest('[data-blank-popup]')
+      ) {
+        setShowBlankPopup(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showBlankPopup]);
 
   const pointsMenu = (
     <Select
@@ -672,7 +865,13 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
             borderRadius: '8px',
             fontWeight: 500
           }}>
-            💡 Tips: Type the correct order of the sentence • Students will need to rearrange the words
+            💡 Tips: Click <span style={{ 
+              background: 'rgba(24, 144, 255, 0.2)', 
+              padding: '2px 8px', 
+              borderRadius: '4px',
+              fontWeight: 600,
+              color: '#1890ff'
+            }}>Add Item</span> to add words • Each item = 1 word in shuffled preview • Students will reorder them
         </div>
 
           <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
@@ -731,335 +930,18 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
             filter: 'blur(40px)'
           }} />
 
-          {/* Formatting Toolbar */}
-          <div style={{
-            display: 'flex',
-            gap: '4px',
-            marginBottom: '10px',
-            padding: '10px',
-            background: 'rgba(255, 255, 255, 0.95)',
-            borderRadius: '10px',
-            border: '2px solid rgba(24, 144, 255, 0.15)',
-            flexWrap: 'wrap',
-            position: 'relative',
-            zIndex: 2
-          }}>
-            {/* Heading Dropdown */}
-            <Dropdown
-              menu={{
-                items: [
-                  { 
-                    key: 'paragraph', 
-                    label: <span style={{ color: '#000000' }}>Paragraph</span>, 
-                    onClick: () => handleHeading('paragraph') 
-                  },
-                  { 
-                    key: 'h1', 
-                    label: <span style={{ color: '#000000', fontWeight: 700, fontSize: '16px' }}>Heading 1</span>, 
-                    onClick: () => handleHeading('h1') 
-                  },
-                  { 
-                    key: 'h2', 
-                    label: <span style={{ color: '#000000', fontWeight: 600, fontSize: '15px' }}>Heading 2</span>, 
-                    onClick: () => handleHeading('h2') 
-                  },
-                  { 
-                    key: 'h3', 
-                    label: <span style={{ color: '#000000', fontWeight: 600, fontSize: '14px' }}>Heading 3</span>, 
-                    onClick: () => handleHeading('h3') 
-                  },
-                ],
-                style: {
-                  background: '#ffffff',
-                }
-              }}
-              trigger={['click']}
-              overlayStyle={{
-                zIndex: 9999
-              }}
-            >
-              <Tooltip title="Heading">
-          <Button
-                  icon={<FontSizeOutlined />}
-                  style={{
-                    border: '1px solid rgba(24, 144, 255, 0.2)',
-                    borderRadius: '6px',
-                    height: '36px',
-                    width: '36px'
-                  }}
-                />
-              </Tooltip>
-            </Dropdown>
-            <div style={{ width: '1px', background: 'rgba(24, 144, 255, 0.2)', margin: '0 8px' }} />
-            
-            {/* Text Formatting */}
-            <Tooltip title="Bold">
-              <Button
-                icon={<BoldOutlined />}
-                onClick={() => handleFormat('bold')}
-                style={{
-                  border: '1px solid rgba(24, 144, 255, 0.2)',
-                  borderRadius: '6px',
-                  height: '36px',
-                  width: '36px'
-                }}
-              />
-            </Tooltip>
-            <Tooltip title="Italic">
-              <Button
-                icon={<ItalicOutlined />}
-                onClick={() => handleFormat('italic')}
-                style={{
-                  border: '1px solid rgba(24, 144, 255, 0.2)',
-                  borderRadius: '6px',
-                  height: '36px',
-                  width: '36px'
-                }}
-              />
-            </Tooltip>
-            <Tooltip title="Underline">
-              <Button
-                icon={<UnderlineOutlined />}
-                onClick={() => handleFormat('underline')}
-                style={{
-                  border: '1px solid rgba(24, 144, 255, 0.2)',
-                  borderRadius: '6px',
-                  height: '36px',
-                  width: '36px'
-                }}
-              />
-            </Tooltip>
-            <div style={{ width: '1px', background: 'rgba(24, 144, 255, 0.2)', margin: '0 8px' }} />
-            
-            {/* Link */}
-            <Tooltip title="Insert Link">
-              <Button
-                icon={<LinkOutlined />}
-                onClick={handleInsertLink}
-                style={{
-                  border: '1px solid rgba(24, 144, 255, 0.2)',
-                  borderRadius: '6px',
-                  height: '36px',
-                  width: '36px'
-                }}
-              />
-            </Tooltip>
-            
-            {/* Image Upload */}
-            <Tooltip title="Upload Image">
-              <Button
-            icon={<PictureOutlined />}
-                onClick={handleImageUpload}
-            style={{
-                  border: '1px solid rgba(24, 144, 255, 0.2)',
-                  borderRadius: '6px',
-                  height: '36px',
-                  width: '36px'
-                }}
-              />
-            </Tooltip>
-            <div style={{ width: '1px', background: 'rgba(24, 144, 255, 0.2)', margin: '0 8px' }} />
-            
-            {/* Lists */}
-            <Tooltip title="Ordered List">
-          <Button
-                icon={<OrderedListOutlined />}
-                onClick={() => handleFormat('insertOrderedList')}
-            style={{
-                  border: '1px solid rgba(24, 144, 255, 0.2)',
-                  borderRadius: '6px',
-                  height: '36px',
-                  width: '36px'
-                }}
-              />
-            </Tooltip>
-            <Tooltip title="Unordered List">
-          <Button
-                icon={<UnorderedListOutlined />}
-                onClick={() => handleFormat('insertUnorderedList')}
-            style={{
-                  border: '1px solid rgba(24, 144, 255, 0.2)',
-                  borderRadius: '6px',
-                  height: '36px',
-                  width: '36px'
-                }}
-              />
-            </Tooltip>
-            <div style={{ width: '1px', background: 'rgba(24, 144, 255, 0.2)', margin: '0 8px' }} />
-            
-            {/* Table Grid Selector */}
-            <Dropdown
-              open={tableDropdownOpen}
-              onOpenChange={(open) => {
-                setTableDropdownOpen(open);
-                if (!open) {
-                  setHoveredCell({ row: 0, col: 0 });
-                }
-              }}
-              trigger={['click']}
-              overlayStyle={{ zIndex: 9999 }}
-              dropdownRender={() => (
-        <div
-          style={{
-                    background: '#ffffff',
-                    padding: '12px',
-                    borderRadius: '8px',
-                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-                    border: '1px solid rgba(24, 144, 255, 0.2)'
-                  }}
-                  onMouseLeave={() => setHoveredCell({ row: 0, col: 0 })}
-                >
-                  <div style={{
-                    fontSize: '12px',
-                    color: '#666',
-                    marginBottom: '8px',
-                    textAlign: 'center',
-                    fontWeight: 500,
-                    height: '16px'
-                  }}>
-                    {hoveredCell.row > 0 && hoveredCell.col > 0 
-                      ? `${hoveredCell.row} x ${hoveredCell.col} Table`
-                      : 'Select table size'}
-                  </div>
-            <div style={{ 
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(10, 1fr)',
-                    gap: '2px'
-                  }}>
-                    {Array.from({ length: 100 }, (_, index) => {
-                      const row = Math.floor(index / 10) + 1;
-                      const col = (index % 10) + 1;
-                      const isHovered = row <= hoveredCell.row && col <= hoveredCell.col;
-                      
-                      return (
-                        <div
-                          key={index}
-                          onMouseEnter={() => setHoveredCell({ row, col })}
-                          onClick={() => {
-                            if (hoveredCell.row > 0 && hoveredCell.col > 0) {
-                              handleInsertTable(hoveredCell.row, hoveredCell.col);
-                            }
-                          }}
-                  style={{
-                            width: '20px',
-                            height: '20px',
-                            border: '1px solid #000000',
-                            background: isHovered ? '#1890ff' : '#ffffff',
-                            cursor: 'pointer',
-                            transition: 'all 0.1s ease',
-                            borderRadius: '2px'
-                          }}
-                        />
-                      );
-                    })}
-              </div>
-            </div>
-          )}
-            >
-              <Tooltip title="Insert Table">
-                <Button
-                  icon={<TableOutlined />}
-                  style={{
-                    border: '1px solid rgba(24, 144, 255, 0.2)',
-                    borderRadius: '6px',
-                    height: '36px',
-                    width: '36px'
-                  }}
-                />
-              </Tooltip>
-            </Dropdown>
-            <div style={{ width: '1px', background: 'rgba(24, 144, 255, 0.2)', margin: '0 8px' }} />
-            
-            {/* Image Alignment (only show when image is selected) */}
-            {selectedImage && (
-              <>
-                <Tooltip title="Align Left">
-                  <Button
-                    icon={<AlignLeftOutlined />}
-                    onClick={() => handleImageAlign('left')}
-                    style={{
-                      border: '1px solid rgba(24, 144, 255, 0.2)',
-                      borderRadius: '6px',
-                      height: '36px',
-                      width: '36px',
-                      background: 'rgba(82, 196, 26, 0.1)'
-                    }}
-                  />
-                </Tooltip>
-                <Tooltip title="Align Center">
-                  <Button
-                    icon={<AlignCenterOutlined />}
-                    onClick={() => handleImageAlign('center')}
-                  style={{
-                      border: '1px solid rgba(24, 144, 255, 0.2)',
-                    borderRadius: '6px',
-                      height: '36px',
-                      width: '36px',
-                      background: 'rgba(82, 196, 26, 0.1)'
-                    }}
-                  />
-                </Tooltip>
-                <Tooltip title="Align Right">
-                  <Button
-                    icon={<AlignRightOutlined />}
-                    onClick={() => handleImageAlign('right')}
-                    style={{
-                      border: '1px solid rgba(24, 144, 255, 0.2)',
-                      borderRadius: '6px',
-                      height: '36px',
-                      width: '36px',
-                      background: 'rgba(82, 196, 26, 0.1)'
-                    }}
-                  />
-                </Tooltip>
-                <div style={{ width: '1px', background: 'rgba(24, 144, 255, 0.2)', margin: '0 8px' }} />
-              </>
-            )}
-            
-            {/* Undo/Redo */}
-            <Tooltip title="Undo">
-              <Button
-                icon={<UndoOutlined />}
-                onClick={() => handleFormat('undo')}
-                style={{
-                  border: '1px solid rgba(24, 144, 255, 0.2)',
-                  borderRadius: '6px',
-                  height: '36px',
-                  width: '36px'
-                }}
-              />
-            </Tooltip>
-            <Tooltip title="Redo">
-              <Button
-                icon={<RedoOutlined />}
-                onClick={() => handleFormat('redo')}
-                style={{
-                  border: '1px solid rgba(24, 144, 255, 0.2)',
-                  borderRadius: '6px',
-                  height: '36px',
-                  width: '36px'
-                }}
-              />
-            </Tooltip>
-        </div>
-
-          {/* Hidden File Input for Image Upload */}
-        <input
-            ref={fileInputRef}
-          type="file"
-          accept="image/*"
-          style={{ display: 'none' }}
-            onChange={handleFileChange}
-          />
 
           {/* Editor */}
+          <div style={{ position: 'relative' }}>
           <div
             ref={editorRef}
             contentEditable
             onInput={handleEditorInput}
             onPaste={handlePaste}
             onClick={handleEditorClick}
+              onFocus={handleEditorFocus}
             onKeyDown={handleEditorKeyDown}
+              onKeyUp={updatePopupPosition}
             suppressContentEditableWarning
               style={{
               minHeight: '180px',
@@ -1077,13 +959,50 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
               zIndex: 1,
               whiteSpace: 'pre-wrap',
               wordWrap: 'break-word',
-              marginBottom: '24px',
               cursor: 'text',
               userSelect: 'text',
-              WebkitUserSelect: 'text'
+              WebkitUserSelect: 'text',
+              textAlign: 'center'
             }}
-            data-placeholder="Type the correct order of your sentence here..."
-          />
+            />
+
+            {/* Item Popup */}
+            {showBlankPopup && (
+              <div
+                data-blank-popup="true"
+                style={{
+                  position: 'absolute',
+                  left: `${popupPosition.x}px`,
+                  top: `${popupPosition.y}px`,
+                  zIndex: 1000,
+                  background: 'white',
+                  borderRadius: '8px',
+                  boxShadow: '0 4px 16px rgba(0, 0, 0, 0.15)',
+                  border: '2px solid #1890ff',
+                  padding: '4px',
+                }}
+                className="blank-popup-fade-in"
+              >
+                <Button
+                  type="primary"
+                  icon={<ThunderboltOutlined />}
+                  onClick={insertBlankAtCursor}
+                  size="small"
+                  style={{
+                    background: 'linear-gradient(135deg, #66AEFF, #3C99FF)',
+                    border: 'none',
+                    fontWeight: 600,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    color: '#000000',
+                  }}
+                >
+                  Add Item
+                </Button>
+              </div>
+            )}
+          </div>
 
           {/* Hint Text */}
               <div style={{
@@ -1093,7 +1012,7 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
             marginBottom: '24px',
             fontStyle: 'italic'
           }}>
-            The sentence above is the correct answer. Students will see shuffled words below.
+            Each item above = 1 word. Students will see shuffled words below and reorder them.
               </div>
 
           {/* Shuffled Words Preview */}
@@ -1111,15 +1030,38 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
                 marginBottom: '16px',
                 display: 'flex',
                 alignItems: 'center',
-                gap: '8px'
+                justifyContent: 'space-between'
               }}>
-                <DragOutlined style={{ fontSize: '18px' }} />
-                Preview: Shuffled Words (Students will drag to reorder)
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px'
+                }}>
+                  <DragOutlined style={{ fontSize: '18px' }} />
+                  Preview: Shuffled Words (Students will drag to reorder)
+                </div>
+                <Button
+                  icon={<RetweetOutlined />}
+                  onClick={handleShuffleWords}
+                  size="small"
+                  style={{
+                    background: 'linear-gradient(135deg, #66AEFF, #3C99FF)',
+                    border: 'none',
+                    fontWeight: 600,
+                    color: '#000000',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px'
+                  }}
+                >
+                  Shuffle
+                </Button>
               </div>
               <div style={{ 
                 display: 'flex',
                 flexWrap: 'wrap',
-                gap: '12px'
+                gap: '12px',
+                justifyContent: 'center'
               }}>
                 {shuffledWords.map((word) => (
                   <div
@@ -1130,8 +1072,8 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
                     onDrop={(e) => handleWordDrop(e, word.id)}
                 style={{ 
                       padding: '12px 20px',
-                      background: 'linear-gradient(135deg, rgba(240, 247, 255, 0.8) 0%, rgba(230, 244, 255, 0.9) 100%)',
-                      border: '2px solid #1890ff',
+                      background: `linear-gradient(135deg, ${word.color}20, ${word.color}40)`,
+                      border: `2px solid ${word.color}`,
                       borderRadius: '10px',
                       fontSize: '15px',
                       fontWeight: 500,
@@ -1139,15 +1081,15 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
                       cursor: 'grab',
                       transition: 'all 0.2s ease',
                       userSelect: 'none',
-                      boxShadow: '0 2px 8px rgba(24, 144, 255, 0.15)',
+                      boxShadow: `0 2px 8px ${word.color}40`,
                     }}
                     onMouseEnter={(e) => {
-                      e.target.style.transform = 'translateY(-2px)';
-                      e.target.style.boxShadow = '0 4px 12px rgba(24, 144, 255, 0.25)';
+                      e.currentTarget.style.transform = 'translateY(-2px)';
+                      e.currentTarget.style.boxShadow = `0 4px 12px ${word.color}60`;
                     }}
                     onMouseLeave={(e) => {
-                      e.target.style.transform = 'translateY(0)';
-                      e.target.style.boxShadow = '0 2px 8px rgba(24, 144, 255, 0.15)';
+                      e.currentTarget.style.transform = 'translateY(0)';
+                      e.currentTarget.style.boxShadow = `0 2px 8px ${word.color}40`;
                     }}
                   >
                     {word.text}
