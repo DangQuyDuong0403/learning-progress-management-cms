@@ -36,6 +36,7 @@ const EditDailyChallengeModal = ({
   const { theme } = useTheme();
   const [form] = Form.useForm();
   const [isButtonDisabled, setIsButtonDisabled] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
 
 
   // Set form values when challengeData changes
@@ -44,7 +45,7 @@ const EditDailyChallengeModal = ({
       form.setFieldsValue({
         challengeName: challengeData.title || challengeData.challengeName,
         classLessonId: challengeData.lessonId || challengeData.classLessonId,
-        description: challengeData.description,
+        description: challengeData.description, 
         challengeType: challengeData.type || challengeData.challengeType,
         durationMinutes: challengeData.timeLimit || challengeData.durationMinutes,
         hasAntiCheat: challengeData.hasAntiCheat || false,
@@ -58,9 +59,16 @@ const EditDailyChallengeModal = ({
   }, [visible, challengeData, form]);
 
   const handleModalOk = async () => {
-    if (isButtonDisabled) return;
+    console.log('handleModalOk called - isButtonDisabled:', isButtonDisabled, 'isUpdating:', isUpdating);
     
+    if (isButtonDisabled || isUpdating) {
+      console.log('Button is disabled or updating, returning early');
+      return;
+    }
+    
+    console.log('Setting loading states...');
     setIsButtonDisabled(true);
+    setIsUpdating(true);
     
     try {
       const values = await form.validateFields();
@@ -72,7 +80,7 @@ const EditDailyChallengeModal = ({
         classLessonId: values.classLessonId,
         description: values.description,
         challengeType: values.challengeType,
-        durationMinutes: values.durationMinutes || 30,
+        durationMinutes: values.durationMinutes,
         hasAntiCheat: values.hasAntiCheat || false,
         shuffleAnswers: values.shuffleAnswers || false,
         translateOnScreen: values.translateOnScreen || false,
@@ -81,23 +89,28 @@ const EditDailyChallengeModal = ({
         endDate: values.endDate ? values.endDate.toISOString() : null,
       };
 
-      spaceToast.success(t('dailyChallenge.updateChallengeSuccess'));
-      onUpdateSuccess(challengeData);
+      // Wait for the parent to handle the API call
+      console.log('Calling onUpdateSuccess...');
+      await onUpdateSuccess(challengeData);
+      console.log('onUpdateSuccess completed');
     } catch (error) {
-      console.error('Validation error:', error);
+      console.error('Error in handleModalOk:', error);
       if (error.errorFields) {
         spaceToast.error(t('common.pleaseFillAllRequiredFields'));
       } else {
         spaceToast.error(t('dailyChallenge.updateChallengeError'));
       }
     } finally {
+      console.log('Resetting loading states...');
       setIsButtonDisabled(false);
+      setIsUpdating(false);
     }
   };
 
   const handleModalCancel = () => {
     form.resetFields();
     setIsButtonDisabled(false);
+    setIsUpdating(false);
     onCancel();
   };
 
@@ -136,6 +149,7 @@ const EditDailyChallengeModal = ({
           type="primary" 
           onClick={handleModalOk}
           disabled={isButtonDisabled}
+          loading={isUpdating}
           style={{
             background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, #7228d9 0%, #9c88ff 100%)',
             borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : '#7228d9',
@@ -269,10 +283,16 @@ const EditDailyChallengeModal = ({
                   message: t('dailyChallenge.durationMinutesRequired'),
                 },
                 {
-                  type: 'number',
-                  min: 1,
-                  max: 300,
-                  message: t('dailyChallenge.durationMinutesRange'),
+                  validator: (_, value) => {
+                    const numValue = Number(value);
+                    if (isNaN(numValue)) {
+                      return Promise.reject(new Error(t('dailyChallenge.durationMinutesRequired')));
+                    }
+                    if (numValue < 1 || numValue > 300) {
+                      return Promise.reject(new Error(t('dailyChallenge.durationMinutesRange')));
+                    }
+                    return Promise.resolve();
+                  },
                 },
               ]}>
               <Input 

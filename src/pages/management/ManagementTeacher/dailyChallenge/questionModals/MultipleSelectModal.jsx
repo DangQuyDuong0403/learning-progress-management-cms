@@ -16,6 +16,7 @@ const MultipleSelectModal = ({
 	onCancel,
 	onSave,
 	questionData = null,
+	saving = false,
 }) => {
 	
 	// Custom upload adapter for CKEditor to convert images to base64
@@ -306,6 +307,7 @@ const MultipleSelectModal = ({
 			type: 'MULTIPLE_SELECT',
 			title: 'Multiple select',
 			question: editorData,
+			points: points,
 			options: options.map((opt, index) => ({
 				...opt,
 				key: String.fromCharCode(65 + index), // A, B, C, D, ...
@@ -411,6 +413,8 @@ const MultipleSelectModal = ({
 						onClick={handleSave}
 						size="large"
 						className="save-question-btn"
+						loading={saving}
+						disabled={saving}
 						style={{
 							height: '44px',
 							borderRadius: '12px',

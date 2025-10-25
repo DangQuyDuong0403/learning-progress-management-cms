@@ -9,7 +9,7 @@ import { CKEditor } from '@ckeditor/ckeditor5-react';
 import ClassicEditor from '@ckeditor/ckeditor5-build-classic';
 import './MultipleChoiceModal.css';
 
-const TrueFalseModal = ({ visible, onCancel, onSave, questionData = null }) => {
+const TrueFalseModal = ({ visible, onCancel, onSave, questionData = null, saving = false }) => {
 	
 	// Custom upload adapter for CKEditor to convert images to base64
 	function CustomUploadAdapterPlugin(editor) {
@@ -158,6 +158,7 @@ const TrueFalseModal = ({ visible, onCancel, onSave, questionData = null }) => {
 			type: 'TRUE_OR_FALSE',
 			title: 'True or false',
 			question: editorData,
+			points: points,
 			options: [
 				{ id: 1, text: 'True', isCorrect: correctAnswer === 'True', key: 'A' },
 				{ id: 2, text: 'False', isCorrect: correctAnswer === 'False', key: 'B' },
@@ -251,6 +252,8 @@ const TrueFalseModal = ({ visible, onCancel, onSave, questionData = null }) => {
 							onClick={handleSave}
 							size="large"
 							className="save-question-btn"
+							loading={saving}
+							disabled={saving}
 							style={{
 								height: '44px',
 								borderRadius: '12px',
