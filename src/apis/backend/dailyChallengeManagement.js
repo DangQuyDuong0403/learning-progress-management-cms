@@ -187,6 +187,20 @@ const dailyChallengeApi = {
 				'accept': '*/*',
 			}
 		});
+	},
+
+	// Lưu section với questions cho một challenge
+	saveSectionWithQuestions: (challengeId, sectionData) => {
+		const url = `/sections/${challengeId}`;
+		console.log('SaveSectionWithQuestions API - URL:', url);
+		console.log('SaveSectionWithQuestions API - Data:', sectionData);
+		
+		return axiosClient.post(url, sectionData, {
+			headers: {
+				'Content-Type': 'application/json',
+				'accept': '*/*',
+			}
+		});
 	}
 };
 

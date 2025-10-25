@@ -303,7 +303,7 @@ const MultipleSelectModal = ({
 
 		const newQuestionData = {
 			id: questionData?.id || Date.now(),
-			type: 'multiple-select',
+			type: 'MULTIPLE_SELECT',
 			title: 'Multiple select',
 			question: editorData,
 			options: options.map((opt, index) => ({

@@ -471,7 +471,7 @@ const DailyChallengeContent = () => {
 
             return {
               id: question.id || `${section.id}-${qIndex}`,
-              type: question.questionType || 'multiple-choice',
+              type: question.questionType ,
               question: question.questionText || '',
               options: options,
               points: question.score || 1,
@@ -618,19 +618,85 @@ const DailyChallengeContent = () => {
     setDeleteQuestion(null);
   }, []);
 
-  const handleSaveChanges = useCallback((saveAsStatus) => {
-    // Update status when saving
-    if (saveAsStatus) {
-      setStatus(saveAsStatus);
-      spaceToast.success(
-        saveAsStatus === 'published' 
-          ? t('dailyChallenge.savedAsPublished') || 'Saved and published successfully!'
-          : t('dailyChallenge.savedAsDraft') || 'Saved as draft successfully!'
-      );
-    } else {
-      spaceToast.success('Changes saved successfully!');
+  const handleSaveChanges = useCallback(async (saveAsStatus) => {
+
+    if (questions.length === 0) {
+      spaceToast.warning('Please add at least one question before saving');
+      return;
     }
-  }, [t]);
+
+    try {
+      setLoading(true);
+
+      // Transform questions to API format
+      // Group questions by section (for now, we'll use a single default section)
+      const apiQuestions = questions.map((question, index) => {
+        // Transform options to content.data format
+        const contentData = question.options ? question.options.map((option, optIndex) => ({
+          id: option.key ? `opt${optIndex + 1}` : `opt${optIndex + 1}`, // opt1, opt2, opt3, opt4
+          value: option.text, // HTML content from CKEditor
+          positionOrder: optIndex + 1,
+          correct: option.isCorrect || false
+        })) : [];
+
+        return {
+          // Don't include id for new questions
+          questionText: question.question, // HTML content from CKEditor
+          orderNumber: index + 1,
+          score: question.points || 0.5, // Default to 0.5 like in sample
+          questionType: question.type ? question.type.toUpperCase().replace(/-/g, '_') : 'MULTIPLE_CHOICE', // Convert to UPPER_SNAKE_CASE
+          content: {
+            data: contentData
+          }
+        };
+      });
+
+      // Create section data
+      const sectionData = {
+        section: {
+          sectionsContent: 'Choose one correct answer.',
+          resourceType: 'NONE'
+        },
+        questions: apiQuestions
+      };
+
+      console.log('Saving section with questions:', sectionData);
+
+      // Step 1: Call API to save section with questions
+      await dailyChallengeApi.saveSectionWithQuestions(id, sectionData);
+
+      // Step 2: If saveAsStatus is provided, update challenge status
+      if (saveAsStatus) {
+        // Convert saveAsStatus to API format (DRAFT or PUBLISHED)
+        const challengeStatus = saveAsStatus === 'published' ? 'PUBLISHED' : 'DRAFT';
+        
+        console.log('Updating challenge status:', challengeStatus);
+        
+        // Call API to update challenge status
+        await dailyChallengeApi.updateDailyChallengeStatus(id, challengeStatus);
+        
+        // Update local status
+        setStatus(saveAsStatus);
+        
+        spaceToast.success(
+          saveAsStatus === 'published' 
+            ? t('dailyChallenge.savedAsPublished') || 'Saved and published successfully!'
+            : t('dailyChallenge.savedAsDraft') || 'Saved as draft successfully!'
+        );
+      } else {
+        spaceToast.success('Changes saved successfully!');
+      }
+
+      // Refresh questions from API
+      await fetchQuestions();
+
+    } catch (error) {
+      console.error('Error saving questions:', error);
+      spaceToast.error(error.response?.data?.error || error.message || 'Failed to save questions');
+    } finally {
+      setLoading(false);
+    }
+  }, [id, questions, t, fetchQuestions]);
 
   const handleOpenSettings = useCallback(() => {
     setSettingsModalVisible(true);
