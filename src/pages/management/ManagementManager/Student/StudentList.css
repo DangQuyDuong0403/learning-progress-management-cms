@@ -5,6 +5,15 @@
   display: none !important;
 }
 
+/* Clickable class name styles */
+.clickable-class-name {
+  transition: none;
+}
+
+.clickable-class-name:hover {
+  text-decoration: underline ;
+}
+
 
 /* ===== PANEL HEADER ===== */
 .panel-header {
