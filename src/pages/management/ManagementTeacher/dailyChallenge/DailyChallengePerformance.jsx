@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import React, { useState, useEffect, useCallback } from "react";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { Card, Row, Col, Statistic, Button, List } from "antd";
 import { TrophyOutlined } from "@ant-design/icons";
 import ThemedLayout from "../../../../component/teacherlayout/ThemedLayout";
@@ -10,13 +10,26 @@ import { useTranslation } from "react-i18next";
 import { useTheme } from "../../../../contexts/ThemeContext";
 import { useDailyChallengeMenu } from "../../../../contexts/DailyChallengeMenuContext";
 import usePageTitle from "../../../../hooks/usePageTitle";
+import { dailyChallengeApi } from "../../../../apis/apis";
+import { useSelector } from "react-redux";
 
 const DailyChallengePerformance = () => {
   const { t } = useTranslation();
   const { theme } = useTheme();
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
+  const { user } = useSelector((state) => state.auth);
   const { enterDailyChallengeMenu, exitDailyChallengeMenu } = useDailyChallengeMenu();
+  
+  // Get data from navigation state or fetch from API
+  const [challengeInfo, setChallengeInfo] = useState({
+    classId: location.state?.classId || null,
+    className: location.state?.className || null,
+    challengeId: location.state?.challengeId || id,
+    challengeName: location.state?.challengeName || null,
+    lessonName: location.state?.lessonName || null,
+  });
   
   // Set page title
   usePageTitle('Daily Challenge Management / Performance');
@@ -42,6 +55,32 @@ const DailyChallengePerformance = () => {
     { id: 9, name: 'Đặng Văn I', email: 'dangvani@example.com', score: 6.5, avatar: null, completionTime: 35 },
     { id: 10, name: 'Ngô Thị K', email: 'ngothik@example.com', score: 5.0, avatar: null, completionTime: 40 },
   ];
+
+  // Fetch challenge info from API if not available in state
+  const fetchChallengeInfo = useCallback(async () => {
+    // If we already have all info, no need to fetch
+    if (challengeInfo.challengeName && challengeInfo.className) {
+      return;
+    }
+
+    try {
+      // Fetch challenge detail from API
+      const response = await dailyChallengeApi.getDailyChallengeById(id);
+      console.log('Challenge detail response:', response);
+      
+      const data = response?.data;
+      if (data) {
+        setChallengeInfo(prev => ({
+          ...prev,
+          challengeId: data.id || id,
+          challengeName: data.challengeName || data.name || data.title || prev.challengeName,
+          // Note: API might not return class info directly, may need additional fetch
+        }));
+      }
+    } catch (error) {
+      console.error('Error fetching challenge info:', error);
+    }
+  }, [id, challengeInfo.challengeName, challengeInfo.className]);
 
   // Calculate score distribution by range (0-1, 1-2, 2-3, ..., 9-10)
   const calculateScoreDistribution = (scores) => {
@@ -116,16 +155,56 @@ const DailyChallengePerformance = () => {
     return [...studentScores].sort((a, b) => b.score - a.score);
   };
 
+  // Fetch challenge info if needed
+  useEffect(() => {
+    fetchChallengeInfo();
+  }, [fetchChallengeInfo]);
+
   // Enter/exit daily challenge menu mode
   useEffect(() => {
-    // Enter daily challenge menu mode with backPath to list
-    enterDailyChallengeMenu(0, null, '/teacher/daily-challenges');
+    // Determine back path based on classId
+    const getBackPath = () => {
+      if (challengeInfo.classId) {
+        // If coming from class-specific daily challenges, go back to that list
+        // Route: /teacher/classes/daily-challenges/:classId
+        const userRole = user?.role?.toLowerCase();
+        if (userRole === 'teacher' || userRole === 'teaching_assistant') {
+          return `/teacher/classes/daily-challenges/${challengeInfo.classId}`;
+        } else {
+          return `/manager/classes/daily-challenges/${challengeInfo.classId}`;
+        }
+      } else {
+        // Otherwise, go back to general daily challenges list
+        const userRole = user?.role?.toLowerCase();
+        return userRole === 'teacher' || userRole === 'teaching_assistant' 
+          ? '/teacher/daily-challenges' 
+          : '/manager/daily-challenges';
+      }
+    };
+
+    // Determine subtitle for header
+    const getSubtitle = () => {
+      if (challengeInfo.className && challengeInfo.challengeName) {
+        return `${challengeInfo.className} / ${challengeInfo.challengeName}`;
+      } else if (challengeInfo.challengeName) {
+        return challengeInfo.challengeName;
+      }
+      return null;
+    };
+    
+    // Enter daily challenge menu mode with backPath and subtitle
+    enterDailyChallengeMenu(
+      0, 
+      getSubtitle(), 
+      getBackPath(), 
+      challengeInfo.className
+    );
     
     // Exit daily challenge menu mode when component unmounts
     return () => {
       exitDailyChallengeMenu();
     };
-  }, [enterDailyChallengeMenu, exitDailyChallengeMenu]);
+  }, [enterDailyChallengeMenu, exitDailyChallengeMenu, challengeInfo, user]);
 
   useEffect(() => {
     fetchPerformanceData();
@@ -171,13 +250,17 @@ const DailyChallengePerformance = () => {
         <div className="search-action-section" style={{ display: 'flex', gap: '12px', alignItems: 'center', justifyContent: 'flex-end', marginBottom: '24px', padding: '24px 24px 0 24px' }}>
           <Button
             className={`tab-button ${theme}-tab-button`}
-            onClick={() => navigate(`/teacher/daily-challenges/detail/${id}/content`)}
+            onClick={() => navigate(`/teacher/daily-challenges/detail/${id}/content`, {
+              state: challengeInfo
+            })}
           >
             {t('dailyChallenge.content')}
           </Button>
           <Button
             className={`tab-button ${theme}-tab-button`}
-            onClick={() => navigate(`/teacher/daily-challenges/detail/${id}/submissions`)}
+            onClick={() => navigate(`/teacher/daily-challenges/detail/${id}/submissions`, {
+              state: challengeInfo
+            })}
           >
             {t('dailyChallenge.submission')}
           </Button>

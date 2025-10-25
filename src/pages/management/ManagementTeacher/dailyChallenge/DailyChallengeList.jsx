@@ -107,6 +107,7 @@ const DailyChallengeList = () => {
   
   const [loading, setLoading] = useState(false);
   const [dailyChallenges, setDailyChallenges] = useState([]);
+  const [classData, setClassData] = useState(null); // Store class data
   const [searchText, setSearchText] = useState("");
   const [typeFilter, setTypeFilter] = useState([]);
   const [statusFilter, setStatusFilter] = useState([]);
@@ -162,6 +163,50 @@ const DailyChallengeList = () => {
     "Speaking",
   ];
   const statusOptions = ["DRAFT", "PUBLISHED"];
+
+  // Fetch class data if classId exists
+  const fetchClassData = useCallback(async () => {
+    if (!classId) {
+      setClassData(null);
+      return;
+    }
+    
+    try {
+      const { classManagementApi } = require('../../../../apis/apis');
+      const response = await classManagementApi.getClassDetail(classId);
+      console.log('DailyChallengeList - Class detail response:', response);
+      const data = response?.data?.data ?? response?.data ?? null;
+      if (data) {
+        const mapped = {
+          id: data.id ?? classId,
+          name:
+            data.name ??
+            data.className ??
+            data.classname ??
+            data.class_name ??
+            data.title ??
+            data.classTitle ??
+            `Class ${classId}`, // Fallback name
+        };
+        console.log('DailyChallengeList - Setting classData:', mapped);
+        setClassData(mapped);
+      } else {
+        // If no data returned, set a fallback
+        console.log('DailyChallengeList - No class data, using fallback');
+        setClassData({
+          id: classId,
+          name: `Class ${classId}`
+        });
+      }
+    } catch (error) {
+      console.error('DailyChallengeList - Error fetching class data:', error);
+      // Set fallback class data even on error
+      setClassData({
+        id: classId,
+        name: `Class ${classId}`
+      });
+    }
+  }, [classId]);
 
   const fetchDailyChallenges = useCallback(async () => {
     setLoading(true);
@@ -266,6 +311,11 @@ const DailyChallengeList = () => {
     }
   }, [classId, currentPage, pageSize, searchDebounce, t]);
 
+  // Fetch class data on component mount if classId exists
+  useEffect(() => {
+    fetchClassData();
+  }, [fetchClassData]);
+
   useEffect(() => {
     fetchDailyChallenges();
   }, [fetchDailyChallenges]);
@@ -290,6 +340,12 @@ const DailyChallengeList = () => {
 
   // Enter/exit daily challenge menu mode
   useEffect(() => {
+    console.log('DailyChallengeList - Entering daily challenge menu mode', {
+      classId,
+      classData,
+      locationState: location.state
+    });
+    
     // Get classId from URL params or location state
     const currentClassId = classId || location.state?.classId;
     
@@ -312,13 +368,17 @@ const DailyChallengeList = () => {
     };
     
     // Enter daily challenge menu mode when component mounts
-    enterDailyChallengeMenu(0, null, getBackPath());
+    // Pass class name if available
+    const displayName = classData?.name || null;
+    console.log('DailyChallengeList - Display name for header:', displayName);
+    enterDailyChallengeMenu(0, null, getBackPath(), displayName);
     
     // Exit daily challenge menu mode when component unmounts
     return () => {
+      console.log('DailyChallengeList - Exiting daily challenge menu mode');
       exitDailyChallengeMenu();
     };
-  }, [enterDailyChallengeMenu, exitDailyChallengeMenu, classId, location.state, user]);
+  }, [enterDailyChallengeMenu, exitDailyChallengeMenu, classId, location.state, user, classData]);
 
   // Update challenge count when filters change
   useEffect(() => {
@@ -405,7 +465,16 @@ const DailyChallengeList = () => {
   };
 
   const handleViewClick = (challenge) => {
-    navigate(`/teacher/daily-challenges/detail/${challenge.id}`);
+    // Navigate with state containing class and challenge information
+    navigate(`/teacher/daily-challenges/detail/${challenge.id}`, {
+      state: {
+        classId: classId,
+        className: classData?.name,
+        challengeId: challenge.id,
+        challengeName: challenge.title,
+        lessonName: challenge.lessonName,
+      }
+    });
   };
 
   const handleToggleStatus = async (id) => {
@@ -714,8 +783,28 @@ const DailyChallengeList = () => {
   return (
     <ThemedLayout>
       <div className="daily-challenge-list-wrapper">
+        {/* Page Title */}
+        <div className="page-title-container" style={{ padding: '24px 24px 0 24px' }}>
+          <Typography.Title 
+            level={1} 
+            className="page-title"
+            style={{
+              fontSize: '32px',
+              fontWeight: '600',
+              margin: '0 0 24px 0',
+              color: theme === 'sun' ? '#1e40af' : '#fff'
+            }}
+          >
+            {t('dailyChallenge.dailyChallengeManagement')} <span className="student-count" style={{
+              fontSize: '24px',
+              fontWeight: '500',
+              color: theme === 'sun' ? '#475569' : '#000000'
+            }}>({filteredChallenges.length})</span>
+          </Typography.Title>
+        </div>
+
         {/* Search and Action Section */}
-        <div className="search-action-section" style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '24px', padding: '24px 24px 0 24px' }}>
+        <div className="search-action-section" style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '24px', padding: '0 24px' }}>
           <Input
             prefix={<SearchOutlined />}
             value={searchText}
