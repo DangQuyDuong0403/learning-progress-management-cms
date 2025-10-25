@@ -143,24 +143,34 @@ const SortableQuestionItem = memo(
         return null;
       }
 
-      // Parse questionText and replace [[pos_xxx]] with (a)____, (b)____, etc.
+      // Theme colors
+      const blankColor = theme === 'sun' ? '#1890ff' : '#8B5CF6';
+      const blankBgColor = theme === 'sun' 
+        ? 'rgba(24, 144, 255, 0.08)' 
+        : 'rgba(139, 92, 246, 0.15)';
+      const blankBorderColor = theme === 'sun' 
+        ? 'rgba(24, 144, 255, 0.3)' 
+        : 'rgba(139, 92, 246, 0.4)';
+      const answerTextColor = theme === 'sun' ? '#333' : '#e0e0e0';
+
+      // Parse questionText and replace [[pos_xxx]] with (1)____, (2)____, etc.
       let displayText = question.questionText;
       const answerChoices = [];
       
       if (question.content && question.content.data) {
         question.content.data.forEach((item, idx) => {
-          const letter = String.fromCharCode(97 + idx); // a, b, c, d...
+          const number = idx + 1; // 1, 2, 3, 4...
           const pattern = `[[pos_${item.positionId}]]`;
           
-          // Replace pattern with (a)____ format
+          // Replace pattern with (1)____ format
           displayText = displayText.replace(
             pattern,
-            `<span style="color: #1890ff; font-weight: 600;">(${letter})</span><span style="text-decoration: underline; padding: 0 2px;">____</span>`
+            `<span style="color: ${blankColor}; font-weight: 600;">(${number})</span><span style="text-decoration: underline; padding: 0 2px;">____</span>`
           );
           
           // Add to answer choices
           answerChoices.push({
-            letter: letter,
+            number: number,
             value: item.value
           });
         });
@@ -195,8 +205,8 @@ const SortableQuestionItem = memo(
                     alignItems: 'center',
                     gap: '8px',
                     padding: '8px 16px',
-                    background: 'rgba(24, 144, 255, 0.08)',
-                    border: '2px solid rgba(24, 144, 255, 0.3)',
+                    background: blankBgColor,
+                    border: `2px solid ${blankBorderColor}`,
                     borderRadius: '8px',
                     fontSize: '14px',
                     fontWeight: 500
@@ -204,12 +214,12 @@ const SortableQuestionItem = memo(
                 >
                   <span style={{ 
                     fontWeight: 700, 
-                    color: '#1890ff',
+                    color: blankColor,
                     fontSize: '15px'
                   }}>
-                    ({choice.letter})
+                    ({choice.number})
                   </span>
-                  <span style={{ color: '#333' }}>
+                  <span style={{ color: answerTextColor }}>
                     {choice.value}
                   </span>
                 </div>
@@ -218,7 +228,527 @@ const SortableQuestionItem = memo(
           )}
         </>
       );
-    }, [question]);
+    }, [question, theme]);
+
+    // Helper function to render Dropdown question
+    const renderDropdownQuestion = useCallback(() => {
+      if (question.type !== 'dropdown' || !question.questionText) {
+        return null;
+      }
+
+      // Theme colors
+      const dropdownColor = theme === 'sun' ? '#1890ff' : '#A78BFA';
+      const dropdownBgStart = theme === 'sun' 
+        ? 'rgba(24, 144, 255, 0.15)' 
+        : 'rgba(167, 139, 250, 0.2)';
+      const dropdownBgEnd = theme === 'sun' 
+        ? 'rgba(24, 144, 255, 0.25)' 
+        : 'rgba(167, 139, 250, 0.3)';
+      const dropdownBorderColor = theme === 'sun' ? '#1890ff' : '#A78BFA';
+      const cardBgColor = theme === 'sun' 
+        ? 'rgba(24, 144, 255, 0.05)' 
+        : 'rgba(167, 139, 250, 0.1)';
+      const cardBorderColor = theme === 'sun' 
+        ? 'rgba(24, 144, 255, 0.2)' 
+        : 'rgba(167, 139, 250, 0.3)';
+      const correctColor = theme === 'sun' ? '#52c41a' : '#73d13d';
+      const correctBgColor = theme === 'sun' 
+        ? 'rgba(82, 196, 26, 0.1)' 
+        : 'rgba(115, 209, 61, 0.15)';
+      const correctBorderColor = theme === 'sun' 
+        ? 'rgba(82, 196, 26, 0.4)' 
+        : 'rgba(115, 209, 61, 0.5)';
+      const answerTextColor = theme === 'sun' ? '#333' : '#e0e0e0';
+      const labelColor = theme === 'sun' ? '#666' : '#b0b0b0';
+      const optionBgColor = theme === 'sun' 
+        ? 'rgba(0, 0, 0, 0.04)' 
+        : 'rgba(255, 255, 255, 0.08)';
+      const optionBorderColor = theme === 'sun' 
+        ? 'rgba(0, 0, 0, 0.1)' 
+        : 'rgba(255, 255, 255, 0.15)';
+
+      // Parse questionText and replace [[dropdown_xxx]] with styled dropdown
+      let displayText = question.questionText;
+      const dropdownsData = [];
+      
+      if (question.dropdowns) {
+        question.dropdowns.forEach((dropdown, idx) => {
+          const number = idx + 1; // 1, 2, 3, 4...
+          const pattern = `[[dropdown_${dropdown.positionId}]]`;
+          
+          // Get all options (correct + incorrect)
+          const allOptions = [
+            dropdown.correctAnswer,
+            ...(dropdown.incorrectOptions || []).map(opt => opt.text).filter(text => text)
+          ];
+          
+          // Replace pattern with dropdown display
+          displayText = displayText.replace(
+            pattern,
+            `<span style="display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; background: linear-gradient(135deg, ${dropdownBgStart}, ${dropdownBgEnd}); border: 2px solid ${dropdownBorderColor}; border-radius: 8px; font-weight: 600; color: ${dropdownColor}; margin: 0 4px;">
+              <span style="width: 18px; height: 18px; border-radius: 50%; background: ${dropdownColor}; color: white; display: inline-flex; align-items: center; justify-content: center; font-size: 11px;">${number}</span>
+              <span style="font-size: 13px;">▼</span>
+            </span>`
+          );
+          
+          // Store dropdown data
+          dropdownsData.push({
+            number: number,
+            correctAnswer: dropdown.correctAnswer,
+            allOptions: allOptions
+          });
+        });
+      }
+
+      return (
+        <>
+          {/* Question Text with dropdowns */}
+          <div 
+            style={{ 
+              marginBottom: '16px', 
+              fontSize: '15px', 
+              fontWeight: 500,
+              lineHeight: '1.8'
+            }}
+            dangerouslySetInnerHTML={{ __html: displayText }}
+          />
+
+          {/* Dropdowns Info */}
+          {dropdownsData.length > 0 && (
+            <div style={{ 
+              marginTop: '16px',
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+              gap: '12px'
+            }}>
+              {dropdownsData.map((dropdown, idx) => (
+                <div 
+                  key={idx}
+                  style={{
+                    padding: '10px',
+                    background: cardBgColor,
+                    border: `2px solid ${cardBorderColor}`,
+                    borderRadius: '8px'
+                  }}
+                >
+                  {/* Dropdown Header */}
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    marginBottom: '8px'
+                  }}>
+                    <span style={{
+                      width: '20px',
+                      height: '20px',
+                      borderRadius: '50%',
+                      background: dropdownColor,
+                      color: 'white',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '11px',
+                      fontWeight: 700
+                    }}>
+                      {dropdown.number}
+                    </span>
+                    <span style={{ fontWeight: 600, fontSize: '13px', color: dropdownColor }}>
+                      Dropdown {idx + 1}
+                    </span>
+                  </div>
+
+                  {/* Correct Answer */}
+                  <div style={{ marginBottom: '6px' }}>
+                    <span style={{ fontSize: '11px', color: correctColor, fontWeight: 600 }}>
+                      ✓
+                    </span>
+                    <span style={{ 
+                      marginLeft: '6px',
+                      padding: '3px 10px',
+                      background: correctBgColor,
+                      border: `1.5px solid ${correctBorderColor}`,
+                      borderRadius: '6px',
+                      fontSize: '12px',
+                      fontWeight: 500,
+                      color: answerTextColor
+                    }}>
+                      {dropdown.correctAnswer}
+                    </span>
+                  </div>
+
+                  {/* All Options */}
+                  {dropdown.allOptions.length > 1 && (
+                    <div>
+                      <span style={{ fontSize: '11px', color: labelColor, fontWeight: 600 }}>
+                        Options:
+                      </span>
+                      <div style={{ 
+                        display: 'flex', 
+                        flexWrap: 'wrap', 
+                        gap: '4px',
+                        marginTop: '4px'
+                      }}>
+                        {dropdown.allOptions.map((option, optIdx) => (
+                          <span 
+                            key={optIdx}
+                            style={{
+                              padding: '2px 8px',
+                              background: option === dropdown.correctAnswer 
+                                ? correctBgColor 
+                                : optionBgColor,
+                              border: option === dropdown.correctAnswer
+                                ? `1.5px solid ${correctBorderColor}`
+                                : `1.5px solid ${optionBorderColor}`,
+                              borderRadius: '6px',
+                              fontSize: '11px',
+                              color: answerTextColor
+                            }}
+                          >
+                            {option}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </>
+      );
+    }, [question, theme]);
+
+    // Helper function to render Drag and Drop question
+    const renderDragDropQuestion = useCallback(() => {
+      if (question.type !== 'drag-drop' || !question.questionText) {
+        return null;
+      }
+
+      // Theme colors
+      const blankColor = theme === 'sun' ? '#1890ff' : '#8B5CF6';
+      const blankBgColor = theme === 'sun' 
+        ? 'rgba(24, 144, 255, 0.08)' 
+        : 'rgba(139, 92, 246, 0.15)';
+      const blankBorderColor = theme === 'sun' 
+        ? 'rgba(24, 144, 255, 0.3)' 
+        : 'rgba(139, 92, 246, 0.4)';
+      const incorrectBgColor = theme === 'sun' 
+        ? 'rgba(217, 217, 217, 0.2)' 
+        : 'rgba(255, 255, 255, 0.08)';
+      const incorrectBorderColor = theme === 'sun' 
+        ? 'rgba(217, 217, 217, 0.5)' 
+        : 'rgba(255, 255, 255, 0.2)';
+      const answerTextColor = theme === 'sun' ? '#333' : '#e0e0e0';
+      const incorrectTextColor = theme === 'sun' ? '#666' : '#b0b0b0';
+
+      // Parse questionText and replace [[pos_xxx]] with (1)____, (2)____, etc.
+      let displayText = question.questionText;
+      const answerChoices = [];
+      
+      if (question.content && question.content.data) {
+        question.content.data.forEach((item, idx) => {
+          const number = idx + 1; // 1, 2, 3, 4...
+          const pattern = `[[pos_${item.positionId}]]`;
+          
+          // Replace pattern with (1)____ format
+          displayText = displayText.replace(
+            pattern,
+            `<span style="color: ${blankColor}; font-weight: 600;">(${number})</span><span style="text-decoration: underline; padding: 0 2px;">____</span>`
+          );
+          
+          // Add to answer choices
+          answerChoices.push({
+            number: number,
+            value: item.value
+          });
+        });
+      }
+
+      // Get incorrect options
+      const incorrectOptions = question.incorrectOptions || [];
+
+      return (
+        <>
+          {/* Question Text with blanks */}
+          <div 
+            style={{ 
+              marginBottom: '16px', 
+              fontSize: '15px', 
+              fontWeight: 500,
+              lineHeight: '1.8'
+            }}
+            dangerouslySetInnerHTML={{ __html: displayText }}
+          />
+
+          {/* Correct Answer Choices */}
+          {answerChoices.length > 0 && (
+            <div style={{ 
+              marginTop: '16px',
+              marginBottom: incorrectOptions.length > 0 ? '16px' : '0'
+            }}>
+              <div style={{
+                fontSize: '13px',
+                fontWeight: 600,
+                color: blankColor,
+                marginBottom: '8px'
+              }}>
+                ✓ Correct options:
+              </div>
+              <div style={{ 
+                display: 'flex', 
+                flexWrap: 'wrap', 
+                gap: '12px'
+              }}>
+                {answerChoices.map((choice, idx) => (
+                  <div 
+                    key={idx}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      padding: '8px 16px',
+                      background: blankBgColor,
+                      border: `2px solid ${blankBorderColor}`,
+                      borderRadius: '8px',
+                      fontSize: '14px',
+                      fontWeight: 500
+                    }}
+                  >
+                    <span style={{ 
+                      fontWeight: 700, 
+                      color: blankColor,
+                      fontSize: '15px'
+                    }}>
+                      ({choice.number})
+                    </span>
+                    <span style={{ color: answerTextColor }}>
+                      {choice.value}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Incorrect Options */}
+          {incorrectOptions.length > 0 && (
+            <div style={{ marginTop: '16px' }}>
+              <div style={{
+                fontSize: '13px',
+                fontWeight: 600,
+                color: incorrectTextColor,
+                marginBottom: '8px'
+              }}>
+                ✗ Incorrect options:
+              </div>
+              <div style={{ 
+                display: 'flex', 
+                flexWrap: 'wrap', 
+                gap: '8px'
+              }}>
+                {incorrectOptions.map((option, idx) => (
+                  <div 
+                    key={idx}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      padding: '6px 12px',
+                      background: incorrectBgColor,
+                      border: `1.5px solid ${incorrectBorderColor}`,
+                      borderRadius: '8px',
+                      fontSize: '13px',
+                      fontWeight: 500,
+                      color: incorrectTextColor
+                    }}
+                  >
+                    {option.text}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </>
+      );
+    }, [question, theme]);
+
+    // Helper function to render Reorder question
+    const renderReorderQuestion = useCallback(() => {
+      if (question.type !== 'reorder' || !question.shuffledWords) {
+        return null;
+      }
+
+      // Theme colors
+      const wordBgStart = theme === 'sun' 
+        ? 'rgba(240, 247, 255, 0.5)' 
+        : 'rgba(243, 232, 255, 0.2)';
+      const wordBgEnd = theme === 'sun' 
+        ? 'rgba(230, 244, 255, 0.8)' 
+        : 'rgba(233, 213, 255, 0.3)';
+      const wordBorderColor = theme === 'sun' ? '#1890ff' : '#A78BFA';
+      const correctColor = theme === 'sun' ? '#52c41a' : '#73d13d';
+      const correctBgColor = theme === 'sun' 
+        ? 'rgba(82, 196, 26, 0.1)' 
+        : 'rgba(115, 209, 61, 0.15)';
+      const correctBorderColor = theme === 'sun' 
+        ? 'rgba(82, 196, 26, 0.3)' 
+        : 'rgba(115, 209, 61, 0.4)';
+      const textColor = theme === 'sun' ? '#333' : '#e0e0e0';
+
+      return (
+        <>
+          {/* Shuffled Words */}
+          <div style={{ 
+            display: 'flex',
+            flexWrap: 'wrap',
+            gap: '10px',
+            marginBottom: '16px'
+          }}>
+            {question.shuffledWords.map((word, idx) => (
+              <div 
+                key={word.id || idx}
+                style={{
+                  padding: '10px 16px',
+                  background: `linear-gradient(135deg, ${wordBgStart} 0%, ${wordBgEnd} 100%)`,
+                  border: `2px solid ${wordBorderColor}`,
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  fontWeight: 500,
+                  color: textColor,
+                  boxShadow: '0 2px 6px rgba(24, 144, 255, 0.12)'
+                }}
+              >
+                {word.text}
+              </div>
+            ))}
+          </div>
+
+          {/* Correct Answer */}
+          <div style={{ 
+            background: correctBgColor,
+            border: `2px solid ${correctBorderColor}`,
+            borderRadius: '12px',
+            padding: '16px'
+          }}>
+            <div style={{ 
+              fontSize: '14px', 
+              fontWeight: 600, 
+              color: correctColor,
+              marginBottom: '12px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}>
+              ✓ Correct Order:
+            </div>
+            <div 
+              style={{ 
+                fontSize: '15px',
+                fontWeight: 500,
+                color: textColor,
+                lineHeight: '1.8'
+              }}
+            >
+              {question.correctAnswer}
+            </div>
+          </div>
+        </>
+      );
+    }, [question, theme]);
+
+    // Helper function to render Rewrite question
+    const renderRewriteQuestion = useCallback(() => {
+      if (question.type !== 'rewrite' || !question.questionText) {
+        return null;
+      }
+
+      // Theme colors
+      const correctColor = theme === 'sun' ? '#52c41a' : '#73d13d';
+      const correctBgColor = theme === 'sun' 
+        ? 'rgba(82, 196, 26, 0.1)' 
+        : 'rgba(115, 209, 61, 0.15)';
+      const correctBorderColor = theme === 'sun' 
+        ? 'rgba(82, 196, 26, 0.3)' 
+        : 'rgba(115, 209, 61, 0.4)';
+      const answerBgStart = theme === 'sun' 
+        ? '#dcfce7' 
+        : 'rgba(220, 252, 231, 0.2)';
+      const answerBgEnd = theme === 'sun' 
+        ? '#bbf7d0' 
+        : 'rgba(187, 247, 208, 0.3)';
+      const answerBorderColor = theme === 'sun' ? '#22c55e' : '#73d13d';
+      const textColor = theme === 'sun' ? '#333' : '#e0e0e0';
+
+      return (
+        <>
+          {/* Question Text */}
+          <div 
+            style={{ 
+              marginBottom: '16px', 
+              fontSize: '15px', 
+              fontWeight: 500,
+              lineHeight: '1.8'
+            }}
+            dangerouslySetInnerHTML={{ __html: question.questionText }}
+          />
+
+          {/* Correct Answers */}
+          {question.correctAnswers && question.correctAnswers.length > 0 && (
+            <div style={{ 
+              background: correctBgColor,
+              border: `2px solid ${correctBorderColor}`,
+              borderRadius: '12px',
+              padding: '16px'
+            }}>
+              <div style={{ 
+                fontSize: '14px', 
+                fontWeight: 600, 
+                color: correctColor,
+                marginBottom: '12px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}>
+                ✓ Correct Answers:
+              </div>
+              <div style={{ 
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '10px'
+              }}>
+                {question.correctAnswers.map((ans, idx) => (
+                  <div 
+                    key={ans.id || idx}
+                    style={{
+                      padding: '10px 16px',
+                      background: `linear-gradient(135deg, ${answerBgStart} 0%, ${answerBgEnd} 100%)`,
+                      border: `2px solid ${answerBorderColor}`,
+                      borderRadius: '8px',
+                      fontSize: '14px',
+                      fontWeight: 500,
+                      color: textColor,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '10px',
+                      boxShadow: '0 2px 6px rgba(34, 197, 94, 0.12)'
+                    }}
+                  >
+                    <span style={{
+                      fontWeight: 700,
+                      color: correctColor,
+                      fontSize: '13px',
+                      minWidth: '20px'
+                    }}>
+                      {idx + 1}.
+                    </span>
+                    <span>{ans.answer}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </>
+      );
+    }, [question, theme]);
 
     // Get question type label
     const getQuestionTypeLabel = useCallback(() => {
@@ -310,6 +840,14 @@ const SortableQuestionItem = memo(
           {/* Render based on question type */}
           {question.type === 'fill-blank' ? (
             renderFillBlankQuestion()
+          ) : question.type === 'dropdown' ? (
+            renderDropdownQuestion()
+          ) : question.type === 'drag-drop' ? (
+            renderDragDropQuestion()
+          ) : question.type === 'reorder' ? (
+            renderReorderQuestion()
+          ) : question.type === 'rewrite' ? (
+            renderRewriteQuestion()
           ) : (
             <>
               <div 
@@ -346,13 +884,18 @@ const SortableQuestionItem = memo(
     return (
       prevProps.question.id === nextProps.question.id &&
       prevProps.question.question === nextProps.question.question &&
+      prevProps.question.questionText === nextProps.question.questionText &&
+      prevProps.question.correctAnswer === nextProps.question.correctAnswer &&
       prevProps.question.points === nextProps.question.points &&
+      prevProps.question.type === nextProps.question.type &&
       prevProps.theme === nextProps.theme &&
       prevProps.index === nextProps.index &&
       prevProps.onDeleteQuestion === nextProps.onDeleteQuestion &&
       prevProps.onEditQuestion === nextProps.onEditQuestion &&
       prevProps.onDuplicateQuestion === nextProps.onDuplicateQuestion &&
-      prevProps.onPointsChange === nextProps.onPointsChange
+      prevProps.onPointsChange === nextProps.onPointsChange &&
+      JSON.stringify(prevProps.question.shuffledWords) === JSON.stringify(nextProps.question.shuffledWords) &&
+      JSON.stringify(prevProps.question.correctAnswers) === JSON.stringify(nextProps.question.correctAnswers)
     );
   }
 );
