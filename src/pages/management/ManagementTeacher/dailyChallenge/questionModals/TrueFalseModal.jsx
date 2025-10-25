@@ -9,7 +9,7 @@ import { CKEditor } from '@ckeditor/ckeditor5-react';
 import ClassicEditor from '@ckeditor/ckeditor5-build-classic';
 import './MultipleChoiceModal.css';
 
-const TrueFalseModal = ({ visible, onCancel, onSave, questionData = null }) => {
+const TrueFalseModal = ({ visible, onCancel, onSave, questionData = null, saving = false }) => {
 	
 	// Custom upload adapter for CKEditor to convert images to base64
 	function CustomUploadAdapterPlugin(editor) {
@@ -53,14 +53,14 @@ const TrueFalseModal = ({ visible, onCancel, onSave, questionData = null }) => {
 				'italic',
 				'underline',
 				'|',
-				'link',
+				'insertTable',
 				'imageUpload',
 				'|',
 				'bulletedList',
 				'numberedList',
 				'|',
 				'blockQuote',
-				'insertTable',
+				'link',
 				'|',
 				'undo',
 				'redo'
@@ -158,6 +158,7 @@ const TrueFalseModal = ({ visible, onCancel, onSave, questionData = null }) => {
 			type: 'TRUE_OR_FALSE',
 			title: 'True or false',
 			question: editorData,
+			points: points,
 			options: [
 				{ id: 1, text: 'True', isCorrect: correctAnswer === 'True', key: 'A' },
 				{ id: 2, text: 'False', isCorrect: correctAnswer === 'False', key: 'B' },
@@ -251,6 +252,8 @@ const TrueFalseModal = ({ visible, onCancel, onSave, questionData = null }) => {
 							onClick={handleSave}
 							size="large"
 							className="save-question-btn"
+							loading={saving}
+							disabled={saving}
 							style={{
 								height: '44px',
 								borderRadius: '12px',
@@ -386,7 +389,7 @@ const TrueFalseModal = ({ visible, onCancel, onSave, questionData = null }) => {
 						<div
 							onClick={() => setCorrectAnswer('True')}
 							style={{
-								background: 'linear-gradient(135deg, #52c41add 0%, #52c41a 100%)',
+								background: 'linear-gradient(135deg, #B8E6B8cc 0%, #B8E6B8 100%)',
 								borderRadius: '16px',
 								padding: '40px',
 								minHeight: '320px',
@@ -397,11 +400,11 @@ const TrueFalseModal = ({ visible, onCancel, onSave, questionData = null }) => {
 								justifyContent: 'center',
 								alignItems: 'center',
 								boxShadow: correctAnswer === 'True'
-									? '0 12px 32px rgba(82, 196, 26, 0.5)'
-									: '0 4px 16px rgba(0,0,0,0.1)',
+									? '0 12px 32px rgba(184, 230, 184, 0.6)'
+									: '0 4px 16px rgba(0,0,0,0.08)',
 								border: correctAnswer === 'True'
 									? '3px solid #52c41a'
-									: '2px solid rgba(255,255,255,0.3)',
+									: '2px solid rgba(255,255,255,0.5)',
 								transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
 								transform: correctAnswer === 'True' ? 'translateY(-4px) scale(1.05)' : 'translateY(0) scale(1)',
 								cursor: 'pointer',
@@ -410,13 +413,13 @@ const TrueFalseModal = ({ visible, onCancel, onSave, questionData = null }) => {
 							onMouseEnter={(e) => {
 								if (correctAnswer !== 'True') {
 									e.currentTarget.style.transform = 'translateY(-4px) scale(1.02)';
-									e.currentTarget.style.boxShadow = '0 12px 32px rgba(82, 196, 26, 0.3)';
+									e.currentTarget.style.boxShadow = '0 12px 32px rgba(184, 230, 184, 0.4)';
 								}
 							}}
 							onMouseLeave={(e) => {
 								if (correctAnswer !== 'True') {
 									e.currentTarget.style.transform = 'translateY(0) scale(1)';
-									e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.1)';
+									e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.08)';
 								}
 							}}
 						>
@@ -436,8 +439,7 @@ const TrueFalseModal = ({ visible, onCancel, onSave, questionData = null }) => {
 										display: 'flex',
 										alignItems: 'center',
 										gap: '6px',
-										boxShadow: correctAnswer === 'True' ? '0 2px 8px rgba(82, 196, 26, 0.5)' : 'none',
-										opacity: correctAnswer === 'True' ? 1 : 0.7
+										boxShadow: correctAnswer === 'True' ? '0 2px 8px rgba(82, 196, 26, 0.5)' : 'none'
 									}}
 								>
 									<CheckOutlined />
@@ -452,11 +454,11 @@ const TrueFalseModal = ({ visible, onCancel, onSave, questionData = null }) => {
 								✅
 							</div>
 							<div style={{ 
-								color: 'white', 
+								color: '#2d5f2d', 
 								fontSize: '32px', 
 								fontWeight: 'bold',
 								textAlign: 'center',
-								textShadow: '0 2px 4px rgba(0,0,0,0.2)'
+								textShadow: '0 2px 4px rgba(0,0,0,0.1)'
 							}}>
 								TRUE
 							</div>
@@ -466,7 +468,7 @@ const TrueFalseModal = ({ visible, onCancel, onSave, questionData = null }) => {
 						<div
 							onClick={() => setCorrectAnswer('False')}
 							style={{
-								background: 'linear-gradient(135deg, #f5222ddd 0%, #f5222d 100%)',
+								background: 'linear-gradient(135deg, #FFB3B3cc 0%, #FFB3B3 100%)',
 								borderRadius: '16px',
 								padding: '40px',
 								minHeight: '320px',
@@ -477,11 +479,11 @@ const TrueFalseModal = ({ visible, onCancel, onSave, questionData = null }) => {
 								justifyContent: 'center',
 								alignItems: 'center',
 								boxShadow: correctAnswer === 'False'
-									? '0 12px 32px rgba(245, 34, 45, 0.5)'
-									: '0 4px 16px rgba(0,0,0,0.1)',
+									? '0 12px 32px rgba(255, 179, 179, 0.6)'
+									: '0 4px 16px rgba(0,0,0,0.08)',
 								border: correctAnswer === 'False'
 									? '3px solid #f5222d'
-									: '2px solid rgba(255,255,255,0.3)',
+									: '2px solid rgba(255,255,255,0.5)',
 								transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
 								transform: correctAnswer === 'False' ? 'translateY(-4px) scale(1.05)' : 'translateY(0) scale(1)',
 								cursor: 'pointer',
@@ -490,13 +492,13 @@ const TrueFalseModal = ({ visible, onCancel, onSave, questionData = null }) => {
 							onMouseEnter={(e) => {
 								if (correctAnswer !== 'False') {
 									e.currentTarget.style.transform = 'translateY(-4px) scale(1.02)';
-									e.currentTarget.style.boxShadow = '0 12px 32px rgba(245, 34, 45, 0.3)';
+									e.currentTarget.style.boxShadow = '0 12px 32px rgba(255, 179, 179, 0.4)';
 								}
 							}}
 							onMouseLeave={(e) => {
 								if (correctAnswer !== 'False') {
 									e.currentTarget.style.transform = 'translateY(0) scale(1)';
-									e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.1)';
+									e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.08)';
 								}
 							}}
 						>
@@ -516,8 +518,7 @@ const TrueFalseModal = ({ visible, onCancel, onSave, questionData = null }) => {
 										display: 'flex',
 										alignItems: 'center',
 										gap: '6px',
-										boxShadow: correctAnswer === 'False' ? '0 2px 8px rgba(245, 34, 45, 0.5)' : 'none',
-										opacity: correctAnswer === 'False' ? 1 : 0.7
+										boxShadow: correctAnswer === 'False' ? '0 2px 8px rgba(245, 34, 45, 0.5)' : 'none'
 									}}
 								>
 									<CheckOutlined />
@@ -532,11 +533,11 @@ const TrueFalseModal = ({ visible, onCancel, onSave, questionData = null }) => {
 								❌
 							</div>
 							<div style={{ 
-								color: 'white', 
+								color: '#8b2e2e', 
 								fontSize: '32px', 
 								fontWeight: 'bold',
 								textAlign: 'center',
-								textShadow: '0 2px 4px rgba(0,0,0,0.2)'
+								textShadow: '0 2px 4px rgba(0,0,0,0.1)'
 							}}>
 								FALSE
 							</div>

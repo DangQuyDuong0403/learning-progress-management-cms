@@ -338,6 +338,7 @@
   -webkit-transform: translate3d(0, 0, 0);
   perspective: 1000px;
   -webkit-perspective: 1000px;
+  color: #000;
   /* Prevent layout shifts */
   contain: layout style paint;
 }

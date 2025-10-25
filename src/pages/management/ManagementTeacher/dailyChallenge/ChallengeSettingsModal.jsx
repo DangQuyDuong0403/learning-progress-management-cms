@@ -14,18 +14,34 @@ import {
 import { useTranslation } from "react-i18next";
 import { useTheme } from "../../../../contexts/ThemeContext";
 import { spaceToast } from "../../../../component/SpaceToastify";
+import { dailyChallengeApi } from "../../../../apis/apis";
 import dayjs from "dayjs";
+
+// Helper function to get full challenge type name
+const getChallengeTypeName = (typeCode) => {
+  const typeMap = {
+    'GV': 'Grammar & Vocabulary',
+    'RE': 'Reading',
+    'LI': 'Listening',
+    'WR': 'Writing',
+    'SP': 'Speaking',
+  };
+  
+  return typeMap[typeCode] || typeCode || 'Unknown';
+};
 
 const ChallengeSettingsModal = ({
   visible,
   onCancel,
   onSave,
   initialValues = {},
+  challengeId,
 }) => {
   const { t } = useTranslation();
   const { theme } = useTheme();
   const [form] = Form.useForm();
   const [isButtonDisabled, setIsButtonDisabled] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [challengeMode, setChallengeMode] = useState(initialValues.challengeMode || 'normal');
 
   useEffect(() => {
@@ -45,14 +61,37 @@ const ChallengeSettingsModal = ({
   }, [visible, initialValues, form]);
 
   const handleModalOk = async () => {
-    if (isButtonDisabled) return;
+    if (isButtonDisabled || isSaving) return;
     
     setIsButtonDisabled(true);
+    setIsSaving(true);
     
     try {
       const values = await form.validateFields();
       
-      const settingsData = {
+      const updateData = {
+        challengeName: initialValues.challengeName || 'Daily Challenge', // Use existing name or default
+        description: initialValues.description || '', // Use existing description or empty
+        challengeType: initialValues.challengeType || 'GV', // Use existing type or default
+        durationMinutes: values.durationMinutes,
+        hasAntiCheat: values.antiCheatModeEnabled || false,
+        shuffleAnswers: values.shuffleAnswers || false,
+        translateOnScreen: values.translateOnScreen || false,
+        aiFeedbackEnabled: values.aiFeedbackEnabled || false,
+        startDate: values.startDate ? values.startDate.toISOString() : null,
+        endDate: values.endDate ? values.endDate.toISOString() : null,
+      };
+
+      console.log('Updating challenge settings with data:', updateData);
+      
+      // Call API to update challenge settings
+      const response = await dailyChallengeApi.updateDailyChallenge(challengeId, updateData);
+      console.log('API response:', response);
+      
+      spaceToast.success(response.message);
+      
+      // Notify parent component
+      onSave({
         challengeMode,
         durationMinutes: values.durationMinutes,
         startDate: values.startDate ? values.startDate.toISOString() : null,
@@ -61,21 +100,26 @@ const ChallengeSettingsModal = ({
         translateOnScreen: values.translateOnScreen || false,
         aiFeedbackEnabled: values.aiFeedbackEnabled || false,
         antiCheatModeEnabled: values.antiCheatModeEnabled || false,
-      };
-
-      spaceToast.success(t('common.saveSuccess') || 'Settings saved successfully!');
-      onSave(settingsData);
+      });
+      
     } catch (error) {
-      console.error('Validation error:', error);
-      spaceToast.error(t('common.pleaseFillAllRequiredFields'));
+      console.error('Error updating challenge settings:', error);
+      if (error.errorFields) {
+        spaceToast.error(t('common.pleaseFillAllRequiredFields') || 'Please fill all required fields');
+      } else {
+        const errorMessage = error.response?.data?.error || error.response?.data?.message || error.message || t('dailyChallenge.updateSettingsError') || 'Failed to update settings';
+        spaceToast.error(errorMessage);
+      }
     } finally {
       setIsButtonDisabled(false);
+      setIsSaving(false);
     }
   };
 
   const handleModalCancel = () => {
     form.resetFields();
     setIsButtonDisabled(false);
+    setIsSaving(false);
     onCancel();
   };
 
@@ -114,6 +158,7 @@ const ChallengeSettingsModal = ({
           type="primary" 
           onClick={handleModalOk}
           disabled={isButtonDisabled}
+          loading={isSaving}
           style={{
             background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, #7228d9 0%, #9c88ff 100%)',
             borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : '#7228d9',
@@ -164,6 +209,39 @@ const ChallengeSettingsModal = ({
         layout="vertical"
         style={{ marginTop: '24px' }}
       >
+         {/* Challenge Information */}
+         <Card 
+           title={
+             <Typography.Title level={5} style={{ margin: 0, fontSize: '18px', fontWeight: 600, textAlign: 'center' }}>
+               {t('dailyChallenge.challengeInformation') || 'Challenge Information'}
+             </Typography.Title>
+           }
+           style={{ marginBottom: '24px' }}
+         >
+           <Row gutter={[16, 16]}>
+             <Col span={12}>
+               <div style={{ textAlign: 'center' }}>
+                 <Typography.Text style={{ fontSize: '12px', color: '#666', display: 'block', marginBottom: '4px' }}>
+                   {t('dailyChallenge.challengeName') || 'Challenge Name'}
+                 </Typography.Text>
+                 <Typography.Text strong style={{ fontSize: '14px' }}>
+                   {initialValues.challengeName || 'N/A'}
+                 </Typography.Text>
+               </div>
+             </Col>
+             <Col span={12}>
+               <div style={{ textAlign: 'center' }}>
+                 <Typography.Text style={{ fontSize: '12px', color: '#666', display: 'block', marginBottom: '4px' }}>
+                   {t('dailyChallenge.questionType') || 'Question Type'}
+                 </Typography.Text>
+                 <Typography.Text strong style={{ fontSize: '14px' }}>
+                   {initialValues.challengeType ? getChallengeTypeName(initialValues.challengeType) : 'N/A'}
+                 </Typography.Text>
+               </div>
+             </Col>
+           </Row>
+         </Card>
+
          {/* Challenge Mode Selection */}
          <Card 
            title={

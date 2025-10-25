@@ -33,7 +33,7 @@ import {
   MenuFoldOutlined,
   MenuUnfoldOutlined,
 } from "@ant-design/icons";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import ThemedLayout from "../../../../component/teacherlayout/ThemedLayout";
 import LoadingWithEffect from "../../../../component/spinner/LoadingWithEffect";
 import "./DailyChallengeContent.css";
@@ -44,6 +44,7 @@ import { useDailyChallengeMenu } from "../../../../contexts/DailyChallengeMenuCo
 import usePageTitle from "../../../../hooks/usePageTitle";
 import ChallengeSettingsModal from "./ChallengeSettingsModal";
 import { dailyChallengeApi } from "../../../../apis/apis";
+import { useSelector } from "react-redux";
 import {
   DndContext,
   closestCenter,
@@ -72,20 +73,17 @@ import {
   RewriteModal,
 } from "./questionModals";
 
-// Helper function to get question type label
-const getQuestionTypeLabel = (questionType, t) => {
+// Helper function to get full challenge type name
+const getChallengeTypeName = (typeCode) => {
   const typeMap = {
-    'multiple-choice': t('dailyChallenge.multipleChoice') || 'Multiple Choice',
-    'multiple-select': t('dailyChallenge.multipleSelect') || 'Multiple Select',
-    'true-false': t('dailyChallenge.trueFalse') || 'True/False',
-    'fill-blank': t('dailyChallenge.fillBlank') || 'Fill in the Blank',
-    'dropdown': t('dailyChallenge.dropdown') || 'Dropdown',
-    'drag-drop': t('dailyChallenge.dragDrop') || 'Drag and Drop',
-    'reorder': t('dailyChallenge.reorder') || 'Reorder',
-    'rewrite': t('dailyChallenge.rewrite') || 'Rewrite',
+    'GV': 'Grammar & Vocabulary',
+    'RE': 'Reading',
+    'LI': 'Listening',
+    'WR': 'Writing',
+    'SP': 'Speaking',
   };
   
-  return typeMap[questionType] || questionType || 'Question';
+  return typeMap[typeCode] || typeCode || 'Unknown';
 };
 
 // Sortable Question Item Component
@@ -139,28 +137,41 @@ const SortableQuestionItem = memo(
 
     // Helper function to render Fill in the Blank question
     const renderFillBlankQuestion = useCallback(() => {
-      if (question.type !== 'fill-blank' || !question.questionText) {
+      if (question.type !== 'FILL_IN_THE_BLANK' || !question.questionText) {
         return null;
       }
 
-      // Parse questionText and replace [[pos_xxx]] with (a)____, (b)____, etc.
+      // Theme colors
+      const blankColor = theme === 'sun' ? '#1890ff' : '#8B5CF6';
+      const blankBgColor = theme === 'sun' 
+        ? 'rgba(24, 144, 255, 0.08)' 
+        : 'rgba(139, 92, 246, 0.15)';
+      const blankBorderColor = theme === 'sun' 
+        ? 'rgba(24, 144, 255, 0.3)' 
+        : 'rgba(139, 92, 246, 0.4)';
+      const answerTextColor = theme === 'sun' ? '#333' : '#e0e0e0';
+
+      // Parse questionText and replace [[pos_xxx]] with (1)____, (2)____, etc.
       let displayText = question.questionText;
       const answerChoices = [];
       
+      console.log('FillBlank question:', question);
+      console.log('question.content:', question.content);
+      
       if (question.content && question.content.data) {
         question.content.data.forEach((item, idx) => {
-          const letter = String.fromCharCode(97 + idx); // a, b, c, d...
+          const number = idx + 1; // 1, 2, 3, 4...
           const pattern = `[[pos_${item.positionId}]]`;
           
-          // Replace pattern with (a)____ format
+          // Replace pattern with (1)____ format
           displayText = displayText.replace(
             pattern,
-            `<span style="color: #1890ff; font-weight: 600;">(${letter})</span><span style="text-decoration: underline; padding: 0 2px;">____</span>`
+            `<span style="color: ${blankColor}; font-weight: 600;">(${number})</span><span style="text-decoration: underline; padding: 0 2px;">____</span>`
           );
           
           // Add to answer choices
           answerChoices.push({
-            letter: letter,
+            number: number,
             value: item.value
           });
         });
@@ -195,8 +206,8 @@ const SortableQuestionItem = memo(
                     alignItems: 'center',
                     gap: '8px',
                     padding: '8px 16px',
-                    background: 'rgba(24, 144, 255, 0.08)',
-                    border: '2px solid rgba(24, 144, 255, 0.3)',
+                    background: blankBgColor,
+                    border: `2px solid ${blankBorderColor}`,
                     borderRadius: '8px',
                     fontSize: '14px',
                     fontWeight: 500
@@ -204,12 +215,12 @@ const SortableQuestionItem = memo(
                 >
                   <span style={{ 
                     fontWeight: 700, 
-                    color: '#1890ff',
+                    color: blankColor,
                     fontSize: '15px'
                   }}>
-                    ({choice.letter})
+                    ({choice.number})
                   </span>
-                  <span style={{ color: '#333' }}>
+                  <span style={{ color: answerTextColor }}>
                     {choice.value}
                   </span>
                 </div>
@@ -218,26 +229,738 @@ const SortableQuestionItem = memo(
           )}
         </>
       );
-    }, [question]);
+    }, [question, theme]);
+
+    // Helper function to render Dropdown question
+    const renderDropdownQuestion = useCallback(() => {
+      if (question.type !== 'DROPDOWN' || !question.questionText) {
+        return null;
+      }
+
+      // Theme colors
+      const dropdownColor = theme === 'sun' ? '#1890ff' : '#A78BFA';
+      const dropdownBgStart = theme === 'sun' 
+        ? 'rgba(24, 144, 255, 0.15)' 
+        : 'rgba(167, 139, 250, 0.2)';
+      const dropdownBgEnd = theme === 'sun' 
+        ? 'rgba(24, 144, 255, 0.25)' 
+        : 'rgba(167, 139, 250, 0.3)';
+      const dropdownBorderColor = theme === 'sun' ? '#1890ff' : '#A78BFA';
+      const cardBgColor = theme === 'sun' 
+        ? 'rgba(24, 144, 255, 0.05)' 
+        : 'rgba(167, 139, 250, 0.1)';
+      const cardBorderColor = theme === 'sun' 
+        ? 'rgba(24, 144, 255, 0.2)' 
+        : 'rgba(167, 139, 250, 0.3)';
+      const correctColor = theme === 'sun' ? '#52c41a' : '#73d13d';
+      const correctBgColor = theme === 'sun' 
+        ? 'rgba(82, 196, 26, 0.1)' 
+        : 'rgba(115, 209, 61, 0.15)';
+      const correctBorderColor = theme === 'sun' 
+        ? 'rgba(82, 196, 26, 0.4)' 
+        : 'rgba(115, 209, 61, 0.5)';
+      const answerTextColor = theme === 'sun' ? '#333' : '#e0e0e0';
+      const labelColor = theme === 'sun' ? '#666' : '#b0b0b0';
+      const optionBgColor = theme === 'sun' 
+        ? 'rgba(0, 0, 0, 0.04)' 
+        : 'rgba(255, 255, 255, 0.08)';
+      const optionBorderColor = theme === 'sun' 
+        ? 'rgba(0, 0, 0, 0.1)' 
+        : 'rgba(255, 255, 255, 0.15)';
+
+      // Parse questionText and replace [[pos_xxx]] with styled dropdown
+      let displayText = question.questionText;
+      const dropdownsData = [];
+      
+      console.log('Dropdown question:', question);
+      console.log('question.content:', question.content);
+      
+      if (question.content && question.content.data) {
+        // Group options by positionId
+        const positionGroups = {};
+        question.content.data.forEach((item) => {
+          if (!positionGroups[item.positionId]) {
+            positionGroups[item.positionId] = [];
+          }
+          positionGroups[item.positionId].push(item);
+        });
+        
+        // Process each position group
+        Object.keys(positionGroups).forEach((positionId, idx) => {
+          const number = idx + 1; // 1, 2, 3, 4...
+          const pattern = `[[pos_${positionId}]]`;
+          
+          const group = positionGroups[positionId];
+          const correctOption = group.find(opt => opt.correct === true);
+          const incorrectOptions = group.filter(opt => opt.correct === false);
+          
+          // Get all options (correct + incorrect)
+          const allOptions = [
+            correctOption?.value || '',
+            ...incorrectOptions.map(opt => opt.value).filter(value => value)
+          ];
+          
+          // Replace pattern with dropdown display
+          displayText = displayText.replace(
+            pattern,
+            `<span style="display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; background: linear-gradient(135deg, ${dropdownBgStart}, ${dropdownBgEnd}); border: 2px solid ${dropdownBorderColor}; border-radius: 8px; font-weight: 600; color: ${dropdownColor}; margin: 0 4px;">
+              <span style="width: 18px; height: 18px; border-radius: 50%; background: ${dropdownColor}; color: white; display: inline-flex; align-items: center; justify-content: center; font-size: 11px;">${number}</span>
+              <span style="font-size: 13px;">▼</span>
+            </span>`
+          );
+          
+          // Store dropdown data
+          dropdownsData.push({
+            number: number,
+            correctAnswer: correctOption?.value || '',
+            allOptions: allOptions
+          });
+        });
+      }
+
+      return (
+        <>
+          {/* Question Text with dropdowns */}
+          <div 
+            style={{ 
+              marginBottom: '16px', 
+              fontSize: '15px', 
+              fontWeight: 500,
+              lineHeight: '1.8'
+            }}
+            dangerouslySetInnerHTML={{ __html: displayText }}
+          />
+
+          {/* Dropdowns Info */}
+          {dropdownsData.length > 0 && (
+            <div style={{ 
+              marginTop: '16px',
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+              gap: '12px'
+            }}>
+              {dropdownsData.map((dropdown, idx) => (
+                <div 
+                  key={idx}
+                  style={{
+                    padding: '10px',
+                    background: cardBgColor,
+                    border: `2px solid ${cardBorderColor}`,
+                    borderRadius: '8px'
+                  }}
+                >
+                  {/* Dropdown Header */}
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    marginBottom: '8px'
+                  }}>
+                    <span style={{
+                      width: '20px',
+                      height: '20px',
+                      borderRadius: '50%',
+                      background: dropdownColor,
+                      color: 'white',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '11px',
+                      fontWeight: 700
+                    }}>
+                      {dropdown.number}
+                    </span>
+                    <span style={{ fontWeight: 600, fontSize: '13px', color: dropdownColor }}>
+                      Dropdown {idx + 1}
+                    </span>
+                  </div>
+
+                  {/* Correct Answer */}
+                  <div style={{ marginBottom: '6px' }}>
+                    <span style={{ fontSize: '11px', color: correctColor, fontWeight: 600 }}>
+                      ✓
+                    </span>
+                    <span style={{ 
+                      marginLeft: '6px',
+                      padding: '3px 10px',
+                      background: correctBgColor,
+                      border: `1.5px solid ${correctBorderColor}`,
+                      borderRadius: '6px',
+                      fontSize: '12px',
+                      fontWeight: 500,
+                      color: answerTextColor
+                    }}>
+                      {dropdown.correctAnswer}
+                    </span>
+                  </div>
+
+                  {/* All Options */}
+                  {dropdown.allOptions.length > 1 && (
+                    <div>
+                      <span style={{ fontSize: '11px', color: labelColor, fontWeight: 600 }}>
+                        Options:
+                      </span>
+                      <div style={{ 
+                        display: 'flex', 
+                        flexWrap: 'wrap', 
+                        gap: '4px',
+                        marginTop: '4px'
+                      }}>
+                        {dropdown.allOptions.map((option, optIdx) => (
+                          <span 
+                            key={optIdx}
+                            style={{
+                              padding: '2px 8px',
+                              background: option === dropdown.correctAnswer 
+                                ? correctBgColor 
+                                : optionBgColor,
+                              border: option === dropdown.correctAnswer
+                                ? `1.5px solid ${correctBorderColor}`
+                                : `1.5px solid ${optionBorderColor}`,
+                              borderRadius: '6px',
+                              fontSize: '11px',
+                              color: answerTextColor
+                            }}
+                          >
+                            {option}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </>
+      );
+    }, [question, theme]);
+
+    // Helper function to render Drag and Drop question
+    const renderDragDropQuestion = useCallback(() => {
+      if (question.type !== 'DRAG_AND_DROP' || !question.questionText) {
+        return null;
+      }
+
+      // Theme colors
+      const blankColor = theme === 'sun' ? '#1890ff' : '#8B5CF6';
+      const blankBgColor = theme === 'sun' 
+        ? 'rgba(24, 144, 255, 0.08)' 
+        : 'rgba(139, 92, 246, 0.15)';
+      const blankBorderColor = theme === 'sun' 
+        ? 'rgba(24, 144, 255, 0.3)' 
+        : 'rgba(139, 92, 246, 0.4)';
+      const incorrectBgColor = theme === 'sun' 
+        ? 'rgba(217, 217, 217, 0.2)' 
+        : 'rgba(255, 255, 255, 0.08)';
+      const incorrectBorderColor = theme === 'sun' 
+        ? 'rgba(217, 217, 217, 0.5)' 
+        : 'rgba(255, 255, 255, 0.2)';
+      const answerTextColor = theme === 'sun' ? '#333' : '#e0e0e0';
+      const incorrectTextColor = theme === 'sun' ? '#666' : '#b0b0b0';
+
+      // Parse questionText and replace [[pos_xxx]] with styled blanks
+      let displayText = question.questionText;
+      const answerChoices = [];
+      const incorrectOptions = [];
+      
+      console.log('DragDrop question:', question);
+      console.log('question.content:', question.content);
+      
+      if (question.content && question.content.data) {
+        // Filter correct options (those with positionId and correct: true)
+        const correctOptions = question.content.data.filter(item => 
+          item.positionId && item.correct === true
+        );
+         
+        // Filter incorrect options (those with positionId: null or correct: false)
+        const incorrectOpts = question.content.data.filter(item => 
+          !item.positionId || item.correct === false
+        );
+        
+        // Process correct options only for blanks
+        correctOptions.forEach((item, idx) => {
+          const number = idx + 1; // 1, 2, 3, 4...
+          const pattern = `[[pos_${item.positionId}]]`;
+          
+          // Replace pattern with styled blank format
+          displayText = displayText.replace(
+            pattern,
+            `<span style="display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; background: linear-gradient(135deg, ${blankBgColor}, ${blankBgColor.replace('0.08', '0.15').replace('0.15', '0.25')}); border: 2px solid ${blankBorderColor}; border-radius: 8px; font-weight: 600; color: ${blankColor}; margin: 0 4px;">
+              <span style="width: 18px; height: 18px; border-radius: 50%; background: ${blankColor}; color: white; display: inline-flex; align-items: center; justify-content: center; font-size: 11px;">${number}</span>
+              <span style="text-decoration: underline; padding: 0 2px;">____</span>
+            </span>`
+          );
+          
+          // Add to answer choices
+          answerChoices.push({
+            number: number,
+            value: item.value
+          });
+        });
+        
+        // Process incorrect options (only those without positionId)
+        incorrectOpts.forEach(item => {
+          if (!item.positionId && item.value) {
+            incorrectOptions.push({
+              id: item.id || Date.now(),
+              text: item.value
+            });
+          }
+        });
+      }
+
+      return (
+        <>
+          {/* Question Text with blanks */}
+          <div 
+            style={{ 
+              marginBottom: '16px', 
+              fontSize: '15px', 
+              fontWeight: 500,
+              lineHeight: '1.8'
+            }}
+            dangerouslySetInnerHTML={{ __html: displayText }}
+          />
+
+          {/* Correct Answer Choices */}
+          {answerChoices.length > 0 && (
+            <div style={{ 
+              marginTop: '16px',
+              marginBottom: incorrectOptions.length > 0 ? '16px' : '0'
+            }}>
+              <div style={{
+                fontSize: '13px',
+                fontWeight: 600,
+                color: blankColor,
+                marginBottom: '8px'
+              }}>
+                ✓ Correct options:
+              </div>
+              <div style={{ 
+                display: 'flex', 
+                flexWrap: 'wrap', 
+                gap: '12px'
+              }}>
+                {answerChoices.map((choice, idx) => (
+                  <div 
+                    key={idx}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      padding: '8px 16px',
+                      background: blankBgColor,
+                      border: `2px solid ${blankBorderColor}`,
+                      borderRadius: '8px',
+                      fontSize: '14px',
+                      fontWeight: 500
+                    }}
+                  >
+                    <span style={{ 
+                      fontWeight: 700, 
+                      color: blankColor,
+                      fontSize: '15px'
+                    }}>
+                      ({choice.number})
+                    </span>
+                    <span style={{ color: answerTextColor }}>
+                      {choice.value}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Incorrect Options */}
+          {incorrectOptions.length > 0 && (
+            <div style={{ marginTop: '16px' }}>
+              <div style={{
+                fontSize: '13px',
+                fontWeight: 600,
+                color: incorrectTextColor,
+                marginBottom: '8px'
+              }}>
+                ✗ Incorrect options:
+              </div>
+              <div style={{ 
+                display: 'flex', 
+                flexWrap: 'wrap', 
+                gap: '8px'
+              }}>
+                {incorrectOptions.map((option, idx) => (
+                  <div 
+                    key={idx}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      padding: '6px 12px',
+                      background: incorrectBgColor,
+                      border: `1.5px solid ${incorrectBorderColor}`,
+                      borderRadius: '8px',
+                      fontSize: '13px',
+                      fontWeight: 500,
+                      color: incorrectTextColor
+                    }}
+                  >
+                    {option.text}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </>
+      );
+    }, [question, theme]);
+
+    // Helper function to render Reorder question
+    const renderReorderQuestion = useCallback(() => {
+      if (question.type !== 'REARRANGE' || !question.content?.data) {
+        return null;
+      }
+
+      // Theme colors
+      const wordBgStart = theme === 'sun' 
+        ? 'rgba(240, 247, 255, 0.5)' 
+        : 'rgba(243, 232, 255, 0.2)';
+      const wordBgEnd = theme === 'sun' 
+        ? 'rgba(230, 244, 255, 0.8)' 
+        : 'rgba(233, 213, 255, 0.3)';
+      const wordBorderColor = theme === 'sun' ? '#1890ff' : '#A78BFA';
+      const correctColor = theme === 'sun' ? '#52c41a' : '#73d13d';
+      const correctBgColor = theme === 'sun' 
+        ? 'rgba(82, 196, 26, 0.1)' 
+        : 'rgba(115, 209, 61, 0.15)';
+      const correctBorderColor = theme === 'sun' 
+        ? 'rgba(82, 196, 26, 0.3)' 
+        : 'rgba(115, 209, 61, 0.4)';
+      const textColor = theme === 'sun' ? '#333' : '#e0e0e0';
+
+      // Parse questionText and replace [[pos_xxx]] with styled blanks
+      let displayText = question.questionText || '';
+      const wordsData = [];
+      
+      console.log('REARRANGE question:', question);
+      console.log('question.content:', question.content);
+      
+      if (question.content && question.content.data) {
+        // Sort by positionOrder to get correct order
+        const sortedData = question.content.data.sort((a, b) => (a.positionOrder || 0) - (b.positionOrder || 0));
+        
+        sortedData.forEach((item, idx) => {
+          const number = idx + 1; // 1, 2, 3, 4...
+          const pattern = `[[pos_${item.positionId}]]`;
+          
+          // Replace pattern with styled blank format
+          displayText = displayText.replace(
+            pattern,
+            `<span style="display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; background: linear-gradient(135deg, ${wordBgStart}, ${wordBgEnd}); border: 2px solid ${wordBorderColor}; border-radius: 8px; font-weight: 600; color: ${wordBorderColor}; margin: 0 4px;">
+              <span style="width: 18px; height: 18px; border-radius: 50%; background: ${wordBorderColor}; color: white; display: inline-flex; align-items: center; justify-content: center; font-size: 11px;">${number}</span>
+              <span style="text-decoration: underline; padding: 0 2px;">____</span>
+            </span>`
+          );
+          
+          // Add to words data
+          wordsData.push({
+            number: number,
+            value: item.value,
+            positionId: item.positionId,
+            positionOrder: item.positionOrder
+          });
+        });
+      }
+
+      return (
+        <>
+          {/* Question Text with blanks */}
+          <div 
+            style={{ 
+              marginBottom: '16px', 
+              fontSize: '15px', 
+              fontWeight: 500,
+              lineHeight: '1.8'
+            }}
+            dangerouslySetInnerHTML={{ __html: displayText }}
+          />
+
+          {/* Words to Rearrange */}
+          {wordsData.length > 0 && (
+            <div style={{ 
+              marginTop: '16px',
+              marginBottom: '16px'
+            }}>
+              <div style={{
+                fontSize: '13px',
+                fontWeight: 600,
+                color: wordBorderColor,
+                marginBottom: '8px'
+              }}>
+                🔀 Words to rearrange:
+              </div>
+              <div style={{ 
+                display: 'flex', 
+                flexWrap: 'wrap', 
+                gap: '12px'
+              }}>
+                {wordsData.map((word, idx) => (
+                  <div 
+                    key={idx}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      padding: '8px 16px',
+                      background: wordBgStart,
+                      border: `2px solid ${wordBorderColor}`,
+                      borderRadius: '8px',
+                      fontSize: '14px',
+                      fontWeight: 500
+                    }}
+                  >
+                    <span style={{ 
+                      fontWeight: 700, 
+                      color: wordBorderColor,
+                      fontSize: '15px'
+                    }}>
+                      ({word.number})
+                    </span>
+                    <span style={{ color: textColor }}>
+                      {word.value}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Correct Answer */}
+          <div style={{ 
+            background: correctBgColor,
+            border: `2px solid ${correctBorderColor}`,
+            borderRadius: '12px',
+            padding: '16px'
+          }}>
+            <div style={{ 
+              fontSize: '14px', 
+              fontWeight: 600, 
+              color: correctColor,
+              marginBottom: '12px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}>
+              ✓ Correct Order:
+            </div>
+            <div 
+              style={{ 
+                fontSize: '15px',
+                fontWeight: 500,
+                color: textColor,
+                lineHeight: '1.8'
+              }}
+            >
+              {wordsData.map(word => word.value).join(' ')}
+            </div>
+          </div>
+        </>
+      );
+    }, [question, theme]);
+
+    // Helper function to render Rewrite question
+    const renderRewriteQuestion = useCallback(() => {
+      if (question.type !== 'REWRITE' || !question.questionText) {
+        return null;
+      }
+
+      // Theme colors
+      const correctColor = theme === 'sun' ? '#52c41a' : '#73d13d';
+      const correctBgColor = theme === 'sun' 
+        ? 'rgba(82, 196, 26, 0.1)' 
+        : 'rgba(115, 209, 61, 0.15)';
+      const correctBorderColor = theme === 'sun' 
+        ? 'rgba(82, 196, 26, 0.3)' 
+        : 'rgba(115, 209, 61, 0.4)';
+      const answerBgStart = theme === 'sun' 
+        ? '#dcfce7' 
+        : 'rgba(220, 252, 231, 0.2)';
+      const answerBgEnd = theme === 'sun' 
+        ? '#bbf7d0' 
+        : 'rgba(187, 247, 208, 0.3)';
+      const answerBorderColor = theme === 'sun' ? '#22c55e' : '#73d13d';
+      const textColor = theme === 'sun' ? '#333' : '#e0e0e0';
+
+      // Parse questionText and remove positionId markers for display
+      let displayText = question.questionText;
+      if (question.content && question.content.data) {
+        // Remove positionId markers like [[pos_a1b2c3]] from display
+        question.content.data.forEach((item) => {
+          const pattern = `[[pos_${item.positionId}]]`;
+          displayText = displayText.replace(pattern, '');
+        });
+      }
+
+      return (
+        <>
+          {/* Question Text */}
+          <div 
+            style={{ 
+              marginBottom: '16px', 
+              fontSize: '15px', 
+              fontWeight: 500,
+              lineHeight: '1.8'
+            }}
+            dangerouslySetInnerHTML={{ __html: displayText }}
+          />
+
+          {/* Correct Answers from content.data */}
+          {question.content && question.content.data && question.content.data.length > 0 && (
+            <div style={{ 
+              background: correctBgColor,
+              border: `2px solid ${correctBorderColor}`,
+              borderRadius: '12px',
+              padding: '16px'
+            }}>
+              <div style={{ 
+                fontSize: '14px', 
+                fontWeight: 600, 
+                color: correctColor,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}>
+                ✓ Correct Answers:
+              </div>
+              <div style={{ 
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '10px'
+              }}>
+                {question.content.data.map((item, idx) => (
+                  <div 
+                    key={item.id || idx}
+                    style={{
+                      padding: '10px 16px',
+                      background: `linear-gradient(135deg, ${answerBgStart} 0%, ${answerBgEnd} 100%)`,
+                      border: `2px solid ${answerBorderColor}`,
+                      borderRadius: '8px',
+                      fontSize: '14px',
+                      fontWeight: 500,
+                      color: textColor,
+                      display: 'flex',
+                      alignItems: 'flex-start',
+                      gap: '10px',
+                      boxShadow: '0 2px 6px rgba(34, 197, 94, 0.12)'
+                    }}
+                  >
+                    <span style={{
+                      fontWeight: 700,
+                      color: correctColor,
+                      fontSize: '13px',
+                      minWidth: '20px',
+                      lineHeight: '1.4'
+                    }}>
+                      {idx + 1}.
+                    </span>
+                    <div 
+                      style={{ 
+                        flex: 1,
+                        lineHeight: '1.4'
+                      }}
+                      dangerouslySetInnerHTML={{ __html: item.value }} 
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Fallback: Show correctAnswers if content.data is not available */}
+          {(!question.content || !question.content.data || question.content.data.length === 0) && 
+           question.correctAnswers && question.correctAnswers.length > 0 && (
+            <div style={{ 
+              background: correctBgColor,
+              border: `2px solid ${correctBorderColor}`,
+              borderRadius: '12px',
+              padding: '16px'
+            }}>
+              <div style={{ 
+                fontSize: '14px', 
+                fontWeight: 600, 
+                color: correctColor,
+                marginBottom: '12px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}>
+                ✓ Correct Answers:
+              </div>
+              <div style={{ 
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '10px'
+              }}>
+                {question.correctAnswers.map((ans, idx) => (
+                  <div 
+                    key={ans.id || idx}
+                    style={{
+                      padding: '10px 16px',
+                      background: `linear-gradient(135deg, ${answerBgStart} 0%, ${answerBgEnd} 100%)`,
+                      border: `2px solid ${answerBorderColor}`,
+                      borderRadius: '8px',
+                      fontSize: '14px',
+                      fontWeight: 500,
+                      color: textColor,
+                      display: 'flex',
+                      alignItems: 'flex-start',
+                      gap: '10px',
+                      boxShadow: '0 2px 6px rgba(34, 197, 94, 0.12)'
+                    }}
+                  >
+                    <span style={{
+                      fontWeight: 700,
+                      color: correctColor,
+                      fontSize: '13px',
+                      minWidth: '20px',
+                      lineHeight: '1.4'
+                    }}>
+                      {idx + 1}.
+                    </span>
+                    <div 
+                      style={{ 
+                        flex: 1,
+                        lineHeight: '1.4',
+                        marginBottom: '0px',
+                      }}
+                      dangerouslySetInnerHTML={{ __html: ans.answer }} 
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </>
+      );
+    }, [question, theme]);
 
     // Get question type label
     const getQuestionTypeLabel = useCallback(() => {
       switch(question.type) {
-        case 'multiple-choice':
+        case 'MULTIPLE_CHOICE':
           return t('dailyChallenge.multipleChoice') || 'Multiple Choice';
-        case 'multiple-select':
+        case 'MULTIPLE_SELECT':
           return t('dailyChallenge.multipleSelect') || 'Multiple Select';
-        case 'true-false':
+        case 'TRUE_OR_FALSE':
           return t('dailyChallenge.trueFalse') || 'True/False';
-        case 'fill-blank':
+        case 'FILL_IN_THE_BLANK':
           return t('dailyChallenge.fillBlank') || 'Fill in the Blank';
-        case 'dropdown':
+        case 'DROPDOWN':
           return 'Dropdown';
-        case 'drag-drop':
+        case 'DRAG_AND_DROP':
           return 'Drag and Drop';
-        case 'reorder':
-          return 'Reorder';
-        case 'rewrite':
+        case 'REARRANGE':
+          return 'Rearrange';
+        case 'REWRITE':
           return 'Re-write';
         default:
           return t('dailyChallenge.multipleChoice') || 'Multiple Choice';
@@ -308,8 +1031,16 @@ const SortableQuestionItem = memo(
 
         <div className="question-content">
           {/* Render based on question type */}
-          {question.type === 'fill-blank' ? (
+          {question.type === 'FILL_IN_THE_BLANK' ? (
             renderFillBlankQuestion()
+          ) : question.type === 'DROPDOWN' ? (
+            renderDropdownQuestion()
+          ) : question.type === 'DRAG_AND_DROP' ? (
+            renderDragDropQuestion()
+          ) : question.type === 'REARRANGE' ? (
+            renderReorderQuestion()
+          ) : question.type === 'REWRITE' ? (
+            renderRewriteQuestion()
           ) : (
             <>
               <div 
@@ -346,13 +1077,18 @@ const SortableQuestionItem = memo(
     return (
       prevProps.question.id === nextProps.question.id &&
       prevProps.question.question === nextProps.question.question &&
+      prevProps.question.questionText === nextProps.question.questionText &&
+      prevProps.question.correctAnswer === nextProps.question.correctAnswer &&
       prevProps.question.points === nextProps.question.points &&
+      prevProps.question.type === nextProps.question.type &&
       prevProps.theme === nextProps.theme &&
       prevProps.index === nextProps.index &&
       prevProps.onDeleteQuestion === nextProps.onDeleteQuestion &&
       prevProps.onEditQuestion === nextProps.onEditQuestion &&
       prevProps.onDuplicateQuestion === nextProps.onDuplicateQuestion &&
-      prevProps.onPointsChange === nextProps.onPointsChange
+      prevProps.onPointsChange === nextProps.onPointsChange &&
+      JSON.stringify(prevProps.question.shuffledWords) === JSON.stringify(nextProps.question.shuffledWords) &&
+      JSON.stringify(prevProps.question.correctAnswers) === JSON.stringify(nextProps.question.correctAnswers)
     );
   }
 );
@@ -374,9 +1110,20 @@ const questionTypes = [
 const DailyChallengeContent = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const location = useLocation();
   const { theme } = useTheme();
   const { id } = useParams();
+  const { user } = useSelector((state) => state.auth);
   const { enterDailyChallengeMenu, exitDailyChallengeMenu, updateChallengeCount } = useDailyChallengeMenu();
+  
+  // Get data from navigation state or fetch from API
+  const [challengeInfo, setChallengeInfo] = useState({
+    classId: location.state?.classId || null,
+    className: location.state?.className || null,
+    challengeId: location.state?.challengeId || id,
+    challengeName: location.state?.challengeName || null,
+    lessonName: location.state?.lessonName || null,
+  });
   
   // Set page title
   usePageTitle('Daily Challenge Management / Content');
@@ -384,6 +1131,10 @@ const DailyChallengeContent = () => {
   const [loading, setLoading] = useState(false);
   const [questions, setQuestions] = useState([]);
   const [searchText, setSearchText] = useState("");
+  
+  // Challenge Details states
+  const [challengeDetails, setChallengeDetails] = useState(null);
+  const [challengeLoading, setChallengeLoading] = useState(false);
   
   // Challenge Settings states
   const [challengeMode, setChallengeMode] = useState('normal'); // normal, exam
@@ -415,6 +1166,7 @@ const DailyChallengeContent = () => {
 
   // Loading states for buttons
   const [templateDownloadLoading, setTemplateDownloadLoading] = useState(false);
+  const [savingQuestion, setSavingQuestion] = useState(false); // Loading state for saving question
 
   // Sensors for drag and drop
   const sensors = useSensors(
@@ -428,6 +1180,50 @@ const DailyChallengeContent = () => {
       coordinateGetter: sortableKeyboardCoordinates,
     })
   );
+
+  const fetchChallengeDetails = useCallback(async () => {
+    if (!id) {
+      setChallengeLoading(false);
+      return;
+    }
+
+    setChallengeLoading(true);
+    try {
+      console.log('Fetching challenge details for ID:', id);
+      
+      // Call API to get challenge details
+      const response = await dailyChallengeApi.getDailyChallengeById(id);
+      console.log('Challenge Details API Response:', response);
+
+      if (response && response.data) {
+        const challengeData = response.data;
+        setChallengeDetails(challengeData);
+        
+        // Update challenge settings states with API data
+        setDurationMinutes(challengeData.durationMinutes);
+        setStartDate(challengeData.startDate);
+        setEndDate(challengeData.endDate);
+        setShuffleAnswers(challengeData.shuffleAnswers || false);
+        setTranslateOnScreen(challengeData.translateOnScreen || false);
+        setAiFeedbackEnabled(challengeData.aiFeedbackEnabled || false);
+        setAntiCheatModeEnabled(challengeData.hasAntiCheat || false);
+        
+        // Set challenge mode based on challengeType or other logic
+        setChallengeMode('normal'); // Default to normal mode
+        
+        // Set status based on challengeStatus
+        setStatus(challengeData.challengeStatus === 'PUBLISHED' ? 'published' : 'draft');
+        
+        console.log('Challenge details loaded:', challengeData);
+      }
+      
+      setChallengeLoading(false);
+    } catch (error) {
+      console.error('Error fetching challenge details:', error);
+      spaceToast.error(error.response?.data?.message || 'Failed to load challenge details');
+      setChallengeLoading(false);
+    }
+  }, [id]);
 
   const fetchQuestions = useCallback(async () => {
     if (!id) {
@@ -469,24 +1265,43 @@ const DailyChallengeContent = () => {
               isCorrect: contentItem.correct || false,
             }));
 
-            return {
+            const mappedQuestion = {
               id: question.id || `${section.id}-${qIndex}`,
-              type: question.questionType ,
+              type: question.questionType,
               question: question.questionText || '',
+              questionText: question.questionText || '', // Add this for FillBlank
               options: options,
+              content: question.content, // Preserve original content for FillBlank
+              incorrectOptions: [], // Will be set from content.data for DRAG_AND_DROP
               points: question.score || 1,
               timeLimit: 1,
               sectionId: section.id,
               sectionTitle: section.sectionTitle,
               orderNumber: question.orderNumber || qIndex + 1,
             };
+
+            // Log specific question types for debugging
+            if (question.questionType === 'FILL_IN_THE_BLANK') {
+              console.log('FillBlank question:', mappedQuestion);
+            } else if (question.questionType === 'DROPDOWN') {
+              console.log('Dropdown question:', mappedQuestion);
+            } else if (question.questionType === 'DRAG_AND_DROP') {
+              console.log('DragDrop question:', mappedQuestion);
+            } else {
+              console.log(`${question.questionType} question:`, mappedQuestion);
+            }
+
+            return mappedQuestion;
           });
         }).flat(); // Flatten the array to get all questions
 
         console.log('Mapped Questions:', mappedQuestions);
 
         if (mappedQuestions.length > 0) {
-          setQuestions(mappedQuestions);
+          // Sort questions by orderNumber to ensure correct order
+          const sortedQuestions = mappedQuestions.sort((a, b) => (a.orderNumber || 0) - (b.orderNumber || 0));
+          console.log('Sorted Questions:', sortedQuestions);
+          setQuestions(sortedQuestions);
         } else {
           // If no questions, set empty array
           setQuestions([]);
@@ -505,21 +1320,87 @@ const DailyChallengeContent = () => {
       setQuestions([]);
       setLoading(false);
     }
-  }, [id, t]);
+  }, [id]);
 
   useEffect(() => {
+    fetchChallengeDetails();
     fetchQuestions();
-  }, [fetchQuestions]);
+  }, [fetchChallengeDetails, fetchQuestions]);
 
   // Enter/exit daily challenge menu mode
+  // Fetch challenge info from API if not available in state
+  const fetchChallengeInfo = useCallback(async () => {
+    // If we already have all info, no need to fetch
+    if (challengeInfo.challengeName && challengeInfo.className) {
+      return;
+    }
+
+    try {
+      // Fetch challenge detail from API
+      const response = await dailyChallengeApi.getDailyChallengeById(id);
+      console.log('Challenge detail response:', response);
+      
+      const data = response?.data;
+      if (data) {
+        setChallengeInfo(prev => ({
+          ...prev,
+          challengeId: data.id || id,
+          challengeName: data.challengeName || data.name || data.title || prev.challengeName,
+        }));
+      }
+    } catch (error) {
+      console.error('Error fetching challenge info:', error);
+    }
+  }, [id, challengeInfo.challengeName, challengeInfo.className]);
+
+  // Fetch challenge info if needed
   useEffect(() => {
-    // Back to Performance page (detail page)
-    enterDailyChallengeMenu(questions.length, null, `/teacher/daily-challenges/detail/${id}`);
+    fetchChallengeInfo();
+  }, [fetchChallengeInfo]);
+
+  useEffect(() => {
+    // Determine back path based on classId
+    const getBackPath = () => {
+      if (challengeInfo.classId) {
+        // If coming from class-specific daily challenges, go back to that list
+        // Route: /teacher/classes/daily-challenges/:classId
+        const userRole = user?.role?.toLowerCase();
+        if (userRole === 'teacher' || userRole === 'teaching_assistant') {
+          return `/teacher/classes/daily-challenges/${challengeInfo.classId}`;
+        } else {
+          return `/manager/classes/daily-challenges/${challengeInfo.classId}`;
+        }
+      } else {
+        // Otherwise, go back to general daily challenges list
+        const userRole = user?.role?.toLowerCase();
+        return userRole === 'teacher' || userRole === 'teaching_assistant' 
+          ? '/teacher/daily-challenges' 
+          : '/manager/daily-challenges';
+      }
+    };
+
+    // Determine subtitle for header
+    const getSubtitle = () => {
+      if (challengeInfo.className && challengeInfo.challengeName) {
+        return `${challengeInfo.className} / ${challengeInfo.challengeName}`;
+      } else if (challengeInfo.challengeName) {
+        return challengeInfo.challengeName;
+      }
+      return null;
+    };
+    
+    // Enter daily challenge menu mode with backPath and subtitle
+    enterDailyChallengeMenu(
+      questions.length, 
+      getSubtitle(), 
+      getBackPath(), 
+      challengeInfo.className
+    );
     
     return () => {
       exitDailyChallengeMenu();
     };
-  }, [enterDailyChallengeMenu, exitDailyChallengeMenu, questions.length, id]);
+  }, [enterDailyChallengeMenu, exitDailyChallengeMenu, questions.length, challengeInfo, user]);
 
   // Update challenge count when questions change
   useEffect(() => {
@@ -547,22 +1428,177 @@ const DailyChallengeContent = () => {
     setQuestionTypeModalVisible(false);
   }, []);
 
-  const handleModalSave = useCallback((questionData) => {
-    if (editingQuestion) {
-      // Update existing question
-      setQuestions(prev => prev.map(q => 
-        q.id === editingQuestion.id ? { ...questionData, id: editingQuestion.id } : q
-      ));
-      spaceToast.success(`${questionData.title} question updated successfully!`);
-    } else {
-      // Add new question
-      setQuestions(prev => [...prev, questionData]);
-      spaceToast.success(`${questionData.title} question added successfully!`);
+  const handleModalSave = useCallback(async (questionData) => {
+    try {
+      if (editingQuestion) {
+        // Update existing question - chỉ update local state, chưa gọi API update
+        setQuestions(prev => prev.map(q => 
+          q.id === editingQuestion.id ? { ...questionData, id: editingQuestion.id } : q
+        ));
+        spaceToast.success(`${questionData.title} question updated successfully!`);
+        
+        // Close modal immediately for edit mode
+        setModalVisible(false);
+        setCurrentModalType(null);
+        setEditingQuestion(null);
+      } else {
+        // Add new question - Gọi API để lưu vào database ngay
+        setSavingQuestion(true);
+        
+        // Close modal immediately to show loading on the list
+        setModalVisible(false);
+        
+        // Transform question to API format based on question type
+        let apiQuestion;
+        
+        // Calculate the next order number (start from 1 for each new section)
+        // Since each section should only have 1 question, always use 1
+        const nextOrderNumber = 1;
+        
+        if (questionData.type === 'FILL_IN_THE_BLANK') {
+          // Fill in the blank question
+          apiQuestion = {
+            questionText: questionData.questionText || questionData.question,
+            orderNumber: nextOrderNumber,
+            score: questionData.points || 0.5,
+            questionType: questionData.questionType || 'FILL_IN_THE_BLANK',
+            content: {
+              data: questionData.content?.data || []
+            }
+          };
+        } else if (questionData.type === 'TRUE_OR_FALSE') {
+          // True/False question
+          apiQuestion = {
+            questionText: questionData.question,
+            orderNumber: nextOrderNumber,
+            score: questionData.points || 0.5,
+            questionType: 'TRUE_OR_FALSE',
+            content: {
+              data: questionData.options ? questionData.options.map((option, optIndex) => ({
+                id: `opt${optIndex + 1}`,
+                value: option.text,
+                positionOrder: optIndex + 1,
+                correct: option.isCorrect || false
+              })) : []
+            }
+          };
+        } else if (questionData.type === 'DROPDOWN') {
+          // Dropdown question
+          apiQuestion = {
+            questionText: questionData.questionText || questionData.question,
+            orderNumber: nextOrderNumber,
+            score: questionData.points || 0.5,
+            questionType: 'DROPDOWN',
+            content: {
+              data: questionData.content?.data || []
+            }
+          };
+        } else if (questionData.type === 'DRAG_AND_DROP') {
+          // Drag and Drop question - DRAG_AND_DROP type
+          // contentData already contains both correct answers (with positionId) and incorrect options (positionId: null)
+          apiQuestion = {
+            questionText: questionData.questionText || questionData.question,
+            orderNumber: nextOrderNumber,
+            score: questionData.points || 1,
+            questionType: 'DRAG_AND_DROP',
+            content: {
+              data: questionData.content?.data || []
+            }
+          };
+        } else if (questionData.type === 'REARRANGE') {
+          // Rearrange question - REARRANGE type
+          apiQuestion = {
+            questionText: questionData.questionText || questionData.question,
+            orderNumber: nextOrderNumber,
+            score: questionData.points || 1,
+            questionType: 'REARRANGE',
+            content: {
+              data: questionData.content?.data || []
+            }
+          };
+        } else if (questionData.type === 'REWRITE') {
+          // Rewrite question - REWRITE type
+          apiQuestion = {
+            questionText: questionData.questionText || questionData.question,
+            orderNumber: nextOrderNumber,
+            score: questionData.points || 1,
+            questionType: 'REWRITE',
+            content: {
+              data: questionData.content?.data || []
+            }
+          };
+        } else {
+          // Multiple choice, Multiple select, or other types
+          apiQuestion = {
+            questionText: questionData.question,
+            orderNumber: nextOrderNumber,
+            score: questionData.points || 0.5,
+            questionType: questionData.type ? questionData.type.toUpperCase().replace(/-/g, '_') : 'MULTIPLE_CHOICE',
+            content: {
+              data: questionData.options ? questionData.options.map((option, optIndex) => ({
+                id: option.key ? `opt${optIndex + 1}` : `opt${optIndex + 1}`,
+                value: option.text,
+                positionOrder: optIndex + 1,
+                correct: option.isCorrect || false
+              })) : []
+            }
+          };
+        }
+
+        // Create section data with single question
+        // Set appropriate section content based on question type
+        let sectionContent = 'Choose one correct answer.';
+        if (questionData.type === 'DRAG_AND_DROP') {
+          sectionContent = 'Drag and drop the correct word into each blank to complete the passage.';
+        } else if (questionData.type === 'DROPDOWN') {
+          sectionContent = 'Select the correct answer from the dropdown menu.';
+        } else if (questionData.type === 'FILL_IN_THE_BLANK') {
+          sectionContent = 'Fill in the blank with the correct answer.';
+        } else if (questionData.type === 'MULTIPLE_SELECT') {
+          sectionContent = 'Select all correct answers.';
+        } else if (questionData.type === 'TRUE_OR_FALSE') {
+          sectionContent = 'Choose True or False.';
+        } else if (questionData.type === 'REARRANGE') {
+          sectionContent = 'Rearrange the words to make a correct sentence.';
+        } else if (questionData.type === 'REWRITE') {
+          sectionContent = 'Rewrite the sentences as instructed.';
+        }
+        
+        const sectionData = {
+          section: {
+            sectionsContent: sectionContent,
+            resourceType: 'NONE'
+          },
+          questions: [apiQuestion]
+        };
+
+        console.log('Saving new question to API:', sectionData);
+
+        // Call API to save the question
+        const response = await dailyChallengeApi.saveSectionWithQuestions(id, sectionData);
+        
+        // Refresh questions from API to get the saved question with ID
+        await fetchQuestions();
+        
+        spaceToast.success(response.message);
+        
+        // Reset modal states
+        setCurrentModalType(null);
+        setEditingQuestion(null);
+      }
+    } catch (error) {
+      console.error('Error saving question:', error);
+      spaceToast.error(error.response?.data?.error || error.message || 'Failed to save question');
+      
+      // Reset modal states even on error
+      setModalVisible(false);
+      setCurrentModalType(null);
+      setEditingQuestion(null);
+    } finally {
+      // Always reset loading state
+      setSavingQuestion(false);
     }
-    setModalVisible(false);
-    setCurrentModalType(null);
-    setEditingQuestion(null);
-  }, [editingQuestion]);
+  }, [editingQuestion, id, fetchQuestions]);
 
   const handleModalCancel = useCallback(() => {
     setModalVisible(false);
@@ -600,16 +1636,20 @@ const DailyChallengeContent = () => {
 
   const handleDeleteConfirm = useCallback(async () => {
     try {
-      // Update local state - remove question
-      setQuestions(prev => prev.filter(q => q.id !== deleteQuestion.id));
+      // Mark question as toBeDeleted instead of removing it
+      setQuestions(prev => prev.map(q => 
+        q.id === deleteQuestion.id 
+          ? { ...q, toBeDeleted: true }
+          : q
+      ));
       
-      spaceToast.success('Question deleted successfully!');
+      spaceToast.success('Question marked for deletion. Click Save to apply changes.');
       
       setIsDeleteModalVisible(false);
       setDeleteQuestion(null);
     } catch (error) {
-      console.error('Error deleting question:', error);
-      spaceToast.error('Failed to delete question');
+      console.error('Error marking question for deletion:', error);
+      spaceToast.error('Failed to mark question for deletion');
     }
   }, [deleteQuestion]);
 
@@ -619,8 +1659,10 @@ const DailyChallengeContent = () => {
   }, []);
 
   const handleSaveChanges = useCallback(async (saveAsStatus) => {
-
-    if (questions.length === 0) {
+    // Check if there are any visible questions (not deleted)
+    const visibleQuestions = questions.filter(q => !q.toBeDeleted);
+    
+    if (visibleQuestions.length === 0) {
       spaceToast.warning('Please add at least one question before saving');
       return;
     }
@@ -628,44 +1670,49 @@ const DailyChallengeContent = () => {
     try {
       setLoading(true);
 
-      // Transform questions to API format
-      // Group questions by section (for now, we'll use a single default section)
-      const apiQuestions = questions.map((question, index) => {
-        // Transform options to content.data format
-        const contentData = question.options ? question.options.map((option, optIndex) => ({
-          id: option.key ? `opt${optIndex + 1}` : `opt${optIndex + 1}`, // opt1, opt2, opt3, opt4
-          value: option.text, // HTML content from CKEditor
-          positionOrder: optIndex + 1,
-          correct: option.isCorrect || false
-        })) : [];
-
-        return {
-          // Don't include id for new questions
-          questionText: question.question, // HTML content from CKEditor
-          orderNumber: index + 1,
-          score: question.points || 0.5, // Default to 0.5 like in sample
-          questionType: question.type ? question.type.toUpperCase().replace(/-/g, '_') : 'MULTIPLE_CHOICE', // Convert to UPPER_SNAKE_CASE
-          content: {
-            data: contentData
+      // Prepare bulk update data based on visible questions order
+      // Group questions by sectionId to get unique sections
+      const sectionsMap = new Map();
+      
+      // First, collect all sections (including deleted ones)
+      questions.forEach((question) => {
+        if (question.sectionId !== undefined && question.sectionId !== null) {
+          const sectionId = question.sectionId;
+          if (!sectionsMap.has(sectionId)) {
+            sectionsMap.set(sectionId, {
+              id: sectionId, // This is the section ID to send to API
+              toBeDeleted: false,
+              hasVisibleQuestions: false
+            });
           }
-        };
+          
+          // If this question is marked for deletion, mark the section for deletion too
+          if (question.toBeDeleted) {
+            sectionsMap.get(sectionId).toBeDeleted = true;
+          } else {
+            // If this question is not deleted, mark that section has visible questions
+            sectionsMap.get(sectionId).hasVisibleQuestions = true;
+          }
+        }
+      });
+      
+      // Set order numbers for visible sections only
+      let orderNumber = 1;
+      const bulkUpdateData = Array.from(sectionsMap.values()).map(section => ({
+        ...section,
+        orderNumber: section.hasVisibleQuestions ? orderNumber++ : section.orderNumber
+      }));
+
+      console.log('Bulk update sections data:', {
+        count: bulkUpdateData.length,
+        sections: bulkUpdateData
       });
 
-      // Create section data
-      const sectionData = {
-        section: {
-          sectionsContent: 'Choose one correct answer.',
-          resourceType: 'NONE'
-        },
-        questions: apiQuestions
-      };
+      // Step 1: Call bulk update API to save/reorder sections
+      const bulkResponse = await dailyChallengeApi.bulkUpdateSections(id, bulkUpdateData);
+      console.log('Bulk update response:', bulkResponse);
 
-      console.log('Saving section with questions:', sectionData);
-
-      // Step 1: Call API to save section with questions
-      await dailyChallengeApi.saveSectionWithQuestions(id, sectionData);
-
-      // Step 2: If saveAsStatus is provided, update challenge status
+      // Step 2: Update challenge status if saveAsStatus is provided
       if (saveAsStatus) {
         // Convert saveAsStatus to API format (DRAFT or PUBLISHED)
         const challengeStatus = saveAsStatus === 'published' ? 'PUBLISHED' : 'DRAFT';
@@ -687,12 +1734,12 @@ const DailyChallengeContent = () => {
         spaceToast.success('Changes saved successfully!');
       }
 
-      // Refresh questions from API
+      // Refresh questions from API to get updated data
       await fetchQuestions();
 
     } catch (error) {
-      console.error('Error saving questions:', error);
-      spaceToast.error(error.response?.data?.error || error.message || 'Failed to save questions');
+      console.error('Error saving changes:', error);
+      spaceToast.error(error.response?.data?.error || error.message || 'Failed to save changes');
     } finally {
       setLoading(false);
     }
@@ -707,6 +1754,7 @@ const DailyChallengeContent = () => {
   }, []);
 
   const handleSaveSettings = useCallback((settingsData) => {
+    // Update local state with new settings
     setChallengeMode(settingsData.challengeMode);
     setDurationMinutes(settingsData.durationMinutes);
     setStartDate(settingsData.startDate);
@@ -872,14 +1920,35 @@ const DailyChallengeContent = () => {
 
         if (oldIndex === -1 || newIndex === -1) return items;
 
-        return arrayMove(items, oldIndex, newIndex);
+        const newItems = arrayMove(items, oldIndex, newIndex);
+
+        // Update orderNumber based on visible items (not deleted)
+        const visibleItems = newItems.filter(q => !q.toBeDeleted);
+        return newItems.map((question) => {
+          if (question.toBeDeleted) {
+            return question; // Keep deleted items as-is
+          }
+          
+          // Update orderNumber based on visible items order
+          const visibleIndex = visibleItems.findIndex(item => item.id === question.id);
+          return {
+            ...question,
+            orderNumber: visibleIndex + 1,
+          };
+        });
       });
     }
   }, []);
 
-  // Filter questions
+  // Filter questions (exclude deleted ones and apply search filter)
   const filteredQuestions = useMemo(() => {
     return questions.filter((question) => {
+      // Exclude deleted questions
+      if (question.toBeDeleted) {
+        return false;
+      }
+      
+      // Apply search filter
       const matchesSearch =
         searchText === "" ||
         question.question.toLowerCase().includes(searchText.toLowerCase());
@@ -892,9 +1961,11 @@ const DailyChallengeContent = () => {
     [filteredQuestions]
   );
 
-  // Handle back button click
+  // Handle back button click - Navigate to Performance page with state
   const handleBackToDailyChallenges = () => {
-    navigate('/teacher/daily-challenges/detail/' + id);
+    navigate(`/teacher/daily-challenges/detail/${id}`, {
+      state: challengeInfo
+    });
   };
 
   // Import/Export dropdown menu items
@@ -955,7 +2026,14 @@ const DailyChallengeContent = () => {
                 fontWeight: 300,
                 opacity: 0.5
               }}>|</span>
-              <span>{t('dailyChallenge.dailyChallengeManagement')} / {t('dailyChallenge.content')}</span>
+              <span>
+                {challengeInfo.className && challengeInfo.challengeName 
+                  ? `${challengeInfo.className} / ${challengeInfo.challengeName}` 
+                  : challengeInfo.challengeName 
+                  ? challengeInfo.challengeName
+                  : `${t('dailyChallenge.dailyChallengeManagement')} / ${t('dailyChallenge.content')}`
+                }
+              </span>
             </div>
           </div>
 
@@ -1184,6 +2262,7 @@ const DailyChallengeContent = () => {
                         : 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(244, 240, 255, 0.95) 100%)',
                       backdropFilter: 'blur(10px)'
                     }}
+                    loading={challengeLoading}
                   >
                     {/* Settings Header with Icons */}
                     <div style={{ 
@@ -1300,6 +2379,26 @@ const DailyChallengeContent = () => {
                       {t('dailyChallenge.configuration')}
                   </Typography.Title>
                   <div>
+                      {/* Challenge Name */}
+                      <div style={{ marginBottom: '12px', paddingBottom: '12px', borderBottom: '1px solid #f0f0f0' }}>
+                        <Typography.Text style={{ fontSize: '12px', color: '#666', display: 'block', marginBottom: '4px' }}>
+                          {t('dailyChallenge.challengeName')}
+                                </Typography.Text>
+                        <Typography.Text strong style={{ fontSize: '14px' }}>
+                          {challengeDetails?.challengeName || t('common.notSet')}
+                                </Typography.Text>
+                            </div>
+
+                      {/* Challenge Type */}
+                      <div style={{ marginBottom: '12px', paddingBottom: '12px', borderBottom: '1px solid #f0f0f0' }}>
+                        <Typography.Text style={{ fontSize: '12px', color: '#666', display: 'block', marginBottom: '4px' }}>
+                          {t('dailyChallenge.questionType')}
+                                </Typography.Text>
+                        <Typography.Text strong style={{ fontSize: '14px' }}>
+                          {challengeDetails?.challengeType ? getChallengeTypeName(challengeDetails.challengeType) : t('common.notSet')}
+                                </Typography.Text>
+                            </div>
+
                       {/* Duration */}
                       <div style={{ marginBottom: '12px', paddingBottom: '12px', borderBottom: '1px solid #f0f0f0' }}>
                         <Typography.Text style={{ fontSize: '12px', color: '#666', display: 'block', marginBottom: '4px' }}>
@@ -1534,6 +2633,7 @@ const DailyChallengeContent = () => {
         onCancel={handleModalCancel}
         onSave={handleModalSave}
         questionData={editingQuestion}
+        saving={savingQuestion}
       />
       
       <MultipleSelectModal
@@ -1541,6 +2641,7 @@ const DailyChallengeContent = () => {
         onCancel={handleModalCancel}
         onSave={handleModalSave}
         questionData={editingQuestion}
+        saving={savingQuestion}
       />
       
       <TrueFalseModal
@@ -1548,6 +2649,7 @@ const DailyChallengeContent = () => {
         onCancel={handleModalCancel}
         onSave={handleModalSave}
         questionData={editingQuestion}
+        saving={savingQuestion}
       />
       
       <FillBlankModal
@@ -1555,6 +2657,7 @@ const DailyChallengeContent = () => {
         onCancel={handleModalCancel}
         onSave={handleModalSave}
         questionData={editingQuestion}
+        saving={savingQuestion}
       />
       
       <DropdownModal
@@ -1562,6 +2665,7 @@ const DailyChallengeContent = () => {
         onCancel={handleModalCancel}
         onSave={handleModalSave}
         questionData={editingQuestion}
+        saving={savingQuestion}
       />
       
       <DragDropModal
@@ -1569,6 +2673,7 @@ const DailyChallengeContent = () => {
         onCancel={handleModalCancel}
         onSave={handleModalSave}
         questionData={editingQuestion}
+        saving={savingQuestion}
       />
       
       <ReorderModal
@@ -1576,6 +2681,7 @@ const DailyChallengeContent = () => {
         onCancel={handleModalCancel}
         onSave={handleModalSave}
         questionData={editingQuestion}
+        saving={savingQuestion}
       />
       
       <RewriteModal
@@ -1583,6 +2689,7 @@ const DailyChallengeContent = () => {
         onCancel={handleModalCancel}
         onSave={handleModalSave}
         questionData={editingQuestion}
+        saving={savingQuestion}
       />
 
       {/* Delete Confirmation Modal */}
@@ -1815,7 +2922,11 @@ const DailyChallengeContent = () => {
         visible={settingsModalVisible}
         onCancel={handleCloseSettings}
         onSave={handleSaveSettings}
+        challengeId={id}
         initialValues={{
+          challengeName: challengeDetails?.challengeName,
+          description: challengeDetails?.description,
+          challengeType: challengeDetails?.challengeType,
           challengeMode,
           durationMinutes,
           startDate,

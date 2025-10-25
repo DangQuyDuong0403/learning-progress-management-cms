@@ -39,14 +39,14 @@ const TeacherDashboard = () => {
       path: '/teacher/overview',
       color: "#52c41a",
     },
-    {
-      id: "syllabus-list",
-      title: t('teacherDashboard.syllabusList'),
-      description: t('teacherDashboard.syllabusListDescription'),
-      icon: <BookOutlined style={{ fontSize: '48px', color: '#722ed1' }} />,
-      path: '/teacher/syllabuses',
-      color: "#722ed1",
-    },
+    // {
+    //   id: "syllabus-list",
+    //   title: t('teacherDashboard.syllabusList'),
+    //   description: t('teacherDashboard.syllabusListDescription'),
+    //   icon: <BookOutlined style={{ fontSize: '48px', color: '#722ed1' }} />,
+    //   path: '/teacher/syllabuses',
+    //   color: "#722ed1",
+    // },
     {
       id: "class-list",
       title: t('teacherDashboard.classList'),
