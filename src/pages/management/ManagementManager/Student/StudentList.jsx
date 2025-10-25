@@ -278,16 +278,15 @@ const StudentList = () => {
 
   // Calculate checkbox states with useMemo
   const checkboxStates = useMemo(() => {
-    // Filter out PENDING records from current page
-    const nonPendingStudents = students.filter(student => student.status !== 'PENDING');
-    const currentPageKeys = nonPendingStudents.map(student => student.id);
+    // Include all students (including PENDING) for selection
+    const currentPageKeys = students.map(student => student.id);
     const selectedCount = selectedRowKeys.length;
     
-    // Check if all non-PENDING items on current page are selected
+    // Check if all items on current page are selected
     const allCurrentPageSelected = currentPageKeys.length > 0 && 
       currentPageKeys.every(key => selectedRowKeys.includes(key));
     
-    // For table header checkbox: only check if all non-PENDING current page items are selected
+    // For table header checkbox: check if all current page items are selected
     const isSelectAll = allCurrentPageSelected;
     // Never show indeterminate state for table header checkbox
     const isIndeterminate = false;
@@ -299,7 +298,7 @@ const StudentList = () => {
       isSelectAll,
       isIndeterminate,
       selectedCount,
-      nonPendingStudents: nonPendingStudents.length,
+      totalStudents: students.length,
     });
     
     return { isSelectAll, isIndeterminate, totalItems: currentPageKeys.length, selectedCount };
@@ -307,12 +306,11 @@ const StudentList = () => {
 
   // Handle table header checkbox (only current page)
   const handleSelectAllCurrentPage = (checked) => {
-    // Filter out PENDING records from current page
-    const nonPendingStudents = students.filter(student => student.status !== 'PENDING');
-    const currentPageKeys = nonPendingStudents.map(student => student.id);
+    // Include all students (including PENDING) from current page
+    const currentPageKeys = students.map(student => student.id);
     
     if (checked) {
-      // Add all non-PENDING current page items to selection
+      // Add all current page items to selection
       setSelectedRowKeys(prev => {
         const newKeys = [...prev];
         currentPageKeys.forEach(key => {
@@ -355,10 +353,8 @@ const StudentList = () => {
 
         const response = await studentManagementApi.getStudents(params);
 
-        // Get all IDs from the response, excluding PENDING records
-        const allKeys = response.data
-          .filter(student => student.status !== 'PENDING')
-          .map(student => student.id);
+        // Get all IDs from the response (including PENDING records)
+        const allKeys = response.data.map(student => student.id);
         setSelectedRowKeys(allKeys);
       } catch (error) {
         console.error('Error fetching all student IDs:', error);
@@ -370,11 +366,7 @@ const StudentList = () => {
   };
 
   const handleSelectRow = (record, checked) => {
-    // Don't allow selection of PENDING records
-    if (record.status === 'PENDING') {
-      return;
-    }
-    
+    // Allow selection of all students including PENDING records
     if (checked) {
       setSelectedRowKeys(prev => [...prev, record.id]);
     } else {
@@ -389,9 +381,18 @@ const StudentList = () => {
       return;
     }
     
-    // Get all selected students from all pages, not just current page
+    // Filter out PENDING students for activation (only ACTIVE/INACTIVE can be activated)
+    const selectedStudents = students.filter(student => selectedRowKeys.includes(student.id));
+    const activatableStudents = selectedStudents.filter(student => student.status !== 'PENDING');
+    
+    if (activatableStudents.length === 0) {
+      spaceToast.warning('Cannot activate PENDING students. Please select ACTIVE or INACTIVE students.');
+      return;
+    }
+    
+    const activatableIds = activatableStudents.map(student => student.id);
     const confirmContent = t('studentManagement.confirmBulkActivate');
-    const displayData = `${selectedRowKeys.length} ${t('studentManagement.students')}`;
+    const displayData = `${activatableIds.length} ${t('studentManagement.students')}`;
     
     setConfirmModal({
       visible: true,
@@ -403,8 +404,8 @@ const StudentList = () => {
         setConfirmModal(prev => ({ ...prev, loading: true }));
         try {
           // Call bulk API to update status for multiple students at once
-          // Use all selectedRowKeys directly since they are already filtered for non-PENDING
-          const response = await studentManagementApi.bulkUpdateStudentStatus(selectedRowKeys, 'ACTIVE');
+          // Use filtered IDs (excluding PENDING students)
+          const response = await studentManagementApi.bulkUpdateStudentStatus(activatableIds, 'ACTIVE');
           
           if (response.success) {
             // Close modal first
@@ -414,7 +415,7 @@ const StudentList = () => {
             setSelectedRowKeys([]);
             
             // Show success toast
-            spaceToast.success(`${t('studentManagement.bulkUpdateSuccess')} ${selectedRowKeys.length} ${t('studentManagement.students')}`);
+            spaceToast.success(`${t('studentManagement.bulkUpdateSuccess')} ${activatableIds.length} ${t('studentManagement.students')}`);
             
             // Refresh the list
             fetchStudents(pagination.current, pagination.pageSize, searchValue, statusFilter, roleNameFilter, sortBy, sortDir);
@@ -438,9 +439,18 @@ const StudentList = () => {
       return;
     }
     
-    // Get all selected students from all pages, not just current page
+    // Filter out PENDING students for deactivation (only ACTIVE/INACTIVE can be deactivated)
+    const selectedStudents = students.filter(student => selectedRowKeys.includes(student.id));
+    const deactivatableStudents = selectedStudents.filter(student => student.status !== 'PENDING');
+    
+    if (deactivatableStudents.length === 0) {
+      spaceToast.warning('Cannot deactivate PENDING students. Please select ACTIVE or INACTIVE students.');
+      return;
+    }
+    
+    const deactivatableIds = deactivatableStudents.map(student => student.id);
     const confirmContent = t('studentManagement.confirmBulkDeactivate');
-    const displayData = `${selectedRowKeys.length} ${t('studentManagement.students')}`;
+    const displayData = `${deactivatableIds.length} ${t('studentManagement.students')}`;
     
     setConfirmModal({
       visible: true,
@@ -452,8 +462,8 @@ const StudentList = () => {
         setConfirmModal(prev => ({ ...prev, loading: true }));
         try {
           // Call bulk API to update status for multiple students at once
-          // Use all selectedRowKeys directly since they are already filtered for non-PENDING
-          const response = await studentManagementApi.bulkUpdateStudentStatus(selectedRowKeys, 'INACTIVE');
+          // Use filtered IDs (excluding PENDING students)
+          const response = await studentManagementApi.bulkUpdateStudentStatus(deactivatableIds, 'INACTIVE');
           
           if (response.success) {
             // Close modal first
@@ -463,7 +473,7 @@ const StudentList = () => {
             setSelectedRowKeys([]);
             
             // Show success toast
-            spaceToast.success(`${t('studentManagement.bulkUpdateSuccess')} ${selectedRowKeys.length} ${t('studentManagement.students')}`);
+            spaceToast.success(`${t('studentManagement.bulkUpdateSuccess')} ${deactivatableIds.length} ${t('studentManagement.students')}`);
             
             // Refresh the list
             fetchStudents(pagination.current, pagination.pageSize, searchValue, statusFilter, roleNameFilter, sortBy, sortDir);
@@ -487,12 +497,11 @@ const StudentList = () => {
       return;
     }
     
-    // Filter out PENDING records from selected items
+    // Get selected students (including PENDING students now)
     const selectedStudents = students.filter(student => selectedRowKeys.includes(student.id));
-    const nonPendingSelected = selectedStudents.filter(student => student.status !== 'PENDING');
     
-    if (nonPendingSelected.length === 0) {
-      spaceToast.warning('Cannot assign PENDING students to class');
+    if (selectedStudents.length === 0) {
+      spaceToast.warning('No students selected for assignment');
       return;
     }
     
@@ -522,7 +531,6 @@ const StudentList = () => {
         <Checkbox
           checked={selectedRowKeys.includes(record.id)}
           onChange={(e) => handleSelectRow(record, e.target.checked)}
-          disabled={record.status === 'PENDING'}
           style={{
             transform: 'scale(1.2)'
           }}
@@ -647,7 +655,7 @@ const StudentList = () => {
               )}
             </div>
           );
-        } else if (record.status === 'ACTIVE') {
+        } else if (record.status === 'ACTIVE' || record.status === 'PENDING') {
           return (
             <Button
               type="primary"
@@ -659,8 +667,8 @@ const StudentList = () => {
                 fontSize: '12px',
                 height: '28px',
                 padding: '0 8px',
-                backgroundColor: '#52c41a',
-                borderColor: '#52c41a',
+                backgroundColor: record.status === 'PENDING' ? '#faad14' : '#52c41a',
+                borderColor: record.status === 'PENDING' ? '#faad14' : '#52c41a',
                 borderRadius: '4px'
               }}
             >
