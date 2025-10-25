@@ -1352,16 +1352,37 @@ const DailyChallengeContent = () => {
       setLoading(true);
 
       // Prepare bulk update data based on visible questions order
-      // Use sectionId instead of question id
-      const bulkUpdateData = visibleQuestions
-        .filter(question => question.sectionId !== undefined && question.sectionId !== null) // Only include questions with sectionId
-        .map((question, index) => {
-          return {
-            id: question.sectionId, // Use sectionId for bulk update
-            orderNumber: index + 1,
-            toBeDeleted: question.toBeDeleted || false
-          };
-        });
+      // Group questions by sectionId to get unique sections
+      const sectionsMap = new Map();
+      
+      // First, collect all sections (including deleted ones)
+      questions.forEach((question) => {
+        if (question.sectionId !== undefined && question.sectionId !== null) {
+          const sectionId = question.sectionId;
+          if (!sectionsMap.has(sectionId)) {
+            sectionsMap.set(sectionId, {
+              id: sectionId, // This is the section ID to send to API
+              toBeDeleted: false,
+              hasVisibleQuestions: false
+            });
+          }
+          
+          // If this question is marked for deletion, mark the section for deletion too
+          if (question.toBeDeleted) {
+            sectionsMap.get(sectionId).toBeDeleted = true;
+          } else {
+            // If this question is not deleted, mark that section has visible questions
+            sectionsMap.get(sectionId).hasVisibleQuestions = true;
+          }
+        }
+      });
+      
+      // Set order numbers for visible sections only
+      let orderNumber = 1;
+      const bulkUpdateData = Array.from(sectionsMap.values()).map(section => ({
+        ...section,
+        orderNumber: section.hasVisibleQuestions ? orderNumber++ : section.orderNumber
+      }));
 
       console.log('Bulk update sections data:', {
         count: bulkUpdateData.length,
