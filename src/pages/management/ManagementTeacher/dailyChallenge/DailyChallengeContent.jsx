@@ -120,6 +120,113 @@ const SortableQuestionItem = memo(
       onPointsChange(question.id, value);
     }, [question.id, onPointsChange]);
 
+    // Helper function to render Fill in the Blank question
+    const renderFillBlankQuestion = useCallback(() => {
+      if (question.type !== 'fill-blank' || !question.questionText) {
+        return null;
+      }
+
+      // Parse questionText and replace [[pos_xxx]] with (a)____, (b)____, etc.
+      let displayText = question.questionText;
+      const answerChoices = [];
+      
+      if (question.content && question.content.data) {
+        question.content.data.forEach((item, idx) => {
+          const letter = String.fromCharCode(97 + idx); // a, b, c, d...
+          const pattern = `[[pos_${item.positionId}]]`;
+          
+          // Replace pattern with (a)____ format
+          displayText = displayText.replace(
+            pattern,
+            `<span style="color: #1890ff; font-weight: 600;">(${letter})</span><span style="text-decoration: underline; padding: 0 2px;">____</span>`
+          );
+          
+          // Add to answer choices
+          answerChoices.push({
+            letter: letter,
+            value: item.value
+          });
+        });
+      }
+
+      return (
+        <>
+          {/* Question Text with blanks */}
+          <div 
+            style={{ 
+              marginBottom: '16px', 
+              fontSize: '15px', 
+              fontWeight: 500,
+              lineHeight: '1.8'
+            }}
+            dangerouslySetInnerHTML={{ __html: displayText }}
+          />
+
+          {/* Answer Choices - No header, just show answers */}
+          {answerChoices.length > 0 && (
+            <div style={{ 
+              marginTop: '16px',
+              display: 'flex', 
+              flexWrap: 'wrap', 
+              gap: '12px'
+            }}>
+              {answerChoices.map((choice, idx) => (
+                <div 
+                  key={idx}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    padding: '8px 16px',
+                    background: 'rgba(24, 144, 255, 0.08)',
+                    border: '2px solid rgba(24, 144, 255, 0.3)',
+                    borderRadius: '8px',
+                    fontSize: '14px',
+                    fontWeight: 500
+                  }}
+                >
+                  <span style={{ 
+                    fontWeight: 700, 
+                    color: '#1890ff',
+                    fontSize: '15px'
+                  }}>
+                    ({choice.letter})
+                  </span>
+                  <span style={{ color: '#333' }}>
+                    {choice.value}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </>
+      );
+    }, [question]);
+
+    // Get question type label
+    const getQuestionTypeLabel = useCallback(() => {
+      switch(question.type) {
+        case 'multiple-choice':
+          return t('dailyChallenge.multipleChoice') || 'Multiple Choice';
+        case 'multiple-select':
+          return t('dailyChallenge.multipleSelect') || 'Multiple Select';
+        case 'true-false':
+          return t('dailyChallenge.trueFalse') || 'True/False';
+        case 'fill-blank':
+          return t('dailyChallenge.fillBlank') || 'Fill in the Blank';
+        case 'dropdown':
+          return 'Dropdown';
+        case 'drag-drop':
+          return 'Drag and Drop';
+        case 'reorder':
+          return 'Reorder';
+        case 'rewrite':
+          return 'Re-write';
+        default:
+          return t('dailyChallenge.multipleChoice') || 'Multiple Choice';
+      }
+    }, [question.type, t]);
+
     return (
       <div
         ref={setNodeRef}
@@ -138,7 +245,7 @@ const SortableQuestionItem = memo(
                 }}
               />
             </div>
-            <Typography.Text strong>{index + 1}. {t('dailyChallenge.multipleChoice') || 'Nhiều lựa chọn'}</Typography.Text>
+            <Typography.Text strong>{index + 1}. {getQuestionTypeLabel()}</Typography.Text>
           </div>
           <div className="question-controls">
             <Select
@@ -183,22 +290,37 @@ const SortableQuestionItem = memo(
         </div>
 
         <div className="question-content">
-          <Typography.Paragraph style={{ marginBottom: '16px', fontSize: '15px', fontWeight: 500 }}>
-            {question.question}
-          </Typography.Paragraph>
-
-          <div className="question-options">
-            {question.options.map((option) => (
+          {/* Render based on question type */}
+          {question.type === 'fill-blank' ? (
+            renderFillBlankQuestion()
+          ) : (
+            <>
               <div 
-                key={option.key} 
-                className={`option-item ${option.isCorrect ? 'correct-answer' : ''}`}
-              >
-                <Typography.Text>
-                  <span className="option-key">{option.key}.</span> {option.text}
-                </Typography.Text>
+                style={{ 
+                  marginBottom: '16px', 
+                  fontSize: '15px', 
+                  fontWeight: 500 
+                }}
+                dangerouslySetInnerHTML={{ __html: question.question }}
+              />
+
+              <div className="question-options">
+                {question.options && question.options.map((option) => (
+                  <div 
+                    key={option.key} 
+                    className={`option-item ${option.isCorrect ? 'correct-answer' : ''}`}
+                    style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}
+                  >
+                    <span className="option-key" style={{ flexShrink: 0 }}>{option.key}.</span>
+                    <div 
+                      style={{ flex: 1 }}
+                      dangerouslySetInnerHTML={{ __html: option.text }} 
+                    />
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
+            </>
+          )}
         </div>
       </div>
     );
@@ -444,19 +566,19 @@ const DailyChallengeContent = () => {
     setDeleteQuestion(null);
   }, []);
 
-  const handleSaveChanges = useCallback(() => {
-    spaceToast.success('Changes saved successfully!');
-  }, []);
-
-  const handleToggleStatus = useCallback(() => {
-    const newStatus = status === 'draft' ? 'published' : 'draft';
-    setStatus(newStatus);
-    spaceToast.success(
-      newStatus === 'published' 
-        ? t('dailyChallenge.publishedSuccess') || 'Challenge published successfully!'
-        : t('dailyChallenge.draftSuccess') || 'Changed to draft successfully!'
-    );
-  }, [status, t]);
+  const handleSaveChanges = useCallback((saveAsStatus) => {
+    // Update status when saving
+    if (saveAsStatus) {
+      setStatus(saveAsStatus);
+      spaceToast.success(
+        saveAsStatus === 'published' 
+          ? t('dailyChallenge.savedAsPublished') || 'Saved and published successfully!'
+          : t('dailyChallenge.savedAsDraft') || 'Saved as draft successfully!'
+      );
+    } else {
+      spaceToast.success('Changes saved successfully!');
+    }
+  }, [t]);
 
   const handleOpenSettings = useCallback(() => {
     setSettingsModalVisible(true);
@@ -721,6 +843,34 @@ const DailyChallengeContent = () => {
 
           {/* Right: Action Buttons */}
           <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            {/* Status Display - Text Badge */}
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '8px 20px',
+              borderRadius: '8px',
+              background: status === 'published' 
+                ? 'rgba(82, 196, 26, 0.1)' 
+                : 'rgba(250, 173, 20, 0.1)',
+              border: status === 'published'
+                ? '2px solid rgba(82, 196, 26, 0.3)'
+                : '2px solid rgba(250, 173, 20, 0.3)',
+            }}>
+              {status === 'published' ? (
+                <CheckCircleOutlined style={{ color: '#52c41a', fontSize: '18px' }} />
+              ) : (
+                <FileTextOutlined style={{ color: '#faad14', fontSize: '18px' }} />
+              )}
+              <span style={{
+                fontWeight: 600,
+                fontSize: '14px',
+                color: status === 'published' ? '#52c41a' : '#faad14'
+              }}>
+                {status === 'published' ? t('dailyChallenge.published') : t('dailyChallenge.draft')}
+              </span>
+            </div>
+
             {/* Import/Export Dropdown */}
             <Dropdown
               menu={{ items: importExportMenuItems }}
@@ -749,30 +899,6 @@ const DailyChallengeContent = () => {
             </Button>
             </Dropdown>
 
-            {/* Status Toggle Button */}
-            <Button 
-              icon={status === 'published' ? <CheckCircleOutlined /> : <FileTextOutlined />}
-              className={`create-button ${theme}-create-button`}
-              onClick={handleToggleStatus}
-              style={{
-                height: '40px',
-                borderRadius: '8px',
-                fontWeight: 500,
-                fontSize: '16px',
-                padding: '0 24px',
-                border: 'none',
-                transition: 'all 0.3s ease',
-                background: theme === 'sun' 
-                  ? 'linear-gradient(135deg, rgba(102, 174, 255, 0.6), rgba(60, 153, 255, 0.6))'
-                  : 'linear-gradient(135deg, rgba(181, 176, 192, 0.7), rgba(163, 158, 187, 0.7), rgba(131, 119, 160, 0.7), rgba(172, 165, 192, 0.7), rgba(109, 95, 143, 0.7))',
-                color: theme === 'sun' ? '#000000' : '#000000',
-                boxShadow: theme === 'sun' ? '0 2px 8px rgba(60, 153, 255, 0.2)' : '0 2px 8px rgba(131, 119, 160, 0.3)',
-                opacity: 0.9
-              }}
-            >
-              {status === 'published' ? t('dailyChallenge.published') : t('dailyChallenge.draft')}
-            </Button>
-
             <Button 
               icon={<PlusOutlined />}
               className={`create-button ${theme}-create-button`}
@@ -796,28 +922,47 @@ const DailyChallengeContent = () => {
               {t('dailyChallenge.addQuestion')}
             </Button>
             
-            {/* Save Changes - Keep original bright color */}
-            <Button 
-              icon={<SaveOutlined />}
-              className={`create-button ${theme}-create-button`}
-              onClick={handleSaveChanges}
-              style={{
-                height: '40px',
-                borderRadius: '8px',
-                fontWeight: 500,
-                fontSize: '16px',
-                padding: '0 24px',
-                border: 'none',
-                transition: 'all 0.3s ease',
-                background: theme === 'sun' 
-                  ? 'linear-gradient(135deg, #66AEFF, #3C99FF)'
-                  : 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)',
-                color: '#000000',
-                boxShadow: theme === 'sun' ? '0 2px 8px rgba(60, 153, 255, 0.3)' : '0 2px 8px rgba(131, 119, 160, 0.3)'
+            {/* Save Dropdown - Save as Draft or Published */}
+            <Dropdown
+              menu={{ 
+                items: [
+                  {
+                    key: 'draft',
+                    label: <span style={{ color: '#000000' }}>{t('dailyChallenge.saveAsDraft') || 'Save as Draft'}</span>,
+                    icon: <FileTextOutlined style={{ color: '#000000' }} />,
+                    onClick: () => handleSaveChanges('draft'),
+                  },
+                  {
+                    key: 'published',
+                    label: <span style={{ color: '#000000' }}>{t('dailyChallenge.saveAsPublished') || 'Save as Published'}</span>,
+                    icon: <CheckCircleOutlined style={{ color: '#000000' }} />,
+                    onClick: () => handleSaveChanges('published'),
+                  },
+                ]
               }}
+              trigger={['click']}
             >
-              {t('common.saveChanges')}
-            </Button>
+              <Button 
+                icon={<SaveOutlined />}
+                className={`create-button ${theme}-create-button`}
+                style={{
+                  height: '40px',
+                  borderRadius: '8px',
+                  fontWeight: 500,
+                  fontSize: '16px',
+                  padding: '0 24px',
+                  border: 'none',
+                  transition: 'all 0.3s ease',
+                  background: theme === 'sun' 
+                    ? 'linear-gradient(135deg, #66AEFF, #3C99FF)'
+                    : 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)',
+                  color: '#000000',
+                  boxShadow: theme === 'sun' ? '0 2px 8px rgba(60, 153, 255, 0.3)' : '0 2px 8px rgba(131, 119, 160, 0.3)'
+                }}
+              >
+                {t('common.save') || 'Save'} <DownOutlined />
+              </Button>
+            </Dropdown>
           </div>
         </div>
       </nav>

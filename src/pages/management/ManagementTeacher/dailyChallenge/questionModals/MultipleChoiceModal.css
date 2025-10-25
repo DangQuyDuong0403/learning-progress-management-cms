@@ -15,6 +15,15 @@
   }
 }
 
+/* Save Button Hover Effect */
+.save-question-btn:hover {
+  transform: scale(1.05) !important;
+}
+
+.save-question-btn:active {
+  transform: scale(0.98) !important;
+}
+
 @keyframes fadeIn {
   from {
     opacity: 0;
@@ -73,6 +82,15 @@
 /* ===============================================
    PLACEHOLDER STYLES
    =============================================== */
+
+/* ContentEditable placeholder for Fill Blank Modal */
+[contenteditable][data-placeholder]:empty:before {
+  content: attr(data-placeholder);
+  color: rgba(0, 0, 0, 0.4);
+  font-style: italic;
+  pointer-events: none;
+  position: absolute;
+}
 
 /* Question textarea placeholders */
 .question-textarea textarea::placeholder {

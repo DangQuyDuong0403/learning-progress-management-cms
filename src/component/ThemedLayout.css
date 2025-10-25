@@ -1465,7 +1465,7 @@
 .sun-theme .themed-content .ant-table .ant-table-tbody > tr > td {
 	background: #E6F5FF;
 	color: #000;
-	font-size: 18px;
+	font-size: 20px;
 	border: 1px solid #a8d7f8 !important;
 }
 
@@ -2259,4 +2259,40 @@
 .sun-theme .themed-content .bulk-export-button .anticon {
 	color: #000;
 	font-size: 16px;
+}
+
+/* Space Theme Astronaut Decoration - Bottom Right */
+.space-astronaut-decoration-icon {
+	position: fixed;
+	bottom: 20px;
+	right: 20px;
+	z-index: 0;
+	pointer-events: none;
+	animation: floatAstronaut 4s ease-in-out infinite;
+}
+
+.space-astronaut-icon-image {
+	width: 120px;
+	height: 120px;
+	object-fit: contain;
+	filter: drop-shadow(0 0 15px rgba(125, 211, 252, 0.5));
+	animation: glowAstronaut 3s ease-in-out infinite alternate;
+}
+
+@keyframes floatAstronaut {
+	0%, 100% {
+		transform: translateY(0px);
+	}
+	50% {
+		transform: translateY(-15px);
+	}
+}
+
+@keyframes glowAstronaut {
+	from {
+		filter: drop-shadow(0 0 15px rgba(125, 211, 252, 0.5));
+	}
+	to {
+		filter: drop-shadow(0 0 25px rgba(125, 211, 252, 0.8));
+	}
 }
