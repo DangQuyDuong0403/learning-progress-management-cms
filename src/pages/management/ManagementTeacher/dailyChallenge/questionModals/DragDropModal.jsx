@@ -674,6 +674,8 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 			color: ${blank.color};
 			transition: all 0.2s ease;
 			cursor: pointer;
+			min-width: 0;
+			flex: 1;
 		`;
 
 		// Number badge
@@ -722,6 +724,8 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 			color: #333;
 			font-weight: 500;
 			display: none;
+			flex: 1;
+			margin-right: 8px;
 		`;
 		input.addEventListener('input', (e) => {
 			handleBlankAnswerChange(blank.id, e.target.value);
@@ -729,6 +733,9 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 			answerText.textContent = e.target.value || 'empty';
 		});
 		input.addEventListener('click', (e) => {
+			e.stopPropagation();
+		});
+		input.addEventListener('mousedown', (e) => {
 			e.stopPropagation();
 		});
 		input.addEventListener('blur', () => {
@@ -740,6 +747,7 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 		const deleteBtn = document.createElement('button');
 		deleteBtn.innerHTML = '×';
 		deleteBtn.className = 'blank-delete-btn';
+		deleteBtn.type = 'button';
 		deleteBtn.style.cssText = `
 			border: none;
 			background: rgba(255,77,79,0.9);
@@ -754,10 +762,21 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 			transition: all 0.2s ease;
 			font-size: 18px;
 			font-weight: bold;
+			position: relative;
+			z-index: 1000;
+			flex-shrink: 0;
 		`;
 		deleteBtn.addEventListener('click', (e) => {
+			e.preventDefault();
 			e.stopPropagation();
+			e.stopImmediatePropagation();
+			console.log('Delete button clicked for blank:', blank.id);
 			handleDeleteBlankElement(blank.id);
+		});
+		deleteBtn.addEventListener('mousedown', (e) => {
+			e.preventDefault();
+			e.stopPropagation();
+			e.stopImmediatePropagation();
 		});
 		deleteBtn.addEventListener('mouseenter', (e) => {
 			e.target.style.background = 'rgba(255,77,79,1)';
@@ -1128,6 +1147,7 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 							id: `ans${answerIndex}`,
 							value: blank.answer,
 							positionId: blank.positionId,
+							positionOrder: answerIndex,
 							correct: true
 						});
 						answerIndex++;
@@ -1200,20 +1220,32 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 		// Clean up multiple line breaks
 		questionText = questionText.replace(/\n/g, '<br>');
 
+		// Add incorrect options to contentData (those without positionId)
+		const filteredIncorrectOptions = incorrectOptions.filter(opt => opt.text.trim());
+		filteredIncorrectOptions.forEach((option, index) => {
+			contentData.push({
+				id: `opt${answerIndex + index}`,
+				value: option.text,
+				positionId: null, // No position for incorrect options
+				positionOrder: answerIndex + index,
+				correct: false
+			});
+		});
+
       const newQuestionData = {
         id: questionData?.id || Date.now(),
-			type: 'DRAG_DROP',
+			type: 'DRAG_AND_DROP', // Use uppercase for API format
 			title: 'Drag and Drop',
 			questionText: questionText,
 			content: {
 				data: contentData
 			},
-			incorrectOptions: incorrectOptions.filter(opt => opt.text.trim()),
+			incorrectOptions: filteredIncorrectOptions,
 			points: points,
 			// For backward compatibility
 			question: questionText,
 			blanks: blanks,
-			correctAnswer: contentData.map(d => d.value).join(', '),
+			correctAnswer: contentData.filter(d => d.correct === true).map(d => d.value).join(', '),
       };
 
 		// Log HTML output for debugging
