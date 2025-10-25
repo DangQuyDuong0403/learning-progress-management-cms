@@ -43,13 +43,13 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 	], []);
 
 	// Parse backend format to editor format
-	const parseQuestionText = useCallback((questionText, dropdownsData) => {
+	const parseQuestionText = useCallback((questionText, contentData) => {
 		const parsed = [];
 		const dropsData = [];
 		
 		// Remove <br> tags and split by dropdown pattern
 		const cleanText = questionText.replace(/<br\s*\/?>/gi, '\n');
-		const regex = /\[\[dropdown_([a-z0-9]+)\]\]/g;
+		const regex = /\[\[pos_([a-z0-9]+)\]\]/g;
 		let lastIndex = 0;
 		let match;
 
@@ -64,22 +64,25 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 
 			// Add dropdown
 			const positionId = match[1];
-			const dropdownData = dropdownsData.find(item => item.positionId === positionId);
+			const dropdownOptions = contentData.filter(item => item.positionId === positionId);
+			const correctOption = dropdownOptions.find(opt => opt.correct === true);
+			const incorrectOptions = dropdownOptions.filter(opt => opt.correct === false);
+			
 			const dropdownId = `dropdown-${Date.now()}-${positionId}`;
 			
 			parsed.push({
 				type: 'dropdown',
 				id: dropdownId,
 				positionId: positionId,
-				correctAnswer: dropdownData?.correctAnswer || '',
-				incorrectOptions: dropdownData?.incorrectOptions || []
+				correctAnswer: correctOption?.value || '',
+				incorrectOptions: incorrectOptions.map(opt => ({ id: opt.id, text: opt.value }))
 			});
 
 			dropsData.push({
 				id: dropdownId,
 				positionId: positionId,
-				correctAnswer: dropdownData?.correctAnswer || '',
-				incorrectOptions: dropdownData?.incorrectOptions || [],
+				correctAnswer: correctOption?.value || '',
+				incorrectOptions: incorrectOptions.map(opt => ({ id: opt.id, text: opt.value })),
 				color: dropdownColors[dropsData.length % dropdownColors.length]
 			});
 
@@ -105,9 +108,9 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 	// Initialize editor content from questionData
 	useEffect(() => {
 		if (visible) {
-			if (questionData?.questionText && questionData?.dropdowns) {
+			if (questionData?.questionText && questionData?.content?.data) {
 				// Parse existing question
-				parseQuestionText(questionData.questionText, questionData.dropdowns);
+				parseQuestionText(questionData.questionText, questionData.content.data);
 			} else {
 				// New question
 				setEditorContent([{ type: 'text', content: '', id: Date.now() }]);
@@ -810,16 +813,30 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 
 	// Handle delete dropdown from DOM
 	const handleDeleteDropdownElement = useCallback((dropdownId) => {
-		if (!editorRef.current) return;
+		console.log('Attempting to delete dropdown:', dropdownId);
+		
+		if (!editorRef.current) {
+			console.error('Editor ref not available');
+			return;
+		}
 
 		// Find and remove the dropdown element from DOM
 		const dropdownElement = editorRef.current.querySelector(`[data-dropdown-id="${dropdownId}"]`);
+		console.log('Found dropdown element:', dropdownElement);
+		
 		if (dropdownElement) {
 			dropdownElement.remove();
+			console.log('Dropdown element removed from DOM');
+		} else {
+			console.warn('Dropdown element not found in DOM');
 		}
 
 		// Update state
-		setDropdowns(prev => prev.filter(dropdown => dropdown.id !== dropdownId));
+		setDropdowns(prev => {
+			const filtered = prev.filter(dropdown => dropdown.id !== dropdownId);
+			console.log('Updated dropdowns state:', filtered);
+			return filtered;
+		});
 		
 		// Update dropdown numbers after deletion
 		setTimeout(() => {
@@ -829,7 +846,9 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 		message.success('Dropdown removed');
 		
 		// Refocus editor
-		editorRef.current.focus();
+		if (editorRef.current) {
+			editorRef.current.focus();
+		}
 	}, [updateDropdownNumbers]);
 
 	// Add incorrect option to a specific dropdown
@@ -955,51 +974,65 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 			collapseDropdown();
 		});
 
-		// Delete button (hidden by default in compact mode)
+		// Delete button (always visible for easier deletion)
 		const deleteBtn = document.createElement('button');
 		deleteBtn.innerHTML = '×';
 		deleteBtn.className = 'dropdown-delete-btn';
+		deleteBtn.type = 'button'; // Prevent form submission
 		deleteBtn.style.cssText = `
 			border: none;
 			background: rgba(255,77,79,0.9);
 			color: white;
 			border-radius: 4px;
-			width: 24px;
-			height: 24px;
-			display: none;
+			width: 20px;
+			height: 20px;
+			display: flex;
 			align-items: center;
 			justify-content: center;
 			cursor: pointer;
 			transition: all 0.2s ease;
-			font-size: 18px;
+			font-size: 14px;
 			font-weight: bold;
+			position: relative;
+			z-index: 10;
+			opacity: 0.7;
 		`;
-		deleteBtn.addEventListener('click', (e) => {
+		// Add multiple event listeners to ensure click is captured
+		const handleDeleteClick = (e) => {
+			e.preventDefault();
 			e.stopPropagation();
+			console.log('Delete button clicked for dropdown:', dropdown.id);
 			handleDeleteDropdownElement(dropdown.id);
-		});
+		};
+		
+		deleteBtn.addEventListener('click', handleDeleteClick);
+		deleteBtn.addEventListener('mousedown', handleDeleteClick);
+		deleteBtn.addEventListener('touchstart', handleDeleteClick);
 		deleteBtn.addEventListener('mouseenter', (e) => {
 			e.target.style.background = 'rgba(255,77,79,1)';
-			e.target.style.transform = 'scale(1.1)';
+			e.target.style.transform = 'scale(1.2)';
+			e.target.style.opacity = '1';
 		});
 		deleteBtn.addEventListener('mouseleave', (e) => {
 			e.target.style.background = 'rgba(255,77,79,0.9)';
 			e.target.style.transform = 'scale(1)';
+			e.target.style.opacity = '0.7';
 		});
 
-		// Function to expand dropdown (show input and delete button)
+		// Function to expand dropdown (show input)
 		const expandDropdown = () => {
+			console.log('Expanding dropdown:', dropdown.id);
 			answerText.style.display = 'none';
 			input.style.display = 'inline';
-			deleteBtn.style.display = 'flex';
+			console.log('Input field displayed');
 			setTimeout(() => input.focus(), 10);
 		};
 
 		// Function to collapse dropdown (show only answer text)
 		const collapseDropdown = () => {
+			console.log('Collapsing dropdown:', dropdown.id);
 			answerText.style.display = 'inline';
 			input.style.display = 'none';
-			deleteBtn.style.display = 'none';
 		};
 
 		// Click on chip to expand
@@ -1109,6 +1142,11 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 
 		// Validate
 		const editorText = editorRef.current.textContent.trim();
+		console.log('=== VALIDATION DEBUG ===');
+		console.log('Editor text:', editorText);
+		console.log('Dropdowns length:', dropdowns.length);
+		console.log('Dropdowns state:', dropdowns);
+		
 		if (!editorText && dropdowns.length === 0) {
 			message.error('Please enter the question text');
         return;
@@ -1119,16 +1157,49 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
         return;
       }
 
+		// Check each dropdown's correct answer
+		dropdowns.forEach((dropdown, index) => {
+			console.log(`Dropdown ${index} validation:`, {
+				id: dropdown.id,
+				correctAnswer: dropdown.correctAnswer,
+				isEmpty: !dropdown.correctAnswer || !dropdown.correctAnswer.trim(),
+				trimmed: dropdown.correctAnswer?.trim()
+			});
+		});
+
 		const hasEmptyDropdowns = dropdowns.some(dropdown => !dropdown.correctAnswer || !dropdown.correctAnswer.trim());
+		console.log('Has empty dropdowns:', hasEmptyDropdowns);
+		
 		if (hasEmptyDropdowns) {
-			message.error('Please fill in all dropdown correct answers');
+			message.error('Please fill in all dropdown correct answers. Click on each dropdown chip to enter the correct answer.');
         return;
       }
 
 		// Build backend format by traversing DOM (preserve HTML)
 		let questionText = '';
-		const dropdownsData = [];
-		let answerIndex = 1;
+		const contentData = [];
+		
+		console.log('=== BUILDING CONTENT DATA ===');
+		console.log('Current dropdowns state:', dropdowns);
+		console.log('Dropdowns length:', dropdowns.length);
+		console.log('Editor content:', editorRef.current.innerHTML);
+		
+		// Debug: Check if dropdowns have correct answers
+		dropdowns.forEach((dropdown, index) => {
+			console.log(`Dropdown ${index}:`, {
+				id: dropdown.id,
+				correctAnswer: dropdown.correctAnswer,
+				incorrectOptions: dropdown.incorrectOptions,
+				positionId: dropdown.positionId
+			});
+		});
+		
+		// Debug: Check all dropdown elements in DOM
+		const allDropdownElements = editorRef.current.querySelectorAll('[data-dropdown-id]');
+		console.log('Found dropdown elements in DOM:', allDropdownElements.length);
+		allDropdownElements.forEach((el, index) => {
+			console.log(`Dropdown ${index}:`, el.getAttribute('data-dropdown-id'), el);
+		});
 
 		// Process each child node
 		const processNode = (node) => {
@@ -1136,18 +1207,17 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 				return node.textContent;
 			} else if (node.nodeType === Node.ELEMENT_NODE) {
 				const dropdownId = node.getAttribute('data-dropdown-id');
+				console.log('Processing node:', node.tagName, 'dropdownId:', dropdownId);
+				
 				if (dropdownId) {
 					// This is a dropdown - replace with placeholder
 					const dropdown = dropdowns.find(d => d.id === dropdownId);
+					console.log('Found dropdown in state:', dropdown);
+					
 					if (dropdown) {
-						dropdownsData.push({
-							id: `dropdown${answerIndex}`,
-							correctAnswer: dropdown.correctAnswer,
-							incorrectOptions: dropdown.incorrectOptions.filter(opt => opt.text.trim()),
-							positionId: dropdown.positionId,
-						});
-						answerIndex++;
-						return `[[dropdown_${dropdown.positionId}]]`;
+						return `[[pos_${dropdown.positionId}]]`;
+					} else {
+						console.warn('Dropdown not found in state for ID:', dropdownId);
 					}
 					return '';
 				} else {
@@ -1208,30 +1278,87 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 			return '';
 		};
 
-		// Process all child nodes
-		editorRef.current.childNodes.forEach(node => {
-			questionText += processNode(node);
-		});
+		// Process all child nodes recursively
+		const processAllNodes = (parentNode) => {
+			if (!parentNode) return '';
+			
+			let result = '';
+			const childNodes = Array.from(parentNode.childNodes);
+			
+			console.log('Processing parent node:', parentNode.tagName || 'TEXT', 'with', childNodes.length, 'children');
+			
+			childNodes.forEach((node, index) => {
+				console.log(`Processing child ${index}:`, node.nodeType === Node.TEXT_NODE ? 'TEXT' : node.tagName, node);
+				result += processNode(node);
+			});
+			
+			return result;
+		};
+		
+		questionText = processAllNodes(editorRef.current);
 
 		// Clean up multiple line breaks
 		questionText = questionText.replace(/\n/g, '<br>');
+		
+		console.log('Final questionText:', questionText);
+		
+		// PRIMARY APPROACH: Process dropdowns directly from state (more reliable than DOM traversal)
+		console.log('=== PRIMARY: Processing dropdowns from state ===');
+		let primaryAnswerIndex = 1;
+		
+		dropdowns.forEach(dropdown => {
+			console.log('Processing dropdown from state:', dropdown);
+			
+			// Add correct answer
+			const correctOption = {
+				id: `opt${primaryAnswerIndex}`,
+				value: dropdown.correctAnswer,
+				positionId: dropdown.positionId,
+				positionOrder: 1,
+				correct: true
+			};
+			contentData.push(correctOption);
+			console.log('Added correct option:', correctOption);
+			
+			// Add incorrect options
+			dropdown.incorrectOptions.forEach((option, index) => {
+				if (option.text && option.text.trim()) {
+					const incorrectOption = {
+						id: `opt${primaryAnswerIndex + index + 1}`,
+						value: option.text.trim(),
+						positionId: dropdown.positionId,
+						positionOrder: index + 2,
+						correct: false
+					};
+					contentData.push(incorrectOption);
+					console.log('Added incorrect option:', incorrectOption);
+				}
+			});
+			
+			primaryAnswerIndex += dropdown.incorrectOptions.length + 1;
+		});
+		
+		console.log('Primary contentData:', contentData);
 
       const newQuestionData = {
         id: questionData?.id || Date.now(),
 			type: 'DROPDOWN',
+			questionType: 'DROPDOWN',
 			title: 'Dropdown',
 			questionText: questionText,
-			dropdowns: dropdownsData,
+			content: {
+				data: contentData
+			},
 			points: points,
 			// For backward compatibility
 			question: questionText,
-			correctAnswer: dropdownsData.map(d => d.correctAnswer).join(', '),
+			correctAnswer: dropdowns.map(d => d.correctAnswer).join(', '),
       };
 
 		// Log HTML output for debugging
 		console.log('=== DROPDOWN QUESTION HTML ===');
 		console.log('Question HTML:', questionText);
-		console.log('Dropdowns Data:', dropdownsData);
+		console.log('Content Data:', contentData);
 		console.log('Full Question Data:', newQuestionData);
 		console.log('================================');
 

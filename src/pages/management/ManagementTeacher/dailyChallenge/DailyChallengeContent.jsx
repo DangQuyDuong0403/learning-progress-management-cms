@@ -136,7 +136,7 @@ const SortableQuestionItem = memo(
 
     // Helper function to render Fill in the Blank question
     const renderFillBlankQuestion = useCallback(() => {
-      if (question.type !== 'fill-blank' || !question.questionText) {
+      if (question.type !== 'FILL_IN_THE_BLANK' || !question.questionText) {
         return null;
       }
 
@@ -153,6 +153,9 @@ const SortableQuestionItem = memo(
       // Parse questionText and replace [[pos_xxx]] with (1)____, (2)____, etc.
       let displayText = question.questionText;
       const answerChoices = [];
+      
+      console.log('FillBlank question:', question);
+      console.log('question.content:', question.content);
       
       if (question.content && question.content.data) {
         question.content.data.forEach((item, idx) => {
@@ -229,7 +232,7 @@ const SortableQuestionItem = memo(
 
     // Helper function to render Dropdown question
     const renderDropdownQuestion = useCallback(() => {
-      if (question.type !== 'dropdown' || !question.questionText) {
+      if (question.type !== 'DROPDOWN' || !question.questionText) {
         return null;
       }
 
@@ -264,19 +267,36 @@ const SortableQuestionItem = memo(
         ? 'rgba(0, 0, 0, 0.1)' 
         : 'rgba(255, 255, 255, 0.15)';
 
-      // Parse questionText and replace [[dropdown_xxx]] with styled dropdown
+      // Parse questionText and replace [[pos_xxx]] with styled dropdown
       let displayText = question.questionText;
       const dropdownsData = [];
       
-      if (question.dropdowns) {
-        question.dropdowns.forEach((dropdown, idx) => {
+      console.log('Dropdown question:', question);
+      console.log('question.content:', question.content);
+      
+      if (question.content && question.content.data) {
+        // Group options by positionId
+        const positionGroups = {};
+        question.content.data.forEach((item) => {
+          if (!positionGroups[item.positionId]) {
+            positionGroups[item.positionId] = [];
+          }
+          positionGroups[item.positionId].push(item);
+        });
+        
+        // Process each position group
+        Object.keys(positionGroups).forEach((positionId, idx) => {
           const number = idx + 1; // 1, 2, 3, 4...
-          const pattern = `[[dropdown_${dropdown.positionId}]]`;
+          const pattern = `[[pos_${positionId}]]`;
+          
+          const group = positionGroups[positionId];
+          const correctOption = group.find(opt => opt.correct === true);
+          const incorrectOptions = group.filter(opt => opt.correct === false);
           
           // Get all options (correct + incorrect)
           const allOptions = [
-            dropdown.correctAnswer,
-            ...(dropdown.incorrectOptions || []).map(opt => opt.text).filter(text => text)
+            correctOption?.value || '',
+            ...incorrectOptions.map(opt => opt.value).filter(value => value)
           ];
           
           // Replace pattern with dropdown display
@@ -291,7 +311,7 @@ const SortableQuestionItem = memo(
           // Store dropdown data
           dropdownsData.push({
             number: number,
-            correctAnswer: dropdown.correctAnswer,
+            correctAnswer: correctOption?.value || '',
             allOptions: allOptions
           });
         });
@@ -750,21 +770,21 @@ const SortableQuestionItem = memo(
     // Get question type label
     const getQuestionTypeLabel = useCallback(() => {
       switch(question.type) {
-        case 'multiple-choice':
+        case 'MULTIPLE_CHOICE':
           return t('dailyChallenge.multipleChoice') || 'Multiple Choice';
-        case 'multiple-select':
+        case 'MULTIPLE_SELECT':
           return t('dailyChallenge.multipleSelect') || 'Multiple Select';
-        case 'true-false':
+        case 'TRUE_OR_FALSE':
           return t('dailyChallenge.trueFalse') || 'True/False';
-        case 'fill-blank':
+        case 'FILL_IN_THE_BLANK':
           return t('dailyChallenge.fillBlank') || 'Fill in the Blank';
-        case 'dropdown':
+        case 'DROPDOWN':
           return 'Dropdown';
-        case 'drag-drop':
+        case 'DRAG_AND_DROP':
           return 'Drag and Drop';
-        case 'reorder':
+        case 'REARRANGE':
           return 'Reorder';
-        case 'rewrite':
+        case 'REWRITE':
           return 'Re-write';
         default:
           return t('dailyChallenge.multipleChoice') || 'Multiple Choice';
@@ -835,9 +855,9 @@ const SortableQuestionItem = memo(
 
         <div className="question-content">
           {/* Render based on question type */}
-          {question.type === 'fill-blank' ? (
+          {question.type === 'FILL_IN_THE_BLANK' ? (
             renderFillBlankQuestion()
-          ) : question.type === 'dropdown' ? (
+          ) : question.type === 'DROPDOWN' ? (
             renderDropdownQuestion()
           ) : question.type === 'drag-drop' ? (
             renderDragDropQuestion()
@@ -1062,7 +1082,9 @@ const DailyChallengeContent = () => {
               id: question.id || `${section.id}-${qIndex}`,
               type: question.questionType ,
               question: question.questionText || '',
+              questionText: question.questionText || '', // Add this for FillBlank
               options: options,
+              content: question.content, // Preserve original content for FillBlank
               points: question.score || 1,
               timeLimit: 1,
               sectionId: section.id,
@@ -1075,7 +1097,10 @@ const DailyChallengeContent = () => {
         console.log('Mapped Questions:', mappedQuestions);
 
         if (mappedQuestions.length > 0) {
-          setQuestions(mappedQuestions);
+          // Sort questions by orderNumber to ensure correct order
+          const sortedQuestions = mappedQuestions.sort((a, b) => (a.orderNumber || 0) - (b.orderNumber || 0));
+          console.log('Sorted Questions:', sortedQuestions);
+          setQuestions(sortedQuestions);
         } else {
           // If no questions, set empty array
           setQuestions([]);
@@ -1160,13 +1185,16 @@ const DailyChallengeContent = () => {
         // Transform question to API format based on question type
         let apiQuestion;
         
-        if (questionData.type === 'FILL_BLANK' || questionData.type === 'FILL_BLANK') {
+        // Calculate the next order number
+        const nextOrderNumber = questions.length + 1;
+        
+        if (questionData.type === 'FILL_IN_THE_BLANK') {
           // Fill in the blank question
           apiQuestion = {
             questionText: questionData.questionText || questionData.question,
-            orderNumber: 1, // Always use 1 for resourceType NONE
+            orderNumber: nextOrderNumber,
             score: questionData.points || 0.5,
-            questionType: 'FILLBLANK',
+            questionType: questionData.questionType || 'FILL_IN_THE_BLANK',
             content: {
               data: questionData.content?.data || []
             }
@@ -1175,7 +1203,7 @@ const DailyChallengeContent = () => {
           // True/False question
           apiQuestion = {
             questionText: questionData.question,
-            orderNumber: 1, // Always use 1 for resourceType NONE
+            orderNumber: nextOrderNumber,
             score: questionData.points || 0.5,
             questionType: 'TRUE_OR_FALSE',
             content: {
@@ -1187,11 +1215,22 @@ const DailyChallengeContent = () => {
               })) : []
             }
           };
+        } else if (questionData.type === 'DROPDOWN') {
+          // Dropdown question
+          apiQuestion = {
+            questionText: questionData.questionText || questionData.question,
+            orderNumber: nextOrderNumber,
+            score: questionData.points || 0.5,
+            questionType: 'DROPDOWN',
+            content: {
+              data: questionData.content?.data || []
+            }
+          };
         } else {
           // Multiple choice, Multiple select, or other types
           apiQuestion = {
             questionText: questionData.question,
-            orderNumber: 1, // Always use 1 for resourceType NONE
+            orderNumber: nextOrderNumber,
             score: questionData.points || 0.5,
             questionType: questionData.type ? questionData.type.toUpperCase().replace(/-/g, '_') : 'MULTIPLE_CHOICE',
             content: {
@@ -1240,7 +1279,7 @@ const DailyChallengeContent = () => {
       // Always reset loading state
       setSavingQuestion(false);
     }
-  }, [editingQuestion, id, fetchQuestions]);
+  }, [editingQuestion, id, fetchQuestions, questions.length]);
 
   const handleModalCancel = useCallback(() => {
     setModalVisible(false);
