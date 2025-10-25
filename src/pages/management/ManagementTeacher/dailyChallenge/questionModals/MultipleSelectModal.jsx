@@ -38,17 +38,17 @@ const MultipleSelectModal = ({
 		};
 	}
 	
-	// Option colors for sun theme
+	// Option colors for sun theme - Pastel colors
 	const getOptionColors = React.useCallback(() => {
 		return [
-			'#1890ff', // Blue
-			'#52c41a', // Green
-			'#faad14', // Orange
-			'#eb2f96', // Pink
-			'#13c2c2', // Cyan
-			'#722ed1', // Purple
-			'#fa8c16', // Dark Orange
-			'#2f54eb', // Dark Blue
+			'#A3D5FF', // Pastel Blue
+			'#B8E6B8', // Pastel Green
+			'#FFD6A5', // Pastel Orange
+			'#FFB3D9', // Pastel Pink
+			'#A8E6E6', // Pastel Cyan
+			'#D4B5E6', // Pastel Purple
+			'#FFCCAA', // Pastel Peach
+			'#B3C7FF', // Pastel Periwinkle
 		];
 	}, []);
 
@@ -81,14 +81,14 @@ const MultipleSelectModal = ({
 				'italic',
 				'underline',
 				'|',
-				'link',
+				'insertTable',
 				'imageUpload',
 				'|',
 				'bulletedList',
 				'numberedList',
 				'|',
 				'blockQuote',
-				'insertTable',
+				'link',
 				'|',
 				'undo',
 				'redo'
@@ -572,7 +572,7 @@ const MultipleSelectModal = ({
 						onMouseEnter={() => handleMouseEnter(option.id)}
 						onMouseLeave={handleMouseLeave}
 						style={{
-									background: `linear-gradient(135deg, ${option.color}dd 0%, ${option.color} 100%)`,
+									background: `linear-gradient(135deg, ${option.color}cc 0%, ${option.color} 100%)`,
 									borderRadius: '16px',
 									padding: '24px',
 									minHeight: '320px',
@@ -580,11 +580,11 @@ const MultipleSelectModal = ({
 							display: 'flex',
 							flexDirection: 'column',
 									boxShadow: hoveredOption === option.id
-										? `0 12px 32px ${option.color}50`
-										: '0 4px 16px rgba(0,0,0,0.1)',
+										? `0 12px 32px ${option.color}80`
+										: '0 4px 16px rgba(0,0,0,0.08)',
 									border: option.isCorrect
 										? '3px solid #52c41a'
-										: '2px solid rgba(255,255,255,0.3)',
+										: '2px solid rgba(255,255,255,0.5)',
 									transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
 									transform: hoveredOption === option.id ? 'translateY(-4px) scale(1.02)' : 'translateY(0) scale(1)',
 							cursor: 'pointer',
@@ -598,14 +598,15 @@ const MultipleSelectModal = ({
 									width: '40px',
 									height: '40px',
 									borderRadius: '50%',
-									background: 'rgba(255,255,255,0.9)',
+									background: 'rgba(255,255,255,0.95)',
 									display: 'flex',
 									alignItems: 'center',
 									justifyContent: 'center',
 									fontWeight: 700,
 									fontSize: '18px',
-									color: option.color,
-									boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
+									color: '#333',
+									boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+									border: `2px solid ${option.color}`
 								}}>
 									{String.fromCharCode(65 + index)}
 								</div>
@@ -638,8 +639,7 @@ const MultipleSelectModal = ({
 												display: 'flex',
 												alignItems: 'center',
 												gap: '4px',
-												boxShadow: option.isCorrect ? '0 2px 8px rgba(82, 196, 26, 0.5)' : 'none',
-												opacity: hoveredOption === option.id || option.isCorrect ? 1 : 0
+												boxShadow: option.isCorrect ? '0 2px 8px rgba(82, 196, 26, 0.5)' : 'none'
 											}}
 										>
 											<CheckOutlined />
@@ -650,7 +650,6 @@ const MultipleSelectModal = ({
 									<div style={{
 										display: 'flex',
 										gap: '8px',
-										opacity: hoveredOption === option.id ? 1 : 0,
 										transition: 'opacity 0.2s ease'
 									}}>
 										<Tooltip title="Delete Option">
@@ -695,9 +694,10 @@ const MultipleSelectModal = ({
 								style={{
 											borderRadius: '12px',
 											overflow: 'hidden',
-											background: 'rgba(255, 255, 255, 0.15)',
-											border: '2px solid rgba(255,255,255,0.4)',
+											background: 'rgba(255, 255, 255, 0.98)',
+											border: '2px solid rgba(255,255,255,0.95)',
 									backdropFilter: 'blur(10px)',
+											boxShadow: '0 2px 12px rgba(0, 0, 0, 0.08)'
 										}}
 									>
 										<CKEditor
