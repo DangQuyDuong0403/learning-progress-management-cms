@@ -1,551 +1,551 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import { Modal, Button, message, Select, Tooltip } from 'antd';
 import {
-  Modal,
-  Form,
-  Input,
-  Button,
-  Typography,
-  message,
-  Select,
-} from "antd";
-import { 
-  PictureOutlined, 
-  AudioOutlined, 
-  VideoCameraOutlined,
-  CheckOutlined,
-  ClockCircleOutlined,
-  BoldOutlined,
-  ItalicOutlined,
-  UnderlineOutlined,
-  StrikethroughOutlined,
-  FontSizeOutlined,
-  FunctionOutlined,
-  DeleteOutlined,
-} from "@ant-design/icons";
+	CheckOutlined,
+	ThunderboltOutlined,
+	SaveOutlined,
+} from '@ant-design/icons';
+import { CKEditor } from '@ckeditor/ckeditor5-react';
+import ClassicEditor from '@ckeditor/ckeditor5-build-classic';
 import './MultipleChoiceModal.css';
 
-const { Text } = Typography;
-
 const TrueFalseModal = ({ visible, onCancel, onSave, questionData = null }) => {
-  const [form] = Form.useForm();
-  const [correctAnswer, setCorrectAnswer] = useState(
-    questionData?.correctAnswer || null
-  );
-  const [points, setPoints] = useState(1);
-  const [timeLimit, setTimeLimit] = useState(30);
-  const [questionImage, setQuestionImage] = useState(null);
-  const questionImageInputRef = useRef(null);
+	
+	// Custom upload adapter for CKEditor to convert images to base64
+	function CustomUploadAdapterPlugin(editor) {
+		editor.plugins.get('FileRepository').createUploadAdapter = (loader) => {
+			return {
+				upload: () => {
+					return loader.file.then(file => new Promise((resolve, reject) => {
+						const reader = new FileReader();
+						reader.onload = () => {
+							resolve({ default: reader.result });
+						};
+						reader.onerror = error => reject(error);
+						reader.readAsDataURL(file);
+					}));
+				},
+				abort: () => {}
+			};
+		};
+	}
+	
+	const [correctAnswer, setCorrectAnswer] = useState(
+		questionData?.correctAnswer || null
+	);
+	const [points, setPoints] = useState(1);
+	const [editorData, setEditorData] = useState('');
+	const editorRef = useRef(null);
 
-  const handleSave = () => {
-    form.validateFields().then(values => {
-      if (!correctAnswer) {
-        message.error("Please select the correct answer (True or False)");
-        return;
-      }
+	
+	// Sun theme colors (fixed)
+	const primaryColor = '#1890ff';
 
-      const newQuestionData = {
-        id: questionData?.id || Date.now(),
-        type: "true-false",
-        title: "True or false",
-        question: values.question,
-        options: [
-          { id: 1, text: "True", isCorrect: correctAnswer === "True" },
-          { id: 2, text: "False", isCorrect: correctAnswer === "False" },
-        ],
-        correctAnswer: correctAnswer,
-      };
+	// Memoize CKEditor config to prevent re-creation on each render
+	const questionEditorConfig = useMemo(() => ({
+		placeholder: 'Enter your question here...',
+		extraPlugins: [CustomUploadAdapterPlugin],
+		toolbar: {
+			items: [
+				'heading',
+				'|',
+				'bold',
+				'italic',
+				'underline',
+				'|',
+				'link',
+				'imageUpload',
+				'|',
+				'bulletedList',
+				'numberedList',
+				'|',
+				'blockQuote',
+				'insertTable',
+				'|',
+				'undo',
+				'redo'
+			],
+			shouldNotGroupWhenFull: false
+		},
+		heading: {
+			options: [
+				{ model: 'paragraph', title: 'Paragraph', class: 'ck-heading_paragraph' },
+				{ model: 'heading1', view: 'h1', title: 'Heading 1', class: 'ck-heading_heading1' },
+				{ model: 'heading2', view: 'h2', title: 'Heading 2', class: 'ck-heading_heading2' },
+				{ model: 'heading3', view: 'h3', title: 'Heading 3', class: 'ck-heading_heading3' }
+			]
+		},
+		table: {
+			contentToolbar: ['tableColumn', 'tableRow', 'mergeTableCells']
+		},
+		image: {
+			toolbar: [
+				'imageTextAlternative',
+				'|',
+				'imageStyle:alignLeft',
+				'imageStyle:full',
+				'imageStyle:alignRight'
+			],
+			styles: [
+				'full',
+				'alignLeft',
+				'alignRight'
+			]
+		}
+	}), []);
 
-      onSave(newQuestionData);
-      form.resetFields();
-      setCorrectAnswer(null);
-    });
-  };
+	// Load question data when editing
+	useEffect(() => {
+		if (visible) {
+			setTimeout(() => {
+				if (questionData) {
+					// Edit mode - load existing data
+					setEditorData(questionData.question || '');
+					setCorrectAnswer(questionData.correctAnswer || null);
+					setPoints(questionData.points || 1);
+				} else {
+					// Add mode - reset to defaults
+					setEditorData('');
+					setCorrectAnswer(null);
+					setPoints(1);
+				}
+			}, 0);
+		}
+	}, [questionData, visible]);
 
-  const handleQuestionImageUpload = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        setQuestionImage(event.target.result);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
+	// Debounced editor change handler for main question
+	const editorChangeTimeoutRef = useRef(null);
+	const handleEditorChange = useCallback((event, editor) => {
+		if (editorChangeTimeoutRef.current) {
+			clearTimeout(editorChangeTimeoutRef.current);
+		}
+		editorChangeTimeoutRef.current = setTimeout(() => {
+			const data = editor.getData();
+			setEditorData(prevData => {
+				// Only update if data actually changed
+				if (prevData !== data) {
+					return data;
+				}
+				return prevData;
+			});
+		}, 150);
+	}, []);
 
-  const removeQuestionImage = () => {
-    setQuestionImage(null);
-  };
+	// Cleanup timeouts on unmount
+	useEffect(() => {
+		const editorTimeout = editorChangeTimeoutRef.current;
+		return () => {
+			if (editorTimeout) {
+				clearTimeout(editorTimeout);
+			}
+		};
+	}, []);
 
-  const handleCancel = () => {
-    form.resetFields();
-    setCorrectAnswer(null);
-    setQuestionImage(null);
-    onCancel();
-  };
+	const handleSave = () => {
+		// Validate editor data
+		if (!editorData || !editorData.trim()) {
+			message.error('Please enter the question text');
+			return;
+		}
 
-  const pointsMenu = (
-    <Select
-      value={points}
-      onChange={setPoints}
-      style={{ width: 80 }}
-      options={[
-        { value: 1, label: '1 điểm' },
-        { value: 2, label: '2 điểm' },
-        { value: 3, label: '3 điểm' },
-        { value: 5, label: '5 điểm' },
-      ]}
-    />
-  );
+		if (!correctAnswer) {
+			message.error('Please select the correct answer (True or False)');
+			return;
+		}
 
-  const timeMenu = (
-    <Select
-      value={timeLimit}
-      onChange={setTimeLimit}
-      style={{ width: 100 }}
-      options={[
-        { value: 15, label: '15 giây' },
-        { value: 30, label: '30 giây' },
-        { value: 60, label: '1 phút' },
-        { value: 120, label: '2 phút' },
-        { value: 300, label: '5 phút' },
-      ]}
-    />
-  );
+		const newQuestionData = {
+			id: questionData?.id || Date.now(),
+			type: 'TRUE_OR_FALSE',
+			title: 'True or false',
+			question: editorData,
+			options: [
+				{ id: 1, text: 'True', isCorrect: correctAnswer === 'True', key: 'A' },
+				{ id: 2, text: 'False', isCorrect: correctAnswer === 'False', key: 'B' },
+			],
+			correctAnswer: correctAnswer,
+		};
 
-  return (
-    <Modal
-      title="Create True or False Question"
-      open={visible}
-      onCancel={handleCancel}
-      width={1400}
-      height={800}
-      footer={null}
-      style={{ top: 20 }}
-      bodyStyle={{ height: '85vh', overflow: 'hidden', position: 'relative' }}
-    >
-      {/* Top Control Bar */}
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: 16,
-          padding: '12px 16px',
-          background: '#f5f5f5',
-          borderRadius: 8,
-          border: '1px solid #e0e0e0',
-        }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-          <Button
-            type='text'
-            icon={<BoldOutlined />}
-            style={{ color: '#666' }}
-          />
-          <Button
-            type='text'
-            icon={<ItalicOutlined />}
-            style={{ color: '#666' }}
-          />
-          <Button
-            type='text'
-            icon={<UnderlineOutlined />}
-            style={{ color: '#666' }}
-          />
-          <Button
-            type='text'
-            icon={<StrikethroughOutlined />}
-            style={{ color: '#666' }}
-          />
-          <Button
-            type='text'
-            icon={<FontSizeOutlined />}
-            style={{ color: '#666' }}
-          />
-          <div
-            style={{
-              width: 1,
-              height: 20,
-              background: '#e0e0e0',
-              margin: '0 8px',
-            }}
-          />
-          <Button
-            type='text'
-            icon={<FunctionOutlined />}
-            style={{ color: '#666' }}
-          />
-          <span style={{ fontSize: 12, color: '#666' }}>
-            Chèn kí hiệu toán học
-          </span>
-        </div>
+		onSave(newQuestionData);
+		setEditorData('');
+		setCorrectAnswer(null);
+		setPoints(1);
+	};
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-            <CheckOutlined style={{ color: '#52c41a' }} />
-            {pointsMenu}
-          </div>
+	const handleCancel = () => {
+		setEditorData('');
+		setCorrectAnswer(null);
+		setPoints(1);
+		onCancel();
+	};
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-            <ClockCircleOutlined style={{ color: '#1890ff' }} />
-            {timeMenu}
-          </div>
+	const pointsMenu = (
+		<Select
+			value={points}
+			onChange={setPoints}
+			style={{ width: 90 }}
+			options={[
+				{ value: 1, label: '1 point' },
+				{ value: 2, label: '2 points' },
+				{ value: 3, label: '3 points' },
+				{ value: 5, label: '5 points' },
+			]}
+		/>
+	);
 
-          <Button
-            type='primary'
-            onClick={handleSave}
-            style={{
-              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-              border: 'none',
-              borderRadius: 6,
-            }}>
-            Lưu câu hỏi
-          </Button>
-        </div>
-      </div>
+	return (
+		<Modal
+			title={
+				<div style={{ 
+					display: 'flex', 
+					alignItems: 'center', 
+					justifyContent: 'center',
+					gap: '12px'
+				}}>
+					<ThunderboltOutlined style={{ 
+						fontSize: '30px', 
+						color: primaryColor,
+						animation: 'pulse 2s infinite'
+					}} />
+					<span style={{ fontSize: '24px', fontWeight: 600 }}>
+						Create True or False Question
+					</span>
+				</div>
+			}
+			open={visible}
+			onCancel={handleCancel}
+			width={1600}
+			footer={null}
+			style={{ top: 10 }}
+			bodyStyle={{ 
+				maxHeight: 'calc(100vh - 120px)',
+				overflow: 'hidden', 
+				position: 'relative',
+				padding: 0,
+				background: 'linear-gradient(135deg, #f0f7ff 0%, #e6f4ff 100%)'
+			}}
+			key={questionData?.id || 'new'}
+			destroyOnClose>
+			{/* Modern Top Toolbar */}
+			<div style={{
+				position: 'sticky',
+				top: 0,
+				left: 0,
+				right: 0,
+				zIndex: 1000,
+				background: 'rgba(255, 255, 255, 0.95)',
+				backdropFilter: 'blur(20px)',
+				borderBottom: '2px solid rgba(24, 144, 255, 0.1)',
+				padding: '16px 24px',
+				boxShadow: '0 4px 12px rgba(0,0,0,0.05)'
+			}}>
+				<div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center' }}>
+					{/* Points & Save Button */}
+					<div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
+						<div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+							<CheckOutlined style={{ color: '#52c41a', fontSize: '16px' }} />
+							{pointsMenu}
+						</div>
 
-      {/* Question Container - Split Layout */}
-      <div
-        style={{
-          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-          borderRadius: 12,
-          padding: 24,
-          marginBottom: 24,
-          position: 'relative',
-        }}>
-        {/* Media Icons */}
-        <div
-          style={{
-            position: 'absolute',
-            top: 16,
-            left: 16,
-            display: 'flex',
-            gap: 8,
-            zIndex: 10,
-          }}>
-          <Button
-            type='text'
-            icon={<PictureOutlined />}
-            onClick={() => questionImageInputRef.current?.click()}
-            style={{
-              color: 'white',
-              border: '1px solid rgba(255,255,255,0.3)',
-              zIndex: 11,
-            }}
-          />
-          <Button
-            type='text'
-            icon={<AudioOutlined />}
-            style={{
-              color: 'white',
-              border: '1px solid rgba(255,255,255,0.3)',
-              zIndex: 11,
-            }}
-          />
-          <Button
-            type='text'
-            icon={<VideoCameraOutlined />}
-            style={{
-              color: 'white',
-              border: '1px solid rgba(255,255,255,0.3)',
-              zIndex: 11,
-            }}
-          />
-        </div>
+						<Button
+							type='primary'
+							onClick={handleSave}
+							size="large"
+							className="save-question-btn"
+							style={{
+								height: '44px',
+								borderRadius: '12px',
+								fontWeight: 600,
+								fontSize: '16px',
+								padding: '0 32px',
+								border: 'none',
+								transition: 'all 0.3s ease',
+								background: 'linear-gradient(135deg, #66AEFF, #3C99FF)',
+								color: '#000000',
+								boxShadow: '0 4px 16px rgba(60, 153, 255, 0.4)',
+							}}
+						>
+							<SaveOutlined /> Save Question
+						</Button>
+					</div>
+				</div>
+			</div>
 
-        {/* Question Container - Split Layout */}
-        <div
-          style={{
-            display: 'flex',
-            marginTop: 40,
-            height: questionImage ? 200 : 120,
-            alignItems: 'center',
-            gap: 20,
-            padding: 16,
-          }}>
-          
-          {/* Left Side - Question Image */}
-          {questionImage && (
-            <div style={{ 
-              flex: '0 0 15%',
-              display: 'flex',
-              justifyContent: 'center',
-              alignItems: 'center'
-            }}>
-              <div style={{ position: 'relative' }}>
-                <img
-                  src={questionImage}
-                  alt="Question"
-                  style={{
-                    width: 180,
-                    height: 180,
-                    objectFit: 'cover',
-                    borderRadius: 12,
-                    border: '2px solid rgba(255,255,255,0.3)',
-                    boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
-                  }}
-                />
-                <Button
-                  type="text"
-                  icon={<DeleteOutlined />}
-                  onClick={removeQuestionImage}
-                  style={{
-                    position: 'absolute',
-                    top: -8,
-                    right: -8,
-                    background: 'rgba(255,0,0,0.8)',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '50%',
-                    width: 28,
-                    height: 28,
-                    minWidth: 28,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    zIndex: 12,
-                  }}
-                />
-              </div>
-            </div>
-          )}
+			{/* Main Split Layout */}
+			<div style={{ 
+				display: 'flex', 
+				height: 'calc(100vh - 210px)', 
+				padding: '24px',
+				gap: '24px'
+			}}>
+				{/* Left Panel - Question Editor */}
+				<div style={{ 
+					flex: '0 0 38%',
+					display: 'flex',
+					flexDirection: 'column',
+					gap: '16px',
+					minHeight: 0
+				}}>
+					{/* Question Card */}
+					<div style={{
+						flex: 1,
+						background: 'rgba(255, 255, 255, 0.95)',
+						borderRadius: '20px',
+						padding: '24px',
+						boxShadow: '0 8px 32px rgba(24, 144, 255, 0.15)',
+						border: '2px solid rgba(24, 144, 255, 0.1)',
+						backdropFilter: 'blur(20px)',
+						display: 'flex',
+						flexDirection: 'column',
+						position: 'relative',
+						overflow: 'hidden',
+						minHeight: 0
+					}}>
+						{/* Decorative background elements */}
+						<div style={{
+							position: 'absolute',
+							top: -50,
+							right: -50,
+							width: '200px',
+							height: '200px',
+							background: primaryColor,
+							opacity: 0.05,
+							borderRadius: '50%',
+							filter: 'blur(40px)'
+						}} />
 
-          {/* Right Side - Question Input */}
-          <div style={{ 
-            flex: questionImage ? '0 0 85%' : '1',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center'
-          }}>
-            <Form
-              form={form}
-              layout='vertical'
-              initialValues={{
-                question: questionData?.question || '',
-              }}
-              style={{ width: '100%' }}>
-              <Form.Item
-                name='question'
-                rules={[
-                  { required: true, message: 'Please enter the question text' },
-                ]}
-                style={{ marginBottom: 0 }}>
-                <div
-                  style={{
-                    display: 'flex',
-                    height: questionImage ? 175 : 135,
-                    alignItems: 'center',
-                    background: 'transparent',
-                    border: '1px solid #ccc',
-                    borderRadius: '6px',
-                    padding: 16,
-                    zIndex: 1,
-                  }}>
-                  <Input.TextArea
-                    placeholder='Nhập câu hỏi vào đây'
-                    className='question-textarea'
-                    style={{
-                      textAlign: 'center',
-                      background: 'transparent',
-                      border: 'none',
-                      color: 'white',
-                      fontSize: 16,
-                      resize: 'none',
-                      boxShadow: 'none',
-                      height: '100%',
-                      overflow: 'hidden',
-                      width: '100%',
-                    }}
-                  />
-                </div>
-              </Form.Item>
-            </Form>
-          </div>
-        </div>
+						{/* Question Input - CKEditor */}
+						<div style={{ 
+							flex: 1, 
+							display: 'flex',
+							flexDirection: 'column',
+							position: 'relative',
+							zIndex: 1,
+							minHeight: 0,
+							overflow: 'hidden'
+						}}>
+							<div style={{
+								flex: 1,
+								borderRadius: '12px',
+								border: '2px solid rgba(24, 144, 255, 0.2)',
+								overflow: 'hidden',
+								background: 'rgba(240, 247, 255, 0.5)',
+								position: 'relative',
+								display: 'flex',
+								flexDirection: 'column'
+							}}>
+								<CKEditor
+									key="main-question-editor"
+									editor={ClassicEditor}
+									data={editorData}
+									config={questionEditorConfig}
+									onChange={handleEditorChange}
+									onReady={(editor) => {
+										editorRef.current = editor;
+									}}
+								/>
+							</div>
+						</div>
+					</div>
+				</div>
 
-        {/* Hidden file input for question image */}
-        <input
-          ref={questionImageInputRef}
-          type="file"
-          accept="image/*"
-          onChange={handleQuestionImageUpload}
-          style={{ display: 'none' }}
-        />
-      </div>
 
-      {/* True/False Options */}
-      <div style={{ 
-        display: "flex",
-        flexDirection: "row",
-        gap: 20,
-        marginBottom: 40,
-        position: "relative",
-        overflowX: "auto",
-        paddingBottom: 16,
-        paddingTop: 10,
-        minHeight: 250,
-        justifyContent: "center",
-      }}>
-        {/* True Option */}
-        <div
-          style={{
-            background: "linear-gradient(135deg, #52c41a 0%, #52c41add 100%)",
-            borderRadius: 16,
-            padding: 24,
-            minHeight: 270,
-            minWidth: 270,
-            width: 270,
-            position: "relative",
-            display: "flex",
-            flexDirection: "column",
-            justifyContent: "center",
-            alignItems: "center",
-            cursor: "pointer",
-            boxShadow: "0 8px 32px rgba(0,0,0,0.1)",
-            border: "2px solid rgba(255,255,255,0.2)",
-            transition: "all 0.3s ease",
-            flexShrink: 0,
-          }}
-          onClick={() => setCorrectAnswer("True")}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.transform = 'translateY(-4px)';
-            e.currentTarget.style.boxShadow = '0 12px 40px rgba(0,0,0,0.15)';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.transform = 'translateY(0)';
-            e.currentTarget.style.boxShadow = '0 8px 32px rgba(0,0,0,0.1)';
-          }}
-        >
-          {/* Correct Answer Indicator */}
-          <div style={{ 
-            position: "absolute", 
-            top: 16, 
-            right: 16 
-          }}>
-            <Button
-              type="text"
-              icon={<CheckOutlined />}
-              style={{
-                color: correctAnswer === "True" ? "white" : "rgba(255,255,255,0.7)",
-                background: correctAnswer === "True"
-                  ? "#52c41a"
-                  : "rgba(255,255,255,0.2)",
-                border: correctAnswer === "True" 
-                  ? "2px solid white" 
-                  : "2px solid rgba(255,255,255,0.5)",
-                borderRadius: "50%",
-                width: 40,
-                height: 40,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                transition: "all 0.3s ease",
-                boxShadow: correctAnswer === "True" 
-                  ? "0 2px 8px rgba(82, 196, 26, 0.4)" 
-                  : "0 2px 4px rgba(0,0,0,0.1)",
-              }}
-            />
-          </div>
+				{/* Right Panel - True/False Options */}
+				<div style={{ 
+					flex: 1,
+					display: 'flex',
+					flexDirection: 'column',
+					gap: '16px',
+					position: 'relative'
+				}}>
+					{/* Options Grid Header */}
+					<div style={{
+						display: 'flex',
+						justifyContent: 'center',
+						alignItems: 'center',
+						padding: '0 4px'
+					}}>
+						<span style={{ 
+							fontSize: '16px', 
+							fontWeight: 600,
+							color: '#1890ff'
+						}}>
+							Select Correct Answer
+						</span>
+					</div>
 
-          <Text style={{ 
-            color: "white", 
-            fontSize: 28, 
-            fontWeight: "bold",
-            textAlign: "center"
-          }}>
-            TRUE
-          </Text>
-        </div>
+					{/* True/False Options Container */}
+					<div style={{
+						display: 'flex',
+						justifyContent: 'center',
+						alignItems: 'center',
+						gap: '24px',
+						flex: 1,
+						padding: '4px'
+					}}>
+						{/* True Option */}
+						<div
+							onClick={() => setCorrectAnswer('True')}
+							style={{
+								background: 'linear-gradient(135deg, #52c41add 0%, #52c41a 100%)',
+								borderRadius: '16px',
+								padding: '40px',
+								minHeight: '320px',
+								minWidth: '280px',
+								position: 'relative',
+								display: 'flex',
+								flexDirection: 'column',
+								justifyContent: 'center',
+								alignItems: 'center',
+								boxShadow: correctAnswer === 'True'
+									? '0 12px 32px rgba(82, 196, 26, 0.5)'
+									: '0 4px 16px rgba(0,0,0,0.1)',
+								border: correctAnswer === 'True'
+									? '3px solid #52c41a'
+									: '2px solid rgba(255,255,255,0.3)',
+								transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+								transform: correctAnswer === 'True' ? 'translateY(-4px) scale(1.05)' : 'translateY(0) scale(1)',
+								cursor: 'pointer',
+								overflow: 'visible'
+							}}
+							onMouseEnter={(e) => {
+								if (correctAnswer !== 'True') {
+									e.currentTarget.style.transform = 'translateY(-4px) scale(1.02)';
+									e.currentTarget.style.boxShadow = '0 12px 32px rgba(82, 196, 26, 0.3)';
+								}
+							}}
+							onMouseLeave={(e) => {
+								if (correctAnswer !== 'True') {
+									e.currentTarget.style.transform = 'translateY(0) scale(1)';
+									e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.1)';
+								}
+							}}
+						>
+							{/* Correct Answer Badge */}
+							<Tooltip title={correctAnswer === 'True' ? "Correct Answer" : "Mark as Correct"}>
+								<div
+									style={{
+										position: 'absolute',
+										top: '20px',
+										right: '20px',
+										background: correctAnswer === 'True' ? '#52c41a' : 'rgba(255,255,255,0.3)',
+										color: 'white',
+										padding: '8px 16px',
+										borderRadius: '20px',
+										fontSize: '14px',
+										fontWeight: 600,
+										display: 'flex',
+										alignItems: 'center',
+										gap: '6px',
+										boxShadow: correctAnswer === 'True' ? '0 2px 8px rgba(82, 196, 26, 0.5)' : 'none',
+										opacity: correctAnswer === 'True' ? 1 : 0.7
+									}}
+								>
+									<CheckOutlined />
+									{correctAnswer === 'True' ? 'Correct' : 'Mark'}
+								</div>
+							</Tooltip>
 
-        {/* False Option */}
-        <div
-          style={{
-            background: "linear-gradient(135deg, #f5222d 0%, #f5222ddd 100%)",
-            borderRadius: 16,
-            padding: 24,
-            minHeight: 270,
-            minWidth: 270,
-            width: 270,
-            position: "relative",
-            display: "flex",
-            flexDirection: "column",
-            justifyContent: "center",
-            alignItems: "center",
-            cursor: "pointer",
-            boxShadow: "0 8px 32px rgba(0,0,0,0.1)",
-            border: "2px solid rgba(255,255,255,0.2)",
-            transition: "all 0.3s ease",
-            flexShrink: 0,
-          }}
-          onClick={() => setCorrectAnswer("False")}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.transform = 'translateY(-4px)';
-            e.currentTarget.style.boxShadow = '0 12px 40px rgba(0,0,0,0.15)';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.transform = 'translateY(0)';
-            e.currentTarget.style.boxShadow = '0 8px 32px rgba(0,0,0,0.1)';
-          }}
-        >
-          {/* Correct Answer Indicator */}
-          <div style={{ 
-            position: "absolute", 
-            top: 16, 
-            right: 16 
-          }}>
-            <Button
-              type="text"
-              icon={<CheckOutlined />}
-              style={{
-                color: correctAnswer === "False" ? "white" : "rgba(255,255,255,0.7)",
-                background: correctAnswer === "False"
-                  ? "#f5222d"
-                  : "rgba(255,255,255,0.2)",
-                border: correctAnswer === "False" 
-                  ? "2px solid white" 
-                  : "2px solid rgba(255,255,255,0.5)",
-                borderRadius: "50%",
-                width: 40,
-                height: 40,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                transition: "all 0.3s ease",
-                boxShadow: correctAnswer === "False" 
-                  ? "0 2px 8px rgba(245, 34, 45, 0.4)" 
-                  : "0 2px 4px rgba(0,0,0,0.1)",
-              }}
-            />
-          </div>
+							<div style={{
+								fontSize: '72px',
+								marginBottom: '16px'
+							}}>
+								✅
+							</div>
+							<div style={{ 
+								color: 'white', 
+								fontSize: '32px', 
+								fontWeight: 'bold',
+								textAlign: 'center',
+								textShadow: '0 2px 4px rgba(0,0,0,0.2)'
+							}}>
+								TRUE
+							</div>
+						</div>
 
-          <Text style={{ 
-            color: "white", 
-            fontSize: 28, 
-            fontWeight: "bold",
-            textAlign: "center"
-          }}>
-            FALSE
-          </Text>
-        </div>
-      </div>
+						{/* False Option */}
+						<div
+							onClick={() => setCorrectAnswer('False')}
+							style={{
+								background: 'linear-gradient(135deg, #f5222ddd 0%, #f5222d 100%)',
+								borderRadius: '16px',
+								padding: '40px',
+								minHeight: '320px',
+								minWidth: '280px',
+								position: 'relative',
+								display: 'flex',
+								flexDirection: 'column',
+								justifyContent: 'center',
+								alignItems: 'center',
+								boxShadow: correctAnswer === 'False'
+									? '0 12px 32px rgba(245, 34, 45, 0.5)'
+									: '0 4px 16px rgba(0,0,0,0.1)',
+								border: correctAnswer === 'False'
+									? '3px solid #f5222d'
+									: '2px solid rgba(255,255,255,0.3)',
+								transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+								transform: correctAnswer === 'False' ? 'translateY(-4px) scale(1.05)' : 'translateY(0) scale(1)',
+								cursor: 'pointer',
+								overflow: 'visible'
+							}}
+							onMouseEnter={(e) => {
+								if (correctAnswer !== 'False') {
+									e.currentTarget.style.transform = 'translateY(-4px) scale(1.02)';
+									e.currentTarget.style.boxShadow = '0 12px 32px rgba(245, 34, 45, 0.3)';
+								}
+							}}
+							onMouseLeave={(e) => {
+								if (correctAnswer !== 'False') {
+									e.currentTarget.style.transform = 'translateY(0) scale(1)';
+									e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.1)';
+								}
+							}}
+						>
+							{/* Correct Answer Badge */}
+							<Tooltip title={correctAnswer === 'False' ? "Correct Answer" : "Mark as Correct"}>
+								<div
+									style={{
+										position: 'absolute',
+										top: '20px',
+										right: '20px',
+										background: correctAnswer === 'False' ? '#f5222d' : 'rgba(255,255,255,0.3)',
+										color: 'white',
+										padding: '8px 16px',
+										borderRadius: '20px',
+										fontSize: '14px',
+										fontWeight: 600,
+										display: 'flex',
+										alignItems: 'center',
+										gap: '6px',
+										boxShadow: correctAnswer === 'False' ? '0 2px 8px rgba(245, 34, 45, 0.5)' : 'none',
+										opacity: correctAnswer === 'False' ? 1 : 0.7
+									}}
+								>
+									<CheckOutlined />
+									{correctAnswer === 'False' ? 'Correct' : 'Mark'}
+								</div>
+							</Tooltip>
 
-      {/* Additional Options */}
-      <div
-        style={{
-          marginTop: 24,
-          textAlign: 'right',
-        }}>
-        <Button
-          type='link'
-          style={{
-            color: '#1890ff',
-            fontSize: 12,
-            padding: 0,
-          }}>
-          Thêm giải thích cho đáp án
-        </Button>
-      </div>
-    </Modal>
-  );
+							<div style={{
+								fontSize: '72px',
+								marginBottom: '16px'
+							}}>
+								❌
+							</div>
+							<div style={{ 
+								color: 'white', 
+								fontSize: '32px', 
+								fontWeight: 'bold',
+								textAlign: 'center',
+								textShadow: '0 2px 4px rgba(0,0,0,0.2)'
+							}}>
+								FALSE
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</Modal>
+	);
 };
 
 export default TrueFalseModal;

@@ -43,6 +43,7 @@ import { useTheme } from "../../../../contexts/ThemeContext";
 import { useDailyChallengeMenu } from "../../../../contexts/DailyChallengeMenuContext";
 import usePageTitle from "../../../../hooks/usePageTitle";
 import ChallengeSettingsModal from "./ChallengeSettingsModal";
+import { dailyChallengeApi } from "../../../../apis/apis";
 import {
   DndContext,
   closestCenter,
@@ -70,6 +71,22 @@ import {
   ReorderModal,
   RewriteModal,
 } from "./questionModals";
+
+// Helper function to get question type label
+const getQuestionTypeLabel = (questionType, t) => {
+  const typeMap = {
+    'multiple-choice': t('dailyChallenge.multipleChoice') || 'Multiple Choice',
+    'multiple-select': t('dailyChallenge.multipleSelect') || 'Multiple Select',
+    'true-false': t('dailyChallenge.trueFalse') || 'True/False',
+    'fill-blank': t('dailyChallenge.fillBlank') || 'Fill in the Blank',
+    'dropdown': t('dailyChallenge.dropdown') || 'Dropdown',
+    'drag-drop': t('dailyChallenge.dragDrop') || 'Drag and Drop',
+    'reorder': t('dailyChallenge.reorder') || 'Reorder',
+    'rewrite': t('dailyChallenge.rewrite') || 'Rewrite',
+  };
+  
+  return typeMap[questionType] || questionType || 'Question';
+};
 
 // Sortable Question Item Component
 const SortableQuestionItem = memo(
@@ -120,6 +137,113 @@ const SortableQuestionItem = memo(
       onPointsChange(question.id, value);
     }, [question.id, onPointsChange]);
 
+    // Helper function to render Fill in the Blank question
+    const renderFillBlankQuestion = useCallback(() => {
+      if (question.type !== 'fill-blank' || !question.questionText) {
+        return null;
+      }
+
+      // Parse questionText and replace [[pos_xxx]] with (a)____, (b)____, etc.
+      let displayText = question.questionText;
+      const answerChoices = [];
+      
+      if (question.content && question.content.data) {
+        question.content.data.forEach((item, idx) => {
+          const letter = String.fromCharCode(97 + idx); // a, b, c, d...
+          const pattern = `[[pos_${item.positionId}]]`;
+          
+          // Replace pattern with (a)____ format
+          displayText = displayText.replace(
+            pattern,
+            `<span style="color: #1890ff; font-weight: 600;">(${letter})</span><span style="text-decoration: underline; padding: 0 2px;">____</span>`
+          );
+          
+          // Add to answer choices
+          answerChoices.push({
+            letter: letter,
+            value: item.value
+          });
+        });
+      }
+
+      return (
+        <>
+          {/* Question Text with blanks */}
+          <div 
+            style={{ 
+              marginBottom: '16px', 
+              fontSize: '15px', 
+              fontWeight: 500,
+              lineHeight: '1.8'
+            }}
+            dangerouslySetInnerHTML={{ __html: displayText }}
+          />
+
+          {/* Answer Choices - No header, just show answers */}
+          {answerChoices.length > 0 && (
+            <div style={{ 
+              marginTop: '16px',
+              display: 'flex', 
+              flexWrap: 'wrap', 
+              gap: '12px'
+            }}>
+              {answerChoices.map((choice, idx) => (
+                <div 
+                  key={idx}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    padding: '8px 16px',
+                    background: 'rgba(24, 144, 255, 0.08)',
+                    border: '2px solid rgba(24, 144, 255, 0.3)',
+                    borderRadius: '8px',
+                    fontSize: '14px',
+                    fontWeight: 500
+                  }}
+                >
+                  <span style={{ 
+                    fontWeight: 700, 
+                    color: '#1890ff',
+                    fontSize: '15px'
+                  }}>
+                    ({choice.letter})
+                  </span>
+                  <span style={{ color: '#333' }}>
+                    {choice.value}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </>
+      );
+    }, [question]);
+
+    // Get question type label
+    const getQuestionTypeLabel = useCallback(() => {
+      switch(question.type) {
+        case 'multiple-choice':
+          return t('dailyChallenge.multipleChoice') || 'Multiple Choice';
+        case 'multiple-select':
+          return t('dailyChallenge.multipleSelect') || 'Multiple Select';
+        case 'true-false':
+          return t('dailyChallenge.trueFalse') || 'True/False';
+        case 'fill-blank':
+          return t('dailyChallenge.fillBlank') || 'Fill in the Blank';
+        case 'dropdown':
+          return 'Dropdown';
+        case 'drag-drop':
+          return 'Drag and Drop';
+        case 'reorder':
+          return 'Reorder';
+        case 'rewrite':
+          return 'Re-write';
+        default:
+          return t('dailyChallenge.multipleChoice') || 'Multiple Choice';
+      }
+    }, [question.type, t]);
+
     return (
       <div
         ref={setNodeRef}
@@ -138,7 +262,7 @@ const SortableQuestionItem = memo(
                 }}
               />
             </div>
-            <Typography.Text strong>{index + 1}. {t('dailyChallenge.multipleChoice') || 'Nhiều lựa chọn'}</Typography.Text>
+            <Typography.Text strong>{index + 1}. {getQuestionTypeLabel()}</Typography.Text>
           </div>
           <div className="question-controls">
             <Select
@@ -183,22 +307,37 @@ const SortableQuestionItem = memo(
         </div>
 
         <div className="question-content">
-          <Typography.Paragraph style={{ marginBottom: '16px', fontSize: '15px', fontWeight: 500 }}>
-            {question.question}
-          </Typography.Paragraph>
-
-          <div className="question-options">
-            {question.options.map((option) => (
+          {/* Render based on question type */}
+          {question.type === 'fill-blank' ? (
+            renderFillBlankQuestion()
+          ) : (
+            <>
               <div 
-                key={option.key} 
-                className={`option-item ${option.isCorrect ? 'correct-answer' : ''}`}
-              >
-                <Typography.Text>
-                  <span className="option-key">{option.key}.</span> {option.text}
-                </Typography.Text>
+                style={{ 
+                  marginBottom: '16px', 
+                  fontSize: '15px', 
+                  fontWeight: 500 
+                }}
+                dangerouslySetInnerHTML={{ __html: question.question }}
+              />
+
+              <div className="question-options">
+                {question.options && question.options.map((option) => (
+                  <div 
+                    key={option.key} 
+                    className={`option-item ${option.isCorrect ? 'correct-answer' : ''}`}
+                    style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}
+                  >
+                    <span className="option-key" style={{ flexShrink: 0 }}>{option.key}.</span>
+                    <div 
+                      style={{ flex: 1 }}
+                      dangerouslySetInnerHTML={{ __html: option.text }} 
+                    />
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
+            </>
+          )}
         </div>
       </div>
     );
@@ -230,35 +369,6 @@ const questionTypes = [
   { id: 6, name: "Drag and drop", type: "drag-drop" },
   { id: 7, name: "Reorder", type: "reorder" },
   { id: 8, name: "Re-write", type: "rewrite" },
-];
-
-// Mock data - danh sách câu hỏi
-const mockQuestions = [
-  {
-    id: 1,
-    question: "Hàm f(x) xác định với mọi số x với f(x) = |x+3| + |x+2|. Với giá trị nào của x thì f(x) = f(x-1) ?",
-    options: [
-      { key: "A", text: "-3", isCorrect: false },
-      { key: "B", text: "-2", isCorrect: true },
-      { key: "C", text: "-1", isCorrect: false },
-      { key: "D", text: "1", isCorrect: false },
-      { key: "E", text: "2", isCorrect: false },
-    ],
-    timeLimit: 1, // minutes
-    points: 1,
-  },
-  {
-    id: 2,
-    question: "Tại đại học FPT, 40% sinh viên là thành viên của cả câu lạc bộ cờ vua và câu lạc bộ bơi lội. Nếu 20% thành viên của câu lạc bộ bơi không phải là thành viên của câu lạc bộ cờ vua, thì bao nhiêu phần trăm tổng số học sinh FPT là thành viên của câu lạc bộ bơi?",
-    options: [
-      { key: "A", text: "20%", isCorrect: false },
-      { key: "B", text: "30%", isCorrect: false },
-      { key: "C", text: "40%", isCorrect: false },
-      { key: "D", text: "50%", isCorrect: true },
-    ],
-    timeLimit: 1,
-    points: 1,
-  },
 ];
 
 const DailyChallengeContent = () => {
@@ -320,18 +430,82 @@ const DailyChallengeContent = () => {
   );
 
   const fetchQuestions = useCallback(async () => {
+    if (!id) {
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     try {
-      // Simulate API call
-      setTimeout(() => {
-        setQuestions(mockQuestions);
-        setLoading(false);
-      }, 1000);
+      console.log('Fetching sections for challenge:', id);
+      
+      // Call API to get sections (questions) for this challenge
+      const response = await dailyChallengeApi.getSectionsByChallenge(id, {
+        page: 0,
+        size: 100, // Get all questions for now
+      });
+
+      console.log('API Response:', response);
+
+      // Transform API response to match component format
+      if (response && response.data) {
+        const apiQuestions = response.data;
+        
+        // Map API data to question format
+        const mappedQuestions = apiQuestions.map((item, index) => {
+          // Get section info
+          const section = item.section || {};
+          
+          // Get questions from this section
+          const questionsList = item.questions || [];
+          
+          // Map each question
+          return questionsList.map((question, qIndex) => {
+            // Get question content - parse from content.data array
+            const contentData = question.content?.data || [];
+            const options = contentData.map((contentItem, idx) => ({
+              key: String.fromCharCode(65 + idx), // A, B, C, D...
+              text: contentItem.value || '',
+              isCorrect: contentItem.correct || false,
+            }));
+
+            return {
+              id: question.id || `${section.id}-${qIndex}`,
+              type: question.questionType ,
+              question: question.questionText || '',
+              options: options,
+              points: question.score || 1,
+              timeLimit: 1,
+              sectionId: section.id,
+              sectionTitle: section.sectionTitle,
+              orderNumber: question.orderNumber || qIndex + 1,
+            };
+          });
+        }).flat(); // Flatten the array to get all questions
+
+        console.log('Mapped Questions:', mappedQuestions);
+
+        if (mappedQuestions.length > 0) {
+          setQuestions(mappedQuestions);
+        } else {
+          // If no questions, set empty array
+          setQuestions([]);
+        }
+      } else {
+        // If API response is unexpected, set empty array
+        setQuestions([]);
+      }
+      
+      setLoading(false);
     } catch (error) {
-      spaceToast.error('Error loading questions');
+      console.error('Error fetching questions:', error);
+      spaceToast.error(error.response?.data?.message);
+      
+      // On error, set empty array
+      setQuestions([]);
       setLoading(false);
     }
-  }, []);
+  }, [id, t]);
 
   useEffect(() => {
     fetchQuestions();
@@ -444,19 +618,85 @@ const DailyChallengeContent = () => {
     setDeleteQuestion(null);
   }, []);
 
-  const handleSaveChanges = useCallback(() => {
-    spaceToast.success('Changes saved successfully!');
-  }, []);
+  const handleSaveChanges = useCallback(async (saveAsStatus) => {
 
-  const handleToggleStatus = useCallback(() => {
-    const newStatus = status === 'draft' ? 'published' : 'draft';
-    setStatus(newStatus);
-    spaceToast.success(
-      newStatus === 'published' 
-        ? t('dailyChallenge.publishedSuccess') || 'Challenge published successfully!'
-        : t('dailyChallenge.draftSuccess') || 'Changed to draft successfully!'
-    );
-  }, [status, t]);
+    if (questions.length === 0) {
+      spaceToast.warning('Please add at least one question before saving');
+      return;
+    }
+
+    try {
+      setLoading(true);
+
+      // Transform questions to API format
+      // Group questions by section (for now, we'll use a single default section)
+      const apiQuestions = questions.map((question, index) => {
+        // Transform options to content.data format
+        const contentData = question.options ? question.options.map((option, optIndex) => ({
+          id: option.key ? `opt${optIndex + 1}` : `opt${optIndex + 1}`, // opt1, opt2, opt3, opt4
+          value: option.text, // HTML content from CKEditor
+          positionOrder: optIndex + 1,
+          correct: option.isCorrect || false
+        })) : [];
+
+        return {
+          // Don't include id for new questions
+          questionText: question.question, // HTML content from CKEditor
+          orderNumber: index + 1,
+          score: question.points || 0.5, // Default to 0.5 like in sample
+          questionType: question.type ? question.type.toUpperCase().replace(/-/g, '_') : 'MULTIPLE_CHOICE', // Convert to UPPER_SNAKE_CASE
+          content: {
+            data: contentData
+          }
+        };
+      });
+
+      // Create section data
+      const sectionData = {
+        section: {
+          sectionsContent: 'Choose one correct answer.',
+          resourceType: 'NONE'
+        },
+        questions: apiQuestions
+      };
+
+      console.log('Saving section with questions:', sectionData);
+
+      // Step 1: Call API to save section with questions
+      await dailyChallengeApi.saveSectionWithQuestions(id, sectionData);
+
+      // Step 2: If saveAsStatus is provided, update challenge status
+      if (saveAsStatus) {
+        // Convert saveAsStatus to API format (DRAFT or PUBLISHED)
+        const challengeStatus = saveAsStatus === 'published' ? 'PUBLISHED' : 'DRAFT';
+        
+        console.log('Updating challenge status:', challengeStatus);
+        
+        // Call API to update challenge status
+        await dailyChallengeApi.updateDailyChallengeStatus(id, challengeStatus);
+        
+        // Update local status
+        setStatus(saveAsStatus);
+        
+        spaceToast.success(
+          saveAsStatus === 'published' 
+            ? t('dailyChallenge.savedAsPublished') || 'Saved and published successfully!'
+            : t('dailyChallenge.savedAsDraft') || 'Saved as draft successfully!'
+        );
+      } else {
+        spaceToast.success('Changes saved successfully!');
+      }
+
+      // Refresh questions from API
+      await fetchQuestions();
+
+    } catch (error) {
+      console.error('Error saving questions:', error);
+      spaceToast.error(error.response?.data?.error || error.message || 'Failed to save questions');
+    } finally {
+      setLoading(false);
+    }
+  }, [id, questions, t, fetchQuestions]);
 
   const handleOpenSettings = useCallback(() => {
     setSettingsModalVisible(true);
@@ -721,6 +961,34 @@ const DailyChallengeContent = () => {
 
           {/* Right: Action Buttons */}
           <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            {/* Status Display - Text Badge */}
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '8px 20px',
+              borderRadius: '8px',
+              background: status === 'published' 
+                ? 'rgba(82, 196, 26, 0.1)' 
+                : 'rgba(250, 173, 20, 0.1)',
+              border: status === 'published'
+                ? '2px solid rgba(82, 196, 26, 0.3)'
+                : '2px solid rgba(250, 173, 20, 0.3)',
+            }}>
+              {status === 'published' ? (
+                <CheckCircleOutlined style={{ color: '#52c41a', fontSize: '18px' }} />
+              ) : (
+                <FileTextOutlined style={{ color: '#faad14', fontSize: '18px' }} />
+              )}
+              <span style={{
+                fontWeight: 600,
+                fontSize: '14px',
+                color: status === 'published' ? '#52c41a' : '#faad14'
+              }}>
+                {status === 'published' ? t('dailyChallenge.published') : t('dailyChallenge.draft')}
+              </span>
+            </div>
+
             {/* Import/Export Dropdown */}
             <Dropdown
               menu={{ items: importExportMenuItems }}
@@ -749,30 +1017,6 @@ const DailyChallengeContent = () => {
             </Button>
             </Dropdown>
 
-            {/* Status Toggle Button */}
-            <Button 
-              icon={status === 'published' ? <CheckCircleOutlined /> : <FileTextOutlined />}
-              className={`create-button ${theme}-create-button`}
-              onClick={handleToggleStatus}
-              style={{
-                height: '40px',
-                borderRadius: '8px',
-                fontWeight: 500,
-                fontSize: '16px',
-                padding: '0 24px',
-                border: 'none',
-                transition: 'all 0.3s ease',
-                background: theme === 'sun' 
-                  ? 'linear-gradient(135deg, rgba(102, 174, 255, 0.6), rgba(60, 153, 255, 0.6))'
-                  : 'linear-gradient(135deg, rgba(181, 176, 192, 0.7), rgba(163, 158, 187, 0.7), rgba(131, 119, 160, 0.7), rgba(172, 165, 192, 0.7), rgba(109, 95, 143, 0.7))',
-                color: theme === 'sun' ? '#000000' : '#000000',
-                boxShadow: theme === 'sun' ? '0 2px 8px rgba(60, 153, 255, 0.2)' : '0 2px 8px rgba(131, 119, 160, 0.3)',
-                opacity: 0.9
-              }}
-            >
-              {status === 'published' ? t('dailyChallenge.published') : t('dailyChallenge.draft')}
-            </Button>
-
             <Button 
               icon={<PlusOutlined />}
               className={`create-button ${theme}-create-button`}
@@ -796,28 +1040,47 @@ const DailyChallengeContent = () => {
               {t('dailyChallenge.addQuestion')}
             </Button>
             
-            {/* Save Changes - Keep original bright color */}
-            <Button 
-              icon={<SaveOutlined />}
-              className={`create-button ${theme}-create-button`}
-              onClick={handleSaveChanges}
-              style={{
-                height: '40px',
-                borderRadius: '8px',
-                fontWeight: 500,
-                fontSize: '16px',
-                padding: '0 24px',
-                border: 'none',
-                transition: 'all 0.3s ease',
-                background: theme === 'sun' 
-                  ? 'linear-gradient(135deg, #66AEFF, #3C99FF)'
-                  : 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)',
-                color: '#000000',
-                boxShadow: theme === 'sun' ? '0 2px 8px rgba(60, 153, 255, 0.3)' : '0 2px 8px rgba(131, 119, 160, 0.3)'
+            {/* Save Dropdown - Save as Draft or Published */}
+            <Dropdown
+              menu={{ 
+                items: [
+                  {
+                    key: 'draft',
+                    label: <span style={{ color: '#000000' }}>{t('dailyChallenge.saveAsDraft') || 'Save as Draft'}</span>,
+                    icon: <FileTextOutlined style={{ color: '#000000' }} />,
+                    onClick: () => handleSaveChanges('draft'),
+                  },
+                  {
+                    key: 'published',
+                    label: <span style={{ color: '#000000' }}>{t('dailyChallenge.saveAsPublished') || 'Save as Published'}</span>,
+                    icon: <CheckCircleOutlined style={{ color: '#000000' }} />,
+                    onClick: () => handleSaveChanges('published'),
+                  },
+                ]
               }}
+              trigger={['click']}
             >
-              {t('common.saveChanges')}
-            </Button>
+              <Button 
+                icon={<SaveOutlined />}
+                className={`create-button ${theme}-create-button`}
+                style={{
+                  height: '40px',
+                  borderRadius: '8px',
+                  fontWeight: 500,
+                  fontSize: '16px',
+                  padding: '0 24px',
+                  border: 'none',
+                  transition: 'all 0.3s ease',
+                  background: theme === 'sun' 
+                    ? 'linear-gradient(135deg, #66AEFF, #3C99FF)'
+                    : 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)',
+                  color: '#000000',
+                  boxShadow: theme === 'sun' ? '0 2px 8px rgba(60, 153, 255, 0.3)' : '0 2px 8px rgba(131, 119, 160, 0.3)'
+                }}
+              >
+                {t('common.save') || 'Save'} <DownOutlined />
+              </Button>
+            </Dropdown>
           </div>
         </div>
       </nav>

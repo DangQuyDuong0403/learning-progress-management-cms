@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { Modal, Button, message, Select, Tooltip } from 'antd';
 import {
 	PlusOutlined,
@@ -64,9 +64,105 @@ const MultipleChoiceModal = ({
 	const [hoveredOption, setHoveredOption] = useState(null);
 	const [editorData, setEditorData] = useState('');
 	const editorRef = useRef(null);
+	const answerTypeRef = useRef('single');
 	
 	// Sun theme colors (fixed)
 	const primaryColor = '#1890ff';
+
+	// Update ref when answerType changes
+	useEffect(() => {
+		answerTypeRef.current = answerType;
+	}, [answerType]);
+
+	// Memoize CKEditor config to prevent re-creation on each render
+	const questionEditorConfig = useMemo(() => ({
+		placeholder: 'Enter your question here...',
+		extraPlugins: [CustomUploadAdapterPlugin],
+		toolbar: {
+			items: [
+				'heading',
+				'|',
+				'bold',
+				'italic',
+				'underline',
+				'|',
+				'link',
+				'imageUpload',
+				'|',
+				'bulletedList',
+				'numberedList',
+				'|',
+				'blockQuote',
+				'insertTable',
+				'|',
+				'undo',
+				'redo'
+			],
+			shouldNotGroupWhenFull: false
+		},
+		heading: {
+			options: [
+				{ model: 'paragraph', title: 'Paragraph', class: 'ck-heading_paragraph' },
+				{ model: 'heading1', view: 'h1', title: 'Heading 1', class: 'ck-heading_heading1' },
+				{ model: 'heading2', view: 'h2', title: 'Heading 2', class: 'ck-heading_heading2' },
+				{ model: 'heading3', view: 'h3', title: 'Heading 3', class: 'ck-heading_heading3' }
+			]
+		},
+		table: {
+			contentToolbar: ['tableColumn', 'tableRow', 'mergeTableCells']
+		},
+		image: {
+			toolbar: [
+				'imageTextAlternative',
+				'|',
+				'imageStyle:alignLeft',
+				'imageStyle:full',
+				'imageStyle:alignRight'
+			],
+			styles: [
+				'full',
+				'alignLeft',
+				'alignRight'
+			]
+		}
+	}), []);
+
+	// Memoize option editor config
+	const optionEditorConfig = useMemo(() => ({
+		placeholder: 'Type your answer here...',
+		extraPlugins: [CustomUploadAdapterPlugin],
+		toolbar: {
+			items: [
+				'bold',
+				'italic',
+				'underline',
+				'|',
+				'link',
+				'imageUpload',
+				'|',
+				'bulletedList',
+				'numberedList',
+				'|',
+				'undo',
+				'redo'
+			],
+			shouldNotGroupWhenFull: false
+		},
+		image: {
+			toolbar: [
+				'imageTextAlternative',
+				'|',
+				'imageStyle:alignLeft',
+				'imageStyle:full',
+				'imageStyle:alignRight'
+			],
+			styles: [
+				'full',
+				'alignLeft',
+				'alignRight'
+			]
+		}
+	}), []);
 
 	// Load question data when editing
 	useEffect(() => {
@@ -99,35 +195,98 @@ const MultipleChoiceModal = ({
 		}
 	}, [questionData, visible, getOptionColors]);
 
-	const handleAddOption = () => {
-		const newId = Math.max(...options.map((opt) => opt.id)) + 1;
-		const colors = getOptionColors();
-		const newColor = colors[options.length % colors.length];
-		setOptions([
-			...options,
-			{ id: newId, text: '', isCorrect: false, color: newColor },
-		]);
-	};
+	const handleAddOption = useCallback(() => {
+		setOptions(prevOptions => {
+			const newId = Math.max(...prevOptions.map((opt) => opt.id)) + 1;
+			const colors = getOptionColors();
+			const newColor = colors[prevOptions.length % colors.length];
+			return [
+				...prevOptions,
+				{ id: newId, text: '', isCorrect: false, color: newColor },
+			];
+		});
+	}, [getOptionColors]);
 
-	const handleRemoveOption = (optionId) => {
-		if (options.length > 2) {
-			setOptions(options.filter((opt) => opt.id !== optionId));
-		} else {
-			message.warning('Question must have at least 2 options');
-		}
-	};
+	const handleRemoveOption = useCallback((optionId) => {
+		setOptions(prevOptions => {
+			if (prevOptions.length > 2) {
+				return prevOptions.filter((opt) => opt.id !== optionId);
+			} else {
+				message.warning('Question must have at least 2 options');
+				return prevOptions;
+			}
+		});
+	}, []);
 
-	const handleOptionChange = (optionId, field, value) => {
-		setOptions(
-			options.map((opt) =>
+	const handleOptionChange = useCallback((optionId, field, value) => {
+		setOptions(prevOptions => {
+			// Check if value actually changed to avoid unnecessary updates
+			const currentOption = prevOptions.find(opt => opt.id === optionId);
+			if (currentOption && currentOption[field] === value) {
+				return prevOptions;
+			}
+			
+			return prevOptions.map((opt) =>
 				opt.id === optionId
 					? { ...opt, [field]: value }
-					: field === 'isCorrect' && value === true && answerType === 'single'
+					: field === 'isCorrect' && value === true && answerTypeRef.current === 'single'
 					? { ...opt, isCorrect: false }
 					: opt
-			)
-		);
-	};
+			);
+		});
+	}, []);
+
+	const handleMouseEnter = useCallback((optionId) => {
+		setHoveredOption(optionId);
+	}, []);
+
+	const handleMouseLeave = useCallback(() => {
+		setHoveredOption(null);
+	}, []);
+
+	// Debounced editor change handler for main question
+	const editorChangeTimeoutRef = useRef(null);
+	const handleEditorChange = useCallback((event, editor) => {
+		if (editorChangeTimeoutRef.current) {
+			clearTimeout(editorChangeTimeoutRef.current);
+		}
+		editorChangeTimeoutRef.current = setTimeout(() => {
+			const data = editor.getData();
+			setEditorData(prevData => {
+				// Only update if data actually changed
+				if (prevData !== data) {
+					return data;
+				}
+				return prevData;
+			});
+		}, 150);
+	}, []);
+
+	// Debounced option change handler
+	const optionChangeTimeoutRef = useRef({});
+	const handleOptionEditorChange = useCallback((optionId, event, editor) => {
+		if (optionChangeTimeoutRef.current[optionId]) {
+			clearTimeout(optionChangeTimeoutRef.current[optionId]);
+		}
+		optionChangeTimeoutRef.current[optionId] = setTimeout(() => {
+			const data = editor.getData();
+			handleOptionChange(optionId, 'text', data);
+		}, 150);
+	}, [handleOptionChange]);
+
+	// Cleanup timeouts on unmount
+	useEffect(() => {
+		const editorTimeout = editorChangeTimeoutRef.current;
+		const optionTimeouts = optionChangeTimeoutRef.current;
+		return () => {
+			if (editorTimeout) {
+				clearTimeout(editorTimeout);
+			}
+			Object.values(optionTimeouts).forEach(timeout => {
+				if (timeout) clearTimeout(timeout);
+			});
+		};
+	}, []);
 
 	const handleSave = () => {
 		// Validate editor data
@@ -150,7 +309,7 @@ const MultipleChoiceModal = ({
 
 		const newQuestionData = {
 			id: questionData?.id || Date.now(),
-			type: answerType === 'single' ? 'multiple-choice' : 'multiple-select',
+			type: answerType === 'single' ? 'MULTIPLE_CHOICE' : 'MULTIPLE_SELECT',
 			title: answerType === 'single' ? 'Multiple choice' : 'Multiple select',
 			question: editorData,
 			options: options.map((opt, index) => ({
@@ -259,24 +418,22 @@ const MultipleChoiceModal = ({
 					<Button
 						type='primary'
 						onClick={handleSave}
-							size="large"
+						size="large"
+						className="save-question-btn"
 						style={{
-								height: '44px',
-								borderRadius: '12px',
-								fontWeight: 600,
-								fontSize: '16px',
-								padding: '0 32px',
+							height: '44px',
+							borderRadius: '12px',
+							fontWeight: 600,
+							fontSize: '16px',
+							padding: '0 32px',
 							border: 'none',
-								transition: 'all 0.3s ease',
-								background: 'linear-gradient(135deg, #66AEFF, #3C99FF)',
-								color: '#000000',
-								boxShadow: '0 4px 16px rgba(60, 153, 255, 0.4)',
-								transform: 'scale(1)',
-							}}
-							onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
-							onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
-						>
-							<SaveOutlined /> Save Question
+							transition: 'all 0.3s ease',
+							background: 'linear-gradient(135deg, #66AEFF, #3C99FF)',
+							color: '#000000',
+							boxShadow: '0 4px 16px rgba(60, 153, 255, 0.4)',
+						}}
+					>
+						<SaveOutlined /> Save Question
 					</Button>
 					</div>
 				</div>
@@ -346,63 +503,11 @@ const MultipleChoiceModal = ({
 								flexDirection: 'column'
 							}}>
 								<CKEditor
+									key="main-question-editor"
 									editor={ClassicEditor}
 									data={editorData}
-									config={{
-										placeholder: 'Enter your question here...',
-										extraPlugins: [CustomUploadAdapterPlugin],
-										toolbar: {
-											items: [
-												'heading',
-												'|',
-												'bold',
-												'italic',
-												'underline',
-												'|',
-												'link',
-												'imageUpload',
-												'|',
-												'bulletedList',
-												'numberedList',
-												'|',
-												'blockQuote',
-												'insertTable',
-											'|',
-											'undo',
-											'redo'
-										],
-										shouldNotGroupWhenFull: false
-									},
-										heading: {
-											options: [
-												{ model: 'paragraph', title: 'Paragraph', class: 'ck-heading_paragraph' },
-												{ model: 'heading1', view: 'h1', title: 'Heading 1', class: 'ck-heading_heading1' },
-												{ model: 'heading2', view: 'h2', title: 'Heading 2', class: 'ck-heading_heading2' },
-												{ model: 'heading3', view: 'h3', title: 'Heading 3', class: 'ck-heading_heading3' }
-											]
-										},
-										table: {
-											contentToolbar: ['tableColumn', 'tableRow', 'mergeTableCells']
-										},
-										image: {
-											toolbar: [
-												'imageTextAlternative',
-												'|',
-												'imageStyle:alignLeft',
-												'imageStyle:full',
-												'imageStyle:alignRight'
-											],
-											styles: [
-												'full',
-												'alignLeft',
-												'alignRight'
-											]
-										}
-									}}
-									onChange={(event, editor) => {
-										const data = editor.getData();
-										setEditorData(data);
-									}}
+									config={questionEditorConfig}
+									onChange={handleEditorChange}
 									onReady={(editor) => {
 										editorRef.current = editor;
 									}}
@@ -467,8 +572,8 @@ const MultipleChoiceModal = ({
 				{options.map((option, index) => (
 					<div
 						key={option.id}
-								onMouseEnter={() => setHoveredOption(option.id)}
-								onMouseLeave={() => setHoveredOption(null)}
+						onMouseEnter={() => handleMouseEnter(option.id)}
+						onMouseLeave={handleMouseLeave}
 						style={{
 									background: `linear-gradient(135deg, ${option.color}dd 0%, ${option.color} 100%)`,
 									borderRadius: '16px',
@@ -599,47 +704,11 @@ const MultipleChoiceModal = ({
 										}}
 									>
 										<CKEditor
+											key={`option-editor-${option.id}`}
 											editor={ClassicEditor}
 											data={option.text}
-											config={{
-												placeholder: 'Type your answer here...',
-												extraPlugins: [CustomUploadAdapterPlugin],
-												toolbar: {
-													items: [
-														'bold',
-														'italic',
-														'underline',
-														'|',
-														'link',
-														'imageUpload',
-														'|',
-														'bulletedList',
-														'numberedList',
-														'|',
-														'undo',
-														'redo'
-													],
-													shouldNotGroupWhenFull: false
-												},
-												image: {
-													toolbar: [
-														'imageTextAlternative',
-														'|',
-														'imageStyle:alignLeft',
-														'imageStyle:full',
-														'imageStyle:alignRight'
-													],
-													styles: [
-														'full',
-														'alignLeft',
-														'alignRight'
-													]
-												}
-											}}
-											onChange={(event, editor) => {
-												const data = editor.getData();
-												handleOptionChange(option.id, 'text', data);
-											}}
+											config={optionEditorConfig}
+											onChange={(event, editor) => handleOptionEditorChange(option.id, event, editor)}
 										/>
 									</div>
 						</div>

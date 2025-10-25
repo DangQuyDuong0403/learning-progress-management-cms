@@ -140,7 +140,7 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 
       const newQuestionData = {
         id: questionData?.id || Date.now(),
-        type: "drag-drop",
+        type: "DRAG_DROP",
         title: "Drag and drop",
         question: values.question,
         draggableItems: draggableItems,

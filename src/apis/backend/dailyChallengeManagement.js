@@ -165,6 +165,42 @@ const dailyChallengeApi = {
 				'accept': '*/*',
 			}
 		});
+	},
+
+	// Lấy danh sách sections (questions) cho một challenge
+	getSectionsByChallenge: (challengeId, params = {}) => {
+		const queryParams = new URLSearchParams();
+		
+		// Thêm các tham số nếu có
+		if (params.page !== undefined) queryParams.append('page', params.page);
+		if (params.size !== undefined) queryParams.append('size', params.size);
+		if (params.text && params.text.trim()) {
+			queryParams.append('text', params.text.trim());
+		}
+
+		const url = `/sections/challenge/${challengeId}${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
+		console.log('GetSectionsByChallenge API - URL:', url);
+		console.log('GetSectionsByChallenge API - Params:', params);
+		
+		return axiosClient.get(url, {
+			headers: {
+				'accept': '*/*',
+			}
+		});
+	},
+
+	// Lưu section với questions cho một challenge
+	saveSectionWithQuestions: (challengeId, sectionData) => {
+		const url = `/sections/${challengeId}`;
+		console.log('SaveSectionWithQuestions API - URL:', url);
+		console.log('SaveSectionWithQuestions API - Data:', sectionData);
+		
+		return axiosClient.post(url, sectionData, {
+			headers: {
+				'Content-Type': 'application/json',
+				'accept': '*/*',
+			}
+		});
 	}
 };
 
