@@ -154,7 +154,7 @@ const RewriteModal = ({ visible, onCancel, onSave, questionData = null }) => {
   useEffect(() => {
     if (visible) {
       // Use setTimeout to ensure form is mounted
-      setTimeout(() => {
+    setTimeout(() => {
         const colors = getAnswerColors();
         if (questionData) {
           // Edit mode - load existing data
@@ -238,8 +238,8 @@ const RewriteModal = ({ visible, onCancel, onSave, questionData = null }) => {
     setCorrectAnswers(prevAnswers => {
       if (prevAnswers.length > 1) {
         return prevAnswers.filter(ans => ans.id !== answerId);
-      } else {
-        message.warning("Question must have at least one correct answer");
+    } else {
+      message.warning("Question must have at least one correct answer");
         return prevAnswers;
       }
     });
@@ -275,7 +275,7 @@ const RewriteModal = ({ visible, onCancel, onSave, questionData = null }) => {
     console.log('Full Question Data:', newQuestionData);
     console.log('================================');
 
-    onSave(newQuestionData);
+      onSave(newQuestionData);
     handleCancel();
   };
 
@@ -358,7 +358,7 @@ const RewriteModal = ({ visible, onCancel, onSave, questionData = null }) => {
             fontWeight: 500
           }}>
             💡 Tips: Create the question on the left • Add multiple correct answers on the right
-          </div>
+        </div>
 
           <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -369,20 +369,20 @@ const RewriteModal = ({ visible, onCancel, onSave, questionData = null }) => {
           <Button
             type='primary'
             onClick={handleSave}
-            size="large"
+              size="large"
             style={{
-              height: '44px',
-              borderRadius: '12px',
-              fontWeight: 600,
-              fontSize: '16px',
-              padding: '0 32px',
+                height: '44px',
+                borderRadius: '12px',
+                fontWeight: 600,
+                fontSize: '16px',
+                padding: '0 32px',
               border: 'none',
-              background: 'linear-gradient(135deg, #66AEFF, #3C99FF)',
-              color: '#000000',
-              boxShadow: '0 4px 16px rgba(60, 153, 255, 0.4)',
-            }}
-          >
-            <SaveOutlined /> Save Question
+                background: 'linear-gradient(135deg, #66AEFF, #3C99FF)',
+                color: '#000000',
+                boxShadow: '0 4px 16px rgba(60, 153, 255, 0.4)',
+              }}
+            >
+              <SaveOutlined /> Save Question
           </Button>
           </div>
         </div>
@@ -391,7 +391,7 @@ const RewriteModal = ({ visible, onCancel, onSave, questionData = null }) => {
       {/* Main Split Layout */}
       <div style={{ 
         display: 'flex', 
-        height: 'calc(100vh - 210px)', 
+        height: 'calc(100vh - 210px)',
         padding: '24px',
         gap: '24px'
       }}>
@@ -406,15 +406,15 @@ const RewriteModal = ({ visible, onCancel, onSave, questionData = null }) => {
           {/* Question Card */}
           <div style={{
             flex: 1,
-            background: 'rgba(255, 255, 255, 0.95)',
+          background: 'rgba(255, 255, 255, 0.95)',
             borderRadius: '20px',
             padding: '24px',
-            boxShadow: '0 8px 32px rgba(24, 144, 255, 0.15)',
-            border: '2px solid rgba(24, 144, 255, 0.1)',
-            backdropFilter: 'blur(20px)',
+          boxShadow: '0 8px 32px rgba(24, 144, 255, 0.15)',
+          border: '2px solid rgba(24, 144, 255, 0.1)',
+          backdropFilter: 'blur(20px)',
             display: 'flex',
             flexDirection: 'column',
-            position: 'relative',
+          position: 'relative',
             overflow: 'hidden',
             minHeight: 0
         }}>
@@ -432,7 +432,7 @@ const RewriteModal = ({ visible, onCancel, onSave, questionData = null }) => {
           }} />
 
           {/* Question Input - CKEditor */}
-          <div style={{ 
+          <div style={{
             flex: 1, 
             display: 'flex',
             flexDirection: 'column',
@@ -441,7 +441,7 @@ const RewriteModal = ({ visible, onCancel, onSave, questionData = null }) => {
             minHeight: 0,
             overflow: 'hidden'
           }}>
-            <div style={{
+                  <div style={{
               flex: 1,
               borderRadius: '12px',
               border: '2px solid rgba(24, 144, 255, 0.2)',
@@ -463,11 +463,11 @@ const RewriteModal = ({ visible, onCancel, onSave, questionData = null }) => {
               />
             </div>
           </div>
-        </div>
+          </div>
       </div>
 
       {/* Right Panel - Correct Answers Grid */}
-      <div style={{
+        <div style={{ 
         flex: 1,
         display: 'flex',
         flexDirection: 'column',
@@ -475,7 +475,7 @@ const RewriteModal = ({ visible, onCancel, onSave, questionData = null }) => {
         position: 'relative'
       }}>
         {/* Answers Grid Header */}
-        <div style={{
+        <div style={{ 
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
@@ -500,23 +500,25 @@ const RewriteModal = ({ visible, onCancel, onSave, questionData = null }) => {
               border: 'none',
               transition: 'all 0.3s ease',
               background: 'linear-gradient(135deg, rgba(102, 174, 255, 0.6), rgba(60, 153, 255, 0.6))',
-              color: '#000000',
+                color: '#000000',
               boxShadow: '0 2px 8px rgba(60, 153, 255, 0.2)',
               opacity: 0.9
-            }}
-          >
-            Add Answer
+              }}
+            >
+              Add Answer
           </Button>
         </div>
 
         {/* Answers Grid Container - 2x2 Layout */}
-        <div style={{
+        <div style={{ 
           display: 'grid',
           gridTemplateColumns: 'repeat(2, 1fr)',
+          gridAutoRows: 'min-content',
           gap: '16px',
           flex: 1,
           overflowY: 'auto',
-          padding: '4px'
+          padding: '4px',
+          alignContent: 'start'
         }}>
           {correctAnswers.map((answer, index) => (
             <div
@@ -573,15 +575,15 @@ const RewriteModal = ({ visible, onCancel, onSave, questionData = null }) => {
               }}>
                 {correctAnswers.length > 1 && (
                   <Tooltip title="Delete Answer">
-                    <Button
-                      size="small"
+                  <Button
+                    size="small"
                       danger
                       icon={<DeleteOutlined />}
                       onClick={(e) => {
                         e.stopPropagation();
                         handleRemoveAnswer(answer.id);
                       }}
-                      style={{
+                    style={{
                         background: 'rgba(255, 77, 79, 0.9)',
                         color: 'white',
                         border: 'none',
@@ -592,9 +594,9 @@ const RewriteModal = ({ visible, onCancel, onSave, questionData = null }) => {
                         alignItems: 'center',
                         justifyContent: 'center',
                         fontSize: '16px'
-                      }}
-                    />
-                  </Tooltip>
+                    }}
+                  />
+                </Tooltip>
                 )}
               </div>
 
@@ -610,7 +612,7 @@ const RewriteModal = ({ visible, onCancel, onSave, questionData = null }) => {
               }}>
                 <div 
                   className={`option-editor option-editor-${answer.id}`}
-                  style={{
+                style={{
                     borderRadius: '12px',
                     overflow: 'hidden',
                     background: 'rgba(255, 255, 255, 0.98)',
@@ -625,14 +627,14 @@ const RewriteModal = ({ visible, onCancel, onSave, questionData = null }) => {
                     data={answer.answer}
                     config={answerEditorConfig}
                     onChange={(event, editor) => handleAnswerEditorChange(answer.id, event, editor)}
-                  />
-                </div>
-              </div>
+              />
             </div>
-          ))}
         </div>
       </div>
-    </div>
+          ))}
+          </div>
+        </div>
+      </div>
     </Modal>
   );
 };

@@ -581,7 +581,7 @@ const MultipleChoiceModal = ({
 						style={{
 									background: `linear-gradient(135deg, ${option.color}cc 0%, ${option.color} 100%)`,
 									borderRadius: '16px',
-									padding: '24px',
+									padding: '16px',
 									minHeight: '320px',
 							position: 'relative',
 							display: 'flex',
@@ -691,8 +691,8 @@ const MultipleChoiceModal = ({
 								display: 'flex',
 									flexDirection: 'column',
 									justifyContent: 'center',
-									marginTop: '60px',
-									marginBottom: '55px',
+									marginTop: '50px',
+									marginBottom: '8px',
 									position: 'relative',
 									zIndex: 1
 								}}>
