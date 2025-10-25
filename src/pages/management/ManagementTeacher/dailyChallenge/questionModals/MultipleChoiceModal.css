@@ -375,19 +375,21 @@
 .option-editor .ck.ck-editor__main > .ck-editor__editable {
   background: rgba(255, 255, 255, 0.95) !important;
   border: none !important;
-  min-height: 80px !important;
-  max-height: 160px !important;
+  min-height: 180px !important;
+  max-height: 180px !important;
   overflow-y: auto !important;
-  padding: 16px !important;
+  padding: 12px !important;
   font-size: 16px !important;
   line-height: 1.6 !important;
   color: #000000 !important;
+  border-radius: 0 0 10px 10px !important;
 }
 
 .option-editor .ck.ck-editor__main > .ck-editor__editable:focus {
   outline: none !important;
   box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.3) inset !important;
   background: rgba(255, 255, 255, 1) !important;
+  border-radius: 0 0 10px 10px !important;
 }
 
 /* Option CKEditor placeholder */

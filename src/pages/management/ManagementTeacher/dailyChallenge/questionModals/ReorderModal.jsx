@@ -283,9 +283,14 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
       color: #333;
       font-weight: 500;
       font-size: 14px;
-      display: inline;
+      display: inline-block;
+      max-width: 150px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      vertical-align: middle;
     `;
-    answerText.textContent = blank.answer || 'empty';
+    answerText.textContent = blank.answer || '';
 
     // Input field (hidden by default in compact mode)
     const input = document.createElement('input');
@@ -311,7 +316,7 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
     input.addEventListener('input', (e) => {
       handleBlankAnswerChange(blank.id, e.target.value);
       // Update answer text in real-time
-      answerText.textContent = e.target.value || 'empty';
+      answerText.textContent = e.target.value || '';
     });
     input.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -324,12 +329,18 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
       setTimeout(() => {
         // Check if the blank still exists (not deleted)
         if (document.body.contains(span)) {
+          // If input is empty, delete the blank
+          if (!e.target.value || !e.target.value.trim()) {
+            handleDeleteBlankElement(blank.id);
+            return;
+          }
+          
           collapseBlank();
           // Focus editor and update popup position after collapsing
           if (editorRef.current) {
             editorRef.current.focus();
             // Set cursor position after the blank
-            const selection = window.getSelection();
+    const selection = window.getSelection();
             const range = document.createRange();
             // Try to position cursor after the blank
             if (span.nextSibling) {
@@ -339,8 +350,8 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
               range.setStartAfter(span);
               range.collapse(true);
             }
-            selection.removeAllRanges();
-            selection.addRange(range);
+      selection.removeAllRanges();
+      selection.addRange(range);
             // Update popup position
             setTimeout(() => {
               updatePopupPosition();
@@ -411,6 +422,10 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
 
     // Click on chip to expand
     chip.addEventListener('click', (e) => {
+      // Don't expand if clicking on delete button
+      if (e.target.hasAttribute('data-delete-btn') || e.target.classList.contains('blank-delete-btn')) {
+          return;
+        }
       e.stopPropagation();
       expandBlank();
     });
@@ -670,16 +685,16 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
       
       // Create a copy and shuffle
       const shuffled = [...prev];
-      for (let i = shuffled.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-      }
-      
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    
       // Update currentIndex after shuffle
-      return shuffled.map((word, index) => ({
+    return shuffled.map((word, index) => ({
         ...word,
-        currentIndex: index
-      }));
+      currentIndex: index
+    }));
     });
     
     message.success('Words shuffled!');
@@ -1058,12 +1073,12 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
                 justifyContent: 'space-between'
               }}>
                 <div style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px'
-                }}>
-                  <DragOutlined style={{ fontSize: '18px' }} />
-                  Preview: Shuffled Words (Students will drag to reorder)
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}>
+                <DragOutlined style={{ fontSize: '18px' }} />
+                Preview: Shuffled Words (Students will drag to reorder)
                 </div>
                 <Button
                   icon={<RetweetOutlined />}
@@ -1107,6 +1122,10 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
                       transition: 'all 0.2s ease',
                       userSelect: 'none',
                       boxShadow: `0 2px 8px ${word.color}40`,
+                      maxWidth: '200px',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
                     }}
                     onMouseEnter={(e) => {
                       e.currentTarget.style.transform = 'translateY(-2px)';
