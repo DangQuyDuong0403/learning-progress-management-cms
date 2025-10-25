@@ -1,148 +1,604 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useCallback, useEffect } from "react";
 import {
   Modal,
-  Form,
-  Input,
   Button,
-  Typography,
   message,
   Select,
+  Tooltip,
+  Dropdown,
 } from "antd";
 import { 
-  PlusOutlined, 
   DeleteOutlined, 
   DragOutlined,
-  PictureOutlined, 
-  AudioOutlined, 
-  VideoCameraOutlined,
   CheckOutlined,
-  ClockCircleOutlined,
+  ThunderboltOutlined,
+  SaveOutlined,
   BoldOutlined,
   ItalicOutlined,
   UnderlineOutlined,
-  StrikethroughOutlined,
+  OrderedListOutlined,
+  UnorderedListOutlined,
+  LinkOutlined,
+  UndoOutlined,
+  RedoOutlined,
+  PictureOutlined,
+  TableOutlined,
+  AlignLeftOutlined,
+  AlignCenterOutlined,
+  AlignRightOutlined,
   FontSizeOutlined,
-  FunctionOutlined,
 } from "@ant-design/icons";
 import './MultipleChoiceModal.css';
 
-const { Text } = Typography; // Used in JSX
-
 const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
-  const [form] = Form.useForm();
-  const [items, setItems] = useState(
-    questionData?.items || [
-      { id: 1, text: "", order: 1 }
-    ]
-  );
   const [points, setPoints] = useState(1);
-  const [timeLimit, setTimeLimit] = useState(30);
-  const [questionImage, setQuestionImage] = useState(null);
-  const questionImageInputRef = useRef(null);
+  const [selectedImage, setSelectedImage] = useState(null);
+  const [tableDropdownOpen, setTableDropdownOpen] = useState(false);
+  const [hoveredCell, setHoveredCell] = useState({ row: 0, col: 0 });
+  const [shuffledWords, setShuffledWords] = useState([]);
+  const editorRef = useRef(null);
+  const fileInputRef = useRef(null);
 
-  const handleAddItem = () => {
-    const newId = Math.max(...items.map(item => item.id)) + 1;
-    const newOrder = Math.max(...items.map(item => item.order)) + 1;
-    setItems([...items, { id: newId, text: "", order: newOrder }]);
-  };
-
-  const handleRemoveItem = (itemId) => {
-    if (items.length > 1) {
-      const removedItem = items.find(item => item.id === itemId);
-      setItems(items.filter(item => item.id !== itemId));
-      
-      // Reorder remaining items
-      setItems(prevItems => 
-        prevItems.map(item => ({
-          ...item,
-          order: item.order > removedItem.order ? item.order - 1 : item.order
-        }))
-      );
-    } else {
-      message.warning("Question must have at least one item");
-    }
-  };
-
-  const handleItemChange = (itemId, value) => {
-    setItems(items.map(item => 
-      item.id === itemId 
-        ? { ...item, text: value }
-        : item
-    ));
-  };
-
-  const handleMoveUp = (itemId) => {
-    const itemIndex = items.findIndex(item => item.id === itemId);
-    if (itemIndex > 0) {
-      const newItems = [...items];
-      [newItems[itemIndex], newItems[itemIndex - 1]] = [newItems[itemIndex - 1], newItems[itemIndex]];
-      
-      // Update order
-      newItems.forEach((item, index) => {
-        item.order = index + 1;
-      });
-      
-      setItems(newItems);
-    }
-  };
-
-  const handleMoveDown = (itemId) => {
-    const itemIndex = items.findIndex(item => item.id === itemId);
-    if (itemIndex < items.length - 1) {
-      const newItems = [...items];
-      [newItems[itemIndex], newItems[itemIndex + 1]] = [newItems[itemIndex + 1], newItems[itemIndex]];
-      
-      // Update order
-      newItems.forEach((item, index) => {
-        item.order = index + 1;
-      });
-      
-      setItems(newItems);
-    }
-  };
-
-  const handleSave = () => {
-    form.validateFields().then(values => {
-      const hasEmptyItems = items.some(item => !item.text.trim());
-      if (hasEmptyItems) {
-        message.error("Please fill in all item texts");
-        return;
+  // Initialize from questionData
+  useEffect(() => {
+    if (visible && questionData?.questionText && editorRef.current) {
+      editorRef.current.innerHTML = questionData.questionText;
+      if (questionData.shuffledWords) {
+        setShuffledWords(questionData.shuffledWords);
       }
+    }
+    if (visible) {
+      setPoints(questionData?.points || 1);
+    }
+  }, [questionData, visible]);
 
-      const newQuestionData = {
-        id: questionData?.id || Date.now(),
-        type: "reorder",
-        title: "Reorder",
-        question: values.question,
-        items: items,
-        correctAnswer: items.map(item => item.text).join(", "),
+  // Formatting functions for toolbar
+  const handleFormat = useCallback((command, value = null) => {
+    if (!editorRef.current) return;
+    editorRef.current.focus();
+    document.execCommand(command, false, value);
+  }, []);
+
+  const handleInsertLink = useCallback(() => {
+    if (!editorRef.current) return;
+    const url = prompt('Enter URL:');
+    if (url) {
+      handleFormat('createLink', url);
+    }
+  }, [handleFormat]);
+
+  // Insert image into editor
+  const insertImageIntoEditor = useCallback((base64Image) => {
+    if (!editorRef.current) return;
+    
+    editorRef.current.focus();
+    
+    // Create wrapper for image with resize handles
+    const wrapper = document.createElement('div');
+    wrapper.className = 'image-wrapper';
+    wrapper.style.cssText = `
+      position: relative;
+      display: inline-block;
+      max-width: 100%;
+      margin: 10px 0;
+      user-select: none;
+    `;
+    wrapper.setAttribute('contenteditable', 'false');
+    wrapper.setAttribute('data-image-wrapper', 'true');
+    
+    // Create image element
+    const img = document.createElement('img');
+    img.src = base64Image;
+    img.style.cssText = `
+      display: block;
+      width: 300px;
+      height: auto;
+      border-radius: 8px;
+      cursor: pointer;
+    `;
+    img.setAttribute('data-image-id', `img-${Date.now()}`);
+    
+    // Create 4 resize handles
+    const handles = ['nw', 'ne', 'sw', 'se'];
+    const handleElements = {};
+    
+    handles.forEach(position => {
+      const handle = document.createElement('div');
+      handle.className = `resize-handle resize-handle-${position}`;
+      handle.style.cssText = `
+        position: absolute;
+        width: 12px;
+        height: 12px;
+        background: #1890ff;
+        border: 2px solid white;
+        border-radius: 50%;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        z-index: 1000;
+        opacity: 0;
+        transition: all 0.2s ease;
+      `;
+      
+      // Position handles
+      if (position === 'nw') {
+        handle.style.top = '-6px';
+        handle.style.left = '-6px';
+        handle.style.cursor = 'nwse-resize';
+      } else if (position === 'ne') {
+        handle.style.top = '-6px';
+        handle.style.right = '-6px';
+        handle.style.cursor = 'nesw-resize';
+      } else if (position === 'sw') {
+        handle.style.bottom = '-6px';
+        handle.style.left = '-6px';
+        handle.style.cursor = 'nesw-resize';
+      } else if (position === 'se') {
+        handle.style.bottom = '-6px';
+        handle.style.right = '-6px';
+        handle.style.cursor = 'nwse-resize';
+      }
+      
+      handleElements[position] = handle;
+      wrapper.appendChild(handle);
+    });
+    
+    wrapper.appendChild(img);
+    
+    // Make wrapper selectable
+    wrapper.onclick = function(e) {
+      e.stopPropagation();
+      setSelectedImage(img);
+      Object.values(handleElements).forEach(h => h.style.opacity = '1');
+      wrapper.style.outline = '2px solid #1890ff';
+      wrapper.style.outlineOffset = '2px';
+    };
+    
+    wrapper.onmouseleave = function() {
+      if (selectedImage !== img) {
+        Object.values(handleElements).forEach(h => h.style.opacity = '0');
+      }
+    };
+    
+    wrapper.onmouseenter = function() {
+      Object.values(handleElements).forEach(h => h.style.opacity = '1');
+    };
+    
+    // Resize functionality
+    let isResizing = false;
+    let startWidth, startX, currentHandle;
+    
+    const startResize = (e, handle) => {
+      e.preventDefault();
+      e.stopPropagation();
+      isResizing = true;
+      currentHandle = handle;
+      startWidth = img.offsetWidth;
+      startX = e.clientX;
+      
+      document.addEventListener('mousemove', doResize);
+      document.addEventListener('mouseup', stopResize);
+    };
+    
+    const doResize = (e) => {
+      if (!isResizing) return;
+      
+      const deltaX = e.clientX - startX;
+      let newWidth = startWidth;
+      
+      if (currentHandle === 'se' || currentHandle === 'ne') {
+        newWidth = startWidth + deltaX;
+      } else if (currentHandle === 'sw' || currentHandle === 'nw') {
+        newWidth = startWidth - deltaX;
+      }
+      
+      if (newWidth < 100) newWidth = 100;
+      if (newWidth > 800) newWidth = 800;
+      
+      img.style.width = newWidth + 'px';
+      
+      if (wrapper.style.display === 'block' && wrapper.style.width) {
+        wrapper.style.width = newWidth + 'px';
+      }
+    };
+    
+    const stopResize = () => {
+      isResizing = false;
+      document.removeEventListener('mousemove', doResize);
+      document.removeEventListener('mouseup', stopResize);
+    };
+    
+    Object.entries(handleElements).forEach(([position, handle]) => {
+      handle.onmousedown = (e) => startResize(e, position);
+      handle.onmouseenter = (e) => {
+        e.target.style.transform = 'scale(1.3)';
+        e.target.style.background = '#40a9ff';
       };
+      handle.onmouseleave = (e) => {
+        e.target.style.transform = 'scale(1)';
+        e.target.style.background = '#1890ff';
+      };
+    });
+    
+    const selection = window.getSelection();
+    if (selection.rangeCount > 0) {
+      const range = selection.getRangeAt(0);
+      range.insertNode(wrapper);
+      const br = document.createElement('br');
+      wrapper.parentNode.insertBefore(br, wrapper.nextSibling);
+      range.setStartAfter(br);
+      range.setEndAfter(br);
+      selection.removeAllRanges();
+      selection.addRange(range);
+    } else {
+      editorRef.current.appendChild(wrapper);
+      const br = document.createElement('br');
+      editorRef.current.appendChild(br);
+    }
+    
+    message.success('Image inserted successfully');
+  }, [selectedImage]);
 
-      onSave(newQuestionData);
-      form.resetFields();
-      setItems([{ id: 1, text: "", order: 1 }]);
+  const handleImageUpload = useCallback(() => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  }, []);
+
+  const handleFileChange = useCallback((e) => {
+    const file = e.target.files?.[0];
+    if (file && file.type.startsWith('image/')) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        insertImageIntoEditor(event.target.result);
+      };
+      reader.readAsDataURL(file);
+    } else if (file) {
+      message.error('Please select an image file');
+    }
+    if (e.target) {
+      e.target.value = '';
+    }
+  }, [insertImageIntoEditor]);
+
+  const handlePaste = useCallback((e) => {
+    const items = e.clipboardData?.items;
+    if (items) {
+      for (let i = 0; i < items.length; i++) {
+        if (items[i].type.indexOf('image') !== -1) {
+          e.preventDefault();
+          const blob = items[i].getAsFile();
+          const reader = new FileReader();
+          reader.onload = (event) => {
+            insertImageIntoEditor(event.target.result);
+          };
+          reader.readAsDataURL(blob);
+          return;
+        }
+      }
+    }
+    
+    e.preventDefault();
+    const text = e.clipboardData.getData('text/plain');
+    document.execCommand('insertText', false, text);
+  }, [insertImageIntoEditor]);
+
+  const handleImageAlign = useCallback((alignment) => {
+    if (!selectedImage) {
+      message.warning('Please select an image first');
+      return;
+    }
+    
+    const wrapper = selectedImage.parentElement;
+    if (!wrapper || !wrapper.hasAttribute('data-image-wrapper')) {
+      message.warning('Image wrapper not found');
+      return;
+    }
+    
+    const currentWidth = selectedImage.offsetWidth;
+    
+    switch(alignment) {
+      case 'left':
+        wrapper.style.display = 'block';
+        wrapper.style.width = `${currentWidth}px`;
+        wrapper.style.marginLeft = '0';
+        wrapper.style.marginRight = 'auto';
+        break;
+      case 'center':
+        wrapper.style.display = 'block';
+        wrapper.style.width = `${currentWidth}px`;
+        wrapper.style.marginLeft = 'auto';
+        wrapper.style.marginRight = 'auto';
+        break;
+      case 'right':
+        wrapper.style.display = 'block';
+        wrapper.style.width = `${currentWidth}px`;
+        wrapper.style.marginLeft = 'auto';
+        wrapper.style.marginRight = '0';
+        break;
+      default:
+        break;
+    }
+    
+    message.success(`Image aligned to ${alignment}`);
+    
+    setTimeout(() => {
+      if (editorRef.current) {
+        editorRef.current.focus();
+        const selection = window.getSelection();
+        const range = document.createRange();
+        range.selectNodeContents(editorRef.current);
+        range.collapse(false);
+        selection.removeAllRanges();
+        selection.addRange(range);
+      }
+    }, 100);
+  }, [selectedImage]);
+
+  const handleInsertTable = useCallback((numRows, numCols) => {
+    if (!editorRef.current) return;
+    
+    if (numRows > 0 && numCols > 0 && numRows <= 10 && numCols <= 10) {
+      editorRef.current.focus();
+      
+      const table = document.createElement('table');
+      table.style.borderCollapse = 'collapse';
+      table.style.width = '100%';
+      table.style.margin = '10px 0';
+      table.style.border = '1px solid #000000';
+      
+      for (let i = 0; i < numRows; i++) {
+        const tr = document.createElement('tr');
+        for (let j = 0; j < numCols; j++) {
+          const td = document.createElement(i === 0 ? 'th' : 'td');
+          td.contentEditable = 'true';
+          td.style.border = '1px solid #000000';
+          td.style.padding = '8px';
+          td.style.minWidth = '50px';
+          if (i === 0) {
+            td.style.background = 'rgba(24, 144, 255, 0.1)';
+            td.style.fontWeight = '600';
+          }
+          td.innerHTML = '&nbsp;';
+          tr.appendChild(td);
+        }
+        table.appendChild(tr);
+      }
+      
+      const selection = window.getSelection();
+      if (selection.rangeCount > 0) {
+        const range = selection.getRangeAt(0);
+        range.insertNode(table);
+        range.collapse(false);
+      } else {
+        editorRef.current.appendChild(table);
+      }
+      
+      setTableDropdownOpen(false);
+      message.success(`Table ${numRows}x${numCols} inserted successfully`);
+    }
+  }, []);
+
+  const handleHeading = useCallback((level) => {
+    if (!editorRef.current) return;
+    editorRef.current.focus();
+    
+    if (level === 'paragraph') {
+      document.execCommand('formatBlock', false, 'p');
+    } else {
+      document.execCommand('formatBlock', false, level);
+    }
+  }, []);
+
+  const handleEditorClick = useCallback((e) => {
+    if (e.target.tagName !== 'IMG') {
+      if (editorRef.current) {
+        const wrappers = editorRef.current.querySelectorAll('[data-image-wrapper]');
+        wrappers.forEach(wrapper => {
+          wrapper.style.outline = 'none';
+        });
+      }
+      setSelectedImage(null);
+    }
+    
+    // Only set cursor if there's no current selection
+    // This allows drag-to-select to work properly
+    if (e.target === editorRef.current) {
+      // Don't interfere if user is selecting text (check after a small delay to allow for drag-to-select)
+      setTimeout(() => {
+        const selection = window.getSelection();
+        if (selection && selection.toString().length === 0) {
+          const range = document.caretRangeFromPoint(e.clientX, e.clientY);
+          if (range) {
+            selection.removeAllRanges();
+            selection.addRange(range);
+          }
+        }
+      }, 0);
+    }
+  }, []);
+
+  const handleEditorKeyDown = useCallback((e) => {
+    if ((e.key === 'Backspace' || e.key === 'Delete') && selectedImage) {
+      e.preventDefault();
+      
+      const wrapper = selectedImage.parentElement;
+      if (wrapper && wrapper.hasAttribute('data-image-wrapper')) {
+        wrapper.remove();
+        setSelectedImage(null);
+        
+        if (editorRef.current) {
+          editorRef.current.focus();
+        }
+        
+        message.success('Image deleted');
+      }
+    }
+  }, [selectedImage]);
+
+  // Extract words from editor content and shuffle them
+  const extractAndShuffleWords = useCallback(() => {
+    if (!editorRef.current) return [];
+    
+    const text = editorRef.current.textContent.trim();
+    if (!text) return [];
+    
+    // Split by spaces and filter out empty strings
+    const words = text.split(/\s+/).filter(w => w.length > 0);
+    
+    // Shuffle array
+    const shuffled = [...words];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    
+    return shuffled.map((word, index) => ({
+      id: `word-${index}-${Date.now()}`,
+      text: word,
+      originalIndex: words.indexOf(word),
+      currentIndex: index
+    }));
+  }, []);
+
+  // Handle word drag
+  const handleWordDragStart = (e, wordId) => {
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/html', wordId);
+  };
+
+  const handleWordDragOver = (e) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+  };
+
+  const handleWordDrop = (e, targetWordId) => {
+    e.preventDefault();
+    const sourceWordId = e.dataTransfer.getData('text/html');
+    
+    if (sourceWordId === targetWordId) return;
+    
+    setShuffledWords(prev => {
+      const newWords = [...prev];
+      const sourceIndex = newWords.findIndex(w => w.id === sourceWordId);
+      const targetIndex = newWords.findIndex(w => w.id === targetWordId);
+      
+      if (sourceIndex !== -1 && targetIndex !== -1) {
+        const [removed] = newWords.splice(sourceIndex, 1);
+        newWords.splice(targetIndex, 0, removed);
+        
+        // Update currentIndex
+        return newWords.map((word, index) => ({
+          ...word,
+          currentIndex: index
+        }));
+      }
+      
+      return newWords;
     });
   };
 
-  const handleQuestionImageUpload = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        setQuestionImage(event.target.result);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
+  // Generate preview when editor changes
+  const handleEditorInput = useCallback(() => {
+    const words = extractAndShuffleWords();
+    setShuffledWords(words);
+  }, [extractAndShuffleWords]);
 
-  const removeQuestionImage = () => {
-    setQuestionImage(null);
+  const handleSave = () => {
+    if (!editorRef.current) return;
+
+    const questionText = editorRef.current.textContent.trim();
+    if (!questionText) {
+      message.error('Please enter the question text');
+        return;
+      }
+
+    if (shuffledWords.length === 0) {
+      message.error('Question must contain at least one word');
+      return;
+    }
+
+    // Build HTML
+    let questionHTML = '';
+    const processNode = (node) => {
+      if (node.nodeType === Node.TEXT_NODE) {
+        return node.textContent;
+      } else if (node.nodeType === Node.ELEMENT_NODE) {
+        const tagName = node.tagName.toLowerCase();
+        
+        if (node.hasAttribute('data-image-wrapper')) {
+          const img = node.querySelector('img');
+          if (img) {
+            const src = img.getAttribute('src');
+            const imgWidth = img.style.width || '300px';
+            const wrapperDisplay = node.style.display || 'inline-block';
+            const wrapperWidth = node.style.width || '';
+            const marginLeft = node.style.marginLeft || '0';
+            const marginRight = node.style.marginRight || '0';
+            const wrapperStyle = `position:relative;display:${wrapperDisplay};${wrapperWidth ? `width:${wrapperWidth};` : 'max-width:100%;'}margin:10px ${marginRight} 10px ${marginLeft};user-select:none;`;
+            return `<div class="image-wrapper" style="${wrapperStyle}"><img src="${src}" style="width:${imgWidth};height:auto;display:block;border-radius:8px;" /></div>`;
+          }
+          return '';
+        }
+        
+        if (tagName === 'img') {
+          const src = node.getAttribute('src');
+          const style = node.getAttribute('style') || '';
+          return `<img src="${src}" style="${style}" />`;
+        }
+        
+        if (tagName === 'table') {
+          return node.outerHTML;
+        }
+        
+        let innerContent = '';
+        node.childNodes.forEach(child => {
+          innerContent += processNode(child);
+        });
+        
+        if (tagName === 'div' || tagName === 'br') {
+          return innerContent + (tagName === 'br' ? '<br>' : '');
+        }
+        
+        if (innerContent || ['ul', 'ol', 'li', 'h1', 'h2', 'h3'].includes(tagName)) {
+          return `<${tagName}>${innerContent}</${tagName}>`;
+        }
+        
+        return innerContent;
+      }
+      return '';
+    };
+
+    editorRef.current.childNodes.forEach(node => {
+      questionHTML += processNode(node);
+    });
+
+    questionHTML = questionHTML.replace(/\n/g, '<br>');
+
+    const newQuestionData = {
+      id: questionData?.id || Date.now(),
+      type: 'reorder',
+      title: 'Reorder',
+      questionText: questionHTML,
+      correctAnswer: questionText,
+      shuffledWords: shuffledWords,
+      points: points,
+    };
+
+    console.log('=== REORDER QUESTION HTML ===');
+    console.log('Question HTML:', questionHTML);
+    console.log('Shuffled Words:', shuffledWords);
+    console.log('Full Question Data:', newQuestionData);
+    console.log('================================');
+
+    onSave(newQuestionData);
+    handleCancel();
   };
 
   const handleCancel = () => {
-    form.resetFields();
-    setItems([{ id: 1, text: "", order: 1 }]);
-    setQuestionImage(null);
+    if (editorRef.current) {
+      editorRef.current.innerHTML = '';
+    }
+    setShuffledWords([]);
+    setPoints(1);
     onCancel();
   };
 
@@ -150,418 +606,565 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
     <Select
       value={points}
       onChange={setPoints}
-      style={{ width: 80 }}
+      style={{ width: 90 }}
       options={[
-        { value: 1, label: '1 điểm' },
-        { value: 2, label: '2 điểm' },
-        { value: 3, label: '3 điểm' },
-        { value: 5, label: '5 điểm' },
-      ]}
-    />
-  );
-
-  const timeMenu = (
-    <Select
-      value={timeLimit}
-      onChange={setTimeLimit}
-      style={{ width: 100 }}
-      options={[
-        { value: 15, label: '15 giây' },
-        { value: 30, label: '30 giây' },
-        { value: 60, label: '1 phút' },
-        { value: 120, label: '2 phút' },
-        { value: 300, label: '5 phút' },
+        { value: 1, label: '1 point' },
+        { value: 2, label: '2 points' },
+        { value: 3, label: '3 points' },
+        { value: 5, label: '5 points' },
       ]}
     />
   );
 
   return (
     <Modal
-      title="Create Reorder Question"
+      title={
+        <div style={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: 'center',
+          gap: '12px'
+        }}>
+          <ThunderboltOutlined style={{ 
+            fontSize: '30px', 
+            color: '#1890ff',
+            animation: 'pulse 2s infinite'
+          }} />
+          <span style={{ fontSize: '24px', fontWeight: 600 }}>
+            Create Reorder Question
+          </span>
+        </div>
+      }
       open={visible}
       onCancel={handleCancel}
       width={1400}
-      height={800}
       footer={null}
-      style={{ top: 20 }}
-      bodyStyle={{ height: '85vh', overflow: 'hidden', position: 'relative' }}
-    >
-      {/* Top Control Bar */}
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: 16,
-          padding: '12px 16px',
-          background: '#f5f5f5',
-          borderRadius: 8,
-          border: '1px solid #e0e0e0',
-        }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-          <Button
-            type='text'
-            icon={<BoldOutlined />}
-            style={{ color: '#666' }}
-          />
-          <Button
-            type='text'
-            icon={<ItalicOutlined />}
-            style={{ color: '#666' }}
-          />
-          <Button
-            type='text'
-            icon={<UnderlineOutlined />}
-            style={{ color: '#666' }}
-          />
-          <Button
-            type='text'
-            icon={<StrikethroughOutlined />}
-            style={{ color: '#666' }}
-          />
-          <Button
-            type='text'
-            icon={<FontSizeOutlined />}
-            style={{ color: '#666' }}
-          />
-          <div
-            style={{
-              width: 1,
-              height: 20,
-              background: '#e0e0e0',
-              margin: '0 8px',
-            }}
-          />
-          <Button
-            type='text'
-            icon={<FunctionOutlined />}
-            style={{ color: '#666' }}
-          />
-          <span style={{ fontSize: 12, color: '#666' }}>
-            Chèn kí hiệu toán học
-          </span>
+      style={{ top: 10 }}
+      bodyStyle={{ 
+        maxHeight: 'calc(100vh - 120px)',
+        overflow: 'hidden', 
+        position: 'relative',
+        padding: 0,
+        background: 'linear-gradient(135deg, #f0f7ff 0%, #e6f4ff 100%)'
+      }}
+      key={questionData?.id || 'new'}
+      destroyOnClose>
+      
+      {/* Top Toolbar */}
+      <div style={{
+        position: 'sticky',
+        top: 0,
+        left: 0,
+        right: 0,
+        zIndex: 1000,
+        background: 'rgba(255, 255, 255, 0.95)',
+        backdropFilter: 'blur(20px)',
+        borderBottom: '2px solid rgba(24, 144, 255, 0.1)',
+        padding: '16px 24px',
+        boxShadow: '0 4px 12px rgba(0,0,0,0.05)'
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ 
+            fontSize: '14px', 
+            color: '#666',
+            background: 'rgba(24, 144, 255, 0.1)',
+            padding: '8px 16px',
+            borderRadius: '8px',
+            fontWeight: 500
+          }}>
+            💡 Tips: Type the correct order of the sentence • Students will need to rearrange the words
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-            <CheckOutlined style={{ color: '#52c41a' }} />
+          <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <CheckOutlined style={{ color: '#52c41a', fontSize: '16px' }} />
             {pointsMenu}
-          </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-            <ClockCircleOutlined style={{ color: '#1890ff' }} />
-            {timeMenu}
           </div>
 
           <Button
             type='primary'
             onClick={handleSave}
+              size="large"
             style={{
-              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                height: '44px',
+                borderRadius: '12px',
+                fontWeight: 600,
+                fontSize: '16px',
+                padding: '0 32px',
               border: 'none',
-              borderRadius: 6,
-            }}>
-            Lưu câu hỏi
+                background: 'linear-gradient(135deg, #66AEFF, #3C99FF)',
+                color: '#000000',
+                boxShadow: '0 4px 16px rgba(60, 153, 255, 0.4)',
+              }}
+            >
+              <SaveOutlined /> Save Question
           </Button>
+          </div>
         </div>
       </div>
 
-      {/* Question Container - Split Layout */}
-      <div
-        style={{
-          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-          borderRadius: 12,
-          padding: 24,
-          marginBottom: 24,
-          position: 'relative',
+      {/* Main Editor Area */}
+      <div style={{ 
+        padding: '24px',
+        height: 'calc(100vh - 210px)',
+        overflowY: 'auto'
+      }}>
+        <div style={{ 
+          background: 'rgba(255, 255, 255, 0.95)',
+          borderRadius: '16px',
+          padding: '20px',
+          boxShadow: '0 8px 32px rgba(24, 144, 255, 0.15)',
+          border: '2px solid rgba(24, 144, 255, 0.1)',
+          backdropFilter: 'blur(20px)',
+          position: 'relative'
         }}>
-        {/* Media Icons */}
-        <div
-          style={{
+          {/* Decorative background */}
+          <div style={{
             position: 'absolute',
-            top: 16,
-            left: 16,
-            display: 'flex',
-            gap: 8,
-            zIndex: 10,
-          }}>
-          <Button
-            type='text'
-            icon={<PictureOutlined />}
-            onClick={() => questionImageInputRef.current?.click()}
-            style={{
-              color: 'white',
-              border: '1px solid rgba(255,255,255,0.3)',
-              zIndex: 11,
-            }}
-          />
-          <Button
-            type='text'
-            icon={<AudioOutlined />}
-            style={{
-              color: 'white',
-              border: '1px solid rgba(255,255,255,0.3)',
-              zIndex: 11,
-            }}
-          />
-          <Button
-            type='text'
-            icon={<VideoCameraOutlined />}
-            style={{
-              color: 'white',
-              border: '1px solid rgba(255,255,255,0.3)',
-              zIndex: 11,
-            }}
-          />
-        </div>
+            top: -50,
+            right: -50,
+            width: '200px',
+            height: '200px',
+            background: '#1890ff',
+            opacity: 0.05,
+            borderRadius: '50%',
+            filter: 'blur(40px)'
+          }} />
 
-        {/* Question Container - Split Layout */}
+          {/* Formatting Toolbar */}
+          <div style={{
+            display: 'flex',
+            gap: '4px',
+            marginBottom: '10px',
+            padding: '10px',
+            background: 'rgba(255, 255, 255, 0.95)',
+            borderRadius: '10px',
+            border: '2px solid rgba(24, 144, 255, 0.15)',
+            flexWrap: 'wrap',
+            position: 'relative',
+            zIndex: 2
+          }}>
+            {/* Heading Dropdown */}
+            <Dropdown
+              menu={{
+                items: [
+                  { 
+                    key: 'paragraph', 
+                    label: <span style={{ color: '#000000' }}>Paragraph</span>, 
+                    onClick: () => handleHeading('paragraph') 
+                  },
+                  { 
+                    key: 'h1', 
+                    label: <span style={{ color: '#000000', fontWeight: 700, fontSize: '16px' }}>Heading 1</span>, 
+                    onClick: () => handleHeading('h1') 
+                  },
+                  { 
+                    key: 'h2', 
+                    label: <span style={{ color: '#000000', fontWeight: 600, fontSize: '15px' }}>Heading 2</span>, 
+                    onClick: () => handleHeading('h2') 
+                  },
+                  { 
+                    key: 'h3', 
+                    label: <span style={{ color: '#000000', fontWeight: 600, fontSize: '14px' }}>Heading 3</span>, 
+                    onClick: () => handleHeading('h3') 
+                  },
+                ],
+                style: {
+                  background: '#ffffff',
+                }
+              }}
+              trigger={['click']}
+              overlayStyle={{
+                zIndex: 9999
+              }}
+            >
+              <Tooltip title="Heading">
+          <Button
+                  icon={<FontSizeOutlined />}
+                  style={{
+                    border: '1px solid rgba(24, 144, 255, 0.2)',
+                    borderRadius: '6px',
+                    height: '36px',
+                    width: '36px'
+                  }}
+                />
+              </Tooltip>
+            </Dropdown>
+            <div style={{ width: '1px', background: 'rgba(24, 144, 255, 0.2)', margin: '0 8px' }} />
+            
+            {/* Text Formatting */}
+            <Tooltip title="Bold">
+              <Button
+                icon={<BoldOutlined />}
+                onClick={() => handleFormat('bold')}
+                style={{
+                  border: '1px solid rgba(24, 144, 255, 0.2)',
+                  borderRadius: '6px',
+                  height: '36px',
+                  width: '36px'
+                }}
+              />
+            </Tooltip>
+            <Tooltip title="Italic">
+              <Button
+                icon={<ItalicOutlined />}
+                onClick={() => handleFormat('italic')}
+                style={{
+                  border: '1px solid rgba(24, 144, 255, 0.2)',
+                  borderRadius: '6px',
+                  height: '36px',
+                  width: '36px'
+                }}
+              />
+            </Tooltip>
+            <Tooltip title="Underline">
+              <Button
+                icon={<UnderlineOutlined />}
+                onClick={() => handleFormat('underline')}
+                style={{
+                  border: '1px solid rgba(24, 144, 255, 0.2)',
+                  borderRadius: '6px',
+                  height: '36px',
+                  width: '36px'
+                }}
+              />
+            </Tooltip>
+            <div style={{ width: '1px', background: 'rgba(24, 144, 255, 0.2)', margin: '0 8px' }} />
+            
+            {/* Link */}
+            <Tooltip title="Insert Link">
+              <Button
+                icon={<LinkOutlined />}
+                onClick={handleInsertLink}
+                style={{
+                  border: '1px solid rgba(24, 144, 255, 0.2)',
+                  borderRadius: '6px',
+                  height: '36px',
+                  width: '36px'
+                }}
+              />
+            </Tooltip>
+            
+            {/* Image Upload */}
+            <Tooltip title="Upload Image">
+              <Button
+            icon={<PictureOutlined />}
+                onClick={handleImageUpload}
+            style={{
+                  border: '1px solid rgba(24, 144, 255, 0.2)',
+                  borderRadius: '6px',
+                  height: '36px',
+                  width: '36px'
+                }}
+              />
+            </Tooltip>
+            <div style={{ width: '1px', background: 'rgba(24, 144, 255, 0.2)', margin: '0 8px' }} />
+            
+            {/* Lists */}
+            <Tooltip title="Ordered List">
+          <Button
+                icon={<OrderedListOutlined />}
+                onClick={() => handleFormat('insertOrderedList')}
+            style={{
+                  border: '1px solid rgba(24, 144, 255, 0.2)',
+                  borderRadius: '6px',
+                  height: '36px',
+                  width: '36px'
+                }}
+              />
+            </Tooltip>
+            <Tooltip title="Unordered List">
+          <Button
+                icon={<UnorderedListOutlined />}
+                onClick={() => handleFormat('insertUnorderedList')}
+            style={{
+                  border: '1px solid rgba(24, 144, 255, 0.2)',
+                  borderRadius: '6px',
+                  height: '36px',
+                  width: '36px'
+                }}
+              />
+            </Tooltip>
+            <div style={{ width: '1px', background: 'rgba(24, 144, 255, 0.2)', margin: '0 8px' }} />
+            
+            {/* Table Grid Selector */}
+            <Dropdown
+              open={tableDropdownOpen}
+              onOpenChange={(open) => {
+                setTableDropdownOpen(open);
+                if (!open) {
+                  setHoveredCell({ row: 0, col: 0 });
+                }
+              }}
+              trigger={['click']}
+              overlayStyle={{ zIndex: 9999 }}
+              dropdownRender={() => (
         <div
           style={{
-            display: 'flex',
-            marginTop: 40,
-            height: questionImage ? 200 : 120,
-            alignItems: 'center',
-            gap: 20,
-            padding: 16,
-          }}>
-          
-          {/* Left Side - Question Image */}
-          {questionImage && (
+                    background: '#ffffff',
+                    padding: '12px',
+                    borderRadius: '8px',
+                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+                    border: '1px solid rgba(24, 144, 255, 0.2)'
+                  }}
+                  onMouseLeave={() => setHoveredCell({ row: 0, col: 0 })}
+                >
+                  <div style={{
+                    fontSize: '12px',
+                    color: '#666',
+                    marginBottom: '8px',
+                    textAlign: 'center',
+                    fontWeight: 500,
+                    height: '16px'
+                  }}>
+                    {hoveredCell.row > 0 && hoveredCell.col > 0 
+                      ? `${hoveredCell.row} x ${hoveredCell.col} Table`
+                      : 'Select table size'}
+                  </div>
             <div style={{ 
-              flex: '0 0 15%',
-              display: 'flex',
-              justifyContent: 'center',
-              alignItems: 'center'
-            }}>
-              <div style={{ position: 'relative' }}>
-                <img
-                  src={questionImage}
-                  alt="Question"
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(10, 1fr)',
+                    gap: '2px'
+                  }}>
+                    {Array.from({ length: 100 }, (_, index) => {
+                      const row = Math.floor(index / 10) + 1;
+                      const col = (index % 10) + 1;
+                      const isHovered = row <= hoveredCell.row && col <= hoveredCell.col;
+                      
+                      return (
+                        <div
+                          key={index}
+                          onMouseEnter={() => setHoveredCell({ row, col })}
+                          onClick={() => {
+                            if (hoveredCell.row > 0 && hoveredCell.col > 0) {
+                              handleInsertTable(hoveredCell.row, hoveredCell.col);
+                            }
+                          }}
                   style={{
-                    width: 180,
-                    height: 180,
-                    objectFit: 'cover',
-                    borderRadius: 12,
-                    border: '2px solid rgba(255,255,255,0.3)',
-                    boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
-                  }}
-                />
-                <Button
-                  type="text"
-                  icon={<DeleteOutlined />}
-                  onClick={removeQuestionImage}
-                  style={{
-                    position: 'absolute',
-                    top: -8,
-                    right: -8,
-                    background: 'rgba(255,0,0,0.8)',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '50%',
-                    width: 28,
-                    height: 28,
-                    minWidth: 28,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    zIndex: 12,
-                  }}
-                />
+                            width: '20px',
+                            height: '20px',
+                            border: '1px solid #000000',
+                            background: isHovered ? '#1890ff' : '#ffffff',
+                            cursor: 'pointer',
+                            transition: 'all 0.1s ease',
+                            borderRadius: '2px'
+                          }}
+                        />
+                      );
+                    })}
               </div>
             </div>
           )}
-
-          {/* Right Side - Question Input */}
-          <div style={{ 
-            flex: questionImage ? '0 0 85%' : '1',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center'
-          }}>
-            <Form
-              form={form}
-              layout='vertical'
-              initialValues={{
-                question: questionData?.question || '',
-              }}
-              style={{ width: '100%' }}>
-              <Form.Item
-                name='question'
-                rules={[
-                  { required: true, message: 'Please enter the question text' },
-                ]}
-                style={{ marginBottom: 0 }}>
-                <div
-                  style={{
-                    display: 'flex',
-                    height: questionImage ? 175 : 135,
-                    alignItems: 'center',
-                    background: 'transparent',
-                    border: '1px solid #ccc',
-                    borderRadius: '6px',
-                    padding: 16,
-                    zIndex: 1,
-                  }}>
-                  <Input.TextArea
-                    placeholder='Nhập câu hỏi vào đây'
-                    className='question-textarea'
-                    style={{
-                      textAlign: 'center',
-                      background: 'transparent',
-                      border: 'none',
-                      color: 'white',
-                      fontSize: 16,
-                      resize: 'none',
-                      boxShadow: 'none',
-                      height: '100%',
-                      overflow: 'hidden',
-                      width: '100%',
-                    }}
-                  />
-                </div>
-              </Form.Item>
-            </Form>
-          </div>
-        </div>
-
-        {/* Hidden file input for question image */}
-        <input
-          ref={questionImageInputRef}
-          type="file"
-          accept="image/*"
-          onChange={handleQuestionImageUpload}
-          style={{ display: 'none' }}
-        />
-      </div>
-
-      {/* Items Management */}
-      <div style={{ marginBottom: 24 }}>
-        <div style={{ 
-          display: "flex", 
-          justifyContent: "space-between", 
-          alignItems: "center", 
-          marginBottom: 16 
-        }}>
-          <Text strong style={{ fontSize: 16 }}>Các mục cần sắp xếp</Text>
-          <Button
-            type="primary"
-            icon={<PlusOutlined />}
-            onClick={handleAddItem}
-            style={{
-              borderRadius: 8,
-              background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-              border: "none"
-            }}
-          >
-            Thêm mục
-          </Button>
-        </div>
-
-        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          {items.map((item, index) => (
-            <div
-              key={item.id}
-              style={{
-                background: "linear-gradient(135deg, #f3e8ff 0%, #e9d5ff 100%)",
-                border: "2px solid #8b5cf6",
-                borderRadius: 12,
-                padding: 16,
-                display: "flex",
-                alignItems: "center",
-                gap: 12,
-                position: "relative"
-              }}
             >
-              {/* Drag Handle */}
-              <DragOutlined style={{ color: "#8b5cf6", fontSize: 18 }} />
-
-              {/* Order Number */}
-              <div style={{
-                background: "#8b5cf6",
-                color: "white",
-                borderRadius: "50%",
-                width: 32,
-                height: 32,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontWeight: "bold",
-                fontSize: 14
-              }}>
-                {item.order}
-              </div>
-
-              {/* Input Field */}
-              <Input
-                value={item.text}
-                onChange={(e) => handleItemChange(item.id, e.target.value)}
-                placeholder={`Nhập mục ${item.order}`}
-                style={{ 
-                  flex: 1, 
-                  borderColor: "#8b5cf6",
-                  background: "white"
-                }}
-              />
-
-              {/* Control Buttons */}
-              <div style={{ display: "flex", gap: 8 }}>
+              <Tooltip title="Insert Table">
                 <Button
-                  type="text"
-                  size="small"
-                  onClick={() => handleMoveUp(item.id)}
-                  disabled={index === 0}
+                  icon={<TableOutlined />}
                   style={{
-                    background: "rgba(139, 92, 246, 0.1)",
-                    border: "1px solid #8b5cf6",
-                    color: "#8b5cf6"
-                  }}
-                >
-                  ↑
-                </Button>
-                <Button
-                  type="text"
-                  size="small"
-                  onClick={() => handleMoveDown(item.id)}
-                  disabled={index === items.length - 1}
-                  style={{
-                    background: "rgba(139, 92, 246, 0.1)",
-                    border: "1px solid #8b5cf6",
-                    color: "#8b5cf6"
-                  }}
-                >
-                  ↓
-                </Button>
-                <Button
-                  type="text"
-                  danger
-                  icon={<DeleteOutlined />}
-                  onClick={() => handleRemoveItem(item.id)}
-                  style={{
-                    background: "rgba(239, 68, 68, 0.1)",
-                    border: "none"
+                    border: '1px solid rgba(24, 144, 255, 0.2)',
+                    borderRadius: '6px',
+                    height: '36px',
+                    width: '36px'
                   }}
                 />
+              </Tooltip>
+            </Dropdown>
+            <div style={{ width: '1px', background: 'rgba(24, 144, 255, 0.2)', margin: '0 8px' }} />
+            
+            {/* Image Alignment (only show when image is selected) */}
+            {selectedImage && (
+              <>
+                <Tooltip title="Align Left">
+                  <Button
+                    icon={<AlignLeftOutlined />}
+                    onClick={() => handleImageAlign('left')}
+                    style={{
+                      border: '1px solid rgba(24, 144, 255, 0.2)',
+                      borderRadius: '6px',
+                      height: '36px',
+                      width: '36px',
+                      background: 'rgba(82, 196, 26, 0.1)'
+                    }}
+                  />
+                </Tooltip>
+                <Tooltip title="Align Center">
+                  <Button
+                    icon={<AlignCenterOutlined />}
+                    onClick={() => handleImageAlign('center')}
+                  style={{
+                      border: '1px solid rgba(24, 144, 255, 0.2)',
+                    borderRadius: '6px',
+                      height: '36px',
+                      width: '36px',
+                      background: 'rgba(82, 196, 26, 0.1)'
+                    }}
+                  />
+                </Tooltip>
+                <Tooltip title="Align Right">
+                  <Button
+                    icon={<AlignRightOutlined />}
+                    onClick={() => handleImageAlign('right')}
+                    style={{
+                      border: '1px solid rgba(24, 144, 255, 0.2)',
+                      borderRadius: '6px',
+                      height: '36px',
+                      width: '36px',
+                      background: 'rgba(82, 196, 26, 0.1)'
+                    }}
+                  />
+                </Tooltip>
+                <div style={{ width: '1px', background: 'rgba(24, 144, 255, 0.2)', margin: '0 8px' }} />
+              </>
+            )}
+            
+            {/* Undo/Redo */}
+            <Tooltip title="Undo">
+              <Button
+                icon={<UndoOutlined />}
+                onClick={() => handleFormat('undo')}
+                style={{
+                  border: '1px solid rgba(24, 144, 255, 0.2)',
+                  borderRadius: '6px',
+                  height: '36px',
+                  width: '36px'
+                }}
+              />
+            </Tooltip>
+            <Tooltip title="Redo">
+              <Button
+                icon={<RedoOutlined />}
+                onClick={() => handleFormat('redo')}
+                style={{
+                  border: '1px solid rgba(24, 144, 255, 0.2)',
+                  borderRadius: '6px',
+                  height: '36px',
+                  width: '36px'
+                }}
+              />
+            </Tooltip>
+        </div>
+
+          {/* Hidden File Input for Image Upload */}
+        <input
+            ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          style={{ display: 'none' }}
+            onChange={handleFileChange}
+          />
+
+          {/* Editor */}
+          <div
+            ref={editorRef}
+            contentEditable
+            onInput={handleEditorInput}
+            onPaste={handlePaste}
+            onClick={handleEditorClick}
+            onKeyDown={handleEditorKeyDown}
+            suppressContentEditableWarning
+              style={{
+              minHeight: '180px',
+              maxHeight: '180px',
+              overflowY: 'auto',
+              padding: '16px',
+              fontSize: '16px',
+              lineHeight: '1.8',
+              color: '#333',
+              background: 'rgba(240, 247, 255, 0.5)',
+              borderRadius: '12px',
+              border: '2px solid rgba(24, 144, 255, 0.2)',
+              outline: 'none',
+              position: 'relative',
+              zIndex: 1,
+              whiteSpace: 'pre-wrap',
+              wordWrap: 'break-word',
+              marginBottom: '24px',
+              cursor: 'text',
+              userSelect: 'text',
+              WebkitUserSelect: 'text'
+            }}
+            data-placeholder="Type the correct order of your sentence here..."
+          />
+
+          {/* Hint Text */}
+              <div style={{
+            textAlign: 'center',
+            color: '#999',
+            fontSize: '14px',
+            marginBottom: '24px',
+            fontStyle: 'italic'
+          }}>
+            The sentence above is the correct answer. Students will see shuffled words below.
               </div>
+
+          {/* Shuffled Words Preview */}
+          {shuffledWords.length > 0 && (
+            <div style={{ 
+              background: 'rgba(24, 144, 255, 0.08)',
+              border: '2px solid rgba(24, 144, 255, 0.3)',
+              borderRadius: '12px',
+              padding: '20px',
+            }}>
+              <div style={{ 
+                fontSize: '16px', 
+                fontWeight: 600, 
+                color: '#1890ff',
+                marginBottom: '16px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}>
+                <DragOutlined style={{ fontSize: '18px' }} />
+                Preview: Shuffled Words (Students will drag to reorder)
+              </div>
+              <div style={{ 
+                display: 'flex',
+                flexWrap: 'wrap',
+                gap: '12px'
+              }}>
+                {shuffledWords.map((word) => (
+                  <div
+                    key={word.id}
+                    draggable
+                    onDragStart={(e) => handleWordDragStart(e, word.id)}
+                    onDragOver={handleWordDragOver}
+                    onDrop={(e) => handleWordDrop(e, word.id)}
+                style={{ 
+                      padding: '12px 20px',
+                      background: 'linear-gradient(135deg, rgba(240, 247, 255, 0.8) 0%, rgba(230, 244, 255, 0.9) 100%)',
+                      border: '2px solid #1890ff',
+                      borderRadius: '10px',
+                      fontSize: '15px',
+                      fontWeight: 500,
+                      color: '#333',
+                      cursor: 'grab',
+                      transition: 'all 0.2s ease',
+                      userSelect: 'none',
+                      boxShadow: '0 2px 8px rgba(24, 144, 255, 0.15)',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.target.style.transform = 'translateY(-2px)';
+                      e.target.style.boxShadow = '0 4px 12px rgba(24, 144, 255, 0.25)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.target.style.transform = 'translateY(0)';
+                      e.target.style.boxShadow = '0 2px 8px rgba(24, 144, 255, 0.15)';
+                    }}
+                  >
+                    {word.text}
             </div>
           ))}
         </div>
-      </div>
-
-      {/* Tips */}
       <div style={{ 
-        padding: 16, 
-        backgroundColor: "#f3e8ff", 
-        borderRadius: 12,
-        border: "1px solid #8b5cf6"
-      }}>
-        <Text type="secondary" style={{ fontSize: 13, display: "block", marginBottom: 8 }}>
-          💡 <Text strong>Hướng dẫn:</Text> Thêm các mục và sắp xếp chúng theo thứ tự đúng bằng các nút lên/xuống. 
-          Học sinh sẽ cần kéo thả các mục này theo đúng thứ tự.
-        </Text>
-        <Text type="secondary" style={{ fontSize: 13 }}>
-          📝 <Text strong>Ví dụ:</Text> "Sắp xếp các bước theo thứ tự" → Mục: "Bước 1", "Bước 2", "Bước 3"
-        </Text>
+                marginTop: '16px',
+                fontSize: '13px',
+                color: '#666',
+                fontStyle: 'italic'
+              }}>
+                💡 Tip: Try dragging words to see how students will interact with this question
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </Modal>
   );
