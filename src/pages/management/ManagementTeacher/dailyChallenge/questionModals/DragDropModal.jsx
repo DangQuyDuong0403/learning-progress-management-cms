@@ -37,10 +37,18 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 	const fileInputRef = useRef(null);
 	const savedRangeRef = useRef(null);
 
-	// Colors for blanks
+	// Colors for blanks - matching ReorderModal color palette
 	const blankColors = useMemo(() => [
-		'#0ea5e9', '#06b6d4', '#3b82f6', '#8b5cf6',
-		'#ec4899', '#f59e0b', '#10b981', '#6366f1',
+		'#e63946', // Red
+		'#2563eb', // Blue
+		'#059669', // Green
+		'#9333ea', // Purple
+		'#ea580c', // Orange
+		'#dc2626', // Bright Red
+		'#0891b2', // Cyan
+		'#d946ef', // Magenta
+		'#84cc16', // Lime
+		'#f59e0b', // Amber
 	], []);
 
 	// Parse backend format to editor format
@@ -660,23 +668,24 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 			-webkit-user-select: none;
 		`;
 
-		const chip = document.createElement('span');
-		chip.style.cssText = `
-			display: inline-flex;
-			align-items: center;
-			gap: 6px;
-			padding: 6px 12px;
-			background: linear-gradient(135deg, ${blank.color}20, ${blank.color}40);
-			border: 2px solid ${blank.color};
-			border-radius: 8px;
-			font-size: 14px;
-			font-weight: 500;
-			color: ${blank.color};
-			transition: all 0.2s ease;
-			cursor: pointer;
-			min-width: 0;
-			flex: 1;
-		`;
+	const chip = document.createElement('span');
+	chip.style.cssText = `
+		display: inline-flex;
+		align-items: center;
+		gap: 6px;
+		padding: 6px 12px;
+		background: linear-gradient(135deg, ${blank.color}20, ${blank.color}40);
+		border: 2px solid ${blank.color};
+		border-radius: 8px;
+		font-size: 14px;
+		font-weight: 500;
+		color: ${blank.color};
+		transition: all 0.2s ease;
+		cursor: pointer;
+		min-width: 0;
+		max-width: 220px;
+		flex: 1;
+	`;
 
 		// Number badge
 		const badge = document.createElement('span');
@@ -695,16 +704,21 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 		`;
 		badge.textContent = index + 1;
 
-		// Compact mode: Display answer text
-		const answerText = document.createElement('span');
-		answerText.className = 'blank-answer-text';
-		answerText.style.cssText = `
-			color: #333;
-			font-weight: 500;
-			font-size: 14px;
-			display: inline;
-		`;
-		answerText.textContent = blank.answer || 'empty';
+	// Compact mode: Display answer text
+	const answerText = document.createElement('span');
+	answerText.className = 'blank-answer-text';
+	answerText.style.cssText = `
+		color: #333;
+		font-weight: 500;
+		font-size: 14px;
+		display: inline-block;
+		max-width: 150px;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+		vertical-align: middle;
+	`;
+	answerText.textContent = blank.answer || '';
 
 		// Input field (hidden by default in compact mode)
 		const input = document.createElement('input');
@@ -727,21 +741,26 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 			flex: 1;
 			margin-right: 8px;
 		`;
-		input.addEventListener('input', (e) => {
-			handleBlankAnswerChange(blank.id, e.target.value);
-			// Update answer text in real-time
-			answerText.textContent = e.target.value || 'empty';
-		});
+	input.addEventListener('input', (e) => {
+		handleBlankAnswerChange(blank.id, e.target.value);
+		// Update answer text in real-time
+		answerText.textContent = e.target.value || '';
+	});
 		input.addEventListener('click', (e) => {
 			e.stopPropagation();
 		});
 		input.addEventListener('mousedown', (e) => {
 			e.stopPropagation();
 		});
-		input.addEventListener('blur', () => {
-			// When input loses focus, collapse back to compact mode
-			collapseBlank();
-		});
+	input.addEventListener('blur', (e) => {
+		// If input is empty, delete the blank
+		if (!e.target.value || !e.target.value.trim()) {
+			handleDeleteBlankElement(blank.id);
+			return;
+		}
+		// When input loses focus, collapse back to compact mode
+		collapseBlank();
+	});
 
 		// Delete button (hidden by default in compact mode)
 		const deleteBtn = document.createElement('button');
@@ -1922,34 +1941,42 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 									<div 
 										key={blank.id}
                   style={{
-											padding: '12px 16px',
-											background: 'white',
-											border: `2px solid ${blank.color}`,
-											borderRadius: '8px',
-											fontSize: '14px',
-											display: 'flex',
-											alignItems: 'center',
-											gap: '8px'
-										}}
+										padding: '12px 16px',
+										background: 'white',
+										border: `2px solid ${blank.color}`,
+										borderRadius: '8px',
+										fontSize: '14px',
+										display: 'flex',
+										alignItems: 'flex-start',
+										gap: '8px'
+									}}
 									>
-										<span style={{
-											width: '24px',
-											height: '24px',
-											borderRadius: '50%',
-											background: blank.color,
+									<span style={{
+										width: '24px',
+										height: '24px',
+										borderRadius: '50%',
+										background: blank.color,
                     color: 'white',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-											fontSize: '12px',
-											fontWeight: 700,
-											flexShrink: 0
-										}}>
-											{index + 1}
-										</span>
-										<span style={{ fontWeight: 500, color: '#333' }}>
-											{blank.answer || '(empty)'}
-										</span>
+										fontSize: '12px',
+										fontWeight: 700,
+										flexShrink: 0,
+										marginTop: '2px'
+									}}>
+										{index + 1}
+									</span>
+									<span style={{ 
+										fontWeight: 500, 
+										color: '#333',
+										flex: 1,
+										wordBreak: 'break-word',
+										overflowWrap: 'break-word',
+										whiteSpace: 'normal'
+									}}>
+										{blank.answer || '(empty)'}
+									</span>
               </div>
 								))}
 								{blanks.length === 0 && (
