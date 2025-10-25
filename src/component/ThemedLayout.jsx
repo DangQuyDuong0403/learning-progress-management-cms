@@ -249,6 +249,17 @@ const ThemedLayout = ({ children }) => {
               </div>
             </>
           )}
+          
+          {/* Space Theme Background Decorations - Only for Space Theme */}
+          {theme === 'space' && (
+            <div className="space-astronaut-decoration-icon">
+              <img 
+                src="/img/astro.png" 
+                alt="Space Astronaut Decoration" 
+                className="space-astronaut-icon-image" 
+              />
+            </div>
+          )}
         </Content>
       </AntLayout>
     </AntLayout>
