@@ -31,6 +31,7 @@ import ThemedLayout from "../../../../component/teacherlayout/ThemedLayout";
 import { extractTextFromPDF, isValidPDF } from "../../../../utils/pdfUtils";
 import { spaceToast } from "../../../../component/SpaceToastify";
 import { useSelector } from "react-redux";
+import dailyChallengeApi from "../../../../apis/backend/dailyChallengeManagement";
 import {
   MultipleChoiceModal,
   MultipleSelectModal,
@@ -102,7 +103,7 @@ const CreateReadingChallenge = () => {
   
   // Get challenge info from navigation state or URL params
   const challengeInfo = location.state || {};
-  const { challengeId, challengeName, classId, className } = challengeInfo;
+  const { challengeId, challengeName, classId, className, editingPassage } = challengeInfo;
   
   // Use challenge ID from URL params if available, otherwise from state
   const currentChallengeId = id || challengeId;
@@ -112,20 +113,43 @@ const CreateReadingChallenge = () => {
   const isWritingChallenge = location.pathname.includes('/writing/');
   const isSpeakingChallenge = location.pathname.includes('/speaking/');
   
-  const [passage, setPassage] = useState({
-    id: 1,
-    title: isWritingChallenge ? "Writing Topic" : (isSpeakingChallenge ? "Speaking Topic" : "Passage"),
-    content: "",
-    type: null,
-    questions: [],
-    audioFile: null, // For listening challenges
-    audioUrl: null
+  // Initialize passage with editingPassage if provided
+  const [passage, setPassage] = useState(() => {
+    if (editingPassage) {
+      // Log the editingPassage to debug
+      console.log('Loading editingPassage:', editingPassage);
+      console.log('Questions in editingPassage:', editingPassage.questions);
+      
+      // Editing mode - use existing passage data
+      return {
+        id: editingPassage.id,
+        title: editingPassage.title || (isWritingChallenge ? "Writing Prompt" : "Passage"),
+        content: editingPassage.content || "",
+        type: editingPassage.content ? "manual" : null,
+        questions: editingPassage.questions || [],
+        audioFile: editingPassage.audioFile || null,
+        audioUrl: editingPassage.audioUrl || null,
+        sectionId: editingPassage.sectionId
+      };
+    } else {
+      // New mode - start with empty passage
+      return {
+        id: 1,
+        title: isWritingChallenge ? "Writing Prompt" : "Passage",
+        content: "",
+        type: null,
+        questions: [],
+        audioFile: null,
+        audioUrl: null
+      };
+    }
   });
   const [passageContent, setPassageContent] = useState("");
   const [isProcessingPDF, setIsProcessingPDF] = useState(false);
   const [uploadedFileName, setUploadedFileName] = useState("");
   const [isProcessingAudio, setIsProcessingAudio] = useState(false);
   const [uploadedAudioFileName, setUploadedAudioFileName] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
   
   // Question management state
   const [activeModal, setActiveModal] = useState(null);
@@ -184,73 +208,217 @@ const CreateReadingChallenge = () => {
     });
   };
 
-  const handleSave = () => {
-    // Create fake data structure for passage with questions
-    const fakePassageData = {
-      id: `passage_${Date.now()}`,
-      title: isWritingChallenge ? "Writing Topic" : "Passage",
-      type: isWritingChallenge ? 'WRITING_PASSAGE' : (isListeningChallenge ? 'LISTENING_PASSAGE' : (isSpeakingChallenge ? 'SPEAKING_PASSAGE' : 'PASSAGE')),
-      content: passage.content || (isWritingChallenge
-        ? "This is a sample writing topic. Students will write their response based on this topic."
-        : isSpeakingChallenge
-        ? "This is a sample speaking topic. Students will record their response based on this topic."
-        : isListeningChallenge 
-        ? "This is a sample listening passage. Students will listen to the audio and answer the questions that follow."
-        : "This is a sample passage content for reading comprehension. Students will read this passage and answer the questions that follow."
-      ),
-      audioFile: passage.audioFile, // Include audio file for listening challenges
-      audioUrl: passage.audioUrl,
-      questions: isWritingChallenge || isSpeakingChallenge ? [] : (passage.questions || [
-        {
-          id: `question_${Date.now()}_1`,
-          type: 'MULTIPLE_CHOICE',
-          question: isListeningChallenge 
-            ? "What is the main topic of this audio?"
-            : "What is the main topic of this passage?",
-          options: [
-            { key: 'A', text: 'Science and Technology', isCorrect: false },
-            { key: 'B', text: 'Education and Learning', isCorrect: true },
-            { key: 'C', text: 'History and Culture', isCorrect: false },
-            { key: 'D', text: 'Sports and Recreation', isCorrect: false }
-          ],
-          points: 1,
-          timeLimit: 30
-        },
-        {
-          id: `question_${Date.now()}_2`,
-          type: 'FILL_IN_THE_BLANK',
-          questionText: isListeningChallenge 
-            ? "The audio discusses the importance of ___ in modern education."
-            : "The passage discusses the importance of ___ in modern education.",
-          content: {
-            data: [
-              {
-                id: 'blank_1',
-                value: 'technology',
-                positionId: 'pos_1',
-                correct: true
+  const handleSave = async () => {
+    try {
+      setIsSaving(true);
+      
+      // Validate required data
+      if (!currentChallengeId) {
+        spaceToast.warning("Challenge ID is required");
+        setIsSaving(false);
+        return;
+      }
+
+      if (!passage.content || passage.content.trim() === '') {
+        spaceToast.warning("Please add passage content before saving");
+        setIsSaving(false);
+        return;
+      }
+
+      // Map question types to API format
+      const mapQuestionType = (type) => {
+        const typeMap = {
+          'multiple-choice': 'MULTIPLE_CHOICE',
+          'multiple-select': 'MULTIPLE_SELECT',
+          'true-false': 'TRUE_OR_FALSE',
+          'TRUE_OR_FALSE': 'TRUE_OR_FALSE', // Handle both formats
+          'fill-blank': 'FILL_IN_THE_BLANK',
+          'dropdown': 'DROPDOWN',
+          'drag-drop': 'DRAG_AND_DROP',
+          'reorder': 'REARRANGE'
+        };
+        return typeMap[type] || type.toUpperCase();
+      };
+
+      // Transform questions to API format
+      const transformedQuestions = (passage.questions || []).map((question, index) => {
+        console.log('Transforming question:', index, {
+          id: question.id,
+          isFromBackend: question.isFromBackend,
+          hasId: !!question.id,
+          shouldIncludeId: question.isFromBackend && question.id
+        });
+        
+        const baseQuestion = {
+          // Only include id if the question has isFromBackend flag (loaded from backend)
+          // New questions added in edit mode will not have this flag
+          ...(question.isFromBackend && question.id && { id: question.id }),
+          questionText: question.question || question.questionText || '',
+          orderNumber: index + 1,
+          score: question.points || 1,
+          questionType: mapQuestionType(question.type),
+          toBeDeleted: false
+        };
+        
+        console.log('Transformed question:', baseQuestion);
+
+        // Handle different question types
+        switch (question.type) {
+          case 'MULTIPLE_CHOICE':
+          case 'multiple-choice':
+            return {
+              ...baseQuestion,
+              content: {
+                data: (question.options || []).map((option, optIndex) => ({
+                  id: option.key || `option_${optIndex}`,
+                  value: option.text || option.value || '',
+                  positionId: `pos_${optIndex}`,
+                  positionOrder: optIndex + 1, // Start from 1
+                  correct: option.isCorrect || false
+                }))
               }
-            ]
-          },
-          points: 1,
-          timeLimit: 60
+            };
+
+          case 'MULTIPLE_SELECT':
+          case 'multiple-select':
+            return {
+              ...baseQuestion,
+              content: {
+                data: (question.options || []).map((option, optIndex) => ({
+                  id: option.key || `option_${optIndex}`,
+                  value: option.text || option.value || '',
+                  positionId: `pos_${optIndex}`,
+                  positionOrder: optIndex + 1, // Start from 1
+                  correct: option.isCorrect || false
+                }))
+              }
+            };
+
+          case 'TRUE_OR_FALSE':
+          case 'true-false':
+            // Use existing content.data if available (for editing), otherwise create new
+            if (question.content && question.content.data && question.content.data.length > 0) {
+              return {
+                ...baseQuestion,
+                content: question.content
+              };
+            } else {
+              // Create new content for new questions
+              return {
+                ...baseQuestion,
+                content: {
+                  data: [
+                    {
+                      id: 'true_option',
+                      value: 'True',
+                      positionId: 'pos_true',
+                      positionOrder: 1,
+                      correct: question.correctAnswer === true || question.correctAnswer === 'True'
+                    },
+                    {
+                      id: 'false_option',
+                      value: 'False',
+                      positionId: 'pos_false',
+                      positionOrder: 2,
+                      correct: question.correctAnswer === false || question.correctAnswer === 'False'
+                    }
+                  ]
+                }
+              };
+            }
+
+          case 'FILL_IN_THE_BLANK':
+          case 'fill-blank':
+            return {
+              ...baseQuestion,
+              content: question.content || {
+                data: []
+              }
+            };
+
+          case 'DROPDOWN':
+          case 'dropdown':
+            return {
+              ...baseQuestion,
+              content: question.content || {
+                data: []
+              }
+            };
+
+          case 'DRAG_AND_DROP':
+          case 'drag-drop':
+            return {
+              ...baseQuestion,
+              content: question.content || {
+                data: []
+              }
+            };
+
+          case 'REARRANGE':
+          case 'reorder':
+            return {
+              ...baseQuestion,
+              content: question.content || {
+                data: []
+              }
+            };
+
+          default:
+            return {
+              ...baseQuestion,
+              content: {
+                data: []
+              }
+            };
         }
-      ]),
-      recordingTimeSeconds: isSpeakingChallenge ? recordingTimeSeconds : null, // Add recording time for speaking challenges
-      timeLimit: isSpeakingChallenge ? recordingTimeSeconds : (isWritingChallenge ? 300 : (isListeningChallenge ? 180 : 120)), // Use recording time for speaking, 5 minutes for writing, 3 minutes for listening, 2 minutes for reading
-      points: isSpeakingChallenge ? recordingTimeSeconds > 120 ? 5 : 3 : (isWritingChallenge ? 5 : 2) // Points based on recording time for speaking
-    };
+      });
 
-    // Store the passage data in localStorage for now (fake API)
-    const storageKey = isWritingChallenge ? 'writingPassages' : (isListeningChallenge ? 'listeningPassages' : (isSpeakingChallenge ? 'speakingPassages' : 'readingPassages'));
-    const existingPassages = JSON.parse(localStorage.getItem(storageKey) || '[]');
-    existingPassages.push(fakePassageData);
-    localStorage.setItem(storageKey, JSON.stringify(existingPassages));
+      // Create section data similar to Grammar & Vocabulary but with multiple questions in one section
+      // Include sectionId if editing existing passage
+      const sectionData = {
+        section: {
+          id: passage.sectionId || null, // Include sectionId when editing
+          sectionTitle: isWritingChallenge ? "Writing Prompt" : "Reading Passage",
+          sectionsUrl: "", // Not used for reading challenges
+          sectionsContent: passage.content,
+          orderNumber: 1, // First section
+          resourceType: "DOCUMENT"
+        },
+        questions: transformedQuestions
+      };
 
-    spaceToast.success(`${isWritingChallenge ? 'Writing' : (isListeningChallenge ? 'Listening' : (isSpeakingChallenge ? 'Speaking' : 'Reading'))} challenge saved successfully!`);
-    
-    // Navigate back to DailyChallengeContent
-    handleBack();
+      console.log('Saving section with questions:', sectionData);
+      console.log('Challenge ID:', currentChallengeId);
+
+      // Try using the same API as DailyChallengeContent but with multiple questions
+      const response = await dailyChallengeApi.saveSectionWithQuestions(currentChallengeId, sectionData);
+      
+      if (response.message) {
+        spaceToast.success(response.data?.message || response.message || "Challenge saved successfully!");
+        
+        // Navigate back to DailyChallengeContent with proper path based on user role
+        const userRole = user?.role?.toLowerCase();
+        const basePath = userRole === 'teaching_assistant' 
+          ? '/teaching-assistant/daily-challenges/detail'
+          : '/teacher/daily-challenges/detail';
+        
+        navigate(`${basePath}/${currentChallengeId}/content`, {
+          state: {
+            challengeId: currentChallengeId,
+            challengeName,
+            classId,
+            className
+          }
+        });
+        return; // Exit function after successful navigation
+      }
+
+    } catch (error) {
+      console.error('Error saving challenge:', error);
+      spaceToast.error(error.response?.data?.error || error.response?.data?.message || "Failed to save challenge. Please try again.");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   // No need for add/discard passage functions since we only have one passage
@@ -398,10 +566,11 @@ const CreateReadingChallenge = () => {
           )
         };
       } else {
-        // Add new question
+        // Add new question - don't assign id, let backend generate it
         const newQuestion = {
           ...questionData,
-          id: Date.now(),
+          // No id field - backend will generate it
+          isFromBackend: false, // Mark as new question
         };
         return {
           ...prevPassage,
@@ -429,7 +598,6 @@ const CreateReadingChallenge = () => {
       'dropdown': 'DROPDOWN',
       'drag-drop': 'DRAGNDROP',
       'reorder': 'REORDER',
-    
     };
     return typeMap[type] || type.toUpperCase();
   };
@@ -659,6 +827,8 @@ const CreateReadingChallenge = () => {
                   icon={<SaveOutlined />} 
               className={`create-button ${theme}-create-button`}
                   onClick={handleSave}
+                  loading={isSaving}
+                  disabled={isSaving}
               style={{
                 height: '40px',
                 borderRadius: '8px',
@@ -674,9 +844,10 @@ const CreateReadingChallenge = () => {
                 boxShadow: theme === 'sun' ? '0 2px 8px rgba(60, 153, 255, 0.3)' : '0 2px 8px rgba(131, 119, 160, 0.3)'
               }}
             >
-                  {isWritingChallenge ? (t('common.saveChanges') || 'Save Writing Topic') : 
-                   isSpeakingChallenge ? (t('common.saveChanges') || 'Save Speaking Topic') : 
-                   (t('common.saveChanges') || 'Save Challenge')}
+              {isSaving 
+                ? (isWritingChallenge ? 'Saving Writing Prompt...' : 'Saving Challenge...')
+                : (isWritingChallenge ? (t('common.saveChanges') || 'Save Writing Prompt') : (t('common.saveChanges') || 'Save Challenge'))
+              }
                 </Button>
           </div>
         </div>
@@ -836,6 +1007,18 @@ const CreateReadingChallenge = () => {
                      )}
                    </div>
                  )}
+                 {/* Title - Always show at top */}
+                 <div style={{ marginBottom: '32px' }}>
+                   <Title level={3} style={{ 
+                     textAlign: "center", 
+                     color: theme === 'sun' ? '#1E40AF' : '#8377A0'
+                   }}>
+                     {editingPassage 
+                       ? (isWritingChallenge ? 'Edit writing topic' : 'Edit passage')
+                       : (isWritingChallenge ? 'Add writing topic' : 'Add passage')
+                     }
+                   </Title>
+                 </div>
 
                  {/* Passage Content */}
                  <div className="rc-passage-content" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>

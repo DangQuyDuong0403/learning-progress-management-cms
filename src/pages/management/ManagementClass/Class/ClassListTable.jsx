@@ -553,12 +553,25 @@ const ClassListTable = () => {
 				
 				const createResponse = await classManagementApi.createClass(newClassData);
 				
-				// Refresh the list
-				fetchClasses(1, pagination.pageSize, searchText, sortBy, sortDir, appliedFilters);
-				
 				// Use BE success message if available, otherwise use i18n
 				const successMessage = createResponse?.message || t('classManagement.classCreatedSuccess');
 				spaceToast.success(successMessage);
+				
+				// Navigate to class detail page after successful creation
+				if (createResponse?.data?.id) {
+					// Enter class menu mode with class data
+					enterClassMenu({
+						id: createResponse.data.id,
+						name: createResponse.data.className || values.name,
+						description: createResponse.data.description || ''
+					});
+					
+					// Navigate to class menu
+					navigate(`/manager/classes/menu/${createResponse.data.id}`);
+				} else {
+					// Fallback: refresh the list if no ID returned
+					fetchClasses(1, pagination.pageSize, searchText, sortBy, sortDir, appliedFilters);
+				}
 			}
 
 			setIsModalVisible(false);
