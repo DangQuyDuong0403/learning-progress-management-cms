@@ -1432,24 +1432,156 @@ const DailyChallengeContent = () => {
   const handleModalSave = useCallback(async (questionData) => {
     try {
       if (editingQuestion) {
-        // Update existing question - chỉ update local state, đánh dấu để bulk update sau
-        setQuestions(prev => prev.map(q => {
-          if (q.id === editingQuestion.id) {
-            return { 
-              ...questionData, 
-              id: editingQuestion.id,
-              sectionId: editingQuestion.sectionId, // Giữ lại sectionId
-              isModified: true, // Đánh dấu câu hỏi đã được chỉnh sửa
-              toBeDeleted: false, // Reset delete flag nếu có
-            };
-          }
-          return q;
-        }));
+        // Update existing question - Gọi API để update section với question mới
+        setSavingQuestion(true);
         
-        spaceToast.success(`${questionData.title || 'Question'} updated successfully!`);
-        
-        // Close modal immediately for edit mode
+        // Close modal immediately
         setModalVisible(false);
+        
+        // Transform question to API format based on question type
+        let apiQuestion;
+        
+        // Use existing order number
+        const orderNumber = editingQuestion.orderNumber || 1;
+        
+        if (questionData.type === 'MULTIPLE_CHOICE' || questionData.type === 'MULTIPLE_SELECT') {
+          // Multiple choice/question
+          apiQuestion = {
+            id: editingQuestion.id, // Include question ID
+            questionText: questionData.question,
+            orderNumber: orderNumber,
+            score: questionData.points || 0.5,
+            questionType: questionData.type === 'MULTIPLE_SELECT' ? 'MULTIPLE_SELECT' : 'MULTIPLE_CHOICE',
+            toBeDeleted: false, // Mark as active
+            content: {
+              data: questionData.options ? questionData.options.map((option, optIndex) => ({
+                id: option.key ? option.key.replace('.', '') : `opt${optIndex + 1}`,
+                value: option.text,
+                positionOrder: optIndex + 1,
+                correct: option.isCorrect || false
+              })) : []
+            }
+          };
+        } else if (questionData.type === 'TRUE_OR_FALSE') {
+          // True/False question
+          apiQuestion = {
+            id: editingQuestion.id, // Include question ID
+            questionText: questionData.question,
+            orderNumber: orderNumber,
+            score: questionData.points || 0.5,
+            questionType: 'TRUE_OR_FALSE',
+            toBeDeleted: false, // Mark as active
+            content: {
+              data: questionData.options ? questionData.options.map((option, optIndex) => ({
+                id: `opt${optIndex + 1}`,
+                value: option.text,
+                positionOrder: optIndex + 1,
+                correct: option.isCorrect || false
+              })) : []
+            }
+          };
+        } else if (questionData.type === 'FILL_IN_THE_BLANK') {
+          apiQuestion = {
+            id: editingQuestion.id, // Include question ID
+            questionText: questionData.questionText || questionData.question,
+            orderNumber: orderNumber,
+            score: questionData.points || 0.5,
+            questionType: 'FILL_IN_THE_BLANK',
+            toBeDeleted: false, // Mark as active
+            content: {
+              data: questionData.content?.data || []
+            }
+          };
+        } else if (questionData.type === 'DROPDOWN') {
+          apiQuestion = {
+            id: editingQuestion.id, // Include question ID
+            questionText: questionData.questionText || questionData.question,
+            orderNumber: orderNumber,
+            score: questionData.points || 0.5,
+            questionType: 'DROPDOWN',
+            toBeDeleted: false, // Mark as active
+            content: {
+              data: questionData.content?.data || []
+            }
+          };
+        } else if (questionData.type === 'DRAG_AND_DROP') {
+          apiQuestion = {
+            id: editingQuestion.id, // Include question ID
+            questionText: questionData.questionText || questionData.question,
+            orderNumber: orderNumber,
+            score: questionData.points || 1,
+            questionType: 'DRAG_AND_DROP',
+            toBeDeleted: false, // Mark as active
+            content: {
+              data: questionData.content?.data || []
+            }
+          };
+        } else if (questionData.type === 'REARRANGE') {
+          apiQuestion = {
+            id: editingQuestion.id, // Include question ID
+            questionText: questionData.questionText || questionData.question,
+            orderNumber: orderNumber,
+            score: questionData.points || 1,
+            questionType: 'REARRANGE',
+            toBeDeleted: false, // Mark as active
+            content: {
+              data: questionData.content?.data || []
+            }
+          };
+        } else if (questionData.type === 'REWRITE') {
+          apiQuestion = {
+            id: editingQuestion.id, // Include question ID
+            questionText: questionData.questionText || questionData.question,
+            orderNumber: orderNumber,
+            score: questionData.points || 1,
+            questionType: 'REWRITE',
+            toBeDeleted: false, // Mark as active
+            content: {
+              data: questionData.content?.data || []
+            }
+          };
+        } else {
+          apiQuestion = {
+            id: editingQuestion.id, // Include question ID
+            questionText: questionData.question,
+            orderNumber: orderNumber,
+            score: questionData.points || 0.5,
+            questionType: questionData.type ? questionData.type.toUpperCase().replace(/-/g, '_') : 'MULTIPLE_CHOICE',
+            toBeDeleted: false, // Mark as active
+            content: {
+              data: questionData.options ? questionData.options.map((option, optIndex) => ({
+                id: `opt${optIndex + 1}`,
+                value: option.text,
+                positionOrder: optIndex + 1,
+                correct: option.isCorrect || false
+              })) : []
+            }
+          };
+        }
+
+        // Prepare section data with updated question
+        const sectionContent = 'Choose one correct answer.';
+        
+        const sectionData = {
+          section: {
+            id: editingQuestion.sectionId, // Gửi sectionId để update section đó
+            sectionsContent: sectionContent,
+            resourceType: 'NONE'
+          },
+          questions: [apiQuestion]
+        };
+
+        console.log('Updating existing question in section:', sectionData);
+
+        // Call API to update the section
+        const response = await dailyChallengeApi.saveSectionWithQuestions(id, sectionData);
+        
+        // Refresh questions from API to get the updated question
+        await fetchQuestions();
+        
+        spaceToast.success(response.message || 'Question updated successfully!');
+        
+        // Reset modal states
         setCurrentModalType(null);
         setEditingQuestion(null);
       } else {
@@ -1719,10 +1851,7 @@ const DailyChallengeContent = () => {
       // Group questions by sectionId to get unique sections
       const sectionsMap = new Map();
       
-      // Track modified questions that need to be updated
-      const modifiedQuestions = [];
-      
-      // First, collect all sections (including deleted ones)
+      // Collect all sections (including deleted ones)
       questions.forEach((question) => {
         if (question.sectionId !== undefined && question.sectionId !== null) {
           const sectionId = question.sectionId;
@@ -1740,11 +1869,6 @@ const DailyChallengeContent = () => {
           } else {
             // If this question is not deleted, mark that section has visible questions
             sectionsMap.get(sectionId).hasVisibleQuestions = true;
-            
-            // Track modified questions
-            if (question.isModified) {
-              modifiedQuestions.push(question);
-            }
           }
         }
       });
@@ -1758,25 +1882,14 @@ const DailyChallengeContent = () => {
 
       console.log('Bulk update sections data:', {
         count: bulkUpdateData.length,
-        sections: bulkUpdateData,
-        modifiedQuestions: modifiedQuestions.length
+        sections: bulkUpdateData
       });
 
       // Step 1: Call bulk update API to save/reorder sections
       const bulkResponse = await dailyChallengeApi.bulkUpdateSections(id, bulkUpdateData);
       console.log('Bulk update response:', bulkResponse);
-      
-      // Step 2: Log modified questions
-      // Note: Backend needs to implement PUT /sections/{sectionId} or PUT /questions/{questionId} 
-      // to save edited questions. Current implementation only updates local state.
-      if (modifiedQuestions.length > 0) {
-        console.log(`Note: ${modifiedQuestions.length} modified questions detected.`);
-        console.log('Modified questions:', modifiedQuestions);
-        console.log('These changes are currently in local state only.');
-        console.log('Backend API needed: PUT /sections/{sectionId} or PUT /questions/{questionId}');
-      }
 
-      // Step 3: Update challenge status if saveAsStatus is provided
+      // Step 2: Update challenge status if saveAsStatus is provided
       if (saveAsStatus) {
         // Convert saveAsStatus to API format (DRAFT or PUBLISHED)
         const challengeStatus = saveAsStatus === 'published' ? 'PUBLISHED' : 'DRAFT';
@@ -1800,9 +1913,6 @@ const DailyChallengeContent = () => {
 
       // Refresh questions from API to get updated data
       await fetchQuestions();
-      
-      // Reset isModified flags for all questions
-      setQuestions(prev => prev.map(q => ({ ...q, isModified: false })));
 
     } catch (error) {
       console.error('Error saving changes:', error);
@@ -1959,7 +2069,7 @@ const DailyChallengeContent = () => {
 
   const handlePointsChange = useCallback((questionId, value) => {
     setQuestions(prev => prev.map(q => 
-      q.id === questionId ? { ...q, points: value, isModified: true } : q
+      q.id === questionId ? { ...q, points: value } : q
     ));
   }, []);
 
