@@ -542,7 +542,7 @@ const ChapterListPage = () => {
 		{
 			title: t('chapterManagement.stt'),
 			key: 'index',
-			width: '10%',
+			width: '8%',
 			render: (_, __, index) => {
 				// Calculate index based on current page and page size
 				const currentPage = pagination.current || 1;
@@ -579,7 +579,7 @@ const ChapterListPage = () => {
 		{
 			title: t('chapterManagement.actions'),
 			key: 'actions',
-			width: '20%',
+			width: '8%',
 			render: (_, record) => (
 				<Space size="small">
 					<Tooltip title={t('chapterManagement.viewLessons')}>
