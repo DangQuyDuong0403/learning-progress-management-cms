@@ -86,6 +86,303 @@ const getChallengeTypeName = (typeCode) => {
   return typeMap[typeCode] || typeCode || 'Unknown';
 };
 
+// Sortable Passage Item Component
+const SortablePassageItem = memo(
+  ({ passage, index, onDeletePassage, onEditPassage, onDuplicatePassage, onPointsChange, theme, t }) => {
+    const animateLayoutChanges = useCallback((args) => {
+      const { isSorting, wasDragging } = args;
+      if (isSorting || wasDragging) {
+        return defaultAnimateLayoutChanges(args);
+      }
+      return true;
+    }, []);
+
+    const {
+      attributes,
+      listeners,
+      setNodeRef,
+      transform,
+      transition,
+      isDragging,
+    } = useSortable({
+      id: passage.id,
+      animateLayoutChanges,
+    });
+
+    const style = useMemo(
+      () => ({
+        transform: transform ? CSS.Transform.toString(transform) : undefined,
+        transition: transition || undefined,
+        opacity: isDragging ? 0.5 : 1,
+        willChange: 'transform',
+      }),
+      [transform, transition, isDragging]
+    );
+
+    const handleEdit = useCallback(() => {
+      onEditPassage(passage.id);
+    }, [passage.id, onEditPassage]);
+
+    const handleDelete = useCallback(() => {
+      onDeletePassage(passage.id);
+    }, [passage.id, onDeletePassage]);
+
+    const handleDuplicate = useCallback(() => {
+      onDuplicatePassage(passage.id);
+    }, [passage.id, onDuplicatePassage]);
+
+    const handlePointChange = useCallback((value) => {
+      onPointsChange(passage.id, value);
+    }, [passage.id, onPointsChange]);
+
+    return (
+      <div
+        ref={setNodeRef}
+        style={style}
+        className={`passage-item ${theme}-passage-item ${isDragging ? 'dragging' : ''}`}
+      >
+        <div className="passage-header">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1 }}>
+            <div className='drag-handle' {...attributes} {...listeners}>
+              <SwapOutlined
+                rotate={90}
+                style={{
+                  fontSize: '20px',
+                  color: '#999',
+                  cursor: 'grab',
+                }}
+              />
+            </div>
+            <Typography.Text strong>Passage for next {passage.questions?.length || 0} questions</Typography.Text>
+          </div>
+          <div className="passage-controls">
+            <Select
+              value={passage.points}
+              onChange={handlePointChange}
+              style={{ width: 100 }}
+              size="small"
+            >
+              <Select.Option value={1}>1 {t('dailyChallenge.point') || 'điểm'}</Select.Option>
+              <Select.Option value={2}>2 {t('dailyChallenge.point') || 'điểm'}</Select.Option>
+              <Select.Option value={3}>3 {t('dailyChallenge.point') || 'điểm'}</Select.Option>
+              <Select.Option value={5}>5 {t('dailyChallenge.point') || 'điểm'}</Select.Option>
+            </Select>
+            <Space size="small">
+              <Tooltip title={t('common.edit') || 'Chỉnh sửa'}>
+                <Button
+                  type="text"
+                  icon={<EditOutlined />}
+                  onClick={handleEdit}
+                  size="small"
+                />
+              </Tooltip>
+              <Tooltip title={t('common.delete') || 'Xóa'}>
+                <Button
+                  type="text"
+                  icon={<DeleteOutlined />}
+                  onClick={handleDelete}
+                  size="small"
+                  danger
+                />
+              </Tooltip>
+              <Tooltip title={t('common.duplicate') || 'Nhân bản'}>
+                <Button
+                  type="text"
+                  icon={<CopyOutlined />}
+                  onClick={handleDuplicate}
+                  size="small"
+                />
+              </Tooltip>
+            </Space>
+          </div>
+        </div>
+
+        <div className="passage-content">
+          {/* Passage Text */}
+          <div 
+            style={{ 
+              marginBottom: '16px', 
+              fontSize: '15px', 
+              fontWeight: 500,
+              lineHeight: '1.8',
+              padding: '16px',
+              background: theme === 'sun' 
+                ? 'rgba(240, 249, 255, 0.5)' 
+                : 'rgba(244, 240, 255, 0.3)',
+              borderRadius: '8px',
+              border: theme === 'sun' 
+                ? '1px solid rgba(113, 179, 253, 0.2)' 
+                : '1px solid rgba(138, 122, 255, 0.2)'
+            }}
+            dangerouslySetInnerHTML={{ __html: passage.content }}
+          />
+
+          {/* Questions inside passage */}
+          {passage.questions && passage.questions.length > 0 && (
+            <div style={{ marginTop: '16px' }}>
+              {passage.questions.map((question, qIndex) => (
+                <div 
+                  key={question.id}
+                  className={`question-item ${theme}-question-item`}
+                  style={{
+                    marginBottom: '16px',
+                    padding: '16px',
+                    background: theme === 'sun' ? '#ffffff' : 'rgba(255, 255, 255, 0.05)',
+                    borderRadius: '8px',
+                    border: theme === 'sun' 
+                      ? '1px solid rgba(0, 0, 0, 0.1)' 
+                      : '1px solid rgba(255, 255, 255, 0.1)',
+                    boxShadow: theme === 'sun' 
+                      ? '0 2px 4px rgba(0, 0, 0, 0.1)' 
+                      : '0 2px 4px rgba(0, 0, 0, 0.2)'
+                  }}
+                >
+                  <div className="question-header">
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1 }}>
+                      <Typography.Text strong>{qIndex + 1}. {getQuestionTypeLabel(question.type)}</Typography.Text>
+                    </div>
+                    <div className="question-controls">
+                      <Select
+                        value={question.points}
+                        style={{ width: 100 }}
+                        size="small"
+                      >
+                        <Select.Option value={1}>1 {t('dailyChallenge.point') || 'điểm'}</Select.Option>
+                        <Select.Option value={2}>2 {t('dailyChallenge.point') || 'điểm'}</Select.Option>
+                        <Select.Option value={3}>3 {t('dailyChallenge.point') || 'điểm'}</Select.Option>
+                        <Select.Option value={5}>5 {t('dailyChallenge.point') || 'điểm'}</Select.Option>
+                      </Select>
+                    </div>
+                  </div>
+
+                  <div className="question-content">
+                    {/* Render question based on type */}
+                    {question.type === 'FILL_IN_THE_BLANK' ? (
+                      <div>
+                        <div 
+                          style={{ 
+                            marginBottom: '16px', 
+                            fontSize: '15px', 
+                            fontWeight: 500 
+                          }}
+                          dangerouslySetInnerHTML={{ __html: question.questionText || question.question }}
+                        />
+                        {question.content?.data && question.content.data.length > 0 && (
+                          <div style={{ 
+                            marginTop: '16px',
+                            display: 'flex', 
+                            flexWrap: 'wrap', 
+                            gap: '12px'
+                          }}>
+                            {question.content.data.map((item, idx) => (
+                              <div 
+                                key={idx}
+                                style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '8px',
+                                  padding: '8px 16px',
+                                  background: theme === 'sun' 
+                                    ? 'rgba(24, 144, 255, 0.08)' 
+                                    : 'rgba(139, 92, 246, 0.15)',
+                                  border: theme === 'sun' 
+                                    ? '2px solid rgba(24, 144, 255, 0.3)' 
+                                    : '2px solid rgba(139, 92, 246, 0.4)',
+                                  borderRadius: '8px',
+                                  fontSize: '14px',
+                                  fontWeight: 500
+                                }}
+                              >
+                                <span style={{ 
+                                  fontWeight: 700, 
+                                  color: theme === 'sun' ? '#1890ff' : '#8B5CF6',
+                                  fontSize: '15px'
+                                }}>
+                                  ({idx + 1})
+                                </span>
+                                <span style={{ color: theme === 'sun' ? '#333' : '#000000' }}>
+                                  {item.value}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <>
+                        <div 
+                          style={{ 
+                            marginBottom: '16px', 
+                            fontSize: '15px', 
+                            fontWeight: 500 
+                          }}
+                          dangerouslySetInnerHTML={{ __html: question.question }}
+                        />
+                        {question.options && (
+                          <div className="question-options">
+                            {question.options.map((option) => (
+                              <div 
+                                key={option.key} 
+                                className={`option-item ${option.isCorrect ? 'correct-answer' : ''}`}
+                                style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}
+                              >
+                                <span className="option-key" style={{ flexShrink: 0 }}>{option.key}.</span>
+                                <div 
+                                  style={{ flex: 1 }}
+                                  dangerouslySetInnerHTML={{ __html: option.text }} 
+                                />
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  },
+  (prevProps, nextProps) => {
+    return (
+      prevProps.passage.id === nextProps.passage.id &&
+      prevProps.passage.content === nextProps.passage.content &&
+      prevProps.passage.points === nextProps.passage.points &&
+      prevProps.theme === nextProps.theme &&
+      prevProps.index === nextProps.index
+    );
+  }
+);
+
+SortablePassageItem.displayName = 'SortablePassageItem';
+
+// Helper function to get question type label
+const getQuestionTypeLabel = (type) => {
+  switch(type) {
+    case 'MULTIPLE_CHOICE':
+      return 'Multiple Choice';
+    case 'MULTIPLE_SELECT':
+      return 'Multiple Select';
+    case 'TRUE_OR_FALSE':
+      return 'True/False';
+    case 'FILL_IN_THE_BLANK':
+      return 'Fill in the Blank';
+    case 'DROPDOWN':
+      return 'Dropdown';
+    case 'DRAG_AND_DROP':
+      return 'Drag and Drop';
+    case 'REARRANGE':
+      return 'Rearrange';
+    case 'REWRITE':
+      return 'Re-write';
+    default:
+      return 'Multiple Choice';
+  }
+};
+
 // Sortable Question Item Component
 const SortableQuestionItem = memo(
   ({ question, index, onDeleteQuestion, onEditQuestion, onDuplicateQuestion, onPointsChange, theme, t }) => {
@@ -149,7 +446,7 @@ const SortableQuestionItem = memo(
       const blankBorderColor = theme === 'sun' 
         ? 'rgba(24, 144, 255, 0.3)' 
         : 'rgba(139, 92, 246, 0.4)';
-      const answerTextColor = theme === 'sun' ? '#333' : '#e0e0e0';
+      const answerTextColor = theme === 'sun' ? '#333' : '#000000';
 
       // Parse questionText and replace [[pos_xxx]] with (1)____, (2)____, etc.
       let displayText = question.questionText;
@@ -259,7 +556,7 @@ const SortableQuestionItem = memo(
       const correctBorderColor = theme === 'sun' 
         ? 'rgba(82, 196, 26, 0.4)' 
         : 'rgba(115, 209, 61, 0.5)';
-      const answerTextColor = theme === 'sun' ? '#333' : '#e0e0e0';
+      const answerTextColor = theme === 'sun' ? '#333' : '#000000';
       const labelColor = theme === 'sun' ? '#666' : '#b0b0b0';
       const optionBgColor = theme === 'sun' 
         ? 'rgba(0, 0, 0, 0.04)' 
@@ -456,7 +753,7 @@ const SortableQuestionItem = memo(
       const incorrectBorderColor = theme === 'sun' 
         ? 'rgba(217, 217, 217, 0.5)' 
         : 'rgba(255, 255, 255, 0.2)';
-      const answerTextColor = theme === 'sun' ? '#333' : '#e0e0e0';
+      const answerTextColor = theme === 'sun' ? '#333' : '#000000';
       const incorrectTextColor = theme === 'sun' ? '#666' : '#b0b0b0';
 
       // Parse questionText and replace [[pos_xxx]] with styled blanks
@@ -635,7 +932,7 @@ const SortableQuestionItem = memo(
       const correctBorderColor = theme === 'sun' 
         ? 'rgba(82, 196, 26, 0.3)' 
         : 'rgba(115, 209, 61, 0.4)';
-      const textColor = theme === 'sun' ? '#333' : '#e0e0e0';
+      const textColor = theme === 'sun' ? '#333' : '#000000';
 
       // Parse questionText and replace [[pos_xxx]] with styled blanks
       let displayText = question.questionText || '';
@@ -788,7 +1085,7 @@ const SortableQuestionItem = memo(
         ? '#bbf7d0' 
         : 'rgba(187, 247, 208, 0.3)';
       const answerBorderColor = theme === 'sun' ? '#22c55e' : '#73d13d';
-      const textColor = theme === 'sun' ? '#333' : '#e0e0e0';
+      const textColor = theme === 'sun' ? '#333' : '#000000';
 
       // Parse questionText and remove positionId markers for display
       let displayText = question.questionText;
@@ -1098,6 +1395,7 @@ SortableQuestionItem.displayName = 'SortableQuestionItem';
 
 // Question types constant
 const questionTypes = [
+  { id: 0, name: "AI Generate Questions", type: "ai-generate", featured: true },
   { id: 1, name: "Multiple choice", type: "multiple-choice" },
   { id: 2, name: "Multiple select", type: "multiple-select" },
   { id: 3, name: "True or false", type: "true-false" },
@@ -1131,6 +1429,7 @@ const DailyChallengeContent = () => {
   
   const [loading, setLoading] = useState(false);
   const [questions, setQuestions] = useState([]);
+  const [passages, setPassages] = useState([]);
   const [searchText, setSearchText] = useState("");
   
   // Challenge Details states
@@ -1323,10 +1622,22 @@ const DailyChallengeContent = () => {
     }
   }, [id]);
 
+  // Load passages from localStorage
+  const loadPassages = useCallback(() => {
+    try {
+      const savedPassages = JSON.parse(localStorage.getItem('readingPassages') || '[]');
+      setPassages(savedPassages);
+    } catch (error) {
+      console.error('Error loading passages:', error);
+      setPassages([]);
+    }
+  }, []);
+
   useEffect(() => {
     fetchChallengeDetails();
     fetchQuestions();
-  }, [fetchChallengeDetails, fetchQuestions]);
+    loadPassages();
+  }, [fetchChallengeDetails, fetchQuestions, loadPassages]);
 
   // Enter/exit daily challenge menu mode
   // Fetch challenge info from API if not available in state
@@ -1403,25 +1714,55 @@ const DailyChallengeContent = () => {
     };
   }, [enterDailyChallengeMenu, exitDailyChallengeMenu, questions.length, challengeInfo, user]);
 
-  // Update challenge count when questions change
+  // Update challenge count when questions and passages change
   useEffect(() => {
-    const filteredCount = questions.filter((question) => {
+    const filteredQuestionCount = questions.filter((question) => {
       const matchesSearch =
         searchText === "" ||
         question.question.toLowerCase().includes(searchText.toLowerCase());
       return matchesSearch;
     }).length;
+
+    const filteredPassageCount = passages.filter((passage) => {
+      const matchesSearch =
+        searchText === "" ||
+        passage.content.toLowerCase().includes(searchText.toLowerCase()) ||
+        (passage.questions && passage.questions.some(q => 
+          q.question.toLowerCase().includes(searchText.toLowerCase())
+        ));
+      return matchesSearch;
+    }).length;
     
-    updateChallengeCount(filteredCount);
-  }, [questions, searchText, updateChallengeCount]);
+    updateChallengeCount(filteredQuestionCount + filteredPassageCount);
+  }, [questions, passages, searchText, updateChallengeCount]);
 
   const handleSearch = (value) => {
     setSearchText(value);
   };
 
   const handleAddQuestion = useCallback(() => {
+    // Open question type modal for GV challenge type
     setQuestionTypeModalVisible(true);
   }, []);
+
+  const handleAddPassage = useCallback(() => {
+    // Navigate to CreateReadingChallenge for RE challenge type
+    const challengeType = challengeDetails?.challengeType;
+    const userRole = user?.role?.toLowerCase();
+    const basePath = userRole === 'teaching_assistant' 
+      ? `/teaching-assistant/daily-challenges/create/reading/${id}`
+      : `/teacher/daily-challenges/create/reading/${id}`;
+    
+    navigate(basePath, {
+      state: {
+        challengeId: id,
+        challengeName: challengeDetails?.challengeName,
+        challengeType: challengeType,
+        classId: challengeInfo.classId,
+        className: challengeInfo.className
+      }
+    });
+  }, [challengeDetails, id, challengeInfo, navigate, user]);
 
   const handleQuestionTypeClick = useCallback((questionType) => {
     setCurrentModalType(questionType.type);
@@ -1989,6 +2330,71 @@ const DailyChallengeContent = () => {
     ));
   }, []);
 
+  // Passage handlers
+  const handleDeletePassage = useCallback((passageId) => {
+    setPassages(prev => prev.filter(p => p.id !== passageId));
+    // Also remove from localStorage
+    const updatedPassages = passages.filter(p => p.id !== passageId);
+    localStorage.setItem('readingPassages', JSON.stringify(updatedPassages));
+    spaceToast.success('Passage deleted successfully!');
+  }, [passages]);
+
+  const handleEditPassage = useCallback((passageId) => {
+    // Navigate to CreateReadingChallenge for editing
+    const passage = passages.find(p => p.id === passageId);
+    if (passage) {
+      const userRole = user?.role?.toLowerCase();
+      const basePath = userRole === 'teaching_assistant' 
+        ? `/teaching-assistant/daily-challenges/create/reading/${id}`
+        : `/teacher/daily-challenges/create/reading/${id}`;
+      
+      navigate(basePath, {
+        state: {
+          challengeId: id,
+          challengeName: challengeDetails?.challengeName,
+          challengeType: challengeDetails?.challengeType,
+          classId: challengeInfo.classId,
+          className: challengeInfo.className,
+          editingPassage: passage
+        }
+      });
+    }
+  }, [passages, id, challengeDetails, challengeInfo, navigate, user]);
+
+  const handleDuplicatePassage = useCallback((passageId) => {
+    const passageToDuplicate = passages.find(p => p.id === passageId);
+    if (passageToDuplicate) {
+      const newPassage = {
+        ...passageToDuplicate,
+        id: `passage_${Date.now()}`,
+        content: `${passageToDuplicate.content} (Copy)`,
+        questions: passageToDuplicate.questions?.map(q => ({
+          ...q,
+          id: `question_${Date.now()}_${Math.random()}`
+        })) || []
+      };
+      setPassages(prev => [...prev, newPassage]);
+      
+      // Update localStorage
+      const updatedPassages = [...passages, newPassage];
+      localStorage.setItem('readingPassages', JSON.stringify(updatedPassages));
+      
+      spaceToast.success('Passage duplicated successfully!');
+    }
+  }, [passages]);
+
+  const handlePassagePointsChange = useCallback((passageId, value) => {
+    setPassages(prev => prev.map(p => 
+      p.id === passageId ? { ...p, points: value } : p
+    ));
+    
+    // Update localStorage
+    const updatedPassages = passages.map(p => 
+      p.id === passageId ? { ...p, points: value } : p
+    );
+    localStorage.setItem('readingPassages', JSON.stringify(updatedPassages));
+  }, [passages]);
+
   const handleDragStart = useCallback(() => {
     document.body.style.overflow = 'hidden';
     document.body.classList.add('is-dragging');
@@ -2049,9 +2455,28 @@ const DailyChallengeContent = () => {
     });
   }, [questions, searchText]);
 
+  // Filter passages (apply search filter)
+  const filteredPassages = useMemo(() => {
+    return passages.filter((passage) => {
+      // Apply search filter
+      const matchesSearch =
+        searchText === "" ||
+        passage.content.toLowerCase().includes(searchText.toLowerCase()) ||
+        (passage.questions && passage.questions.some(q => 
+          q.question.toLowerCase().includes(searchText.toLowerCase())
+        ));
+      return matchesSearch;
+    });
+  }, [passages, searchText]);
+
   const questionIds = useMemo(() => 
     filteredQuestions.map((question) => question.id), 
     [filteredQuestions]
+  );
+
+  const passageIds = useMemo(() => 
+    filteredPassages.map((passage) => passage.id), 
+    [filteredPassages]
   );
 
   // Handle back button click - Navigate to Performance page with state
@@ -2188,28 +2613,77 @@ const DailyChallengeContent = () => {
             </Button>
             </Dropdown>
 
-            <Button 
-              icon={<PlusOutlined />}
-              className={`create-button ${theme}-create-button`}
-              onClick={handleAddQuestion}
-              style={{
-                height: '40px',
-                borderRadius: '8px',
-                fontWeight: 500,
-                fontSize: '16px',
-                padding: '0 24px',
-                border: 'none',
-                transition: 'all 0.3s ease',
-                background: theme === 'sun' 
-                  ? 'linear-gradient(135deg, rgba(102, 174, 255, 0.6), rgba(60, 153, 255, 0.6))'
-                  : 'linear-gradient(135deg, rgba(181, 176, 192, 0.7), rgba(163, 158, 187, 0.7), rgba(131, 119, 160, 0.7), rgba(172, 165, 192, 0.7), rgba(109, 95, 143, 0.7))',
-                color: theme === 'sun' ? '#000000' : '#000000',
-                boxShadow: theme === 'sun' ? '0 2px 8px rgba(60, 153, 255, 0.2)' : '0 2px 8px rgba(131, 119, 160, 0.3)',
-                opacity: 0.9
-              }}
-            >
-              {t('dailyChallenge.addQuestion')}
-            </Button>
+            {/* Show different buttons based on ChallengeType */}
+            {challengeDetails?.challengeType === 'GV' ? (
+              <Button 
+                icon={<PlusOutlined />}
+                className={`create-button ${theme}-create-button`}
+                onClick={handleAddQuestion}
+                style={{
+                  height: '40px',
+                  borderRadius: '8px',
+                  fontWeight: 500,
+                  fontSize: '16px',
+                  padding: '0 24px',
+                  border: 'none',
+                  transition: 'all 0.3s ease',
+                  background: theme === 'sun' 
+                    ? 'linear-gradient(135deg, rgba(102, 174, 255, 0.6), rgba(60, 153, 255, 0.6))'
+                    : 'linear-gradient(135deg, rgba(181, 176, 192, 0.7), rgba(163, 158, 187, 0.7), rgba(131, 119, 160, 0.7), rgba(172, 165, 192, 0.7), rgba(109, 95, 143, 0.7))',
+                  color: theme === 'sun' ? '#000000' : '#000000',
+                  boxShadow: theme === 'sun' ? '0 2px 8px rgba(60, 153, 255, 0.2)' : '0 2px 8px rgba(131, 119, 160, 0.3)',
+                  opacity: 0.9
+                }}
+              >
+                {t('dailyChallenge.addQuestion')}
+              </Button>
+            ) : challengeDetails?.challengeType === 'RE' ? (
+              <Button 
+                icon={<PlusOutlined />}
+                className={`create-button ${theme}-create-button`}
+                onClick={handleAddPassage}
+                style={{
+                  height: '40px',
+                  borderRadius: '8px',
+                  fontWeight: 500,
+                  fontSize: '16px',
+                  padding: '0 24px',
+                  border: 'none',
+                  transition: 'all 0.3s ease',
+                  background: theme === 'sun' 
+                    ? 'linear-gradient(135deg, rgba(102, 174, 255, 0.6), rgba(60, 153, 255, 0.6))'
+                    : 'linear-gradient(135deg, rgba(181, 176, 192, 0.7), rgba(163, 158, 187, 0.7), rgba(131, 119, 160, 0.7), rgba(172, 165, 192, 0.7), rgba(109, 95, 143, 0.7))',
+                  color: theme === 'sun' ? '#000000' : '#000000',
+                  boxShadow: theme === 'sun' ? '0 2px 8px rgba(60, 153, 255, 0.2)' : '0 2px 8px rgba(131, 119, 160, 0.3)',
+                  opacity: 0.9
+                }}
+              >
+                {t('dailyChallenge.addPassage')}
+              </Button>
+            ) : (
+              <Button 
+                icon={<PlusOutlined />}
+                className={`create-button ${theme}-create-button`}
+                onClick={handleAddQuestion}
+                style={{
+                  height: '40px',
+                  borderRadius: '8px',
+                  fontWeight: 500,
+                  fontSize: '16px',
+                  padding: '0 24px',
+                  border: 'none',
+                  transition: 'all 0.3s ease',
+                  background: theme === 'sun' 
+                    ? 'linear-gradient(135deg, rgba(102, 174, 255, 0.6), rgba(60, 153, 255, 0.6))'
+                    : 'linear-gradient(135deg, rgba(181, 176, 192, 0.7), rgba(163, 158, 187, 0.7), rgba(131, 119, 160, 0.7), rgba(172, 165, 192, 0.7), rgba(109, 95, 143, 0.7))',
+                  color: theme === 'sun' ? '#000000' : '#000000',
+                  boxShadow: theme === 'sun' ? '0 2px 8px rgba(60, 153, 255, 0.2)' : '0 2px 8px rgba(131, 119, 160, 0.3)',
+                  opacity: 0.9
+                }}
+              >
+                {t('dailyChallenge.addQuestion')}
+              </Button>
+            )}
             
             {/* Save Dropdown - Save as Draft or Published */}
             <Dropdown
@@ -2635,7 +3109,7 @@ const DailyChallengeContent = () => {
                 </Card>
         </div>
 
-        {/* Questions List */}
+        {/* Questions and Passages List */}
         <div className="questions-content">
           <LoadingWithEffect loading={loading} message={t('dailyChallenge.loadingQuestions') || 'Đang tải câu hỏi...'}>
             <div className="questions-list">
@@ -2646,14 +3120,30 @@ const DailyChallengeContent = () => {
                 onDragEnd={handleDragEnd}
               >
                 <SortableContext
-                  items={questionIds}
+                  items={[...passageIds, ...questionIds]}
                   strategy={verticalListSortingStrategy}
                 >
+                  {/* Render Passages first */}
+                  {filteredPassages.map((passage, index) => (
+                    <SortablePassageItem
+                      key={passage.id}
+                      passage={passage}
+                      index={index}
+                      onDeletePassage={handleDeletePassage}
+                      onEditPassage={handleEditPassage}
+                      onDuplicatePassage={handleDuplicatePassage}
+                      onPointsChange={handlePassagePointsChange}
+                      theme={theme}
+                      t={t}
+                    />
+                  ))}
+
+                  {/* Then render individual Questions */}
                   {filteredQuestions.map((question, index) => (
                     <SortableQuestionItem
                       key={question.id}
                       question={question}
-                      index={index}
+                      index={index + filteredPassages.length}
                       onDeleteQuestion={handleDeleteQuestion}
                       onEditQuestion={handleEditQuestion}
                       onDuplicateQuestion={handleDuplicateQuestion}
@@ -2665,7 +3155,7 @@ const DailyChallengeContent = () => {
                 </SortableContext>
               </DndContext>
 
-              {filteredQuestions.length === 0 && (
+              {filteredQuestions.length === 0 && filteredPassages.length === 0 && (
                 <div style={{ textAlign: 'center', padding: '40px', color: '#999' }}>
                   <Typography.Text>{t('dailyChallenge.noQuestions') || 'Chưa có câu hỏi nào'}</Typography.Text>
                 </div>
@@ -2680,43 +3170,83 @@ const DailyChallengeContent = () => {
 
       {/* Question Type Selection Modal */}
       <Modal
-        title="Chọn loại câu hỏi"
+        title={
+          <div style={{ 
+            fontSize: '22px', 
+            fontWeight: 700, 
+            color: theme === 'sun' ? '#1890ff' : '#8B5CF6',
+            display: 'block', 
+            textAlign: 'center',
+            marginBottom: '4px'
+          }}>
+            {t('dailyChallenge.chooseQuestionType') || 'Choose a question type'}
+          </div>
+        }
         open={questionTypeModalVisible}
         onCancel={handleQuestionTypeModalCancel}
         footer={null}
-        width={800}
-        className="gvc-question-type-modal"
+        width={720}
+        className={`gvc-question-type-modal ${theme}-question-type-modal`}
       >
-        <div className="gvc-question-types-grid">
-          {questionTypes.map((questionType) => (
-            <div
-              key={questionType.id}
-              className="gvc-question-type-card"
-              onClick={() => handleQuestionTypeClick(questionType)}
-            >
-              <div className="gvc-question-type-icon">
-                {questionType.type === "multiple-choice" && "📝"}
-                {questionType.type === "multiple-select" && "☑️"}
-                {questionType.type === "true-false" && "✅"}
-                {questionType.type === "fill-blank" && "✏️"}
-                {questionType.type === "dropdown" && "📋"}
-                {questionType.type === "drag-drop" && "🔄"}
-                {questionType.type === "reorder" && "🔀"}
-                {questionType.type === "rewrite" && "✍️"}
-              </div>
-              <div className="gvc-question-type-name">{questionType.name}</div>
-              <div className="gvc-question-type-description">
-                {questionType.type === "multiple-choice" && "Chọn một đáp án đúng"}
-                {questionType.type === "multiple-select" && "Chọn nhiều đáp án đúng"}
-                {questionType.type === "true-false" && "Đúng hoặc Sai"}
-                {questionType.type === "fill-blank" && "Điền vào chỗ trống"}
-                {questionType.type === "dropdown" && "Chọn từ danh sách"}
-                {questionType.type === "drag-drop" && "Kéo thả để sắp xếp"}
-                {questionType.type === "reorder" && "Sắp xếp lại thứ tự"}
-                {questionType.type === "rewrite" && "Viết lại câu"}
+        <div className="question-type-modal-container">
+          {/* Question Types */}
+          <div className="question-type-category">
+            <div className="category-grid">
+              {questionTypes.slice(1).map((questionType) => (
+                <div
+                  key={questionType.id}
+                  className={`question-type-card ${theme}-question-type-card`}
+                  onClick={() => handleQuestionTypeClick(questionType)}
+                >
+                  <div className="question-type-icon-wrapper">
+                    {questionType.type === "multiple-choice" && "📝"}
+                    {questionType.type === "multiple-select" && "☑️"}
+                    {questionType.type === "true-false" && "✅"}
+                    {questionType.type === "fill-blank" && "✏️"}
+                    {questionType.type === "dropdown" && "📋"}
+                    {questionType.type === "drag-drop" && "🔄"}
+                    {questionType.type === "reorder" && "🔀"}
+                    {questionType.type === "rewrite" && "✍️"}
+                  </div>
+                  <div className="question-type-name">{questionType.name}</div>
+                  <div className="question-type-description">
+                    {questionType.type === "multiple-choice" && "Choose one correct answer"}
+                    {questionType.type === "multiple-select" && "Choose multiple correct answers"}
+                    {questionType.type === "true-false" && "True or False question"}
+                    {questionType.type === "fill-blank" && "Fill in the blank spaces"}
+                    {questionType.type === "dropdown" && "Select the correct option from dropdown"}
+                    {questionType.type === "drag-drop" && "Drag and drop items to arrange"}
+                    {questionType.type === "reorder" && "Reorder words or items"}
+                    {questionType.type === "rewrite" && "Rewrite the sentence as instructed"}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* AI Generate - Featured */}
+          <div className="question-type-category">
+            <h3 className="category-title">AI Features</h3>
+            <div className="category-grid">
+              <div
+                className={`question-type-card ${theme}-question-type-card question-type-card-featured`}
+                onClick={() => handleQuestionTypeClick(questionTypes[0])}
+              >
+                <div className="question-type-icon-wrapper featured-icon">
+                  <img 
+                    src="/img/ai-icon.png" 
+                    alt="AI" 
+                    style={{ width: '44px', height: '44px', filter: theme === 'sun' ? 'none' : 'brightness(0.9)' }} 
+                  />
+                </div>
+                <div className="question-type-name">{questionTypes[0].name}</div>
+                <div className="question-type-description">
+                  Generate questions automatically with AI assistance
+                </div>
+                <div className="featured-badge">✨ AI Powered</div>
               </div>
             </div>
-          ))}
+          </div>
         </div>
       </Modal>
 

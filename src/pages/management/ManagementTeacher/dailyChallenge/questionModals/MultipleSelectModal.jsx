@@ -38,19 +38,17 @@ const MultipleSelectModal = ({
 		};
 	}
 	
-	// Option colors - matching ReorderModal color palette
+	// Option colors for sun theme - Pastel colors
 	const getOptionColors = React.useCallback(() => {
 		return [
-			'#e63946', // Red
-			'#2563eb', // Blue
-			'#059669', // Green
-			'#9333ea', // Purple
-			'#ea580c', // Orange
-			'#dc2626', // Bright Red
-			'#0891b2', // Cyan
-			'#d946ef', // Magenta
-			'#84cc16', // Lime
-			'#f59e0b', // Amber
+			'#A3D5FF', // Pastel Blue
+			'#B8E6B8', // Pastel Green
+			'#FFD6A5', // Pastel Orange
+			'#FFB3D9', // Pastel Pink
+			'#A8E6E6', // Pastel Cyan
+			'#D4B5E6', // Pastel Purple
+			'#FFCCAA', // Pastel Peach
+			'#B3C7FF', // Pastel Periwinkle
 		];
 	}, []);
 
