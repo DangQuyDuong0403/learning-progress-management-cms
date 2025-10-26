@@ -825,6 +825,7 @@ const SortableQuestionItem = memo(
                 fontSize: '14px', 
                 fontWeight: 600, 
                 color: correctColor,
+                marginBottom: '12px',
                 display: 'flex',
                 alignItems: 'center',
                 gap: '8px'
@@ -1431,11 +1432,21 @@ const DailyChallengeContent = () => {
   const handleModalSave = useCallback(async (questionData) => {
     try {
       if (editingQuestion) {
-        // Update existing question - chỉ update local state, chưa gọi API update
-        setQuestions(prev => prev.map(q => 
-          q.id === editingQuestion.id ? { ...questionData, id: editingQuestion.id } : q
-        ));
-        spaceToast.success(`${questionData.title} question updated successfully!`);
+        // Update existing question - chỉ update local state, đánh dấu để bulk update sau
+        setQuestions(prev => prev.map(q => {
+          if (q.id === editingQuestion.id) {
+            return { 
+              ...questionData, 
+              id: editingQuestion.id,
+              sectionId: editingQuestion.sectionId, // Giữ lại sectionId
+              isModified: true, // Đánh dấu câu hỏi đã được chỉnh sửa
+              toBeDeleted: false, // Reset delete flag nếu có
+            };
+          }
+          return q;
+        }));
+        
+        spaceToast.success(`${questionData.title || 'Question'} updated successfully!`);
         
         // Close modal immediately for edit mode
         setModalVisible(false);
@@ -1614,8 +1625,42 @@ const DailyChallengeContent = () => {
     setQuestions(prev => {
       const question = prev.find(q => q.id === questionId);
       if (question) {
+        console.log('Editing question:', question);
+        
+        // Map question.type to currentModalType format
+        let modalType = '';
+        switch(question.type) {
+          case 'MULTIPLE_CHOICE':
+            modalType = 'multiple-choice';
+            break;
+          case 'MULTIPLE_SELECT':
+            modalType = 'multiple-select';
+            break;
+          case 'TRUE_OR_FALSE':
+            modalType = 'true-false';
+            break;
+          case 'FILL_IN_THE_BLANK':
+            modalType = 'fill-blank';
+            break;
+          case 'DROPDOWN':
+            modalType = 'dropdown';
+            break;
+          case 'DRAG_AND_DROP':
+            modalType = 'drag-drop';
+            break;
+          case 'REARRANGE':
+            modalType = 'reorder';
+            break;
+          case 'REWRITE':
+            modalType = 'rewrite';
+            break;
+          default:
+            modalType = 'multiple-choice';
+        }
+        
+        console.log('Modal type:', modalType);
         setEditingQuestion(question);
-        setCurrentModalType(question.type);
+        setCurrentModalType(modalType);
         setModalVisible(true);
       }
       return prev;
@@ -1674,6 +1719,9 @@ const DailyChallengeContent = () => {
       // Group questions by sectionId to get unique sections
       const sectionsMap = new Map();
       
+      // Track modified questions that need to be updated
+      const modifiedQuestions = [];
+      
       // First, collect all sections (including deleted ones)
       questions.forEach((question) => {
         if (question.sectionId !== undefined && question.sectionId !== null) {
@@ -1692,6 +1740,11 @@ const DailyChallengeContent = () => {
           } else {
             // If this question is not deleted, mark that section has visible questions
             sectionsMap.get(sectionId).hasVisibleQuestions = true;
+            
+            // Track modified questions
+            if (question.isModified) {
+              modifiedQuestions.push(question);
+            }
           }
         }
       });
@@ -1705,14 +1758,25 @@ const DailyChallengeContent = () => {
 
       console.log('Bulk update sections data:', {
         count: bulkUpdateData.length,
-        sections: bulkUpdateData
+        sections: bulkUpdateData,
+        modifiedQuestions: modifiedQuestions.length
       });
 
       // Step 1: Call bulk update API to save/reorder sections
       const bulkResponse = await dailyChallengeApi.bulkUpdateSections(id, bulkUpdateData);
       console.log('Bulk update response:', bulkResponse);
+      
+      // Step 2: Log modified questions
+      // Note: Backend needs to implement PUT /sections/{sectionId} or PUT /questions/{questionId} 
+      // to save edited questions. Current implementation only updates local state.
+      if (modifiedQuestions.length > 0) {
+        console.log(`Note: ${modifiedQuestions.length} modified questions detected.`);
+        console.log('Modified questions:', modifiedQuestions);
+        console.log('These changes are currently in local state only.');
+        console.log('Backend API needed: PUT /sections/{sectionId} or PUT /questions/{questionId}');
+      }
 
-      // Step 2: Update challenge status if saveAsStatus is provided
+      // Step 3: Update challenge status if saveAsStatus is provided
       if (saveAsStatus) {
         // Convert saveAsStatus to API format (DRAFT or PUBLISHED)
         const challengeStatus = saveAsStatus === 'published' ? 'PUBLISHED' : 'DRAFT';
@@ -1736,6 +1800,9 @@ const DailyChallengeContent = () => {
 
       // Refresh questions from API to get updated data
       await fetchQuestions();
+      
+      // Reset isModified flags for all questions
+      setQuestions(prev => prev.map(q => ({ ...q, isModified: false })));
 
     } catch (error) {
       console.error('Error saving changes:', error);
@@ -1892,7 +1959,7 @@ const DailyChallengeContent = () => {
 
   const handlePointsChange = useCallback((questionId, value) => {
     setQuestions(prev => prev.map(q => 
-      q.id === questionId ? { ...q, points: value } : q
+      q.id === questionId ? { ...q, points: value, isModified: true } : q
     ));
   }, []);
 
