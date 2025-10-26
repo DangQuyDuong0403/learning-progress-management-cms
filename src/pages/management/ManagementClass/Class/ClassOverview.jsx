@@ -41,7 +41,7 @@ const ClassOverview = () => {
           teachingAssistants: data.teachingAssistants ?? [],
           startDate: data.startDate ? new Date(data.startDate).toLocaleDateString('vi-VN') : '-',
           endDate: data.endDate ? new Date(data.endDate).toLocaleDateString('vi-VN') : '-',
-          level: data.level ?? '-'
+          level: data.level?.levelName ?? '-'
         };
         setClassData(mapped);
       }

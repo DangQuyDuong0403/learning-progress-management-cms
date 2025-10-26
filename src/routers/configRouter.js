@@ -65,6 +65,7 @@ import AdminDashboard from '../pages/management/managementAdmin/AdminDashboard';
 import ManagerDashboard from '../pages/management/ManagementManager/ManagerDashboard';
 import StudentDashboard from '../pages/management/ManagementStudent/StudentDashboard';
 import StudentClassList from '../pages/management/ManagementStudent/StudentClassList.jsx';
+import StudentDailyChallengeList from '../pages/management/ManagementStudent/StudentDailyChallengeList.jsx';
   
 const CONFIG_ROUTER = [
 	//   {
@@ -271,6 +272,28 @@ const CONFIG_ROUTER = [
 		key: 'STUDENT_CLASS_CHAPTER_LESSONS',
 		private: true,
 		role: 'student',
+	},
+	
+	// Student Daily Challenge Routes
+	{
+		show: false,
+		component: StudentDailyChallengeList,
+		path: ROUTER_PAGE.STUDENT_DAILY_CHALLENGES,
+		menuName: 'Daily Challenges',
+		exact: true,
+		key: 'STUDENT_DAILY_CHALLENGES',
+		private: true,
+		role: ['student', 'test_taker'],
+	},
+	{
+		show: false,
+		component: StudentDailyChallengeList,
+		path: ROUTER_PAGE.STUDENT_CLASS_DAILY_CHALLENGES,
+		menuName: 'Class Daily Challenges',
+		exact: true,
+		key: 'STUDENT_CLASS_DAILY_CHALLENGES',
+		private: true,
+		role: ['student', 'test_taker'],
 	},
 	
 	// Admin Management Routes
@@ -1038,6 +1061,36 @@ const CONFIG_ROUTER = [
 	},
 	{
 		show: false,
+		component: CreateReadingChallenge,
+		path: ROUTER_PAGE.TEACHER_CREATE_READING_CHALLENGE_WITH_ID,
+		menuName: 'Create Reading Challenge with ID',
+		exact: true,
+		key: 'TEACHER_CREATE_READING_CHALLENGE_WITH_ID',
+		private: true,
+		role: ['teacher', 'teaching_assistant'],
+	},
+	{
+		show: false,
+		component: CreateReadingChallenge,
+		path: ROUTER_PAGE.TEACHER_CREATE_LISTENING_CHALLENGE_WITH_ID,
+		menuName: 'Create Listening Challenge with ID',
+		exact: true,
+		key: 'TEACHER_CREATE_LISTENING_CHALLENGE_WITH_ID',
+		private: true,
+		role: ['teacher', 'teaching_assistant'],
+	},
+	{
+		show: false,
+		component: CreateReadingChallenge,
+		path: ROUTER_PAGE.TEACHER_CREATE_WRITING_CHALLENGE_WITH_ID,
+		menuName: 'Create Writing Challenge with ID',
+		exact: true,
+		key: 'TEACHER_CREATE_WRITING_CHALLENGE_WITH_ID',
+		private: true,
+		role: ['teacher', 'teaching_assistant'],
+	},
+	{
+		show: false,
 		component: DailyChallengeList,
 		path: ROUTER_PAGE.TEACHER_CLASS_DAILY_CHALLENGES,
 		menuName: 'Class Daily Challenges',
@@ -1114,6 +1167,36 @@ const CONFIG_ROUTER = [
 		menuName: 'Create Reading Challenge',
 		exact: true,
 		key: 'TEACHING_ASSISTANT_CREATE_READING_CHALLENGE',
+		private: true,
+		role: ['teaching_assistant'],
+	},
+	{
+		show: false,
+		component: CreateReadingChallenge,
+		path: ROUTER_PAGE.TEACHING_ASSISTANT_CREATE_READING_CHALLENGE_WITH_ID,
+		menuName: 'Create Reading Challenge with ID',
+		exact: true,
+		key: 'TEACHING_ASSISTANT_CREATE_READING_CHALLENGE_WITH_ID',
+		private: true,
+		role: ['teaching_assistant'],
+	},
+	{
+		show: false,
+		component: CreateReadingChallenge,
+		path: ROUTER_PAGE.TEACHING_ASSISTANT_CREATE_LISTENING_CHALLENGE_WITH_ID,
+		menuName: 'Create Listening Challenge with ID',
+		exact: true,
+		key: 'TEACHING_ASSISTANT_CREATE_LISTENING_CHALLENGE_WITH_ID',
+		private: true,
+		role: ['teaching_assistant'],
+	},
+	{
+		show: false,
+		component: CreateReadingChallenge,
+		path: ROUTER_PAGE.TEACHING_ASSISTANT_CREATE_WRITING_CHALLENGE_WITH_ID,
+		menuName: 'Create Writing Challenge with ID',
+		exact: true,
+		key: 'TEACHING_ASSISTANT_CREATE_WRITING_CHALLENGE_WITH_ID',
 		private: true,
 		role: ['teaching_assistant'],
 	},

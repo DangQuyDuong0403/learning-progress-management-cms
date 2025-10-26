@@ -2,9 +2,9 @@ import React, { useState, useRef, useCallback, useEffect, useMemo } from "react"
 import {
   Modal,
   Button,
-  message,
   Select,
 } from "antd";
+import { spaceToast } from '../../../../../component/SpaceToastify';
 import { 
   DragOutlined,
   CheckOutlined,
@@ -13,6 +13,31 @@ import {
   RetweetOutlined,
 } from "@ant-design/icons";
 import './MultipleChoiceModal.css';
+
+// Debounce utility function
+const debounce = (func, wait) => {
+	let timeout;
+	return function executedFunction(...args) {
+		const later = () => {
+			clearTimeout(timeout);
+			func(...args);
+		};
+		clearTimeout(timeout);
+		timeout = setTimeout(later, wait);
+	};
+};
+
+// Throttle utility function
+const throttle = (func, limit) => {
+	let inThrottle;
+	return function(...args) {
+		if (!inThrottle) {
+			func.apply(this, args);
+			inThrottle = true;
+			setTimeout(() => inThrottle = false, limit);
+		}
+	};
+};
 
 const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
   const [points, setPoints] = useState(1);
@@ -58,7 +83,7 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
   }, []);
 
   // Update popup position based on current cursor
-  const updatePopupPosition = useCallback(() => {
+  const updatePopupPositionCore = useCallback(() => {
     if (!editorRef.current) return;
     
     const selection = window.getSelection();
@@ -101,6 +126,12 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
     }
   }, [isCursorInsideBlank]);
 
+  // Debounced version - only update popup after user stops typing for 150ms
+  const updatePopupPosition = useMemo(
+    () => debounce(updatePopupPositionCore, 150),
+    [updatePopupPositionCore]
+  );
+
   // Generate position ID
   const generatePositionId = () => {
     return Math.random().toString(36).substring(2, 8);
@@ -127,33 +158,33 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
         blank.id === blankId ? { ...blank, answer: value } : blank
       );
       
-      // Update shuffled words immediately with new blanks
-      setTimeout(() => {
-        const words = newBlanks
-          .filter(blank => blank.answer && blank.answer.trim())
-          .map((blank, index) => ({
-            id: blank.id,
-            text: blank.answer,
-            originalIndex: index,
-            currentIndex: index,
-            color: blank.color
+      // Update shuffled words with requestAnimationFrame to avoid lag
+        requestAnimationFrame(() => {
+          const words = newBlanks
+            .filter(blank => blank.answer && blank.answer.trim())
+            .map((blank, index) => ({
+              id: blank.id,
+              text: blank.answer,
+              originalIndex: index,
+              currentIndex: index,
+              color: blank.color
+            }));
+          
+          // Shuffle array
+          const shuffled = [...words];
+          for (let i = shuffled.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+          }
+          
+          // Update currentIndex after shuffle
+          const finalWords = shuffled.map((word, index) => ({
+            ...word,
+            currentIndex: index
           }));
-        
-        // Shuffle array
-        const shuffled = [...words];
-        for (let i = shuffled.length - 1; i > 0; i--) {
-          const j = Math.floor(Math.random() * (i + 1));
-          [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-        }
-        
-        // Update currentIndex after shuffle
-        const finalWords = shuffled.map((word, index) => ({
-          ...word,
-          currentIndex: index
-        }));
-        
-        setShuffledWords(finalWords);
-      }, 50);
+          
+          setShuffledWords(finalWords);
+        });
       
       return newBlanks;
     });
@@ -187,7 +218,7 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
       const newBlanks = prev.filter(blank => blank.id !== blankId);
       
       // Update blank numbers and shuffled words after deletion
-      setTimeout(() => {
+      requestAnimationFrame(() => {
         updateBlankNumbers();
         
         // Update shuffled words from new blanks
@@ -215,12 +246,12 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
         }));
         
         setShuffledWords(finalWords);
-      }, 10);
+      });
       
       return newBlanks;
     });
     
-    message.success('Item removed');
+    console.log('Item removed');
     
     // Refocus editor
     editorRef.current.focus();
@@ -313,10 +344,18 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
       flex: 1;
       margin-right: 8px;
     `;
+    // Optimize input handling with debounce for state update
+    let inputTimeout;
     input.addEventListener('input', (e) => {
-      handleBlankAnswerChange(blank.id, e.target.value);
-      // Update answer text in real-time
-      answerText.textContent = e.target.value || '';
+      const newValue = e.target.value;
+      // Update answer text in real-time (instant visual feedback)
+      answerText.textContent = newValue || '';
+      
+      // Debounce state update to reduce re-renders
+      clearTimeout(inputTimeout);
+      inputTimeout = setTimeout(() => {
+        handleBlankAnswerChange(blank.id, newValue);
+      }, 100);
     });
     input.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -448,7 +487,7 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
 
     // Don't insert blank if cursor is inside another blank
     if (isCursorInsideBlank()) {
-      message.warning('Cannot insert item inside another item');
+      spaceToast.warning('Cannot insert item inside another item');
       setShowBlankPopup(false);
       return;
     }
@@ -501,7 +540,7 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
         const newBlanks = [...prev, newBlank];
         
         // Update blank numbers and expand the newly created blank
-        setTimeout(() => {
+        requestAnimationFrame(() => {
           try {
             // Update all blank numbers first
             updateBlankNumbers();
@@ -542,7 +581,7 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
             console.error('Error expanding blank:', error);
             editorRef.current.focus();
           }
-        }, 10);
+        });
         
         return newBlanks;
       });
@@ -558,8 +597,8 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
     // Only set cursor if there's no current selection
     // This allows drag-to-select to work properly
     if (e.target === editorRef.current) {
-      // Don't interfere if user is selecting text (check after a small delay to allow for drag-to-select)
-      setTimeout(() => {
+      // Don't interfere if user is selecting text
+      requestAnimationFrame(() => {
         const selection = window.getSelection();
         if (selection && selection.toString().length === 0) {
           const range = document.caretRangeFromPoint(e.clientX, e.clientY);
@@ -567,17 +606,17 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
             selection.removeAllRanges();
             selection.addRange(range);
           }
-          // Update popup position at cursor
+          // Update popup position at cursor (debounced)
           updatePopupPosition();
         }
-      }, 0);
+      });
     }
   }, [updatePopupPosition]);
 
   const handleEditorFocus = useCallback(() => {
-    setTimeout(() => {
+    requestAnimationFrame(() => {
       updatePopupPosition();
-    }, 50);
+    });
   }, [updatePopupPosition]);
 
   const handleEditorKeyDown = useCallback((e) => {
@@ -697,7 +736,7 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
     }));
     });
     
-    message.success('Words shuffled!');
+    console.success('Words shuffled!');
   }, []);
 
   // Handle word drag
@@ -751,14 +790,14 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
 
   const handleSave = () => {
     if (blanks.length === 0) {
-      message.error('Please add at least one item');
+      spaceToast.warning('Please add at least one item');
         return;
       }
 
     // Check if all blanks have answers
     const hasEmptyBlanks = blanks.some(blank => !blank.answer || !blank.answer.trim());
     if (hasEmptyBlanks) {
-      message.error('Please fill in all item answers');
+      spaceToast.warning('Please fill in all item answers');
       return;
     }
 

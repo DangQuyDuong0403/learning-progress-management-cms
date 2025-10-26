@@ -2,10 +2,10 @@ import React, { useState, useRef, useCallback, useEffect, useMemo } from "react"
 import {
   Modal,
   Button,
-  message,
   Select,
   Tooltip,
 } from "antd";
+import { spaceToast } from '../../../../../component/SpaceToastify';
 import { 
   PlusOutlined, 
   DeleteOutlined,
@@ -263,7 +263,7 @@ const RewriteModal = ({ visible, onCancel, onSave, questionData = null }) => {
       if (prevAnswers.length > 1) {
         return prevAnswers.filter(ans => ans.id !== answerId);
     } else {
-      message.warning("Question must have at least one correct answer");
+      spaceToast.warning("Question must have at least one correct answer");
         return prevAnswers;
       }
     });
@@ -272,14 +272,14 @@ const RewriteModal = ({ visible, onCancel, onSave, questionData = null }) => {
   const handleSave = () => {
     // Validate editor data
     if (!editorData || !editorData.trim()) {
-      message.error('Please enter the question text');
+      spaceToast.warning('Please enter the question text');
       return;
     }
 
     // Check empty answers
     const hasEmptyAnswers = correctAnswers.some(ans => !ans.answer || !ans.answer.trim());
     if (hasEmptyAnswers) {
-      message.error("Please fill in all correct answers");
+      spaceToast.warning('Please fill in all correct answers');
       return;
     }
 

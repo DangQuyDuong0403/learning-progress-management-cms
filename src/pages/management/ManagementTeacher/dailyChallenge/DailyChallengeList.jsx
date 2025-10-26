@@ -32,6 +32,15 @@ import usePageTitle from "../../../../hooks/usePageTitle";
 import { useSelector } from "react-redux";
 import { dailyChallengeApi } from "../../../../apis/apis";
 
+// Challenge types constant
+const challengeTypes = [
+  { id: 1, name: "Grammar & Vocabulary", type: "GV", icon: "🌟", description: "Test grammar rules and vocabulary knowledge" },
+  { id: 2, name: "Reading", type: "RE", icon: "📝", description: "Reading comprehension exercises" },
+  { id: 3, name: "Listening", type: "LI", icon: "🎵", description: "Audio-based listening comprehension" },
+  { id: 4, name: "Writing", type: "WR", icon: "✏️", description: "Writing prompts and exercises" },
+  { id: 5, name: "Speaking", type: "SP", icon: "💬", description: "Oral communication practice" },
+];
+
 // Select removed in favor of AccountList-style filter dropdown
 
 // Mock data - thay thế bằng API call thực tế
@@ -93,7 +102,7 @@ const mockDailyChallenges = [
   },
 ];
 
-const DailyChallengeList = () => {
+const DailyChallengeList = ({ readOnly = false }) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
@@ -116,6 +125,7 @@ const DailyChallengeList = () => {
   const [totalItems, setTotalItems] = useState(0);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [createModalData, setCreateModalData] = useState(null); // Store lesson data for create modal
+  const [challengeTypeModalVisible, setChallengeTypeModalVisible] = useState(false);
   const [searchDebounce, setSearchDebounce] = useState("");
   const [deleteModal, setDeleteModal] = useState({
     visible: false,
@@ -431,8 +441,20 @@ const DailyChallengeList = () => {
 
 
   const handleCreateClick = () => {
-    setCreateModalData(null); // No specific lesson
+    setChallengeTypeModalVisible(true);
+  };
+
+  const handleChallengeTypeClick = (challengeType) => {
+    setCreateModalData({
+      challengeType: challengeType.type,
+      challengeTypeName: challengeType.name
+    });
+    setChallengeTypeModalVisible(false);
     setShowCreateModal(true);
+  };
+
+  const handleChallengeTypeModalCancel = () => {
+    setChallengeTypeModalVisible(false);
   };
 
   const handleCreateClickWithLesson = (lessonRecord) => {
@@ -612,30 +634,32 @@ const DailyChallengeList = () => {
                 <span className="lesson-text" style={{ transition: 'opacity 0.3s ease' }}>
                   {text}
                 </span>
-                <Button
-                  className="lesson-create-btn"
-                  icon={<PlusOutlined />}
-                  style={{
-                    fontSize: '16px',
-                    height: '40px',
-                    padding: '0 20px',
-                    borderRadius: '8px',
-                    background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)',
-                    borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : '#7228d9',
-                    color: theme === 'sun' ? '#000' : '#000',
-                    fontWeight: '500',
-                    border: 'none',
-                    minWidth: '160px',
-                    margin: '0'
-                  }}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleCreateClickWithLesson(record);
-                  }}
-                  title={`Create Daily Challenge for ${text}`}
-                >
-                  Create Challenge
-                </Button>
+                {!readOnly && (
+                  <Button
+                    className="lesson-create-btn"
+                    icon={<PlusOutlined />}
+                    style={{
+                      fontSize: '16px',
+                      height: '40px',
+                      padding: '0 20px',
+                      borderRadius: '8px',
+                      background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)',
+                      borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : '#7228d9',
+                      color: theme === 'sun' ? '#000' : '#000',
+                      fontWeight: '500',
+                      border: 'none',
+                      minWidth: '160px',
+                      margin: '0'
+                    }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleCreateClickWithLesson(record);
+                    }}
+                    title={`Create Daily Challenge for ${text}`}
+                  >
+                    Create Challenge
+                  </Button>
+                )}
               </div>
             ),
             props: {
@@ -755,31 +779,35 @@ const DailyChallengeList = () => {
               title={t('dailyChallenge.viewDetails')}
               className="action-btn-view"
             />
-            <Button
-              type="text"
-              icon={<EditOutlined style={{ fontSize: '24px' }} />}
-              onClick={() => handleEditClick(record)}
-              title={t('dailyChallenge.editChallenge')}
-              className="action-btn-edit"
-              style={{ color: '#1890ff' }}
-            />
-            {record.status === 'DRAFT' && (
-              <Button
-                type="text"
-                icon={<CheckCircleOutlined style={{ fontSize: '24px'}} />}
-                onClick={() => handleToggleStatus(record.id)}
-                title="Publish"
-                className="action-btn-status"
-              />
+            {!readOnly && (
+              <>
+                <Button
+                  type="text"
+                  icon={<EditOutlined style={{ fontSize: '24px' }} />}
+                  onClick={() => handleEditClick(record)}
+                  title={t('dailyChallenge.editChallenge')}
+                  className="action-btn-edit"
+                  style={{ color: '#1890ff' }}
+                />
+                {record.status === 'DRAFT' && (
+                  <Button
+                    type="text"
+                    icon={<CheckCircleOutlined style={{ fontSize: '24px'}} />}
+                    onClick={() => handleToggleStatus(record.id)}
+                    title="Publish"
+                    className="action-btn-status"
+                  />
+                )}
+                <Button
+                  type="text"
+                  icon={<DeleteOutlined style={{ fontSize: '24px', color: '#ff4d4f' }} />}
+                  onClick={() => handleDeleteClick(record)}
+                  title={t('dailyChallenge.deleteChallenge')}
+                  className="action-btn-delete"
+                  style={{ color: '#ff4d4f' }}
+                />
+              </>
             )}
-            <Button
-              type="text"
-              icon={<DeleteOutlined style={{ fontSize: '24px', color: '#ff4d4f' }} />}
-              onClick={() => handleDeleteClick(record)}
-              title={t('dailyChallenge.deleteChallenge')}
-              className="action-btn-delete"
-              style={{ color: '#ff4d4f' }}
-            />
           </Space>
         );
       },
@@ -804,7 +832,7 @@ const DailyChallengeList = () => {
             {t('dailyChallenge.dailyChallengeManagement')} <span className="student-count" style={{
               fontSize: '24px',
               fontWeight: '500',
-              color: theme === 'sun' ? '#475569' : '#000000'
+          
             }}>({filteredChallenges.length})</span>
           </Typography.Title>
         </div>
@@ -906,15 +934,17 @@ const DailyChallengeList = () => {
               </div>
             )}
           </div>
-          <div className="action-buttons" style={{ marginLeft: 'auto' }}>
-            <Button 
-              icon={<PlusOutlined />}
-              className={`create-button ${theme}-create-button`}
-              onClick={handleCreateClick}
-            >
-              {t('dailyChallenge.createChallenge')}
-            </Button>
-          </div>
+          {!readOnly && (
+            <div className="action-buttons" style={{ marginLeft: 'auto' }}>
+              <Button 
+                icon={<PlusOutlined />}
+                className={`create-button ${theme}-create-button`}
+                onClick={handleCreateClick}
+              >
+                {t('dailyChallenge.createChallenge')}
+              </Button>
+            </div>
+          )}
         </div>
 
         {/* Table Section */}
@@ -950,6 +980,50 @@ const DailyChallengeList = () => {
             />
           </LoadingWithEffect>
         </div>
+
+        {/* Challenge Type Selection Modal */}
+        <Modal
+          title={
+            <div style={{ 
+              fontSize: '22px', 
+              fontWeight: 700, 
+              color: 'rgb(24, 144, 255)',
+              display: 'block', 
+              textAlign: 'center',
+              marginBottom: '4px'
+            }}>
+              Choose Challenge Type
+            </div>
+          }
+          open={challengeTypeModalVisible}
+          onCancel={handleChallengeTypeModalCancel}
+          footer={null}
+          width={720}
+          className={`challenge-type-modal ${theme}-challenge-type-modal`}
+        >
+          <div className="challenge-type-modal-container">
+            {/* Challenge Types */}
+            <div className="challenge-type-category">
+              <div className="category-grid">
+                {challengeTypes.map((challengeType) => (
+                  <div
+                    key={challengeType.id}
+                    className={`challenge-type-card ${theme}-challenge-type-card`}
+                    onClick={() => handleChallengeTypeClick(challengeType)}
+                  >
+                    <div className="challenge-type-icon-wrapper">
+                      <span style={{ fontSize: '48px' }}>{challengeType.icon}</span>
+                    </div>
+                    <div className="challenge-type-name">{challengeType.name}</div>
+                    <div className="challenge-type-description">
+                      {challengeType.description}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </Modal>
 
         {/* Create Daily Challenge Modal - Using Simple Modal */}
         <SimpleDailyChallengeModal

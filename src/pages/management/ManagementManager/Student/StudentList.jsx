@@ -659,11 +659,6 @@ const StudentList = () => {
               >
                 {className}
               </span>
-              {classInfo?.id && (
-                <div style={{ fontSize: '10px', color: '#999', marginTop: '2px' }}>
-                  ID: {classInfo.id}
-                </div>
-              )}
             </div>
           );
         } else if (record.status === 'ACTIVE' || record.status === 'PENDING') {

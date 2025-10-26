@@ -716,42 +716,10 @@ const ClassChapterLesson = () => {
 			title: t('lessonManagement.lessonName'),
 			dataIndex: 'name',
 			key: 'name',
-			width: '40%',
-			render: (text, record) => (
-				<div>
-					<div style={{ 
-						fontSize: '20px',
-						maxWidth: '300px',
-						overflow: 'hidden',
-						textOverflow: 'ellipsis',
-						whiteSpace: 'nowrap'
-					}}>{text}</div>
-					<div style={{ 
-						color: '#666', 
-						fontSize: '12px',
-						maxWidth: '300px',
-						overflow: 'hidden',
-						textOverflow: 'ellipsis',
-						whiteSpace: 'nowrap'
-					}}>
-						{record.content}
-					</div>
-				</div>
+			width: '80%',
+			render: (text) => (
+				<span style={{ fontSize: '20px' }}>{text}</span>
 			),
-		},
-		{
-			title: t('lessonManagement.createdBy'),
-			dataIndex: 'createdBy',
-			key: 'createdBy',
-			width: '20%',
-			render: (createdBy) => createdBy || t('common.notAvailable'),
-		},
-		{
-			title: t('lessonManagement.createdAt'),
-			dataIndex: 'createdAt',
-			key: 'createdAt',
-			width: '20%',
-			render: (date) => new Date(date).toLocaleDateString(),
 		},
 		{
 			title: t('lessonManagement.actions'),
