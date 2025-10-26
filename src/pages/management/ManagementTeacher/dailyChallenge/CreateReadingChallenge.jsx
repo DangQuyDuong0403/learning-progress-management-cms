@@ -8,8 +8,6 @@ import {
   Typography,
   Upload,
   Divider,
-  Dropdown,
-  Menu,
   Modal,
 } from "antd";
 import {
@@ -20,7 +18,6 @@ import {
   UploadOutlined,
   DeleteOutlined,
   LoadingOutlined,
-  DownOutlined,
   HolderOutlined,
   EditOutlined,
   CopyOutlined,
@@ -81,16 +78,24 @@ const CreateReadingChallenge = () => {
   // Use challenge ID from URL params if available, otherwise from state
   const currentChallengeId = id || challengeId;
   
+  // Determine challenge type from URL path
+  const isListeningChallenge = location.pathname.includes('/listening/');
+  const isWritingChallenge = location.pathname.includes('/writing/');
+  
   const [passage, setPassage] = useState({
     id: 1,
-    title: "Passage",
+    title: isWritingChallenge ? "Writing Prompt" : "Passage",
     content: "",
     type: null,
-    questions: []
+    questions: [],
+    audioFile: null, // For listening challenges
+    audioUrl: null
   });
   const [passageContent, setPassageContent] = useState("");
   const [isProcessingPDF, setIsProcessingPDF] = useState(false);
   const [uploadedFileName, setUploadedFileName] = useState("");
+  const [isProcessingAudio, setIsProcessingAudio] = useState(false);
+  const [uploadedAudioFileName, setUploadedAudioFileName] = useState("");
   
   // Question management state
   const [activeModal, setActiveModal] = useState(null);
@@ -150,13 +155,23 @@ const CreateReadingChallenge = () => {
     // Create fake data structure for passage with questions
     const fakePassageData = {
       id: `passage_${Date.now()}`,
-      type: 'PASSAGE',
-      content: passage.content || "This is a sample passage content for reading comprehension. Students will read this passage and answer the questions that follow.",
-      questions: passage.questions || [
+      title: isWritingChallenge ? "Writing Prompt" : "Passage",
+      type: isWritingChallenge ? 'WRITING_PASSAGE' : (isListeningChallenge ? 'LISTENING_PASSAGE' : 'PASSAGE'),
+      content: passage.content || (isWritingChallenge
+        ? "This is a sample writing prompt. Students will write their response based on this prompt."
+        : isListeningChallenge 
+        ? "This is a sample listening passage. Students will listen to the audio and answer the questions that follow."
+        : "This is a sample passage content for reading comprehension. Students will read this passage and answer the questions that follow."
+      ),
+      audioFile: passage.audioFile, // Include audio file for listening challenges
+      audioUrl: passage.audioUrl,
+      questions: isWritingChallenge ? [] : (passage.questions || [
         {
           id: `question_${Date.now()}_1`,
           type: 'MULTIPLE_CHOICE',
-          question: "What is the main topic of this passage?",
+          question: isListeningChallenge 
+            ? "What is the main topic of this audio?"
+            : "What is the main topic of this passage?",
           options: [
             { key: 'A', text: 'Science and Technology', isCorrect: false },
             { key: 'B', text: 'Education and Learning', isCorrect: true },
@@ -169,7 +184,9 @@ const CreateReadingChallenge = () => {
         {
           id: `question_${Date.now()}_2`,
           type: 'FILL_IN_THE_BLANK',
-          questionText: "The passage discusses the importance of ___ in modern education.",
+          questionText: isListeningChallenge 
+            ? "The audio discusses the importance of ___ in modern education."
+            : "The passage discusses the importance of ___ in modern education.",
           content: {
             data: [
               {
@@ -183,17 +200,18 @@ const CreateReadingChallenge = () => {
           points: 1,
           timeLimit: 60
         }
-      ],
-      timeLimit: 120, // 2 minutes for the passage
-      points: 2
+      ]),
+      timeLimit: isWritingChallenge ? 300 : (isListeningChallenge ? 180 : 120), // 5 minutes for writing, 3 minutes for listening, 2 minutes for reading
+      points: isWritingChallenge ? 5 : 2 // 5 points for writing, 2 points for others
     };
 
     // Store the passage data in localStorage for now (fake API)
-    const existingPassages = JSON.parse(localStorage.getItem('readingPassages') || '[]');
+    const storageKey = isWritingChallenge ? 'writingPassages' : (isListeningChallenge ? 'listeningPassages' : 'readingPassages');
+    const existingPassages = JSON.parse(localStorage.getItem(storageKey) || '[]');
     existingPassages.push(fakePassageData);
-    localStorage.setItem('readingPassages', JSON.stringify(existingPassages));
+    localStorage.setItem(storageKey, JSON.stringify(existingPassages));
 
-    spaceToast.success("Reading challenge saved successfully!");
+    spaceToast.success(`${isWritingChallenge ? 'Writing' : (isListeningChallenge ? 'Listening' : 'Reading')} challenge saved successfully!`);
     
     // Navigate back to DailyChallengeContent
     handleBack();
@@ -259,6 +277,47 @@ const CreateReadingChallenge = () => {
       spaceToast.error(error.message || "Có lỗi xảy ra khi xử lý file PDF");
     } finally {
       setIsProcessingPDF(false);
+    }
+
+    return false; // Prevent default upload
+  };
+
+  const handleUploadAudio = async (file) => {
+    try {
+      // Validate audio file
+      const allowedTypes = ['audio/mp3', 'audio/mpeg', 'audio/mp4'];
+      if (!allowedTypes.includes(file.type)) {
+        spaceToast.error("Vui lòng chọn file audio hợp lệ (MP3, MP4)");
+        return false;
+      }
+
+      // Check file size (max 5MB for audio)
+      const maxSize = 5 * 1024 * 1024; // 5MB
+      if (file.size > maxSize) {
+        spaceToast.error("File size must be less than 5MB");
+        return false;
+      }
+
+      setIsProcessingAudio(true);
+      setUploadedAudioFileName(file.name);
+
+      // Create audio URL for preview
+      const audioUrl = URL.createObjectURL(file);
+
+      // Update passage with audio file
+      setPassage(prevPassage => ({ 
+        ...prevPassage, 
+        audioFile: file,
+        audioUrl: audioUrl
+      }));
+
+      spaceToast.success(`Audio file "${file.name}" uploaded successfully!`);
+      
+    } catch (error) {
+      console.error('Error processing audio:', error);
+      spaceToast.error(error.message || "Có lỗi xảy ra khi xử lý file audio");
+    } finally {
+      setIsProcessingAudio(false);
     }
 
     return false; // Prevent default upload
@@ -549,6 +608,8 @@ const CreateReadingChallenge = () => {
                   ? `${className} / ${challengeName}` 
                   : challengeName 
                   ? challengeName
+                  : isListeningChallenge ? 'Create Listening Challenge' 
+                  : isWritingChallenge ? 'Add writing topic' 
                   : 'Create Reading Challenge'
                 }
               </span>
@@ -577,7 +638,7 @@ const CreateReadingChallenge = () => {
                 boxShadow: theme === 'sun' ? '0 2px 8px rgba(60, 153, 255, 0.3)' : '0 2px 8px rgba(131, 119, 160, 0.3)'
               }}
             >
-              {t('common.saveChanges') || 'Save Challenge'}
+              {isWritingChallenge ? (t('common.saveChanges') || 'Save Writing Prompt') : (t('common.saveChanges') || 'Save Challenge')}
                 </Button>
           </div>
         </div>
@@ -589,10 +650,129 @@ const CreateReadingChallenge = () => {
     <ThemedLayout customHeader={customHeader}>
       <div className={`daily-challenge-content-wrapper ${theme}-daily-challenge-content-wrapper`}>
         <div style={{ padding: '24px' }}>
+        {/* Audio File Section - Only for Listening Challenges (Above Passage) */}
+        {isListeningChallenge && !isWritingChallenge && (
+          <Row gutter={24} style={{ marginBottom: '24px' }}>
+            <Col span={24}>
+              <Card 
+                className={`rc-audio-card ${theme}-rc-audio-card`}
+                style={{ 
+                  borderRadius: '16px',
+                  border: theme === 'sun' 
+                    ? '2px solid rgba(113, 179, 253, 0.25)' 
+                    : '2px solid rgba(138, 122, 255, 0.2)',
+                  boxShadow: theme === 'sun' 
+                    ? '0 4px 16px rgba(113, 179, 253, 0.1)' 
+                    : '0 4px 16px rgba(138, 122, 255, 0.12)',
+                  background: theme === 'sun'
+                    ? 'linear-gradient(135deg, rgba(255, 255, 255, 1) 0%, rgba(240, 249, 255, 0.95) 100%)'
+                    : 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(244, 240, 255, 0.95) 100%)',
+                  backdropFilter: 'blur(10px)'
+                }}
+              >
+                <Title level={3} style={{ 
+                  marginBottom: '12px',
+                  color: theme === 'sun' ? '#1E40AF' : '#8377A0',
+                  textAlign: 'center',
+                  fontSize: '24px',
+                  fontWeight: '600'
+                }}>
+                  Audio File
+                </Title>
+                
+                {passage.audioUrl ? (
+                  <div style={{
+                    padding: '12px',
+                    background: theme === 'sun' 
+                      ? 'rgba(240, 249, 255, 0.5)' 
+                      : 'rgba(244, 240, 255, 0.3)',
+                    borderRadius: '8px',
+                    border: theme === 'sun' 
+                      ? '2px solid rgba(113, 179, 253, 0.3)' 
+                      : '2px solid rgba(138, 122, 255, 0.3)',
+                    marginBottom: '12px'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
+                      <span style={{ fontSize: '14px' }}>🎵</span>
+                      <span style={{ fontWeight: 500, fontSize: '13px', color: theme === 'sun' ? '#1E40AF' : '#8377A0' }}>
+                        {uploadedAudioFileName || 'Audio file uploaded'}
+                      </span>
+                      <Button
+                        type="text"
+                        danger
+                        size="small"
+                        style={{ fontSize: '12px', padding: '0 8px' }}
+                        onClick={() => {
+                          setPassage(prevPassage => ({ ...prevPassage, audioFile: null, audioUrl: null }));
+                          setUploadedAudioFileName("");
+                        }}
+                      >
+                        Remove
+                      </Button>
+                    </div>
+                    <audio controls style={{ width: '100%' }}>
+                      <source src={passage.audioUrl} type="audio/mpeg" />
+                      Your browser does not support the audio element.
+                    </audio>
+                  </div>
+                ) : (
+                  <Card 
+                    hoverable 
+                    className="rc-audio-upload-card"
+                    style={{ 
+                      opacity: isProcessingAudio ? 0.6 : 1,
+                      borderRadius: '8px',
+                      border: theme === 'sun' 
+                        ? '2px dashed rgba(113, 179, 253, 0.3)' 
+                        : '2px dashed rgba(138, 122, 255, 0.3)',
+                      background: theme === 'sun'
+                        ? 'linear-gradient(135deg, rgba(230, 245, 255, 0.3) 0%, rgba(186, 231, 255, 0.2) 100%)'
+                        : 'rgba(255, 255, 255, 0.3)',
+                      cursor: isProcessingAudio ? 'not-allowed' : 'pointer',
+                      textAlign: 'center',
+                      padding: '16px'
+                    }}
+                  >
+                    <Upload
+                      accept=".mp3,.mp4"
+                      beforeUpload={handleUploadAudio}
+                      showUploadList={false}
+                      disabled={isProcessingAudio}
+                    >
+                      <Space direction="vertical" size="small">
+                        {isProcessingAudio ? (
+                          <LoadingOutlined style={{ fontSize: 24, color: "#1890ff" }} />
+                        ) : (
+                          <span style={{ fontSize: 24 }}>🎵</span>
+                        )}
+                        <div>
+                          <Text strong style={{ 
+                            color: theme === 'sun' ? '#1E40AF' : '#8377A0',
+                            fontSize: '14px'
+                          }}>
+                            {isProcessingAudio ? `Processing "${uploadedAudioFileName}"...` : "Upload Audio File"}
+                          </Text>
+                          <br />
+                          <Text style={{ 
+                            color: '#999',
+                            fontSize: '12px'
+                          }}>
+                            Supported: MP3, MP4 (max 5MB)
+                          </Text>
+                        </div>
+                      </Space>
+                    </Upload>
+                  </Card>
+                )}
+              </Card>
+            </Col>
+          </Row>
+        )}
+
         {/* Main Content */}
         <Row gutter={24} style={{ minHeight: "calc(100vh - 280px)" }}>
             {/* Passage Creation - Left Side (2/3) */}
-            <Col span={16} className="rc-passage-section">
+            <Col span={isWritingChallenge ? 24 : 16} className="rc-passage-section">
               <Card 
                 className={`rc-passage-card ${theme}-rc-passage-card`}
                 style={{ 
@@ -610,27 +790,16 @@ const CreateReadingChallenge = () => {
                   backdropFilter: 'blur(10px)'
                 }}
               >
-                {/* Passage Title */}
-                <div className="rc-passage-tabs" style={{ marginBottom: '16px' }}>
-                  <div className="rc-passage-tabs-left">
-                    <Button
-                      type="primary"
-                      className="rc-passage-tab"
-                      style={{
-                        background: theme === 'sun'
-                          ? 'linear-gradient(135deg, #66AEFF, #3C99FF)'
-                          : 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)',
-                        color: '#000000',
-                        borderRadius: '8px',
-                        fontWeight: 500
-                      }}
-                    >
-                      {passage.title}
-                    </Button>
-                  </div>
-                </div>
 
-                <Divider />
+                 {/* Title - Always show at top */}
+                 <div style={{ marginBottom: '32px' }}>
+                   <Title level={3} style={{ 
+                     textAlign: "center", 
+                     color: theme === 'sun' ? '#1E40AF' : '#8377A0'
+                   }}>
+                     {isWritingChallenge ? 'Add writing topic' : 'Add passage'}
+                   </Title>
+                 </div>
 
                  {/* Passage Content */}
                  <div className="rc-passage-content">
@@ -650,83 +819,98 @@ const CreateReadingChallenge = () => {
                              fontWeight: 500
                            }}
                          >
-                           Back to options
+                           {isWritingChallenge ? 'Back to prompt options' : 'Back to options'}
                          </Button>
                        </div>
                        <div 
                          className={`rc-ckeditor-wrapper ${theme}-ckeditor-wrapper`}
                          style={{
-                           borderRadius: '8px',
-                           border: theme === 'sun' ? '2px solid rgba(113, 179, 253, 0.3)' : '2px solid rgba(138, 122, 255, 0.3)',
-                           overflow: 'hidden',
-                           boxShadow: theme === 'sun' 
-                             ? '0 2px 8px rgba(113, 179, 253, 0.1)' 
-                             : '0 2px 8px rgba(138, 122, 255, 0.15)',
+                           flex: 1,
+                           display: 'flex',
+                           flexDirection: 'column',
+                           position: 'relative',
+                           zIndex: 1,
+                           minHeight: '400px',
+                           overflow: 'hidden'
                          }}
                        >
-                        <CKEditor
-                          editor={ClassicEditor}
-                          data={passageContent}
-                          onChange={(event, editor) => {
-                            const data = editor.getData();
-                            handlePassageContentChange(data);
-                          }}
-                          config={{
-                            placeholder: 'Enter your passage content here...',
-                            extraPlugins: [CustomUploadAdapterPlugin],
-                            toolbar: {
-                              items: [
-                                'heading', '|',
-                                'bold', 'italic', 'underline', 'strikethrough', '|',
-                                'insertTable', 'imageUpload', '|',
-                                'bulletedList', 'numberedList', '|',
-                                'outdent', 'indent', '|',
-                                'link', 'blockQuote', '|',
-                                'undo', 'redo'
-                              ],
-                              shouldNotGroupWhenFull: false
-                            },
-                            heading: {
-                              options: [
-                                { model: 'paragraph', title: 'Paragraph', class: 'ck-heading_paragraph' },
-                                { model: 'heading1', view: 'h1', title: 'Heading 1', class: 'ck-heading_heading1' },
-                                { model: 'heading2', view: 'h2', title: 'Heading 2', class: 'ck-heading_heading2' },
-                                { model: 'heading3', view: 'h3', title: 'Heading 3', class: 'ck-heading_heading3' }
-                              ]
-                            },
-                            table: {
-                              contentToolbar: ['tableColumn', 'tableRow', 'mergeTableCells']
-                            },
-                            image: {
-                              toolbar: [
-                                'imageTextAlternative',
-                                '|',
-                                'imageStyle:alignLeft',
-                                'imageStyle:full',
-                                'imageStyle:alignRight'
-                              ],
-                              styles: [
-                                'full',
-                                'alignLeft',
-                                'alignRight'
-                              ]
-                            },
-                            language: 'en',
-                          }}
-                        />
+                         <div style={{
+                           flex: 1,
+                           borderRadius: '12px',
+                           border: '2px solid rgba(24, 144, 255, 0.2)',
+                           overflow: 'hidden',
+                           background: 'rgba(240, 247, 255, 0.5)',
+                           position: 'relative',
+                           display: 'flex',
+                           flexDirection: 'column'
+                         }}>
+                           <CKEditor
+                             key="passage-editor"
+                             editor={ClassicEditor}
+                             data={passageContent}
+                             onChange={(event, editor) => {
+                               const data = editor.getData();
+                               handlePassageContentChange(data);
+                             }}
+                             config={{
+                               placeholder: isWritingChallenge ? 'Enter your writing prompt here...' : 'Enter your passage content here...',
+                               extraPlugins: [CustomUploadAdapterPlugin],
+                               toolbar: {
+                                 items: [
+                                   'heading',
+                                   '|',
+                                   'bold',
+                                   'italic',
+                                   'underline',
+                                   '|',
+                                   'insertTable',
+                                   'imageUpload',
+                                   '|',
+                                   'bulletedList',
+                                   'numberedList',
+                                   '|',
+                                   'blockQuote',
+                                   'link',
+                                   '|',
+                                   'undo',
+                                   'redo'
+                                 ],
+                                 shouldNotGroupWhenFull: false
+                               },
+                               heading: {
+                                 options: [
+                                   { model: 'paragraph', title: 'Paragraph', class: 'ck-heading_paragraph' },
+                                   { model: 'heading1', view: 'h1', title: 'Heading 1', class: 'ck-heading_heading1' },
+                                   { model: 'heading2', view: 'h2', title: 'Heading 2', class: 'ck-heading_heading2' },
+                                   { model: 'heading3', view: 'h3', title: 'Heading 3', class: 'ck-heading_heading3' }
+                                 ]
+                               },
+                               table: {
+                                 contentToolbar: ['tableColumn', 'tableRow', 'mergeTableCells']
+                               },
+                               image: {
+                                 toolbar: [
+                                   'imageTextAlternative',
+                                   '|',
+                                   'imageStyle:alignLeft',
+                                   'imageStyle:full',
+                                   'imageStyle:alignRight'
+                                 ],
+                                 styles: [
+                                   'full',
+                                   'alignLeft',
+                                   'alignRight'
+                                 ]
+                               },
+                               language: 'en',
+                             }}
+                           />
+                         </div>
                        </div>
                      </div>
                    ) : (
                      /* Initial Options - Show when no type selected */
                      <>
-                       <Title level={3} style={{ 
-                         textAlign: "center", 
-                         marginBottom: 32,
-                         color: theme === 'sun' ? '#1E40AF' : '#8377A0'
-                       }}>
-                         Add passage
-                       </Title>
-                       
                        <Space direction="vertical" size="large" style={{ width: "100%" }}>
                          {/* Manual Text & Media */}
                         <Card
@@ -753,7 +937,7 @@ const CreateReadingChallenge = () => {
                             }} />
                             <Text strong style={{ 
                               color: theme === 'sun' ? '#1E40AF' : '#8377A0' 
-                            }}>Add text & media manually</Text>
+                            }}>{isWritingChallenge ? 'Add writing prompt manually' : 'Add text & media manually'}</Text>
                           </Space>
                         </Card>
 
@@ -788,7 +972,7 @@ const CreateReadingChallenge = () => {
                               <Text strong style={{ 
                                 color: theme === 'sun' ? '#1E40AF' : '#8377A0' 
                               }}>
-                                {isProcessingPDF ? `Đang xử lý "${uploadedFileName}"...` : "Upload PDF"}
+                                {isProcessingPDF ? `Đang xử lý "${uploadedFileName}"...` : (isWritingChallenge ? "Upload PDF writing prompt" : "Upload PDF")}
                               </Text>
                             </Space>
                           </Upload>
@@ -826,7 +1010,7 @@ const CreateReadingChallenge = () => {
                             />
                             <Text strong style={{ 
                               color: theme === 'sun' ? '#1E40AF' : '#8377A0' 
-                            }}>Generate with AI</Text>
+                            }}>{isWritingChallenge ? 'Generate writing prompt with AI' : 'Generate with AI'}</Text>
                           </Space>
                         </Card>
                       </Space>
@@ -836,7 +1020,8 @@ const CreateReadingChallenge = () => {
               </Card>
             </Col>
 
-            {/* Questions Section - Right Side (1/3) */}
+            {/* Questions Section - Right Side (1/3) - Hidden for Writing Challenges */}
+            {!isWritingChallenge && (
             <Col span={8} className="rc-questions-section">
               <Card 
                 className={`rc-questions-card ${theme}-rc-questions-card`}
@@ -1005,6 +1190,7 @@ const CreateReadingChallenge = () => {
                     </div>
                   </Card>
             </Col>
+            )}
           </Row>
         </div>
         </div>
@@ -1015,7 +1201,7 @@ const CreateReadingChallenge = () => {
             <div style={{
               fontSize: '22px',
               fontWeight: 700,
-              color: theme === 'sun' ? '#1890ff' : '#8B5CF6',
+              color: 'rgb(24, 144, 255)',
               display: 'block',
               textAlign: 'center',
               marginBottom: '4px'

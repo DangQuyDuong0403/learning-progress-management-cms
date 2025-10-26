@@ -159,7 +159,7 @@ const SortablePassageItem = memo(
             <Select
               value={passage.points}
               onChange={handlePointChange}
-              style={{ width: 100 }}
+              style={{ width: 120 }}
               size="small"
             >
               <Select.Option value={1}>1 {t('dailyChallenge.point') || 'điểm'}</Select.Option>
@@ -168,7 +168,7 @@ const SortablePassageItem = memo(
               <Select.Option value={5}>5 {t('dailyChallenge.point') || 'điểm'}</Select.Option>
             </Select>
             <Space size="small">
-              <Tooltip title={t('common.edit') || 'Chỉnh sửa'}>
+              <Tooltip title="Edit">
                 <Button
                   type="text"
                   icon={<EditOutlined />}
@@ -176,7 +176,7 @@ const SortablePassageItem = memo(
                   size="small"
                 />
               </Tooltip>
-              <Tooltip title={t('common.delete') || 'Xóa'}>
+              <Tooltip title="Delete">
                 <Button
                   type="text"
                   icon={<DeleteOutlined />}
@@ -185,7 +185,7 @@ const SortablePassageItem = memo(
                   danger
                 />
               </Tooltip>
-              <Tooltip title={t('common.duplicate') || 'Nhân bản'}>
+              <Tooltip title="Duplicate">
                 <Button
                   type="text"
                   icon={<CopyOutlined />}
@@ -198,6 +198,32 @@ const SortablePassageItem = memo(
         </div>
 
         <div className="passage-content">
+          {/* Audio Player for Listening Passages */}
+          {passage.type === 'LISTENING_PASSAGE' && passage.audioUrl && (
+            <div style={{
+              marginBottom: '16px',
+              padding: '16px',
+              background: theme === 'sun' 
+                ? 'rgba(240, 249, 255, 0.5)' 
+                : 'rgba(244, 240, 255, 0.3)',
+              borderRadius: '8px',
+              border: theme === 'sun' 
+                ? '1px solid rgba(113, 179, 253, 0.2)' 
+                : '1px solid rgba(138, 122, 255, 0.2)'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
+                <span style={{ fontSize: '16px' }}>🎵</span>
+                <span style={{ fontWeight: 500, color: theme === 'sun' ? '#1E40AF' : '#8377A0' }}>
+                  Audio File
+                </span>
+              </div>
+              <audio controls style={{ width: '100%' }}>
+                <source src={passage.audioUrl} type="audio/mpeg" />
+                Your browser does not support the audio element.
+              </audio>
+            </div>
+          )}
+
           {/* Passage Text */}
           <div 
             style={{ 
@@ -244,7 +270,7 @@ const SortablePassageItem = memo(
                     <div className="question-controls">
                       <Select
                         value={question.points}
-                        style={{ width: 100 }}
+                        style={{ width: 120 }}
                         size="small"
                       >
                         <Select.Option value={1}>1 {t('dailyChallenge.point') || 'điểm'}</Select.Option>
@@ -1289,7 +1315,7 @@ const SortableQuestionItem = memo(
             <Select
               value={question.points}
               onChange={handlePointChange}
-              style={{ width: 100 }}
+              style={{ width: 120 }}
               size="small"
             >
               <Select.Option value={1}>1 {t('dailyChallenge.point') || 'điểm'}</Select.Option>
@@ -1298,7 +1324,7 @@ const SortableQuestionItem = memo(
               <Select.Option value={5}>5 {t('dailyChallenge.point') || 'điểm'}</Select.Option>
             </Select>
             <Space size="small">
-              <Tooltip title={t('common.edit') || 'Chỉnh sửa'}>
+              <Tooltip title="Edit">
                 <Button
                   type="text"
                   icon={<EditOutlined />}
@@ -1306,7 +1332,7 @@ const SortableQuestionItem = memo(
                   size="small"
                 />
               </Tooltip>
-              <Tooltip title={t('common.delete') || 'Xóa'}>
+              <Tooltip title="Delete">
                 <Button
                   type="text"
                   icon={<DeleteOutlined />}
@@ -1315,7 +1341,7 @@ const SortableQuestionItem = memo(
                   danger
                 />
               </Tooltip>
-              <Tooltip title={t('common.duplicate') || 'Nhân bản'}>
+              <Tooltip title="Duplicate">
                 <Button
                   type="text"
                   icon={<CopyOutlined />}
@@ -1463,6 +1489,7 @@ const DailyChallengeContent = () => {
     fileList: [],
     uploading: false
   });
+  const [publishConfirmModalVisible, setPublishConfirmModalVisible] = useState(false);
 
   // Loading states for buttons
   const [templateDownloadLoading, setTemplateDownloadLoading] = useState(false);
@@ -1625,8 +1652,10 @@ const DailyChallengeContent = () => {
   // Load passages from localStorage
   const loadPassages = useCallback(() => {
     try {
-      const savedPassages = JSON.parse(localStorage.getItem('readingPassages') || '[]');
-      setPassages(savedPassages);
+      const readingPassages = JSON.parse(localStorage.getItem('readingPassages') || '[]');
+      const listeningPassages = JSON.parse(localStorage.getItem('listeningPassages') || '[]');
+      const allPassages = [...readingPassages, ...listeningPassages];
+      setPassages(allPassages);
     } catch (error) {
       console.error('Error loading passages:', error);
       setPassages([]);
@@ -1741,28 +1770,45 @@ const DailyChallengeContent = () => {
   };
 
   const handleAddQuestion = useCallback(() => {
-    // Open question type modal for GV challenge type
-    setQuestionTypeModalVisible(true);
-  }, []);
-
-  const handleAddPassage = useCallback(() => {
-    // Navigate to CreateReadingChallenge for RE challenge type
     const challengeType = challengeDetails?.challengeType;
-    const userRole = user?.role?.toLowerCase();
-    const basePath = userRole === 'teaching_assistant' 
-      ? `/teaching-assistant/daily-challenges/create/reading/${id}`
-      : `/teacher/daily-challenges/create/reading/${id}`;
     
-    navigate(basePath, {
-      state: {
-        challengeId: id,
-        challengeName: challengeDetails?.challengeName,
-        challengeType: challengeType,
-        classId: challengeInfo.classId,
-        className: challengeInfo.className
+    if (challengeType === 'RE' || challengeType === 'LI' || challengeType === 'WR') {
+      // For Reading/Listening/Writing challenges, navigate to CreateReadingChallenge
+      const userRole = user?.role?.toLowerCase();
+      
+      let basePath;
+      if (challengeType === 'RE') {
+        // Reading challenge
+        basePath = userRole === 'teaching_assistant' 
+          ? `/teaching-assistant/daily-challenges/create/reading/${id}`
+          : `/teacher/daily-challenges/create/reading/${id}`;
+      } else if (challengeType === 'LI') {
+        // Listening challenge
+        basePath = userRole === 'teaching_assistant' 
+          ? `/teaching-assistant/daily-challenges/create/listening/${id}`
+          : `/teacher/daily-challenges/create/listening/${id}`;
+      } else if (challengeType === 'WR') {
+        // Writing challenge
+        basePath = userRole === 'teaching_assistant' 
+          ? `/teaching-assistant/daily-challenges/create/writing/${id}`
+          : `/teacher/daily-challenges/create/writing/${id}`;
       }
-    });
+      
+      navigate(basePath, {
+        state: {
+          challengeId: id,
+          challengeName: challengeDetails?.challengeName,
+          challengeType: challengeType,
+          classId: challengeInfo.classId,
+          className: challengeInfo.className
+        }
+      });
+    } else {
+      // For other challenge types (GV, etc.), open question type modal
+      setQuestionTypeModalVisible(true);
+    }
   }, [challengeDetails, id, challengeInfo, navigate, user]);
+
 
   const handleQuestionTypeClick = useCallback((questionType) => {
     setCurrentModalType(questionType.type);
@@ -2044,6 +2090,19 @@ const DailyChallengeContent = () => {
     setDeleteQuestion(null);
   }, []);
 
+  const handlePublishConfirm = useCallback(() => {
+    setPublishConfirmModalVisible(true);
+  }, []);
+
+  const handlePublishConfirmCancel = useCallback(() => {
+    setPublishConfirmModalVisible(false);
+  }, []);
+
+  const handlePublishConfirmOk = useCallback(async () => {
+    setPublishConfirmModalVisible(false);
+    await handleSaveChanges('published');
+  }, []);
+
   const handleSaveChanges = useCallback(async (saveAsStatus) => {
     // Check if there are any visible questions (not deleted)
     const visibleQuestions = questions.filter(q => !q.toBeDeleted);
@@ -2306,10 +2365,20 @@ const DailyChallengeContent = () => {
 
   // Passage handlers
   const handleDeletePassage = useCallback((passageId) => {
+    const passageToDelete = passages.find(p => p.id === passageId);
     setPassages(prev => prev.filter(p => p.id !== passageId));
-    // Also remove from localStorage
-    const updatedPassages = passages.filter(p => p.id !== passageId);
-    localStorage.setItem('readingPassages', JSON.stringify(updatedPassages));
+    
+    // Remove from appropriate localStorage
+    if (passageToDelete?.type === 'LISTENING_PASSAGE') {
+      const listeningPassages = JSON.parse(localStorage.getItem('listeningPassages') || '[]');
+      const updatedListeningPassages = listeningPassages.filter(p => p.id !== passageId);
+      localStorage.setItem('listeningPassages', JSON.stringify(updatedListeningPassages));
+    } else {
+      const readingPassages = JSON.parse(localStorage.getItem('readingPassages') || '[]');
+      const updatedReadingPassages = readingPassages.filter(p => p.id !== passageId);
+      localStorage.setItem('readingPassages', JSON.stringify(updatedReadingPassages));
+    }
+    
     spaceToast.success('Passage deleted successfully!');
   }, [passages]);
 
@@ -2318,9 +2387,14 @@ const DailyChallengeContent = () => {
     const passage = passages.find(p => p.id === passageId);
     if (passage) {
       const userRole = user?.role?.toLowerCase();
+      const isListeningPassage = passage.type === 'LISTENING_PASSAGE';
       const basePath = userRole === 'teaching_assistant' 
-        ? `/teaching-assistant/daily-challenges/create/reading/${id}`
-        : `/teacher/daily-challenges/create/reading/${id}`;
+        ? (isListeningPassage 
+          ? `/teaching-assistant/daily-challenges/create/listening/${id}`
+          : `/teaching-assistant/daily-challenges/create/reading/${id}`)
+        : (isListeningPassage 
+          ? `/teacher/daily-challenges/create/listening/${id}`
+          : `/teacher/daily-challenges/create/reading/${id}`);
       
       navigate(basePath, {
         state: {
@@ -2349,24 +2423,41 @@ const DailyChallengeContent = () => {
       };
       setPassages(prev => [...prev, newPassage]);
       
-      // Update localStorage
-      const updatedPassages = [...passages, newPassage];
-      localStorage.setItem('readingPassages', JSON.stringify(updatedPassages));
+      // Update appropriate localStorage
+      if (passageToDuplicate.type === 'LISTENING_PASSAGE') {
+        const listeningPassages = JSON.parse(localStorage.getItem('listeningPassages') || '[]');
+        const updatedListeningPassages = [...listeningPassages, newPassage];
+        localStorage.setItem('listeningPassages', JSON.stringify(updatedListeningPassages));
+      } else {
+        const readingPassages = JSON.parse(localStorage.getItem('readingPassages') || '[]');
+        const updatedReadingPassages = [...readingPassages, newPassage];
+        localStorage.setItem('readingPassages', JSON.stringify(updatedReadingPassages));
+      }
       
       spaceToast.success('Passage duplicated successfully!');
     }
   }, [passages]);
 
   const handlePassagePointsChange = useCallback((passageId, value) => {
+    const passageToUpdate = passages.find(p => p.id === passageId);
     setPassages(prev => prev.map(p => 
       p.id === passageId ? { ...p, points: value } : p
     ));
     
-    // Update localStorage
-    const updatedPassages = passages.map(p => 
-      p.id === passageId ? { ...p, points: value } : p
-    );
-    localStorage.setItem('readingPassages', JSON.stringify(updatedPassages));
+    // Update appropriate localStorage
+    if (passageToUpdate?.type === 'LISTENING_PASSAGE') {
+      const listeningPassages = JSON.parse(localStorage.getItem('listeningPassages') || '[]');
+      const updatedListeningPassages = listeningPassages.map(p => 
+        p.id === passageId ? { ...p, points: value } : p
+      );
+      localStorage.setItem('listeningPassages', JSON.stringify(updatedListeningPassages));
+    } else {
+      const readingPassages = JSON.parse(localStorage.getItem('readingPassages') || '[]');
+      const updatedReadingPassages = readingPassages.map(p => 
+        p.id === passageId ? { ...p, points: value } : p
+      );
+      localStorage.setItem('readingPassages', JSON.stringify(updatedReadingPassages));
+    }
   }, [passages]);
 
   const handleDragStart = useCallback(() => {
@@ -2587,77 +2678,29 @@ const DailyChallengeContent = () => {
             </Button>
             </Dropdown>
 
-            {/* Show different buttons based on ChallengeType */}
-            {challengeDetails?.challengeType === 'GV' ? (
-              <Button 
-                icon={<PlusOutlined />}
-                className={`create-button ${theme}-create-button`}
-                onClick={handleAddQuestion}
-                style={{
-                  height: '40px',
-                  borderRadius: '8px',
-                  fontWeight: 500,
-                  fontSize: '16px',
-                  padding: '0 24px',
-                  border: 'none',
-                  transition: 'all 0.3s ease',
-                  background: theme === 'sun' 
-                    ? 'linear-gradient(135deg, rgba(102, 174, 255, 0.6), rgba(60, 153, 255, 0.6))'
-                    : 'linear-gradient(135deg, rgba(181, 176, 192, 0.7), rgba(163, 158, 187, 0.7), rgba(131, 119, 160, 0.7), rgba(172, 165, 192, 0.7), rgba(109, 95, 143, 0.7))',
-                  color: theme === 'sun' ? '#000000' : '#000000',
-                  boxShadow: theme === 'sun' ? '0 2px 8px rgba(60, 153, 255, 0.2)' : '0 2px 8px rgba(131, 119, 160, 0.3)',
-                  opacity: 0.9
-                }}
-              >
-                {t('dailyChallenge.addQuestion')}
-              </Button>
-            ) : challengeDetails?.challengeType === 'RE' ? (
-              <Button 
-                icon={<PlusOutlined />}
-                className={`create-button ${theme}-create-button`}
-                onClick={handleAddPassage}
-                style={{
-                  height: '40px',
-                  borderRadius: '8px',
-                  fontWeight: 500,
-                  fontSize: '16px',
-                  padding: '0 24px',
-                  border: 'none',
-                  transition: 'all 0.3s ease',
-                  background: theme === 'sun' 
-                    ? 'linear-gradient(135deg, rgba(102, 174, 255, 0.6), rgba(60, 153, 255, 0.6))'
-                    : 'linear-gradient(135deg, rgba(181, 176, 192, 0.7), rgba(163, 158, 187, 0.7), rgba(131, 119, 160, 0.7), rgba(172, 165, 192, 0.7), rgba(109, 95, 143, 0.7))',
-                  color: theme === 'sun' ? '#000000' : '#000000',
-                  boxShadow: theme === 'sun' ? '0 2px 8px rgba(60, 153, 255, 0.2)' : '0 2px 8px rgba(131, 119, 160, 0.3)',
-                  opacity: 0.9
-                }}
-              >
-                {t('dailyChallenge.addPassage')}
-              </Button>
-            ) : (
-              <Button 
-                icon={<PlusOutlined />}
-                className={`create-button ${theme}-create-button`}
-                onClick={handleAddQuestion}
-                style={{
-                  height: '40px',
-                  borderRadius: '8px',
-                  fontWeight: 500,
-                  fontSize: '16px',
-                  padding: '0 24px',
-                  border: 'none',
-                  transition: 'all 0.3s ease',
-                  background: theme === 'sun' 
-                    ? 'linear-gradient(135deg, rgba(102, 174, 255, 0.6), rgba(60, 153, 255, 0.6))'
-                    : 'linear-gradient(135deg, rgba(181, 176, 192, 0.7), rgba(163, 158, 187, 0.7), rgba(131, 119, 160, 0.7), rgba(172, 165, 192, 0.7), rgba(109, 95, 143, 0.7))',
-                  color: theme === 'sun' ? '#000000' : '#000000',
-                  boxShadow: theme === 'sun' ? '0 2px 8px rgba(60, 153, 255, 0.2)' : '0 2px 8px rgba(131, 119, 160, 0.3)',
-                  opacity: 0.9
-                }}
-              >
-                {t('dailyChallenge.addQuestion')}
-              </Button>
-            )}
+            {/* Add Question/Passage Button - Single button for all types */}
+            <Button 
+              icon={<PlusOutlined />}
+              className={`create-button ${theme}-create-button`}
+              onClick={handleAddQuestion}
+              style={{
+                height: '40px',
+                borderRadius: '8px',
+                fontWeight: 500,
+                fontSize: '16px',
+                padding: '0 24px',
+                border: 'none',
+                transition: 'all 0.3s ease',
+                background: theme === 'sun' 
+                  ? 'linear-gradient(135deg, rgba(102, 174, 255, 0.6), rgba(60, 153, 255, 0.6))'
+                  : 'linear-gradient(135deg, rgba(181, 176, 192, 0.7), rgba(163, 158, 187, 0.7), rgba(131, 119, 160, 0.7), rgba(172, 165, 192, 0.7), rgba(109, 95, 143, 0.7))',
+                color: theme === 'sun' ? '#000000' : '#000000',
+                boxShadow: theme === 'sun' ? '0 2px 8px rgba(60, 153, 255, 0.2)' : '0 2px 8px rgba(131, 119, 160, 0.3)',
+                opacity: 0.9
+              }}
+            >
+              {t('dailyChallenge.addQuestion')}
+            </Button>
             
             {/* Save Dropdown - Save as Draft or Published */}
             <Dropdown
@@ -2665,15 +2708,15 @@ const DailyChallengeContent = () => {
                 items: [
                   {
                     key: 'draft',
-                    label: <span style={{ color: '#000000' }}>{t('dailyChallenge.saveAsDraft') || 'Save as Draft'}</span>,
+                    label: <span style={{ color: '#000000' }}>Save as Draft</span>,
                     icon: <FileTextOutlined style={{ color: '#000000' }} />,
                     onClick: () => handleSaveChanges('draft'),
                   },
                   {
                     key: 'published',
-                    label: <span style={{ color: '#000000' }}>{t('dailyChallenge.saveAsPublished') || 'Save as Published'}</span>,
+                    label: <span style={{ color: '#000000' }}>Save as Published</span>,
                     icon: <CheckCircleOutlined style={{ color: '#000000' }} />,
-                    onClick: () => handleSaveChanges('published'),
+                    onClick: handlePublishConfirm,
                   },
                 ]
               }}
@@ -2697,7 +2740,7 @@ const DailyChallengeContent = () => {
                   boxShadow: theme === 'sun' ? '0 2px 8px rgba(60, 153, 255, 0.3)' : '0 2px 8px rgba(131, 119, 160, 0.3)'
                 }}
               >
-                {t('common.save') || 'Save'} <DownOutlined />
+                Save <DownOutlined />
               </Button>
             </Dropdown>
           </div>
@@ -3306,7 +3349,7 @@ const DailyChallengeContent = () => {
         onOk={handleDeleteConfirm}
         onCancel={handleDeleteModalClose}
         okText={t('common.confirm')}
-        cancelText={t('common.cancel')}
+        cancelText="Cancel"
         width={500}
         centered
         bodyStyle={{
@@ -3392,7 +3435,7 @@ const DailyChallengeContent = () => {
         onOk={handleImportOk}
         onCancel={handleImportCancel}
         okText={t('dailyChallenge.import') || 'Import'}
-        cancelText={t('common.cancel')}
+        cancelText="Cancel"
         width={600}
         centered
         confirmLoading={importModal.uploading}
@@ -3534,6 +3577,89 @@ const DailyChallengeContent = () => {
           antiCheatModeEnabled,
         }}
       />
+
+      {/* Publish Confirmation Modal */}
+      <Modal
+        title={
+          <div style={{ 
+            fontSize: '20px', 
+            fontWeight: '600', 
+            color: 'rgb(24, 144, 255)',
+            textAlign: 'center',
+            padding: '10px 0',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '10px',
+          }}>
+            <CheckCircleOutlined style={{ color: 'rgb(24, 144, 255)' }} />
+            Confirm Publish Challenge
+          </div>
+        }
+        open={publishConfirmModalVisible}
+        onOk={handlePublishConfirmOk}
+        onCancel={handlePublishConfirmCancel}
+        okText="Publish Now"
+        cancelText="Cancel"
+        width={500}
+        centered
+        bodyStyle={{
+          padding: '30px 40px',
+          fontSize: '16px',
+          lineHeight: '1.6',
+          textAlign: 'center'
+        }}
+        okButtonProps={{
+          style: {
+            backgroundColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
+            background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
+            borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'transparent',
+            color: theme === 'sun' ? '#000000' : '#ffffff',
+            fontWeight: '500',
+            height: '40px',
+            borderRadius: '6px',
+            padding: '0 30px'
+          }
+        }}
+        cancelButtonProps={{
+          style: {
+            height: '40px',
+            borderRadius: '6px',
+            padding: '0 30px'
+          }
+        }}
+      >
+        <div style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: '20px'
+        }}>
+          <div style={{
+            fontSize: '48px',
+            color: '#ff4d4f',
+            marginBottom: '10px'
+          }}>
+            ⚠️
+          </div>
+          <p style={{
+            fontSize: '18px',
+            color: '#333',
+            margin: 0,
+            fontWeight: '500'
+          }}>
+            Are you sure you want to publish this challenge?
+          </p>
+          <p style={{
+            fontSize: '16px',
+            color: '#666',
+            margin: 0,
+            lineHeight: '1.5'
+          }}>
+            Once published, students will be able to access this challenge. This action cannot be undone.
+          </p>
+        </div>
+      </Modal>
     </ThemedLayout>
   );
 };

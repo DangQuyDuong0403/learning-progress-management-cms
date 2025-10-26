@@ -38,6 +38,9 @@ const SimpleDailyChallengeModal = ({
   const [isButtonDisabled, setIsButtonDisabled] = useState(false);
   const [lessons, setLessons] = useState([]);
   const [loadingLessons, setLoadingLessons] = useState(false);
+  
+  // Check if challengeType is already set from modal
+  const challengeTypeAlreadySet = !!lessonData?.challengeType;
 
   const fetchLessons = useCallback(async () => {
     if (!classId) return;
@@ -135,12 +138,22 @@ const SimpleDailyChallengeModal = ({
     }
   }, [visible, classId, fetchLessons]);
 
-  // Auto-populate lesson when lessonData is provided
+  // Auto-populate lesson and challengeType when lessonData is provided
   useEffect(() => {
     if (visible && lessonData) {
-      form.setFieldsValue({
-        classLessonId: lessonData.classLessonId,
-      });
+      const fieldsToSet = {};
+      
+      // Only set classLessonId if it exists (when coming from table row)
+      if (lessonData.classLessonId) {
+        fieldsToSet.classLessonId = lessonData.classLessonId;
+      }
+      
+      // Set challengeType if it exists (when coming from type selection modal)
+      if (lessonData.challengeType) {
+        fieldsToSet.challengeType = lessonData.challengeType;
+      }
+      
+      form.setFieldsValue(fieldsToSet);
     }
   }, [visible, lessonData, form]);
 
@@ -153,6 +166,13 @@ const SimpleDailyChallengeModal = ({
       const values = await form.validateFields();
       
       console.log('Creating challenge with data:', values);
+      console.log('Form values:', form.getFieldsValue());
+      console.log('lessonData:', lessonData);
+      
+      // Ensure challengeType is set - use from lessonData if not in form values
+      const challengeType = values.challengeType || lessonData?.challengeType;
+      
+      console.log('Final challengeType:', challengeType);
       
       // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 1000));
@@ -161,8 +181,10 @@ const SimpleDailyChallengeModal = ({
         challengeName: values.challengeName,
         classLessonId: values.classLessonId,
         description: values.description,
-        challengeType: values.challengeType,
+        challengeType: challengeType,
       };
+
+      console.log('Challenge data to send:', challengeData);
 
       spaceToast.success(t('dailyChallenge.createChallengeSuccess'));
       form.resetFields();
@@ -316,7 +338,7 @@ const SimpleDailyChallengeModal = ({
                 filterOption={(input, option) =>
                   option.children.toLowerCase().indexOf(input.toLowerCase()) >= 0
                 }
-                disabled={!!lessonData}
+                disabled={!!lessonData?.classLessonId}
               >
                 {lessons.map(lesson => (
                   <Option key={lesson.id} value={lesson.id}>
@@ -328,35 +350,65 @@ const SimpleDailyChallengeModal = ({
           </Col>
         </Row>
         
-        <Row gutter={16}>
-          <Col span={24}>
-            <Form.Item
-              label={
-                <span>
-                  {t('dailyChallenge.questionType')}
-                  <span style={{ color: 'red', marginLeft: '4px' }}>*</span>
-                </span>
-              }
-              name='challengeType'
-              rules={[
-                {
-                  required: true,
-                  message: t('dailyChallenge.questionTypeRequired'),
-                },
-              ]}>
-              <Select 
-                placeholder={t('dailyChallenge.selectQuestionType')}
-                style={{ height: '40px' }}
-              >
-                {questionTypeOptions.map(option => (
-                  <Option key={option.value} value={option.value}>
-                    {option.label}
-                  </Option>
-                ))}
-              </Select>
-            </Form.Item>
-          </Col>
-        </Row>
+        {/* Show Question Type field or display selected type */}
+        {challengeTypeAlreadySet ? (
+          <Row gutter={16}>
+            <Col span={24}>
+              {/* Hidden field to keep challengeType value in form */}
+              <Form.Item name='challengeType' hidden noStyle>
+                <Input />
+              </Form.Item>
+              
+              {/* Display field */}
+              <Form.Item
+                label={<span>{t('dailyChallenge.questionType')}</span>}>
+                <div style={{
+                  padding: '8px 12px',
+                  background: theme === 'sun' 
+                    ? 'rgba(24, 144, 255, 0.08)' 
+                    : 'rgba(138, 122, 255, 0.08)',
+                  border: `1px solid ${theme === 'sun' ? 'rgba(24, 144, 255, 0.3)' : 'rgba(138, 122, 255, 0.3)'}`,
+                  borderRadius: '6px',
+                  color: theme === 'sun' ? 'rgba(24, 144, 255, 0.9)' : 'rgba(138, 122, 255, 0.9)',
+                  fontWeight: '500',
+                  fontSize: '14px'
+                }}>
+                  {lessonData?.challengeTypeName || lessonData?.challengeType}
+                </div>
+              </Form.Item>
+            </Col>
+          </Row>
+        ) : (
+          <Row gutter={16}>
+            <Col span={24}>
+              <Form.Item
+                label={
+                  <span>
+                    {t('dailyChallenge.questionType')}
+                    <span style={{ color: 'red', marginLeft: '4px' }}>*</span>
+                  </span>
+                }
+                name='challengeType'
+                rules={[
+                  {
+                    required: true,
+                    message: t('dailyChallenge.questionTypeRequired'),
+                  },
+                ]}>
+                <Select 
+                  placeholder={t('dailyChallenge.selectQuestionType')}
+                  style={{ height: '40px' }}
+                >
+                  {questionTypeOptions.map(option => (
+                    <Option key={option.value} value={option.value}>
+                      {option.label}
+                    </Option>
+                  ))}
+                </Select>
+              </Form.Item>
+            </Col>
+          </Row>
+        )}
 
         <Row gutter={16}>
           <Col span={24}>
