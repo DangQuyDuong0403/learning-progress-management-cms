@@ -842,7 +842,8 @@ const CreateReadingChallenge = () => {
                            background: 'rgba(240, 247, 255, 0.5)',
                            position: 'relative',
                            display: 'flex',
-                           flexDirection: 'column'
+                           flexDirection: 'column',
+                           color: '#000000'
                          }}>
                            <CKEditor
                              key="passage-editor"

@@ -238,7 +238,8 @@ const SortablePassageItem = memo(
               borderRadius: '8px',
               border: theme === 'sun' 
                 ? '1px solid rgba(113, 179, 253, 0.2)' 
-                : '1px solid rgba(138, 122, 255, 0.2)'
+                : '1px solid rgba(138, 122, 255, 0.2)',
+              color: '#000000'
             }}
             dangerouslySetInnerHTML={{ __html: passage.content }}
           />

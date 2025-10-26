@@ -361,7 +361,7 @@ const SimpleDailyChallengeModal = ({
               
               {/* Display field */}
               <Form.Item
-                label={<span>{t('dailyChallenge.questionType')}</span>}>
+                label={<span>Challenge Type</span>}>
                 <div style={{
                   padding: '8px 12px',
                   background: theme === 'sun' 
@@ -384,7 +384,7 @@ const SimpleDailyChallengeModal = ({
               <Form.Item
                 label={
                   <span>
-                    {t('dailyChallenge.questionType')}
+                    Challenge Type
                     <span style={{ color: 'red', marginLeft: '4px' }}>*</span>
                   </span>
                 }
@@ -392,11 +392,11 @@ const SimpleDailyChallengeModal = ({
                 rules={[
                   {
                     required: true,
-                    message: t('dailyChallenge.questionTypeRequired'),
+                    message: 'Please select challenge type',
                   },
                 ]}>
                 <Select 
-                  placeholder={t('dailyChallenge.selectQuestionType')}
+                  placeholder="Select challenge type"
                   style={{ height: '40px' }}
                 >
                   {questionTypeOptions.map(option => (
