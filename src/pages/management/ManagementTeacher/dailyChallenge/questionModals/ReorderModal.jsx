@@ -27,17 +27,6 @@ const debounce = (func, wait) => {
 	};
 };
 
-// Throttle utility function
-const throttle = (func, limit) => {
-	let inThrottle;
-	return function(...args) {
-		if (!inThrottle) {
-			func.apply(this, args);
-			inThrottle = true;
-			setTimeout(() => inThrottle = false, limit);
-		}
-	};
-};
 
 const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
   const [points, setPoints] = useState(1);
@@ -137,6 +126,44 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
     return Math.random().toString(36).substring(2, 8);
   };
 
+  // Helper function to create shuffled words with correct order
+  const createShuffledWords = useCallback((blanksArray) => {
+    // Sort blanks by their position in the DOM to get correct order
+    const sortedBlanks = [...blanksArray].sort((a, b) => {
+      const aElement = editorRef.current?.querySelector(`[data-blank-id="${a.id}"]`);
+      const bElement = editorRef.current?.querySelector(`[data-blank-id="${b.id}"]`);
+      
+      if (!aElement || !bElement) return 0;
+      
+      const position = aElement.compareDocumentPosition(bElement);
+      return position & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1;
+    });
+
+    const words = sortedBlanks
+      .filter(blank => blank.answer && blank.answer.trim())
+      .map((blank, index) => ({
+        id: blank.id,
+        text: blank.answer,
+        originalIndex: index, // Correct original position in sentence
+        currentIndex: index,  // Will be updated after shuffle
+        color: blank.color,
+        positionId: blank.positionId
+      }));
+    
+    // Shuffle array
+    const shuffled = [...words];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    
+    // Update currentIndex after shuffle
+    return shuffled.map((word, index) => ({
+      ...word,
+      currentIndex: index
+    }));
+  }, []);
+
   // Colors for blanks - using distinct, high-contrast colors
   const blankColors = useMemo(() => [
     '#e63946', // Red
@@ -160,35 +187,13 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
       
       // Update shuffled words with requestAnimationFrame to avoid lag
         requestAnimationFrame(() => {
-          const words = newBlanks
-            .filter(blank => blank.answer && blank.answer.trim())
-            .map((blank, index) => ({
-              id: blank.id,
-              text: blank.answer,
-              originalIndex: index,
-              currentIndex: index,
-              color: blank.color
-            }));
-          
-          // Shuffle array
-          const shuffled = [...words];
-          for (let i = shuffled.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-          }
-          
-          // Update currentIndex after shuffle
-          const finalWords = shuffled.map((word, index) => ({
-            ...word,
-            currentIndex: index
-          }));
-          
+          const finalWords = createShuffledWords(newBlanks);
           setShuffledWords(finalWords);
         });
       
       return newBlanks;
     });
-  }, []);
+  }, [createShuffledWords]);
 
   // Update blank numbers based on DOM order
   const updateBlankNumbers = useCallback(() => {
@@ -221,30 +226,8 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
       requestAnimationFrame(() => {
         updateBlankNumbers();
         
-        // Update shuffled words from new blanks
-        const words = newBlanks
-          .filter(blank => blank.answer && blank.answer.trim())
-          .map((blank, index) => ({
-            id: blank.id,
-            text: blank.answer,
-            originalIndex: index,
-            currentIndex: index,
-            color: blank.color
-          }));
-        
-        // Shuffle array
-        const shuffled = [...words];
-        for (let i = shuffled.length - 1; i > 0; i--) {
-          const j = Math.floor(Math.random() * (i + 1));
-          [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-        }
-        
-        // Update currentIndex after shuffle
-        const finalWords = shuffled.map((word, index) => ({
-          ...word,
-          currentIndex: index
-        }));
-        
+        // Update shuffled words from new blanks with correct order
+        const finalWords = createShuffledWords(newBlanks);
         setShuffledWords(finalWords);
       });
       
@@ -255,7 +238,7 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
     
     // Refocus editor
     editorRef.current.focus();
-  }, [updateBlankNumbers]);
+  }, [updateBlankNumbers, createShuffledWords]);
 
   // Create blank element
   const createBlankElement = useCallback((blank, index) => {
@@ -552,30 +535,8 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
               editorRef.current.focus();
             }
             
-            // Update shuffled words from new blanks
-            const words = newBlanks
-              .filter(blank => blank.answer && blank.answer.trim())
-              .map((blank, index) => ({
-                id: blank.id,
-                text: blank.answer,
-                originalIndex: index,
-                currentIndex: index,
-                color: blank.color
-              }));
-            
-            // Shuffle array
-            const shuffled = [...words];
-            for (let i = shuffled.length - 1; i > 0; i--) {
-              const j = Math.floor(Math.random() * (i + 1));
-              [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-            }
-            
-            // Update currentIndex after shuffle
-            const finalWords = shuffled.map((word, index) => ({
-              ...word,
-              currentIndex: index
-            }));
-            
+            // Update shuffled words from new blanks with correct order
+            const finalWords = createShuffledWords(newBlanks);
             setShuffledWords(finalWords);
           } catch (error) {
             console.error('Error expanding blank:', error);
@@ -591,7 +552,7 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
 
     // Hide popup
     setShowBlankPopup(false);
-  }, [blanks, blankColors, createBlankElement, isCursorInsideBlank, updateBlankNumbers]);
+  }, [blanks, blankColors, createBlankElement, isCursorInsideBlank, updateBlankNumbers, createShuffledWords]);
 
   const handleEditorClick = useCallback((e) => {
     // Only set cursor if there's no current selection
@@ -805,14 +766,25 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
     const correctAnswer = blanks.map(blank => blank.answer).join(' ');
 
     // Create questionText with [[pos_xxx]] format for API
-    const questionText = blanks.map(blank => `[[pos_${blank.positionId}]]`).join(' ');
+    // Sort blanks by their position in the DOM to get correct order
+    const sortedBlanks = [...blanks].sort((a, b) => {
+      const aElement = editorRef.current?.querySelector(`[data-blank-id="${a.id}"]`);
+      const bElement = editorRef.current?.querySelector(`[data-blank-id="${b.id}"]`);
+      
+      if (!aElement || !bElement) return 0;
+      
+      const position = aElement.compareDocumentPosition(bElement);
+      return position & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1;
+    });
+    
+    const questionText = sortedBlanks.map(blank => `[[pos_${blank.positionId}]]`).join(' ');
 
-    // Create content.data array with positionId and positionOrder
-    const contentData = blanks.map((blank, index) => ({
+    // Create content.data array with positionId only (no positionOrder for REARRANGE)
+    // Use sortedBlanks to ensure correct order
+    const contentData = sortedBlanks.map((blank, index) => ({
       id: `opt${index + 1}`,
       value: blank.answer,
       positionId: blank.positionId,
-      positionOrder: index + 1, // 1-based order
       correct: true
     }));
 
@@ -833,7 +805,7 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
     console.log('=== REARRANGE QUESTION DATA ===');
     console.log('Question Text (API format):', questionText);
     console.log('Correct Answer (human readable):', correctAnswer);
-    console.log('Content Data:', contentData);
+    console.log('Content Data (NO positionOrder):', contentData);
     console.log('Shuffled Words:', shuffledWords);
     console.log('Blanks:', blanks);
     console.log('Full Question Data:', newQuestionData);
