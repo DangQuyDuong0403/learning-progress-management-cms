@@ -24,6 +24,31 @@ import {
 } from '@ant-design/icons';
 import './MultipleChoiceModal.css';
 
+// Debounce utility function
+const debounce = (func, wait) => {
+	let timeout;
+	return function executedFunction(...args) {
+		const later = () => {
+			clearTimeout(timeout);
+			func(...args);
+		};
+		clearTimeout(timeout);
+		timeout = setTimeout(later, wait);
+	};
+};
+
+// Throttle utility function
+const throttle = (func, limit) => {
+	let inThrottle;
+	return function(...args) {
+		if (!inThrottle) {
+			func.apply(this, args);
+			inThrottle = true;
+			setTimeout(() => inThrottle = false, limit);
+		}
+	};
+};
+
 const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 	const [editorContent, setEditorContent] = useState([]);
 	const [dropdowns, setDropdowns] = useState([]);
@@ -133,6 +158,408 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 	const generatePositionId = () => {
 		return Math.random().toString(36).substring(2, 8);
 	};
+
+	// Check if cursor is inside a dropdown element
+	const isCursorInsideDropdown = useCallback(() => {
+		const selection = window.getSelection();
+		if (!selection || selection.rangeCount === 0) return false;
+
+		let node = selection.anchorNode;
+		while (node && node !== editorRef.current) {
+			if (node.nodeType === Node.ELEMENT_NODE && node.hasAttribute('data-dropdown-id')) {
+				return true;
+			}
+			node = node.parentNode;
+		}
+		return false;
+	}, []);
+
+	// Handle dropdown answer change
+	const handleDropdownAnswerChange = useCallback((dropdownId, value) => {
+		setDropdowns(prev => prev.map(dropdown => 
+			dropdown.id === dropdownId ? { ...dropdown, correctAnswer: value } : dropdown
+		));
+	}, []);
+
+	// Update dropdown numbers based on DOM order
+	const updateDropdownNumbers = useCallback(() => {
+		if (!editorRef.current) return;
+		
+		const dropdownElements = editorRef.current.querySelectorAll('[data-dropdown-id]');
+		dropdownElements.forEach((element, index) => {
+			const badge = element.querySelector('.dropdown-badge');
+			if (badge) {
+				badge.textContent = index + 1;
+			}
+		});
+	}, []);
+
+	// Handle delete dropdown from DOM
+	const handleDeleteDropdownElement = useCallback((dropdownId) => {
+		console.log('Attempting to delete dropdown:', dropdownId);
+		
+		if (!editorRef.current) {
+			console.error('Editor ref not available');
+			return;
+		}
+
+		// Find and remove the dropdown element from DOM
+		const dropdownElement = editorRef.current.querySelector(`[data-dropdown-id="${dropdownId}"]`);
+		console.log('Found dropdown element:', dropdownElement);
+		
+		if (dropdownElement) {
+			dropdownElement.remove();
+			console.log('Dropdown element removed from DOM');
+		} else {
+			console.warn('Dropdown element not found in DOM');
+		}
+
+		// Update state
+		setDropdowns(prev => {
+			const filtered = prev.filter(dropdown => dropdown.id !== dropdownId);
+			console.log('Updated dropdowns state:', filtered);
+			return filtered;
+		});
+		
+		// Update dropdown numbers after deletion
+		requestAnimationFrame(() => {
+			updateDropdownNumbers();
+		});
+		
+		console.success('Dropdown removed');
+		
+		// Refocus editor
+		if (editorRef.current) {
+			editorRef.current.focus();
+		}
+	}, [updateDropdownNumbers]);
+
+	// Create dropdown element
+	const createDropdownElement = useCallback((dropdown, index) => {
+		const span = document.createElement('span');
+		span.setAttribute('contenteditable', 'false');
+		span.setAttribute('data-dropdown-id', dropdown.id);
+		span.style.cssText = `
+			display: inline-flex;
+			align-items: center;
+			margin: 0 4px;
+			position: relative;
+			vertical-align: middle;
+			user-select: none;
+			-webkit-user-select: none;
+		`;
+
+	const chip = document.createElement('span');
+	chip.style.cssText = `
+		display: inline-flex;
+		align-items: center;
+		gap: 6px;
+		padding: 6px 12px;
+		background: linear-gradient(135deg, ${dropdown.color}20, ${dropdown.color}40);
+		border: 2px solid ${dropdown.color};
+		border-radius: 8px;
+		font-size: 14px;
+		font-weight: 500;
+		color: ${dropdown.color};
+		transition: all 0.2s ease;
+		cursor: pointer;
+		min-width: 0;
+		max-width: 220px;
+	`;
+
+		// Number badge
+		const badge = document.createElement('span');
+		badge.className = 'dropdown-badge';
+		badge.style.cssText = `
+			width: 20px;
+			height: 20px;
+			border-radius: 50%;
+			background: ${dropdown.color};
+			color: white;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			font-size: 11px;
+			font-weight: 700;
+		`;
+		badge.textContent = index + 1;
+
+	// Compact mode: Display answer text
+	const answerText = document.createElement('span');
+	answerText.className = 'dropdown-answer-text';
+	answerText.style.cssText = `
+		color: #333;
+		font-weight: 500;
+		font-size: 14px;
+		display: inline-block;
+		max-width: 150px;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+		vertical-align: middle;
+	`;
+	answerText.textContent = dropdown.correctAnswer || '';
+
+		// Input field (hidden by default in compact mode)
+		const input = document.createElement('input');
+		input.type = 'text';
+		input.placeholder = 'type correct answer...';
+		input.value = dropdown.correctAnswer || '';
+		input.className = 'dropdown-input';
+		input.style.cssText = `
+			border: none;
+			outline: none;
+			background: rgba(255,255,255,0.9);
+			padding: 4px 8px;
+			border-radius: 4px;
+			font-size: 14px;
+			min-width: 120px;
+			max-width: 200px;
+			color: #333;
+			font-weight: 500;
+			display: none;
+		`;
+	// Optimize input handling with debounce for state update
+	let inputTimeout;
+	input.addEventListener('input', (e) => {
+		const newValue = e.target.value;
+		// Update answer text in real-time (instant visual feedback)
+		answerText.textContent = newValue || '';
+
+		// Debounce state update to reduce re-renders
+		clearTimeout(inputTimeout);
+		inputTimeout = setTimeout(() => {
+			handleDropdownAnswerChange(dropdown.id, newValue);
+		}, 100);
+	});
+		input.addEventListener('click', (e) => {
+			e.stopPropagation();
+		});
+	input.addEventListener('blur', (e) => {
+		// If input is empty, delete the dropdown
+		if (!e.target.value || !e.target.value.trim()) {
+			handleDeleteDropdownElement(dropdown.id);
+			return;
+		}
+		// When input loses focus, collapse back to compact mode
+		collapseDropdown();
+	});
+
+		// Delete button (always visible for easier deletion)
+		const deleteBtn = document.createElement('button');
+		deleteBtn.innerHTML = '×';
+		deleteBtn.className = 'dropdown-delete-btn';
+		deleteBtn.type = 'button'; // Prevent form submission
+		deleteBtn.style.cssText = `
+			border: none;
+			background: rgba(255,77,79,0.9);
+			color: white;
+			border-radius: 4px;
+			width: 20px;
+			height: 20px;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			cursor: pointer;
+			transition: all 0.2s ease;
+			font-size: 14px;
+			font-weight: bold;
+			position: relative;
+			z-index: 10;
+			opacity: 0.7;
+		`;
+		// Add multiple event listeners to ensure click is captured
+		const handleDeleteClick = (e) => {
+			e.preventDefault();
+			e.stopPropagation();
+			console.log('Delete button clicked for dropdown:', dropdown.id);
+			handleDeleteDropdownElement(dropdown.id);
+		};
+		
+		deleteBtn.addEventListener('click', handleDeleteClick);
+		deleteBtn.addEventListener('mousedown', handleDeleteClick);
+		deleteBtn.addEventListener('touchstart', handleDeleteClick);
+		deleteBtn.addEventListener('mouseenter', (e) => {
+			e.target.style.background = 'rgba(255,77,79,1)';
+			e.target.style.transform = 'scale(1.2)';
+			e.target.style.opacity = '1';
+		});
+		deleteBtn.addEventListener('mouseleave', (e) => {
+			e.target.style.background = 'rgba(255,77,79,0.9)';
+			e.target.style.transform = 'scale(1)';
+			e.target.style.opacity = '0.7';
+		});
+
+		// Function to expand dropdown (show input)
+		const expandDropdown = () => {
+			console.log('Expanding dropdown:', dropdown.id);
+			answerText.style.display = 'none';
+			input.style.display = 'inline';
+			console.log('Input field displayed');
+			setTimeout(() => input.focus(), 10);
+		};
+
+		// Function to collapse dropdown (show only answer text)
+		const collapseDropdown = () => {
+			console.log('Collapsing dropdown:', dropdown.id);
+			answerText.style.display = 'inline';
+			input.style.display = 'none';
+		};
+
+		// Click on chip to expand
+		chip.addEventListener('click', (e) => {
+			e.stopPropagation();
+			expandDropdown();
+		});
+
+		chip.appendChild(badge);
+		chip.appendChild(answerText);
+		chip.appendChild(input);
+		chip.appendChild(deleteBtn);
+		span.appendChild(chip);
+
+		// Store expand function for external use
+		span.expandDropdown = expandDropdown;
+
+		return span;
+	}, [handleDropdownAnswerChange, handleDeleteDropdownElement]);
+
+	// Find and replace pattern in text nodes without affecting existing dropdowns
+	const findAndReplacePattern = useCallback((element) => {
+		// Walk through all child nodes
+		const walker = document.createTreeWalker(
+			element,
+			NodeFilter.SHOW_TEXT,
+			null,
+			false
+		);
+
+		let textNode;
+
+		while ((textNode = walker.nextNode())) {
+			// Check if this text node is inside a dropdown element
+			let parentNode = textNode.parentNode;
+			let isInsideDropdown = false;
+			while (parentNode && parentNode !== element) {
+				if (parentNode.hasAttribute && parentNode.hasAttribute('data-dropdown-id')) {
+					isInsideDropdown = true;
+					break;
+				}
+				parentNode = parentNode.parentNode;
+			}
+
+			// Skip if inside a dropdown
+			if (isInsideDropdown) continue;
+
+			const text = textNode.textContent;
+			const underscoreIndex = text.indexOf('__');
+			const bracketIndex = text.indexOf('[]');
+
+			let patternIndex = -1;
+			let patternLength = 2;
+
+			if (underscoreIndex !== -1 && bracketIndex !== -1) {
+				patternIndex = Math.min(underscoreIndex, bracketIndex);
+			} else if (underscoreIndex !== -1) {
+				patternIndex = underscoreIndex;
+			} else if (bracketIndex !== -1) {
+				patternIndex = bracketIndex;
+			}
+
+			if (patternIndex !== -1) {
+				// Found a pattern in this text node
+
+				// Create dropdown
+				const positionId = generatePositionId();
+				const dropdownId = `dropdown-${Date.now()}-${positionId}`;
+				const color = dropdownColors[dropdowns.length % dropdownColors.length];
+
+				const newDropdown = {
+					id: dropdownId,
+					positionId: positionId,
+					correctAnswer: '',
+					incorrectOptions: [],
+					color: color
+				};
+
+				// Split the text node
+				let beforePattern = text.substring(0, patternIndex);
+				const afterPattern = text.substring(patternIndex + patternLength);
+
+				// Add space before dropdown if text before doesn't end with space
+				if (beforePattern && !beforePattern.endsWith(' ')) {
+					beforePattern += ' ';
+				}
+
+				// Create dropdown element
+				const dropdownElement = createDropdownElement(newDropdown, dropdowns.length);
+
+				// Get parent node
+				const parent = textNode.parentNode;
+
+				// Create document fragment to hold new nodes
+				const fragment = document.createDocumentFragment();
+
+				// Add text before pattern (if any)
+				if (beforePattern) {
+					fragment.appendChild(document.createTextNode(beforePattern));
+				}
+
+				// Add dropdown chip
+				fragment.appendChild(dropdownElement);
+
+				// Add space + text after pattern (if any, otherwise just add space)
+				if (afterPattern) {
+					// Add space before afterPattern if it doesn't start with space
+					const textAfter = afterPattern.startsWith(' ') ? afterPattern : ' ' + afterPattern;
+					fragment.appendChild(document.createTextNode(textAfter));
+				} else {
+					fragment.appendChild(document.createTextNode(' '));
+				}
+
+				// Replace the text node with the fragment
+				parent.replaceChild(fragment, textNode);
+
+				// Update dropdowns state
+				setDropdowns(prev => [...prev, newDropdown]);
+
+				// Update dropdown numbers and expand the newly created dropdown
+				requestAnimationFrame(() => {
+					try {
+						// Update all dropdown numbers first
+						updateDropdownNumbers();
+						
+						// Find the newly inserted dropdown in DOM
+						const insertedDropdown = element.querySelector(`[data-dropdown-id="${dropdownId}"]`);
+						if (insertedDropdown && insertedDropdown.expandDropdown) {
+							// Call the expand function to show input field
+							insertedDropdown.expandDropdown();
+							return;
+						}
+						// Fallback: focus on editor
+						element.focus();
+					} catch (error) {
+						console.error('Error expanding dropdown:', error);
+						element.focus();
+					}
+				});
+
+				// Only process one pattern at a time
+				break;
+			}
+		}
+	}, [dropdowns, dropdownColors, createDropdownElement, setDropdowns, updateDropdownNumbers]);
+
+	// Debounced pattern finder - run after user stops typing for 50ms
+	const findPatternDebounced = useMemo(
+		() => debounce((element) => {
+			if (!isCursorInsideDropdown()) {
+				findAndReplacePattern(element);
+			}
+		}, 50),
+		[isCursorInsideDropdown, findAndReplacePattern]
+	);
+
 
 	// Formatting functions for toolbar
 	const handleFormat = useCallback((command, value = null) => {
@@ -424,7 +851,7 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 		console.success(`Image aligned to ${alignment}`);
 		
 		// Return focus to editor after alignment
-		setTimeout(() => {
+		requestAnimationFrame(() => {
 			if (editorRef.current) {
 				editorRef.current.focus();
 				// Move cursor to end
@@ -435,26 +862,12 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 				selection.removeAllRanges();
 				selection.addRange(range);
 			}
-		}, 100);
+		});
 	}, [selectedImage]);
 
-	// Check if cursor is inside a dropdown element
-	const isCursorInsideDropdown = useCallback(() => {
-		const selection = window.getSelection();
-		if (!selection || selection.rangeCount === 0) return false;
 
-		let node = selection.anchorNode;
-		while (node && node !== editorRef.current) {
-			if (node.nodeType === Node.ELEMENT_NODE && node.hasAttribute('data-dropdown-id')) {
-				return true;
-			}
-			node = node.parentNode;
-		}
-		return false;
-	}, []);
-
-	// Update popup position based on current cursor
-	const updatePopupPosition = useCallback(() => {
+	// Core popup position update function
+	const updatePopupPositionCore = useCallback(() => {
 		if (!editorRef.current) return;
 
 		const selection = window.getSelection();
@@ -496,6 +909,12 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 			setShowDropdownPopup(true);
 		}
 	}, [isCursorInsideDropdown]);
+
+	// Debounced version - only update popup after user stops typing for 150ms
+	const updatePopupPosition = useMemo(
+		() => debounce(updatePopupPositionCore, 150),
+		[updatePopupPositionCore]
+	);
 
 	// Handle table insertion
 	const handleInsertTable = useCallback((numRows, numCols) => {
@@ -595,21 +1014,21 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 		// Only set cursor if click is inside editor
 		if (isInEditor) {
 			// Don't interfere if user is selecting text (check after a small delay to allow for drag-to-select)
-			setTimeout(() => {
+			requestAnimationFrame(() => {
 				const selection = window.getSelection();
 				if (selection && selection.toString().length === 0) {
 					// Update popup position at cursor
 					updatePopupPosition();
 				}
-			}, 0);
+			});
 		}
 	}, [updatePopupPosition]);
 
 	// Handle editor focus - show popup at cursor
 	const handleEditorFocus = useCallback(() => {
-		setTimeout(() => {
+		requestAnimationFrame(() => {
 			updatePopupPosition();
-		}, 50);
+		});
 	}, [updatePopupPosition]);
 
 	// Handle keydown to delete selected image
@@ -637,228 +1056,50 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 		}
 	}, [selectedImage]);
 
+
+	// Throttled dropdown check - only run once every 100ms
+	const checkRemovedDropdownsThrottled = useMemo(
+		() => throttle((element) => {
+			const currentDropdownIds = new Set();
+			const dropdownElements = element.querySelectorAll('[data-dropdown-id]');
+			dropdownElements.forEach(el => {
+				const dropdownId = el.getAttribute('data-dropdown-id');
+				if (dropdownId) currentDropdownIds.add(dropdownId);
+			});
+
+			// Remove dropdowns from state that no longer exist in DOM
+			setDropdowns(prev => {
+				const filtered = prev.filter(dropdown => currentDropdownIds.has(dropdown.id));
+				if (filtered.length !== prev.length) {
+					// Some dropdowns were removed - update numbers
+					requestAnimationFrame(() => {
+						updateDropdownNumbers();
+					});
+					return filtered;
+				}
+				return prev;
+			});
+		}, 100),
+		[setDropdowns, updateDropdownNumbers]
+	);
+
 	// Handle text input in editor
-	const handleEditorInput = (e) => {
+	const handleEditorInput = useCallback((e) => {
 		const element = e.currentTarget;
 
-		// Check if any dropdowns were removed from DOM (e.g., by Backspace)
-		const currentDropdownIds = new Set();
-		const dropdownElements = element.querySelectorAll('[data-dropdown-id]');
-		dropdownElements.forEach(el => {
-			const dropdownId = el.getAttribute('data-dropdown-id');
-			if (dropdownId) currentDropdownIds.add(dropdownId);
-		});
-
-		// Remove dropdowns from state that no longer exist in DOM
-		setDropdowns(prev => {
-			const filtered = prev.filter(dropdown => currentDropdownIds.has(dropdown.id));
-			if (filtered.length !== prev.length) {
-				// Some dropdowns were removed - update numbers
-				setTimeout(() => {
-					updateDropdownNumbers();
-				}, 10);
-				return filtered;
-			}
-			return prev;
-		});
+		// Check if any dropdowns were removed from DOM (throttled)
+		checkRemovedDropdownsThrottled(element);
 
 		// Don't allow creating dropdowns inside another dropdown
 		if (!isCursorInsideDropdown()) {
-			// Look for __ or [] pattern in text nodes only
-			findAndReplacePattern(element);
+			// Look for __ or [] pattern in text nodes only (debounced)
+			findPatternDebounced(element);
 		}
 
-		// Update popup position after a short delay to let DOM update
-		setTimeout(() => {
-			updatePopupPosition();
-		}, 10);
-	};
+		// Update popup position (debounced via the debounced function)
+		updatePopupPosition();
+	}, [checkRemovedDropdownsThrottled, isCursorInsideDropdown, findPatternDebounced, updatePopupPosition]);
 
-	// Find and replace pattern in text nodes without affecting existing dropdowns
-	const findAndReplacePattern = (element) => {
-		// Walk through all child nodes
-		const walker = document.createTreeWalker(
-			element,
-			NodeFilter.SHOW_TEXT,
-			null,
-			false
-		);
-
-		let textNode;
-
-		while ((textNode = walker.nextNode())) {
-			// Check if this text node is inside a dropdown element
-			let parentNode = textNode.parentNode;
-			let isInsideDropdown = false;
-			while (parentNode && parentNode !== element) {
-				if (parentNode.hasAttribute && parentNode.hasAttribute('data-dropdown-id')) {
-					isInsideDropdown = true;
-					break;
-				}
-				parentNode = parentNode.parentNode;
-			}
-
-			// Skip if inside a dropdown
-			if (isInsideDropdown) continue;
-
-			const text = textNode.textContent;
-			const underscoreIndex = text.indexOf('__');
-			const bracketIndex = text.indexOf('[]');
-
-			let patternIndex = -1;
-			let patternLength = 2;
-
-			if (underscoreIndex !== -1 && bracketIndex !== -1) {
-				patternIndex = Math.min(underscoreIndex, bracketIndex);
-			} else if (underscoreIndex !== -1) {
-				patternIndex = underscoreIndex;
-			} else if (bracketIndex !== -1) {
-				patternIndex = bracketIndex;
-			}
-
-			if (patternIndex !== -1) {
-				// Found a pattern in this text node
-
-				// Create dropdown
-				const positionId = generatePositionId();
-				const dropdownId = `dropdown-${Date.now()}-${positionId}`;
-				const color = dropdownColors[dropdowns.length % dropdownColors.length];
-
-				const newDropdown = {
-					id: dropdownId,
-					positionId: positionId,
-					correctAnswer: '',
-					incorrectOptions: [],
-					color: color
-				};
-
-				// Split the text node
-				let beforePattern = text.substring(0, patternIndex);
-				const afterPattern = text.substring(patternIndex + patternLength);
-
-				// Add space before dropdown if text before doesn't end with space
-				if (beforePattern && !beforePattern.endsWith(' ')) {
-					beforePattern += ' ';
-				}
-
-				// Create dropdown element
-				const dropdownElement = createDropdownElement(newDropdown, dropdowns.length);
-
-				// Get parent node
-				const parent = textNode.parentNode;
-
-				// Create document fragment to hold new nodes
-				const fragment = document.createDocumentFragment();
-
-				// Add text before pattern (if any)
-				if (beforePattern) {
-					fragment.appendChild(document.createTextNode(beforePattern));
-				}
-
-				// Add dropdown chip
-				fragment.appendChild(dropdownElement);
-
-				// Add space + text after pattern (if any, otherwise just add space)
-				if (afterPattern) {
-					// Add space before afterPattern if it doesn't start with space
-					const textAfter = afterPattern.startsWith(' ') ? afterPattern : ' ' + afterPattern;
-					fragment.appendChild(document.createTextNode(textAfter));
-    } else {
-					fragment.appendChild(document.createTextNode(' '));
-				}
-
-				// Replace the text node with the fragment
-				parent.replaceChild(fragment, textNode);
-
-				// Update dropdowns state
-				setDropdowns(prev => [...prev, newDropdown]);
-
-				// Update dropdown numbers and expand the newly created dropdown
-				setTimeout(() => {
-					try {
-						// Update all dropdown numbers first
-						updateDropdownNumbers();
-						
-						// Find the newly inserted dropdown in DOM
-						const insertedDropdown = element.querySelector(`[data-dropdown-id="${dropdownId}"]`);
-						if (insertedDropdown && insertedDropdown.expandDropdown) {
-							// Call the expand function to show input field
-							insertedDropdown.expandDropdown();
-							return;
-						}
-						// Fallback: focus on editor
-						element.focus();
-					} catch (error) {
-						console.error('Error expanding dropdown:', error);
-						element.focus();
-					}
-				}, 10);
-
-				// Only process one pattern at a time
-				break;
-			}
-		}
-	};
-
-	// Handle dropdown answer change
-	const handleDropdownAnswerChange = useCallback((dropdownId, value) => {
-		setDropdowns(prev => prev.map(dropdown => 
-			dropdown.id === dropdownId ? { ...dropdown, correctAnswer: value } : dropdown
-		));
-	}, []);
-
-	// Update dropdown numbers based on DOM order
-	const updateDropdownNumbers = useCallback(() => {
-		if (!editorRef.current) return;
-		
-		const dropdownElements = editorRef.current.querySelectorAll('[data-dropdown-id]');
-		dropdownElements.forEach((element, index) => {
-			const badge = element.querySelector('.dropdown-badge');
-			if (badge) {
-				badge.textContent = index + 1;
-			}
-		});
-	}, []);
-
-	// Handle delete dropdown from DOM
-	const handleDeleteDropdownElement = useCallback((dropdownId) => {
-		console.log('Attempting to delete dropdown:', dropdownId);
-		
-		if (!editorRef.current) {
-			console.error('Editor ref not available');
-			return;
-		}
-
-		// Find and remove the dropdown element from DOM
-		const dropdownElement = editorRef.current.querySelector(`[data-dropdown-id="${dropdownId}"]`);
-		console.log('Found dropdown element:', dropdownElement);
-		
-		if (dropdownElement) {
-			dropdownElement.remove();
-			console.log('Dropdown element removed from DOM');
-		} else {
-			console.warn('Dropdown element not found in DOM');
-		}
-
-		// Update state
-		setDropdowns(prev => {
-			const filtered = prev.filter(dropdown => dropdown.id !== dropdownId);
-			console.log('Updated dropdowns state:', filtered);
-			return filtered;
-		});
-		
-		// Update dropdown numbers after deletion
-		setTimeout(() => {
-			updateDropdownNumbers();
-		}, 10);
-		
-		console.success('Dropdown removed');
-		
-		// Refocus editor
-		if (editorRef.current) {
-			editorRef.current.focus();
-		}
-	}, [updateDropdownNumbers]);
 
 	// Add incorrect option to a specific dropdown
 	const handleAddIncorrectOption = (dropdownId) => {
@@ -891,188 +1132,6 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 				: dropdown
     ));
   };
-
-	// Create dropdown element
-	const createDropdownElement = useCallback((dropdown, index) => {
-		const span = document.createElement('span');
-		span.setAttribute('contenteditable', 'false');
-		span.setAttribute('data-dropdown-id', dropdown.id);
-		span.style.cssText = `
-			display: inline-flex;
-			align-items: center;
-			margin: 0 4px;
-			position: relative;
-			vertical-align: middle;
-			user-select: none;
-			-webkit-user-select: none;
-		`;
-
-	const chip = document.createElement('span');
-	chip.style.cssText = `
-		display: inline-flex;
-		align-items: center;
-		gap: 6px;
-		padding: 6px 12px;
-		background: linear-gradient(135deg, ${dropdown.color}20, ${dropdown.color}40);
-		border: 2px solid ${dropdown.color};
-		border-radius: 8px;
-		font-size: 14px;
-		font-weight: 500;
-		color: ${dropdown.color};
-		transition: all 0.2s ease;
-		cursor: pointer;
-		min-width: 0;
-		max-width: 220px;
-	`;
-
-		// Number badge
-		const badge = document.createElement('span');
-		badge.className = 'dropdown-badge';
-		badge.style.cssText = `
-			width: 20px;
-			height: 20px;
-			border-radius: 50%;
-			background: ${dropdown.color};
-			color: white;
-			display: flex;
-			align-items: center;
-			justify-content: center;
-			font-size: 11px;
-			font-weight: 700;
-		`;
-		badge.textContent = index + 1;
-
-	// Compact mode: Display answer text
-	const answerText = document.createElement('span');
-	answerText.className = 'dropdown-answer-text';
-	answerText.style.cssText = `
-		color: #333;
-		font-weight: 500;
-		font-size: 14px;
-		display: inline-block;
-		max-width: 150px;
-		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: nowrap;
-		vertical-align: middle;
-	`;
-	answerText.textContent = dropdown.correctAnswer || '';
-
-		// Input field (hidden by default in compact mode)
-		const input = document.createElement('input');
-		input.type = 'text';
-		input.placeholder = 'type correct answer...';
-		input.value = dropdown.correctAnswer || '';
-		input.className = 'dropdown-input';
-		input.style.cssText = `
-			border: none;
-			outline: none;
-			background: rgba(255,255,255,0.9);
-			padding: 4px 8px;
-			border-radius: 4px;
-			font-size: 14px;
-			min-width: 120px;
-			max-width: 200px;
-			color: #333;
-			font-weight: 500;
-			display: none;
-		`;
-	input.addEventListener('input', (e) => {
-		handleDropdownAnswerChange(dropdown.id, e.target.value);
-		// Update answer text in real-time
-		answerText.textContent = e.target.value || '';
-	});
-		input.addEventListener('click', (e) => {
-			e.stopPropagation();
-		});
-	input.addEventListener('blur', (e) => {
-		// If input is empty, delete the dropdown
-		if (!e.target.value || !e.target.value.trim()) {
-			handleDeleteDropdownElement(dropdown.id);
-			return;
-		}
-		// When input loses focus, collapse back to compact mode
-		collapseDropdown();
-	});
-
-		// Delete button (always visible for easier deletion)
-		const deleteBtn = document.createElement('button');
-		deleteBtn.innerHTML = '×';
-		deleteBtn.className = 'dropdown-delete-btn';
-		deleteBtn.type = 'button'; // Prevent form submission
-		deleteBtn.style.cssText = `
-			border: none;
-			background: rgba(255,77,79,0.9);
-			color: white;
-			border-radius: 4px;
-			width: 20px;
-			height: 20px;
-			display: flex;
-			align-items: center;
-			justify-content: center;
-			cursor: pointer;
-			transition: all 0.2s ease;
-			font-size: 14px;
-			font-weight: bold;
-			position: relative;
-			z-index: 10;
-			opacity: 0.7;
-		`;
-		// Add multiple event listeners to ensure click is captured
-		const handleDeleteClick = (e) => {
-			e.preventDefault();
-			e.stopPropagation();
-			console.log('Delete button clicked for dropdown:', dropdown.id);
-			handleDeleteDropdownElement(dropdown.id);
-		};
-		
-		deleteBtn.addEventListener('click', handleDeleteClick);
-		deleteBtn.addEventListener('mousedown', handleDeleteClick);
-		deleteBtn.addEventListener('touchstart', handleDeleteClick);
-		deleteBtn.addEventListener('mouseenter', (e) => {
-			e.target.style.background = 'rgba(255,77,79,1)';
-			e.target.style.transform = 'scale(1.2)';
-			e.target.style.opacity = '1';
-		});
-		deleteBtn.addEventListener('mouseleave', (e) => {
-			e.target.style.background = 'rgba(255,77,79,0.9)';
-			e.target.style.transform = 'scale(1)';
-			e.target.style.opacity = '0.7';
-		});
-
-		// Function to expand dropdown (show input)
-		const expandDropdown = () => {
-			console.log('Expanding dropdown:', dropdown.id);
-			answerText.style.display = 'none';
-			input.style.display = 'inline';
-			console.log('Input field displayed');
-			setTimeout(() => input.focus(), 10);
-		};
-
-		// Function to collapse dropdown (show only answer text)
-		const collapseDropdown = () => {
-			console.log('Collapsing dropdown:', dropdown.id);
-			answerText.style.display = 'inline';
-			input.style.display = 'none';
-		};
-
-		// Click on chip to expand
-		chip.addEventListener('click', (e) => {
-			e.stopPropagation();
-			expandDropdown();
-		});
-
-		chip.appendChild(badge);
-		chip.appendChild(answerText);
-		chip.appendChild(input);
-		chip.appendChild(deleteBtn);
-		span.appendChild(chip);
-
-		// Store expand function for external use
-		span.expandDropdown = expandDropdown;
-
-		return span;
-	}, [handleDropdownAnswerChange, handleDeleteDropdownElement]);
 
 	// Insert dropdown at saved cursor position
 	const insertDropdownAtCursor = useCallback(() => {
@@ -1133,7 +1192,7 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 			setDropdowns(prev => [...prev, newDropdown]);
 
 			// Update dropdown numbers and expand the newly created dropdown
-			setTimeout(() => {
+			requestAnimationFrame(() => {
 				try {
 					// Update all dropdown numbers first
 					updateDropdownNumbers();
@@ -1148,7 +1207,7 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 					console.error('Error expanding dropdown:', error);
 					editorRef.current.focus();
 				}
-			}, 10);
+			});
 		} catch (error) {
 			console.error('Error inserting dropdown:', error);
 		}
@@ -1428,9 +1487,9 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 		});
 		
 		// Update dropdown numbers after populating editor
-		setTimeout(() => {
+		requestAnimationFrame(() => {
 			updateDropdownNumbers();
-		}, 50);
+		});
 		
 		editorInitializedRef.current = true;
 	}, [visible, editorContent, dropdowns, createDropdownElement, updateDropdownNumbers]);

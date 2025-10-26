@@ -9,6 +9,7 @@ import {
   Upload,
   Divider,
   Modal,
+  Select,
 } from "antd";
 import {
   ArrowLeftOutlined,
@@ -21,6 +22,7 @@ import {
   HolderOutlined,
   EditOutlined,
   CopyOutlined,
+  ClockCircleOutlined,
 } from "@ant-design/icons";
 import { useNavigate, useLocation, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
@@ -53,6 +55,33 @@ const CreateReadingChallenge = () => {
   const { theme } = useTheme();
   const { user } = useSelector((state) => state.auth);
   
+  // Add CSS to fix CKEditor overflow
+  React.useEffect(() => {
+    const editorStyles = `
+      .rc-ckeditor-wrapper .ck-editor__editable {
+        min-height: 300px !important;
+        max-height: calc(100vh - 300px) !important;
+        overflow-y: auto !important;
+      }
+      .rc-ckeditor-wrapper .ck-editor {
+        height: 100% !important;
+      }
+      .rc-ckeditor-wrapper .ck-editor__main {
+        height: calc(100% - 40px) !important;
+      }
+    `;
+    
+    const styleElement = document.createElement('style');
+    styleElement.textContent = editorStyles;
+    document.head.appendChild(styleElement);
+    
+    return () => {
+      if (document.head.contains(styleElement)) {
+        document.head.removeChild(styleElement);
+      }
+    };
+  }, []);
+  
   // Custom upload adapter for CKEditor to convert images to base64
   function CustomUploadAdapterPlugin(editor) {
     editor.plugins.get('FileRepository').createUploadAdapter = (loader) => {
@@ -82,6 +111,7 @@ const CreateReadingChallenge = () => {
   // Determine challenge type from URL path
   const isListeningChallenge = location.pathname.includes('/listening/');
   const isWritingChallenge = location.pathname.includes('/writing/');
+  const isSpeakingChallenge = location.pathname.includes('/speaking/');
   
   // Initialize passage with editingPassage if provided
   const [passage, setPassage] = useState(() => {
@@ -125,6 +155,9 @@ const CreateReadingChallenge = () => {
   const [activeModal, setActiveModal] = useState(null);
   const [editingQuestion, setEditingQuestion] = useState(null);
   const [questionTypeModalVisible, setQuestionTypeModalVisible] = useState(false);
+  
+  // Speaking recording time setting
+  const [recordingTimeSeconds, setRecordingTimeSeconds] = useState(30);
   
   // Use ref to track if we're updating from passage change to prevent infinite loop
   const isUpdatingFromPassage = useRef(false);
@@ -779,9 +812,9 @@ const CreateReadingChallenge = () => {
                   ? `${className} / ${challengeName}` 
                   : challengeName 
                   ? challengeName
-                  : isListeningChallenge ? 'Create Listening Challenge' 
-                  : isWritingChallenge ? 'Add writing topic' 
-                  : 'Create Reading Challenge'
+                  : className
+                  ? className
+                  : 'Daily Challenge'
                 }
               </span>
             </div>
@@ -826,124 +859,6 @@ const CreateReadingChallenge = () => {
     <ThemedLayout customHeader={customHeader}>
       <div className={`daily-challenge-content-wrapper ${theme}-daily-challenge-content-wrapper`}>
         <div style={{ padding: '24px' }}>
-        {/* Audio File Section - Only for Listening Challenges (Above Passage) */}
-        {isListeningChallenge && !isWritingChallenge && (
-          <Row gutter={24} style={{ marginBottom: '24px' }}>
-            <Col span={24}>
-              <Card 
-                className={`rc-audio-card ${theme}-rc-audio-card`}
-                style={{ 
-                  borderRadius: '16px',
-                  border: theme === 'sun' 
-                    ? '2px solid rgba(113, 179, 253, 0.25)' 
-                    : '2px solid rgba(138, 122, 255, 0.2)',
-                  boxShadow: theme === 'sun' 
-                    ? '0 4px 16px rgba(113, 179, 253, 0.1)' 
-                    : '0 4px 16px rgba(138, 122, 255, 0.12)',
-                  background: theme === 'sun'
-                    ? 'linear-gradient(135deg, rgba(255, 255, 255, 1) 0%, rgba(240, 249, 255, 0.95) 100%)'
-                    : 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(244, 240, 255, 0.95) 100%)',
-                  backdropFilter: 'blur(10px)'
-                }}
-              >
-                <Title level={3} style={{ 
-                  marginBottom: '12px',
-                  color: theme === 'sun' ? '#1E40AF' : '#8377A0',
-                  textAlign: 'center',
-                  fontSize: '24px',
-                  fontWeight: '600'
-                }}>
-                  Audio File
-                </Title>
-                
-                {passage.audioUrl ? (
-                  <div style={{
-                    padding: '12px',
-                    background: theme === 'sun' 
-                      ? 'rgba(240, 249, 255, 0.5)' 
-                      : 'rgba(244, 240, 255, 0.3)',
-                    borderRadius: '8px',
-                    border: theme === 'sun' 
-                      ? '2px solid rgba(113, 179, 253, 0.3)' 
-                      : '2px solid rgba(138, 122, 255, 0.3)',
-                    marginBottom: '12px'
-                  }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
-                      <span style={{ fontSize: '14px' }}>🎵</span>
-                      <span style={{ fontWeight: 500, fontSize: '13px', color: theme === 'sun' ? '#1E40AF' : '#8377A0' }}>
-                        {uploadedAudioFileName || 'Audio file uploaded'}
-                      </span>
-                      <Button
-                        type="text"
-                        danger
-                        size="small"
-                        style={{ fontSize: '12px', padding: '0 8px' }}
-                        onClick={() => {
-                          setPassage(prevPassage => ({ ...prevPassage, audioFile: null, audioUrl: null }));
-                          setUploadedAudioFileName("");
-                        }}
-                      >
-                        Remove
-                      </Button>
-                    </div>
-                    <audio controls style={{ width: '100%' }}>
-                      <source src={passage.audioUrl} type="audio/mpeg" />
-                      Your browser does not support the audio element.
-                    </audio>
-                  </div>
-                ) : (
-                  <Card 
-                    hoverable 
-                    className="rc-audio-upload-card"
-                    style={{ 
-                      opacity: isProcessingAudio ? 0.6 : 1,
-                      borderRadius: '8px',
-                      border: theme === 'sun' 
-                        ? '2px dashed rgba(113, 179, 253, 0.3)' 
-                        : '2px dashed rgba(138, 122, 255, 0.3)',
-                      background: theme === 'sun'
-                        ? 'linear-gradient(135deg, rgba(230, 245, 255, 0.3) 0%, rgba(186, 231, 255, 0.2) 100%)'
-                        : 'rgba(255, 255, 255, 0.3)',
-                      cursor: isProcessingAudio ? 'not-allowed' : 'pointer',
-                      textAlign: 'center',
-                      padding: '16px'
-                    }}
-                  >
-                    <Upload
-                      accept=".mp3,.mp4"
-                      beforeUpload={handleUploadAudio}
-                      showUploadList={false}
-                      disabled={isProcessingAudio}
-                    >
-                      <Space direction="vertical" size="small">
-                        {isProcessingAudio ? (
-                          <LoadingOutlined style={{ fontSize: 24, color: "#1890ff" }} />
-                        ) : (
-                          <span style={{ fontSize: 24 }}>🎵</span>
-                        )}
-                        <div>
-                          <Text strong style={{ 
-                            color: theme === 'sun' ? '#1E40AF' : '#8377A0',
-                            fontSize: '14px'
-                          }}>
-                            {isProcessingAudio ? `Processing "${uploadedAudioFileName}"...` : "Upload Audio File"}
-                          </Text>
-                          <br />
-                          <Text style={{ 
-                            color: '#999',
-                            fontSize: '12px'
-                          }}>
-                            Supported: MP3, MP4 (max 5MB)
-                          </Text>
-                        </div>
-                      </Space>
-                    </Upload>
-                  </Card>
-                )}
-              </Card>
-            </Col>
-          </Row>
-        )}
 
         {/* Main Content */}
         <Row gutter={24} style={{ minHeight: "calc(100vh - 280px)" }}>
@@ -952,7 +867,7 @@ const CreateReadingChallenge = () => {
               <Card 
                 className={`rc-passage-card ${theme}-rc-passage-card`}
                 style={{ 
-                  height: "100%",
+                  height: "calc(100vh - 50px)",
                   borderRadius: '16px',
                   border: theme === 'sun' 
                     ? '2px solid rgba(113, 179, 253, 0.25)' 
@@ -963,10 +878,135 @@ const CreateReadingChallenge = () => {
                   background: theme === 'sun'
                     ? 'linear-gradient(135deg, rgba(255, 255, 255, 1) 0%, rgba(240, 249, 255, 0.95) 100%)'
                     : 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(244, 240, 255, 0.95) 100%)',
-                  backdropFilter: 'blur(10px)'
+                  backdropFilter: 'blur(10px)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  overflow: 'hidden'
+                }}
+                bodyStyle={{ 
+                  padding: '20px',
+                  height: '100%',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  overflow: 'hidden'
                 }}
               >
 
+
+                 {/* Audio File Section - Only for Listening and Speaking Challenges (Inside Passage Card) */}
+                 {(isListeningChallenge || isSpeakingChallenge) && !isWritingChallenge && (
+                   <div style={{ marginBottom: '12px' }}>
+                      <div style={{ 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        justifyContent: 'center',
+                        marginBottom: '8px',
+                        position: 'relative'
+                      }}>
+                      <Title level={4} style={{ 
+                        margin: 0,
+                        color: theme === 'sun' ? '#1E40AF' : '#8377A0',
+                        fontSize: '20px',
+                        fontWeight: '600'
+                      }}>
+                        Audio File
+                      </Title>
+                       {passage.audioUrl && (
+                         <Button
+                           type="text"
+                           danger
+                           size="small"
+                           style={{ 
+                             fontSize: '12px', 
+                             padding: '0 8px',
+                             position: 'absolute',
+                             right: 0,
+                             top: '50%',
+                             transform: 'translateY(-50%)'
+                           }}
+                           onClick={() => {
+                             setPassage(prevPassage => ({ ...prevPassage, audioFile: null, audioUrl: null }));
+                             setUploadedAudioFileName("");
+                           }}
+                         >
+                           Remove
+                         </Button>
+                       )}
+                      </div>
+                     
+                     {passage.audioUrl ? (
+                       <div style={{
+                         padding: '8px',
+                         background: theme === 'sun' 
+                           ? 'rgba(240, 249, 255, 0.5)' 
+                           : 'rgba(244, 240, 255, 0.3)',
+                         borderRadius: '6px',
+                         border: theme === 'sun' 
+                           ? '1px solid rgba(113, 179, 253, 0.3)' 
+                           : '1px solid rgba(138, 122, 255, 0.3)',
+                         marginBottom: '8px'
+                       }}>
+                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                           <span style={{ fontSize: '12px', fontWeight: 500, color: theme === 'sun' ? '#1E40AF' : '#8377A0' }}>
+                             {uploadedAudioFileName || 'Audio file uploaded'}
+                           </span>
+                         </div>
+                         <audio controls style={{ width: '100%', height: '32px' }}>
+                           <source src={passage.audioUrl} type="audio/mpeg" />
+                           Your browser does not support the audio element.
+                         </audio>
+                       </div>
+                     ) : (
+                       <Card 
+                         hoverable 
+                         className="rc-audio-upload-card"
+                         style={{ 
+                           opacity: isProcessingAudio ? 0.6 : 1,
+                           borderRadius: '6px',
+                           border: theme === 'sun' 
+                             ? '1px dashed rgba(113, 179, 253, 0.3)' 
+                             : '1px dashed rgba(138, 122, 255, 0.3)',
+                           background: theme === 'sun'
+                             ? 'linear-gradient(135deg, rgba(230, 245, 255, 0.3) 0%, rgba(186, 231, 255, 0.2) 100%)'
+                             : 'rgba(255, 255, 255, 0.3)',
+                           cursor: isProcessingAudio ? 'not-allowed' : 'pointer',
+                           textAlign: 'center',
+                           padding: '12px'
+                         }}
+                       >
+                         <Upload
+                           accept=".mp3,.mp4"
+                           beforeUpload={handleUploadAudio}
+                           showUploadList={false}
+                           disabled={isProcessingAudio}
+                         >
+                           <Space direction="vertical" size="small">
+                             {isProcessingAudio ? (
+                               <LoadingOutlined style={{ fontSize: 20, color: "#1890ff" }} />
+                             ) : (
+                               <span style={{ fontSize: 20 }}>🎵</span>
+                             )}
+                             <div>
+                               <Text strong style={{ 
+                                 color: theme === 'sun' ? '#1E40AF' : '#8377A0',
+                                 fontSize: '13px'
+                               }}>
+                                 {isProcessingAudio ? `Processing "${uploadedAudioFileName}"...` : (isSpeakingChallenge ? "Upload Speaking Audio" : "Upload Audio File")}
+                               </Text>
+                               <br />
+                               <Text style={{ 
+                                 color: '#999',
+                                 fontSize: '11px'
+                               }}>
+                                 MP3, MP4 (max 5MB)
+                               </Text>
+                             </div>
+                           </Space>
+                         </Upload>
+                       </Card>
+                     )}
+                   </div>
+                 )}
                  {/* Title - Always show at top */}
                  <div style={{ marginBottom: '32px' }}>
                    <Title level={3} style={{ 
@@ -981,11 +1021,11 @@ const CreateReadingChallenge = () => {
                  </div>
 
                  {/* Passage Content */}
-                 <div className="rc-passage-content">
+                 <div className="rc-passage-content" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
                    {passage?.type === "manual" ? (
                      /* Text Editor - Full space when manual is selected */
-                     <div className="rc-text-editor-full">
-                       <div className="rc-text-editor-header" style={{ marginBottom: '12px' }}>
+                     <div className="rc-text-editor-full" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                       <div className="rc-text-editor-header" style={{ marginBottom: '12px', flexShrink: 0 }}>
                         <Button
                            type="text"
                            icon={<ArrowLeftOutlined />}
@@ -998,7 +1038,7 @@ const CreateReadingChallenge = () => {
                              fontWeight: 500
                            }}
                          >
-                           {isWritingChallenge ? 'Back to prompt options' : 'Back to options'}
+                           {isWritingChallenge ? 'Back to topic options' : 'Back to options'}
                          </Button>
                        </div>
                        <div 
@@ -1009,8 +1049,8 @@ const CreateReadingChallenge = () => {
                            flexDirection: 'column',
                            position: 'relative',
                            zIndex: 1,
-                           minHeight: '400px',
-                           overflow: 'hidden'
+                           overflow: 'hidden',
+                           minHeight: 0
                          }}
                        >
                          <div style={{
@@ -1022,75 +1062,80 @@ const CreateReadingChallenge = () => {
                            position: 'relative',
                            display: 'flex',
                            flexDirection: 'column',
-                           color: '#000000'
+                           color: '#000000',
+                           maxHeight: '100%'
                          }}>
-                           <CKEditor
-                             key="passage-editor"
-                             editor={ClassicEditor}
-                             data={passageContent}
-                             onChange={(event, editor) => {
-                               const data = editor.getData();
-                               handlePassageContentChange(data);
-                             }}
-                             config={{
-                               placeholder: isWritingChallenge ? 'Enter your writing prompt here...' : 'Enter your passage content here...',
-                               extraPlugins: [CustomUploadAdapterPlugin],
-                               toolbar: {
-                                 items: [
-                                   'heading',
-                                   '|',
-                                   'bold',
-                                   'italic',
-                                   'underline',
-                                   '|',
-                                   'insertTable',
-                                   'imageUpload',
-                                   '|',
-                                   'bulletedList',
-                                   'numberedList',
-                                   '|',
-                                   'blockQuote',
-                                   'link',
-                                   '|',
-                                   'undo',
-                                   'redo'
-                                 ],
-                                 shouldNotGroupWhenFull: false
-                               },
-                               heading: {
-                                 options: [
-                                   { model: 'paragraph', title: 'Paragraph', class: 'ck-heading_paragraph' },
-                                   { model: 'heading1', view: 'h1', title: 'Heading 1', class: 'ck-heading_heading1' },
-                                   { model: 'heading2', view: 'h2', title: 'Heading 2', class: 'ck-heading_heading2' },
-                                   { model: 'heading3', view: 'h3', title: 'Heading 3', class: 'ck-heading_heading3' }
-                                 ]
-                               },
-                               table: {
-                                 contentToolbar: ['tableColumn', 'tableRow', 'mergeTableCells']
-                               },
-                               image: {
-                                 toolbar: [
-                                   'imageTextAlternative',
-                                   '|',
-                                   'imageStyle:alignLeft',
-                                   'imageStyle:full',
-                                   'imageStyle:alignRight'
-                                 ],
-                                 styles: [
-                                   'full',
-                                   'alignLeft',
-                                   'alignRight'
-                                 ]
-                               },
-                               language: 'en',
-                             }}
-                           />
+                           <div style={{ height: '100%', overflow: 'hidden' }}>
+                             <CKEditor
+                               key="passage-editor"
+                               editor={ClassicEditor}
+                               data={passageContent}
+                               onChange={(event, editor) => {
+                                 const data = editor.getData();
+                                 handlePassageContentChange(data);
+                               }}
+                               config={{
+                                 placeholder: isWritingChallenge ? 'Enter your writing topic here...' : 
+                                             isSpeakingChallenge ? 'Enter your speaking topic here...' : 
+                                             'Enter your passage content here...',
+                                 extraPlugins: [CustomUploadAdapterPlugin],
+                                 toolbar: {
+                                   items: [
+                                     'heading',
+                                     '|',
+                                     'bold',
+                                     'italic',
+                                     'underline',
+                                     '|',
+                                     'insertTable',
+                                     'imageUpload',
+                                     '|',
+                                     'bulletedList',
+                                     'numberedList',
+                                     '|',
+                                     'blockQuote',
+                                     'link',
+                                     '|',
+                                     'undo',
+                                     'redo'
+                                   ],
+                                   shouldNotGroupWhenFull: false
+                                 },
+                                 heading: {
+                                   options: [
+                                     { model: 'paragraph', title: 'Paragraph', class: 'ck-heading_paragraph' },
+                                     { model: 'heading1', view: 'h1', title: 'Heading 1', class: 'ck-heading_heading1' },
+                                     { model: 'heading2', view: 'h2', title: 'Heading 2', class: 'ck-heading_heading2' },
+                                     { model: 'heading3', view: 'h3', title: 'Heading 3', class: 'ck-heading_heading3' }
+                                   ]
+                                 },
+                                 table: {
+                                   contentToolbar: ['tableColumn', 'tableRow', 'mergeTableCells']
+                                 },
+                                 image: {
+                                   toolbar: [
+                                     'imageTextAlternative',
+                                     '|',
+                                     'imageStyle:alignLeft',
+                                     'imageStyle:full',
+                                     'imageStyle:alignRight'
+                                   ],
+                                   styles: [
+                                     'full',
+                                     'alignLeft',
+                                     'alignRight'
+                                   ]
+                                 },
+                                 language: 'en',
+                               }}
+                             />
+                           </div>
                          </div>
                        </div>
                      </div>
                    ) : (
                      /* Initial Options - Show when no type selected */
-                     <>
+                     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
                        <Space direction="vertical" size="large" style={{ width: "100%" }}>
                          {/* Manual Text & Media */}
                         <Card
@@ -1117,7 +1162,11 @@ const CreateReadingChallenge = () => {
                             }} />
                             <Text strong style={{ 
                               color: theme === 'sun' ? '#1E40AF' : '#8377A0' 
-                            }}>{isWritingChallenge ? 'Add writing prompt manually' : 'Add text & media manually'}</Text>
+                            }}>
+                              {isWritingChallenge ? 'Add writing topic manually' : 
+                               isSpeakingChallenge ? 'Add speaking topic manually' : 
+                               'Add text & media manually'}
+                            </Text>
                           </Space>
                         </Card>
 
@@ -1152,7 +1201,10 @@ const CreateReadingChallenge = () => {
                               <Text strong style={{ 
                                 color: theme === 'sun' ? '#1E40AF' : '#8377A0' 
                               }}>
-                                {isProcessingPDF ? `Đang xử lý "${uploadedFileName}"...` : (isWritingChallenge ? "Upload PDF writing prompt" : "Upload PDF")}
+                                {isProcessingPDF ? `Đang xử lý "${uploadedFileName}"...` : 
+                                 (isWritingChallenge ? "Upload PDF writing topic" : 
+                                  isSpeakingChallenge ? "Upload PDF speaking topic" : 
+                                  "Upload PDF")}
                               </Text>
                             </Space>
                           </Upload>
@@ -1188,20 +1240,24 @@ const CreateReadingChallenge = () => {
                                 filter: theme === 'sun' ? 'none' : 'brightness(0.8)'
                               }} 
                             />
-                            <Text strong style={{ 
-                              color: theme === 'sun' ? '#1E40AF' : '#8377A0' 
-                            }}>{isWritingChallenge ? 'Generate writing prompt with AI' : 'Generate with AI'}</Text>
+                             <Text strong style={{ 
+                               color: theme === 'sun' ? '#1E40AF' : '#8377A0' 
+                             }}>
+                               {isWritingChallenge ? 'Generate writing topic with AI' : 
+                                isSpeakingChallenge ? 'Generate speaking topic with AI' : 
+                                'Generate with AI'}
+                             </Text>
                           </Space>
-                        </Card>
-                      </Space>
-                     </>
+                         </Card>
+                       </Space>
+                     </div>
                    )}
                  </div>
               </Card>
             </Col>
 
-            {/* Questions Section - Right Side (1/3) - Hidden for Writing Challenges */}
-            {!isWritingChallenge && (
+            {/* Questions Section - Right Side (1/3) - Hidden for Writing and Speaking Challenges */}
+            {!isWritingChallenge && !isSpeakingChallenge && (
             <Col span={8} className="rc-questions-section">
               <Card 
                 className={`rc-questions-card ${theme}-rc-questions-card`}
@@ -1236,23 +1292,25 @@ const CreateReadingChallenge = () => {
                 {/* Add Question Button */}
                 <div className="rc-add-question-section" style={{ marginBottom: '20px' }}>
                   <Button
-                    className="rc-add-question-btn"
+                    icon={<PlusOutlined />}
+                    className={`create-button ${theme}-create-button`}
                     onClick={handleAddQuestion}
                     style={{
-                      width: '100%',
                       height: '40px',
                       borderRadius: '8px',
                       fontWeight: 500,
-                      fontSize: '14px',
-                      background: theme === 'sun'
-                        ? 'linear-gradient(135deg, #66AEFF, #3C99FF)'
-                        : 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)',
-                      color: '#000000',
+                      fontSize: '16px',
+                      padding: '0 24px',
                       border: 'none',
-                      boxShadow: theme === 'sun' ? '0 2px 8px rgba(60, 153, 255, 0.3)' : '0 2px 8px rgba(131, 119, 160, 0.3)'
+                      transition: 'all 0.3s ease',
+                      background: theme === 'sun' 
+                        ? 'linear-gradient(135deg, rgba(102, 174, 255, 0.6), rgba(60, 153, 255, 0.6))'
+                        : 'linear-gradient(135deg, rgba(181, 176, 192, 0.7), rgba(163, 158, 187, 0.7), rgba(131, 119, 160, 0.7), rgba(172, 165, 192, 0.7), rgba(109, 95, 143, 0.7))',
+                      color: theme === 'sun' ? '#000000' : '#000000',
+                      boxShadow: theme === 'sun' ? '0 2px 8px rgba(60, 153, 255, 0.2)' : '0 2px 8px rgba(131, 119, 160, 0.3)',
+                      opacity: 0.9
                     }}
                   >
-                    <PlusOutlined />
                     Add a Question
                   </Button>
                 </div>
@@ -1369,6 +1427,128 @@ const CreateReadingChallenge = () => {
                       )}
                     </div>
                   </Card>
+            </Col>
+            )}
+
+            {/* Speaking Recording Settings - Right Side (1/3) - Only for Speaking Challenges */}
+            {isSpeakingChallenge && (
+            <Col span={8} className="rc-questions-section">
+              <Card 
+                className={`rc-questions-card ${theme}-rc-questions-card`}
+                style={{
+                  height: '100%',
+                  borderRadius: '16px',
+                  border: theme === 'sun' 
+                    ? '2px solid rgba(113, 179, 253, 0.25)' 
+                    : '2px solid rgba(138, 122, 255, 0.2)',
+                  boxShadow: theme === 'sun' 
+                    ? '0 4px 16px rgba(113, 179, 253, 0.1)' 
+                    : '0 4px 16px rgba(138, 122, 255, 0.12)',
+                  background: theme === 'sun'
+                    ? 'linear-gradient(135deg, rgba(255, 255, 255, 1) 0%, rgba(240, 249, 255, 0.95) 100%)'
+                    : 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(244, 240, 255, 0.95) 100%)',
+                  backdropFilter: 'blur(10px)',
+                  display: 'flex',
+                  flexDirection: 'column'
+                }}
+              >
+                {/* Settings Header */}
+                <div style={{ marginBottom: '20px', marginTop: '16px', textAlign: 'center' }}>
+                  <Space direction="vertical" size="small" align="center">
+                    <ClockCircleOutlined style={{ 
+                      fontSize: '48px', 
+                      color: theme === 'sun' ? '#1890ff' : '#8377A0',
+                      marginTop: '8px'
+                    }} />
+                    <Title level={4} style={{ 
+                      margin: 0, 
+                      color: theme === 'sun' ? '#1E40AF' : '#8377A0'
+                    }}>
+                      Recording Settings
+                    </Title>
+                  </Space>
+                </div>
+
+                <Divider />
+
+                {/* Recording Time Selection */}
+                <div style={{ padding: '20px' }}>
+                  <Text strong style={{ 
+                    fontSize: '16px',
+                    color: theme === 'sun' ? '#1E40AF' : '#8377A0',
+                    display: 'block',
+                    marginBottom: '16px'
+                  }}>
+                    Select recording time:
+                  </Text>
+                  
+                  <Select
+                    value={recordingTimeSeconds}
+                    onChange={(value) => setRecordingTimeSeconds(value)}
+                    style={{ 
+                      width: '100%',
+                      height: '50px'
+                    }}
+                    size="large"
+                  >
+                    <Select.Option value={30}>30 seconds</Select.Option>
+                    <Select.Option value={60}>1 minute</Select.Option>
+                    <Select.Option value={120}>2 minutes</Select.Option>
+                    <Select.Option value={180}>3 minutes</Select.Option>
+                    <Select.Option value={300}>5 minutes</Select.Option>
+                  </Select>
+
+                  {/* Current Selection Display */}
+                  <div style={{
+                    marginTop: '24px',
+                    padding: '16px',
+                    background: theme === 'sun' 
+                      ? 'rgba(24, 144, 255, 0.1)' 
+                      : 'rgba(139, 92, 246, 0.15)',
+                    border: theme === 'sun' 
+                      ? '2px solid rgba(24, 144, 255, 0.3)' 
+                      : '2px solid rgba(139, 92, 246, 0.4)',
+                    borderRadius: '12px',
+                    textAlign: 'center'
+                  }}>
+                    <Text style={{ fontSize: '14px', color: '#666', display: 'block', marginBottom: '8px' }}>
+                      Selected time:
+                    </Text>
+                    <Text strong style={{ 
+                      fontSize: '24px', 
+                      color: theme === 'sun' ? '#1890ff' : '#8B5CF6',
+                      fontWeight: 700
+                    }}>
+                      {recordingTimeSeconds === 30 ? '30 seconds' :
+                       recordingTimeSeconds === 60 ? '1 minute' :
+                       recordingTimeSeconds === 120 ? '2 minutes' :
+                       recordingTimeSeconds === 180 ? '3 minutes' :
+                       recordingTimeSeconds === 300 ? '5 minutes' :
+                       `${recordingTimeSeconds} seconds`}
+                    </Text>
+                  </div>
+
+                  {/* Info Section */}
+                  <div style={{
+                    marginTop: '24px',
+                    padding: '16px',
+                    background: theme === 'sun' 
+                      ? 'rgba(250, 173, 20, 0.1)' 
+                      : 'rgba(250, 173, 20, 0.15)',
+                    border: '2px solid rgba(250, 173, 20, 0.3)',
+                    borderRadius: '12px'
+                  }}>
+                    <Space direction="vertical" size="small">
+                      <Text strong style={{ fontSize: '14px', color: '#faad14', display: 'block' }}>
+                        💡 Information
+                      </Text>
+                      <Text style={{ fontSize: '13px', color: '#666', display: 'block' }}>
+                        Students will have this amount of time to record their speaking response. The timer will start automatically when they begin recording.
+                      </Text>
+                    </Space>
+                  </div>
+                </div>
+              </Card>
             </Col>
             )}
           </Row>

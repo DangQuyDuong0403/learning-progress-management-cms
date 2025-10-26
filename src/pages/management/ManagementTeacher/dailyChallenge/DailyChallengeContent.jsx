@@ -32,6 +32,7 @@ import {
   SettingOutlined,
   MenuFoldOutlined,
   MenuUnfoldOutlined,
+  EyeOutlined,
 } from "@ant-design/icons";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import ThemedLayout from "../../../../component/teacherlayout/ThemedLayout";
@@ -2278,8 +2279,8 @@ const DailyChallengeContent = () => {
   const handleAddQuestion = useCallback(() => {
     const challengeType = challengeDetails?.challengeType;
     
-    if (challengeType === 'RE' || challengeType === 'LI' || challengeType === 'WR') {
-      // For Reading/Listening/Writing challenges, navigate to CreateReadingChallenge
+    if (challengeType === 'RE' || challengeType === 'LI' || challengeType === 'WR' || challengeType === 'SP') {
+      // For Reading/Listening/Writing/Speaking challenges, navigate to CreateReadingChallenge
       const userRole = user?.role?.toLowerCase();
       
       let basePath;
@@ -2298,6 +2299,11 @@ const DailyChallengeContent = () => {
         basePath = userRole === 'teaching_assistant' 
           ? `/teaching-assistant/daily-challenges/create/writing/${id}`
           : `/teacher/daily-challenges/create/writing/${id}`;
+      } else if (challengeType === 'SP') {
+        // Speaking challenge
+        basePath = userRole === 'teaching_assistant' 
+          ? `/teaching-assistant/daily-challenges/create/speaking/${id}`
+          : `/teacher/daily-challenges/create/speaking/${id}`;
       }
       
       navigate(basePath, {
@@ -3235,6 +3241,36 @@ const DailyChallengeContent = () => {
                 {t('dailyChallenge.importExport')} <DownOutlined />
             </Button>
             </Dropdown>
+
+            {/* Preview Button */}
+            <Button 
+              icon={<EyeOutlined />}
+              className={`create-button ${theme}-create-button`}
+              onClick={() => {
+                const userRole = user?.role?.toLowerCase();
+                const previewPath = userRole === 'teaching_assistant'
+                  ? `/teaching-assistant/daily-challenges/detail/${id}/preview`
+                  : `/teacher/daily-challenges/detail/${id}/preview`;
+                navigate(previewPath);
+              }}
+              style={{
+                height: '40px',
+                borderRadius: '8px',
+                fontWeight: 500,
+                fontSize: '16px',
+                padding: '0 24px',
+                border: 'none',
+                transition: 'all 0.3s ease',
+                background: theme === 'sun' 
+                  ? 'linear-gradient(135deg, rgba(102, 174, 255, 0.6), rgba(60, 153, 255, 0.6))'
+                  : 'linear-gradient(135deg, rgba(181, 176, 192, 0.7), rgba(163, 158, 187, 0.7), rgba(131, 119, 160, 0.7), rgba(172, 165, 192, 0.7), rgba(109, 95, 143, 0.7))',
+                color: theme === 'sun' ? '#000000' : '#000000',
+                boxShadow: theme === 'sun' ? '0 2px 8px rgba(60, 153, 255, 0.2)' : '0 2px 8px rgba(131, 119, 160, 0.3)',
+                opacity: 0.9
+              }}
+            >
+              {t('dailyChallenge.preview') || 'Preview'}
+            </Button>
 
             {/* Add Question/Passage Button - Single button for all types */}
             <Button 
