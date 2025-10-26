@@ -68,6 +68,7 @@ const mockChapters = [
 ];
 
 const questionTypes = [
+  { id: 0, name: "AI Generate Questions", type: "ai-generate", featured: true },
   { id: 1, name: "Multiple choice", type: "multiple-choice" },
   { id: 2, name: "Multiple select", type: "multiple-select" },
   { id: 3, name: "True or false", type: "true-false" },
@@ -81,6 +82,16 @@ const questionTypes = [
 // Move constants outside component to prevent re-creation
 const QUESTION_TYPES = questionTypes;
 const MOCK_CHAPTERS = mockChapters;
+
+// Helper function to strip HTML tags and get plain text
+const stripHtmlTags = (html) => {
+  if (!html) return '';
+  const tmp = document.createElement('DIV');
+  tmp.innerHTML = html;
+  const text = tmp.textContent || tmp.innerText || '';
+  // Limit to 100 characters for preview
+  return text.length > 100 ? text.substring(0, 100) + '...' : text;
+};
 
 // Draggable Question Item Component
 const DraggableQuestionItem = ({ question, index, onDelete, onMove }) => {
@@ -202,7 +213,7 @@ const DraggableQuestionItem = ({ question, index, onDelete, onMove }) => {
       
       <div className="gvc-question-content">
         <div className="gvc-question-text">
-          {question.question || "aaa"}
+          {stripHtmlTags(question.question) || "No question text"}
         </div>
         
         {(question.type === "multiple-choice" || question.type === "multiple-select") && question.options && (
@@ -515,7 +526,7 @@ const CreateGrammarVocabularyChallenge = () => {
 
       {/* Question Type Selection Modal */}
       <Modal
-        title="Chọn loại câu hỏi"
+        title={<span style={{ fontSize: '24px', color: 'rgb(24, 144, 255)', display: 'block', textAlign: 'center' }}>Chọn loại câu hỏi</span>}
         open={questionTypeModalVisible}
         onCancel={handleQuestionTypeModalCancel}
         footer={null}
@@ -526,10 +537,17 @@ const CreateGrammarVocabularyChallenge = () => {
           {QUESTION_TYPES.map((questionType) => (
             <div
               key={questionType.id}
-              className="gvc-question-type-card"
+              className={`gvc-question-type-card ${questionType.featured ? 'gvc-question-type-card-featured' : ''}`}
               onClick={() => handleQuestionTypeClick(questionType)}
+              style={questionType.featured ? {
+                background: 'linear-gradient(135deg, #6B73FF 0%, #8B5CF6 100%)',
+                color: 'white',
+                boxShadow: '0 4px 12px rgba(107, 115, 255, 0.3)',
+                border: '2px solid #6B73FF'
+              } : {}}
             >
               <div className="gvc-question-type-icon">
+                {questionType.type === "ai-generate" && "🤖"}
                 {questionType.type === "multiple-choice" && "📝"}
                 {questionType.type === "multiple-select" && "☑️"}
                 {questionType.type === "true-false" && "✅"}
@@ -540,15 +558,16 @@ const CreateGrammarVocabularyChallenge = () => {
                 {questionType.type === "rewrite" && "✍️"}
               </div>
               <div className="gvc-question-type-name">{questionType.name}</div>
-              <div className="gvc-question-type-description">
-                {questionType.type === "multiple-choice" && "Chọn một đáp án đúng"}
-                {questionType.type === "multiple-select" && "Chọn nhiều đáp án đúng"}
-                {questionType.type === "true-false" && "Đúng hoặc Sai"}
-                {questionType.type === "fill-blank" && "Điền vào chỗ trống"}
-                {questionType.type === "dropdown" && "Chọn từ danh sách"}
-                {questionType.type === "drag-drop" && "Kéo thả để sắp xếp"}
-                {questionType.type === "reorder" && "Sắp xếp lại thứ tự"}
-                {questionType.type === "rewrite" && "Viết lại câu"}
+              <div className="gvc-question-type-description" style={questionType.featured ? { color: 'rgba(255,255,255,0.95)' } : {}}>
+                {questionType.type === "ai-generate" && "Generate questions automatically with AI"}
+                {questionType.type === "multiple-choice" && "Choose one correct answer"}
+                {questionType.type === "multiple-select" && "Choose multiple correct answers"}
+                {questionType.type === "true-false" && "True or False"}
+                {questionType.type === "fill-blank" && "Fill in the blank"}
+                {questionType.type === "dropdown" && "Select from list"}
+                {questionType.type === "drag-drop" && "Drag and drop to arrange"}
+                {questionType.type === "reorder" && "Reorder the sequence"}
+                {questionType.type === "rewrite" && "Rewrite the sentence"}
               </div>
             </div>
           ))}
@@ -642,7 +661,7 @@ const CreateGrammarVocabularyChallenge = () => {
                 
                 <div className="gvc-preview-question-content">
                   <div className="gvc-preview-question-text">
-                    {question.question || "Câu hỏi mẫu"}
+                    {stripHtmlTags(question.question) || "No question text"}
                   </div>
                   
                   {question.type === "multiple-choice" && question.options && (

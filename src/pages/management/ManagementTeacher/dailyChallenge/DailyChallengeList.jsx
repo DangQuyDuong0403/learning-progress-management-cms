@@ -804,7 +804,7 @@ const DailyChallengeList = () => {
             {t('dailyChallenge.dailyChallengeManagement')} <span className="student-count" style={{
               fontSize: '24px',
               fontWeight: '500',
-              color: theme === 'sun' ? '#475569' : '#000000'
+          
             }}>({filteredChallenges.length})</span>
           </Typography.Title>
         </div>

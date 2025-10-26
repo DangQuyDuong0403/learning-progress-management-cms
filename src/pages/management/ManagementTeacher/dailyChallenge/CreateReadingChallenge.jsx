@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useCallback, useRef } from "react";
 import {
   Button,
   Card,
@@ -6,7 +6,6 @@ import {
   Col,
   Space,
   Typography,
-  Input,
   Upload,
   Divider,
   Dropdown,
@@ -25,12 +24,13 @@ import {
   EditOutlined,
   CopyOutlined,
 } from "@ant-design/icons";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useTheme } from "../../../../contexts/ThemeContext";
 import ThemedLayout from "../../../../component/teacherlayout/ThemedLayout";
 import { extractTextFromPDF, isValidPDF } from "../../../../utils/pdfUtils";
 import { spaceToast } from "../../../../component/SpaceToastify";
+import { useSelector } from "react-redux";
 import {
   MultipleChoiceModal,
   MultipleSelectModal,
@@ -41,14 +41,40 @@ import {
   ReorderModal,
 } from "./questionModals";
 import "./CreateReadingChallenge.css";
+import { CKEditor } from '@ckeditor/ckeditor5-react';
+import ClassicEditor from '@ckeditor/ckeditor5-build-classic';
 
 const { Title, Text } = Typography;
-const { TextArea } = Input;
 
 const CreateReadingChallenge = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { t } = useTranslation();
   const { theme } = useTheme();
+  const { user } = useSelector((state) => state.auth);
+  
+  // Custom upload adapter for CKEditor to convert images to base64
+  function CustomUploadAdapterPlugin(editor) {
+    editor.plugins.get('FileRepository').createUploadAdapter = (loader) => {
+      return {
+        upload: () => {
+          return loader.file.then(file => new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => {
+              resolve({ default: reader.result });
+            };
+            reader.onerror = error => reject(error);
+            reader.readAsDataURL(file);
+          }));
+        },
+        abort: () => {}
+      };
+    };
+  }
+  
+  // Get challenge info from navigation state
+  const challengeInfo = location.state || {};
+  const { challengeId, challengeName, classId, className } = challengeInfo;
   
   const [passages, setPassages] = useState([
     { id: 1, title: "Passage 1", content: "", type: null, questions: [] }
@@ -62,20 +88,62 @@ const CreateReadingChallenge = () => {
   const [activeModal, setActiveModal] = useState(null);
   const [editingQuestion, setEditingQuestion] = useState(null);
   
+  // Use ref to track if we're updating from passage change to prevent infinite loop
+  const isUpdatingFromPassage = useRef(false);
+  const prevActivePassage = useRef(activePassage);
+  const debounceTimer = useRef(null);
+  
   // Get current passage
   const currentPassage = passages.find(p => p.id === activePassage);
   const questions = currentPassage?.questions || [];
 
-  // Update passageContent khi chuyển passage
+  // Update passageContent ONLY when switching between passages
   React.useEffect(() => {
-    const passage = passages.find(p => p.id === activePassage);
-    if (passage) {
-      setPassageContent(passage.content || "");
+    // Only sync when actually switching passages, not when passages array updates
+    if (prevActivePassage.current !== activePassage) {
+      // Clear any pending debounce timer to prevent old content from being applied
+      if (debounceTimer.current) {
+        clearTimeout(debounceTimer.current);
+        debounceTimer.current = null;
+      }
+
+      const passage = passages.find(p => p.id === activePassage);
+      if (passage) {
+        isUpdatingFromPassage.current = true;
+        setPassageContent(passage.content || "");
+        // Reset flag after a tick
+        setTimeout(() => {
+          isUpdatingFromPassage.current = false;
+        }, 0);
+      }
+      prevActivePassage.current = activePassage;
     }
   }, [activePassage, passages]);
 
+  // Cleanup debounce timer on unmount
+  React.useEffect(() => {
+    return () => {
+      if (debounceTimer.current) {
+        clearTimeout(debounceTimer.current);
+      }
+    };
+  }, []);
+
   const handleBack = () => {
-    navigate("/teacher/daily-challenges");
+    // Navigate back to DailyChallengeContent with proper path based on user role
+    const userRole = user?.role?.toLowerCase();
+    const basePath = userRole === 'teaching_assistant' 
+      ? '/teaching-assistant/daily-challenges/detail'
+      : '/teacher/daily-challenges/detail';
+    
+    navigate(`${basePath}/${challengeId}/content`, {
+      state: {
+        challengeId,
+        challengeName,
+        classId,
+        className
+      }
+    });
   };
 
   const handleSave = () => {
@@ -117,12 +185,33 @@ const CreateReadingChallenge = () => {
     spaceToast.success("Đã xóa passage thành công!");
   };
 
-  const handlePassageContentChange = (content) => {
-    setPassageContent(content);
-    setPassages(passages.map(p => 
-      p.id === activePassage ? { ...p, content } : p
-    ));
-  };
+  // Debounced editor change handler (same as MultipleChoiceModal)
+  const handlePassageContentChange = useCallback((content) => {
+    // Only update if not currently updating from passage change
+    if (isUpdatingFromPassage.current) {
+      return;
+    }
+
+    // Clear previous timer
+    if (debounceTimer.current) {
+      clearTimeout(debounceTimer.current);
+    }
+    
+    // Set new timer - update after 150ms of no typing (same as MultipleChoiceModal)
+    debounceTimer.current = setTimeout(() => {
+      setPassageContent(prevContent => {
+        // Only update if content actually changed
+        if (prevContent !== content) {
+          // Also update passages state
+          setPassages(prevPassages => prevPassages.map(p => 
+            p.id === activePassage ? { ...p, content } : p
+          ));
+          return content;
+        }
+        return prevContent;
+      });
+    }, 150);
+  }, [activePassage]);
 
   const handleUploadPDF = async (file) => {
     try {
@@ -232,6 +321,16 @@ const CreateReadingChallenge = () => {
     };
     return typeMap[type] || type.toUpperCase();
   };
+
+  // Helper function to strip HTML tags and get plain text
+  const stripHtmlTags = (html) => {
+    if (!html) return '';
+    const tmp = document.createElement('DIV');
+    tmp.innerHTML = html;
+    const text = tmp.textContent || tmp.innerText || '';
+    // Limit to 80 characters for preview
+    return text.length > 80 ? text.substring(0, 80) + '...' : text;
+  };
   // Custom Header Component
   const customHeader = (
     <header className={`themed-header ${theme}-header`}>
@@ -274,7 +373,14 @@ const CreateReadingChallenge = () => {
                 fontWeight: 300,
                 opacity: 0.5
               }}>|</span>
-              <span>Create Reading Challenge</span>
+              <span>
+                {className && challengeName 
+                  ? `${className} / ${challengeName}` 
+                  : challengeName 
+                  ? challengeName
+                  : 'Create Reading Challenge'
+                }
+              </span>
             </div>
           </div>
 
@@ -410,22 +516,68 @@ const CreateReadingChallenge = () => {
                            Back to options
                          </Button>
                        </div>
-                       <TextArea
-                         placeholder="Enter your passage content here..."
-                         value={passageContent}
-                         onChange={(e) => handlePassageContentChange(e.target.value)}
-                         rows={20}
-                         style={{ 
-                           fontSize: 14, 
-                           lineHeight: 1.6, 
-                           height: "100%",
+                       <div 
+                         className={`rc-ckeditor-wrapper ${theme}-ckeditor-wrapper`}
+                         style={{
                            borderRadius: '8px',
                            border: theme === 'sun' ? '2px solid rgba(113, 179, 253, 0.3)' : '2px solid rgba(138, 122, 255, 0.3)',
-                           background: theme === 'sun'
-                             ? 'linear-gradient(135deg, rgba(230, 245, 255, 0.95) 0%, rgba(186, 231, 255, 0.85) 100%)'
-                             : 'rgba(255, 255, 255, 0.9)'
+                           overflow: 'hidden',
+                           boxShadow: theme === 'sun' 
+                             ? '0 2px 8px rgba(113, 179, 253, 0.1)' 
+                             : '0 2px 8px rgba(138, 122, 255, 0.15)',
                          }}
-                       />
+                       >
+                        <CKEditor
+                          editor={ClassicEditor}
+                          data={passageContent}
+                          onChange={(event, editor) => {
+                            const data = editor.getData();
+                            handlePassageContentChange(data);
+                          }}
+                          config={{
+                            placeholder: 'Enter your passage content here...',
+                            extraPlugins: [CustomUploadAdapterPlugin],
+                            toolbar: {
+                              items: [
+                                'heading', '|',
+                                'bold', 'italic', 'underline', 'strikethrough', '|',
+                                'insertTable', 'imageUpload', '|',
+                                'bulletedList', 'numberedList', '|',
+                                'outdent', 'indent', '|',
+                                'link', 'blockQuote', '|',
+                                'undo', 'redo'
+                              ],
+                              shouldNotGroupWhenFull: false
+                            },
+                            heading: {
+                              options: [
+                                { model: 'paragraph', title: 'Paragraph', class: 'ck-heading_paragraph' },
+                                { model: 'heading1', view: 'h1', title: 'Heading 1', class: 'ck-heading_heading1' },
+                                { model: 'heading2', view: 'h2', title: 'Heading 2', class: 'ck-heading_heading2' },
+                                { model: 'heading3', view: 'h3', title: 'Heading 3', class: 'ck-heading_heading3' }
+                              ]
+                            },
+                            table: {
+                              contentToolbar: ['tableColumn', 'tableRow', 'mergeTableCells']
+                            },
+                            image: {
+                              toolbar: [
+                                'imageTextAlternative',
+                                '|',
+                                'imageStyle:alignLeft',
+                                'imageStyle:full',
+                                'imageStyle:alignRight'
+                              ],
+                              styles: [
+                                'full',
+                                'alignLeft',
+                                'alignRight'
+                              ]
+                            },
+                            language: 'en',
+                          }}
+                        />
+                       </div>
                      </div>
                    ) : (
                      /* Initial Options - Show when no type selected */
@@ -441,72 +593,110 @@ const CreateReadingChallenge = () => {
                        <Space direction="vertical" size="large" style={{ width: "100%" }}>
                          {/* Manual Text & Media */}
                          <Card 
-                           hoverable 
-                           className="rc-passage-option-card"
-                           onClick={() => {
-                             setPassages(passages.map(p => 
-                               p.id === activePassage ? { ...p, type: "manual" } : p
-                             ));
-                           }}
-                           style={{
-                             borderRadius: '12px',
-                             border: theme === 'sun' 
-                               ? '2px solid rgba(113, 179, 253, 0.3)' 
-                               : '2px solid rgba(138, 122, 255, 0.3)',
-                             background: theme === 'sun'
-                               ? 'linear-gradient(135deg, rgba(230, 245, 255, 0.5) 0%, rgba(186, 231, 255, 0.4) 100%)'
-                               : 'rgba(255, 255, 255, 0.5)',
-                             cursor: 'pointer'
-                           }}
-                         >
-                           <Space>
-                             <FileTextOutlined style={{ 
-                               fontSize: 24, 
-                               color: theme === 'sun' ? "#1890ff" : "#8377A0" 
-                             }} />
-                             <Text strong style={{ 
-                               color: theme === 'sun' ? '#1E40AF' : '#8377A0' 
-                             }}>Add text & media manually</Text>
-                           </Space>
-                         </Card>
+                          hoverable 
+                          className="rc-passage-option-card"
+                          onClick={() => {
+                            setPassages(passages.map(p => 
+                              p.id === activePassage ? { ...p, type: "manual" } : p
+                            ));
+                          }}
+                          style={{
+                            borderRadius: '12px',
+                            border: theme === 'sun' 
+                              ? '2px solid rgba(113, 179, 253, 0.3)' 
+                              : '2px solid rgba(138, 122, 255, 0.3)',
+                            background: theme === 'sun'
+                              ? 'linear-gradient(135deg, rgba(230, 245, 255, 0.5) 0%, rgba(186, 231, 255, 0.4) 100%)'
+                              : 'rgba(255, 255, 255, 0.5)',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          <Space>
+                            <FileTextOutlined style={{ 
+                              fontSize: 24, 
+                              color: "#000000" 
+                            }} />
+                            <Text strong style={{ 
+                              color: theme === 'sun' ? '#1E40AF' : '#8377A0' 
+                            }}>Add text & media manually</Text>
+                          </Space>
+                        </Card>
 
-                         {/* PDF Upload */}
-                         <Card 
-                           hoverable 
-                           className="rc-passage-option-card"
-                           style={{ 
-                             opacity: isProcessingPDF ? 0.6 : 1,
-                             borderRadius: '12px',
-                             border: theme === 'sun' 
-                               ? '2px solid rgba(82, 196, 26, 0.3)' 
-                               : '2px solid rgba(138, 122, 255, 0.3)',
-                             background: theme === 'sun'
-                               ? 'linear-gradient(135deg, rgba(237, 250, 230, 0.5) 0%, rgba(207, 244, 192, 0.4) 100%)'
-                               : 'rgba(255, 255, 255, 0.5)',
-                             cursor: isProcessingPDF ? 'not-allowed' : 'pointer'
-                           }}
-                         >
-                           <Upload
-                             accept=".pdf"
-                             beforeUpload={handleUploadPDF}
-                             showUploadList={false}
-                             disabled={isProcessingPDF}
-                           >
-                             <Space>
-                               {isProcessingPDF ? (
-                                 <LoadingOutlined style={{ fontSize: 24, color: "#1890ff" }} />
-                               ) : (
-                                 <UploadOutlined style={{ fontSize: 24, color: "#52c41a" }} />
-                               )}
-                               <Text strong style={{ 
-                                 color: theme === 'sun' ? '#1E40AF' : '#8377A0' 
-                               }}>
-                                 {isProcessingPDF ? `Đang xử lý "${uploadedFileName}"...` : "Upload PDF"}
-                               </Text>
-                             </Space>
-                           </Upload>
-                         </Card>
-                       </Space>
+                        {/* PDF Upload */}
+                        <Card 
+                          hoverable 
+                          className="rc-passage-option-card"
+                          style={{ 
+                            opacity: isProcessingPDF ? 0.6 : 1,
+                            borderRadius: '12px',
+                            border: theme === 'sun' 
+                              ? '2px solid rgba(82, 196, 26, 0.3)' 
+                              : '2px solid rgba(138, 122, 255, 0.3)',
+                            background: theme === 'sun'
+                              ? 'linear-gradient(135deg, rgba(237, 250, 230, 0.5) 0%, rgba(207, 244, 192, 0.4) 100%)'
+                              : 'rgba(255, 255, 255, 0.5)',
+                            cursor: isProcessingPDF ? 'not-allowed' : 'pointer'
+                          }}
+                        >
+                          <Upload
+                            accept=".pdf"
+                            beforeUpload={handleUploadPDF}
+                            showUploadList={false}
+                            disabled={isProcessingPDF}
+                          >
+                            <Space>
+                              {isProcessingPDF ? (
+                                <LoadingOutlined style={{ fontSize: 24, color: "#1890ff" }} />
+                              ) : (
+                                <UploadOutlined style={{ fontSize: 24, color: "#000000" }} />
+                              )}
+                              <Text strong style={{ 
+                                color: theme === 'sun' ? '#1E40AF' : '#8377A0' 
+                              }}>
+                                {isProcessingPDF ? `Đang xử lý "${uploadedFileName}"...` : "Upload PDF"}
+                              </Text>
+                            </Space>
+                          </Upload>
+                        </Card>
+
+                        {/* Create by AI */}
+                        <Card 
+                          hoverable 
+                          className="rc-passage-option-card"
+                          onClick={() => {
+                            spaceToast.info("AI generation feature is under development");
+                            // TODO: Implement AI generation feature
+                            // setPassages(passages.map(p => 
+                            //   p.id === activePassage ? { ...p, type: "ai" } : p
+                            // ));
+                          }}
+                          style={{
+                            borderRadius: '12px',
+                            border: theme === 'sun' 
+                              ? '2px solid rgba(250, 173, 20, 0.3)' 
+                              : '2px solid rgba(138, 122, 255, 0.3)',
+                            background: theme === 'sun'
+                              ? 'linear-gradient(135deg, rgba(255, 251, 230, 0.5) 0%, rgba(255, 236, 179, 0.4) 100%)'
+                              : 'rgba(255, 255, 255, 0.5)',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          <Space>
+                            <img 
+                              src="/img/ai-icon.png" 
+                              alt="AI" 
+                              style={{ 
+                                width: 24, 
+                                height: 24,
+                                filter: theme === 'sun' ? 'none' : 'brightness(0.8)'
+                              }} 
+                            />
+                            <Text strong style={{ 
+                              color: theme === 'sun' ? '#1E40AF' : '#8377A0' 
+                            }}>Generate with AI</Text>
+                          </Space>
+                        </Card>
+                      </Space>
                      </>
                    )}
                  </div>
@@ -636,13 +826,16 @@ const CreateReadingChallenge = () => {
                 <Divider style={{ margin: '0 0 20px 0' }} />
                 
                 {/* Questions List */}
-                <div className="rc-questions-list" style={{ flex: 1, overflowY: 'auto' }}>
+                <div className="rc-questions-list" style={{ 
+                  maxHeight: '500px', 
+                  overflowY: 'auto',
+                  overflowX: 'hidden'
+                }}>
                       {questions.length === 0 ? (
                     <div className="rc-empty-questions" style={{ 
                       padding: '40px 20px',
                       textAlign: 'center'
                     }}>
-                      <div className="rc-empty-icon" style={{ fontSize: '48px', marginBottom: '16px' }}>🚀</div>
                       <div className="rc-empty-text" style={{ 
                         fontSize: '16px',
                         fontWeight: 500,
@@ -695,7 +888,7 @@ const CreateReadingChallenge = () => {
                             fontSize: '14px',
                             color: theme === 'sun' ? '#1E40AF' : '#333'
                           }}>
-                                {question.question || "the question is"}
+                                {stripHtmlTags(question.question) || "No question text"}
                               </div>
                             </div>
                         <div className="rc-question-actions" style={{ display: 'flex', gap: '4px' }}>
