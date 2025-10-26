@@ -10,6 +10,7 @@ import {
   Divider,
   Dropdown,
   Menu,
+  Modal,
 } from "antd";
 import {
   ArrowLeftOutlined,
@@ -24,7 +25,7 @@ import {
   EditOutlined,
   CopyOutlined,
 } from "@ant-design/icons";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate, useLocation, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useTheme } from "../../../../contexts/ThemeContext";
 import ThemedLayout from "../../../../component/teacherlayout/ThemedLayout";
@@ -49,6 +50,7 @@ const { Title, Text } = Typography;
 const CreateReadingChallenge = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { id } = useParams(); // Get challenge ID from URL
   const { t } = useTranslation();
   const { theme } = useTheme();
   const { user } = useSelector((state) => state.auth);
@@ -72,14 +74,20 @@ const CreateReadingChallenge = () => {
     };
   }
   
-  // Get challenge info from navigation state
+  // Get challenge info from navigation state or URL params
   const challengeInfo = location.state || {};
   const { challengeId, challengeName, classId, className } = challengeInfo;
   
-  const [passages, setPassages] = useState([
-    { id: 1, title: "Passage 1", content: "", type: null, questions: [] }
-  ]);
-  const [activePassage, setActivePassage] = useState(1);
+  // Use challenge ID from URL params if available, otherwise from state
+  const currentChallengeId = id || challengeId;
+  
+  const [passage, setPassage] = useState({
+    id: 1,
+    title: "Passage",
+    content: "",
+    type: null,
+    questions: []
+  });
   const [passageContent, setPassageContent] = useState("");
   const [isProcessingPDF, setIsProcessingPDF] = useState(false);
   const [uploadedFileName, setUploadedFileName] = useState("");
@@ -87,38 +95,30 @@ const CreateReadingChallenge = () => {
   // Question management state
   const [activeModal, setActiveModal] = useState(null);
   const [editingQuestion, setEditingQuestion] = useState(null);
+  const [questionTypeModalVisible, setQuestionTypeModalVisible] = useState(false);
   
   // Use ref to track if we're updating from passage change to prevent infinite loop
   const isUpdatingFromPassage = useRef(false);
-  const prevActivePassage = useRef(activePassage);
   const debounceTimer = useRef(null);
-  
+
   // Get current passage
-  const currentPassage = passages.find(p => p.id === activePassage);
-  const questions = currentPassage?.questions || [];
+  const questions = passage?.questions || [];
 
-  // Update passageContent ONLY when switching between passages
+  // Update passageContent when passage changes
   React.useEffect(() => {
-    // Only sync when actually switching passages, not when passages array updates
-    if (prevActivePassage.current !== activePassage) {
-      // Clear any pending debounce timer to prevent old content from being applied
-      if (debounceTimer.current) {
-        clearTimeout(debounceTimer.current);
-        debounceTimer.current = null;
-      }
-
-      const passage = passages.find(p => p.id === activePassage);
-      if (passage) {
-        isUpdatingFromPassage.current = true;
-        setPassageContent(passage.content || "");
-        // Reset flag after a tick
-        setTimeout(() => {
-          isUpdatingFromPassage.current = false;
-        }, 0);
-      }
-      prevActivePassage.current = activePassage;
+    // Clear any pending debounce timer to prevent old content from being applied
+    if (debounceTimer.current) {
+      clearTimeout(debounceTimer.current);
+      debounceTimer.current = null;
     }
-  }, [activePassage, passages]);
+
+    isUpdatingFromPassage.current = true;
+    setPassageContent(passage.content || "");
+    // Reset flag after a tick
+    setTimeout(() => {
+      isUpdatingFromPassage.current = false;
+    }, 0);
+  }, [passage.content]);
 
   // Cleanup debounce timer on unmount
   React.useEffect(() => {
@@ -136,9 +136,9 @@ const CreateReadingChallenge = () => {
       ? '/teaching-assistant/daily-challenges/detail'
       : '/teacher/daily-challenges/detail';
     
-    navigate(`${basePath}/${challengeId}/content`, {
+    navigate(`${basePath}/${currentChallengeId}/content`, {
       state: {
-        challengeId,
+        challengeId: currentChallengeId,
         challengeName,
         classId,
         className
@@ -147,43 +147,59 @@ const CreateReadingChallenge = () => {
   };
 
   const handleSave = () => {
-    spaceToast.success("Reading challenge saved successfully!");
-  };
-
-  const handleAddPassage = () => {
-    const newPassageId = Math.max(...passages.map(p => p.id)) + 1;
-    const newPassage = {
-      id: newPassageId,
-      title: `Passage ${newPassageId}`,
-      content: "",
-      type: null,
-      questions: []
+    // Create fake data structure for passage with questions
+    const fakePassageData = {
+      id: `passage_${Date.now()}`,
+      type: 'PASSAGE',
+      content: passage.content || "This is a sample passage content for reading comprehension. Students will read this passage and answer the questions that follow.",
+      questions: passage.questions || [
+        {
+          id: `question_${Date.now()}_1`,
+          type: 'MULTIPLE_CHOICE',
+          question: "What is the main topic of this passage?",
+          options: [
+            { key: 'A', text: 'Science and Technology', isCorrect: false },
+            { key: 'B', text: 'Education and Learning', isCorrect: true },
+            { key: 'C', text: 'History and Culture', isCorrect: false },
+            { key: 'D', text: 'Sports and Recreation', isCorrect: false }
+          ],
+          points: 1,
+          timeLimit: 30
+        },
+        {
+          id: `question_${Date.now()}_2`,
+          type: 'FILL_IN_THE_BLANK',
+          questionText: "The passage discusses the importance of ___ in modern education.",
+          content: {
+            data: [
+              {
+                id: 'blank_1',
+                value: 'technology',
+                positionId: 'pos_1',
+                correct: true
+              }
+            ]
+          },
+          points: 1,
+          timeLimit: 60
+        }
+      ],
+      timeLimit: 120, // 2 minutes for the passage
+      points: 2
     };
-    setPassages([...passages, newPassage]);
-    setActivePassage(newPassageId);
-    setPassageContent(""); // Reset content khi chuyển passage
+
+    // Store the passage data in localStorage for now (fake API)
+    const existingPassages = JSON.parse(localStorage.getItem('readingPassages') || '[]');
+    existingPassages.push(fakePassageData);
+    localStorage.setItem('readingPassages', JSON.stringify(existingPassages));
+
+    spaceToast.success("Reading challenge saved successfully!");
+    
+    // Navigate back to DailyChallengeContent
+    handleBack();
   };
 
-  const handleDiscardPassage = () => {
-    if (passages.length <= 1) {
-      spaceToast.warning("Không thể xóa passage cuối cùng!");
-      return;
-    }
-
-    // Xóa passage hiện tại
-    const updatedPassages = passages.filter(p => p.id !== activePassage);
-    setPassages(updatedPassages);
-    
-    // Chuyển sang passage đầu tiên còn lại
-    setActivePassage(updatedPassages[0].id);
-    
-    // Reset passage content nếu đang hiển thị passage bị xóa
-    if (currentPassage?.id === activePassage) {
-      setPassageContent(updatedPassages[0].content || "");
-    }
-    
-    spaceToast.success("Đã xóa passage thành công!");
-  };
+  // No need for add/discard passage functions since we only have one passage
 
   // Debounced editor change handler (same as MultipleChoiceModal)
   const handlePassageContentChange = useCallback((content) => {
@@ -196,22 +212,20 @@ const CreateReadingChallenge = () => {
     if (debounceTimer.current) {
       clearTimeout(debounceTimer.current);
     }
-    
+
     // Set new timer - update after 150ms of no typing (same as MultipleChoiceModal)
     debounceTimer.current = setTimeout(() => {
       setPassageContent(prevContent => {
         // Only update if content actually changed
         if (prevContent !== content) {
-          // Also update passages state
-          setPassages(prevPassages => prevPassages.map(p => 
-            p.id === activePassage ? { ...p, content } : p
-          ));
+          // Also update passage state
+          setPassage(prevPassage => ({ ...prevPassage, content }));
           return content;
         }
         return prevContent;
       });
     }, 150);
-  }, [activePassage]);
+  }, []);
 
   const handleUploadPDF = async (file) => {
     try {
@@ -234,11 +248,9 @@ const CreateReadingChallenge = () => {
 
       // Cập nhật passage content với text đã trích xuất
       handlePassageContentChange(extractedText);
-      
+
       // Chuyển sang chế độ manual để hiển thị text
-      setPassages(passages.map(p => 
-        p.id === activePassage ? { ...p, type: "manual", content: extractedText } : p
-      ));
+      setPassage(prevPassage => ({ ...prevPassage, type: "manual", content: extractedText }));
 
       spaceToast.success(`Đã trích xuất text từ file "${file.name}" thành công!`);
       
@@ -253,9 +265,18 @@ const CreateReadingChallenge = () => {
   };
 
   // Question management handlers
-  const handleAddQuestion = (questionType) => {
-    setActiveModal(questionType);
+  const handleAddQuestion = () => {
+    setQuestionTypeModalVisible(true);
+  };
+
+  const handleQuestionTypeClick = (questionType) => {
+    setActiveModal(questionType.type);
     setEditingQuestion(null);
+    setQuestionTypeModalVisible(false);
+  };
+
+  const handleQuestionTypeModalCancel = () => {
+    setQuestionTypeModalVisible(false);
   };
 
   const handleEditQuestion = (question) => {
@@ -264,40 +285,36 @@ const CreateReadingChallenge = () => {
   };
 
   const handleDeleteQuestion = (questionId) => {
-    setPassages(passages.map(p => 
-      p.id === activePassage 
-        ? { ...p, questions: p.questions.filter(q => q.id !== questionId) }
-        : p
-    ));
+    setPassage(prevPassage => ({
+      ...prevPassage,
+      questions: prevPassage.questions.filter(q => q.id !== questionId)
+    }));
     spaceToast.success("Question deleted successfully!");
   };
 
   const handleSaveQuestion = (questionData) => {
-    setPassages(passages.map(p => {
-      if (p.id === activePassage) {
-        if (editingQuestion) {
-          // Update existing question
-          return {
-            ...p,
-            questions: p.questions.map(q => 
-              q.id === editingQuestion.id ? { ...questionData, id: editingQuestion.id } : q
-            )
-          };
-        } else {
-          // Add new question
-          const newQuestion = {
-            ...questionData,
-            id: Date.now(),
-          };
-          return {
-            ...p,
-            questions: [...p.questions, newQuestion]
-          };
-        }
+    setPassage(prevPassage => {
+      if (editingQuestion) {
+        // Update existing question
+        return {
+          ...prevPassage,
+          questions: prevPassage.questions.map(q =>
+            q.id === editingQuestion.id ? { ...questionData, id: editingQuestion.id } : q
+          )
+        };
+      } else {
+        // Add new question
+        const newQuestion = {
+          ...questionData,
+          id: Date.now(),
+        };
+        return {
+          ...prevPassage,
+          questions: [...prevPassage.questions, newQuestion]
+        };
       }
-      return p;
-    }));
-    
+    });
+
     spaceToast.success(editingQuestion ? "Question updated successfully!" : "Question added successfully!");
     setActiveModal(null);
     setEditingQuestion(null);
@@ -330,6 +347,160 @@ const CreateReadingChallenge = () => {
     const text = tmp.textContent || tmp.innerText || '';
     // Limit to 80 characters for preview
     return text.length > 80 ? text.substring(0, 80) + '...' : text;
+  };
+
+  // Helper function to format fill-in-the-blank questions
+  const formatFillBlankQuestion = (question) => {
+    if (question.type !== 'fill-blank' && question.type !== 'FILL_IN_THE_BLANK') {
+      return stripHtmlTags(question.question) || "No question text";
+    }
+
+    // Parse questionText and replace [[pos_xxx]] with (1)____, (2)____, etc.
+    let displayText = question.questionText || question.question;
+    
+    if (question.content && question.content.data) {
+      question.content.data.forEach((item, idx) => {
+        const number = idx + 1; // 1, 2, 3, 4...
+        const pattern = `[[pos_${item.positionId}]]`;
+        
+        // Replace pattern with (1)____ format
+        displayText = displayText.replace(
+          pattern,
+          `(${number})____`
+        );
+      });
+    }
+
+    // Strip HTML tags and limit length for preview
+    const tmp = document.createElement('DIV');
+    tmp.innerHTML = displayText;
+    const text = tmp.textContent || tmp.innerText || '';
+    return text.length > 80 ? text.substring(0, 80) + '...' : text;
+  };
+
+  // Helper function to format dropdown questions
+  const formatDropdownQuestion = (question) => {
+    if (question.type !== 'DROPDOWN' && question.type !== 'dropdown') {
+      return stripHtmlTags(question.question) || "No question text";
+    }
+
+    // Parse questionText and replace [[pos_xxx]] with (1)▼, (2)▼, etc.
+    let displayText = question.questionText || question.question;
+    
+    if (question.content && question.content.data) {
+      // Group options by positionId
+      const positionGroups = {};
+      question.content.data.forEach((item) => {
+        if (!positionGroups[item.positionId]) {
+          positionGroups[item.positionId] = [];
+        }
+        positionGroups[item.positionId].push(item);
+      });
+      
+      // Process each position group
+      Object.keys(positionGroups).forEach((positionId, idx) => {
+        const number = idx + 1; // 1, 2, 3, 4...
+        const pattern = `[[pos_${positionId}]]`;
+        
+        // Replace pattern with (1)▼ format
+        displayText = displayText.replace(
+          pattern,
+          `(${number})▼`
+        );
+      });
+    }
+
+    // Strip HTML tags and limit length for preview
+    const tmp = document.createElement('DIV');
+    tmp.innerHTML = displayText;
+    const text = tmp.textContent || tmp.innerText || '';
+    return text.length > 80 ? text.substring(0, 80) + '...' : text;
+  };
+
+  // Helper function to format drag and drop questions
+  const formatDragDropQuestion = (question) => {
+    if (question.type !== 'DRAG_AND_DROP' && question.type !== 'drag-drop') {
+      return stripHtmlTags(question.question) || "No question text";
+    }
+
+    // Parse questionText and replace [[pos_xxx]] with (1)____, (2)____, etc.
+    let displayText = question.questionText || question.question;
+    
+    if (question.content && question.content.data) {
+      // Filter correct options (those with positionId and correct: true)
+      const correctOptions = question.content.data.filter(item => 
+        item.positionId && item.correct === true
+      );
+      
+      correctOptions.forEach((item, idx) => {
+        const number = idx + 1; // 1, 2, 3, 4...
+        const pattern = `[[pos_${item.positionId}]]`;
+        
+        // Replace pattern with (1)____ format
+        displayText = displayText.replace(
+          pattern,
+          `(${number})____`
+        );
+      });
+    }
+
+    // Strip HTML tags and limit length for preview
+    const tmp = document.createElement('DIV');
+    tmp.innerHTML = displayText;
+    const text = tmp.textContent || tmp.innerText || '';
+    return text.length > 80 ? text.substring(0, 80) + '...' : text;
+  };
+
+  // Helper function to format reorder questions
+  const formatReorderQuestion = (question) => {
+    if (question.type !== 'REARRANGE' && question.type !== 'reorder') {
+      return stripHtmlTags(question.question) || "No question text";
+    }
+
+    // Parse questionText and replace [[pos_xxx]] with (1)____, (2)____, etc.
+    let displayText = question.questionText || question.question;
+    
+    if (question.content && question.content.data) {
+      // Sort by positionOrder to get correct order
+      const sortedData = question.content.data.sort((a, b) => (a.positionOrder || 0) - (b.positionOrder || 0));
+      
+      sortedData.forEach((item, idx) => {
+        const number = idx + 1; // 1, 2, 3, 4...
+        const pattern = `[[pos_${item.positionId}]]`;
+        
+        // Replace pattern with (1)____ format
+        displayText = displayText.replace(
+          pattern,
+          `(${number})____`
+        );
+      });
+    }
+
+    // Strip HTML tags and limit length for preview
+    const tmp = document.createElement('DIV');
+    tmp.innerHTML = displayText;
+    const text = tmp.textContent || tmp.innerText || '';
+    return text.length > 80 ? text.substring(0, 80) + '...' : text;
+  };
+
+  // General helper function to format questions based on type
+  const formatQuestionText = (question) => {
+    switch (question.type) {
+      case 'fill-blank':
+      case 'FILL_IN_THE_BLANK':
+        return formatFillBlankQuestion(question);
+      case 'DROPDOWN':
+      case 'dropdown':
+        return formatDropdownQuestion(question);
+      case 'DRAG_AND_DROP':
+      case 'drag-drop':
+        return formatDragDropQuestion(question);
+      case 'REARRANGE':
+      case 'reorder':
+        return formatReorderQuestion(question);
+      default:
+        return stripHtmlTags(question.question) || "No question text";
+    }
   };
   // Custom Header Component
   const customHeader = (
@@ -439,73 +610,39 @@ const CreateReadingChallenge = () => {
                   backdropFilter: 'blur(10px)'
                 }}
               >
-                {/* Passage Tabs with Discard Button */}
+                {/* Passage Title */}
                 <div className="rc-passage-tabs" style={{ marginBottom: '16px' }}>
                   <div className="rc-passage-tabs-left">
-                    {passages.map((passage) => (
-                      <Button
-                        key={passage.id}
-                        type={activePassage === passage.id ? "primary" : "text"}
-                        onClick={() => setActivePassage(passage.id)}
-                        className="rc-passage-tab"
-                        style={activePassage === passage.id ? {
-                          background: theme === 'sun' 
-                            ? 'linear-gradient(135deg, #66AEFF, #3C99FF)'
-                            : 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)',
-                          color: '#000000',
-                          borderRadius: '8px',
-                          fontWeight: 500
-                        } : {
-                          color: theme === 'sun' ? '#1E40AF' : '#8377A0'
-                        }}
-                      >
-                        {passage.title}
-                      </Button>
-                    ))}
                     <Button
-                      type="dashed"
-                      icon={<PlusOutlined />}
-                      onClick={handleAddPassage}
-                      className="rc-add-passage-btn"
+                      type="primary"
+                      className="rc-passage-tab"
                       style={{
-                        borderColor: theme === 'sun' ? '#66AEFF' : '#8377A0',
-                        color: theme === 'sun' ? '#1E40AF' : '#8377A0',
-                        borderRadius: '8px'
+                        background: theme === 'sun'
+                          ? 'linear-gradient(135deg, #66AEFF, #3C99FF)'
+                          : 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)',
+                        color: '#000000',
+                        borderRadius: '8px',
+                        fontWeight: 500
                       }}
                     >
-                      Add passage set
+                      {passage.title}
                     </Button>
                   </div>
-                  <Button 
-                    type="text" 
-                    danger 
-                    icon={<DeleteOutlined />}
-                    className="rc-discard-btn"
-                    onClick={handleDiscardPassage}
-                    disabled={passages.length <= 1}
-                    style={{
-                      borderRadius: '8px'
-                    }}
-                  >
-                    Discard passage
-                  </Button>
                 </div>
 
                 <Divider />
 
                  {/* Passage Content */}
                  <div className="rc-passage-content">
-                   {currentPassage?.type === "manual" ? (
+                   {passage?.type === "manual" ? (
                      /* Text Editor - Full space when manual is selected */
                      <div className="rc-text-editor-full">
                        <div className="rc-text-editor-header" style={{ marginBottom: '12px' }}>
-                         <Button 
-                           type="text" 
+                        <Button
+                           type="text"
                            icon={<ArrowLeftOutlined />}
                            onClick={() => {
-                             setPassages(passages.map(p => 
-                               p.id === activePassage ? { ...p, type: null } : p
-                             ));
+                             setPassage(prevPassage => ({ ...prevPassage, type: null }));
                            }}
                            className="rc-back-to-options-btn"
                            style={{
@@ -592,18 +729,16 @@ const CreateReadingChallenge = () => {
                        
                        <Space direction="vertical" size="large" style={{ width: "100%" }}>
                          {/* Manual Text & Media */}
-                         <Card 
-                          hoverable 
+                        <Card
+                          hoverable
                           className="rc-passage-option-card"
                           onClick={() => {
-                            setPassages(passages.map(p => 
-                              p.id === activePassage ? { ...p, type: "manual" } : p
-                            ));
+                            setPassage(prevPassage => ({ ...prevPassage, type: "manual" }));
                           }}
                           style={{
                             borderRadius: '12px',
-                            border: theme === 'sun' 
-                              ? '2px solid rgba(113, 179, 253, 0.3)' 
+                            border: theme === 'sun'
+                              ? '2px solid rgba(113, 179, 253, 0.3)'
                               : '2px solid rgba(138, 122, 255, 0.3)',
                             background: theme === 'sun'
                               ? 'linear-gradient(135deg, rgba(230, 245, 255, 0.5) 0%, rgba(186, 231, 255, 0.4) 100%)'
@@ -660,20 +795,18 @@ const CreateReadingChallenge = () => {
                         </Card>
 
                         {/* Create by AI */}
-                        <Card 
-                          hoverable 
+                        <Card
+                          hoverable
                           className="rc-passage-option-card"
                           onClick={() => {
                             spaceToast.info("AI generation feature is under development");
                             // TODO: Implement AI generation feature
-                            // setPassages(passages.map(p => 
-                            //   p.id === activePassage ? { ...p, type: "ai" } : p
-                            // ));
+                            // setPassage(prevPassage => ({ ...prevPassage, type: "ai" }));
                           }}
                           style={{
                             borderRadius: '12px',
-                            border: theme === 'sun' 
-                              ? '2px solid rgba(250, 173, 20, 0.3)' 
+                            border: theme === 'sun'
+                              ? '2px solid rgba(250, 173, 20, 0.3)'
                               : '2px solid rgba(138, 122, 255, 0.3)',
                             background: theme === 'sun'
                               ? 'linear-gradient(135deg, rgba(255, 251, 230, 0.5) 0%, rgba(255, 236, 179, 0.4) 100%)'
@@ -737,90 +870,26 @@ const CreateReadingChallenge = () => {
 
                 {/* Add Question Button */}
                 <div className="rc-add-question-section" style={{ marginBottom: '20px' }}>
-                      <Dropdown
-                        overlay={
-                      <Menu 
-                        className="rc-question-type-menu"
-                        style={{
-                          background: '#ffffff',
-                          borderRadius: '8px',
-                          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)'
-                        }}
-                      >
-                        <Menu.Item 
-                          key="multiple-choice" 
-                          onClick={() => handleAddQuestion('multiple-choice')}
-                          style={{ color: '#000000' }}
-                        >
-                          <span style={{ color: '#000000' }}>Multiple Choice</span>
-                            </Menu.Item>
-                        <Menu.Item 
-                          key="multiple-select" 
-                          onClick={() => handleAddQuestion('multiple-select')}
-                          style={{ color: '#000000' }}
-                        >
-                          <span style={{ color: '#000000' }}>Multiple Select</span>
-                            </Menu.Item>
-                        <Menu.Item 
-                          key="true-false" 
-                          onClick={() => handleAddQuestion('true-false')}
-                          style={{ color: '#000000' }}
-                        >
-                          <span style={{ color: '#000000' }}>True or False</span>
-                            </Menu.Item>
-                        <Menu.Item 
-                          key="fill-blank" 
-                          onClick={() => handleAddQuestion('fill-blank')}
-                          style={{ color: '#000000' }}
-                        >
-                          <span style={{ color: '#000000' }}>Fill in the Blank</span>
-                            </Menu.Item>
-                        <Menu.Item 
-                          key="dropdown" 
-                          onClick={() => handleAddQuestion('dropdown')}
-                          style={{ color: '#000000' }}
-                        >
-                          <span style={{ color: '#000000' }}>Dropdown</span>
-                            </Menu.Item>
-                        <Menu.Item 
-                          key="drag-drop" 
-                          onClick={() => handleAddQuestion('drag-drop')}
-                          style={{ color: '#000000' }}
-                        >
-                          <span style={{ color: '#000000' }}>Drag and Drop</span>
-                            </Menu.Item>
-                        <Menu.Item 
-                          key="reorder" 
-                          onClick={() => handleAddQuestion('reorder')}
-                          style={{ color: '#000000' }}
-                        >
-                          <span style={{ color: '#000000' }}>Reorder</span>
-                            </Menu.Item>
-                          </Menu>
-                        }
-                        trigger={['click']}
-                      >
-                    <Button 
-                      className="rc-add-question-btn"
-                      style={{
-                        width: '100%',
-                        height: '40px',
-                        borderRadius: '8px',
-                        fontWeight: 500,
-                        fontSize: '14px',
-                        background: theme === 'sun' 
-                          ? 'linear-gradient(135deg, #66AEFF, #3C99FF)'
-                          : 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)',
-                        color: '#000000',
-                        border: 'none',
-                        boxShadow: theme === 'sun' ? '0 2px 8px rgba(60, 153, 255, 0.3)' : '0 2px 8px rgba(131, 119, 160, 0.3)'
-                      }}
-                    >
-                          <PlusOutlined />
-                          Add a Question
-                          <DownOutlined />
-                        </Button>
-                      </Dropdown>
+                  <Button
+                    className="rc-add-question-btn"
+                    onClick={handleAddQuestion}
+                    style={{
+                      width: '100%',
+                      height: '40px',
+                      borderRadius: '8px',
+                      fontWeight: 500,
+                      fontSize: '14px',
+                      background: theme === 'sun'
+                        ? 'linear-gradient(135deg, #66AEFF, #3C99FF)'
+                        : 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)',
+                      color: '#000000',
+                      border: 'none',
+                      boxShadow: theme === 'sun' ? '0 2px 8px rgba(60, 153, 255, 0.3)' : '0 2px 8px rgba(131, 119, 160, 0.3)'
+                    }}
+                  >
+                    <PlusOutlined />
+                    Add a Question
+                  </Button>
                 </div>
 
                 <Divider style={{ margin: '0 0 20px 0' }} />
@@ -888,7 +957,7 @@ const CreateReadingChallenge = () => {
                             fontSize: '14px',
                             color: theme === 'sun' ? '#1E40AF' : '#333'
                           }}>
-                                {stripHtmlTags(question.question) || "No question text"}
+                                 {formatQuestionText(question)}
                               </div>
                             </div>
                         <div className="rc-question-actions" style={{ display: 'flex', gap: '4px' }}>
@@ -910,15 +979,14 @@ const CreateReadingChallenge = () => {
                                 id: Date.now(),
                                 question: `${question.question} (Copy)`
                               };
-                              setPassages(passages.map(p => 
-                                p.id === activePassage 
-                                  ? { ...p, questions: [...p.questions, newQuestion] }
-                                  : p
-                              ));
+                              setPassage(prevPassage => ({
+                                ...prevPassage,
+                                questions: [...prevPassage.questions, newQuestion]
+                              }));
                               spaceToast.success("Question duplicated!");
                             }}
                             size="small"
-                            style={{ 
+                            style={{
                               color: theme === 'sun' ? '#1890ff' : '#8377A0'
                             }}
                           />
@@ -941,6 +1009,97 @@ const CreateReadingChallenge = () => {
         </div>
         </div>
 
+        {/* Question Type Selection Modal */}
+        <Modal
+          title={
+            <div style={{
+              fontSize: '22px',
+              fontWeight: 700,
+              color: theme === 'sun' ? '#1890ff' : '#8B5CF6',
+              display: 'block',
+              textAlign: 'center',
+              marginBottom: '4px'
+            }}>
+              Choose a question type
+            </div>
+          }
+          open={questionTypeModalVisible}
+          onCancel={handleQuestionTypeModalCancel}
+          footer={null}
+          width={720}
+          className={`gvc-question-type-modal ${theme}-question-type-modal`}
+        >
+          <div className="question-type-modal-container">
+            {/* Question Types */}
+            <div className="question-type-category">
+              <div className="category-grid">
+                {[
+                  { id: 1, name: "Multiple choice", type: "multiple-choice" },
+                  { id: 2, name: "Multiple select", type: "multiple-select" },
+                  { id: 3, name: "True or false", type: "true-false" },
+                  { id: 4, name: "Fill in the blank", type: "fill-blank" },
+                  { id: 5, name: "Dropdown", type: "dropdown" },
+                  { id: 6, name: "Drag and drop", type: "drag-drop" },
+                  { id: 7, name: "Reorder", type: "reorder" },
+                ].map((questionType) => (
+                  <div
+                    key={questionType.id}
+                    className={`question-type-card ${theme}-question-type-card`}
+                    onClick={() => handleQuestionTypeClick(questionType)}
+                  >
+                    <div className="question-type-icon-wrapper">
+                      {questionType.type === "multiple-choice" && "📝"}
+                      {questionType.type === "multiple-select" && "☑️"}
+                      {questionType.type === "true-false" && "✅"}
+                      {questionType.type === "fill-blank" && "✏️"}
+                      {questionType.type === "dropdown" && "📋"}
+                      {questionType.type === "drag-drop" && "🔄"}
+                      {questionType.type === "reorder" && "🔀"}
+                    </div>
+                    <div className="question-type-name">{questionType.name}</div>
+                    <div className="question-type-description">
+                      {questionType.type === "multiple-choice" && "Choose one correct answer"}
+                      {questionType.type === "multiple-select" && "Choose multiple correct answers"}
+                      {questionType.type === "true-false" && "True or False question"}
+                      {questionType.type === "fill-blank" && "Fill in the blank spaces"}
+                      {questionType.type === "dropdown" && "Select the correct option from dropdown"}
+                      {questionType.type === "drag-drop" && "Drag and drop items to arrange"}
+                      {questionType.type === "reorder" && "Reorder words or items"}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* AI Generate - Featured */}
+            <div className="question-type-category">
+              <h3 className="category-title">AI Features</h3>
+              <div className="category-grid">
+                <div
+                  className={`question-type-card ${theme}-question-type-card question-type-card-featured`}
+                  onClick={() => {
+                    spaceToast.info("AI generation feature is under development");
+                    setQuestionTypeModalVisible(false);
+                  }}
+                >
+                  <div className="question-type-icon-wrapper featured-icon">
+                    <img 
+                      src="/img/ai-icon.png" 
+                      alt="AI" 
+                      style={{ width: '44px', height: '44px', filter: theme === 'sun' ? 'none' : 'brightness(0.9)' }} 
+                    />
+                  </div>
+                  <div className="question-type-name">AI Generate Questions</div>
+                  <div className="question-type-description">
+                    Generate questions automatically with AI assistance
+                  </div>
+                  <div className="featured-badge">✨ AI Powered</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </Modal>
+
         {/* Question Modals */}
         <MultipleChoiceModal
           visible={activeModal === 'multiple-choice'}
@@ -948,42 +1107,42 @@ const CreateReadingChallenge = () => {
           onSave={handleSaveQuestion}
           questionData={editingQuestion}
         />
-        
+
         <MultipleSelectModal
           visible={activeModal === 'multiple-select'}
           onCancel={handleCancelModal}
           onSave={handleSaveQuestion}
           questionData={editingQuestion}
         />
-        
+
         <TrueFalseModal
           visible={activeModal === 'true-false'}
           onCancel={handleCancelModal}
           onSave={handleSaveQuestion}
           questionData={editingQuestion}
         />
-        
+
         <FillBlankModal
           visible={activeModal === 'fill-blank'}
           onCancel={handleCancelModal}
           onSave={handleSaveQuestion}
           questionData={editingQuestion}
         />
-        
+
         <DropdownModal
           visible={activeModal === 'dropdown'}
           onCancel={handleCancelModal}
           onSave={handleSaveQuestion}
           questionData={editingQuestion}
         />
-        
+
         <DragDropModal
           visible={activeModal === 'drag-drop'}
           onCancel={handleCancelModal}
           onSave={handleSaveQuestion}
           questionData={editingQuestion}
         />
-        
+
         <ReorderModal
           visible={activeModal === 'reorder'}
           onCancel={handleCancelModal}
