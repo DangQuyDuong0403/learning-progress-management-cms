@@ -65,6 +65,7 @@ import AdminDashboard from '../pages/management/managementAdmin/AdminDashboard';
 import ManagerDashboard from '../pages/management/ManagementManager/ManagerDashboard';
 import StudentDashboard from '../pages/management/ManagementStudent/StudentDashboard';
 import StudentClassList from '../pages/management/ManagementStudent/StudentClassList.jsx';
+import StudentDailyChallengeList from '../pages/management/ManagementStudent/StudentDailyChallengeList.jsx';
   
 const CONFIG_ROUTER = [
 	//   {
@@ -271,6 +272,28 @@ const CONFIG_ROUTER = [
 		key: 'STUDENT_CLASS_CHAPTER_LESSONS',
 		private: true,
 		role: 'student',
+	},
+	
+	// Student Daily Challenge Routes
+	{
+		show: false,
+		component: StudentDailyChallengeList,
+		path: ROUTER_PAGE.STUDENT_DAILY_CHALLENGES,
+		menuName: 'Daily Challenges',
+		exact: true,
+		key: 'STUDENT_DAILY_CHALLENGES',
+		private: true,
+		role: ['student', 'test_taker'],
+	},
+	{
+		show: false,
+		component: StudentDailyChallengeList,
+		path: ROUTER_PAGE.STUDENT_CLASS_DAILY_CHALLENGES,
+		menuName: 'Class Daily Challenges',
+		exact: true,
+		key: 'STUDENT_CLASS_DAILY_CHALLENGES',
+		private: true,
+		role: ['student', 'test_taker'],
 	},
 	
 	// Admin Management Routes

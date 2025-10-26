@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
-import { Modal, Button, message, Select, Tooltip } from 'antd';
+import { Modal, Button, Select, Tooltip } from 'antd';
+import { spaceToast } from '../../../../../component/SpaceToastify';
 import {
 	CheckOutlined,
 	ThunderboltOutlined,
@@ -144,12 +145,12 @@ const TrueFalseModal = ({ visible, onCancel, onSave, questionData = null, saving
 	const handleSave = () => {
 		// Validate editor data
 		if (!editorData || !editorData.trim()) {
-			message.error('Please enter the question text');
+			spaceToast.warning('Please enter the question text');
 			return;
 		}
 
 		if (!correctAnswer) {
-			message.error('Please select the correct answer (True or False)');
+			spaceToast.warning('Please select the correct answer (True or False)');
 			return;
 		}
 

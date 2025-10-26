@@ -102,7 +102,7 @@ const mockDailyChallenges = [
   },
 ];
 
-const DailyChallengeList = () => {
+const DailyChallengeList = ({ readOnly = false }) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
@@ -634,30 +634,32 @@ const DailyChallengeList = () => {
                 <span className="lesson-text" style={{ transition: 'opacity 0.3s ease' }}>
                   {text}
                 </span>
-                <Button
-                  className="lesson-create-btn"
-                  icon={<PlusOutlined />}
-                  style={{
-                    fontSize: '16px',
-                    height: '40px',
-                    padding: '0 20px',
-                    borderRadius: '8px',
-                    background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)',
-                    borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : '#7228d9',
-                    color: theme === 'sun' ? '#000' : '#000',
-                    fontWeight: '500',
-                    border: 'none',
-                    minWidth: '160px',
-                    margin: '0'
-                  }}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleCreateClickWithLesson(record);
-                  }}
-                  title={`Create Daily Challenge for ${text}`}
-                >
-                  Create Challenge
-                </Button>
+                {!readOnly && (
+                  <Button
+                    className="lesson-create-btn"
+                    icon={<PlusOutlined />}
+                    style={{
+                      fontSize: '16px',
+                      height: '40px',
+                      padding: '0 20px',
+                      borderRadius: '8px',
+                      background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)',
+                      borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : '#7228d9',
+                      color: theme === 'sun' ? '#000' : '#000',
+                      fontWeight: '500',
+                      border: 'none',
+                      minWidth: '160px',
+                      margin: '0'
+                    }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleCreateClickWithLesson(record);
+                    }}
+                    title={`Create Daily Challenge for ${text}`}
+                  >
+                    Create Challenge
+                  </Button>
+                )}
               </div>
             ),
             props: {
@@ -777,31 +779,35 @@ const DailyChallengeList = () => {
               title={t('dailyChallenge.viewDetails')}
               className="action-btn-view"
             />
-            <Button
-              type="text"
-              icon={<EditOutlined style={{ fontSize: '24px' }} />}
-              onClick={() => handleEditClick(record)}
-              title={t('dailyChallenge.editChallenge')}
-              className="action-btn-edit"
-              style={{ color: '#1890ff' }}
-            />
-            {record.status === 'DRAFT' && (
-              <Button
-                type="text"
-                icon={<CheckCircleOutlined style={{ fontSize: '24px'}} />}
-                onClick={() => handleToggleStatus(record.id)}
-                title="Publish"
-                className="action-btn-status"
-              />
+            {!readOnly && (
+              <>
+                <Button
+                  type="text"
+                  icon={<EditOutlined style={{ fontSize: '24px' }} />}
+                  onClick={() => handleEditClick(record)}
+                  title={t('dailyChallenge.editChallenge')}
+                  className="action-btn-edit"
+                  style={{ color: '#1890ff' }}
+                />
+                {record.status === 'DRAFT' && (
+                  <Button
+                    type="text"
+                    icon={<CheckCircleOutlined style={{ fontSize: '24px'}} />}
+                    onClick={() => handleToggleStatus(record.id)}
+                    title="Publish"
+                    className="action-btn-status"
+                  />
+                )}
+                <Button
+                  type="text"
+                  icon={<DeleteOutlined style={{ fontSize: '24px', color: '#ff4d4f' }} />}
+                  onClick={() => handleDeleteClick(record)}
+                  title={t('dailyChallenge.deleteChallenge')}
+                  className="action-btn-delete"
+                  style={{ color: '#ff4d4f' }}
+                />
+              </>
             )}
-            <Button
-              type="text"
-              icon={<DeleteOutlined style={{ fontSize: '24px', color: '#ff4d4f' }} />}
-              onClick={() => handleDeleteClick(record)}
-              title={t('dailyChallenge.deleteChallenge')}
-              className="action-btn-delete"
-              style={{ color: '#ff4d4f' }}
-            />
           </Space>
         );
       },
@@ -928,15 +934,17 @@ const DailyChallengeList = () => {
               </div>
             )}
           </div>
-          <div className="action-buttons" style={{ marginLeft: 'auto' }}>
-            <Button 
-              icon={<PlusOutlined />}
-              className={`create-button ${theme}-create-button`}
-              onClick={handleCreateClick}
-            >
-              {t('dailyChallenge.createChallenge')}
-            </Button>
-          </div>
+          {!readOnly && (
+            <div className="action-buttons" style={{ marginLeft: 'auto' }}>
+              <Button 
+                icon={<PlusOutlined />}
+                className={`create-button ${theme}-create-button`}
+                onClick={handleCreateClick}
+              >
+                {t('dailyChallenge.createChallenge')}
+              </Button>
+            </div>
+          )}
         </div>
 
         {/* Table Section */}
