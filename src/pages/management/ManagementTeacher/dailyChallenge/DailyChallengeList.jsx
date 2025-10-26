@@ -32,6 +32,15 @@ import usePageTitle from "../../../../hooks/usePageTitle";
 import { useSelector } from "react-redux";
 import { dailyChallengeApi } from "../../../../apis/apis";
 
+// Challenge types constant
+const challengeTypes = [
+  { id: 1, name: "Grammar & Vocabulary", type: "GV", icon: "🌟", description: "Test grammar rules and vocabulary knowledge" },
+  { id: 2, name: "Reading", type: "RE", icon: "📝", description: "Reading comprehension exercises" },
+  { id: 3, name: "Listening", type: "LI", icon: "🎵", description: "Audio-based listening comprehension" },
+  { id: 4, name: "Writing", type: "WR", icon: "✏️", description: "Writing prompts and exercises" },
+  { id: 5, name: "Speaking", type: "SP", icon: "💬", description: "Oral communication practice" },
+];
+
 // Select removed in favor of AccountList-style filter dropdown
 
 // Mock data - thay thế bằng API call thực tế
@@ -116,6 +125,7 @@ const DailyChallengeList = ({ readOnly = false }) => {
   const [totalItems, setTotalItems] = useState(0);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [createModalData, setCreateModalData] = useState(null); // Store lesson data for create modal
+  const [challengeTypeModalVisible, setChallengeTypeModalVisible] = useState(false);
   const [searchDebounce, setSearchDebounce] = useState("");
   const [deleteModal, setDeleteModal] = useState({
     visible: false,
@@ -431,8 +441,20 @@ const DailyChallengeList = ({ readOnly = false }) => {
 
 
   const handleCreateClick = () => {
-    setCreateModalData(null); // No specific lesson
+    setChallengeTypeModalVisible(true);
+  };
+
+  const handleChallengeTypeClick = (challengeType) => {
+    setCreateModalData({
+      challengeType: challengeType.type,
+      challengeTypeName: challengeType.name
+    });
+    setChallengeTypeModalVisible(false);
     setShowCreateModal(true);
+  };
+
+  const handleChallengeTypeModalCancel = () => {
+    setChallengeTypeModalVisible(false);
   };
 
   const handleCreateClickWithLesson = (lessonRecord) => {
@@ -958,6 +980,50 @@ const DailyChallengeList = ({ readOnly = false }) => {
             />
           </LoadingWithEffect>
         </div>
+
+        {/* Challenge Type Selection Modal */}
+        <Modal
+          title={
+            <div style={{ 
+              fontSize: '22px', 
+              fontWeight: 700, 
+              color: 'rgb(24, 144, 255)',
+              display: 'block', 
+              textAlign: 'center',
+              marginBottom: '4px'
+            }}>
+              Choose Challenge Type
+            </div>
+          }
+          open={challengeTypeModalVisible}
+          onCancel={handleChallengeTypeModalCancel}
+          footer={null}
+          width={720}
+          className={`challenge-type-modal ${theme}-challenge-type-modal`}
+        >
+          <div className="challenge-type-modal-container">
+            {/* Challenge Types */}
+            <div className="challenge-type-category">
+              <div className="category-grid">
+                {challengeTypes.map((challengeType) => (
+                  <div
+                    key={challengeType.id}
+                    className={`challenge-type-card ${theme}-challenge-type-card`}
+                    onClick={() => handleChallengeTypeClick(challengeType)}
+                  >
+                    <div className="challenge-type-icon-wrapper">
+                      <span style={{ fontSize: '48px' }}>{challengeType.icon}</span>
+                    </div>
+                    <div className="challenge-type-name">{challengeType.name}</div>
+                    <div className="challenge-type-description">
+                      {challengeType.description}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </Modal>
 
         {/* Create Daily Challenge Modal - Using Simple Modal */}
         <SimpleDailyChallengeModal
