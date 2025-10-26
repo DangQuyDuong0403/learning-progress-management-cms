@@ -1324,14 +1324,13 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 		
 		// PRIMARY APPROACH: Process dropdowns directly from state (more reliable than DOM traversal)
 		console.log('=== PRIMARY: Processing dropdowns from state ===');
-		let primaryAnswerIndex = 1;
 		
-		dropdowns.forEach(dropdown => {
+		dropdowns.forEach((dropdown, dropdownIndex) => {
 			console.log('Processing dropdown from state:', dropdown);
 			
-			// Add correct answer
+			// Add correct answer (positionOrder: 1)
 			const correctOption = {
-				id: `opt${primaryAnswerIndex}`,
+				id: `opt${dropdownIndex + 1}`,
 				value: dropdown.correctAnswer,
 				positionId: dropdown.positionId,
 				positionOrder: 1,
@@ -1340,22 +1339,22 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 			contentData.push(correctOption);
 			console.log('Added correct option:', correctOption);
 			
-			// Add incorrect options
-			dropdown.incorrectOptions.forEach((option, index) => {
-				if (option.text && option.text.trim()) {
-					const incorrectOption = {
-						id: `opt${primaryAnswerIndex + index + 1}`,
-						value: option.text.trim(),
-						positionId: dropdown.positionId,
-						positionOrder: index + 2,
-						correct: false
-					};
-					contentData.push(incorrectOption);
-					console.log('Added incorrect option:', incorrectOption);
-				}
-			});
+			// Add incorrect options (positionOrder: 2, 3, 4, ...)
+			// Only send options that have actual data
+			const validIncorrectOptions = dropdown.incorrectOptions.filter(option => option.text && option.text.trim());
 			
-			primaryAnswerIndex += dropdown.incorrectOptions.length + 1;
+			// Add only the incorrect options that have data
+			validIncorrectOptions.forEach((option, index) => {
+				const incorrectOption = {
+					id: `opt${dropdownIndex + 1}_${index + 1}`,
+					value: option.text.trim(),
+					positionId: dropdown.positionId,
+					positionOrder: index + 2, // 2, 3, 4, ...
+					correct: false
+				};
+				contentData.push(incorrectOption);
+				console.log('Added incorrect option:', incorrectOption);
+			});
 		});
 		
 		console.log('Primary contentData:', contentData);

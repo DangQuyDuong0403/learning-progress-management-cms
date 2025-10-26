@@ -1770,187 +1770,232 @@ const DailyChallengeContent = () => {
     setQuestionTypeModalVisible(false);
   }, []);
 
-  const handleModalSave = useCallback(async (questionData) => {
-    try {
-      if (editingQuestion) {
-        // Update existing question - chỉ update local state, đánh dấu để bulk update sau
-        setQuestions(prev => prev.map(q => {
-          if (q.id === editingQuestion.id) {
-            return { 
-              ...questionData, 
-              id: editingQuestion.id,
-              sectionId: editingQuestion.sectionId, // Giữ lại sectionId
-              isModified: true, // Đánh dấu câu hỏi đã được chỉnh sửa
-              toBeDeleted: false, // Reset delete flag nếu có
-            };
+  // Helper function to transform question data to API format
+  const transformQuestionToApiFormat = useCallback((questionData, orderNumber, questionType) => {
+    switch (questionType) {
+      case 'MULTIPLE_CHOICE':
+      case 'MULTIPLE_SELECT':
+        return {
+          questionText: questionData.question,
+          orderNumber,
+          score: questionData.points || 0.5,
+          questionType: questionType === 'MULTIPLE_SELECT' ? 'MULTIPLE_SELECT' : 'MULTIPLE_CHOICE',
+          content: {
+            data: questionData.options ? questionData.options.map((option, optIndex) => ({
+              id: option.key ? option.key.replace('.', '') : `opt${optIndex + 1}`,
+              value: option.text,
+              positionOrder: optIndex + 1,
+              correct: option.isCorrect || false
+            })) : []
           }
-          return q;
-        }));
-        
-        spaceToast.success(`${questionData.title || 'Question'} updated successfully!`);
-        
-        // Close modal immediately for edit mode
-        setModalVisible(false);
-        setCurrentModalType(null);
-        setEditingQuestion(null);
-      } else {
-        // Add new question - Gọi API để lưu vào database ngay
-        setSavingQuestion(true);
-        
-        // Close modal immediately to show loading on the list
-        setModalVisible(false);
-        
-        // Transform question to API format based on question type
-        let apiQuestion;
-        
-        // Calculate the next order number (start from 1 for each new section)
-        // Since each section should only have 1 question, always use 1
-        const nextOrderNumber = 1;
-        
-        if (questionData.type === 'FILL_IN_THE_BLANK') {
-          // Fill in the blank question
-          apiQuestion = {
-            questionText: questionData.questionText || questionData.question,
-            orderNumber: nextOrderNumber,
-            score: questionData.points || 0.5,
-            questionType: questionData.questionType || 'FILL_IN_THE_BLANK',
-            content: {
-              data: questionData.content?.data || []
-            }
-          };
-        } else if (questionData.type === 'TRUE_OR_FALSE') {
-          // True/False question
-          apiQuestion = {
-            questionText: questionData.question,
-            orderNumber: nextOrderNumber,
-            score: questionData.points || 0.5,
-            questionType: 'TRUE_OR_FALSE',
-            content: {
-              data: questionData.options ? questionData.options.map((option, optIndex) => ({
-                id: `opt${optIndex + 1}`,
-                value: option.text,
-                positionOrder: optIndex + 1,
-                correct: option.isCorrect || false
-              })) : []
-            }
-          };
-        } else if (questionData.type === 'DROPDOWN') {
-          // Dropdown question
-          apiQuestion = {
-            questionText: questionData.questionText || questionData.question,
-            orderNumber: nextOrderNumber,
-            score: questionData.points || 0.5,
-            questionType: 'DROPDOWN',
-            content: {
-              data: questionData.content?.data || []
-            }
-          };
-        } else if (questionData.type === 'DRAG_AND_DROP') {
-          // Drag and Drop question - DRAG_AND_DROP type
-          // contentData already contains both correct answers (with positionId) and incorrect options (positionId: null)
-          apiQuestion = {
-            questionText: questionData.questionText || questionData.question,
-            orderNumber: nextOrderNumber,
-            score: questionData.points || 1,
-            questionType: 'DRAG_AND_DROP',
-            content: {
-              data: questionData.content?.data || []
-            }
-          };
-        } else if (questionData.type === 'REARRANGE') {
-          // Rearrange question - REARRANGE type
-          apiQuestion = {
-            questionText: questionData.questionText || questionData.question,
-            orderNumber: nextOrderNumber,
-            score: questionData.points || 1,
-            questionType: 'REARRANGE',
-            content: {
-              data: questionData.content?.data || []
-            }
-          };
-        } else if (questionData.type === 'REWRITE') {
-          // Rewrite question - REWRITE type
-          apiQuestion = {
-            questionText: questionData.questionText || questionData.question,
-            orderNumber: nextOrderNumber,
-            score: questionData.points || 1,
-            questionType: 'REWRITE',
-            content: {
-              data: questionData.content?.data || []
-            }
-          };
-        } else {
-          // Multiple choice, Multiple select, or other types
-          apiQuestion = {
-            questionText: questionData.question,
-            orderNumber: nextOrderNumber,
-            score: questionData.points || 0.5,
-            questionType: questionData.type ? questionData.type.toUpperCase().replace(/-/g, '_') : 'MULTIPLE_CHOICE',
-            content: {
-              data: questionData.options ? questionData.options.map((option, optIndex) => ({
-                id: option.key ? `opt${optIndex + 1}` : `opt${optIndex + 1}`,
-                value: option.text,
-                positionOrder: optIndex + 1,
-                correct: option.isCorrect || false
-              })) : []
-            }
-          };
-        }
-
-        // Create section data with single question
-        // Set appropriate section content based on question type
-        let sectionContent = 'Choose one correct answer.';
-        if (questionData.type === 'DRAG_AND_DROP') {
-          sectionContent = 'Drag and drop the correct word into each blank to complete the passage.';
-        } else if (questionData.type === 'DROPDOWN') {
-          sectionContent = 'Select the correct answer from the dropdown menu.';
-        } else if (questionData.type === 'FILL_IN_THE_BLANK') {
-          sectionContent = 'Fill in the blank with the correct answer.';
-        } else if (questionData.type === 'MULTIPLE_SELECT') {
-          sectionContent = 'Select all correct answers.';
-        } else if (questionData.type === 'TRUE_OR_FALSE') {
-          sectionContent = 'Choose True or False.';
-        } else if (questionData.type === 'REARRANGE') {
-          sectionContent = 'Rearrange the words to make a correct sentence.';
-        } else if (questionData.type === 'REWRITE') {
-          sectionContent = 'Rewrite the sentences as instructed.';
-        }
-        
-        const sectionData = {
-          section: {
-            sectionsContent: sectionContent,
-            resourceType: 'NONE'
-          },
-          questions: [apiQuestion]
         };
 
-        console.log('Saving new question to API:', sectionData);
+      case 'TRUE_OR_FALSE':
+        return {
+          questionText: questionData.question,
+          orderNumber,
+          score: questionData.points || 0.5,
+          questionType: 'TRUE_OR_FALSE',
+          content: {
+            data: questionData.options ? questionData.options.map((option, optIndex) => ({
+              id: `opt${optIndex + 1}`,
+              value: option.text,
+              positionOrder: optIndex + 1,
+              correct: option.isCorrect || false
+            })) : []
+          }
+        };
 
-        // Call API to save the question
-        const response = await dailyChallengeApi.saveSectionWithQuestions(id, sectionData);
-        
-        // Refresh questions from API to get the saved question with ID
-        await fetchQuestions();
-        
-        spaceToast.success(response.message);
-        
-        // Reset modal states
-        setCurrentModalType(null);
-        setEditingQuestion(null);
-      }
-    } catch (error) {
-      console.error('Error saving question:', error);
-      spaceToast.error(error.response?.data?.error || error.message || 'Failed to save question');
+      case 'FILL_IN_THE_BLANK':
+        return {
+          questionText: questionData.questionText || questionData.question,
+          orderNumber,
+          score: questionData.points || 0.5,
+          questionType: 'FILL_IN_THE_BLANK',
+          content: {
+            data: questionData.content?.data || []
+          }
+        };
+
+      case 'DROPDOWN':
+        return {
+          questionText: questionData.questionText || questionData.question,
+          orderNumber,
+          score: questionData.points || 0.5,
+          questionType: 'DROPDOWN',
+          content: {
+            data: questionData.content?.data || []
+          }
+        };
+
+      case 'DRAG_AND_DROP':
+        return {
+          questionText: questionData.questionText || questionData.question,
+          orderNumber,
+          score: questionData.points || 1,
+          questionType: 'DRAG_AND_DROP',
+          content: {
+            data: questionData.content?.data || []
+          }
+        };
+
+      case 'REARRANGE':
+        return {
+          questionText: questionData.questionText || questionData.question,
+          orderNumber,
+          score: questionData.points || 1,
+          questionType: 'REARRANGE',
+          content: {
+            data: questionData.content?.data || []
+          }
+        };
+
+      case 'REWRITE':
+        return {
+          questionText: questionData.questionText || questionData.question,
+          orderNumber,
+          score: questionData.points || 1,
+          questionType: 'REWRITE',
+          content: {
+            data: questionData.content?.data || []
+          }
+        };
+
+      default:
+        return {
+          questionText: questionData.question,
+          orderNumber,
+          score: questionData.points || 0.5,
+          questionType: questionData.type ? questionData.type.toUpperCase().replace(/-/g, '_') : 'MULTIPLE_CHOICE',
+          content: {
+            data: questionData.options ? questionData.options.map((option, optIndex) => ({
+              id: `opt${optIndex + 1}`,
+              value: option.text,
+              positionOrder: optIndex + 1,
+              correct: option.isCorrect || false
+            })) : []
+          }
+        };
+    }
+  }, []);
+
+  // Helper function to get section content based on question type
+  const getSectionContent = useCallback((questionType) => {
+    const sectionContentMap = {
+      'DRAG_AND_DROP': 'Drag and drop the correct word into each blank to complete the passage.',
+      'DROPDOWN': 'Select the correct answer from the dropdown menu.',
+      'FILL_IN_THE_BLANK': 'Fill in the blank with the correct answer.',
+      'MULTIPLE_SELECT': 'Select all correct answers.',
+      'TRUE_OR_FALSE': 'Choose True or False.',
+      'REARRANGE': 'Rearrange the words to make a correct sentence.',
+      'REWRITE': 'Rewrite the sentences as instructed.',
+    };
+
+    return sectionContentMap[questionType] || 'Choose one correct answer.';
+  }, []);
+
+  // Handle creating a new question
+  const handleCreateQuestion = useCallback(async (questionData) => {
+    try {
+      setSavingQuestion(true);
+      setModalVisible(false);
+
+      // Transform question to API format
+      const apiQuestion = transformQuestionToApiFormat(questionData, 1, questionData.type);
       
-      // Reset modal states even on error
+      // Get appropriate section content
+      const sectionContent = getSectionContent(questionData.type);
+      
+      // Prepare section data
+      const sectionData = {
+        section: {
+          sectionsContent: sectionContent,
+          resourceType: 'NONE'
+        },
+        questions: [apiQuestion]
+      };
+
+      console.log('Creating new question:', sectionData);
+
+      // Call API to save the question
+      const response = await dailyChallengeApi.saveSectionWithQuestions(id, sectionData);
+      
+      // Refresh questions from API
+      await fetchQuestions();
+      
+      spaceToast.success(response.message);
+      
+      // Reset modal states
+      setCurrentModalType(null);
+      setEditingQuestion(null);
+    } catch (error) {
+      console.error('Error creating question:', error);
+      spaceToast.error(error.response?.data?.error || error.message || 'Failed to create question');
       setModalVisible(false);
       setCurrentModalType(null);
       setEditingQuestion(null);
     } finally {
-      // Always reset loading state
       setSavingQuestion(false);
     }
-  }, [editingQuestion, id, fetchQuestions]);
+  }, [id, fetchQuestions, transformQuestionToApiFormat, getSectionContent]);
+
+  // Handle updating an existing question
+  const handleUpdateQuestion = useCallback(async (questionData) => {
+    try {
+      setSavingQuestion(true);
+      setModalVisible(false);
+
+      // Use existing order number
+      const orderNumber = editingQuestion.orderNumber || 1;
+      
+      // Transform question to API format
+      const apiQuestion = transformQuestionToApiFormat(questionData, orderNumber, questionData.type);
+      
+      // Prepare section data with updated question
+      const sectionContent = getSectionContent(questionData.type);
+      
+      const sectionData = {
+        section: {
+          id: editingQuestion.sectionId, // Send sectionId to update that section
+          sectionsContent: sectionContent,
+          resourceType: 'NONE'
+        },
+        questions: [apiQuestion]
+      };
+
+      console.log('Updating existing question:', sectionData);
+
+      // Call API to update the section
+      const response = await dailyChallengeApi.saveSectionWithQuestions(id, sectionData);
+      
+      // Refresh questions from API
+      await fetchQuestions();
+      
+      spaceToast.success(response.message || 'Question updated successfully!');
+      
+      // Close modal and reset states
+      setModalVisible(false);
+      setCurrentModalType(null);
+      setEditingQuestion(null);
+    } catch (error) {
+      console.error('Error updating question:', error);
+      spaceToast.error(error.response?.data?.error || error.message || 'Failed to update question');
+      setModalVisible(false);
+      setCurrentModalType(null);
+      setEditingQuestion(null);
+    } finally {
+      setSavingQuestion(false);
+    }
+  }, [editingQuestion, id, fetchQuestions, transformQuestionToApiFormat, getSectionContent]);
+
+  // Main handler - route to create or update
+  const handleModalSave = useCallback(async (questionData) => {
+    if (editingQuestion) {
+      await handleUpdateQuestion(questionData);
+    } else {
+      await handleCreateQuestion(questionData);
+    }
+  }, [editingQuestion, handleUpdateQuestion, handleCreateQuestion]);
 
   const handleModalCancel = useCallback(() => {
     setModalVisible(false);
@@ -2060,10 +2105,7 @@ const DailyChallengeContent = () => {
       // Group questions by sectionId to get unique sections
       const sectionsMap = new Map();
       
-      // Track modified questions that need to be updated
-      const modifiedQuestions = [];
-      
-      // First, collect all sections (including deleted ones)
+      // Collect all sections (including deleted ones)
       questions.forEach((question) => {
         if (question.sectionId !== undefined && question.sectionId !== null) {
           const sectionId = question.sectionId;
@@ -2081,11 +2123,6 @@ const DailyChallengeContent = () => {
           } else {
             // If this question is not deleted, mark that section has visible questions
             sectionsMap.get(sectionId).hasVisibleQuestions = true;
-            
-            // Track modified questions
-            if (question.isModified) {
-              modifiedQuestions.push(question);
-            }
           }
         }
       });
@@ -2099,25 +2136,14 @@ const DailyChallengeContent = () => {
 
       console.log('Bulk update sections data:', {
         count: bulkUpdateData.length,
-        sections: bulkUpdateData,
-        modifiedQuestions: modifiedQuestions.length
+        sections: bulkUpdateData
       });
 
       // Step 1: Call bulk update API to save/reorder sections
       const bulkResponse = await dailyChallengeApi.bulkUpdateSections(id, bulkUpdateData);
       console.log('Bulk update response:', bulkResponse);
-      
-      // Step 2: Log modified questions
-      // Note: Backend needs to implement PUT /sections/{sectionId} or PUT /questions/{questionId} 
-      // to save edited questions. Current implementation only updates local state.
-      if (modifiedQuestions.length > 0) {
-        console.log(`Note: ${modifiedQuestions.length} modified questions detected.`);
-        console.log('Modified questions:', modifiedQuestions);
-        console.log('These changes are currently in local state only.');
-        console.log('Backend API needed: PUT /sections/{sectionId} or PUT /questions/{questionId}');
-      }
 
-      // Step 3: Update challenge status if saveAsStatus is provided
+      // Step 2: Update challenge status if saveAsStatus is provided
       if (saveAsStatus) {
         // Convert saveAsStatus to API format (DRAFT or PUBLISHED)
         const challengeStatus = saveAsStatus === 'published' ? 'PUBLISHED' : 'DRAFT';
