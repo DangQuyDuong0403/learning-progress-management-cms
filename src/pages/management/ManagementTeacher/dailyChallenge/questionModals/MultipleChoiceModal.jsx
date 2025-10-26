@@ -168,33 +168,48 @@ const MultipleChoiceModal = ({
 	// Load question data when editing
 	useEffect(() => {
 		if (visible) {
-			// Use setTimeout to ensure form is mounted
-			setTimeout(() => {
-				const colors = getOptionColors();
-				if (questionData) {
-					// Edit mode - load existing data
-					setEditorData(questionData.question || '');
-					setOptions(questionData.options || [
-						{ id: 1, text: '', isCorrect: false, color: colors[0] },
-						{ id: 2, text: '', isCorrect: false, color: colors[1] },
-						{ id: 3, text: '', isCorrect: false, color: colors[2] },
-						{ id: 4, text: '', isCorrect: false, color: colors[3] },
-					]);
-					setPoints(questionData.points || 1);
+			const colors = getOptionColors();
+			if (questionData) {
+				// Edit mode - load existing data
+				console.log('Loading question data for edit:', questionData);
+				setEditorData(questionData.question || '');
+				
+				// Map options correctly if they exist
+				let loadedOptions;
+				if (questionData.options && questionData.options.length > 0) {
+					loadedOptions = questionData.options.map((opt, idx) => ({
+						id: opt.id || idx + 1,
+						text: opt.text || '',
+						isCorrect: opt.isCorrect || false,
+						color: colors[idx % colors.length]
+					}));
 				} else {
-					// Add mode - reset to defaults
-					setEditorData('');
-					setOptions([
+					// Default options
+					loadedOptions = [
 						{ id: 1, text: '', isCorrect: false, color: colors[0] },
 						{ id: 2, text: '', isCorrect: false, color: colors[1] },
 						{ id: 3, text: '', isCorrect: false, color: colors[2] },
 						{ id: 4, text: '', isCorrect: false, color: colors[3] },
-					]);
-					setPoints(1);
+					];
 				}
-			}, 0);
+				
+				setOptions(loadedOptions);
+				setPoints(questionData.points || 1);
+				setHoveredOption(null); // Reset hover state
+			} else {
+				// Add mode - reset to defaults
+				setEditorData('');
+				setOptions([
+					{ id: 1, text: '', isCorrect: false, color: colors[0] },
+					{ id: 2, text: '', isCorrect: false, color: colors[1] },
+					{ id: 3, text: '', isCorrect: false, color: colors[2] },
+					{ id: 4, text: '', isCorrect: false, color: colors[3] },
+				]);
+				setPoints(1);
+				setHoveredOption(null); // Reset hover state
+			}
 		}
-	}, [questionData, visible, getOptionColors]);
+	}, [questionData?.id, visible, getOptionColors]);
 
 	const handleAddOption = useCallback(() => {
 		setOptions(prevOptions => {
@@ -325,15 +340,19 @@ const MultipleChoiceModal = ({
 		};
 
 			onSave(newQuestionData);
+		
+		// Reset form after save
 		const colors = getOptionColors();
 		setEditorData('');
-			setOptions([
+		setOptions([
 			{ id: 1, text: '', isCorrect: false, color: colors[0] },
 			{ id: 2, text: '', isCorrect: false, color: colors[1] },
 			{ id: 3, text: '', isCorrect: false, color: colors[2] },
 			{ id: 4, text: '', isCorrect: false, color: colors[3] },
-			]);
-			setAnswerType('single');
+		]);
+		setAnswerType('single');
+		setHoveredOption(null);
+		setPoints(1);
 	};
 
 	const handleCancel = () => {
@@ -346,6 +365,8 @@ const MultipleChoiceModal = ({
 			{ id: 4, text: '', isCorrect: false, color: colors[3] },
 		]);
 		setAnswerType('single');
+		setHoveredOption(null);
+		setPoints(1);
 		onCancel();
 	};
 
@@ -593,9 +614,11 @@ const MultipleChoiceModal = ({
 										? '3px solid #52c41a'
 										: '2px solid rgba(255,255,255,0.5)',
 									transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-									transform: hoveredOption === option.id ? 'translateY(-4px) scale(1.02)' : 'translateY(0) scale(1)',
+									transform: hoveredOption === option.id ? 'translateY(-8px)' : 'translateY(0)',
+									transformOrigin: 'center',
 							cursor: 'pointer',
-									overflow: 'visible'
+									overflow: 'visible',
+							zIndex: hoveredOption === option.id ? 10 : 1
 								}}>
 								{/* Option Label */}
 								<div style={{
