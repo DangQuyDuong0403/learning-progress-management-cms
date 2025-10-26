@@ -149,7 +149,7 @@ const SortableQuestionItem = memo(
       const blankBorderColor = theme === 'sun' 
         ? 'rgba(24, 144, 255, 0.3)' 
         : 'rgba(139, 92, 246, 0.4)';
-      const answerTextColor = theme === 'sun' ? '#333' : '#e0e0e0';
+      const answerTextColor = theme === 'sun' ? '#333' : '#000000';
 
       // Parse questionText and replace [[pos_xxx]] with (1)____, (2)____, etc.
       let displayText = question.questionText;
@@ -259,7 +259,7 @@ const SortableQuestionItem = memo(
       const correctBorderColor = theme === 'sun' 
         ? 'rgba(82, 196, 26, 0.4)' 
         : 'rgba(115, 209, 61, 0.5)';
-      const answerTextColor = theme === 'sun' ? '#333' : '#e0e0e0';
+      const answerTextColor = theme === 'sun' ? '#333' : '#000000';
       const labelColor = theme === 'sun' ? '#666' : '#b0b0b0';
       const optionBgColor = theme === 'sun' 
         ? 'rgba(0, 0, 0, 0.04)' 
@@ -456,7 +456,7 @@ const SortableQuestionItem = memo(
       const incorrectBorderColor = theme === 'sun' 
         ? 'rgba(217, 217, 217, 0.5)' 
         : 'rgba(255, 255, 255, 0.2)';
-      const answerTextColor = theme === 'sun' ? '#333' : '#e0e0e0';
+      const answerTextColor = theme === 'sun' ? '#333' : '#000000';
       const incorrectTextColor = theme === 'sun' ? '#666' : '#b0b0b0';
 
       // Parse questionText and replace [[pos_xxx]] with styled blanks
@@ -635,7 +635,7 @@ const SortableQuestionItem = memo(
       const correctBorderColor = theme === 'sun' 
         ? 'rgba(82, 196, 26, 0.3)' 
         : 'rgba(115, 209, 61, 0.4)';
-      const textColor = theme === 'sun' ? '#333' : '#e0e0e0';
+      const textColor = theme === 'sun' ? '#333' : '#000000';
 
       // Parse questionText and replace [[pos_xxx]] with styled blanks
       let displayText = question.questionText || '';
@@ -788,7 +788,7 @@ const SortableQuestionItem = memo(
         ? '#bbf7d0' 
         : 'rgba(187, 247, 208, 0.3)';
       const answerBorderColor = theme === 'sun' ? '#22c55e' : '#73d13d';
-      const textColor = theme === 'sun' ? '#333' : '#e0e0e0';
+      const textColor = theme === 'sun' ? '#333' : '#000000';
 
       // Parse questionText and remove positionId markers for display
       let displayText = question.questionText;
@@ -1097,6 +1097,7 @@ SortableQuestionItem.displayName = 'SortableQuestionItem';
 
 // Question types constant
 const questionTypes = [
+  { id: 0, name: "AI Generate Questions", type: "ai-generate", featured: true },
   { id: 1, name: "Multiple choice", type: "multiple-choice" },
   { id: 2, name: "Multiple select", type: "multiple-select" },
   { id: 3, name: "True or false", type: "true-false" },
@@ -1419,8 +1420,34 @@ const DailyChallengeContent = () => {
   };
 
   const handleAddQuestion = useCallback(() => {
-    setQuestionTypeModalVisible(true);
-  }, []);
+    // Check challenge type
+    const challengeType = challengeDetails?.challengeType;
+    
+    if (challengeType === 'GV') {
+      // Grammar & Vocabulary - Open question type modal
+      setQuestionTypeModalVisible(true);
+    } else if (['RE', 'LI', 'WR', 'SP'].includes(challengeType)) {
+      // Reading, Listening, Writing, Speaking - Navigate to CreateReadingChallenge
+      // Determine the correct path based on user role
+      const userRole = user?.role?.toLowerCase();
+      const basePath = userRole === 'teaching_assistant' 
+        ? '/teaching-assistant/daily-challenges/create/reading'
+        : '/teacher/daily-challenges/create/reading';
+      
+      navigate(basePath, {
+        state: {
+          challengeId: id,
+          challengeName: challengeDetails?.challengeName,
+          challengeType: challengeType,
+          classId: challengeInfo.classId,
+          className: challengeInfo.className
+        }
+      });
+    } else {
+      // Default: open question type modal for unknown types
+      setQuestionTypeModalVisible(true);
+    }
+  }, [challengeDetails, id, challengeInfo, navigate, user]);
 
   const handleQuestionTypeClick = useCallback((questionType) => {
     setCurrentModalType(questionType.type);
@@ -2587,7 +2614,7 @@ const DailyChallengeContent = () => {
 
       {/* Question Type Selection Modal */}
       <Modal
-        title="Chọn loại câu hỏi"
+        title={<span style={{ fontSize: '24px', color: 'rgb(24, 144, 255)', display: 'block', textAlign: 'center' }}>Chọn loại câu hỏi</span>}
         open={questionTypeModalVisible}
         onCancel={handleQuestionTypeModalCancel}
         footer={null}
@@ -2598,10 +2625,17 @@ const DailyChallengeContent = () => {
           {questionTypes.map((questionType) => (
             <div
               key={questionType.id}
-              className="gvc-question-type-card"
+              className={`gvc-question-type-card ${questionType.featured ? 'gvc-question-type-card-featured' : ''}`}
               onClick={() => handleQuestionTypeClick(questionType)}
+              style={questionType.featured ? {
+                background: 'linear-gradient(135deg, #6B73FF 0%, #8B5CF6 100%)',
+                color: 'white',
+                boxShadow: '0 4px 12px rgba(107, 115, 255, 0.3)',
+                border: '2px solid #6B73FF'
+              } : {}}
             >
               <div className="gvc-question-type-icon">
+                {questionType.type === "ai-generate" && "🤖"}
                 {questionType.type === "multiple-choice" && "📝"}
                 {questionType.type === "multiple-select" && "☑️"}
                 {questionType.type === "true-false" && "✅"}
@@ -2612,15 +2646,16 @@ const DailyChallengeContent = () => {
                 {questionType.type === "rewrite" && "✍️"}
               </div>
               <div className="gvc-question-type-name">{questionType.name}</div>
-              <div className="gvc-question-type-description">
-                {questionType.type === "multiple-choice" && "Chọn một đáp án đúng"}
-                {questionType.type === "multiple-select" && "Chọn nhiều đáp án đúng"}
-                {questionType.type === "true-false" && "Đúng hoặc Sai"}
-                {questionType.type === "fill-blank" && "Điền vào chỗ trống"}
-                {questionType.type === "dropdown" && "Chọn từ danh sách"}
-                {questionType.type === "drag-drop" && "Kéo thả để sắp xếp"}
-                {questionType.type === "reorder" && "Sắp xếp lại thứ tự"}
-                {questionType.type === "rewrite" && "Viết lại câu"}
+              <div className="gvc-question-type-description" style={questionType.featured ? { color: 'rgba(255,255,255,0.95)' } : {}}>
+                {questionType.type === "ai-generate" && "Generate questions automatically with AI"}
+                {questionType.type === "multiple-choice" && "Choose one correct answer"}
+                {questionType.type === "multiple-select" && "Choose multiple correct answers"}
+                {questionType.type === "true-false" && "True or False"}
+                {questionType.type === "fill-blank" && "Fill in the blank"}
+                {questionType.type === "dropdown" && "Select from list"}
+                {questionType.type === "drag-drop" && "Drag and drop to arrange"}
+                {questionType.type === "reorder" && "Reorder the sequence"}
+                {questionType.type === "rewrite" && "Rewrite the sentence"}
               </div>
             </div>
           ))}

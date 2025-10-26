@@ -655,22 +655,59 @@
 
 /* Custom Scrollbar for Questions List */
 .rc-questions-list::-webkit-scrollbar {
-  width: 8px;
+  width: 10px;
 }
 
 .rc-questions-list::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.05);
+  border-radius: 5px;
+  margin: 4px 0;
 }
 
 .rc-questions-list::-webkit-scrollbar-thumb {
-  background: rgba(185, 198, 255, 0.3);
-  border-radius: 4px;
-  transition: background 0.3s ease;
+  background: linear-gradient(135deg, #66AEFF 0%, #3C99FF 100%);
+  border-radius: 5px;
+  transition: all 0.3s ease;
+  border: 2px solid transparent;
+  background-clip: padding-box;
 }
 
 .rc-questions-list::-webkit-scrollbar-thumb:hover {
-  background: rgba(185, 198, 255, 0.5);
+  background: linear-gradient(135deg, #5A9EFF 0%, #2A89FF 100%);
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  background-clip: padding-box;
+}
+
+/* Sun Theme Scrollbar */
+.sun-rc-questions-card .rc-questions-list::-webkit-scrollbar-thumb {
+  background: linear-gradient(135deg, #66AEFF 0%, #3C99FF 100%);
+}
+
+.sun-rc-questions-card .rc-questions-list::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(135deg, #5A9EFF 0%, #2A89FF 100%);
+}
+
+.sun-rc-questions-card .rc-questions-list::-webkit-scrollbar-track {
+  background: rgba(113, 179, 253, 0.1);
+}
+
+/* Dark Theme Scrollbar */
+.dark-rc-questions-card .rc-questions-list::-webkit-scrollbar-thumb {
+  background: linear-gradient(135deg, #B5B0C0 19%, #8377A0 75%);
+}
+
+.dark-rc-questions-card .rc-questions-list::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(135deg, #A79EBB 19%, #6D5F8F 75%);
+}
+
+.dark-rc-questions-card .rc-questions-list::-webkit-scrollbar-track {
+  background: rgba(138, 122, 255, 0.1);
+}
+
+/* Firefox Scrollbar */
+.rc-questions-list {
+  scrollbar-width: thin;
+  scrollbar-color: #66AEFF rgba(0, 0, 0, 0.05);
 }
 
 /* Questions Section Responsive */
@@ -799,4 +836,124 @@
   .rc-empty-subtext {
     font-size: 12px;
   }
+}
+
+/* CKEditor Custom Styles */
+.rc-ckeditor-wrapper {
+  min-height: 500px;
+  background: #ffffff;
+}
+
+/* CKEditor - Sun Theme */
+.sun-ckeditor-wrapper .ck-editor__editable {
+  min-height: 450px;
+  background: #ffffff !important;
+  color: #000000;
+  font-size: 14px;
+  line-height: 1.6;
+  padding: 20px;
+}
+
+.sun-ckeditor-wrapper .ck.ck-toolbar {
+  background: linear-gradient(135deg, rgba(230, 245, 255, 0.95) 0%, rgba(186, 231, 255, 0.85) 100%) !important;
+  border: none !important;
+  border-bottom: 2px solid rgba(113, 179, 253, 0.3) !important;
+  padding: 10px;
+}
+
+.sun-ckeditor-wrapper .ck.ck-toolbar .ck-toolbar__items .ck-button {
+  color: #1E40AF;
+}
+
+.sun-ckeditor-wrapper .ck.ck-toolbar .ck-toolbar__items .ck-button:hover {
+  background: rgba(113, 179, 253, 0.2) !important;
+}
+
+.sun-ckeditor-wrapper .ck.ck-toolbar .ck-toolbar__items .ck-button.ck-on {
+  background: rgba(113, 179, 253, 0.3) !important;
+  color: #1890ff;
+}
+
+/* CKEditor - Dark Theme */
+.dark-ckeditor-wrapper .ck-editor__editable {
+  min-height: 450px;
+  background: #ffffff !important;
+  color: #000000;
+  font-size: 14px;
+  line-height: 1.6;
+  padding: 20px;
+}
+
+.dark-ckeditor-wrapper .ck.ck-toolbar {
+  background: linear-gradient(135deg, rgba(244, 240, 255, 0.95) 0%, rgba(218, 212, 255, 0.9) 100%) !important;
+  border: none !important;
+  border-bottom: 2px solid rgba(138, 122, 255, 0.3) !important;
+  padding: 10px;
+}
+
+.dark-ckeditor-wrapper .ck.ck-toolbar .ck-toolbar__items .ck-button {
+  color: #8377A0;
+}
+
+.dark-ckeditor-wrapper .ck.ck-toolbar .ck-toolbar__items .ck-button:hover {
+  background: rgba(138, 122, 255, 0.2) !important;
+}
+
+.dark-ckeditor-wrapper .ck.ck-toolbar .ck-toolbar__items .ck-button.ck-on {
+  background: rgba(138, 122, 255, 0.3) !important;
+  color: #8B5CF6;
+}
+
+/* Common CKEditor Styles */
+.rc-ckeditor-wrapper .ck.ck-editor__main > .ck-editor__editable:not(.ck-focused) {
+  border: none !important;
+}
+
+.rc-ckeditor-wrapper .ck.ck-editor__main > .ck-editor__editable.ck-focused {
+  border: none !important;
+  box-shadow: none !important;
+}
+
+.rc-ckeditor-wrapper .ck.ck-editor__editable_inline {
+  border: none !important;
+}
+
+.rc-ckeditor-wrapper .ck-rounded-corners .ck.ck-editor__main > .ck-editor__editable,
+.rc-ckeditor-wrapper .ck.ck-editor__main > .ck-editor__editable.ck-rounded-corners {
+  border-radius: 0 !important;
+}
+
+.rc-ckeditor-wrapper .ck.ck-toolbar .ck-toolbar__separator {
+  background: rgba(0, 0, 0, 0.1) !important;
+}
+
+/* Remove CKEditor default focus outline */
+.rc-ckeditor-wrapper .ck.ck-editor__editable:focus {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/* Adjust editor content padding and spacing */
+.rc-ckeditor-wrapper .ck-editor__editable p {
+  margin-bottom: 1em;
+}
+
+.rc-ckeditor-wrapper .ck-editor__editable h2,
+.rc-ckeditor-wrapper .ck-editor__editable h3 {
+  margin-top: 1.2em;
+  margin-bottom: 0.8em;
+}
+
+.rc-ckeditor-wrapper .ck-editor__editable ul,
+.rc-ckeditor-wrapper .ck-editor__editable ol {
+  padding-left: 2em;
+  margin-bottom: 1em;
+}
+
+.rc-ckeditor-wrapper .ck-editor__editable blockquote {
+  border-left: 4px solid #1890ff;
+  padding-left: 1em;
+  margin-left: 0;
+  font-style: italic;
+  color: #666;
 }
