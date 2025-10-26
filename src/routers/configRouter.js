@@ -58,6 +58,7 @@ import DailyChallengePerformance from '../pages/management/ManagementTeacher/dai
 import DailyChallengeSubmissionList from '../pages/management/ManagementTeacher/dailyChallenge/DailyChallengeSubmissionList.jsx';
 import DailyChallengeSubmissionDetail from '../pages/management/ManagementTeacher/dailyChallenge/DailyChallengeSubmissionDetail.jsx';
 import DailyChallengeContent from '../pages/management/ManagementTeacher/dailyChallenge/DailyChallengeContent.jsx';
+import StudentPreview from '../pages/management/ManagementTeacher/dailyChallenge/StudentPreview.jsx';
 import CreateGrammarVocabularyChallenge from '../pages/management/ManagementTeacher/dailyChallenge/CreateGrammarVocabularyChallenge.jsx';
 import CreateReadingChallenge from '../pages/management/ManagementTeacher/dailyChallenge/CreateReadingChallenge.jsx';
 import TeacherDashboard from '../pages/management/ManagementTeacher/TeacherDashboard.jsx';
@@ -1041,6 +1042,16 @@ const CONFIG_ROUTER = [
 	},
 	{
 		show: false,
+		component: StudentPreview,
+		path: '/teacher/daily-challenges/detail/:id/preview',
+		menuName: 'Daily Challenge Preview',
+		exact: true,
+		key: 'TEACHER_DAILY_CHALLENGE_PREVIEW',
+		private: true,
+		role: ['teacher', 'teaching_assistant'],
+	},
+	{
+		show: false,
 		component: CreateGrammarVocabularyChallenge,
 		path: ROUTER_PAGE.TEACHER_CREATE_GRAMMAR_VOCAB_CHALLENGE,
 		menuName: 'Create Grammar & Vocabulary Challenge',
@@ -1086,6 +1097,16 @@ const CONFIG_ROUTER = [
 		menuName: 'Create Writing Challenge with ID',
 		exact: true,
 		key: 'TEACHER_CREATE_WRITING_CHALLENGE_WITH_ID',
+		private: true,
+		role: ['teacher', 'teaching_assistant'],
+	},
+	{
+		show: false,
+		component: CreateReadingChallenge,
+		path: ROUTER_PAGE.TEACHER_CREATE_SPEAKING_CHALLENGE_WITH_ID,
+		menuName: 'Create Speaking Challenge with ID',
+		exact: true,
+		key: 'TEACHER_CREATE_SPEAKING_CHALLENGE_WITH_ID',
 		private: true,
 		role: ['teacher', 'teaching_assistant'],
 	},
@@ -1152,6 +1173,16 @@ const CONFIG_ROUTER = [
 	},
 	{
 		show: false,
+		component: StudentPreview,
+		path: '/teaching-assistant/daily-challenges/detail/:id/preview',
+		menuName: 'Daily Challenge Preview',
+		exact: true,
+		key: 'TEACHING_ASSISTANT_DAILY_CHALLENGE_PREVIEW',
+		private: true,
+		role: ['teaching_assistant'],
+	},
+	{
+		show: false,
 		component: CreateGrammarVocabularyChallenge,
 		path: ROUTER_PAGE.TEACHING_ASSISTANT_CREATE_GRAMMAR_VOCAB_CHALLENGE,
 		menuName: 'Create Grammar & Vocabulary Challenge',
@@ -1197,6 +1228,16 @@ const CONFIG_ROUTER = [
 		menuName: 'Create Writing Challenge with ID',
 		exact: true,
 		key: 'TEACHING_ASSISTANT_CREATE_WRITING_CHALLENGE_WITH_ID',
+		private: true,
+		role: ['teaching_assistant'],
+	},
+	{
+		show: false,
+		component: CreateReadingChallenge,
+		path: ROUTER_PAGE.TEACHING_ASSISTANT_CREATE_SPEAKING_CHALLENGE_WITH_ID,
+		menuName: 'Create Speaking Challenge with ID',
+		exact: true,
+		key: 'TEACHING_ASSISTANT_CREATE_SPEAKING_CHALLENGE_WITH_ID',
 		private: true,
 		role: ['teaching_assistant'],
 	},
