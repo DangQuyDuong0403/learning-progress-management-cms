@@ -52,6 +52,9 @@ const ClassStudent = () => {
     ? ThemedLayoutNoSidebar 
     : ThemedLayoutWithSidebar;
   
+  // Check if user is read-only (TEACHER or TEACHING_ASSISTANT)
+  const isReadOnly = userRole === 'teacher' || userRole === 'teaching_assistant';
+  
   // Set page title
   usePageTitle('Class Students');
   
@@ -884,7 +887,6 @@ const ClassStudent = () => {
       title: t('classDetail.fullName'),
       dataIndex: "fullName",
       key: "fullName",
-      sorter: true,
       render: (text) => (
         <div className="student-name-text" style={{ fontSize: "20px" }}>
           {text || '-'}
@@ -895,44 +897,43 @@ const ClassStudent = () => {
       title: t('classDetail.email'),
       dataIndex: 'email',
       key: 'email',
-      sorter: true,
       render: (text) => <span style={{ fontSize: "20px" }}>{text}</span>,
     },
     {
       title: t('classDetail.status'),
       dataIndex: 'status',
       key: 'status',
-      sorter: true,
       render: (status) => getStatusTag(status),
     },
     {
       title: t('classDetail.joinedAt'),
       dataIndex: 'joinedAt',
       key: 'joinedAt',
-      sorter: true,
       render: (date) => (
         <span style={{ fontSize: "20px" }}>
           {new Date(date).toLocaleDateString("vi-VN")}
         </span>
       ),
     },
-    {
-      title: t('classDetail.actions'),
-      key: "actions",
-      width: 100,
-      render: (_, record) => (
-        <Space>
-          <Button
-            type="text"
-            icon={<DeleteOutlined style={{ fontSize: '18px' }} />}
-            onClick={() => handleDeleteStudent(record)}
-            style={{ color: "#ff4d4f" }}
-            title={t('classDetail.removeFromClass')}
-            loading={buttonLoading.delete}
-          />
-        </Space>
-      ),
-    },
+    ...(isReadOnly ? [] : [
+      {
+        title: t('classDetail.actions'),
+        key: "actions",
+        width: 100,
+        render: (_, record) => (
+          <Space>
+            <Button
+              type="text"
+              icon={<DeleteOutlined style={{ fontSize: '18px' }} />}
+              onClick={() => handleDeleteStudent(record)}
+              style={{ color: "#ff4d4f" }}
+              title={t('classDetail.removeFromClass')}
+              loading={buttonLoading.delete}
+            />
+          </Space>
+        ),
+      },
+    ]),
   ];
 
   if (loading) {
@@ -1031,35 +1032,37 @@ const ClassStudent = () => {
                 </div>
               )}
             </div>
-            <div className="action-buttons" style={{ marginLeft: 'auto' }}>
-              <Button 
-                icon={<UploadOutlined />}
-                className={`export-button ${theme}-export-button`}
-                onClick={handleExport}
-                loading={buttonLoading.export}
-                disabled={buttonLoading.export || buttonLoading.import}
-              >
-                {t('classDetail.exportData')}
-              </Button>
-              <Button 
-                icon={<DownloadOutlined />}
-                className={`import-button ${theme}-import-button`}
-                onClick={handleImport}
-                loading={buttonLoading.import}
-                disabled={buttonLoading.import || buttonLoading.export}
-              >
-                {t('classDetail.importData')}
-              </Button>
-              <Button 
-                icon={<PlusOutlined />}
-                className={`create-button ${theme}-create-button`}
-                onClick={handleAddStudent}
-                loading={buttonLoading.add}
-                disabled={buttonLoading.add || buttonLoading.import || buttonLoading.export}
-              >
-                {t('classDetail.addStudent')}
-              </Button>
-            </div>
+            {!isReadOnly && (
+              <div className="action-buttons" style={{ marginLeft: 'auto' }}>
+                <Button 
+                  icon={<UploadOutlined />}
+                  className={`export-button ${theme}-export-button`}
+                  onClick={handleExport}
+                  loading={buttonLoading.export}
+                  disabled={buttonLoading.export || buttonLoading.import}
+                >
+                  {t('classDetail.exportData')}
+                </Button>
+                <Button 
+                  icon={<DownloadOutlined />}
+                  className={`import-button ${theme}-import-button`}
+                  onClick={handleImport}
+                  loading={buttonLoading.import}
+                  disabled={buttonLoading.import || buttonLoading.export}
+                >
+                  {t('classDetail.importData')}
+                </Button>
+                <Button 
+                  icon={<PlusOutlined />}
+                  className={`create-button ${theme}-create-button`}
+                  onClick={handleAddStudent}
+                  loading={buttonLoading.add}
+                  disabled={buttonLoading.add || buttonLoading.import || buttonLoading.export}
+                >
+                  {t('classDetail.addStudent')}
+                </Button>
+              </div>
+            )}
           </div>
 
           {/* Table Section */}
