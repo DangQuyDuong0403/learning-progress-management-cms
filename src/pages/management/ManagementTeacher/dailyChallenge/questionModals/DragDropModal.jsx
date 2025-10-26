@@ -23,6 +23,31 @@ import {
 } from '@ant-design/icons';
 import './MultipleChoiceModal.css';
 
+// Debounce utility function
+const debounce = (func, wait) => {
+	let timeout;
+	return function executedFunction(...args) {
+		const later = () => {
+			clearTimeout(timeout);
+			func(...args);
+		};
+		clearTimeout(timeout);
+		timeout = setTimeout(later, wait);
+	};
+};
+
+// Throttle utility function
+const throttle = (func, limit) => {
+	let inThrottle;
+	return function(...args) {
+		if (!inThrottle) {
+			func.apply(this, args);
+			inThrottle = true;
+			setTimeout(() => inThrottle = false, limit);
+		}
+	};
+};
+
 const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 	const [editorContent, setEditorContent] = useState([]);
 	const [blanks, setBlanks] = useState([]);
@@ -396,7 +421,7 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 		message.success(`Image aligned to ${alignment}`);
 		
 		// Return focus to editor after alignment
-		setTimeout(() => {
+		requestAnimationFrame(() => {
 			if (editorRef.current) {
 				editorRef.current.focus();
 				// Move cursor to end
@@ -407,7 +432,7 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 				selection.removeAllRanges();
 				selection.addRange(range);
 			}
-		}, 100);
+		});
 	}, [selectedImage]);
 
 	// Check if cursor is inside a blank element
@@ -426,7 +451,7 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 	}, []);
 
 	// Update popup position based on current cursor
-	const updatePopupPosition = useCallback(() => {
+	const updatePopupPositionCore = useCallback(() => {
 		if (!editorRef.current) return;
 
 		const selection = window.getSelection();
@@ -469,6 +494,12 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 		}
 	}, [isCursorInsideBlank]);
 
+	// Debounced version - only update popup after user stops typing for 150ms
+	const updatePopupPosition = useMemo(
+		() => debounce(updatePopupPositionCore, 150),
+		[updatePopupPositionCore]
+	);
+
 	// Handle table insertion
 	const handleInsertTable = useCallback((numRows, numCols) => {
 		if (!editorRef.current) return;
@@ -499,17 +530,17 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 					
 					// Add event listeners for table cells to update popup position
 					td.addEventListener('click', () => {
-						setTimeout(() => {
+						requestAnimationFrame(() => {
 							updatePopupPosition();
-						}, 10);
+						});
 					});
 					td.addEventListener('keyup', () => {
 						updatePopupPosition();
 					});
 					td.addEventListener('focus', () => {
-						setTimeout(() => {
+						requestAnimationFrame(() => {
 							updatePopupPosition();
-						}, 50);
+						});
 					});
 					
 					tr.appendChild(td);
@@ -566,22 +597,22 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 		
 		// Only set cursor if click is inside editor
 		if (isInEditor) {
-			// Don't interfere if user is selecting text (check after a small delay to allow for drag-to-select)
-			setTimeout(() => {
+			// Don't interfere if user is selecting text
+			requestAnimationFrame(() => {
 				const selection = window.getSelection();
 				if (selection && selection.toString().length === 0) {
-					// Update popup position at cursor
+					// Update popup position at cursor (debounced)
 					updatePopupPosition();
 				}
-			}, 0);
+			});
 		}
 	}, [updatePopupPosition]);
 
 	// Handle editor focus - show popup at cursor
 	const handleEditorFocus = useCallback(() => {
-		setTimeout(() => {
+		requestAnimationFrame(() => {
 			updatePopupPosition();
-		}, 50);
+		});
 	}, [updatePopupPosition]);
 
 	// Handle keydown to delete selected image
@@ -643,9 +674,9 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 		setBlanks(prev => prev.filter(blank => blank.id !== blankId));
 		
 		// Update blank numbers after deletion
-		setTimeout(() => {
+		requestAnimationFrame(() => {
 			updateBlankNumbers();
-		}, 10);
+		});
 		
 		message.success('Blank removed');
 		
@@ -741,10 +772,18 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 			flex: 1;
 			margin-right: 8px;
 		`;
+	// Optimize input handling with debounce for state update
+	let inputTimeout;
 	input.addEventListener('input', (e) => {
-		handleBlankAnswerChange(blank.id, e.target.value);
-		// Update answer text in real-time
-		answerText.textContent = e.target.value || '';
+		const newValue = e.target.value;
+		// Update answer text in real-time (instant visual feedback)
+		answerText.textContent = newValue || '';
+		
+		// Debounce state update to reduce re-renders
+		clearTimeout(inputTimeout);
+		inputTimeout = setTimeout(() => {
+			handleBlankAnswerChange(blank.id, newValue);
+		}, 100);
 	});
 		input.addEventListener('click', (e) => {
 			e.stopPropagation();
@@ -839,45 +878,34 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 		return span;
 	}, [handleBlankAnswerChange, handleDeleteBlankElement]);
 
-	// Handle text input in editor
-	const handleEditorInput = (e) => {
-		const element = e.currentTarget;
+	// Throttled blank check - only run once every 100ms
+	const checkRemovedBlanksThrottled = useMemo(
+		() => throttle((element) => {
+			const currentBlankIds = new Set();
+			const blankElements = element.querySelectorAll('[data-blank-id]');
+			blankElements.forEach(el => {
+				const blankId = el.getAttribute('data-blank-id');
+				if (blankId) currentBlankIds.add(blankId);
+			});
 
-		// Check if any blanks were removed from DOM (e.g., by Backspace)
-		const currentBlankIds = new Set();
-		const blankElements = element.querySelectorAll('[data-blank-id]');
-		blankElements.forEach(el => {
-			const blankId = el.getAttribute('data-blank-id');
-			if (blankId) currentBlankIds.add(blankId);
-		});
-
-		// Remove blanks from state that no longer exist in DOM
-		setBlanks(prev => {
-			const filtered = prev.filter(blank => currentBlankIds.has(blank.id));
-			if (filtered.length !== prev.length) {
-				// Some blanks were removed - update numbers
-				setTimeout(() => {
-					updateBlankNumbers();
-				}, 10);
-				return filtered;
-			}
-			return prev;
-		});
-
-		// Don't allow creating blanks inside another blank
-		if (!isCursorInsideBlank()) {
-			// Look for __ or [] pattern in text nodes only
-			findAndReplacePattern(element);
-		}
-
-		// Update popup position after a short delay to let DOM update
-		setTimeout(() => {
-			updatePopupPosition();
-		}, 10);
-	};
+			// Remove blanks from state that no longer exist in DOM
+			setBlanks(prev => {
+				const filtered = prev.filter(blank => currentBlankIds.has(blank.id));
+				if (filtered.length !== prev.length) {
+					// Some blanks were removed - update numbers
+					requestAnimationFrame(() => {
+						updateBlankNumbers();
+					});
+					return filtered;
+				}
+				return prev;
+			});
+		}, 100),
+		[setBlanks, updateBlankNumbers]
+	);
 
 	// Find and replace pattern in text nodes without affecting existing blanks
-	const findAndReplacePattern = (element) => {
+	const findAndReplacePattern = useCallback((element) => {
 		// Walk through all child nodes
 		const walker = document.createTreeWalker(
 			element,
@@ -964,7 +992,7 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 					// Add space before afterPattern if it doesn't start with space
 					const textAfter = afterPattern.startsWith(' ') ? afterPattern : ' ' + afterPattern;
 					fragment.appendChild(document.createTextNode(textAfter));
-    } else {
+				} else {
 					fragment.appendChild(document.createTextNode(' '));
 				}
 
@@ -975,7 +1003,7 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 				setBlanks(prev => [...prev, newBlank]);
 
 				// Update blank numbers and expand the newly created blank
-				setTimeout(() => {
+				requestAnimationFrame(() => {
 					try {
 						// Update all blank numbers first
 						updateBlankNumbers();
@@ -993,13 +1021,37 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 						console.error('Error expanding blank:', error);
 						element.focus();
 					}
-				}, 10);
+				});
 
 				// Only process one pattern at a time
 				break;
 			}
 		}
-	};
+	}, [blanks, blankColors, createBlankElement, setBlanks, updateBlankNumbers]);
+
+	// Debounced pattern finder - run after user stops typing for 50ms
+	const findPatternDebouncedOptimized = useMemo(
+		() => debounce((element) => {
+			if (!isCursorInsideBlank()) {
+				findAndReplacePattern(element);
+			}
+		}, 50),
+		[isCursorInsideBlank, findAndReplacePattern]
+	);
+
+	// Handle text input in editor
+	const handleEditorInput = useCallback((e) => {
+		const element = e.currentTarget;
+
+		// Check if any blanks were removed from DOM (throttled)
+		checkRemovedBlanksThrottled(element);
+
+		// Look for __ or [] pattern in text nodes only (debounced - run after 50ms)
+		findPatternDebouncedOptimized(element);
+
+		// Update popup position (debounced via the debounced function)
+		updatePopupPosition();
+	}, [checkRemovedBlanksThrottled, findPatternDebouncedOptimized, updatePopupPosition]);
 
 	// Insert blank at saved cursor position
 	const insertBlankAtCursor = useCallback(() => {
@@ -1059,7 +1111,7 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 			setBlanks(prev => [...prev, newBlank]);
 
 			// Update blank numbers and expand the newly created blank
-			setTimeout(() => {
+			requestAnimationFrame(() => {
 				try {
 					// Update all blank numbers first
 					updateBlankNumbers();
@@ -1074,7 +1126,7 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 					console.error('Error expanding blank:', error);
 					editorRef.current.focus();
 				}
-			}, 10);
+			});
 		} catch (error) {
 			console.error('Error inserting blank:', error);
 		}
@@ -1321,9 +1373,9 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 		});
 		
 		// Update blank numbers after populating editor
-		setTimeout(() => {
+		requestAnimationFrame(() => {
 			updateBlankNumbers();
-		}, 50);
+		});
 		
 		editorInitializedRef.current = true;
 	}, [visible, editorContent, blanks, createBlankElement, updateBlankNumbers]);
