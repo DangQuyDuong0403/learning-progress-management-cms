@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
-import { Modal, Button, message, Select, Input, Tooltip, Dropdown } from 'antd';
+import { Modal, Button, Select, Input, Tooltip, Dropdown } from 'antd';
+import { spaceToast } from '../../../../../component/SpaceToastify';
 import {
 	CheckOutlined,
 	ThunderboltOutlined,
@@ -328,7 +329,7 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 			editorRef.current.appendChild(br);
 		}
 		
-		message.success('Image inserted successfully');
+		console.success('Image inserted successfully');
 	}, [selectedImage]);
 
 	// Handle image upload from file
@@ -347,7 +348,7 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 			};
 			reader.readAsDataURL(file);
 		} else if (file) {
-			message.error('Please select an image file');
+			console.error('Please select an image file');
 		}
 		// Reset input
 		if (e.target) {
@@ -383,14 +384,14 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 	// Handle image alignment
 	const handleImageAlign = useCallback((alignment) => {
 		if (!selectedImage) {
-			message.warning('Please select an image first');
+			spaceToast.warning('Please select an image first');
 			return;
 		}
 		
 		// Find the wrapper (parent of the image)
 		const wrapper = selectedImage.parentElement;
 		if (!wrapper || !wrapper.hasAttribute('data-image-wrapper')) {
-			message.warning('Image wrapper not found');
+			spaceToast.warning('Image wrapper not found');
 			return;
 		}
 		
@@ -420,7 +421,7 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 				break;
 		}
 		
-		message.success(`Image aligned to ${alignment}`);
+		console.success(`Image aligned to ${alignment}`);
 		
 		// Return focus to editor after alignment
 		setTimeout(() => {
@@ -555,7 +556,7 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 			}
 			
 			setTableDropdownOpen(false);
-			message.success(`Table ${numRows}x${numCols} inserted successfully`);
+			console.success(`Table ${numRows}x${numCols} inserted successfully`);
 		}
 	}, [updatePopupPosition]);
 
@@ -631,7 +632,7 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 					editorRef.current.focus();
 				}
 				
-				message.success('Image deleted');
+				console.success('Image deleted');
 			}
 		}
 	}, [selectedImage]);
@@ -851,7 +852,7 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 			updateDropdownNumbers();
 		}, 10);
 		
-		message.success('Dropdown removed');
+		console.success('Dropdown removed');
 		
 		// Refocus editor
 		if (editorRef.current) {
@@ -1079,7 +1080,7 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 
 		// Don't insert dropdown if cursor is inside another dropdown
 		if (isCursorInsideDropdown()) {
-			message.warning('Cannot insert dropdown inside another dropdown');
+			spaceToast.warning('Cannot insert dropdown inside another dropdown');
 			setShowDropdownPopup(false);
 			return;
 		}
@@ -1168,12 +1169,12 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 		console.log('Dropdowns state:', dropdowns);
 		
 		if (!editorText && dropdowns.length === 0) {
-			message.error('Please enter the question text');
+			spaceToast.warning('Please enter the question text');
         return;
       }
 
 		if (dropdowns.length === 0) {
-			message.error('Please add at least one dropdown (use __ or [])');
+			spaceToast.warning('Please add at least one dropdown (use __ or [])');
         return;
       }
 
@@ -1191,7 +1192,7 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 		console.log('Has empty dropdowns:', hasEmptyDropdowns);
 		
 		if (hasEmptyDropdowns) {
-			message.error('Please fill in all dropdown correct answers. Click on each dropdown chip to enter the correct answer.');
+			spaceToast.warning('Please fill in all dropdown correct answers. Click on each dropdown chip to enter the correct answer.');
         return;
       }
 

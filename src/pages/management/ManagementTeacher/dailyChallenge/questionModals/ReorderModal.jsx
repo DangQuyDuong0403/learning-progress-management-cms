@@ -2,9 +2,9 @@ import React, { useState, useRef, useCallback, useEffect, useMemo } from "react"
 import {
   Modal,
   Button,
-  message,
   Select,
 } from "antd";
+import { spaceToast } from '../../../../../component/SpaceToastify';
 import { 
   DragOutlined,
   CheckOutlined,
@@ -251,7 +251,7 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
       return newBlanks;
     });
     
-    message.success('Item removed');
+    console.log('Item removed');
     
     // Refocus editor
     editorRef.current.focus();
@@ -487,7 +487,7 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
 
     // Don't insert blank if cursor is inside another blank
     if (isCursorInsideBlank()) {
-      message.warning('Cannot insert item inside another item');
+      spaceToast.warning('Cannot insert item inside another item');
       setShowBlankPopup(false);
       return;
     }
@@ -736,7 +736,7 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
     }));
     });
     
-    message.success('Words shuffled!');
+    console.success('Words shuffled!');
   }, []);
 
   // Handle word drag
@@ -790,14 +790,14 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
 
   const handleSave = () => {
     if (blanks.length === 0) {
-      message.error('Please add at least one item');
+      spaceToast.warning('Please add at least one item');
         return;
       }
 
     // Check if all blanks have answers
     const hasEmptyBlanks = blanks.some(blank => !blank.answer || !blank.answer.trim());
     if (hasEmptyBlanks) {
-      message.error('Please fill in all item answers');
+      spaceToast.warning('Please fill in all item answers');
       return;
     }
 

@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
-import { Modal, Button, message, Select, Tooltip } from 'antd';
+import { Modal, Button, Select, Tooltip } from 'antd';
+import { spaceToast } from '../../../../../component/SpaceToastify';
 import {
 	PlusOutlined,
 	DeleteOutlined,
@@ -228,7 +229,7 @@ const MultipleChoiceModal = ({
 			if (prevOptions.length > 2) {
 				return prevOptions.filter((opt) => opt.id !== optionId);
 			} else {
-				message.warning('Question must have at least 2 options');
+				spaceToast.warning('Question must have at least 2 options');
 				return prevOptions;
 			}
 		});
@@ -307,19 +308,19 @@ const MultipleChoiceModal = ({
 	const handleSave = () => {
 		// Validate editor data
 		if (!editorData || !editorData.trim()) {
-			message.error('Please enter the question text');
+			spaceToast.warning('Please enter the question text');
 			return;
 		}
 
 			const hasCorrectAnswer = options.some((opt) => opt.isCorrect);
 			if (!hasCorrectAnswer) {
-				message.error('Please select at least one correct answer');
+				spaceToast.warning('Please select at least one correct answer');
 				return;
 			}
 
 			const hasEmptyOptions = options.some((opt) => !opt.text.trim());
 			if (hasEmptyOptions) {
-				message.error('Please fill in all option texts');
+				spaceToast.warning('Please fill in all option texts');
 				return;
 			}
 

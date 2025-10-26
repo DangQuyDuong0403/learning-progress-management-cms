@@ -22,6 +22,10 @@ const ROUTER_PAGE = {
 	STUDENT_CLASS_CHAPTERS_LESSONS: '/student/classes/chapters-lessons/:id',
 	STUDENT_CLASS_CHAPTERS: '/student/classes/chapters/:classId',
 	STUDENT_CLASS_CHAPTER_LESSONS: '/student/classes/chapters/:classId/:chapterId/lessons',
+	// Student Daily Challenge Routes
+	STUDENT_DAILY_CHALLENGES: '/student/daily-challenges',
+	STUDENT_CLASS_DAILY_CHALLENGES: '/student/classes/daily-challenges/:classId',
+	STUDENT_DAILY_CHALLENGE_DETAIL: '/student/daily-challenges/detail/:id',
 	// Admin Management Routes
 	ADMIN_DASHBOARD: '/admin/dashboard',
 	ADMIN_ACCOUNTS: '/admin/accounts',

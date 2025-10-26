@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
-import { Modal, Button, message, Select, Input, Tooltip, Dropdown } from 'antd';
+import { Modal, Button, Select, Input, Tooltip, Dropdown } from 'antd';
+import { spaceToast } from '../../../../../component/SpaceToastify';
 import {
 	CheckOutlined,
 	ThunderboltOutlined,
@@ -351,7 +352,7 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 			editorRef.current.appendChild(br);
 		}
 		
-		message.success('Image inserted successfully');
+		console.success('Image inserted successfully');
 	}, [selectedImage]);
 
 	// Handle image upload from file
@@ -370,7 +371,7 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 			};
 			reader.readAsDataURL(file);
 		} else if (file) {
-			message.error('Please select an image file');
+			console.error('Please select an image file');
 		}
 		// Reset input
 		if (e.target) {
@@ -381,14 +382,14 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 	// Handle image alignment
 	const handleImageAlign = useCallback((alignment) => {
 		if (!selectedImage) {
-			message.warning('Please select an image first');
+			spaceToast.warning('Please select an image first');
 			return;
 		}
 		
 		// Find the wrapper (parent of the image)
 		const wrapper = selectedImage.parentElement;
 		if (!wrapper || !wrapper.hasAttribute('data-image-wrapper')) {
-			message.warning('Image wrapper not found');
+			spaceToast.warning('Image wrapper not found');
 			return;
 		}
 		
@@ -418,7 +419,7 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 				break;
 		}
 		
-		message.success(`Image aligned to ${alignment}`);
+		console.success(`Image aligned to ${alignment}`);
 		
 		// Return focus to editor after alignment
 		requestAnimationFrame(() => {
@@ -559,7 +560,7 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 			}
 			
 			setTableDropdownOpen(false);
-			message.success(`Table ${numRows}x${numCols} inserted successfully`);
+			console.success(`Table ${numRows}x${numCols} inserted successfully`);
 		}
 	}, [updatePopupPosition]);
 
@@ -635,7 +636,7 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 					editorRef.current.focus();
 				}
 				
-				message.success('Image deleted');
+				console.success('Image deleted');
 			}
 		}
 	}, [selectedImage]);
@@ -678,7 +679,7 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 			updateBlankNumbers();
 		});
 		
-		message.success('Blank removed');
+		console.success('Blank removed');
 		
 		// Refocus editor
 		editorRef.current.focus();
@@ -1059,7 +1060,7 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 
 		// Don't insert blank if cursor is inside another blank
 		if (isCursorInsideBlank()) {
-			message.warning('Cannot insert blank inside another blank');
+			spaceToast.warning('Cannot insert blank inside another blank');
 			setShowBlankPopup(false);
 			return;
 		}
@@ -1184,18 +1185,18 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 		// Validate
 		const editorText = editorRef.current.textContent.trim();
 		if (!editorText && blanks.length === 0) {
-			message.error('Please enter the question text');
+			spaceToast.error('Please enter the question text');
         return;
       }
 
 		if (blanks.length === 0) {
-			message.error('Please add at least one blank (use __ or [])');
+			spaceToast.error('Please add at least one blank (use __ or [])');
         return;
       }
 
 		const hasEmptyBlanks = blanks.some(blank => !blank.answer || !blank.answer.trim());
 		if (hasEmptyBlanks) {
-			message.error('Please fill in all blank answers');
+			spaceToast.error('Please fill in all blank answers');
         return;
       }
 
