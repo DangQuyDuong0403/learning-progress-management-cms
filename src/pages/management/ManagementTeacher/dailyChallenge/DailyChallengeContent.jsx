@@ -3285,7 +3285,7 @@ const DailyChallengeContent = () => {
                 opacity: 0.9
               }}
             >
-              {t('dailyChallenge.preview') || 'Preview'}
+              {t('dailyChallenge.preview')}
             </Button>
 
             {/* Add Question/Passage Button - Single button for all types */}
