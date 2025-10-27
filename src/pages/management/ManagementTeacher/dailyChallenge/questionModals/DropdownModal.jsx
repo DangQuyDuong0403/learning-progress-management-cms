@@ -77,7 +77,13 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 	], []);
 
 	// Parse backend format to editor format
-	const parseQuestionText = useCallback((questionText, contentData) => {
+	const parseQuestionText = useCallback((questionText, contentData, optionsData = null) => {
+		console.log('DropdownModal - parseQuestionText called with:', {
+			questionText,
+			contentData,
+			optionsData
+		});
+		
 		const parsed = [];
 		const dropsData = [];
 		
@@ -98,25 +104,60 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 
 			// Add dropdown
 			const positionId = match[1];
-			const dropdownOptions = contentData.filter(item => item.positionId === positionId);
-			const correctOption = dropdownOptions.find(opt => opt.correct === true);
-			const incorrectOptions = dropdownOptions.filter(opt => opt.correct === false);
+			
+			// Try to get options from contentData first, then fallback to optionsData
+			let dropdownOptions = [];
+			let correctOption = null;
+			let incorrectOptions = [];
+			
+			if (contentData && contentData.length > 0) {
+				// Use contentData (newer format)
+				dropdownOptions = contentData.filter(item => item.positionId === positionId);
+				correctOption = dropdownOptions.find(opt => opt.correct === true);
+				incorrectOptions = dropdownOptions.filter(opt => opt.correct === false);
+			} else if (optionsData && optionsData.length > 0) {
+				// Fallback to optionsData (older format)
+				correctOption = optionsData.find(opt => opt.isCorrect === true);
+				incorrectOptions = optionsData.filter(opt => opt.isCorrect === false);
+			}
+			
+			console.log('DropdownModal - Processing dropdown:', {
+				positionId,
+				correctOption,
+				incorrectOptions,
+				contentDataLength: contentData?.length || 0,
+				optionsDataLength: optionsData?.length || 0
+			});
 			
 			const dropdownId = `dropdown-${Date.now()}-${positionId}`;
+			
+			// Ensure there's at least one incorrect option for editing
+			const processedIncorrectOptions = incorrectOptions.map(opt => ({ 
+				id: opt.id || Date.now(), 
+				text: opt.value || opt.text || '' 
+			}));
+			
+			// If no incorrect options exist, add an empty one for editing
+			if (processedIncorrectOptions.length === 0) {
+				processedIncorrectOptions.push({ 
+					id: Date.now(), 
+					text: '' 
+				});
+			}
 			
 			parsed.push({
 				type: 'dropdown',
 				id: dropdownId,
 				positionId: positionId,
-				correctAnswer: correctOption?.value || '',
-				incorrectOptions: incorrectOptions.map(opt => ({ id: opt.id, text: opt.value }))
+				correctAnswer: correctOption?.value || correctOption?.text || '',
+				incorrectOptions: processedIncorrectOptions
 			});
 
 			dropsData.push({
 				id: dropdownId,
 				positionId: positionId,
-				correctAnswer: correctOption?.value || '',
-				incorrectOptions: incorrectOptions.map(opt => ({ id: opt.id, text: opt.value })),
+				correctAnswer: correctOption?.value || correctOption?.text || '',
+				incorrectOptions: processedIncorrectOptions,
 				color: dropdownColors[dropsData.length % dropdownColors.length]
 			});
 
@@ -135,18 +176,50 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 			parsed.push({ type: 'text', content: '', id: Date.now() });
 		}
 
+		console.log('DropdownModal - Final parsed data:', { parsed, dropsData });
 		setEditorContent(parsed);
 		setDropdowns(dropsData);
+		console.log('DropdownModal - State updated with parsed data, editorContent length:', parsed.length, 'dropsData length:', dropsData.length);
 	}, [dropdownColors]);
+
+	// Reset modal state when it closes
+	useEffect(() => {
+		if (!visible) {
+			console.log('DropdownModal - Modal closed, resetting state');
+			// Reset state after a delay to ensure modal is fully closed
+			const timer = setTimeout(() => {
+				setEditorContent([]);
+				setDropdowns([]);
+				setSelectedImage(null);
+				setShowDropdownPopup(false);
+				editorInitializedRef.current = false;
+			}, 300); // Small delay to let modal close animation complete
+			
+			return () => clearTimeout(timer);
+		}
+	}, [visible]);
 
 	// Initialize editor content from questionData
 	useEffect(() => {
 		if (visible) {
-			if (questionData?.questionText && questionData?.content?.data) {
-				// Parse existing question
-				parseQuestionText(questionData.questionText, questionData.content.data);
+			console.log('DropdownModal - Initializing with questionData:', questionData);
+			console.log('DropdownModal - questionData.content?.data:', questionData?.content?.data);
+			console.log('DropdownModal - questionData.options:', questionData?.options);
+			
+			// Reset initialization flag when modal opens
+			editorInitializedRef.current = false;
+			
+			if (questionData?.questionText) {
+				// Parse existing question - pass both content.data and options
+				console.log('DropdownModal - Calling parseQuestionText');
+				parseQuestionText(
+					questionData.questionText, 
+					questionData.content?.data || [], 
+					questionData.options || []
+				);
 			} else {
 				// New question
+				console.log('DropdownModal - New question, setting empty content');
 				setEditorContent([{ type: 'text', content: '', id: Date.now() }]);
 				setDropdowns([]);
 			}
@@ -194,12 +267,25 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 		});
 	}, []);
 
+	// Track which dropdowns are being deleted to prevent double-deletion
+	const deletionInProgressRef = useRef(new Set());
+
 	// Handle delete dropdown from DOM
 	const handleDeleteDropdownElement = useCallback((dropdownId) => {
 		console.log('Attempting to delete dropdown:', dropdownId);
 		
+		// Check if deletion is already in progress for this dropdown
+		if (deletionInProgressRef.current.has(dropdownId)) {
+			console.log('Deletion already in progress for dropdown:', dropdownId);
+			return;
+		}
+		
+		// Mark as being deleted
+		deletionInProgressRef.current.add(dropdownId);
+		
 		if (!editorRef.current) {
 			console.error('Editor ref not available');
+			deletionInProgressRef.current.delete(dropdownId);
 			return;
 		}
 
@@ -207,11 +293,15 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 		const dropdownElement = editorRef.current.querySelector(`[data-dropdown-id="${dropdownId}"]`);
 		console.log('Found dropdown element:', dropdownElement);
 		
-		if (dropdownElement) {
-			dropdownElement.remove();
-			console.log('Dropdown element removed from DOM');
+		if (dropdownElement && dropdownElement.parentNode) {
+			try {
+				dropdownElement.remove();
+				console.log('Dropdown element removed from DOM');
+			} catch (error) {
+				console.warn('Error removing dropdown element (may have been already removed):', error);
+			}
 		} else {
-			console.warn('Dropdown element not found in DOM');
+			console.warn('Dropdown element not found in DOM or has no parent');
 		}
 
 		// Update state
@@ -224,9 +314,11 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 		// Update dropdown numbers after deletion
 		requestAnimationFrame(() => {
 			updateDropdownNumbers();
+			// Remove from deletion tracking after animation
+			deletionInProgressRef.current.delete(dropdownId);
 		});
 		
-		console.success('Dropdown removed');
+		console.log('Dropdown removed');
 		
 		// Refocus editor
 		if (editorRef.current) {
@@ -239,6 +331,7 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 		const span = document.createElement('span');
 		span.setAttribute('contenteditable', 'false');
 		span.setAttribute('data-dropdown-id', dropdown.id);
+		span.setAttribute('data-deleting-by-button', 'false');
 		span.style.cssText = `
 			display: inline-flex;
 			align-items: center;
@@ -336,9 +429,18 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 			e.stopPropagation();
 		});
 	input.addEventListener('blur', (e) => {
-		// If input is empty, delete the dropdown
+		// If input is empty, delete the dropdown (only if not already being deleted by button)
 		if (!e.target.value || !e.target.value.trim()) {
-			handleDeleteDropdownElement(dropdown.id);
+			// Check if deletion was initiated by button click
+			const isDeletingByButton = span.getAttribute('data-deleting-by-button') === 'true';
+			if (!isDeletingByButton && !deletionInProgressRef.current.has(dropdown.id)) {
+				// Use setTimeout to avoid conflict with button click handler
+				setTimeout(() => {
+					if (!deletionInProgressRef.current.has(dropdown.id)) {
+						handleDeleteDropdownElement(dropdown.id);
+					}
+				}, 10);
+			}
 			return;
 		}
 		// When input loses focus, collapse back to compact mode
@@ -373,6 +475,8 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 			e.preventDefault();
 			e.stopPropagation();
 			console.log('Delete button clicked for dropdown:', dropdown.id);
+			// Mark that deletion was initiated by button (prevents blur handler from also deleting)
+			span.setAttribute('data-deleting-by-button', 'true');
 			handleDeleteDropdownElement(dropdown.id);
 		};
 		
@@ -756,7 +860,7 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 			editorRef.current.appendChild(br);
 		}
 		
-		console.success('Image inserted successfully');
+		console.log('Image inserted successfully');
 	}, [selectedImage]);
 
 	// Handle image upload from file
@@ -848,7 +952,7 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 				break;
 		}
 		
-		console.success(`Image aligned to ${alignment}`);
+		console.log(`Image aligned to ${alignment}`);
 		
 		// Return focus to editor after alignment
 		requestAnimationFrame(() => {
@@ -975,7 +1079,7 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 			}
 			
 			setTableDropdownOpen(false);
-			console.success(`Table ${numRows}x${numCols} inserted successfully`);
+			console.log(`Table ${numRows}x${numCols} inserted successfully`);
 		}
 	}, [updatePopupPosition]);
 
@@ -1051,7 +1155,7 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 					editorRef.current.focus();
 				}
 				
-				console.success('Image deleted');
+				console.log('Image deleted');
 			}
 		}
 	}, [selectedImage]);
@@ -1447,42 +1551,87 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 
 	// Handle cancel
 	const handleCancel = () => {
+		console.log('DropdownModal - Cancelling, resetting state');
 		if (editorRef.current) {
 			editorRef.current.innerHTML = '';
 		}
 		setDropdowns([]);
+		setEditorContent([]);
 		setPoints(1);
+		setSelectedImage(null);
+		setShowDropdownPopup(false);
+		editorInitializedRef.current = false;
     onCancel();
   };
 
 	// Track if editor has been initialized
 	const editorInitializedRef = useRef(false);
 
-	// Populate editor only when modal opens (initial load)
+	// Populate editor only when modal opens and state is ready
 	useEffect(() => {
 		if (!visible) {
 			editorInitializedRef.current = false;
 			return;
 		}
 		
-		if (!editorRef.current || editorInitializedRef.current) return;
+		if (!editorRef.current) {
+			console.log('DropdownModal - Waiting for editorRef');
+			return;
+		}
+		
+		// For new questions with no data yet, just clear
+		if (editorContent.length === 0 && !questionData) {
+			console.log('DropdownModal - No editor content for new question');
+			editorInitializedRef.current = true;
+			return;
+		}
+		
+		// For editing: wait for content to be loaded from questionData
+		if (questionData && editorContent.length === 0) {
+			console.log('DropdownModal - Waiting for content to be parsed from questionData');
+			return;
+		}
+		
+		// If we already initialized with this data, skip
+		if (editorInitializedRef.current) {
+			console.log('DropdownModal - Already initialized, skipping');
+			return;
+		}
+
+		console.log('DropdownModal - Initializing editor with:', { 
+			editorContentLength: editorContent.length, 
+			dropdownsLength: dropdowns.length,
+			hasQuestionData: !!questionData
+		});
 
 		// Clear editor first
 		editorRef.current.innerHTML = '';
 
 		if (editorContent.length === 0) {
+			console.log('DropdownModal - No editor content to display');
 			editorInitializedRef.current = true;
 			return;
 		}
 
-		// Build editor DOM from editorContent (only on initial load)
+		// Build editor DOM from editorContent
+		let dropdownCounter = 0;
 		editorContent.forEach((item, index) => {
+			console.log('DropdownModal - Processing item:', item);
 			if (item.type === 'text') {
-				editorRef.current.appendChild(document.createTextNode(item.content));
+				if (item.content) {
+					editorRef.current.appendChild(document.createTextNode(item.content));
+				}
 			} else if (item.type === 'dropdown') {
-				const dropdownIndex = dropdowns.findIndex(d => d.id === item.id);
-				const dropdownElement = createDropdownElement(item, dropdownIndex >= 0 ? dropdownIndex : index);
-				editorRef.current.appendChild(dropdownElement);
+				// Find the corresponding dropdown data
+				const dropdownData = dropdowns.find(d => d.id === item.id);
+				if (dropdownData) {
+					console.log('DropdownModal - Creating dropdown element for:', dropdownData);
+					const dropdownElement = createDropdownElement(dropdownData, dropdownCounter);
+					editorRef.current.appendChild(dropdownElement);
+					dropdownCounter++;
+				} else {
+					console.warn('DropdownModal - No dropdown data found for item:', item);
+				}
 			}
 		});
 		
@@ -1492,20 +1641,32 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 		});
 		
 		editorInitializedRef.current = true;
-	}, [visible, editorContent, dropdowns, createDropdownElement, updateDropdownNumbers]);
+		console.log('DropdownModal - Editor initialization complete');
+	}, [visible, editorContent, dropdowns, createDropdownElement, updateDropdownNumbers, questionData]);
 
 	// Get dropdowns ordered by DOM position
 	const orderedDropdowns = useMemo(() => {
-		if (!editorRef.current) return dropdowns;
+		// If no editor ref or no dropdowns, return original dropdowns (for initial render)
+		if (!editorRef.current || dropdowns.length === 0) {
+			console.log('DropdownModal - orderedDropdowns: No editor ref or no dropdowns, returning original dropdowns:', dropdowns.length);
+			return dropdowns;
+		}
 		
 		const dropdownElements = editorRef.current.querySelectorAll('[data-dropdown-id]');
 		const orderedIds = Array.from(dropdownElements).map(el => el.getAttribute('data-dropdown-id'));
+		
+		// If no elements found in DOM yet, return original dropdowns (for initial render)
+		if (orderedIds.length === 0) {
+			console.log('DropdownModal - orderedDropdowns: No elements in DOM yet, returning original dropdowns:', dropdowns.length);
+			return dropdowns;
+		}
 		
 		// Create ordered array based on DOM order
 		const ordered = orderedIds
 			.map(id => dropdowns.find(d => d.id === id))
 			.filter(Boolean); // Remove undefined entries
 		
+		console.log('DropdownModal - orderedDropdowns: Found', ordered.length, 'dropdowns in DOM, total dropdowns:', dropdowns.length);
 		return ordered;
 	}, [dropdowns]);
 
@@ -1575,7 +1736,7 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 				padding: 0,
 				background: 'linear-gradient(135deg, #f0f7ff 0%, #e6f4ff 100%)'
 			}}
-			key={questionData?.id || 'new'}
+			key={`dropdown-modal-${questionData?.id || 'new'}-${visible}`}
 			destroyOnClose>
 			
 			{/* Top Toolbar */}
@@ -2089,7 +2250,8 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 							gridTemplateColumns: 'repeat(auto-fill, minmax(600px, 1fr))',
 							gap: '16px'
 						}}>
-							{orderedDropdowns.map((dropdown, dropdownIndex) => (
+							{orderedDropdowns.map((dropdown, dropdownIndex) => {
+								return (
           <div
             key={dropdown.id}
             style={{
@@ -2237,7 +2399,8 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 										</div>
             </div>
           </div>
-        ))}
+        );
+							})}
       </div>
 					)}
 

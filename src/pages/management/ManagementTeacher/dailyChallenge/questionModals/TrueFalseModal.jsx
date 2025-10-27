@@ -101,8 +101,21 @@ const TrueFalseModal = ({ visible, onCancel, onSave, questionData = null, saving
 			setTimeout(() => {
 				if (questionData) {
 					// Edit mode - load existing data
+					console.log('TrueFalseModal - Loading question data:', questionData);
 					setEditorData(questionData.question || '');
-					setCorrectAnswer(questionData.correctAnswer || null);
+					// Handle both boolean and string values for correctAnswer
+					const correctAnswerValue = questionData.correctAnswer;
+					console.log('TrueFalseModal - correctAnswer value:', correctAnswerValue, 'type:', typeof correctAnswerValue);
+					if (correctAnswerValue === true || correctAnswerValue === 'True') {
+						setCorrectAnswer('True');
+					} else if (correctAnswerValue === false || correctAnswerValue === 'False') {
+						setCorrectAnswer('False');
+					} else {
+						setCorrectAnswer(null);
+					}
+					const finalAnswer = correctAnswerValue === true || correctAnswerValue === 'True' ? 'True' : 
+					                   correctAnswerValue === false || correctAnswerValue === 'False' ? 'False' : null;
+					console.log('TrueFalseModal - Set correctAnswer to:', finalAnswer);
 					setPoints(questionData.points || 1);
 				} else {
 					// Add mode - reset to defaults

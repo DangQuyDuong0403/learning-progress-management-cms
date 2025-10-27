@@ -82,51 +82,109 @@ const FillBlankModal = ({ visible, onCancel, onSave, questionData = null }) => {
 
 	// Parse backend format to editor format
 	const parseQuestionText = useCallback((questionText, contentData) => {
-		const parsed = [];
 		const blanksData = [];
 		
-		// Remove <br> tags and split by blank pattern
-		const cleanText = questionText.replace(/<br\s*\/?>/gi, '\n');
-		const regex = /\[\[pos_([a-z0-9]+)\]\]/g;
-		let lastIndex = 0;
-		let match;
+		// Create a temporary DOM element to parse HTML
+		const tempDiv = document.createElement('div');
+		tempDiv.innerHTML = questionText;
+		
+		// Process each child node
+		const processNode = (node) => {
+			if (node.nodeType === Node.TEXT_NODE) {
+				const text = node.textContent;
+				const regex = /\[\[pos_([a-z0-9]+)\]\]/g;
+				let lastIndex = 0;
+				let match;
+				const result = [];
 
-		while ((match = regex.exec(cleanText)) !== null) {
-			// Add text before blank
-			if (match.index > lastIndex) {
-				const textContent = cleanText.substring(lastIndex, match.index);
-				if (textContent) {
-					parsed.push({ type: 'text', content: textContent, id: `text-${Date.now()}-${lastIndex}` });
+				while ((match = regex.exec(text)) !== null) {
+					// Add text before blank
+					if (match.index > lastIndex) {
+						const textContent = text.substring(lastIndex, match.index);
+						if (textContent) {
+							result.push({ type: 'text', content: textContent, id: `text-${Date.now()}-${lastIndex}` });
+						}
+					}
+
+					// Add blank
+					const positionId = match[1];
+					const blankData = contentData.find(item => item.positionId === positionId);
+					const blankId = `blank-${Date.now()}-${positionId}`;
+					
+					const blankItem = {
+						type: 'blank',
+						id: blankId,
+						positionId: positionId,
+						answer: blankData?.value || '',
+						color: blankColors[blanksData.length % blankColors.length]
+					};
+					result.push(blankItem);
+
+					blanksData.push({
+						id: blankId,
+						positionId: positionId,
+						answer: blankData?.value || '',
+						color: blankColors[blanksData.length % blankColors.length]
+					});
+
+					lastIndex = regex.lastIndex;
+				}
+
+				// Add remaining text
+				if (lastIndex < text.length) {
+					const remainingText = text.substring(lastIndex);
+					if (remainingText) {
+						result.push({ type: 'text', content: remainingText, id: `text-${Date.now()}-${lastIndex}` });
+					}
+				}
+
+				return result;
+			} else if (node.nodeType === Node.ELEMENT_NODE) {
+				// Check if this element contains blank patterns
+				const textContent = node.textContent;
+				if (textContent && /\[\[pos_([a-z0-9]+)\]\]/.test(textContent)) {
+					// This element contains blanks, process its text content
+					return processNode(document.createTextNode(textContent));
+				} else {
+					// Regular HTML element, preserve it
+					const tagName = node.tagName.toLowerCase();
+					const innerHTML = node.innerHTML;
+					
+					// Special handling for image wrapper
+					if (node.hasAttribute('data-image-wrapper') || node.classList.contains('image-wrapper')) {
+						return { type: 'html', content: node.outerHTML, id: `html-${Date.now()}` };
+					}
+					
+					// Special handling for images
+					if (tagName === 'img') {
+						return { type: 'html', content: node.outerHTML, id: `html-${Date.now()}` };
+					}
+					
+					// Special handling for tables
+					if (tagName === 'table') {
+						return { type: 'html', content: node.outerHTML, id: `html-${Date.now()}` };
+					}
+					
+					// For other elements, preserve the HTML
+					if (innerHTML) {
+						return { type: 'html', content: node.outerHTML, id: `html-${Date.now()}` };
+					}
+					
+					return { type: 'text', content: '', id: `text-${Date.now()}` };
 				}
 			}
+			return [];
+		};
 
-			// Add blank
-			const positionId = match[1];
-			const blankData = contentData.find(item => item.positionId === positionId);
-			const blankId = `blank-${Date.now()}-${positionId}`;
-			
-			parsed.push({
-				type: 'blank',
-				id: blankId,
-				positionId: positionId,
-				answer: blankData?.value || ''
-			});
-
-			blanksData.push({
-				id: blankId,
-				positionId: positionId,
-				answer: blankData?.value || '',
-				color: blankColors[blanksData.length % blankColors.length]
-			});
-
-			lastIndex = regex.lastIndex;
-		}
-
-		// Add remaining text
-		if (lastIndex < cleanText.length) {
-			const remainingText = cleanText.substring(lastIndex);
-			if (remainingText) {
-				parsed.push({ type: 'text', content: remainingText, id: `text-${Date.now()}-${lastIndex}` });
+		// Process all child nodes
+		const parsed = [];
+		for (let i = 0; i < tempDiv.childNodes.length; i++) {
+			const node = tempDiv.childNodes[i];
+			const result = processNode(node);
+			if (Array.isArray(result)) {
+				parsed.push(...result);
+			} else if (result) {
+				parsed.push(result);
 			}
 		}
 
@@ -445,7 +503,7 @@ const FillBlankModal = ({ visible, onCancel, onSave, questionData = null }) => {
 				break;
 		}
 		
-		console.success(`Image aligned to ${alignment}`);
+		console.log(`Image aligned to ${alignment}`);
 		
 		// Return focus to editor after alignment
 		requestAnimationFrame(() => {
@@ -586,7 +644,7 @@ const FillBlankModal = ({ visible, onCancel, onSave, questionData = null }) => {
 			}
 			
 			setTableDropdownOpen(false);
-			console.success(`Table ${numRows}x${numCols} inserted successfully`);
+			console.log(`Table ${numRows}x${numCols} inserted successfully`);
 		}
 	}, [updatePopupPosition]);
 
@@ -640,7 +698,7 @@ const FillBlankModal = ({ visible, onCancel, onSave, questionData = null }) => {
 			updateBlankNumbers();
 		});
 		
-		console.success('Blank removed');
+		console.log('Blank removed');
 		
 		// Refocus editor
 		editorRef.current.focus();
@@ -661,24 +719,27 @@ const FillBlankModal = ({ visible, onCancel, onSave, questionData = null }) => {
 			-webkit-user-select: none;
 		`;
 
-	const chip = document.createElement('span');
-	chip.style.cssText = `
-		display: inline-flex;
-		align-items: center;
-		gap: 6px;
-		padding: 6px 12px;
-		background: linear-gradient(135deg, ${blank.color}20, ${blank.color}40);
-		border: 2px solid ${blank.color};
-		border-radius: 8px;
-		font-size: 14px;
-		font-weight: 500;
-		color: ${blank.color};
-		transition: all 0.2s ease;
-		cursor: pointer;
-		min-width: 0;
-		max-width: 220px;
-		flex: 1;
-	`;
+		// Ensure blank has color
+		const blankColor = blank.color || blankColors[index % blankColors.length];
+
+		const chip = document.createElement('span');
+		chip.style.cssText = `
+			display: inline-flex;
+			align-items: center;
+			gap: 6px;
+			padding: 6px 12px;
+			background: linear-gradient(135deg, ${blankColor}20, ${blankColor}40);
+			border: 2px solid ${blankColor};
+			border-radius: 8px;
+			font-size: 14px;
+			font-weight: 500;
+			color: ${blankColor};
+			transition: all 0.2s ease;
+			cursor: pointer;
+			min-width: 0;
+			max-width: 220px;
+			flex: 1;
+		`;
 
 		// Number badge
 		const badge = document.createElement('span');
@@ -687,7 +748,7 @@ const FillBlankModal = ({ visible, onCancel, onSave, questionData = null }) => {
 			width: 20px;
 			height: 20px;
 			border-radius: 50%;
-			background: ${blank.color};
+			background: ${blankColor};
 			color: white;
 			display: flex;
 			align-items: center;
@@ -1157,7 +1218,7 @@ const FillBlankModal = ({ visible, onCancel, onSave, questionData = null }) => {
 					editorRef.current.focus();
 				}
 				
-				console.success('Image deleted');
+				console.log('Image deleted');
 			}
 		}
 	}, [selectedImage]);
@@ -1343,8 +1404,21 @@ const FillBlankModal = ({ visible, onCancel, onSave, questionData = null }) => {
 				editorRef.current.appendChild(document.createTextNode(item.content));
 			} else if (item.type === 'blank') {
 				const blankIndex = currentBlanks.findIndex(b => b.id === item.id);
-				const blankElement = createBlankElement(item, blankIndex >= 0 ? blankIndex : index);
+				const blankData = blankIndex >= 0 ? currentBlanks[blankIndex] : {
+					...item,
+					color: item.color || blankColors[index % blankColors.length]
+				};
+				const blankElement = createBlankElement(blankData, blankIndex >= 0 ? blankIndex : index);
 				editorRef.current.appendChild(blankElement);
+			} else if (item.type === 'html') {
+				// Create a temporary div to parse HTML
+				const tempDiv = document.createElement('div');
+				tempDiv.innerHTML = item.content;
+				
+				// Move all child nodes to editor
+				while (tempDiv.firstChild) {
+					editorRef.current.appendChild(tempDiv.firstChild);
+				}
 			}
 		});
 		
