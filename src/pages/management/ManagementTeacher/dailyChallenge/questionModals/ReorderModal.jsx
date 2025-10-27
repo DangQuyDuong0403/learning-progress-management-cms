@@ -697,7 +697,7 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
     }));
     });
     
-    console.success('Words shuffled!');
+    console.log('Words shuffled!');
   }, []);
 
   // Handle word drag

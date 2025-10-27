@@ -89,7 +89,7 @@ const getChallengeTypeName = (typeCode) => {
 
 // Sortable Passage Item Component
 const SortablePassageItem = memo(
-  ({ passage, index, onDeletePassage, onEditPassage, onDuplicatePassage, onPointsChange, theme, t }) => {
+  ({ passage, index, onDeletePassage, onEditPassage, onDuplicatePassage, onPointsChange, theme, t, challengeType }) => {
     const animateLayoutChanges = useCallback((args) => {
       const { isSorting, wasDragging } = args;
       if (isSorting || wasDragging) {
@@ -154,7 +154,13 @@ const SortablePassageItem = memo(
                 }}
               />
             </div>
-            <Typography.Text strong>Passage for next {passage.questions?.length || 0} questions</Typography.Text>
+            <Typography.Text strong>
+              {challengeType === 'WR' 
+                ? 'Writing Part' 
+                : challengeType === 'LI' 
+                  ? `Listening Passage for next ${passage.questions?.length || 0} questions`
+                  : `Passage for next ${passage.questions?.length || 0} questions`}
+            </Typography.Text>
           </div>
           <div className="passage-controls">
             <Select
@@ -258,7 +264,7 @@ const SortablePassageItem = memo(
           </div>
 
           {/* Questions inside passage */}
-          {passage.questions && passage.questions.length > 0 && (
+          {challengeType !== 'WR' && passage.questions && passage.questions.length > 0 && (
             <div style={{ marginTop: '16px' }}>
               {passage.questions.map((question, qIndex) => (
                 <div 
@@ -279,7 +285,11 @@ const SortablePassageItem = memo(
                 >
                   <div className="question-header">
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1 }}>
-                      <Typography.Text strong>{qIndex + 1}. {getQuestionTypeLabel(question.type)}</Typography.Text>
+                      <Typography.Text strong>
+                        {challengeType === 'WR' 
+                          ? `Writing part ${qIndex + 1}` 
+                          : `${qIndex + 1}. ${getQuestionTypeLabel(question.type)}`}
+                      </Typography.Text>
                     </div>
                     <div className="question-controls">
                       <Select
@@ -2069,16 +2079,16 @@ const DailyChallengeContent = () => {
           const questionsList = item.questions || [];
           
           // Check if this section is a DOCUMENT (passage) or VIDEO (listening passage)
-          if (section.resourceType === 'DOCUMENT' || section.resourceType === 'VIDEO') {
+          if (section.resourceType === 'DOCUMENT' || section.resourceType === 'FILE') {
             // Determine passage type based on resourceType
-            const passageType = section.resourceType === 'VIDEO' ? 'LISTENING_PASSAGE' : 'READING_PASSAGE';
+            const passageType = section.resourceType === 'FILE' ? 'LISTENING_PASSAGE' : 'READING_PASSAGE';
             
             // Create passage object
             const passage = {
               id: section.id || `passage_${index}`,
               type: passageType,
               content: section.sectionsContent || '',
-              audioUrl: section.resourceType === 'VIDEO' ? section.sectionsUrl : undefined, // Audio URL for listening passages
+              audioUrl: section.resourceType === 'FILE' ? section.sectionsUrl : undefined, // Audio URL for listening passages
               points: 1, // Default points
               questions: questionsList.map((question, qIndex) => {
                 // Get question content - parse from content.data array
@@ -2954,18 +2964,35 @@ const DailyChallengeContent = () => {
   }, []);
 
   const handleEditPassage = useCallback((passageId) => {
-    // Navigate to CreateReadingChallenge for editing
+    // Navigate to appropriate edit screen based on challengeType
     const passage = passages.find(p => p.id === passageId);
     if (passage) {
       const userRole = user?.role?.toLowerCase();
-      const isListeningPassage = passage.type === 'LISTENING_PASSAGE';
-      const basePath = userRole === 'teaching_assistant' 
-        ? (isListeningPassage 
-          ? `/teaching-assistant/daily-challenges/create/listening/${id}`
-          : `/teaching-assistant/daily-challenges/create/reading/${id}`)
-        : (isListeningPassage 
-          ? `/teacher/daily-challenges/create/listening/${id}`
-          : `/teacher/daily-challenges/create/reading/${id}`);
+      const challengeType = challengeDetails?.challengeType;
+      
+      // Determine the base path based on challengeType
+      let basePath;
+      if (challengeType === 'WR') {
+        // Writing challenge
+        basePath = userRole === 'teaching_assistant' 
+          ? `/teaching-assistant/daily-challenges/create/writing/${id}`
+          : `/teacher/daily-challenges/create/writing/${id}`;
+      } else if (challengeType === 'SP') {
+        // Speaking challenge
+        basePath = userRole === 'teaching_assistant' 
+          ? `/teaching-assistant/daily-challenges/create/speaking/${id}`
+          : `/teacher/daily-challenges/create/speaking/${id}`;
+      } else {
+        // Reading or Listening challenge
+        const isListeningPassage = passage.type === 'LISTENING_PASSAGE';
+        basePath = userRole === 'teaching_assistant' 
+          ? (isListeningPassage 
+            ? `/teaching-assistant/daily-challenges/create/listening/${id}`
+            : `/teaching-assistant/daily-challenges/create/reading/${id}`)
+          : (isListeningPassage 
+            ? `/teacher/daily-challenges/create/listening/${id}`
+            : `/teacher/daily-challenges/create/reading/${id}`);
+      }
       
       navigate(basePath, {
         state: {
@@ -3747,7 +3774,12 @@ const DailyChallengeContent = () => {
                 onDragEnd={handleDragEnd}
               >
                 <SortableContext
-                  items={[...passageIds, ...questionIds]}
+                  items={
+                    // For Listening challenges, only sort/render passages (which already include their questions)
+                    (challengeDetails?.challengeType === 'LI' && filteredPassages.length > 0)
+                      ? [...passageIds]
+                      : [...passageIds, ...questionIds]
+                  }
                   strategy={verticalListSortingStrategy}
                 >
                   {/* Render Passages first */}
@@ -3762,11 +3794,12 @@ const DailyChallengeContent = () => {
                       onPointsChange={handlePassagePointsChange}
                       theme={theme}
                       t={t}
+                      challengeType={challengeDetails?.challengeType}
                     />
                   ))}
 
-                  {/* Then render individual Questions */}
-                  {filteredQuestions.map((question, index) => (
+                  {/* Then render individual Questions (skip for LI to group under passages) */}
+                  {(challengeDetails?.challengeType !== 'LI' || filteredPassages.length === 0) && filteredQuestions.map((question, index) => (
                     <SortableQuestionItem
                       key={question.id}
                       question={question}

@@ -226,7 +226,7 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 			updateDropdownNumbers();
 		});
 		
-		console.success('Dropdown removed');
+		console.log('Dropdown removed');
 		
 		// Refocus editor
 		if (editorRef.current) {
@@ -756,7 +756,7 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 			editorRef.current.appendChild(br);
 		}
 		
-		console.success('Image inserted successfully');
+		console.log('Image inserted successfully');
 	}, [selectedImage]);
 
 	// Handle image upload from file
@@ -848,7 +848,7 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 				break;
 		}
 		
-		console.success(`Image aligned to ${alignment}`);
+		console.log(`Image aligned to ${alignment}`);
 		
 		// Return focus to editor after alignment
 		requestAnimationFrame(() => {
@@ -975,7 +975,7 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 			}
 			
 			setTableDropdownOpen(false);
-			console.success(`Table ${numRows}x${numCols} inserted successfully`);
+			console.log(`Table ${numRows}x${numCols} inserted successfully`);
 		}
 	}, [updatePopupPosition]);
 
@@ -1051,7 +1051,7 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 					editorRef.current.focus();
 				}
 				
-				console.success('Image deleted');
+				console.log('Image deleted');
 			}
 		}
 	}, [selectedImage]);

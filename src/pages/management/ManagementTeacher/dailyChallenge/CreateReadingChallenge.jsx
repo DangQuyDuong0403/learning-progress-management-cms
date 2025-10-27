@@ -239,13 +239,30 @@ const CreateReadingChallenge = () => {
           'fill-blank': 'FILL_IN_THE_BLANK',
           'dropdown': 'DROPDOWN',
           'drag-drop': 'DRAG_AND_DROP',
-          'reorder': 'REARRANGE'
+          'reorder': 'REARRANGE',
+          'WRITING': 'WRITING' // Add writing type
         };
         return typeMap[type] || type.toUpperCase();
       };
 
-      // Transform questions to API format
-      const transformedQuestions = (passage.questions || []).map((question, index) => {
+      // For Writing Challenge, create a simple question with passage content as questionText
+      let transformedQuestions;
+      
+      if (isWritingChallenge) {
+        // Writing Challenge: Create a single question with passage content as questionText
+        transformedQuestions = [{
+          questionText: passage.content || '',
+          orderNumber: 1,
+          score: 1,
+          questionType: 'WRITING', // Custom type for writing
+          toBeDeleted: false,
+          content: {
+            data: [] // Empty data array as requested
+          }
+        }];
+      } else {
+        // Other challenges: Transform questions normally
+        transformedQuestions = (passage.questions || []).map((question, index) => {
         console.log('Transforming question:', index, {
           id: question.id,
           isFromBackend: question.isFromBackend,
@@ -376,13 +393,15 @@ const CreateReadingChallenge = () => {
             };
         }
       });
+      }
 
       // Create section data similar to Grammar & Vocabulary but with multiple questions in one section
-      // Include sectionId if editing existing passage
+      // Include sectionId if editing existing passage (especially for WR writing challenges)
       // Include audioUrl if listening/speaking challenge has audio
       const sectionData = {
         section: {
-          id: passage.sectionId || null, // Include sectionId when editing
+          // Always include id when editing (has sectionId), null for new sections
+          ...(passage.sectionId && { id: passage.sectionId }),
           sectionTitle: isWritingChallenge ? "Writing Section" : 
                         isListeningChallenge ? "Listening Section" : 
                         isSpeakingChallenge ? "Speaking Section" : 
@@ -390,13 +409,15 @@ const CreateReadingChallenge = () => {
           sectionsUrl: (isListeningChallenge || isSpeakingChallenge) && passage.audioUrl ? passage.audioUrl : "", // Audio URL for listening/speaking
           sectionsContent: passage.content,
           orderNumber: 1, // First section
-          resourceType: (isListeningChallenge || isSpeakingChallenge) ? "VIDEO" : "DOCUMENT" // VIDEO for listening/speaking, DOCUMENT for reading/writing
+          resourceType: (isListeningChallenge || isSpeakingChallenge) ? "FILE" : "DOCUMENT" // FILE for listening/speaking, DOCUMENT for reading/writing
         },
         questions: transformedQuestions
       };
 
       console.log('Saving section with questions:', sectionData);
       console.log('Challenge ID:', currentChallengeId);
+      console.log('Section ID:', passage.sectionId);
+      console.log('Is Writing Challenge:', isWritingChallenge);
 
       // Try using the same API as DailyChallengeContent but with multiple questions
       const response = await dailyChallengeApi.saveSectionWithQuestions(currentChallengeId, sectionData);
@@ -562,8 +583,44 @@ const CreateReadingChallenge = () => {
   };
 
   const handleEditQuestion = (question) => {
-    setEditingQuestion(question);
-    setActiveModal(question.type);
+    console.log('Editing question:', question);
+    
+    // Normalize backend enum types to modal keys
+    const modalTypeMap = {
+      MULTIPLE_CHOICE: 'multiple-choice',
+      MULTIPLE_SELECT: 'multiple-select',
+      TRUE_OR_FALSE: 'true-false',
+      FILL_IN_THE_BLANK: 'fill-blank',
+      DROPDOWN: 'dropdown',
+      DRAG_AND_DROP: 'drag-drop',
+      REARRANGE: 'reorder'
+    };
+    const normalizedType = modalTypeMap[question.type] || question.type;
+    
+    // Transform question data to match modal expectations
+    const transformedQuestion = {
+      ...question,
+      // Ensure question text is available
+      question: question.question || question.questionText || '',
+      // Ensure type is normalized
+      type: normalizedType,
+      // Ensure options are properly formatted for multiple choice/select
+      options: question.options || (question.content?.data ? question.content.data.map((item, index) => ({
+        key: item.id || `option_${index}`,
+        text: item.value || item.text || '',
+        isCorrect: item.correct || false
+      })) : []),
+      // Ensure points/score is available
+      points: question.points || question.score || 1,
+      // Ensure correct answer for true/false
+      correctAnswer: question.correctAnswer !== undefined ? question.correctAnswer : 
+                    (question.content?.data?.find(item => item.correct)?.value === 'True')
+    };
+    
+    console.log('Transformed question for modal:', transformedQuestion);
+    
+    setEditingQuestion(transformedQuestion);
+    setActiveModal(normalizedType);
   };
 
   const handleDeleteQuestion = (questionId) => {
@@ -624,11 +681,16 @@ const CreateReadingChallenge = () => {
   // Helper function to strip HTML tags and get plain text
   const stripHtmlTags = (html) => {
     if (!html) return '';
-    const tmp = document.createElement('DIV');
-    tmp.innerHTML = html;
-    const text = tmp.textContent || tmp.innerText || '';
-    // Limit to 80 characters for preview
-    return text.length > 80 ? text.substring(0, 80) + '...' : text;
+    try {
+      const tmp = document.createElement('DIV');
+      tmp.innerHTML = html;
+      const text = tmp.textContent || tmp.innerText || '';
+      // Limit to 80 characters for preview
+      return text.length > 80 ? text.substring(0, 80) + '...' : text;
+    } catch (error) {
+      console.error('Error stripping HTML tags:', error, 'HTML:', html);
+      return String(html).substring(0, 80) + '...';
+    }
   };
 
   // Helper function to format fill-in-the-blank questions
@@ -767,6 +829,9 @@ const CreateReadingChallenge = () => {
 
   // General helper function to format questions based on type
   const formatQuestionText = (question) => {
+    // Get question text from various possible fields
+    const questionText = question.question || question.questionText || '';
+    
     switch (question.type) {
       case 'fill-blank':
       case 'FILL_IN_THE_BLANK':
@@ -781,7 +846,7 @@ const CreateReadingChallenge = () => {
       case 'reorder':
         return formatReorderQuestion(question);
       default:
-        return stripHtmlTags(question.question) || "No question text";
+        return stripHtmlTags(questionText) || "No question text";
     }
   };
   // Custom Header Component
@@ -1363,7 +1428,9 @@ const CreateReadingChallenge = () => {
                       }}>Click "Add a Question" above to get started</div>
                         </div>
                       ) : (
-                        questions.map((question, index) => (
+                        questions.map((question, index) => {
+                          console.log(`Question ${index + 1}:`, question);
+                          return (
                       <div 
                         key={question.id} 
                         className={`rc-question-item ${theme}-rc-question-item`}
@@ -1446,7 +1513,8 @@ const CreateReadingChallenge = () => {
                               />
                             </div>
                           </div>
-                        ))
+                        );
+                        })
                       )}
                     </div>
                   </Card>

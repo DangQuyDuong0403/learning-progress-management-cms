@@ -445,7 +445,7 @@ const FillBlankModal = ({ visible, onCancel, onSave, questionData = null }) => {
 				break;
 		}
 		
-		console.success(`Image aligned to ${alignment}`);
+		console.log(`Image aligned to ${alignment}`);
 		
 		// Return focus to editor after alignment
 		requestAnimationFrame(() => {
@@ -586,7 +586,7 @@ const FillBlankModal = ({ visible, onCancel, onSave, questionData = null }) => {
 			}
 			
 			setTableDropdownOpen(false);
-			console.success(`Table ${numRows}x${numCols} inserted successfully`);
+			console.log(`Table ${numRows}x${numCols} inserted successfully`);
 		}
 	}, [updatePopupPosition]);
 
@@ -640,7 +640,7 @@ const FillBlankModal = ({ visible, onCancel, onSave, questionData = null }) => {
 			updateBlankNumbers();
 		});
 		
-		console.success('Blank removed');
+		console.log('Blank removed');
 		
 		// Refocus editor
 		editorRef.current.focus();
@@ -1157,7 +1157,7 @@ const FillBlankModal = ({ visible, onCancel, onSave, questionData = null }) => {
 					editorRef.current.focus();
 				}
 				
-				console.success('Image deleted');
+				console.log('Image deleted');
 			}
 		}
 	}, [selectedImage]);
