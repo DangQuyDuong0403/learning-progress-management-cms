@@ -188,8 +188,12 @@ const CreateReadingChallenge = () => {
       if (debounceTimer.current) {
         clearTimeout(debounceTimer.current);
       }
+      // Cleanup audio preview URL
+      if (passage?.audioPreviewUrl) {
+        URL.revokeObjectURL(passage.audioPreviewUrl);
+      }
     };
-  }, []);
+  }, [passage?.audioPreviewUrl]);
 
   const handleBack = () => {
     // Navigate back to DailyChallengeContent with proper path based on user role
@@ -375,14 +379,18 @@ const CreateReadingChallenge = () => {
 
       // Create section data similar to Grammar & Vocabulary but with multiple questions in one section
       // Include sectionId if editing existing passage
+      // Include audioUrl if listening/speaking challenge has audio
       const sectionData = {
         section: {
           id: passage.sectionId || null, // Include sectionId when editing
-          sectionTitle: isWritingChallenge ? "Writing Prompt" : "Reading Passage",
-          sectionsUrl: "", // Not used for reading challenges
+          sectionTitle: isWritingChallenge ? "Writing Section" : 
+                        isListeningChallenge ? "Listening Section" : 
+                        isSpeakingChallenge ? "Speaking Section" : 
+                        "Reading Section",
+          sectionsUrl: (isListeningChallenge || isSpeakingChallenge) && passage.audioUrl ? passage.audioUrl : "", // Audio URL for listening/speaking
           sectionsContent: passage.content,
           orderNumber: 1, // First section
-          resourceType: "DOCUMENT"
+          resourceType: (isListeningChallenge || isSpeakingChallenge) ? "VIDEO" : "DOCUMENT" // VIDEO for listening/speaking, DOCUMENT for reading/writing
         },
         questions: transformedQuestions
       };
@@ -505,21 +513,32 @@ const CreateReadingChallenge = () => {
       setIsProcessingAudio(true);
       setUploadedAudioFileName(file.name);
 
-      // Create audio URL for preview
-      const audioUrl = URL.createObjectURL(file);
+      // Upload file directly to server (as multipart/form-data)
+      const response = await dailyChallengeApi.uploadFile(file);
+      
+      // Get URL from response
+      const audioUrl = response?.data || response?.data?.url;
+      
+      if (!audioUrl) {
+        throw new Error("Upload failed: No URL returned from server");
+      }
 
-      // Update passage with audio file
+      // Create local preview URL for immediate feedback
+      const previewUrl = URL.createObjectURL(file);
+
+      // Update passage with audio file and URL from server
       setPassage(prevPassage => ({ 
         ...prevPassage, 
         audioFile: file,
-        audioUrl: audioUrl
+        audioUrl: audioUrl, // Server URL for saving
+        audioPreviewUrl: previewUrl // Local preview URL
       }));
 
       spaceToast.success(`Audio file "${file.name}" uploaded successfully!`);
       
     } catch (error) {
       console.error('Error processing audio:', error);
-      spaceToast.error(error.message || "Có lỗi xảy ra khi xử lý file audio");
+      spaceToast.error(error.response?.data?.error || error.response?.data?.message || error.message || "Có lỗi xảy ra khi xử lý file audio");
     } finally {
       setIsProcessingAudio(false);
     }
@@ -925,7 +944,11 @@ const CreateReadingChallenge = () => {
                              transform: 'translateY(-50%)'
                            }}
                            onClick={() => {
-                             setPassage(prevPassage => ({ ...prevPassage, audioFile: null, audioUrl: null }));
+                             // Revoke preview URL if exists
+                             if (passage.audioPreviewUrl) {
+                               URL.revokeObjectURL(passage.audioPreviewUrl);
+                             }
+                             setPassage(prevPassage => ({ ...prevPassage, audioFile: null, audioUrl: null, audioPreviewUrl: null }));
                              setUploadedAudioFileName("");
                            }}
                          >
@@ -952,7 +975,7 @@ const CreateReadingChallenge = () => {
                            </span>
                          </div>
                          <audio controls style={{ width: '100%', height: '32px' }}>
-                           <source src={passage.audioUrl} type="audio/mpeg" />
+                           <source src={passage.audioPreviewUrl || passage.audioUrl} type="audio/mpeg" />
                            Your browser does not support the audio element.
                          </audio>
                        </div>

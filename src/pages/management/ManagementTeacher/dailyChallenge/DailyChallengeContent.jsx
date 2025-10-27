@@ -242,8 +242,20 @@ const SortablePassageItem = memo(
                 : '1px solid rgba(138, 122, 255, 0.2)',
               color: '#000000'
             }}
-            dangerouslySetInnerHTML={{ __html: passage.content }}
-          />
+          >
+            <style>{`
+              img {
+                max-width: 300px;
+                max-height: 300px;
+                width: auto;
+                height: auto;
+                object-fit: contain;
+                margin: 8px 0;
+                display: block;
+              }
+            `}</style>
+            <div dangerouslySetInnerHTML={{ __html: passage.content }} />
+          </div>
 
           {/* Questions inside passage */}
           {passage.questions && passage.questions.length > 0 && (
@@ -2056,13 +2068,17 @@ const DailyChallengeContent = () => {
           const section = item.section || {};
           const questionsList = item.questions || [];
           
-          // Check if this section is a DOCUMENT (passage)
-          if (section.resourceType === 'DOCUMENT') {
+          // Check if this section is a DOCUMENT (passage) or VIDEO (listening passage)
+          if (section.resourceType === 'DOCUMENT' || section.resourceType === 'VIDEO') {
+            // Determine passage type based on resourceType
+            const passageType = section.resourceType === 'VIDEO' ? 'LISTENING_PASSAGE' : 'READING_PASSAGE';
+            
             // Create passage object
             const passage = {
               id: section.id || `passage_${index}`,
-              type: 'READING_PASSAGE', // Default to reading passage
+              type: passageType,
               content: section.sectionsContent || '',
+              audioUrl: section.resourceType === 'VIDEO' ? section.sectionsUrl : undefined, // Audio URL for listening passages
               points: 1, // Default points
               questions: questionsList.map((question, qIndex) => {
                 // Get question content - parse from content.data array
