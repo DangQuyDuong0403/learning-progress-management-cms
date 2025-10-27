@@ -87,6 +87,46 @@ const getChallengeTypeName = (typeCode) => {
   return typeMap[typeCode] || typeCode || 'Unknown';
 };
 
+// Helper function to replace [[dur_3]] with HTML badge
+const processPassageContent = (content, theme, challengeType) => {
+  if (!content) return '';
+  
+  // Only process for Speaking challenges
+  if (challengeType === 'SP') {
+    const badgeColor = theme === 'sun' ? '#1890ff' : '#8B5CF6';
+    const badgeBgColor = theme === 'sun' 
+      ? 'rgba(24, 144, 255, 0.1)' 
+      : 'rgba(139, 92, 246, 0.15)';
+    const badgeBorderColor = theme === 'sun' 
+      ? 'rgba(24, 144, 255, 0.3)' 
+      : 'rgba(139, 92, 246, 0.4)';
+    
+    const badgeHtml = `
+      <span style="
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 14px;
+        background: ${badgeBgColor};
+        border: 2px solid ${badgeBorderColor};
+        border-radius: 8px;
+        font-weight: 600;
+        font-size: 14px;
+        color: ${badgeColor};
+        margin: 0 4px;
+        vertical-align: middle;
+      ">
+        <span style="font-size: 16px;">🎤</span>
+        Voice Recording 3 minutes
+      </span>
+    `;
+    
+    return content.replace(/\[\[dur_3\]\]/g, badgeHtml);
+  }
+  
+  return content;
+};
+
 // Sortable Passage Item Component
 const SortablePassageItem = memo(
   ({ passage, index, onDeletePassage, onEditPassage, onDuplicatePassage, onPointsChange, theme, t, challengeType }) => {
@@ -159,7 +199,9 @@ const SortablePassageItem = memo(
                 ? 'Writing Part' 
                 : challengeType === 'LI' 
                   ? `Listening Passage for next ${passage.questions?.length || 0} questions`
-                  : `Passage for next ${passage.questions?.length || 0} questions`}
+                  : challengeType === 'SP'
+                    ? `Speaking Passage`
+                    : `Passage for next ${passage.questions?.length || 0} questions`}
             </Typography.Text>
           </div>
           <div className="passage-controls">
@@ -205,8 +247,8 @@ const SortablePassageItem = memo(
         </div>
 
         <div className="passage-content">
-          {/* Audio Player for Listening Passages */}
-          {passage.type === 'LISTENING_PASSAGE' && passage.audioUrl && (
+          {/* Audio Player for Listening and Speaking Passages */}
+          {(passage.type === 'LISTENING_PASSAGE' || passage.type === 'SPEAKING_PASSAGE') && passage.audioUrl && (
             <div style={{
               marginBottom: '16px',
               padding: '16px',
@@ -260,11 +302,11 @@ const SortablePassageItem = memo(
                 display: block;
               }
             `}</style>
-            <div dangerouslySetInnerHTML={{ __html: passage.content }} />
+            <div dangerouslySetInnerHTML={{ __html: processPassageContent(passage.content, theme, challengeType) }} />
           </div>
 
           {/* Questions inside passage */}
-          {challengeType !== 'WR' && passage.questions && passage.questions.length > 0 && (
+          {challengeType !== 'WR' && challengeType !== 'SP' && passage.questions && passage.questions.length > 0 && (
             <div style={{ marginTop: '16px' }}>
               {passage.questions.map((question, qIndex) => (
                 <div 
@@ -2078,10 +2120,15 @@ const DailyChallengeContent = () => {
           const section = item.section || {};
           const questionsList = item.questions || [];
           
-          // Check if this section is a DOCUMENT (passage) or VIDEO (listening passage)
+          // Check if this section is a DOCUMENT (passage) or FILE (listening/speaking passage)
           if (section.resourceType === 'DOCUMENT' || section.resourceType === 'FILE') {
-            // Determine passage type based on resourceType
-            const passageType = section.resourceType === 'FILE' ? 'LISTENING_PASSAGE' : 'READING_PASSAGE';
+            // Determine passage type based on resourceType and challengeType
+            let passageType = 'READING_PASSAGE';
+            if (section.resourceType === 'FILE') {
+              // Check challengeType to differentiate between LISTENING and SPEAKING
+              const currentChallengeType = challengeDetails?.challengeType;
+              passageType = currentChallengeType === 'SP' ? 'SPEAKING_PASSAGE' : 'LISTENING_PASSAGE';
+            }
             
             // Create passage object
             const passage = {
@@ -2106,7 +2153,10 @@ const DailyChallengeContent = () => {
                   questionText: question.questionText || '', // Keep original questionText for FillBlank, Dropdown, etc.
                   options: options,
                   content: question.content, // Preserve original content structure for special question types
-                  incorrectOptions: [], // Will be set from content.data for DRAG_AND_DROP
+                  incorrectOptions: options.filter(opt => !opt.isCorrect).map(opt => ({
+                    id: opt.key || Date.now(),
+                    text: opt.text
+                  })),
                   points: question.score || 1,
                   timeLimit: 1,
                   sectionId: section.id,
@@ -2127,12 +2177,34 @@ const DailyChallengeContent = () => {
             const sectionQuestions = questionsList.map((question, qIndex) => {
               // Get question content - parse from content.data array
               const contentData = question.content?.data || [];
+              console.log(`Question ${question.questionType} - Content Data:`, contentData);
+              
               const options = contentData.map((contentItem, idx) => ({
                 key: String.fromCharCode(65 + idx), // A, B, C, D...
                 text: contentItem.value || '',
                 isCorrect: contentItem.correct || false,
               }));
+              
+              console.log(`Question ${question.questionType} - Options:`, options);
 
+              // Extract incorrect options - DRAG_AND_DROP uses same logic as other types
+              // Incorrect options are those with isCorrect: false in the options array
+              const incorrectOptions = options
+                .filter(opt => !opt.isCorrect)
+                .map(opt => ({
+                  id: opt.key || Date.now(),
+                  text: opt.text
+                }));
+              
+              if (question.questionType === 'DRAG_AND_DROP') {
+                console.log('=== DRAG_AND_DROP QUESTION DEBUG ===');
+                console.log('Content Data:', contentData);
+                console.log('Options:', options);
+                console.log('Incorrect Options Extracted:', incorrectOptions);
+                console.log('=====================================');
+              }
+              
+ 
               const mappedQuestion = {
                 id: question.id || `${section.id}-${qIndex}`,
                 type: question.questionType,
@@ -2140,7 +2212,7 @@ const DailyChallengeContent = () => {
                 questionText: question.questionText || '', // Add this for FillBlank
                 options: options,
                 content: question.content, // Preserve original content for FillBlank
-                incorrectOptions: [], // Will be set from content.data for DRAG_AND_DROP
+                incorrectOptions: incorrectOptions,
                 points: question.score || 1,
                 timeLimit: 1,
                 sectionId: section.id,
@@ -3775,8 +3847,8 @@ const DailyChallengeContent = () => {
               >
                 <SortableContext
                   items={
-                    // For Listening challenges, only sort/render passages (which already include their questions)
-                    (challengeDetails?.challengeType === 'LI' && filteredPassages.length > 0)
+                    // For Listening and Speaking challenges, only sort/render passages (which already include their questions)
+                    ((challengeDetails?.challengeType === 'LI' || challengeDetails?.challengeType === 'SP') && filteredPassages.length > 0)
                       ? [...passageIds]
                       : [...passageIds, ...questionIds]
                   }
@@ -3798,8 +3870,9 @@ const DailyChallengeContent = () => {
                     />
                   ))}
 
-                  {/* Then render individual Questions (skip for LI to group under passages) */}
-                  {(challengeDetails?.challengeType !== 'LI' || filteredPassages.length === 0) && filteredQuestions.map((question, index) => (
+                  {/* Then render individual Questions (skip for LI and SP to group under passages) */}
+                  {challengeDetails?.challengeType !== 'LI' && challengeDetails?.challengeType !== 'SP' && 
+                   filteredQuestions.map((question, index) => (
                     <SortableQuestionItem
                       key={question.id}
                       question={question}

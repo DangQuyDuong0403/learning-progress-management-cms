@@ -120,11 +120,19 @@ const CreateReadingChallenge = () => {
       console.log('Loading editingPassage:', editingPassage);
       console.log('Questions in editingPassage:', editingPassage.questions);
       
+      // For Speaking challenge, remove [[dur_3]] from content to avoid duplicate when saving
+      let content = editingPassage.content || "";
+      if (isSpeakingChallenge) {
+        // Remove [[dur_3]] if it exists (may have trailing/leading whitespace)
+        content = content.replace(/\s*\[\[dur_3\]\]\s*/g, ' ').trim();
+        console.log('Removed [[dur_3]] from editing content:', content);
+      }
+      
       // Editing mode - use existing passage data
       return {
         id: editingPassage.id,
         title: editingPassage.title || (isWritingChallenge ? "Writing Prompt" : "Passage"),
-        content: editingPassage.content || "",
+        content: content,
         type: editingPassage.content ? "manual" : null,
         questions: editingPassage.questions || [],
         audioFile: editingPassage.audioFile || null,
@@ -156,8 +164,9 @@ const CreateReadingChallenge = () => {
   const [editingQuestion, setEditingQuestion] = useState(null);
   const [questionTypeModalVisible, setQuestionTypeModalVisible] = useState(false);
   
-  // Speaking recording time setting
-  const [recordingTimeSeconds, setRecordingTimeSeconds] = useState(30);
+  // Speaking recording time setting - Fixed at 3 minutes (180 seconds)
+  // eslint-disable-next-line no-unused-vars
+  const recordingTimeSeconds = 180; // Fixed at 3 minutes as per requirements (used in UI display)
   
   // Use ref to track if we're updating from passage change to prevent infinite loop
   const isUpdatingFromPassage = useRef(false);
@@ -229,6 +238,15 @@ const CreateReadingChallenge = () => {
         return;
       }
 
+      // For listening and speaking challenges, audio file is required
+      if ((isListeningChallenge || isSpeakingChallenge) && !passage.audioUrl) {
+        spaceToast.warning(isSpeakingChallenge 
+          ? "Please upload speaking audio file before saving" 
+          : "Please upload audio file before saving");
+        setIsSaving(false);
+        return;
+      }
+
       // Map question types to API format
       const mapQuestionType = (type) => {
         const typeMap = {
@@ -240,17 +258,23 @@ const CreateReadingChallenge = () => {
           'dropdown': 'DROPDOWN',
           'drag-drop': 'DRAG_AND_DROP',
           'reorder': 'REARRANGE',
-          'WRITING': 'WRITING' // Add writing type
+          'WRITING': 'WRITING', // Add writing type
+          'SPEAKING': 'SPEAKING' // Add speaking type
         };
         return typeMap[type] || type.toUpperCase();
       };
 
-      // For Writing Challenge, create a simple question with passage content as questionText
+      // For Writing and Speaking Challenge, create a simple question with passage content as questionText
       let transformedQuestions;
       
       if (isWritingChallenge) {
         // Writing Challenge: Create a single question with passage content as questionText
+        // When editing (passage.questions exists and has id), include the id
+        const existingQuestion = passage.questions && passage.questions.length > 0 ? passage.questions[0] : null;
+        
         transformedQuestions = [{
+          // Include id if editing existing passage
+          ...(existingQuestion?.isFromBackend && existingQuestion?.id && { id: existingQuestion.id }),
           questionText: passage.content || '',
           orderNumber: 1,
           score: 1,
@@ -260,6 +284,36 @@ const CreateReadingChallenge = () => {
             data: [] // Empty data array as requested
           }
         }];
+        
+        console.log('Writing question created:', {
+          hasId: !!transformedQuestions[0].id,
+          id: transformedQuestions[0].id,
+          questionText: transformedQuestions[0].questionText.substring(0, 50) + '...'
+        });
+      } else if (isSpeakingChallenge) {
+        // Speaking Challenge: Create a single question with passage content as questionText
+        // The content will contain [[dur_3]] placeholder injected earlier
+        // When editing (passage.questions exists and has id), include the id
+        const existingQuestion = passage.questions && passage.questions.length > 0 ? passage.questions[0] : null;
+        
+        transformedQuestions = [{
+          // Include id if editing existing passage
+          ...(existingQuestion?.isFromBackend && existingQuestion?.id && { id: existingQuestion.id }),
+          questionText: passage.content || '',
+          orderNumber: 1,
+          score: 1,
+          questionType: 'SPEAKING', // Custom type for speaking
+          toBeDeleted: false,
+          content: {
+            data: [] // Empty data array as requested
+          }
+        }];
+        
+        console.log('Speaking question created:', {
+          hasId: !!transformedQuestions[0].id,
+          id: transformedQuestions[0].id,
+          questionText: transformedQuestions[0].questionText.substring(0, 50) + '...'
+        });
       } else {
         // Other challenges: Transform questions normally
         transformedQuestions = (passage.questions || []).map((question, index) => {
@@ -395,6 +449,31 @@ const CreateReadingChallenge = () => {
       });
       }
 
+      // For speaking challenges, inject [[dur_3]] placeholder into the content
+      // This needs to be done for both section content and question text
+      let finalContent = passage.content;
+      let finalQuestionText = passage.content;
+      
+      if (isSpeakingChallenge) {
+        // If content doesn't already contain [[dur_3]], append it
+        if (!finalContent.includes('[[dur_3]]')) {
+          finalContent = `${finalContent} [[dur_3]]`;
+          finalQuestionText = finalContent; // Use the same content with [[dur_3]] for questionText
+        }
+      }
+
+      // Update transformedQuestions for speaking to use content with [[dur_3]]
+      // Preserve id when updating (don't overwrite existing transformed question)
+      if (isSpeakingChallenge && transformedQuestions && transformedQuestions.length > 0) {
+        const existingId = transformedQuestions[0].id;
+        transformedQuestions[0].questionText = finalQuestionText;
+        // Restore id if it was there (for editing)
+        if (existingId && !transformedQuestions[0].id) {
+          transformedQuestions[0].id = existingId;
+        }
+        console.log('Updated speaking question with [[dur_3]], id preserved:', transformedQuestions[0].id);
+      }
+
       // Create section data similar to Grammar & Vocabulary but with multiple questions in one section
       // Include sectionId if editing existing passage (especially for WR writing challenges)
       // Include audioUrl if listening/speaking challenge has audio
@@ -407,7 +486,7 @@ const CreateReadingChallenge = () => {
                         isSpeakingChallenge ? "Speaking Section" : 
                         "Reading Section",
           sectionsUrl: (isListeningChallenge || isSpeakingChallenge) && passage.audioUrl ? passage.audioUrl : "", // Audio URL for listening/speaking
-          sectionsContent: passage.content,
+          sectionsContent: finalContent,
           orderNumber: 1, // First section
           resourceType: (isListeningChallenge || isSpeakingChallenge) ? "FILE" : "DOCUMENT" // FILE for listening/speaking, DOCUMENT for reading/writing
         },
@@ -417,7 +496,20 @@ const CreateReadingChallenge = () => {
       console.log('Saving section with questions:', sectionData);
       console.log('Challenge ID:', currentChallengeId);
       console.log('Section ID:', passage.sectionId);
+      console.log('Is Speaking Challenge:', isSpeakingChallenge);
+      console.log('Is Listening Challenge:', isListeningChallenge);
       console.log('Is Writing Challenge:', isWritingChallenge);
+      console.log('Resource Type:', sectionData.section.resourceType);
+      console.log('Audio URL:', sectionData.section.sectionsUrl);
+      console.log('Recording Time (fixed):', isSpeakingChallenge ? '3 minutes ([[dur_3]])' : 'N/A');
+      console.log('Section Content:', sectionData.section.sectionsContent);
+      console.log('Questions count:', transformedQuestions.length);
+      if (isSpeakingChallenge && transformedQuestions.length > 0) {
+        console.log('Speaking Question:', {
+          questionText: transformedQuestions[0].questionText,
+          questionType: transformedQuestions[0].questionType
+        });
+      }
 
       // Try using the same API as DailyChallengeContent but with multiple questions
       const response = await dailyChallengeApi.saveSectionWithQuestions(currentChallengeId, sectionData);
@@ -537,12 +629,24 @@ const CreateReadingChallenge = () => {
       // Upload file directly to server (as multipart/form-data)
       const response = await dailyChallengeApi.uploadFile(file);
       
-      // Get URL from response
-      const audioUrl = response?.data || response?.data?.url;
+      console.log('Audio upload response:', response);
+      
+      // Get URL from response - handle different response formats
+      let audioUrl = null;
+      if (response?.data?.url) {
+        audioUrl = response.data.url;
+      } else if (response?.data) {
+        audioUrl = response.data;
+      } else if (typeof response === 'string') {
+        audioUrl = response;
+      }
       
       if (!audioUrl) {
+        console.error('Upload response structure:', response);
         throw new Error("Upload failed: No URL returned from server");
       }
+      
+      console.log('Extracted audio URL:', audioUrl);
 
       // Create local preview URL for immediate feedback
       const previewUrl = URL.createObjectURL(file);
@@ -612,12 +716,15 @@ const CreateReadingChallenge = () => {
       })) : []),
       // Ensure points/score is available
       points: question.points || question.score || 1,
-      // Ensure correct answer for true/false
+      // Ensure correct answer for true/false - check options array first, then content.data
       correctAnswer: question.correctAnswer !== undefined ? question.correctAnswer : 
-                    (question.content?.data?.find(item => item.correct)?.value === 'True')
+                    (question.options?.find(option => option.isCorrect)?.text || 
+                     question.content?.data?.find(item => item.correct)?.value || 'False')
     };
     
     console.log('Transformed question for modal:', transformedQuestion);
+    console.log('Original question options:', question.options);
+    console.log('Original question content.data:', question.content?.data);
     
     setEditingQuestion(transformedQuestion);
     setActiveModal(normalizedType);
@@ -1039,7 +1146,15 @@ const CreateReadingChallenge = () => {
                              {uploadedAudioFileName || 'Audio file uploaded'}
                            </span>
                          </div>
-                         <audio controls style={{ width: '100%', height: '32px' }}>
+                         <audio 
+                           controls 
+                           style={{ width: '100%', height: '32px' }}
+                           volume={1.0}
+                           onLoadedMetadata={(e) => {
+                             // Set volume to maximum (1.0) when audio loads
+                             e.target.volume = 1.0;
+                           }}
+                         >
                            <source src={passage.audioPreviewUrl || passage.audioUrl} type="audio/mpeg" />
                            Your browser does not support the audio element.
                          </audio>
@@ -1555,40 +1670,17 @@ const CreateReadingChallenge = () => {
                       margin: 0, 
                       color: theme === 'sun' ? '#1E40AF' : '#8377A0'
                     }}>
-                      Recording Settings
+                      Recording Time 
                     </Title>
                   </Space>
                 </div>
 
                 <Divider />
 
-                {/* Recording Time Selection */}
+                {/* Recording Time Display - Fixed at 3 minutes */}
                 <div style={{ padding: '20px' }}>
-                  <Text strong style={{ 
-                    fontSize: '16px',
-                    color: theme === 'sun' ? '#1E40AF' : '#8377A0',
-                    display: 'block',
-                    marginBottom: '16px'
-                  }}>
-                    Select recording time:
-                  </Text>
-                  
-                  <Select
-                    value={recordingTimeSeconds}
-                    onChange={(value) => setRecordingTimeSeconds(value)}
-                    style={{ 
-                      width: '100%',
-                      height: '50px'
-                    }}
-                    size="large"
-                  >
-                    <Select.Option value={30}>30 seconds</Select.Option>
-                    <Select.Option value={60}>1 minute</Select.Option>
-                    <Select.Option value={120}>2 minutes</Select.Option>
-                    <Select.Option value={180}>3 minutes</Select.Option>
-                    <Select.Option value={300}>5 minutes</Select.Option>
-                  </Select>
-
+                
+                
                   {/* Current Selection Display */}
                   <div style={{
                     marginTop: '24px',
@@ -1603,19 +1695,14 @@ const CreateReadingChallenge = () => {
                     textAlign: 'center'
                   }}>
                     <Text style={{ fontSize: '14px', color: '#666', display: 'block', marginBottom: '8px' }}>
-                      Selected time:
+                      Recording time:
                     </Text>
                     <Text strong style={{ 
                       fontSize: '24px', 
                       color: theme === 'sun' ? '#1890ff' : '#8B5CF6',
                       fontWeight: 700
                     }}>
-                      {recordingTimeSeconds === 30 ? '30 seconds' :
-                       recordingTimeSeconds === 60 ? '1 minute' :
-                       recordingTimeSeconds === 120 ? '2 minutes' :
-                       recordingTimeSeconds === 180 ? '3 minutes' :
-                       recordingTimeSeconds === 300 ? '5 minutes' :
-                       `${recordingTimeSeconds} seconds`}
+                      3 minutes
                     </Text>
                   </div>
 
@@ -1634,7 +1721,7 @@ const CreateReadingChallenge = () => {
                         💡 Information
                       </Text>
                       <Text style={{ fontSize: '13px', color: '#666', display: 'block' }}>
-                        Students will have this amount of time to record their speaking response. The timer will start automatically when they begin recording.
+                        Students will have 3 minutes to record their speaking response. The timer will start automatically when they begin recording.
                       </Text>
                     </Space>
                   </div>
