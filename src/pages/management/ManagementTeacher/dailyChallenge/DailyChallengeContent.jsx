@@ -32,6 +32,7 @@ import {
   SettingOutlined,
   MenuFoldOutlined,
   MenuUnfoldOutlined,
+  EyeOutlined,
 } from "@ant-design/icons";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import ThemedLayout from "../../../../component/teacherlayout/ThemedLayout";
@@ -86,9 +87,49 @@ const getChallengeTypeName = (typeCode) => {
   return typeMap[typeCode] || typeCode || 'Unknown';
 };
 
+// Helper function to replace [[dur_3]] with HTML badge
+const processPassageContent = (content, theme, challengeType) => {
+  if (!content) return '';
+  
+  // Only process for Speaking challenges
+  if (challengeType === 'SP') {
+    const badgeColor = theme === 'sun' ? '#1890ff' : '#8B5CF6';
+    const badgeBgColor = theme === 'sun' 
+      ? 'rgba(24, 144, 255, 0.1)' 
+      : 'rgba(139, 92, 246, 0.15)';
+    const badgeBorderColor = theme === 'sun' 
+      ? 'rgba(24, 144, 255, 0.3)' 
+      : 'rgba(139, 92, 246, 0.4)';
+    
+    const badgeHtml = `
+      <span style="
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 14px;
+        background: ${badgeBgColor};
+        border: 2px solid ${badgeBorderColor};
+        border-radius: 8px;
+        font-weight: 600;
+        font-size: 14px;
+        color: ${badgeColor};
+        margin: 0 4px;
+        vertical-align: middle;
+      ">
+        <span style="font-size: 16px;">🎤</span>
+        Voice Recording 3 minutes
+      </span>
+    `;
+    
+    return content.replace(/\[\[dur_3\]\]/g, badgeHtml);
+  }
+  
+  return content;
+};
+
 // Sortable Passage Item Component
 const SortablePassageItem = memo(
-  ({ passage, index, onDeletePassage, onEditPassage, onDuplicatePassage, onPointsChange, theme, t }) => {
+  ({ passage, index, onDeletePassage, onEditPassage, onDuplicatePassage, onPointsChange, theme, t, challengeType }) => {
     const animateLayoutChanges = useCallback((args) => {
       const { isSorting, wasDragging } = args;
       if (isSorting || wasDragging) {
@@ -153,7 +194,15 @@ const SortablePassageItem = memo(
                 }}
               />
             </div>
-            <Typography.Text strong>Passage for next {passage.questions?.length || 0} questions</Typography.Text>
+            <Typography.Text strong>
+              {challengeType === 'WR' 
+                ? 'Writing Part' 
+                : challengeType === 'LI' 
+                  ? `Listening Passage for next ${passage.questions?.length || 0} questions`
+                  : challengeType === 'SP'
+                    ? `Speaking Passage`
+                    : `Passage for next ${passage.questions?.length || 0} questions`}
+            </Typography.Text>
           </div>
           <div className="passage-controls">
             <Select
@@ -198,8 +247,8 @@ const SortablePassageItem = memo(
         </div>
 
         <div className="passage-content">
-          {/* Audio Player for Listening Passages */}
-          {passage.type === 'LISTENING_PASSAGE' && passage.audioUrl && (
+          {/* Audio Player for Listening and Speaking Passages */}
+          {(passage.type === 'LISTENING_PASSAGE' || passage.type === 'SPEAKING_PASSAGE') && passage.audioUrl && (
             <div style={{
               marginBottom: '16px',
               padding: '16px',
@@ -241,11 +290,23 @@ const SortablePassageItem = memo(
                 : '1px solid rgba(138, 122, 255, 0.2)',
               color: '#000000'
             }}
-            dangerouslySetInnerHTML={{ __html: passage.content }}
-          />
+          >
+            <style>{`
+              img {
+                max-width: 300px;
+                max-height: 300px;
+                width: auto;
+                height: auto;
+                object-fit: contain;
+                margin: 8px 0;
+                display: block;
+              }
+            `}</style>
+            <div dangerouslySetInnerHTML={{ __html: processPassageContent(passage.content, theme, challengeType) }} />
+          </div>
 
           {/* Questions inside passage */}
-          {passage.questions && passage.questions.length > 0 && (
+          {challengeType !== 'WR' && challengeType !== 'SP' && passage.questions && passage.questions.length > 0 && (
             <div style={{ marginTop: '16px' }}>
               {passage.questions.map((question, qIndex) => (
                 <div 
@@ -266,7 +327,11 @@ const SortablePassageItem = memo(
                 >
                   <div className="question-header">
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1 }}>
-                      <Typography.Text strong>{qIndex + 1}. {getQuestionTypeLabel(question.type)}</Typography.Text>
+                      <Typography.Text strong>
+                        {challengeType === 'WR' 
+                          ? `Writing part ${qIndex + 1}` 
+                          : `${qIndex + 1}. ${getQuestionTypeLabel(question.type)}`}
+                      </Typography.Text>
                     </div>
                     <div className="question-controls">
                       <Select
@@ -283,16 +348,17 @@ const SortablePassageItem = memo(
                   </div>
 
                   <div className="question-content">
-                    {/* Render question based on type */}
+                    {/* Render question based on type with inline replacements */}
                     {question.type === 'FILL_IN_THE_BLANK' ? (
                       <div>
                         <div 
                           style={{ 
                             marginBottom: '16px', 
                             fontSize: '15px', 
-                            fontWeight: 500 
+                            fontWeight: 500,
+                            lineHeight: '1.8'
                           }}
-                          dangerouslySetInnerHTML={{ __html: question.questionText || question.question }}
+                          dangerouslySetInnerHTML={{ __html: renderFillBlankQuestionInline(question, theme) }}
                         />
                         {question.content?.data && question.content.data.length > 0 && (
                           <div style={{ 
@@ -332,6 +398,335 @@ const SortablePassageItem = memo(
                                 </span>
                               </div>
                             ))}
+                          </div>
+                        )}
+                      </div>
+                    ) : question.type === 'DROPDOWN' ? (
+                      <div>
+                        <div 
+                          style={{ 
+                            marginBottom: '16px', 
+                            fontSize: '15px', 
+                            fontWeight: 500,
+                            lineHeight: '1.8'
+                          }}
+                          dangerouslySetInnerHTML={{ __html: renderDropdownQuestionInline(question, theme) }}
+                        />
+                        {question.content?.data && question.content.data.length > 0 && (
+                          <div style={{ 
+                            marginTop: '16px',
+                            display: 'grid',
+                            gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+                            gap: '12px'
+                          }}>
+                            {/* Group options by positionId */}
+                            {(() => {
+                              const positionGroups = {};
+                              question.content.data.forEach((item) => {
+                                if (!positionGroups[item.positionId]) {
+                                  positionGroups[item.positionId] = [];
+                                }
+                                positionGroups[item.positionId].push(item);
+                              });
+                              
+                              return Object.keys(positionGroups).map((positionId, idx) => {
+                                const group = positionGroups[positionId];
+                                const correctOption = group.find(opt => opt.correct === true);
+                                const incorrectOptions = group.filter(opt => opt.correct === false);
+                                const allOptions = [
+                                  correctOption?.value || '',
+                                  ...incorrectOptions.map(opt => opt.value).filter(value => value)
+                                ];
+                                
+                                return (
+                                  <div 
+                                    key={idx}
+                                    style={{
+                                      padding: '10px',
+                                      background: theme === 'sun' 
+                                        ? 'rgba(24, 144, 255, 0.05)' 
+                                        : 'rgba(167, 139, 250, 0.1)',
+                                      border: theme === 'sun' 
+                                        ? '2px solid rgba(24, 144, 255, 0.2)' 
+                                        : '2px solid rgba(167, 139, 250, 0.3)',
+                                      borderRadius: '8px'
+                                    }}
+                                  >
+                                    <div style={{
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      gap: '6px',
+                                      marginBottom: '8px'
+                                    }}>
+                                      <span style={{
+                                        width: '20px',
+                                        height: '20px',
+                                        borderRadius: '50%',
+                                        background: theme === 'sun' ? '#1890ff' : '#A78BFA',
+                                        color: 'white',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        fontSize: '11px',
+                                        fontWeight: 700
+                                      }}>
+                                        {idx + 1}
+                                      </span>
+                                      <span style={{ fontWeight: 600, fontSize: '13px', color: theme === 'sun' ? '#1890ff' : '#A78BFA' }}>
+                                        Dropdown {idx + 1}
+                                      </span>
+                                    </div>
+                                    <div style={{ marginBottom: '6px' }}>
+                                      <span style={{ fontSize: '11px', color: '#52c41a', fontWeight: 600 }}>✓</span>
+                                      <span style={{ 
+                                        marginLeft: '6px',
+                                        padding: '3px 10px',
+                                        background: 'rgba(82, 196, 26, 0.1)',
+                                        border: '1.5px solid rgba(82, 196, 26, 0.4)',
+                                        borderRadius: '6px',
+                                        fontSize: '12px',
+                                        fontWeight: 500,
+                                        color: theme === 'sun' ? '#333' : '#000000'
+                                      }}>
+                                        {correctOption?.value || ''}
+                                      </span>
+                                    </div>
+                                    {allOptions.length > 1 && (
+                                      <div>
+                                        <span style={{ fontSize: '11px', color: '#666', fontWeight: 600 }}>Options:</span>
+                                        <div style={{ 
+                                          display: 'flex', 
+                                          flexWrap: 'wrap', 
+                                          gap: '4px',
+                                          marginTop: '4px'
+                                        }}>
+                                          {allOptions.map((option, optIdx) => (
+                                            <span 
+                                              key={optIdx}
+                                              style={{
+                                                padding: '2px 8px',
+                                                background: option === correctOption?.value 
+                                                  ? 'rgba(82, 196, 26, 0.1)' 
+                                                  : 'rgba(0, 0, 0, 0.04)',
+                                                border: option === correctOption?.value
+                                                  ? '1.5px solid rgba(82, 196, 26, 0.4)'
+                                                  : '1.5px solid rgba(0, 0, 0, 0.1)',
+                                                borderRadius: '6px',
+                                                fontSize: '11px',
+                                                color: theme === 'sun' ? '#333' : '#000000'
+                                              }}
+                                            >
+                                              {option}
+                                            </span>
+                                          ))}
+                                        </div>
+                                      </div>
+                                    )}
+                                  </div>
+                                );
+                              });
+                            })()}
+                          </div>
+                        )}
+                      </div>
+                    ) : question.type === 'DRAG_AND_DROP' ? (
+                      <div>
+                        <div 
+                          style={{ 
+                            marginBottom: '16px', 
+                            fontSize: '15px', 
+                            fontWeight: 500,
+                            lineHeight: '1.8'
+                          }}
+                          dangerouslySetInnerHTML={{ __html: renderDragDropQuestionInline(question, theme) }}
+                        />
+                        {question.content?.data && question.content.data.length > 0 && (
+                          <div style={{ 
+                            marginTop: '16px',
+                            display: 'flex', 
+                            flexWrap: 'wrap', 
+                            gap: '12px'
+                          }}>
+                            {/* Correct options */}
+                            {question.content.data.filter(item => item.positionId && item.correct === true).map((item, idx) => (
+                              <div 
+                                key={idx}
+                                style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '8px',
+                                  padding: '8px 16px',
+                                  background: theme === 'sun' 
+                                    ? 'rgba(24, 144, 255, 0.08)' 
+                                    : 'rgba(139, 92, 246, 0.15)',
+                                  border: theme === 'sun' 
+                                    ? '2px solid rgba(24, 144, 255, 0.3)' 
+                                    : '2px solid rgba(139, 92, 246, 0.4)',
+                                  borderRadius: '8px',
+                                  fontSize: '14px',
+                                  fontWeight: 500
+                                }}
+                              >
+                                <span style={{ 
+                                  fontWeight: 700, 
+                                  color: theme === 'sun' ? '#1890ff' : '#8B5CF6',
+                                  fontSize: '15px'
+                                }}>
+                                  ({idx + 1})
+                                </span>
+                                <span style={{ color: theme === 'sun' ? '#333' : '#000000' }}>
+                                  {item.value}
+                                </span>
+                              </div>
+                            ))}
+                            {/* Incorrect options */}
+                            {question.content.data.filter(item => !item.positionId || item.correct === false).map((item, idx) => (
+                              <div 
+                                key={`incorrect-${idx}`}
+                                style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  padding: '6px 12px',
+                                  background: theme === 'sun' 
+                                    ? 'rgba(217, 217, 217, 0.2)' 
+                                    : 'rgba(255, 255, 255, 0.08)',
+                                  border: theme === 'sun' 
+                                    ? '1.5px solid rgba(217, 217, 217, 0.5)' 
+                                    : '1.5px solid rgba(255, 255, 255, 0.2)',
+                                  borderRadius: '8px',
+                                  fontSize: '13px',
+                                  fontWeight: 500,
+                                  color: theme === 'sun' ? '#666' : '#b0b0b0'
+                                }}
+                              >
+                                {item.value}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ) : question.type === 'REARRANGE' ? (
+                      <div>
+                        <div 
+                          style={{ 
+                            marginBottom: '16px', 
+                            fontSize: '15px', 
+                            fontWeight: 500,
+                            lineHeight: '1.8'
+                          }}
+                          dangerouslySetInnerHTML={{ __html: renderRearrangeQuestionInline(question, theme) }}
+                        />
+                        {question.content?.data && question.content.data.length > 0 && (
+                          <div style={{ 
+                            marginTop: '16px',
+                            display: 'flex', 
+                            flexWrap: 'wrap', 
+                            gap: '12px'
+                          }}>
+                            {question.content.data.sort((a, b) => (a.positionOrder || 0) - (b.positionOrder || 0)).map((item, idx) => (
+                              <div 
+                                key={idx}
+                                style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '8px',
+                                  padding: '8px 16px',
+                                  background: theme === 'sun' 
+                                    ? 'rgba(240, 247, 255, 0.5)' 
+                                    : 'rgba(243, 232, 255, 0.2)',
+                                  border: theme === 'sun' 
+                                    ? '2px solid #1890ff' 
+                                    : '2px solid #A78BFA',
+                                  borderRadius: '8px',
+                                  fontSize: '14px',
+                                  fontWeight: 500
+                                }}
+                              >
+                                <span style={{ 
+                                  fontWeight: 700, 
+                                  color: theme === 'sun' ? '#1890ff' : '#A78BFA',
+                                  fontSize: '15px'
+                                }}>
+                                  ({idx + 1})
+                                </span>
+                                <span style={{ color: theme === 'sun' ? '#333' : '#000000' }}>
+                                  {item.value}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ) : question.type === 'REWRITE' ? (
+                      <div>
+                        <div 
+                          style={{ 
+                            marginBottom: '16px', 
+                            fontSize: '15px', 
+                            fontWeight: 500,
+                            lineHeight: '1.8'
+                          }}
+                          dangerouslySetInnerHTML={{ __html: question.questionText || question.question }}
+                        />
+                        {question.content?.data && question.content.data.length > 0 && (
+                          <div style={{ 
+                            background: 'rgba(82, 196, 26, 0.1)',
+                            border: '2px solid rgba(82, 196, 26, 0.3)',
+                            borderRadius: '12px',
+                            padding: '16px'
+                          }}>
+                            <div style={{ 
+                              fontSize: '14px', 
+                              fontWeight: 600, 
+                              color: '#52c41a',
+                              marginBottom: '12px',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '8px'
+                            }}>
+                              ✓ Correct Answers:
+                            </div>
+                            <div style={{ 
+                              display: 'flex',
+                              flexDirection: 'column',
+                              gap: '10px'
+                            }}>
+                              {question.content.data.map((item, idx) => (
+                                <div 
+                                  key={item.id || idx}
+                                  style={{
+                                    padding: '10px 16px',
+                                    background: 'linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%)',
+                                    border: '2px solid #22c55e',
+                                    borderRadius: '8px',
+                                    fontSize: '14px',
+                                    fontWeight: 500,
+                                    color: theme === 'sun' ? '#333' : '#000000',
+                                    display: 'flex',
+                                    alignItems: 'flex-start',
+                                    gap: '10px',
+                                    boxShadow: '0 2px 6px rgba(34, 197, 94, 0.12)'
+                                  }}
+                                >
+                                  <span style={{
+                                    fontWeight: 700,
+                                    color: '#52c41a',
+                                    fontSize: '13px',
+                                    minWidth: '20px',
+                                    lineHeight: '1.4'
+                                  }}>
+                                    {idx + 1}.
+                                  </span>
+                                  <div 
+                                    style={{ 
+                                      flex: 1,
+                                      lineHeight: '1.4'
+                                    }}
+                                    dangerouslySetInnerHTML={{ __html: item.value }} 
+                                  />
+                                </div>
+                              ))}
+                            </div>
                           </div>
                         )}
                       </div>
@@ -408,6 +803,149 @@ const getQuestionTypeLabel = (type) => {
     default:
       return 'Multiple Choice';
   }
+};
+
+// Helper function to render Fill in the Blank question with inline replacements
+const renderFillBlankQuestionInline = (question, theme) => {
+  if (!question.questionText || !question.content?.data) {
+    return question.questionText || question.question;
+  }
+
+  let displayText = question.questionText;
+  const blankColor = theme === 'sun' ? '#1890ff' : '#8B5CF6';
+  const blankBgColor = theme === 'sun' 
+    ? 'rgba(24, 144, 255, 0.08)' 
+    : 'rgba(139, 92, 246, 0.15)';
+  const blankBorderColor = theme === 'sun' 
+    ? 'rgba(24, 144, 255, 0.3)' 
+    : 'rgba(139, 92, 246, 0.4)';
+
+  question.content.data.forEach((item, idx) => {
+    const number = idx + 1;
+    const pattern = `[[pos_${item.positionId}]]`;
+    
+    displayText = displayText.replace(
+      pattern,
+      `<span style="display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; background: ${blankBgColor}; border: 2px solid ${blankBorderColor}; border-radius: 8px; font-weight: 600; color: ${blankColor}; margin: 0 4px;">
+        <span style="width: 18px; height: 18px; border-radius: 50%; background: ${blankColor}; color: white; display: inline-flex; align-items: center; justify-content: center; font-size: 11px;">${number}</span>
+        <span style="text-decoration: underline; padding: 0 2px;">____</span>
+      </span>`
+    );
+  });
+
+  return displayText;
+};
+
+// Helper function to render Dropdown question with inline replacements
+const renderDropdownQuestionInline = (question, theme) => {
+  if (!question.questionText || !question.content?.data) {
+    return question.questionText || question.question;
+  }
+
+  let displayText = question.questionText;
+  const dropdownColor = theme === 'sun' ? '#1890ff' : '#A78BFA';
+  const dropdownBgStart = theme === 'sun' 
+    ? 'rgba(24, 144, 255, 0.15)' 
+    : 'rgba(167, 139, 250, 0.2)';
+  const dropdownBgEnd = theme === 'sun' 
+    ? 'rgba(24, 144, 255, 0.25)' 
+    : 'rgba(167, 139, 250, 0.3)';
+  const dropdownBorderColor = theme === 'sun' ? '#1890ff' : '#A78BFA';
+
+  // Group options by positionId
+  const positionGroups = {};
+  question.content.data.forEach((item) => {
+    if (!positionGroups[item.positionId]) {
+      positionGroups[item.positionId] = [];
+    }
+    positionGroups[item.positionId].push(item);
+  });
+  
+  // Process each position group
+  Object.keys(positionGroups).forEach((positionId, idx) => {
+    const number = idx + 1;
+    const pattern = `[[pos_${positionId}]]`;
+    
+    displayText = displayText.replace(
+      pattern,
+      `<span style="display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; background: linear-gradient(135deg, ${dropdownBgStart}, ${dropdownBgEnd}); border: 2px solid ${dropdownBorderColor}; border-radius: 8px; font-weight: 600; color: ${dropdownColor}; margin: 0 4px;">
+        <span style="width: 18px; height: 18px; border-radius: 50%; background: ${dropdownColor}; color: white; display: inline-flex; align-items: center; justify-content: center; font-size: 11px;">${number}</span>
+        <span style="font-size: 13px;">▼</span>
+      </span>`
+    );
+  });
+
+  return displayText;
+};
+
+// Helper function to render Drag and Drop question with inline replacements
+const renderDragDropQuestionInline = (question, theme) => {
+  if (!question.questionText || !question.content?.data) {
+    return question.questionText || question.question;
+  }
+
+  let displayText = question.questionText;
+  const blankColor = theme === 'sun' ? '#1890ff' : '#8B5CF6';
+  const blankBgColor = theme === 'sun' 
+    ? 'rgba(24, 144, 255, 0.08)' 
+    : 'rgba(139, 92, 246, 0.15)';
+  const blankBorderColor = theme === 'sun' 
+    ? 'rgba(24, 144, 255, 0.3)' 
+    : 'rgba(139, 92, 246, 0.4)';
+
+  // Filter correct options (those with positionId and correct: true)
+  const correctOptions = question.content.data.filter(item => 
+    item.positionId && item.correct === true
+  );
+  
+  correctOptions.forEach((item, idx) => {
+    const number = idx + 1;
+    const pattern = `[[pos_${item.positionId}]]`;
+    
+    displayText = displayText.replace(
+      pattern,
+      `<span style="display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; background: linear-gradient(135deg, ${blankBgColor}, ${blankBgColor.replace('0.08', '0.15').replace('0.15', '0.25')}); border: 2px solid ${blankBorderColor}; border-radius: 8px; font-weight: 600; color: ${blankColor}; margin: 0 4px;">
+        <span style="width: 18px; height: 18px; border-radius: 50%; background: ${blankColor}; color: white; display: inline-flex; align-items: center; justify-content: center; font-size: 11px;">${number}</span>
+        <span style="text-decoration: underline; padding: 0 2px;">____</span>
+      </span>`
+    );
+  });
+
+  return displayText;
+};
+
+// Helper function to render Rearrange question with inline replacements
+const renderRearrangeQuestionInline = (question, theme) => {
+  if (!question.questionText || !question.content?.data) {
+    return question.questionText || question.question;
+  }
+
+  let displayText = question.questionText;
+  const wordBgStart = theme === 'sun' 
+    ? 'rgba(240, 247, 255, 0.5)' 
+    : 'rgba(243, 232, 255, 0.2)';
+  const wordBgEnd = theme === 'sun' 
+    ? 'rgba(230, 244, 255, 0.8)' 
+    : 'rgba(233, 213, 255, 0.3)';
+  const wordBorderColor = theme === 'sun' ? '#1890ff' : '#A78BFA';
+
+  // Sort by positionOrder to get correct order
+  const sortedData = question.content.data.sort((a, b) => (a.positionOrder || 0) - (b.positionOrder || 0));
+  
+  sortedData.forEach((item, idx) => {
+    const number = idx + 1;
+    const pattern = `[[pos_${item.positionId}]]`;
+    
+    displayText = displayText.replace(
+      pattern,
+      `<span style="display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; background: linear-gradient(135deg, ${wordBgStart}, ${wordBgEnd}); border: 2px solid ${wordBorderColor}; border-radius: 8px; font-weight: 600; color: ${wordBorderColor}; margin: 0 4px;">
+        <span style="width: 18px; height: 18px; border-radius: 50%; background: ${wordBorderColor}; color: white; display: inline-flex; align-items: center; justify-content: center; font-size: 11px;">${number}</span>
+        <span style="text-decoration: underline; padding: 0 2px;">____</span>
+      </span>`
+    );
+  });
+
+  return displayText;
 };
 
 // Sortable Question Item Component
@@ -1573,70 +2111,149 @@ const DailyChallengeContent = () => {
 
       // Transform API response to match component format
       if (response && response.data) {
-        const apiQuestions = response.data;
+        const apiSections = response.data;
+        const mappedQuestions = [];
+        const mappedPassages = [];
         
-        // Map API data to question format
-        const mappedQuestions = apiQuestions.map((item, index) => {
-          // Get section info
+        // Process each section
+        apiSections.forEach((item, index) => {
           const section = item.section || {};
-          
-          // Get questions from this section
           const questionsList = item.questions || [];
           
-          // Map each question
-          return questionsList.map((question, qIndex) => {
-            // Get question content - parse from content.data array
-            const contentData = question.content?.data || [];
-            const options = contentData.map((contentItem, idx) => ({
-              key: String.fromCharCode(65 + idx), // A, B, C, D...
-              text: contentItem.value || '',
-              isCorrect: contentItem.correct || false,
-            }));
+          // Check if this section is a DOCUMENT (passage) or FILE (listening/speaking passage)
+          if (section.resourceType === 'DOCUMENT' || section.resourceType === 'FILE') {
+            // Determine passage type based on resourceType and challengeType
+            let passageType = 'READING_PASSAGE';
+            if (section.resourceType === 'FILE') {
+              // Check challengeType to differentiate between LISTENING and SPEAKING
+              const currentChallengeType = challengeDetails?.challengeType;
+              passageType = currentChallengeType === 'SP' ? 'SPEAKING_PASSAGE' : 'LISTENING_PASSAGE';
+            }
+            
+            // Create passage object
+            const passage = {
+              id: section.id || `passage_${index}`,
+              type: passageType,
+              content: section.sectionsContent || '',
+              audioUrl: section.resourceType === 'FILE' ? section.sectionsUrl : undefined, // Audio URL for listening passages
+              points: 1, // Default points
+              questions: questionsList.map((question, qIndex) => {
+                // Get question content - parse from content.data array
+                const contentData = question.content?.data || [];
+                const options = contentData.map((contentItem, idx) => ({
+                  key: String.fromCharCode(65 + idx), // A, B, C, D...
+                  text: contentItem.value || '',
+                  isCorrect: contentItem.correct || false,
+                }));
 
-            const mappedQuestion = {
-              id: question.id || `${section.id}-${qIndex}`,
-              type: question.questionType,
-              question: question.questionText || '',
-              questionText: question.questionText || '', // Add this for FillBlank
-              options: options,
-              content: question.content, // Preserve original content for FillBlank
-              incorrectOptions: [], // Will be set from content.data for DRAG_AND_DROP
-              points: question.score || 1,
-              timeLimit: 1,
+                return {
+                  id: question.id || `${section.id}-${qIndex}`,
+                  type: question.questionType,
+                  question: question.questionText || '',
+                  questionText: question.questionText || '', // Keep original questionText for FillBlank, Dropdown, etc.
+                  options: options,
+                  content: question.content, // Preserve original content structure for special question types
+                  incorrectOptions: options.filter(opt => !opt.isCorrect).map(opt => ({
+                    id: opt.key || Date.now(),
+                    text: opt.text
+                  })),
+                  points: question.score || 1,
+                  timeLimit: 1,
+                  sectionId: section.id,
+                  sectionTitle: section.sectionTitle,
+                  orderNumber: question.orderNumber || qIndex + 1,
+                  isFromBackend: true, // Mark as loaded from backend
+                };
+              }),
               sectionId: section.id,
               sectionTitle: section.sectionTitle,
-              orderNumber: question.orderNumber || qIndex + 1,
+              orderNumber: section.orderNumber || index + 1,
             };
+            
+            mappedPassages.push(passage);
+            console.log('Mapped Passage:', passage);
+          } else {
+            // Regular question section - map each question
+            const sectionQuestions = questionsList.map((question, qIndex) => {
+              // Get question content - parse from content.data array
+              const contentData = question.content?.data || [];
+              console.log(`Question ${question.questionType} - Content Data:`, contentData);
+              
+              const options = contentData.map((contentItem, idx) => ({
+                key: String.fromCharCode(65 + idx), // A, B, C, D...
+                text: contentItem.value || '',
+                isCorrect: contentItem.correct || false,
+              }));
+              
+              console.log(`Question ${question.questionType} - Options:`, options);
 
-            // Log specific question types for debugging
-            if (question.questionType === 'FILL_IN_THE_BLANK') {
-              console.log('FillBlank question:', mappedQuestion);
-            } else if (question.questionType === 'DROPDOWN') {
-              console.log('Dropdown question:', mappedQuestion);
-            } else if (question.questionType === 'DRAG_AND_DROP') {
-              console.log('DragDrop question:', mappedQuestion);
-            } else {
-              console.log(`${question.questionType} question:`, mappedQuestion);
-            }
+              // Extract incorrect options - DRAG_AND_DROP uses same logic as other types
+              // Incorrect options are those with isCorrect: false in the options array
+              const incorrectOptions = options
+                .filter(opt => !opt.isCorrect)
+                .map(opt => ({
+                  id: opt.key || Date.now(),
+                  text: opt.text
+                }));
+              
+              if (question.questionType === 'DRAG_AND_DROP') {
+                console.log('=== DRAG_AND_DROP QUESTION DEBUG ===');
+                console.log('Content Data:', contentData);
+                console.log('Options:', options);
+                console.log('Incorrect Options Extracted:', incorrectOptions);
+                console.log('=====================================');
+              }
+              
+ 
+              const mappedQuestion = {
+                id: question.id || `${section.id}-${qIndex}`,
+                type: question.questionType,
+                question: question.questionText || '',
+                questionText: question.questionText || '', // Add this for FillBlank
+                options: options,
+                content: question.content, // Preserve original content for FillBlank
+                incorrectOptions: incorrectOptions,
+                points: question.score || 1,
+                timeLimit: 1,
+                sectionId: section.id,
+                sectionTitle: section.sectionTitle,
+                orderNumber: question.orderNumber || qIndex + 1,
+              };
 
-            return mappedQuestion;
-          });
-        }).flat(); // Flatten the array to get all questions
+              // Log specific question types for debugging
+              if (question.questionType === 'FILL_IN_THE_BLANK') {
+                console.log('FillBlank question:', mappedQuestion);
+              } else if (question.questionType === 'DROPDOWN') {
+                console.log('Dropdown question:', mappedQuestion);
+              } else if (question.questionType === 'DRAG_AND_DROP') {
+                console.log('DragDrop question:', mappedQuestion);
+              } else {
+                console.log(`${question.questionType} question:`, mappedQuestion);
+              }
+
+              return mappedQuestion;
+            });
+            
+            mappedQuestions.push(...sectionQuestions);
+          }
+        });
 
         console.log('Mapped Questions:', mappedQuestions);
+        console.log('Mapped Passages:', mappedPassages);
 
-        if (mappedQuestions.length > 0) {
-          // Sort questions by orderNumber to ensure correct order
-          const sortedQuestions = mappedQuestions.sort((a, b) => (a.orderNumber || 0) - (b.orderNumber || 0));
-          console.log('Sorted Questions:', sortedQuestions);
-          setQuestions(sortedQuestions);
-        } else {
-          // If no questions, set empty array
-          setQuestions([]);
-        }
+        // Sort questions by orderNumber to ensure correct order
+        const sortedQuestions = mappedQuestions.sort((a, b) => (a.orderNumber || 0) - (b.orderNumber || 0));
+        const sortedPassages = mappedPassages.sort((a, b) => (a.orderNumber || 0) - (b.orderNumber || 0));
+        
+        console.log('Sorted Questions:', sortedQuestions);
+        console.log('Sorted Passages:', sortedPassages);
+        
+        setQuestions(sortedQuestions);
+        setPassages(sortedPassages);
       } else {
-        // If API response is unexpected, set empty array
+        // If API response is unexpected, set empty arrays
         setQuestions([]);
+        setPassages([]);
       }
       
       setLoading(false);
@@ -1644,30 +2261,17 @@ const DailyChallengeContent = () => {
       console.error('Error fetching questions:', error);
       spaceToast.error(error.response?.data?.message);
       
-      // On error, set empty array
+      // On error, set empty arrays
       setQuestions([]);
+      setPassages([]);
       setLoading(false);
     }
   }, [id]);
 
-  // Load passages from localStorage
-  const loadPassages = useCallback(() => {
-    try {
-      const readingPassages = JSON.parse(localStorage.getItem('readingPassages') || '[]');
-      const listeningPassages = JSON.parse(localStorage.getItem('listeningPassages') || '[]');
-      const allPassages = [...readingPassages, ...listeningPassages];
-      setPassages(allPassages);
-    } catch (error) {
-      console.error('Error loading passages:', error);
-      setPassages([]);
-    }
-  }, []);
-
   useEffect(() => {
     fetchChallengeDetails();
     fetchQuestions();
-    loadPassages();
-  }, [fetchChallengeDetails, fetchQuestions, loadPassages]);
+  }, [fetchChallengeDetails, fetchQuestions]);
 
   // Enter/exit daily challenge menu mode
   // Fetch challenge info from API if not available in state
@@ -1773,8 +2377,8 @@ const DailyChallengeContent = () => {
   const handleAddQuestion = useCallback(() => {
     const challengeType = challengeDetails?.challengeType;
     
-    if (challengeType === 'RE' || challengeType === 'LI' || challengeType === 'WR') {
-      // For Reading/Listening/Writing challenges, navigate to CreateReadingChallenge
+    if (challengeType === 'RE' || challengeType === 'LI' || challengeType === 'WR' || challengeType === 'SP') {
+      // For Reading/Listening/Writing/Speaking challenges, navigate to CreateReadingChallenge
       const userRole = user?.role?.toLowerCase();
       
       let basePath;
@@ -1793,6 +2397,11 @@ const DailyChallengeContent = () => {
         basePath = userRole === 'teaching_assistant' 
           ? `/teaching-assistant/daily-challenges/create/writing/${id}`
           : `/teacher/daily-challenges/create/writing/${id}`;
+      } else if (challengeType === 'SP') {
+        // Speaking challenge
+        basePath = userRole === 'teaching_assistant' 
+          ? `/teaching-assistant/daily-challenges/create/speaking/${id}`
+          : `/teacher/daily-challenges/create/speaking/${id}`;
       }
       
       navigate(basePath, {
@@ -1812,10 +2421,31 @@ const DailyChallengeContent = () => {
 
 
   const handleQuestionTypeClick = useCallback((questionType) => {
-    setCurrentModalType(questionType.type);
-    setModalVisible(true);
-    setQuestionTypeModalVisible(false);
-  }, []);
+    // Check if AI generation is selected
+    if (questionType.type === 'ai-generate') {
+      // Navigate to AI generation page
+      const userRole = user?.role?.toLowerCase();
+      const aiPath = userRole === 'teaching_assistant'
+        ? `/teaching-assistant/daily-challenges/create/ai/${id}`
+        : `/teacher/daily-challenges/create/ai/${id}`;
+      
+      navigate(aiPath, {
+        state: {
+          challengeId: id,
+          challengeName: challengeDetails?.challengeName,
+          challengeType: challengeDetails?.challengeType,
+          classId: challengeInfo.classId,
+          className: challengeInfo.className
+        }
+      });
+      
+      setQuestionTypeModalVisible(false);
+    } else {
+      setCurrentModalType(questionType.type);
+      setModalVisible(true);
+      setQuestionTypeModalVisible(false);
+    }
+  }, [id, user, navigate, challengeDetails, challengeInfo]);
 
   // Helper function to transform question data to API format
   const transformQuestionToApiFormat = useCallback((questionData, orderNumber, questionType) => {
@@ -2144,28 +2774,24 @@ const DailyChallengeContent = () => {
     setPublishConfirmModalVisible(false);
   }, []);
 
-  const handlePublishConfirmOk = useCallback(async () => {
-    setPublishConfirmModalVisible(false);
-    await handleSaveChanges('published');
-  }, []);
-
   const handleSaveChanges = useCallback(async (saveAsStatus) => {
-    // Check if there are any visible questions (not deleted)
+    // Check if there are any visible questions or passages (not deleted)
     const visibleQuestions = questions.filter(q => !q.toBeDeleted);
+    const visiblePassages = passages.filter(p => !p.toBeDeleted);
     
-    if (visibleQuestions.length === 0) {
-      spaceToast.warning('Please add at least one question before saving');
+    if (visibleQuestions.length === 0 && visiblePassages.length === 0) {
+      spaceToast.warning('Please add at least one question or passage before saving');
       return;
     }
 
     try {
       setLoading(true);
 
-      // Prepare bulk update data based on visible questions order
+      // Prepare bulk update data based on visible items order
       // Group questions by sectionId to get unique sections
       const sectionsMap = new Map();
       
-      // Collect all sections (including deleted ones)
+      // Collect all sections from questions (including deleted ones)
       questions.forEach((question) => {
         if (question.sectionId !== undefined && question.sectionId !== null) {
           const sectionId = question.sectionId;
@@ -2182,6 +2808,28 @@ const DailyChallengeContent = () => {
             sectionsMap.get(sectionId).toBeDeleted = true;
           } else {
             // If this question is not deleted, mark that section has visible questions
+            sectionsMap.get(sectionId).hasVisibleQuestions = true;
+          }
+        }
+      });
+      
+      // Collect all sections from passages (including deleted ones)
+      passages.forEach((passage) => {
+        if (passage.sectionId !== undefined && passage.sectionId !== null) {
+          const sectionId = passage.sectionId;
+          if (!sectionsMap.has(sectionId)) {
+            sectionsMap.set(sectionId, {
+              id: sectionId,
+              toBeDeleted: false,
+              hasVisibleQuestions: false
+            });
+          }
+          
+          // If this passage is marked for deletion, mark the section for deletion too
+          if (passage.toBeDeleted) {
+            sectionsMap.get(sectionId).toBeDeleted = true;
+          } else {
+            // If this passage is not deleted, mark that section has visible questions
             sectionsMap.get(sectionId).hasVisibleQuestions = true;
           }
         }
@@ -2225,11 +2873,12 @@ const DailyChallengeContent = () => {
         spaceToast.success('Changes saved successfully!');
       }
 
-      // Refresh questions from API to get updated data
+      // Refresh questions and passages from API to get updated data
       await fetchQuestions();
       
-      // Reset isModified flags for all questions
+      // Reset isModified flags for all questions and passages
       setQuestions(prev => prev.map(q => ({ ...q, isModified: false })));
+      setPassages(prev => prev.map(p => ({ ...p, isModified: false })));
 
     } catch (error) {
       console.error('Error saving changes:', error);
@@ -2237,7 +2886,12 @@ const DailyChallengeContent = () => {
     } finally {
       setLoading(false);
     }
-  }, [id, questions, t, fetchQuestions]);
+  }, [id, questions, passages, t, fetchQuestions]);
+
+  const handlePublishConfirmOk = useCallback(async () => {
+    setPublishConfirmModalVisible(false);
+    await handleSaveChanges('published');
+  }, [handleSaveChanges]);
 
   const handleOpenSettings = useCallback(() => {
     setSettingsModalVisible(true);
@@ -2392,36 +3046,46 @@ const DailyChallengeContent = () => {
 
   // Passage handlers
   const handleDeletePassage = useCallback((passageId) => {
-    const passageToDelete = passages.find(p => p.id === passageId);
-    setPassages(prev => prev.filter(p => p.id !== passageId));
+    // Mark passage as toBeDeleted instead of removing it
+    setPassages(prev => prev.map(p => 
+      p.id === passageId 
+        ? { ...p, toBeDeleted: true }
+        : p
+    ));
     
-    // Remove from appropriate localStorage
-    if (passageToDelete?.type === 'LISTENING_PASSAGE') {
-      const listeningPassages = JSON.parse(localStorage.getItem('listeningPassages') || '[]');
-      const updatedListeningPassages = listeningPassages.filter(p => p.id !== passageId);
-      localStorage.setItem('listeningPassages', JSON.stringify(updatedListeningPassages));
-    } else {
-      const readingPassages = JSON.parse(localStorage.getItem('readingPassages') || '[]');
-      const updatedReadingPassages = readingPassages.filter(p => p.id !== passageId);
-      localStorage.setItem('readingPassages', JSON.stringify(updatedReadingPassages));
-    }
-    
-    spaceToast.success('Passage deleted successfully!');
-  }, [passages]);
+    spaceToast.success('Passage marked for deletion. Click Save to apply changes.');
+  }, []);
 
   const handleEditPassage = useCallback((passageId) => {
-    // Navigate to CreateReadingChallenge for editing
+    // Navigate to appropriate edit screen based on challengeType
     const passage = passages.find(p => p.id === passageId);
     if (passage) {
       const userRole = user?.role?.toLowerCase();
-      const isListeningPassage = passage.type === 'LISTENING_PASSAGE';
-      const basePath = userRole === 'teaching_assistant' 
-        ? (isListeningPassage 
-          ? `/teaching-assistant/daily-challenges/create/listening/${id}`
-          : `/teaching-assistant/daily-challenges/create/reading/${id}`)
-        : (isListeningPassage 
-          ? `/teacher/daily-challenges/create/listening/${id}`
-          : `/teacher/daily-challenges/create/reading/${id}`);
+      const challengeType = challengeDetails?.challengeType;
+      
+      // Determine the base path based on challengeType
+      let basePath;
+      if (challengeType === 'WR') {
+        // Writing challenge
+        basePath = userRole === 'teaching_assistant' 
+          ? `/teaching-assistant/daily-challenges/create/writing/${id}`
+          : `/teacher/daily-challenges/create/writing/${id}`;
+      } else if (challengeType === 'SP') {
+        // Speaking challenge
+        basePath = userRole === 'teaching_assistant' 
+          ? `/teaching-assistant/daily-challenges/create/speaking/${id}`
+          : `/teacher/daily-challenges/create/speaking/${id}`;
+      } else {
+        // Reading or Listening challenge
+        const isListeningPassage = passage.type === 'LISTENING_PASSAGE';
+        basePath = userRole === 'teaching_assistant' 
+          ? (isListeningPassage 
+            ? `/teaching-assistant/daily-challenges/create/listening/${id}`
+            : `/teaching-assistant/daily-challenges/create/reading/${id}`)
+          : (isListeningPassage 
+            ? `/teacher/daily-challenges/create/listening/${id}`
+            : `/teacher/daily-challenges/create/reading/${id}`);
+      }
       
       navigate(basePath, {
         state: {
@@ -2450,42 +3114,15 @@ const DailyChallengeContent = () => {
       };
       setPassages(prev => [...prev, newPassage]);
       
-      // Update appropriate localStorage
-      if (passageToDuplicate.type === 'LISTENING_PASSAGE') {
-        const listeningPassages = JSON.parse(localStorage.getItem('listeningPassages') || '[]');
-        const updatedListeningPassages = [...listeningPassages, newPassage];
-        localStorage.setItem('listeningPassages', JSON.stringify(updatedListeningPassages));
-      } else {
-        const readingPassages = JSON.parse(localStorage.getItem('readingPassages') || '[]');
-        const updatedReadingPassages = [...readingPassages, newPassage];
-        localStorage.setItem('readingPassages', JSON.stringify(updatedReadingPassages));
-      }
-      
       spaceToast.success('Passage duplicated successfully!');
     }
   }, [passages]);
 
   const handlePassagePointsChange = useCallback((passageId, value) => {
-    const passageToUpdate = passages.find(p => p.id === passageId);
     setPassages(prev => prev.map(p => 
-      p.id === passageId ? { ...p, points: value } : p
+      p.id === passageId ? { ...p, points: value, isModified: true } : p
     ));
-    
-    // Update appropriate localStorage
-    if (passageToUpdate?.type === 'LISTENING_PASSAGE') {
-      const listeningPassages = JSON.parse(localStorage.getItem('listeningPassages') || '[]');
-      const updatedListeningPassages = listeningPassages.map(p => 
-        p.id === passageId ? { ...p, points: value } : p
-      );
-      localStorage.setItem('listeningPassages', JSON.stringify(updatedListeningPassages));
-    } else {
-      const readingPassages = JSON.parse(localStorage.getItem('readingPassages') || '[]');
-      const updatedReadingPassages = readingPassages.map(p => 
-        p.id === passageId ? { ...p, points: value } : p
-      );
-      localStorage.setItem('readingPassages', JSON.stringify(updatedReadingPassages));
-    }
-  }, [passages]);
+  }, []);
 
   const handleDragStart = useCallback(() => {
     document.body.style.overflow = 'hidden';
@@ -2505,31 +3142,62 @@ const DailyChallengeContent = () => {
     document.body.classList.remove('is-dragging');
 
     if (active.id !== over?.id) {
-      setQuestions((items) => {
-        const oldIndex = items.findIndex((item) => item.id === active.id);
-        const newIndex = items.findIndex((item) => item.id === over.id);
+      // Check if we're dragging a passage or question
+      const isPassage = passages.some(p => p.id === active.id);
+      
+      if (isPassage) {
+        // Handle passage reordering
+        setPassages((items) => {
+          const oldIndex = items.findIndex((item) => item.id === active.id);
+          const newIndex = items.findIndex((item) => item.id === over.id);
 
-        if (oldIndex === -1 || newIndex === -1) return items;
+          if (oldIndex === -1 || newIndex === -1) return items;
 
-        const newItems = arrayMove(items, oldIndex, newIndex);
+          const newItems = arrayMove(items, oldIndex, newIndex);
 
-        // Update orderNumber based on visible items (not deleted)
-        const visibleItems = newItems.filter(q => !q.toBeDeleted);
-        return newItems.map((question) => {
-          if (question.toBeDeleted) {
-            return question; // Keep deleted items as-is
-          }
-          
-          // Update orderNumber based on visible items order
-          const visibleIndex = visibleItems.findIndex(item => item.id === question.id);
-          return {
-            ...question,
-            orderNumber: visibleIndex + 1,
-          };
+          // Update orderNumber based on visible items (not deleted)
+          const visibleItems = newItems.filter(p => !p.toBeDeleted);
+          return newItems.map((passage) => {
+            if (passage.toBeDeleted) {
+              return passage; // Keep deleted items as-is
+            }
+            
+            // Update orderNumber based on visible items order
+            const visibleIndex = visibleItems.findIndex(item => item.id === passage.id);
+            return {
+              ...passage,
+              orderNumber: visibleIndex + 1,
+            };
+          });
         });
-      });
+      } else {
+        // Handle question reordering
+        setQuestions((items) => {
+          const oldIndex = items.findIndex((item) => item.id === active.id);
+          const newIndex = items.findIndex((item) => item.id === over.id);
+
+          if (oldIndex === -1 || newIndex === -1) return items;
+
+          const newItems = arrayMove(items, oldIndex, newIndex);
+
+          // Update orderNumber based on visible items (not deleted)
+          const visibleItems = newItems.filter(q => !q.toBeDeleted);
+          return newItems.map((question) => {
+            if (question.toBeDeleted) {
+              return question; // Keep deleted items as-is
+            }
+            
+            // Update orderNumber based on visible items order
+            const visibleIndex = visibleItems.findIndex(item => item.id === question.id);
+            return {
+              ...question,
+              orderNumber: visibleIndex + 1,
+            };
+          });
+        });
+      }
     }
-  }, []);
+  }, [passages]);
 
   // Filter questions (exclude deleted ones and apply search filter)
   const filteredQuestions = useMemo(() => {
@@ -2547,9 +3215,14 @@ const DailyChallengeContent = () => {
     });
   }, [questions, searchText]);
 
-  // Filter passages (apply search filter)
+  // Filter passages (exclude deleted ones and apply search filter)
   const filteredPassages = useMemo(() => {
     return passages.filter((passage) => {
+      // Exclude deleted passages
+      if (passage.toBeDeleted) {
+        return false;
+      }
+      
       // Apply search filter
       const matchesSearch =
         searchText === "" ||
@@ -2704,6 +3377,36 @@ const DailyChallengeContent = () => {
                 {t('dailyChallenge.importExport')} <DownOutlined />
             </Button>
             </Dropdown>
+
+            {/* Preview Button */}
+            <Button 
+              icon={<EyeOutlined />}
+              className={`create-button ${theme}-create-button`}
+              onClick={() => {
+                const userRole = user?.role?.toLowerCase();
+                const previewPath = userRole === 'teaching_assistant'
+                  ? `/teaching-assistant/daily-challenges/detail/${id}/preview`
+                  : `/teacher/daily-challenges/detail/${id}/preview`;
+                navigate(previewPath);
+              }}
+              style={{
+                height: '40px',
+                borderRadius: '8px',
+                fontWeight: 500,
+                fontSize: '16px',
+                padding: '0 24px',
+                border: 'none',
+                transition: 'all 0.3s ease',
+                background: theme === 'sun' 
+                  ? 'linear-gradient(135deg, rgba(102, 174, 255, 0.6), rgba(60, 153, 255, 0.6))'
+                  : 'linear-gradient(135deg, rgba(181, 176, 192, 0.7), rgba(163, 158, 187, 0.7), rgba(131, 119, 160, 0.7), rgba(172, 165, 192, 0.7), rgba(109, 95, 143, 0.7))',
+                color: theme === 'sun' ? '#000000' : '#000000',
+                boxShadow: theme === 'sun' ? '0 2px 8px rgba(60, 153, 255, 0.2)' : '0 2px 8px rgba(131, 119, 160, 0.3)',
+                opacity: 0.9
+              }}
+            >
+              {t('dailyChallenge.preview')}
+            </Button>
 
             {/* Add Question/Passage Button - Single button for all types */}
             <Button 
@@ -3164,7 +3867,12 @@ const DailyChallengeContent = () => {
                 onDragEnd={handleDragEnd}
               >
                 <SortableContext
-                  items={[...passageIds, ...questionIds]}
+                  items={
+                    // For Listening and Speaking challenges, only sort/render passages (which already include their questions)
+                    ((challengeDetails?.challengeType === 'LI' || challengeDetails?.challengeType === 'SP') && filteredPassages.length > 0)
+                      ? [...passageIds]
+                      : [...passageIds, ...questionIds]
+                  }
                   strategy={verticalListSortingStrategy}
                 >
                   {/* Render Passages first */}
@@ -3179,11 +3887,13 @@ const DailyChallengeContent = () => {
                       onPointsChange={handlePassagePointsChange}
                       theme={theme}
                       t={t}
+                      challengeType={challengeDetails?.challengeType}
                     />
                   ))}
 
-                  {/* Then render individual Questions */}
-                  {filteredQuestions.map((question, index) => (
+                  {/* Then render individual Questions (skip for LI and SP to group under passages) */}
+                  {challengeDetails?.challengeType !== 'LI' && challengeDetails?.challengeType !== 'SP' && 
+                   filteredQuestions.map((question, index) => (
                     <SortableQuestionItem
                       key={question.id}
                       question={question}

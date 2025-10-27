@@ -215,6 +215,24 @@ const dailyChallengeApi = {
 				'accept': '*/*',
 			}
 		});
+	},
+
+	// Upload file (PDF, audio, image, etc.)
+	uploadFile: (file) => {
+		const url = `/file/upload`;
+		console.log('UploadFile API - URL:', url);
+		console.log('UploadFile API - FileName:', file.name);
+		
+		// Create FormData to upload as multipart/form-data
+		const formData = new FormData();
+		formData.append('file', file);
+		
+		return axiosClient.post(url, formData, {
+			headers: {
+				'Content-Type': 'multipart/form-data',
+				'accept': '*/*',
+			}
+		});
 	}
 };
 

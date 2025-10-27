@@ -27,17 +27,6 @@ const debounce = (func, wait) => {
 	};
 };
 
-// Throttle utility function
-const throttle = (func, limit) => {
-	let inThrottle;
-	return function(...args) {
-		if (!inThrottle) {
-			func.apply(this, args);
-			inThrottle = true;
-			setTimeout(() => inThrottle = false, limit);
-		}
-	};
-};
 
 const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
   const [points, setPoints] = useState(1);
@@ -48,18 +37,321 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
   const editorRef = useRef(null);
   const savedRangeRef = useRef(null);
 
+  // Colors for blanks - using distinct, high-contrast colors
+  const blankColors = useMemo(() => [
+    '#e63946', // Red
+    '#2563eb', // Blue
+    '#059669', // Green
+    '#9333ea', // Purple
+    '#ea580c', // Orange
+    '#dc2626', // Bright Red
+    '#0891b2', // Cyan
+    '#d946ef', // Magenta
+    '#84cc16', // Lime
+    '#f59e0b', // Amber
+  ], []);
+
+  // Parse backend format to editor format
+  const parseQuestionText = useCallback((questionText, contentData = null, options = null) => {
+    console.log('ReorderModal - parseQuestionText called with:', {
+      questionText,
+      contentData,
+      options
+    });
+    
+    const parsed = [];
+    const blanksData = [];
+    
+    // Remove <br> tags and split by blank pattern
+    const cleanText = questionText.replace(/<br\s*\/?>/gi, '\n');
+    const regex = /\[\[pos_([a-z0-9]+)\]\]/g;
+    let lastIndex = 0;
+    let match;
+
+    while ((match = regex.exec(cleanText)) !== null) {
+      // Add text before blank
+      if (match.index > lastIndex) {
+        const textContent = cleanText.substring(lastIndex, match.index);
+        if (textContent) {
+          parsed.push({ type: 'text', content: textContent, id: `text-${Date.now()}-${lastIndex}` });
+        }
+      }
+
+      // Add blank
+      const positionId = match[1];
+      
+      // Try to get answer from contentData first, then from options
+      let blankAnswer = '';
+      if (contentData && contentData.length > 0) {
+        const blankData = contentData.find(item => item.positionId === positionId);
+        blankAnswer = blankData?.value || '';
+      }
+      
+      // If no answer from contentData, try to find from options with correct flag
+      if (!blankAnswer && options && options.length > 0) {
+        const correctOption = options.find(opt => opt.isCorrect === true);
+        if (correctOption) {
+          blankAnswer = correctOption.text || '';
+        }
+      }
+      
+      console.log('ReorderModal - Processing blank:', {
+        positionId,
+        blankAnswer,
+        contentDataLength: contentData?.length || 0,
+        optionsLength: options?.length || 0
+      });
+      
+      const blankId = `blank-${Date.now()}-${positionId}`;
+      
+      parsed.push({
+        type: 'blank',
+        id: blankId,
+        positionId: positionId,
+        answer: blankAnswer
+      });
+
+      blanksData.push({
+        id: blankId,
+        positionId: positionId,
+        answer: blankAnswer,
+        color: blankColors[blanksData.length % blankColors.length]
+      });
+
+      lastIndex = regex.lastIndex;
+    }
+
+    // Add remaining text
+    if (lastIndex < cleanText.length) {
+      const remainingText = cleanText.substring(lastIndex);
+      if (remainingText) {
+        parsed.push({ type: 'text', content: remainingText, id: `text-${Date.now()}-${lastIndex}` });
+      }
+    }
+
+    if (parsed.length === 0) {
+      parsed.push({ type: 'text', content: '', id: Date.now() });
+    }
+
+    console.log('ReorderModal - Final parsed data:', { parsed, blanksData });
+    
+    return { parsed, blanksData };
+  }, [blankColors]);
+
+  // Helper function to create blank element (simplified version for initialization)
+  const createBlankElementSimple = useCallback((blank, index) => {
+    const span = document.createElement('span');
+    span.setAttribute('contenteditable', 'false');
+    span.setAttribute('data-blank-id', blank.id);
+    span.style.cssText = `
+      display: inline-flex;
+      align-items: center;
+      margin: 0 4px;
+      position: relative;
+      vertical-align: middle;
+      user-select: none;
+      -webkit-user-select: none;
+    `;
+
+    const chip = document.createElement('span');
+    chip.style.cssText = `
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      background: linear-gradient(135deg, ${blank.color}20, ${blank.color}40);
+      border: 2px solid ${blank.color};
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      color: ${blank.color};
+      transition: all 0.2s ease;
+      cursor: pointer;
+      min-width: 0;
+      flex: 1;
+    `;
+
+    // Number badge
+    const badge = document.createElement('span');
+    badge.className = 'blank-badge';
+    badge.style.cssText = `
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: ${blank.color};
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-weight: 700;
+    `;
+    badge.textContent = index + 1;
+
+    // Answer text
+    const answerText = document.createElement('span');
+    answerText.className = 'blank-answer-text';
+    answerText.style.cssText = `
+      color: #333;
+      font-weight: 500;
+      font-size: 14px;
+      display: inline-block;
+      max-width: 150px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      vertical-align: middle;
+    `;
+    answerText.textContent = blank.answer || '';
+
+    chip.appendChild(badge);
+    chip.appendChild(answerText);
+    span.appendChild(chip);
+
+    return span;
+  }, []);
+
+  // Helper function to update blank numbers
+  const updateBlankNumbersSimple = useCallback(() => {
+    if (!editorRef.current) return;
+    
+    const blankElements = editorRef.current.querySelectorAll('[data-blank-id]');
+    blankElements.forEach((element, index) => {
+      const badge = element.querySelector('.blank-badge');
+      if (badge) {
+        badge.textContent = index + 1;
+      }
+    });
+  }, []);
+
+  // Helper function to create shuffled words with correct order
+  const createShuffledWords = useCallback((blanksArray, backendOptions = null) => {
+    console.log('ReorderModal - createShuffledWords called with:', { blanksArray, backendOptions });
+    
+    // Sort blanks by their position in the DOM to get correct order
+    const sortedBlanks = [...blanksArray].sort((a, b) => {
+      const aElement = editorRef.current?.querySelector(`[data-blank-id="${a.id}"]`);
+      const bElement = editorRef.current?.querySelector(`[data-blank-id="${b.id}"]`);
+      
+      if (!aElement || !bElement) return 0;
+      
+      const position = aElement.compareDocumentPosition(bElement);
+      return position & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1;
+    });
+
+    // If we have backend options, use them to create words
+    if (backendOptions && backendOptions.length > 0) {
+      const words = backendOptions.map((option, index) => ({
+        id: `word-${option.key || index}`,
+        text: option.text,
+        originalIndex: option.isCorrect ? sortedBlanks.findIndex(b => b.answer === option.text) : -1,
+        currentIndex: index,
+        color: option.isCorrect ? blankColors[index % blankColors.length] : '#999999',
+        positionId: option.isCorrect ? sortedBlanks.find(b => b.answer === option.text)?.positionId : null,
+        isCorrect: option.isCorrect
+      }));
+      
+      // Shuffle array
+      const shuffled = [...words];
+      for (let i = shuffled.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+      }
+      
+      // Update currentIndex after shuffle
+      return shuffled.map((word, index) => ({
+        ...word,
+        currentIndex: index
+      }));
+    }
+
+    // Fallback: create words from blanks only
+    const words = sortedBlanks
+      .filter(blank => blank.answer && blank.answer.trim())
+      .map((blank, index) => ({
+        id: blank.id,
+        text: blank.answer,
+        originalIndex: index, // Correct original position in sentence
+        currentIndex: index,  // Will be updated after shuffle
+        color: blank.color,
+        positionId: blank.positionId,
+        isCorrect: true
+      }));
+    
+    // Shuffle array
+    const shuffled = [...words];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    
+    // Update currentIndex after shuffle
+    return shuffled.map((word, index) => ({
+      ...word,
+      currentIndex: index
+    }));
+  }, [blankColors]);
+
   // Initialize from questionData
   useEffect(() => {
     if (visible && questionData?.questionText && editorRef.current) {
-      editorRef.current.innerHTML = questionData.questionText;
-      if (questionData.shuffledWords) {
+      console.log('ReorderModal - Initializing with questionData:', questionData);
+      console.log('ReorderModal - questionData.content?.data:', questionData?.content?.data);
+      console.log('ReorderModal - questionData.options:', questionData?.options);
+      console.log('ReorderModal - questionData.incorrectOptions:', questionData?.incorrectOptions);
+      
+      // Parse existing question - pass content.data and options
+      const { parsed: parsedContent, blanksData } = parseQuestionText(
+        questionData.questionText, 
+        questionData.content?.data || [],
+        questionData.options || []
+      );
+      
+      // Set blanks state
+      setBlanks(blanksData);
+      console.log('ReorderModal - State updated with parsed data, blanksData length:', blanksData.length);
+      
+      // Build editor DOM from parsed content
+      editorRef.current.innerHTML = '';
+      let blankCounter = 0;
+      parsedContent.forEach((item, index) => {
+        console.log('ReorderModal - Processing item:', item);
+        if (item.type === 'text') {
+          if (item.content) {
+            editorRef.current.appendChild(document.createTextNode(item.content));
+          }
+        } else if (item.type === 'blank') {
+          // Find the corresponding blank data from blanksData
+          const blankData = blanksData.find(b => b.id === item.id);
+          if (blankData) {
+            console.log('ReorderModal - Creating blank element for:', blankData);
+            const blankElement = createBlankElementSimple(blankData, blankCounter);
+            editorRef.current.appendChild(blankElement);
+            blankCounter++;
+          } else {
+            console.warn('ReorderModal - No blank data found for item:', item);
+          }
+        }
+      });
+      
+      // Update blank numbers after populating editor
+      requestAnimationFrame(() => {
+        updateBlankNumbersSimple();
+      });
+      
+      // Handle shuffledWords from backend
+      if (questionData.shuffledWords && questionData.shuffledWords.length > 0) {
         setShuffledWords(questionData.shuffledWords);
+      } else {
+        // If no shuffledWords from backend, create them from blanks and options
+        const finalWords = createShuffledWords(blanksData, questionData.options);
+        setShuffledWords(finalWords);
       }
     }
     if (visible) {
       setPoints(questionData?.points || 1);
     }
-  }, [questionData, visible]);
+  }, [questionData, visible, parseQuestionText, createBlankElementSimple, updateBlankNumbersSimple, createShuffledWords]);
 
   const handlePaste = useCallback((e) => {
     // Prevent all paste
@@ -137,20 +429,6 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
     return Math.random().toString(36).substring(2, 8);
   };
 
-  // Colors for blanks - using distinct, high-contrast colors
-  const blankColors = useMemo(() => [
-    '#e63946', // Red
-    '#2563eb', // Blue
-    '#059669', // Green
-    '#9333ea', // Purple
-    '#ea580c', // Orange
-    '#dc2626', // Bright Red
-    '#0891b2', // Cyan
-    '#d946ef', // Magenta
-    '#84cc16', // Lime
-    '#f59e0b', // Amber
-  ], []);
-
   // Handle blank answer change
   const handleBlankAnswerChange = useCallback((blankId, value) => {
     setBlanks(prev => {
@@ -160,35 +438,13 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
       
       // Update shuffled words with requestAnimationFrame to avoid lag
         requestAnimationFrame(() => {
-          const words = newBlanks
-            .filter(blank => blank.answer && blank.answer.trim())
-            .map((blank, index) => ({
-              id: blank.id,
-              text: blank.answer,
-              originalIndex: index,
-              currentIndex: index,
-              color: blank.color
-            }));
-          
-          // Shuffle array
-          const shuffled = [...words];
-          for (let i = shuffled.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-          }
-          
-          // Update currentIndex after shuffle
-          const finalWords = shuffled.map((word, index) => ({
-            ...word,
-            currentIndex: index
-          }));
-          
+          const finalWords = createShuffledWords(newBlanks);
           setShuffledWords(finalWords);
         });
       
       return newBlanks;
     });
-  }, []);
+  }, [createShuffledWords]);
 
   // Update blank numbers based on DOM order
   const updateBlankNumbers = useCallback(() => {
@@ -221,30 +477,8 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
       requestAnimationFrame(() => {
         updateBlankNumbers();
         
-        // Update shuffled words from new blanks
-        const words = newBlanks
-          .filter(blank => blank.answer && blank.answer.trim())
-          .map((blank, index) => ({
-            id: blank.id,
-            text: blank.answer,
-            originalIndex: index,
-            currentIndex: index,
-            color: blank.color
-          }));
-        
-        // Shuffle array
-        const shuffled = [...words];
-        for (let i = shuffled.length - 1; i > 0; i--) {
-          const j = Math.floor(Math.random() * (i + 1));
-          [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-        }
-        
-        // Update currentIndex after shuffle
-        const finalWords = shuffled.map((word, index) => ({
-          ...word,
-          currentIndex: index
-        }));
-        
+        // Update shuffled words from new blanks with correct order
+        const finalWords = createShuffledWords(newBlanks);
         setShuffledWords(finalWords);
       });
       
@@ -255,7 +489,7 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
     
     // Refocus editor
     editorRef.current.focus();
-  }, [updateBlankNumbers]);
+  }, [updateBlankNumbers, createShuffledWords]);
 
   // Create blank element
   const createBlankElement = useCallback((blank, index) => {
@@ -552,30 +786,8 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
               editorRef.current.focus();
             }
             
-            // Update shuffled words from new blanks
-            const words = newBlanks
-              .filter(blank => blank.answer && blank.answer.trim())
-              .map((blank, index) => ({
-                id: blank.id,
-                text: blank.answer,
-                originalIndex: index,
-                currentIndex: index,
-                color: blank.color
-              }));
-            
-            // Shuffle array
-            const shuffled = [...words];
-            for (let i = shuffled.length - 1; i > 0; i--) {
-              const j = Math.floor(Math.random() * (i + 1));
-              [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-            }
-            
-            // Update currentIndex after shuffle
-            const finalWords = shuffled.map((word, index) => ({
-              ...word,
-              currentIndex: index
-            }));
-            
+            // Update shuffled words from new blanks with correct order
+            const finalWords = createShuffledWords(newBlanks);
             setShuffledWords(finalWords);
           } catch (error) {
             console.error('Error expanding blank:', error);
@@ -591,7 +803,7 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
 
     // Hide popup
     setShowBlankPopup(false);
-  }, [blanks, blankColors, createBlankElement, isCursorInsideBlank, updateBlankNumbers]);
+  }, [blanks, blankColors, createBlankElement, isCursorInsideBlank, updateBlankNumbers, createShuffledWords]);
 
   const handleEditorClick = useCallback((e) => {
     // Only set cursor if there's no current selection
@@ -736,7 +948,7 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
     }));
     });
     
-    console.success('Words shuffled!');
+    console.log('Words shuffled!');
   }, []);
 
   // Handle word drag
@@ -805,14 +1017,25 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
     const correctAnswer = blanks.map(blank => blank.answer).join(' ');
 
     // Create questionText with [[pos_xxx]] format for API
-    const questionText = blanks.map(blank => `[[pos_${blank.positionId}]]`).join(' ');
+    // Sort blanks by their position in the DOM to get correct order
+    const sortedBlanks = [...blanks].sort((a, b) => {
+      const aElement = editorRef.current?.querySelector(`[data-blank-id="${a.id}"]`);
+      const bElement = editorRef.current?.querySelector(`[data-blank-id="${b.id}"]`);
+      
+      if (!aElement || !bElement) return 0;
+      
+      const position = aElement.compareDocumentPosition(bElement);
+      return position & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1;
+    });
+    
+    const questionText = sortedBlanks.map(blank => `[[pos_${blank.positionId}]]`).join(' ');
 
-    // Create content.data array with positionId and positionOrder
-    const contentData = blanks.map((blank, index) => ({
+    // Create content.data array with positionId only (no positionOrder for REARRANGE)
+    // Use sortedBlanks to ensure correct order
+    const contentData = sortedBlanks.map((blank, index) => ({
       id: `opt${index + 1}`,
       value: blank.answer,
       positionId: blank.positionId,
-      positionOrder: index + 1, // 1-based order
       correct: true
     }));
 
@@ -833,7 +1056,7 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
     console.log('=== REARRANGE QUESTION DATA ===');
     console.log('Question Text (API format):', questionText);
     console.log('Correct Answer (human readable):', correctAnswer);
-    console.log('Content Data:', contentData);
+    console.log('Content Data (NO positionOrder):', contentData);
     console.log('Shuffled Words:', shuffledWords);
     console.log('Blanks:', blanks);
     console.log('Full Question Data:', newQuestionData);

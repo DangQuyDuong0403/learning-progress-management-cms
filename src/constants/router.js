@@ -114,6 +114,9 @@ const ROUTER_PAGE = {
 	TEACHER_CREATE_LISTENING_CHALLENGE: '/teacher/daily-challenges/create/listening',
 	TEACHER_CREATE_LISTENING_CHALLENGE_WITH_ID: '/teacher/daily-challenges/create/listening/:id',
 	TEACHER_CREATE_WRITING_CHALLENGE_WITH_ID: '/teacher/daily-challenges/create/writing/:id',
+	TEACHER_CREATE_SPEAKING_CHALLENGE: '/teacher/daily-challenges/create/speaking',
+	TEACHER_CREATE_SPEAKING_CHALLENGE_WITH_ID: '/teacher/daily-challenges/create/speaking/:id',
+	TEACHER_CREATE_AI_QUESTIONS_WITH_ID: '/teacher/daily-challenges/create/ai/:id',
 	TEACHER_CLASS_DAILY_CHALLENGES: '/teacher/classes/daily-challenges/:classId',
 	// Teaching Assistant Daily Challenge Routes
 	TEACHING_ASSISTANT_DAILY_CHALLENGES: '/teaching-assistant/daily-challenges',
@@ -128,6 +131,9 @@ const ROUTER_PAGE = {
 	TEACHING_ASSISTANT_CREATE_LISTENING_CHALLENGE: '/teaching-assistant/daily-challenges/create/listening',
 	TEACHING_ASSISTANT_CREATE_LISTENING_CHALLENGE_WITH_ID: '/teaching-assistant/daily-challenges/create/listening/:id',
 	TEACHING_ASSISTANT_CREATE_WRITING_CHALLENGE_WITH_ID: '/teaching-assistant/daily-challenges/create/writing/:id',
+	TEACHING_ASSISTANT_CREATE_SPEAKING_CHALLENGE: '/teaching-assistant/daily-challenges/create/speaking',
+	TEACHING_ASSISTANT_CREATE_SPEAKING_CHALLENGE_WITH_ID: '/teaching-assistant/daily-challenges/create/speaking/:id',
+	TEACHING_ASSISTANT_CREATE_AI_QUESTIONS_WITH_ID: '/teaching-assistant/daily-challenges/create/ai/:id',
 	TEACHING_ASSISTANT_CLASS_DAILY_CHALLENGES: '/teaching-assistant/classes/daily-challenges/:classId',
 };
 

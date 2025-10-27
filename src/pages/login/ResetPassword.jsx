@@ -196,6 +196,7 @@ export default function ResetPassword() {
                                                     }
                                                     prefix={<LockOutlined />}
                                                     size='large'
+                                                    required
                                                     style={getInputStyle(isSunTheme)}
                                                     styles={{
                                                         suffix: {

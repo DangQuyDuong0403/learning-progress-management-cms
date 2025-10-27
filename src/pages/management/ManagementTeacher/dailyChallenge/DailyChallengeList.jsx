@@ -37,7 +37,7 @@ const challengeTypes = [
   { id: 1, name: "Grammar & Vocabulary", type: "GV", icon: "🌟", description: "Test grammar rules and vocabulary knowledge" },
   { id: 2, name: "Reading", type: "RE", icon: "📝", description: "Reading comprehension exercises" },
   { id: 3, name: "Listening", type: "LI", icon: "🎵", description: "Audio-based listening comprehension" },
-  { id: 4, name: "Writing", type: "WR", icon: "✏️", description: "Writing prompts and exercises" },
+  { id: 4, name: "Writing", type: "WR", icon: "✏️", description: "Writing topics and exercises" },
   { id: 5, name: "Speaking", type: "SP", icon: "💬", description: "Oral communication practice" },
 ];
 
@@ -136,6 +136,11 @@ const DailyChallengeList = ({ readOnly = false }) => {
     visible: false,
     challengeId: null,
     challengeData: null,
+  });
+  const [publishModal, setPublishModal] = useState({
+    visible: false,
+    challengeId: null,
+    challengeTitle: '',
   });
 
   // AccountList-style filter dropdown state and refs
@@ -279,12 +284,12 @@ const DailyChallengeList = ({ readOnly = false }) => {
               });
             });
           } else {
-            // Lesson without challenges - still show lesson row
+            // Lesson without challenges - show lesson row with empty challenge columns
             flattenedData.push({
               id: `lesson-${lesson.id}`,
-              title: 'No challenges',
-              type: 'N/A',
-              status: 'DRAFT',
+              title: '', // Empty title
+              type: '', // Empty type
+              status: '', // Empty status
               lessonId: lesson.id,
               lessonName: lesson.classLessonName || 'Untitled Lesson',
               lessonOrder: lesson.orderNumber || lessonIndex + 1,
@@ -296,6 +301,7 @@ const DailyChallengeList = ({ readOnly = false }) => {
               timeLimit: 0,
               totalQuestions: 0,
               createdAt: new Date().toISOString().split('T')[0],
+              isEmptyLesson: true, // Flag to identify empty lessons
             });
           }
         });
@@ -501,8 +507,21 @@ const DailyChallengeList = ({ readOnly = false }) => {
 
   const handleToggleStatus = async (id) => {
     const challenge = dailyChallenges.find(c => c.id === id);
-    const newStatus = challenge.status === 'PUBLISHED' ? 'DRAFT' : 'PUBLISHED';
     
+    if (challenge.status === 'DRAFT') {
+      // Show publish confirmation modal for DRAFT challenges
+      setPublishModal({
+        visible: true,
+        challengeId: id,
+        challengeTitle: challenge.title,
+      });
+    } else {
+      // Direct unpublish for PUBLISHED challenges
+      await handlePublishConfirm(id, 'DRAFT');
+    }
+  };
+
+  const handlePublishConfirm = async (id, newStatus) => {
     try {
       // Call API to update status with specific challengeStatus parameter
       await dailyChallengeApi.updateDailyChallengeStatus(id, newStatus);
@@ -582,6 +601,15 @@ const DailyChallengeList = ({ readOnly = false }) => {
       const errorMessage = error.response?.data?.error || error.message || t('dailyChallenge.updateError');
       spaceToast.error(errorMessage);
     }
+  };
+
+  const handlePublishModalCancel = () => {
+    setPublishModal({ visible: false, challengeId: null, challengeTitle: '' });
+  };
+
+  const handlePublishModalConfirm = async () => {
+    await handlePublishConfirm(publishModal.challengeId, 'PUBLISHED');
+    setPublishModal({ visible: false, challengeId: null, challengeTitle: '' });
   };
 
 
@@ -684,19 +712,29 @@ const DailyChallengeList = ({ readOnly = false }) => {
       ellipsis: {
         showTitle: false,
       },
-      render: (text) => (
-        <Tooltip placement="topLeft" title={text}>
-          <span style={{ 
-            display: 'block',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
-            textAlign: 'left',
-          }}>
-            {text}
-          </span>
-        </Tooltip>
-      ),
+      render: (text, record) => {
+        // Show empty state for lessons without challenges
+        if (record.isEmptyLesson) {
+          return (
+            <span >
+            </span>
+          );
+        }
+        
+        return (
+          <Tooltip placement="topLeft" title={text}>
+            <span style={{ 
+              display: 'block',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+              textAlign: 'left',
+            }}>
+              {text}
+            </span>
+          </Tooltip>
+        );
+      },
     },
     {
       title: t('dailyChallenge.type'),
@@ -704,7 +742,15 @@ const DailyChallengeList = ({ readOnly = false }) => {
       key: 'type',
       width: 150,
       align: 'center',
-      render: (type) => {
+      render: (type, record) => {
+        // Show empty state for lessons without challenges
+        if (record.isEmptyLesson) {
+          return (
+            <span >
+            </span>
+          );
+        }
+
         const getTypeLabel = (typeCode) => {
           switch(typeCode) {
             case 'GV': return 'Grammar & Vocabulary';
@@ -734,7 +780,15 @@ const DailyChallengeList = ({ readOnly = false }) => {
       key: 'startDate',
       width: 120,
       align: 'center',
-      render: (startDate) => startDate ? new Date(startDate).toLocaleDateString() : '-',
+      render: (startDate, record) => {
+        if (record.isEmptyLesson) {
+          return (
+            <span>
+            </span>
+          );
+        }
+        return startDate ? new Date(startDate).toLocaleDateString() : '-';
+      },
     },
     {
       title: 'End Date',
@@ -742,7 +796,15 @@ const DailyChallengeList = ({ readOnly = false }) => {
       key: 'endDate',
       width: 120,
       align: 'center',
-      render: (endDate) => endDate ? new Date(endDate).toLocaleDateString() : '-',
+      render: (endDate, record) => {
+        if (record.isEmptyLesson) {
+          return (
+            <span>
+            </span>
+          );
+        }
+        return endDate ? new Date(endDate).toLocaleDateString() : '-';
+      },
     },
     {
       title: t('dailyChallenge.status'),
@@ -750,14 +812,23 @@ const DailyChallengeList = ({ readOnly = false }) => {
       key: 'status',
       width: 120,
       align: 'center',
-      render: (status, record) => (
-        <span style={{
-          fontSize: '20px',
-          color: '#000000'
-        }}>
-          {status === 'PUBLISHED' ? t('dailyChallenge.published') : t('dailyChallenge.draft')}
-        </span>
-      ),
+      render: (status, record) => {
+        if (record.isEmptyLesson) {
+          return (
+            <span>
+            </span>
+          );
+        }
+        
+        return (
+          <span style={{
+            fontSize: '20px',
+            color: '#000000'
+          }}>
+            {status === 'PUBLISHED' ? t('dailyChallenge.published') : t('dailyChallenge.draft')}
+          </span>
+        );
+      },
     },
     {
       title: t('dailyChallenge.actions'),
@@ -765,9 +836,12 @@ const DailyChallengeList = ({ readOnly = false }) => {
       width: 180,
       align: 'center',
       render: (_, record) => {
-        // Ẩn action buttons nếu lesson không có challenge (title = "No challenges")
-        if (record.title === 'No challenges') {
-          return <span style={{ color: '#999', fontSize: '14px' }}>-</span>;
+        // Show empty state for lessons without challenges
+        if (record.isEmptyLesson) {
+          return (
+            <span >
+            </span>
+          );
         }
         
         return (
@@ -1125,6 +1199,89 @@ const DailyChallengeList = ({ readOnly = false }) => {
               fontStyle: 'italic'
             }}>
               {t('dailyChallenge.deleteWarning')}
+            </p>
+          </div>
+        </Modal>
+
+        {/* Publish Confirmation Modal */}
+        <Modal
+          title={
+            <div style={{ 
+              fontSize: '20px', 
+              fontWeight: '600', 
+              color: 'rgb(24, 144, 255)',
+              textAlign: 'center',
+              padding: '10px 0',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '10px',
+            }}>
+              <CheckCircleOutlined style={{ color: 'rgb(24, 144, 255)' }} />
+              Confirm Publish Challenge
+            </div>
+          }
+          open={publishModal.visible}
+          onOk={handlePublishModalConfirm}
+          onCancel={handlePublishModalCancel}
+          okText="Publish Now"
+          cancelText="Cancel"
+          width={500}
+          centered
+          bodyStyle={{
+            padding: '30px 40px',
+            fontSize: '16px',
+            lineHeight: '1.6',
+            textAlign: 'center'
+          }}
+          okButtonProps={{
+            style: {
+              backgroundColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
+              background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
+              borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'transparent',
+              color: theme === 'sun' ? '#000000' : '#ffffff',
+              fontWeight: '500',
+              height: '40px',
+              borderRadius: '6px',
+              padding: '0 30px'
+            }
+          }}
+          cancelButtonProps={{
+            style: {
+              height: '40px',
+              borderRadius: '6px',
+              padding: '0 30px'
+            }
+          }}
+        >
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: '20px'
+          }}>
+            <div style={{
+              fontSize: '48px',
+              color: '#ff4d4f',
+              marginBottom: '10px'
+            }}>
+              ⚠️
+            </div>
+            <p style={{
+              fontSize: '18px',
+              color: '#333',
+              margin: 0,
+              fontWeight: '500'
+            }}>
+              Are you sure you want to publish this challenge?
+            </p>
+            <p style={{
+              fontSize: '16px',
+              color: '#666',
+              margin: 0,
+              lineHeight: '1.5'
+            }}>
+              Once published, students will be able to access this challenge. This action cannot be undone.
             </p>
           </div>
         </Modal>
