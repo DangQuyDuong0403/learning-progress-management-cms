@@ -2421,10 +2421,31 @@ const DailyChallengeContent = () => {
 
 
   const handleQuestionTypeClick = useCallback((questionType) => {
-    setCurrentModalType(questionType.type);
-    setModalVisible(true);
-    setQuestionTypeModalVisible(false);
-  }, []);
+    // Check if AI generation is selected
+    if (questionType.type === 'ai-generate') {
+      // Navigate to AI generation page
+      const userRole = user?.role?.toLowerCase();
+      const aiPath = userRole === 'teaching_assistant'
+        ? `/teaching-assistant/daily-challenges/create/ai/${id}`
+        : `/teacher/daily-challenges/create/ai/${id}`;
+      
+      navigate(aiPath, {
+        state: {
+          challengeId: id,
+          challengeName: challengeDetails?.challengeName,
+          challengeType: challengeDetails?.challengeType,
+          classId: challengeInfo.classId,
+          className: challengeInfo.className
+        }
+      });
+      
+      setQuestionTypeModalVisible(false);
+    } else {
+      setCurrentModalType(questionType.type);
+      setModalVisible(true);
+      setQuestionTypeModalVisible(false);
+    }
+  }, [id, user, navigate, challengeDetails, challengeInfo]);
 
   // Helper function to transform question data to API format
   const transformQuestionToApiFormat = useCallback((questionData, orderNumber, questionType) => {
