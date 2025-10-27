@@ -249,26 +249,13 @@ Good luck with your speaking!`,
       type: 'SPEAKING_WITH_AUDIO_SECTION',
       title: 'Speaking Based on Audio',
       audioUrl: '/audio/sample-speaking-audio.mp3',
-      transcript: `Welcome to today's speaking practice. In this exercise, you will listen to a short conversation about daily routines and then respond to the questions.
+      transcript: `Phiên âm tiếng Anh của "quả chuối" (banana) là /bəˈnɑːnə/. Từ này có trọng âm rơi vào âm tiết thứ hai.
 
-**Conversation Transcript:**
-Sarah: Good morning, Tom! How was your weekend?
-Tom: Hi Sarah! It was great, thanks for asking. I went hiking with my family on Saturday and spent Sunday relaxing at home.
-Sarah: That sounds wonderful! I love hiking too. Where did you go?
-Tom: We went to the Blue Mountain trail. The weather was perfect and the views were amazing.
-Sarah: I've been there before! It's such a beautiful place. Did you take any photos?
-Tom: Yes, I took lots of photos. The sunset was particularly stunning.
+**Từ vựng:** Banana
+**Phiên âm:** /bəˈnɑːnə/
+**Trọng âm:** Nhấn vào âm tiết thứ hai
 
-**Your Task:**
-Now, please answer the following questions based on what you heard:
-
-1. What did Tom do on Saturday?
-2. Where did Tom go hiking?
-3. What did Tom think about the weather?
-4. What did Tom do on Sunday?
-5. What was particularly beautiful according to Tom?
-
-Please speak clearly and provide detailed answers. You have 3 minutes to complete your response.`,
+![Banana](/img/banana.jpg)`,
       timeLimit: 180,
       points: 20,
       questionText: 'Listen to the audio and answer the questions',
@@ -2913,12 +2900,23 @@ const SpeakingSectionItem = ({ question, index, theme }) => {
                   style={{
                     marginTop: '8px',
                     padding: '6px 16px',
-                    background: '#ff4d4f',
-                    color: 'white',
+                    background: theme === 'sun' 
+                      ? 'linear-gradient(135deg, #66AEFF, #3C99FF)'
+                      : 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)',
+                    color: '#000000',
                     border: 'none',
                     borderRadius: '6px',
                     cursor: 'pointer',
-                    fontSize: '13px'
+                    fontSize: '13px',
+                    fontWeight: '500',
+                    boxShadow: theme === 'sun' ? '0 2px 8px rgba(60, 153, 255, 0.3)' : '0 2px 8px rgba(131, 119, 160, 0.3)',
+                    transition: 'all 0.3s ease'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = 'scale(1.05)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = 'scale(1)';
                   }}
                 >
                   ✕ Remove Recording
@@ -3425,6 +3423,50 @@ const SpeakingWithAudioSectionItem = ({ question, index, theme }) => {
                 </div>
               </div>
             </div>
+
+            {/* Transcript Content */}
+            <div style={{
+              background: '#ffffff',
+              borderRadius: '8px',
+              padding: '16px',
+              border: `1px solid ${theme === 'sun' ? '#e8e8e8' : 'rgba(138, 122, 255, 0.3)'}`,
+              fontSize: '15px',
+              lineHeight: '1.8',
+              color: '#333',
+              textAlign: 'justify',
+              boxShadow: theme === 'sun' 
+                ? '0 2px 8px rgba(0, 0, 0, 0.1)' 
+                : '0 2px 8px rgba(138, 122, 255, 0.2)'
+            }}>
+              <div style={{ 
+                fontSize: '18px', 
+                fontWeight: '600',
+                marginBottom: '12px',
+                color: theme === 'sun' ? '#1E40AF' : '#8B5CF6'
+              }}>
+                Từ vựng: Banana
+              </div>
+              <div style={{ marginBottom: '8px', color: '#333' }}>
+                <strong>Phiên âm:</strong> /bəˈnɑːnə/
+              </div>
+              <div style={{ marginBottom: '16px', color: '#333' }}>
+                <strong>Trọng âm:</strong> Nhấn vào âm tiết thứ hai
+              </div>
+              <div style={{ marginBottom: '8px', color: '#666', fontSize: '14px' }}>
+                Phiên âm tiếng Anh của "quả chuối" (banana) là /bəˈnɑːnə/. Từ này có trọng âm rơi vào âm tiết thứ hai.
+              </div>
+              <img 
+                src="/img/banana.jpg" 
+                alt="Banana" 
+                style={{ 
+                  width: '100%',
+                  maxWidth: '300px',
+                  borderRadius: '8px',
+                  marginTop: '12px',
+                  boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)'
+                }} 
+              />
+            </div>
           </div>
 
           {/* Right Section - Recording Area */}
@@ -3448,12 +3490,23 @@ const SpeakingWithAudioSectionItem = ({ question, index, theme }) => {
                   style={{
                     marginTop: '8px',
                     padding: '6px 16px',
-                    background: '#ff4d4f',
-                    color: 'white',
+                    background: theme === 'sun' 
+                      ? 'linear-gradient(135deg, #66AEFF, #3C99FF)'
+                      : 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)',
+                    color: '#000000',
                     border: 'none',
                     borderRadius: '6px',
                     cursor: 'pointer',
-                    fontSize: '13px'
+                    fontSize: '13px',
+                    fontWeight: '500',
+                    boxShadow: theme === 'sun' ? '0 2px 8px rgba(60, 153, 255, 0.3)' : '0 2px 8px rgba(131, 119, 160, 0.3)',
+                    transition: 'all 0.3s ease'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = 'scale(1.05)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = 'scale(1)';
                   }}
                 >
                   ✕ Remove Recording
