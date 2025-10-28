@@ -68,16 +68,15 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 	const editorRef = useRef(null);
 	const fileInputRef = useRef(null);
 	const savedRangeRef = useRef(null);
+	const deletionInProgressRef = useRef(new Set());
 
-	// Colors for blanks - matching ReorderModal color palette
+	// Colors for blanks - matching ReorderModal color palette (avoid red as first color)
 	const blankColors = useMemo(
 		() => [
-			'#e63946', // Red
 			'#2563eb', // Blue
 			'#059669', // Green
 			'#9333ea', // Purple
 			'#ea580c', // Orange
-			'#dc2626', // Bright Red
 			'#0891b2', // Cyan
 			'#d946ef', // Magenta
 			'#84cc16', // Lime
@@ -496,7 +495,7 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 				editorRef.current.appendChild(br);
 			}
 
-			console.success('Image inserted successfully');
+			console.log('Image inserted successfully');
 		},
 		[selectedImage]
 	);
@@ -569,7 +568,7 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 					break;
 			}
 
-			console.success(`Image aligned to ${alignment}`);
+			console.log(`Image aligned to ${alignment}`);
 
 			// Return focus to editor after alignment
 			requestAnimationFrame(() => {
@@ -716,7 +715,7 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 				}
 
 				setTableDropdownOpen(false);
-				console.success(`Table ${numRows}x${numCols} inserted successfully`);
+				console.log(`Table ${numRows}x${numCols} inserted successfully`);
 			}
 		},
 		[updatePopupPosition]
@@ -800,7 +799,7 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 						editorRef.current.focus();
 					}
 
-					console.success('Image deleted');
+					console.log('Image deleted');
 				}
 			}
 		},
@@ -809,9 +808,10 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 
 	// Handle blank answer change
 	const handleBlankAnswerChange = useCallback((blankId, value) => {
+		const limitedValue = (value ?? '').slice(0, 50);
 		setBlanks((prev) =>
 			prev.map((blank) =>
-				blank.id === blankId ? { ...blank, answer: value } : blank
+				blank.id === blankId ? { ...blank, answer: limitedValue } : blank
 			)
 		);
 	}, []);
@@ -824,14 +824,21 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 				const chipAnswer = editorRef.current.querySelector(
 					`[data-blank-id="${b.id}"] .blank-answer-text`
 				);
-				if (chipAnswer && chipAnswer.textContent !== (b.answer || '')) {
-					chipAnswer.textContent = b.answer || '';
+				const limited = (b.answer || '').slice(0, 50);
+				if (chipAnswer && chipAnswer.textContent !== limited) {
+					chipAnswer.textContent = limited;
 				}
 				const chipInput = editorRef.current.querySelector(
 					`[data-blank-id="${b.id}"] .blank-input`
 				);
-				if (chipInput && chipInput.value !== (b.answer || '')) {
-					chipInput.value = b.answer || '';
+				if (chipInput && chipInput.value !== limited) {
+					chipInput.value = limited;
+				}
+				const chipCounter = editorRef.current.querySelector(
+					`[data-blank-id="${b.id}"] .blank-char-counter`
+				);
+				if (chipCounter) {
+					chipCounter.textContent = `${limited.length}/50`;
 				}
 			});
 		} catch (e) {
@@ -857,12 +864,20 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 		(blankId) => {
 			if (!editorRef.current) return;
 
-			// Find and remove the blank element from DOM
+			// prevent duplicate deletions racing from blur + click
+			if (deletionInProgressRef.current.has(blankId)) return;
+			deletionInProgressRef.current.add(blankId);
+
+			// Find and remove the blank element from DOM safely
 			const blankElement = editorRef.current.querySelector(
 				`[data-blank-id="${blankId}"]`
 			);
-			if (blankElement) {
-				blankElement.remove();
+			try {
+				if (blankElement && blankElement.parentNode) {
+					blankElement.parentNode.removeChild(blankElement);
+				}
+			} catch (err) {
+				// element may already be detached
 			}
 
 			// Update state
@@ -871,9 +886,10 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 			// Update blank numbers after deletion
 			requestAnimationFrame(() => {
 				updateBlankNumbers();
+				deletionInProgressRef.current.delete(blankId);
 			});
 
-			console.success('Blank removed');
+			console.log('Blank removed');
 
 			// Refocus editor
 			editorRef.current.focus();
@@ -887,6 +903,7 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 			const span = document.createElement('span');
 			span.setAttribute('contenteditable', 'false');
 			span.setAttribute('data-blank-id', blank.id);
+			span.setAttribute('data-deleting-by-button', 'false');
 			span.style.cssText = `
 			display: inline-flex;
 			align-items: center;
@@ -915,24 +932,28 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 			transition: all 0.2s ease;
 			cursor: pointer;
 			min-width: 0;
-			max-width: 220px;
+			max-width: 300px;
 			flex: 1;
+			position: relative;
+			padding-right: 56px;
 		`;
 
 			// Number badge
 			const badge = document.createElement('span');
 			badge.className = 'blank-badge';
 			badge.style.cssText = `
-			width: 20px;
-			height: 20px;
+			width: 23px;
+			height: 23px;
+			min-width: 23px;
 			border-radius: 50%;
 			background: ${blankColor};
 			color: white;
 			display: flex;
 			align-items: center;
 			justify-content: center;
-			font-size: 11px;
+			font-size: 12px;
 			font-weight: 700;
+			flex-shrink: 0;
 		`;
 			badge.textContent = index + 1;
 
@@ -944,19 +965,20 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 		font-weight: 500;
 		font-size: 14px;
 		display: inline-block;
-		max-width: 150px;
+		max-width: 230px;
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
 		vertical-align: middle;
 	`;
-			answerText.textContent = blank.answer || '';
+			answerText.textContent = (blank.answer || '').slice(0, 50);
 
 			// Input field (hidden by default in compact mode)
 			const input = document.createElement('input');
 			input.type = 'text';
 			input.placeholder = 'type answer...';
-			input.value = blank.answer || '';
+			input.value = (blank.answer || '').slice(0, 50);
+			input.maxLength = 100;
 			input.className = 'blank-input';
 			input.style.cssText = `
 			border: none;
@@ -966,19 +988,39 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 			border-radius: 4px;
 			font-size: 14px;
 			min-width: 120px;
-			max-width: 200px;
+			max-width: 280px;
 			color: #333;
 			font-weight: 500;
 			display: none;
 			flex: 1;
 			margin-right: 8px;
 		`;
+
+			// Character counter (hidden by default in compact mode)
+			const counter = document.createElement('span');
+			counter.className = 'blank-char-counter';
+			counter.textContent = `${input.value.length}/100`;
+			counter.style.cssText = `
+			font-size: 12px;
+			color: #999;
+			display: none;
+			white-space: nowrap;
+			position: absolute;
+			right: 10px;
+			top: 50%;
+			transform: translateY(-50%);
+			pointer-events: none;
+		`;
 			// Optimize input handling with debounce for state update
 			let inputTimeout;
 			input.addEventListener('input', (e) => {
-				const newValue = e.target.value;
+				const newValue = (e.target.value || '').slice(0, 50);
+				if (e.target.value !== newValue) {
+					e.target.value = newValue;
+				}
 				// Update answer text in real-time (instant visual feedback)
 				answerText.textContent = newValue || '';
+				counter.textContent = `${newValue.length}/50`;
 
 				// Debounce state update to reduce re-renders
 				clearTimeout(inputTimeout);
@@ -993,13 +1035,17 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 				e.stopPropagation();
 			});
 			input.addEventListener('blur', (e) => {
-				// If input is empty, delete the blank
-				if (!e.target.value || !e.target.value.trim()) {
-					handleDeleteBlankElement(blank.id);
-					return;
-				}
-				// When input loses focus, collapse back to compact mode
-				collapseBlank();
+				setTimeout(() => {
+					const isDeletingByButton = span.getAttribute('data-deleting-by-button') === 'true';
+					if (!document.body.contains(span)) return;
+					if (!e.target.value || !e.target.value.trim()) {
+						if (!isDeletingByButton && !deletionInProgressRef.current.has(blank.id)) {
+							handleDeleteBlankElement(blank.id);
+						}
+						return;
+					}
+					collapseBlank();
+				}, 50);
 			});
 
 			// Delete button (hidden by default in compact mode)
@@ -1030,6 +1076,7 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 				e.stopPropagation();
 				e.stopImmediatePropagation();
 				console.log('Delete button clicked for blank:', blank.id);
+				span.setAttribute('data-deleting-by-button', 'true');
 				handleDeleteBlankElement(blank.id);
 			});
 			deleteBtn.addEventListener('mousedown', (e) => {
@@ -1051,6 +1098,7 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 				answerText.style.display = 'none';
 				input.style.display = 'inline';
 				deleteBtn.style.display = 'flex';
+				counter.style.display = 'inline';
 				setTimeout(() => input.focus(), 10);
 			};
 
@@ -1059,6 +1107,7 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 				answerText.style.display = 'inline';
 				input.style.display = 'none';
 				deleteBtn.style.display = 'none';
+				counter.style.display = 'none';
 			};
 
 			// Click on chip to expand
@@ -1071,6 +1120,7 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 			chip.appendChild(answerText);
 			chip.appendChild(input);
 			chip.appendChild(deleteBtn);
+			chip.appendChild(counter);
 			span.appendChild(chip);
 
 			// Store expand function for external use
@@ -1408,8 +1458,9 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 
 	// Change incorrect option text
 	const handleIncorrectOptionChange = (id, value) => {
+		const limited = (value ?? '').slice(0, 50);
 		setIncorrectOptions((prev) =>
-			prev.map((opt) => (opt.id === id ? { ...opt, text: value } : opt))
+			prev.map((opt) => (opt.id === id ? { ...opt, text: limited } : opt))
 		);
 	};
 
@@ -2429,17 +2480,31 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 												}}>
 													{index + 1}
 												</span>
-												<Input
-													value={blank.answer}
-													onChange={(e) => handleBlankAnswerChange(blank.id, e.target.value)}
-													placeholder={'Type correct option'}
-													style={{
-														flex: 1,
-														border: 'none',
-														outline: 'none',
-														boxShadow: 'none',
-													}}
-												/>
+										<Input
+											value={(blank.answer || '').slice(0, 50)}
+											onChange={(e) => {
+												const v = (e.target.value || '').slice(0, 50);
+												handleBlankAnswerChange(blank.id, v);
+											}}
+											maxLength={100}
+											placeholder={'Type correct option'}
+											style={{
+												flex: 1,
+												border: 'none',
+												outline: 'none',
+												boxShadow: 'none',
+												lineHeight: '27px',
+											}}
+										/>
+										<span
+											style={{
+												fontSize: '12px',
+												color: '#999',
+												whiteSpace: 'nowrap',
+											}}
+										>
+											{`${(blank.answer || '').slice(0, 50).length}/100`}
+										</span>
 											</div>
 										))
 								) : (
@@ -2503,19 +2568,30 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 											alignItems: 'center',
 											gap: '8px',
 										}}>
-										<Input
-											value={option.text}
-											onChange={(e) =>
-												handleIncorrectOptionChange(option.id, e.target.value)
-											}
-											placeholder={`Incorrect option ${index + 1}`}
-											style={{
-												flex: 1,
-												border: 'none',
-												outline: 'none',
-												boxShadow: 'none',
-											}}
-										/>
+											<Input
+												value={(option.text || '').slice(0, 50)}
+												onChange={(e) =>
+													handleIncorrectOptionChange(option.id, e.target.value)
+												}
+												maxLength={100}
+												placeholder={`Incorrect option ${index + 1}`}
+												style={{
+													flex: 1,
+													border: 'none',
+													outline: 'none',
+													boxShadow: 'none',
+													lineHeight: '27px',
+												}}
+											/>
+											<span
+												style={{
+													fontSize: '12px',
+													color: '#999',
+													whiteSpace: 'nowrap',
+												}}
+											>
+												{`${(option.text || '').slice(0, 50).length}/100`}
+											</span>
 										<Button
 											type='text'
 											icon={<DeleteOutlined />}
