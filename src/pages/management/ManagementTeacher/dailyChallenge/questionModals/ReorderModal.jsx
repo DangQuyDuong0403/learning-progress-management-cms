@@ -37,15 +37,14 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
   const [blanks, setBlanks] = useState([]);
   const editorRef = useRef(null);
   const savedRangeRef = useRef(null);
+  const deletionInProgressRef = useRef(new Set());
 
-  // Colors for blanks - using distinct, high-contrast colors
+  // Colors for blanks - using distinct, high-contrast colors (avoid red as first color)
   const blankColors = useMemo(() => [
-    '#e63946', // Red
     '#2563eb', // Blue
     '#059669', // Green
     '#9333ea', // Purple
     '#ea580c', // Orange
-    '#dc2626', // Bright Red
     '#0891b2', // Cyan
     '#d946ef', // Magenta
     '#84cc16', // Lime
@@ -96,6 +95,9 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
         }
       }
       
+      // Enforce 50-character limit like DragDropModal
+      blankAnswer = (blankAnswer || '').slice(0, 50);
+
       console.log('ReorderModal - Processing blank:', {
         positionId,
         blankAnswer,
@@ -160,7 +162,7 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
     if (backendOptions && backendOptions.length > 0) {
       const words = backendOptions.map((option, index) => ({
         id: `word-${option.key || index}`,
-        text: option.text,
+        text: (option.text || '').slice(0, 50),
         originalIndex: option.isCorrect ? sortedBlanks.findIndex(b => b.answer === option.text) : -1,
         currentIndex: index,
         color: option.isCorrect ? blankColors[index % blankColors.length] : '#999999',
@@ -187,7 +189,7 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
       .filter(blank => blank.answer && blank.answer.trim())
       .map((blank, index) => ({
         id: blank.id,
-        text: blank.answer,
+        text: (blank.answer || '').slice(0, 50),
         originalIndex: index, // Correct original position in sentence
         currentIndex: index,  // Will be updated after shuffle
         color: blank.color,
@@ -224,9 +226,10 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
 
   // Handle blank answer change (moved earlier so creators can use it)
   const handleBlankAnswerChange = useCallback((blankId, value) => {
+    const limitedValue = (value || '').slice(0, 50);
     setBlanks(prev => {
       const newBlanks = prev.map(blank => 
-        blank.id === blankId ? { ...blank, answer: value } : blank
+        blank.id === blankId ? { ...blank, answer: limitedValue } : blank
       );
       
       // Update shuffled words with requestAnimationFrame to avoid lag
@@ -243,10 +246,18 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
   const handleDeleteBlankElement = useCallback((blankId) => {
     if (!editorRef.current) return;
 
-    // Find and remove the blank element from DOM
+    // prevent duplicate deletions racing from blur + click
+    if (deletionInProgressRef.current.has(blankId)) return;
+    deletionInProgressRef.current.add(blankId);
+
+    // Find and remove the blank element from DOM safely
     const blankElement = editorRef.current.querySelector(`[data-blank-id="${blankId}"]`);
-    if (blankElement) {
-      blankElement.remove();
+    try {
+      if (blankElement && blankElement.parentNode) {
+        blankElement.parentNode.removeChild(blankElement);
+      }
+    } catch (err) {
+      // no-op: element may already be detached by another handler
     }
 
     // Update state
@@ -256,10 +267,9 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
       // Update blank numbers and shuffled words after deletion
       requestAnimationFrame(() => {
         updateBlankNumbers();
-        
-        // Update shuffled words from new blanks with correct order
         const finalWords = createShuffledWords(newBlanks);
         setShuffledWords(finalWords);
+        deletionInProgressRef.current.delete(blankId);
       });
       
       return newBlanks;
@@ -341,6 +351,7 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
     const span = document.createElement('span');
     span.setAttribute('contenteditable', 'false');
     span.setAttribute('data-blank-id', blank.id);
+    span.setAttribute('data-deleting-by-button', 'false');
     span.style.cssText = `
       display: inline-flex;
       align-items: center;
@@ -375,14 +386,15 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
     badge.style.cssText = `
       width: 20px;
       height: 20px;
+      min-width: 20px;
       border-radius: 50%;
       background: ${blank.color};
       color: white;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 11px;
-      font-weight: 700;
+      font-size: 12px;
+      flex-shrink: 0;
     `;
     badge.textContent = index + 1;
 
@@ -406,7 +418,7 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
     const input = document.createElement('input');
     input.type = 'text';
     input.placeholder = 'type answer...';
-    input.value = blank.answer || '';
+    input.value = (blank.answer || '').slice(0, 50);
     input.className = 'blank-input';
     input.style.cssText = `
       border: none;
@@ -423,12 +435,28 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
       flex: 1;
       margin-right: 8px;
     `;
+    input.maxLength = 100;
+
+    // Character counter (hidden by default in compact mode)
+    const counter = document.createElement('span');
+    counter.className = 'blank-char-counter';
+    counter.textContent = `${input.value.length}/50`;
+    counter.style.cssText = `
+      font-size: 12px;
+      color: #999;
+      display: none;
+      white-space: nowrap;
+    `;
     // Optimize input handling with debounce for state update
     let inputTimeout;
     input.addEventListener('input', (e) => {
-      const newValue = e.target.value;
+      const newValue = (e.target.value || '').slice(0, 50);
+      if (e.target.value !== newValue) {
+        e.target.value = newValue;
+      }
       // Update answer text in real-time (instant visual feedback)
       answerText.textContent = newValue || '';
+      counter.textContent = `${newValue.length}/50`;
       
       // Debounce state update to reduce re-renders
       clearTimeout(inputTimeout);
@@ -443,40 +471,36 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
       e.stopPropagation();
     });
     input.addEventListener('blur', (e) => {
-      // Don't collapse if clicking on delete button
+      // Delay to allow button click handler to set deletion flag first
       setTimeout(() => {
-        // Check if the blank still exists (not deleted)
-        if (document.body.contains(span)) {
-          // If input is empty, delete the blank
-          if (!e.target.value || !e.target.value.trim()) {
+        const isDeletingByButton = span.getAttribute('data-deleting-by-button') === 'true';
+        if (!document.body.contains(span)) return;
+        if (!e.target.value || !e.target.value.trim()) {
+          if (!isDeletingByButton && !deletionInProgressRef.current.has(blank.id)) {
             handleDeleteBlankElement(blank.id);
-            return;
           }
-          
-          collapseBlank();
-          // Focus editor and update popup position after collapsing
-          if (editorRef.current) {
-            editorRef.current.focus();
-            // Set cursor position after the blank
-    const selection = window.getSelection();
-            const range = document.createRange();
-            // Try to position cursor after the blank
-            if (span.nextSibling) {
-              range.setStart(span.nextSibling, 0);
-              range.collapse(true);
-            } else if (span.parentNode) {
-              range.setStartAfter(span);
-              range.collapse(true);
-            }
-      selection.removeAllRanges();
-      selection.addRange(range);
-            // Update popup position
-            setTimeout(() => {
-              updatePopupPosition();
-            }, 50);
-          }
+          return;
         }
-      }, 100);
+        collapseBlank();
+        if (editorRef.current) {
+          editorRef.current.focus();
+          // Set cursor position after the blank
+          const selection = window.getSelection();
+          const range = document.createRange();
+          if (span.nextSibling) {
+            range.setStart(span.nextSibling, 0);
+            range.collapse(true);
+          } else if (span.parentNode) {
+            range.setStartAfter(span);
+            range.collapse(true);
+          }
+          selection.removeAllRanges();
+          selection.addRange(range);
+          setTimeout(() => {
+            updatePopupPosition();
+          }, 50);
+        }
+      }, 50);
     });
 
     // Delete button (hidden by default in compact mode)
@@ -507,6 +531,8 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
       e.stopPropagation();
       e.stopImmediatePropagation();
       console.log('Delete button clicked for blank:', blank.id);
+      // mark deletion initiated by button to avoid blur double-delete
+      span.setAttribute('data-deleting-by-button', 'true');
       handleDeleteBlankElement(blank.id);
     });
     deleteBtn.addEventListener('mousedown', (e) => {
@@ -528,6 +554,7 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
       answerText.style.display = 'none';
       input.style.display = 'inline';
       deleteBtn.style.display = 'flex';
+      counter.style.display = 'inline';
       setTimeout(() => input.focus(), 10);
     };
 
@@ -536,6 +563,7 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
       answerText.style.display = 'inline';
       input.style.display = 'none';
       deleteBtn.style.display = 'none';
+      counter.style.display = 'none';
     };
 
     // Click on chip to expand
@@ -552,6 +580,7 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
     chip.appendChild(answerText);
     chip.appendChild(input);
     chip.appendChild(deleteBtn);
+    chip.appendChild(counter);
     span.appendChild(chip);
 
     // Store expand function for external use

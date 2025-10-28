@@ -66,7 +66,14 @@ const MultipleChoiceModal = ({
 	const [hoveredOption, setHoveredOption] = useState(null);
 	const [editorData, setEditorData] = useState('');
 	const editorRef = useRef(null);
+	const optionEditorsRef = useRef({});
 	const answerTypeRef = useRef('single');
+
+	const getPlainText = useCallback((html) => {
+		const tempDiv = document.createElement('div');
+		tempDiv.innerHTML = html || '';
+		return (tempDiv.textContent || tempDiv.innerText || '').trim();
+	}, []);
 	
 	// Sun theme colors (fixed)
 	const primaryColor = '#1890ff';
@@ -292,9 +299,23 @@ const MultipleChoiceModal = ({
 		}
 		optionChangeTimeoutRef.current[optionId] = setTimeout(() => {
 			const data = editor.getData();
+			// Enforce max length of 200 characters based on plain text (excluding HTML tags)
+			const plainText = getPlainText(data);
+			if (plainText.length > 200) {
+				spaceToast.warning('Maximum 200 characters allowed');
+				// Revert editor content to previous valid state
+				const currentOption = options.find((opt) => opt.id === optionId);
+				const previousHtml = currentOption ? currentOption.text : '';
+				if (optionEditorsRef.current[optionId]) {
+					optionEditorsRef.current[optionId].setData(previousHtml || '');
+				} else {
+					editor.setData(previousHtml || '');
+				}
+				return;
+			}
 			handleOptionChange(optionId, 'text', data);
 		}, 150);
-	}, [handleOptionChange]);
+	}, [handleOptionChange, options, getPlainText]);
 
 	// Cleanup timeouts on unmount
 	useEffect(() => {
@@ -317,13 +338,20 @@ const MultipleChoiceModal = ({
 			return;
 		}
 
+		// Validate option length (plain text <= 200)
+		const tooLong = options.some((opt) => getPlainText(opt.text).length > 200);
+		if (tooLong) {
+			spaceToast.error('Each option must be 200 characters or fewer');
+			return;
+		}
+
 			const hasCorrectAnswer = options.some((opt) => opt.isCorrect);
 			if (!hasCorrectAnswer) {
 				spaceToast.warning('Please select at least one correct answer');
 				return;
 			}
 
-			const hasEmptyOptions = options.some((opt) => !opt.text.trim());
+			const hasEmptyOptions = options.some((opt) => !getPlainText(opt.text));
 			if (hasEmptyOptions) {
 				spaceToast.warning('Please fill in all option texts');
 				return;
@@ -741,9 +769,22 @@ const MultipleChoiceModal = ({
 											editor={ClassicEditor}
 											data={option.text}
 											config={optionEditorConfig}
-											onChange={(event, editor) => handleOptionEditorChange(option.id, event, editor)}
+							onChange={(event, editor) => handleOptionEditorChange(option.id, event, editor)}
+							onReady={(editor) => {
+								optionEditorsRef.current[option.id] = editor;
+							}}
 										/>
 									</div>
+					{/* Character Counter */}
+					<div style={{
+						marginTop: '6px',
+						textAlign: 'right',
+						fontSize: '12px',
+						fontWeight: 600,
+						color: getPlainText(option.text).length > 200 ? '#ff4d4f' : '#595959'
+					}}>
+						{`${Math.min(getPlainText(option.text).length, 200)}/200`}
+					</div>
 						</div>
 					</div>
 				))}
