@@ -1980,9 +1980,8 @@ const DailyChallengeContent = () => {
   const [durationMinutes, setDurationMinutes] = useState(null);
   const [startDate, setStartDate] = useState(null);
   const [endDate, setEndDate] = useState(null);
-  const [shuffleAnswers, setShuffleAnswers] = useState(false);
+  const [shuffleQuestion, setShuffleQuestion] = useState(false);
   const [translateOnScreen, setTranslateOnScreen] = useState(false);
-  const [aiFeedbackEnabled, setAiFeedbackEnabled] = useState(false);
   const [antiCheatModeEnabled, setAntiCheatModeEnabled] = useState(false);
   
   // Status state
@@ -2047,13 +2046,14 @@ const DailyChallengeContent = () => {
         setDurationMinutes(challengeData.durationMinutes);
         setStartDate(challengeData.startDate);
         setEndDate(challengeData.endDate);
-        setShuffleAnswers(challengeData.shuffleAnswers || false);
+        setShuffleQuestion(challengeData.shuffleQuestion || challengeData.shuffleAnswers || false);
         setTranslateOnScreen(challengeData.translateOnScreen || false);
-        setAiFeedbackEnabled(challengeData.aiFeedbackEnabled || false);
         setAntiCheatModeEnabled(challengeData.hasAntiCheat || false);
         
-        // Set challenge mode based on challengeType or other logic
-        setChallengeMode('normal'); // Default to normal mode
+        // Set challenge mode based on challengeMethod from API
+        // challengeMethod: 'NORMAL' = normal mode, 'TEST' = exam mode
+        const mode = challengeData.challengeMethod === 'TEST' ? 'exam' : 'normal';
+        setChallengeMode(mode);
         
         // Set status based on challengeStatus
         setStatus(challengeData.challengeStatus === 'PUBLISHED' ? 'published' : 'draft');
@@ -2895,9 +2895,8 @@ const DailyChallengeContent = () => {
     setDurationMinutes(settingsData.durationMinutes);
     setStartDate(settingsData.startDate);
     setEndDate(settingsData.endDate);
-    setShuffleAnswers(settingsData.shuffleAnswers);
+    setShuffleQuestion(settingsData.shuffleQuestion || settingsData.shuffleAnswers || false);
     setTranslateOnScreen(settingsData.translateOnScreen);
-    setAiFeedbackEnabled(settingsData.aiFeedbackEnabled);
     setAntiCheatModeEnabled(settingsData.antiCheatModeEnabled);
     setSettingsModalVisible(false);
   }, []);
@@ -3754,36 +3753,23 @@ const DailyChallengeContent = () => {
                                   </Typography.Text>
                             </div>
 
-                      {/* AI Feedback */}
+                      {/* Shuffle Questions */}
                       <div style={{ marginBottom: '12px', paddingBottom: '12px', borderBottom: '1px solid #f0f0f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <Typography.Text style={{ fontSize: '13px' }}>
-                          {t('dailyChallenge.aiFeedback')}
+                          {t('dailyChallenge.shuffleQuestion') || t('dailyChallenge.shuffleAnswers')}
                                   </Typography.Text>
                         <Typography.Text strong style={{ 
                           fontSize: '13px',
-                          color: aiFeedbackEnabled ? '#52c41a' : '#d9d9d9'
+                          color: shuffleQuestion ? '#52c41a' : '#d9d9d9'
                         }}>
-                          {aiFeedbackEnabled ? '✓ ON' : '✗ OFF'}
-                                </Typography.Text>
-                            </div>
-
-                      {/* Shuffle Answers */}
-                      <div style={{ marginBottom: '12px', paddingBottom: '12px', borderBottom: '1px solid #f0f0f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <Typography.Text style={{ fontSize: '13px' }}>
-                          {t('dailyChallenge.shuffleAnswers')}
-                                  </Typography.Text>
-                        <Typography.Text strong style={{ 
-                          fontSize: '13px',
-                          color: shuffleAnswers ? '#52c41a' : '#d9d9d9'
-                        }}>
-                          {shuffleAnswers ? '✓ ON' : '✗ OFF'}
+                          {shuffleQuestion ? '✓ ON' : '✗ OFF'}
                                   </Typography.Text>
                             </div>
 
                       {/* Anti-Cheat Mode */}
                       <div style={{ marginBottom: '12px', paddingBottom: '12px', borderBottom: '1px solid #f0f0f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <Typography.Text style={{ fontSize: '13px' }}>
-                          🔒 {t('dailyChallenge.antiCheatMode')}
+                           {t('dailyChallenge.antiCheatMode')}
                                   </Typography.Text>
                         <Typography.Text strong style={{ 
                           fontSize: '13px',
@@ -4296,9 +4282,9 @@ const DailyChallengeContent = () => {
           durationMinutes,
           startDate,
           endDate,
-          shuffleAnswers,
+          shuffleQuestion: shuffleQuestion,
+          shuffleAnswers: shuffleQuestion, // Keep for backward compatibility
           translateOnScreen,
-          aiFeedbackEnabled,
           antiCheatModeEnabled,
         }}
       />
@@ -4309,31 +4295,20 @@ const DailyChallengeContent = () => {
           <div style={{ 
             fontSize: '20px', 
             fontWeight: '600', 
-            color: 'rgb(24, 144, 255)',
+            color: theme === 'sun' ? 'rgb(113, 179, 253)' : 'rgb(138, 122, 255)',
             textAlign: 'center',
-            padding: '10px 0',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '10px',
+            padding: '10px 0'
           }}>
-            <CheckCircleOutlined style={{ color: 'rgb(24, 144, 255)' }} />
-            Confirm Publish Challenge
+            {t('dailyChallenge.confirmPublishChallenge') || 'Confirm Publish Challenge'}
           </div>
         }
         open={publishConfirmModalVisible}
         onOk={handlePublishConfirmOk}
         onCancel={handlePublishConfirmCancel}
-        okText="Publish Now"
-        cancelText="Cancel"
-        width={500}
+        okText={t('dailyChallenge.publishNow') || 'Publish Now'}
+        cancelText={t('common.cancel') || 'Cancel'}
+        width={600}
         centered
-        bodyStyle={{
-          padding: '30px 40px',
-          fontSize: '16px',
-          lineHeight: '1.6',
-          textAlign: 'center'
-        }}
         okButtonProps={{
           style: {
             backgroundColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
@@ -4354,35 +4329,102 @@ const DailyChallengeContent = () => {
           }
         }}
       >
-        <div style={{
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          gap: '20px'
-        }}>
-          <div style={{
-            fontSize: '48px',
-            color: '#ff4d4f',
-            marginBottom: '10px'
-          }}>
-            ⚠️
+        <div style={{ padding: '8px 4px' }}>
+          <Typography.Paragraph style={{ marginBottom: 12, textAlign: 'center' }}>
+            {t('dailyChallenge.publishWarning') || 'You are about to publish this challenge. Please verify the following settings:'}
+          </Typography.Paragraph>
+          
+          {/* Challenge Configuration */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+            <Card size="small" style={{ background: theme === 'sun' ? '#fafafa' : 'rgba(255, 255, 255, 0.05)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Typography.Text strong>{t('dailyChallenge.mode') || 'Challenge Mode'}</Typography.Text>
+                <span style={{ 
+                  fontWeight: 700, 
+                  color: challengeMode === 'exam' ? '#ff4d4f' : '#52c41a',
+                  fontSize: '13px'
+                }}>
+                  {challengeMode === 'exam' 
+                    ? t('dailyChallenge.examMode') || 'Exam Mode'
+                    : t('dailyChallenge.normalMode') || 'Normal Mode'}
+                </span>
+              </div>
+            </Card>
+            <Card size="small" style={{ background: theme === 'sun' ? '#fafafa' : 'rgba(255, 255, 255, 0.05)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Typography.Text strong>{t('dailyChallenge.duration') || 'Duration'}</Typography.Text>
+                <span style={{ fontWeight: 700, fontSize: '13px', color: theme === 'sun' ? '#333' : '#000000' }}>
+                  {durationMinutes 
+                    ? `${durationMinutes} ${t('dailyChallenge.minutes') || 'minutes'}`
+                    : t('common.notSet') || 'Not Set'}
+                </span>
+              </div>
+            </Card>
+            <Card size="small" style={{ background: theme === 'sun' ? '#fafafa' : 'rgba(255, 255, 255, 0.05)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Typography.Text strong>{t('dailyChallenge.startDate') || 'Start Date'}</Typography.Text>
+                <span style={{ fontWeight: 700, fontSize: '13px', color: theme === 'sun' ? '#333' : '#000000' }}>
+                  {startDate 
+                    ? new Date(startDate).toLocaleDateString('vi-VN', { 
+                        day: '2-digit', 
+                        month: '2-digit', 
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })
+                    : t('common.notSet') || 'Not Set'}
+                </span>
+              </div>
+            </Card>
+            <Card size="small" style={{ background: theme === 'sun' ? '#fafafa' : 'rgba(255, 255, 255, 0.05)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Typography.Text strong>{t('dailyChallenge.endDate') || 'End Date'}</Typography.Text>
+                <span style={{ fontWeight: 700, fontSize: '13px', color: theme === 'sun' ? '#333' : '#000000' }}>
+                  {endDate 
+                    ? new Date(endDate).toLocaleDateString('vi-VN', { 
+                        day: '2-digit', 
+                        month: '2-digit', 
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })
+                    : t('common.notSet') || 'Not Set'}
+                </span>
+              </div>
+            </Card>
           </div>
-          <p style={{
-            fontSize: '18px',
-            color: '#333',
-            margin: 0,
-            fontWeight: '500'
-          }}>
-            Are you sure you want to publish this challenge?
-          </p>
-          <p style={{
-            fontSize: '16px',
-            color: '#666',
-            margin: 0,
-            lineHeight: '1.5'
-          }}>
-            Once published, students will be able to access this challenge. This action cannot be undone.
-          </p>
+
+          {/* Settings */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+            <Card size="small" style={{ background: theme === 'sun' ? '#fafafa' : 'rgba(255, 255, 255, 0.05)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Typography.Text strong>{t('dailyChallenge.shuffleQuestion') || t('dailyChallenge.shuffleAnswers') || 'Shuffle Questions'}</Typography.Text>
+                <span style={{ fontWeight: 700, color: shuffleQuestion ? '#52c41a' : '#ff4d4f' }}>
+                  {shuffleQuestion ? (t('common.on') || 'ON') : (t('common.off') || 'OFF')}
+                </span>
+              </div>
+            </Card>
+            <Card size="small" style={{ background: theme === 'sun' ? '#fafafa' : 'rgba(255, 255, 255, 0.05)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Typography.Text strong>{t('dailyChallenge.antiCheatMode') || 'Anti-Cheat Mode'}</Typography.Text>
+                <span style={{ fontWeight: 700, color: antiCheatModeEnabled ? '#52c41a' : '#ff4d4f' }}>
+                  {antiCheatModeEnabled ? (t('common.on') || 'ON') : (t('common.off') || 'OFF')}
+                </span>
+              </div>
+            </Card>
+            <Card size="small" style={{ gridColumn: '1 / span 2', background: theme === 'sun' ? '#fafafa' : 'rgba(255, 255, 255, 0.05)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Typography.Text strong>{t('dailyChallenge.translateOnScreen') || 'Translate On Screen'}</Typography.Text>
+                <span style={{ fontWeight: 700, color: translateOnScreen ? '#52c41a' : '#ff4d4f' }}>
+                  {translateOnScreen ? (t('common.on') || 'ON') : (t('common.off') || 'OFF')}
+                </span>
+              </div>
+            </Card>
+          </div>
+
+          <Typography.Paragraph style={{ marginTop: 12, color: '#faad14', fontWeight: 600, textAlign: 'center' }}>
+            {t('dailyChallenge.publishWarningMessage') || 'Once published, students will be able to access this challenge. This action cannot be undone.'}
+          </Typography.Paragraph>
         </div>
       </Modal>
     </ThemedLayout>
