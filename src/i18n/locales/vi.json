@@ -1783,6 +1783,7 @@
     "createChallenge": "Tạo Challenge",
     "challengeTitle": "Tên Challenge",
     "type": "Loại",
+    "no": "STT",
     "difficulty": "Độ khó",
     "timeLimit": "Thời gian",
     "totalQuestions": "Tổng số câu hỏi",

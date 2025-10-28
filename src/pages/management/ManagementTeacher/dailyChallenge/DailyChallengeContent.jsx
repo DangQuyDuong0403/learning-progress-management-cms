@@ -2822,10 +2822,13 @@ const DailyChallengeContent = () => {
       
       // Set order numbers for visible sections only
       let orderNumber = 1;
-      const bulkUpdateData = Array.from(sectionsMap.values()).map(section => ({
-        ...section,
-        orderNumber: section.hasVisibleQuestions ? orderNumber++ : section.orderNumber
-      }));
+      const bulkUpdateData = Array.from(sectionsMap.values()).map(section => {
+        const { hasVisibleQuestions, ...sectionData } = section; // Remove hasVisibleQuestions from API request
+        return {
+          ...sectionData,
+          orderNumber: hasVisibleQuestions ? orderNumber++ : section.orderNumber
+        };
+      });
 
       console.log('Bulk update sections data:', {
         count: bulkUpdateData.length,
