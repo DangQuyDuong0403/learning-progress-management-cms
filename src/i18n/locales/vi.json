@@ -1777,6 +1777,7 @@
     "no": "Không"
   },
   "dailyChallenge": {
+    "duplicateTypesNotAllowed": "Mỗi loại câu hỏi chỉ được chọn một lần",
     "dailyChallengeManagement": "Quản lý Daily Challenge",
     "createChallenge": "Tạo Challenge",
     "challengeTitle": "Tên Challenge",

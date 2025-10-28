@@ -33,6 +33,7 @@ import DragDropModal from "./questionModals/DragDropModal";
 import ReorderModal from "./questionModals/ReorderModal";
 import RewriteModal from "./questionModals/RewriteModal";
 import "./AIGenerateQuestions.css";
+import dailyChallengeApi from "../../../../apis/backend/dailyChallengeManagement";
 
 const { TextArea } = Input;
 const { Title } = Typography;
@@ -175,7 +176,7 @@ const AIGenerateQuestions = () => {
   const primaryColor = theme === 'sun' ? '#1890ff' : '#8B5CF6';
   const primaryColorWithAlpha = theme === 'sun' ? 'rgba(24, 144, 255, 0.1)' : 'rgba(139, 92, 246, 0.1)';
   
-  const availableQuestionTypes = [
+  const availableQuestionTypes = React.useMemo(() => [
     { 
       value: "MULTIPLE_CHOICE", 
       label: t('dailyChallenge.multipleChoice') || 'Multiple Choice', 
@@ -232,7 +233,7 @@ const AIGenerateQuestions = () => {
       color: primaryColor,
       bgColor: primaryColorWithAlpha
     },
-  ];
+  ], [t, primaryColor, primaryColorWithAlpha]);
 
   // Helpers
   const stripHtml = useCallback((html) => {
@@ -252,14 +253,20 @@ const AIGenerateQuestions = () => {
     return String(text).replace(/\[\[pos_[a-zA-Z0-9]+\]\]/g, '');
   }, []);
   
-  // Handle adding a new question type configuration
+  // Handle adding a new question type configuration (no duplicate types)
   const handleAddQuestionType = useCallback(() => {
-    if (questionTypeConfigs.length < 8) {
-      setQuestionTypeConfigs(prev => [...prev, { questionType: "MULTIPLE_CHOICE", numberOfQuestions: 1 }]);
-    } else {
+    if (questionTypeConfigs.length >= 8) {
       spaceToast.warning(t('dailyChallenge.maxQuestionTypesReached') || 'Maximum 8 question types allowed');
+      return;
     }
-  }, [questionTypeConfigs.length, t]);
+    const used = new Set(questionTypeConfigs.map(q => q.questionType));
+    const next = availableQuestionTypes.find(qt => !used.has(qt.value));
+    if (!next) {
+      spaceToast.warning(t('dailyChallenge.duplicateTypesNotAllowed') || 'Each question type must be unique');
+      return;
+    }
+    setQuestionTypeConfigs(prev => [...prev, { questionType: next.value, numberOfQuestions: 1 }]);
+  }, [questionTypeConfigs, t, availableQuestionTypes]);
   
   // Handle removing a question type configuration
   const handleRemoveQuestionType = useCallback((index) => {
@@ -272,10 +279,16 @@ const AIGenerateQuestions = () => {
   
   // Handle updating question type
   const handleQuestionTypeChange = useCallback((index, value) => {
-    setQuestionTypeConfigs(prev => prev.map((item, i) => 
-      i === index ? { ...item, questionType: value } : item
-    ));
-  }, []);
+    setQuestionTypeConfigs(prev => {
+      // Prevent selecting a type already used in another config
+      const existsElsewhere = prev.some((cfg, i) => i !== index && cfg.questionType === value);
+      if (existsElsewhere) {
+        spaceToast.warning(t('dailyChallenge.duplicateTypesNotAllowed') || 'This question type is already selected');
+        return prev;
+      }
+      return prev.map((item, i) => (i === index ? { ...item, questionType: value } : item));
+    });
+  }, [t]);
   
   // Handle updating number of questions
   const handleNumberOfQuestionsChange = useCallback((index, value) => {
@@ -284,6 +297,214 @@ const AIGenerateQuestions = () => {
     ));
   }, []);
   
+  // Map backend AI response -> UI preview model for 8 supported types
+  const normalizeQuestionsFromAI = useCallback((rawList) => {
+    if (!Array.isArray(rawList)) return [];
+    // If backend returns sections [{ section, questions: [...] }, ...], flatten to questions
+    let list = rawList;
+    if (rawList.length && rawList.every(it => it && Array.isArray(it.questions))) {
+      list = rawList.flatMap(it => Array.isArray(it.questions) ? it.questions : []);
+    }
+
+    let counter = 0;
+    const nextId = () => (++counter);
+    const toOptionKey = (idx) => String.fromCharCode(65 + idx); // A, B, C ...
+    return list
+      .map((q) => {
+        const type = String(q?.questionType || q?.type || '').toUpperCase();
+        switch (type) {
+          case 'MULTIPLE_CHOICE': {
+            const opts = Array.isArray(q?.options)
+              ? q.options
+              : Array.isArray(q?.answers)
+                ? q.answers
+                : Array.isArray(q?.content?.data)
+                  ? q.content.data
+                  : [];
+            const normalizedOptions = opts.map((o, i) => ({
+              key: toOptionKey(i),
+              text: o?.text ?? o?.value ?? o?.content ?? '',
+              isCorrect: Boolean(o?.isCorrect || o?.correct),
+            }));
+            return {
+              id: nextId(),
+              type: 'MULTIPLE_CHOICE',
+              title: `Question ${counter}`,
+              question: q?.question || q?.questionText || q?.content || '',
+              options: normalizedOptions,
+              points: q?.points ?? q?.score ?? 1,
+            };
+          }
+          case 'MULTIPLE_SELECT': {
+            const opts = Array.isArray(q?.options)
+              ? q.options
+              : Array.isArray(q?.answers)
+                ? q.answers
+                : Array.isArray(q?.content?.data)
+                  ? q.content.data
+                  : [];
+            const normalizedOptions = opts.map((o, i) => ({
+              key: toOptionKey(i),
+              text: o?.text ?? o?.value ?? o?.content ?? '',
+              isCorrect: Boolean(o?.isCorrect || o?.correct),
+            }));
+            return {
+              id: nextId(),
+              type: 'MULTIPLE_SELECT',
+              title: `Question ${counter}`,
+              question: q?.question || q?.questionText || q?.content || '',
+              options: normalizedOptions,
+              points: q?.points ?? q?.score ?? 1,
+            };
+          }
+          case 'TRUE_OR_FALSE': {
+            // If backend gives correctAnswer: 'True'|'False'
+            const correct = String(q?.correctAnswer ?? q?.answer ?? '').toLowerCase();
+            const isTrue = correct === 'true' || correct === 't' || correct === '1';
+            const options = [
+              { key: 'A', text: 'True', isCorrect: isTrue === true },
+              { key: 'B', text: 'False', isCorrect: isTrue === false },
+            ];
+            // Or if backend already includes options
+            const backendOptions = Array.isArray(q?.options) ? q.options : [];
+            const hasBackend = backendOptions.length > 0;
+            return {
+              id: nextId(),
+              type: 'TRUE_OR_FALSE',
+              title: `Question ${counter}`,
+              question: q?.question || q?.questionText || '',
+              options: hasBackend
+                ? backendOptions.map((o, i) => ({ key: toOptionKey(i), text: o?.text ?? o?.value ?? '', isCorrect: Boolean(o?.isCorrect || o?.correct) }))
+                : options,
+              points: q?.points ?? q?.score ?? 1,
+            };
+          }
+          case 'FILL_IN_THE_BLANK': {
+            const text = q?.questionText || q?.question || '';
+            // Prefer backend content.data; normalize positionId by stripping 'pos_'
+            const contentItems = Array.isArray(q?.content?.data) ? q.content.data : [];
+            const normalizedContent = contentItems.map((it, i) => ({
+              id: it?.id || `opt${i + 1}`,
+              value: it?.value ?? '',
+              positionId: typeof it?.positionId === 'string' ? it.positionId.replace(/^pos_/, '') : (it?.positionId ?? null),
+              positionOrder: it?.positionOrder ?? 1,
+              correct: it?.correct === true,
+            }));
+            return {
+              id: nextId(),
+              type: 'FILL_IN_THE_BLANK',
+              title: `Question ${counter}`,
+              question: text,
+              questionText: text,
+              content: { data: normalizedContent },
+              points: q?.points ?? q?.score ?? 1,
+            };
+          }
+          case 'DROPDOWN': {
+            const text = q?.questionText || q?.question || '';
+            // Use content.data groups, normalize positionId keys to match [[pos_x]] -> 'x'
+            const contentItems = Array.isArray(q?.content?.data) ? q.content.data : [];
+            const normalizedContent = contentItems.map((it, i) => ({
+              id: it?.id || `opt${i + 1}`,
+              value: it?.value ?? '',
+              positionId: typeof it?.positionId === 'string' ? it.positionId.replace(/^pos_/, '') : (it?.positionId ?? null),
+              positionOrder: it?.positionOrder ?? (it?.correct ? 1 : 2),
+              correct: it?.correct === true,
+            }));
+            return {
+              id: nextId(),
+              type: 'DROPDOWN',
+              title: `Question ${counter}`,
+              question: q?.question || 'Choose the correct words to complete the sentence:',
+              questionText: text,
+              content: { data: normalizedContent },
+              points: q?.points ?? q?.score ?? 1,
+            };
+          }
+          case 'DRAG_AND_DROP': {
+            const text = q?.questionText || q?.question || '';
+            const contentItems = Array.isArray(q?.content?.data) ? q.content.data : [];
+            // correct values mapped to their position
+            const correctMap = {};
+            const correctValues = [];
+            const blanks = [];
+            contentItems.forEach(it => {
+              if (it.correct && it.positionId) {
+                correctMap[it.positionId.replace(/^pos_/, '')] = it.value;
+                correctValues.push(it.value);
+              }
+              if (it.correct && it.positionId) {
+                blanks.push({id: it.positionId.replace(/^pos_/, ''), value: it.value});
+              }
+            });
+            // incorrect options: all values with correct=false or missing positionId
+            const available = contentItems.filter(it => !it.correct || !it.positionId).map(it => it.value);
+            return {
+              id: nextId(),
+              type: 'DRAG_AND_DROP',
+              title: `Question ${counter}`,
+              question: text,
+              questionText: text,
+              content: { data: contentItems },
+              correctAnswers: correctMap,
+              availableWords: available,
+              blanks,
+              points: q?.points ?? q?.score ?? 1,
+            };
+          }
+          case 'REARRANGE': {
+            // Use questionText
+            const text = q?.questionText || q?.question || '';
+            const contentItems = Array.isArray(q?.content?.data) ? q.content.data : [];
+            // Sort contentItems by positionId if possible
+            const sortedWords = [...contentItems]
+              .sort((a, b) => {
+                // Try numeric sort if possible
+                const aNum = Number(String(a.positionId||'').replace(/\D/g, ''));
+                const bNum = Number(String(b.positionId||'').replace(/\D/g, ''));
+                if (!isNaN(aNum) && !isNaN(bNum)) return aNum - bNum;
+                return 0;
+              })
+              .map(it => it.value);
+            return {
+              id: nextId(),
+              type: 'REARRANGE',
+              title: `Question ${counter}`,
+              question: text || 'Rearrange the words by dragging them into the correct order:',
+              sourceItems: sortedWords,
+              correctOrder: sortedWords,
+              content: { data: contentItems },
+              points: q?.points ?? q?.score ?? 1,
+            };
+          }
+          case 'REWRITE': {
+            const contentItems = Array.isArray(q?.content?.data) ? q.content.data : [];
+            const correctVals = contentItems.filter(it => it?.correct === true).map(it => it?.value).filter(Boolean);
+            // Try to compute an original sentence by stripping [[pos_x]] -> x from a candidate
+            const pickBase = correctVals[0] || contentItems[0]?.value || '';
+            const baseWithoutMarkers = typeof pickBase === 'string' ? pickBase.replace(/\[\[pos_([a-zA-Z0-9_]+)\]\]/g, '$1') : '';
+            return {
+              id: nextId(),
+              type: 'REWRITE',
+              title: `Question ${counter}`,
+            // Use backend prompt as the visible question
+            question: q?.questionText || q?.question || 'Rewrite the following sentence using different words:',
+            questionText: q?.questionText || q?.question || '',
+              originalSentence: q?.originalSentence || baseWithoutMarkers,
+              correctAnswer: correctVals[0] || q?.correctAnswer || '',
+              content: { data: contentItems },
+              points: q?.points ?? q?.score ?? 1,
+            };
+          }
+          // WRITING is not supported in current preview format — skip it
+          default:
+            return null;
+        }
+      })
+      .filter(Boolean)
+      .map((q, idx) => ({ ...q, id: idx + 1, title: `Question ${idx + 1}` }));
+  }, []);
+
   // Handle AI generation
   const handleGenerateWithAI = useCallback(async () => {
     // Validation
@@ -295,23 +516,55 @@ const AIGenerateQuestions = () => {
     try {
       setIsGenerating(true);
       setShowPreview(false);
-      
-      // Simulate AI generation process
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Set fake data for preview - questions are already initialized with sample data
-      
-      setShowPreview(true);
-      
-      spaceToast.success(t('dailyChallenge.aiQuestionsGenerated') || 'AI questions generated successfully!');
+      const payload = {
+        challengeId: challengeInfo.challengeId || id,
+        questionTypeConfigs: questionTypeConfigs.map((c) => ({
+          questionType: c.questionType,
+          numberOfQuestions: Number(c.numberOfQuestions) || 1,
+        })),
+        description: promptDescription,
+      };
+      const res = await dailyChallengeApi.generateAIQuestions(payload);
+      console.log('GenerateAIQuestions API - Response:', res);
+      // Try common shapes:
+      // - [ ... ]
+      // - { questions: [ ... ] }
+      // - { data: [ ... ] }
+      // - { data: { questions: [ ... ] } }
+      // - { result: { questions: [ ... ] } }
+      let rawList = [];
+      if (Array.isArray(res)) {
+        rawList = res;
+      } else if (Array.isArray(res?.questions)) {
+        rawList = res.questions;
+      } else if (Array.isArray(res?.data)) {
+        rawList = res.data;
+      } else if (Array.isArray(res?.data?.questions)) {
+        rawList = res.data.questions;
+      } else if (Array.isArray(res?.result?.questions)) {
+        rawList = res.result.questions;
+      } else if (Array.isArray(res?.payload?.questions)) {
+        rawList = res.payload.questions;
+      }
+      const normalized = normalizeQuestionsFromAI(rawList);
+      if (!normalized.length) {
+        spaceToast.warning('AI did not return any questions');
+        setQuestions([]);
+        setShowPreview(false);
+      } else {
+        setQuestions(normalized);
+        setShowPreview(true);
+        spaceToast.success(t('dailyChallenge.aiQuestionsGenerated') || 'AI questions generated successfully!');
+      }
       
     } catch (error) {
       console.error('Error generating AI questions:', error);
-      spaceToast.error(error.message || 'Failed to generate AI questions');
+      const msg = error?.response?.data?.message || error?.response?.data?.error || error?.message || 'Failed to generate AI questions';
+      spaceToast.error(msg);
     } finally {
       setIsGenerating(false);
     }
-  }, [promptDescription, t]);
+  }, [promptDescription, t, challengeInfo.challengeId, id, questionTypeConfigs, normalizeQuestionsFromAI]);
 
   // Handle save
   const handleSave = useCallback(async () => {
@@ -323,46 +576,156 @@ const AIGenerateQuestions = () => {
     
     try {
       setSaving(true);
-      
-      // Prepare AI generation request data
-      const requestData = {
-        challengeId: id,
-        prompt: promptDescription,
-        questionTypeConfigs
+
+      // Transform current preview questions -> API schema
+      const transformQuestionToApiFormat = (q, orderNumber) => {
+        const toContentData = (data) => Array.isArray(data) ? data : [];
+        switch (q.type) {
+          case 'MULTIPLE_CHOICE':
+          case 'MULTIPLE_SELECT':
+            return {
+              questionText: q.question || q.questionText || '',
+              orderNumber,
+              score: q.points || 1,
+              questionType: q.type,
+              content: {
+                data: (q.options || []).map((option, idx) => ({
+                  id: option.key || `opt${idx + 1}`,
+                  value: option.text || option.value || '',
+                  positionOrder: idx + 1,
+                  correct: option.isCorrect === true,
+                })),
+              },
+              toBeDeleted: false,
+            };
+          case 'TRUE_OR_FALSE':
+            return {
+              questionText: q.question || q.questionText || '',
+              orderNumber,
+              score: q.points || 1,
+              questionType: 'TRUE_OR_FALSE',
+              content: {
+                data: (q.options || []).map((option, idx) => ({
+                  id: option.key || `opt${idx + 1}`,
+                  value: option.text || option.value || '',
+                  positionOrder: idx + 1,
+                  correct: option.isCorrect === true,
+                })),
+              },
+              toBeDeleted: false,
+            };
+          case 'FILL_IN_THE_BLANK':
+            return {
+              questionText: q.questionText || q.question || '',
+              orderNumber,
+              score: q.points || 1,
+              questionType: 'FILL_IN_THE_BLANK',
+              content: { data: toContentData(q.content?.data) },
+              toBeDeleted: false,
+            };
+          case 'DROPDOWN':
+            return {
+              questionText: q.questionText || q.question || '',
+              orderNumber,
+              score: q.points || 1,
+              questionType: 'DROPDOWN',
+              content: { data: toContentData(q.content?.data) },
+              toBeDeleted: false,
+            };
+          case 'DRAG_AND_DROP':
+            return {
+              questionText: q.questionText || q.question || '',
+              orderNumber,
+              score: q.points || 1,
+              questionType: 'DRAG_AND_DROP',
+              content: { data: toContentData(q.content?.data) },
+              toBeDeleted: false,
+            };
+          case 'REARRANGE': {
+            const rawItems = toContentData(q.content?.data);
+            // sanitize: require positionId and value; normalize positionId to plain number/string
+            const items = rawItems
+              .filter((it) => it && it.value && it.positionId !== undefined && it.positionId !== null && String(it.positionId).trim() !== '')
+              .map((it) => ({
+                ...it,
+                positionId: String(it.positionId).replace(/^pos_/, ''),
+              }))
+              .sort((a, b) => (Number(a.positionId) || 0) - (Number(b.positionId) || 0))
+              .map((it, idx) => ({ ...it, positionOrder: idx + 1 }));
+            // Backend requires placeholders [[pos_X]] present in questionText
+            const placeholderText = items.length
+              ? items
+                  .map((it) => `[[pos_${it.positionId}]]`)
+                  .join(' ')
+              : (q.questionText || q.question || '');
+            return {
+              questionText: placeholderText,
+              orderNumber,
+              score: q.points || 1,
+              questionType: 'REARRANGE',
+              content: { data: items },
+              toBeDeleted: false,
+            };
+          }
+          case 'REWRITE':
+            return {
+              questionText: q.questionText || q.question || '',
+              orderNumber,
+              score: q.points || 1,
+              questionType: 'REWRITE',
+              content: { data: toContentData(q.content?.data) },
+              toBeDeleted: false,
+            };
+          default:
+            return {
+              questionText: q.question || q.questionText || '',
+              orderNumber,
+              score: q.points || 1,
+              questionType: q.type || 'MULTIPLE_CHOICE',
+              content: { data: [] },
+              toBeDeleted: false,
+            };
+        }
       };
-      
-      console.log('AI Generation Request Data:', requestData);
-      
-      // TODO: Call AI generation API
-      // const response = await dailyChallengeApi.generateAIQuestions(requestData);
-      
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      spaceToast.success(t('dailyChallenge.aiQuestionsGenerated') || 'AI questions generated successfully!');
-      
+
+      const apiQuestions = (questions || []).map((q, idx) => transformQuestionToApiFormat(q, idx + 1));
+
+      const sectionData = {
+        section: {
+          sectionTitle: 'AI Generated Section',
+          sectionsUrl: '',
+          sectionsContent: promptDescription || 'AI generated questions',
+          orderNumber: 1,
+          resourceType: 'NONE',
+        },
+        questions: apiQuestions,
+      };
+
+      console.log('Saving AI section with questions:', sectionData);
+      const resp = await dailyChallengeApi.saveSectionWithQuestions(id, sectionData);
+      spaceToast.success(resp?.message || t('dailyChallenge.aiQuestionsGenerated') || 'AI questions generated successfully!');
+
       // Navigate back to content page
       const userRole = user?.role?.toLowerCase();
       const contentPath = userRole === 'teaching_assistant'
         ? `/teaching-assistant/daily-challenges/detail/${id}/content`
         : `/teacher/daily-challenges/detail/${id}/content`;
-      
+
       navigate(contentPath, {
         state: {
           challengeId: id,
           challengeName: challengeInfo.challengeName,
           classId: challengeInfo.classId,
-          className: challengeInfo.className
-        }
+          className: challengeInfo.className,
+        },
       });
-      
     } catch (error) {
-      console.error('Error generating AI questions:', error);
-      spaceToast.error(error.response?.data?.error || error.message || 'Failed to generate AI questions');
+      console.error('Error saving AI generated questions:', error);
+      spaceToast.error(error.response?.data?.error || error.response?.data?.message || error.message || 'Failed to save AI questions');
     } finally {
       setSaving(false);
     }
-  }, [id, promptDescription, questionTypeConfigs, navigate, user, challengeInfo, t]);
+  }, [id, promptDescription, questions, navigate, user, challengeInfo, t]);
   
 
 
@@ -389,21 +752,25 @@ const AIGenerateQuestions = () => {
 
         // For REWRITE, map original shape → modal shape
         if (question.type === 'REWRITE') {
-          const answers = [];
-          if (question.correctAnswer) {
-            answers.push({ id: 1, answer: question.correctAnswer });
+          // Build multiple answers from content.data if available; fallback to correctAnswer
+          const items = Array.isArray(question.content?.data) ? question.content.data : [];
+          let contentData = [];
+          if (items.length > 0) {
+            contentData = items.map((it, idx) => ({
+              id: it?.id || `item${idx + 1}`,
+              value: it?.value || '',
+              positionId: String(idx + 1),
+              correct: true,
+            }));
+          } else if (question.correctAnswer) {
+            contentData = [{ id: 'item1', value: question.correctAnswer, positionId: '1', correct: true }];
           }
-          const contentData = answers.map((ans, idx) => ({
-            id: `item${idx + 1}`,
-            value: ans.answer,
-            positionId: String(idx + 1),
-            correct: true,
-          }));
+          const answers = contentData.map((d, i) => ({ id: i + 1, answer: d.value }));
 
           modalData = {
             ...modalData,
-            // Use original sentence as editable text; instruction kept in question/questionText
-            questionText: question.originalSentence || question.question || '',
+            // questionText is the prompt shown/edited by user
+            questionText: question.questionText || question.question || '',
             content: { data: contentData },
             correctAnswers: answers,
           };
@@ -653,6 +1020,10 @@ const AIGenerateQuestions = () => {
   }, [navigate, id, challengeInfo, user]);
   
   // Custom Header Component
+  const headerSubtitle = (challengeInfo.className && challengeInfo.challengeName)
+    ? `${challengeInfo.className} / ${challengeInfo.challengeName}`
+    : (challengeInfo.challengeName || null);
+
   const customHeader = (
     <header className={`themed-header ${theme}-header`}>
       <nav className="themed-navbar">
@@ -694,7 +1065,11 @@ const AIGenerateQuestions = () => {
                 fontWeight: 300,
                 opacity: 0.5
               }}>|</span>
-              <span>{t('dailyChallenge.createWithAI') || 'Tạo câu hỏi bằng AI'}</span>
+              <span>
+                {headerSubtitle
+                  || (t('dailyChallenge.dailyChallengeManagement') + ' / ' + (t('dailyChallenge.content') || 'Content'))
+                }
+              </span>
             </div>
           </div>
 
@@ -1256,7 +1631,7 @@ const AIGenerateQuestions = () => {
                   {/* Content Area */}
                   <div className="question-content" style={{ paddingLeft: '36px', marginTop: '16px' }}>
                     {/* Fill in the Blank */}
-                    {question.type === 'FILL_IN_THE_BLANK' && question.blanks && (
+                    {question.type === 'FILL_IN_THE_BLANK' && (Array.isArray(question.blanks) || Array.isArray(question.content?.data)) && (
                       <div style={{ marginBottom: '16px' }}>
                         <Typography.Text style={{ 
                           fontSize: '15px', 
@@ -1266,7 +1641,7 @@ const AIGenerateQuestions = () => {
                           whiteSpace: 'pre-wrap'
                         }}>
                           {(() => {
-                            const text = question.question || '';
+                            const text = question.questionText || question.question || '';
                             const blanks = question.blanks || [];
                             // Support both legacy underscores and [[pos_X]] placeholders
                             if (text.includes('[[pos_')) {
@@ -1901,23 +2276,7 @@ const AIGenerateQuestions = () => {
                             return stripHtml(withoutMarkers).trim();
                           })()}
                         </Typography.Text>
-                        {/* Original sentence (editable text) */}
-                        {(() => {
-                          const raw = question.originalSentence || '';
-                          const text = removePosMarkers(stripHtml(raw)).trim();
-                          if (!text) return null;
-                          return (
-                            <div style={{
-                              marginBottom: '12px',
-                              fontSize: '15px',
-                              fontWeight: '350',
-                              color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)',
-                              lineHeight: '1.8'
-                            }}>
-                              {text}
-                            </div>
-                          );
-                        })()}
+                        {/* Original sentence preview intentionally hidden for REWRITE */}
 
                         {/* Remove original sentence preview to avoid duplicated text */}
 
