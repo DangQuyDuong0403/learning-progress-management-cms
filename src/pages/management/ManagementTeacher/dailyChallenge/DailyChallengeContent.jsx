@@ -3,7 +3,6 @@ import {
   Button,
   Input,
   Space,
-  Select,
   Tooltip,
   Typography,
   Modal,
@@ -172,9 +171,7 @@ const SortablePassageItem = memo(
       onDuplicatePassage(passage.id);
     }, [passage.id, onDuplicatePassage]);
 
-    const handlePointChange = useCallback((value) => {
-      onPointsChange(passage.id, value);
-    }, [passage.id, onPointsChange]);
+    // Removed unused handlePointChange
 
     return (
       <div
@@ -980,9 +977,7 @@ const SortableQuestionItem = memo(
       onDuplicateQuestion(question.id);
     }, [question.id, onDuplicateQuestion]);
 
-    const handlePointChange = useCallback((value) => {
-      onPointsChange(question.id, value);
-    }, [question.id, onPointsChange]);
+    // Removed unused handlePointChange
 
     // Helper function to render Fill in the Blank question
     const renderFillBlankQuestion = useCallback(() => {
@@ -2029,6 +2024,7 @@ const DailyChallengeContent = () => {
     })
   );
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const fetchChallengeDetails = useCallback(async () => {
     if (!id) {
       setChallengeLoading(false);
@@ -2248,7 +2244,7 @@ const DailyChallengeContent = () => {
       setPassages([]);
       setLoading(false);
     }
-  }, [id]);
+  }, [id, challengeDetails?.challengeType]);
 
   useEffect(() => {
     fetchChallengeDetails();
@@ -2443,7 +2439,6 @@ const DailyChallengeContent = () => {
             data: questionData.options ? questionData.options.map((option, optIndex) => ({
               id: option.key ? option.key.replace('.', '') : `opt${optIndex + 1}`,
               value: option.text,
-              positionOrder: optIndex + 1,
               correct: option.isCorrect || false
             })) : []
           }
@@ -2459,7 +2454,6 @@ const DailyChallengeContent = () => {
             data: questionData.options ? questionData.options.map((option, optIndex) => ({
               id: `opt${optIndex + 1}`,
               value: option.text,
-              positionOrder: optIndex + 1,
               correct: option.isCorrect || false
             })) : []
           }
@@ -2472,7 +2466,7 @@ const DailyChallengeContent = () => {
           score: questionData.points || 0.5,
           questionType: 'FILL_IN_THE_BLANK',
           content: {
-            data: questionData.content?.data || []
+            data: (questionData.content?.data || []).map(({ positionOrder, ...rest }) => rest)
           }
         };
 
@@ -2483,7 +2477,7 @@ const DailyChallengeContent = () => {
           score: questionData.points || 0.5,
           questionType: 'DROPDOWN',
           content: {
-            data: questionData.content?.data || []
+            data: (questionData.content?.data || []).map(({ positionOrder, ...rest }) => rest)
           }
         };
 
@@ -2494,7 +2488,7 @@ const DailyChallengeContent = () => {
           score: questionData.points || 1,
           questionType: 'DRAG_AND_DROP',
           content: {
-            data: questionData.content?.data || []
+            data: (questionData.content?.data || []).map(({ positionOrder, ...rest }) => rest)
           }
         };
 
@@ -2505,7 +2499,7 @@ const DailyChallengeContent = () => {
           score: questionData.points || 1,
           questionType: 'REARRANGE',
           content: {
-            data: questionData.content?.data || []
+            data: (questionData.content?.data || []).map(({ positionOrder, ...rest }) => rest)
           }
         };
 
@@ -2516,7 +2510,7 @@ const DailyChallengeContent = () => {
           score: questionData.points || 1,
           questionType: 'REWRITE',
           content: {
-            data: questionData.content?.data || []
+            data: (questionData.content?.data || []).map(({ positionOrder, ...rest }) => rest)
           }
         };
 
@@ -2530,7 +2524,6 @@ const DailyChallengeContent = () => {
             data: questionData.options ? questionData.options.map((option, optIndex) => ({
               id: `opt${optIndex + 1}`,
               value: option.text,
-              positionOrder: optIndex + 1,
               correct: option.isCorrect || false
             })) : []
           }
@@ -2561,6 +2554,11 @@ const DailyChallengeContent = () => {
 
       // Transform question to API format
       const apiQuestion = transformQuestionToApiFormat(questionData, 1, questionData.type);
+      // Sanitize: remove positionOrder if present in content.data
+      const sanitizedApiQuestion = {
+        ...apiQuestion,
+        content: apiQuestion.content ? { data: (apiQuestion.content.data || []).map(({ positionOrder, ...rest }) => rest) } : apiQuestion.content
+      };
       
       // Get appropriate section content
       const sectionContent = getSectionContent(questionData.type);
@@ -2571,7 +2569,7 @@ const DailyChallengeContent = () => {
           sectionsContent: sectionContent,
           resourceType: 'NONE'
         },
-        questions: [apiQuestion]
+        questions: [sanitizedApiQuestion]
       };
 
       console.log('Creating new question:', sectionData);
@@ -2650,7 +2648,7 @@ const DailyChallengeContent = () => {
     } finally {
       setSavingQuestion(false);
     }
-  }, [editingQuestion, id, fetchQuestions, transformQuestionToApiFormat, getSectionContent, currentChallengeType, challengeDetails?.challengeType]);
+  }, [editingQuestion, id, fetchQuestions, transformQuestionToApiFormat, getSectionContent, currentChallengeType]);
 
   // Main handler - route to create or update
   const handleModalSave = useCallback(async (questionData) => {
