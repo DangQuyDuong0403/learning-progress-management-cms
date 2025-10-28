@@ -86,6 +86,12 @@ const DailyChallengeList = ({ readOnly = false }) => {
     challengeTitle: '',
   });
 
+  // Simple status display mapping for readability
+  const STATUS_LABEL = {
+    PUBLISHED: 'Published',
+    DRAFT: 'Draft',
+  };
+
   // AccountList-style filter dropdown state and refs
   const [filterDropdown, setFilterDropdown] = useState({
     visible: false,
@@ -703,14 +709,14 @@ const DailyChallengeList = ({ readOnly = false }) => {
 
   const columns = [
     {
-      title: 'No',
+      title: t('dailyChallenge.no'),
       key: 'stt',
       width: 70,
       align: 'center',
       render: (_, __, index) => (currentPage - 1) * pageSize + index + 1,
     },
     {
-      title: 'Lesson',
+      title: t('dailyChallenge.lesson'),
       dataIndex: 'lessonName',
       key: 'lessonName',
       width: 200,
@@ -854,7 +860,7 @@ const DailyChallengeList = ({ readOnly = false }) => {
       },
     },
     {
-      title: 'Start Date',
+      title: t('dailyChallenge.startDate'),
       dataIndex: 'startDate',
       key: 'startDate',
       width: 120,
@@ -870,7 +876,7 @@ const DailyChallengeList = ({ readOnly = false }) => {
       },
     },
     {
-      title: 'End Date',
+      title: t('dailyChallenge.endDate'),
       dataIndex: 'endDate',
       key: 'endDate',
       width: 120,
@@ -904,7 +910,7 @@ const DailyChallengeList = ({ readOnly = false }) => {
             fontSize: '20px',
             color: '#000000'
           }}>
-            {status === 'PUBLISHED' ? t('dailyChallenge.published') : t('dailyChallenge.draft')}
+            {STATUS_LABEL[status] || status || ''}
           </span>
         );
       },

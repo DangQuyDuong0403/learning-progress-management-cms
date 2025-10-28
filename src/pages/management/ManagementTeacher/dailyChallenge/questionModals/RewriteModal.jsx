@@ -59,6 +59,13 @@ const RewriteModal = ({ visible, onCancel, onSave, questionData = null }) => {
   const [hoveredAnswer, setHoveredAnswer] = useState(null);
   const [editorData, setEditorData] = useState('');
   const editorRef = useRef(null);
+  const answerEditorsRef = useRef({});
+
+  const getPlainText = useCallback((html) => {
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = html || '';
+    return (tempDiv.textContent || tempDiv.innerText || '').trim();
+  }, []);
 
   // Memoize CKEditor config for question editor
   const questionEditorConfig = useMemo(() => ({
@@ -227,13 +234,25 @@ const RewriteModal = ({ visible, onCancel, onSave, questionData = null }) => {
     }
     answerChangeTimeoutRef.current[answerId] = setTimeout(() => {
       const data = editor.getData();
+      const plainText = getPlainText(data);
+      if (plainText.length > 200) {
+        spaceToast.warning('Maximum 200 characters allowed');
+        const currentAnswer = correctAnswers.find((ans) => ans.id === answerId);
+        const previousHtml = currentAnswer ? currentAnswer.answer : '';
+        if (answerEditorsRef.current[answerId]) {
+          answerEditorsRef.current[answerId].setData(previousHtml || '');
+        } else {
+          editor.setData(previousHtml || '');
+        }
+        return;
+      }
       setCorrectAnswers(prevAnswers =>
         prevAnswers.map(ans =>
           ans.id === answerId ? { ...ans, answer: data } : ans
         )
       );
     }, 150);
-  }, []);
+  }, [getPlainText, correctAnswers]);
 
   // Cleanup timeouts on unmount
   useEffect(() => {
@@ -281,8 +300,15 @@ const RewriteModal = ({ visible, onCancel, onSave, questionData = null }) => {
       return;
     }
 
+    // Validate answer length (plain text <= 200) and non-empty
+    const tooLong = correctAnswers.some(ans => getPlainText(ans.answer).length > 200);
+    if (tooLong) {
+      spaceToast.error('Each answer must be 200 characters or fewer');
+      return;
+    }
+
     // Check empty answers
-    const hasEmptyAnswers = correctAnswers.some(ans => !ans.answer || !ans.answer.trim());
+    const hasEmptyAnswers = correctAnswers.some(ans => !getPlainText(ans.answer));
     if (hasEmptyAnswers) {
       spaceToast.warning('Please fill in all correct answers');
       return;
@@ -678,7 +704,20 @@ const RewriteModal = ({ visible, onCancel, onSave, questionData = null }) => {
                     data={answer.answer}
                     config={answerEditorConfig}
                     onChange={(event, editor) => handleAnswerEditorChange(answer.id, event, editor)}
+                    onReady={(editor) => {
+                      answerEditorsRef.current[answer.id] = editor;
+                    }}
               />
+            </div>
+            {/* Character Counter */}
+            <div style={{
+              marginTop: '6px',
+              textAlign: 'right',
+              fontSize: '12px',
+              fontWeight: 600,
+              color: getPlainText(answer.answer).length > 200 ? '#ff4d4f' : '#595959'
+            }}>
+              {`${Math.min(getPlainText(answer.answer).length, 200)}/200`}
             </div>
         </div>
       </div>
