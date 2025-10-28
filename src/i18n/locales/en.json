@@ -1794,6 +1794,7 @@
     "createChallenge": "Create Challenge",
     "challengeTitle": "Challenge Title",
     "type": "Type",
+    "no": "No",
     "difficulty": "Difficulty",
     "selectClassLesson": "Select Class Lesson",
     "questionTypeRequired":"Please select question type",
