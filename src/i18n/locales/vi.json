@@ -950,6 +950,8 @@
     "selected": "Đã chọn",
     "startDate": "Ngày bắt đầu",
     "endDate": "Ngày kết thúc",
+    "no": "STT",
+    "lesson": "Bài học",
     "deleteClass": "Xóa lớp học",
     "searchPlaceholder": "Tìm kiếm lớp học...",
     "selectSyllabus": "Chọn giáo trình",

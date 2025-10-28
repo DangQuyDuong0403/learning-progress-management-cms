@@ -351,7 +351,6 @@ const CreateReadingChallenge = () => {
                   id: option.key || `option_${optIndex}`,
                   value: option.text || option.value || '',
                   positionId: `pos_${optIndex}`,
-                  positionOrder: optIndex + 1, // Start from 1
                   correct: option.isCorrect || false
                 }))
               }
@@ -366,7 +365,6 @@ const CreateReadingChallenge = () => {
                   id: option.key || `option_${optIndex}`,
                   value: option.text || option.value || '',
                   positionId: `pos_${optIndex}`,
-                  positionOrder: optIndex + 1, // Start from 1
                   correct: option.isCorrect || false
                 }))
               }
@@ -390,14 +388,12 @@ const CreateReadingChallenge = () => {
                       id: 'true_option',
                       value: 'True',
                       positionId: 'pos_true',
-                      positionOrder: 1,
                       correct: question.correctAnswer === true || question.correctAnswer === 'True'
                     },
                     {
                       id: 'false_option',
                       value: 'False',
                       positionId: 'pos_false',
-                      positionOrder: 2,
                       correct: question.correctAnswer === false || question.correctAnswer === 'False'
                     }
                   ]
@@ -477,6 +473,12 @@ const CreateReadingChallenge = () => {
         console.log('Updated speaking question with [[dur_3]], id preserved:', transformedQuestions[0].id);
       }
 
+      // Before sending, remove positionOrder from any content.data entries
+      const sanitizedQuestions = (transformedQuestions || []).map(q => ({
+        ...q,
+        content: q.content ? { data: (q.content.data || []).map(({ positionOrder, ...rest }) => rest) } : q.content
+      }));
+
       // Create section data similar to Grammar & Vocabulary but with multiple questions in one section
       // Include sectionId if editing existing passage (especially for WR writing challenges)
       // Include audioUrl if listening/speaking challenge has audio
@@ -493,7 +495,7 @@ const CreateReadingChallenge = () => {
           orderNumber: 1, // First section
           resourceType: (isListeningChallenge || isSpeakingChallenge) ? "FILE" : "DOCUMENT" // FILE for listening/speaking, DOCUMENT for reading/writing
         },
-        questions: transformedQuestions
+        questions: sanitizedQuestions
       };
 
       console.log('Saving section with questions:', sectionData);
@@ -506,11 +508,11 @@ const CreateReadingChallenge = () => {
       console.log('Audio URL:', sectionData.section.sectionsUrl);
       console.log('Recording Time (fixed):', isSpeakingChallenge ? '3 minutes ([[dur_3]])' : 'N/A');
       console.log('Section Content:', sectionData.section.sectionsContent);
-      console.log('Questions count:', transformedQuestions.length);
-      if (isSpeakingChallenge && transformedQuestions.length > 0) {
+      console.log('Questions count:', sanitizedQuestions.length);
+      if (isSpeakingChallenge && sanitizedQuestions.length > 0) {
         console.log('Speaking Question:', {
-          questionText: transformedQuestions[0].questionText,
-          questionType: transformedQuestions[0].questionType
+          questionText: sanitizedQuestions[0].questionText,
+          questionType: sanitizedQuestions[0].questionType
         });
       }
 
@@ -613,16 +615,16 @@ const CreateReadingChallenge = () => {
   const handleUploadAudio = async (file) => {
     try {
       // Validate audio file
-      const allowedTypes = ['audio/mp3', 'audio/mpeg', 'audio/mp4'];
+      const allowedTypes = ['audio/mp3', 'audio/mpeg'];
       if (!allowedTypes.includes(file.type)) {
-        spaceToast.error("Vui lòng chọn file audio hợp lệ (MP3, MP4)");
+        spaceToast.error("Vui lòng chọn file audio hợp lệ (MP3)");
         return false;
       }
 
-      // Check file size (max 5MB for audio)
-      const maxSize = 5 * 1024 * 1024; // 5MB
+      // Check file size (max 10MB for audio)
+      const maxSize = 10 * 1024 * 1024; // 10MB
       if (file.size > maxSize) {
-        spaceToast.error("File size must be less than 5MB");
+        spaceToast.error("File size must be less than 10MB");
         return false;
       }
 
@@ -1222,7 +1224,7 @@ const CreateReadingChallenge = () => {
                                  color: '#999',
                                  fontSize: '11px'
                                }}>
-                                 MP3, MP4 (max 5MB)
+                                MP3 (max 10MB)
                                </Text>
                              </div>
                            </Space>
