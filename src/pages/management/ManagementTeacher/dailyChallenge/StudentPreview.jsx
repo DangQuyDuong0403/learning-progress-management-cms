@@ -8,13 +8,27 @@ import {
   MenuOutlined,
   CloseOutlined,
 } from "@ant-design/icons";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import ThemedLayout from "../../../../component/teacherlayout/ThemedLayout";
 import LoadingWithEffect from "../../../../component/spinner/LoadingWithEffect";
 import "./DailyChallengeContent.css";
 import { useTranslation } from "react-i18next";
 import { useTheme } from "../../../../contexts/ThemeContext";
 import usePageTitle from "../../../../hooks/usePageTitle";
+import { dailyChallengeApi } from "../../../../apis/apis";
+
+// Helper function to replace [[dur_3]] with HTML badge
+const processPassageContent = (content, theme, challengeType) => {
+  if (!content) return '';
+  
+  // Only process for Speaking challenges
+  if (challengeType === 'SP') {
+    // Remove [[dur_3]] without replacement, as the static badge is now handled separately
+    return content.replace(/\[\[dur_3\]\]/g, '');
+  }
+  
+  return content;
+};
 
 // Fake data for different question types
 const generateFakeQuestions = () => {
@@ -439,6 +453,18 @@ const SectionQuestionItem = ({ question, index, theme }) => {
   const [dragOverPosition, setDragOverPosition] = useState({});
   const [reorderStates, setReorderStates] = useState({});
 
+  const toPlainText = (html) => {
+    if (!html) return '';
+    return String(html)
+      .replace(/<[^>]*>/g, ' ')
+      .replace(/&nbsp;/g, ' ')
+      .replace(/&amp;/g, '&')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/\s+/g, ' ')
+      .trim();
+  };
+
   // Initialize availableItems for drag and drop questions
   useEffect(() => {
     if (question.questions) {
@@ -448,7 +474,10 @@ const SectionQuestionItem = ({ question, index, theme }) => {
         
         question.questions.forEach(q => {
           if (q.type === 'DRAG_AND_DROP' && q.content?.data && !newItems[q.id]) {
-            const dragDropItems = q.content.data.filter(item => !item.positionId).map(item => item.value);
+            // Include ALL values (both correct and incorrect) and preserve duplicates
+            const dragDropItems = q.content.data
+              .map(item => item.value)
+              .filter(Boolean);
             if (dragDropItems.length > 0) {
               newItems[q.id] = dragDropItems;
               hasChanges = true;
@@ -548,23 +577,14 @@ const SectionQuestionItem = ({ question, index, theme }) => {
               ? '#1890ff rgba(24, 144, 255, 0.2)' 
               : '#8B5CF6 rgba(138, 122, 255, 0.2)'
           }}>
-          <div style={{ marginBottom: '16px' }}>
-            <Typography.Title level={4} style={{ 
-              margin: 0, 
-              color: theme === 'sun' ? '#1E40AF' : '#1F2937',
-              fontSize: '20px',
-              fontWeight: 600
-            }}>
-              {question.title}
-            </Typography.Title>
-          </div>
+         
           <div style={{
             fontSize: '15px',
             lineHeight: '1.8',
             color: theme === 'sun' ? '#333' : '#1F2937',
             textAlign: 'justify'
           }}>
-            {question.passage}
+            {toPlainText(question.passage)}
           </div>
         </div>
 
@@ -588,7 +608,79 @@ const SectionQuestionItem = ({ question, index, theme }) => {
                   border: `2px solid ${theme === 'sun' ? '#1890ff' : '#8B5CF6'}`
                 }}>
                   {/* Answer Options */}
-                  {q.type === 'DROPDOWN' ? (
+                  {q.type === 'MULTIPLE_CHOICE' || q.type === 'TRUE_OR_FALSE' || q.type === 'MULTIPLE_SELECT' ? (
+                    (() => {
+                      const options = (q.options && q.options.length ? q.options : (q.content?.data || []).map((d, idx) => ({
+                        key: String.fromCharCode(65 + idx),
+                        text: d.value
+                      })));
+                      const isMulti = q.type === 'MULTIPLE_SELECT';
+                      const selected = selectedAnswers[q.id] || (isMulti ? [] : null);
+                      const isChecked = (k) => isMulti ? (selected || []).includes(k) : selected === k;
+                      const toggle = (k) => {
+                        if (isMulti) {
+                          setSelectedAnswers(prev => ({
+                            ...prev,
+                            [q.id]: (prev[q.id] || []).includes(k)
+                              ? (prev[q.id] || []).filter(x => x !== k)
+                              : [ ...(prev[q.id] || []), k ]
+                          }));
+                        } else {
+                          setSelectedAnswers(prev => ({ ...prev, [q.id]: k }));
+                        }
+                      };
+                      return (
+                        <div style={{ 
+                          marginBottom: '16px',
+                          fontSize: '15px', 
+                          fontWeight: 350,
+                          lineHeight: '1.8',
+                          color: '#000000'
+                        }}>
+                          <div style={{ fontSize: '16px', fontWeight: 600, marginBottom: '8px' }}>
+                            Question {qIndex + 1}:
+                          </div>
+                          <div style={{ marginBottom: '10px' }}>
+                            {toPlainText(q.questionText || q.question || '')}
+                          </div>
+                          <div className="question-options" style={{ 
+                            display: 'grid', 
+                            gridTemplateColumns: '1fr', 
+                            gap: '12px'
+                          }}>
+                            {options.map((opt, idx) => {
+                              const key = opt.key || String.fromCharCode(65 + idx);
+                              const checked = isChecked(key);
+                              return (
+                                <label key={key} style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '10px',
+                                  padding: '12px 14px',
+                                  background: checked
+                                    ? (theme === 'sun' ? 'rgba(24, 144, 255, 0.08)' : 'rgba(138, 122, 255, 0.12)')
+                                    : (theme === 'sun' ? '#fff' : 'rgba(255,255,255,0.03)'),
+                                  border: `2px solid ${checked ? (theme === 'sun' ? '#1890ff' : '#8B5CF6') : (theme === 'sun' ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.1)')}`,
+                                  borderRadius: '12px',
+                                  cursor: 'pointer'
+                                }}>
+                                  <input
+                                    type={isMulti ? 'checkbox' : 'radio'}
+                                    name={`reading-q-${q.id}`}
+                                    checked={checked}
+                                    onChange={() => toggle(key)}
+                                    style={{ width: '18px', height: '18px', accentColor: theme === 'sun' ? '#1890ff' : '#8B5CF6' }}
+                                  />
+                                  <span style={{ fontWeight: 600 }}>{key}.</span>
+                                  <span style={{ flex: 1 }}>{toPlainText(opt.text || opt.value || '')}</span>
+                                </label>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    })()
+                  ) : q.type === 'DROPDOWN' ? (
                     // Dropdown
                     <div style={{ 
                       marginBottom: '16px',
@@ -601,15 +693,22 @@ const SectionQuestionItem = ({ question, index, theme }) => {
                         Question {qIndex + 1}:
                       </div>
                       <div>
-                        {q.questionText?.split('_______').map((part, index, array) => (
-                        <React.Fragment key={index}>
-                          {part}
-                          {index < array.length - 1 && (
+                        {(() => {
+                          const text = q.questionText || q.question || '';
+                          const parts = [];
+                          const regex = /\[\[pos_(.*?)\]\]/g;
+                          let last = 0; let match; let idx = 0;
+                          while ((match = regex.exec(text)) !== null) {
+                            if (match.index > last) parts.push(text.slice(last, match.index));
+                            const positionId = match[1];
+                            const optionsForPosition = q.content?.data?.filter(opt => opt.positionId === positionId) || [];
+                            parts.push(
                             <select
-                              value={selectedAnswers[`${q.id}_pos_1`] || ''}
+                                key={`dd_${q.id}_${idx++}`}
+                                value={selectedAnswers[`${q.id}_pos_${positionId}`] || ''}
                               onChange={(e) => setSelectedAnswers(prev => ({
                                 ...prev,
-                                [`${q.id}_pos_1`]: e.target.value
+                                  [`${q.id}_pos_${positionId}`]: e.target.value
                               }))}
                               style={{
                                 display: 'inline-block',
@@ -631,22 +730,38 @@ const SectionQuestionItem = ({ question, index, theme }) => {
                               }}
                             >
                               <option value="">Select</option>
-                              {q.content?.data?.map((item) => (
-                                <option key={item.id} value={item.value}>
-                                  {item.value}
+                                {optionsForPosition.map((item) => (
+                                  <option key={item.id} value={toPlainText(item.value)}>
+                                    {toPlainText(item.value)}
                                 </option>
                               ))}
                             </select>
-                          )}
-                        </React.Fragment>
-                      ))}
+                            );
+                            last = match.index + match[0].length;
+                          }
+                          if (last < text.length) parts.push(text.slice(last));
+                          return parts;
+                        })()}
                       </div>
                     </div>
                   ) : q.type === 'DRAG_AND_DROP' ? (
                     // Drag and Drop
                     (() => {
                       const qDroppedItems = droppedItems[q.id] || {};
-                      const qAvailableItems = availableItems[q.id] || [];
+                      // Get all items from content.data (both correct and incorrect) and preserve duplicates
+                      const allItems = (q.content?.data || [])
+                        .map(item => item.value)
+                        .filter(Boolean);
+                      
+                      // Initialize availableItems if not set
+                      if (availableItems[q.id] === undefined && allItems.length > 0) {
+                        setAvailableItems(prev => ({
+                          ...prev,
+                          [q.id]: allItems
+                        }));
+                      }
+                      
+                      const qAvailableItems = availableItems[q.id] || allItems;
                       
                       const handleDragStart = (e, item, isDropped = false, positionId = null) => {
                         e.dataTransfer.setData('text/plain', item);
@@ -741,6 +856,22 @@ const SectionQuestionItem = ({ question, index, theme }) => {
                         }
                       };
 
+                      // Parse question text with [[pos_xxx]] placeholders
+                      const text = q.questionText || q.question || '';
+                      const parts = [];
+                      const regex = /\[\[pos_(.*?)\]\]/g;
+                      let last = 0; let match; let idx = 0;
+                      const positions = [];
+                      
+                      while ((match = regex.exec(text)) !== null) {
+                        if (match.index > last) parts.push({ type: 'text', content: text.slice(last, match.index) });
+                        const posId = match[1];
+                        positions.push(posId);
+                        parts.push({ type: 'position', positionId: posId, index: idx++ });
+                        last = match.index + match[0].length;
+                      }
+                      if (last < text.length) parts.push({ type: 'text', content: text.slice(last) });
+
                       return (
                         <div style={{ marginBottom: '16px' }}>
                           {/* Stacked Layout: Sentence on top, draggable words below */}
@@ -763,78 +894,89 @@ const SectionQuestionItem = ({ question, index, theme }) => {
                                   Question {qIndex + 1}:
                                 </div>
                                 <div>
-                                  {q.questionText?.split('_______').map((part, index, array) => (
-                                  <React.Fragment key={index}>
-                                    {part}
-                                    {index < array.length - 1 && (
-                                      qDroppedItems[`pos_${index + 1}`] ? (
-                                        <span
-                                          draggable
-                                          onDragStart={(e) => handleDragStartFromDropped(e, qDroppedItems[`pos_${index + 1}`], `pos_${index + 1}`)}
-                                          style={{
-                                            display: 'inline-flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'center',
-                                            minWidth: '100px',
-                                            height: '28px',
-                                            padding: '0px 8px',
-                                            margin: '0 6px',
-                                            background: theme === 'sun' ? 'rgba(24, 144, 255, 0.15)' : 'rgba(138, 122, 255, 0.18)',
-                                            border: `2px solid ${theme === 'sun' ? '#1890ff' : '#8B5CF6'}`,
-                                            borderRadius: '6px',
-                                            fontSize: '14px',
-                                            fontWeight: '350',
-                                            color: theme === 'sun' ? '#1890ff' : '#8B5CF6',
-                                            cursor: 'grab',
-                                            transition: 'all 0.2s ease',
-                                            verticalAlign: 'baseline',
-                                            lineHeight: '1.8',
-                                            boxSizing: 'border-box',
-                                            textAlign: 'center'
-                                          }}
-                                        >
-                                          {qDroppedItems[`pos_${index + 1}`]}
-                                        </span>
+                                  {parts.map((part, pIdx) => (
+                                    <React.Fragment key={pIdx}>
+                                      {part.type === 'text' ? (
+                                        part.content
                                       ) : (
-                                        <span
-                                          onDrop={(e) => handleDrop(e, `pos_${index + 1}`)}
-                                          onDragOver={(e) => handleDragOver(e, `pos_${index + 1}`)}
-                                          onDragLeave={handleDragLeave}
-                                          style={{
-                                            display: 'inline-flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'center',
-                                            minWidth: '100px',
-                                            height: '28px',
-                                            padding: '0px 8px',
-                                            margin: '0 6px',
-                                            background: dragOverPosition[q.id] === `pos_${index + 1}` 
-                                              ? (theme === 'sun' ? 'rgba(24, 144, 255, 0.2)' : 'rgba(138, 122, 255, 0.25)')
-                                              : '#ffffff',
-                                            border: `2px ${dragOverPosition[q.id] === `pos_${index + 1}` ? 'solid' : 'dashed'} ${dragOverPosition[q.id] === `pos_${index + 1}` ? (theme === 'sun' ? '#1890ff' : '#8B5CF6') : 'rgba(0, 0, 0, 0.5)'}`,
-                                            borderRadius: '6px',
-                                            fontSize: '14px',
-                                            fontWeight: '350',
-                                            color: dragOverPosition[q.id] === `pos_${index + 1}` ? (theme === 'sun' ? '#1890ff' : '#8B5CF6') : 'rgba(0, 0, 0, 0.5)',
-                                            cursor: 'pointer',
-                                            transition: 'all 0.3s ease',
-                                            verticalAlign: 'baseline',
-                                            lineHeight: '1.8',
-                                            boxSizing: 'border-box',
-                                            marginTop: '4px',
-                                            transform: dragOverPosition[q.id] === `pos_${index + 1}` ? 'scale(1.05)' : 'scale(1)',
-                                            boxShadow: dragOverPosition[q.id] === `pos_${index + 1}` 
-                                              ? (theme === 'sun' ? '0 4px 12px rgba(24, 144, 255, 0.3)' : '0 4px 12px rgba(138, 122, 255, 0.3)')
-                                              : 'none',
-                                            textAlign: 'center'
-                                          }}
-                                        >
-                                          {dragOverPosition[q.id] === `pos_${index + 1}` ? 'Drop here!' : 'Drop here'}
-                                        </span>
-                                      )
-                                    )}
-                                  </React.Fragment>
-                                ))}
+                                        qDroppedItems[part.positionId] ? (
+                                          <span
+                                            draggable
+                                            onDragStart={(e) => handleDragStartFromDropped(e, qDroppedItems[part.positionId], part.positionId)}
+                                            style={{
+                                              display: 'inline-flex',
+                                              alignItems: 'center',
+                                              justifyContent: 'center',
+                                              minWidth: '100px',
+                                              minHeight: '28px',
+                                              height: 'auto',
+                                              padding: '4px 8px',
+                                              margin: '0 6px',
+                                              background: theme === 'sun' ? 'rgba(24, 144, 255, 0.15)' : 'rgba(138, 122, 255, 0.18)',
+                                              border: `2px solid ${theme === 'sun' ? '#1890ff' : '#8B5CF6'}`,
+                                              borderRadius: '6px',
+                                              fontSize: '14px',
+                                              fontWeight: '350',
+                                              color: theme === 'sun' ? '#1890ff' : '#8B5CF6',
+                                              cursor: 'grab',
+                                              transition: 'all 0.2s ease',
+                                              verticalAlign: 'baseline',
+                                              lineHeight: '1.5',
+                                              boxSizing: 'border-box',
+                                              textAlign: 'center',
+                                              maxWidth: '280px',
+                                              whiteSpace: 'normal',
+                                              wordBreak: 'break-word',
+                                              overflowWrap: 'anywhere'
+                                            }}
+                                          >
+                                            {toPlainText(qDroppedItems[part.positionId])}
+                                          </span>
+                                        ) : (
+                                          <span
+                                            onDrop={(e) => handleDrop(e, part.positionId)}
+                                            onDragOver={(e) => handleDragOver(e, part.positionId)}
+                                            onDragLeave={handleDragLeave}
+                                            style={{
+                                              display: 'inline-flex',
+                                              alignItems: 'center',
+                                              justifyContent: 'center',
+                                              minWidth: '100px',
+                                              minHeight: '28px',
+                                              height: 'auto',
+                                              padding: '4px 8px',
+                                              margin: '0 6px',
+                                              background: dragOverPosition[q.id] === part.positionId 
+                                                ? (theme === 'sun' ? 'rgba(24, 144, 255, 0.2)' : 'rgba(138, 122, 255, 0.25)')
+                                                : '#ffffff',
+                                              border: `2px ${dragOverPosition[q.id] === part.positionId ? 'solid' : 'dashed'} ${dragOverPosition[q.id] === part.positionId ? (theme === 'sun' ? '#1890ff' : '#8B5CF6') : 'rgba(0, 0, 0, 0.5)'}`,
+                                              borderRadius: '6px',
+                                              fontSize: '14px',
+                                              fontWeight: '350',
+                                              color: dragOverPosition[q.id] === part.positionId ? (theme === 'sun' ? '#1890ff' : '#8B5CF6') : 'rgba(0, 0, 0, 0.5)',
+                                              cursor: 'pointer',
+                                              transition: 'all 0.3s ease',
+                                              verticalAlign: 'baseline',
+                                              lineHeight: '1.5',
+                                              boxSizing: 'border-box',
+                                              marginTop: '4px',
+                                              transform: dragOverPosition[q.id] === part.positionId ? 'scale(1.05)' : 'scale(1)',
+                                              boxShadow: dragOverPosition[q.id] === part.positionId 
+                                                ? (theme === 'sun' ? '0 4px 12px rgba(24, 144, 255, 0.3)' : '0 4px 12px rgba(138, 122, 255, 0.3)')
+                                                : 'none',
+                                              textAlign: 'center',
+                                              maxWidth: '280px',
+                                              whiteSpace: 'normal',
+                                              wordBreak: 'break-word',
+                                              overflowWrap: 'anywhere'
+                                            }}
+                                          >
+                                            {dragOverPosition[q.id] === part.positionId ? 'Drop here!' : 'Drop here'}
+                                          </span>
+                                        )
+                                      )}
+                                    </React.Fragment>
+                                  ))}
                                 </div>
                               </div>
                             </div>
@@ -894,7 +1036,7 @@ const SectionQuestionItem = ({ question, index, theme }) => {
                                         : '0 2px 6px rgba(138, 122, 255, 0.15)';
                                     }}
                                   >
-                                    {item}
+                                    {toPlainText(item)}
                                   </span>
                                 ))}
                               </div>
@@ -916,15 +1058,19 @@ const SectionQuestionItem = ({ question, index, theme }) => {
                         Question {qIndex + 1}:
                       </div>
                       <div>
-                        {q.questionText?.split('_______').map((part, index, array) => (
-                        <React.Fragment key={index}>
-                          {part}
-                          {index < array.length - 1 && (
+                        {(() => {
+                          const text = q.questionText || q.question || '';
+                          const parts = [];
+                          const regex = /\[\[pos_(.*?)\]\]/g;
+                          let last = 0; let match; let idx = 0;
+                          while ((match = regex.exec(text)) !== null) {
+                            if (match.index > last) parts.push(text.slice(last, match.index));
+                            parts.push(
                             <span
+                                key={`fib_${q.id}_${idx++}`}
                               className="paragraph-input"
                               contentEditable
-                              data-input-key={`input_${q.id}_${index}`}
-                              id={`fill_blank_input_${q.id}_${index}`}
+                                suppressContentEditableWarning
                               style={{
                                 display: 'inline-flex',
                                 alignItems: 'center',
@@ -950,13 +1096,16 @@ const SectionQuestionItem = ({ question, index, theme }) => {
                                 textAlign: 'center'
                               }}
                             />
-                          )}
-                        </React.Fragment>
-                      ))}
+                            );
+                            last = match.index + match[0].length;
+                          }
+                          if (last < text.length) parts.push(text.slice(last));
+                          return parts;
+                        })()}
                       </div>
                     </div>
                   ) : q.type === 'REARRANGE' ? (
-                    // Reorder Question
+                    // Reorder Question - align behavior with single GV Rearrange
                     (() => {
                       const questionId = `reorder_${q.id}`;
                       const currentState = reorderStates[questionId] || {
@@ -967,6 +1116,12 @@ const SectionQuestionItem = ({ question, index, theme }) => {
                         isDraggingFromSource: false,
                         wasDropped: false
                       };
+
+                      // Compute number of slots based on provided words
+                      const numSlots = (q.content?.data?.filter(it => it?.value)?.length) || currentState.sourceItems.length || 0;
+
+                      const displayText = toPlainText(((q.questionText || q.question || 'Rearrange the words to form a correct sentence:')
+                        .replace(/\[\[pos_.*?\]\]/g, ' ')).trim());
 
                       const handleDragStartFromSource = (e, item) => {
                         setReorderStates(prev => ({
@@ -997,55 +1152,28 @@ const SectionQuestionItem = ({ question, index, theme }) => {
 
                       const handleDropOnSlot = (e, index) => {
                         e.preventDefault();
-                        const newState = {
-                          ...currentState,
-                          wasDropped: true,
-                          dragOverIndex: null
-                        };
-                        
+                        const newState = { ...currentState, wasDropped: true, dragOverIndex: null };
                         if (currentState.draggedItem) {
                           const currentItem = currentState.droppedItems[index];
-                          
-                          // If there's already an item in this slot, return it to source
-                          if (currentItem) {
-                            newState.sourceItems = [...currentState.sourceItems, currentItem];
-                          }
-                          
-                          // If moving from another slot, clear the old slot first
+                          if (currentItem) newState.sourceItems = [...currentState.sourceItems, currentItem];
                           if (!currentState.isDraggingFromSource) {
                             const oldIndex = Object.keys(currentState.droppedItems).find(i => currentState.droppedItems[i] === currentState.draggedItem && parseInt(i) !== index);
-                            if (oldIndex !== undefined) {
-                              delete newState.droppedItems[parseInt(oldIndex)];
-                            }
+                            if (oldIndex !== undefined) delete newState.droppedItems[parseInt(oldIndex)];
                           } else {
-                            // Remove from source if it was from source
                             newState.sourceItems = currentState.sourceItems.filter(item => item !== currentState.draggedItem);
                           }
-                          
-                          // Place the new item in the slot
-                          newState.droppedItems = {
-                            ...currentState.droppedItems,
-                            [index]: currentState.draggedItem
-                          };
+                          newState.droppedItems = { ...currentState.droppedItems, [index]: currentState.draggedItem };
                         }
-                        
                         newState.draggedItem = null;
                         newState.isDraggingFromSource = false;
-                        
-                        setReorderStates(prev => ({
-                          ...prev,
-                          [questionId]: newState
-                        }));
+                        setReorderStates(prev => ({ ...prev, [questionId]: newState }));
                       };
 
                       const handleDragOverSlot = (e, index) => {
                         e.preventDefault();
                         setReorderStates(prev => ({
                           ...prev,
-                          [questionId]: {
-                            ...currentState,
-                            dragOverIndex: index
-                          }
+                          [questionId]: { ...currentState, dragOverIndex: index }
                         }));
                         e.dataTransfer.dropEffect = 'move';
                       };
@@ -1053,39 +1181,21 @@ const SectionQuestionItem = ({ question, index, theme }) => {
                       const handleDragLeaveSlot = () => {
                         setReorderStates(prev => ({
                           ...prev,
-                          [questionId]: {
-                            ...currentState,
-                            dragOverIndex: null
-                          }
+                          [questionId]: { ...currentState, dragOverIndex: null }
                         }));
                       };
 
-                      const handleDragEnd = (e) => {
-                        // If we're dragging from a slot (not from source) and not dropped in a slot or source area,
-                        // return the item to source
+                      const handleDragEnd = () => {
                         if (currentState.draggedItem && !currentState.isDraggingFromSource && !currentState.wasDropped) {
                           const newState = { ...currentState };
-                          
-                          // Only add if not already in source to avoid duplicates
-                          if (!newState.sourceItems.includes(currentState.draggedItem)) {
-                            newState.sourceItems = [...newState.sourceItems, currentState.draggedItem];
-                          }
-                          
-                          // Remove from the slot
+                          if (!newState.sourceItems.includes(currentState.draggedItem)) newState.sourceItems = [...newState.sourceItems, currentState.draggedItem];
                           const oldIndex = Object.keys(currentState.droppedItems).find(i => currentState.droppedItems[i] === currentState.draggedItem);
-                          if (oldIndex !== undefined) {
-                            delete newState.droppedItems[oldIndex];
-                          }
-                          
+                          if (oldIndex !== undefined) delete newState.droppedItems[oldIndex];
                           newState.draggedItem = null;
                           newState.isDraggingFromSource = false;
                           newState.dragOverIndex = null;
                           newState.wasDropped = false;
-                          
-                          setReorderStates(prev => ({
-                            ...prev,
-                            [questionId]: newState
-                          }));
+                          setReorderStates(prev => ({ ...prev, [questionId]: newState }));
                         }
                       };
 
@@ -1094,14 +1204,8 @@ const SectionQuestionItem = ({ question, index, theme }) => {
                           <div style={{ fontSize: '16px', fontWeight: 600, marginBottom: '8px' }}>
                             Question {qIndex + 1}:
                           </div>
-                          <div style={{ 
-                            fontSize: '15px', 
-                            fontWeight: 350,
-                            marginBottom: '16px',
-                            lineHeight: '1.8',
-                            color: '#000000'
-                          }}>
-                            {q.questionText}
+                          <div style={{ fontSize: '15px', fontWeight: 350, marginBottom: '16px', lineHeight: '1.8', color: '#000000' }}>
+                            {displayText || 'Rearrange the words to form a correct sentence:'}
                           </div>
 
                           {/* Slots Row */}
@@ -1112,21 +1216,11 @@ const SectionQuestionItem = ({ question, index, theme }) => {
                             borderRadius: '8px',
                             border: `1px solid ${theme === 'sun' ? '#e8e8e8' : 'rgba(255, 255, 255, 0.1)'}`,
                           }}>
-                            <div style={{ 
-                              fontSize: '14px', 
-                              fontWeight: 350,
-                              marginBottom: '12px',
-                              color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)'
-                            }}>
+                            <div style={{ fontSize: '14px', fontWeight: 350, marginBottom: '12px', color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' }}>
                               Drop the words here in order:
                             </div>
-                            
-                            <div style={{ 
-                              display: 'flex', 
-                              flexWrap: 'wrap',
-                              gap: '8px'
-                            }}>
-                              {[0, 1, 2, 3, 4].map((index) => (
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                              {Array.from({ length: numSlots }).map((_, index) => (
                                 <div
                                   key={index}
                                   onDrop={(e) => handleDropOnSlot(e, index)}
@@ -1140,16 +1234,16 @@ const SectionQuestionItem = ({ question, index, theme }) => {
                                     alignItems: 'center',
                                     justifyContent: 'center',
                                     border: currentState.droppedItems[index] 
-                                      ? `2px solid ${theme === 'sun' ? '#1890ff' : '#8B5CF6'}` // Solid border when item is present
+                                      ? `2px solid ${theme === 'sun' ? '#1890ff' : '#8B5CF6'}`
                                       : currentState.dragOverIndex === index 
-                                        ? `3px solid ${theme === 'sun' ? '#1890ff' : '#8B5CF6'}` // Solid border when dragging over
-                                        : `2px dashed rgba(0, 0, 0, 0.5)`, // Dashed border when empty - gray
+                                        ? `3px solid ${theme === 'sun' ? '#1890ff' : '#8B5CF6'}`
+                                        : `2px dashed rgba(0, 0, 0, 0.5)`,
                                     borderRadius: '6px',
                                     background: currentState.droppedItems[index]
-                                      ? (theme === 'sun' ? 'rgba(24, 144, 255, 0.1)' : 'rgba(138, 122, 255, 0.1)') // Different background when item is present
+                                      ? (theme === 'sun' ? 'rgba(24, 144, 255, 0.1)' : 'rgba(138, 122, 255, 0.1)')
                                       : currentState.dragOverIndex === index
                                         ? (theme === 'sun' ? 'rgba(24, 144, 255, 0.15)' : 'rgba(138, 122, 255, 0.15)')
-                                        : '#ffffff', // White background when empty
+                                        : '#ffffff',
                                     position: 'relative',
                                     transition: 'all 0.3s ease',
                                     transform: currentState.dragOverIndex === index ? 'scale(1.05)' : 'scale(1)',
@@ -1168,51 +1262,20 @@ const SectionQuestionItem = ({ question, index, theme }) => {
                                         alignItems: 'center',
                                         justifyContent: 'center',
                                         padding: '6px 8px',
-                                        background: theme === 'sun' ? 'rgba(24, 144, 255, 0.15)' : 'rgba(138, 122, 255, 0.18)',
-                                        border: `2px solid ${theme === 'sun' ? '#1890ff' : '#8B5CF6'}`,
+                                        background: theme === 'sun' ? 'rgba(24, 144, 255, 0.12)' : 'rgba(138, 122, 255, 0.14)',
+                                        border: 'none',
                                         borderRadius: '4px',
                                         cursor: 'grab',
-                                        userSelect: 'none',
-                                        gap: '4px'
+                                        userSelect: 'none'
                                       }}
                                     >
-                                      <span style={{
-                                        width: '18px',
-                                        height: '18px',
-                                        borderRadius: '50%',
-                                        background: theme === 'sun' ? '#1890ff' : '#8B5CF6',
-                                        color: 'white',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        fontSize: '10px',
-                                        fontWeight: '700',
-                                        flexShrink: 0
-                                      }}>
-                                        {index + 1}
-                                      </span>
-                                      <span style={{ 
-                                        fontSize: '12px',
-                                        fontWeight: '600',
-                                        color: theme === 'sun' ? '#1890ff' : '#8B5CF6',
-                                        textAlign: 'center'
-                                      }}>
+                                      <span style={{ fontSize: '13px', fontWeight: '700', color: theme === 'sun' ? '#1890ff' : '#8B5CF6', textAlign: 'center' }}>
                                         {currentState.droppedItems[index]}
                                       </span>
                                     </div>
                                   ) : (
-                                    <div style={{
-                                      display: 'flex',
-                                      flexDirection: 'column',
-                                      alignItems: 'center',
-                                      justifyContent: 'center',
-                                      gap: '2px'
-                                    }}>
-                                      <span style={{
-                                        fontSize: '10px',
-                                        fontWeight: '600',
-                                        color: 'rgba(0, 0, 0, 0.5)'
-                                      }}>
+                                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '2px' }}>
+                                      <span style={{ fontSize: '10px', fontWeight: '600', color: 'rgba(0, 0, 0, 0.5)' }}>
                                         {index + 1}
                                       </span>
                                     </div>
@@ -1227,29 +1290,17 @@ const SectionQuestionItem = ({ question, index, theme }) => {
                             onDrop={(e) => {
                               e.preventDefault();
                               const newState = { ...currentState, wasDropped: true };
-                              // If dropping from slot back to source
                               if (currentState.draggedItem && !currentState.isDraggingFromSource) {
-                                if (!newState.sourceItems.includes(currentState.draggedItem)) {
-                                  newState.sourceItems = [...newState.sourceItems, currentState.draggedItem];
-                                }
-                                // Remove from slot
+                                if (!newState.sourceItems.includes(currentState.draggedItem)) newState.sourceItems = [...newState.sourceItems, currentState.draggedItem];
                                 const oldIndex = Object.keys(currentState.droppedItems).find(i => currentState.droppedItems[i] === currentState.draggedItem);
-                                if (oldIndex) {
-                                  delete newState.droppedItems[oldIndex];
-                                }
+                                if (oldIndex) delete newState.droppedItems[oldIndex];
                                 newState.draggedItem = null;
                                 newState.isDraggingFromSource = false;
                                 newState.dragOverIndex = null;
-                                
-                                setReorderStates(prev => ({
-                                  ...prev,
-                                  [questionId]: newState
-                                }));
+                                setReorderStates(prev => ({ ...prev, [questionId]: newState }));
                               }
                             }}
-                            onDragOver={(e) => {
-                              e.preventDefault();
-                            }}
+                            onDragOver={(e) => { e.preventDefault(); }}
                             style={{
                               padding: '16px',
                               background: theme === 'sun' ? '#ffffff' : 'rgba(255, 255, 255, 0.03)',
@@ -1257,20 +1308,10 @@ const SectionQuestionItem = ({ question, index, theme }) => {
                               border: `1px solid ${theme === 'sun' ? '#e8e8e8' : 'rgba(255, 255, 255, 0.1)'}`,
                             }}
                           >
-                            <div style={{ 
-                              fontSize: '14px', 
-                              fontWeight: 350,
-                              marginBottom: '12px',
-                              color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)'
-                            }}>
+                            <div style={{ fontSize: '14px', fontWeight: 350, marginBottom: '12px', color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' }}>
                               Drag these words to the slots above:
                             </div>
-                            
-                            <div style={{ 
-                              display: 'flex', 
-                              flexWrap: 'wrap',
-                              gap: '8px'
-                            }}>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
                               {currentState.sourceItems.map((item, idx) => (
                                 <div
                                   key={`${item}-${idx}`}
@@ -1281,9 +1322,7 @@ const SectionQuestionItem = ({ question, index, theme }) => {
                                     display: 'inline-flex',
                                     alignItems: 'center',
                                     padding: '8px 12px',
-                                    background: theme === 'sun' 
-                                      ? 'rgba(24, 144, 255, 0.08)' 
-                                      : 'rgba(138, 122, 255, 0.12)',
+                                    background: theme === 'sun' ? 'rgba(24, 144, 255, 0.08)' : 'rgba(138, 122, 255, 0.12)',
                                     border: `2px solid ${theme === 'sun' ? '#1890ff' : '#8B5CF6'}`,
                                     borderRadius: '6px',
                                     fontSize: '12px',
@@ -1292,21 +1331,15 @@ const SectionQuestionItem = ({ question, index, theme }) => {
                                     cursor: 'grab',
                                     userSelect: 'none',
                                     transition: 'all 0.2s ease',
-                                    boxShadow: theme === 'sun' 
-                                      ? '0 2px 6px rgba(24, 144, 255, 0.15)' 
-                                      : '0 2px 6px rgba(138, 122, 255, 0.15)'
+                                    boxShadow: theme === 'sun' ? '0 2px 6px rgba(24, 144, 255, 0.15)' : '0 2px 6px rgba(138, 122, 255, 0.15)'
                                   }}
                                   onMouseEnter={(e) => {
                                     e.currentTarget.style.transform = 'scale(1.05)';
-                                    e.currentTarget.style.boxShadow = theme === 'sun' 
-                                      ? '0 4px 10px rgba(24, 144, 255, 0.25)' 
-                                      : '0 4px 10px rgba(138, 122, 255, 0.25)';
+                                    e.currentTarget.style.boxShadow = theme === 'sun' ? '0 4px 10px rgba(24, 144, 255, 0.25)' : '0 4px 10px rgba(138, 122, 255, 0.25)';
                                   }}
                                   onMouseLeave={(e) => {
                                     e.currentTarget.style.transform = 'scale(1)';
-                                    e.currentTarget.style.boxShadow = theme === 'sun' 
-                                      ? '0 2px 6px rgba(24, 144, 255, 0.15)' 
-                                      : '0 2px 6px rgba(138, 122, 255, 0.15)';
+                                    e.currentTarget.style.boxShadow = theme === 'sun' ? '0 2px 6px rgba(24, 144, 255, 0.15)' : '0 2px 6px rgba(138, 122, 255, 0.15)';
                                   }}
                                 >
                                   {item}
@@ -1518,12 +1551,47 @@ const SectionQuestionItem = ({ question, index, theme }) => {
 // Listening Section Component
 const ListeningSectionItem = ({ question, index, theme }) => {
   const [selectedAnswers, setSelectedAnswers] = useState({});
+  const [droppedItems, setDroppedItems] = useState({});
+  const [availableItems, setAvailableItems] = useState({});
+  const [dragOverPosition, setDragOverPosition] = useState({});
+  const [reorderStates, setReorderStates] = useState({});
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [volume, setVolume] = useState(1);
   const [showTranscript, setShowTranscript] = useState(false);
   const [audioRef, setAudioRef] = useState(null);
+  const toPlainText = (html) => {
+    if (!html) return '';
+    return String(html)
+      .replace(/<[^>]*>/g, ' ')
+      .replace(/&nbsp;/g, ' ')
+      .replace(/&amp;/g, '&')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/\s+/g, ' ')
+      .trim();
+  };
+
+  // Initialize available items for DRAG_AND_DROP questions (include all values)
+  useEffect(() => {
+    if (question.questions) {
+      setAvailableItems(prev => {
+        const newItems = { ...prev };
+        let hasChanges = false;
+        question.questions.forEach(q => {
+          if (q.type === 'DRAG_AND_DROP' && q.content?.data && !newItems[q.id]) {
+            const all = (q.content.data || []).map(it => it.value).filter(Boolean);
+            if (all.length > 0) {
+              newItems[q.id] = all;
+              hasChanges = true;
+            }
+          }
+        });
+        return hasChanges ? newItems : prev;
+      });
+    }
+  }, [question.questions]);
 
   const handleAnswerSelect = (questionId, optionKey) => {
     setSelectedAnswers(prev => ({
@@ -1671,17 +1739,7 @@ const ListeningSectionItem = ({ question, index, theme }) => {
                 : '#8B5CF6 rgba(138, 122, 255, 0.2)'
             }}>
             
-            {/* Audio Title */}
-            <div style={{ marginBottom: '20px' }}>
-              <Typography.Title level={4} style={{ 
-                margin: 0, 
-                color: theme === 'sun' ? '#1E40AF' : '#1F2937',
-                fontSize: '20px',
-                fontWeight: 600
-              }}>
-                {question.title}
-              </Typography.Title>
-            </div>
+            {/* Audio Title removed as requested */}
 
             {/* Audio Player */}
             <div style={{
@@ -1869,7 +1927,7 @@ const ListeningSectionItem = ({ question, index, theme }) => {
                       ? '0 2px 8px rgba(0, 0, 0, 0.1)' 
                       : '0 2px 8px rgba(138, 122, 255, 0.2)'
                   }}>
-                  {question.transcript}
+                  {toPlainText(question.transcript)}
                 </div>
               )}
             </div>
@@ -1894,9 +1952,8 @@ const ListeningSectionItem = ({ question, index, theme }) => {
                     borderRadius: '8px',
                     border: `2px solid ${theme === 'sun' ? '#1890ff' : '#8B5CF6'}`
                   }}>
-                    {/* Answer Options - Same as SectionQuestionItem */}
+                    {/* Question Types - mirrored from Reading */}
                     {q.type === 'DROPDOWN' ? (
-                      // Dropdown
                       <div style={{ 
                         marginBottom: '16px',
                         fontSize: '15px', 
@@ -1908,15 +1965,22 @@ const ListeningSectionItem = ({ question, index, theme }) => {
                           Question {qIndex + 1}:
                         </div>
                         <div>
-                          {q.questionText?.split('_______').map((part, index, array) => (
-                          <React.Fragment key={index}>
-                            {part}
-                            {index < array.length - 1 && (
+                          {(() => {
+                            const text = q.questionText || q.question || '';
+                            const parts = [];
+                            const regex = /\[\[pos_(.*?)\]\]/g;
+                            let last = 0; let match; let idx = 0;
+                            while ((match = regex.exec(text)) !== null) {
+                              if (match.index > last) parts.push(text.slice(last, match.index));
+                              const positionId = match[1];
+                              const optionsForPosition = q.content?.data?.filter(opt => opt.positionId === positionId) || [];
+                              parts.push(
                               <select
-                                value={selectedAnswers[`${q.id}_pos_1`] || ''}
+                                  key={`dd_${q.id}_${idx++}`}
+                                  value={selectedAnswers[`${q.id}_pos_${positionId}`] || ''}
                                 onChange={(e) => setSelectedAnswers(prev => ({
                                   ...prev,
-                                  [`${q.id}_pos_1`]: e.target.value
+                                    [`${q.id}_pos_${positionId}`]: e.target.value
                                 }))}
                                 style={{
                                   display: 'inline-block',
@@ -1938,19 +2002,137 @@ const ListeningSectionItem = ({ question, index, theme }) => {
                                 }}
                               >
                                 <option value="">Select</option>
-                                {q.content?.data?.map((item) => (
-                                  <option key={item.id} value={item.value}>
-                                    {item.value}
+                                  {optionsForPosition.map((item) => (
+                                    <option key={item.id} value={(item.value || '').replace(/<[^>]*>/g,' ')}>
+                                      {(item.value || '').replace(/<[^>]*>/g,' ')}
                                   </option>
                                 ))}
                               </select>
+                              );
+                              last = match.index + match[0].length;
+                            }
+                            if (last < text.length) parts.push(text.slice(last));
+                            return parts;
+                          })()}
+                        </div>
+                      </div>
+                    ) : q.type === 'DRAG_AND_DROP' ? (
+                      (() => {
+                        const qDroppedItems = droppedItems[q.id] || {};
+                        const allItems = (q.content?.data || []).map(item => item.value).filter(Boolean);
+                        if (availableItems[q.id] === undefined && allItems.length > 0) {
+                          setAvailableItems(prev => ({ ...prev, [q.id]: allItems }));
+                        }
+                        const qAvailableItems = availableItems[q.id] || allItems;
+
+                        const handleDragStart = (e, item, isDropped = false, positionId = null) => {
+                          e.dataTransfer.setData('text/plain', item);
+                          e.dataTransfer.setData('isDropped', isDropped);
+                          e.dataTransfer.setData('positionId', positionId || '');
+                          e.dataTransfer.setData('questionId', q.id);
+                        };
+                        const handleDrop = (e, positionId) => {
+                          e.preventDefault();
+                          const item = e.dataTransfer.getData('text/plain');
+                          const isDropped = e.dataTransfer.getData('isDropped') === 'true';
+                          const fromPositionId = e.dataTransfer.getData('positionId');
+                          const questionId = e.dataTransfer.getData('questionId');
+                          if (questionId !== q.id.toString()) return;
+                          setDroppedItems(prev => {
+                            const newItems = { ...prev };
+                            if (!newItems[q.id]) newItems[q.id] = {};
+                            const currentItem = newItems[q.id][positionId];
+                            setDragOverPosition(pr => ({ ...pr, [q.id]: null }));
+                            if (fromPositionId && fromPositionId !== positionId) {
+                              newItems[q.id][positionId] = item;
+                              if (fromPositionId in newItems[q.id]) delete newItems[q.id][fromPositionId];
+                              if (currentItem) {
+                                setAvailableItems(prev => ({ ...prev, [q.id]: [...(prev[q.id] || []), currentItem] }));
+                              }
+                              return newItems;
+                            }
+                            if (!isDropped) {
+                              newItems[q.id][positionId] = item;
+                              setAvailableItems(prev => ({ ...prev, [q.id]: (prev[q.id] || []).filter(i => i !== item) }));
+                            }
+                            return newItems;
+                          });
+                        };
+                        const handleDragStartFromDropped = (e, item, positionId) => {
+                          handleDragStart(e, item, true, positionId);
+                          setDroppedItems(prev => {
+                            const newItems = { ...prev };
+                            if (newItems[q.id]) delete newItems[q.id][positionId];
+                            return newItems;
+                          });
+                          setAvailableItems(prev => ({ ...prev, [q.id]: [...(prev[q.id] || []), item] }));
+                        };
+                        const handleDragOver = (e, positionId) => {
+                          e.preventDefault();
+                          setDragOverPosition(prev => ({ ...prev, [q.id]: positionId }));
+                        };
+                        const handleDragLeave = (e) => {
+                          if (!e.currentTarget.contains(e.relatedTarget)) {
+                            setDragOverPosition(prev => ({ ...prev, [q.id]: null }));
+                          }
+                        };
+
+                        const text = q.questionText || q.question || '';
+                        const parts = [];
+                        const regex = /\[\[pos_(.*?)\]\]/g;
+                        let last = 0; let match; let idx = 0; const positions = [];
+                        while ((match = regex.exec(text)) !== null) {
+                          if (match.index > last) parts.push({ type: 'text', content: text.slice(last, match.index) });
+                          const posId = match[1];
+                          positions.push(posId);
+                          parts.push({ type: 'position', positionId: posId, index: idx++ });
+                          last = match.index + match[0].length;
+                        }
+                        if (last < text.length) parts.push({ type: 'text', content: text.slice(last) });
+
+                        const toPlain = (s) => (typeof s === 'string' ? s.replace(/<[^>]*>/g,' ').replace(/&nbsp;/g,' ').trim() : s);
+
+                        return (
+                          <div style={{ marginBottom: '16px' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', minHeight: '200px' }}>
+                              <div style={{ padding: '16px', background: theme === 'sun' ? '#f9f9f9' : 'rgba(255,255,255,0.02)', borderRadius: '8px', border: `1px solid ${theme === 'sun' ? '#e8e8e8' : 'rgba(255,255,255,0.1)'}` }}>
+                                <div style={{ fontSize: '16px', fontWeight: 600, marginBottom: '8px' }}>Question {qIndex + 1}:</div>
+                                <div style={{ fontSize: '15px', fontWeight: 350, lineHeight: '1.8', color: '#000000' }}>
+                                  {parts.map((part, pIdx) => (
+                                    <React.Fragment key={pIdx}>
+                                      {part.type === 'text' ? (
+                                        toPlain(part.content)
+                                      ) : (
+                                        qDroppedItems[part.positionId] ? (
+                                          <span draggable onDragStart={(e) => handleDragStartFromDropped(e, qDroppedItems[part.positionId], part.positionId)} style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', minWidth:'100px', minHeight:'28px', padding:'4px 8px', margin:'0 6px', background: theme==='sun'? 'rgba(24,144,255,0.15)':'rgba(138,122,255,0.18)', border: `2px solid ${theme==='sun'?'#1890ff':'#8B5CF6'}`, borderRadius:'6px', fontSize:'14px', fontWeight:'350', color: theme==='sun'?'#1890ff':'#8B5CF6', cursor:'grab', verticalAlign:'baseline', textAlign:'center' }}>
+                                            {toPlain(qDroppedItems[part.positionId])}
+                                          </span>
+                                        ) : (
+                                          <span onDrop={(e)=>handleDrop(e, part.positionId)} onDragOver={(e)=>handleDragOver(e, part.positionId)} onDragLeave={handleDragLeave} style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', minWidth:'100px', minHeight:'28px', padding:'4px 8px', margin:'0 6px', background: dragOverPosition[q.id]===part.positionId ? (theme==='sun'?'rgba(24,144,255,0.2)':'rgba(138,122,255,0.25)') : '#ffffff', border:`2px ${dragOverPosition[q.id]===part.positionId ? 'solid':'dashed'} ${dragOverPosition[q.id]===part.positionId ? (theme==='sun'?'#1890ff':'#8B5CF6') : 'rgba(0,0,0,0.5)'}`, borderRadius:'6px', fontSize:'14px', color: dragOverPosition[q.id]===part.positionId ? (theme==='sun'?'#1890ff':'#8B5CF6') : 'rgba(0,0,0,0.5)', textAlign:'center' }}>
+                                            {dragOverPosition[q.id]===part.positionId ? 'Drop here!' : 'Drop here'}
+                                          </span>
+                                        )
                             )}
                           </React.Fragment>
                         ))}
                         </div>
                       </div>
+
+                              <div style={{ padding:'16px', background: theme==='sun'?'#ffffff':'rgba(255,255,255,0.03)', borderRadius:'8px', border:`1px solid ${theme==='sun'?'#e8e8e8':'rgba(255,255,255,0.1)'}` }}>
+                                <Typography.Text style={{ fontSize:'13px', fontWeight:600, marginBottom:'12px', display:'block', color: theme==='sun'?'rgb(15,23,42)':'rgb(45,27,105)' }}>Drag these words:</Typography.Text>
+                                <div style={{ display:'flex', gap:'8px', flexWrap:'wrap', justifyContent:'center', alignItems:'center', minHeight:'80px' }}>
+                                  {qAvailableItems.map((item, idx) => (
+                                    <span key={idx} draggable onDragStart={(e)=>handleDragStart(e, item)} style={{ padding:'8px 12px', background: theme==='sun'?'rgba(24,144,255,0.08)':'rgba(138,122,255,0.12)', border:`2px solid ${theme==='sun'?'#1890ff':'#8B5CF6'}`, borderRadius:'8px', fontSize:'13px', fontWeight:'600', color: theme==='sun'?'#1890ff':'#8B5CF6', cursor:'grab', userSelect:'none', minWidth:'60px', textAlign:'center' }}>
+                                      {toPlain(item)}
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })()
                     ) : q.type === 'FILL_IN_THE_BLANK' ? (
-                      // Fill in the Blank
                       <div style={{ 
                         marginBottom: '16px',
                         fontSize: '15px', 
@@ -1962,45 +2144,109 @@ const ListeningSectionItem = ({ question, index, theme }) => {
                           Question {qIndex + 1}:
                         </div>
                         <div>
-                          {q.questionText?.split('_______').map((part, index, array) => (
-                          <React.Fragment key={index}>
-                            {part}
-                            {index < array.length - 1 && (
-                              <span
-                                className="paragraph-input"
-                                contentEditable
-                                data-input-key={`input_${q.id}_${index}`}
-                                id={`fill_blank_input_${q.id}_${index}`}
-                                style={{
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                  minWidth: '120px',
-                                  maxWidth: '200px',
-                                  minHeight: '32px',
-                                  padding: '4px 12px',
-                                  margin: '0 8px',
-                                  background: theme === 'sun' ? '#E9EEFF94' : 'rgba(255, 255, 255, 0.1)',
-                                  border: `2px solid ${theme === 'sun' ? '#1890ff' : '#8B5CF6'}`,
-                                  borderRadius: '8px',
-                                  cursor: 'text',
-                                  outline: 'none',
-                                  verticalAlign: 'top',
-                                  lineHeight: '1.4',
-                                  fontSize: '14px',
-                                  boxSizing: 'border-box',
-                                  wordWrap: 'break-word',
-                                  overflowWrap: 'break-word',
-                                  whiteSpace: 'pre-wrap',
-                                  color: '#000000',
-                                  textAlign: 'center'
-                                }}
-                              />
-                            )}
-                          </React.Fragment>
+                          {(() => {
+                            const text = q.questionText || q.question || '';
+                            const parts = [];
+                            const regex = /\[\[pos_(.*?)\]\]/g;
+                            let last = 0; let match; let idx = 0;
+                            while ((match = regex.exec(text)) !== null) {
+                              if (match.index > last) parts.push(text.slice(last, match.index));
+                              parts.push(
+                                <span key={`fib_${q.id}_${idx++}`} className="paragraph-input" contentEditable suppressContentEditableWarning style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', minWidth:'120px', maxWidth:'200px', minHeight:'32px', padding:'4px 12px', margin:'0 8px', background: theme==='sun'?'#E9EEFF94':'rgba(255,255,255,0.1)', border:`2px solid ${theme==='sun'?'#1890ff':'#8B5CF6'}`, borderRadius:'8px', cursor:'text', outline:'none', verticalAlign:'top', lineHeight:'1.4', fontSize:'14px', boxSizing:'border-box', color:'#000000', textAlign:'center' }} />
+                              );
+                              last = match.index + match[0].length;
+                            }
+                            if (last < text.length) parts.push(text.slice(last));
+                            return parts;
+                          })()}
+                        </div>
+                      </div>
+                    ) : q.type === 'REARRANGE' ? (
+                      (() => {
+                        const questionId = `reorder_${q.id}`;
+                        const currentState = reorderStates[questionId] || {
+                          sourceItems: q.content?.data?.map(item => item.value) || [],
+                          droppedItems: {},
+                          dragOverIndex: null,
+                          draggedItem: null,
+                          isDraggingFromSource: false,
+                          wasDropped: false
+                        };
+                        const numSlots = (q.content?.data?.filter(it => it?.value)?.length) || currentState.sourceItems.length || 0;
+                        const displayText = (q.questionText || q.question || '').replace(/\[\[pos_.*?\]\]/g,' ').replace(/<[^>]*>/g,' ').replace(/&nbsp;/g,' ').trim();
+
+                        const handleDragStartFromSource = (e, item) => {
+                          setReorderStates(prev => ({ ...prev, [questionId]: { ...currentState, draggedItem: item, isDraggingFromSource: true } }));
+                          e.dataTransfer.effectAllowed = 'move';
+                        };
+                        const handleDragStartFromSlot = (e, index) => {
+                          const item = currentState.droppedItems[index];
+                          setReorderStates(prev => ({ ...prev, [questionId]: { ...currentState, draggedItem: item, isDraggingFromSource: false, wasDropped: false, dragOverIndex: index } }));
+                          e.dataTransfer.effectAllowed = 'move';
+                        };
+                        const handleDropOnSlot = (e, index) => {
+                          e.preventDefault();
+                          const newState = { ...currentState, wasDropped: true, dragOverIndex: null };
+                          if (currentState.draggedItem) {
+                            const currentItem = currentState.droppedItems[index];
+                            if (currentItem) newState.sourceItems = [...currentState.sourceItems, currentItem];
+                            if (!currentState.isDraggingFromSource) {
+                              const oldIndex = Object.keys(currentState.droppedItems).find(i => currentState.droppedItems[i] === currentState.draggedItem && parseInt(i) !== index);
+                              if (oldIndex !== undefined) delete newState.droppedItems[parseInt(oldIndex)];
+                            } else {
+                              newState.sourceItems = currentState.sourceItems.filter(item => item !== currentState.draggedItem);
+                            }
+                            newState.droppedItems = { ...currentState.droppedItems, [index]: currentState.draggedItem };
+                          }
+                          newState.draggedItem = null; newState.isDraggingFromSource = false;
+                          setReorderStates(prev => ({ ...prev, [questionId]: newState }));
+                        };
+                        const handleDragOverSlot = (e, index) => { e.preventDefault(); setReorderStates(prev => ({ ...prev, [questionId]: { ...currentState, dragOverIndex: index } })); e.dataTransfer.dropEffect='move'; };
+                        const handleDragLeaveSlot = () => { setReorderStates(prev => ({ ...prev, [questionId]: { ...currentState, dragOverIndex: null } })); };
+                        const handleDragEnd = () => {
+                          if (currentState.draggedItem && !currentState.isDraggingFromSource && !currentState.wasDropped) {
+                            const newState = { ...currentState };
+                            if (!newState.sourceItems.includes(currentState.draggedItem)) newState.sourceItems = [...newState.sourceItems, currentState.draggedItem];
+                            const oldIndex = Object.keys(currentState.droppedItems).find(i => currentState.droppedItems[i] === currentState.draggedItem);
+                            if (oldIndex !== undefined) delete newState.droppedItems[oldIndex];
+                            newState.draggedItem = null; newState.isDraggingFromSource = false; newState.dragOverIndex = null; newState.wasDropped = false;
+                            setReorderStates(prev => ({ ...prev, [questionId]: newState }));
+                          }
+                        };
+
+                        return (
+                          <div style={{ marginBottom: '16px' }}>
+                            <div style={{ fontSize: '16px', fontWeight: 600, marginBottom: '8px' }}>Question {qIndex + 1}:</div>
+                            <div style={{ fontSize: '15px', fontWeight: 350, marginBottom: '16px', lineHeight: '1.8', color: '#000000' }}>{displayText}</div>
+                            <div style={{ marginBottom:'16px', padding:'16px', background: theme==='sun'?'#f9f9f9':'rgba(255,255,255,0.02)', borderRadius:'8px', border:`1px solid ${theme==='sun'?'#e8e8e8':'rgba(255,255,255,0.1)'}` }}>
+                              <div style={{ fontSize:'14px', fontWeight:350, marginBottom:'12px', color: theme==='sun'?'rgb(15,23,42)':'rgb(45,27,105)' }}>Drop the words here in order:</div>
+                              <div style={{ display:'flex', flexWrap:'wrap', gap:'8px' }}>
+                                {Array.from({ length: numSlots }).map((_, index) => (
+                                  <div key={index} onDrop={(e)=>handleDropOnSlot(e,index)} onDragOver={(e)=>handleDragOverSlot(e,index)} onDragLeave={handleDragLeaveSlot} onDragEnd={handleDragEnd} style={{ minWidth:'80px', height:'50px', display:'flex', alignItems:'center', justifyContent:'center', border: currentState.droppedItems[index] ? `2px solid ${theme==='sun'?'#1890ff':'#8B5CF6'}` : currentState.dragOverIndex===index ? `3px solid ${theme==='sun'?'#1890ff':'#8B5CF6'}` : `2px dashed rgba(0,0,0,0.5)`, borderRadius:'6px', background: currentState.droppedItems[index] ? (theme==='sun'?'rgba(24,144,255,0.1)':'rgba(138,122,255,0.1)') : currentState.dragOverIndex===index ? (theme==='sun'?'rgba(24,144,255,0.15)':'rgba(138,122,255,0.15)') : '#ffffff', transition:'all 0.3s ease', transform: currentState.dragOverIndex===index ? 'scale(1.05)' : 'scale(1)' }}>
+                                    {currentState.droppedItems[index] ? (
+                                      <div draggable onDragStart={(e)=>handleDragStartFromSlot(e,index)} onDragEnd={handleDragEnd} style={{ width:'100%', height:'100%', display:'flex', alignItems:'center', justifyContent:'center', padding:'6px 8px', background: 'transparent', border:'none', borderRadius:'4px', cursor:'grab', userSelect:'none' }}>
+                                        <span style={{ fontSize:'13px', fontWeight:'700', color: theme==='sun'?'#1890ff':'#8B5CF6', textAlign:'center' }}>{currentState.droppedItems[index]}</span>
+                                      </div>
+                                    ) : (
+                                      <div style={{ display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:'2px' }}>
+                                        <span style={{ fontSize:'10px', fontWeight:'600', color:'rgba(0,0,0,0.5)' }}>{index + 1}</span>
+                                      </div>
+                                    )}
+                                  </div>
                         ))}
                         </div>
                       </div>
+                            <div onDrop={(e)=>{ e.preventDefault(); const newState={...currentState, wasDropped:true}; if(currentState.draggedItem && !currentState.isDraggingFromSource){ if(!newState.sourceItems.includes(currentState.draggedItem)) newState.sourceItems=[...newState.sourceItems, currentState.draggedItem]; const oldIndex=Object.keys(currentState.droppedItems).find(i=>currentState.droppedItems[i]===currentState.draggedItem); if(oldIndex){ delete newState.droppedItems[oldIndex]; } newState.draggedItem=null; newState.isDraggingFromSource=false; newState.dragOverIndex=null; setReorderStates(prev=>({ ...prev, [questionId]: newState })); } }} onDragOver={(e)=>{e.preventDefault();}} style={{ padding:'16px', background: theme==='sun'?'#ffffff':'rgba(255,255,255,0.03)', borderRadius:'8px', border:`1px solid ${theme==='sun'?'#e8e8e8':'rgba(255,255,255,0.1)'}` }}>
+                              <div style={{ fontSize:'14px', fontWeight:350, marginBottom:'12px', color: theme==='sun'?'rgb(15,23,42)':'rgb(45,27,105)' }}>Drag these words to the slots above:</div>
+                              <div style={{ display:'flex', flexWrap:'wrap', gap:'8px' }}>
+                                {currentState.sourceItems.map((item, idx) => (
+                                  <div key={`${item}-${idx}`} draggable onDragStart={(e)=>handleDragStartFromSource(e,item)} onDragEnd={handleDragEnd} style={{ display:'inline-flex', alignItems:'center', padding:'8px 12px', background: theme==='sun'?'rgba(24,144,255,0.08)':'rgba(138,122,255,0.12)', border:`2px solid ${theme==='sun'?'#1890ff':'#8B5CF6'}`, borderRadius:'6px', fontSize:'12px', fontWeight:'600', color: theme==='sun'?'#1890ff':'#8B5CF6', cursor:'grab', userSelect:'none' }}>{item}</div>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })()
                     ) : (
                       <>
                         <div style={{ marginBottom: '16px' }}>
@@ -2020,7 +2266,7 @@ const ListeningSectionItem = ({ question, index, theme }) => {
                             display: 'block',
                             lineHeight: '1.8'
                           }}>
-                            {q.question || q.questionText}
+                            {toPlainText(q.question || q.questionText)}
                           </Typography.Text>
                         </div>
 
@@ -2100,7 +2346,7 @@ const ListeningSectionItem = ({ question, index, theme }) => {
                                 fontWeight: '350',
                                 flex: 1
                               }}>
-                                {option.text}
+                                {toPlainText(option.text)}
                               </Typography.Text>
                             </div>
                           ))
@@ -2160,7 +2406,7 @@ const ListeningSectionItem = ({ question, index, theme }) => {
                                   fontWeight: '350',
                                   flex: 1
                                 }}>
-                                  {option.text}
+                                  {toPlainText(option.text)}
                                 </Typography.Text>
                               ) : (
                                 <>
@@ -2178,7 +2424,7 @@ const ListeningSectionItem = ({ question, index, theme }) => {
                                     fontWeight: '350',
                                     flex: 1
                                   }}>
-                                    {option.text}
+                                    {toPlainText(option.text)}
                                   </Typography.Text>
                                 </>
                               )}
@@ -2205,6 +2451,24 @@ const WritingSectionItem = ({ question, index, theme }) => {
   const [uploadedFiles, setUploadedFiles] = useState([]);
   const [wordCount, setWordCount] = useState(0);
   const [writingMode, setWritingMode] = useState(null); // null or 'handwriting'
+
+  const toPlainText = (html) => {
+    if (!html) return '';
+    return String(html)
+      .replace(/<br\s*\/?>(?=\s*)/gi, '\n')
+      .replace(/<\/?p[^>]*>/gi, '\n')
+      .replace(/<[^>]*>/g, ' ')
+      .replace(/&nbsp;/g, ' ')
+      .replace(/&amp;/g, '&')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/\r\n|\r/g, '\n')
+      .replace(/\s+\n/g, '\n')
+      .replace(/\n\s+/g, '\n')
+      .replace(/\s+/g, ' ')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
+  };
 
   // Word count effect
   useEffect(() => {
@@ -2312,18 +2576,6 @@ const WritingSectionItem = ({ question, index, theme }) => {
                 : '#8B5CF6 rgba(138, 122, 255, 0.2)'
             }}>
             
-            {/* Writing Title */}
-            <div style={{ marginBottom: '20px' }}>
-              <Typography.Title level={4} style={{ 
-                margin: 0, 
-                color: theme === 'sun' ? '#1E40AF' : '#1F2937',
-                fontSize: '20px',
-                fontWeight: 600
-              }}>
-                {question.title}
-              </Typography.Title>
-            </div>
-
             {/* Writing Prompt */}
             <div style={{
               fontSize: '15px',
@@ -2331,7 +2583,7 @@ const WritingSectionItem = ({ question, index, theme }) => {
               color: theme === 'sun' ? '#333' : '#1F2937',
               textAlign: 'justify'
             }}>
-              {question.prompt.split('\n').map((line, idx) => {
+              {toPlainText(question.prompt).split('\n').map((line, idx) => {
                 if (line.startsWith('**') && line.endsWith('**')) {
                   return (
                     <div key={idx} style={{
@@ -2666,6 +2918,24 @@ const SpeakingSectionItem = ({ question, index, theme }) => {
   const [audioUrl, setAudioUrl] = useState(null);
   const [uploadedFiles, setUploadedFiles] = useState([]);
 
+  const toPlainText = (html) => {
+    if (!html) return '';
+    return String(html)
+      .replace(/<br\s*\/?>(?=\s*)/gi, '\n')
+      .replace(/<\/?p[^>]*>/gi, '\n')
+      .replace(/<[^>]*>/g, ' ')
+      .replace(/&nbsp;/g, ' ')
+      .replace(/&amp;/g, '&')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/\r\n|\r/g, '\n')
+      .replace(/\s+\n/g, '\n')
+      .replace(/\n\s+/g, '\n')
+      .replace(/\s+/g, ' ')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
+  };
+
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
 
@@ -2805,77 +3075,13 @@ const SpeakingSectionItem = ({ question, index, theme }) => {
                 : '#8B5CF6 rgba(138, 122, 255, 0.2)'
             }}>
             
-            <div style={{ marginBottom: '16px' }}>
-              <Typography.Title level={4} style={{ 
-                margin: 0, 
-                color: theme === 'sun' ? '#1E40AF' : '#1F2937',
-                fontSize: '20px',
-                fontWeight: 600
-              }}>
-                {question.title}
-              </Typography.Title>
-            </div>
-
             <div style={{
               fontSize: '15px',
               lineHeight: '1.8',
               color: theme === 'sun' ? '#333' : '#1F2937',
               textAlign: 'justify'
             }}>
-              {question.prompt.split('\n').map((line, idx) => {
-                if (line.startsWith('**') && line.endsWith('**')) {
-                  return (
-                    <div key={idx} style={{
-                      fontWeight: '600',
-                      fontSize: '16px',
-                      margin: '16px 0 8px 0',
-                      color: theme === 'sun' ? '#1E40AF' : '#1F2937'
-                    }}>
-                      {line.replace(/\*\*/g, '')}
-                    </div>
-                  );
-                } else if (line.startsWith('- ')) {
-                  return (
-                    <div key={idx} style={{
-                      margin: '4px 0',
-                      paddingLeft: '16px',
-                      position: 'relative'
-                    }}>
-                      <span style={{
-                        position: 'absolute',
-                        left: '0',
-                        color: theme === 'sun' ? '#1890ff' : '#8B5CF6',
-                        fontWeight: 'bold'
-                      }}>•</span>
-                      {line.substring(2)}
-                    </div>
-                  );
-                } else if (line.match(/^\d+\./)) {
-                  return (
-                    <div key={idx} style={{
-                      margin: '4px 0',
-                      paddingLeft: '16px',
-                      position: 'relative'
-                    }}>
-                      <span style={{
-                        position: 'absolute',
-                        left: '0',
-                        color: theme === 'sun' ? '#1890ff' : '#8B5CF6',
-                        fontWeight: 'bold'
-                      }}>{line.match(/^\d+\./)[0]}</span>
-                      {line.replace(/^\d+\.\s*/, '')}
-                    </div>
-                  );
-                } else if (line.trim() === '') {
-                  return <div key={idx} style={{ height: '8px' }} />;
-                } else {
-                  return (
-                    <div key={idx} style={{ margin: '8px 0' }}>
-                      {line}
-                    </div>
-                  );
-                }
-              })}
+              <div dangerouslySetInnerHTML={{ __html: processPassageContent(question.prompt, theme, 'SP') }} />
             </div>
           </div>
 
@@ -3115,6 +3321,24 @@ const SpeakingWithAudioSectionItem = ({ question, index, theme }) => {
   const [volume, setVolume] = useState(1);
   const [showTranscript, setShowTranscript] = useState(false);
 
+  const toPlainText = (html) => {
+    if (!html) return '';
+    return String(html)
+      .replace(/<br\s*\/?>(?=\s*)/gi, '\n')
+      .replace(/<\/?p[^>]*>/gi, '\n')
+      .replace(/<[^>]*>/g, ' ')
+      .replace(/&nbsp;/g, ' ')
+      .replace(/&amp;/g, '&')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/\r\n|\r/g, '\n')
+      .replace(/\s+\n/g, '\n')
+      .replace(/\n\s+/g, '\n')
+      .replace(/\s+/g, ' ')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
+  };
+
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
   const audioRef = useRef(null);
@@ -3303,15 +3527,15 @@ const SpeakingWithAudioSectionItem = ({ question, index, theme }) => {
                 : '#8B5CF6 rgba(138, 122, 255, 0.2)'
             }}>
             
-            <div style={{ marginBottom: '16px' }}>
-              <Typography.Title level={4} style={{ 
-                margin: 0, 
-                color: theme === 'sun' ? '#1E40AF' : '#1F2937',
-                fontSize: '20px',
-                fontWeight: 600
-              }}>
-                {question.title}
-              </Typography.Title>
+            {/* Maximum Recording Time */}
+            <div style={{
+              marginBottom: '16px',
+              fontWeight: '600',
+              fontSize: '20px',
+              color: theme === 'sun' ? '#1E40AF' : '#1F2937',
+              textAlign: 'left'
+            }}>
+              🎤 Maximum limit 3 minutes
             </div>
 
             {/* Audio Player */}
@@ -3425,48 +3649,32 @@ const SpeakingWithAudioSectionItem = ({ question, index, theme }) => {
             </div>
 
             {/* Transcript Content */}
-            <div style={{
-              background: '#ffffff',
-              borderRadius: '8px',
-              padding: '16px',
-              border: `1px solid ${theme === 'sun' ? '#e8e8e8' : 'rgba(138, 122, 255, 0.3)'}`,
-              fontSize: '15px',
-              lineHeight: '1.8',
-              color: '#333',
-              textAlign: 'justify',
-              boxShadow: theme === 'sun' 
-                ? '0 2px 8px rgba(0, 0, 0, 0.1)' 
-                : '0 2px 8px rgba(138, 122, 255, 0.2)'
-            }}>
-              <div style={{ 
-                fontSize: '18px', 
-                fontWeight: '600',
-                marginBottom: '12px',
-                color: theme === 'sun' ? '#1E40AF' : '#8B5CF6'
+            {question.transcript && (
+              <div style={{
+                background: '#ffffff',
+                borderRadius: '8px',
+                padding: '16px',
+                border: `1px solid ${theme === 'sun' ? '#e8e8e8' : 'rgba(138, 122, 255, 0.3)'}`,
+                fontSize: '15px',
+                lineHeight: '1.8',
+                color: '#333',
+                textAlign: 'justify',
+                boxShadow: theme === 'sun' 
+                  ? '0 2px 8px rgba(0, 0, 0, 0.1)' 
+                  : '0 2px 8px rgba(138, 122, 255, 0.2)'
               }}>
-                Từ vựng: Banana
+                <div style={{ 
+                  fontSize: '18px', 
+                  fontWeight: '600',
+                  marginBottom: '12px',
+                  color: theme === 'sun' ? '#1E40AF' : '#8B5CF6'
+                }}>
+                </div>
+                <div style={{ whiteSpace: 'pre-wrap' }}>
+                  <div dangerouslySetInnerHTML={{ __html: processPassageContent(question.transcript, theme, 'SP') }} />
+                </div>
               </div>
-              <div style={{ marginBottom: '8px', color: '#333' }}>
-                <strong>Phiên âm:</strong> /bəˈnɑːnə/
-              </div>
-              <div style={{ marginBottom: '16px', color: '#333' }}>
-                <strong>Trọng âm:</strong> Nhấn vào âm tiết thứ hai
-              </div>
-              <div style={{ marginBottom: '8px', color: '#666', fontSize: '14px' }}>
-                Phiên âm tiếng Anh của "quả chuối" (banana) là /bəˈnɑːnə/. Từ này có trọng âm rơi vào âm tiết thứ hai.
-              </div>
-              <img 
-                src="/img/banana.jpg" 
-                alt="Banana" 
-                style={{ 
-                  width: '100%',
-                  maxWidth: '300px',
-                  borderRadius: '8px',
-                  marginTop: '12px',
-                  boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)'
-                }} 
-              />
-            </div>
+            )}
           </div>
 
           {/* Right Section - Recording Area */}
@@ -3695,8 +3903,13 @@ const SpeakingWithAudioSectionItem = ({ question, index, theme }) => {
 };
 
 // Multiple Choice Container Component
-const MultipleChoiceContainer = ({ theme }) => {
+const MultipleChoiceContainer = ({ theme, data }) => {
   const [selectedAnswer, setSelectedAnswer] = React.useState(null);
+  const toPlain = (s) => (typeof s === 'string' ? s.replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g,' ').replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/\s+/g,' ').trim() : s);
+  const questionText = toPlain(data?.question || data?.questionText || 'What is the capital city of Vietnam?');
+  const optionsFromApi = Array.isArray(data?.options) && data.options.length > 0
+    ? data.options
+    : null;
 
   return (
     <div
@@ -3757,7 +3970,7 @@ const MultipleChoiceContainer = ({ theme }) => {
           lineHeight: '1.8',
           color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)'
         }}>
-          What is the capital city of Vietnam?
+          {questionText}
         </Typography.Text>
 
         {/* Options */}
@@ -3767,8 +3980,8 @@ const MultipleChoiceContainer = ({ theme }) => {
           gap: '14px', 
           marginTop: '12px' 
         }}>
-          {['A', 'B', 'C', 'D'].map((key, idx) => {
-            const options = ['Ho Chi Minh City', 'Hanoi', 'Da Nang', 'Can Tho'];
+          {(optionsFromApi || ['A','B','C','D'].map((k, i) => ({ key: k, text: ['Ho Chi Minh City', 'Hanoi', 'Da Nang', 'Can Tho'][i] }))).map((opt, idx) => {
+            const key = opt.key || String.fromCharCode(65 + idx);
             const isSelected = selectedAnswer === key;
             return (
               <div
@@ -3831,7 +4044,7 @@ const MultipleChoiceContainer = ({ theme }) => {
                   fontWeight: '350',
                   flex: 1
                 }}>
-                  {options[idx]}
+                  {toPlain(opt.text)}
                 </Typography.Text>
               </div>
             );
@@ -3843,8 +4056,11 @@ const MultipleChoiceContainer = ({ theme }) => {
 };
 
 // Multiple Select Container Component
-const MultipleSelectContainer = ({ theme }) => {
+const MultipleSelectContainer = ({ theme, data }) => {
   const [selectedAnswers, setSelectedAnswers] = React.useState([]);
+  const toPlain = (s) => (typeof s === 'string' ? s.replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g,' ').replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/\s+/g,' ').trim() : s);
+  const questionText = toPlain(data?.question || data?.questionText || 'Which of the following are Southeast Asian countries? (Select all that apply)');
+  const optionsFromApi = Array.isArray(data?.options) && data.options.length > 0 ? data.options : null;
 
   const toggleAnswer = (key) => {
     if (selectedAnswers.includes(key)) {
@@ -3913,7 +4129,7 @@ const MultipleSelectContainer = ({ theme }) => {
           lineHeight: '1.8',
           color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)'
         }}>
-          Which of the following are Southeast Asian countries? (Select all that apply)
+          {questionText}
         </Typography.Text>
 
         {/* Options */}
@@ -3923,8 +4139,8 @@ const MultipleSelectContainer = ({ theme }) => {
           gap: '14px', 
           marginTop: '12px' 
         }}>
-          {['A', 'B', 'C', 'D'].map((key, idx) => {
-            const options = ['Vietnam', 'Thailand', 'Japan', 'Malaysia'];
+          {(optionsFromApi || ['A','B','C','D'].map((k,i)=>({ key:k, text: ['Vietnam','Thailand','Japan','Malaysia'][i] }))).map((opt, idx) => {
+            const key = opt.key || String.fromCharCode(65 + idx);
             const isSelected = selectedAnswers.includes(key);
             return (
               <div
@@ -3980,13 +4196,13 @@ const MultipleSelectContainer = ({ theme }) => {
                 }}>
                   {key}.
                 </span>
-          <Typography.Text style={{ 
+                <Typography.Text style={{ 
                   fontSize: '14px',
                   color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)',
                   fontWeight: '350',
                   flex: 1
                 }}>
-                  {options[idx]}
+                  {toPlain(opt.text)}
                 </Typography.Text>
               </div>
             );
@@ -3998,8 +4214,10 @@ const MultipleSelectContainer = ({ theme }) => {
 };
 
 // True/False Container Component
-const TrueFalseContainer = ({ theme }) => {
+const TrueFalseContainer = ({ theme, data }) => {
   const [selectedAnswer, setSelectedAnswer] = React.useState(null);
+  const toPlain = (s) => (typeof s === 'string' ? s.replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g,' ').replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/\s+/g,' ').trim() : s);
+  const questionText = toPlain(data?.question || data?.questionText || 'The Earth revolves around the Sun.');
 
   return (
     <div
@@ -4060,7 +4278,7 @@ const TrueFalseContainer = ({ theme }) => {
             lineHeight: '1.8',
           color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)'
         }}>
-          The Earth revolves around the Sun.
+          {questionText}
         </Typography.Text>
 
         {/* Options */}
@@ -4145,8 +4363,10 @@ const TrueFalseContainer = ({ theme }) => {
 };
 
 // Dropdown Container Component
-const DropdownContainer = ({ theme }) => {
+const DropdownContainer = ({ theme, data }) => {
   const [selectedAnswers, setSelectedAnswers] = React.useState({});
+  const questionText = data?.questionText || data?.question || 'Choose the correct words to complete the sentence:';
+  const contentData = Array.isArray(data?.content?.data) ? data.content.data : [];
 
   const handleDropdownChange = (positionId, value) => {
     setSelectedAnswers(prev => ({
@@ -4206,87 +4426,25 @@ const DropdownContainer = ({ theme }) => {
 
       {/* Content Area */}
       <div className="question-content" style={{ paddingLeft: '36px', marginTop: '16px' }}>
-        <Typography.Text style={{ 
-          fontSize: '15px', 
-          fontWeight: 350,
-          marginBottom: '12px',
-          display: 'block',
-          lineHeight: '1.8',
-          color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)'
-        }}>
-          Choose the correct words to complete the sentence:
-        </Typography.Text>
-
-        {/* Question with dropdowns */}
-      <div style={{
+        {/* Inline HTML from questionText with [[pos_]] placeholders */}
+        <div
+          style={{
           fontSize: '15px', 
           fontWeight: 350,
           lineHeight: '1.8',
           color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)',
           marginBottom: '16px'
-        }}>
-          I 
-          <select
-            className="dropdown-select"
-            value={selectedAnswers.pos_1 || ''}
-            onChange={(e) => handleDropdownChange('pos_1', e.target.value)}
-              style={{
-                display: 'inline-block',
-              minWidth: '120px',
-              height: '32px',
-              padding: '4px 12px',
-                margin: '0 8px',
-              background: theme === 'sun' 
-                ? 'rgba(24, 144, 255, 0.08)' 
-                : 'rgba(138, 122, 255, 0.12)',
-                border: `2px solid ${theme === 'sun' ? '#1890ff' : '#8B5CF6'}`,
-                borderRadius: '8px',
-              fontSize: '14px',
-              fontWeight: '600',
-              color: theme === 'sun' ? '#1890ff' : '#8B5CF6',
-              cursor: 'pointer',
-              outline: 'none',
-              textAlign: 'center'
-            }}
-          >
-            <option value="">Select</option>
-            <option value="love">love</option>
-            <option value="like">like</option>
-            <option value="enjoy">enjoy</option>
-            <option value="hate">hate</option>
-          </select>
-            programming and 
-          <select
-            className="dropdown-select"
-            value={selectedAnswers.pos_2 || ''}
-            onChange={(e) => handleDropdownChange('pos_2', e.target.value)}
-              style={{
-                display: 'inline-block',
-              minWidth: '120px',
-              height: '32px',
-              padding: '4px 12px',
-                margin: '0 8px',
-              background: theme === 'sun' 
-                ? 'rgba(24, 144, 255, 0.08)' 
-                : 'rgba(138, 122, 255, 0.12)',
-                border: `2px solid ${theme === 'sun' ? '#1890ff' : '#8B5CF6'}`,
-                borderRadius: '8px',
-              fontSize: '14px',
-              fontWeight: '600',
-              color: theme === 'sun' ? '#1890ff' : '#8B5CF6',
-              cursor: 'pointer',
-              outline: 'none',
-              textAlign: 'center'
-            }}
-          >
-            <option value="">Select</option>
-            <option value="love">love</option>
-            <option value="like">like</option>
-            <option value="enjoy">enjoy</option>
-            <option value="hate">hate</option>
-          </select>
-            it very much.
-        </div>
+          }}
+          dangerouslySetInnerHTML={{ __html: (data?.questionText || '')
+            .replace(/\[\[pos_(.*?)\]\]/g, (_m, pid) => {
+              const opts = contentData
+                .filter(it => String(it.positionId) === String(pid))
+                .map(it => it.value)
+                .filter(Boolean);
+              const optionsHtml = ['<option value="">Select</option>', ...opts.map(v => `<option value="${v}">${v}</option>`)].join('');
+              return `<select class="dropdown-select" style="display:inline-block;min-width:120px;height:32px;padding:4px 12px;margin:0 8px;background:${theme === 'sun' ? 'rgba(24, 144, 255, 0.08)' : 'rgba(138, 122, 255, 0.12)'};border:2px solid ${theme === 'sun' ? '#1890ff' : '#8B5CF6'};border-radius:8px;font-size:14px;font-weight:600;color:${theme === 'sun' ? '#1890ff' : '#8B5CF6'};">${optionsHtml}</select>`;
+            }) }}
+        />
 
       </div>
       <style>
@@ -4301,11 +4459,14 @@ const DropdownContainer = ({ theme }) => {
 };
 
 // Drag and Drop Container Component
-const DragDropContainer = ({ theme }) => {
+const DragDropContainer = ({ theme, data }) => {
   const [droppedItems, setDroppedItems] = React.useState({});
-  const [availableItems, setAvailableItems] = React.useState([
-    'love', 'like', 'enjoy', 'hate'
-  ]);
+  const [availableItems, setAvailableItems] = React.useState(() => {
+    const incorrect = (data?.content?.data || []).filter(it => !it.positionId || it.correct === false).map(it => it.value).filter(Boolean);
+    const correct = (data?.content?.data || []).filter(it => it.positionId && it.correct === true).map(it => it.value).filter(Boolean);
+    const combined = Array.from(new Set([...incorrect, ...correct]));
+    return combined.length ? combined : ['love','like','enjoy','hate'];
+  });
   const [dragOverPosition, setDragOverPosition] = React.useState(null);
 
   const handleDragStart = (e, item, isDropped = false, positionId = null) => {
@@ -4664,13 +4825,27 @@ const DragDropContainer = ({ theme }) => {
 };
 
 // Reorder Container Component
-const ReorderContainer = ({ theme }) => {
-  const [sourceItems, setSourceItems] = React.useState(['I', 'love', 'programming', 'very', 'much']);
+const ReorderContainer = ({ theme, data }) => {
+  const [sourceItems, setSourceItems] = React.useState(() => {
+    const words = (data?.content?.data || [])
+      .sort((a,b)=>(a.positionOrder||0)-(b.positionOrder||0))
+      .map(it => it.value)
+      .filter(Boolean);
+    return words.length ? words : ['I','love','programming','very','much'];
+  });
   const [droppedItems, setDroppedItems] = React.useState({});
   const [dragOverIndex, setDragOverIndex] = React.useState(null);
   const [draggedItem, setDraggedItem] = React.useState(null);
   const [isDraggingFromSource, setIsDraggingFromSource] = React.useState(false);
   const [wasDropped, setWasDropped] = React.useState(false);
+  const numSlots = React.useMemo(() => {
+    const countFromData = (data?.content?.data || [])
+      .map(it => it.value)
+      .filter(Boolean).length;
+    const base = countFromData || sourceItems.length || 0;
+    const ensureAtLeastDropped = Math.max(base, Object.keys(droppedItems).length);
+    return ensureAtLeastDropped;
+  }, [data, sourceItems.length, droppedItems]);
 
   const handleDragStartFromSource = (e, item) => {
     setDraggedItem(item);
@@ -4850,7 +5025,7 @@ const ReorderContainer = ({ theme }) => {
             flexWrap: 'wrap',
             gap: '12px'
           }}>
-            {[0, 1, 2, 3, 4].map((index) => (
+            {Array.from({ length: numSlots }).map((_, index) => (
               <div
                 key={index}
                 onDrop={(e) => handleDropOnSlot(e, index)}
@@ -5031,8 +5206,20 @@ const ReorderContainer = ({ theme }) => {
 };
 
 // Rewrite Container Component
-const RewriteContainer = ({ theme }) => {
+const RewriteContainer = ({ theme, data }) => {
   const [answer, setAnswer] = React.useState('');
+  const toPlain = (s) => (typeof s === 'string'
+    ? s
+      .replace(/\[\[pos_.*?\]\]/g, ' ') // remove placeholder tokens
+      .replace(/<[^>]*>/g, ' ')
+      .replace(/&nbsp;/g,' ')
+      .replace(/&amp;/g,'&')
+      .replace(/&lt;/g,'<')
+      .replace(/&gt;/g,'>')
+      .replace(/\s+/g,' ')
+      .trim()
+    : s);
+  const questionText = toPlain(data?.questionText || data?.question || 'Rewrite the following sentence using different words:');
 
   return (
     <div
@@ -5093,19 +5280,10 @@ const RewriteContainer = ({ theme }) => {
           lineHeight: '1.8',
           color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)'
         }}>
-          Rewrite the following sentence using different words:
+          {questionText}
         </Typography.Text>
 
-        {/* Original sentence */}
-        <div style={{
-          marginBottom: '20px',
-          fontSize: '15px',
-          fontWeight: '350',
-          color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)',
-          lineHeight: '1.8'
-        }}>
-          "I really enjoy programming."
-        </div>
+        {/* Only show the question sentence for rewrite */}
 
         {/* Answer textarea */}
         <div style={{ marginTop: '20px' }}>
@@ -5136,7 +5314,59 @@ const RewriteContainer = ({ theme }) => {
 
 
 // Fill in the Blank Container Component
-const FillBlankContainer = ({ theme }) => {
+const FillBlankContainer = ({ theme, data }) => {
+  const questionText = data?.questionText || data?.question || 'Fill in the blanks';
+  // Parse questionText and render editable spans where [[pos_x]] appears
+  const renderWithInputs = () => {
+    const elements = [];
+    const regex = /(\[\[pos_(.*?)\]\])/g;
+    let lastIndex = 0;
+    let match;
+    let inputIndex = 0;
+    while ((match = regex.exec(questionText)) !== null) {
+      if (match.index > lastIndex) {
+        elements.push(questionText.slice(lastIndex, match.index));
+      }
+      inputIndex += 1;
+      elements.push(
+        <span
+          key={`fill_blank_input_${inputIndex}`}
+          className="paragraph-input"
+          contentEditable
+          suppressContentEditableWarning
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            minWidth: '120px',
+            maxWidth: '200px',
+            minHeight: '32px',
+            padding: '4px 12px',
+            margin: '0 8px',
+            background: '#E9EEFF94',
+            border: `2px solid ${theme === 'sun' ? '#1890ff' : '#8B5CF6'}`,
+            borderRadius: '8px',
+            cursor: 'text',
+            outline: 'none',
+            verticalAlign: 'middle',
+            lineHeight: '1.4',
+            fontSize: '14px',
+            boxSizing: 'border-box',
+            wordWrap: 'break-word',
+            overflowWrap: 'break-word',
+            whiteSpace: 'pre-wrap',
+            textAlign: 'center'
+          }}
+        />
+      );
+      lastIndex = match.index + match[0].length;
+    }
+    if (lastIndex < questionText.length) {
+      elements.push(questionText.slice(lastIndex));
+    }
+    return elements;
+  };
+
   return (
     <div
       className={`question-item ${theme}-question-item`}
@@ -5188,72 +5418,9 @@ const FillBlankContainer = ({ theme }) => {
 
       {/* Content Area - Fill in the blank question */}
       <div className="question-content" style={{ paddingLeft: '36px', marginTop: '16px' }}>
-        {/* Question Content */}
-        <div style={{ marginBottom: '16px' }}>
-          <Typography.Text style={{ 
-            fontSize: '15px', 
-            fontWeight: 350,
-            lineHeight: '1.8',
-            color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)'
-          }}>
-            I 
-            <span
-              className="paragraph-input"
-              contentEditable
-              data-input-key="input_1"
-              id="fill_blank_input_1"
-              style={{
-                display: 'inline-block',
-                minWidth: '120px',
-                maxWidth: '200px',
-                minHeight: '32px',
-                padding: '4px 12px',
-                margin: '0 8px',
-                background: '#E9EEFF94',
-                border: `2px solid ${theme === 'sun' ? '#1890ff' : '#8B5CF6'}`,
-                borderRadius: '8px',
-                cursor: 'text',
-                outline: 'none',
-                verticalAlign: 'middle',
-                lineHeight: '1.4',
-                fontSize: '14px',
-                boxSizing: 'border-box',
-                wordWrap: 'break-word',
-                overflowWrap: 'break-word',
-                whiteSpace: 'pre-wrap',
-                textAlign: 'center'
-              }}
-            /> 
-            programming and 
-            <span
-              className="paragraph-input"
-              contentEditable
-              data-input-key="input_2"
-              id="fill_blank_input_2"
-              style={{
-                display: 'inline-block',
-                minWidth: '120px',
-                maxWidth: '200px',
-                minHeight: '32px',
-                padding: '4px 12px',
-                margin: '0 8px',
-                background: '#E9EEFF94',
-                border: `2px solid ${theme === 'sun' ? '#1890ff' : '#8B5CF6'}`,
-                borderRadius: '8px',
-                cursor: 'text',
-                outline: 'none',
-                verticalAlign: 'middle',
-                lineHeight: '1.4',
-                fontSize: '14px',
-                boxSizing: 'border-box',
-                wordWrap: 'break-word',
-                overflowWrap: 'break-word',
-                whiteSpace: 'pre-wrap',
-                textAlign: 'center'
-              }}
-            /> 
-            it very much.
-          </Typography.Text>
+        {/* Question Content - render blanks for [[pos_]] tokens */}
+        <div style={{ marginBottom: '16px', fontSize: '15px', fontWeight: 350, lineHeight: '1.8', color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' }}>
+          {renderWithInputs()}
         </div>
       </div>
     </div>
@@ -5264,26 +5431,178 @@ const FillBlankContainer = ({ theme }) => {
 const StudentPreview = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const { id } = useParams();
   const { theme } = useTheme();
   
   const [loading, setLoading] = useState(false);
   const [questions, setQuestions] = useState([]);
+  const [readingSections, setReadingSections] = useState([]);
+  const [listeningSections, setListeningSections] = useState([]);
+  const [writingSections, setWritingSections] = useState([]);
+  const [speakingSections, setSpeakingSections] = useState([]);
+  const [challengeType, setChallengeType] = useState(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const questionRefs = useRef({});
   
   usePageTitle('Daily Challenge Preview');
   
   useEffect(() => {
-    // Load fake data
-    const fakeQuestions = generateFakeQuestions();
-    setQuestions(fakeQuestions);
-    
-    // Simulate loading
+    const fetchQuestions = async () => {
+      if (!id) return;
     setLoading(true);
-    setTimeout(() => {
+      try {
+        // get challenge details for type
+        const detailRes = await dailyChallengeApi.getDailyChallengeById(id);
+        const cType = detailRes?.data?.challengeType || null;
+        setChallengeType(cType);
+
+        const response = await dailyChallengeApi.getSectionsByChallenge(id, { page: 0, size: 100 });
+        const apiSections = response?.data || [];
+
+        const mapped = [];
+        const mappedReading = [];
+        const mappedListening = [];
+        const mappedWriting = [];
+        const mappedSpeaking = [];
+        apiSections.forEach((item, idx) => {
+          const section = item.section || {};
+          const questionsList = item.questions || [];
+
+          // If Reading challenge and DOCUMENT resource, prepare a reading section
+          if (cType === 'RE' && section.resourceType === 'DOCUMENT') {
+            const transformedQuestions = questionsList.map((q, qIndex) => {
+              const contentData = q.content?.data || [];
+              const options = contentData.map((contentItem, optIdx) => ({
+                key: String.fromCharCode(65 + optIdx),
+                text: contentItem.value || "",
+                isCorrect: contentItem.correct || false,
+              }));
+              return {
+                id: q.id || `${section.id}-${qIndex}`,
+                type: q.questionType,
+                question: q.questionText || "",
+                questionText: q.questionText || "",
+                options,
+                content: q.content,
+                points: q.score || 1,
+                orderNumber: q.orderNumber || qIndex + 1,
+              };
+            });
+            mappedReading.push({
+              id: section.id || `section_${idx}`,
+              type: 'SECTION',
+              title: section.sectionTitle || `Reading ${idx + 1}`,
+              passage: section.sectionsContent || '',
+              questions: transformedQuestions,
+              points: transformedQuestions.reduce((s,q)=>s+(q.points||0),0)
+            });
+            return; // skip flattening these reading questions into single list
+          }
+
+          // Listening challenge sections
+          if (cType === 'LI') {
+            const transformedQuestions = questionsList.map((q, qIndex) => {
+              const contentData = q.content?.data || [];
+              const options = contentData.map((contentItem, optIdx) => ({
+                key: String.fromCharCode(65 + optIdx),
+                text: contentItem.value || "",
+                isCorrect: contentItem.correct || false,
+              }));
+              return {
+                id: q.id || `${section.id}-${qIndex}`,
+                type: q.questionType,
+                question: q.questionText || "",
+                questionText: q.questionText || "",
+                options,
+                content: q.content,
+                points: q.score || 1,
+                orderNumber: q.orderNumber || qIndex + 1,
+              };
+            });
+            mappedListening.push({
+              id: section.id || `listening_${idx}`,
+              type: 'LISTENING_SECTION',
+              title: section.sectionTitle || `Listening ${idx + 1}`,
+              audioUrl: section.sectionsUrl || '',
+              duration: section.duration || '',
+              transcript: section.sectionsContent || section.transcript || '',
+              questions: transformedQuestions,
+              points: transformedQuestions.reduce((s,q)=>s+(q.points||0),0)
+            });
+            return; // don't flatten when mapping section
+          }
+
+          // Writing challenge sections
+          if (cType === 'WR') {
+            const totalPoints = (questionsList || []).reduce((s, q) => s + (q?.score || 0), 0);
+            mappedWriting.push({
+              id: section.id || `writing_${idx}`,
+              type: 'WRITING_SECTION',
+              title: section.sectionTitle || `Writing ${idx + 1}`,
+              prompt: section.sectionsContent || '',
+              wordLimit: section.wordLimit || 300,
+              timeLimit: section.timeLimit || 60,
+              points: totalPoints,
+              questionText: 'Write an essay based on the given prompt'
+            });
+            return; // don't flatten when mapping section
+          }
+
+          // Speaking challenge sections
+          if (cType === 'SP') {
+            const hasAudio = !!section.sectionsUrl;
+            const totalPoints = (questionsList || []).reduce((s, q) => s + (q?.score || 0), 0);
+            
+            mappedSpeaking.push({
+              id: section.id || `speaking_${idx}`,
+              type: hasAudio ? 'SPEAKING_WITH_AUDIO_SECTION' : 'SPEAKING_SECTION',
+              title: section.sectionTitle || `Speaking ${idx + 1}`,
+              prompt: section.sectionsContent || '',
+              audioUrl: section.sectionsUrl || '',
+              transcript: section.transcript || section.sectionsContent || '',
+              points: totalPoints
+            });
+            return; // don't flatten when mapping section
+          }
+
+          // Otherwise flatten questions into single list
+          questionsList.forEach((q, qIndex) => {
+            const contentData = q.content?.data || [];
+            const options = contentData.map((contentItem, optIdx) => ({
+              key: String.fromCharCode(65 + optIdx),
+              text: contentItem.value || "",
+              isCorrect: contentItem.correct || false,
+            }));
+
+            mapped.push({
+              id: q.id || `${section.id}-${qIndex}`,
+              type: q.questionType,
+              question: q.questionText || "",
+              questionText: q.questionText || "",
+              options,
+              content: q.content,
+              points: q.score || 1,
+              orderNumber: q.orderNumber || qIndex + 1,
+            });
+          });
+        });
+
+        // Sort by orderNumber
+        mapped.sort((a, b) => (a.orderNumber || 0) - (b.orderNumber || 0));
+        setQuestions(mapped);
+        setReadingSections(mappedReading);
+        setListeningSections(mappedListening);
+        setWritingSections(mappedWriting);
+        setSpeakingSections(mappedSpeaking);
+      } catch (e) {
+        console.error("Preview fetch questions error", e);
+      } finally {
       setLoading(false);
-    }, 500);
-  }, []);
+      }
+    };
+
+    fetchQuestions();
+  }, [id]);
 
   const handleBack = () => {
     navigate(-1);
@@ -5297,94 +5616,48 @@ const StudentPreview = () => {
     }
   };
 
-  // Build question navigation list
+  // Build question navigation list (only single questions)
   const getQuestionNavigation = () => {
     const navigation = [];
     let questionNumber = 1;
-
-    // Add section questions
-    questions
-      .filter(q => q.type === 'SECTION')
-      .forEach((section, sectionIndex) => {
-        const startQuestion = questionNumber;
-        section.questions?.forEach(() => {
-          questionNumber++;
-        });
-        const endQuestion = questionNumber - 1;
-        
-        navigation.push({
-          id: `section-${sectionIndex + 1}`,
-          type: 'section',
-          title: `Reading ${sectionIndex + 1}: Question  ${startQuestion}-${endQuestion}`,
-          questionCount: section.questions?.length || 0,
-        });
+    // Reading sections
+    if (readingSections.length > 0) {
+      readingSections.forEach((s, idx) => {
+        const count = s.questions?.length || 0;
+        const start = questionNumber;
+        const end = count > 0 ? start + count - 1 : start;
+        navigation.push({ id: `reading-${idx + 1}`, type: 'section', title: `Reading ${idx + 1}: Question ${start}-${end}` });
+        questionNumber = end + 1;
       });
-
-    // Add listening sections
-    questions
-      .filter(q => q.type === 'LISTENING_SECTION')
-      .forEach((section, sectionIndex) => {
-        const startQuestion = questionNumber;
-        section.questions?.forEach(() => {
-          questionNumber++;
-        });
-        const endQuestion = questionNumber - 1;
-        
-        navigation.push({
-          id: `listening-${sectionIndex + 1}`,
-          type: 'section',
-          title: `Listening ${sectionIndex + 1}: Question ${startQuestion}-${endQuestion}`,
-          questionCount: section.questions?.length || 0,
-        });
+    }
+    // Listening sections
+    if (listeningSections.length > 0) {
+      listeningSections.forEach((s, idx) => {
+        const count = s.questions?.length || 0;
+      const start = questionNumber;
+        const end = count > 0 ? start + count - 1 : start;
+        navigation.push({ id: `listening-${idx + 1}`, type: 'section', title: `Listening ${idx + 1}: Question ${start}-${end}` });
+      questionNumber = end + 1;
       });
-
-    // Add speaking sections
-    const speakingSections = questions.filter(q => q.type === 'SPEAKING_SECTION');
-    speakingSections.forEach((section, sectionIndex) => {
-      navigation.push({
-        id: `speaking-${sectionIndex + 1}`,
-        type: 'section',
-        title: `Speaking ${sectionIndex + 1}`,
-        questionCount: 1,
+    }
+    // Writing sections
+    if (writingSections.length > 0) {
+      writingSections.forEach((s, idx) => {
+        navigation.push({ id: `writing-${idx + 1}`, type: 'section', title: `Writing ${idx + 1}` });
       });
-      questionNumber++;
-    });
-
-    // Add speaking with audio sections
-    const speakingWithAudioSections = questions.filter(q => q.type === 'SPEAKING_WITH_AUDIO_SECTION');
-    speakingWithAudioSections.forEach((section, sectionIndex) => {
-      navigation.push({
-        id: `speaking-with-audio-${sectionIndex + 1}`,
-        type: 'section',
-        title: `Speaking ${speakingSections.length + sectionIndex + 1}`,
-        questionCount: 1,
+    }
+    // Speaking sections
+    if (speakingSections.length > 0) {
+      speakingSections.forEach((s, idx) => {
+        navigation.push({ id: `speaking-${idx + 1}`, type: 'section', title: `Speaking ${idx + 1}` });
       });
-      questionNumber++;
-    });
-
-    // Add writing sections
-    questions
-      .filter(q => q.type === 'WRITING_SECTION')
-      .forEach((section, sectionIndex) => {
-        navigation.push({
-          id: `writing-${sectionIndex + 1}`,
-          type: 'section',
-          title: `Writing ${sectionIndex + 1}`,
-          questionCount: 1,
-        });
-        questionNumber++;
+    }
+    // Individual questions (GV etc.)
+    if (!(challengeType === 'LI' || challengeType === 'SP' || challengeType === 'WR')) {
+      questions.forEach((q) => {
+        navigation.push({ id: `q-${q.id}`, type: 'question', title: `Question ${questionNumber++}` });
       });
-
-    // Add standalone questions
-    navigation.push({ id: 'multiple-choice-1', type: 'question', title: `Question ${questionNumber++}` });
-    navigation.push({ id: 'multiple-select-1', type: 'question', title: `Question ${questionNumber++}` });
-    navigation.push({ id: 'true-false-1', type: 'question', title: `Question ${questionNumber++}` });
-    navigation.push({ id: 'fill-blank-1', type: 'question', title: `Question ${questionNumber++}` });
-    navigation.push({ id: 'dropdown-1', type: 'question', title: `Question ${questionNumber++}` });
-    navigation.push({ id: 'drag-drop-1', type: 'question', title: `Question ${questionNumber++}` });
-    navigation.push({ id: 'reorder-1', type: 'question', title: `Question ${questionNumber++}` });
-    navigation.push({ id: 'rewrite-1', type: 'question', title: `Question ${questionNumber++}` });
-
+    }
     return navigation;
   };
 
@@ -5491,92 +5764,70 @@ const StudentPreview = () => {
           <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
             <LoadingWithEffect loading={loading} message="Loading questions...">
               <div className="questions-list">
-                {/* Add refs to each question */}
-                <div ref={el => questionRefs.current['section-1'] = el}>
-                  {questions
-                    .filter(question => question.type === 'SECTION')
-                    .map((question, index) => (
-                      <SectionQuestionItem
-                        key={question.id}
-                        question={question}
-                        index={index}
-                        theme={theme}
-                      />
-                    ))}
+                {/* Render Reading sections when challenge type is RE */}
+                {challengeType === 'RE' && readingSections.length > 0 && (
+                  readingSections.map((section, index) => (
+                    <div key={`reading-wrap-${section.id || index}`} ref={el => (questionRefs.current[`reading-${index + 1}`] = el)}>
+                      <SectionQuestionItem key={section.id || `section_${index}`} question={section} index={index} theme={theme} />
                 </div>
-                <div ref={el => questionRefs.current['listening-1'] = el}>
-                  {questions
-                    .filter(question => question.type === 'LISTENING_SECTION')
-                    .map((question, index) => (
-                      <ListeningSectionItem
-                        key={question.id}
-                        question={question}
-                        index={index}
-                        theme={theme}
-                      />
-                    ))}
+                  ))
+                )}
+                {/* Render Writing sections when challenge type is WR */}
+                {challengeType === 'WR' && writingSections.length > 0 && (
+                  writingSections.map((section, index) => (
+                    <div key={`writing-wrap-${section.id || index}`} ref={el => (questionRefs.current[`writing-${index + 1}`] = el)}>
+                      <WritingSectionItem key={section.id || `writing_${index}`} question={section} index={index} theme={theme} />
+                    </div>
+                  ))
+                )}
+                {/* Render Speaking sections when challenge type is SP */}
+                {challengeType === 'SP' && speakingSections.length > 0 && (
+                  speakingSections.map((section, index) => (
+                    <div key={`speaking-wrap-${section.id || index}`} ref={el => (questionRefs.current[`speaking-${index + 1}`] = el)}>
+                      {section.type === 'SPEAKING_WITH_AUDIO_SECTION' ? (
+                        <SpeakingWithAudioSectionItem key={section.id || `speaking_audio_${index}`} question={section} index={index} theme={theme} />
+                      ) : (
+                        <SpeakingSectionItem key={section.id || `speaking_${index}`} question={section} index={index} theme={theme} />
+                      )}
+                    </div>
+                  ))
+                )}
+                {/* Dynamic questions preview (hide complex sections) */}
+                {questions.map((q, idx) => (
+                  <div key={q.id} ref={el => (questionRefs.current[`q-${q.id}`] = el)}>
+                    {q.type === 'MULTIPLE_CHOICE' && (
+                      <MultipleChoiceContainer theme={theme} data={q} />
+                    )}
+                    {q.type === 'MULTIPLE_SELECT' && (
+                      <MultipleSelectContainer theme={theme} data={q} />
+                    )}
+                    {q.type === 'TRUE_OR_FALSE' && (
+                      <TrueFalseContainer theme={theme} data={q} />
+                    )}
+                    {q.type === 'FILL_IN_THE_BLANK' && (
+                      <FillBlankContainer theme={theme} data={q} />
+                    )}
+                    {q.type === 'DROPDOWN' && (
+                      <DropdownContainer theme={theme} data={q} />
+                    )}
+                    {q.type === 'DRAG_AND_DROP' && (
+                      <DragDropContainer theme={theme} data={q} />
+                    )}
+                    {q.type === 'REARRANGE' && (
+                      <ReorderContainer theme={theme} data={q} />
+                    )}
+                    {q.type === 'REWRITE' && (
+                      <RewriteContainer theme={theme} data={q} />
+                    )}
                 </div>
-                <div ref={el => questionRefs.current['speaking-1'] = el}>
-                  {questions
-                    .filter(question => question.type === 'SPEAKING_SECTION')
-                    .map((question, index) => (
-                      <SpeakingSectionItem
-                        key={question.id}
-                        question={question}
-                        index={index}
-                        theme={theme}
-                      />
-                    ))}
-                </div>
-                <div ref={el => questionRefs.current['speaking-with-audio-1'] = el}>
-                  {questions
-                    .filter(question => question.type === 'SPEAKING_WITH_AUDIO_SECTION')
-                    .map((question, index) => (
-                      <SpeakingWithAudioSectionItem
-                        key={question.id}
-                        question={question}
-                        index={index}
-                        theme={theme}
-                      />
-                    ))}
-                </div>
-                <div ref={el => questionRefs.current['writing-1'] = el}>
-                  {questions
-                    .filter(question => question.type === 'WRITING_SECTION')
-                    .map((question, index) => (
-                      <WritingSectionItem
-                        key={question.id}
-                        question={question}
-                        index={index}
-                        theme={theme}
-                      />
-                    ))}
-                </div>
-                {/* Demo Questions - riêng biệt */}
-                <div ref={el => questionRefs.current['multiple-choice-1'] = el}>
-                  <MultipleChoiceContainer theme={theme} />
-                </div>
-                <div ref={el => questionRefs.current['multiple-select-1'] = el}>
-                  <MultipleSelectContainer theme={theme} />
-                </div>
-                <div ref={el => questionRefs.current['true-false-1'] = el}>
-                  <TrueFalseContainer theme={theme} />
-                </div>
-                <div ref={el => questionRefs.current['fill-blank-1'] = el}>
-                  <FillBlankContainer theme={theme} />
-                </div>
-                <div ref={el => questionRefs.current['dropdown-1'] = el}>
-                  <DropdownContainer theme={theme} />
-                </div>
-                <div ref={el => questionRefs.current['drag-drop-1'] = el}>
-                  <DragDropContainer theme={theme} />
-                </div>
-                <div ref={el => questionRefs.current['reorder-1'] = el}>
-                  <ReorderContainer theme={theme} />
-                </div>
-                <div ref={el => questionRefs.current['rewrite-1'] = el}>
-                  <RewriteContainer theme={theme} />
-                </div>
+                ))}
+                {challengeType === 'LI' && listeningSections.length > 0 && (
+                  listeningSections.map((section, index) => (
+                    <div key={`listening-wrap-${section.id || index}`} ref={el => (questionRefs.current[`listening-${index + 1}`] = el)}>
+                      <ListeningSectionItem key={section.id || `listening_${index}`} question={section} index={index} theme={theme} />
+                    </div>
+                  ))
+                )}
               </div>
             </LoadingWithEffect>
           </div>
