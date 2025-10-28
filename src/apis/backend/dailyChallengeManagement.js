@@ -29,6 +29,25 @@ const dailyChallengeApi = {
 		});
 	},
 
+	// Gọi OpenAI service để sinh câu hỏi theo cấu hình
+	generateAIQuestions: async (payload) => {
+		// payload expected: { challengeId, questionTypeConfigs: [{questionType, numberOfQuestions}], description }
+		// Endpoint của service OpenAI đang ở /api/openai/... (không có /v1)
+		// axiosClient baseURL hiện là .../api/v1 nên cần build absolute URL tương ứng
+		const base = (typeof axiosClient?.defaults?.baseURL === 'string') ? axiosClient.defaults.baseURL : '';
+		const absoluteUrl = base.includes('/api/v1')
+			? base.replace('/api/v1', '/api') + '/openai/generate-gv-questions'
+			: (base.endsWith('/api') ? base : (base.replace(/\/$/, '') + '/api')) + '/openai/generate-gv-questions';
+		console.log('GenerateAIQuestions API - URL:', absoluteUrl);
+		console.log('GenerateAIQuestions API - Payload:', payload);
+		return axiosClient.post(absoluteUrl, payload, {
+			headers: {
+				'Content-Type': 'application/json',
+				'accept': '*/*',
+			},
+		});
+	},
+
 	// Lấy tất cả daily challenges của teacher (không theo class cụ thể)
 	getAllDailyChallenges: (params = {}) => {
 		const queryParams = new URLSearchParams();
