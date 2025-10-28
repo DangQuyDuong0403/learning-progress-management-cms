@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef, useMemo } from "react";
+import React, { useState, useCallback } from "react";
 import {
   Button,
   Input,
@@ -15,6 +15,7 @@ import {
   SaveOutlined,
   ThunderboltOutlined,
   CheckOutlined,
+  EditOutlined,
 } from "@ant-design/icons";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import ThemedLayout from "../../../../component/teacherlayout/ThemedLayout";
@@ -23,8 +24,14 @@ import { useTranslation } from "react-i18next";
 import { useTheme } from "../../../../contexts/ThemeContext";
 import { useSelector } from "react-redux";
 import usePageTitle from "../../../../hooks/usePageTitle";
-import { CKEditor } from '@ckeditor/ckeditor5-react';
-import ClassicEditor from '@ckeditor/ckeditor5-build-classic';
+import MultipleChoiceModal from "./questionModals/MultipleChoiceModal";
+import MultipleSelectModal from "./questionModals/MultipleSelectModal";
+import TrueFalseModal from "./questionModals/TrueFalseModal";
+import FillBlankModal from "./questionModals/FillBlankModal";
+import DropdownModal from "./questionModals/DropdownModal";
+import DragDropModal from "./questionModals/DragDropModal";
+import ReorderModal from "./questionModals/ReorderModal";
+import RewriteModal from "./questionModals/RewriteModal";
 import "./AIGenerateQuestions.css";
 
 const { TextArea } = Input;
@@ -62,30 +69,107 @@ const AIGenerateQuestions = () => {
   const [saving, setSaving] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
+  // Local selections for interactive preview of Dropdown type
+  const [dropdownSelections, setDropdownSelections] = useState({});
   
-  // Question editor states
-  const [questionEditorData, setQuestionEditorData] = useState('');
-  const [questionOptions, setQuestionOptions] = useState([
-    { id: 1, text: '', isCorrect: false, color: '#A3D5FF' },
-    { id: 2, text: '', isCorrect: false, color: '#B8E6B8' },
-    { id: 3, text: '', isCorrect: false, color: '#FFD6A5' },
-    { id: 4, text: '', isCorrect: false, color: '#FFB3D9' },
-  ]);
-  const [hoveredOption, setHoveredOption] = useState(null);
-  const [points, setPoints] = useState(1);
-  const editorRef = useRef(null);
+  // Modal edit states
+  const [isEditModalVisible, setIsEditModalVisible] = useState(false);
+  const [editingQuestion, setEditingQuestion] = useState(null);
   
-  // Question 2 (Multiple Select) states
-  const [question2EditorData, setQuestion2EditorData] = useState('');
-  const [question2Options, setQuestion2Options] = useState([
-    { id: 1, text: '', isCorrect: false, color: '#A3D5FF' },
-    { id: 2, text: '', isCorrect: false, color: '#B8E6B8' },
-    { id: 3, text: '', isCorrect: false, color: '#FFD6A5' },
-    { id: 4, text: '', isCorrect: false, color: '#FFB3D9' },
+  // Question states for the 3 new questions
+  const [questions, setQuestions] = useState([
+    {
+      id: 1,
+      type: 'MULTIPLE_CHOICE',
+      title: 'Question 1',
+      question: 'What is the capital city of Vietnam?',
+      options: [
+        { key: 'A', text: 'Ho Chi Minh City', isCorrect: false },
+        { key: 'B', text: 'Hanoi', isCorrect: true },
+        { key: 'C', text: 'Da Nang', isCorrect: false },
+        { key: 'D', text: 'Can Tho', isCorrect: false },
+      ],
+      points: 1
+    },
+    {
+      id: 2,
+      type: 'MULTIPLE_SELECT',
+      title: 'Question 2',
+      question: 'Which of the following are Southeast Asian countries? (Select all that apply)',
+      options: [
+        { key: 'A', text: 'Vietnam', isCorrect: true },
+        { key: 'B', text: 'Thailand', isCorrect: true },
+        { key: 'C', text: 'Japan', isCorrect: false },
+        { key: 'D', text: 'Malaysia', isCorrect: true },
+      ],
+      points: 1
+    },
+    {
+      id: 3,
+      type: 'TRUE_OR_FALSE',
+      title: 'Question 3',
+      question: 'The Earth revolves around the Sun.',
+      options: [
+        { key: 'A', text: 'True', isCorrect: true },
+        { key: 'B', text: 'False', isCorrect: false },
+      ],
+      points: 1
+    },
+    {
+      id: 4,
+      type: 'FILL_IN_THE_BLANK',
+      title: 'Question 4',
+      question: 'I ______ programming and ______ it very much.',
+      blanks: [
+        { id: 'blank_1', placeholder: 'love', correctAnswer: 'love' },
+        { id: 'blank_2', placeholder: 'enjoy', correctAnswer: 'enjoy' },
+      ],
+      points: 1
+    },
+    {
+      id: 5,
+      type: 'DROPDOWN',
+      title: 'Question 5',
+      question: 'Choose the correct words to complete the sentence:',
+      sentence: 'I ___ programming and ___ it very much.',
+      blanks: [
+        { id: 'pos_1', options: ['Select', 'love', 'like', 'enjoy', 'hate'], correctAnswer: 'love' },
+        { id: 'pos_2', options: ['Select', 'love', 'like', 'enjoy', 'hate'], correctAnswer: 'enjoy' },
+      ],
+      points: 1
+    },
+    {
+      id: 6,
+      type: 'DRAG_AND_DROP',
+      title: 'Question 6',
+      question: 'Complete the sentence by dragging words into the blanks:',
+      sentence: 'I ___ programming and ___ it very much.',
+      availableWords: ['love', 'like', 'enjoy', 'hate'],
+      correctAnswers: {
+        blank_1: 'love',
+        blank_2: 'enjoy'
+      },
+      points: 1
+    },
+    {
+      id: 7,
+      type: 'REARRANGE',
+      title: 'Question 7',
+      question: 'Rearrange the words by dragging them into the correct order:',
+      sourceItems: ['I', 'love', 'programming', 'very', 'much'],
+      correctOrder: ['I', 'love', 'programming', 'very', 'much'],
+      points: 1
+    },
+    {
+      id: 8,
+      type: 'REWRITE',
+      title: 'Question 8',
+      question: 'Rewrite the following sentence using different words:',
+      originalSentence: 'I really enjoy programming.',
+      correctAnswer: 'I truly love coding.',
+      points: 1
+    }
   ]);
-  const [hoveredOption2, setHoveredOption2] = useState(null);
-  const [points2, setPoints2] = useState(1);
-  const editor2Ref = useRef(null);
   
   // Question types available - All with same theme colors
   const primaryColor = theme === 'sun' ? '#1890ff' : '#8B5CF6';
@@ -149,6 +233,24 @@ const AIGenerateQuestions = () => {
       bgColor: primaryColorWithAlpha
     },
   ];
+
+  // Helpers
+  const stripHtml = useCallback((html) => {
+    if (!html) return '';
+    try {
+      const tmp = document.createElement('div');
+      tmp.innerHTML = String(html);
+      const text = tmp.textContent || tmp.innerText || '';
+      return text;
+    } catch (e) {
+      return String(html);
+    }
+  }, []);
+
+  const removePosMarkers = useCallback((text) => {
+    if (!text) return '';
+    return String(text).replace(/\[\[pos_[a-zA-Z0-9]+\]\]/g, '');
+  }, []);
   
   // Handle adding a new question type configuration
   const handleAddQuestionType = useCallback(() => {
@@ -197,25 +299,7 @@ const AIGenerateQuestions = () => {
       // Simulate AI generation process
       await new Promise(resolve => setTimeout(resolve, 1000));
       
-      // Set fake data for preview
-      setQuestionEditorData('<p>What is the capital city of Vietnam?</p>');
-      setQuestionOptions([
-        { id: 1, text: '<p>Ho Chi Minh City</p>', isCorrect: false, color: '#A3D5FF' },
-        { id: 2, text: '<p>Hanoi</p>', isCorrect: true, color: '#B8E6B8' },
-        { id: 3, text: '<p>Da Nang</p>', isCorrect: false, color: '#FFD6A5' },
-        { id: 4, text: '<p>Hue</p>', isCorrect: false, color: '#FFB3D9' },
-      ]);
-      setPoints(2);
-
-      // Set fake data for Question 2 (Multiple Select)
-      setQuestion2EditorData('<p>Which of the following are programming languages?</p>');
-      setQuestion2Options([
-        { id: 1, text: '<p>JavaScript</p>', isCorrect: true, color: '#A3D5FF' },
-        { id: 2, text: '<p>Python</p>', isCorrect: true, color: '#B8E6B8' },
-        { id: 3, text: '<p>HTML</p>', isCorrect: false, color: '#FFD6A5' },
-        { id: 4, text: '<p>Java</p>', isCorrect: true, color: '#FFB3D9' },
-      ]);
-      setPoints2(3);
+      // Set fake data for preview - questions are already initialized with sample data
       
       setShowPreview(true);
       
@@ -280,188 +364,275 @@ const AIGenerateQuestions = () => {
     }
   }, [id, promptDescription, questionTypeConfigs, navigate, user, challengeInfo, t]);
   
-  // Custom upload adapter for CKEditor
-  function CustomUploadAdapterPlugin(editor) {
-    editor.plugins.get('FileRepository').createUploadAdapter = (loader) => {
-      return {
-        upload: () => {
-          return loader.file.then(file => new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = () => {
-              resolve({ default: reader.result });
-            };
-            reader.onerror = error => reject(error);
-            reader.readAsDataURL(file);
+
+
+  // Handle editing a question
+  const handleEditQuestion = useCallback((questionId) => {
+    const question = questions.find(q => q.id === questionId);
+    if (question) {
+      // Open modal for Multiple Choice, Multiple Select, True/False, Fill in the Blank, Dropdown, Drag & Drop
+      if (question.type === 'MULTIPLE_CHOICE' || question.type === 'MULTIPLE_SELECT' || question.type === 'TRUE_OR_FALSE' || question.type === 'FILL_IN_THE_BLANK' || question.type === 'DROPDOWN' || question.type === 'DRAG_AND_DROP' || question.type === 'REARRANGE' || question.type === 'REWRITE') {
+        // Convert question data to modal format
+        let modalData = {
+          id: question.id,
+          type: question.type,
+          question: question.question,
+          points: question.points,
+          options: question.options || [],
+        };
+
+        // For TRUE_OR_FALSE, derive correctAnswer from options if available
+        if (question.type === 'TRUE_OR_FALSE') {
+          modalData.correctAnswer = question.options?.find(o => o.isCorrect)?.text === 'True' ? 'True'
+            : question.options?.find(o => o.isCorrect)?.text === 'False' ? 'False' : null;
+        }
+
+        // For REWRITE, map original shape → modal shape
+        if (question.type === 'REWRITE') {
+          const answers = [];
+          if (question.correctAnswer) {
+            answers.push({ id: 1, answer: question.correctAnswer });
+          }
+          const contentData = answers.map((ans, idx) => ({
+            id: `item${idx + 1}`,
+            value: ans.answer,
+            positionId: String(idx + 1),
+            correct: true,
           }));
-        },
-        abort: () => {}
-      };
-    };
-  }
 
-  // Get option colors
-  const getOptionColors = useCallback(() => {
-    return [
-      '#A3D5FF', // Pastel Blue
-      '#B8E6B8', // Pastel Green
-      '#FFD6A5', // Pastel Orange
-      '#FFB3D9', // Pastel Pink
-      '#A8E6E6', // Pastel Cyan
-      '#D4B5E6', // Pastel Purple
-      '#FFCCAA', // Pastel Peach
-      '#B3C7FF', // Pastel Periwinkle
-    ];
-  }, []);
+          modalData = {
+            ...modalData,
+            // Use original sentence as editable text; instruction kept in question/questionText
+            questionText: question.originalSentence || question.question || '',
+            content: { data: contentData },
+            correctAnswers: answers,
+          };
+        }
 
-  // CKEditor configuration
-  const questionEditorConfig = useMemo(() => ({
-    placeholder: 'Enter your question here...',
-    extraPlugins: [CustomUploadAdapterPlugin],
-    toolbar: {
-      items: [
-        'bold', 'italic', '|',
-        'bulletedList', 'numberedList', '|',
-        'undo', 'redo', '|',
-        'more'
-      ],
-      shouldNotGroupWhenFull: false
-    },
-    heading: {
-      options: [
-        { model: 'paragraph', title: 'Paragraph', class: 'ck-heading_paragraph' },
-        { model: 'heading1', view: 'h1', title: 'Heading 1', class: 'ck-heading_heading1' },
-        { model: 'heading2', view: 'h2', title: 'Heading 2', class: 'ck-heading_heading2' },
-        { model: 'heading3', view: 'h3', title: 'Heading 3', class: 'ck-heading_heading3' }
-      ]
-    }
-  }), []);
+        // For FILL_IN_THE_BLANK, map to modal's expected structure
+        if (question.type === 'FILL_IN_THE_BLANK') {
+          const rawText = question.question || '';
+          // If already in [[pos_X]] format, keep as is; else convert underscores to placeholders
+          let computedText = rawText;
+          if (!/\[\[pos_\w+\]\]/.test(rawText)) {
+            let idxCounter = 0;
+            computedText = rawText.replace(/_{2,}/g, () => `[[pos_${++idxCounter}]]`);
+          }
 
-  const optionEditorConfig = useMemo(() => ({
-    placeholder: 'Type your answer here...',
-    extraPlugins: [CustomUploadAdapterPlugin],
-    toolbar: {
-      items: [
-        'bold', 'italic', '|',
-        'undo', 'redo', '|',
-        'more'
-      ],
-      shouldNotGroupWhenFull: false
-    }
-  }), []);
+          // Prefer existing structured content if present
+          let contentData = question.content?.data;
+          if (!Array.isArray(contentData) || contentData.length === 0) {
+            contentData = (question.blanks || []).map((b, i) => ({
+              id: `opt${i + 1}`,
+              value: b.correctAnswer || b.placeholder || '',
+              positionId: String(i + 1),
+              positionOrder: 1,
+              correct: true,
+            }));
+          }
 
-  // Question editor handlers
-  const handleEditorChange = useCallback((event, editor) => {
-    const data = editor.getData();
-    setQuestionEditorData(data);
-  }, []);
+          modalData = {
+            ...modalData,
+            questionText: computedText,
+            content: { data: contentData },
+            blanks: question.blanks || [],
+          };
+        }
 
-  const handleAddOption = useCallback(() => {
-    setQuestionOptions(prevOptions => {
-      const newId = Math.max(...prevOptions.map((opt) => opt.id)) + 1;
-      const colors = getOptionColors();
-      const newColor = colors[prevOptions.length % colors.length];
-      return [
-        ...prevOptions,
-        { id: newId, text: '', isCorrect: false, color: newColor },
-      ];
-    });
-  }, [getOptionColors]);
+        // For DROPDOWN, map to modal structure: questionText with [[pos_X]] and content.data options
+        if (question.type === 'DROPDOWN') {
+          // Build questionText from sentence with ___ markers if not already in [[pos_]]
+          const baseText = question.questionText || question.question || '';
+          let computedText = baseText;
+          if (!/\[\[pos_\w+\]\]/.test(baseText)) {
+            const sentence = question.sentence || '';
+            if (sentence) {
+              let idxCounter = 0;
+              computedText = sentence.replace(/_{2,}/g, () => `[[pos_${++idxCounter}]]`);
+            }
+          }
 
-  const handleRemoveOption = useCallback((optionId) => {
-    setQuestionOptions(prevOptions => {
-      if (prevOptions.length > 2) {
-        return prevOptions.filter((opt) => opt.id !== optionId);
+          // Build content data from blanks (correct + incorrect)
+          let contentData = question.content?.data;
+          if (!Array.isArray(contentData) || contentData.length === 0) {
+            const blanks = Array.isArray(question.blanks) ? question.blanks : [];
+            contentData = [];
+            blanks.forEach((b, idx) => {
+              const positionId = b.id ? String(b.id).replace(/^pos_/, '') : String(idx + 1);
+              const options = Array.isArray(b.options) ? b.options : [];
+              const correct = b.correctAnswer;
+              if (correct) {
+                contentData.push({
+                  id: `opt${idx + 1}`,
+                  value: correct,
+                  positionId,
+                  positionOrder: 1,
+                  correct: true,
+                });
+              }
+              options
+                .filter(opt => opt && opt !== correct && opt !== 'Select')
+                .forEach((opt, oIdx) => {
+                  contentData.push({
+                    id: `opt${idx + 1}_${oIdx + 1}`,
+                    value: opt,
+                    positionId,
+                    positionOrder: oIdx + 2,
+                    correct: false,
+                  });
+                });
+            });
+          }
+
+          modalData = {
+            ...modalData,
+            questionText: computedText || baseText,
+            content: { data: contentData },
+          };
+        }
+
+        // For DRAG_AND_DROP, map sentence/availableWords/correctAnswers → questionText + content.data
+        if (question.type === 'DRAG_AND_DROP') {
+          const baseText = question.questionText || question.question || '';
+          let computedText = baseText;
+          if (!/\[\[pos_\w+\]\]/.test(baseText)) {
+            const sentence = question.sentence || '';
+            if (sentence) {
+              let idxCounter = 0;
+              computedText = sentence.replace(/_{2,}/g, () => `[[pos_${++idxCounter}]]`);
+            }
+          }
+
+          const correctMap = question.correctAnswers || {};
+          const correctValues = Object.values(correctMap);
+          const contentData = [];
+          // Add correct options with position ids in index order
+          Object.keys(correctMap).forEach((key, idx) => {
+            const positionId = String(idx + 1);
+            const value = correctMap[key];
+            contentData.push({
+              id: `opt${idx + 1}`,
+              value,
+              positionId,
+              positionOrder: 1,
+              correct: true,
+            });
+          });
+          // Add incorrect options (no position)
+          const incorrectOpts = (question.availableWords || [])
+            .filter(w => !correctValues.includes(w))
+            .map((w, i) => ({ id: `opt_in_${i + 1}`, value: w, positionId: null, positionOrder: i + 2, correct: false }));
+          contentData.push(...incorrectOpts);
+
+          modalData = {
+            ...modalData,
+            questionText: computedText,
+            content: { data: contentData },
+            incorrectOptions: incorrectOpts.map(o => ({ id: o.id, text: o.value })),
+          };
+        }
+
+        // For REARRANGE
+        if (question.type === 'REARRANGE') {
+          let computedText = question.questionText || '';
+          let contentData = Array.isArray(question.content?.data) ? question.content.data : [];
+
+          if (!computedText || !/\[\[pos_\w+\]\]/.test(computedText)) {
+            const words = Array.isArray(question.correctOrder) && question.correctOrder.length > 0
+              ? question.correctOrder
+              : (Array.isArray(question.sourceItems) ? question.sourceItems : []);
+            computedText = words.map((_, idx) => `[[pos_${idx + 1}]]`).join(' ');
+            contentData = words.map((w, idx) => ({
+              id: `opt${idx + 1}`,
+              value: w,
+              positionId: String(idx + 1),
+              correct: true,
+            }));
+          }
+
+          modalData = {
+            ...modalData,
+            questionText: computedText,
+            content: { data: contentData },
+          };
+        }
+        
+        setEditingQuestion(modalData);
+        setIsEditModalVisible(true);
       } else {
-        spaceToast.warning('Question must have at least 2 options');
-        return prevOptions;
+        spaceToast.info('Edit functionality for this question type is coming soon');
       }
-    });
+    }
+  }, [questions]);
+
+  // Handle deleting a question
+  const handleDeleteQuestion = useCallback((questionId) => {
+    setQuestions(prev => prev.filter(q => q.id !== questionId));
+    spaceToast.success('Question deleted successfully');
   }, []);
 
-  const handleOptionChange = useCallback((optionId, field, value) => {
-    setQuestionOptions(prevOptions => {
-      return prevOptions.map((opt) =>
-        opt.id === optionId
-          ? { ...opt, [field]: value }
-          : field === 'isCorrect' && value === true
-          ? { ...opt, isCorrect: false }
-          : opt
-      );
-    });
-  }, []);
+  
 
-  const handleOptionEditorChange = useCallback((optionId, event, editor) => {
-    const data = editor.getData();
-    handleOptionChange(optionId, 'text', data);
-  }, [handleOptionChange]);
-
-  // Question 2 handlers
-  const handleEditor2Change = useCallback((event, editor) => {
-    const data = editor.getData();
-    setQuestion2EditorData(data);
-  }, []);
-
-  const handleAddOption2 = useCallback(() => {
-    setQuestion2Options(prevOptions => {
-      const newId = Math.max(...prevOptions.map((opt) => opt.id)) + 1;
-      const colors = getOptionColors();
-      const newColor = colors[prevOptions.length % colors.length];
-      return [
-        ...prevOptions,
-        { id: newId, text: '', isCorrect: false, color: newColor },
-      ];
-    });
-  }, [getOptionColors]);
-
-  const handleRemoveOption2 = useCallback((optionId) => {
-    setQuestion2Options(prevOptions => {
-      if (prevOptions.length > 2) {
-        return prevOptions.filter((opt) => opt.id !== optionId);
-      } else {
-        spaceToast.warning('Question must have at least 2 options');
-        return prevOptions;
+  // Handle save from edit modal
+  const handleSaveFromModal = useCallback((updatedQuestion) => {
+    setQuestions(prev => prev.map(q => {
+      if (q.id !== updatedQuestion.id) return q;
+      // Preserve existing title (e.g., "Question 4", "Question 5")
+      const { title: _discardTitle, ...restUpdated } = updatedQuestion || {};
+      // Special mapping for REARRANGE back to AI preview shape
+      if (updatedQuestion?.type === 'REARRANGE') {
+        const words = Array.isArray(updatedQuestion?.content?.data)
+          ? updatedQuestion.content.data
+              .filter(it => it && it.value)
+              .map(it => it.value)
+          : [];
+        return {
+          ...q,
+          type: 'REARRANGE',
+          title: q.title,
+          question: q.question || 'Rearrange the words by dragging them into the correct order:',
+          // Keep structured fields
+          questionText: updatedQuestion.questionText,
+          content: { data: Array.isArray(updatedQuestion?.content?.data) ? updatedQuestion.content.data : [] },
+          points: updatedQuestion.points ?? q.points,
+          sourceItems: words,
+          correctOrder: words,
+          shuffledWords: Array.isArray(updatedQuestion.shuffledWords) ? updatedQuestion.shuffledWords : q.shuffledWords,
+          blanks: Array.isArray(updatedQuestion.blanks) ? updatedQuestion.blanks : q.blanks,
+        };
       }
-    });
-  }, []);
+      // Normalize REWRITE back to preview shape (use content.data for multiple answers)
+      if (updatedQuestion?.type === 'REWRITE') {
+        // Normalize: one prompt (= question text) and multiple answers from content.data
+        const normalizedAnswers = Array.isArray(updatedQuestion?.content?.data)
+          ? updatedQuestion.content.data.map(it => it?.value).filter(Boolean)
+          : (Array.isArray(updatedQuestion?.correctAnswers) ? updatedQuestion.correctAnswers.map(a => a?.answer).filter(Boolean) : []);
+        const plainPrompt = removePosMarkers(stripHtml(updatedQuestion.question || updatedQuestion.questionText || ''));
+        return {
+          ...q,
+          type: 'REWRITE',
+          title: q.title,
+          // Show only one prompt (instruction or edited text without markers)
+          question: 'Rewrite the following sentence using different words:',
+          questionText: removePosMarkers(updatedQuestion.questionText || updatedQuestion.question || ''),
+          content: { data: Array.isArray(updatedQuestion?.content?.data) ? updatedQuestion.content.data : [] },
+          points: updatedQuestion.points ?? q.points,
+          correctAnswer: normalizedAnswers[0] || '',
+          correctAnswers: normalizedAnswers,
+          originalSentence: plainPrompt,
+        };
+      }
+      return { ...q, ...restUpdated, title: q.title };
+    }));
+    setIsEditModalVisible(false);
+    setEditingQuestion(null);
+    spaceToast.success('Question updated successfully');
+  }, [stripHtml, removePosMarkers]);
 
-  const handleOption2Change = useCallback((optionId, field, value) => {
-    setQuestion2Options(prevOptions => {
-      return prevOptions.map((opt) =>
-        opt.id === optionId
-          ? { ...opt, [field]: value }
-          : opt
-      );
-    });
-  }, []);
-
-  const handleOption2EditorChange = useCallback((optionId, event, editor) => {
-    const data = editor.getData();
-    handleOption2Change(optionId, 'text', data);
-  }, [handleOption2Change]);
-
-  // Delete question
-  const handleDeleteQuestion = useCallback(() => {
-    setShowPreview(false);
-    setQuestionEditorData('');
-    setQuestionOptions([
-      { id: 1, text: '', isCorrect: false, color: '#A3D5FF' },
-      { id: 2, text: '', isCorrect: false, color: '#B8E6B8' },
-      { id: 3, text: '', isCorrect: false, color: '#FFD6A5' },
-      { id: 4, text: '', isCorrect: false, color: '#FFB3D9' },
-    ]);
-    setPoints(1);
-    setHoveredOption(null);
-    
-    // Reset Question 2
-    setQuestion2EditorData('');
-    setQuestion2Options([
-      { id: 1, text: '', isCorrect: false, color: '#A3D5FF' },
-      { id: 2, text: '', isCorrect: false, color: '#B8E6B8' },
-      { id: 3, text: '', isCorrect: false, color: '#FFD6A5' },
-      { id: 4, text: '', isCorrect: false, color: '#FFB3D9' },
-    ]);
-    setPoints2(1);
-    setHoveredOption2(null);
+  // Handle cancel edit modal
+  const handleCancelEditModal = useCallback(() => {
+    setIsEditModalVisible(false);
+    setEditingQuestion(null);
   }, []);
   
   // Handle back
@@ -950,739 +1121,937 @@ const AIGenerateQuestions = () => {
             </Card>
           )}
 
-          {/* Question Editor */}
+          {/* Questions Preview */}
           {showPreview && (
-            <>
-                      <div style={{ 
-              marginBottom: '24px',
-              background: 'linear-gradient(135deg, #f0f7ff 0%, #e6f4ff 100%)',
-              borderRadius: '16px',
-              border: '2px solid rgba(24, 144, 255, 0.1)',
-              overflow: 'hidden'
-            }}>
-              {/* Top Toolbar */}
-              <div style={{
-                position: 'sticky',
-                top: 0,
-                left: 0,
-                right: 0,
-                zIndex: 1000,
-                background: 'rgba(255, 255, 255, 0.95)',
-                backdropFilter: 'blur(20px)',
-                borderBottom: '2px solid rgba(24, 144, 255, 0.1)',
-                padding: '16px 24px',
-                boxShadow: '0 4px 12px rgba(0,0,0,0.05)'
-              }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div style={{ 
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '12px'
-              }}>
-                    <span style={{ fontSize: '24px', fontWeight: 600 }}>
-                      {t('dailyChallenge.question1') || 'Câu 1'}: {t('dailyChallenge.multipleChoice') || 'Multiple Choice'}
-                    </span>
-                  </div>
-
-                  <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <CheckOutlined style={{ color: '#52c41a', fontSize: '16px' }} />
-                      <Select
-                        value={points}
-                        onChange={setPoints}
-                        style={{ width: 120 }}
-                        options={[
-                          { value: 1, label: '1 point' },
-                          { value: 2, label: '2 points' },
-                          { value: 3, label: '3 points' },
-                          { value: 5, label: '5 points' },
-                        ]}
-                      />
-                    </div>
-
-                    <Tooltip title={t('dailyChallenge.deleteQuestion') || 'Delete Question'}>
-                      <Button
-                        type="text"
-                        danger
-                        icon={<DeleteOutlined />}
-                        onClick={handleDeleteQuestion}
-                        style={{ 
-                          width: '40px', 
-                          height: '40px',
-                          borderRadius: '10px',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          fontSize: '16px',
-                          color: '#ff4d4f',
-                          background: 'rgba(255, 77, 79, 0.1)',
-                          border: '1px solid rgba(255, 77, 79, 0.2)',
-                          transition: 'all 0.3s ease',
-                          flexShrink: 0
-                        }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.background = 'rgba(255, 77, 79, 0.2)';
-                          e.currentTarget.style.transform = 'scale(1.05)';
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.background = 'rgba(255, 77, 79, 0.1)';
-                          e.currentTarget.style.transform = 'scale(1)';
-                        }}
-                      />
-                    </Tooltip>
-                        </div>
-                </div>
-              </div>
-
-              {/* Main Split Layout */}
-                      <div style={{ 
-                        display: 'flex', 
-                padding: '16px',
-                gap: '16px'
-              }}>
-                {/* Left Panel - Question Editor */}
-                <div style={{ 
-                  flex: '0 0 40%',
-                  display: 'flex',
-                  flexDirection: 'column',
-                        gap: '12px', 
-                  minHeight: 0
-                }}>
-                  {/* Question Card */}
-                  <div style={{
-                    flex: 1,
-                    background: 'rgba(255, 255, 255, 0.95)',
-                    borderRadius: '12px',
-                    padding: '16px',
-                    boxShadow: '0 4px 16px rgba(24, 144, 255, 0.1)',
-                    border: '2px solid rgba(24, 144, 255, 0.1)',
-                    backdropFilter: 'blur(20px)',
-                            display: 'flex',
-                    flexDirection: 'column',
-                    position: 'relative',
-                    overflow: 'hidden',
-                    minHeight: 0
-                  }}>
-                    {/* Decorative background elements */}
-                          <div style={{ 
-                      position: 'absolute',
-                      top: -50,
-                      right: -50,
-                      width: '200px',
-                      height: '200px',
-                      background: primaryColor,
-                      opacity: 0.05,
-                      borderRadius: '50%',
-                      filter: 'blur(40px)'
-                    }} />
-
-                    {/* Question Input - CKEditor */}
-                    <div style={{ 
-                      flex: 1, 
-                      display: 'flex',
-                      flexDirection: 'column',
-                      position: 'relative',
-                      zIndex: 1,
-                      minHeight: 0,
-                      overflow: 'hidden'
-                    }}>
-                          <div style={{ 
-                        flex: 1,
-                        borderRadius: '8px',
-                        border: '1px solid rgba(24, 144, 255, 0.2)',
-                        overflow: 'hidden',
-                        background: 'rgba(240, 247, 255, 0.5)',
-                        position: 'relative',
-                        display: 'flex',
-                        flexDirection: 'column'
-                      }}>
-                        <CKEditor
-                          key="main-question-editor"
-                          editor={ClassicEditor}
-                          data={questionEditorData}
-                          config={questionEditorConfig}
-                          onChange={handleEditorChange}
-                          onReady={(editor) => {
-                            editorRef.current = editor;
-                          }}
-                        />
-                      </div>
-                          </div>
-                        </div>
-                      </div>
-
-                {/* Right Panel - Answer Options Grid */}
-                        <div style={{ 
-                  flex: 1,
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '12px',
-                  position: 'relative'
-                }}>
-                  {/* Options Grid Header */}
-                  <div style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center', 
-                    padding: '0 4px'
-                  }}>
-                    <span style={{ 
-                      fontSize: '14px', 
-                      fontWeight: 600,
-                      color: '#1890ff'
-                    }}>
-                      Answer Options ({questionOptions.length})
-                    </span>
-                    <Button
-                      icon={<PlusOutlined />}
-                      onClick={handleAddOption}
-                      size="small"
-                                style={{
-                        height: '32px',
-                        borderRadius: '6px',
-                        fontWeight: 500,
-                        fontSize: '14px',
-                        padding: '0 16px',
-                        border: 'none',
-                        transition: 'all 0.3s ease',
-                        background: 'linear-gradient(135deg, rgba(102, 174, 255, 0.6), rgba(60, 153, 255, 0.6))',
-                        color: '#000000',
-                        boxShadow: '0 2px 8px rgba(60, 153, 255, 0.2)',
-                      }}
-                    >
-                      Add
-                    </Button>
-                              </div>
-
-                  {/* Options Grid Container - 2x2 Layout */}
-                          <div style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(2, 1fr)',
-                    gap: '12px',
-                    flex: 1,
-                    overflowY: 'auto',
-                    padding: '4px'
-                  }}>
-                    {questionOptions.map((option, index) => (
-                      <div
-                        key={option.id}
-                        onMouseEnter={() => setHoveredOption(option.id)}
-                        onMouseLeave={() => setHoveredOption(null)}
-                        style={{
-                          background: `linear-gradient(135deg, ${option.color}cc 0%, ${option.color} 100%)`,
-                          borderRadius: '12px',
-                            padding: '12px',
-                          minHeight: '200px',
-                          position: 'relative',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          boxShadow: hoveredOption === option.id
-                            ? `0 8px 24px ${option.color}80`
-                            : '0 2px 8px rgba(0,0,0,0.08)',
-                          border: option.isCorrect
-                            ? '2px solid #52c41a'
-                            : '1px solid rgba(255,255,255,0.5)',
-                          transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                          transform: hoveredOption === option.id ? 'translateY(-4px)' : 'translateY(0)',
-                          transformOrigin: 'center',
-                          cursor: 'pointer',
-                          overflow: 'visible',
-                          zIndex: hoveredOption === option.id ? 10 : 1
-                        }}>
-                        {/* Option Label */}
-                        <div style={{
-                          position: 'absolute',
-                          top: '8px',
-                          left: '8px',
-                          width: '28px',
-                          height: '28px',
-                          borderRadius: '50%',
-                          background: 'rgba(255,255,255,0.95)',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          fontWeight: 700,
-                            fontSize: '14px',
-                          color: '#333',
-                          boxShadow: '0 2px 6px rgba(0,0,0,0.1)',
-                          border: `1px solid ${option.color}`
-                        }}>
-                          {String.fromCharCode(65 + index)}
-              </div>
-
-              {/* Action Buttons */}
-              <div style={{ 
-                          position: 'absolute',
-                          top: '8px',
-                          right: '8px',
-                display: 'flex', 
-                          gap: '6px',
-                          alignItems: 'center'
-                        }}>
-                          {/* Correct Answer Badge */}
-                          <Tooltip title={option.isCorrect ? "Correct Answer" : "Mark as Correct"}>
-                            <div
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleOptionChange(option.id, 'isCorrect', !option.isCorrect);
+            <div style={{ marginTop: '24px' }}>
+              {questions.map((question) => (
+                <div
+                  key={question.id}
+                  className={`question-item ${theme}-question-item`}
+                  style={{
+                    marginBottom: '24px',
+                    borderRadius: '16px',
+                    padding: '24px',
+                    border: '2px solid',
+                    borderColor: theme === 'sun' 
+                      ? 'rgba(113, 179, 253, 0.25)' 
+                      : 'rgba(138, 122, 255, 0.2)',
+                    background: theme === 'sun' 
+                      ? 'linear-gradient(135deg, rgba(255, 255, 255, 1) 0%, rgba(240, 249, 255, 0.95) 100%)'
+                      : 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(244, 240, 255, 0.95) 100%)',
+                    boxShadow: theme === 'sun' 
+                      ? '0 4px 16px rgba(113, 179, 253, 0.1)'
+                      : '0 4px 16px rgba(138, 122, 255, 0.12)',
+                    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                    backdropFilter: 'blur(10px)'
                   }}
-                  style={{
-                                background: option.isCorrect ? '#52c41a' : 'rgba(255,255,255,0.3)',
-                                color: 'white',
-                                padding: '4px 8px',
-                                borderRadius: '12px',
-                                fontSize: '11px',
-                                fontWeight: 600,
-                                cursor: 'pointer',
-                                transition: 'all 0.3s ease',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '4px',
-                                boxShadow: option.isCorrect ? '0 2px 8px rgba(82, 196, 26, 0.5)' : 'none'
-                              }}
-                            >
-                              <CheckOutlined />
-                              {option.isCorrect ? 'Correct' : 'Mark'}
-                            </div>
-                          </Tooltip>
-                          
-                          <div style={{
-                            display: 'flex',
-                            gap: '8px',
-                            transition: 'opacity 0.2s ease'
-                          }}>
-                            <Tooltip title="Delete Option">
-                <Button
-                                size="small"
-                                danger
-                                icon={<DeleteOutlined />}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleRemoveOption(option.id);
-                                }}
-                  style={{
-                                  background: 'rgba(255, 77, 79, 0.9)',
-                                  color: 'white',
-                    border: 'none',
-                                  borderRadius: '6px',
-                                  width: '24px',
-                                  height: '24px',
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                  fontSize: '12px'
-                                }}
-                              />
-                            </Tooltip>
-                          </div>
-                        </div>
-
-                        {/* Input Field - CKEditor */}
-                        <div style={{
-                          flex: 1,
-                          display: 'flex',
-                          flexDirection: 'column',
-                          justifyContent: 'center',
-                          marginTop: '36px',
-                          marginBottom: '4px',
-                          position: 'relative',
-                          zIndex: 1
-                        }}>
-                          <div 
-                            className={`option-editor option-editor-${option.id}`}
-                            style={{
-                              borderRadius: '8px',
-                              overflow: 'hidden',
-                              background: 'rgba(255, 255, 255, 0.98)',
-                              border: '1px solid rgba(255,255,255,0.95)',
-                              backdropFilter: 'blur(10px)',
-                              boxShadow: '0 1px 4px rgba(0, 0, 0, 0.05)'
-                            }}
-                          >
-                            <CKEditor
-                              key={`option-editor-${option.id}`}
-                              editor={ClassicEditor}
-                              data={option.text}
-                              config={optionEditorConfig}
-                              onChange={(event, editor) => handleOptionEditorChange(option.id, event, editor)}
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Question 2 - Multiple Select */}
-            <div style={{ 
-              marginBottom: '24px',
-              background: 'linear-gradient(135deg, #f0f7ff 0%, #e6f4ff 100%)',
-              borderRadius: '16px',
-              border: '2px solid rgba(24, 144, 255, 0.1)',
-              overflow: 'hidden'
-            }}>
-              {/* Top Toolbar */}
-              <div style={{
-                position: 'sticky',
-                top: 0,
-                left: 0,
-                right: 0,
-                zIndex: 1000,
-                background: 'rgba(255, 255, 255, 0.95)',
-                backdropFilter: 'blur(20px)',
-                borderBottom: '2px solid rgba(24, 144, 255, 0.1)',
-                padding: '16px 24px',
-                boxShadow: '0 4px 12px rgba(0,0,0,0.05)'
-              }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div style={{ 
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '12px'
-                  }}>
-                    <span style={{ fontSize: '24px', fontWeight: 600 }}>
-                      {t('dailyChallenge.question2') || 'Câu 2'}: {t('dailyChallenge.multipleSelect') || 'Multiple Select'}
-                    </span>
-                  </div>
-
-                  <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <CheckOutlined style={{ color: '#52c41a', fontSize: '16px' }} />
-                      <Select
-                        value={points2}
-                        onChange={setPoints2}
-                        style={{ width: 120 }}
-                        options={[
-                          { value: 1, label: '1 point' },
-                          { value: 2, label: '2 points' },
-                          { value: 3, label: '3 points' },
-                          { value: 5, label: '5 points' },
-                        ]}
-                      />
-                    </div>
-
-                    <Tooltip title={t('dailyChallenge.deleteQuestion') || 'Delete Question'}>
-                      <Button
-                        type="text"
-                        danger
-                        icon={<DeleteOutlined />}
-                        onClick={handleDeleteQuestion}
-                        style={{ 
-                          width: '40px', 
-                          height: '40px',
-                          borderRadius: '10px',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          fontSize: '16px',
-                          color: '#ff4d4f',
-                          background: 'rgba(255, 77, 79, 0.1)',
-                          border: '1px solid rgba(255, 77, 79, 0.2)',
-                          transition: 'all 0.3s ease',
-                          flexShrink: 0
-                        }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.background = 'rgba(255, 77, 79, 0.2)';
-                          e.currentTarget.style.transform = 'scale(1.05)';
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.background = 'rgba(255, 77, 79, 0.1)';
-                          e.currentTarget.style.transform = 'scale(1)';
-                        }}
-                      />
-                    </Tooltip>
-                  </div>
-                </div>
-              </div>
-
-              {/* Main Split Layout */}
-              <div style={{ 
-                display: 'flex', 
-                padding: '16px',
-                gap: '16px'
-              }}>
-                {/* Left Panel - Question Editor */}
-                <div style={{ 
-                  flex: '0 0 40%',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '12px', 
-                  minHeight: 0
-                }}>
-                  {/* Question Card */}
-                  <div style={{
-                    flex: 1,
-                    background: 'rgba(255, 255, 255, 0.95)',
-                    borderRadius: '12px',
-                    padding: '16px',
-                    boxShadow: '0 4px 16px rgba(24, 144, 255, 0.1)',
-                    border: '2px solid rgba(24, 144, 255, 0.1)',
-                    backdropFilter: 'blur(20px)',
-                    display: 'flex',
-                    flexDirection: 'column',
+                >
+                  {/* Header with Edit/Delete buttons */}
+                  <div className="question-header" style={{
+                    paddingBottom: '14px',
+                    marginBottom: '16px',
+                    borderBottom: '2px solid',
+                    borderBottomColor: theme === 'sun' 
+                      ? 'rgba(113, 179, 253, 0.25)' 
+                      : 'rgba(138, 122, 255, 0.2)',
                     position: 'relative',
-                    overflow: 'hidden',
-                    minHeight: 0
-                  }}>
-                    {/* Decorative background elements */}
-                    <div style={{ 
-                      position: 'absolute',
-                      top: -50,
-                      right: -50,
-                      width: '200px',
-                      height: '200px',
-                      background: primaryColor,
-                      opacity: 0.05,
-                      borderRadius: '50%',
-                      filter: 'blur(40px)'
-                    }} />
-
-                    {/* Question Input - CKEditor */}
-                    <div style={{ 
-                      flex: 1, 
-                      display: 'flex',
-                      flexDirection: 'column',
-                      position: 'relative',
-                      zIndex: 1,
-                      minHeight: 0,
-                      overflow: 'hidden'
-                    }}>
-                      <div style={{ 
-                        flex: 1,
-                        borderRadius: '8px',
-                        border: '1px solid rgba(24, 144, 255, 0.2)',
-                        overflow: 'hidden',
-                        background: 'rgba(240, 247, 255, 0.5)',
-                        position: 'relative',
-                        display: 'flex',
-                        flexDirection: 'column'
-                      }}>
-                        <CKEditor
-                          key="question2-editor"
-                          editor={ClassicEditor}
-                          data={question2EditorData}
-                          config={questionEditorConfig}
-                          onChange={handleEditor2Change}
-                          onReady={(editor) => {
-                            editor2Ref.current = editor;
-                          }}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Right Panel - Answer Options Grid */}
-                <div style={{ 
-                  flex: 1,
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '12px',
-                  position: 'relative'
-                }}>
-                  {/* Options Grid Header */}
-                  <div style={{
                     display: 'flex',
                     justifyContent: 'space-between',
-                    alignItems: 'center', 
-                    padding: '0 4px'
+                    alignItems: 'center'
                   }}>
-                    <span style={{ 
-                      fontSize: '14px', 
-                      fontWeight: 600,
-                      color: '#1890ff'
-                    }}>
-                      Answer Options ({question2Options.length})
-                    </span>
-                    <Button
-                      icon={<PlusOutlined />}
-                      onClick={handleAddOption2}
-                      size="small"
-                      style={{
-                        height: '32px',
-                        borderRadius: '6px',
-                        fontWeight: 500,
-                        fontSize: '14px',
-                        padding: '0 16px',
-                        border: 'none',
-                        transition: 'all 0.3s ease',
-                        background: 'linear-gradient(135deg, rgba(102, 174, 255, 0.6), rgba(60, 153, 255, 0.6))',
-                        color: '#000000',
-                        boxShadow: '0 2px 8px rgba(60, 153, 255, 0.2)',
-                      }}
-                    >
-                      Add
-                    </Button>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <Typography.Text strong style={{ 
+                        fontSize: '16px', 
+                        color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' 
+                      }}>
+                        {question.title}
+                      </Typography.Text>
+                      <Typography.Text style={{ 
+                        fontSize: '14px', 
+                        color: theme === 'sun' ? 'rgba(0, 0, 0, 0.5)' : 'rgba(255, 255, 255, 0.5)',
+                        fontStyle: 'italic'
+                      }}>
+                        {question.type === 'MULTIPLE_CHOICE' ? 'Multiple Choice' :
+                         question.type === 'MULTIPLE_SELECT' ? 'Multiple Select' :
+                         question.type === 'TRUE_OR_FALSE' ? 'True/False' :
+                         question.type === 'FILL_IN_THE_BLANK' ? 'Fill in the Blank' :
+                         question.type === 'DROPDOWN' ? 'Dropdown' :
+                         question.type === 'DRAG_AND_DROP' ? 'Drag and Drop' :
+                         question.type === 'REARRANGE' ? 'Reorder' :
+                         question.type === 'REWRITE' ? 'Re-write' : question.type}
+                      </Typography.Text>
+                    </div>
+                    
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <CheckOutlined style={{ color: '#52c41a', fontSize: '16px' }} />
+                        <Typography.Text style={{ fontSize: '14px', fontWeight: 600 }}>
+                          {question.points} {question.points === 1 ? 'point' : 'points'}
+                        </Typography.Text>
+                      </div>
+
+                      <Tooltip title={t('common.edit') || 'Edit Question'}>
+                        <Button
+                          type="text"
+                          icon={<EditOutlined />}
+                          onClick={() => handleEditQuestion(question.id)}
+                          style={{ 
+                            width: '40px', 
+                            height: '40px',
+                            borderRadius: '10px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: '16px',
+                            color: '#1890ff',
+                            background: 'rgba(24, 144, 255, 0.1)',
+                            border: '1px solid rgba(24, 144, 255, 0.2)',
+                            transition: 'all 0.3s ease',
+                            flexShrink: 0
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.background = 'rgba(24, 144, 255, 0.2)';
+                            e.currentTarget.style.transform = 'scale(1.05)';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.background = 'rgba(24, 144, 255, 0.1)';
+                            e.currentTarget.style.transform = 'scale(1)';
+                          }}
+                        />
+                      </Tooltip>
+
+                      <Tooltip title={t('dailyChallenge.deleteQuestion') || 'Delete Question'}>
+                        <Button
+                          type="text"
+                          danger
+                          icon={<DeleteOutlined />}
+                          onClick={() => handleDeleteQuestion(question.id)}
+                          style={{ 
+                            width: '40px', 
+                            height: '40px',
+                            borderRadius: '10px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: '16px',
+                            color: '#ff4d4f',
+                            background: 'rgba(255, 77, 79, 0.1)',
+                            border: '1px solid rgba(255, 77, 79, 0.2)',
+                            transition: 'all 0.3s ease',
+                            flexShrink: 0
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.background = 'rgba(255, 77, 79, 0.2)';
+                            e.currentTarget.style.transform = 'scale(1.05)';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.background = 'rgba(255, 77, 79, 0.1)';
+                            e.currentTarget.style.transform = 'scale(1)';
+                          }}
+                        />
+                      </Tooltip>
+                    </div>
                   </div>
 
-                  {/* Options Grid Container - 2x2 Layout */}
-                  <div style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(2, 1fr)',
-                    gap: '12px',
-                    flex: 1,
-                    overflowY: 'auto',
-                    padding: '4px'
-                  }}>
-                    {question2Options.map((option, index) => (
-                      <div
-                        key={option.id}
-                        onMouseEnter={() => setHoveredOption2(option.id)}
-                        onMouseLeave={() => setHoveredOption2(null)}
-                        style={{
-                          background: `linear-gradient(135deg, ${option.color}cc 0%, ${option.color} 100%)`,
-                          borderRadius: '12px',
-                          padding: '12px',
-                          minHeight: '200px',
-                          position: 'relative',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          boxShadow: hoveredOption2 === option.id
-                            ? `0 8px 24px ${option.color}80`
-                            : '0 2px 8px rgba(0,0,0,0.08)',
-                          border: option.isCorrect
-                            ? '2px solid #52c41a'
-                            : '1px solid rgba(255,255,255,0.5)',
-                          transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                          transform: hoveredOption2 === option.id ? 'translateY(-4px)' : 'translateY(0)',
-                          transformOrigin: 'center',
-                          cursor: 'pointer',
-                          overflow: 'visible',
-                          zIndex: hoveredOption2 === option.id ? 10 : 1
+                  {/* Content Area */}
+                  <div className="question-content" style={{ paddingLeft: '36px', marginTop: '16px' }}>
+                    {/* Fill in the Blank */}
+                    {question.type === 'FILL_IN_THE_BLANK' && question.blanks && (
+                      <div style={{ marginBottom: '16px' }}>
+                        <Typography.Text style={{ 
+                          fontSize: '15px', 
+                          fontWeight: 350,
+                          lineHeight: '1.8',
+                          color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)',
+                          whiteSpace: 'pre-wrap'
                         }}>
-                        {/* Option Label */}
-                        <div style={{
-                          position: 'absolute',
-                          top: '8px',
-                          left: '8px',
-                          width: '28px',
-                          height: '28px',
-                          borderRadius: '50%',
-                          background: 'rgba(255,255,255,0.95)',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          fontWeight: 700,
-                          fontSize: '14px',
-                          color: '#333',
-                          boxShadow: '0 2px 6px rgba(0,0,0,0.1)',
-                          border: `1px solid ${option.color}`
-                        }}>
-                          {String.fromCharCode(65 + index)}
-                        </div>
+                          {(() => {
+                            const text = question.question || '';
+                            const blanks = question.blanks || [];
+                            // Support both legacy underscores and [[pos_X]] placeholders
+                            if (text.includes('[[pos_')) {
+                              // Build lookup map from content.data by positionId
+                              const contentItems = Array.isArray(question.content?.data) ? question.content.data : [];
+                              const positionIdToValue = new Map();
+                              contentItems.forEach(item => {
+                                if (item && item.positionId) positionIdToValue.set(String(item.positionId), item.value || '');
+                              });
 
-                        {/* Action Buttons */}
-                        <div style={{ 
-                          position: 'absolute',
-                          top: '8px',
-                          right: '8px',
-                          display: 'flex', 
-                          gap: '6px',
-                          alignItems: 'center'
-                        }}>
-                          {/* Correct Answer Badge */}
-                          <Tooltip title={option.isCorrect ? "Correct Answer" : "Mark as Correct"}>
-                            <div
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleOption2Change(option.id, 'isCorrect', !option.isCorrect);
-                              }}
-                              style={{
-                                background: option.isCorrect ? '#52c41a' : 'rgba(255,255,255,0.3)',
-                                color: 'white',
-                                padding: '4px 8px',
-                                borderRadius: '12px',
-                                fontSize: '11px',
-                                fontWeight: 600,
-                                cursor: 'pointer',
-                                transition: 'all 0.3s ease',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '4px',
-                                boxShadow: option.isCorrect ? '0 2px 8px rgba(82, 196, 26, 0.5)' : 'none'
-                              }}
-                            >
-                              <CheckOutlined />
-                              {option.isCorrect ? 'Correct' : 'Mark'}
-                            </div>
-                          </Tooltip>
-                          
-                          <div style={{
-                            display: 'flex',
-                            gap: '8px',
-                            transition: 'opacity 0.2s ease'
-                          }}>
-                            <Tooltip title="Delete Option">
-                              <Button
-                                size="small"
-                                danger
-                                icon={<DeleteOutlined />}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleRemoveOption2(option.id);
+                              const parts = text.split(/(\[\[pos_[a-zA-Z0-9]+\]\])/g);
+                              let blankRenderIndex = 0; // Fallback ordering
+                              return parts.map((part, idx) => {
+                                const isPlaceholder = /^\[\[pos_[a-zA-Z0-9]+\]\]$/.test(part);
+                                if (!isPlaceholder) {
+                                  return <React.Fragment key={idx}>{part}</React.Fragment>;
+                                }
+                                const match = part.match(/^\[\[pos_([a-zA-Z0-9]+)\]\]$/);
+                                const posId = match ? match[1] : undefined;
+                                // Prefer exact match via content map; fallback to blanks by order
+                                const mappedValue = (posId && positionIdToValue.get(String(posId))) || undefined;
+                                const displayText = mappedValue
+                                  || blanks[blankRenderIndex]?.answer
+                                  || blanks[blankRenderIndex]?.placeholder
+                                  || '';
+                                const key = `blank-${idx}`;
+                                blankRenderIndex += 1;
+                                return (
+                                  <span
+                                    key={key}
+                                    style={{
+                                      display: 'inline-block',
+                                      minWidth: '120px',
+                                      maxWidth: '200px',
+                                      minHeight: '32px',
+                                      padding: '4px 12px',
+                                      margin: '0 8px',
+                                      background: '#E9EEFF94',
+                                      border: `2px solid ${theme === 'sun' ? '#1890ff' : '#8B5CF6'}`,
+                                      borderRadius: '8px',
+                                      cursor: 'default',
+                                      outline: 'none',
+                                      verticalAlign: 'middle',
+                                      lineHeight: '1.4',
+                                      fontSize: '14px',
+                                      boxSizing: 'border-box',
+                                      color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)',
+                                      textAlign: 'center'
+                                    }}
+                                  >
+                                    {displayText}
+                                  </span>
+                                );
+                              });
+                            }
+                            // Legacy rendering using underscores
+                            return text.split('______').map((part, idx) => (
+                              <React.Fragment key={idx}>
+                                {part}
+                                {idx < blanks.length && (
+                                  <span
+                                    style={{
+                                      display: 'inline-block',
+                                      minWidth: '120px',
+                                      maxWidth: '200px',
+                                      minHeight: '32px',
+                                      padding: '4px 12px',
+                                      margin: '0 8px',
+                                      background: '#E9EEFF94',
+                                      border: `2px solid ${theme === 'sun' ? '#1890ff' : '#8B5CF6'}`,
+                                      borderRadius: '8px',
+                                      cursor: 'default',
+                                      outline: 'none',
+                                      verticalAlign: 'middle',
+                                      lineHeight: '1.4',
+                                      fontSize: '14px',
+                                      boxSizing: 'border-box',
+                                      color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)',
+                                      textAlign: 'center'
+                                    }}
+                                  >
+                                    {blanks[idx]?.placeholder || ''}
+                                  </span>
+                                )}
+                              </React.Fragment>
+                            ));
+                          })()}
+                        </Typography.Text>
+                      </div>
+                    )}
+
+                    {/* Dropdown */}
+                    {question.type === 'DROPDOWN' && (
+                      <div style={{
+                        fontSize: '15px', 
+                        fontWeight: 350,
+                        lineHeight: '1.8',
+                        color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)',
+                        marginBottom: '16px'
+                      }}>
+                        {(() => {
+                          const text = question.questionText || question.question || '';
+                          const contentItems = Array.isArray(question.content?.data) ? question.content.data : [];
+                          const positionIdToGroup = new Map();
+                          contentItems.forEach(item => {
+                            if (!positionIdToGroup.has(String(item.positionId))) positionIdToGroup.set(String(item.positionId), []);
+                            positionIdToGroup.get(String(item.positionId)).push(item);
+                          });
+                          const parts = text.split(/(\[\[pos_[a-zA-Z0-9]+\]\])/g);
+                          let encounteredIndex = 0;
+                          let renderedAny = false;
+                          const rendered = parts.map((part, idx) => {
+                            const match = part.match(/^\[\[pos_([a-zA-Z0-9]+)\]\]$/);
+                            if (!match) {
+                              return <React.Fragment key={idx}>{part}</React.Fragment>;
+                            }
+                            const posId = match[1];
+                            // Build options: correct first, then incorrects
+                            const group = positionIdToGroup.get(String(posId)) || [];
+                            const correct = group.find(opt => opt.correct === true)?.value || '';
+                            const incorrects = group.filter(opt => opt.correct === false).map(opt => opt.value).filter(Boolean);
+                            const options = [correct, ...incorrects];
+                            renderedAny = true;
+                            const selectKey = `${question.id}_${encounteredIndex++}`;
+                            const selectedValue = dropdownSelections[selectKey] ?? (correct || '');
+                            return (
+                              <select
+                                key={`dd-${idx}`}
+                                value={selectedValue}
+                                onChange={(e) => {
+                                  const value = e.target.value;
+                                  setDropdownSelections(prev => ({ ...prev, [selectKey]: value }));
                                 }}
                                 style={{
-                                  background: 'rgba(255, 77, 79, 0.9)',
-                                  color: 'white',
-                                  border: 'none',
-                                  borderRadius: '6px',
-                                  width: '24px',
-                                  height: '24px',
+                                  display: 'inline-block',
+                                  minWidth: '140px',
+                                  height: '36px',
+                                  padding: '4px 12px',
+                                  margin: '0 8px',
+                                  background: theme === 'sun' 
+                                    ? 'rgba(24, 144, 255, 0.08)' 
+                                    : 'rgba(138, 122, 255, 0.12)',
+                                  border: `2px solid ${theme === 'sun' ? '#1890ff' : '#8B5CF6'}`,
+                                  borderRadius: '8px',
+                                  fontSize: '14px',
+                                  fontWeight: 600,
+                                  color: selectedValue === correct ? 'rgb(24, 144, 255)' : (theme === 'sun' ? '#1890ff' : '#8B5CF6'),
+                                  cursor: 'pointer',
+                                  outline: 'none',
+                                  textAlign: 'center'
+                                }}
+                              >
+                                {options.map(opt => (
+                                  <option key={opt} value={opt} style={{ color: opt === correct ? 'rgb(24, 144, 255)' : '#000000' }}>
+                                    {opt}
+                                  </option>
+                                ))}
+                              </select>
+                            );
+                          });
+                          if (renderedAny) return rendered;
+                          // Fallback: use local blanks/sentence if content.data not present yet (AI preview data)
+                          if (question.sentence && Array.isArray(question.blanks) && question.blanks.length > 0) {
+                            const sentenceParts = question.sentence.split('___');
+                            return sentenceParts.map((part, idx) => (
+                              <React.Fragment key={`s-${idx}`}>
+                                {part}
+                                {idx < question.blanks.length && (() => {
+                                  const blank = question.blanks[idx] || {};
+                                  const correct = blank.correctAnswer;
+                                  const options = Array.isArray(blank.options) ? blank.options : [];
+                                  const selectKey = `${question.id}_local_${idx}`;
+                                  const selectedValue = dropdownSelections[selectKey] ?? (correct || '');
+                                  return (
+                                    <select
+                                      value={selectedValue}
+                                      onChange={(e) => setDropdownSelections(prev => ({ ...prev, [selectKey]: e.target.value }))}
+                                      style={{
+                                        display: 'inline-block',
+                                        minWidth: '140px',
+                                        height: '36px',
+                                        padding: '4px 12px',
+                                        margin: '0 8px',
+                                        background: theme === 'sun' 
+                                          ? 'rgba(24, 144, 255, 0.08)' 
+                                          : 'rgba(138, 122, 255, 0.12)',
+                                        border: `2px solid ${theme === 'sun' ? '#1890ff' : '#8B5CF6'}`,
+                                        borderRadius: '8px',
+                                        fontSize: '14px',
+                                        fontWeight: 600,
+                                        color: selectedValue === correct ? 'rgb(24, 144, 255)' : (theme === 'sun' ? '#1890ff' : '#8B5CF6'),
+                                        cursor: 'pointer',
+                                        outline: 'none',
+                                        textAlign: 'center'
+                                      }}
+                                    >
+                                      {options.map(opt => (
+                                        <option key={opt} value={opt} style={{ color: opt === correct ? 'rgb(24, 144, 255)' : '#000000' }}>
+                                          {opt}
+                                        </option>
+                                      ))}
+                                    </select>
+                                  );
+                                })()}
+                              </React.Fragment>
+                            ));
+                          }
+                          // Default: just show text
+                          return text;
+                        })()}
+                      </div>
+                    )}
+
+                    {/* Drag and Drop */}
+                    {question.type === 'DRAG_AND_DROP' && (
+                      <>
+                        <div style={{ display: 'flex', gap: '24px', minHeight: '300px' }}>
+                          {/* Left Column - Sentence with drop zones */}
+                          <div style={{
+                            flex: '1',
+                            padding: '20px',
+                            background: theme === 'sun' ? '#f9f9f9' : 'rgba(255, 255, 255, 0.02)',
+                            borderRadius: '12px',
+                            border: `1px solid ${theme === 'sun' ? '#e8e8e8' : 'rgba(255, 255, 255, 0.1)'}`,
+                          }}>
+                            <Typography.Text style={{ 
+                              fontSize: '14px', 
+                              fontWeight: 350,
+                              marginBottom: '16px',
+                              display: 'block',
+                              color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)'
+                            }}>
+                              Complete the sentence by dragging words into the blanks:
+                            </Typography.Text>
+
+                            <div style={{ 
+                              fontSize: '15px', 
+                              fontWeight: 350,
+                              lineHeight: '2.4',
+                              color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)',
+                              marginBottom: '16px'
+                            }}>
+                              {(() => {
+                                const text = question.questionText || question.sentence || '';
+                                const items = Array.isArray(question.content?.data) ? question.content.data : [];
+                                const posToCorrect = new Map();
+                                items.filter(it => it.positionId && it.correct === true).forEach((it) => {
+                                  posToCorrect.set(String(it.positionId), it.value);
+                                });
+                                // Render by placeholder if exists, else fallback to underscores
+                                if (/\[\[pos_/.test(text)) {
+                                  const parts = text.split(/(\[\[pos_([a-zA-Z0-9]+)\]\])/g);
+                                  return parts.map((part, idx) => {
+                                    const m = part.match(/^\[\[pos_([a-zA-Z0-9]+)\]\]$/);
+                                    if (!m) return <React.Fragment key={idx}>{part}</React.Fragment>;
+                                    const val = posToCorrect.get(m[1]) || '';
+                                    return (
+                                      <div key={`ddp-${idx}`}
+                                        style={{
+                                          display: 'inline-block',
+                                          minWidth: '120px',
+                                          height: '32px',
+                                          margin: '0 8px',
+                                          background: theme === 'sun' ? 'rgba(24, 144, 255, 0.15)' : 'rgba(138, 122, 255, 0.18)',
+                                          border: `2px solid ${theme === 'sun' ? '#1890ff' : '#8B5CF6'}`,
+                                          borderRadius: '8px',
+                                          padding: '4px 12px',
+                                          fontSize: '15px',
+                                          color: theme === 'sun' ? '#1890ff' : '#8B5CF6',
+                                          verticalAlign: 'top',
+                                          lineHeight: '1.4',
+                                          boxSizing: 'border-box',
+                                          textAlign: 'center',
+                                          fontWeight: 600,
+                                        }}
+                                      >{val}</div>
+                                    );
+                                  });
+                                }
+                                // Fallback legacy underscores rendering
+                                return text.split('___').map((part, idx) => (
+                                  <React.Fragment key={`us-${idx}`}>
+                                    {part}
+                                    {idx < 2 && (
+                                      <div
+                                        style={{
+                                          minWidth: '120px',
+                                          height: '32px',
+                                          margin: '0 8px',
+                                          background: theme === 'sun' ? 'rgba(24, 144, 255, 0.15)' : 'rgba(138, 122, 255, 0.18)',
+                                          border: `2px solid ${theme === 'sun' ? '#1890ff' : '#8B5CF6'}`,
+                                          borderRadius: '8px',
+                                          display: 'inline-block',
+                                          padding: '4px 12px',
+                                          fontSize: '15px',
+                                          color: theme === 'sun' ? '#1890ff' : '#8B5CF6',
+                                          verticalAlign: 'top',
+                                          lineHeight: '1.4',
+                                          boxSizing: 'border-box',
+                                          textAlign: 'center',
+                                          fontWeight: 600,
+                                        }}
+                                      >{idx === 0 ? 'love' : 'enjoy'}</div>
+                                    )}
+                                  </React.Fragment>
+                                ));
+                              })()}
+                            </div>
+                          </div>
+
+                          {/* Right Column - Available words */}
+                          <div style={{
+                            flex: '1',
+                            padding: '20px',
+                            background: theme === 'sun' ? '#ffffff' : 'rgba(255, 255, 255, 0.03)',
+                            borderRadius: '12px',
+                            border: `1px solid ${theme === 'sun' ? '#e8e8e8' : 'rgba(255, 255, 255, 0.1)'}`,
+                          }}>
+                            <Typography.Text style={{ 
+                              fontSize: '14px', 
+                              fontWeight: 350,
+                              marginBottom: '16px',
+                              display: 'block',
+                              color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)'
+                            }}>
+                              Available words:
+                            </Typography.Text>
+                            
+                            <div style={{ 
+                              display: 'flex', 
+                              gap: '12px',
+                              flexWrap: 'wrap',
+                              justifyContent: 'center',
+                              alignItems: 'center',
+                              minHeight: '120px'
+                            }}>
+                              {(() => {
+                                const items = Array.isArray(question.content?.data) ? question.content.data : [];
+                                const incorrect = items.length > 0
+                                  ? items.filter(it => !it.positionId || it.correct === false).map(it => it.value)
+                                  : (question.availableWords || []).filter(w => w !== (question.correctAnswers?.blank_1) && w !== (question.correctAnswers?.blank_2));
+                                return incorrect.map((word, wordIdx) => (
+                                  <div
+                                    key={wordIdx}
+                                    style={{
+                                      padding: '12px 20px',
+                                      background: theme === 'sun' 
+                                        ? 'rgba(24, 144, 255, 0.08)' 
+                                        : 'rgba(138, 122, 255, 0.12)',
+                                      border: `2px solid ${theme === 'sun' ? '#1890ff' : '#8B5CF6'}`,
+                                      borderRadius: '12px',
+                                      fontSize: '16px',
+                                      fontWeight: '600',
+                                      color: theme === 'sun' ? '#1890ff' : '#8B5CF6',
+                                      userSelect: 'none',
+                                      transition: 'all 0.2s ease',
+                                      minWidth: '80px',
+                                      textAlign: 'center',
+                                      boxShadow: theme === 'sun' 
+                                        ? '0 2px 8px rgba(24, 144, 255, 0.15)' 
+                                        : '0 2px 8px rgba(138, 122, 255, 0.15)'
+                                    }}
+                                  >
+                                    {word}
+                                  </div>
+                                ));
+                              })()}
+                            </div>
+                          </div>
+                        </div>
+                      </>
+                    )}
+
+                    {/* Multiple Choice, Multiple Select, True/False */}
+                    {(question.type === 'MULTIPLE_CHOICE' || question.type === 'MULTIPLE_SELECT' || question.type === 'TRUE_OR_FALSE') && question.options && (
+                      <>
+                        <div 
+                          style={{ 
+                            fontSize: '15px', 
+                            fontWeight: 350,
+                            marginBottom: '12px',
+                            display: 'block',
+                            lineHeight: '1.8',
+                            color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)'
+                          }}
+                          className="html-content"
+                          dangerouslySetInnerHTML={{ __html: question.question }}
+                        />
+
+                        <div className="question-options" style={{ 
+                          display: 'grid', 
+                          gridTemplateColumns: 'repeat(2, 1fr)', 
+                          gap: '14px', 
+                          marginTop: '12px' 
+                        }}>
+                          {question.options.map((option, idx) => {
+                            const isCorrect = option.isCorrect;
+                            const isMultipleSelect = question.type === 'MULTIPLE_SELECT';
+                            return (
+                              <div
+                                key={idx}
+                                className={`option-item ${isCorrect ? 'correct-answer' : ''}`}
+                                style={{
                                   display: 'flex',
                                   alignItems: 'center',
-                                  justifyContent: 'center',
-                                  fontSize: '12px'
+                                  gap: '12px',
+                                  padding: '14px 18px',
+                                  background: isCorrect
+                                    ? (theme === 'sun' ? 'rgba(82, 196, 26, 0.08)' : 'rgba(82, 196, 26, 0.12)')
+                                    : theme === 'sun'
+                                      ? 'rgba(255, 255, 255, 0.85)'
+                                      : 'rgba(255, 255, 255, 0.7)',
+                                  border: `2px solid ${
+                                    isCorrect
+                                      ? '#52c41a'
+                                      : theme === 'sun' 
+                                        ? 'rgba(113, 179, 253, 0.2)' 
+                                        : 'rgba(138, 122, 255, 0.15)'
+                                  }`,
+                                  borderRadius: '12px',
+                                  boxShadow: theme === 'sun' 
+                                    ? '0 2px 6px rgba(113, 179, 253, 0.08)'
+                                    : '0 2px 6px rgba(138, 122, 255, 0.08)',
+                                  fontSize: '14px',
+                                  fontWeight: '350',
+                                  position: 'relative',
+                                  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                                  cursor: 'pointer',
+                                  minHeight: '50px',
+                                  boxSizing: 'border-box'
                                 }}
-                              />
-                            </Tooltip>
+                              >
+                                {/* Radio button for Multiple Choice and True/False */}
+                                {(question.type === 'MULTIPLE_CHOICE' || question.type === 'TRUE_OR_FALSE') && (
+                                  <input 
+                                    type="radio" 
+                                    name={`question-${question.id}`}
+                                    checked={isCorrect}
+                                    readOnly
+                                    style={{ 
+                                      width: '18px',
+                                      height: '18px',
+                                      accentColor: theme === 'sun' ? '#1890ff' : '#8B5CF6',
+                                      cursor: 'pointer'
+                                    }} 
+                                  />
+                                )}
+                                
+                                {/* Checkbox for Multiple Select */}
+                                {isMultipleSelect && (
+                                  <input 
+                                    type="checkbox" 
+                                    checked={isCorrect}
+                                    readOnly
+                                    style={{ 
+                                      width: '18px',
+                                      height: '18px',
+                                      accentColor: theme === 'sun' ? '#1890ff' : '#8B5CF6',
+                                      cursor: 'pointer'
+                                    }} 
+                                  />
+                                )}
+
+                                <span style={{ 
+                                  flexShrink: 0, 
+                                  color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)', 
+                                  fontWeight: '600',
+                                  fontSize: '16px'
+                                }}>
+                                  {option.key}.
+                                </span>
+                                <div
+                                  style={{ 
+                                    fontSize: '14px',
+                                    color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)',
+                                    fontWeight: '350',
+                                    flex: 1
+                                  }}
+                                  className="html-content"
+                                  dangerouslySetInnerHTML={{ __html: option.text }}
+                                />
+                                {/* Removed extra check icon to avoid overlapping with native radio/checkbox */}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </>
+                    )}
+
+                    {/* Reorder/Rearrange */}
+                    {question.type === 'REARRANGE' && question.sourceItems && (
+                      <>
+                        <Typography.Text style={{ 
+                          fontSize: '15px', 
+                          fontWeight: 350,
+                          marginBottom: '16px',
+                          display: 'block',
+                          lineHeight: '1.8',
+                          color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)'
+                        }}>
+                          {question.question}
+                        </Typography.Text>
+
+                        {/* Slots Row */}
+                        <div style={{
+                          marginBottom: '24px',
+                          padding: '20px',
+                          background: theme === 'sun' ? '#f9f9f9' : 'rgba(255, 255, 255, 0.02)',
+                          borderRadius: '12px',
+                          border: `1px solid ${theme === 'sun' ? '#e8e8e8' : 'rgba(255, 255, 255, 0.1)'}`,
+                        }}>
+                          <Typography.Text style={{ 
+                            fontSize: '14px', 
+                            fontWeight: 350,
+                            marginBottom: '16px',
+                            display: 'block',
+                            color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)'
+                          }}>
+                            Drop the words here in order:
+                          </Typography.Text>
+                          
+                          <div style={{ 
+                            display: 'flex', 
+                            flexWrap: 'wrap',
+                            gap: '12px'
+                          }}>
+                            {question.correctOrder?.map((word, index) => (
+                              <div
+                                key={index}
+                                style={{
+                                  padding: '12px 20px',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  border: `2px solid ${theme === 'sun' ? '#1890ff' : '#8B5CF6'}`,
+                                  borderRadius: '12px',
+                                  background: theme === 'sun' 
+                                    ? 'rgba(24, 144, 255, 0.08)' 
+                                    : 'rgba(138, 122, 255, 0.12)',
+                                  fontSize: '16px',
+                                  fontWeight: '600',
+                                  color: theme === 'sun' ? '#1890ff' : '#8B5CF6',
+                                  cursor: 'not-allowed',
+                                  userSelect: 'none',
+                                  transition: 'all 0.2s ease',
+                                  minWidth: '80px',
+                                  textAlign: 'center',
+                                  boxShadow: theme === 'sun' 
+                                    ? '0 2px 8px rgba(24, 144, 255, 0.15)' 
+                                    : '0 2px 8px rgba(138, 122, 255, 0.15)'
+                                }}
+                              >
+                                {word}
+                              </div>
+                            ))}
                           </div>
                         </div>
 
-                        {/* Input Field - CKEditor */}
+                        {/* Source Words */}
                         <div style={{
-                          flex: 1,
-                          display: 'flex',
-                          flexDirection: 'column',
-                          justifyContent: 'center',
-                          marginTop: '36px',
-                          marginBottom: '4px',
-                          position: 'relative',
-                          zIndex: 1
+                          padding: '20px',
+                          background: theme === 'sun' ? '#ffffff' : 'rgba(255, 255, 255, 0.03)',
+                          borderRadius: '12px',
+                          border: `1px solid ${theme === 'sun' ? '#e8e8e8' : 'rgba(255, 255, 255, 0.1)'}`,
                         }}>
-                          <div 
-                            className={`option-editor option-editor-${option.id}`}
-                            style={{
-                              borderRadius: '8px',
-                              overflow: 'hidden',
-                              background: 'rgba(255, 255, 255, 0.98)',
-                              border: '1px solid rgba(255,255,255,0.95)',
-                              backdropFilter: 'blur(10px)',
-                              boxShadow: '0 1px 4px rgba(0, 0, 0, 0.05)'
-                            }}
-                          >
-                            <CKEditor
-                              key={`option2-editor-${option.id}`}
-                              editor={ClassicEditor}
-                              data={option.text}
-                              config={optionEditorConfig}
-                              onChange={(event, editor) => handleOption2EditorChange(option.id, event, editor)}
-                            />
+                          <Typography.Text style={{ 
+                            fontSize: '14px', 
+                            fontWeight: 350,
+                            marginBottom: '16px',
+                            display: 'block',
+                            color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)'
+                          }}>
+                            Available words:
+                          </Typography.Text>
+                          
+                          <div style={{ 
+                            display: 'flex', 
+                            gap: '12px',
+                            flexWrap: 'wrap',
+                            justifyContent: 'center',
+                            alignItems: 'center',
+                            minHeight: '120px'
+                          }}>
+                            {question.sourceItems.map((word, wordIdx) => (
+                              <div
+                                key={wordIdx}
+                                style={{
+                                  padding: '12px 20px',
+                                  background: theme === 'sun' 
+                                    ? 'rgba(24, 144, 255, 0.08)' 
+                                    : 'rgba(138, 122, 255, 0.12)',
+                                  border: `2px solid ${theme === 'sun' ? '#1890ff' : '#8B5CF6'}`,
+                                  borderRadius: '12px',
+                                  fontSize: '16px',
+                                  fontWeight: '600',
+                                  color: theme === 'sun' ? '#1890ff' : '#8B5CF6',
+                                  cursor: 'not-allowed',
+                                  userSelect: 'none',
+                                  transition: 'all 0.2s ease',
+                                  minWidth: '80px',
+                                  textAlign: 'center',
+                                  boxShadow: theme === 'sun' 
+                                    ? '0 2px 8px rgba(24, 144, 255, 0.15)' 
+                                    : '0 2px 8px rgba(138, 122, 255, 0.15)'
+                                }}
+                              >
+                                {word}
+                              </div>
+                            ))}
                           </div>
                         </div>
-                      </div>
-                    ))}
+                      </>
+                    )}
+
+                    {/* Rewrite */}
+                    {question.type === 'REWRITE' && (
+                      <>
+                        <Typography.Text style={{ 
+                          fontSize: '15px', 
+                          fontWeight: 350,
+                          marginBottom: '16px',
+                          display: 'block',
+                          lineHeight: '1.8',
+                          color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)'
+                        }}>
+                          {(() => {
+                            // Show instruction if present; otherwise fallback to stripped questionText/question
+                            const instruction = question.question ? stripHtml(question.question) : '';
+                            if (instruction) return instruction;
+                            const raw = question.questionText || '';
+                            const withoutMarkers = raw.replace(/\[\[pos_[a-zA-Z0-9]+\]\]/g, '');
+                            return stripHtml(withoutMarkers).trim();
+                          })()}
+                        </Typography.Text>
+                        {/* Original sentence (editable text) */}
+                        {(() => {
+                          const raw = question.originalSentence || '';
+                          const text = removePosMarkers(stripHtml(raw)).trim();
+                          if (!text) return null;
+                          return (
+                            <div style={{
+                              marginBottom: '12px',
+                              fontSize: '15px',
+                              fontWeight: '350',
+                              color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)',
+                              lineHeight: '1.8'
+                            }}>
+                              {text}
+                            </div>
+                          );
+                        })()}
+
+                        {/* Remove original sentence preview to avoid duplicated text */}
+
+                            {/* Correct Answers Display (supports multiple) */}
+                        <div style={{ marginTop: '20px' }}>
+                          <Typography.Text style={{ 
+                            fontSize: '14px', 
+                            fontWeight: 350,
+                            marginBottom: '8px',
+                            display: 'block',
+                            color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)'
+                          }}>
+                            Correct Answer{Array.isArray(question.content?.data) && question.content.data.length > 1 ? 's' : ''}:
+                          </Typography.Text>
+                          <div style={{
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '10px'
+                          }}>
+                            {(() => {
+                              const items = Array.isArray(question.content?.data) && question.content.data.length > 0
+                                ? question.content.data.map(d => d.value)
+                                : [question.correctAnswer].filter(Boolean);
+                              return items.map((val, idx) => (
+                                <div key={idx} style={{
+                                  padding: '16px 20px',
+                                  background: theme === 'sun' 
+                                    ? 'rgba(82, 196, 26, 0.08)' 
+                                    : 'rgba(82, 196, 26, 0.12)',
+                                  border: `2px solid #52c41a`,
+                                  borderRadius: '12px',
+                                  fontSize: '15px',
+                                  fontWeight: '350',
+                                  color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)',
+                                  lineHeight: '1.6',
+                                  position: 'relative',
+                                  boxShadow: theme === 'sun' 
+                                    ? '0 2px 8px rgba(82, 196, 26, 0.15)' 
+                                    : '0 2px 8px rgba(82, 196, 26, 0.15)'
+                                }}>
+                                  <CheckOutlined style={{ 
+                                    color: '#52c41a', 
+                                    fontSize: '16px',
+                                    marginRight: '8px',
+                                    position: 'absolute',
+                                    top: '16px',
+                                    left: '16px'
+                                  }} />
+                                  <div style={{ paddingLeft: '32px' }}>
+                                    {removePosMarkers(stripHtml(val))}
+                                  </div>
+                                </div>
+                              ));
+                            })()}
+                          </div>
+                        </div>
+                      </>
+                    )}
                   </div>
                 </div>
-              </div>
+              ))}
             </div>
-            </>
           )}
         </div>
       </div>
+
+      {/* Edit Modals */}
+      {editingQuestion && editingQuestion.type === 'MULTIPLE_CHOICE' && (
+        <MultipleChoiceModal
+          visible={isEditModalVisible}
+          onCancel={handleCancelEditModal}
+          onSave={handleSaveFromModal}
+          questionData={editingQuestion}
+          saving={false}
+        />
+      )}
+      {editingQuestion && editingQuestion.type === 'MULTIPLE_SELECT' && (
+        <MultipleSelectModal
+          visible={isEditModalVisible}
+          onCancel={handleCancelEditModal}
+          onSave={handleSaveFromModal}
+          questionData={editingQuestion}
+          saving={false}
+        />
+      )}
+      {editingQuestion && editingQuestion.type === 'TRUE_OR_FALSE' && (
+        <TrueFalseModal
+          visible={isEditModalVisible}
+          onCancel={handleCancelEditModal}
+          onSave={handleSaveFromModal}
+          questionData={editingQuestion}
+          saving={false}
+        />
+      )}
+      {editingQuestion && editingQuestion.type === 'FILL_IN_THE_BLANK' && (
+        <FillBlankModal
+          visible={isEditModalVisible}
+          onCancel={handleCancelEditModal}
+          onSave={handleSaveFromModal}
+          questionData={editingQuestion}
+        />
+      )}
+      {editingQuestion && editingQuestion.type === 'DROPDOWN' && (
+        <DropdownModal
+          visible={isEditModalVisible}
+          onCancel={handleCancelEditModal}
+          onSave={handleSaveFromModal}
+          questionData={editingQuestion}
+        />
+      )}
+      {editingQuestion && editingQuestion.type === 'DRAG_AND_DROP' && (
+        <DragDropModal
+          visible={isEditModalVisible}
+          onCancel={handleCancelEditModal}
+          onSave={handleSaveFromModal}
+          questionData={editingQuestion}
+        />
+      )}
+      {editingQuestion && editingQuestion.type === 'REARRANGE' && (
+        <ReorderModal
+          visible={isEditModalVisible}
+          onCancel={handleCancelEditModal}
+          onSave={handleSaveFromModal}
+          questionData={editingQuestion}
+        />
+      )}
+      {editingQuestion && editingQuestion.type === 'REWRITE' && (
+        <RewriteModal
+          visible={isEditModalVisible}
+          onCancel={handleCancelEditModal}
+          onSave={handleSaveFromModal}
+          questionData={editingQuestion}
+        />
+      )}
     </ThemedLayout>
   );
 };

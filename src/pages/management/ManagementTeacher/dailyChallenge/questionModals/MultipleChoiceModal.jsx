@@ -214,6 +214,11 @@ const MultipleChoiceModal = ({
 
 	const handleAddOption = useCallback(() => {
 		setOptions(prevOptions => {
+			// Limit to maximum of 8 options
+			if (prevOptions.length >= 8) {
+				spaceToast.warning('Maximum 8 options allowed');
+				return prevOptions;
+			}
 			const newId = Math.max(...prevOptions.map((opt) => opt.id)) + 1;
 			const colors = getOptionColors();
 			const newColor = colors[prevOptions.length % colors.length];
@@ -400,7 +405,7 @@ const MultipleChoiceModal = ({
 						animation: 'pulse 2s infinite'
 					}} />
 					<span style={{ fontSize: '24px', fontWeight: 600 }}>
-						Create Multiple Choice Question
+						{questionData ? 'Edit Multiple Choice Question' : 'Create Multiple Choice Question'}
 					</span>
 				</div>
 			}

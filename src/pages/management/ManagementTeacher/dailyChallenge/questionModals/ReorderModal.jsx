@@ -13,6 +13,7 @@ import {
   RetweetOutlined,
 } from "@ant-design/icons";
 import './MultipleChoiceModal.css';
+/* eslint-disable no-use-before-define */
 
 // Debounce utility function
 const debounce = (func, wait) => {
@@ -138,91 +139,7 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
     return { parsed, blanksData };
   }, [blankColors]);
 
-  // Helper function to create blank element (simplified version for initialization)
-  const createBlankElementSimple = useCallback((blank, index) => {
-    const span = document.createElement('span');
-    span.setAttribute('contenteditable', 'false');
-    span.setAttribute('data-blank-id', blank.id);
-    span.style.cssText = `
-      display: inline-flex;
-      align-items: center;
-      margin: 0 4px;
-      position: relative;
-      vertical-align: middle;
-      user-select: none;
-      -webkit-user-select: none;
-    `;
-
-    const chip = document.createElement('span');
-    chip.style.cssText = `
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 6px 12px;
-      background: linear-gradient(135deg, ${blank.color}20, ${blank.color}40);
-      border: 2px solid ${blank.color};
-      border-radius: 8px;
-      font-size: 14px;
-      font-weight: 500;
-      color: ${blank.color};
-      transition: all 0.2s ease;
-      cursor: pointer;
-      min-width: 0;
-      flex: 1;
-    `;
-
-    // Number badge
-    const badge = document.createElement('span');
-    badge.className = 'blank-badge';
-    badge.style.cssText = `
-      width: 20px;
-      height: 20px;
-      border-radius: 50%;
-      background: ${blank.color};
-      color: white;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 11px;
-      font-weight: 700;
-    `;
-    badge.textContent = index + 1;
-
-    // Answer text
-    const answerText = document.createElement('span');
-    answerText.className = 'blank-answer-text';
-    answerText.style.cssText = `
-      color: #333;
-      font-weight: 500;
-      font-size: 14px;
-      display: inline-block;
-      max-width: 150px;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-      vertical-align: middle;
-    `;
-    answerText.textContent = blank.answer || '';
-
-    chip.appendChild(badge);
-    chip.appendChild(answerText);
-    span.appendChild(chip);
-
-    return span;
-  }, []);
-
-  // Helper function to update blank numbers
-  const updateBlankNumbersSimple = useCallback(() => {
-    if (!editorRef.current) return;
-    
-    const blankElements = editorRef.current.querySelectorAll('[data-blank-id]');
-    blankElements.forEach((element, index) => {
-      const badge = element.querySelector('.blank-badge');
-      if (badge) {
-        badge.textContent = index + 1;
-      }
-    });
-  }, []);
+  
 
   // Helper function to create shuffled words with correct order
   const createShuffledWords = useCallback((blanksArray, backendOptions = null) => {
@@ -292,72 +209,67 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
     }));
   }, [blankColors]);
 
-  // Initialize from questionData
-  useEffect(() => {
-    if (visible && questionData?.questionText && editorRef.current) {
-      console.log('ReorderModal - Initializing with questionData:', questionData);
-      console.log('ReorderModal - questionData.content?.data:', questionData?.content?.data);
-      console.log('ReorderModal - questionData.options:', questionData?.options);
-      console.log('ReorderModal - questionData.incorrectOptions:', questionData?.incorrectOptions);
-      
-      // Parse existing question - pass content.data and options
-      const { parsed: parsedContent, blanksData } = parseQuestionText(
-        questionData.questionText, 
-        questionData.content?.data || [],
-        questionData.options || []
+  // Update blank numbers based on DOM order
+  const updateBlankNumbers = useCallback(() => {
+    if (!editorRef.current) return;
+    
+    const blankElements = editorRef.current.querySelectorAll('[data-blank-id]');
+    blankElements.forEach((element, index) => {
+      const badge = element.querySelector('.blank-badge');
+      if (badge) {
+        badge.textContent = index + 1;
+      }
+    });
+  }, []);
+
+  // Handle blank answer change (moved earlier so creators can use it)
+  const handleBlankAnswerChange = useCallback((blankId, value) => {
+    setBlanks(prev => {
+      const newBlanks = prev.map(blank => 
+        blank.id === blankId ? { ...blank, answer: value } : blank
       );
       
-      // Set blanks state
-      setBlanks(blanksData);
-      console.log('ReorderModal - State updated with parsed data, blanksData length:', blanksData.length);
-      
-      // Build editor DOM from parsed content
-      editorRef.current.innerHTML = '';
-      let blankCounter = 0;
-      parsedContent.forEach((item, index) => {
-        console.log('ReorderModal - Processing item:', item);
-        if (item.type === 'text') {
-          if (item.content) {
-            editorRef.current.appendChild(document.createTextNode(item.content));
-          }
-        } else if (item.type === 'blank') {
-          // Find the corresponding blank data from blanksData
-          const blankData = blanksData.find(b => b.id === item.id);
-          if (blankData) {
-            console.log('ReorderModal - Creating blank element for:', blankData);
-            const blankElement = createBlankElementSimple(blankData, blankCounter);
-            editorRef.current.appendChild(blankElement);
-            blankCounter++;
-          } else {
-            console.warn('ReorderModal - No blank data found for item:', item);
-          }
-        }
-      });
-      
-      // Update blank numbers after populating editor
+      // Update shuffled words with requestAnimationFrame to avoid lag
       requestAnimationFrame(() => {
-        updateBlankNumbersSimple();
+        const finalWords = createShuffledWords(newBlanks);
+        setShuffledWords(finalWords);
       });
       
-      // Handle shuffledWords from backend
-      if (questionData.shuffledWords && questionData.shuffledWords.length > 0) {
-        setShuffledWords(questionData.shuffledWords);
-      } else {
-        // If no shuffledWords from backend, create them from blanks and options
-        const finalWords = createShuffledWords(blanksData, questionData.options);
-        setShuffledWords(finalWords);
-      }
-    }
-    if (visible) {
-      setPoints(questionData?.points || 1);
-    }
-  }, [questionData, visible, parseQuestionText, createBlankElementSimple, updateBlankNumbersSimple, createShuffledWords]);
+      return newBlanks;
+    });
+  }, [createShuffledWords]);
 
-  const handlePaste = useCallback((e) => {
-    // Prevent all paste
-    e.preventDefault();
-    return false;
-  }, []);
+  // Handle delete blank from DOM (moved earlier so creators can use it)
+  const handleDeleteBlankElement = useCallback((blankId) => {
+    if (!editorRef.current) return;
+
+    // Find and remove the blank element from DOM
+    const blankElement = editorRef.current.querySelector(`[data-blank-id="${blankId}"]`);
+    if (blankElement) {
+      blankElement.remove();
+    }
+
+    // Update state
+    setBlanks(prev => {
+      const newBlanks = prev.filter(blank => blank.id !== blankId);
+      
+      // Update blank numbers and shuffled words after deletion
+      requestAnimationFrame(() => {
+        updateBlankNumbers();
+        
+        // Update shuffled words from new blanks with correct order
+        const finalWords = createShuffledWords(newBlanks);
+        setShuffledWords(finalWords);
+      });
+      
+      return newBlanks;
+    });
+    
+    console.log('Item removed');
+    
+    // Refocus editor
+    editorRef.current.focus();
+  }, [updateBlankNumbers, createShuffledWords]);
 
   // Check if cursor is inside a blank element
   const isCursorInsideBlank = useCallback(() => {
@@ -423,73 +335,6 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
     () => debounce(updatePopupPositionCore, 150),
     [updatePopupPositionCore]
   );
-
-  // Generate position ID
-  const generatePositionId = () => {
-    return Math.random().toString(36).substring(2, 8);
-  };
-
-  // Handle blank answer change
-  const handleBlankAnswerChange = useCallback((blankId, value) => {
-    setBlanks(prev => {
-      const newBlanks = prev.map(blank => 
-        blank.id === blankId ? { ...blank, answer: value } : blank
-      );
-      
-      // Update shuffled words with requestAnimationFrame to avoid lag
-        requestAnimationFrame(() => {
-          const finalWords = createShuffledWords(newBlanks);
-          setShuffledWords(finalWords);
-        });
-      
-      return newBlanks;
-    });
-  }, [createShuffledWords]);
-
-  // Update blank numbers based on DOM order
-  const updateBlankNumbers = useCallback(() => {
-    if (!editorRef.current) return;
-    
-    const blankElements = editorRef.current.querySelectorAll('[data-blank-id]');
-    blankElements.forEach((element, index) => {
-      const badge = element.querySelector('.blank-badge');
-      if (badge) {
-        badge.textContent = index + 1;
-      }
-    });
-  }, []);
-
-  // Handle delete blank from DOM
-  const handleDeleteBlankElement = useCallback((blankId) => {
-    if (!editorRef.current) return;
-
-    // Find and remove the blank element from DOM
-    const blankElement = editorRef.current.querySelector(`[data-blank-id="${blankId}"]`);
-    if (blankElement) {
-      blankElement.remove();
-    }
-
-    // Update state
-    setBlanks(prev => {
-      const newBlanks = prev.filter(blank => blank.id !== blankId);
-      
-      // Update blank numbers and shuffled words after deletion
-      requestAnimationFrame(() => {
-        updateBlankNumbers();
-        
-        // Update shuffled words from new blanks with correct order
-        const finalWords = createShuffledWords(newBlanks);
-        setShuffledWords(finalWords);
-      });
-      
-      return newBlanks;
-    });
-    
-    console.log('Item removed');
-    
-    // Refocus editor
-    editorRef.current.focus();
-  }, [updateBlankNumbers, createShuffledWords]);
 
   // Create blank element
   const createBlankElement = useCallback((blank, index) => {
@@ -635,48 +480,48 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
     });
 
     // Delete button (hidden by default in compact mode)
-		const deleteBtn = document.createElement('button');
-		deleteBtn.innerHTML = '×';
-		deleteBtn.className = 'blank-delete-btn';
-		deleteBtn.type = 'button';
-		deleteBtn.style.cssText = `
-			border: none;
-			background: rgba(255,77,79,0.9);
-			color: white;
-			border-radius: 4px;
-			width: 24px;
-			height: 24px;
-			display: none;
-			align-items: center;
-			justify-content: center;
-			cursor: pointer;
-			transition: all 0.2s ease;
-			font-size: 18px;
-			font-weight: bold;
-			position: relative;
-			z-index: 1000;
-			flex-shrink: 0;
-		`;
-		deleteBtn.addEventListener('click', (e) => {
-			e.preventDefault();
-			e.stopPropagation();
-			e.stopImmediatePropagation();
-			console.log('Delete button clicked for blank:', blank.id);
-			handleDeleteBlankElement(blank.id);
-		});
-		deleteBtn.addEventListener('mousedown', (e) => {
-			e.preventDefault();
-			e.stopPropagation();
-			e.stopImmediatePropagation();
-		});
-		deleteBtn.addEventListener('mouseenter', (e) => {
-			e.target.style.background = 'rgba(255,77,79,1)';
-			e.target.style.transform = 'scale(1.1)';
-		});
-		deleteBtn.addEventListener('mouseleave', (e) => {
-			e.target.style.background = 'rgba(255,77,79,0.9)';
-			e.target.style.transform = 'scale(1)';
-		});
+    const deleteBtn = document.createElement('button');
+    deleteBtn.innerHTML = '×';
+    deleteBtn.className = 'blank-delete-btn';
+    deleteBtn.type = 'button';
+    deleteBtn.style.cssText = `
+      border: none;
+      background: rgba(255,77,79,0.9);
+      color: white;
+      border-radius: 4px;
+      width: 24px;
+      height: 24px;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      font-size: 18px;
+      font-weight: bold;
+      position: relative;
+      z-index: 1000;
+      flex-shrink: 0;
+    `;
+    deleteBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      e.stopImmediatePropagation();
+      console.log('Delete button clicked for blank:', blank.id);
+      handleDeleteBlankElement(blank.id);
+    });
+    deleteBtn.addEventListener('mousedown', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      e.stopImmediatePropagation();
+    });
+    deleteBtn.addEventListener('mouseenter', (e) => {
+      e.target.style.background = 'rgba(255,77,79,1)';
+      e.target.style.transform = 'scale(1.1)';
+    });
+    deleteBtn.addEventListener('mouseleave', (e) => {
+      e.target.style.background = 'rgba(255,77,79,0.9)';
+      e.target.style.transform = 'scale(1)';
+    });
 
     // Function to expand blank (show input and delete button)
     const expandBlank = () => {
@@ -714,6 +559,88 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
 
     return span;
   }, [handleBlankAnswerChange, handleDeleteBlankElement, updatePopupPosition]);
+
+  // Initialize from questionData
+  useEffect(() => {
+    if (visible && questionData?.questionText && editorRef.current) {
+      console.log('ReorderModal - Initializing with questionData:', questionData);
+      console.log('ReorderModal - questionData.content?.data:', questionData?.content?.data);
+      console.log('ReorderModal - questionData.options:', questionData?.options);
+      console.log('ReorderModal - questionData.incorrectOptions:', questionData?.incorrectOptions);
+      
+      // Parse existing question - pass content.data and options
+      const { parsed: parsedContent, blanksData } = parseQuestionText(
+        questionData.questionText, 
+        questionData.content?.data || [],
+        questionData.options || []
+      );
+      
+      // Set blanks state
+      setBlanks(blanksData);
+      console.log('ReorderModal - State updated with parsed data, blanksData length:', blanksData.length);
+      
+      // Build editor DOM from parsed content
+      editorRef.current.innerHTML = '';
+      let blankCounter = 0;
+      parsedContent.forEach((item, index) => {
+        console.log('ReorderModal - Processing item:', item);
+        if (item.type === 'text') {
+          if (item.content) {
+            editorRef.current.appendChild(document.createTextNode(item.content));
+          }
+        } else if (item.type === 'blank') {
+          // Find the corresponding blank data from blanksData
+          const blankData = blanksData.find(b => b.id === item.id);
+          if (blankData) {
+            console.log('ReorderModal - Creating blank element for:', blankData);
+            const blankElement = createBlankElement(blankData, blankCounter);
+            editorRef.current.appendChild(blankElement);
+            blankCounter++;
+          } else {
+            console.warn('ReorderModal - No blank data found for item:', item);
+          }
+        }
+      });
+      
+      // Update blank numbers after populating editor
+      requestAnimationFrame(() => {
+        updateBlankNumbers();
+      });
+      
+      // Handle shuffledWords from backend
+      if (questionData.shuffledWords && questionData.shuffledWords.length > 0) {
+        setShuffledWords(questionData.shuffledWords);
+      } else {
+        // If no shuffledWords from backend, create them from blanks and options
+        const finalWords = createShuffledWords(blanksData, questionData.options);
+        setShuffledWords(finalWords);
+      }
+    }
+    if (visible) {
+      setPoints(questionData?.points || 1);
+    }
+  }, [questionData, visible, parseQuestionText, createBlankElement, updateBlankNumbers, createShuffledWords]);
+
+  const handlePaste = useCallback((e) => {
+    // Prevent all paste
+    e.preventDefault();
+    return false;
+  }, []);
+
+
+  // Generate position ID
+  const generatePositionId = () => {
+    return Math.random().toString(36).substring(2, 8);
+  };
+
+  // Handle blank answer change
+  // (removed duplicate - see earlier definition used by creators)
+
+  // (moved earlier) updateBlankNumbers
+
+  // (moved earlier) handleDeleteBlankElement
+
+  // (moved earlier) createBlankElement
 
   // Insert blank at saved cursor position
   const insertBlankAtCursor = useCallback(() => {
@@ -1126,7 +1053,7 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
             animation: 'pulse 2s infinite'
           }} />
           <span style={{ fontSize: '24px', fontWeight: 600 }}>
-            Create Reorder Question
+            {questionData ? 'Edit Reorder Question' : 'Create Reorder Question'}
           </span>
         </div>
       }
