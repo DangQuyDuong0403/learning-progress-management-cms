@@ -1849,6 +1849,8 @@
     "aiFeedbackEnabled": "AI Feedback Enabled",
     "startDate": "Start Date",
     "endDate": "End Date",
+    "no": "No",
+    "lesson": "Lesson",
     "selectStartDate": "Select Start Date",
     "selectEndDate": "Select End Date",
     "of": "of",
