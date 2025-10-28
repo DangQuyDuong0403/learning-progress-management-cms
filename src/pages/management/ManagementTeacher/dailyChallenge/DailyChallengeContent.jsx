@@ -205,17 +205,11 @@ const SortablePassageItem = memo(
             </Typography.Text>
           </div>
           <div className="passage-controls">
-            <Select
-              value={passage.points}
-              onChange={handlePointChange}
-              style={{ width: 120 }}
-              size="small"
+            <div
+              style={{ width: 120, textAlign: 'right', fontWeight: 600 }}
             >
-              <Select.Option value={1}>1 {t('dailyChallenge.point') || 'điểm'}</Select.Option>
-              <Select.Option value={2}>2 {t('dailyChallenge.point') || 'điểm'}</Select.Option>
-              <Select.Option value={3}>3 {t('dailyChallenge.point') || 'điểm'}</Select.Option>
-              <Select.Option value={5}>5 {t('dailyChallenge.point') || 'điểm'}</Select.Option>
-            </Select>
+              {passage.points} {t('dailyChallenge.point') || 'điểm'}
+            </div>
             <Space size="small">
               <Tooltip title="Edit">
                 <Button
@@ -334,16 +328,9 @@ const SortablePassageItem = memo(
                       </Typography.Text>
                     </div>
                     <div className="question-controls">
-                      <Select
-                        value={question.points}
-                        style={{ width: 120 }}
-                        size="small"
-                      >
-                        <Select.Option value={1}>1 {t('dailyChallenge.point') || 'điểm'}</Select.Option>
-                        <Select.Option value={2}>2 {t('dailyChallenge.point') || 'điểm'}</Select.Option>
-                        <Select.Option value={3}>3 {t('dailyChallenge.point') || 'điểm'}</Select.Option>
-                        <Select.Option value={5}>5 {t('dailyChallenge.point') || 'điểm'}</Select.Option>
-                      </Select>
+                      <div style={{ width: 120, textAlign: 'right', fontWeight: 600 }}>
+                        {question.points} {t('dailyChallenge.point') || 'điểm'}
+                      </div>
                     </div>
                   </div>
 
@@ -1851,17 +1838,9 @@ const SortableQuestionItem = memo(
             <Typography.Text strong>{index + 1}. {getQuestionTypeLabel()}</Typography.Text>
           </div>
           <div className="question-controls">
-            <Select
-              value={question.points}
-              onChange={handlePointChange}
-              style={{ width: 120 }}
-              size="small"
-            >
-              <Select.Option value={1}>1 {t('dailyChallenge.point') || 'điểm'}</Select.Option>
-              <Select.Option value={2}>2 {t('dailyChallenge.point') || 'điểm'}</Select.Option>
-              <Select.Option value={3}>3 {t('dailyChallenge.point') || 'điểm'}</Select.Option>
-              <Select.Option value={5}>5 {t('dailyChallenge.point') || 'điểm'}</Select.Option>
-            </Select>
+            <div style={{ width: 120, textAlign: 'right', fontWeight: 600 }}>
+              {question.points} {t('dailyChallenge.point') || 'điểm'}
+            </div>
             <Space size="small">
               <Tooltip title="Edit">
                 <Button

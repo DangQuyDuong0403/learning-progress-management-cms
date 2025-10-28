@@ -675,10 +675,33 @@ const FillBlankModal = ({ visible, onCancel, onSave, questionData = null }) => {
 
 	// Handle blank answer change
 	const handleBlankAnswerChange = useCallback((blankId, value) => {
+		const limitedValue = (value ?? '').slice(0, 50);
 		setBlanks(prev => prev.map(blank => 
-				blank.id === blankId ? { ...blank, answer: value } : blank
+				blank.id === blankId ? { ...blank, answer: limitedValue } : blank
 		));
 	}, [setBlanks]);
+
+	// Keep chip text in sync when editing from summary (outside the chip input)
+	const updateBlankAnswerText = useCallback((blankId, value) => {
+		if (!editorRef.current) return;
+		const textEl = editorRef.current.querySelector(`[data-blank-id="${blankId}"] .blank-answer-text`);
+		if (textEl) {
+			textEl.textContent = value || '';
+		}
+	}, []);
+
+	// Expand and focus a blank chip in the editor from the summary list
+	const expandBlankById = useCallback((blankId) => {
+		if (!editorRef.current) return;
+		const blankEl = editorRef.current.querySelector(`[data-blank-id="${blankId}"]`);
+		if (blankEl) {
+			if (typeof blankEl.expandBlank === 'function') {
+				blankEl.expandBlank();
+			}
+			blankEl.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+			editorRef.current.focus();
+		}
+	}, []);
 
 	// Handle delete blank from DOM
 	const handleDeleteBlankElement = useCallback((blankId) => {
@@ -739,6 +762,8 @@ const FillBlankModal = ({ visible, onCancel, onSave, questionData = null }) => {
 			min-width: 0;
 			max-width: 220px;
 			flex: 1;
+			position: relative;
+			padding-right: 56px;
 		`;
 
 		// Number badge
@@ -780,7 +805,8 @@ const FillBlankModal = ({ visible, onCancel, onSave, questionData = null }) => {
 		const input = document.createElement('input');
 		input.type = 'text';
 		input.placeholder = 'type answer...';
-		input.value = blank.answer || '';
+		input.value = (blank.answer || '').slice(0, 50);
+		input.maxLength = 50;
 		input.className = 'blank-input';
 		input.style.cssText = `
 			border: none;
@@ -797,12 +823,32 @@ const FillBlankModal = ({ visible, onCancel, onSave, questionData = null }) => {
 			flex: 1;
 			margin-right: 8px;
 		`;
+
+		// Character counter (hidden by default in compact mode)
+		const counter = document.createElement('span');
+		counter.className = 'blank-char-counter';
+		counter.textContent = `${input.value.length}/50`;
+		counter.style.cssText = `
+			font-size: 12px;
+			color: #999;
+			display: none;
+			white-space: nowrap;
+			position: absolute;
+			right: 10px;
+			top: 50%;
+			transform: translateY(-50%);
+			pointer-events: none;
+		`;
 	// Optimize input handling with debounce for state update
 	let inputTimeout;
 	input.addEventListener('input', (e) => {
-		const newValue = e.target.value;
+		const newValue = (e.target.value || '').slice(0, 50);
+		if (e.target.value !== newValue) {
+			e.target.value = newValue;
+		}
 		// Update answer text in real-time (instant visual feedback)
 		answerText.textContent = newValue || '';
+		counter.textContent = `${newValue.length}/50`;
 		
 		// Debounce state update to reduce re-renders
 		clearTimeout(inputTimeout);
@@ -847,6 +893,7 @@ const FillBlankModal = ({ visible, onCancel, onSave, questionData = null }) => {
 			position: relative;
 			z-index: 1000;
 			flex-shrink: 0;
+			margin-right: 30px;
 		`;
 		deleteBtn.addEventListener('click', (e) => {
 			e.preventDefault();
@@ -873,6 +920,7 @@ const FillBlankModal = ({ visible, onCancel, onSave, questionData = null }) => {
 			answerText.style.display = 'none';
 			input.style.display = 'inline';
 			deleteBtn.style.display = 'flex';
+			counter.style.display = 'inline';
 			setTimeout(() => input.focus(), 10);
 		};
 
@@ -881,6 +929,7 @@ const FillBlankModal = ({ visible, onCancel, onSave, questionData = null }) => {
 			answerText.style.display = 'inline';
 			input.style.display = 'none';
 			deleteBtn.style.display = 'none';
+			counter.style.display = 'none';
 		};
 
 		// Click on chip to expand
@@ -893,13 +942,14 @@ const FillBlankModal = ({ visible, onCancel, onSave, questionData = null }) => {
 		chip.appendChild(answerText);
 		chip.appendChild(input);
 		chip.appendChild(deleteBtn);
+		chip.appendChild(counter);
 		span.appendChild(chip);
 
 		// Store expand function for external use
 		span.expandBlank = expandBlank;
 
 		return span;
-	}, [handleBlankAnswerChange, handleDeleteBlankElement]);
+	}, [handleBlankAnswerChange, handleDeleteBlankElement, blankColors]);
 
 	// Find and replace pattern in text nodes without affecting existing blanks
 	const findAndReplacePattern = useCallback((element) => {
@@ -1428,7 +1478,7 @@ const FillBlankModal = ({ visible, onCancel, onSave, questionData = null }) => {
 		});
 		
 		editorInitializedRef.current = true;
-	}, [visible, createBlankElement, updateBlankNumbers]);
+	}, [visible, createBlankElement, updateBlankNumbers, blankColors]);
 
 	// Get blanks ordered by DOM position
 	const orderedBlanks = useMemo(() => {
@@ -1495,7 +1545,7 @@ const FillBlankModal = ({ visible, onCancel, onSave, questionData = null }) => {
 						animation: 'pulse 2s infinite'
 					}} />
 					<span style={{ fontSize: '24px', fontWeight: 600 }}>
-						Create Fill in the Blank Question
+						{questionData ? 'Edit Fill in the Blank Question' : 'Create Fill in the Blank Question'}
 					</span>
 				</div>
 			}
@@ -2027,47 +2077,62 @@ const FillBlankModal = ({ visible, onCancel, onSave, questionData = null }) => {
 								Blanks Summary ({blanks.length})
 							</div>
 							<div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-						{orderedBlanks.map((blank, index) => (
-							<div
-								key={blank.id}
-								style={{
-											padding: '8px 12px',
-											background: 'white',
-											border: `2px solid ${blank.color}`,
-											borderRadius: '8px',
-											fontSize: '13px',
+					{orderedBlanks.map((blank, index) => (
+						<div
+							key={blank.id}
+							onClick={() => expandBlankById(blank.id)}
+							style={{
+									padding: '8px 12px',
+									background: 'white',
+									border: `2px solid ${blank.color}`,
+									borderRadius: '8px',
+									fontSize: '13px',
+								display: 'flex',
+								alignItems: 'center',
+										gap: '6px',
+								cursor: 'pointer'
+								}}
+							>
+								<span style={{
+									width: '20px',
+									height: '20px',
+									borderRadius: '50%',
+									background: blank.color,
+										color: 'white',
 									display: 'flex',
 									alignItems: 'center',
-											gap: '6px'
-										}}
-									>
-										<span style={{
-											width: '20px',
-											height: '20px',
-											borderRadius: '50%',
-											background: blank.color,
-												color: 'white',
-												display: 'flex',
-												alignItems: 'center',
-												justifyContent: 'center',
-											fontSize: '11px',
-											fontWeight: 700
-										}}>
-											{index + 1}
-										</span>
-									<span style={{ 
-										fontWeight: 500, 
-										color: '#333',
-										maxWidth: '200px',
-										overflow: 'hidden',
-										textOverflow: 'ellipsis',
-										whiteSpace: 'nowrap',
-										display: 'inline-block'
-									}}>
-										{blank.answer || '(empty)'}
-									</span>
-							</div>
-						))}
+									justifyContent: 'center',
+									fontSize: '11px',
+									fontWeight: 700
+								}}>
+									{index + 1}
+								</span>
+											<div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+												<input
+													value={(blank.answer || '').slice(0, 50)}
+													maxLength={50}
+													onChange={(e) => {
+														const v = (e.target.value || '').slice(0, 50);
+														handleBlankAnswerChange(blank.id, v);
+														updateBlankAnswerText(blank.id, v);
+													}}
+													onClick={(e) => e.stopPropagation()}
+													placeholder="type answer..."
+													style={{
+														border: '1px solid rgba(24, 144, 255, 0.3)',
+														outline: 'none',
+														padding: '6px 8px',
+														borderRadius: '6px',
+														fontSize: '13px',
+														minWidth: '160px'
+													}}
+												/>
+												<span style={{ fontSize: '12px', color: '#999', whiteSpace: 'nowrap' }}>
+													{`${(blank.answer || '').slice(0, 50).length}/50`}
+												</span>
+											</div>
+						</div>
+					))}
 					</div>
 						</div>
 					)}

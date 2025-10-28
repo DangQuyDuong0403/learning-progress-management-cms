@@ -274,7 +274,7 @@ const CreateReadingChallenge = () => {
         
         transformedQuestions = [{
           // Include id if editing existing passage
-          ...(existingQuestion?.isFromBackend && existingQuestion?.id && { id: existingQuestion.id }),
+          ...(existingQuestion?.id && { id: existingQuestion.id }),
           questionText: passage.content || '',
           orderNumber: 1,
           score: 1,
@@ -298,7 +298,7 @@ const CreateReadingChallenge = () => {
         
         transformedQuestions = [{
           // Include id if editing existing passage
-          ...(existingQuestion?.isFromBackend && existingQuestion?.id && { id: existingQuestion.id }),
+          ...(existingQuestion?.id && { id: existingQuestion.id }),
           questionText: passage.content || '',
           orderNumber: 1,
           score: 1,
@@ -325,9 +325,8 @@ const CreateReadingChallenge = () => {
         });
         
         const baseQuestion = {
-          // Only include id if the question has isFromBackend flag (loaded from backend)
-          // New questions added in edit mode will not have this flag
-          ...(question.isFromBackend && question.id && { id: question.id }),
+          // Include id when present (editing existing question)
+          ...(question.id && { id: question.id }),
           questionText: question.question || question.questionText || '',
           orderNumber: index + 1,
           score: question.points || 1,
