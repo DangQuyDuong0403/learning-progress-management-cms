@@ -43,64 +43,6 @@ const challengeTypes = [
 
 // Select removed in favor of AccountList-style filter dropdown
 
-// Mock data - thay thế bằng API call thực tế
-const mockDailyChallenges = [
-  {
-    id: 1,
-    title: "Grammar & Vocabulary Challenge #1",
-    type: "Grammar & Vocabulary",
-    timeLimit: 30,
-    totalQuestions: 20,
-    description: "Basic English grammar and vocabulary test",
-    status: "active",
-    createdAt: "2024-01-15",
-    teacher: "Nguyễn Văn A",
-  },
-  {
-    id: 2,
-    title: "Reading Comprehension Test #2",
-    type: "Reading",
-    timeLimit: 45,
-    totalQuestions: 15,
-    description: "Reading comprehension with multiple choice questions",
-    status: "active",
-    createdAt: "2024-01-16",
-    teacher: "Trần Thị B",
-  },
-  {
-    id: 3,
-    title: "Writing Challenge #3",
-    type: "Writing",
-    timeLimit: 60,
-    totalQuestions: 3,
-    description: "Essay writing challenge with specific topics",
-    status: "active",
-    createdAt: "2024-01-17",
-    teacher: "Lê Văn C",
-  },
-  {
-    id: 4,
-    title: "Listening Test #4",
-    type: "Listening",
-    timeLimit: 25,
-    totalQuestions: 12,
-    description: "Audio-based listening comprehension test",
-    status: "active",
-    createdAt: "2024-01-18",
-    teacher: "Phạm Thị D",
-  },
-  {
-    id: 5,
-    title: "Speaking Assessment #5",
-    type: "Speaking",
-    timeLimit: 15,
-    totalQuestions: 5,
-    description: "Oral communication skills assessment",
-    status: "inactive",
-    createdAt: "2024-01-19",
-    teacher: "Nguyễn Thị E",
-  },
-];
 
 const DailyChallengeList = ({ readOnly = false }) => {
   const { t } = useTranslation();
@@ -123,6 +65,7 @@ const DailyChallengeList = ({ readOnly = false }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [totalItems, setTotalItems] = useState(0);
+  const [allChallenges, setAllChallenges] = useState([]); // Full flattened list for lesson-aware pagination
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [createModalData, setCreateModalData] = useState(null); // Store lesson data for create modal
   const [challengeTypeModalVisible, setChallengeTypeModalVisible] = useState(false);
@@ -248,84 +191,250 @@ const DailyChallengeList = ({ readOnly = false }) => {
         });
       }
 
-      console.log('Daily Challenges API Response:', response.data);
-      
-      // Xử lý response data - Data structure: lessons with dailyChallenges array
-      if (response.data && Array.isArray(response.data)) {
+      // axios interceptor already returns response.data
+      console.log('Daily Challenges API Response (normalized):', response);
+
+      // Normalize different possible response shapes
+      let items = [];
+      let total = 0;
+
+      // Common shapes:
+      // 1) { success, data: [...], totalElements }
+      // 2) { content: [...], totalElements }
+      // 3) [...]
+      if (response) {
+        if (Array.isArray(response)) {
+          items = response;
+          total = response.length;
+        } else if (Array.isArray(response.data)) {
+          items = response.data;
+          total = response.totalElements || response.total || response.data.length || 0;
+        } else if (Array.isArray(response.content)) {
+          items = response.content;
+          total = response.totalElements || response.total || response.content.length || 0;
+        } else if (response.success && Array.isArray(response.data)) {
+          items = response.data;
+          total = response.totalElements || response.total || response.data.length || 0;
+        } else {
+          items = [];
+          total = 0;
+        }
+      }
+
+      // Detect if items are lessons containing dailyChallenges; otherwise treat as challenges
+      const looksLikeLessons = items.length > 0 && (items[0].dailyChallenges || items.some(it => Array.isArray(it.dailyChallenges)));
+
+      if (looksLikeLessons) {
         // Flatten lessons and their daily challenges into a single array for table display
-        const flattenedData = [];
-        
-        response.data.forEach((lesson, lessonIndex) => {
-          if (lesson.dailyChallenges && lesson.dailyChallenges.length > 0) {
-            lesson.dailyChallenges.forEach((challenge, challengeIndex) => {
-              flattenedData.push({
-                ...challenge,
-                // Challenge fields
-                id: challenge.id,
-                title: challenge.challengeName || 'Untitled Challenge',
-                type: challenge.challengeType || 'Unknown',
-                status: challenge.challengeStatus || 'DRAFT',
-                startDate: challenge.startDate,
-                endDate: challenge.endDate,
-                // Lesson fields for display
+        const flattenLessons = (lessons) => {
+          const out = [];
+          lessons.forEach((lesson, lessonIndex) => {
+            if (lesson.dailyChallenges && lesson.dailyChallenges.length > 0) {
+              lesson.dailyChallenges.forEach((challenge, challengeIndex) => {
+                out.push({
+                  ...challenge,
+                  id: challenge.id,
+                  title: challenge.challengeName || 'Untitled Challenge',
+                  type: challenge.challengeType || 'Unknown',
+                  status: challenge.challengeStatus || 'DRAFT',
+                  startDate: challenge.startDate,
+                  endDate: challenge.endDate,
+                  lessonId: lesson.id,
+                  lessonName: lesson.classLessonName || 'Untitled Lesson',
+                  lessonOrder: lesson.orderNumber || lessonIndex + 1,
+                  isFirstChallengeInLesson: challengeIndex === 0,
+                  totalChallengesInLesson: lesson.dailyChallenges.length,
+                  rowSpan: challengeIndex === 0 ? lesson.dailyChallenges.length : 0,
+                  description: '',
+                  teacher: 'Unknown Teacher',
+                  timeLimit: 30,
+                  totalQuestions: 0,
+                  createdAt: new Date().toISOString().split('T')[0],
+                });
+              });
+            } else {
+              out.push({
+                id: `lesson-${lesson.id}`,
+                title: '',
+                type: '',
+                status: '',
                 lessonId: lesson.id,
                 lessonName: lesson.classLessonName || 'Untitled Lesson',
                 lessonOrder: lesson.orderNumber || lessonIndex + 1,
-                // Row metadata for merge cell logic
-                isFirstChallengeInLesson: challengeIndex === 0,
-                totalChallengesInLesson: lesson.dailyChallenges.length,
-                rowSpan: challengeIndex === 0 ? lesson.dailyChallenges.length : 0,
-                // Additional fields for compatibility
+                isFirstChallengeInLesson: true,
+                totalChallengesInLesson: 0,
+                rowSpan: 1,
                 description: '',
                 teacher: 'Unknown Teacher',
-                timeLimit: 30,
+                timeLimit: 0,
                 totalQuestions: 0,
                 createdAt: new Date().toISOString().split('T')[0],
+                isEmptyLesson: true,
               });
-            });
-          } else {
-            // Lesson without challenges - show lesson row with empty challenge columns
-            flattenedData.push({
-              id: `lesson-${lesson.id}`,
-              title: '', // Empty title
-              type: '', // Empty type
-              status: '', // Empty status
-              lessonId: lesson.id,
-              lessonName: lesson.classLessonName || 'Untitled Lesson',
-              lessonOrder: lesson.orderNumber || lessonIndex + 1,
-              isFirstChallengeInLesson: true,
-              totalChallengesInLesson: 0,
-              rowSpan: 1,
-              description: '',
-              teacher: 'Unknown Teacher',
-              timeLimit: 0,
-              totalQuestions: 0,
-              createdAt: new Date().toISOString().split('T')[0],
-              isEmptyLesson: true, // Flag to identify empty lessons
-            });
+            }
+          });
+          return out;
+        };
+
+        // If total is not reliable for challenge-level pagination, fetch all lessons to compute total challenges
+        const shouldFetchAll = true; // Always fetch all to ensure correct total/page count for challenges
+        if (shouldFetchAll) {
+          const fullParams = {
+            page: 0,
+            size: 100,
+            text: searchDebounce || undefined,
+            sortBy: 'createdAt',
+            sortDir: 'desc',
+          };
+          const fullResponse = classId
+            ? await dailyChallengeApi.getDailyChallengesByClass(classId, fullParams)
+            : await dailyChallengeApi.getAllDailyChallenges(fullParams);
+
+          let allLessons = [];
+          if (Array.isArray(fullResponse)) {
+            allLessons = fullResponse;
+          } else if (Array.isArray(fullResponse.data)) {
+            allLessons = fullResponse.data;
+          } else if (Array.isArray(fullResponse.content)) {
+            allLessons = fullResponse.content;
+          } else if (fullResponse.success && Array.isArray(fullResponse.data)) {
+            allLessons = fullResponse.data;
           }
-        });
-        
-        setDailyChallenges(flattenedData);
-        setTotalItems(flattenedData.length);
+
+          const flattenedAll = flattenLessons(allLessons);
+          setAllChallenges(flattenedAll);
+          setTotalItems(flattenedAll.length);
+        } else {
+          const flattenedData = flattenLessons(items);
+          setAllChallenges(flattenedData);
+          setTotalItems(total || flattenedData.length);
+        }
+      } else if (items && items.length >= 0) {
+        // Items are already challenges
+        const mapped = items.map((challenge, idx) => ({
+          ...challenge,
+          id: challenge.id,
+          title: challenge.challengeName || challenge.title || 'Untitled Challenge',
+          type: challenge.challengeType || challenge.type || 'Unknown',
+          status: challenge.challengeStatus || challenge.status || 'DRAFT',
+          startDate: challenge.startDate,
+          endDate: challenge.endDate,
+          lessonId: challenge.lessonId || challenge.classLessonId,
+          lessonName: challenge.lessonName || '',
+          lessonOrder: challenge.lessonOrder || idx + 1,
+          isFirstChallengeInLesson: true,
+          totalChallengesInLesson: 1,
+          rowSpan: 1,
+          description: challenge.description || '',
+          teacher: challenge.teacher || 'Unknown Teacher',
+          timeLimit: challenge.timeLimit || 30,
+          totalQuestions: challenge.totalQuestions || 0,
+          createdAt: challenge.createdAt || new Date().toISOString().split('T')[0],
+        }));
+
+        setAllChallenges(mapped);
+        setTotalItems(total || mapped.length);
       } else {
-        setDailyChallenges([]);
+        setAllChallenges([]);
         setTotalItems(0);
       }
-      
+
       setLoading(false);
     } catch (error) {
       console.error('Error fetching daily challenges:', error);
       
-      // Fallback to mock data if API fails
-      console.log('Falling back to mock data due to API error');
-      setDailyChallenges(mockDailyChallenges);
+
       
       const errorMessage = error.response?.data?.error || error.message || t('dailyChallenge.loadChallengesError');
       spaceToast.error(errorMessage);
       setLoading(false);
     }
-  }, [classId, currentPage, pageSize, searchDebounce, t]);
+  }, [classId, searchDebounce, t]);
+
+  // Compute lesson-aware pagination: recalculate rowSpan and first-in-lesson within the current page window
+  const computePagedRows = useCallback((fullList, page, size) => {
+    if (!Array.isArray(fullList) || fullList.length === 0) return [];
+    const startIndex = (page - 1) * size;
+    const endIndex = startIndex + size; // exclusive
+
+    const slice = fullList.slice(startIndex, endIndex);
+
+    // Build map of lessonId to indices in the full list for quick remaining count
+    const lessonToIndices = new Map();
+    for (let i = 0; i < fullList.length; i++) {
+      const rec = fullList[i];
+      const key = rec.lessonId ?? rec.lessonID ?? `no-lesson-${i}`;
+      if (!lessonToIndices.has(key)) lessonToIndices.set(key, []);
+      lessonToIndices.get(key).push(i);
+    }
+
+    // For each contiguous group by lessonId within the slice, mark the first item and set rowSpan = count within the slice
+    const result = slice.map((rec, idxInSlice) => ({ ...rec }));
+    let i = 0;
+    while (i < result.length) {
+      const current = result[i];
+      const lessonKey = current.lessonId ?? current.lessonID ?? `no-lesson-${startIndex + i}`;
+
+      // Find how many rows in this slice share the same lesson consecutively starting at i
+      let j = i;
+      while (
+        j < result.length &&
+        (result[j].lessonId ?? result[j].lessonID ?? `no-lesson-${startIndex + j}`) === lessonKey &&
+        !result[j].isEmptyLesson
+      ) {
+        j++;
+      }
+      const countInSlice = j - i;
+
+      if (countInSlice > 0) {
+        // Mark first-in-page for this lesson group
+        result[i].isFirstChallengeInLesson = true;
+        result[i].rowSpan = countInSlice;
+
+        // Ensure subsequent rows in this page do not render lesson cell
+        for (let k = i + 1; k < j; k++) {
+          result[k].isFirstChallengeInLesson = false;
+          result[k].rowSpan = 0;
+        }
+      } else {
+        // For empty lesson rows, keep as is
+        result[i].isFirstChallengeInLesson = true;
+        result[i].rowSpan = 1;
+      }
+
+      i = Math.max(j, i + 1);
+    }
+
+    return result;
+  }, []);
+
+  // Build filtered full list (type/status only). Search is handled by API already.
+  const filteredAllChallenges = React.useMemo(() => {
+    return allChallenges.filter((challenge) => {
+      const matchesType = typeFilter.length === 0 || typeFilter.includes(challenge.type);
+      const matchesStatus = statusFilter.length === 0 || statusFilter.includes(challenge.status);
+      return matchesType && matchesStatus;
+    });
+  }, [allChallenges, typeFilter, statusFilter]);
+
+  // Recompute page data whenever pagination or filtered full list changes
+  useEffect(() => {
+    const paged = computePagedRows(filteredAllChallenges, currentPage, pageSize);
+    setDailyChallenges(paged);
+  }, [filteredAllChallenges, currentPage, pageSize, computePagedRows]);
+
+  // Keep totalItems in sync with filtered total and correct currentPage bounds
+  useEffect(() => {
+    const total = filteredAllChallenges.length;
+    setTotalItems(total);
+    const maxPage = Math.max(1, Math.ceil(total / pageSize));
+    console.log('🔍 Pagination check:', { currentPage, maxPage, total, pageSize });
+    // Only reset currentPage if we have data and currentPage exceeds maxPage
+    if (total > 0 && currentPage > maxPage) {
+      console.log('⚠️ RESETTING currentPage from', currentPage, 'to', maxPage);
+      setCurrentPage(maxPage);
+    }
+  }, [filteredAllChallenges, pageSize]);
 
   // Fetch class data on component mount if classId exists
   useEffect(() => {
@@ -396,30 +505,10 @@ const DailyChallengeList = ({ readOnly = false }) => {
     };
   }, [enterDailyChallengeMenu, exitDailyChallengeMenu, classId, location.state, user, classData]);
 
-  // Update challenge count when filters change
+  // Update challenge count (for header bar) when filters/data change
   useEffect(() => {
-    // Calculate filtered challenges count
-    const filteredCount = dailyChallenges.filter((challenge) => {
-      try {
-        const matchesSearch =
-          searchText === "" ||
-          (challenge.title && challenge.title.toLowerCase().includes(searchText.toLowerCase())) ||
-          (challenge.lessonName && challenge.lessonName.toLowerCase().includes(searchText.toLowerCase())) ||
-          (challenge.description && challenge.description.toLowerCase().includes(searchText.toLowerCase()));
-
-        const matchesType = typeFilter.length === 0 || typeFilter.includes(challenge.type);
-        const matchesStatus = statusFilter.length === 0 || statusFilter.includes(challenge.status);
-
-        return matchesSearch && matchesType && matchesStatus;
-      } catch (error) {
-        console.error('Error filtering challenge:', error, challenge);
-        return false;
-      }
-    }).length;
-    
-    // Update count in context
-    updateChallengeCount(filteredCount);
-  }, [dailyChallenges, searchText, typeFilter, statusFilter, updateChallengeCount]);
+    updateChallengeCount(filteredAllChallenges.length);
+  }, [filteredAllChallenges, updateChallengeCount]);
 
   const handleSearch = (value) => {
     setSearchText(value);
@@ -611,16 +700,6 @@ const DailyChallengeList = ({ readOnly = false }) => {
     await handlePublishConfirm(publishModal.challengeId, 'PUBLISHED');
     setPublishModal({ visible: false, challengeId: null, challengeTitle: '' });
   };
-
-
-  // Filter data based on type and status filters (search is handled by API)
-  const filteredChallenges = dailyChallenges.filter((challenge) => {
-    const matchesType = typeFilter.length === 0 || typeFilter.includes(challenge.type);
-    const matchesStatus = statusFilter.length === 0 || statusFilter.includes(challenge.status);
-
-    return matchesType && matchesStatus;
-  });
-
 
   const columns = [
     {
@@ -907,7 +986,7 @@ const DailyChallengeList = ({ readOnly = false }) => {
               fontSize: '24px',
               fontWeight: '500',
           
-            }}>({filteredChallenges.length})</span>
+            }}>({totalItems})</span>
           </Typography.Title>
         </div>
 
@@ -1026,13 +1105,14 @@ const DailyChallengeList = ({ readOnly = false }) => {
           <LoadingWithEffect loading={loading} message={t('dailyChallenge.loadingChallenges')}>
             <Table
               columns={columns}
-              dataSource={filteredChallenges}
+              dataSource={dailyChallenges}
               rowKey="id"
               pagination={{
                 current: currentPage,
                 pageSize: pageSize,
                 total: totalItems,
                 onChange: (page, size) => {
+                  console.log('📄 Page changed to:', page, 'from:', currentPage);
                   setCurrentPage(page);
                   if (size !== pageSize) {
                     setPageSize(size);
