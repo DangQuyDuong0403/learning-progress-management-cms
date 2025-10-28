@@ -68,7 +68,8 @@ export const spaceToast = {
             position: 'relative',
             animation: 'pulse 2s infinite',
             boxShadow: '0 0 20px rgba(0, 255, 136, 0.4), inset 0 0 20px rgba(0, 255, 136, 0.1)',
-            flexShrink: 0
+            flexShrink: 0,
+            overflow: 'hidden'
           }}>
             <img 
               src="/img/astro.png" 
@@ -78,7 +79,10 @@ export const spaceToast = {
                 height: '26px',
                 objectFit: 'contain',
                 filter: 'brightness(1.3) contrast(1.2) drop-shadow(0 0 8px rgba(0, 255, 136, 0.6))',
-                animation: 'float 3s ease-in-out infinite'
+              position: 'absolute',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)'
               }} 
             />
             <div style={{
@@ -142,7 +146,8 @@ export const spaceToast = {
           position: 'relative',
           animation: 'pulse 2s infinite',
           boxShadow: '0 0 20px rgba(0, 255, 136, 0.6), inset 0 0 20px rgba(0, 255, 136, 0.2)',
-          flexShrink: 0
+          flexShrink: 0,
+          overflow: 'hidden'
         }}>
           <img 
             src="/img/astro.png" 
@@ -152,7 +157,10 @@ export const spaceToast = {
               height: '32px',
               objectFit: 'contain',
               filter: 'brightness(1.3) contrast(1.2) drop-shadow(0 0 8px rgba(0, 255, 136, 0.6))',
-              animation: 'float 3s ease-in-out infinite'
+              position: 'absolute',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)'
             }} 
           />
           <div style={{
@@ -216,7 +224,8 @@ export const spaceToast = {
           position: 'relative',
           animation: 'shake 0.5s ease-in-out infinite',
           boxShadow: '0 0 20px rgba(255, 107, 107, 0.4), inset 0 0 20px rgba(255, 107, 107, 0.1)',
-          flexShrink: 0
+          flexShrink: 0,
+          overflow: 'hidden'
         }}>
           <img 
             src="/img/astro.png" 
@@ -226,7 +235,10 @@ export const spaceToast = {
               height: '32px',
               objectFit: 'contain',
               filter: 'brightness(1.3) contrast(1.2) drop-shadow(0 0 8px rgba(255, 107, 107, 0.6))',
-              animation: 'wobble 2s ease-in-out infinite'
+              position: 'absolute',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)'
             }} 
           />
           <div style={{
@@ -290,7 +302,8 @@ export const spaceToast = {
           position: 'relative',
           animation: 'glow 2s ease-in-out infinite',
           boxShadow: '0 0 20px rgba(0, 212, 255, 0.4), inset 0 0 20px rgba(0, 212, 255, 0.1)',
-          flexShrink: 0
+          flexShrink: 0,
+          overflow: 'hidden'
         }}>
           <img 
             src="/img/astro.png" 
@@ -300,7 +313,10 @@ export const spaceToast = {
               height: '32px',
               objectFit: 'contain',
               filter: 'brightness(1.3) contrast(1.2) drop-shadow(0 0 8px rgba(0, 212, 255, 0.6))',
-              animation: 'rotate 4s linear infinite'
+              position: 'absolute',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)'
             }} 
           />
           <div style={{
@@ -364,7 +380,8 @@ export const spaceToast = {
           position: 'relative',
           animation: 'bounce 1s ease-in-out infinite',
           boxShadow: '0 0 20px rgba(255, 179, 71, 0.4), inset 0 0 20px rgba(255, 179, 71, 0.1)',
-          flexShrink: 0
+          flexShrink: 0,
+          overflow: 'hidden'
         }}>
           <img 
             src="/img/astro.png" 
@@ -374,7 +391,10 @@ export const spaceToast = {
               height: '32px',
               objectFit: 'contain',
               filter: 'brightness(1.3) contrast(1.2) drop-shadow(0 0 8px rgba(255, 179, 71, 0.6))',
-              animation: 'swing 2s ease-in-out infinite'
+              position: 'absolute',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)'
             }} 
           />
           <div style={{

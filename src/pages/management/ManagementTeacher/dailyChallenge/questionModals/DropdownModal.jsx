@@ -254,6 +254,30 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 		));
 	}, []);
 
+	// Keep chip answer text in the editor synced when correctAnswer changes via side panel inputs
+	useEffect(() => {
+		if (!editorRef.current) return;
+		try {
+			dropdowns.forEach(d => {
+				const chipAnswer = editorRef.current.querySelector(
+					`[data-dropdown-id="${d.id}"] .dropdown-answer-text`
+				);
+				if (chipAnswer && chipAnswer.textContent !== (d.correctAnswer || '')) {
+					chipAnswer.textContent = d.correctAnswer || '';
+				}
+				// If input on chip is currently open, reflect the new value, too
+				const chipInput = editorRef.current.querySelector(
+					`[data-dropdown-id="${d.id}"] .dropdown-input`
+				);
+				if (chipInput && chipInput.value !== (d.correctAnswer || '')) {
+					chipInput.value = d.correctAnswer || '';
+				}
+			});
+		} catch (e) {
+			// no-op safe guard
+		}
+	}, [dropdowns]);
+
 	// Update dropdown numbers based on DOM order
 	const updateDropdownNumbers = useCallback(() => {
 		if (!editorRef.current) return;
@@ -2290,7 +2314,7 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
             </div>
 
 									{/* Correct Option */}
-									<div style={{ marginBottom: '12px' }}>
+								<div style={{ marginBottom: '12px' }}>
 										<div style={{ 
 											fontSize: '13px', 
 											fontWeight: 600, 
@@ -2299,19 +2323,20 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 										}}>
 											✓ Correct option
 										</div>
-										<div 
-                style={{
-												padding: '10px 12px',
-												background: `${dropdown.color}10`,
-												border: `1.5px solid ${dropdown.color}`,
-												borderRadius: '8px',
-												fontSize: '14px',
-												fontWeight: 500,
-												color: '#333'
-											}}
-										>
-											{dropdown.correctAnswer || '(empty)'}
-										</div>
+									<Input
+										value={dropdown.correctAnswer}
+										onChange={(e) => handleDropdownAnswerChange(dropdown.id, e.target.value)}
+										placeholder="Type correct option"
+										style={{
+											padding: '10px 12px',
+											background: `${dropdown.color}10`,
+											border: `1.5px solid ${dropdown.color}`,
+											borderRadius: '8px',
+											fontSize: '14px',
+											fontWeight: 500,
+											color: '#333'
+										}}
+									/>
             </div>
 
 									{/* Incorrect Options */}

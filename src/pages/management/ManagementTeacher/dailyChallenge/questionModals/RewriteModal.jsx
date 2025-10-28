@@ -251,6 +251,11 @@ const RewriteModal = ({ visible, onCancel, onSave, questionData = null }) => {
 
   const handleAddAnswer = useCallback(() => {
     setCorrectAnswers(prevAnswers => {
+      // Limit to maximum of 8 answers
+      if (prevAnswers.length >= 8) {
+        spaceToast.warning('Maximum 8 answers allowed');
+        return prevAnswers;
+      }
       const newId = Math.max(...prevAnswers.map(ans => ans.id)) + 1;
       const colors = getAnswerColors();
       const newColor = colors[prevAnswers.length % colors.length];

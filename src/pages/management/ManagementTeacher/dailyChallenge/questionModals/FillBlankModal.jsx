@@ -680,6 +680,28 @@ const FillBlankModal = ({ visible, onCancel, onSave, questionData = null }) => {
 		));
 	}, [setBlanks]);
 
+	// Keep chip text in sync when editing from summary (outside the chip input)
+	const updateBlankAnswerText = useCallback((blankId, value) => {
+		if (!editorRef.current) return;
+		const textEl = editorRef.current.querySelector(`[data-blank-id="${blankId}"] .blank-answer-text`);
+		if (textEl) {
+			textEl.textContent = value || '';
+		}
+	}, []);
+
+	// Expand and focus a blank chip in the editor from the summary list
+	const expandBlankById = useCallback((blankId) => {
+		if (!editorRef.current) return;
+		const blankEl = editorRef.current.querySelector(`[data-blank-id="${blankId}"]`);
+		if (blankEl) {
+			if (typeof blankEl.expandBlank === 'function') {
+				blankEl.expandBlank();
+			}
+			blankEl.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+			editorRef.current.focus();
+		}
+	}, []);
+
 	// Handle delete blank from DOM
 	const handleDeleteBlankElement = useCallback((blankId) => {
 		if (!editorRef.current) return;
@@ -899,7 +921,7 @@ const FillBlankModal = ({ visible, onCancel, onSave, questionData = null }) => {
 		span.expandBlank = expandBlank;
 
 		return span;
-	}, [handleBlankAnswerChange, handleDeleteBlankElement]);
+	}, [handleBlankAnswerChange, handleDeleteBlankElement, blankColors]);
 
 	// Find and replace pattern in text nodes without affecting existing blanks
 	const findAndReplacePattern = useCallback((element) => {
@@ -1428,7 +1450,7 @@ const FillBlankModal = ({ visible, onCancel, onSave, questionData = null }) => {
 		});
 		
 		editorInitializedRef.current = true;
-	}, [visible, createBlankElement, updateBlankNumbers]);
+	}, [visible, createBlankElement, updateBlankNumbers, blankColors]);
 
 	// Get blanks ordered by DOM position
 	const orderedBlanks = useMemo(() => {
@@ -2027,47 +2049,55 @@ const FillBlankModal = ({ visible, onCancel, onSave, questionData = null }) => {
 								Blanks Summary ({blanks.length})
 							</div>
 							<div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-						{orderedBlanks.map((blank, index) => (
-							<div
-								key={blank.id}
-								style={{
-											padding: '8px 12px',
-											background: 'white',
-											border: `2px solid ${blank.color}`,
-											borderRadius: '8px',
-											fontSize: '13px',
+					{orderedBlanks.map((blank, index) => (
+						<div
+							key={blank.id}
+							onClick={() => expandBlankById(blank.id)}
+							style={{
+									padding: '8px 12px',
+									background: 'white',
+									border: `2px solid ${blank.color}`,
+									borderRadius: '8px',
+									fontSize: '13px',
+								display: 'flex',
+								alignItems: 'center',
+										gap: '6px',
+								cursor: 'pointer'
+								}}
+							>
+								<span style={{
+									width: '20px',
+									height: '20px',
+									borderRadius: '50%',
+									background: blank.color,
+										color: 'white',
 									display: 'flex',
 									alignItems: 'center',
-											gap: '6px'
-										}}
-									>
-										<span style={{
-											width: '20px',
-											height: '20px',
-											borderRadius: '50%',
-											background: blank.color,
-												color: 'white',
-												display: 'flex',
-												alignItems: 'center',
-												justifyContent: 'center',
-											fontSize: '11px',
-											fontWeight: 700
-										}}>
-											{index + 1}
-										</span>
-									<span style={{ 
-										fontWeight: 500, 
-										color: '#333',
-										maxWidth: '200px',
-										overflow: 'hidden',
-										textOverflow: 'ellipsis',
-										whiteSpace: 'nowrap',
-										display: 'inline-block'
-									}}>
-										{blank.answer || '(empty)'}
-									</span>
-							</div>
-						))}
+									justifyContent: 'center',
+									fontSize: '11px',
+									fontWeight: 700
+								}}>
+									{index + 1}
+								</span>
+								<input
+									value={blank.answer || ''}
+									onChange={(e) => {
+										handleBlankAnswerChange(blank.id, e.target.value);
+										updateBlankAnswerText(blank.id, e.target.value);
+									}}
+									onClick={(e) => e.stopPropagation()}
+									placeholder="type answer..."
+									style={{
+										border: '1px solid rgba(24, 144, 255, 0.3)',
+										outline: 'none',
+										padding: '6px 8px',
+										borderRadius: '6px',
+										fontSize: '13px',
+										minWidth: '160px'
+									}}
+								/>
+						</div>
+					))}
 					</div>
 						</div>
 					)}
