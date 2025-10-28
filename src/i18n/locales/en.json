@@ -1994,7 +1994,7 @@
     "endDate": "End Date",
     "selectEndDate": "Select end date",
     "allOption": "All",
-    "translateOnScreen": "Hide translate on screen",
+    "translateOnScreen": "Translate on screen",
     "translateOnScreenDesc": "Allow students to hide translation while doing exercises.",
     "aiFeedbackEnabled": "AI Automatic Feedback",
     "aiFeedback": "AI Feedback",

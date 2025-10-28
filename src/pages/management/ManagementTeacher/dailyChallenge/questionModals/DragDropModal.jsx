@@ -816,6 +816,29 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 		);
 	}, []);
 
+	// Keep chip answer text (and chip input if opened) synced when side inputs change
+	useEffect(() => {
+		if (!editorRef.current) return;
+		try {
+			blanks.forEach(b => {
+				const chipAnswer = editorRef.current.querySelector(
+					`[data-blank-id="${b.id}"] .blank-answer-text`
+				);
+				if (chipAnswer && chipAnswer.textContent !== (b.answer || '')) {
+					chipAnswer.textContent = b.answer || '';
+				}
+				const chipInput = editorRef.current.querySelector(
+					`[data-blank-id="${b.id}"] .blank-input`
+				);
+				if (chipInput && chipInput.value !== (b.answer || '')) {
+					chipInput.value = b.answer || '';
+				}
+			});
+		} catch (e) {
+			// safeguard
+		}
+	}, [blanks]);
+
 	// Update blank numbers based on DOM order
 	const updateBlankNumbers = useCallback(() => {
 		if (!editorRef.current) return;
@@ -1738,7 +1761,7 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 						}}
 					/>
 					<span style={{ fontSize: '24px', fontWeight: 600 }}>
-						Create Drag and Drop Question
+						{questionData ? 'Edit Drag and Drop Question' : 'Create Drag and Drop Question'}
 					</span>
 				</div>
 			}
@@ -2375,50 +2398,50 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 									flexDirection: 'column',
 									gap: '8px',
 								}}>
-								{orderedBlanks.length > 0 ? (
-									orderedBlanks.map((blank, index) => (
-										<div
-											key={blank.id}
-											style={{
-												padding: '12px 16px',
-												background: 'white',
-												border: `2px solid ${blank.color}`,
-												borderRadius: '8px',
-												fontSize: '14px',
-												display: 'flex',
-												alignItems: 'flex-start',
-												gap: '8px',
-											}}>
-											<span
+									{orderedBlanks.length > 0 ? (
+										orderedBlanks.map((blank, index) => (
+											<div
+												key={blank.id}
 												style={{
-													width: '24px',
-													height: '24px',
-													borderRadius: '50%',
-													background: blank.color,
-													color: 'white',
+													padding: '12px 16px',
+													background: 'white',
+													border: `2px solid ${blank.color}`,
+													borderRadius: '8px',
+													fontSize: '14px',
 													display: 'flex',
 													alignItems: 'center',
-													justifyContent: 'center',
-													fontSize: '12px',
-													fontWeight: 700,
-													flexShrink: 0,
-													marginTop: '2px',
+													gap: '8px',
 												}}>
-												{index + 1}
-											</span>
-											<span
-												style={{
-													fontWeight: 500,
-													color: '#333',
-													flex: 1,
-													wordBreak: 'break-word',
-													overflowWrap: 'break-word',
-													whiteSpace: 'normal',
+												<span
+													style={{
+														width: '24px',
+														height: '24px',
+														borderRadius: '50%',
+														background: blank.color,
+														color: 'white',
+														display: 'flex',
+														alignItems: 'center',
+														justifyContent: 'center',
+														fontSize: '12px',
+														fontWeight: 700,
+														flexShrink: 0,
+														marginTop: '2px',
 												}}>
-												{blank.answer || '(empty)'}
-											</span>
-										</div>
-									))
+													{index + 1}
+												</span>
+												<Input
+													value={blank.answer}
+													onChange={(e) => handleBlankAnswerChange(blank.id, e.target.value)}
+													placeholder={'Type correct option'}
+													style={{
+														flex: 1,
+														border: 'none',
+														outline: 'none',
+														boxShadow: 'none',
+													}}
+												/>
+											</div>
+										))
 								) : (
 									<div
 										style={{
