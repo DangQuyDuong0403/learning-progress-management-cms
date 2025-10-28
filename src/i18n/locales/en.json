@@ -1788,6 +1788,7 @@
     "templateDownloadError": "Failed to download template"
   },
   "dailyChallenge": {
+    "duplicateTypesNotAllowed": "Each question type must be unique",
     "teacherDashboard": "Teacher Dashboard",
     "dailyChallengeManagement": "Daily Challenge Management",
     "createChallenge": "Create Challenge",
