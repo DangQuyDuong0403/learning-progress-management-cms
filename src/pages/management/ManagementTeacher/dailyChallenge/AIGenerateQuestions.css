@@ -507,3 +507,19 @@
     animation: none !important;
   }
 }
+
+/* Normalize CKEditor HTML output inside preview */
+.html-content p {
+  margin: 0; /* remove default top/bottom margins that can shift alignment */
+}
+
+/* Ensure option items align contents vertically */
+.preview-card .option-item .html-content {
+  display: block;
+  line-height: 1.6;
+}
+
+/* Tweak vertical centering for option rows */
+.preview-card .option-item {
+  align-items: center;
+}
