@@ -38,7 +38,14 @@ const TrueFalseModal = ({ visible, onCancel, onSave, questionData = null, saving
 	const [editorData, setEditorData] = useState('');
 	const editorRef = useRef(null);
 
-	
+	// Helper to strip HTML and normalize text for comparison
+	const stripHtml = useCallback((html) => {
+		if (!html) return '';
+		const tmp = document.createElement('div');
+		tmp.innerHTML = html;
+		return (tmp.textContent || tmp.innerText || '').trim();
+	}, []);
+
 	// Sun theme colors (fixed)
 	const primaryColor = '#1890ff';
 
@@ -103,19 +110,38 @@ const TrueFalseModal = ({ visible, onCancel, onSave, questionData = null, saving
 					// Edit mode - load existing data
 					console.log('TrueFalseModal - Loading question data:', questionData);
 					setEditorData(questionData.question || '');
-					// Handle both boolean and string values for correctAnswer
+					// Determine correct answer from various possible shapes
+					let derivedAnswer = null;
 					const correctAnswerValue = questionData.correctAnswer;
 					console.log('TrueFalseModal - correctAnswer value:', correctAnswerValue, 'type:', typeof correctAnswerValue);
 					if (correctAnswerValue === true || correctAnswerValue === 'True') {
-						setCorrectAnswer('True');
+						derivedAnswer = 'True';
 					} else if (correctAnswerValue === false || correctAnswerValue === 'False') {
-						setCorrectAnswer('False');
-					} else {
-						setCorrectAnswer(null);
+						derivedAnswer = 'False';
 					}
-					const finalAnswer = correctAnswerValue === true || correctAnswerValue === 'True' ? 'True' : 
-					                   correctAnswerValue === false || correctAnswerValue === 'False' ? 'False' : null;
-					console.log('TrueFalseModal - Set correctAnswer to:', finalAnswer);
+
+					// Fallback: infer from options array (mapped from BE)
+					if (!derivedAnswer && Array.isArray(questionData.options)) {
+						const correctOpt = questionData.options.find(o => o.isCorrect);
+						if (correctOpt) {
+							const text = stripHtml(correctOpt.text).toLowerCase();
+							if (text === 'true') derivedAnswer = 'True';
+							else if (text === 'false') derivedAnswer = 'False';
+						}
+					}
+
+					// Fallback: infer from content.data if present
+					if (!derivedAnswer && questionData.content && Array.isArray(questionData.content.data)) {
+						const correctItem = questionData.content.data.find(d => d.correct === true);
+						if (correctItem) {
+							const text = stripHtml(correctItem.value).toLowerCase();
+							if (text === 'true') derivedAnswer = 'True';
+							else if (text === 'false') derivedAnswer = 'False';
+						}
+					}
+
+					setCorrectAnswer(derivedAnswer);
+					console.log('TrueFalseModal - Derived correctAnswer:', derivedAnswer);
 					setPoints(questionData.points || 1);
 				} else {
 					// Add mode - reset to defaults
