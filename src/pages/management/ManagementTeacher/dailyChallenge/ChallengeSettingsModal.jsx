@@ -43,6 +43,12 @@ const ChallengeSettingsModal = ({
   const [isButtonDisabled, setIsButtonDisabled] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [challengeMode, setChallengeMode] = useState(initialValues.challengeMode || 'normal');
+  const [examConfirmVisible, setExamConfirmVisible] = useState(false);
+  const [examCheck, setExamCheck] = useState({
+    shuffleQuestion: false,
+    antiCheatModeEnabled: false,
+    translateOnScreen: false,
+  });
 
   useEffect(() => {
     if (visible) {
@@ -51,33 +57,27 @@ const ChallengeSettingsModal = ({
         durationMinutes: initialValues.durationMinutes,
         startDate: initialValues.startDate ? dayjs(initialValues.startDate) : null,
         endDate: initialValues.endDate ? dayjs(initialValues.endDate) : null,
-        shuffleAnswers: initialValues.shuffleAnswers || false,
+        shuffleQuestion: initialValues.shuffleQuestion !== undefined ? initialValues.shuffleQuestion : (initialValues.shuffleAnswers || false),
         translateOnScreen: initialValues.translateOnScreen || false,
-        aiFeedbackEnabled: initialValues.aiFeedbackEnabled || false,
         antiCheatModeEnabled: initialValues.antiCheatModeEnabled || false,
       });
       setChallengeMode(initialValues.challengeMode || 'normal');
     }
   }, [visible, initialValues, form]);
 
-  const handleModalOk = async () => {
-    if (isButtonDisabled || isSaving) return;
-    
+  const performSave = async (values) => {
     setIsButtonDisabled(true);
     setIsSaving(true);
-    
     try {
-      const values = await form.validateFields();
-      
       const updateData = {
-        challengeName: initialValues.challengeName || 'Daily Challenge', // Use existing name or default
-        description: initialValues.description || '', // Use existing description or empty
-        challengeType: initialValues.challengeType || 'GV', // Use existing type or default
+        challengeName: initialValues.challengeName || 'Daily Challenge',
+        description: initialValues.description || '',
+        challengeType: initialValues.challengeType || 'GV',
+        challengeMethod: challengeMode === 'exam' ? 'TEST' : 'NORMAL',
         durationMinutes: values.durationMinutes,
         hasAntiCheat: values.antiCheatModeEnabled || false,
-        shuffleAnswers: values.shuffleAnswers || false,
+        shuffleQuestion: values.shuffleQuestion || false,
         translateOnScreen: values.translateOnScreen || false,
-        aiFeedbackEnabled: values.aiFeedbackEnabled || false,
         startDate: values.startDate ? values.startDate.toISOString() : null,
         endDate: values.endDate ? values.endDate.toISOString() : null,
       };
@@ -96,12 +96,11 @@ const ChallengeSettingsModal = ({
         durationMinutes: values.durationMinutes,
         startDate: values.startDate ? values.startDate.toISOString() : null,
         endDate: values.endDate ? values.endDate.toISOString() : null,
-        shuffleAnswers: values.shuffleAnswers || false,
+        shuffleAnswers: values.shuffleQuestion || false,
+        shuffleQuestion: values.shuffleQuestion || false,
         translateOnScreen: values.translateOnScreen || false,
-        aiFeedbackEnabled: values.aiFeedbackEnabled || false,
         antiCheatModeEnabled: values.antiCheatModeEnabled || false,
       });
-      
     } catch (error) {
       console.error('Error updating challenge settings:', error);
       if (error.errorFields) {
@@ -113,6 +112,31 @@ const ChallengeSettingsModal = ({
     } finally {
       setIsButtonDisabled(false);
       setIsSaving(false);
+    }
+  };
+
+  const handleModalOk = async () => {
+    if (isButtonDisabled || isSaving) return;
+    try {
+      // Validate required fields based on mode
+      const fieldsToValidate = ['startDate', 'endDate'];
+      if (challengeMode === 'exam') {
+        fieldsToValidate.push('durationMinutes', 'shuffleQuestion', 'antiCheatModeEnabled');
+      }
+      await form.validateFields(fieldsToValidate);
+      if (challengeMode === 'exam') {
+        const current = form.getFieldsValue();
+        setExamCheck({
+          shuffleQuestion: !!current.shuffleQuestion,
+          antiCheatModeEnabled: !!current.antiCheatModeEnabled,
+          translateOnScreen: !!current.translateOnScreen,
+        });
+        setExamConfirmVisible(true);
+        return;
+      }
+      await performSave(form.getFieldsValue());
+    } catch (error) {
+      // validation errors are handled by antd
     }
   };
 
@@ -351,8 +375,16 @@ const ChallengeSettingsModal = ({
           <Row gutter={16}>
             <Col span={24}>
               <Form.Item
-                label={t('dailyChallenge.durationMinutes')}
+                label={
+                  <span>
+                    {t('dailyChallenge.durationMinutes')}
+                    {challengeMode === 'exam' && (
+                      <span style={{ color: 'red', marginLeft: 4 }}>*</span>
+                    )}
+                  </span>
+                }
                 name="durationMinutes"
+                rules={[{ required: challengeMode === 'exam', message: t('dailyChallenge.durationMinutesRequired') }]}
               >
                 <InputNumber
                   min={1}
@@ -405,7 +437,7 @@ const ChallengeSettingsModal = ({
                     return startDate && current && current.isBefore(startDate, 'day');
                   }}
                 />
-              </Form.Item>
+              </Form.Item> 
             </Col>
           </Row>
         </Card>
@@ -422,12 +454,22 @@ const ChallengeSettingsModal = ({
              <Col span={12}>
                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0' }}>
                  <div style={{ flex: 1, paddingRight: '8px' }}>
-                   <Typography.Text strong style={{ fontSize: '13px' }}>{t('dailyChallenge.shuffleAnswers')}</Typography.Text>
+                   <Typography.Text strong style={{ fontSize: '13px' }}>
+                     {t('dailyChallenge.shuffleQuestion')}
+                     {challengeMode === 'exam' && (
+                       <span style={{ color: 'red', marginLeft: 4 }}>*</span>
+                     )}
+                   </Typography.Text>
                    <div style={{ fontSize: '11px', color: '#666', marginTop: '2px' }}>
-                     {t('dailyChallenge.shuffleAnswersDesc')}
+                     {t('dailyChallenge.shuffleQuestionDesc') || t('dailyChallenge.shuffleAnswersDesc')}
                    </div>
                  </div>
-                 <Form.Item name="shuffleAnswers" valuePropName="checked" noStyle>
+                 <Form.Item 
+                   name="shuffleQuestion" 
+                   valuePropName="checked" 
+                   noStyle
+                   rules={challengeMode === 'exam' ? [{ required: true, message: t('dailyChallenge.shuffleAnswersRequired') || 'Shuffle Questions is required for exam mode' }] : []}
+                 >
                    <Switch />
                  </Form.Item>
                </div>
@@ -448,25 +490,22 @@ const ChallengeSettingsModal = ({
              <Col span={12}>
                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0' }}>
                  <div style={{ flex: 1, paddingRight: '8px' }}>
-                   <Typography.Text strong style={{ fontSize: '13px' }}>{t('dailyChallenge.aiFeedback')}</Typography.Text>
-                   <div style={{ fontSize: '11px', color: '#666', marginTop: '2px' }}>
-                     {t('dailyChallenge.aiFeedbackDesc')}
-                   </div>
-                 </div>
-                 <Form.Item name="aiFeedbackEnabled" valuePropName="checked" noStyle>
-                   <Switch />
-                 </Form.Item>
-               </div>
-             </Col>
-             <Col span={12}>
-               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0' }}>
-                 <div style={{ flex: 1, paddingRight: '8px' }}>
-                   <Typography.Text strong style={{ fontSize: '13px' }}>{t('dailyChallenge.antiCheatMode')}</Typography.Text>
+                   <Typography.Text strong style={{ fontSize: '13px' }}>
+                     {t('dailyChallenge.antiCheatMode')}
+                     {challengeMode === 'exam' && (
+                       <span style={{ color: 'red', marginLeft: 4 }}>*</span>
+                     )}
+                   </Typography.Text>
                    <div style={{ fontSize: '11px', color: '#666', marginTop: '2px' }}>
                      {t('dailyChallenge.antiCheatModeDesc')}
                    </div>
                  </div>
-                 <Form.Item name="antiCheatModeEnabled" valuePropName="checked" noStyle>
+                 <Form.Item 
+                   name="antiCheatModeEnabled" 
+                   valuePropName="checked" 
+                   noStyle
+                   rules={challengeMode === 'exam' ? [{ required: true, message: t('dailyChallenge.antiCheatModeRequired') || 'Anti-Cheat Mode is required for exam mode' }] : []}
+                 >
                    <Switch />
                  </Form.Item>
                </div>
@@ -474,6 +513,65 @@ const ChallengeSettingsModal = ({
            </Row>
          </Card>
       </Form>
+      {/* Exam Mode Confirmation Modal */}
+      <Modal
+        title={
+          <div style={{ 
+            fontSize: '20px', 
+            fontWeight: '600', 
+            color: theme === 'sun' ? 'rgb(113, 179, 253)' : 'rgb(138, 122, 255)',
+            textAlign: 'center',
+            padding: '10px 0'
+          }}>
+            {t('dailyChallenge.confirmExamMode') || 'Confirm Exam Mode Settings'}
+          </div>
+        }
+        open={examConfirmVisible}
+        onOk={async () => {
+          setExamConfirmVisible(false);
+          await performSave(form.getFieldsValue());
+        }}
+        onCancel={() => setExamConfirmVisible(false)}
+        okText={t('common.confirm') || 'Confirm'}
+        cancelText={t('common.cancel') || 'Cancel'}
+        width={560}
+        centered
+      >
+        <div style={{ padding: '8px 4px' }}>
+          <Typography.Paragraph style={{ marginBottom: 12, textAlign: 'center' }}>
+            {t('dailyChallenge.examWarning') || 'You selected Exam Mode. Please verify the following settings:'}
+          </Typography.Paragraph>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <Card size="small">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Typography.Text strong>{t('dailyChallenge.shuffleQuestion') || 'Shuffle Questions'}</Typography.Text>
+                <span style={{ fontWeight: 700, color: examCheck.shuffleQuestion ? '#52c41a' : '#ff4d4f' }}>
+                  {examCheck.shuffleQuestion ? (t('common.on') || 'ON') : (t('common.off') || 'OFF')}
+                </span>
+              </div>
+            </Card>
+            <Card size="small">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Typography.Text strong>{t('dailyChallenge.antiCheatMode') || 'Anti-Cheat Screen'}</Typography.Text>
+                <span style={{ fontWeight: 700, color: examCheck.antiCheatModeEnabled ? '#52c41a' : '#ff4d4f' }}>
+                  {examCheck.antiCheatModeEnabled ? (t('common.on') || 'ON') : (t('common.off') || 'OFF')}
+                </span>
+              </div>
+            </Card>
+            <Card size="small" style={{ gridColumn: '1 / span 2' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Typography.Text strong>{t('dailyChallenge.translateOnScreen') || 'Translate On Screen'}</Typography.Text>
+                <span style={{ fontWeight: 700, color: !examCheck.translateOnScreen ? '#52c41a' : '#ff4d4f' }}>
+                  {!examCheck.translateOnScreen ? (t('common.off') || 'OFF') : (t('common.on') || 'ON')}
+                </span>
+              </div>
+            </Card>
+          </div>
+          <Typography.Paragraph style={{ marginTop: 12, color: '#faad14', fontWeight: 600, textAlign: 'center' }}>
+            {t('dailyChallenge.examHint') || 'For exam mode, it is recommended: Shuffle ON, Anti-cheat ON, Translate OFF.'}
+          </Typography.Paragraph>
+        </div>
+      </Modal>
     </Modal>
   );
 };
