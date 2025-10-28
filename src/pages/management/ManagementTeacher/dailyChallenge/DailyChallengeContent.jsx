@@ -2030,6 +2030,9 @@ const DailyChallengeContent = () => {
   });
   const [publishConfirmModalVisible, setPublishConfirmModalVisible] = useState(false);
 
+  // Memoized challenge type to use in dependencies cleanly
+  const currentChallengeType = challengeDetails?.challengeType;
+
   // Loading states for buttons
   const [templateDownloadLoading, setTemplateDownloadLoading] = useState(false);
   const [savingQuestion, setSavingQuestion] = useState(false); // Loading state for saving question
@@ -2627,6 +2630,11 @@ const DailyChallengeContent = () => {
       
       // Transform question to API format
       const apiQuestion = transformQuestionToApiFormat(questionData, orderNumber, questionData.type);
+
+      // Ensure question id is included for GV (Grammar & Vocabulary) when editing
+      if (currentChallengeType === 'GV' && editingQuestion?.id) {
+        apiQuestion.id = editingQuestion.id;
+      }
       
       // Prepare section data with updated question
       const sectionContent = getSectionContent(questionData.type);
@@ -2663,7 +2671,7 @@ const DailyChallengeContent = () => {
     } finally {
       setSavingQuestion(false);
     }
-  }, [editingQuestion, id, fetchQuestions, transformQuestionToApiFormat, getSectionContent]);
+  }, [editingQuestion, id, fetchQuestions, transformQuestionToApiFormat, getSectionContent, currentChallengeType, challengeDetails?.challengeType]);
 
   // Main handler - route to create or update
   const handleModalSave = useCallback(async (questionData) => {
