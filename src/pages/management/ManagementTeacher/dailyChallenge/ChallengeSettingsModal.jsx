@@ -437,7 +437,7 @@ const ChallengeSettingsModal = ({
                     return startDate && current && current.isBefore(startDate, 'day');
                   }}
                 />
-              </Form.Item>
+              </Form.Item> 
             </Col>
           </Row>
         </Card>
