@@ -284,12 +284,12 @@ const DailyChallengeList = ({ readOnly = false }) => {
               });
             });
           } else {
-            // Lesson without challenges - still show lesson row
+            // Lesson without challenges - show lesson row with empty challenge columns
             flattenedData.push({
               id: `lesson-${lesson.id}`,
-              title: 'No challenges',
-              type: 'N/A',
-              status: 'DRAFT',
+              title: '', // Empty title
+              type: '', // Empty type
+              status: '', // Empty status
               lessonId: lesson.id,
               lessonName: lesson.classLessonName || 'Untitled Lesson',
               lessonOrder: lesson.orderNumber || lessonIndex + 1,
@@ -301,6 +301,7 @@ const DailyChallengeList = ({ readOnly = false }) => {
               timeLimit: 0,
               totalQuestions: 0,
               createdAt: new Date().toISOString().split('T')[0],
+              isEmptyLesson: true, // Flag to identify empty lessons
             });
           }
         });
@@ -711,19 +712,29 @@ const DailyChallengeList = ({ readOnly = false }) => {
       ellipsis: {
         showTitle: false,
       },
-      render: (text) => (
-        <Tooltip placement="topLeft" title={text}>
-          <span style={{ 
-            display: 'block',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
-            textAlign: 'left',
-          }}>
-            {text}
-          </span>
-        </Tooltip>
-      ),
+      render: (text, record) => {
+        // Show empty state for lessons without challenges
+        if (record.isEmptyLesson) {
+          return (
+            <span >
+            </span>
+          );
+        }
+        
+        return (
+          <Tooltip placement="topLeft" title={text}>
+            <span style={{ 
+              display: 'block',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+              textAlign: 'left',
+            }}>
+              {text}
+            </span>
+          </Tooltip>
+        );
+      },
     },
     {
       title: t('dailyChallenge.type'),
@@ -731,7 +742,15 @@ const DailyChallengeList = ({ readOnly = false }) => {
       key: 'type',
       width: 150,
       align: 'center',
-      render: (type) => {
+      render: (type, record) => {
+        // Show empty state for lessons without challenges
+        if (record.isEmptyLesson) {
+          return (
+            <span >
+            </span>
+          );
+        }
+
         const getTypeLabel = (typeCode) => {
           switch(typeCode) {
             case 'GV': return 'Grammar & Vocabulary';
@@ -761,7 +780,15 @@ const DailyChallengeList = ({ readOnly = false }) => {
       key: 'startDate',
       width: 120,
       align: 'center',
-      render: (startDate) => startDate ? new Date(startDate).toLocaleDateString() : '-',
+      render: (startDate, record) => {
+        if (record.isEmptyLesson) {
+          return (
+            <span>
+            </span>
+          );
+        }
+        return startDate ? new Date(startDate).toLocaleDateString() : '-';
+      },
     },
     {
       title: 'End Date',
@@ -769,7 +796,15 @@ const DailyChallengeList = ({ readOnly = false }) => {
       key: 'endDate',
       width: 120,
       align: 'center',
-      render: (endDate) => endDate ? new Date(endDate).toLocaleDateString() : '-',
+      render: (endDate, record) => {
+        if (record.isEmptyLesson) {
+          return (
+            <span>
+            </span>
+          );
+        }
+        return endDate ? new Date(endDate).toLocaleDateString() : '-';
+      },
     },
     {
       title: t('dailyChallenge.status'),
@@ -777,14 +812,23 @@ const DailyChallengeList = ({ readOnly = false }) => {
       key: 'status',
       width: 120,
       align: 'center',
-      render: (status, record) => (
-        <span style={{
-          fontSize: '20px',
-          color: '#000000'
-        }}>
-          {status === 'PUBLISHED' ? t('dailyChallenge.published') : t('dailyChallenge.draft')}
-        </span>
-      ),
+      render: (status, record) => {
+        if (record.isEmptyLesson) {
+          return (
+            <span>
+            </span>
+          );
+        }
+        
+        return (
+          <span style={{
+            fontSize: '20px',
+            color: '#000000'
+          }}>
+            {status === 'PUBLISHED' ? t('dailyChallenge.published') : t('dailyChallenge.draft')}
+          </span>
+        );
+      },
     },
     {
       title: t('dailyChallenge.actions'),
@@ -792,9 +836,12 @@ const DailyChallengeList = ({ readOnly = false }) => {
       width: 180,
       align: 'center',
       render: (_, record) => {
-        // Ẩn action buttons nếu lesson không có challenge (title = "No challenges")
-        if (record.title === 'No challenges') {
-          return <span style={{ color: '#999', fontSize: '14px' }}>-</span>;
+        // Show empty state for lessons without challenges
+        if (record.isEmptyLesson) {
+          return (
+            <span >
+            </span>
+          );
         }
         
         return (
