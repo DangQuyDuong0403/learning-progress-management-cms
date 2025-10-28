@@ -1744,7 +1744,7 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 						animation: 'pulse 2s infinite'
 					}} />
 					<span style={{ fontSize: '24px', fontWeight: 600 }}>
-						Create Dropdown Question
+						{questionData ? 'Edit Dropdown Question' : 'Create Dropdown Question'}
 					</span>
 				</div>
 			}

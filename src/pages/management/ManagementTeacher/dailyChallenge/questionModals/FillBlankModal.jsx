@@ -1517,7 +1517,7 @@ const FillBlankModal = ({ visible, onCancel, onSave, questionData = null }) => {
 						animation: 'pulse 2s infinite'
 					}} />
 					<span style={{ fontSize: '24px', fontWeight: 600 }}>
-						Create Fill in the Blank Question
+						{questionData ? 'Edit Fill in the Blank Question' : 'Create Fill in the Blank Question'}
 					</span>
 				</div>
 			}

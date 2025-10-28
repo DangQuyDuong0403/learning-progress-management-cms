@@ -248,7 +248,7 @@ const TrueFalseModal = ({ visible, onCancel, onSave, questionData = null, saving
 						animation: 'pulse 2s infinite'
 					}} />
 					<span style={{ fontSize: '24px', fontWeight: 600 }}>
-						Create True or False Question
+						{questionData ? 'Edit True or False Question' : 'Create True or False Question'}
 					</span>
 				</div>
 			}

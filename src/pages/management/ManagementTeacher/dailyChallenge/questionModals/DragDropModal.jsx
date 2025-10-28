@@ -1761,7 +1761,7 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 						}}
 					/>
 					<span style={{ fontSize: '24px', fontWeight: 600 }}>
-						Create Drag and Drop Question
+						{questionData ? 'Edit Drag and Drop Question' : 'Create Drag and Drop Question'}
 					</span>
 				</div>
 			}

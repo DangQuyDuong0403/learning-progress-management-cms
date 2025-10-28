@@ -367,7 +367,7 @@ const RewriteModal = ({ visible, onCancel, onSave, questionData = null }) => {
             animation: 'pulse 2s infinite'
           }} />
           <span style={{ fontSize: '24px', fontWeight: 600 }}>
-            Create Re-write Question
+						{questionData ? 'Edit Re-write Question' : 'Create Re-write Question'}
           </span>
         </div>
       }

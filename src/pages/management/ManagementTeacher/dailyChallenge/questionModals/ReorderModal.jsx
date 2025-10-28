@@ -1053,7 +1053,7 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
             animation: 'pulse 2s infinite'
           }} />
           <span style={{ fontSize: '24px', fontWeight: 600 }}>
-            Create Reorder Question
+            {questionData ? 'Edit Reorder Question' : 'Create Reorder Question'}
           </span>
         </div>
       }

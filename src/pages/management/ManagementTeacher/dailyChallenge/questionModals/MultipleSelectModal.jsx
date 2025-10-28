@@ -396,7 +396,7 @@ const MultipleSelectModal = ({
 						animation: 'pulse 2s infinite'
 					}} />
 					<span style={{ fontSize: '24px', fontWeight: 600 }}>
-						Create Multiple Select Question
+						{questionData ? 'Edit Multiple Select Question' : 'Create Multiple Select Question'}
 					</span>
 				</div>
 			}
