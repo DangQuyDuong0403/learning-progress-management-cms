@@ -17,6 +17,19 @@ import { useTheme } from "../../../../contexts/ThemeContext";
 import usePageTitle from "../../../../hooks/usePageTitle";
 import { dailyChallengeApi } from "../../../../apis/apis";
 
+// Helper function to replace [[dur_3]] with HTML badge
+const processPassageContent = (content, theme, challengeType) => {
+  if (!content) return '';
+  
+  // Only process for Speaking challenges
+  if (challengeType === 'SP') {
+    // Remove [[dur_3]] without replacement, as the static badge is now handled separately
+    return content.replace(/\[\[dur_3\]\]/g, '');
+  }
+  
+  return content;
+};
+
 // Fake data for different question types
 const generateFakeQuestions = () => {
   return [
@@ -2905,6 +2918,24 @@ const SpeakingSectionItem = ({ question, index, theme }) => {
   const [audioUrl, setAudioUrl] = useState(null);
   const [uploadedFiles, setUploadedFiles] = useState([]);
 
+  const toPlainText = (html) => {
+    if (!html) return '';
+    return String(html)
+      .replace(/<br\s*\/?>(?=\s*)/gi, '\n')
+      .replace(/<\/?p[^>]*>/gi, '\n')
+      .replace(/<[^>]*>/g, ' ')
+      .replace(/&nbsp;/g, ' ')
+      .replace(/&amp;/g, '&')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/\r\n|\r/g, '\n')
+      .replace(/\s+\n/g, '\n')
+      .replace(/\n\s+/g, '\n')
+      .replace(/\s+/g, ' ')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
+  };
+
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
 
@@ -3044,77 +3075,13 @@ const SpeakingSectionItem = ({ question, index, theme }) => {
                 : '#8B5CF6 rgba(138, 122, 255, 0.2)'
             }}>
             
-            <div style={{ marginBottom: '16px' }}>
-              <Typography.Title level={4} style={{ 
-                margin: 0, 
-                color: theme === 'sun' ? '#1E40AF' : '#1F2937',
-                fontSize: '20px',
-                fontWeight: 600
-              }}>
-                {question.title}
-              </Typography.Title>
-            </div>
-
             <div style={{
               fontSize: '15px',
               lineHeight: '1.8',
               color: theme === 'sun' ? '#333' : '#1F2937',
               textAlign: 'justify'
             }}>
-              {question.prompt.split('\n').map((line, idx) => {
-                if (line.startsWith('**') && line.endsWith('**')) {
-                  return (
-                    <div key={idx} style={{
-                      fontWeight: '600',
-                      fontSize: '16px',
-                      margin: '16px 0 8px 0',
-                      color: theme === 'sun' ? '#1E40AF' : '#1F2937'
-                    }}>
-                      {line.replace(/\*\*/g, '')}
-                    </div>
-                  );
-                } else if (line.startsWith('- ')) {
-                  return (
-                    <div key={idx} style={{
-                      margin: '4px 0',
-                      paddingLeft: '16px',
-                      position: 'relative'
-                    }}>
-                      <span style={{
-                        position: 'absolute',
-                        left: '0',
-                        color: theme === 'sun' ? '#1890ff' : '#8B5CF6',
-                        fontWeight: 'bold'
-                      }}>•</span>
-                      {line.substring(2)}
-                    </div>
-                  );
-                } else if (line.match(/^\d+\./)) {
-                  return (
-                    <div key={idx} style={{
-                      margin: '4px 0',
-                      paddingLeft: '16px',
-                      position: 'relative'
-                    }}>
-                      <span style={{
-                        position: 'absolute',
-                        left: '0',
-                        color: theme === 'sun' ? '#1890ff' : '#8B5CF6',
-                        fontWeight: 'bold'
-                      }}>{line.match(/^\d+\./)[0]}</span>
-                      {line.replace(/^\d+\.\s*/, '')}
-                    </div>
-                  );
-                } else if (line.trim() === '') {
-                  return <div key={idx} style={{ height: '8px' }} />;
-                } else {
-                  return (
-                    <div key={idx} style={{ margin: '8px 0' }}>
-                      {line}
-                    </div>
-                  );
-                }
-              })}
+              <div dangerouslySetInnerHTML={{ __html: processPassageContent(question.prompt, theme, 'SP') }} />
             </div>
           </div>
 
@@ -3354,6 +3321,24 @@ const SpeakingWithAudioSectionItem = ({ question, index, theme }) => {
   const [volume, setVolume] = useState(1);
   const [showTranscript, setShowTranscript] = useState(false);
 
+  const toPlainText = (html) => {
+    if (!html) return '';
+    return String(html)
+      .replace(/<br\s*\/?>(?=\s*)/gi, '\n')
+      .replace(/<\/?p[^>]*>/gi, '\n')
+      .replace(/<[^>]*>/g, ' ')
+      .replace(/&nbsp;/g, ' ')
+      .replace(/&amp;/g, '&')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/\r\n|\r/g, '\n')
+      .replace(/\s+\n/g, '\n')
+      .replace(/\n\s+/g, '\n')
+      .replace(/\s+/g, ' ')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
+  };
+
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
   const audioRef = useRef(null);
@@ -3542,15 +3527,15 @@ const SpeakingWithAudioSectionItem = ({ question, index, theme }) => {
                 : '#8B5CF6 rgba(138, 122, 255, 0.2)'
             }}>
             
-            <div style={{ marginBottom: '16px' }}>
-              <Typography.Title level={4} style={{ 
-                margin: 0, 
-                color: theme === 'sun' ? '#1E40AF' : '#1F2937',
-                fontSize: '20px',
-                fontWeight: 600
-              }}>
-                {question.title}
-              </Typography.Title>
+            {/* Maximum Recording Time */}
+            <div style={{
+              marginBottom: '16px',
+              fontWeight: '600',
+              fontSize: '20px',
+              color: theme === 'sun' ? '#1E40AF' : '#1F2937',
+              textAlign: 'left'
+            }}>
+              🎤 Maximum limit 3 minutes
             </div>
 
             {/* Audio Player */}
@@ -3664,48 +3649,32 @@ const SpeakingWithAudioSectionItem = ({ question, index, theme }) => {
             </div>
 
             {/* Transcript Content */}
-            <div style={{
-              background: '#ffffff',
-              borderRadius: '8px',
-              padding: '16px',
-              border: `1px solid ${theme === 'sun' ? '#e8e8e8' : 'rgba(138, 122, 255, 0.3)'}`,
-              fontSize: '15px',
-              lineHeight: '1.8',
-              color: '#333',
-              textAlign: 'justify',
-              boxShadow: theme === 'sun' 
-                ? '0 2px 8px rgba(0, 0, 0, 0.1)' 
-                : '0 2px 8px rgba(138, 122, 255, 0.2)'
-            }}>
-              <div style={{ 
-                fontSize: '18px', 
-                fontWeight: '600',
-                marginBottom: '12px',
-                color: theme === 'sun' ? '#1E40AF' : '#8B5CF6'
+            {question.transcript && (
+              <div style={{
+                background: '#ffffff',
+                borderRadius: '8px',
+                padding: '16px',
+                border: `1px solid ${theme === 'sun' ? '#e8e8e8' : 'rgba(138, 122, 255, 0.3)'}`,
+                fontSize: '15px',
+                lineHeight: '1.8',
+                color: '#333',
+                textAlign: 'justify',
+                boxShadow: theme === 'sun' 
+                  ? '0 2px 8px rgba(0, 0, 0, 0.1)' 
+                  : '0 2px 8px rgba(138, 122, 255, 0.2)'
               }}>
-                Từ vựng: Banana
+                <div style={{ 
+                  fontSize: '18px', 
+                  fontWeight: '600',
+                  marginBottom: '12px',
+                  color: theme === 'sun' ? '#1E40AF' : '#8B5CF6'
+                }}>
+                </div>
+                <div style={{ whiteSpace: 'pre-wrap' }}>
+                  <div dangerouslySetInnerHTML={{ __html: processPassageContent(question.transcript, theme, 'SP') }} />
+                </div>
               </div>
-              <div style={{ marginBottom: '8px', color: '#333' }}>
-                <strong>Phiên âm:</strong> /bəˈnɑːnə/
-              </div>
-              <div style={{ marginBottom: '16px', color: '#333' }}>
-                <strong>Trọng âm:</strong> Nhấn vào âm tiết thứ hai
-              </div>
-              <div style={{ marginBottom: '8px', color: '#666', fontSize: '14px' }}>
-                Phiên âm tiếng Anh của "quả chuối" (banana) là /bəˈnɑːnə/. Từ này có trọng âm rơi vào âm tiết thứ hai.
-              </div>
-              <img 
-                src="/img/banana.jpg" 
-                alt="Banana" 
-                style={{ 
-                  width: '100%',
-                  maxWidth: '300px',
-                  borderRadius: '8px',
-                  marginTop: '12px',
-                  boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)'
-                }} 
-              />
-            </div>
+            )}
           </div>
 
           {/* Right Section - Recording Area */}
@@ -5470,6 +5439,7 @@ const StudentPreview = () => {
   const [readingSections, setReadingSections] = useState([]);
   const [listeningSections, setListeningSections] = useState([]);
   const [writingSections, setWritingSections] = useState([]);
+  const [speakingSections, setSpeakingSections] = useState([]);
   const [challengeType, setChallengeType] = useState(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const questionRefs = useRef({});
@@ -5493,6 +5463,7 @@ const StudentPreview = () => {
         const mappedReading = [];
         const mappedListening = [];
         const mappedWriting = [];
+        const mappedSpeaking = [];
         apiSections.forEach((item, idx) => {
           const section = item.section || {};
           const questionsList = item.questions || [];
@@ -5577,6 +5548,23 @@ const StudentPreview = () => {
             return; // don't flatten when mapping section
           }
 
+          // Speaking challenge sections
+          if (cType === 'SP') {
+            const hasAudio = !!section.sectionsUrl;
+            const totalPoints = (questionsList || []).reduce((s, q) => s + (q?.score || 0), 0);
+            
+            mappedSpeaking.push({
+              id: section.id || `speaking_${idx}`,
+              type: hasAudio ? 'SPEAKING_WITH_AUDIO_SECTION' : 'SPEAKING_SECTION',
+              title: section.sectionTitle || `Speaking ${idx + 1}`,
+              prompt: section.sectionsContent || '',
+              audioUrl: section.sectionsUrl || '',
+              transcript: section.transcript || section.sectionsContent || '',
+              points: totalPoints
+            });
+            return; // don't flatten when mapping section
+          }
+
           // Otherwise flatten questions into single list
           questionsList.forEach((q, qIndex) => {
             const contentData = q.content?.data || [];
@@ -5605,6 +5593,7 @@ const StudentPreview = () => {
         setReadingSections(mappedReading);
         setListeningSections(mappedListening);
         setWritingSections(mappedWriting);
+        setSpeakingSections(mappedSpeaking);
       } catch (e) {
         console.error("Preview fetch questions error", e);
       } finally {
@@ -5655,6 +5644,12 @@ const StudentPreview = () => {
     if (writingSections.length > 0) {
       writingSections.forEach((s, idx) => {
         navigation.push({ id: `writing-${idx + 1}`, type: 'section', title: `Writing ${idx + 1}` });
+      });
+    }
+    // Speaking sections
+    if (speakingSections.length > 0) {
+      speakingSections.forEach((s, idx) => {
+        navigation.push({ id: `speaking-${idx + 1}`, type: 'section', title: `Speaking ${idx + 1}` });
       });
     }
     // Individual questions (GV etc.)
@@ -5782,6 +5777,18 @@ const StudentPreview = () => {
                   writingSections.map((section, index) => (
                     <div key={`writing-wrap-${section.id || index}`} ref={el => (questionRefs.current[`writing-${index + 1}`] = el)}>
                       <WritingSectionItem key={section.id || `writing_${index}`} question={section} index={index} theme={theme} />
+                    </div>
+                  ))
+                )}
+                {/* Render Speaking sections when challenge type is SP */}
+                {challengeType === 'SP' && speakingSections.length > 0 && (
+                  speakingSections.map((section, index) => (
+                    <div key={`speaking-wrap-${section.id || index}`} ref={el => (questionRefs.current[`speaking-${index + 1}`] = el)}>
+                      {section.type === 'SPEAKING_WITH_AUDIO_SECTION' ? (
+                        <SpeakingWithAudioSectionItem key={section.id || `speaking_audio_${index}`} question={section} index={index} theme={theme} />
+                      ) : (
+                        <SpeakingSectionItem key={section.id || `speaking_${index}`} question={section} index={index} theme={theme} />
+                      )}
                     </div>
                   ))
                 )}
