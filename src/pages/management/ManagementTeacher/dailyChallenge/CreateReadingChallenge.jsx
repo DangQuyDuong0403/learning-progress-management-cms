@@ -9,7 +9,6 @@ import {
   Upload,
   Divider,
   Modal,
-  Select,
 } from "antd";
 import {
   ArrowLeftOutlined,
@@ -134,7 +133,8 @@ const CreateReadingChallenge = () => {
         title: editingPassage.title || (isWritingChallenge ? "Writing Prompt" : "Passage"),
         content: content,
         type: editingPassage.content ? "manual" : null,
-        questions: editingPassage.questions || [],
+        // Mark backend questions so we know to send their ids on save
+        questions: (editingPassage.questions || []).map(q => ({ ...q, isFromBackend: true })),
         audioFile: editingPassage.audioFile || null,
         audioUrl: editingPassage.audioUrl || null,
         sectionId: editingPassage.sectionId
@@ -174,6 +174,8 @@ const CreateReadingChallenge = () => {
 
   // Get current passage
   const questions = passage?.questions || [];
+  // Only show questions that are not marked for deletion
+  const visibleQuestions = questions.filter(q => q?.toBeDeleted !== true);
 
   // Update passageContent when passage changes
   React.useEffect(() => {
@@ -316,6 +318,7 @@ const CreateReadingChallenge = () => {
         });
       } else {
         // Other challenges: Transform questions normally
+        let activeOrderCounter = 0;
         transformedQuestions = (passage.questions || []).map((question, index) => {
         console.log('Transforming question:', index, {
           id: question.id,
@@ -325,13 +328,14 @@ const CreateReadingChallenge = () => {
         });
         
         const baseQuestion = {
-          // Include id when present (editing existing question)
-          ...(question.id && { id: question.id }),
+          // Only include id for questions that originated from backend
+          ...(question.isFromBackend && question.id ? { id: question.id } : {}),
           questionText: question.question || question.questionText || '',
-          orderNumber: index + 1,
+          // Assign sequential order only for active questions; deleted ones get 0
+          orderNumber: question.toBeDeleted ? 0 : (++activeOrderCounter),
           score: question.points || 1,
           questionType: mapQuestionType(question.type),
-          toBeDeleted: false
+          toBeDeleted: question.toBeDeleted === true
         };
         
         console.log('Transformed question:', baseQuestion);
@@ -730,11 +734,22 @@ const CreateReadingChallenge = () => {
   };
 
   const handleDeleteQuestion = (questionId) => {
-    setPassage(prevPassage => ({
-      ...prevPassage,
-      questions: prevPassage.questions.filter(q => q.id !== questionId)
-    }));
-    spaceToast.success("Question deleted successfully!");
+    setPassage(prevPassage => {
+      const updatedQuestions = prevPassage.questions
+        .map(q => {
+          if (q.id === questionId) {
+            if (q.isFromBackend) {
+              return { ...q, toBeDeleted: true };
+            }
+            return null;
+          }
+          return q;
+        })
+        .filter(Boolean);
+
+      return { ...prevPassage, questions: updatedQuestions };
+    });
+    spaceToast.success("Question marked for deletion");
   };
 
   const handleSaveQuestion = (questionData) => {
@@ -744,16 +759,23 @@ const CreateReadingChallenge = () => {
         return {
           ...prevPassage,
           questions: prevPassage.questions.map(q =>
-            q.id === editingQuestion.id ? { ...questionData, id: editingQuestion.id } : q
+            q.id === editingQuestion.id 
+              ? { 
+                  ...q,
+                  ...questionData, 
+                  id: editingQuestion.id,
+                  isFromBackend: q.isFromBackend === true || editingQuestion.isFromBackend === true
+                } 
+              : q
           )
         };
       } else {
         // Add new question - don't assign id, let backend generate it
-        const newQuestion = {
-          ...questionData,
-          // No id field - backend will generate it
-          isFromBackend: false, // Mark as new question
-        };
+          const newQuestion = {
+            ...questionData,
+            // No id field - backend will generate it
+            isFromBackend: false,
+          };
         return {
           ...prevPassage,
           questions: [...prevPassage.questions, newQuestion]
@@ -1487,7 +1509,7 @@ const CreateReadingChallenge = () => {
                     color: theme === 'sun' ? '#1E40AF' : '#8377A0',
                     textAlign: 'center'
                   }}>
-                    Questions ({questions.length})
+                    Questions ({visibleQuestions.length})
                       </Title>
                     </div>
 
@@ -1525,7 +1547,7 @@ const CreateReadingChallenge = () => {
                   overflowY: 'auto',
                   overflowX: 'hidden'
                 }}>
-                      {questions.length === 0 ? (
+                      {visibleQuestions.length === 0 ? (
                     <div className="rc-empty-questions" style={{ 
                       padding: '40px 20px',
                       textAlign: 'center'
@@ -1542,11 +1564,11 @@ const CreateReadingChallenge = () => {
                       }}>Click "Add a Question" above to get started</div>
                         </div>
                       ) : (
-                        questions.map((question, index) => {
+                        visibleQuestions.map((question, index) => {
                           console.log(`Question ${index + 1}:`, question);
                           return (
                       <div 
-                        key={question.id} 
+                        key={question.id || index} 
                         className={`rc-question-item ${theme}-rc-question-item`}
                         style={{
                           padding: '16px',
@@ -1601,10 +1623,11 @@ const CreateReadingChallenge = () => {
                             type="text"
                             icon={<CopyOutlined />}
                             onClick={() => {
+                              const { id, ...rest } = question;
                               const newQuestion = {
-                                ...question,
-                                id: Date.now(),
-                                question: `${question.question} (Copy)`
+                                ...rest,
+                                question: `${question.question} (Copy)`,
+                                isFromBackend: false
                               };
                               setPassage(prevPassage => ({
                                 ...prevPassage,
