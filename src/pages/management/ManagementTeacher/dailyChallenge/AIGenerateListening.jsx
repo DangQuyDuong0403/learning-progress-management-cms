@@ -367,61 +367,33 @@ const AIGenerateListening = () => {
     <ThemedLayout customHeader={customHeader} contentMargin={10}>
       <div className={`ai-generate-wrapper allow-motion ${theme}-ai-generate-wrapper`}>
         <div style={{ padding: '24px', maxWidth: '1500px', margin: '0 auto' }}>
-          {/* Hierarchy info bar (same as Reading page) */}
-          <div
-            style={{
-              display: 'flex',
-              gap: 12,
-              flexWrap: 'wrap',
-              alignItems: 'center',
-              marginBottom: 12,
-            }}
-          >
-            {hierarchy && (
-              <>
-                <div style={{
-                  padding: '8px 12px',
-                  borderRadius: 12,
-                  border: `2px solid ${theme === 'sun' ? 'rgba(24, 144, 255, 0.35)' : 'rgba(139, 92, 246, 0.35)'}`,
-                  background: theme === 'sun'
-                    ? 'linear-gradient(135deg, rgba(240,249,255,0.65), rgba(255,255,255,0.9))'
-                    : 'linear-gradient(135deg, rgba(244,240,255,0.35), rgba(255,255,255,0.08))',
-                  color: theme === 'sun' ? '#0f172a' : '#e5e7eb',
-                  fontWeight: 600,
-                }}>
-                  Level: {hierarchy?.level?.levelName || hierarchy?.level?.name || '—'}
-                </div>
-                <div style={{
-                  padding: '8px 12px',
-                  borderRadius: 12,
-                  border: `2px solid ${theme === 'sun' ? 'rgba(24, 144, 255, 0.35)' : 'rgba(139, 92, 246, 0.35)'}`,
-                  background: theme === 'sun'
-                    ? 'linear-gradient(135deg, rgba(240,249,255,0.65), rgba(255,255,255,0.9))'
-                    : 'linear-gradient(135deg, rgba(244,240,255,0.35), rgba(255,255,255,0.08))',
-                  color: theme === 'sun' ? '#0f172a' : '#e5e7eb',
-                  fontWeight: 600,
-                }}>
-                  Chapter: {hierarchy?.chapter?.chapterName || hierarchy?.chapter?.name || '—'}
-                </div>
-                <div style={{
-                  padding: '8px 12px',
-                  borderRadius: 12,
-                  border: `2px solid ${theme === 'sun' ? 'rgba(24, 144, 255, 0.35)' : 'rgba(139, 92, 246, 0.35)'}`,
-                  background: theme === 'sun'
-                    ? 'linear-gradient(135deg, rgba(240,249,255,0.65), rgba(255,255,255,0.9))'
-                    : 'linear-gradient(135deg, rgba(244,240,255,0.35), rgba(255,255,255,0.08))',
-                  color: theme === 'sun' ? '#0f172a' : '#e5e7eb',
-                  fontWeight: 600,
-                }}>
-                  Lesson: {hierarchy?.lesson?.lessonName || hierarchy?.lesson?.name || '—'}
-                </div>
-              </>
-            )}
-          </div>
+          {/* Hierarchy info moved inside the main container */}
           <Card
             style={{ borderRadius: '20px', border: theme === 'sun' ? '2px solid rgba(24, 144, 255, 0.35)' : '2px solid rgba(139, 92, 246, 0.35)', background: theme === 'sun' ? 'linear-gradient(180deg, rgba(255,255,255,0.60) 0%, rgba(240,249,255,0.55) 100%)' : 'linear-gradient(180deg, rgba(255,255,255,0.50) 0%, rgba(244,240,255,0.45) 100%)', backdropFilter: 'blur(6px)', boxShadow: theme === 'sun' ? '0 8px 24px rgba(24, 144, 255, 0.12)' : '0 8px 24px rgba(139, 92, 246, 0.12)', padding: 16 }}
             bodyStyle={{ padding: 16 }}
           >
+            {/* White chips for Level/Chapter/Lesson inside container */}
+            {hierarchy && (
+              <div
+                style={{
+                  display: 'flex',
+                  gap: 12,
+                  flexWrap: 'wrap',
+                  alignItems: 'center',
+                  marginBottom: 12,
+                }}
+              >
+                <div style={{ padding: '8px 12px', borderRadius: 12, border: '1px solid rgba(0,0,0,0.1)', background: '#ffffff', color: '#000000', fontWeight: 600 }}>
+                  Level: Flayer
+                </div>
+                <div style={{ padding: '8px 12px', borderRadius: 12, border: '1px solid rgba(0,0,0,0.1)', background: '#ffffff', color: '#000000', fontWeight: 600 }}>
+                  Chapter: Chapter của MinhPQ
+                </div>
+                <div style={{ padding: '8px 12px', borderRadius: 12, border: '1px solid rgba(0,0,0,0.1)', background: '#ffffff', color: '#000000', fontWeight: 600 }}>
+                  Lesson: Lessone of MinhPQ 2
+                </div>
+              </div>
+            )}
             <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '20px', alignItems: 'stretch' }}>
               <Card
                 className={`prompt-description-card ${theme}-prompt-description-card`}
@@ -486,7 +458,7 @@ const AIGenerateListening = () => {
                   value={prompt}
                   onChange={(e) => setPrompt(e.target.value)}
                   autoSize={{ minRows: 10, maxRows: 14 }}
-                  placeholder={t('dailyChallenge.pleaseEnterPrompt') || 'Write transcript here'}
+                  placeholder={'Please add transcript'}
                    style={{ marginTop: 6, fontSize: '15px', borderRadius: '12px', border: `2px solid ${primaryColor}99`, background: theme === 'sun' ? 'rgba(240, 249, 255, 0.5)' : 'rgba(244, 240, 255, 0.3)', outline: 'none', boxShadow: 'none', minHeight: '300px' }}
                 />
               </Card>

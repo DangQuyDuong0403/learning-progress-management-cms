@@ -22,6 +22,7 @@ import {
   SwapOutlined,
   SaveOutlined,
   DownloadOutlined,
+  UploadOutlined,
   ArrowLeftOutlined,
   DownOutlined,
   CheckCircleOutlined,
@@ -2794,7 +2795,7 @@ const DailyChallengeContent = () => {
     }
   }, [id]);
 
-  const [totalElements, setTotalElements] = useState(0);
+  
 
   const fetchQuestions = useCallback(async () => {
     if (!id) {
@@ -2946,10 +2947,7 @@ const DailyChallengeContent = () => {
         console.log('Mapped Questions:', mappedQuestions);
         console.log('Mapped Passages:', mappedPassages);
 
-        // Calculate total elements (questions count) from API or derived
-        const derivedTotal = mappedQuestions.length + mappedPassages.reduce((sum, p) => sum + (Array.isArray(p.questions) ? p.questions.length : 0), 0);
-        const apiTotal = response.totalElements ?? response.data?.totalElements ?? null;
-        setTotalElements(Number.isFinite(apiTotal) ? apiTotal : derivedTotal);
+        // total count is now computed dynamically for display based on challenge type
 
         // Sort questions by orderNumber to ensure correct order
         const sortedQuestions = mappedQuestions.sort((a, b) => (a.orderNumber || 0) - (b.orderNumber || 0));
@@ -3765,6 +3763,8 @@ const DailyChallengeContent = () => {
     }
   }, [id, exportLoading]);
 
+  
+
   const handleDuplicateQuestion = useCallback(async (questionId) => {
     try {
       const source = questions.find(q => q.id === questionId);
@@ -4055,6 +4055,36 @@ const DailyChallengeContent = () => {
     [filteredPassages]
   );
 
+  // Compute display totals and label based on challenge type
+  const displayTotals = useMemo(() => {
+    const type = challengeDetails?.challengeType;
+    let count = 0;
+    let label = 'questions';
+
+    if (type === 'GV') {
+      count = filteredQuestions.length;
+      label = 'questions';
+    } else if (type === 'RE') {
+      count = filteredPassages.length;
+      label = 'reading sections';
+    } else if (type === 'LI') {
+      count = filteredPassages.filter(p => p.type === 'LISTENING_PASSAGE').length;
+      label = 'listening sections';
+    } else if (type === 'WR') {
+      count = filteredPassages.length;
+      label = 'writing';
+    } else if (type === 'SP') {
+      count = filteredPassages.filter(p => p.type === 'SPEAKING_PASSAGE').length;
+      label = 'speaking';
+    } else {
+      count = filteredQuestions.length;
+      label = 'questions';
+    }
+
+    const remaining = Math.max(0, 100 - (Number(count) || 0));
+    return { count, label, remaining };
+  }, [challengeDetails?.challengeType, filteredQuestions, filteredPassages]);
+
   // Handle back button click - Navigate to Performance page with state
   const handleBackToDailyChallenges = () => {
     navigate(`/teacher/daily-challenges/detail/${id}`, {
@@ -4149,7 +4179,7 @@ const DailyChallengeContent = () => {
 
             {/* Export button only */}
             <Button 
-              icon={<DownloadOutlined />}
+              icon={<UploadOutlined />}
               loading={exportLoading}
               disabled={exportLoading}
               onClick={handleExportData}
@@ -4160,14 +4190,11 @@ const DailyChallengeContent = () => {
                 fontWeight: 500,
                 fontSize: '16px',
                 padding: '0 24px',
-                border: 'none',
+                border: '1px solid rgba(0, 0, 0, 0.12)',
                 transition: 'all 0.3s ease',
-                background: theme === 'sun' 
-                  ? 'linear-gradient(135deg, rgba(102, 174, 255, 0.6), rgba(60, 153, 255, 0.6))'
-                  : 'linear-gradient(135deg, rgba(181, 176, 192, 0.7), rgba(163, 158, 187, 0.7), rgba(131, 119, 160, 0.7), rgba(172, 165, 192, 0.7), rgba(109, 95, 143, 0.7))',
-                color: theme === 'sun' ? '#000000' : '#000000',
-                boxShadow: theme === 'sun' ? '0 2px 8px rgba(60, 153, 255, 0.2)' : '0 2px 8px rgba(131, 119, 160, 0.3)',
-                opacity: 0.9
+                background: '#ffffff',
+                color: '#000000',
+                boxShadow: '0 2px 8px rgba(0, 0, 0, 0.06)'
               }}
             >
               {t('common.export') || 'Export'}
@@ -4182,7 +4209,14 @@ const DailyChallengeContent = () => {
                 const previewPath = userRole === 'teaching_assistant'
                   ? `/teaching-assistant/daily-challenges/detail/${id}/preview`
                   : `/teacher/daily-challenges/detail/${id}/preview`;
-                navigate(previewPath);
+                navigate(previewPath, {
+                  state: {
+                    challengeId: id,
+                    challengeName: challengeDetails?.challengeName,
+                    classId: challengeInfo.classId,
+                    className: challengeInfo.className,
+                  }
+                });
               }}
               style={{
                 height: '40px',
@@ -4190,14 +4224,11 @@ const DailyChallengeContent = () => {
                 fontWeight: 500,
                 fontSize: '16px',
                 padding: '0 24px',
-                border: 'none',
+                border: '1px solid rgba(0, 0, 0, 0.12)',
                 transition: 'all 0.3s ease',
-                background: theme === 'sun' 
-                  ? 'linear-gradient(135deg, rgba(102, 174, 255, 0.6), rgba(60, 153, 255, 0.6))'
-                  : 'linear-gradient(135deg, rgba(181, 176, 192, 0.7), rgba(163, 158, 187, 0.7), rgba(131, 119, 160, 0.7), rgba(172, 165, 192, 0.7), rgba(109, 95, 143, 0.7))',
-                color: theme === 'sun' ? '#000000' : '#000000',
-                boxShadow: theme === 'sun' ? '0 2px 8px rgba(60, 153, 255, 0.2)' : '0 2px 8px rgba(131, 119, 160, 0.3)',
-                opacity: 0.9
+                background: '#ffffff',
+                color: '#000000',
+                boxShadow: '0 2px 8px rgba(0, 0, 0, 0.06)'
               }}
             >
               {t('dailyChallenge.preview')}
@@ -4215,14 +4246,11 @@ const DailyChallengeContent = () => {
                   fontWeight: 500,
                   fontSize: '16px',
                   padding: '0 24px',
-                  border: 'none',
+                  border: '1px solid rgba(0, 0, 0, 0.12)',
                   transition: 'all 0.3s ease',
-                  background: theme === 'sun' 
-                    ? 'linear-gradient(135deg, rgba(102, 174, 255, 0.6), rgba(60, 153, 255, 0.6))'
-                    : 'linear-gradient(135deg, rgba(181, 176, 192, 0.7), rgba(163, 158, 187, 0.7), rgba(131, 119, 160, 0.7), rgba(172, 165, 192, 0.7), rgba(109, 95, 143, 0.7))',
-                  color: theme === 'sun' ? '#000000' : '#000000',
-                  boxShadow: theme === 'sun' ? '0 2px 8px rgba(60, 153, 255, 0.2)' : '0 2px 8px rgba(131, 119, 160, 0.3)',
-                  opacity: 0.9
+                  background: '#ffffff',
+                  color: '#000000',
+                  boxShadow: '0 2px 8px rgba(0, 0, 0, 0.06)'
                 }}
               >
                 {t('dailyChallenge.addQuestion')}
@@ -4634,7 +4662,7 @@ const DailyChallengeContent = () => {
                 >
             <div style={{ display: 'flex', gap: '12px', alignItems: 'center', justifyContent: 'space-between' }}>
               <Typography.Text style={{ fontWeight: 400, color: '#000', whiteSpace: 'nowrap', fontSize: '16px' }}>
-                {`Total: ${totalElements} questions • Remaining: ${Math.max(0, 100 - (Number(totalElements) || 0))} questions`}
+                <span style={{ fontWeight: 700 }}>Total:</span> {displayTotals.count} {displayTotals.label} • <span style={{ fontWeight: 700 }}>Remaining:</span> {displayTotals.remaining} {displayTotals.label}
               </Typography.Text>
               <Input
                   prefix={<SearchOutlined />}

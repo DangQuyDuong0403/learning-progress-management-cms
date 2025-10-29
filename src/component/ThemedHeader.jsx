@@ -13,7 +13,7 @@ import LanguageToggle from './LanguageToggle';
 import { spaceToast } from './SpaceToastify';
 import './ThemedHeader.css';
 
-export default function ThemedHeader() {
+export default function ThemedHeader({ hideThemeToggle = false, hideLanguageToggle = false }) {
   const navigate = useNavigate();
   const location = useLocation();
   const { t } = useTranslation();
@@ -475,42 +475,46 @@ export default function ThemedHeader() {
           <div className="themed-navbar-actions">
             <ul className="themed-navbar-nav">
               {/* Theme Toggle Switch */}
-              <li className="themed-nav-item">
-                <Tooltip 
-                  title={isSunTheme ? t('header.switchToSpace') : t('header.switchToSun')}
-                  placement="bottom"
-                >
-                  <div className="theme-switch-container">
-                    <Switch
-                      checked={isSunTheme}
-                      onChange={toggleTheme}
-                      size="default"
-                      className={`theme-switch ${theme}-theme-switch`}
-                      checkedChildren={
-                        <SunOutlined 
-                          style={{ 
-                            color: '#fff',
-                            filter: 'drop-shadow(0 0 3px rgba(255, 215, 0, 0.8))'
-                          }} 
-                        />
-                      }
-                      unCheckedChildren={
-                        <MoonOutlined 
-                          style={{ 
-                            color: '#fff',
-                            filter: 'drop-shadow(0 0 3px rgba(77, 208, 255, 0.8))'
-                          }} 
-                        />
-                      }
-                    />
-                  </div>
-                </Tooltip>
-              </li>
+              {!hideThemeToggle && (
+                <li className="themed-nav-item">
+                  <Tooltip 
+                    title={isSunTheme ? t('header.switchToSpace') : t('header.switchToSun')}
+                    placement="bottom"
+                  >
+                    <div className="theme-switch-container">
+                      <Switch
+                        checked={isSunTheme}
+                        onChange={toggleTheme}
+                        size="default"
+                        className={`theme-switch ${theme}-theme-switch`}
+                        checkedChildren={
+                          <SunOutlined 
+                            style={{ 
+                              color: '#fff',
+                              filter: 'drop-shadow(0 0 3px rgba(255, 215, 0, 0.8))'
+                            }} 
+                          />
+                        }
+                        unCheckedChildren={
+                          <MoonOutlined 
+                            style={{ 
+                              color: '#fff',
+                              filter: 'drop-shadow(0 0 3px rgba(77, 208, 255, 0.8))'
+                            }} 
+                          />
+                        }
+                      />
+                    </div>
+                  </Tooltip>
+                </li>
+              )}
 
               {/* Language Toggle */}
-              <li className="themed-nav-item">
-                <LanguageToggle />
-              </li>
+              {!hideLanguageToggle && (
+                <li className="themed-nav-item">
+                  <LanguageToggle />
+                </li>
+              )}
 
               {/* Notifications */}
               <li className="themed-nav-item dropdown">
