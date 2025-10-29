@@ -32,13 +32,13 @@ import usePageTitle from "../../../../hooks/usePageTitle";
 import { useSelector } from "react-redux";
 import { dailyChallengeApi } from "../../../../apis/apis";
 
-// Challenge types constant
+// Challenge types constant (base metadata; labels are translated at render-time)
 const challengeTypes = [
-  { id: 1, name: "Grammar & Vocabulary", type: "GV", icon: "🌟", description: "Test grammar rules and vocabulary knowledge" },
-  { id: 2, name: "Reading", type: "RE", icon: "📝", description: "Reading comprehension exercises" },
-  { id: 3, name: "Listening", type: "LI", icon: "🎵", description: "Audio-based listening comprehension" },
-  { id: 4, name: "Writing", type: "WR", icon: "✏️", description: "Writing topics and exercises" },
-  { id: 5, name: "Speaking", type: "SP", icon: "💬", description: "Oral communication practice" },
+  { id: 1, type: "GV", icon: "🌟" },
+  { id: 2, type: "RE", icon: "📝" },
+  { id: 3, type: "LI", icon: "🎵" },
+  { id: 4, type: "WR", icon: "✏️" },
+  { id: 5, type: "SP", icon: "💬" },
 ];
 
 // Select removed in favor of AccountList-style filter dropdown
@@ -100,10 +100,10 @@ const DailyChallengeList = ({ readOnly = false }) => {
     return Array.from(unique.values());
   }, [allChallenges]);
 
-  // Simple status display mapping for readability
+  // Simple status display mapping for readability (localized)
   const STATUS_LABEL = {
-    PUBLISHED: 'Published',
-    DRAFT: 'Draft',
+    PUBLISHED: t('dailyChallenge.published') || 'Published',
+    DRAFT: t('dailyChallenge.draft') || 'Draft',
   };
 
   // AccountList-style filter dropdown state and refs
@@ -134,13 +134,35 @@ const DailyChallengeList = ({ readOnly = false }) => {
 
   // Filter option lists - Updated for new data structure
   const typeOptions = [
-    "GV", // Grammar & Vocabulary
-    "Reading",
-    "Writing", 
-    "Listening",
-    "Speaking",
+    "GV",
+    "RE",
+    "WR",
+    "LI",
+    "SP",
   ];
   const statusOptions = ["DRAFT", "PUBLISHED"];
+  const getStatusLabel = (statusKey) => {
+    switch (statusKey) {
+      case 'DRAFT':
+        return t('dailyChallenge.draft') || 'Draft';
+      case 'PUBLISHED':
+        return t('dailyChallenge.published') || 'Published';
+      default:
+        return statusKey;
+    }
+  };
+
+  // Helper to translate type codes to labels
+  const getTypeLabelByCode = useCallback((typeCode) => {
+    switch(typeCode) {
+      case 'GV': return t('dailyChallenge.typeNames.GV') || 'Grammar & Vocabulary';
+      case 'RE': return t('dailyChallenge.typeNames.RE') || 'Reading';
+      case 'LI': return t('dailyChallenge.typeNames.LI') || 'Listening';
+      case 'WR': return t('dailyChallenge.typeNames.WR') || 'Writing';
+      case 'SP': return t('dailyChallenge.typeNames.SP') || 'Speaking';
+      default: return typeCode;
+    }
+  }, [t]);
 
   // Fetch class data if classId exists
   const fetchClassData = useCallback(async () => {
@@ -598,13 +620,13 @@ const DailyChallengeList = ({ readOnly = false }) => {
       setCreateModalData({
         ...pendingLessonData,
         challengeType: challengeType.type,
-        challengeTypeName: challengeType.name,
+        challengeTypeName: getTypeLabelByCode(challengeType.type),
       });
       setPendingLessonData(null);
     } else {
       setCreateModalData({
         challengeType: challengeType.type,
-        challengeTypeName: challengeType.name,
+        challengeTypeName: getTypeLabelByCode(challengeType.type),
       });
     }
     setChallengeTypeModalVisible(false);
@@ -857,7 +879,7 @@ const DailyChallengeList = ({ readOnly = false }) => {
                     }}
                     title={`Create Daily Challenge for ${text}`}
                   >
-                    Create Challenge
+                    {t('dailyChallenge.createChallenge')}
                   </Button>
                 )}
               </div>
@@ -923,17 +945,6 @@ const DailyChallengeList = ({ readOnly = false }) => {
           );
         }
 
-        const getTypeLabel = (typeCode) => {
-          switch(typeCode) {
-            case 'GV': return 'Grammar & Vocabulary';
-            case 'RE': return 'Reading';
-            case 'LI': return 'Listening';
-            case 'WR': return 'Writing';
-            case 'SP': return 'Speaking';
-            default: return typeCode;
-          }
-        };
-
         return (
           <span style={{
             padding: '4px 8px',
@@ -941,7 +952,7 @@ const DailyChallengeList = ({ readOnly = false }) => {
             fontSize: '18px',
             color: '#000000'
           }}>
-            {getTypeLabel(type)}
+            {getTypeLabelByCode(type)}
           </span>
         );
       },
@@ -1025,7 +1036,7 @@ const DailyChallengeList = ({ readOnly = false }) => {
               }}
             >
               <span className="status-text" style={{ transition: 'opacity 0.3s ease' }}>
-                {STATUS_LABEL[status] || status || ''}
+                {getStatusLabel(status)}
               </span>
               <Button
                 className="status-publish-btn"
@@ -1054,9 +1065,9 @@ const DailyChallengeList = ({ readOnly = false }) => {
                   e.stopPropagation();
                   handleToggleStatus(record.id);
                 }}
-                title="Publish Challenge"
+                title={t('dailyChallenge.publishNow') || 'Publish'}
               >
-                Publish
+                {t('dailyChallenge.publishNow') || 'Publish'}
               </Button>
             </div>
           );
@@ -1068,7 +1079,7 @@ const DailyChallengeList = ({ readOnly = false }) => {
             color: getStatusColor(status),
             fontWeight: 500,
           }}>
-            {STATUS_LABEL[status] || status || ''}
+            {getStatusLabel(status)}
           </span>
         );
       },
@@ -1161,7 +1172,7 @@ const DailyChallengeList = ({ readOnly = false }) => {
               onClick={handleFilterToggle}
               className={`filter-button ${theme}-filter-button ${filterDropdown.visible ? 'active' : ''} ${(statusFilter.length > 0 || typeFilter.length > 0) ? 'has-filters' : ''}`}
             >
-              Filter
+              {t('common.filter') || 'Filter'}
             </Button>
             
             {/* Filter Dropdown Panel */}
@@ -1186,7 +1197,7 @@ const DailyChallengeList = ({ readOnly = false }) => {
                             }}
                             className={`filter-option ${filterDropdown.selectedTypes.includes(opt) ? 'selected' : ''}`}
                           >
-                            {opt === 'GV' ? 'Grammar & Vocabulary' : opt}
+                            {getTypeLabelByCode(opt)}
                           </Button>
                         ))}
                       </div>
@@ -1209,7 +1220,7 @@ const DailyChallengeList = ({ readOnly = false }) => {
                             }}
                             className={`filter-option ${filterDropdown.selectedStatuses.includes(statusKey) ? 'selected' : ''}`}
                           >
-                            {t(`dailyChallenge.${statusKey}`)}
+                            {getStatusLabel(statusKey)}
                           </Button>
                         ))}
                       </div>
@@ -1301,7 +1312,7 @@ const DailyChallengeList = ({ readOnly = false }) => {
               textAlign: 'center',
               marginBottom: '4px'
             }}>
-              Choose Challenge Type
+              {t('dailyChallenge.chooseChallengeTypeTitle')}
             </div>
           }
           open={challengeTypeModalVisible}
@@ -1323,9 +1334,9 @@ const DailyChallengeList = ({ readOnly = false }) => {
                     <div className="challenge-type-icon-wrapper">
                       <span style={{ fontSize: '48px' }}>{challengeType.icon}</span>
                     </div>
-                    <div className="challenge-type-name">{challengeType.name}</div>
+                    <div className="challenge-type-name">{getTypeLabelByCode(challengeType.type)}</div>
                     <div className="challenge-type-description">
-                      {challengeType.description}
+                      {t(`dailyChallenge.typeDescriptions.${challengeType.type}`)}
                     </div>
                   </div>
                 ))}
@@ -1379,15 +1390,14 @@ const DailyChallengeList = ({ readOnly = false }) => {
           }}
           okButtonProps={{
             style: {
-              background: '#ff4d4f',
-              borderColor: '#ff4d4f',
-              color: '#fff',
+              background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, #7228d9 0%, #9c88ff 100%)',
+              borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : '#7228d9',
+              color: theme === 'sun' ? '#000' : '#fff',
               borderRadius: '6px',
-              height: '32px',
+              height: '40px',
               fontWeight: '500',
               fontSize: '16px',
-              padding: '4px 15px',
-              width: '100px',
+              padding: '0 30px',
               transition: 'all 0.3s ease',
               boxShadow: 'none'
             }

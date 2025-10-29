@@ -363,11 +363,13 @@ const AIGenerateQuestions = () => {
             // Or if backend already includes options
             const backendOptions = Array.isArray(q?.options) ? q.options : [];
             const hasBackend = backendOptions.length > 0;
+            const rawQuestion = q?.question || q?.questionText || '';
+            const sanitizedQuestion = typeof rawQuestion === 'string' ? rawQuestion.replace(/\[\[pos_[^\]]+\]\]/g, '') : rawQuestion;
             return {
               id: nextId(),
               type: 'TRUE_OR_FALSE',
               title: `Question ${counter}`,
-              question: q?.question || q?.questionText || '',
+              question: sanitizedQuestion,
               options: hasBackend
                 ? backendOptions.map((o, i) => ({ key: toOptionKey(i), text: o?.text ?? o?.value ?? '', isCorrect: Boolean(o?.isCorrect || o?.correct) }))
                 : options,
@@ -1375,7 +1377,7 @@ const AIGenerateQuestions = () => {
                         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                           <CloudUploadOutlined style={{ fontSize: 24, color: '#000000' }} />
                           <Typography.Text strong style={{ color: theme === 'sun' ? '#1E40AF' : '#8377A0' }}>
-                            Upload Question File
+                            Generate question from file
                           </Typography.Text>
                         </div>
                       </Card>
@@ -1401,7 +1403,7 @@ const AIGenerateQuestions = () => {
                         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                           <EditOutlined style={{ fontSize: 24, color: '#000000' }} />
                           <Typography.Text strong style={{ color: theme === 'sun' ? '#1E40AF' : '#8377A0' }}>
-                            Create Question Manually
+                            Generate question manually
                           </Typography.Text>
                         </div>
                       </Card>

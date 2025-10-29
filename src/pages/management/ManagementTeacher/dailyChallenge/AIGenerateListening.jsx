@@ -529,7 +529,7 @@ const AIGenerateListening = () => {
                         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                           <CloudUploadOutlined style={{ fontSize: 24, color: '#000000' }} />
                           <Typography.Text strong style={{ color: theme === 'sun' ? '#1E40AF' : '#8377A0' }}>
-                            Upload Question File
+                            Generate question from file
                           </Typography.Text>
                         </div>
                       </Card>
@@ -545,7 +545,7 @@ const AIGenerateListening = () => {
                         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                           <EditOutlined style={{ fontSize: 24, color: '#000000' }} />
                           <Typography.Text strong style={{ color: theme === 'sun' ? '#1E40AF' : '#8377A0' }}>
-                            Create Question Manually
+                            Generate question manually
                           </Typography.Text>
                         </div>
                       </Card>

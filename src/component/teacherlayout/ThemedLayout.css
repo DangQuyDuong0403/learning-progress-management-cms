@@ -3,6 +3,21 @@
 	transition: all 0.3s ease;
 }
 
+/* Make content custom scrollbar fill the content height */
+.themed-content-scrollbar {
+	height: 100%;
+}
+
+/* Hide native scrollbars for nested scrollables inside content, keep custom page scrollbar */
+.themed-content * {
+	-ms-overflow-style: none; /* IE/Edge */
+	scrollbar-width: none;    /* Firefox */
+}
+.themed-content *::-webkit-scrollbar {
+	width: 0;
+	height: 0;               /* Chrome/Safari */
+}
+
 /* ===== FLOATING ANIMATION FOR SPACE THEME ===== */
 @keyframes floatingUpDown {
 	0%, 100% {
