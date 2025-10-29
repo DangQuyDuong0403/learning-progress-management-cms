@@ -4617,7 +4617,7 @@ const DailyChallengeContent = () => {
                   }}
                 >
             <div style={{ display: 'flex', gap: '12px', alignItems: 'center', justifyContent: 'space-between' }}>
-              <Typography.Text style={{ fontWeight: 600, color: '#000', whiteSpace: 'nowrap', fontSize: '16px' }}>
+              <Typography.Text style={{ fontWeight: 400, color: '#000', whiteSpace: 'nowrap', fontSize: '16px' }}>
                 {`Total: ${totalElements} questions • Remaining: ${Math.max(0, 100 - (Number(totalElements) || 0))} questions`}
               </Typography.Text>
               <Input

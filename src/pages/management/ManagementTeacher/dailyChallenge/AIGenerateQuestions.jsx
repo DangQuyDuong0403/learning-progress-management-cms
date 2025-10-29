@@ -1604,6 +1604,7 @@ const AIGenerateQuestions = () => {
                 background: theme === 'sun'
                   ? 'linear-gradient(135deg, rgba(255, 255, 255, 1) 0%, rgba(240, 249, 255, 0.95) 100%)'
                   : 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(244, 240, 255, 0.95) 100%)',
+                marginTop: '24px',
                 marginBottom: '24px',
                 backdropFilter: 'blur(10px)',
                 animation: 'fadeInUp 0.5s ease-out'
