@@ -868,28 +868,34 @@
 
 /* Override StudentList.css and ClassTeachers.css status-text colors */
 .daily-challenge-list-wrapper .status-cell-container .status-text {
-  color: rgb(223, 175, 56) ; /* Draft color */
+  color: rgb(204, 187, 36) ; /* Draft color */
+  font-weight: 500;
 }
 
 .daily-challenge-list-wrapper .status-text {
-  color: rgb(56, 223, 65) ; /* Published color */
+  color: rgb(20, 150, 26) ; /* Published color */
+  font-weight: 500;
 }
 
 /* Theme-specific overrides with even higher specificity */
 .daily-challenge-list-wrapper .space-theme .status-cell-container .status-text {
-  color: rgb(223, 175, 56); /* Draft color */
+  color: rgb(204, 187, 36); /* Draft color */
+  font-weight: 500; 
 }
 
 .daily-challenge-list-wrapper .space-theme .status-text {
-  color: rgb(56, 223, 65); /* Published color */
+  color: rgb(20, 150, 26); /* Published color */
+  font-weight: 500;
 }
 
 .daily-challenge-list-wrapper .sun-theme .status-cell-container .status-text {
-  color: rgb(223, 175, 56); /* Draft color */
+  color: rgb(204, 187, 36); /* Draft color */
+  font-weight: 500;
 }
 
 .daily-challenge-list-wrapper .sun-theme .status-text {
-  color: rgb(56, 223, 65); /* Published color */
+  color: rgb(20, 150, 26); /* Published color */
+  font-weight: 500;
 }
 
 /* Status cell hover effect */
