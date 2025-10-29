@@ -308,6 +308,7 @@ const EditDailyChallengeModal = ({
                 <Select 
                   placeholder={t('dailyChallenge.selectQuestionType')}
                   style={{ height: '40px' }}
+                  disabled
                 >
                   {questionTypeOptions.map(option => (
                     <Option key={option.value} value={option.value}>
@@ -562,11 +563,21 @@ const EditDailyChallengeModal = ({
                   </span>
                 }
                 name='endDate'
+                dependencies={['startDate']}
                 rules={[
                   {
                     required: true,
                     message: t('dailyChallenge.endDateRequired'),
                   },
+                  ({ getFieldValue }) => ({
+                    validator(_, value) {
+                      const startDate = getFieldValue('startDate');
+                      if (!value || !startDate || !value.isBefore(startDate)) {
+                        return Promise.resolve();
+                      }
+                      return Promise.reject(new Error(t('dailyChallenge.endDateMustBeAfterStartDate') || 'End date must be on or after start date'));
+                    },
+                  }),
                 ]}>
                 <DatePicker 
                   style={{ width: '100%', height: '40px' }}
