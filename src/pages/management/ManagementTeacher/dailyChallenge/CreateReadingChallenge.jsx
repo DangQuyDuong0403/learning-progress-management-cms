@@ -1607,7 +1607,7 @@ const CreateReadingChallenge = () => {
                             }}>
                               {isWritingChallenge ? 'Add writing topic manually' : 
                                isSpeakingChallenge ? 'Add speaking topic manually' : 
-                               'Add text & media manually'}
+                               'Add text manually'}
                             </Text>
                           </Space>
                         </Card>

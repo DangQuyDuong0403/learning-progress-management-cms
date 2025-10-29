@@ -41,7 +41,7 @@ const ThemedLayout = ({ children, customHeader, contentMargin = 20, contentPaddi
       >
         {/* Themed Header */}
         <div style={{ position: 'relative', zIndex: 10000 }}>
-          {customHeader || <ThemedHeader />}
+          {customHeader || <ThemedHeader hideThemeToggle hideLanguageToggle />}
         </div>
 
         {/* Background Elements */}
