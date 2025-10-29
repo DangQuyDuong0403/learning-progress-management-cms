@@ -4098,7 +4098,7 @@ const DailyChallengeContent = () => {
   ];
 
   // Temporarily hide Import/Export UI
-  const showImportExport = false;
+  const showImportExport = true;
 
   // Custom Header Component
   const customHeader = (
@@ -4243,47 +4243,60 @@ const DailyChallengeContent = () => {
               {t('dailyChallenge.preview')}
             </Button>
 
-            {/* Add Question/Passage Button - Single button for all types */}
-            <Button 
-              icon={<PlusOutlined />}
-              className={`create-button ${theme}-create-button`}
-              onClick={handleAddQuestion}
-              style={{
-                height: '40px',
-                borderRadius: '8px',
-                fontWeight: 500,
-                fontSize: '16px',
-                padding: '0 24px',
-                border: 'none',
-                transition: 'all 0.3s ease',
-                background: theme === 'sun' 
-                  ? 'linear-gradient(135deg, rgba(102, 174, 255, 0.6), rgba(60, 153, 255, 0.6))'
-                  : 'linear-gradient(135deg, rgba(181, 176, 192, 0.7), rgba(163, 158, 187, 0.7), rgba(131, 119, 160, 0.7), rgba(172, 165, 192, 0.7), rgba(109, 95, 143, 0.7))',
-                color: theme === 'sun' ? '#000000' : '#000000',
-                boxShadow: theme === 'sun' ? '0 2px 8px rgba(60, 153, 255, 0.2)' : '0 2px 8px rgba(131, 119, 160, 0.3)',
-                opacity: 0.9
-              }}
-            >
-              {t('dailyChallenge.addQuestion')}
-            </Button>
+            {/* Add Question/Passage Button - hidden when published */}
+            {status !== 'published' && (
+              <Button 
+                icon={<PlusOutlined />}
+                className={`create-button ${theme}-create-button`}
+                onClick={handleAddQuestion}
+                style={{
+                  height: '40px',
+                  borderRadius: '8px',
+                  fontWeight: 500,
+                  fontSize: '16px',
+                  padding: '0 24px',
+                  border: 'none',
+                  transition: 'all 0.3s ease',
+                  background: theme === 'sun' 
+                    ? 'linear-gradient(135deg, rgba(102, 174, 255, 0.6), rgba(60, 153, 255, 0.6))'
+                    : 'linear-gradient(135deg, rgba(181, 176, 192, 0.7), rgba(163, 158, 187, 0.7), rgba(131, 119, 160, 0.7), rgba(172, 165, 192, 0.7), rgba(109, 95, 143, 0.7))',
+                  color: theme === 'sun' ? '#000000' : '#000000',
+                  boxShadow: theme === 'sun' ? '0 2px 8px rgba(60, 153, 255, 0.2)' : '0 2px 8px rgba(131, 119, 160, 0.3)',
+                  opacity: 0.9
+                }}
+              >
+                {t('dailyChallenge.addQuestion')}
+              </Button>
+            )}
             
-            {/* Save Dropdown - Save as Draft or Published */}
+            {/* Save Dropdown - hide Draft when already published */}
             <Dropdown
               menu={{ 
-                items: [
-                  {
-                    key: 'draft',
-                    label: <span style={{ color: '#000000' }}>Save as Draft</span>,
-                    icon: <FileTextOutlined style={{ color: '#000000' }} />,
-                    onClick: () => handleSaveChanges('draft'),
-                  },
-                  {
-                    key: 'published',
-                    label: <span style={{ color: '#000000' }}>Save as Published</span>,
-                    icon: <CheckCircleOutlined style={{ color: '#000000' }} />,
-                    onClick: handlePublishConfirm,
-                  },
-                ]
+                items: (
+                  status === 'published'
+                    ? [
+                        {
+                          key: 'published',
+                          label: <span style={{ color: '#000000' }}>{t('dailyChallenge.saveAsPublished') || 'Save as Published'}</span>,
+                          icon: <CheckCircleOutlined style={{ color: '#000000' }} />,
+                          onClick: handlePublishConfirm,
+                        },
+                      ]
+                    : [
+                        {
+                          key: 'draft',
+                          label: <span style={{ color: '#000000' }}>{t('dailyChallenge.saveAsDraft') || 'Save as Draft'}</span>,
+                          icon: <FileTextOutlined style={{ color: '#000000' }} />,
+                          onClick: () => handleSaveChanges('draft'),
+                        },
+                        {
+                          key: 'published',
+                          label: <span style={{ color: '#000000' }}>{t('dailyChallenge.saveAsPublished') || 'Save as Published'}</span>,
+                          icon: <CheckCircleOutlined style={{ color: '#000000' }} />,
+                          onClick: handlePublishConfirm,
+                        },
+                      ]
+                )
               }}
               trigger={['click']}
             >
@@ -4305,7 +4318,7 @@ const DailyChallengeContent = () => {
                   boxShadow: theme === 'sun' ? '0 2px 8px rgba(60, 153, 255, 0.3)' : '0 2px 8px rgba(131, 119, 160, 0.3)'
                 }}
               >
-                Save <DownOutlined />
+                {t('common.save') || 'Lưu'} <DownOutlined />
               </Button>
             </Dropdown>
           </div>
@@ -5249,7 +5262,7 @@ const DailyChallengeContent = () => {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <Typography.Text strong>{sentenceCase(t('dailyChallenge.shuffleQuestion') || t('dailyChallenge.shuffleAnswers') || 'Shuffle questions')}</Typography.Text>
                 <span style={{ fontWeight: 700, color: shuffleQuestion ? '#52c41a' : '#ff4d4f' }}>
-                  {shuffleQuestion ? (t('common.on') || 'ON') : (t('common.off') || 'OFF')}
+                  {shuffleQuestion ? sentenceCase(t('common.on') || 'ON') : sentenceCase(t('common.off') || 'OFF')}
                 </span>
               </div>
             </Card>
@@ -5257,7 +5270,7 @@ const DailyChallengeContent = () => {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <Typography.Text strong>{sentenceCase(t('dailyChallenge.antiCheatMode') || 'Anti-cheat mode')}</Typography.Text>
                 <span style={{ fontWeight: 700, color: antiCheatModeEnabled ? '#52c41a' : '#ff4d4f' }}>
-                  {antiCheatModeEnabled ? (t('common.on') || 'ON') : (t('common.off') || 'OFF')}
+                  {antiCheatModeEnabled ? sentenceCase(t('common.on') || 'ON') : sentenceCase(t('common.off') || 'OFF')}
                 </span>
               </div>
             </Card>
@@ -5265,7 +5278,7 @@ const DailyChallengeContent = () => {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <Typography.Text strong>{sentenceCase(t('dailyChallenge.translateOnScreen') || 'Translate on screen')}</Typography.Text>
                 <span style={{ fontWeight: 700, color: translateOnScreen ? '#52c41a' : '#ff4d4f' }}>
-                  {translateOnScreen ? (t('common.on') || 'ON') : (t('common.off') || 'OFF')}
+                  {translateOnScreen ? sentenceCase(t('common.on') || 'ON') : sentenceCase(t('common.off') || 'OFF')}
                 </span>
               </div>
             </Card>

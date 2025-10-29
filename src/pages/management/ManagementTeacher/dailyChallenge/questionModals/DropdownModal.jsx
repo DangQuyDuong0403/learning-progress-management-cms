@@ -483,7 +483,7 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 			input.placeholder = 'type correct answer...';
 			input.value = dropdown.correctAnswer || '';
 			input.className = 'dropdown-input';
-			input.maxLength = 100;
+			input.maxLength = 50;
 			input.style.cssText = `
 			border: none;
 			outline: none;
@@ -502,7 +502,7 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 			// Character counter (hidden by default in compact mode)
 			const counter = document.createElement('span');
 			counter.className = 'dropdown-char-counter';
-			counter.textContent = `${(input.value || '').length}/100`;
+			counter.textContent = `${(input.value || '').length}/50`;
 			counter.style.cssText = `
 			font-size: 12px;
 			color: #999;
@@ -2686,9 +2686,9 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 														color: '#999',
 														whiteSpace: 'nowrap',
 													}}>
-													{`${
-														(dropdown.correctAnswer || '').slice(0, 50).length
-													}/100`}
+								{`${
+									(dropdown.correctAnswer || '').slice(0, 50).length
+								}/50`}
 												</span>
 											</div>
 										</div>
@@ -2766,7 +2766,7 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 																color: '#999',
 																whiteSpace: 'nowrap',
 															}}>
-															{`${(option.text || '').slice(0, 50).length}/100`}
+												{`${(option.text || '').slice(0, 50).length}/50`}
 														</span>
 														<Button
 															type='text'

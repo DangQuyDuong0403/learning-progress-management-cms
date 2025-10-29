@@ -141,6 +141,16 @@ const DailyChallengeList = ({ readOnly = false }) => {
     "Speaking",
   ];
   const statusOptions = ["DRAFT", "PUBLISHED"];
+  const getStatusLabel = (statusKey) => {
+    switch (statusKey) {
+      case 'DRAFT':
+        return t('dailyChallenge.draft') || 'Draft';
+      case 'PUBLISHED':
+        return t('dailyChallenge.published') || 'Published';
+      default:
+        return statusKey;
+    }
+  };
 
   // Fetch class data if classId exists
   const fetchClassData = useCallback(async () => {
@@ -1209,7 +1219,7 @@ const DailyChallengeList = ({ readOnly = false }) => {
                             }}
                             className={`filter-option ${filterDropdown.selectedStatuses.includes(statusKey) ? 'selected' : ''}`}
                           >
-                            {t(`dailyChallenge.${statusKey}`)}
+                            {getStatusLabel(statusKey)}
                           </Button>
                         ))}
                       </div>
