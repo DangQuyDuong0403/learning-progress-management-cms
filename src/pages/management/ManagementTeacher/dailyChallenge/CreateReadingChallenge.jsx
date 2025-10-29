@@ -240,11 +240,9 @@ const CreateReadingChallenge = () => {
         return;
       }
 
-      // For listening and speaking challenges, audio file is required
-      if ((isListeningChallenge || isSpeakingChallenge) && !passage.audioUrl) {
-        spaceToast.warning(isSpeakingChallenge 
-          ? "Please upload speaking audio file before saving" 
-          : "Please upload audio file before saving");
+      // For listening challenges only, audio file is required
+      if (isListeningChallenge && !passage.audioUrl) {
+        spaceToast.warning("Please upload audio file before saving");
         setIsSaving(false);
         return;
       }

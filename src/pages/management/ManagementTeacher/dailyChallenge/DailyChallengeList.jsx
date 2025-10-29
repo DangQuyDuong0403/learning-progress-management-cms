@@ -355,7 +355,7 @@ const DailyChallengeList = ({ readOnly = false }) => {
       spaceToast.error(errorMessage);
       setLoading(false);
     }
-  }, [classId, searchDebounce, t]);
+  }, [classId, searchDebounce, currentPage, pageSize, t]);
 
   // Compute lesson-aware pagination: recalculate rowSpan and first-in-lesson within the current page window
   const computePagedRows = useCallback((fullList, page, size) => {
@@ -440,7 +440,7 @@ const DailyChallengeList = ({ readOnly = false }) => {
       console.log('⚠️ RESETTING currentPage from', currentPage, 'to', maxPage);
       setCurrentPage(maxPage);
     }
-  }, [filteredAllChallenges, pageSize]);
+  }, [filteredAllChallenges, pageSize, currentPage]);
 
   // Fetch class data on component mount if classId exists
   useEffect(() => {
@@ -573,15 +573,40 @@ const DailyChallengeList = ({ readOnly = false }) => {
 
   const handleCreateSuccess = async (newChallenge) => {
     try {
-      // Call API to create challenge
-      await dailyChallengeApi.createDailyChallenge(newChallenge);
+      // Challenge has already been created by the modal, just extract ID and redirect
+      let challengeId = null;
       
-      // Refresh the list from API
-      await fetchDailyChallenges();
+      // Extract challenge ID from the already created challenge data
+      if (newChallenge?.id) {
+        challengeId = newChallenge.id;
+      } else if (newChallenge?.data?.id) {
+        challengeId = newChallenge.data.id;
+      }
+      
+      console.log('Created challenge data received:', newChallenge);
+      console.log('Extracted challenge ID:', challengeId);
+      
+      if (challengeId) {
+        // Redirect to performance screen of the newly created challenge
+        navigate(`/teacher/daily-challenges/detail/${challengeId}`, {
+          state: {
+            classId: classId,
+            className: classData?.name,
+            challengeId: challengeId,
+            challengeName: newChallenge.challengeName,
+            lessonName: newChallenge.lessonName,
+            fromCreate: true // Flag to indicate this came from creation
+          }
+        });
+      } else {
+        // If no ID found, refresh the list and show success message
+        await fetchDailyChallenges();
+        spaceToast.success(t('dailyChallenge.createSuccess'));
+      }
       
       setShowCreateModal(false);
     } catch (error) {
-      console.error('Error creating challenge:', error);
+      console.error('Error handling create success:', error);
       const errorMessage = error.response?.data?.error || error.message || t('dailyChallenge.createError');
       spaceToast.error(errorMessage);
     }
@@ -905,10 +930,80 @@ const DailyChallengeList = ({ readOnly = false }) => {
           );
         }
         
+        // Define status colors
+        const getStatusColor = (status) => {
+          switch (status) {
+            case 'DRAFT':
+              return 'rgb(223, 175, 56)';
+            case 'PUBLISHED':
+              return 'rgb(56, 223, 65)';
+            default:
+              return '#000000';
+          }
+        };
+        
+        if (status === 'DRAFT') {
+          return (
+            <div 
+              className="status-cell-container"
+              style={{
+                fontSize: '20px',
+                color: getStatusColor(status),
+                padding: '8px 12px',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+                borderRadius: '4px',
+                textAlign: 'center',
+                position: 'relative',
+                cursor: 'pointer',
+                height: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}
+            >
+              <span className="status-text" style={{ transition: 'opacity 0.3s ease' }}>
+                {STATUS_LABEL[status] || status || ''}
+              </span>
+              <Button
+                className="status-publish-btn"
+                icon={<CheckCircleOutlined />}
+                style={{
+                  fontSize: '16px',
+                  height: '40px',
+                  padding: '0 20px',
+                  borderRadius: '8px',
+                  background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)',
+                  borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : '#7228d9',
+                  color: theme === 'sun' ? '#000' : '#000',
+                  fontWeight: '500',
+                  border: 'none',
+                  minWidth: '120px',
+                  margin: '0',
+                  position: 'absolute',
+                  top: '50%',
+                  left: '50%',
+                  transform: 'translate(-50%, -50%) scale(0.9)',
+                  opacity: 0,
+                  transition: 'all 0.2s ease',
+                  pointerEvents: 'none'
+                }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleToggleStatus(record.id);
+                }}
+                title="Publish Challenge"
+              >
+                Publish
+              </Button>
+            </div>
+          );
+        }
+        
         return (
           <span style={{
             fontSize: '20px',
-            color: '#000000'
+            color: getStatusColor(status),
           }}>
             {STATUS_LABEL[status] || status || ''}
           </span>
@@ -948,15 +1043,6 @@ const DailyChallengeList = ({ readOnly = false }) => {
                   className="action-btn-edit"
                   style={{ color: '#1890ff' }}
                 />
-                {record.status === 'DRAFT' && (
-                  <Button
-                    type="text"
-                    icon={<CheckCircleOutlined style={{ fontSize: '24px'}} />}
-                    onClick={() => handleToggleStatus(record.id)}
-                    title="Publish"
-                    className="action-btn-status"
-                  />
-                )}
                 <Button
                   type="text"
                   icon={<DeleteOutlined style={{ fontSize: '24px', color: '#ff4d4f' }} />}
