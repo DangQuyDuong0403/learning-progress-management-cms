@@ -46,6 +46,9 @@ import ClassicEditor from '@ckeditor/ckeditor5-build-classic';
 const { Title, Text } = Typography;
 
 const CreateReadingChallenge = () => {
+  const MAX_READING_CONTENT_LENGTH = 10000;
+  const MAX_LISTENING_CONTENT_LENGTH = 3000;
+  const MAX_WRITING_SPEAKING_CONTENT_LENGTH = 1500;
   const navigate = useNavigate();
   const location = useLocation();
   const { id } = useParams(); // Get challenge ID from URL
@@ -156,6 +159,7 @@ const CreateReadingChallenge = () => {
   const [isProcessingAudio, setIsProcessingAudio] = useState(false);
   const [uploadedAudioFileName, setUploadedAudioFileName] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  const [charCount, setCharCount] = useState(0);
   
   // Question management state
   const [activeModal, setActiveModal] = useState(null);
@@ -230,6 +234,18 @@ const CreateReadingChallenge = () => {
         spaceToast.warning("Challenge ID is required");
         setIsSaving(false);
         return;
+      }
+
+      // Enforce max content length by plain text length based on challenge type
+      const maxLength = getMaxContentLength();
+      if (maxLength !== null) {
+        const plainText = getPlainText(passage.content || '');
+        if (plainText.length > maxLength) {
+          const challengeType = isWritingChallenge ? 'Writing' : isSpeakingChallenge ? 'Speaking' : 'Reading';
+          spaceToast.warning(`${challengeType} passage must be at most ${maxLength} characters.`);
+          setIsSaving(false);
+          return;
+        }
       }
 
       if (!passage.content || passage.content.trim() === '') {
@@ -544,6 +560,46 @@ const CreateReadingChallenge = () => {
 
   // Debounced editor change handler (same as MultipleChoiceModal)
   const handlePassageContentChange = useCallback((content) => {
+    // Get max length based on challenge type
+    let maxLength = null;
+    if (isListeningChallenge) {
+      maxLength = MAX_LISTENING_CONTENT_LENGTH;
+    } else if (isWritingChallenge || isSpeakingChallenge) {
+      maxLength = MAX_WRITING_SPEAKING_CONTENT_LENGTH;
+    } else {
+      const isReadingChallenge = !isListeningChallenge && !isWritingChallenge && !isSpeakingChallenge;
+      if (isReadingChallenge) {
+        maxLength = MAX_READING_CONTENT_LENGTH;
+      }
+    }
+
+    // Helper function to get plain text from HTML (inline to avoid dependency issues)
+    const getPlainTextInline = (html) => {
+      if (!html) return '';
+      try {
+        const tmp = document.createElement('DIV');
+        tmp.innerHTML = html;
+        return tmp.textContent || tmp.innerText || '';
+      } catch (error) {
+        console.error('Error getting plain text:', error);
+        return String(html);
+      }
+    };
+
+    // Enforce max length by plain text length
+    if (maxLength !== null) {
+      const plainText = getPlainTextInline(content);
+      if (plainText.length > maxLength) {
+        const challengeType = isWritingChallenge ? 'Writing' : isSpeakingChallenge ? 'Speaking' : 'Reading';
+        spaceToast.warning(`${challengeType} passage is limited to ${maxLength} characters.`);
+        return;
+      }
+    }
+
+    // Update live counters based on plain text
+    const plain = getPlainTextInline(content);
+    setCharCount(plain.length);
+
     // Only update if not currently updating from passage change
     if (isUpdatingFromPassage.current) {
       return;
@@ -566,7 +622,13 @@ const CreateReadingChallenge = () => {
         return prevContent;
       });
     }, 150);
-  }, []);
+  }, [isListeningChallenge, isWritingChallenge, isSpeakingChallenge, MAX_READING_CONTENT_LENGTH, MAX_WRITING_SPEAKING_CONTENT_LENGTH]);
+
+  // Keep counters in sync when passageContent changes externally
+  React.useEffect(() => {
+    const plain = getPlainText(passageContent);
+    setCharCount(plain.length);
+  }, [passageContent]);
 
   // Removed PDF upload handler
 
@@ -779,6 +841,34 @@ const CreateReadingChallenge = () => {
       console.error('Error stripping HTML tags:', error, 'HTML:', html);
       return String(html).substring(0, 80) + '...';
     }
+  };
+
+  // Helper to get full plain text length from HTML
+  const getPlainText = (html) => {
+    if (!html) return '';
+    try {
+      const tmp = document.createElement('DIV');
+      tmp.innerHTML = html;
+      return tmp.textContent || tmp.innerText || '';
+    } catch (error) {
+      console.error('Error getting plain text:', error);
+      return String(html);
+    }
+  };
+
+  // Helper to get max content length based on challenge type
+  const getMaxContentLength = () => {
+    if (isListeningChallenge) {
+      return MAX_LISTENING_CONTENT_LENGTH;
+    }
+    if (isWritingChallenge || isSpeakingChallenge) {
+      return MAX_WRITING_SPEAKING_CONTENT_LENGTH;
+    }
+    const isReadingChallenge = !isListeningChallenge && !isWritingChallenge && !isSpeakingChallenge;
+    if (isReadingChallenge) {
+      return MAX_READING_CONTENT_LENGTH;
+    }
+    return null; // No limit for other types
   };
 
   // Helper function to format fill-in-the-blank questions
@@ -1314,6 +1404,19 @@ const CreateReadingChallenge = () => {
                                }}
                              />
                            </div>
+                          {/* Character Counter */}
+                          {getMaxContentLength() !== null && (
+                          <div style={{
+                            marginTop: '8px',
+                            marginRight: '12px',
+                            display: 'flex',
+                            justifyContent: 'flex-end',
+                            color: '#666',
+                            fontSize: '12px'
+                          }}>
+                            <span>{charCount}/{getMaxContentLength()}</span>
+                          </div>
+                          )}
                          </div>
                        </div>
                      </div>
