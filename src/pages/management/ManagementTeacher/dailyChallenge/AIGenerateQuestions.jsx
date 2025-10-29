@@ -1279,7 +1279,7 @@ const AIGenerateQuestions = () => {
                 }}
               >
                 <Title level={3} style={{ textAlign: 'center', color: theme === 'sun' ? '#1890ff' : '#8B5CF6', marginTop: 0, fontSize: '26px' }}>
-                  Text Prompt
+                  Add Prompt
                 </Title>
                 {/* Spacer to align top edge with right panel when in manual mode */}
                 {questionSettingsMode === 'manual' && (
@@ -1375,7 +1375,7 @@ const AIGenerateQuestions = () => {
                         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                           <CloudUploadOutlined style={{ fontSize: 24, color: '#000000' }} />
                           <Typography.Text strong style={{ color: theme === 'sun' ? '#1E40AF' : '#8377A0' }}>
-                            Upload File
+                            Upload Question File
                           </Typography.Text>
                         </div>
                       </Card>
@@ -1401,7 +1401,7 @@ const AIGenerateQuestions = () => {
                         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                           <EditOutlined style={{ fontSize: 24, color: '#000000' }} />
                           <Typography.Text strong style={{ color: theme === 'sun' ? '#1E40AF' : '#8377A0' }}>
-                            Setting Manually
+                            Create Question Manually
                           </Typography.Text>
                         </div>
                       </Card>
@@ -1410,7 +1410,7 @@ const AIGenerateQuestions = () => {
                 )}
 
                 {questionSettingsMode === 'upload' && (
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: 16, width: '100%' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: 16, width: '100%', minHeight: 540 }}>
                     <Button
                       icon={<ArrowLeftOutlined />}
                       onClick={() => setQuestionSettingsMode(null)}
@@ -1420,50 +1420,52 @@ const AIGenerateQuestions = () => {
                       {t('common.back')}
                     </Button>
 
-                    <label
-                      htmlFor="question-upload-input"
-                      style={{
-                        width: 380,
-                        height: 220,
-                        borderRadius: 20,
-                        border: `2px dashed ${theme === 'sun' ? 'rgba(24, 144, 255, 0.7)' : 'rgba(139, 92, 246, 0.7)'}`,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        cursor: 'pointer',
-                        background: theme === 'sun' ? 'linear-gradient(135deg, rgba(255,255,255,0.95), rgba(240, 249, 255, 0.6))' : 'linear-gradient(135deg, rgba(255,255,255,0.92), rgba(244, 240, 255, 0.6))',
-                        boxShadow: theme === 'sun' ? '0 8px 24px rgba(24, 144, 255, 0.08)' : '0 8px 24px rgba(139, 92, 246, 0.08)'
-                      }}
-                    >
-                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
-                        <CloudUploadOutlined style={{ fontSize: 56, color: theme === 'sun' ? '#1890ff' : '#8B5CF6' }} />
-                        <Typography.Text style={{ fontWeight: 700, color: theme === 'sun' ? '#1E40AF' : '#6F61A8' }}>Click to upload</Typography.Text>
-                        <Typography.Text style={{ fontSize: 12, opacity: 0.8, color: theme === 'sun' ? '#0f172a' : '#d1cde8' }}>
-                          Supported: .doc, .docx — Max {MAX_FILE_MB}MB
-                        </Typography.Text>
-                      </div>
-                    </label>
-                    <input
-                      id="question-upload-input"
-                      type="file"
-                      accept=".doc,.docx"
-                      style={{ display: 'none' }}
-                      onChange={(e) => {
-                        const f = e.target.files && e.target.files[0];
-                        if (f && f.size > MAX_FILE_MB * 1024 * 1024) {
-                          spaceToast.error(`File too large. Max ${MAX_FILE_MB}MB`);
-                          e.target.value = '';
-                          setUploadedFile(null);
-                          setUploadedFileName('');
-                          return;
-                        }
-                        setUploadedFileName(f ? f.name : '');
-                        setUploadedFile(f || null);
-                      }}
-                    />
-                    {uploadedFileName && (
-                      <div style={{ marginTop: 10, fontSize: 13, fontWeight: 600, color: theme === 'sun' ? '#1E40AF' : '#d1cde8' }}>{uploadedFileName}</div>
-                    )}
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: '100%' }}>
+                      <label
+                        htmlFor="question-upload-input"
+                        style={{
+                          width: 380,
+                          height: 220,
+                          borderRadius: 20,
+                          border: `2px dashed ${theme === 'sun' ? 'rgba(24, 144, 255, 0.7)' : 'rgba(139, 92, 246, 0.7)'}`,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          cursor: 'pointer',
+                          background: theme === 'sun' ? 'linear-gradient(135deg, rgba(255,255,255,0.95), rgba(240, 249, 255, 0.6))' : 'linear-gradient(135deg, rgba(255,255,255,0.92), rgba(244, 240, 255, 0.6))',
+                          boxShadow: theme === 'sun' ? '0 8px 24px rgba(24, 144, 255, 0.08)' : '0 8px 24px rgba(139, 92, 246, 0.08)'
+                        }}
+                      >
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
+                          <CloudUploadOutlined style={{ fontSize: 56, color: theme === 'sun' ? '#1890ff' : '#8B5CF6' }} />
+                          <Typography.Text style={{ fontWeight: 700, color: theme === 'sun' ? '#1E40AF' : '#6F61A8' }}>Click to upload</Typography.Text>
+                          <Typography.Text style={{ fontSize: 12, opacity: 0.8, color: theme === 'sun' ? '#0f172a' : '#d1cde8' }}>
+                            Supported: .doc, .docx — Max {MAX_FILE_MB}MB
+                          </Typography.Text>
+                        </div>
+                      </label>
+                      <input
+                        id="question-upload-input"
+                        type="file"
+                        accept=".doc,.docx"
+                        style={{ display: 'none' }}
+                        onChange={(e) => {
+                          const f = e.target.files && e.target.files[0];
+                          if (f && f.size > MAX_FILE_MB * 1024 * 1024) {
+                            spaceToast.error(`File too large. Max ${MAX_FILE_MB}MB`);
+                            e.target.value = '';
+                            setUploadedFile(null);
+                            setUploadedFileName('');
+                            return;
+                          }
+                          setUploadedFileName(f ? f.name : '');
+                          setUploadedFile(f || null);
+                        }}
+                      />
+                      {uploadedFileName && (
+                        <div style={{ marginTop: 10, fontSize: 13, fontWeight: 600, color: theme === 'sun' ? '#1E40AF' : '#d1cde8' }}>{uploadedFileName}</div>
+                      )}
+                    </div>
                     <Button
                       type="primary"
                       icon={<ThunderboltOutlined />}
@@ -1515,7 +1517,7 @@ const AIGenerateQuestions = () => {
                         overflowY: 'auto'
                       }}
                     >
-                      <div style={{ height: '360px', overflowY: 'scroll', paddingRight: '8px' }}>
+                      <div className="question-settings-scroll" style={{ height: '360px', overflowY: 'auto', paddingRight: '8px' }}>
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(1, 1fr)', gap: '16px' }}>
                           {availableQuestionTypes.map((qt) => {
                             const cfgIndex = questionTypeConfigs.findIndex(c => c.questionType === qt.value);
@@ -1551,38 +1553,37 @@ const AIGenerateQuestions = () => {
                         </div>
                       </div>
                     </div>
+
+                    {/* Generate Questions button below Question Settings */}
+                    <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginTop: 16, justifyContent: 'center', flexWrap: 'wrap' }}>
+                      <Button
+                        type="primary"
+                        icon={<ThunderboltOutlined />}
+                        loading={isGenerating}
+                        onClick={handleGenerateWithAI}
+                        style={{
+                          height: '40px',
+                          borderRadius: '8px',
+                          fontSize: '16px',
+                          fontWeight: 500,
+                          padding: '0 24px',
+                          background: theme === 'sun'
+                            ? 'linear-gradient(135deg, #66AEFF, #3C99FF)'
+                            : 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)',
+                          border: 'none',
+                          color: '#000000',
+                          boxShadow: theme === 'sun'
+                            ? '0 2px 8px rgba(60, 153, 255, 0.3)'
+                            : '0 2px 8px rgba(131, 119, 160, 0.3)',
+                          transition: 'all 0.3s ease'
+                        }}
+                      >
+                        {isGenerating ? (t('dailyChallenge.generating') || 'Generating...') : 'Generate Questions'}
+                      </Button>
+                    </div>
                   </>
                 )}
               </Card>
-            </div>
-
-            {/* Generate Questions button below the two containers */}
-            <div style={{ display: 'flex', justifyContent: 'center', marginTop: 20, gap: 12, flexWrap: 'wrap' }}>
-              <Button
-                type="primary"
-                icon={<ThunderboltOutlined />}
-                loading={isGenerating}
-                onClick={handleGenerateWithAI}
-                style={{
-                  height: '56px',
-                  minWidth: '360px',
-                  borderRadius: '28px',
-                  fontSize: '18px',
-                  fontWeight: 700,
-                  padding: '0 36px',
-                  background: theme === 'sun'
-                    ? 'linear-gradient(135deg, #66AEFF, #3C99FF)'
-                    : 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)',
-                  border: 'none',
-                  color: '#000000',
-                  boxShadow: theme === 'sun'
-                    ? '0 2px 8px rgba(60, 153, 255, 0.3)'
-                    : '0 2px 8px rgba(131, 119, 160, 0.3)',
-                  transition: 'all 0.3s ease'
-                }}
-              >
-                {isGenerating ? (t('dailyChallenge.generating') || 'Generating...') : 'Generate Questions'}
-              </Button>
             </div>
           </Card>
 
