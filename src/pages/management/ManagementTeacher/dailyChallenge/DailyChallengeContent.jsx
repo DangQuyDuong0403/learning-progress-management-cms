@@ -607,7 +607,7 @@ const SortablePassageItem = memo(
                             flexWrap: 'wrap', 
                             gap: '12px'
                           }}>
-                            {question.content.data.sort((a, b) => (a.positionOrder || 0) - (b.positionOrder || 0)).map((item, idx) => (
+                            {question.content.data.map((item, idx) => (
                               <div 
                                 key={idx}
                                 style={{
@@ -913,8 +913,8 @@ const renderRearrangeQuestionInline = (question, theme) => {
     : 'rgba(233, 213, 255, 0.3)';
   const wordBorderColor = theme === 'sun' ? '#1890ff' : '#A78BFA';
 
-  // Sort by positionOrder to get correct order
-  const sortedData = question.content.data.sort((a, b) => (a.positionOrder || 0) - (b.positionOrder || 0));
+  // Use data as is
+  const sortedData = question.content.data;
   
   sortedData.forEach((item, idx) => {
     const number = idx + 1;
@@ -1489,8 +1489,8 @@ const SortableQuestionItem = memo(
       console.log('question.content:', question.content);
       
       if (question.content && question.content.data) {
-        // Sort by positionOrder to get correct order
-        const sortedData = question.content.data.sort((a, b) => (a.positionOrder || 0) - (b.positionOrder || 0));
+        // Use data as is
+        const sortedData = question.content.data;
         
         sortedData.forEach((item, idx) => {
           const number = idx + 1; // 1, 2, 3, 4...
@@ -1509,8 +1509,7 @@ const SortableQuestionItem = memo(
           wordsData.push({
             number: number,
             value: item.value,
-            positionId: item.positionId,
-            positionOrder: item.positionOrder
+            positionId: item.positionId
           });
         });
       }
@@ -2466,7 +2465,7 @@ const DailyChallengeContent = () => {
           score: questionData.points || 0.5,
           questionType: 'FILL_IN_THE_BLANK',
           content: {
-            data: (questionData.content?.data || []).map(({ positionOrder, ...rest }) => rest)
+            data: (questionData.content?.data || [])
           }
         };
 
@@ -2477,7 +2476,7 @@ const DailyChallengeContent = () => {
           score: questionData.points || 0.5,
           questionType: 'DROPDOWN',
           content: {
-            data: (questionData.content?.data || []).map(({ positionOrder, ...rest }) => rest)
+            data: (questionData.content?.data || [])
           }
         };
 
@@ -2488,7 +2487,7 @@ const DailyChallengeContent = () => {
           score: questionData.points || 1,
           questionType: 'DRAG_AND_DROP',
           content: {
-            data: (questionData.content?.data || []).map(({ positionOrder, ...rest }) => rest)
+            data: (questionData.content?.data || [])
           }
         };
 
@@ -2499,7 +2498,7 @@ const DailyChallengeContent = () => {
           score: questionData.points || 1,
           questionType: 'REARRANGE',
           content: {
-            data: (questionData.content?.data || []).map(({ positionOrder, ...rest }) => rest)
+            data: (questionData.content?.data || [])
           }
         };
 
@@ -2510,7 +2509,7 @@ const DailyChallengeContent = () => {
           score: questionData.points || 1,
           questionType: 'REWRITE',
           content: {
-            data: (questionData.content?.data || []).map(({ positionOrder, ...rest }) => rest)
+            data: (questionData.content?.data || [])
           }
         };
 
@@ -2554,10 +2553,10 @@ const DailyChallengeContent = () => {
 
       // Transform question to API format
       const apiQuestion = transformQuestionToApiFormat(questionData, 1, questionData.type);
-      // Sanitize: remove positionOrder if present in content.data
+      // Use question as is
       const sanitizedApiQuestion = {
         ...apiQuestion,
-        content: apiQuestion.content ? { data: (apiQuestion.content.data || []).map(({ positionOrder, ...rest }) => rest) } : apiQuestion.content
+        content: apiQuestion.content
       };
       
       // Get appropriate section content

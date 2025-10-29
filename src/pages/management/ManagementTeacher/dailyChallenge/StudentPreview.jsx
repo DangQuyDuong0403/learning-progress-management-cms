@@ -142,11 +142,11 @@ The future of nationality will likely continue to evolve as societies adapt to n
           questionText: 'Rearrange the words to form a correct sentence:',
           content: {
             data: [
-              { id: 1, value: 'The', positionId: 'pos_1', positionOrder: 1 },
-              { id: 2, value: 'flower', positionId: 'pos_2', positionOrder: 2 },
-              { id: 3, value: 'is', positionId: 'pos_3', positionOrder: 3 },
-              { id: 4, value: 'very', positionId: 'pos_4', positionOrder: 4 },
-              { id: 5, value: 'much', positionId: 'pos_5', positionOrder: 5 },
+              { id: 1, value: 'The', positionId: 'pos_1' },
+              { id: 2, value: 'flower', positionId: 'pos_2' },
+              { id: 3, value: 'is', positionId: 'pos_3' },
+              { id: 4, value: 'very', positionId: 'pos_4' },
+              { id: 5, value: 'much', positionId: 'pos_5' },
             ]
           },
           points: 3
@@ -398,10 +398,10 @@ Good luck with your writing!`,
       questionText: 'Rearrange to form a correct sentence: [[pos_1]] [[pos_2]] [[pos_3]] [[pos_4]] beautiful.',
       content: {
         data: [
-          { id: 1, value: 'The', positionId: 'pos_1', positionOrder: 1 },
-          { id: 2, value: 'flower', positionId: 'pos_2', positionOrder: 2 },
-          { id: 3, value: 'is', positionId: 'pos_3', positionOrder: 3 },
-          { id: 4, value: 'very', positionId: 'pos_4', positionOrder: 4 },
+          { id: 1, value: 'The', positionId: 'pos_1' },
+          { id: 2, value: 'flower', positionId: 'pos_2' },
+          { id: 3, value: 'is', positionId: 'pos_3' },
+          { id: 4, value: 'very', positionId: 'pos_4' },
         ]
       },
       points: 3,
@@ -4828,7 +4828,6 @@ const DragDropContainer = ({ theme, data }) => {
 const ReorderContainer = ({ theme, data }) => {
   const [sourceItems, setSourceItems] = React.useState(() => {
     const words = (data?.content?.data || [])
-      .sort((a,b)=>(a.positionOrder||0)-(b.positionOrder||0))
       .map(it => it.value)
       .filter(Boolean);
     return words.length ? words : ['I','love','programming','very','much'];

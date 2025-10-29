@@ -473,11 +473,8 @@ const CreateReadingChallenge = () => {
         console.log('Updated speaking question with [[dur_3]], id preserved:', transformedQuestions[0].id);
       }
 
-      // Before sending, remove positionOrder from any content.data entries
-      const sanitizedQuestions = (transformedQuestions || []).map(q => ({
-        ...q,
-        content: q.content ? { data: (q.content.data || []).map(({ positionOrder, ...rest }) => rest) } : q.content
-      }));
+      // Use questions as is
+      const sanitizedQuestions = transformedQuestions || [];
 
       // Create section data similar to Grammar & Vocabulary but with multiple questions in one section
       // Include sectionId if editing existing passage (especially for WR writing challenges)
@@ -935,8 +932,8 @@ const CreateReadingChallenge = () => {
     let displayText = question.questionText || question.question;
     
     if (question.content && question.content.data) {
-      // Sort by positionOrder to get correct order
-      const sortedData = question.content.data.sort((a, b) => (a.positionOrder || 0) - (b.positionOrder || 0));
+      // Use data as is
+      const sortedData = question.content.data;
       
       sortedData.forEach((item, idx) => {
         const number = idx + 1; // 1, 2, 3, 4...
@@ -1441,9 +1438,19 @@ const CreateReadingChallenge = () => {
                           hoverable
                           className="rc-passage-option-card"
                           onClick={() => {
-                            spaceToast.info("AI generation feature is under development");
-                            // TODO: Implement AI generation feature
-                            // setPassage(prevPassage => ({ ...prevPassage, type: "ai" }));
+                            const userRole = user?.role?.toLowerCase();
+                            const path = userRole === 'teaching_assistant'
+                              ? `/teaching-assistant/daily-challenges/create/ai-reading/${currentChallengeId}`
+                              : `/teacher/daily-challenges/create/ai-reading/${currentChallengeId}`;
+                            navigate(path, {
+                              state: {
+                                challengeId: currentChallengeId,
+                                challengeName,
+                                classId,
+                                className,
+                                challengeType: 'READING'
+                              }
+                            });
                           }}
                           style={{
                             borderRadius: '12px',

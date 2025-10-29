@@ -106,7 +106,8 @@
     "uploadCustomAvatar": "Tải lên ảnh đại diện tùy chỉnh",
     "clickToUpload": "Nhấp để tải lên",
     "maxFileSize": "Kích thước file tối đa",
-    "index": "STT"
+    "index": "STT",
+    "copy": "Sao chép"
   },
   "sidebar": {
     "title": "Learning CMS",

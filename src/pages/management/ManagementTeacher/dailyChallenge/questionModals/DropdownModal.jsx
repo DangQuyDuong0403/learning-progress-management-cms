@@ -1717,18 +1717,17 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 		dropdowns.forEach((dropdown, dropdownIndex) => {
 			console.log('Processing dropdown from state:', dropdown);
 
-			// Add correct answer (positionOrder: 1)
+			// Add correct answer
 			const correctOption = {
 				id: `opt${dropdownIndex + 1}`,
 				value: dropdown.correctAnswer,
 				positionId: dropdown.positionId,
-				positionOrder: 1,
 				correct: true,
 			};
 			contentData.push(correctOption);
 			console.log('Added correct option:', correctOption);
 
-			// Add incorrect options (positionOrder: 2, 3, 4, ...)
+			// Add incorrect options
 			// Only send options that have actual data
 			const validIncorrectOptions = dropdown.incorrectOptions.filter(
 				(option) => option.text && option.text.trim()
@@ -1740,7 +1739,6 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 					id: `opt${dropdownIndex + 1}_${index + 1}`,
 					value: option.text.trim(),
 					positionId: dropdown.positionId,
-					positionOrder: index + 2, // 2, 3, 4, ...
 					correct: false,
 				};
 				contentData.push(incorrectOption);

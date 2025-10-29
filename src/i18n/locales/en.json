@@ -109,7 +109,8 @@
     "uploadCustomAvatar": "Upload Custom Avatar",
     "clickToUpload": "Click to upload",
     "maxFileSize": "Max file size",
-    "index": "No"
+    "index": "No",
+    "copy": "Copy"
   },
   "sidebar": {
     "title": "Learning CMS",
