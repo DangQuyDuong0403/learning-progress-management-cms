@@ -178,20 +178,20 @@ const DailyChallengeList = ({ readOnly = false }) => {
       let response;
       
       if (classId) {
-        // Lấy daily challenges cho class cụ thể
+        // Lấy daily challenges cho class cụ thể (truy vấn nhanh để nhận diện cấu trúc dữ liệu)
         response = await dailyChallengeApi.getDailyChallengesByClass(classId, {
-          page: currentPage - 1, // API sử dụng 0-based pagination
-          size: pageSize,
-          text: searchDebounce || undefined, // Chỉ gửi text nếu có giá trị
+          page: 0,
+          size: 10,
+          text: searchDebounce || undefined,
           sortBy: 'createdAt',
           sortDir: 'desc'
         });
       } else {
-        // Lấy tất cả daily challenges của teacher
+        // Lấy daily challenges của teacher (truy vấn nhanh để nhận diện cấu trúc dữ liệu)
         response = await dailyChallengeApi.getAllDailyChallenges({
-          page: currentPage - 1, // API sử dụng 0-based pagination
-          size: pageSize,
-          text: searchDebounce || undefined, // Chỉ gửi text nếu có giá trị
+          page: 0,
+          size: 10,
+          text: searchDebounce || undefined,
           sortBy: 'createdAt',
           sortDir: 'desc'
         });
@@ -316,8 +316,31 @@ const DailyChallengeList = ({ readOnly = false }) => {
           setTotalItems(total || flattenedData.length);
         }
       } else if (items && items.length >= 0) {
-        // Items are already challenges
-        const mapped = items.map((challenge, idx) => ({
+        // Items are already challenges -> để phân trang phía client mượt, luôn lấy FULL danh sách đã lọc
+        const fullParams = {
+          page: 0,
+          size: 100,
+          text: searchDebounce || undefined,
+          sortBy: 'createdAt',
+          sortDir: 'desc',
+        };
+
+        const fullResponse = classId
+          ? await dailyChallengeApi.getDailyChallengesByClass(classId, fullParams)
+          : await dailyChallengeApi.getAllDailyChallenges(fullParams);
+
+        let allChallengesRaw = [];
+        if (Array.isArray(fullResponse)) {
+          allChallengesRaw = fullResponse;
+        } else if (Array.isArray(fullResponse.data)) {
+          allChallengesRaw = fullResponse.data;
+        } else if (Array.isArray(fullResponse.content)) {
+          allChallengesRaw = fullResponse.content;
+        } else if (fullResponse?.success && Array.isArray(fullResponse.data)) {
+          allChallengesRaw = fullResponse.data;
+        }
+
+        const mapped = allChallengesRaw.map((challenge, idx) => ({
           ...challenge,
           id: challenge.id,
           title: challenge.challengeName || challenge.title || 'Untitled Challenge',
@@ -339,7 +362,7 @@ const DailyChallengeList = ({ readOnly = false }) => {
         }));
 
         setAllChallenges(mapped);
-        setTotalItems(total || mapped.length);
+        setTotalItems(mapped.length);
       } else {
         setAllChallenges([]);
         setTotalItems(0);
@@ -355,7 +378,7 @@ const DailyChallengeList = ({ readOnly = false }) => {
       spaceToast.error(errorMessage);
       setLoading(false);
     }
-  }, [classId, searchDebounce, currentPage, pageSize, t]);
+  }, [classId, searchDebounce, t]);
 
   // Compute lesson-aware pagination: recalculate rowSpan and first-in-lesson within the current page window
   const computePagedRows = useCallback((fullList, page, size) => {
