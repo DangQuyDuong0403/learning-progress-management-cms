@@ -69,6 +69,7 @@ const DailyChallengeList = ({ readOnly = false }) => {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [createModalData, setCreateModalData] = useState(null); // Store lesson data for create modal
   const [challengeTypeModalVisible, setChallengeTypeModalVisible] = useState(false);
+  const [pendingLessonData, setPendingLessonData] = useState(null); // Lesson data awaiting type selection
   const [searchDebounce, setSearchDebounce] = useState("");
   const [deleteModal, setDeleteModal] = useState({
     visible: false,
@@ -85,6 +86,19 @@ const DailyChallengeList = ({ readOnly = false }) => {
     challengeId: null,
     challengeTitle: '',
   });
+
+  // Build unique lesson list from current allChallenges to avoid extra API calls
+  const availableLessons = React.useMemo(() => {
+    const unique = new Map();
+    for (const rec of allChallenges) {
+      const lessonIdKey = rec.lessonId || rec.classLessonId;
+      const lessonNameVal = rec.lessonName || rec.classLessonName;
+      if (lessonIdKey && lessonNameVal && !unique.has(lessonIdKey)) {
+        unique.set(lessonIdKey, { id: lessonIdKey, lessonName: lessonNameVal, name: lessonNameVal });
+      }
+    }
+    return Array.from(unique.values());
+  }, [allChallenges]);
 
   // Simple status display mapping for readability
   const STATUS_LABEL = {
@@ -251,11 +265,16 @@ const DailyChallengeList = ({ readOnly = false }) => {
                   isFirstChallengeInLesson: challengeIndex === 0,
                   totalChallengesInLesson: lesson.dailyChallenges.length,
                   rowSpan: challengeIndex === 0 ? lesson.dailyChallenges.length : 0,
-                  description: '',
+                  description: challenge.description || '',
                   teacher: 'Unknown Teacher',
-                  timeLimit: 30,
+                  timeLimit: challenge.durationMinutes || challenge.timeLimit || 30,
                   totalQuestions: 0,
                   createdAt: new Date().toISOString().split('T')[0],
+                  hasAntiCheat: !!challenge.hasAntiCheat,
+                  shuffleQuestion: !!challenge.shuffleQuestion,
+                  translateOnScreen: !!challenge.translateOnScreen,
+                  challengeMode: challenge.challengeMethod === 'TEST' ? 'exam' : 'normal',
+                  originalChallenge: challenge,
                 });
               });
             } else {
@@ -348,17 +367,22 @@ const DailyChallengeList = ({ readOnly = false }) => {
           status: challenge.challengeStatus || challenge.status || 'DRAFT',
           startDate: challenge.startDate,
           endDate: challenge.endDate,
-          lessonId: challenge.lessonId || challenge.classLessonId,
-          lessonName: challenge.lessonName || '',
+          lessonId: challenge.lessonId || challenge.classLessonId || challenge.classLesson?.id,
+          lessonName: challenge.lessonName || challenge.classLessonName || challenge.classLesson?.classLessonName || challenge.classLesson?.name || '',
           lessonOrder: challenge.lessonOrder || idx + 1,
           isFirstChallengeInLesson: true,
           totalChallengesInLesson: 1,
           rowSpan: 1,
           description: challenge.description || '',
           teacher: challenge.teacher || 'Unknown Teacher',
-          timeLimit: challenge.timeLimit || 30,
+          timeLimit: challenge.durationMinutes || challenge.timeLimit || 30,
           totalQuestions: challenge.totalQuestions || 0,
           createdAt: challenge.createdAt || new Date().toISOString().split('T')[0],
+          hasAntiCheat: !!challenge.hasAntiCheat,
+          shuffleQuestion: !!challenge.shuffleQuestion,
+          translateOnScreen: !!challenge.translateOnScreen,
+          challengeMode: challenge.challengeMethod === 'TEST' ? 'exam' : 'normal',
+          originalChallenge: challenge,
         }));
 
         setAllChallenges(mapped);
@@ -569,25 +593,37 @@ const DailyChallengeList = ({ readOnly = false }) => {
   };
 
   const handleChallengeTypeClick = (challengeType) => {
-    setCreateModalData({
-      challengeType: challengeType.type,
-      challengeTypeName: challengeType.name
-    });
+    // If user initiated from a lesson, include lesson info
+    if (pendingLessonData) {
+      setCreateModalData({
+        ...pendingLessonData,
+        challengeType: challengeType.type,
+        challengeTypeName: challengeType.name,
+      });
+      setPendingLessonData(null);
+    } else {
+      setCreateModalData({
+        challengeType: challengeType.type,
+        challengeTypeName: challengeType.name,
+      });
+    }
     setChallengeTypeModalVisible(false);
     setShowCreateModal(true);
   };
 
   const handleChallengeTypeModalCancel = () => {
     setChallengeTypeModalVisible(false);
+    setPendingLessonData(null);
   };
 
   const handleCreateClickWithLesson = (lessonRecord) => {
-    setCreateModalData({
+    // Save lesson info and open type selection first
+    setPendingLessonData({
       lessonId: lessonRecord.lessonId,
       lessonName: lessonRecord.lessonName,
-      classLessonId: lessonRecord.lessonId
+      classLessonId: lessonRecord.lessonId,
     });
-    setShowCreateModal(true);
+    setChallengeTypeModalVisible(true);
   };
 
   const handleCreateModalCancel = () => {
@@ -718,10 +754,13 @@ const DailyChallengeList = ({ readOnly = false }) => {
   };
 
   const handleEditClick = (challenge) => {
+    // Ensure we pass the freshest data available and prefer raw API object
+    const latest = allChallenges.find((c) => c.id === challenge.id) || challenge;
+    const raw = latest.originalChallenge || latest;
     setEditModal({
       visible: true,
-      challengeId: challenge.id,
-      challengeData: challenge,
+      challengeId: raw.id || latest.id,
+      challengeData: raw,
     });
   };
 
@@ -959,7 +998,7 @@ const DailyChallengeList = ({ readOnly = false }) => {
             case 'DRAFT':
               return 'rgb(223, 175, 56)';
             case 'PUBLISHED':
-              return 'rgb(56, 223, 65)';
+              return 'rgb(20, 150, 26)';
             default:
               return '#000000';
           }
@@ -1027,6 +1066,7 @@ const DailyChallengeList = ({ readOnly = false }) => {
           <span style={{
             fontSize: '20px',
             color: getStatusColor(status),
+            fontWeight: 500,
           }}>
             {STATUS_LABEL[status] || status || ''}
           </span>
@@ -1300,6 +1340,7 @@ const DailyChallengeList = ({ readOnly = false }) => {
           onCancel={handleCreateModalCancel}
           onCreateSuccess={handleCreateSuccess}
           lessonData={createModalData}
+          lessonsFromList={availableLessons}
         />
 
         {/* Edit Daily Challenge Modal */}
@@ -1307,12 +1348,7 @@ const DailyChallengeList = ({ readOnly = false }) => {
           visible={editModal.visible}
           onCancel={handleEditModalCancel}
           onUpdateSuccess={handleEditSuccess}
-          challengeData={{
-            ...editModal.challengeData,
-            lessonId: editModal.challengeData?.lessonId,
-            lessonName: editModal.challengeData?.lessonName,
-            classLessonId: editModal.challengeData?.lessonId,
-          }}
+          challengeData={editModal.challengeData}
         />
 
         {/* Delete Confirmation Modal */}

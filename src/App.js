@@ -30,8 +30,8 @@ export default function App() {
                 return <Route key={key} path={path} element={<Component />} />;
               }
 
-              // Role-based routes (Admin, Manager) - sử dụng RoleBasedPrivateRoute
-              if (roleBased && role) {
+              // Bất kỳ route private nào có chỉ định role (string hoặc array) đều dùng RoleBasedPrivateRoute
+              if (role) {
                 return (
                   <Route
                     key={key}
@@ -40,21 +40,6 @@ export default function App() {
                       <RoleBasedPrivateRoute requiredRoles={Array.isArray(role) ? role : [role]}>
                         <Component />
                       </RoleBasedPrivateRoute>
-                    }
-                  />
-                );
-              }
-
-              // Enhanced routes với kiểm tra PENDING status
-              if (role === 'admin' || role === 'manager' || role === 'teacher') {
-                return (
-                  <Route
-                    key={key}
-                    path={path}
-                    element={
-                      <EnhancedPrivateRoute requiredRole={role}>
-                        <Component />
-                      </EnhancedPrivateRoute>
                     }
                   />
                 );

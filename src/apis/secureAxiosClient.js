@@ -179,7 +179,6 @@ axiosClient.interceptors.response.use(
 		// Xử lý các lỗi khác
 		if (error.response?.status === 403) {
 			console.warn('🚨 FORBIDDEN: User does not have permission for this action');
-			spaceToast.error('You do not have permission to perform this action');
 		}
 
 		return Promise.reject(error);

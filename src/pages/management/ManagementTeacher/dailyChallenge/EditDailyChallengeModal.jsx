@@ -16,6 +16,7 @@ import { useTranslation } from "react-i18next";
 import { useTheme } from "../../../../contexts/ThemeContext";
 import { spaceToast } from "../../../../component/SpaceToastify";
 import dayjs from 'dayjs';
+import { dailyChallengeApi } from "../../../../apis/apis";
 
 const { TextArea } = Input;
 const { Option } = Select;
@@ -40,25 +41,85 @@ const EditDailyChallengeModal = ({
   const [isButtonDisabled, setIsButtonDisabled] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
   const [challengeMode, setChallengeMode] = useState('normal');
+  const [examConfirmVisible, setExamConfirmVisible] = useState(false);
+  const [examCheck, setExamCheck] = useState({
+    shuffleQuestion: false,
+    hasAntiCheat: false,
+    translateOnScreen: false,
+  });
 
-
-  // Set form values when challengeData changes
+  console.log("aaaaaa",challengeData);
+  
+  // Fetch latest detail by id when modal opens; fallback to incoming data
   useEffect(() => {
-    if (visible && challengeData) {
-      form.setFieldsValue({
-        challengeName: challengeData.title || challengeData.challengeName,
-        description: challengeData.description, 
-        challengeType: challengeData.type || challengeData.challengeType,
-        durationMinutes: challengeData.timeLimit || challengeData.durationMinutes,
-        hasAntiCheat: challengeData.hasAntiCheat || false,
-        shuffleQuestion: challengeData.shuffleQuestion || false,
-        translateOnScreen: challengeData.translateOnScreen || false,
-        startDate: challengeData.startDate ? dayjs(challengeData.startDate) : null,
-        endDate: challengeData.endDate ? dayjs(challengeData.endDate) : null,
-      });
-      setChallengeMode(challengeData.challengeMode || 'normal');
+    const loadDetail = async () => {
+      try {
+        const id = challengeData?.id;
+        if (!id) return;
+        const res = await dailyChallengeApi.getDailyChallengeById(id);
+        const data = res?.data?.data ?? res?.data ?? res;
+        if (data) {
+          form.setFieldsValue({
+            challengeName: data.challengeName,
+            description: data.description,
+            challengeType: data.challengeType,
+            durationMinutes: data.durationMinutes,
+            hasAntiCheat: data.hasAntiCheat || data.antiCheatModeEnabled || false,
+            shuffleQuestion: data.shuffleQuestion || data.shuffleAnswers || false,
+            translateOnScreen: data.translateOnScreen || false,
+            startDate: data.startDate ? dayjs(data.startDate) : null,
+            endDate: data.endDate ? dayjs(data.endDate) : null,
+          });
+          setChallengeMode(data.challengeMethod === 'TEST' ? 'exam' : (data.challengeMode || 'normal'));
+          return;
+        }
+      } catch (e) {
+        // fall back to incoming data
+      }
+
+      if (challengeData) {
+        form.setFieldsValue({
+          challengeName: challengeData.challengeName,
+          description: challengeData.description,
+          challengeType: challengeData.challengeType,
+          durationMinutes: challengeData.durationMinutes,
+          hasAntiCheat: challengeData.hasAntiCheat || challengeData.antiCheatModeEnabled || false,
+          shuffleQuestion: challengeData.shuffleQuestion || challengeData.shuffleAnswers || false,
+          translateOnScreen: challengeData.translateOnScreen || false,
+          startDate: challengeData.startDate ? dayjs(challengeData.startDate) : null,
+          endDate: challengeData.endDate ? dayjs(challengeData.endDate) : null,
+        });
+        setChallengeMode(challengeData.challengeMethod === 'TEST' ? 'exam' : (challengeData.challengeMode || 'normal'));
+      }
+    };
+
+    if (visible) {
+      loadDetail();
     }
   }, [visible, challengeData, form]);
+
+  const performSave = async (values) => {
+    try {
+      const challengeData = {
+        challengeName: values.challengeName,
+        description: values.description,
+        challengeType: values.challengeType,
+        challengeMethod: challengeMode === 'exam' ? 'TEST' : 'NORMAL',
+        durationMinutes: values.durationMinutes,
+        hasAntiCheat: values.hasAntiCheat || false,
+        shuffleQuestion: values.shuffleQuestion || false,
+        translateOnScreen: values.translateOnScreen || false,
+        startDate: values.startDate ? values.startDate.toISOString() : null,
+        endDate: values.endDate ? values.endDate.toISOString() : null,
+      };
+
+      // Wait for the parent to handle the API call
+      await onUpdateSuccess(challengeData);
+    } finally {
+      setIsButtonDisabled(false);
+      setIsUpdating(false);
+    }
+  };
 
   const handleModalOk = async () => {
     console.log('handleModalOk called - isButtonDisabled:', isButtonDisabled, 'isUpdating:', isUpdating);
@@ -73,27 +134,25 @@ const EditDailyChallengeModal = ({
     setIsUpdating(true);
     
     try {
-      const values = await form.validateFields();
-      
-      console.log('Updating challenge with data:', values);
-      
-      const challengeData = {
-        challengeName: values.challengeName,
-        description: values.description,
-        challengeType: values.challengeType,
-        challengeMethod: challengeMode === 'exam' ? 'TEST' : 'NORMAL', // Map challengeMode to challengeMethod
-        durationMinutes: values.durationMinutes,
-        hasAntiCheat: values.hasAntiCheat || false,
-        shuffleQuestion: values.shuffleQuestion || false,
-        translateOnScreen: values.translateOnScreen || false,
-        startDate: values.startDate ? values.startDate.toISOString() : null,
-        endDate: values.endDate ? values.endDate.toISOString() : null,
-      };
+      // Validate required fields depending on mode
+      const fieldsToValidate = ['startDate', 'endDate'];
+      if (challengeMode === 'exam') {
+        fieldsToValidate.push('durationMinutes', 'shuffleQuestion', 'hasAntiCheat');
+      }
+      await form.validateFields(fieldsToValidate);
 
-      // Wait for the parent to handle the API call
-      console.log('Calling onUpdateSuccess...');
-      await onUpdateSuccess(challengeData);
-      console.log('onUpdateSuccess completed');
+      if (challengeMode === 'exam') {
+        const current = form.getFieldsValue();
+        setExamCheck({
+          shuffleQuestion: !!current.shuffleQuestion,
+          hasAntiCheat: !!current.hasAntiCheat,
+          translateOnScreen: !!current.translateOnScreen,
+        });
+        setExamConfirmVisible(true);
+        return; // wait for confirmation modal
+      }
+
+      await performSave(form.getFieldsValue());
     } catch (error) {
       console.error('Error in handleModalOk:', error);
       if (error.errorFields) {
@@ -101,10 +160,6 @@ const EditDailyChallengeModal = ({
       } else {
         spaceToast.error(t('dailyChallenge.updateChallengeError'));
       }
-    } finally {
-      console.log('Resetting loading states...');
-      setIsButtonDisabled(false);
-      setIsUpdating(false);
     }
   };
 
@@ -267,17 +322,20 @@ const EditDailyChallengeModal = ({
                 label={
                   <span>
                     {t('dailyChallenge.durationMinutes')}
-                    <span style={{ color: 'red', marginLeft: '4px' }}>*</span>
+                    {challengeMode === 'exam' && (
+                      <span style={{ color: 'red', marginLeft: '4px' }}>*</span>
+                    )}
                   </span>
                 }
                 name='durationMinutes'
                 rules={[
                   {
-                    required: true,
+                    required: challengeMode === 'exam',
                     message: t('dailyChallenge.durationMinutesRequired'),
                   },
                   {
                     validator: (_, value) => {
+                      if (value === undefined || value === null || value === '') return Promise.resolve();
                       const numValue = Number(value);
                       if (isNaN(numValue)) {
                         return Promise.reject(new Error(t('dailyChallenge.durationMinutesRequired')));
@@ -521,6 +579,69 @@ const EditDailyChallengeModal = ({
           </Row>
         </Card>
       </Form>
+      {/* Exam Mode Confirmation Modal */}
+      <Modal
+        title={
+          <div style={{ 
+            fontSize: '20px', 
+            fontWeight: '600', 
+            color: theme === 'sun' ? 'rgb(113, 179, 253)' : 'rgb(138, 122, 255)',
+            textAlign: 'center',
+            padding: '10px 0'
+          }}>
+            {t('dailyChallenge.confirmExamMode') || 'Confirm Exam Mode Settings'}
+          </div>
+        }
+        open={examConfirmVisible}
+        onOk={async () => {
+          setExamConfirmVisible(false);
+          await performSave(form.getFieldsValue());
+        }}
+        onCancel={() => {
+          setExamConfirmVisible(false);
+          setIsButtonDisabled(false);
+          setIsUpdating(false);
+        }}
+        okText={t('common.confirm') || 'Confirm'}
+        cancelText={t('common.cancel') || 'Cancel'}
+        width={560}
+        centered
+      >
+        <div style={{ padding: '8px 4px' }}>
+          <Typography.Paragraph style={{ marginBottom: 12, textAlign: 'center' }}>
+            {t('dailyChallenge.examWarning') || 'You selected Exam Mode. Please verify the following settings:'}
+          </Typography.Paragraph>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <Card size="small">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Typography.Text strong>{t('dailyChallenge.shuffleQuestion') || 'Shuffle Questions'}</Typography.Text>
+                <span style={{ fontWeight: 700, color: examCheck.shuffleQuestion ? '#52c41a' : '#ff4d4f' }}>
+                  {examCheck.shuffleQuestion ? (t('common.on') || 'ON') : (t('common.off') || 'OFF')}
+                </span>
+              </div>
+            </Card>
+            <Card size="small">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Typography.Text strong>{t('dailyChallenge.hasAntiCheat') || 'Anti-Cheat Screen'}</Typography.Text>
+                <span style={{ fontWeight: 700, color: examCheck.hasAntiCheat ? '#52c41a' : '#ff4d4f' }}>
+                  {examCheck.hasAntiCheat ? (t('common.on') || 'ON') : (t('common.off') || 'OFF')}
+                </span>
+              </div>
+            </Card>
+            <Card size="small" style={{ gridColumn: '1 / span 2' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Typography.Text strong>{t('dailyChallenge.translateOnScreen') || 'Translate On Screen'}</Typography.Text>
+                <span style={{ fontWeight: 700, color: !examCheck.translateOnScreen ? '#52c41a' : '#ff4d4f' }}>
+                  {!examCheck.translateOnScreen ? (t('common.off') || 'OFF') : (t('common.on') || 'ON')}
+                </span>
+              </div>
+            </Card>
+          </div>
+          <Typography.Paragraph style={{ marginTop: 12, color: '#faad14', fontWeight: 600, textAlign: 'center' }}>
+            {t('dailyChallenge.examHint') || 'For exam mode, it is recommended: Shuffle ON, Anti-cheat ON, Translate OFF.'}
+          </Typography.Paragraph>
+        </div>
+      </Modal>
     </Modal>
   );
 };

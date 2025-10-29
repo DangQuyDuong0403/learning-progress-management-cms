@@ -92,7 +92,6 @@ const EnhancedPrivateRoute = ({ children, requiredRole = null }) => {
           
           if (userRoleLower !== requiredRoleLower) {
             console.warn(`🚨 AUTHORIZATION ERROR: User role ${userRole} does not match required role ${requiredRole}`);
-            spaceToast.error('You do not have permission to access this area');
             setIsAuthorized(false);
             setIsValidating(false);
             return;
