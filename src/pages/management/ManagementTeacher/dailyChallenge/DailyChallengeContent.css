@@ -558,7 +558,7 @@
 .passage-content,
 .question-options {
   /* Text formatting */
-  line-height: 1.8;
+  line-height: 2.1;
   color: inherit;
 }
 
@@ -984,7 +984,7 @@
 
 /* Passage text content (for passages) */
 .passage-text-content {
-  line-height: 1.8;
+  line-height: 2.1;
   color: inherit;
 }
 
@@ -1048,7 +1048,7 @@
 
 /* Question text content (for questions) */
 .question-text-content {
-  line-height: 1.8;
+  line-height: 2.1;
   color: inherit;
 }
 
@@ -2440,6 +2440,7 @@ body.is-dragging .ant-btn {
   display: inline-block !important;
   overflow-wrap: break-word !important;
   word-wrap: break-word !important;
+  margin: 4px 8px 6px 8px;
 }
 
 /* Remove extra margins */

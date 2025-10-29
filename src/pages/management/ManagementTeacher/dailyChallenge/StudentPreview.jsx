@@ -708,8 +708,8 @@ const SectionQuestionItem = ({ question, index, theme }) => {
                           let last = 0; let match; let idx = 0;
                           while ((match = regex.exec(text)) !== null) {
                             if (match.index > last) {
-                              parts.push(
-                                <span 
+                            parts.push(
+                              <span 
                                   key={`text_${idx}`}
                                   className="question-text-content"
                                   dangerouslySetInnerHTML={{ __html: text.slice(last, match.index) }}
@@ -731,7 +731,7 @@ const SectionQuestionItem = ({ question, index, theme }) => {
                                 minWidth: '120px',
                                 height: '32px',
                                 padding: '4px 12px',
-                                margin: '0 8px',
+                                margin: '0 8px 6px 8px',
                                 background: theme === 'sun' 
                                   ? 'rgba(24, 144, 255, 0.08)' 
                                   : 'rgba(138, 122, 255, 0.12)',
@@ -937,7 +937,7 @@ const SectionQuestionItem = ({ question, index, theme }) => {
                                               minHeight: '28px',
                                               height: 'auto',
                                               padding: '4px 8px',
-                                              margin: '0 6px',
+                                              margin: '4px 6px 8px 6px',
                                               background: theme === 'sun' ? 'rgba(24, 144, 255, 0.15)' : 'rgba(138, 122, 255, 0.18)',
                                               border: `2px solid ${theme === 'sun' ? '#1890ff' : '#8B5CF6'}`,
                                               borderRadius: '6px',
@@ -970,7 +970,7 @@ const SectionQuestionItem = ({ question, index, theme }) => {
                                               minHeight: '28px',
                                               height: 'auto',
                                               padding: '4px 8px',
-                                              margin: '0 6px',
+                                              margin: '4px 6px 8px 6px',
                                               background: dragOverPosition[q.id] === part.positionId 
                                                 ? (theme === 'sun' ? 'rgba(24, 144, 255, 0.2)' : 'rgba(138, 122, 255, 0.25)')
                                                 : '#ffffff',
@@ -1104,7 +1104,7 @@ const SectionQuestionItem = ({ question, index, theme }) => {
                                 maxWidth: '200px',
                                 minHeight: '32px',
                                 padding: '4px 12px',
-                                margin: '0 8px',
+                                margin: '4px 8px 6px 8px',
                                 background: theme === 'sun' ? '#E9EEFF94' : 'rgba(255, 255, 255, 0.1)',
                                 border: `2px solid ${theme === 'sun' ? '#1890ff' : '#8B5CF6'}`,
                                 borderRadius: '8px',
@@ -2020,7 +2020,7 @@ const ListeningSectionItem = ({ question, index, theme }) => {
                                   minWidth: '120px',
                                   height: '32px',
                                   padding: '4px 12px',
-                                  margin: '0 8px',
+                                  margin: '0 8px 6px 8px',
                                   background: theme === 'sun' 
                                     ? 'rgba(24, 144, 255, 0.08)' 
                                     : 'rgba(138, 122, 255, 0.12)',
@@ -2194,8 +2194,8 @@ const ListeningSectionItem = ({ question, index, theme }) => {
                             let last = 0; let match; let idx = 0;
                             while ((match = regex.exec(text)) !== null) {
                               if (match.index > last) parts.push(text.slice(last, match.index));
-                              parts.push(
-                                <span key={`fib_${q.id}_${idx++}`} className="paragraph-input" contentEditable suppressContentEditableWarning style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', minWidth:'120px', maxWidth:'200px', minHeight:'32px', padding:'4px 12px', margin:'0 8px', background: theme==='sun'?'#E9EEFF94':'rgba(255,255,255,0.1)', border:`2px solid ${theme==='sun'?'#1890ff':'#8B5CF6'}`, borderRadius:'8px', cursor:'text', outline:'none', verticalAlign:'top', lineHeight:'1.4', fontSize:'14px', boxSizing:'border-box', color:'#000000', textAlign:'center' }} />
+                            parts.push(
+                              <span key={`fib_${q.id}_${idx++}`} className="paragraph-input" contentEditable suppressContentEditableWarning style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', minWidth:'120px', maxWidth:'200px', minHeight:'32px', padding:'4px 12px', margin:'4px 8px 6px 8px', background: theme==='sun'?'#E9EEFF94':'rgba(255,255,255,0.1)', border:`2px solid ${theme==='sun'?'#1890ff':'#8B5CF6'}`, borderRadius:'8px', cursor:'text', outline:'none', verticalAlign:'top', lineHeight:'1.4', fontSize:'14px', boxSizing:'border-box', color:'#000000', textAlign:'center' }} />
                               );
                               last = match.index + match[0].length;
                             }
