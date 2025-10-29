@@ -1580,6 +1580,19 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 			return;
 		}
 
+		// Validate: each dropdown must have at least 1 incorrect option (non-empty)
+		const missingIncorrectOption = dropdowns.some((dropdown) => {
+			const validIncorrect = (dropdown.incorrectOptions || []).filter(
+				(opt) => opt.text && opt.text.trim()
+			);
+			return validIncorrect.length === 0;
+		});
+
+		if (missingIncorrectOption) {
+			spaceToast.warning('incorrect option must be filled');
+			return;
+		}
+
 		// Build backend format by traversing DOM (preserve HTML)
 		let questionText = '';
 		const contentData = [];

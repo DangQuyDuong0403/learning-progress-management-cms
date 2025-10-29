@@ -3286,7 +3286,13 @@ const DailyChallengeContent = () => {
       setModalVisible(false);
 
       // Transform question to API format
-      const apiQuestion = transformQuestionToApiFormat(questionData, 1, questionData.type);
+      // Compute next section/order position based only on section orderNumbers
+      const sectionOrderNumbers = passages
+        .map(p => p?.orderNumber)
+        .filter(n => typeof n === 'number');
+      const nextOrder = (sectionOrderNumbers.length ? Math.max(...sectionOrderNumbers) : 0) + 1;
+
+      const apiQuestion = transformQuestionToApiFormat(questionData, nextOrder, questionData.type);
       // Use question as is
       const sanitizedApiQuestion = {
         ...apiQuestion,
@@ -3300,7 +3306,8 @@ const DailyChallengeContent = () => {
       const sectionData = {
         section: {
           sectionsContent: sectionContent,
-          resourceType: 'NONE'
+          resourceType: 'NONE',
+          orderNumber: nextOrder
         },
         questions: [sanitizedApiQuestion]
       };
@@ -3327,7 +3334,7 @@ const DailyChallengeContent = () => {
     } finally {
       setSavingQuestion(false);
     }
-  }, [id, fetchQuestions, transformQuestionToApiFormat, getSectionContent]);
+  }, [id, fetchQuestions, transformQuestionToApiFormat, getSectionContent, questions, passages]);
 
   // Handle updating an existing question
   const handleUpdateQuestion = useCallback(async (questionData) => {
@@ -3739,20 +3746,71 @@ const DailyChallengeContent = () => {
     spaceToast.info('Export data feature will be implemented');
   }, []);
 
-  const handleDuplicateQuestion = useCallback((questionId) => {
-    setQuestions(prev => {
-      const questionToDuplicate = prev.find(q => q.id === questionId);
-    if (questionToDuplicate) {
-      const newQuestion = {
-        ...questionToDuplicate,
-          id: Math.max(...prev.map(q => q.id)) + 1,
-        question: `${questionToDuplicate.question} (Copy)`,
-      };
-        return [...prev, newQuestion];
+  const handleDuplicateQuestion = useCallback(async (questionId) => {
+    try {
+      const source = questions.find(q => q.id === questionId);
+      if (!source) return;
+
+      // Only persist duplicate through API for GV as requested
+      if (currentChallengeType === 'GV') {
+        setLoading(true);
+
+        // Build API question payload from existing question (no id so backend creates new)
+        // Compute next section/order position based only on section orderNumbers
+        const sectionOrderNumbers = passages
+          .map(p => p?.orderNumber)
+          .filter(n => typeof n === 'number');
+        const nextOrder = (sectionOrderNumbers.length ? Math.max(...sectionOrderNumbers) : 0) + 1;
+
+        const apiQuestion = transformQuestionToApiFormat(
+          {
+            ...source,
+            // Ensure we use base fields expected by transformer
+            question: source.question || source.questionText || '',
+            questionText: source.questionText || source.question || '',
+          },
+          nextOrder,
+          source.type
+        );
+
+        const sectionContent = getSectionContent(source.type);
+
+        const sectionData = {
+          section: {
+            sectionsContent: sectionContent,
+            resourceType: 'NONE',
+            orderNumber: nextOrder
+          },
+          questions: [apiQuestion]
+        };
+
+        await dailyChallengeApi.saveSectionWithQuestions(id, sectionData);
+
+        // Refresh from backend so the new copy has real IDs and correct order
+        await fetchQuestions();
+        spaceToast.success('Duplicated question successfully');
+      } else {
+        // Fallback: local duplicate for non-GV types
+        setQuestions(prev => {
+          const questionToDuplicate = prev.find(q => q.id === questionId);
+          if (questionToDuplicate) {
+            const newQuestion = {
+              ...questionToDuplicate,
+              id: `${questionToDuplicate.id}-copy-${Date.now()}`,
+              question: `${questionToDuplicate.question} (Copy)`
+            };
+            return [...prev, newQuestion];
+          }
+          return prev;
+        });
+      }
+    } catch (err) {
+      console.error('Error duplicating question:', err);
+      spaceToast.error(err?.response?.data?.error || 'Failed to duplicate question');
+    } finally {
+      setLoading(false);
     }
-      return prev;
-    });
-  }, []);
+  }, [questions, passages, currentChallengeType, id, fetchQuestions, transformQuestionToApiFormat, getSectionContent]);
 
   const handlePointsChange = useCallback((questionId, value) => {
     setQuestions(prev => prev.map(q => 

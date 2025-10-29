@@ -1300,22 +1300,24 @@ const CreateReadingChallenge = () => {
                    {passage?.type === "manual" ? (
                      /* Text Editor - Full space when manual is selected */
                      <div className="rc-text-editor-full" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-                       <div className="rc-text-editor-header" style={{ marginBottom: '12px', flexShrink: 0 }}>
-                        <Button
-                           type="text"
-                           icon={<ArrowLeftOutlined />}
-                           onClick={() => {
-                             setPassage(prevPassage => ({ ...prevPassage, type: null }));
-                           }}
-                           className="rc-back-to-options-btn"
-                           style={{
-                             color: theme === 'sun' ? '#1E40AF' : '#8377A0',
-                             fontWeight: 500
-                           }}
-                         >
-                           {isWritingChallenge ? 'Back to topic options' : 'Back to options'}
-                         </Button>
-                       </div>
+                      <div className="rc-text-editor-header" style={{ marginBottom: '12px', flexShrink: 0 }}>
+                        {!(isWritingChallenge || isSpeakingChallenge) && (
+                          <Button
+                            type="text"
+                            icon={<ArrowLeftOutlined />}
+                            onClick={() => {
+                              setPassage(prevPassage => ({ ...prevPassage, type: null }));
+                            }}
+                            className="rc-back-to-options-btn"
+                            style={{
+                              color: theme === 'sun' ? '#1E40AF' : '#8377A0',
+                              fontWeight: 500
+                            }}
+                          >
+                            {'Back to options'}
+                          </Button>
+                        )}
+                      </div>
                        <div 
                          className={`rc-ckeditor-wrapper ${theme}-ckeditor-wrapper`}
                          style={{
