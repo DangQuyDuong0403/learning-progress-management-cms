@@ -578,14 +578,16 @@ const SectionQuestionItem = ({ question, index, theme }) => {
               : '#8B5CF6 rgba(138, 122, 255, 0.2)'
           }}>
          
-          <div style={{
-            fontSize: '15px',
-            lineHeight: '1.8',
-            color: theme === 'sun' ? '#333' : '#1F2937',
-            textAlign: 'justify'
-          }}>
-            {toPlainText(question.passage)}
-          </div>
+          <div 
+            className="passage-text-content"
+            style={{
+              fontSize: '15px',
+              lineHeight: '1.8',
+              color: theme === 'sun' ? '#333' : '#1F2937',
+              textAlign: 'justify'
+            }}
+            dangerouslySetInnerHTML={{ __html: question.passage || '' }}
+          />
         </div>
 
         {/* Right Column - Questions */}
@@ -640,9 +642,11 @@ const SectionQuestionItem = ({ question, index, theme }) => {
                           <div style={{ fontSize: '16px', fontWeight: 600, marginBottom: '8px' }}>
                             Question {qIndex + 1}:
                           </div>
-                          <div style={{ marginBottom: '10px' }}>
-                            {toPlainText(q.questionText || q.question || '')}
-                          </div>
+                          <div 
+                            className="question-text-content"
+                            style={{ marginBottom: '10px' }}
+                            dangerouslySetInnerHTML={{ __html: q.questionText || q.question || '' }}
+                          />
                           <div className="question-options" style={{ 
                             display: 'grid', 
                             gridTemplateColumns: '1fr', 
@@ -672,7 +676,11 @@ const SectionQuestionItem = ({ question, index, theme }) => {
                                     style={{ width: '18px', height: '18px', accentColor: theme === 'sun' ? '#1890ff' : '#8B5CF6' }}
                                   />
                                   <span style={{ fontWeight: 600 }}>{key}.</span>
-                                  <span style={{ flex: 1 }}>{toPlainText(opt.text || opt.value || '')}</span>
+                                  <span 
+                                    className="option-text"
+                                    style={{ flex: 1, lineHeight: '1.6' }}
+                                    dangerouslySetInnerHTML={{ __html: opt.text || opt.value || '' }}
+                                  />
                                 </label>
                               );
                             })}
@@ -699,7 +707,15 @@ const SectionQuestionItem = ({ question, index, theme }) => {
                           const regex = /\[\[pos_(.*?)\]\]/g;
                           let last = 0; let match; let idx = 0;
                           while ((match = regex.exec(text)) !== null) {
-                            if (match.index > last) parts.push(text.slice(last, match.index));
+                            if (match.index > last) {
+                              parts.push(
+                                <span 
+                                  key={`text_${idx}`}
+                                  className="question-text-content"
+                                  dangerouslySetInnerHTML={{ __html: text.slice(last, match.index) }}
+                                />
+                              );
+                            }
                             const positionId = match[1];
                             const optionsForPosition = q.content?.data?.filter(opt => opt.positionId === positionId) || [];
                             parts.push(
@@ -731,15 +747,22 @@ const SectionQuestionItem = ({ question, index, theme }) => {
                             >
                               <option value="">Select</option>
                                 {optionsForPosition.map((item) => (
-                                  <option key={item.id} value={toPlainText(item.value)}>
-                                    {toPlainText(item.value)}
-                                </option>
+                                  <option key={item.id} value={item.value} dangerouslySetInnerHTML={{ __html: item.value || '' }}>
+                                  </option>
                               ))}
                             </select>
                             );
                             last = match.index + match[0].length;
                           }
-                          if (last < text.length) parts.push(text.slice(last));
+                          if (last < text.length) {
+                            parts.push(
+                              <span 
+                                key={`text_final_${idx}`}
+                                className="question-text-content"
+                                dangerouslySetInnerHTML={{ __html: text.slice(last) }}
+                              />
+                            );
+                          }
                           return parts;
                         })()}
                       </div>
@@ -897,7 +920,10 @@ const SectionQuestionItem = ({ question, index, theme }) => {
                                   {parts.map((part, pIdx) => (
                                     <React.Fragment key={pIdx}>
                                       {part.type === 'text' ? (
-                                        part.content
+                                        <span 
+                                          className="question-text-content"
+                                          dangerouslySetInnerHTML={{ __html: part.content || '' }}
+                                        />
                                       ) : (
                                         qDroppedItems[part.positionId] ? (
                                           <span
@@ -929,9 +955,8 @@ const SectionQuestionItem = ({ question, index, theme }) => {
                                               wordBreak: 'break-word',
                                               overflowWrap: 'anywhere'
                                             }}
-                                          >
-                                            {toPlainText(qDroppedItems[part.positionId])}
-                                          </span>
+                                            dangerouslySetInnerHTML={{ __html: qDroppedItems[part.positionId] || '' }}
+                                          />
                                         ) : (
                                           <span
                                             onDrop={(e) => handleDrop(e, part.positionId)}
@@ -1035,8 +1060,8 @@ const SectionQuestionItem = ({ question, index, theme }) => {
                                         ? '0 2px 6px rgba(24, 144, 255, 0.15)' 
                                         : '0 2px 6px rgba(138, 122, 255, 0.15)';
                                     }}
+                                    dangerouslySetInnerHTML={{ __html: item || '' }}
                                   >
-                                    {toPlainText(item)}
                                   </span>
                                 ))}
                               </div>
@@ -1120,8 +1145,9 @@ const SectionQuestionItem = ({ question, index, theme }) => {
                       // Compute number of slots based on provided words
                       const numSlots = (q.content?.data?.filter(it => it?.value)?.length) || currentState.sourceItems.length || 0;
 
-                      const displayText = toPlainText(((q.questionText || q.question || 'Rearrange the words to form a correct sentence:')
-                        .replace(/\[\[pos_.*?\]\]/g, ' ')).trim());
+                      // Remove placeholder tokens but keep HTML formatting
+                      const displayText = ((q.questionText || q.question || 'Rearrange the words to form a correct sentence:')
+                        .replace(/\[\[pos_.*?\]\]/g, '')).trim();
 
                       const handleDragStartFromSource = (e, item) => {
                         setReorderStates(prev => ({
@@ -1205,7 +1231,10 @@ const SectionQuestionItem = ({ question, index, theme }) => {
                             Question {qIndex + 1}:
                           </div>
                           <div style={{ fontSize: '15px', fontWeight: 350, marginBottom: '16px', lineHeight: '1.8', color: '#000000' }}>
-                            {displayText || 'Rearrange the words to form a correct sentence:'}
+                            <div 
+                              className="question-text-content"
+                              dangerouslySetInnerHTML={{ __html: displayText || 'Rearrange the words to form a correct sentence:' }}
+                            />
                           </div>
 
                           {/* Slots Row */}
@@ -1269,9 +1298,10 @@ const SectionQuestionItem = ({ question, index, theme }) => {
                                         userSelect: 'none'
                                       }}
                                     >
-                                      <span style={{ fontSize: '13px', fontWeight: '700', color: theme === 'sun' ? '#1890ff' : '#8B5CF6', textAlign: 'center' }}>
-                                        {currentState.droppedItems[index]}
-                                      </span>
+                                      <span 
+                                        style={{ fontSize: '13px', fontWeight: '700', color: theme === 'sun' ? '#1890ff' : '#8B5CF6', textAlign: 'center' }}
+                                        dangerouslySetInnerHTML={{ __html: currentState.droppedItems[index] || '' }}
+                                      />
                                     </div>
                                   ) : (
                                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '2px' }}>
@@ -1341,8 +1371,8 @@ const SectionQuestionItem = ({ question, index, theme }) => {
                                     e.currentTarget.style.transform = 'scale(1)';
                                     e.currentTarget.style.boxShadow = theme === 'sun' ? '0 2px 6px rgba(24, 144, 255, 0.15)' : '0 2px 6px rgba(138, 122, 255, 0.15)';
                                   }}
+                                  dangerouslySetInnerHTML={{ __html: item || '' }}
                                 >
-                                  {item}
                                 </div>
                               ))}
                             </div>
@@ -1927,7 +1957,10 @@ const ListeningSectionItem = ({ question, index, theme }) => {
                       ? '0 2px 8px rgba(0, 0, 0, 0.1)' 
                       : '0 2px 8px rgba(138, 122, 255, 0.2)'
                   }}>
-                  {toPlainText(question.transcript)}
+                  <div 
+                    className="passage-text-content"
+                    dangerouslySetInnerHTML={{ __html: question.transcript || '' }}
+                  />
                 </div>
               )}
             </div>
@@ -2101,12 +2134,18 @@ const ListeningSectionItem = ({ question, index, theme }) => {
                                   {parts.map((part, pIdx) => (
                                     <React.Fragment key={pIdx}>
                                       {part.type === 'text' ? (
-                                        toPlain(part.content)
+                                        <span 
+                                          className="question-text-content"
+                                          dangerouslySetInnerHTML={{ __html: part.content || '' }}
+                                        />
                                       ) : (
                                         qDroppedItems[part.positionId] ? (
-                                          <span draggable onDragStart={(e) => handleDragStartFromDropped(e, qDroppedItems[part.positionId], part.positionId)} style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', minWidth:'100px', minHeight:'28px', padding:'4px 8px', margin:'0 6px', background: theme==='sun'? 'rgba(24,144,255,0.15)':'rgba(138,122,255,0.18)', border: `2px solid ${theme==='sun'?'#1890ff':'#8B5CF6'}`, borderRadius:'6px', fontSize:'14px', fontWeight:'350', color: theme==='sun'?'#1890ff':'#8B5CF6', cursor:'grab', verticalAlign:'baseline', textAlign:'center' }}>
-                                            {toPlain(qDroppedItems[part.positionId])}
-                                          </span>
+                                          <span 
+                                            draggable 
+                                            onDragStart={(e) => handleDragStartFromDropped(e, qDroppedItems[part.positionId], part.positionId)} 
+                                            style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', minWidth:'100px', minHeight:'28px', padding:'4px 8px', margin:'0 6px', background: theme==='sun'? 'rgba(24,144,255,0.15)':'rgba(138,122,255,0.18)', border: `2px solid ${theme==='sun'?'#1890ff':'#8B5CF6'}`, borderRadius:'6px', fontSize:'14px', fontWeight:'350', color: theme==='sun'?'#1890ff':'#8B5CF6', cursor:'grab', verticalAlign:'baseline', textAlign:'center' }}
+                                            dangerouslySetInnerHTML={{ __html: qDroppedItems[part.positionId] || '' }}
+                                          />
                                         ) : (
                                           <span onDrop={(e)=>handleDrop(e, part.positionId)} onDragOver={(e)=>handleDragOver(e, part.positionId)} onDragLeave={handleDragLeave} style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', minWidth:'100px', minHeight:'28px', padding:'4px 8px', margin:'0 6px', background: dragOverPosition[q.id]===part.positionId ? (theme==='sun'?'rgba(24,144,255,0.2)':'rgba(138,122,255,0.25)') : '#ffffff', border:`2px ${dragOverPosition[q.id]===part.positionId ? 'solid':'dashed'} ${dragOverPosition[q.id]===part.positionId ? (theme==='sun'?'#1890ff':'#8B5CF6') : 'rgba(0,0,0,0.5)'}`, borderRadius:'6px', fontSize:'14px', color: dragOverPosition[q.id]===part.positionId ? (theme==='sun'?'#1890ff':'#8B5CF6') : 'rgba(0,0,0,0.5)', textAlign:'center' }}>
                                             {dragOverPosition[q.id]===part.positionId ? 'Drop here!' : 'Drop here'}
@@ -2122,9 +2161,13 @@ const ListeningSectionItem = ({ question, index, theme }) => {
                                 <Typography.Text style={{ fontSize:'13px', fontWeight:600, marginBottom:'12px', display:'block', color: theme==='sun'?'rgb(15,23,42)':'rgb(45,27,105)' }}>Drag these words:</Typography.Text>
                                 <div style={{ display:'flex', gap:'8px', flexWrap:'wrap', justifyContent:'center', alignItems:'center', minHeight:'80px' }}>
                                   {qAvailableItems.map((item, idx) => (
-                                    <span key={idx} draggable onDragStart={(e)=>handleDragStart(e, item)} style={{ padding:'8px 12px', background: theme==='sun'?'rgba(24,144,255,0.08)':'rgba(138,122,255,0.12)', border:`2px solid ${theme==='sun'?'#1890ff':'#8B5CF6'}`, borderRadius:'8px', fontSize:'13px', fontWeight:'600', color: theme==='sun'?'#1890ff':'#8B5CF6', cursor:'grab', userSelect:'none', minWidth:'60px', textAlign:'center' }}>
-                                      {toPlain(item)}
-                                    </span>
+                                    <span 
+                                      key={idx} 
+                                      draggable 
+                                      onDragStart={(e)=>handleDragStart(e, item)} 
+                                      style={{ padding:'8px 12px', background: theme==='sun'?'rgba(24,144,255,0.08)':'rgba(138,122,255,0.12)', border:`2px solid ${theme==='sun'?'#1890ff':'#8B5CF6'}`, borderRadius:'8px', fontSize:'13px', fontWeight:'600', color: theme==='sun'?'#1890ff':'#8B5CF6', cursor:'grab', userSelect:'none', minWidth:'60px', textAlign:'center' }}
+                                      dangerouslySetInnerHTML={{ __html: item || '' }}
+                                    />
                                   ))}
                                 </div>
                               </div>
@@ -2173,7 +2216,8 @@ const ListeningSectionItem = ({ question, index, theme }) => {
                           wasDropped: false
                         };
                         const numSlots = (q.content?.data?.filter(it => it?.value)?.length) || currentState.sourceItems.length || 0;
-                        const displayText = (q.questionText || q.question || '').replace(/\[\[pos_.*?\]\]/g,' ').replace(/<[^>]*>/g,' ').replace(/&nbsp;/g,' ').trim();
+                        // Remove placeholder tokens but keep HTML formatting
+                        const displayText = ((q.questionText || q.question || '').replace(/\[\[pos_.*?\]\]/g,'')).trim();
 
                         const handleDragStartFromSource = (e, item) => {
                           setReorderStates(prev => ({ ...prev, [questionId]: { ...currentState, draggedItem: item, isDraggingFromSource: true } }));
@@ -2217,7 +2261,11 @@ const ListeningSectionItem = ({ question, index, theme }) => {
                         return (
                           <div style={{ marginBottom: '16px' }}>
                             <div style={{ fontSize: '16px', fontWeight: 600, marginBottom: '8px' }}>Question {qIndex + 1}:</div>
-                            <div style={{ fontSize: '15px', fontWeight: 350, marginBottom: '16px', lineHeight: '1.8', color: '#000000' }}>{displayText}</div>
+                            <div 
+                              className="question-text-content"
+                              style={{ fontSize: '15px', fontWeight: 350, marginBottom: '16px', lineHeight: '1.8', color: '#000000' }}
+                              dangerouslySetInnerHTML={{ __html: displayText || '' }}
+                            />
                             <div style={{ marginBottom:'16px', padding:'16px', background: theme==='sun'?'#f9f9f9':'rgba(255,255,255,0.02)', borderRadius:'8px', border:`1px solid ${theme==='sun'?'#e8e8e8':'rgba(255,255,255,0.1)'}` }}>
                               <div style={{ fontSize:'14px', fontWeight:350, marginBottom:'12px', color: theme==='sun'?'rgb(15,23,42)':'rgb(45,27,105)' }}>Drop the words here in order:</div>
                               <div style={{ display:'flex', flexWrap:'wrap', gap:'8px' }}>
@@ -2259,15 +2307,17 @@ const ListeningSectionItem = ({ question, index, theme }) => {
                           }}>
                             Question {qIndex + 1}:
                           </Typography.Text>
-                          <Typography.Text style={{ 
-                            fontSize: '15px', 
-                            fontWeight: 350,
-                            color: '#000000',
-                            display: 'block',
-                            lineHeight: '1.8'
-                          }}>
-                            {toPlainText(q.question || q.questionText)}
-                          </Typography.Text>
+                          <div 
+                            className="question-text-content"
+                            style={{ 
+                              fontSize: '15px', 
+                              fontWeight: 350,
+                              color: '#000000',
+                              display: 'block',
+                              lineHeight: '1.8'
+                            }}
+                            dangerouslySetInnerHTML={{ __html: q.question || q.questionText || '' }}
+                          />
                         </div>
 
                         <div style={{ 
@@ -2340,14 +2390,17 @@ const ListeningSectionItem = ({ question, index, theme }) => {
                               }}>
                                 {option.key}.
                               </span>
-                              <Typography.Text style={{ 
-                                fontSize: '14px',
-                                color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)',
-                                fontWeight: '350',
-                                flex: 1
-                              }}>
-                                {toPlainText(option.text)}
-                              </Typography.Text>
+                              <span 
+                                className="option-text"
+                                style={{ 
+                                  fontSize: '14px',
+                                  color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)',
+                                  fontWeight: '350',
+                                  flex: 1,
+                                  lineHeight: '1.6'
+                                }}
+                                dangerouslySetInnerHTML={{ __html: option.text || '' }}
+                              />
                             </div>
                           ))
                         ) : (
@@ -2406,7 +2459,11 @@ const ListeningSectionItem = ({ question, index, theme }) => {
                                   fontWeight: '350',
                                   flex: 1
                                 }}>
-                                  {toPlainText(option.text)}
+                                  <span 
+                                    className="option-text"
+                                    style={{ flex: 1, lineHeight: '1.6' }}
+                                    dangerouslySetInnerHTML={{ __html: option.text || '' }}
+                                  />
                                 </Typography.Text>
                               ) : (
                                 <>
@@ -2418,14 +2475,17 @@ const ListeningSectionItem = ({ question, index, theme }) => {
                                   }}>
                                     {option.key}.
                                   </span>
-                                  <Typography.Text style={{ 
-                                    fontSize: '14px',
-                                    color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)',
-                                    fontWeight: '350',
-                                    flex: 1
-                                  }}>
-                                    {toPlainText(option.text)}
-                                  </Typography.Text>
+                                  <span 
+                                    className="option-text"
+                                    style={{ 
+                                      fontSize: '14px',
+                                      color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)',
+                                      fontWeight: '350',
+                                      flex: 1,
+                                      lineHeight: '1.6'
+                                    }}
+                                    dangerouslySetInnerHTML={{ __html: option.text || '' }}
+                                  />
                                 </>
                               )}
                             </div>
@@ -2577,13 +2637,25 @@ const WritingSectionItem = ({ question, index, theme }) => {
             }}>
             
             {/* Writing Prompt */}
+            <div 
+              className="passage-text-content"
+              style={{
+                fontSize: '15px',
+                lineHeight: '1.8',
+                color: theme === 'sun' ? '#333' : '#1F2937',
+                textAlign: 'justify'
+              }}
+              dangerouslySetInnerHTML={{ __html: question.prompt || '' }}
+            />
+            {/* Legacy formatting removed - using HTML directly now */}
+            {false && question.prompt && (
             <div style={{
               fontSize: '15px',
               lineHeight: '1.8',
               color: theme === 'sun' ? '#333' : '#1F2937',
               textAlign: 'justify'
             }}>
-              {toPlainText(question.prompt).split('\n').map((line, idx) => {
+              {(question.prompt || '').split('\n').map((line, idx) => {
                 if (line.startsWith('**') && line.endsWith('**')) {
                   return (
                     <div key={idx} style={{
@@ -2638,6 +2710,7 @@ const WritingSectionItem = ({ question, index, theme }) => {
                 }
               })}
             </div>
+            )}
           </div>
 
           {/* Right Column - Writing Area */}
@@ -3916,8 +3989,7 @@ const SpeakingWithAudioSectionItem = ({ question, index, theme }) => {
 // Multiple Choice Container Component
 const MultipleChoiceContainer = ({ theme, data }) => {
   const [selectedAnswer, setSelectedAnswer] = React.useState(null);
-  const toPlain = (s) => (typeof s === 'string' ? s.replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g,' ').replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/\s+/g,' ').trim() : s);
-  const questionText = toPlain(data?.question || data?.questionText || 'What is the capital city of Vietnam?');
+  const questionText = data?.question || data?.questionText || 'What is the capital city of Vietnam?';
   const optionsFromApi = Array.isArray(data?.options) && data.options.length > 0
     ? data.options
     : null;
@@ -3973,16 +4045,18 @@ const MultipleChoiceContainer = ({ theme, data }) => {
 
       {/* Content Area */}
       <div className="question-content" style={{ paddingLeft: '36px', marginTop: '16px' }}>
-        <Typography.Text style={{ 
-          fontSize: '15px', 
-          fontWeight: 350,
-          marginBottom: '12px',
-          display: 'block',
-          lineHeight: '1.8',
-          color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)'
-        }}>
-          {questionText}
-        </Typography.Text>
+        <div 
+          className="question-text-content"
+          style={{ 
+            fontSize: '15px', 
+            fontWeight: 350,
+            marginBottom: '12px',
+            display: 'block',
+            lineHeight: '1.8',
+            color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)'
+          }}
+          dangerouslySetInnerHTML={{ __html: questionText }}
+        />
 
         {/* Options */}
         <div className="question-options" style={{ 
@@ -4049,14 +4123,17 @@ const MultipleChoiceContainer = ({ theme, data }) => {
                 }}>
                   {key}.
                 </span>
-                <Typography.Text style={{ 
-                  fontSize: '14px',
-                  color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)',
-                  fontWeight: '350',
-                  flex: 1
-                }}>
-                  {toPlain(opt.text)}
-                </Typography.Text>
+                <span 
+                  className="option-text"
+                  style={{ 
+                    fontSize: '14px',
+                    color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)',
+                    fontWeight: '350',
+                    flex: 1,
+                    lineHeight: '1.6'
+                  }}
+                  dangerouslySetInnerHTML={{ __html: opt.text || '' }}
+                />
               </div>
             );
           })}
@@ -4069,8 +4146,7 @@ const MultipleChoiceContainer = ({ theme, data }) => {
 // Multiple Select Container Component
 const MultipleSelectContainer = ({ theme, data }) => {
   const [selectedAnswers, setSelectedAnswers] = React.useState([]);
-  const toPlain = (s) => (typeof s === 'string' ? s.replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g,' ').replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/\s+/g,' ').trim() : s);
-  const questionText = toPlain(data?.question || data?.questionText || 'Which of the following are Southeast Asian countries? (Select all that apply)');
+  const questionText = data?.question || data?.questionText || 'Which of the following are Southeast Asian countries? (Select all that apply)';
   const optionsFromApi = Array.isArray(data?.options) && data.options.length > 0 ? data.options : null;
 
   const toggleAnswer = (key) => {
@@ -4132,16 +4208,18 @@ const MultipleSelectContainer = ({ theme, data }) => {
 
       {/* Content Area */}
       <div className="question-content" style={{ paddingLeft: '36px', marginTop: '16px' }}>
-        <Typography.Text style={{ 
-          fontSize: '15px', 
-          fontWeight: 350,
-          marginBottom: '12px',
-          display: 'block',
-          lineHeight: '1.8',
-          color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)'
-        }}>
-          {questionText}
-        </Typography.Text>
+        <div 
+          className="question-text-content"
+          style={{ 
+            fontSize: '15px', 
+            fontWeight: 350,
+            marginBottom: '12px',
+            display: 'block',
+            lineHeight: '1.8',
+            color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)'
+          }}
+          dangerouslySetInnerHTML={{ __html: questionText }}
+        />
 
         {/* Options */}
         <div className="question-options" style={{ 
@@ -4207,14 +4285,17 @@ const MultipleSelectContainer = ({ theme, data }) => {
                 }}>
                   {key}.
                 </span>
-                <Typography.Text style={{ 
-                  fontSize: '14px',
-                  color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)',
-                  fontWeight: '350',
-                  flex: 1
-                }}>
-                  {toPlain(opt.text)}
-                </Typography.Text>
+                <span 
+                  className="option-text"
+                  style={{ 
+                    fontSize: '14px',
+                    color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)',
+                    fontWeight: '350',
+                    flex: 1,
+                    lineHeight: '1.6'
+                  }}
+                  dangerouslySetInnerHTML={{ __html: opt.text || '' }}
+                />
               </div>
             );
           })}
@@ -4227,8 +4308,7 @@ const MultipleSelectContainer = ({ theme, data }) => {
 // True/False Container Component
 const TrueFalseContainer = ({ theme, data }) => {
   const [selectedAnswer, setSelectedAnswer] = React.useState(null);
-  const toPlain = (s) => (typeof s === 'string' ? s.replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g,' ').replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/\s+/g,' ').trim() : s);
-  const questionText = toPlain(data?.question || data?.questionText || 'The Earth revolves around the Sun.');
+  const questionText = data?.question || data?.questionText || 'The Earth revolves around the Sun.';
 
   return (
     <div
@@ -4281,16 +4361,18 @@ const TrueFalseContainer = ({ theme, data }) => {
 
       {/* Content Area */}
       <div className="question-content" style={{ paddingLeft: '36px', marginTop: '16px' }}>
-        <Typography.Text style={{ 
-          fontSize: '15px', 
+        <div 
+          className="question-text-content"
+          style={{ 
+            fontSize: '15px', 
             fontWeight: 350,
-          marginBottom: '12px',
-          display: 'block',
+            marginBottom: '12px',
+            display: 'block',
             lineHeight: '1.8',
-          color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)'
-        }}>
-          {questionText}
-        </Typography.Text>
+            color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)'
+          }}
+          dangerouslySetInnerHTML={{ __html: questionText }}
+        />
 
         {/* Options */}
         <div className="question-options" style={{ 
@@ -4439,6 +4521,7 @@ const DropdownContainer = ({ theme, data }) => {
       <div className="question-content" style={{ paddingLeft: '36px', marginTop: '16px' }}>
         {/* Inline HTML from questionText with [[pos_]] placeholders */}
         <div
+          className="question-text-content"
           style={{
           fontSize: '15px', 
           fontWeight: 350,
@@ -4478,8 +4561,6 @@ const DragDropContainer = ({ theme, data }) => {
     return all.length ? all : ['love', 'like', 'enjoy', 'hate'];
   });
   const [dragOverPosition, setDragOverPosition] = React.useState(null);
-
-  const toPlain = (s) => (typeof s === 'string' ? s.replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' ').trim() : s);
 
   const handleDragStart = (e, item, isDropped = false, positionId = null) => {
     e.dataTransfer.setData('text/plain', item);
@@ -4633,18 +4714,21 @@ const DragDropContainer = ({ theme, data }) => {
             borderRadius: '12px',
             border: `1px solid ${theme === 'sun' ? '#e8e8e8' : 'rgba(255, 255, 255, 0.1)'}`,
           }}>
-            <div style={{ 
-              fontSize: '15px', 
-              fontWeight: 350,
-              lineHeight: '1.8',
-              color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)',
-              marginBottom: '16px'
-            }}>
+            <div 
+              className="question-text-content"
+              style={{ 
+                fontSize: '15px', 
+                fontWeight: 350,
+                lineHeight: '1.8',
+                color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)',
+                marginBottom: '16px'
+              }}
+            >
               {parts.length > 0 ? (
                 parts.map((part, pIdx) => (
                   <React.Fragment key={pIdx}>
                     {part.type === 'text' ? (
-                      toPlain(part.content)
+                      <span dangerouslySetInnerHTML={{ __html: part.content || '' }} />
                     ) : (
                       droppedItems[part.positionId] ? (
                         <div
@@ -4669,9 +4753,8 @@ const DragDropContainer = ({ theme, data }) => {
                             boxSizing: 'border-box',
                             textAlign: 'center'
                           }}
-                        >
-                          {toPlain(droppedItems[part.positionId])}
-                        </div>
+                          dangerouslySetInnerHTML={{ __html: droppedItems[part.positionId] || '' }}
+                        />
                       ) : (
                         <div
                           onDrop={(e) => handleDrop(e, part.positionId)}
@@ -4775,9 +4858,8 @@ const DragDropContainer = ({ theme, data }) => {
                       ? '0 2px 8px rgba(24, 144, 255, 0.15)' 
                       : '0 2px 8px rgba(138, 122, 255, 0.15)';
                   }}
-                >
-                  {item}
-                </div>
+                  dangerouslySetInnerHTML={{ __html: item || '' }}
+                />
               ))}
             </div>
           </div>
@@ -5170,18 +5252,9 @@ const ReorderContainer = ({ theme, data }) => {
 // Rewrite Container Component
 const RewriteContainer = ({ theme, data }) => {
   const [answer, setAnswer] = React.useState('');
-  const toPlain = (s) => (typeof s === 'string'
-    ? s
-      .replace(/\[\[pos_.*?\]\]/g, ' ') // remove placeholder tokens
-      .replace(/<[^>]*>/g, ' ')
-      .replace(/&nbsp;/g,' ')
-      .replace(/&amp;/g,'&')
-      .replace(/&lt;/g,'<')
-      .replace(/&gt;/g,'>')
-      .replace(/\s+/g,' ')
-      .trim()
-    : s);
-  const questionText = toPlain(data?.questionText || data?.question || 'Rewrite the following sentence using different words:');
+  // Remove placeholder tokens but keep HTML formatting
+  const questionText = (data?.questionText || data?.question || 'Rewrite the following sentence using different words:')
+    .replace(/\[\[pos_.*?\]\]/g, '');
 
   return (
     <div
@@ -5234,16 +5307,18 @@ const RewriteContainer = ({ theme, data }) => {
 
       {/* Content Area */}
       <div className="question-content" style={{ paddingLeft: '36px', marginTop: '16px' }}>
-        <Typography.Text style={{ 
-          fontSize: '15px', 
-          fontWeight: 350,
-          marginBottom: '16px',
-          display: 'block',
-          lineHeight: '1.8',
-          color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)'
-        }}>
-          {questionText}
-        </Typography.Text>
+        <div 
+          className="question-text-content"
+          style={{ 
+            fontSize: '15px', 
+            fontWeight: 350,
+            marginBottom: '16px',
+            display: 'block',
+            lineHeight: '1.8',
+            color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)'
+          }}
+          dangerouslySetInnerHTML={{ __html: questionText }}
+        />
 
         {/* Only show the question sentence for rewrite */}
 
@@ -5287,7 +5362,14 @@ const FillBlankContainer = ({ theme, data }) => {
     let inputIndex = 0;
     while ((match = regex.exec(questionText)) !== null) {
       if (match.index > lastIndex) {
-        elements.push(questionText.slice(lastIndex, match.index));
+        const textContent = questionText.slice(lastIndex, match.index);
+        elements.push(
+          <span 
+            key={`text_${inputIndex}`}
+            className="question-text-content"
+            dangerouslySetInnerHTML={{ __html: textContent }}
+          />
+        );
       }
       inputIndex += 1;
       elements.push(
@@ -5324,7 +5406,14 @@ const FillBlankContainer = ({ theme, data }) => {
       lastIndex = match.index + match[0].length;
     }
     if (lastIndex < questionText.length) {
-      elements.push(questionText.slice(lastIndex));
+      const textContent = questionText.slice(lastIndex);
+      elements.push(
+        <span 
+          key={`text_final`}
+          className="question-text-content"
+          dangerouslySetInnerHTML={{ __html: textContent }}
+        />
+      );
     }
     return elements;
   };
