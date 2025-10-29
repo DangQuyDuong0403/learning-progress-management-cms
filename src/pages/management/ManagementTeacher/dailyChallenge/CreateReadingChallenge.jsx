@@ -1437,16 +1437,22 @@ const CreateReadingChallenge = () => {
                           className="rc-passage-option-card"
                           onClick={() => {
                             const userRole = user?.role?.toLowerCase();
-                            const path = userRole === 'teaching_assistant'
-                              ? `/teaching-assistant/daily-challenges/create/ai-reading/${currentChallengeId}`
-                              : `/teacher/daily-challenges/create/ai-reading/${currentChallengeId}`;
+                            const path = (isListeningChallenge ? (
+                              userRole === 'teaching_assistant'
+                                ? `/teaching-assistant/daily-challenges/create/ai-listening/${currentChallengeId}`
+                                : `/teacher/daily-challenges/create/ai-listening/${currentChallengeId}`
+                            ) : (
+                              userRole === 'teaching_assistant'
+                                ? `/teaching-assistant/daily-challenges/create/ai-reading/${currentChallengeId}`
+                                : `/teacher/daily-challenges/create/ai-reading/${currentChallengeId}`
+                            ));
                             navigate(path, {
                               state: {
                                 challengeId: currentChallengeId,
                                 challengeName,
                                 classId,
                                 className,
-                                challengeType: 'READING'
+                                challengeType: isListeningChallenge ? 'LISTENING' : 'READING'
                               }
                             });
                           }}
@@ -1824,32 +1830,7 @@ const CreateReadingChallenge = () => {
               </div>
             </div>
 
-            {/* AI Generate - Featured */}
-            <div className="question-type-category">
-              <h3 className="category-title">AI Features</h3>
-              <div className="category-grid">
-                <div
-                  className={`question-type-card ${theme}-question-type-card question-type-card-featured`}
-                  onClick={() => {
-                    spaceToast.info("AI generation feature is under development");
-                    setQuestionTypeModalVisible(false);
-                  }}
-                >
-                  <div className="question-type-icon-wrapper featured-icon">
-                    <img 
-                      src="/img/ai-icon.png" 
-                      alt="AI" 
-                      style={{ width: '44px', height: '44px', filter: theme === 'sun' ? 'none' : 'brightness(0.9)' }} 
-                    />
-                  </div>
-                  <div className="question-type-name">AI Generate Questions</div>
-                  <div className="question-type-description">
-                    Generate questions automatically with AI assistance
-                  </div>
-                  <div className="featured-badge">✨ AI Powered</div>
-                </div>
-              </div>
-            </div>
+          {/* Removed AI Generate section per requirement */}
           </div>
         </Modal>
 

@@ -6,7 +6,7 @@ import './ThemedLayout.css';
 
 const { Content } = AntLayout;
 
-const ThemedLayout = ({ children, customHeader }) => {
+const ThemedLayout = ({ children, customHeader, contentMargin = 20, contentPadding = 20 }) => {
   const { theme } = useTheme();
 
   return (
@@ -56,8 +56,8 @@ const ThemedLayout = ({ children, customHeader }) => {
         <Content
           className={`themed-content ${theme}-content`}
           style={{
-            margin: '20px',
-            padding: '20px',
+            margin: `${contentMargin}px`,
+            padding: `${contentPadding}px`,
             borderRadius: '8px',
             minHeight: 'calc(100vh - 112px)',
             maxHeight: 'calc(100vh - 112px)',
