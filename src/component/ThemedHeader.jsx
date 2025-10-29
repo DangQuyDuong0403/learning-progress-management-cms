@@ -13,7 +13,7 @@ import LanguageToggle from './LanguageToggle';
 import { spaceToast } from './SpaceToastify';
 import './ThemedHeader.css';
 
-export default function ThemedHeader() {
+export default function ThemedHeader({ hideThemeToggle = false, hideLanguageToggle = false }) {
   const navigate = useNavigate();
   const location = useLocation();
   const { t } = useTranslation();
@@ -92,6 +92,17 @@ export default function ThemedHeader() {
         navigate(-1);
         break;
     }
+  };
+
+  // Brand click: navigate to dashboard (teacher -> teacher dashboard)
+  const handleBrandClick = () => {
+    const role = user?.role?.toLowerCase();
+    if (role === 'teacher') {
+      navigate('/teacher/dashboard');
+      return;
+    }
+    // Fallback to role-based dashboard
+    handleBackToDashboard();
   };
 
   const handleBackToSyllabusList = () => {
@@ -174,7 +185,7 @@ export default function ThemedHeader() {
           }}>
             {/* Logo and CAMKEY Text - Show for users without sidebar when not in special menus */}
             {shouldShowLogo() && (
-              <div style={{
+              <div onClick={handleBrandClick} style={{
                 display: 'flex',
                 alignItems: 'center',
                 gap: '12px',
@@ -204,7 +215,8 @@ export default function ThemedHeader() {
                   fontSize: '32px',
                   fontWeight: 700,
                   color: theme === 'sun' ? '#1E40AF' : '#FFFFFF',
-                  textShadow: theme === 'sun' ? '0 0 5px rgba(30, 64, 175, 0.3)' : '0 0 15px rgba(134, 134, 134, 0.8)'
+                  textShadow: theme === 'sun' ? '0 0 5px rgba(30, 64, 175, 0.3)' : '0 0 15px rgba(134, 134, 134, 0.8)',
+                  cursor: 'pointer'
                 }}>
                   CAMKEY
                 </span>
@@ -463,42 +475,46 @@ export default function ThemedHeader() {
           <div className="themed-navbar-actions">
             <ul className="themed-navbar-nav">
               {/* Theme Toggle Switch */}
-              <li className="themed-nav-item">
-                <Tooltip 
-                  title={isSunTheme ? t('header.switchToSpace') : t('header.switchToSun')}
-                  placement="bottom"
-                >
-                  <div className="theme-switch-container">
-                    <Switch
-                      checked={isSunTheme}
-                      onChange={toggleTheme}
-                      size="default"
-                      className={`theme-switch ${theme}-theme-switch`}
-                      checkedChildren={
-                        <SunOutlined 
-                          style={{ 
-                            color: '#fff',
-                            filter: 'drop-shadow(0 0 3px rgba(255, 215, 0, 0.8))'
-                          }} 
-                        />
-                      }
-                      unCheckedChildren={
-                        <MoonOutlined 
-                          style={{ 
-                            color: '#fff',
-                            filter: 'drop-shadow(0 0 3px rgba(77, 208, 255, 0.8))'
-                          }} 
-                        />
-                      }
-                    />
-                  </div>
-                </Tooltip>
-              </li>
+              {!hideThemeToggle && (
+                <li className="themed-nav-item">
+                  <Tooltip 
+                    title={isSunTheme ? t('header.switchToSpace') : t('header.switchToSun')}
+                    placement="bottom"
+                  >
+                    <div className="theme-switch-container">
+                      <Switch
+                        checked={isSunTheme}
+                        onChange={toggleTheme}
+                        size="default"
+                        className={`theme-switch ${theme}-theme-switch`}
+                        checkedChildren={
+                          <SunOutlined 
+                            style={{ 
+                              color: '#fff',
+                              filter: 'drop-shadow(0 0 3px rgba(255, 215, 0, 0.8))'
+                            }} 
+                          />
+                        }
+                        unCheckedChildren={
+                          <MoonOutlined 
+                            style={{ 
+                              color: '#fff',
+                              filter: 'drop-shadow(0 0 3px rgba(77, 208, 255, 0.8))'
+                            }} 
+                          />
+                        }
+                      />
+                    </div>
+                  </Tooltip>
+                </li>
+              )}
 
               {/* Language Toggle */}
-              <li className="themed-nav-item">
-                <LanguageToggle />
-              </li>
+              {!hideLanguageToggle && (
+                <li className="themed-nav-item">
+                  <LanguageToggle />
+                </li>
+              )}
 
               {/* Notifications */}
               <li className="themed-nav-item dropdown">
