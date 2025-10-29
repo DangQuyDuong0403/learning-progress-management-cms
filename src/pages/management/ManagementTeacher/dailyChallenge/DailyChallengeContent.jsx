@@ -2795,6 +2795,8 @@ const DailyChallengeContent = () => {
     }
   }, [id]);
 
+  const [totalElements, setTotalElements] = useState(0);
+
   const fetchQuestions = useCallback(async () => {
     if (!id) {
       setLoading(false);
@@ -2944,6 +2946,11 @@ const DailyChallengeContent = () => {
 
         console.log('Mapped Questions:', mappedQuestions);
         console.log('Mapped Passages:', mappedPassages);
+
+        // Calculate total elements (questions count) from API or derived
+        const derivedTotal = mappedQuestions.length + mappedPassages.reduce((sum, p) => sum + (Array.isArray(p.questions) ? p.questions.length : 0), 0);
+        const apiTotal = response.totalElements ?? response.data?.totalElements ?? null;
+        setTotalElements(Number.isFinite(apiTotal) ? apiTotal : derivedTotal);
 
         // Sort questions by orderNumber to ensure correct order
         const sortedQuestions = mappedQuestions.sort((a, b) => (a.orderNumber || 0) - (b.orderNumber || 0));
@@ -4609,7 +4616,11 @@ const DailyChallengeContent = () => {
                     backdropFilter: 'blur(10px)'
                   }}
                 >
-            <Input
+            <div style={{ display: 'flex', gap: '12px', alignItems: 'center', justifyContent: 'space-between' }}>
+              <Typography.Text style={{ fontWeight: 400, color: '#000', whiteSpace: 'nowrap', fontSize: '16px' }}>
+                {`Total: ${totalElements} questions • Remaining: ${Math.max(0, 100 - (Number(totalElements) || 0))} questions`}
+              </Typography.Text>
+              <Input
                   prefix={<SearchOutlined />}
                   value={searchText}
                   onChange={(e) => handleSearch(e.target.value)}
@@ -4625,6 +4636,7 @@ const DailyChallengeContent = () => {
                     }}
               allowClear
                 />
+            </div>
                 </Card>
         </div>
 
