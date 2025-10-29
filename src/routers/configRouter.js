@@ -1041,7 +1041,7 @@ const CONFIG_ROUTER = [
 		exact: true,
 		key: 'TEACHER_DAILY_CHALLENGE_CONTENT',
 		private: true,
-		role: ['teacher', 'teaching_assistant'],
+		role: ['teacher'],
 	},
 	{
 		show: false,
@@ -1061,7 +1061,7 @@ const CONFIG_ROUTER = [
 		exact: true,
 		key: 'TEACHER_CREATE_GRAMMAR_VOCAB_CHALLENGE',
 		private: true,
-		role: ['teacher', 'teaching_assistant'],
+		role: ['teacher'],
 	},
 	{
 		show: false,
@@ -1071,7 +1071,7 @@ const CONFIG_ROUTER = [
 		exact: true,
 		key: 'TEACHER_CREATE_READING_CHALLENGE',
 		private: true,
-		role: ['teacher', 'teaching_assistant'],
+		role: ['teacher'],
 	},
 	{
 		show: false,
@@ -1081,7 +1081,7 @@ const CONFIG_ROUTER = [
 		exact: true,
 		key: 'TEACHER_CREATE_READING_CHALLENGE_WITH_ID',
 		private: true,
-		role: ['teacher', 'teaching_assistant'],
+		role: ['teacher'],
 	},
 	{
 		show: false,
@@ -1091,7 +1091,7 @@ const CONFIG_ROUTER = [
 		exact: true,
 		key: 'TEACHER_CREATE_LISTENING_CHALLENGE_WITH_ID',
 		private: true,
-		role: ['teacher', 'teaching_assistant'],
+		role: ['teacher'],
 	},
 	{
 		show: false,
@@ -1101,7 +1101,7 @@ const CONFIG_ROUTER = [
 		exact: true,
 		key: 'TEACHER_CREATE_WRITING_CHALLENGE_WITH_ID',
 		private: true,
-		role: ['teacher', 'teaching_assistant'],
+		role: ['teacher'],
 	},
 	{
 		show: false,
@@ -1111,7 +1111,7 @@ const CONFIG_ROUTER = [
 		exact: true,
 		key: 'TEACHER_CREATE_SPEAKING_CHALLENGE_WITH_ID',
 		private: true,
-		role: ['teacher', 'teaching_assistant'],
+		role: ['teacher'],
 	},
 	{
 		show: false,
@@ -1121,7 +1121,7 @@ const CONFIG_ROUTER = [
 		exact: true,
 		key: 'TEACHER_CREATE_AI_QUESTIONS_WITH_ID',
 		private: true,
-		role: ['teacher', 'teaching_assistant'],
+		role: ['teacher'],
 	},
 	{
 		show: false,
@@ -1131,7 +1131,7 @@ const CONFIG_ROUTER = [
 		exact: true,
 		key: 'TEACHER_CREATE_AI_READING_WITH_ID',
 		private: true,
-		role: ['teacher', 'teaching_assistant'],
+		role: ['teacher'],
 	},
 	{
 		show: false,
@@ -1141,7 +1141,7 @@ const CONFIG_ROUTER = [
 		exact: true,
 		key: 'TEACHER_CREATE_AI_LISTENING_WITH_ID',
 		private: true,
-		role: ['teacher', 'teaching_assistant'],
+		role: ['teacher'],
 	},
 	{
 		show: false,
@@ -1194,16 +1194,7 @@ const CONFIG_ROUTER = [
 		private: true,
 		role: ['teaching_assistant'],
 	},
-	{
-		show: false,
-		component: DailyChallengeContent,
-		path: '/teaching-assistant/daily-challenges/detail/:id/content',
-		menuName: 'Daily Challenge Content',
-		exact: true,
-		key: 'TEACHING_ASSISTANT_DAILY_CHALLENGE_CONTENT',
-		private: true,
-		role: ['teaching_assistant'],
-	},
+
 	{
 		show: false,
 		component: StudentPreview,

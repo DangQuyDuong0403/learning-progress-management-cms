@@ -15,7 +15,6 @@ import {
   SaveOutlined,
   PlusOutlined,
   FileTextOutlined,
-  UploadOutlined,
   DeleteOutlined,
   LoadingOutlined,
   HolderOutlined,
@@ -27,7 +26,7 @@ import { useNavigate, useLocation, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useTheme } from "../../../../contexts/ThemeContext";
 import ThemedLayout from "../../../../component/teacherlayout/ThemedLayout";
-import { extractTextFromPDF, isValidPDF } from "../../../../utils/pdfUtils";
+// Removed PDF utilities as PDF upload is no longer supported
 import { spaceToast } from "../../../../component/SpaceToastify";
 import { useSelector } from "react-redux";
 import dailyChallengeApi from "../../../../apis/backend/dailyChallengeManagement";
@@ -47,6 +46,9 @@ import ClassicEditor from '@ckeditor/ckeditor5-build-classic';
 const { Title, Text } = Typography;
 
 const CreateReadingChallenge = () => {
+  const MAX_READING_CONTENT_LENGTH = 10000;
+  const MAX_LISTENING_CONTENT_LENGTH = 3000;
+  const MAX_WRITING_SPEAKING_CONTENT_LENGTH = 1500;
   const navigate = useNavigate();
   const location = useLocation();
   const { id } = useParams(); // Get challenge ID from URL
@@ -153,11 +155,11 @@ const CreateReadingChallenge = () => {
     }
   });
   const [passageContent, setPassageContent] = useState("");
-  const [isProcessingPDF, setIsProcessingPDF] = useState(false);
-  const [uploadedFileName, setUploadedFileName] = useState("");
+  // Removed PDF processing states
   const [isProcessingAudio, setIsProcessingAudio] = useState(false);
   const [uploadedAudioFileName, setUploadedAudioFileName] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  const [charCount, setCharCount] = useState(0);
   
   // Question management state
   const [activeModal, setActiveModal] = useState(null);
@@ -232,6 +234,18 @@ const CreateReadingChallenge = () => {
         spaceToast.warning("Challenge ID is required");
         setIsSaving(false);
         return;
+      }
+
+      // Enforce max content length by plain text length based on challenge type
+      const maxLength = getMaxContentLength();
+      if (maxLength !== null) {
+        const plainText = getPlainText(passage.content || '');
+        if (plainText.length > maxLength) {
+          const challengeType = isWritingChallenge ? 'Writing' : isSpeakingChallenge ? 'Speaking' : 'Reading';
+          spaceToast.warning(`${challengeType} passage must be at most ${maxLength} characters.`);
+          setIsSaving(false);
+          return;
+        }
       }
 
       if (!passage.content || passage.content.trim() === '') {
@@ -546,6 +560,46 @@ const CreateReadingChallenge = () => {
 
   // Debounced editor change handler (same as MultipleChoiceModal)
   const handlePassageContentChange = useCallback((content) => {
+    // Get max length based on challenge type
+    let maxLength = null;
+    if (isListeningChallenge) {
+      maxLength = MAX_LISTENING_CONTENT_LENGTH;
+    } else if (isWritingChallenge || isSpeakingChallenge) {
+      maxLength = MAX_WRITING_SPEAKING_CONTENT_LENGTH;
+    } else {
+      const isReadingChallenge = !isListeningChallenge && !isWritingChallenge && !isSpeakingChallenge;
+      if (isReadingChallenge) {
+        maxLength = MAX_READING_CONTENT_LENGTH;
+      }
+    }
+
+    // Helper function to get plain text from HTML (inline to avoid dependency issues)
+    const getPlainTextInline = (html) => {
+      if (!html) return '';
+      try {
+        const tmp = document.createElement('DIV');
+        tmp.innerHTML = html;
+        return tmp.textContent || tmp.innerText || '';
+      } catch (error) {
+        console.error('Error getting plain text:', error);
+        return String(html);
+      }
+    };
+
+    // Enforce max length by plain text length
+    if (maxLength !== null) {
+      const plainText = getPlainTextInline(content);
+      if (plainText.length > maxLength) {
+        const challengeType = isWritingChallenge ? 'Writing' : isSpeakingChallenge ? 'Speaking' : 'Reading';
+        spaceToast.warning(`${challengeType} passage is limited to ${maxLength} characters.`);
+        return;
+      }
+    }
+
+    // Update live counters based on plain text
+    const plain = getPlainTextInline(content);
+    setCharCount(plain.length);
+
     // Only update if not currently updating from passage change
     if (isUpdatingFromPassage.current) {
       return;
@@ -568,44 +622,15 @@ const CreateReadingChallenge = () => {
         return prevContent;
       });
     }, 150);
-  }, []);
+  }, [isListeningChallenge, isWritingChallenge, isSpeakingChallenge, MAX_READING_CONTENT_LENGTH, MAX_WRITING_SPEAKING_CONTENT_LENGTH]);
 
-  const handleUploadPDF = async (file) => {
-    try {
-      // Kiểm tra file có hợp lệ không
-      if (!isValidPDF(file)) {
-        spaceToast.error("Vui lòng chọn file PDF hợp lệ (tối đa 10MB)");
-        return false;
-      }
+  // Keep counters in sync when passageContent changes externally
+  React.useEffect(() => {
+    const plain = getPlainText(passageContent);
+    setCharCount(plain.length);
+  }, [passageContent]);
 
-      setIsProcessingPDF(true);
-      setUploadedFileName(file.name);
-
-      // Trích xuất text từ PDF
-      const extractedText = await extractTextFromPDF(file);
-      
-      if (!extractedText || extractedText.trim().length === 0) {
-        spaceToast.warning("Không thể trích xuất text từ file PDF này. File có thể bị mã hóa hoặc không chứa text.");
-        return false;
-      }
-
-      // Cập nhật passage content với text đã trích xuất
-      handlePassageContentChange(extractedText);
-
-      // Chuyển sang chế độ manual để hiển thị text
-      setPassage(prevPassage => ({ ...prevPassage, type: "manual", content: extractedText }));
-
-      spaceToast.success(`Đã trích xuất text từ file "${file.name}" thành công!`);
-      
-    } catch (error) {
-      console.error('Error processing PDF:', error);
-      spaceToast.error(error.message || "Có lỗi xảy ra khi xử lý file PDF");
-    } finally {
-      setIsProcessingPDF(false);
-    }
-
-    return false; // Prevent default upload
-  };
+  // Removed PDF upload handler
 
   const handleUploadAudio = async (file) => {
     try {
@@ -816,6 +841,34 @@ const CreateReadingChallenge = () => {
       console.error('Error stripping HTML tags:', error, 'HTML:', html);
       return String(html).substring(0, 80) + '...';
     }
+  };
+
+  // Helper to get full plain text length from HTML
+  const getPlainText = (html) => {
+    if (!html) return '';
+    try {
+      const tmp = document.createElement('DIV');
+      tmp.innerHTML = html;
+      return tmp.textContent || tmp.innerText || '';
+    } catch (error) {
+      console.error('Error getting plain text:', error);
+      return String(html);
+    }
+  };
+
+  // Helper to get max content length based on challenge type
+  const getMaxContentLength = () => {
+    if (isListeningChallenge) {
+      return MAX_LISTENING_CONTENT_LENGTH;
+    }
+    if (isWritingChallenge || isSpeakingChallenge) {
+      return MAX_WRITING_SPEAKING_CONTENT_LENGTH;
+    }
+    const isReadingChallenge = !isListeningChallenge && !isWritingChallenge && !isSpeakingChallenge;
+    if (isReadingChallenge) {
+      return MAX_READING_CONTENT_LENGTH;
+    }
+    return null; // No limit for other types
   };
 
   // Helper function to format fill-in-the-blank questions
@@ -1351,6 +1404,19 @@ const CreateReadingChallenge = () => {
                                }}
                              />
                            </div>
+                          {/* Character Counter */}
+                          {getMaxContentLength() !== null && (
+                          <div style={{
+                            marginTop: '8px',
+                            marginRight: '12px',
+                            display: 'flex',
+                            justifyContent: 'flex-end',
+                            color: '#666',
+                            fontSize: '12px'
+                          }}>
+                            <span>{charCount}/{getMaxContentLength()}</span>
+                          </div>
+                          )}
                          </div>
                        </div>
                      </div>
@@ -1391,47 +1457,10 @@ const CreateReadingChallenge = () => {
                           </Space>
                         </Card>
 
-                        {/* PDF Upload */}
-                        <Card 
-                          hoverable 
-                          className="rc-passage-option-card"
-                          style={{ 
-                            opacity: isProcessingPDF ? 0.6 : 1,
-                            borderRadius: '12px',
-                            border: theme === 'sun' 
-                              ? '2px solid rgba(82, 196, 26, 0.3)' 
-                              : '2px solid rgba(138, 122, 255, 0.3)',
-                            background: theme === 'sun'
-                              ? 'linear-gradient(135deg, rgba(237, 250, 230, 0.5) 0%, rgba(207, 244, 192, 0.4) 100%)'
-                              : 'rgba(255, 255, 255, 0.5)',
-                            cursor: isProcessingPDF ? 'not-allowed' : 'pointer'
-                          }}
-                        >
-                          <Upload
-                            accept=".pdf"
-                            beforeUpload={handleUploadPDF}
-                            showUploadList={false}
-                            disabled={isProcessingPDF}
-                          >
-                            <Space>
-                              {isProcessingPDF ? (
-                                <LoadingOutlined style={{ fontSize: 24, color: "#1890ff" }} />
-                              ) : (
-                                <UploadOutlined style={{ fontSize: 24, color: "#000000" }} />
-                              )}
-                              <Text strong style={{ 
-                                color: theme === 'sun' ? '#1E40AF' : '#8377A0' 
-                              }}>
-                                {isProcessingPDF ? `Đang xử lý "${uploadedFileName}"...` : 
-                                 (isWritingChallenge ? "Upload PDF writing topic" : 
-                                  isSpeakingChallenge ? "Upload PDF speaking topic" : 
-                                  "Upload PDF")}
-                              </Text>
-                            </Space>
-                          </Upload>
-                        </Card>
+                        {/* PDF Upload removed */}
 
-                        {/* Create by AI */}
+                        {/* Create by AI - Hidden for Writing (WR) and Speaking (SP) challenges */}
+                        {!isWritingChallenge && !isSpeakingChallenge && (
                         <Card
                           hoverable
                           className="rc-passage-option-card"
@@ -1480,12 +1509,11 @@ const CreateReadingChallenge = () => {
                              <Text strong style={{ 
                                color: theme === 'sun' ? '#1E40AF' : '#8377A0' 
                              }}>
-                               {isWritingChallenge ? 'Generate writing topic with AI' : 
-                                isSpeakingChallenge ? 'Generate speaking topic with AI' : 
-                                'Generate with AI'}
+                               Generate with AI
                              </Text>
                           </Space>
                          </Card>
+                        )}
                        </Space>
                      </div>
                    )}
