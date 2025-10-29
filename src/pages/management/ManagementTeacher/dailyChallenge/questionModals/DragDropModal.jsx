@@ -70,6 +70,9 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 	const savedRangeRef = useRef(null);
 	const deletionInProgressRef = useRef(new Set());
 
+	// Limit for incorrect options
+	const MAX_INCORRECT_OPTIONS = 10;
+
 	// Colors for blanks - matching ReorderModal color palette (avoid red as first color)
 	const blankColors = useMemo(
 		() => [
@@ -282,7 +285,7 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 				console.log('DragDropModal - Parsing existing question');
 				console.log('DragDropModal - incorrectOptions from questionData:', questionData.incorrectOptions);
 				parseQuestionText(questionData.questionText, questionData.content.data);
-				setIncorrectOptions(questionData.incorrectOptions || []);
+				setIncorrectOptions((questionData.incorrectOptions || []).slice(0, MAX_INCORRECT_OPTIONS));
 			} else {
 				// New question
 				console.log('DragDropModal - New question, setting empty content');
@@ -1448,7 +1451,13 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 
 	// Add incorrect option
 	const handleAddIncorrectOption = () => {
-		setIncorrectOptions((prev) => [...prev, { id: Date.now(), text: '' }]);
+		setIncorrectOptions((prev) => {
+			if (prev.length >= MAX_INCORRECT_OPTIONS) {
+				spaceToast.warning(`You can add up to ${MAX_INCORRECT_OPTIONS} incorrect options`);
+				return prev;
+			}
+			return [...prev, { id: Date.now(), text: '' }];
+		});
 	};
 
 	// Remove incorrect option
@@ -1585,9 +1594,9 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 		questionText = questionText.replace(/\n/g, '<br>');
 
 		// Add incorrect options to contentData (those without positionId)
-		const filteredIncorrectOptions = incorrectOptions.filter((opt) =>
-			opt.text.trim()
-		);
+		const filteredIncorrectOptions = incorrectOptions
+			.filter((opt) => opt.text.trim())
+			.slice(0, MAX_INCORRECT_OPTIONS);
 		filteredIncorrectOptions.forEach((option, index) => {
 			contentData.push({
 				id: `opt${answerIndex + index}`,
@@ -2610,10 +2619,11 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 										No incorrect options yet
 									</div>
 								)}
-								<Button
+				<Button
 									type='dashed'
 									icon={<PlusOutlined />}
 									onClick={handleAddIncorrectOption}
+						disabled={incorrectOptions.length >= MAX_INCORRECT_OPTIONS}
 									style={{
 										borderColor: '#d9d9d9',
 										color: '#666',

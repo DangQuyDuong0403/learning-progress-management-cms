@@ -70,7 +70,7 @@ const AIGenerateListening = () => {
     { value: "FILL_IN_THE_BLANK", label: t('dailyChallenge.fillBlank') || 'Fill in the Blank', icon: '✏️', color: primaryColor, bgColor: primaryColorWithAlpha },
     { value: "DROPDOWN", label: 'Dropdown', icon: '📋', color: primaryColor, bgColor: primaryColorWithAlpha },
     { value: "DRAG_AND_DROP", label: 'Drag and Drop', icon: '🔄', color: primaryColor, bgColor: primaryColorWithAlpha },
-    { value: "REARRANGE", label: 'Reorder', icon: '🔀', color: primaryColor, bgColor: primaryColorWithAlpha },
+    { value: "REARRANGE", label: 'Rearrange', icon: '🔀', color: primaryColor, bgColor: primaryColorWithAlpha },
   ], [t, primaryColor, primaryColorWithAlpha]);
 
   const [questionTypeConfigs, setQuestionTypeConfigs] = useState(() => availableQuestionTypes.map(q => ({ questionType: q.value, numberOfQuestions: 0 })));
@@ -722,7 +722,7 @@ const AIGenerateListening = () => {
                          question.type === 'FILL_IN_THE_BLANK' ? 'Fill in the Blank' :
                          question.type === 'DROPDOWN' ? 'Dropdown' :
                          question.type === 'DRAG_AND_DROP' ? 'Drag and Drop' :
-                         question.type === 'REARRANGE' ? 'Reorder' : question.type}
+                         question.type === 'REARRANGE' ? 'Rearrange' : question.type}
                       </Typography.Text>
                     </div>
                     <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>

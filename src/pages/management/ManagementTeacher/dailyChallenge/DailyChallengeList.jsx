@@ -1449,14 +1449,14 @@ const DailyChallengeList = ({ readOnly = false }) => {
               gap: '10px',
             }}>
               <CheckCircleOutlined style={{ color: 'rgb(24, 144, 255)' }} />
-              Confirm Publish Challenge
+              {t('dailyChallenge.confirmPublishChallenge') || 'Confirm Publish Challenge'}
             </div>
           }
           open={publishModal.visible}
           onOk={handlePublishModalConfirm}
           onCancel={handlePublishModalCancel}
-          okText="Publish Now"
-          cancelText="Cancel"
+          okText={t('dailyChallenge.publishNow') || 'Publish Now'}
+          cancelText={t('common.cancel') || 'Cancel'}
           width={500}
           centered
           bodyStyle={{
@@ -1504,7 +1504,7 @@ const DailyChallengeList = ({ readOnly = false }) => {
               margin: 0,
               fontWeight: '500'
             }}>
-              Are you sure you want to publish this challenge?
+              {t('dailyChallenge.publishConfirmQuestion') || 'Are you sure you want to publish this challenge?'}
             </p>
             <p style={{
               fontSize: '16px',
@@ -1512,7 +1512,7 @@ const DailyChallengeList = ({ readOnly = false }) => {
               margin: 0,
               lineHeight: '1.5'
             }}>
-              Once published, students will be able to access this challenge. This action cannot be undone.
+              {t('dailyChallenge.publishWarningMessage') || 'Once published, students will be able to access this challenge. This action cannot be undone.'}
             </p>
           </div>
         </Modal>

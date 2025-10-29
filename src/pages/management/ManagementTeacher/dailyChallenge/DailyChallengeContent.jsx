@@ -704,7 +704,7 @@ const SortablePassageItem = memo(
                       <Typography.Text strong>
                         {challengeType === 'WR' 
                           ? `Writing part ${qIndex + 1}` 
-                          : `${qIndex + 1}. ${getQuestionTypeLabel(question.type)}`}
+                          : `${qIndex + 1}. ${getQuestionTypeLabel(question.type, t)}`}
                       </Typography.Text>
                     </div>
                     <div className="question-controls">
@@ -1127,26 +1127,26 @@ const SortablePassageItem = memo(
 SortablePassageItem.displayName = 'SortablePassageItem';
 
 // Helper function to get question type label
-const getQuestionTypeLabel = (type) => {
+const getQuestionTypeLabel = (type, t) => {
   switch(type) {
     case 'MULTIPLE_CHOICE':
-      return 'Multiple Choice';
+      return t?.('dailyChallenge.multipleChoice') || 'Multiple Choice';
     case 'MULTIPLE_SELECT':
-      return 'Multiple Select';
+      return t?.('dailyChallenge.multipleSelect') || 'Multiple Select';
     case 'TRUE_OR_FALSE':
-      return 'True/False';
+      return t?.('dailyChallenge.trueFalse') || 'True/False';
     case 'FILL_IN_THE_BLANK':
-      return 'Fill in the Blank';
+      return t?.('dailyChallenge.fillBlank') || 'Fill in the Blank';
     case 'DROPDOWN':
-      return 'Dropdown';
+      return t?.('dailyChallenge.dropdown') || 'Dropdown';
     case 'DRAG_AND_DROP':
-      return 'Drag and Drop';
+      return t?.('dailyChallenge.dragDrop') || 'Drag and Drop';
     case 'REARRANGE':
-      return 'Rearrange';
+      return t?.('dailyChallenge.rearrange') || 'Rearrange';
     case 'REWRITE':
-      return 'Re-write';
+      return t?.('dailyChallenge.rewrite') || 'Re-write';
     default:
-      return 'Multiple Choice';
+      return t?.('dailyChallenge.multipleChoice') || 'Multiple Choice';
   }
 };
 
@@ -1177,7 +1177,7 @@ const renderFillBlankQuestionInline = (question, theme) => {
     const value = posToValue[pid];
     displayText = displayText.replace(
       pattern,
-      `<span style="display:inline-flex;align-items:center;gap:6px;padding:4px 12px;background:${correctBg};border:2px solid ${correctBorder};border-radius:8px;font-weight:600;color:black;margin:0 4px;">${value}</span>`
+      `<span style="display:inline-flex;align-items:center;gap:6px;padding:4px 12px;background:${correctBg};border:2px solid ${correctBorder};border-radius:8px;font-weight:600;color:black;margin:0 6px 6px 6px;">${value}</span>`
     );
   });
 
@@ -2100,13 +2100,13 @@ const SortableQuestionItem = memo(
         case 'FILL_IN_THE_BLANK':
           return t('dailyChallenge.fillBlank') || 'Fill in the Blank';
         case 'DROPDOWN':
-          return 'Dropdown';
+          return t('dailyChallenge.dropdown') || 'Dropdown';
         case 'DRAG_AND_DROP':
-          return 'Drag and Drop';
+          return t('dailyChallenge.dragDrop') || 'Drag and Drop';
         case 'REARRANGE':
-          return 'Rearrange';
+          return t('dailyChallenge.rearrange') || 'Rearrange';
         case 'REWRITE':
-          return 'Re-write';
+          return t('dailyChallenge.rewrite') || 'Re-write';
         default:
           return t('dailyChallenge.multipleChoice') || 'Multiple Choice';
       }
@@ -2130,7 +2130,7 @@ const SortableQuestionItem = memo(
                 }}
               />
             </div>
-            <Typography.Text strong>{index + 1}. {getQuestionTypeLabel()}</Typography.Text>
+            <Typography.Text strong>{index + 1}. {getQuestionTypeLabel(question.type, t)}</Typography.Text>
           </div>
           <div className="question-controls">
             <div style={{ width: 120, textAlign: 'right', fontWeight: 600 }}>
@@ -2187,7 +2187,7 @@ const SortableQuestionItem = memo(
                     .trim();
                   displayText = displayText.replace(
                     pattern,
-                    `<span style="display:inline-flex;align-items:center;gap:6px;padding:4px 12px;background:${correctBg};border:2px solid ${correctBorder};border-radius:8px;font-weight:600;color:black;margin:0 4px;">${value}</span>`
+                    `<span style="display:inline-flex;align-items:center;gap:6px;padding:4px 12px;background:${correctBg};border:2px solid ${correctBorder};border-radius:8px;font-weight:600;color:black;margin:0 6px 6px 6px;">${value}</span>`
                   );
                 });
               }
@@ -2782,11 +2782,17 @@ const questionTypes = [
   { id: 4, name: "Fill in the blank", type: "fill-blank" },
   { id: 5, name: "Dropdown", type: "dropdown" },
   { id: 6, name: "Drag and drop", type: "drag-drop" },
-  { id: 7, name: "Reorder", type: "reorder" },
+  { id: 7, name: "Rearrange", type: "reorder" },
   { id: 8, name: "Re-write", type: "rewrite" },
 ];
 
 const DailyChallengeContent = () => {
+  // Helper: sentence-case a label (uppercase first char, lowercase rest)
+  const sentenceCase = useCallback((text) => {
+    if (!text) return text;
+    const s = String(text);
+    return s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
+  }, []);
   const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
@@ -3375,17 +3381,17 @@ const DailyChallengeContent = () => {
   // Helper function to get section content based on question type
   const getSectionContent = useCallback((questionType) => {
     const sectionContentMap = {
-      'DRAG_AND_DROP': 'Drag and drop the correct word into each blank to complete the passage.',
-      'DROPDOWN': 'Select the correct answer from the dropdown menu.',
-      'FILL_IN_THE_BLANK': 'Fill in the blank with the correct answer.',
-      'MULTIPLE_SELECT': 'Select all correct answers.',
-      'TRUE_OR_FALSE': 'Choose True or False.',
-      'REARRANGE': 'Rearrange the words to make a correct sentence.',
-      'REWRITE': 'Rewrite the sentences as instructed.',
+      'DRAG_AND_DROP': t('dailyChallenge.dragDropDesc') || 'Drag and drop the correct word into each blank to complete the passage.',
+      'DROPDOWN': t('dailyChallenge.dropdownDesc') || 'Select the correct answer from the dropdown menu.',
+      'FILL_IN_THE_BLANK': t('dailyChallenge.fillBlankDesc') || 'Fill in the blank with the correct answer.',
+      'MULTIPLE_SELECT': t('dailyChallenge.multipleSelectDesc') || 'Select all correct answers.',
+      'TRUE_OR_FALSE': t('dailyChallenge.trueFalseDesc') || 'Choose True or False.',
+      'REARRANGE': t('dailyChallenge.rearrangeDesc') || 'Rearrange the words to make a correct sentence.',
+      'REWRITE': t('dailyChallenge.rewriteDesc') || 'Rewrite the sentences as instructed.',
     };
 
-    return sectionContentMap[questionType] || 'Choose one correct answer.';
-  }, []);
+    return sectionContentMap[questionType] || (t('dailyChallenge.multipleChoiceDesc') || 'Choose one correct answer.');
+  }, [t]);
 
   // Handle creating a new question
   const handleCreateQuestion = useCallback(async (questionData) => {
@@ -4091,6 +4097,9 @@ const DailyChallengeContent = () => {
     },
   ];
 
+  // Temporarily hide Import/Export UI
+  const showImportExport = false;
+
   // Custom Header Component
   const customHeader = (
     <header className={`themed-header ${theme}-header`}>
@@ -4174,33 +4183,35 @@ const DailyChallengeContent = () => {
               </span>
             </div>
 
-            {/* Import/Export Dropdown */}
-            <Dropdown
-              menu={{ items: importExportMenuItems }}
-              trigger={['click']}
-            >
-              <Button 
-                icon={<DownloadOutlined />}
-              className={`create-button ${theme}-create-button`}
-                style={{
-                  height: '40px',
-                  borderRadius: '8px',
-                  fontWeight: 500,
-                  fontSize: '16px',
-                  padding: '0 24px',
-                  border: 'none',
-                  transition: 'all 0.3s ease',
-                  background: theme === 'sun' 
-                    ? 'linear-gradient(135deg, rgba(102, 174, 255, 0.6), rgba(60, 153, 255, 0.6))'
-                    : 'linear-gradient(135deg, rgba(181, 176, 192, 0.7), rgba(163, 158, 187, 0.7), rgba(131, 119, 160, 0.7), rgba(172, 165, 192, 0.7), rgba(109, 95, 143, 0.7))',
-                  color: theme === 'sun' ? '#000000' : '#000000',
-                  boxShadow: theme === 'sun' ? '0 2px 8px rgba(60, 153, 255, 0.2)' : '0 2px 8px rgba(131, 119, 160, 0.3)',
-                  opacity: 0.9
-                }}
+            {/* Import/Export Dropdown (temporarily hidden) */}
+            {showImportExport && (
+              <Dropdown
+                menu={{ items: importExportMenuItems }}
+                trigger={['click']}
               >
-                {t('dailyChallenge.importExport')} <DownOutlined />
-            </Button>
-            </Dropdown>
+                <Button 
+                  icon={<DownloadOutlined />}
+                  className={`create-button ${theme}-create-button`}
+                  style={{
+                    height: '40px',
+                    borderRadius: '8px',
+                    fontWeight: 500,
+                    fontSize: '16px',
+                    padding: '0 24px',
+                    border: 'none',
+                    transition: 'all 0.3s ease',
+                    background: theme === 'sun' 
+                      ? 'linear-gradient(135deg, rgba(102, 174, 255, 0.6), rgba(60, 153, 255, 0.6))'
+                      : 'linear-gradient(135deg, rgba(181, 176, 192, 0.7), rgba(163, 158, 187, 0.7), rgba(131, 119, 160, 0.7), rgba(172, 165, 192, 0.7), rgba(109, 95, 143, 0.7))',
+                    color: theme === 'sun' ? '#000000' : '#000000',
+                    boxShadow: theme === 'sun' ? '0 2px 8px rgba(60, 153, 255, 0.2)' : '0 2px 8px rgba(131, 119, 160, 0.3)',
+                    opacity: 0.9
+                  }}
+                >
+                  {t('dailyChallenge.importExport')} <DownOutlined />
+                </Button>
+              </Dropdown>
+            )}
 
             {/* Preview Button */}
             <Button 
@@ -4780,7 +4791,7 @@ const DailyChallengeContent = () => {
                     {questionType.type === "multiple-select" && "Choose multiple correct answers"}
                     {questionType.type === "true-false" && "True or False question"}
                     {questionType.type === "fill-blank" && "Fill in the blank spaces"}
-                    {questionType.type === "dropdown" && "Select the correct option from dropdown"}
+                    {questionType.type === "dropdown" && (t('dailyChallenge.dropdownDesc') || "Select the correct option from dropdown")}
                     {questionType.type === "drag-drop" && "Drag and drop items to arrange"}
                     {questionType.type === "reorder" && "Reorder words or items"}
                     {questionType.type === "rewrite" && "Rewrite the sentence as instructed"}
@@ -5137,13 +5148,13 @@ const DailyChallengeContent = () => {
             textAlign: 'center',
             padding: '10px 0'
           }}>
-            {t('dailyChallenge.confirmPublishChallenge') || 'Confirm Publish Challenge'}
+            {t('dailyChallenge.confirmPublishChallenge') || 'Confirm publish challenge'}
           </div>
         }
         open={publishConfirmModalVisible}
         onOk={handlePublishConfirmOk}
         onCancel={handlePublishConfirmCancel}
-        okText={t('dailyChallenge.publishNow') || 'Publish Now'}
+        okText={t('dailyChallenge.publishNow') || 'Publish now'}
         cancelText={t('common.cancel') || 'Cancel'}
         width={600}
         centered
@@ -5236,7 +5247,7 @@ const DailyChallengeContent = () => {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
             <Card size="small" style={{ background: theme === 'sun' ? '#fafafa' : 'rgba(255, 255, 255, 0.05)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <Typography.Text strong>{t('dailyChallenge.shuffleQuestion') || t('dailyChallenge.shuffleAnswers') || 'Shuffle Questions'}</Typography.Text>
+                <Typography.Text strong>{sentenceCase(t('dailyChallenge.shuffleQuestion') || t('dailyChallenge.shuffleAnswers') || 'Shuffle questions')}</Typography.Text>
                 <span style={{ fontWeight: 700, color: shuffleQuestion ? '#52c41a' : '#ff4d4f' }}>
                   {shuffleQuestion ? (t('common.on') || 'ON') : (t('common.off') || 'OFF')}
                 </span>
@@ -5244,7 +5255,7 @@ const DailyChallengeContent = () => {
             </Card>
             <Card size="small" style={{ background: theme === 'sun' ? '#fafafa' : 'rgba(255, 255, 255, 0.05)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <Typography.Text strong>{t('dailyChallenge.antiCheatMode') || 'Anti-Cheat Mode'}</Typography.Text>
+                <Typography.Text strong>{sentenceCase(t('dailyChallenge.antiCheatMode') || 'Anti-cheat mode')}</Typography.Text>
                 <span style={{ fontWeight: 700, color: antiCheatModeEnabled ? '#52c41a' : '#ff4d4f' }}>
                   {antiCheatModeEnabled ? (t('common.on') || 'ON') : (t('common.off') || 'OFF')}
                 </span>
@@ -5252,7 +5263,7 @@ const DailyChallengeContent = () => {
             </Card>
             <Card size="small" style={{ gridColumn: '1 / span 2', background: theme === 'sun' ? '#fafafa' : 'rgba(255, 255, 255, 0.05)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <Typography.Text strong>{t('dailyChallenge.translateOnScreen') || 'Translate On Screen'}</Typography.Text>
+                <Typography.Text strong>{sentenceCase(t('dailyChallenge.translateOnScreen') || 'Translate on screen')}</Typography.Text>
                 <span style={{ fontWeight: 700, color: translateOnScreen ? '#52c41a' : '#ff4d4f' }}>
                   {translateOnScreen ? (t('common.on') || 'ON') : (t('common.off') || 'OFF')}
                 </span>
