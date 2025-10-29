@@ -15,7 +15,6 @@ import {
   SaveOutlined,
   PlusOutlined,
   FileTextOutlined,
-  UploadOutlined,
   DeleteOutlined,
   LoadingOutlined,
   HolderOutlined,
@@ -27,7 +26,7 @@ import { useNavigate, useLocation, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useTheme } from "../../../../contexts/ThemeContext";
 import ThemedLayout from "../../../../component/teacherlayout/ThemedLayout";
-import { extractTextFromPDF, isValidPDF } from "../../../../utils/pdfUtils";
+// Removed PDF utilities as PDF upload is no longer supported
 import { spaceToast } from "../../../../component/SpaceToastify";
 import { useSelector } from "react-redux";
 import dailyChallengeApi from "../../../../apis/backend/dailyChallengeManagement";
@@ -153,8 +152,7 @@ const CreateReadingChallenge = () => {
     }
   });
   const [passageContent, setPassageContent] = useState("");
-  const [isProcessingPDF, setIsProcessingPDF] = useState(false);
-  const [uploadedFileName, setUploadedFileName] = useState("");
+  // Removed PDF processing states
   const [isProcessingAudio, setIsProcessingAudio] = useState(false);
   const [uploadedAudioFileName, setUploadedAudioFileName] = useState("");
   const [isSaving, setIsSaving] = useState(false);
@@ -570,42 +568,7 @@ const CreateReadingChallenge = () => {
     }, 150);
   }, []);
 
-  const handleUploadPDF = async (file) => {
-    try {
-      // Kiểm tra file có hợp lệ không
-      if (!isValidPDF(file)) {
-        spaceToast.error("Vui lòng chọn file PDF hợp lệ (tối đa 10MB)");
-        return false;
-      }
-
-      setIsProcessingPDF(true);
-      setUploadedFileName(file.name);
-
-      // Trích xuất text từ PDF
-      const extractedText = await extractTextFromPDF(file);
-      
-      if (!extractedText || extractedText.trim().length === 0) {
-        spaceToast.warning("Không thể trích xuất text từ file PDF này. File có thể bị mã hóa hoặc không chứa text.");
-        return false;
-      }
-
-      // Cập nhật passage content với text đã trích xuất
-      handlePassageContentChange(extractedText);
-
-      // Chuyển sang chế độ manual để hiển thị text
-      setPassage(prevPassage => ({ ...prevPassage, type: "manual", content: extractedText }));
-
-      spaceToast.success(`Đã trích xuất text từ file "${file.name}" thành công!`);
-      
-    } catch (error) {
-      console.error('Error processing PDF:', error);
-      spaceToast.error(error.message || "Có lỗi xảy ra khi xử lý file PDF");
-    } finally {
-      setIsProcessingPDF(false);
-    }
-
-    return false; // Prevent default upload
-  };
+  // Removed PDF upload handler
 
   const handleUploadAudio = async (file) => {
     try {
@@ -1391,47 +1354,10 @@ const CreateReadingChallenge = () => {
                           </Space>
                         </Card>
 
-                        {/* PDF Upload */}
-                        <Card 
-                          hoverable 
-                          className="rc-passage-option-card"
-                          style={{ 
-                            opacity: isProcessingPDF ? 0.6 : 1,
-                            borderRadius: '12px',
-                            border: theme === 'sun' 
-                              ? '2px solid rgba(82, 196, 26, 0.3)' 
-                              : '2px solid rgba(138, 122, 255, 0.3)',
-                            background: theme === 'sun'
-                              ? 'linear-gradient(135deg, rgba(237, 250, 230, 0.5) 0%, rgba(207, 244, 192, 0.4) 100%)'
-                              : 'rgba(255, 255, 255, 0.5)',
-                            cursor: isProcessingPDF ? 'not-allowed' : 'pointer'
-                          }}
-                        >
-                          <Upload
-                            accept=".pdf"
-                            beforeUpload={handleUploadPDF}
-                            showUploadList={false}
-                            disabled={isProcessingPDF}
-                          >
-                            <Space>
-                              {isProcessingPDF ? (
-                                <LoadingOutlined style={{ fontSize: 24, color: "#1890ff" }} />
-                              ) : (
-                                <UploadOutlined style={{ fontSize: 24, color: "#000000" }} />
-                              )}
-                              <Text strong style={{ 
-                                color: theme === 'sun' ? '#1E40AF' : '#8377A0' 
-                              }}>
-                                {isProcessingPDF ? `Đang xử lý "${uploadedFileName}"...` : 
-                                 (isWritingChallenge ? "Upload PDF writing topic" : 
-                                  isSpeakingChallenge ? "Upload PDF speaking topic" : 
-                                  "Upload PDF")}
-                              </Text>
-                            </Space>
-                          </Upload>
-                        </Card>
+                        {/* PDF Upload removed */}
 
-                        {/* Create by AI */}
+                        {/* Create by AI - Hidden for Writing (WR) and Speaking (SP) challenges */}
+                        {!isWritingChallenge && !isSpeakingChallenge && (
                         <Card
                           hoverable
                           className="rc-passage-option-card"
@@ -1480,12 +1406,11 @@ const CreateReadingChallenge = () => {
                              <Text strong style={{ 
                                color: theme === 'sun' ? '#1E40AF' : '#8377A0' 
                              }}>
-                               {isWritingChallenge ? 'Generate writing topic with AI' : 
-                                isSpeakingChallenge ? 'Generate speaking topic with AI' : 
-                                'Generate with AI'}
+                               Generate with AI
                              </Text>
                           </Space>
                          </Card>
+                        )}
                        </Space>
                      </div>
                    )}
