@@ -1799,6 +1799,8 @@
     "challengeTitle": "Challenge Title",
     "type": "Type",
     "no": "No",
+    "DRAFT": "Draft",
+    "PUBLISHED": "Published",
     "confirmPublishChallenge": "Confirm Publish Challenge",
     "publishWarning": "Publish Warning",
     "publishNow": "Publish Now",

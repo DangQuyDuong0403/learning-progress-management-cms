@@ -217,7 +217,7 @@ const MultipleChoiceModal = ({
 				setHoveredOption(null); // Reset hover state
 			}
 		}
-	}, [questionData?.id, visible, getOptionColors]);
+	}, [questionData?.id, questionData, visible, getOptionColors]);
 
 	const handleAddOption = useCallback(() => {
 		setOptions(prevOptions => {
@@ -281,7 +281,17 @@ const MultipleChoiceModal = ({
 		}
 		editorChangeTimeoutRef.current = setTimeout(() => {
 			const data = editor.getData();
+			const plainText = getPlainText(data);
 			setEditorData(prevData => {
+				// Enforce max length of 600 characters for question (based on plain text)
+				if (plainText.length > 600) {
+					spaceToast.warning('Maximum 600 characters allowed for the question');
+					// Revert editor content to previous valid state
+					if (editor) {
+						editor.setData(prevData || '');
+					}
+					return prevData;
+				}
 				// Only update if data actually changed
 				if (prevData !== data) {
 					return data;
@@ -289,7 +299,7 @@ const MultipleChoiceModal = ({
 				return prevData;
 			});
 		}, 150);
-	}, []);
+	}, [getPlainText]);
 
 	// Debounced option change handler
 	const optionChangeTimeoutRef = useRef({});
@@ -571,6 +581,17 @@ const MultipleChoiceModal = ({
 										editorRef.current = editor;
 									}}
 								/>
+								{/* Character Counter for Question */}
+								<div style={{
+									marginTop: '6px',
+									marginRight: '16px',
+									textAlign: 'right',
+									fontSize: '12px',
+									fontWeight: 600,
+									color: getPlainText(editorData).length > 600 ? '#ff4d4f' : '#595959'
+								}}>
+									{`${Math.min(getPlainText(editorData).length, 600)}/600`}
+								</div>
 					</div>
 				</div>
 					</div>
