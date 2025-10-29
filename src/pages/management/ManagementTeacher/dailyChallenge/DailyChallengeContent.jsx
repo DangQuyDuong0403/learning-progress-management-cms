@@ -129,6 +129,20 @@ const processPassageContent = (content, theme, challengeType) => {
 // Sortable Passage Item Component
 const SortablePassageItem = memo(
   ({ passage, index, onDeletePassage, onEditPassage, onDuplicatePassage, onPointsChange, theme, t, challengeType }) => {
+    const [showTranscript, setShowTranscript] = useState(false);
+    
+    const toPlainText = (html) => {
+      if (!html) return '';
+      return String(html)
+        .replace(/<[^>]*>/g, ' ')
+        .replace(/&nbsp;/g, ' ')
+        .replace(/&amp;/g, '&')
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/\s+/g, ' ')
+        .trim();
+    };
+    
     const animateLayoutChanges = useCallback((args) => {
       const { isSorting, wasDragging } = args;
       if (isSorting || wasDragging) {
@@ -237,51 +251,352 @@ const SortablePassageItem = memo(
           </div>
         </div>
 
-        <div className="passage-content">
-          {/* Audio Player for Listening and Speaking Passages */}
-          {(passage.type === 'LISTENING_PASSAGE' || passage.type === 'SPEAKING_PASSAGE') && passage.audioUrl && (
-            <div style={{
-              marginBottom: '16px',
-              padding: '16px',
-              background: theme === 'sun' 
-                ? 'rgba(240, 249, 255, 0.5)' 
-                : 'rgba(244, 240, 255, 0.3)',
-              borderRadius: '8px',
-              border: theme === 'sun' 
-                ? '1px solid rgba(113, 179, 253, 0.2)' 
-                : '1px solid rgba(138, 122, 255, 0.2)'
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
-                <span style={{ fontSize: '16px' }}>🎵</span>
-                <span style={{ fontWeight: 500, color: theme === 'sun' ? '#1E40AF' : '#8377A0' }}>
-                  Audio File
-                </span>
-              </div>
-              <audio controls style={{ width: '100%' }}>
-                <source src={passage.audioUrl} type="audio/mpeg" />
-                Your browser does not support the audio element.
-              </audio>
-            </div>
+        <div className="passage-content" style={(challengeType === 'RE' || challengeType === 'LI' || challengeType === 'WR' || challengeType === 'SP') ? { display: 'flex', gap: '24px', minHeight: '500px' } : undefined}>
+          {(challengeType === 'RE' || challengeType === 'LI' || challengeType === 'SP') && (
+            <style>{`
+              .reading-passage-scrollbar::-webkit-scrollbar { width: 8px; }
+              .reading-passage-scrollbar::-webkit-scrollbar-track { background: ${theme === 'sun' ? 'rgba(24, 144, 255, 0.1)' : 'rgba(138, 122, 255, 0.1)'}; border-radius: 4px; }
+              .reading-passage-scrollbar::-webkit-scrollbar-thumb { background: ${theme === 'sun' ? '#1890ff' : '#8B5CF6'}; border-radius: 4px; border: 1px solid ${theme === 'sun' ? 'rgba(24, 144, 255, 0.2)' : 'rgba(138, 122, 255, 0.2)'}; }
+              .reading-passage-scrollbar::-webkit-scrollbar-thumb:hover { background: ${theme === 'sun' ? '#40a9ff' : '#a78bfa'}; }
+              .transcript-scrollbar::-webkit-scrollbar { width: 8px; }
+              .transcript-scrollbar::-webkit-scrollbar-track { background: ${theme === 'sun' ? 'rgba(24, 144, 255, 0.1)' : 'rgba(138, 122, 255, 0.1)'}; border-radius: 4px; }
+              .transcript-scrollbar::-webkit-scrollbar-thumb { background: ${theme === 'sun' ? '#1890ff' : '#8B5CF6'}; border-radius: 4px; border: 1px solid ${theme === 'sun' ? 'rgba(24, 144, 255, 0.2)' : 'rgba(138, 122, 255, 0.2)'}; }
+              .transcript-scrollbar::-webkit-scrollbar-thumb:hover { background: ${theme === 'sun' ? '#40a9ff' : '#a78bfa'}; }
+              .speaking-prompt-scrollbar::-webkit-scrollbar { width: 8px; }
+              .speaking-prompt-scrollbar::-webkit-scrollbar-track { background: ${theme === 'sun' ? 'rgba(24, 144, 255, 0.1)' : 'rgba(138, 122, 255, 0.1)'}; border-radius: 4px; }
+              .speaking-prompt-scrollbar::-webkit-scrollbar-thumb { background: ${theme === 'sun' ? '#1890ff' : '#8B5CF6'}; border-radius: 4px; border: 1px solid ${theme === 'sun' ? 'rgba(24, 144, 255, 0.2)' : 'rgba(138, 122, 255, 0.2)'}; }
+              .speaking-prompt-scrollbar::-webkit-scrollbar-thumb:hover { background: ${theme === 'sun' ? '#40a9ff' : '#a78bfa'}; }
+            `}</style>
           )}
+          
+          {/* For Speaking challenges, use two-column layout: Left - Prompt, Right - Recording/Upload */}
+          {challengeType === 'SP' ? (
+            <>
+              {/* Left Section - Prompt/Question */}
+              <div 
+                className="speaking-prompt-scrollbar"
+                style={{
+                  flex: '1',
+                  padding: '20px',
+                  background: theme === 'sun' ? '#f9f9f9' : 'rgba(255, 255, 255, 0.02)',
+                  borderRadius: '12px',
+                  border: `1px solid ${theme === 'sun' ? '#e8e8e8' : 'rgba(255, 255, 255, 0.1)'}`,
+                  overflowY: 'auto',
+                  maxHeight: '500px',
+                  scrollbarWidth: 'thin',
+                  scrollbarColor: theme === 'sun' 
+                    ? '#1890ff rgba(24, 144, 255, 0.2)' 
+                    : '#8B5CF6 rgba(138, 122, 255, 0.2)'
+                }}
+              >
+                {/* Audio Player if available */}
+                {passage.audioUrl && (
+                  <div style={{
+                    marginBottom: '16px',
+                    padding: '16px',
+                    background: theme === 'sun' 
+                      ? 'rgba(240, 249, 255, 0.5)' 
+                      : 'rgba(244, 240, 255, 0.3)',
+                    borderRadius: '8px',
+                    border: theme === 'sun' 
+                      ? '1px solid rgba(113, 179, 253, 0.2)' 
+                      : '1px solid rgba(138, 122, 255, 0.2)'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
+                      <span style={{ fontSize: '16px' }}>🎵</span>
+                      <span style={{ fontWeight: 500, color: theme === 'sun' ? '#1E40AF' : '#8377A0' }}>
+                        Audio File
+                      </span>
+                    </div>
+                    <audio controls style={{ width: '100%' }}>
+                      <source src={passage.audioUrl} type="audio/mpeg" />
+                      Your browser does not support the audio element.
+                    </audio>
+                  </div>
+                )}
+                
+                {/* Passage/Prompt Content */}
+                <div style={{
+                  fontSize: '15px',
+                  lineHeight: '1.8',
+                  color: theme === 'sun' ? '#333' : '#1F2937',
+                  textAlign: 'justify'
+                }}>
+                  <div dangerouslySetInnerHTML={{ __html: processPassageContent(passage.content, theme, challengeType) }} />
+                </div>
+              </div>
 
-          {/* Passage Text */}
-          <div 
-            style={{ 
-              marginBottom: '16px', 
-              fontSize: '15px', 
-              fontWeight: 500,
-              lineHeight: '1.8',
-              padding: '16px',
-              background: theme === 'sun' 
-                ? 'rgba(240, 249, 255, 0.5)' 
-                : 'rgba(244, 240, 255, 0.3)',
-              borderRadius: '8px',
-              border: theme === 'sun' 
-                ? '1px solid rgba(113, 179, 253, 0.2)' 
-                : '1px solid rgba(138, 122, 255, 0.2)',
-              color: '#000000'
-            }}
-          >
+              {/* Right Section - Recording and Upload Area */}
+              <div style={{
+                flex: '1',
+                padding: '24px',
+                background: theme === 'sun' ? '#ffffff' : 'rgba(255, 255, 255, 0.03)',
+                borderRadius: '12px',
+                border: `1px solid ${theme === 'sun' ? '#e8e8e8' : 'rgba(255, 255, 255, 0.1)'}`,
+                textAlign: 'center'
+              }}>
+                {/* Recording Component */}
+                <div style={{ marginBottom: '24px' }}>
+                  <div
+                    style={{
+                      width: '120px',
+                      height: '120px',
+                      borderRadius: '50%',
+                      background: theme === 'sun'
+                        ? 'linear-gradient(135deg, rgba(24, 144, 255, 0.15) 0%, rgba(60, 153, 255, 0.15) 100%)'
+                        : 'linear-gradient(135deg, rgba(139, 92, 246, 0.15) 0%, rgba(167, 139, 250, 0.15) 100%)',
+                      border: `3px solid ${theme === 'sun' ? '#1890ff' : '#8B5CF6'}`,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      margin: '0 auto 16px',
+                      cursor: 'pointer',
+                      transition: 'all 0.3s ease'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.transform = 'scale(1.1)';
+                      e.currentTarget.style.boxShadow = theme === 'sun'
+                        ? '0 4px 16px rgba(24, 144, 255, 0.3)'
+                        : '0 4px 16px rgba(139, 92, 246, 0.3)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = 'scale(1)';
+                      e.currentTarget.style.boxShadow = 'none';
+                    }}
+                  >
+                    <img 
+                      src="/img/icon-mic.png" 
+                      alt="Mic"
+                      style={{ width: '48px', height: '48px', opacity: theme === 'sun' ? 0.9 : 0.95 }}
+                    />
+                  </div>
+                  <div style={{
+                    fontSize: '16px',
+                    fontWeight: '600',
+                    color: theme === 'sun' ? '#1890ff' : '#8B5CF6',
+                    marginBottom: '8px'
+                  }}>
+                    Click to start recording
+                  </div>
+                  <div style={{
+                    fontSize: '12px',
+                    color: theme === 'sun' ? '#666' : '#999'
+                  }}>
+                    Press the microphone to record your response
+                  </div>
+                </div>
+
+                {/* Upload Audio Section */}
+                <div style={{ 
+                  marginTop: '24px', 
+                  paddingTop: '24px', 
+                  borderTop: `1px solid ${theme === 'sun' ? '#e8e8e8' : 'rgba(255, 255, 255, 0.2)'}` 
+                }}>
+                  <div style={{ 
+                    fontSize: '18px', 
+                    fontWeight: '600',
+                    color: theme === 'sun' ? '#333' : '#1F2937',
+                    marginBottom: '16px'
+                  }}>
+                    Upload Audio File (Optional):
+                  </div>
+                  
+                  <div style={{
+                    padding: '20px',
+                    background: theme === 'sun' 
+                      ? 'linear-gradient(135deg, rgba(237, 250, 230, 0.5) 0%, rgba(207, 244, 192, 0.4) 100%)'
+                      : 'linear-gradient(135deg, rgba(255, 255, 255, 0.5) 0%, rgba(244, 240, 255, 0.5) 100%)',
+                    border: `2px solid ${theme === 'sun' 
+                      ? 'rgba(82, 196, 26, 0.3)' 
+                      : 'rgba(138, 122, 255, 0.3)'}`,
+                    borderRadius: '12px',
+                    cursor: 'pointer',
+                    textAlign: 'center',
+                    transition: 'all 0.3s ease'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = 'translateY(-2px)';
+                    e.currentTarget.style.boxShadow = theme === 'sun' 
+                      ? '0 4px 12px rgba(82, 196, 26, 0.2)'
+                      : '0 4px 12px rgba(138, 122, 255, 0.25)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = 'translateY(0)';
+                    e.currentTarget.style.boxShadow = 'none';
+                  }}
+                  >
+                    <div style={{ fontSize: '32px', marginBottom: '8px' }}>📎</div>
+                    <div style={{ 
+                      fontSize: '16px', 
+                      fontWeight: '600',
+                      color: theme === 'sun' ? '#1E40AF' : '#8377A0',
+                      marginBottom: '4px'
+                    }}>
+                      Upload Audio
+                    </div>
+                    <div style={{ 
+                      fontSize: '13px',
+                      color: theme === 'sun' ? '#666' : '#999'
+                    }}>
+                      Upload MP3 audio file (Max 5MB)
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </>
+          ) : (
+            <>
+              {/* Audio Player for Listening Passages (render here except LI, where audio is shown inside transcript box) */}
+              {((passage.type === 'LISTENING_PASSAGE') && challengeType !== 'LI') && passage.audioUrl && (
+                <div style={{
+                  marginBottom: '16px',
+                  padding: '16px',
+                  background: theme === 'sun' 
+                    ? 'rgba(240, 249, 255, 0.5)' 
+                    : 'rgba(244, 240, 255, 0.3)',
+                  borderRadius: '8px',
+                  border: theme === 'sun' 
+                    ? '1px solid rgba(113, 179, 253, 0.2)' 
+                    : '1px solid rgba(138, 122, 255, 0.2)'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
+                    <span style={{ fontSize: '16px' }}>🎵</span>
+                    <span style={{ fontWeight: 500, color: theme === 'sun' ? '#1E40AF' : '#8377A0' }}>
+                      Audio File
+                    </span>
+                  </div>
+                  <audio controls style={{ width: '100%' }}>
+                    <source src={passage.audioUrl} type="audio/mpeg" />
+                    Your browser does not support the audio element.
+                  </audio>
+                </div>
+              )}
+
+              {/* Passage Text */}
+              <div 
+                className={(challengeType === 'RE' || challengeType === 'LI' || challengeType === 'WR') ? 'reading-passage-scrollbar' : undefined}
+                style={{ 
+                  marginBottom: '16px', 
+                  fontSize: '15px', 
+                  fontWeight: 500,
+                  lineHeight: '1.8',
+                  padding: '16px',
+                  background: theme === 'sun' 
+                    ? 'rgba(240, 249, 255, 0.5)' 
+                    : 'rgba(244, 240, 255, 0.3)',
+                  borderRadius: '8px',
+                  border: theme === 'sun' 
+                    ? '1px solid rgba(113, 179, 253, 0.2)' 
+                    : '1px solid rgba(138, 122, 255, 0.2)',
+                  color: '#000000',
+                  ...((challengeType === 'RE' || challengeType === 'LI' || challengeType === 'WR') ? { flex: 1, overflowY: 'auto', maxHeight: '600px' } : {})
+                }}
+              >
+            {/* For Listening, show audio player inside the left box */}
+            {challengeType === 'LI' && passage.audioUrl && (
+              <div style={{
+                marginBottom: '16px',
+                padding: '16px',
+                background: theme === 'sun' 
+                  ? 'rgba(255, 255, 255, 0.8)' 
+                  : 'rgba(255, 255, 255, 0.05)',
+                borderRadius: '8px',
+                border: theme === 'sun' 
+                  ? '1px solid rgba(113, 179, 253, 0.2)' 
+                  : '1px solid rgba(138, 122, 255, 0.2)'
+              }}>
+                <audio controls style={{ width: '100%' }}>
+                  <source src={passage.audioUrl} type="audio/mpeg" />
+                  Your browser does not support the audio element.
+                </audio>
+              </div>
+            )}
+            
+            {/* View Transcript Button for Listening */}
+            {challengeType === 'LI' && (
+              <div style={{ marginBottom: '16px' }}>
+                <button
+                  onClick={() => setShowTranscript(!showTranscript)}
+                  style={{
+                    width: '100%',
+                    padding: '12px 16px',
+                    background: theme === 'sun' 
+                      ? 'linear-gradient(135deg, #1890ff 0%, #40a9ff 100%)'
+                      : 'linear-gradient(135deg, #8B5CF6 0%, #a78bfa 100%)',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '8px',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px',
+                    transition: 'all 0.3s ease',
+                    boxShadow: theme === 'sun' 
+                      ? '0 4px 12px rgba(24, 144, 255, 0.3)'
+                      : '0 4px 12px rgba(139, 92, 246, 0.3)'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = theme === 'sun' 
+                      ? 'linear-gradient(135deg, #40a9ff 0%, #69c0ff 100%)'
+                      : 'linear-gradient(135deg, #a78bfa 0%, #c4b5fd 100%)';
+                    e.currentTarget.style.transform = 'translateY(-2px)';
+                    e.currentTarget.style.boxShadow = theme === 'sun' 
+                      ? '0 6px 16px rgba(24, 144, 255, 0.4)'
+                      : '0 6px 16px rgba(139, 92, 246, 0.4)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = theme === 'sun' 
+                      ? 'linear-gradient(135deg, #1890ff 0%, #40a9ff 100%)'
+                      : 'linear-gradient(135deg, #8B5CF6 0%, #a78bfa 100%)';
+                    e.currentTarget.style.transform = 'translateY(0)';
+                    e.currentTarget.style.boxShadow = theme === 'sun' 
+                      ? '0 4px 12px rgba(24, 144, 255, 0.3)'
+                      : '0 4px 12px rgba(139, 92, 246, 0.3)';
+                  }}
+                >
+                  <span>View transcript</span>
+                  <span style={{ 
+                    transform: showTranscript ? 'rotate(180deg)' : 'rotate(0deg)', 
+                    transition: 'transform 0.3s ease',
+                    fontSize: '12px'
+                  }}>
+                    ▼
+                  </span>
+                </button>
+
+                {showTranscript && (
+                  <div
+                    className="transcript-scrollbar"
+                    style={{
+                      background: theme === 'sun' ? '#ffffff' : '#ffffff',
+                      borderRadius: '8px',
+                      padding: '16px',
+                      border: `1px solid ${theme === 'sun' ? '#e8e8e8' : 'rgba(138, 122, 255, 0.3)'}`,
+                      fontSize: '15px',
+                      lineHeight: '1.8',
+                      color: theme === 'sun' ? '#333' : '#333',
+                      textAlign: 'justify',
+                      maxHeight: '300px',
+                      overflowY: 'auto',
+                      scrollbarWidth: 'thin',
+                      scrollbarColor: theme === 'sun' 
+                        ? '#1890ff rgba(24, 144, 255, 0.2)' 
+                        : '#8B5CF6 rgba(138, 122, 255, 0.2)',
+                      boxShadow: theme === 'sun' 
+                        ? '0 2px 8px rgba(0, 0, 0, 0.1)' 
+                        : '0 2px 8px rgba(138, 122, 255, 0.2)',
+                      marginTop: '16px'
+                    }}
+                  >
+                    {passage.transcript ? toPlainText(passage.transcript) : passage.content ? toPlainText(passage.content) : 'No transcript available'}
+                  </div>
+                )}
+              </div>
+            )}
+            
             <style>{`
               img {
                 max-width: 300px;
@@ -293,12 +608,88 @@ const SortablePassageItem = memo(
                 display: block;
               }
             `}</style>
-            <div dangerouslySetInnerHTML={{ __html: processPassageContent(passage.content, theme, challengeType) }} />
+            {/* Don't show passage.content for LI - it's shown through transcript button instead */}
+            {challengeType !== 'LI' && (
+              <div dangerouslySetInnerHTML={{ __html: processPassageContent(passage.content, theme, challengeType) }} />
+            )}
           </div>
+            </>
+          )}
+
+          {/* For Writing challenges, show the right-side action choices like student preview */}
+          {challengeType === 'WR' && (
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              {/* Card 1: Write Essay Here */}
+              <div
+                style={{
+                  flex: 1,
+                  minHeight: '200px',
+                  borderRadius: '12px',
+                  border: '2px solid rgba(24,144,255,0.35)',
+                  background: 'linear-gradient(135deg, rgba(230,245,255,0.75), rgba(186,231,255,0.55))',
+                  boxShadow: '0 2px 10px rgba(24,144,255,0.12)',
+                  padding: '24px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  textAlign: 'center'
+                }}
+              >
+                <div>
+                  <div style={{ fontSize: '34px', marginBottom: '6px' }}>📝</div>
+                  <div style={{
+                    fontWeight: 700,
+                    fontSize: '16px',
+                    color: '#1d4ed8',
+                    marginBottom: '6px'
+                  }}>
+                    Write Essay Here
+                  </div>
+                  <div style={{ color: '#6b7280', fontSize: '13px' }}>
+                    Type your essay directly in the text area
+                  </div>
+                </div>
+              </div>
+
+              {/* Card 2: Upload */}
+              <div
+                style={{
+                  flex: 1,
+                  minHeight: '200px',
+                  borderRadius: '12px',
+                  border: '2px solid rgba(82,196,26,0.35)',
+                  background: 'linear-gradient(135deg, rgba(240,255,240,0.7), rgba(230,255,230,0.55))',
+                  boxShadow: '0 2px 10px rgba(82,196,26,0.12)',
+                  padding: '24px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  textAlign: 'center'
+                }}
+              >
+                <div>
+                  <div style={{ fontSize: '34px', marginBottom: '6px' }}>📎</div>
+                  <div style={{
+                    fontWeight: 700,
+                    fontSize: '16px',
+                    color: '#15803d',
+                    marginBottom: '6px'
+                  }}>
+                    Upload
+                  </div>
+                  <div style={{ color: '#6b7280', fontSize: '13px' }}>
+                    Upload image of your handwritten essay (Max 5MB)
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Questions inside passage */}
           {challengeType !== 'WR' && challengeType !== 'SP' && passage.questions && passage.questions.length > 0 && (
-            <div style={{ marginTop: '16px' }}>
+            <div style={(challengeType === 'RE' || challengeType === 'LI') 
+              ? { flex: 1, background: theme === 'sun' ? '#ffffff' : 'rgba(255, 255, 255, 0.03)', borderRadius: '12px', border: `1px solid ${theme === 'sun' ? '#e8e8e8' : 'rgba(255, 255, 255, 0.1)'}`, overflowY: 'auto', maxHeight: '600px', padding: '20px' }
+              : { marginTop: '16px' }}>
               {passage.questions.map((question, qIndex) => (
                 <div 
                   key={question.id}
@@ -344,46 +735,6 @@ const SortablePassageItem = memo(
                           }}
                           dangerouslySetInnerHTML={{ __html: renderFillBlankQuestionInline(question, theme) }}
                         />
-                        {question.content?.data && question.content.data.length > 0 && (
-                          <div style={{ 
-                            marginTop: '16px',
-                            display: 'flex', 
-                            flexWrap: 'wrap', 
-                            gap: '12px'
-                          }}>
-                            {question.content.data.map((item, idx) => (
-                              <div 
-                                key={idx}
-                                style={{
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  gap: '8px',
-                                  padding: '8px 16px',
-                                  background: theme === 'sun' 
-                                    ? 'rgba(24, 144, 255, 0.08)' 
-                                    : 'rgba(139, 92, 246, 0.15)',
-                                  border: theme === 'sun' 
-                                    ? '2px solid rgba(24, 144, 255, 0.3)' 
-                                    : '2px solid rgba(139, 92, 246, 0.4)',
-                                  borderRadius: '8px',
-                                  fontSize: '14px',
-                                  fontWeight: 500
-                                }}
-                              >
-                                <span style={{ 
-                                  fontWeight: 700, 
-                                  color: theme === 'sun' ? '#1890ff' : '#8B5CF6',
-                                  fontSize: '15px'
-                                }}>
-                                  ({idx + 1})
-                                </span>
-                                <span style={{ color: theme === 'sun' ? '#333' : '#000000' }}>
-                                  {item.value}
-                                </span>
-                              </div>
-                            ))}
-                          </div>
-                        )}
                       </div>
                     ) : question.type === 'DROPDOWN' ? (
                       <div>
@@ -456,9 +807,7 @@ const SortablePassageItem = memo(
                                       }}>
                                         {idx + 1}
                                       </span>
-                                      <span style={{ fontWeight: 600, fontSize: '13px', color: theme === 'sun' ? '#1890ff' : '#A78BFA' }}>
-                                        Dropdown {idx + 1}
-                                      </span>
+                                      {/* Removed text label next to number to match request */}
                                     </div>
                                     <div style={{ marginBottom: '6px' }}>
                                       <span style={{ fontSize: '11px', color: '#52c41a', fontWeight: 600 }}>✓</span>
@@ -531,56 +880,48 @@ const SortablePassageItem = memo(
                             flexWrap: 'wrap', 
                             gap: '12px'
                           }}>
-                            {/* Correct options */}
+                            {/* Correct options - green */}
                             {question.content.data.filter(item => item.positionId && item.correct === true).map((item, idx) => (
-                              <div 
-                                key={idx}
+                              <div
+                                key={`correct-${idx}`}
                                 style={{
                                   display: 'inline-flex',
                                   alignItems: 'center',
-                                  gap: '8px',
+                                  justifyContent: 'center',
+                                  minWidth: '100px',
+                                  minHeight: '28px',
                                   padding: '8px 16px',
-                                  background: theme === 'sun' 
-                                    ? 'rgba(24, 144, 255, 0.08)' 
-                                    : 'rgba(139, 92, 246, 0.15)',
-                                  border: theme === 'sun' 
-                                    ? '2px solid rgba(24, 144, 255, 0.3)' 
-                                    : '2px solid rgba(139, 92, 246, 0.4)',
+                                  background: 'rgba(82, 196, 26, 0.12)',
+                                  border: '2px solid rgba(82, 196, 26, 0.5)',
                                   borderRadius: '8px',
                                   fontSize: '14px',
-                                  fontWeight: 500
+                                  fontWeight: 500,
+                                  color: '#000000'
                                 }}
                               >
-                                <span style={{ 
-                                  fontWeight: 700, 
-                                  color: theme === 'sun' ? '#1890ff' : '#8B5CF6',
-                                  fontSize: '15px'
-                                }}>
+                                <span style={{ fontWeight: 700, color: 'black', marginRight: '8px' }}>
                                   ({idx + 1})
                                 </span>
-                                <span style={{ color: theme === 'sun' ? '#333' : '#000000' }}>
-                                  {item.value}
-                                </span>
+                                <span>{item.value}</span>
                               </div>
                             ))}
-                            {/* Incorrect options */}
+                            {/* Incorrect options - gray */}
                             {question.content.data.filter(item => !item.positionId || item.correct === false).map((item, idx) => (
-                              <div 
+                              <div
                                 key={`incorrect-${idx}`}
                                 style={{
                                   display: 'inline-flex',
                                   alignItems: 'center',
-                                  padding: '6px 12px',
-                                  background: theme === 'sun' 
-                                    ? 'rgba(217, 217, 217, 0.2)' 
-                                    : 'rgba(255, 255, 255, 0.08)',
-                                  border: theme === 'sun' 
-                                    ? '1.5px solid rgba(217, 217, 217, 0.5)' 
-                                    : '1.5px solid rgba(255, 255, 255, 0.2)',
+                                  justifyContent: 'center',
+                                  minWidth: '100px',
+                                  minHeight: '28px',
+                                  padding: '8px 16px',
+                                  background: '#f2f2f2',
+                                  border: '1.5px solid rgba(0, 0, 0, 0.15)',
                                   borderRadius: '8px',
-                                  fontSize: '13px',
+                                  fontSize: '14px',
                                   fontWeight: 500,
-                                  color: theme === 'sun' ? '#666' : '#b0b0b0'
+                                  color: '#666'
                                 }}
                               >
                                 {item.value}
@@ -615,12 +956,8 @@ const SortablePassageItem = memo(
                                   alignItems: 'center',
                                   gap: '8px',
                                   padding: '8px 16px',
-                                  background: theme === 'sun' 
-                                    ? 'rgba(240, 247, 255, 0.5)' 
-                                    : 'rgba(243, 232, 255, 0.2)',
-                                  border: theme === 'sun' 
-                                    ? '2px solid #1890ff' 
-                                    : '2px solid #A78BFA',
+                                  background: 'rgba(82, 196, 26, 0.12)',
+                                  border: '2px solid rgba(82, 196, 26, 0.5)',
                                   borderRadius: '8px',
                                   fontSize: '14px',
                                   fontWeight: 500
@@ -628,12 +965,12 @@ const SortablePassageItem = memo(
                               >
                                 <span style={{ 
                                   fontWeight: 700, 
-                                  color: theme === 'sun' ? '#1890ff' : '#A78BFA',
+                                  color: '#000000',
                                   fontSize: '15px'
                                 }}>
                                   ({idx + 1})
                                 </span>
-                                <span style={{ color: theme === 'sun' ? '#333' : '#000000' }}>
+                                <span style={{ color: '#000000' }}>
                                   {item.value}
                                 </span>
                               </div>
@@ -725,20 +1062,46 @@ const SortablePassageItem = memo(
                           dangerouslySetInnerHTML={{ __html: question.question }}
                         />
                         {question.options && (
-                          <div className="question-options">
-                            {question.options.map((option) => (
-                              <div 
-                                key={option.key} 
-                                className={`option-item ${option.isCorrect ? 'correct-answer' : ''}`}
-                                style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}
-                              >
-                                <span className="option-key" style={{ flexShrink: 0 }}>{option.key}.</span>
-                                <div 
-                                  style={{ flex: 1 }}
-                                  dangerouslySetInnerHTML={{ __html: option.text }} 
-                                />
-                              </div>
-                            ))}
+                          <div className="question-options" style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '12px' }}>
+                            <style>{`.option-text p{margin:0}`}</style>
+                            {question.options.map((option, idx) => {
+                              const isMulti = question.type === 'MULTIPLE_SELECT';
+                              const key = option.key || String.fromCharCode(65 + idx);
+                              return (
+                                <label
+                                  key={key}
+                                  className={`option-item ${option.isCorrect ? 'correct-answer' : ''}`}
+                                  style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '10px',
+                                    padding: '12px 14px',
+                                    background: option.isCorrect 
+                                      ? 'rgba(82, 196, 26, 0.08)'
+                                      : (theme === 'sun' ? '#fff' : 'rgba(255,255,255,0.03)'),
+                                    border: option.isCorrect
+                                      ? '2px solid rgba(82, 196, 26, 0.4)'
+                                      : `2px solid ${theme === 'sun' ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.1)'}`,
+                                    borderRadius: '12px',
+                                    cursor: 'pointer',
+                                    minHeight: '48px'
+                                  }}
+                                >
+                                  <input
+                                    type={isMulti ? 'checkbox' : 'radio'}
+                                    name={`question-${question.id}`}
+                                    defaultChecked={!!option.isCorrect}
+                                    onChange={() => {}}
+                                    style={{ width: '18px', height: '18px', accentColor: theme === 'sun' ? '#1890ff' : '#8B5CF6' }}
+                                  />
+                                  <span style={{ fontWeight: 600 }}>{key}.</span>
+                                  <span className="option-text" style={{ flex: 1, display: 'block', lineHeight: '1.6' }} dangerouslySetInnerHTML={{ __html: option.text }} />
+                                  {option.isCorrect && (
+                                    <span style={{ color: '#52c41a', fontSize: '16px' }}></span>
+                                  )}
+                                </label>
+                              );
+                            })}
                           </div>
                         )}
                       </>
@@ -789,31 +1152,34 @@ const getQuestionTypeLabel = (type) => {
   }
 };
 
-// Helper function to render Fill in the Blank question with inline replacements
+// Helper function to render Fill in the Blank question with inline replacements (answers inline in green)
 const renderFillBlankQuestionInline = (question, theme) => {
   if (!question.questionText || !question.content?.data) {
     return question.questionText || question.question;
   }
 
   let displayText = question.questionText;
-  const blankColor = theme === 'sun' ? '#1890ff' : '#8B5CF6';
-  const blankBgColor = theme === 'sun' 
-    ? 'rgba(24, 144, 255, 0.08)' 
-    : 'rgba(139, 92, 246, 0.15)';
-  const blankBorderColor = theme === 'sun' 
-    ? 'rgba(24, 144, 255, 0.3)' 
-    : 'rgba(139, 92, 246, 0.4)';
+  const correctBg = 'rgba(82, 196, 26, 0.12)';
+  const correctBorder = 'rgba(82, 196, 26, 0.5)';
+  const correctText = '#52c41a';
 
-  question.content.data.forEach((item, idx) => {
-    const number = idx + 1;
-    const pattern = `[[pos_${item.positionId}]]`;
-    
+  // Build map positionId -> correct value
+  const posToValue = {};
+  question.content.data.forEach((item) => {
+    if (item.correct === true && item.positionId) {
+      posToValue[item.positionId] = String(item.value || '')
+        .replace(/<[^>]*>/g,' ')
+        .replace(/&nbsp;/g,' ')
+        .trim();
+    }
+  });
+
+  Object.keys(posToValue).forEach((pid) => {
+    const pattern = `[[pos_${pid}]]`;
+    const value = posToValue[pid];
     displayText = displayText.replace(
       pattern,
-      `<span style="display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; background: ${blankBgColor}; border: 2px solid ${blankBorderColor}; border-radius: 8px; font-weight: 600; color: ${blankColor}; margin: 0 4px;">
-        <span style="width: 18px; height: 18px; border-radius: 50%; background: ${blankColor}; color: white; display: inline-flex; align-items: center; justify-content: center; font-size: 11px;">${number}</span>
-        <span style="text-decoration: underline; padding: 0 2px;">____</span>
-      </span>`
+      `<span style="display:inline-flex;align-items:center;gap:6px;padding:4px 12px;background:${correctBg};border:2px solid ${correctBorder};border-radius:8px;font-weight:600;color:black;margin:0 4px;">${value}</span>`
     );
   });
 
@@ -827,36 +1193,31 @@ const renderDropdownQuestionInline = (question, theme) => {
   }
 
   let displayText = question.questionText;
-  const dropdownColor = theme === 'sun' ? '#1890ff' : '#A78BFA';
-  const dropdownBgStart = theme === 'sun' 
-    ? 'rgba(24, 144, 255, 0.15)' 
-    : 'rgba(167, 139, 250, 0.2)';
-  const dropdownBgEnd = theme === 'sun' 
-    ? 'rgba(24, 144, 255, 0.25)' 
-    : 'rgba(167, 139, 250, 0.3)';
-  const dropdownBorderColor = theme === 'sun' ? '#1890ff' : '#A78BFA';
+  // Use correct-green styling to indicate answer is fixed
+  const bg = 'rgba(82, 196, 26, 0.12)';
+  const border = 'rgba(82, 196, 26, 0.5)';
+  const color = '#52c41a';
 
   // Group options by positionId
   const positionGroups = {};
   question.content.data.forEach((item) => {
-    if (!positionGroups[item.positionId]) {
-      positionGroups[item.positionId] = [];
-    }
+    if (!positionGroups[item.positionId]) positionGroups[item.positionId] = [];
     positionGroups[item.positionId].push(item);
   });
-  
-  // Process each position group
+
+  // For each placeholder, inject a styled <select> with the correct answer pre-selected
   Object.keys(positionGroups).forEach((positionId, idx) => {
-    const number = idx + 1;
     const pattern = `[[pos_${positionId}]]`;
-    
-    displayText = displayText.replace(
-      pattern,
-      `<span style="display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; background: linear-gradient(135deg, ${dropdownBgStart}, ${dropdownBgEnd}); border: 2px solid ${dropdownBorderColor}; border-radius: 8px; font-weight: 600; color: ${dropdownColor}; margin: 0 4px;">
-        <span style="width: 18px; height: 18px; border-radius: 50%; background: ${dropdownColor}; color: white; display: inline-flex; align-items: center; justify-content: center; font-size: 11px;">${number}</span>
-        <span style="font-size: 13px;">▼</span>
-      </span>`
-    );
+    const group = positionGroups[positionId];
+    const correctValue = (group.find(it => it.correct === true)?.value || '').replace(/<[^>]*>/g,' ').replace(/&nbsp;/g,' ').trim();
+    const opts = group
+      .map((it) => (it?.value ?? ''))
+      .filter((v) => v !== null && v !== undefined && String(v).length > 0)
+      .map(v => String(v).replace(/<[^>]*>/g,' ').replace(/&nbsp;/g,' ').trim());
+    const selectedIndex = Math.max(0, opts.findIndex(v => v === correctValue));
+    const optionsHtml = opts.map(v => `<option value="${v}" ${v === correctValue ? 'selected' : ''}>${v}</option>`).join('');
+    const selectHtml = `<select data-idx="${selectedIndex}" onchange="this.selectedIndex=this.dataset.idx" style="display:inline-block;width:120px;height:32px;padding:4px 12px;margin:0 8px;background:${bg};border:2px solid ${border};border-radius:8px;font-size:14px;font-weight:600;color:black;cursor:pointer;outline:none;text-align:center;box-sizing:border-box;overflow:hidden;text-overflow:ellipsis;">${optionsHtml}</select>`;
+    displayText = displayText.replace(pattern, selectHtml);
   });
 
   return displayText;
@@ -869,13 +1230,10 @@ const renderDragDropQuestionInline = (question, theme) => {
   }
 
   let displayText = question.questionText;
-  const blankColor = theme === 'sun' ? '#1890ff' : '#8B5CF6';
-  const blankBgColor = theme === 'sun' 
-    ? 'rgba(24, 144, 255, 0.08)' 
-    : 'rgba(139, 92, 246, 0.15)';
-  const blankBorderColor = theme === 'sun' 
-    ? 'rgba(24, 144, 255, 0.3)' 
-    : 'rgba(139, 92, 246, 0.4)';
+  // Placeholder should match preview: dashed gray
+  const placeholderBg = '#ffffff';
+  const placeholderBorder = 'rgba(0, 0, 0, 0.5)';
+  const placeholderText = 'rgba(0, 0, 0, 0.5)';
 
   // Filter correct options (those with positionId and correct: true)
   const correctOptions = question.content.data.filter(item => 
@@ -888,10 +1246,7 @@ const renderDragDropQuestionInline = (question, theme) => {
     
     displayText = displayText.replace(
       pattern,
-      `<span style="display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; background: linear-gradient(135deg, ${blankBgColor}, ${blankBgColor.replace('0.08', '0.15').replace('0.15', '0.25')}); border: 2px solid ${blankBorderColor}; border-radius: 8px; font-weight: 600; color: ${blankColor}; margin: 0 4px;">
-        <span style="width: 18px; height: 18px; border-radius: 50%; background: ${blankColor}; color: white; display: inline-flex; align-items: center; justify-content: center; font-size: 11px;">${number}</span>
-        <span style="text-decoration: underline; padding: 0 2px;">____</span>
-      </span>`
+      `<span style="display:inline-flex;align-items:center;justify-content:center;min-width:100px;min-height:28px;padding:4px 12px;margin:0 6px;background:${placeholderBg};border:2px dashed ${placeholderBorder};border-radius:6px;font-size:14px;font-weight:500;color:${placeholderText};">Drop here</span>`
     );
   });
 
@@ -905,13 +1260,9 @@ const renderRearrangeQuestionInline = (question, theme) => {
   }
 
   let displayText = question.questionText;
-  const wordBgStart = theme === 'sun' 
-    ? 'rgba(240, 247, 255, 0.5)' 
-    : 'rgba(243, 232, 255, 0.2)';
-  const wordBgEnd = theme === 'sun' 
-    ? 'rgba(230, 244, 255, 0.8)' 
-    : 'rgba(233, 213, 255, 0.3)';
-  const wordBorderColor = theme === 'sun' ? '#1890ff' : '#A78BFA';
+  // Use dashed gray placeholders like preview
+  const slotBorder = 'rgba(0, 0, 0, 0.5)';
+  const slotText = 'rgba(0, 0, 0, 0.5)';
 
   // Use data as is
   const sortedData = question.content.data;
@@ -922,10 +1273,7 @@ const renderRearrangeQuestionInline = (question, theme) => {
     
     displayText = displayText.replace(
       pattern,
-      `<span style="display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; background: linear-gradient(135deg, ${wordBgStart}, ${wordBgEnd}); border: 2px solid ${wordBorderColor}; border-radius: 8px; font-weight: 600; color: ${wordBorderColor}; margin: 0 4px;">
-        <span style="width: 18px; height: 18px; border-radius: 50%; background: ${wordBorderColor}; color: white; display: inline-flex; align-items: center; justify-content: center; font-size: 11px;">${number}</span>
-        <span style="text-decoration: underline; padding: 0 2px;">____</span>
-      </span>`
+      `<span style="display:inline-flex;align-items:center;justify-content:center;min-width:80px;height:36px;padding:4px 10px;margin:0 6px;background:#ffffff;border:2px dashed ${slotBorder};border-radius:6px;font-size:12px;font-weight:600;color:${slotText};">${number}</span>`
     );
   });
 
@@ -934,7 +1282,7 @@ const renderRearrangeQuestionInline = (question, theme) => {
 
 // Sortable Question Item Component
 const SortableQuestionItem = memo(
-  ({ question, index, onDeleteQuestion, onEditQuestion, onDuplicateQuestion, onPointsChange, theme, t }) => {
+  ({ question, index, onDeleteQuestion, onEditQuestion, onDuplicateQuestion, onPointsChange, theme, t, challengeType }) => {
     const animateLayoutChanges = useCallback((args) => {
       const { isSorting, wasDragging } = args;
       if (isSorting || wasDragging) {
@@ -985,39 +1333,35 @@ const SortableQuestionItem = memo(
         return null;
       }
 
-      // Theme colors
-      const blankColor = theme === 'sun' ? '#1890ff' : '#8B5CF6';
-      const blankBgColor = theme === 'sun' 
-        ? 'rgba(24, 144, 255, 0.08)' 
-        : 'rgba(139, 92, 246, 0.15)';
-      const blankBorderColor = theme === 'sun' 
-        ? 'rgba(24, 144, 255, 0.3)' 
-        : 'rgba(139, 92, 246, 0.4)';
-      const answerTextColor = theme === 'sun' ? '#333' : '#000000';
+      // Theme colors for correct inline answers
+      const correctBg = 'rgba(82, 196, 26, 0.12)';
+      const correctBorder = 'rgba(82, 196, 26, 0.5)';
+      const correctText = '#52c41a';
 
-      // Parse questionText and replace [[pos_xxx]] with (1)____, (2)____, etc.
+      // Parse and inline replace with correct answers
       let displayText = question.questionText;
-      const answerChoices = [];
       
       console.log('FillBlank question:', question);
       console.log('question.content:', question.content);
       
       if (question.content && question.content.data) {
-        question.content.data.forEach((item, idx) => {
-          const number = idx + 1; // 1, 2, 3, 4...
-          const pattern = `[[pos_${item.positionId}]]`;
-          
-          // Replace pattern with (1)____ format
+        // Build map of correct answers
+        const posToVal = {};
+        question.content.data.forEach((item) => {
+          if (item.correct === true && item.positionId) {
+            posToVal[item.positionId] = String(item.value || '')
+              .replace(/<[^>]*>/g,' ')
+              .replace(/&nbsp;/g,' ')
+              .trim();
+          }
+        });
+        Object.keys(posToVal).forEach((pid) => {
+          const pattern = `[[pos_${pid}]]`;
+          const value = posToVal[pid];
           displayText = displayText.replace(
             pattern,
-            `<span style="color: ${blankColor}; font-weight: 600;">(${number})</span><span style="text-decoration: underline; padding: 0 2px;">____</span>`
+            `<span style="display:inline-flex;align-items:center;gap:6px;padding:4px 12px;background:${correctBg};border:2px solid ${correctBorder};border-radius:8px;font-weight:600;color:${correctText};margin:0 4px;">${value}</span>`
           );
-          
-          // Add to answer choices
-          answerChoices.push({
-            number: number,
-            value: item.value
-          });
         });
       }
 
@@ -1033,44 +1377,6 @@ const SortableQuestionItem = memo(
             }}
             dangerouslySetInnerHTML={{ __html: displayText }}
           />
-
-          {/* Answer Choices - No header, just show answers */}
-          {answerChoices.length > 0 && (
-            <div style={{ 
-              marginTop: '16px',
-              display: 'flex', 
-              flexWrap: 'wrap', 
-              gap: '12px'
-            }}>
-              {answerChoices.map((choice, idx) => (
-                <div 
-                  key={idx}
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                    padding: '8px 16px',
-                    background: blankBgColor,
-                    border: `2px solid ${blankBorderColor}`,
-                    borderRadius: '8px',
-                    fontSize: '14px',
-                    fontWeight: 500
-                  }}
-                >
-                  <span style={{ 
-                    fontWeight: 700, 
-                    color: blankColor,
-                    fontSize: '15px'
-                  }}>
-                    ({choice.number})
-                  </span>
-                  <span style={{ color: answerTextColor }}>
-                    {choice.value}
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
         </>
       );
     }, [question, theme]);
@@ -1145,13 +1451,12 @@ const SortableQuestionItem = memo(
           ];
           
           // Replace pattern with dropdown display
-          displayText = displayText.replace(
-            pattern,
-            `<span style="display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; background: linear-gradient(135deg, ${dropdownBgStart}, ${dropdownBgEnd}); border: 2px solid ${dropdownBorderColor}; border-radius: 8px; font-weight: 600; color: ${dropdownColor}; margin: 0 4px;">
-              <span style="width: 18px; height: 18px; border-radius: 50%; background: ${dropdownColor}; color: white; display: inline-flex; align-items: center; justify-content: center; font-size: 11px;">${number}</span>
-              <span style="font-size: 13px;">▼</span>
-            </span>`
-          );
+          // Build select HTML like student preview
+          const opts = allOptions.map(v => String(v).replace(/<[^>]*>/g,' ').replace(/&nbsp;/g,' ').trim()).filter(Boolean);
+          const correctVal = (correctOption?.value || '').replace(/<[^>]*>/g,' ').replace(/&nbsp;/g,' ').trim();
+          const optionsHtml = opts.map(v => `<option value="${v}" ${v === correctVal ? 'selected' : ''}>${v}</option>`).join('');
+          const replaced = `<select style="display:inline-block;width:120px;height:32px;padding:4px 12px;margin:0 8px;background:rgba(24, 144, 255, 0.08);border:2px solid ${dropdownBorderColor};border-radius:8px;font-size:14px;font-weight:600;color:${dropdownColor};cursor:pointer;outline:none;text-align:center;box-sizing:border-box;overflow:hidden;text-overflow:ellipsis;">${optionsHtml}</select>`;
+          displayText = displayText.replace(pattern, replaced);
           
           // Store dropdown data
           dropdownsData.push({
@@ -1214,9 +1519,7 @@ const SortableQuestionItem = memo(
                     }}>
                       {dropdown.number}
                     </span>
-                    <span style={{ fontWeight: 600, fontSize: '13px', color: dropdownColor }}>
-                      Dropdown {idx + 1}
-                    </span>
+                    {/* Removed text label, keep only the number chip */}
                   </div>
 
                   {/* Correct Answer */}
@@ -1554,8 +1857,8 @@ const SortableQuestionItem = memo(
                       alignItems: 'center',
                       gap: '8px',
                       padding: '8px 16px',
-                      background: wordBgStart,
-                      border: `2px solid ${wordBorderColor}`,
+                      background: 'rgba(82, 196, 26, 0.12)',
+                      border: '2px solid rgba(82, 196, 26, 0.5)',
                       borderRadius: '8px',
                       fontSize: '14px',
                       fontWeight: 500
@@ -1563,12 +1866,12 @@ const SortableQuestionItem = memo(
                   >
                     <span style={{ 
                       fontWeight: 700, 
-                      color: wordBorderColor,
+                      color: '#000000',
                       fontSize: '15px'
                     }}>
                       ({word.number})
                     </span>
-                    <span style={{ color: textColor }}>
+                    <span style={{ color: '#000000' }}>
                       {word.value}
                     </span>
                   </div>
@@ -1867,16 +2170,519 @@ const SortableQuestionItem = memo(
 
         <div className="question-content">
           {/* Render based on question type */}
-          {question.type === 'FILL_IN_THE_BLANK' ? (
+          {question.type === 'FILL_IN_THE_BLANK' && challengeType === 'GV' ? (
+            (() => {
+              if (!question.questionText) return null;
+              // Use green "correct" styling and place answers inline in the sentence
+              const correctBg = 'rgba(82, 196, 26, 0.12)';
+              const correctBorder = 'rgba(82, 196, 26, 0.5)';
+              const textColor = theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)';
+              let displayText = question.questionText;
+              if (question.content && Array.isArray(question.content.data)) {
+                // Only replace placeholders for correct items (have positionId and correct === true)
+                question.content.data.forEach((item) => {
+                  if (!item || !item.positionId || item.correct !== true) return;
+                  const pattern = `[[pos_${item.positionId}]]`;
+                  const value = String(item.value || '')
+                    .replace(/<[^>]*>/g, ' ')
+                    .replace(/&nbsp;/g, ' ')
+                    .trim();
+                  displayText = displayText.replace(
+                    pattern,
+                    `<span style="display:inline-flex;align-items:center;gap:6px;padding:4px 12px;background:${correctBg};border:2px solid ${correctBorder};border-radius:8px;font-weight:600;color:black;margin:0 4px;">${value}</span>`
+                  );
+                });
+              }
+              return (
+                <div 
+                  style={{ 
+                    marginBottom: '16px', 
+                    fontSize: '15px', 
+                    fontWeight: 350,
+                    lineHeight: '1.8',
+                    color: textColor
+                  }}
+                  dangerouslySetInnerHTML={{ __html: displayText }}
+                />
+              );
+            })()
+          ) : question.type === 'FILL_IN_THE_BLANK' ? (
             renderFillBlankQuestion()
+          ) : (question.type === 'DROPDOWN' && challengeType === 'GV') ? (
+            (() => {
+              const toPlain = (s) => (typeof s === 'string' ? s.replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g,' ').replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/\s+/g,' ').trim() : s);
+              const textColor = theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)';
+              const borderColor = theme === 'sun' ? '#66AEFF' : '#A78BFA';
+              const bgColor = theme === 'sun' ? 'rgba(24, 144, 255, 0.06)' : 'rgba(167, 139, 250, 0.12)';
+              let displayText = question.questionText || question.question || '';
+              const groups = {};
+              if (question.content && Array.isArray(question.content.data)) {
+                question.content.data.forEach((item) => {
+                  if (!groups[item.positionId]) groups[item.positionId] = [];
+                  groups[item.positionId].push(item);
+                });
+              }
+              const ordered = Object.keys(groups).map((pid, idx) => {
+                const group = groups[pid];
+                const correct = group.find(o => o.correct === true);
+                const incorrect = group.filter(o => o.correct === false);
+                const options = [correct?.value, ...incorrect.map(o => o.value).filter(Boolean)].filter(Boolean);
+                return { number: idx + 1, positionId: pid, correct: correct?.value || '', options };
+              });
+              // Replace markers in question with actual inline <select> elements (teacher preview)
+              ordered.forEach((g) => {
+                const pattern = `[[pos_${g.positionId}]]`;
+                const selectedIndex = g.options.findIndex((opt) => toPlain(opt) === toPlain(g.correct));
+                const optionsHtml = g.options
+                  .map((opt, i) => {
+                    const text = toPlain(opt);
+                    const isSelected = i === (selectedIndex >= 0 ? selectedIndex : 0);
+                    return `<option value="${text}" ${isSelected ? 'selected' : ''}>${text}</option>`;
+                  })
+                  .join('');
+                const selectHtml = `<select data-idx="${selectedIndex >= 0 ? selectedIndex : 0}" onchange="this.selectedIndex=this.dataset.idx" style="display:inline-block;min-width:160px;height:36px;padding:0 12px;margin:0 6px;background:rgba(82, 196, 26, 0.12);border:2px solid rgba(82, 196, 26, 0.5);border-radius:10px;font-size:14px;font-weight:600;color:black;cursor:pointer;outline:none;text-align:center;">${optionsHtml}</select>`;
+                displayText = displayText.replace(pattern, selectHtml);
+              });
+              return (
+                <div 
+                    style={{ 
+                      marginBottom: '12px', 
+                      fontSize: '15px', 
+                      fontWeight: 350,
+                      lineHeight: '1.8',
+                      color: textColor
+                    }}
+                    dangerouslySetInnerHTML={{ __html: displayText }}
+                  />
+              );
+            })()
           ) : question.type === 'DROPDOWN' ? (
             renderDropdownQuestion()
+          ) : (question.type === 'DRAG_AND_DROP' && challengeType === 'GV') ? (
+            (() => {
+              if (!question.questionText) return null;
+              const borderColor = theme === 'sun' ? '#66AEFF' : '#A78BFA';
+              const dashedColor = theme === 'sun' ? 'rgba(0,0,0,0.45)' : 'rgba(56, 56, 56, 0.75)';
+              const textColor = theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)';
+              const correctBorderColor = 'rgba(82, 196, 26, 0.7)';
+              const correctTextColor = '#000000';
+              const correctBgColor = 'rgba(82, 196, 26, 0.12)';
+              const wrongBorderColor = theme === 'sun' ? '#d9d9d9' : 'rgba(56, 56, 56, 0.75)';
+              const wrongTextColor = theme === 'sun' ? 'rgba(0,0,0,0.55)' : 'rgba(56, 56, 56, 0.75)';
+              const wrongBgColor = theme === 'sun' ? 'rgba(0,0,0,0.03)' : 'rgba(255,255,255,0.06)';
+              // Build placeholders in question text for each correct item having positionId
+              let displayText = question.questionText;
+              const allChips = [];
+              if (question.content && Array.isArray(question.content.data)) {
+                question.content.data.forEach((item) => {
+                  if (item && item.value) {
+                    const isCorrect = Boolean(item?.correct === true || item?.positionId);
+                    allChips.push({ value: item.value, isCorrect });
+                  }
+                  if (item && item.positionId) {
+                    const pattern = `[[pos_${item.positionId}]]`;
+                    displayText = displayText.replace(
+                      pattern,
+                      `<span style="display:inline-flex;align-items:center;justify-content:center;min-width:140px;height:34px;border-radius:8px;border:2px dashed ${dashedColor};background:transparent;color:${dashedColor};font-weight:600;">Drop here</span>`
+                    );
+                  }
+                });
+              }
+              return (
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                  <div
+                    style={{
+                      padding: '16px',
+                      borderRadius: '12px',
+                      border: '2px solid',
+                      borderColor: theme === 'sun' ? 'rgba(113, 179, 253, 0.25)' : 'rgba(138, 122, 255, 0.2)',
+                      background: theme === 'sun' ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.08)'
+                    }}
+                  >
+                    <div style={{ fontSize: '14px', fontWeight: 600, marginBottom: '12px', color: textColor }}>
+                      Complete the sentence by dragging words into the blanks:
+                    </div>
+                    <div
+                      style={{
+                        fontSize: '15px',
+                        fontWeight: 350,
+                        lineHeight: '1.8',
+                        color: textColor
+                      }}
+                      dangerouslySetInnerHTML={{ __html: displayText }}
+                    />
+                  </div>
+                  <div
+                    style={{
+                      padding: '16px',
+                      borderRadius: '12px',
+                      border: '2px solid',
+                      borderColor: theme === 'sun' ? 'rgba(113, 179, 253, 0.25)' : 'rgba(138, 122, 255, 0.2)',
+                      background: theme === 'sun' ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.08)'
+                    }}
+                  >
+                    <div style={{ fontSize: '14px', fontWeight: 600, marginBottom: '12px', color: textColor }}>
+                      Drag these words to complete the sentence:
+                    </div>
+                    {allChips.length > 0 && (
+                      <div style={{
+                        display: 'flex',
+                        flexWrap: 'wrap',
+                        gap: '12px'
+                      }}>
+                        {(() => { let correctCounter = 0; return allChips.map((chip, idx) => {
+                          const orderNumber = chip.isCorrect ? (++correctCounter) : null;
+                          return (
+                          <div
+                            key={idx}
+                            style={{
+                              padding: '10px 16px',
+                              borderRadius: '10px',
+                              border: `2px solid ${chip.isCorrect ? correctBorderColor : wrongBorderColor}`,
+                              background: chip.isCorrect ? correctBgColor : wrongBgColor,
+                              color: chip.isCorrect ? correctTextColor : wrongTextColor,
+                              fontSize: '14px',
+                              fontWeight: 500,
+                              boxShadow: theme === 'sun' ? '0 2px 6px rgba(113,179,253,0.08)' : '0 2px 6px rgba(138,122,255,0.08)'
+                            }}
+                          >
+                            {orderNumber && (
+                              <span style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                width: '20px',
+                                height: '20px',
+                                borderRadius: '50%',
+                                background: correctBorderColor,
+                                color: '#ffffff',
+                                fontSize: '12px',
+                                fontWeight: 700,
+                                marginRight: '8px'
+                              }}>{orderNumber}</span>
+                            )}
+                            {chip.value}
+                          </div>
+                          );
+                        }); })()}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })()
           ) : question.type === 'DRAG_AND_DROP' ? (
             renderDragDropQuestion()
+          ) : (question.type === 'REARRANGE' && challengeType === 'GV') ? (
+            (() => {
+              const textColor = theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)';
+              const dashedColor = theme === 'sun' ? 'rgba(0,0,0,0.45)' : 'rgba(56, 56, 56, 0.75)';
+              const borderColor = theme === 'sun' ? '#66AEFF' : '#A78BFA';
+              const values = Array.isArray(question.content?.data)
+                ? question.content.data.map((i) => i?.value).filter(Boolean)
+                : [];
+              const count = values.length || 3;
+              const correctBorderColor = 'rgba(82, 196, 26, 0.7)';
+              return (
+                <div style={{ display: 'grid', gap: '16px' }}>
+                  {/* Slots area */}
+                  <div
+                    style={{
+                      padding: '16px',
+                      borderRadius: '12px',
+                      border: '2px solid',
+                      borderColor: theme === 'sun' ? 'rgba(113, 179, 253, 0.25)' : 'rgba(138, 122, 255, 0.2)',
+                      background: theme === 'sun' ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.08)'
+                    }}
+                  >
+                    <div style={{ fontSize: '14px', fontWeight: 600, marginBottom: '12px', color: textColor }}>
+                      Drop the words here in order:
+                    </div>
+                    <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
+                      {Array.from({ length: count }).map((_, idx) => (
+                        <div
+                          key={idx}
+                          style={{
+                            width: '160px',
+                            height: '70px',
+                            borderRadius: '10px',
+                            border: `2px dashed ${dashedColor}`,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            color: dashedColor,
+                            fontWeight: 700
+                          }}
+                        >
+                          {idx + 1}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Source words area */}
+                  <div
+                    style={{
+                      padding: '16px',
+                      borderRadius: '12px',
+                      border: '2px solid',
+                      borderColor: theme === 'sun' ? 'rgba(113, 179, 253, 0.25)' : 'rgba(138, 122, 255, 0.2)',
+                      background: theme === 'sun' ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.08)'
+                    }}
+                  >
+                    <div style={{ fontSize: '14px', fontWeight: 600, marginBottom: '12px', color: textColor }}>
+                      Drag these words to the slots above:
+                    </div>
+                    <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                      {values.map((val, idx) => (
+                        <div
+                          key={idx}
+                          style={{
+                            padding: '10px 16px',
+                            borderRadius: '10px',
+                            border: '2px solid rgba(82, 196, 26, 0.5)',
+                            background: 'rgba(82, 196, 26, 0.12)',
+                            color: '#000000',
+                            fontSize: '14px',
+                            fontWeight: 500,
+                            boxShadow: '0 2px 6px rgba(82,196,26,0.12)'
+                          }}
+                        >
+                          <span style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            width: '20px',
+                            height: '20px',
+                            borderRadius: '50%',
+                            background: correctBorderColor,
+                            color: '#ffffff',
+                            fontSize: '12px',
+                            fontWeight: 700,
+                            marginRight: '8px'
+                          }}>{idx + 1}</span>
+                          {val}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              );
+            })()
           ) : question.type === 'REARRANGE' ? (
             renderReorderQuestion()
           ) : question.type === 'REWRITE' ? (
             renderRewriteQuestion()
+          ) : (['MULTIPLE_CHOICE','MULTIPLE_SELECT'].includes(question.type) && challengeType === 'GV') ? (
+            (() => {
+              const toPlain = (s) => (typeof s === 'string' ? s.replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g,' ').replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/\s+/g,' ').trim() : s);
+              const questionText = toPlain(question.question || question.questionText || '');
+              const optionsFromApi = Array.isArray(question.options) && question.options.length > 0 ? question.options : [];
+              const isMulti = question.type === 'MULTIPLE_SELECT';
+              const correctBg = theme === 'sun' ? 'rgba(82, 196, 26, 0.12)' : 'rgba(115, 209, 61, 0.15)';
+              const correctBorder = theme === 'sun' ? 'rgba(82, 196, 26, 0.5)' : 'rgba(115, 209, 61, 0.5)';
+              const baseBgSun = 'rgba(255, 255, 255, 0.85)';
+              const baseBgMoon = 'rgba(255, 255, 255, 0.7)';
+              const baseBorderSun = 'rgba(113, 179, 253, 0.2)';
+              const baseBorderMoon = 'rgba(138, 122, 255, 0.15)';
+              return (
+                <>
+                  <Typography.Text style={{ 
+                    fontSize: '15px', 
+                    fontWeight: 350,
+                    marginBottom: '12px',
+                    display: 'block',
+                    lineHeight: '1.8',
+                    color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)'
+                  }}>
+                    {questionText}
+                  </Typography.Text>
+
+                  <div className="question-options" style={{ 
+                    display: 'grid', 
+                    gridTemplateColumns: 'repeat(2, 1fr)', 
+                    gap: '14px', 
+                    marginTop: '12px' 
+                  }}>
+                    {optionsFromApi.map((opt, idx) => {
+                      const key = opt.key || String.fromCharCode(65 + idx);
+                      const isCorrect = !!opt.isCorrect;
+                      return (
+                        <div
+                          key={idx}
+                          className={`option-item ${isCorrect ? 'correct-answer' : ''}`}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '12px',
+                            padding: '14px 18px',
+                            background: isCorrect
+                              ? correctBg
+                              : (theme === 'sun' ? baseBgSun : baseBgMoon),
+                            border: `2px solid ${isCorrect ? correctBorder : (theme === 'sun' ? baseBorderSun : baseBorderMoon)}`,
+                            borderRadius: '12px',
+                            boxShadow: theme === 'sun' 
+                              ? '0 2px 6px rgba(113, 179, 253, 0.08)'
+                              : '0 2px 6px rgba(138, 122, 255, 0.08)',
+                            fontSize: '14px',
+                            fontWeight: '350',
+                            position: 'relative',
+                            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                            minHeight: '50px',
+                            boxSizing: 'border-box'
+                          }}
+                        >
+                          <input 
+                            type={isMulti ? 'checkbox' : 'radio'} 
+                            checked={isCorrect}
+                            style={{ 
+                              width: '18px',
+                              height: '18px',
+                              accentColor: '#1890ff',
+                              cursor: 'not-allowed'
+                            }} 
+                          />
+                          <span style={{ 
+                            flexShrink: 0, 
+                            color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)', 
+                            fontWeight: '600',
+                            fontSize: '16px'
+                          }}>
+                            {key}.
+                          </span>
+                          <Typography.Text style={{ 
+                            fontSize: '14px',
+                            color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)',
+                            fontWeight: '350',
+                            flex: 1
+                          }}>
+                            {toPlain(opt.text)}
+                          </Typography.Text>
+                          {isCorrect && (
+                            <span style={{
+                              position: 'absolute',
+                              right: '12px',
+                              top: '50%',
+                              transform: 'translateY(-50%)',
+                              color: '#52c41a',
+                              fontWeight: 700,
+                              fontSize: '14px'
+                            }}></span>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </>
+              );
+            })()
+          ) : (question.type === 'TRUE_OR_FALSE' && challengeType === 'GV') ? (
+            (() => {
+              const toPlain = (s) => (typeof s === 'string' ? s.replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g,' ').replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/\s+/g,' ').trim() : s);
+              const questionText = toPlain(question.question || question.questionText || '');
+              const optionsFromApi = Array.isArray(question.options) && question.options.length > 0
+                ? question.options
+                : [
+                    { key: 'A', text: 'True', isCorrect: true },
+                    { key: 'B', text: 'False', isCorrect: false }
+                  ];
+              const correctBg = theme === 'sun' ? 'rgba(82, 196, 26, 0.12)' : 'rgba(115, 209, 61, 0.15)';
+              const correctBorder = theme === 'sun' ? 'rgba(82, 196, 26, 0.5)' : 'rgba(115, 209, 61, 0.5)';
+              const baseBgSun = 'rgba(255, 255, 255, 0.85)';
+              const baseBgMoon = 'rgba(255, 255, 255, 0.7)';
+              const baseBorderSun = 'rgba(113, 179, 253, 0.2)';
+              const baseBorderMoon = 'rgba(138, 122, 255, 0.15)';
+              return (
+                <>
+                  <Typography.Text style={{ 
+                    fontSize: '15px', 
+                    fontWeight: 350,
+                    marginBottom: '12px',
+                    display: 'block',
+                    lineHeight: '1.8',
+                    color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)'
+                  }}>
+                    {questionText}
+                  </Typography.Text>
+
+                  <div className="question-options" style={{ 
+                    display: 'grid', 
+                    gridTemplateColumns: 'repeat(2, 1fr)', 
+                    gap: '14px', 
+                    marginTop: '12px' 
+                  }}>
+                    {optionsFromApi.slice(0, 2).map((opt, idx) => {
+                      const key = opt.key || (idx === 0 ? 'A' : 'B');
+                      const isCorrect = !!opt.isCorrect;
+                      return (
+                        <div
+                          key={idx}
+                          className={`option-item ${isCorrect ? 'correct-answer' : ''}`}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '12px',
+                            padding: '14px 18px',
+                            background: isCorrect
+                              ? correctBg
+                              : (theme === 'sun' ? baseBgSun : baseBgMoon),
+                            border: `2px solid ${isCorrect ? correctBorder : (theme === 'sun' ? baseBorderSun : baseBorderMoon)}`,
+                            borderRadius: '12px',
+                            boxShadow: theme === 'sun' 
+                              ? '0 2px 6px rgba(113, 179, 253, 0.08)'
+                              : '0 2px 6px rgba(138, 122, 255, 0.08)',
+                            fontSize: '14px',
+                            fontWeight: '350',
+                            position: 'relative',
+                            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                            minHeight: '50px',
+                            boxSizing: 'border-box'
+                          }}
+                        >
+                          <input 
+                            type={'radio'} 
+                            checked={isCorrect}
+                            style={{ 
+                              width: '18px',
+                              height: '18px',
+                              accentColor: '#1890ff',
+                              cursor: 'pointer'
+                            }} 
+                          />
+                          <span style={{ 
+                            flexShrink: 0, 
+                            color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)', 
+                            fontWeight: '600',
+                            fontSize: '16px'
+                          }}>
+                            {key}.
+                          </span>
+                          <Typography.Text style={{ 
+                            fontSize: '14px',
+                            color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)',
+                            fontWeight: '350',
+                            flex: 1
+                          }}>
+                            {toPlain(opt.text)}
+                          </Typography.Text>
+                          {isCorrect && (
+                            <span style={{
+                              position: 'absolute',
+                              right: '12px',
+                              top: '50%',
+                              transform: 'translateY(-50%)',
+                              color: '#52c41a',
+                              fontWeight: 700,
+                              fontSize: '14px'
+                            }}></span>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </>
+              );
+            })()
           ) : (
             <>
               <div 
@@ -1888,20 +2694,46 @@ const SortableQuestionItem = memo(
                 dangerouslySetInnerHTML={{ __html: question.question }}
               />
 
-              <div className="question-options">
-                {question.options && question.options.map((option) => (
-                  <div 
-                    key={option.key} 
-                    className={`option-item ${option.isCorrect ? 'correct-answer' : ''}`}
-                    style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}
-                  >
-                    <span className="option-key" style={{ flexShrink: 0 }}>{option.key}.</span>
-                    <div 
-                      style={{ flex: 1 }}
-                      dangerouslySetInnerHTML={{ __html: option.text }} 
-                    />
-                  </div>
-                ))}
+              <div className="question-options" style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '12px' }}>
+                <style>{`.option-text p{margin:0}`}</style>
+                {question.options && question.options.map((option, idx) => {
+                  const isMulti = question.type === 'MULTIPLE_SELECT';
+                  const key = option.key || String.fromCharCode(65 + idx);
+                  return (
+                    <label
+                      key={key}
+                      className={`option-item ${option.isCorrect ? 'correct-answer' : ''}`}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '10px',
+                        padding: '12px 14px',
+                        background: option.isCorrect 
+                          ? 'rgba(82, 196, 26, 0.08)'
+                          : (theme === 'sun' ? '#fff' : 'rgba(255,255,255,0.03)'),
+                        border: option.isCorrect
+                          ? '2px solid rgba(82, 196, 26, 0.4)'
+                          : `2px solid ${theme === 'sun' ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.1)'}`,
+                        borderRadius: '12px',
+                        cursor: 'pointer',
+                        minHeight: '48px'
+                      }}
+                    >
+                      <input
+                        type={isMulti ? 'checkbox' : 'radio'}
+                        name={`question-${question.id}`}
+                        defaultChecked={!!option.isCorrect}
+                        onChange={() => {}}
+                        style={{ width: '18px', height: '18px', accentColor: theme === 'sun' ? '#1890ff' : '#8B5CF6' }}
+                      />
+                      <span style={{ fontWeight: 600 }}>{key}.</span>
+                      <span className="option-text" style={{ flex: 1, display: 'block', lineHeight: '1.6' }} dangerouslySetInnerHTML={{ __html: option.text }} />
+                      {option.isCorrect && (
+                        <span style={{ color: '#52c41a', fontSize: '16px' }}>✓</span>
+                      )}
+                    </label>
+                  );
+                })}
               </div>
             </>
           )}
@@ -1919,6 +2751,7 @@ const SortableQuestionItem = memo(
       prevProps.question.type === nextProps.question.type &&
       prevProps.theme === nextProps.theme &&
       prevProps.index === nextProps.index &&
+      prevProps.challengeType === nextProps.challengeType &&
       prevProps.onDeleteQuestion === nextProps.onDeleteQuestion &&
       prevProps.onEditQuestion === nextProps.onEditQuestion &&
       prevProps.onDuplicateQuestion === nextProps.onDuplicateQuestion &&
@@ -2763,10 +3596,6 @@ const DailyChallengeContent = () => {
     const visibleQuestions = questions.filter(q => !q.toBeDeleted);
     const visiblePassages = passages.filter(p => !p.toBeDeleted);
     
-    if (visibleQuestions.length === 0 && visiblePassages.length === 0) {
-      spaceToast.warning('Please add at least one question or passage before saving');
-      return;
-    }
 
     try {
       setLoading(true);
@@ -3877,6 +4706,7 @@ const DailyChallengeContent = () => {
                       onPointsChange={handlePointsChange}
                       theme={theme}
                       t={t}
+                      challengeType={challengeDetails?.challengeType}
                     />
                   ))}
                 </SortableContext>
