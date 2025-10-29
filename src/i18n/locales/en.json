@@ -1798,6 +1798,8 @@
     "createChallenge": "Create Challenge",
     "challengeTitle": "Challenge Title",
     "type": "Type",
+    "startDateRequired": "Start date is required",
+    "endDateRequired": "End date is required",
     "no": "No",
     "DRAFT": "Draft",
     "PUBLISHED": "Published",

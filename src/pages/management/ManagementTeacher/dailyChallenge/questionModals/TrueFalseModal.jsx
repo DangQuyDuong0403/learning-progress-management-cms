@@ -46,6 +46,16 @@ const TrueFalseModal = ({ visible, onCancel, onSave, questionData = null, saving
 		return (tmp.textContent || tmp.innerText || '').trim();
 	}, []);
 
+	// Allow image-only content detection for question
+	const containsImage = useCallback((html) => {
+		if (!html) return false;
+		return /<img\b/i.test(html);
+	}, []);
+
+	const hasContent = useCallback((html) => {
+		return !!stripHtml(html) || containsImage(html);
+	}, [stripHtml, containsImage]);
+
 	// Sun theme colors (fixed)
 	const primaryColor = '#1890ff';
 
@@ -191,9 +201,9 @@ const TrueFalseModal = ({ visible, onCancel, onSave, questionData = null, saving
 	}, []);
 
 	const handleSave = () => {
-		// Validate editor data
-		if (!editorData || !editorData.trim()) {
-			spaceToast.warning('Please enter the question text');
+		// Validate question content: allow text or image-only
+		if (!hasContent(editorData)) {
+			spaceToast.warning('Please add question content (text or image)');
 			return;
 		}
 

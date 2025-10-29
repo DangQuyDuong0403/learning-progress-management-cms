@@ -88,7 +88,7 @@ const ThemedLayout = ({ children }) => {
       className={`themed-layout ${theme}-theme`}
       style={{ 
         minHeight: '100vh',
-        maxHeight: '100vh',
+        height: '100vh',
         width: '100vw',
         maxWidth: '100vw',
         overflow: 'hidden',
@@ -109,7 +109,7 @@ const ThemedLayout = ({ children }) => {
         collapsible={false}
         className={`themed-sider ${theme}-sider`}
         style={{
-          overflow: 'hidden',
+          overflow: 'auto',
           height: '100vh',
           position: 'fixed',
           left: 0,
@@ -191,8 +191,12 @@ const ThemedLayout = ({ children }) => {
         className={`themed-main-layout ${theme}-main-layout`}
         style={{ 
           marginLeft: collapsed ? 64 : 240,
-          width: `calc(100vw - ${collapsed ? 64 : 240}px)`,
-          maxWidth: `calc(100vw - ${collapsed ? 64 : 240}px)`,
+          width: collapsed ? 'calc(100vw - 64px)' : 'calc(100vw - 240px)',
+          maxWidth: collapsed ? 'calc(100vw - 64px)' : 'calc(100vw - 240px)',
+          boxSizing: 'border-box',
+          minWidth: 0,
+          height: '100vh',
+          maxHeight: '100vh',
           overflow: 'hidden',
           position: 'relative',
           zIndex: 1
@@ -217,13 +221,14 @@ const ThemedLayout = ({ children }) => {
         <Content
           className={`themed-content ${theme}-content`}
           style={{
-            padding: '20px',
+            padding: '20px 0',
             borderRadius: '8px',
-            minHeight: 'calc(100vh - 112px)',
+            height: 'calc(100vh - 112px)',
             maxHeight: 'calc(100vh - 112px)',
-            overflow: 'auto',
             width: '100%',
             maxWidth: '100%',
+            overflowY: 'auto',
+            overflowX: 'hidden',
             position: 'relative',
             zIndex: 1
           }}
