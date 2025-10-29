@@ -135,22 +135,30 @@ const AIGenerateReading = () => {
           return { id: nextId(), type, title: `Question ${counter}`, question: q?.question || q?.questionText || '', options: opts, points: q?.points ?? q?.score ?? 1 };
         }
         case 'TRUE_OR_FALSE': {
-          const optionsSource = Array.isArray(q?.options)
-            ? q.options
-            : Array.isArray(q?.content?.data)
-              ? q.content.data
-              : [];
-          const options = optionsSource.length
-            ? optionsSource.map((o, i) => ({
-                key: toKey(i),
-                text: o?.text ?? o?.value ?? '',
-                isCorrect: Boolean(o?.isCorrect || o?.correct)
-              }))
-            : [
-                { key: 'A', text: 'True', isCorrect: String(q?.correctAnswer || '').toLowerCase() === 'true' },
-                { key: 'B', text: 'False', isCorrect: String(q?.correctAnswer || '').toLowerCase() === 'false' },
-              ];
-          return { id: nextId(), type: 'TRUE_OR_FALSE', title: `Question ${counter}`, question: q?.question || q?.questionText || '', options, points: q?.points ?? q?.score ?? 1 };
+          // Prefer backend-provided options if present; otherwise synthesize both True/False
+          const backendOptions = Array.isArray(q?.options) ? q.options : [];
+          const hasBackend = backendOptions.length > 0;
+          const correct = String(q?.correctAnswer ?? q?.answer ?? '').toLowerCase();
+          const isTrue = correct === 'true' || correct === 't' || correct === '1';
+          const fallback = [
+            { key: 'A', text: 'True', isCorrect: isTrue === true },
+            { key: 'B', text: 'False', isCorrect: isTrue === false },
+          ];
+          const options = hasBackend
+            ? backendOptions.map((o, i) => ({ key: toKey(i), text: o?.text ?? o?.value ?? '', isCorrect: Boolean(o?.isCorrect || o?.correct) }))
+            : fallback;
+          const rawQuestion = q?.question || q?.questionText || '';
+          const sanitizedQuestion = typeof rawQuestion === 'string'
+            ? rawQuestion.replace(/\[\[pos_[^\]]+\]\]/g, '')
+            : rawQuestion;
+          return {
+            id: nextId(),
+            type: 'TRUE_OR_FALSE',
+            title: `Question ${counter}`,
+            question: sanitizedQuestion,
+            options,
+            points: q?.points ?? q?.score ?? 1,
+          };
         }
         case 'FILL_IN_THE_BLANK':
         case 'DROPDOWN':
@@ -922,7 +930,7 @@ const AIGenerateReading = () => {
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                       <CloudUploadOutlined style={{ fontSize: 24, color: '#000000' }} />
                       <Typography.Text strong style={{ color: theme === 'sun' ? '#1E40AF' : '#8377A0' }}>
-                        Upload Question File
+                        Generate question from file
                       </Typography.Text>
                     </div>
                   </Card>
@@ -948,7 +956,7 @@ const AIGenerateReading = () => {
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                       <EditOutlined style={{ fontSize: 24, color: '#000000' }} />
                       <Typography.Text strong style={{ color: theme === 'sun' ? '#1E40AF' : '#8377A0' }}>
-                        Create Question Manually
+                        Generate question manually
                       </Typography.Text>
                     </div>
                   </Card>
@@ -1292,7 +1300,7 @@ const AIGenerateReading = () => {
 
                   {/* Content Area (copied behaviors) */}
                   <div className="question-content" style={{ paddingLeft: '36px', marginTop: '16px' }}>
-                    {/* Fill in the Blank */}
+                    {/* Fill in the Blank (match AIGenerateQuestions rendering) */}
                     {question.type === 'FILL_IN_THE_BLANK' && (Array.isArray(question.blanks) || Array.isArray(question.content?.data)) && (
                       <div style={{ marginBottom: '16px' }}>
                         <Typography.Text style={{ 
@@ -1305,14 +1313,17 @@ const AIGenerateReading = () => {
                           {(() => {
                             const text = question.questionText || question.question || '';
                             const blanks = question.blanks || [];
+                            // Support both legacy underscores and [[pos_X]] placeholders
                             if (text.includes('[[pos_')) {
+                              // Build lookup map from content.data by positionId
                               const contentItems = Array.isArray(question.content?.data) ? question.content.data : [];
                               const positionIdToValue = new Map();
                               contentItems.forEach(item => {
                                 if (item && item.positionId) positionIdToValue.set(String(item.positionId), item.value || '');
                               });
+
                               const parts = text.split(/(\[\[pos_[a-zA-Z0-9]+\]\])/g);
-                              let blankRenderIndex = 0;
+                              let blankRenderIndex = 0; // Fallback ordering
                               return parts.map((part, idx) => {
                                 const isPlaceholder = /^\[\[pos_[a-zA-Z0-9]+\]\]$/.test(part);
                                 if (!isPlaceholder) {
@@ -1320,6 +1331,7 @@ const AIGenerateReading = () => {
                                 }
                                 const match = part.match(/^\[\[pos_([a-zA-Z0-9]+)\]\]$/);
                                 const posId = match ? match[1] : undefined;
+                                // Prefer exact match via content map; fallback to blanks by order
                                 const mappedValue = (posId && positionIdToValue.get(String(posId))) || undefined;
                                 const displayText = mappedValue
                                   || blanks[blankRenderIndex]?.answer
@@ -1341,9 +1353,11 @@ const AIGenerateReading = () => {
                                       border: `2px solid ${theme === 'sun' ? '#1890ff' : '#8B5CF6'}`,
                                       borderRadius: '8px',
                                       cursor: 'default',
+                                      outline: 'none',
                                       verticalAlign: 'middle',
                                       lineHeight: '1.4',
                                       fontSize: '14px',
+                                      boxSizing: 'border-box',
                                       color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)',
                                       textAlign: 'center'
                                     }}
@@ -1353,6 +1367,7 @@ const AIGenerateReading = () => {
                                 );
                               });
                             }
+                            // Legacy rendering using underscores
                             return text.split('______').map((part, idx) => (
                               <React.Fragment key={idx}>
                                 {part}
@@ -1368,9 +1383,12 @@ const AIGenerateReading = () => {
                                       background: '#E9EEFF94',
                                       border: `2px solid ${theme === 'sun' ? '#1890ff' : '#8B5CF6'}`,
                                       borderRadius: '8px',
+                                      cursor: 'default',
+                                      outline: 'none',
                                       verticalAlign: 'middle',
                                       lineHeight: '1.4',
                                       fontSize: '14px',
+                                      boxSizing: 'border-box',
                                       color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)',
                                       textAlign: 'center'
                                     }}

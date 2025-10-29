@@ -1871,6 +1871,21 @@
     "of": "của",
     "challenges": "challenges",
     "loadingChallenges": "Đang tải danh sách challenges...",
+    "chooseChallengeTypeTitle": "Chọn loại Challenge",
+    "typeNames": {
+      "GV": "Ngữ pháp & Từ vựng",
+      "RE": "Đọc hiểu",
+      "LI": "Nghe hiểu",
+      "WR": "Viết",
+      "SP": "Nói"
+    },
+    "typeDescriptions": {
+      "GV": "Kiểm tra quy tắc ngữ pháp và vốn từ",
+      "RE": "Bài tập đọc hiểu",
+      "LI": "Bài tập nghe hiểu qua âm thanh",
+      "WR": "Chủ đề và bài tập viết",
+      "SP": "Luyện tập giao tiếp nói"
+    },
     "loadChallengesError": "Lỗi khi tải danh sách challenges",
     "createNewChallenge": "Tạo Challenge Mới",
     "selectChallengeTypeAndConfigure": "Chọn loại challenge và cấu hình thông tin cơ bản",
@@ -1961,6 +1976,10 @@
     "dragDropDesc": "Kéo và thả để sắp xếp/điền đáp án",
     "rearrangeDesc": "Sắp xếp lại từ/các mục",
     "rewriteDesc": "Viết lại câu theo yêu cầu",
+    "aiFeatures": "Tính năng AI",
+    "aiGenerateQuestions": "Tạo câu hỏi bằng AI",
+    "aiGenerateQuestionsDesc": "Tạo câu hỏi tự động với sự hỗ trợ của AI",
+    "aiPowered": "AI Powered",
     "chooseQuestionType": "Chọn loại câu hỏi",
     "saveAsDraft": "Lưu bản nháp",
     "saveAsPublished": "Lưu và xuất bản",

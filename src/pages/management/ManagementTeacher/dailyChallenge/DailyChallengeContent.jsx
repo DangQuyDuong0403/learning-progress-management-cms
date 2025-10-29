@@ -4798,16 +4798,25 @@ const DailyChallengeContent = () => {
                     {questionType.type === "reorder" && "🔀"}
                     {questionType.type === "rewrite" && "✍️"}
                   </div>
-                  <div className="question-type-name">{questionType.name}</div>
+                  <div className="question-type-name">
+                    {questionType.type === 'multiple-choice' && (t('dailyChallenge.multipleChoice') || 'Multiple Choice')}
+                    {questionType.type === 'multiple-select' && (t('dailyChallenge.multipleSelect') || 'Multiple Select')}
+                    {questionType.type === 'true-false' && (t('dailyChallenge.trueFalse') || 'True/False')}
+                    {questionType.type === 'fill-blank' && (t('dailyChallenge.fillBlank') || 'Fill in the Blank')}
+                    {questionType.type === 'dropdown' && (t('dailyChallenge.dropdown') || 'Dropdown')}
+                    {questionType.type === 'drag-drop' && (t('dailyChallenge.dragDrop') || 'Drag and Drop')}
+                    {questionType.type === 'reorder' && (t('dailyChallenge.rearrange') || 'Rearrange')}
+                    {questionType.type === 'rewrite' && (t('dailyChallenge.rewrite') || 'Re-write')}
+                  </div>
                   <div className="question-type-description">
-                    {questionType.type === "multiple-choice" && "Choose one correct answer"}
-                    {questionType.type === "multiple-select" && "Choose multiple correct answers"}
-                    {questionType.type === "true-false" && "True or False question"}
-                    {questionType.type === "fill-blank" && "Fill in the blank spaces"}
-                    {questionType.type === "dropdown" && (t('dailyChallenge.dropdownDesc') || "Select the correct option from dropdown")}
-                    {questionType.type === "drag-drop" && "Drag and drop items to arrange"}
-                    {questionType.type === "reorder" && "Reorder words or items"}
-                    {questionType.type === "rewrite" && "Rewrite the sentence as instructed"}
+                    {questionType.type === 'multiple-choice' && (t('dailyChallenge.multipleChoiceDesc') || 'Choose one correct answer')}
+                    {questionType.type === 'multiple-select' && (t('dailyChallenge.multipleSelectDesc') || 'Select all correct answers')}
+                    {questionType.type === 'true-false' && (t('dailyChallenge.trueFalseDesc') || 'Choose True or False')}
+                    {questionType.type === 'fill-blank' && (t('dailyChallenge.fillBlankDesc') || 'Fill in the blank with the correct answer')}
+                    {questionType.type === 'dropdown' && (t('dailyChallenge.dropdownDesc') || 'Select the correct answer from the dropdown menu')}
+                    {questionType.type === 'drag-drop' && (t('dailyChallenge.dragDropDesc') || 'Drag and drop the correct word into each blank to complete the passage.')}
+                    {questionType.type === 'reorder' && (t('dailyChallenge.rearrangeDesc') || 'Rearrange the words to make a correct sentence')}
+                    {questionType.type === 'rewrite' && (t('dailyChallenge.rewriteDesc') || 'Rewrite the sentences as instructed')}
                   </div>
                 </div>
               ))}
@@ -4816,7 +4825,7 @@ const DailyChallengeContent = () => {
 
           {/* AI Generate - Featured */}
           <div className="question-type-category">
-            <h3 className="category-title">AI Features</h3>
+            <h3 className="category-title">{t('dailyChallenge.aiFeatures', { defaultValue: 'AI Features' })}</h3>
             <div className="category-grid">
               <div
                 className={`question-type-card ${theme}-question-type-card question-type-card-featured`}
@@ -4829,11 +4838,11 @@ const DailyChallengeContent = () => {
                     style={{ width: '44px', height: '44px', filter: theme === 'sun' ? 'none' : 'brightness(0.9)' }} 
                   />
                 </div>
-                <div className="question-type-name">{questionTypes[0].name}</div>
+                <div className="question-type-name">{t('dailyChallenge.aiGenerateQuestions', { defaultValue: 'AI Generate Questions' })}</div>
                 <div className="question-type-description">
-                  Generate questions automatically with AI assistance
+                  {t('dailyChallenge.aiGenerateQuestionsDesc', { defaultValue: 'Generate questions automatically with AI assistance' })}
                 </div>
-                <div className="featured-badge">✨ AI Powered</div>
+                <div className="featured-badge">✨ {t('dailyChallenge.aiPowered', { defaultValue: 'AI Powered' })}</div>
               </div>
             </div>
           </div>
