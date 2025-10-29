@@ -62,6 +62,7 @@ import StudentPreview from '../pages/management/ManagementTeacher/dailyChallenge
 import CreateGrammarVocabularyChallenge from '../pages/management/ManagementTeacher/dailyChallenge/CreateGrammarVocabularyChallenge.jsx';
 import CreateReadingChallenge from '../pages/management/ManagementTeacher/dailyChallenge/CreateReadingChallenge.jsx';
 import AIGenerateQuestions from '../pages/management/ManagementTeacher/dailyChallenge/AIGenerateQuestions.jsx';
+import AIGenerateReading from '../pages/management/ManagementTeacher/dailyChallenge/AIGenerateReading.jsx';
 import TeacherDashboard from '../pages/management/ManagementTeacher/TeacherDashboard.jsx';
 import AdminDashboard from '../pages/management/managementAdmin/AdminDashboard';
 import ManagerDashboard from '../pages/management/ManagementManager/ManagerDashboard';
@@ -1123,6 +1124,16 @@ const CONFIG_ROUTER = [
 	},
 	{
 		show: false,
+		component: AIGenerateReading,
+		path: ROUTER_PAGE.TEACHER_CREATE_AI_READING_WITH_ID,
+		menuName: 'AI Reading - Two Step',
+		exact: true,
+		key: 'TEACHER_CREATE_AI_READING_WITH_ID',
+		private: true,
+		role: ['teacher', 'teaching_assistant'],
+	},
+	{
+		show: false,
 		component: DailyChallengeList,
 		path: ROUTER_PAGE.TEACHER_CLASS_DAILY_CHALLENGES,
 		menuName: 'Class Daily Challenges',
@@ -1259,6 +1270,16 @@ const CONFIG_ROUTER = [
 		menuName: 'Create AI Questions with ID',
 		exact: true,
 		key: 'TEACHING_ASSISTANT_CREATE_AI_QUESTIONS_WITH_ID',
+		private: true,
+		role: ['teaching_assistant'],
+	},
+	{
+		show: false,
+		component: AIGenerateReading,
+		path: ROUTER_PAGE.TEACHING_ASSISTANT_CREATE_AI_READING_WITH_ID,
+		menuName: 'AI Reading - Two Step',
+		exact: true,
+		key: 'TEACHING_ASSISTANT_CREATE_AI_READING_WITH_ID',
 		private: true,
 		role: ['teaching_assistant'],
 	},

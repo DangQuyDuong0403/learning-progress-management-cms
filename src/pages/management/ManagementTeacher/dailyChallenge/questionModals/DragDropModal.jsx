@@ -1507,7 +1507,6 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 							id: `ans${answerIndex}`,
 							value: blank.answer,
 							positionId: blank.positionId,
-							positionOrder: answerIndex,
 							correct: true,
 						});
 						answerIndex++;
@@ -1594,7 +1593,6 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 				id: `opt${answerIndex + index}`,
 				value: option.text,
 				positionId: null, // No position for incorrect options
-				positionOrder: answerIndex + index,
 				correct: false,
 			});
 		});

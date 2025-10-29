@@ -848,6 +848,61 @@
   box-shadow: 0 12px 32px rgba(24, 144, 255, 0.25);
 }
 
+/* ===== STATUS HOVER EFFECTS (giống lesson cell) ===== */
+.status-publish-btn {
+  position: absolute !important;
+  top: 50% !important;
+  left: 50% !important;
+  transform: translate(-50%, -50%) scale(0.9) !important;
+  margin: 0 !important;
+  right: auto !important;
+  opacity: 0 !important;
+  transition: all 0.2s ease !important;
+  pointer-events: none !important;
+}
+
+/* Status text transition - Override external CSS with higher specificity */
+.daily-challenge-list-wrapper .status-text {
+  transition: opacity 0.2s ease !important;
+}
+
+/* Override StudentList.css and ClassTeachers.css status-text colors */
+.daily-challenge-list-wrapper .status-cell-container .status-text {
+  color: rgb(223, 175, 56) ; /* Draft color */
+}
+
+.daily-challenge-list-wrapper .status-text {
+  color: rgb(56, 223, 65) ; /* Published color */
+}
+
+/* Theme-specific overrides with even higher specificity */
+.daily-challenge-list-wrapper .space-theme .status-cell-container .status-text {
+  color: rgb(223, 175, 56); /* Draft color */
+}
+
+.daily-challenge-list-wrapper .space-theme .status-text {
+  color: rgb(56, 223, 65); /* Published color */
+}
+
+.daily-challenge-list-wrapper .sun-theme .status-cell-container .status-text {
+  color: rgb(223, 175, 56); /* Draft color */
+}
+
+.daily-challenge-list-wrapper .sun-theme .status-text {
+  color: rgb(56, 223, 65); /* Published color */
+}
+
+/* Status cell hover effect */
+.status-cell-container:hover .status-text {
+  opacity: 0 !important;
+}
+
+.status-cell-container:hover .status-publish-btn {
+  opacity: 1 !important;
+  transform: translate(-50%, -50%) scale(1) !important;
+  pointer-events: auto !important;
+}
+
 /* Responsive design for modal */
 @media (max-width: 768px) {
   .category-grid {

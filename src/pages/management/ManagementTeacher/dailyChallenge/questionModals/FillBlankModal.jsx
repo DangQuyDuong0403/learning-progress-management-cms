@@ -1453,7 +1453,6 @@ const FillBlankModal = ({ visible, onCancel, onSave, questionData = null }) => {
 							id: `opt${answerIndex}`,
 							value: blank.answer,
 							positionId: blank.positionId,
-							positionOrder: 1, // Always 1 for FILL_IN_THE_BLANK (only one answer per blank)
 							correct: true,
 						});
 						answerIndex++;

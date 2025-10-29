@@ -1,3 +1,26 @@
+/* Force-visible, themed scrollbar for AI reading preview */
+.ai-preview-scroll {
+  max-height: 40vh;
+  overflow-y: auto;
+  scrollbar-width: thin; /* Firefox */
+  scrollbar-color: rgba(24, 144, 255, 0.4) transparent;
+}
+.sun-ai-generate-wrapper .ai-preview-scroll {
+  scrollbar-color: rgba(24, 144, 255, 0.6) transparent;
+}
+.ai-generate-wrapper .ai-preview-scroll::-webkit-scrollbar {
+  width: 10px;
+}
+.ai-generate-wrapper .ai-preview-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.ai-generate-wrapper .ai-preview-scroll::-webkit-scrollbar-thumb {
+  background: rgba(24, 144, 255, 0.4);
+  border-radius: 8px;
+}
+.sun-ai-generate-wrapper .ai-preview-scroll::-webkit-scrollbar-thumb {
+  background: rgba(24, 144, 255, 0.6);
+}
 /* AI Generate Questions Page Styles */
 
 .ai-generate-wrapper {
