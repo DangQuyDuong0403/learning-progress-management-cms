@@ -986,7 +986,7 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
     
     const questionText = sortedBlanks.map(blank => `[[pos_${blank.positionId}]]`).join(' ');
 
-    // Create content.data array with positionId only (no positionOrder for REARRANGE)
+    // Create content.data array with positionId only
     // Use sortedBlanks to ensure correct order
     const contentData = sortedBlanks.map((blank, index) => ({
       id: `opt${index + 1}`,
@@ -1012,7 +1012,7 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
     console.log('=== REARRANGE QUESTION DATA ===');
     console.log('Question Text (API format):', questionText);
     console.log('Correct Answer (human readable):', correctAnswer);
-    console.log('Content Data (NO positionOrder):', contentData);
+    console.log('Content Data:', contentData);
     console.log('Shuffled Words:', shuffledWords);
     console.log('Blanks:', blanks);
     console.log('Full Question Data:', newQuestionData);

@@ -48,6 +48,40 @@ const dailyChallengeApi = {
 		});
 	},
 
+	// Generate a reading passage from OpenAI service
+	generateReadingPassage: async (payload) => {
+		// payload expected: { challengeId, numberOfParagraphs, description }
+		const base = (typeof axiosClient?.defaults?.baseURL === 'string') ? axiosClient.defaults.baseURL : '';
+		const absoluteUrl = base.includes('/api/v1')
+			? base.replace('/api/v1', '/api') + '/openai/generate-reading-passage'
+			: (base.endsWith('/api') ? base : (base.replace(/\/$/, '') + '/api')) + '/openai/generate-reading-passage';
+		console.log('GenerateReadingPassage API - URL:', absoluteUrl);
+		console.log('GenerateReadingPassage API - Payload:', payload);
+		return axiosClient.post(absoluteUrl, payload, {
+			headers: {
+				'Content-Type': 'application/json',
+				'accept': '*/*',
+			},
+		});
+	},
+
+	// Generate questions based on provided section content (reading/listening transcript)
+	generateContentBasedQuestions: async (payload) => {
+		// payload expected: { challengeId, sections: [{ section, questionTypeConfigs }], description }
+		const base = (typeof axiosClient?.defaults?.baseURL === 'string') ? axiosClient.defaults.baseURL : '';
+		const absoluteUrl = base.includes('/api/v1')
+			? base.replace('/api/v1', '/api') + '/openai/generate-content-based-questions'
+			: (base.endsWith('/api') ? base : (base.replace(/\/$/, '') + '/api')) + '/openai/generate-content-based-questions';
+		console.log('GenerateContentBasedQuestions API - URL:', absoluteUrl);
+		console.log('GenerateContentBasedQuestions API - Payload:', payload);
+		return axiosClient.post(absoluteUrl, payload, {
+			headers: {
+				'Content-Type': 'application/json',
+				'accept': '*/*',
+			},
+		});
+	},
+
 	// Lấy tất cả daily challenges của teacher (không theo class cụ thể)
 	getAllDailyChallenges: (params = {}) => {
 		const queryParams = new URLSearchParams();
@@ -249,6 +283,20 @@ const dailyChallengeApi = {
 		return axiosClient.post(url, formData, {
 			headers: {
 				'Content-Type': 'multipart/form-data',
+				'accept': '*/*',
+			}
+		});
+	},
+
+	// Bulk save sections with questions for a challenge
+	bulkSaveSections: (challengeId, sectionsData) => {
+		const url = `/sections/bulk-save/${challengeId}`;
+		console.log('BulkSaveSections API - URL:', url);
+		console.log('BulkSaveSections API - Data:', sectionsData);
+		
+		return axiosClient.post(url, sectionsData, {
+			headers: {
+				'Content-Type': 'application/json',
 				'accept': '*/*',
 			}
 		});

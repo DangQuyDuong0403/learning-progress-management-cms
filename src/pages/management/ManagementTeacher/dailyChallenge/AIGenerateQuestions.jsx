@@ -387,7 +387,6 @@ const AIGenerateQuestions = () => {
               id: it?.id || `opt${i + 1}`,
               value: it?.value ?? '',
               positionId: typeof it?.positionId === 'string' ? it.positionId.replace(/^pos_/, '') : (it?.positionId ?? null),
-              positionOrder: it?.positionOrder ?? 1,
               correct: it?.correct === true,
             }));
             return {
@@ -408,7 +407,6 @@ const AIGenerateQuestions = () => {
               id: it?.id || `opt${i + 1}`,
               value: it?.value ?? '',
               positionId: typeof it?.positionId === 'string' ? it.positionId.replace(/^pos_/, '') : (it?.positionId ?? null),
-              positionOrder: it?.positionOrder ?? (it?.correct ? 1 : 2),
               correct: it?.correct === true,
             }));
             return {
@@ -470,7 +468,9 @@ const AIGenerateQuestions = () => {
               id: nextId(),
               type: 'REARRANGE',
               title: `Question ${counter}`,
-              question: text || 'Rearrange the words by dragging them into the correct order:',
+              // Show human-friendly instruction; keep placeholders only in questionText
+              question: 'Rearrange the words by dragging them into the correct order:',
+              questionText: text || '',
               sourceItems: sortedWords,
               correctOrder: sortedWords,
               content: { data: contentItems },
@@ -592,7 +592,6 @@ const AIGenerateQuestions = () => {
                 data: (q.options || []).map((option, idx) => ({
                   id: option.key || `opt${idx + 1}`,
                   value: option.text || option.value || '',
-                  positionOrder: idx + 1,
                   correct: option.isCorrect === true,
                 })),
               },
@@ -608,7 +607,6 @@ const AIGenerateQuestions = () => {
                 data: (q.options || []).map((option, idx) => ({
                   id: option.key || `opt${idx + 1}`,
                   value: option.text || option.value || '',
-                  positionOrder: idx + 1,
                   correct: option.isCorrect === true,
                 })),
               },
@@ -650,8 +648,7 @@ const AIGenerateQuestions = () => {
                 ...it,
                 positionId: String(it.positionId).replace(/^pos_/, ''),
               }))
-              .sort((a, b) => (Number(a.positionId) || 0) - (Number(b.positionId) || 0))
-              .map((it, idx) => ({ ...it, positionOrder: idx + 1 }));
+              .sort((a, b) => (Number(a.positionId) || 0) - (Number(b.positionId) || 0));
             // Backend requires placeholders [[pos_X]] present in questionText
             const placeholderText = items.length
               ? items
@@ -701,8 +698,11 @@ const AIGenerateQuestions = () => {
         questions: apiQuestions,
       };
 
-      console.log('Saving AI section with questions:', sectionData);
-      const resp = await dailyChallengeApi.saveSectionWithQuestions(id, sectionData);
+      // Wrap in array for bulk-save API
+      const sectionsDataArray = [sectionData];
+
+      console.log('Saving AI section with questions:', sectionsDataArray);
+      const resp = await dailyChallengeApi.bulkSaveSections(id, sectionsDataArray);
       spaceToast.success(resp?.message || t('dailyChallenge.aiQuestionsGenerated') || 'AI questions generated successfully!');
 
       // Navigate back to content page
@@ -793,7 +793,6 @@ const AIGenerateQuestions = () => {
               id: `opt${i + 1}`,
               value: b.correctAnswer || b.placeholder || '',
               positionId: String(i + 1),
-              positionOrder: 1,
               correct: true,
             }));
           }
@@ -833,7 +832,6 @@ const AIGenerateQuestions = () => {
                   id: `opt${idx + 1}`,
                   value: correct,
                   positionId,
-                  positionOrder: 1,
                   correct: true,
                 });
               }
@@ -844,7 +842,6 @@ const AIGenerateQuestions = () => {
                     id: `opt${idx + 1}_${oIdx + 1}`,
                     value: opt,
                     positionId,
-                    positionOrder: oIdx + 2,
                     correct: false,
                   });
                 });
@@ -870,32 +867,41 @@ const AIGenerateQuestions = () => {
             }
           }
 
-          const correctMap = question.correctAnswers || {};
-          const correctValues = Object.values(correctMap);
-          const contentData = [];
-          // Add correct options with position ids in index order
-          Object.keys(correctMap).forEach((key, idx) => {
-            const positionId = String(idx + 1);
-            const value = correctMap[key];
-            contentData.push({
-              id: `opt${idx + 1}`,
-              value,
-              positionId,
-              positionOrder: 1,
-              correct: true,
+          // Prefer existing structured content from AI/backend to preserve original positionId values (e.g., a1b2c3)
+          let contentData = Array.isArray(question.content?.data) ? [...question.content.data] : [];
+
+          // If no structured content yet, reconstruct from preview fields while PRESERVING position ids
+          if (contentData.length === 0) {
+            const correctMap = question.correctAnswers || {};
+            // Build correct items using the original keys (which correspond to [[pos_<key>]])
+            Object.keys(correctMap).forEach((key, idx) => {
+              const positionId = String(key).replace(/^pos_/, '');
+              const value = correctMap[key];
+              contentData.push({
+                id: `opt${idx + 1}`,
+                value,
+                positionId,
+                correct: true,
+              });
             });
-          });
-          // Add incorrect options (no position)
-          const incorrectOpts = (question.availableWords || [])
-            .filter(w => !correctValues.includes(w))
-            .map((w, i) => ({ id: `opt_in_${i + 1}`, value: w, positionId: null, positionOrder: i + 2, correct: false }));
-          contentData.push(...incorrectOpts);
+            // Add incorrect options (no position)
+            const correctValues = Object.values(correctMap);
+            const incorrectOpts = (question.availableWords || [])
+              .filter(w => !correctValues.includes(w))
+              .map((w, i) => ({ id: `opt_in_${i + 1}`, value: w, positionId: null, correct: false }));
+            contentData.push(...incorrectOpts);
+          }
+
+          // Derive incorrect options list for modal convenience
+          const incorrectOptsForModal = contentData
+            .filter(it => !it.positionId || it.correct === false)
+            .map(it => ({ id: it.id, text: it.value }));
 
           modalData = {
             ...modalData,
             questionText: computedText,
             content: { data: contentData },
-            incorrectOptions: incorrectOpts.map(o => ({ id: o.id, text: o.value })),
+            incorrectOptions: incorrectOptsForModal,
           };
         }
 
@@ -1896,7 +1902,15 @@ const AIGenerateQuestions = () => {
                                   const parts = text.split(/(\[\[pos_([a-zA-Z0-9]+)\]\])/g);
                                   return parts.map((part, idx) => {
                                     const m = part.match(/^\[\[pos_([a-zA-Z0-9]+)\]\]$/);
-                                    if (!m) return <React.Fragment key={idx}>{part}</React.Fragment>;
+                                    if (!m) {
+                                      // Clean the text part by removing specific unwanted patterns
+                                      const cleanPart = part
+                                        .replace(/[a-zA-Z0-9]{6,}/g, '') // Remove long alphanumeric strings like "a1b2c3"
+                                        .replace(/[a-zA-Z]{3,}[0-9]{3,}/g, '') // Remove patterns like "abc123"
+                                        .replace(/[0-9]{3,}[a-zA-Z]{3,}/g, '') // Remove patterns like "123abc"
+                                        .trim();
+                                      return <React.Fragment key={idx}>{cleanPart}</React.Fragment>;
+                                    }
                                     const val = posToCorrect.get(m[1]) || '';
                                     return (
                                       <div key={`ddp-${idx}`}
@@ -1922,7 +1936,9 @@ const AIGenerateQuestions = () => {
                                   });
                                 }
                                 // Fallback legacy underscores rendering
-                                return text.split('___').map((part, idx) => (
+                                // Clean text by removing position markers first
+                                const cleanText = text.replace(/\[\[pos_[a-zA-Z0-9]+\]\]/g, '___');
+                                return cleanText.split('___').map((part, idx) => (
                                   <React.Fragment key={`us-${idx}`}>
                                     {part}
                                     {idx < 2 && (
