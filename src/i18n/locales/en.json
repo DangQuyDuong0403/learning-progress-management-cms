@@ -1886,6 +1886,21 @@
     "of": "of",
     "challenges": "challenges",
     "loadingChallenges": "Loading challenges...",
+    "chooseChallengeTypeTitle": "Choose Challenge Type",
+    "typeNames": {
+      "GV": "Grammar & Vocabulary",
+      "RE": "Reading",
+      "LI": "Listening",
+      "WR": "Writing",
+      "SP": "Speaking"
+    },
+    "typeDescriptions": {
+      "GV": "Test grammar rules and vocabulary knowledge",
+      "RE": "Reading comprehension exercises",
+      "LI": "Audio-based listening comprehension",
+      "WR": "Writing topics and exercises",
+      "SP": "Oral communication practice"
+    },
     "loadChallengesError": "Error loading challenges list",
     "createNewChallenge": "Create New Challenge",
     "selectChallengeTypeAndConfigure": "Select challenge type and configure basic information",
@@ -1977,6 +1992,8 @@
     "rearrangeDesc": "Rearrange words or items",
     "rewriteDesc": "Rewrite the sentence",
     "chooseQuestionType": "Choose a question type",
+    "saveAsDraft": "Save as Draft",
+    "saveAsPublished": "Save as Published",
     "configuration": "Configuration",
     "duration": "Duration",
     "editSettings": "Edit Challenge Settings",
@@ -2292,6 +2309,7 @@
     "namePlaceholder": "Enter teacher name",
     "firstNamePlaceholder": "Enter first name",
     "lastNamePlaceholder": "Enter last name",
+    "fullNamePlaceholder": "Enter full name",
     "emailPlaceholder": "Enter email address",
     "phonePlaceholder": "Enter phone number",
     "phoneNumberPlaceholder": "Enter phone number",

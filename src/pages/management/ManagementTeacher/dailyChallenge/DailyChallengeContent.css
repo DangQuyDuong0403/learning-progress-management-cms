@@ -533,7 +533,6 @@
 
 /* Question Content */
 .question-content {
-  padding-left: 36px;
   margin-top: 16px;
 }
 
@@ -1190,7 +1189,7 @@
   cursor: pointer;
   position: relative;
   font-size: 14px;
-  font-weight: 500;
+  font-weight: 400;
   min-height: 50px;
   box-sizing: border-box;
 }

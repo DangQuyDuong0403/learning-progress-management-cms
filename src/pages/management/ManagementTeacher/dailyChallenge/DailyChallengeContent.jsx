@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo, memo } from "react";
+import React, { useState, useEffect, useCallback, useMemo, memo, useRef } from "react";
 import {
   Button,
   Input,
@@ -86,40 +86,13 @@ const getChallengeTypeName = (typeCode) => {
   return typeMap[typeCode] || typeCode || 'Unknown';
 };
 
-// Helper function to replace [[dur_3]] with HTML badge
+// Helper function to optionally handle [[dur_3]] marker
 const processPassageContent = (content, theme, challengeType) => {
   if (!content) return '';
   
-  // Only process for Speaking challenges
+  // For Speaking challenges, remove the marker and show plain text at top elsewhere
   if (challengeType === 'SP') {
-    const badgeColor = theme === 'sun' ? '#1890ff' : '#8B5CF6';
-    const badgeBgColor = theme === 'sun' 
-      ? 'rgba(24, 144, 255, 0.1)' 
-      : 'rgba(139, 92, 246, 0.15)';
-    const badgeBorderColor = theme === 'sun' 
-      ? 'rgba(24, 144, 255, 0.3)' 
-      : 'rgba(139, 92, 246, 0.4)';
-    
-    const badgeHtml = `
-      <span style="
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        padding: 6px 14px;
-        background: ${badgeBgColor};
-        border: 2px solid ${badgeBorderColor};
-        border-radius: 8px;
-        font-size: 14px;
-        color: ${badgeColor};
-        margin: 0 4px;
-        vertical-align: middle;
-      ">
-        <span style="font-size: 16px;">🎤</span>
-        Voice Recording 3 minutes
-      </span>
-    `;
-    
-    return content.replace(/\[\[dur_3\]\]/g, badgeHtml);
+    return content.replace(/\[\[dur_3\]\]/g, '');
   }
   
   return content;
@@ -129,6 +102,33 @@ const processPassageContent = (content, theme, challengeType) => {
 const SortablePassageItem = memo(
   ({ passage, index, onDeletePassage, onEditPassage, onDuplicatePassage, onPointsChange, theme, t, challengeType }) => {
     const [showTranscript, setShowTranscript] = useState(false);
+    const [showMore, setShowMore] = useState(false);
+    const passageContentRef = useRef(null);
+    const [needsToggle, setNeedsToggle] = useState(false);
+    
+    // Measure if WR content overflows the collapsed container to decide showing the toggle
+    useEffect(() => {
+      if (challengeType !== 'WR') {
+        setNeedsToggle(false);
+        return;
+      }
+      if (!passageContentRef.current) return;
+      // Only measure in collapsed state; when expanded we don't need the toggle measurement
+      if (showMore) {
+        setNeedsToggle(true);
+        return;
+      }
+      const el = passageContentRef.current;
+      // Allow layout to settle before measuring
+      const id = window.requestAnimationFrame(() => {
+        try {
+          setNeedsToggle(el.scrollHeight > el.clientHeight + 1);
+        } catch (_) {
+          setNeedsToggle(false);
+        }
+      });
+      return () => window.cancelAnimationFrame(id);
+    }, [challengeType, passage?.content, showMore]);
     
     const toPlainText = (html) => {
       if (!html) return '';
@@ -250,7 +250,7 @@ const SortablePassageItem = memo(
           </div>
         </div>
 
-        <div className="passage-content" style={(challengeType === 'RE' || challengeType === 'LI' || challengeType === 'WR' || challengeType === 'SP') ? { display: 'flex', gap: '24px', minHeight: '500px' } : undefined}>
+        <div className="passage-content" style={(challengeType === 'RE' || challengeType === 'LI' || challengeType === 'SP') ? { display: 'flex', gap: '24px', minHeight: '500px' } : undefined}>
           {(challengeType === 'RE' || challengeType === 'LI' || challengeType === 'SP') && (
             <style>{`
               .reading-passage-scrollbar::-webkit-scrollbar { width: 8px; }
@@ -288,6 +288,28 @@ const SortablePassageItem = memo(
                     : '#8B5CF6 rgba(138, 122, 255, 0.2)'
                 }}
               >
+                {/* Always show plain instruction at the top for Speaking */}
+                <div style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  padding: '6px 12px',
+                  marginBottom: '12px',
+                  borderRadius: '10px',
+                  background: theme === 'sun'
+                    ? 'rgba(24, 144, 255, 0.08)'
+                    : 'rgba(139, 92, 246, 0.15)',
+                  border: `2px solid ${theme === 'sun' ? 'rgba(24, 144, 255, 0.4)' : 'rgba(139, 92, 246, 0.4)'}`,
+                  color: theme === 'sun' ? '#1890ff' : '#8B5CF6',
+                  fontSize: '14px',
+                  fontWeight: 600,
+                  boxShadow: theme === 'sun'
+                    ? '0 2px 6px rgba(24, 144, 255, 0.12)'
+                    : '0 2px 6px rgba(139, 92, 246, 0.12)'
+                }}>
+                  <span style={{ fontSize: '16px' }}>🎤</span>
+                  <span>Voice Recording 3 minutes</span>
+                </div>
                 {/* Audio Player if available */}
                 {passage.audioUrl && (
                   <div style={{
@@ -325,123 +347,7 @@ const SortablePassageItem = memo(
                 </div>
               </div>
 
-              {/* Right Section - Recording and Upload Area */}
-              <div style={{
-                flex: '1',
-                padding: '24px',
-                background: theme === 'sun' ? '#ffffff' : 'rgba(255, 255, 255, 0.03)',
-                borderRadius: '12px',
-                border: `1px solid ${theme === 'sun' ? '#e8e8e8' : 'rgba(255, 255, 255, 0.1)'}`,
-                textAlign: 'center'
-              }}>
-                {/* Recording Component */}
-                <div style={{ marginBottom: '24px' }}>
-                  <div
-                    style={{
-                      width: '120px',
-                      height: '120px',
-                      borderRadius: '50%',
-                      background: theme === 'sun'
-                        ? 'linear-gradient(135deg, rgba(24, 144, 255, 0.15) 0%, rgba(60, 153, 255, 0.15) 100%)'
-                        : 'linear-gradient(135deg, rgba(139, 92, 246, 0.15) 0%, rgba(167, 139, 250, 0.15) 100%)',
-                      border: `3px solid ${theme === 'sun' ? '#1890ff' : '#8B5CF6'}`,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      margin: '0 auto 16px',
-                      cursor: 'pointer',
-                      transition: 'all 0.3s ease'
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.transform = 'scale(1.1)';
-                      e.currentTarget.style.boxShadow = theme === 'sun'
-                        ? '0 4px 16px rgba(24, 144, 255, 0.3)'
-                        : '0 4px 16px rgba(139, 92, 246, 0.3)';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.transform = 'scale(1)';
-                      e.currentTarget.style.boxShadow = 'none';
-                    }}
-                  >
-                    <img 
-                      src="/img/icon-mic.png" 
-                      alt="Mic"
-                      style={{ width: '48px', height: '48px', opacity: theme === 'sun' ? 0.9 : 0.95 }}
-                    />
-                  </div>
-                  <div style={{
-                    fontSize: '16px',
-                    fontWeight: '600',
-                    color: theme === 'sun' ? '#1890ff' : '#8B5CF6',
-                    marginBottom: '8px'
-                  }}>
-                    Click to start recording
-                  </div>
-                  <div style={{
-                    fontSize: '12px',
-                    color: theme === 'sun' ? '#666' : '#999'
-                  }}>
-                    Press the microphone to record your response
-                  </div>
-                </div>
-
-                {/* Upload Audio Section */}
-                <div style={{ 
-                  marginTop: '24px', 
-                  paddingTop: '24px', 
-                  borderTop: `1px solid ${theme === 'sun' ? '#e8e8e8' : 'rgba(255, 255, 255, 0.2)'}` 
-                }}>
-                  <div style={{ 
-                    fontSize: '18px', 
-                    fontWeight: '600',
-                    color: theme === 'sun' ? '#333' : '#1F2937',
-                    marginBottom: '16px'
-                  }}>
-                    Upload Audio File (Optional):
-                  </div>
-                  
-                  <div style={{
-                    padding: '20px',
-                    background: theme === 'sun' 
-                      ? 'linear-gradient(135deg, rgba(237, 250, 230, 0.5) 0%, rgba(207, 244, 192, 0.4) 100%)'
-                      : 'linear-gradient(135deg, rgba(255, 255, 255, 0.5) 0%, rgba(244, 240, 255, 0.5) 100%)',
-                    border: `2px solid ${theme === 'sun' 
-                      ? 'rgba(82, 196, 26, 0.3)' 
-                      : 'rgba(138, 122, 255, 0.3)'}`,
-                    borderRadius: '12px',
-                    cursor: 'pointer',
-                    textAlign: 'center',
-                    transition: 'all 0.3s ease'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.transform = 'translateY(-2px)';
-                    e.currentTarget.style.boxShadow = theme === 'sun' 
-                      ? '0 4px 12px rgba(82, 196, 26, 0.2)'
-                      : '0 4px 12px rgba(138, 122, 255, 0.25)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.transform = 'translateY(0)';
-                    e.currentTarget.style.boxShadow = 'none';
-                  }}
-                  >
-                    <div style={{ fontSize: '32px', marginBottom: '8px' }}>📎</div>
-                    <div style={{ 
-                      fontSize: '16px', 
-                      fontWeight: '600',
-                      color: theme === 'sun' ? '#1E40AF' : '#8377A0',
-                      marginBottom: '4px'
-                    }}>
-                      Upload Audio
-                    </div>
-                    <div style={{ 
-                      fontSize: '13px',
-                      color: theme === 'sun' ? '#666' : '#999'
-                    }}>
-                      Upload MP3 audio file (Max 5MB)
-                    </div>
-                  </div>
-                </div>
-              </div>
+              {/* Right Section intentionally removed for teacher view */}
             </>
           ) : (
             <>
@@ -477,7 +383,6 @@ const SortablePassageItem = memo(
                 style={{ 
                   marginBottom: '16px', 
                   fontSize: '15px', 
-                  fontWeight: 500,
                   lineHeight: '1.8',
                   padding: '16px',
                   background: theme === 'sun' 
@@ -598,83 +503,58 @@ const SortablePassageItem = memo(
             
             {/* Don't show passage.content for LI - it's shown through transcript button instead */}
             {challengeType !== 'LI' && (
-              <div 
-                className="passage-text-content"
-                dangerouslySetInnerHTML={{ __html: processPassageContent(passage.content, theme, challengeType) }} 
-              />
+              <>
+                <div 
+                  ref={passageContentRef}
+                  className="passage-text-content"
+                  style={
+                    challengeType === 'WR' && !showMore
+                      ? {
+                          maxHeight: '150px',
+                          overflow: 'hidden',
+                          position: 'relative',
+                        }
+                      : undefined
+                  }
+                  dangerouslySetInnerHTML={{ __html: processPassageContent(passage.content, theme, challengeType) }} 
+                />
+                {challengeType === 'WR' && needsToggle && (
+                  <div
+                    onClick={() => setShowMore(!showMore)}
+                    role="button"
+                    aria-expanded={showMore}
+                    style={{
+                      marginTop: '10px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      cursor: 'pointer',
+                      userSelect: 'none',
+                      color: theme === 'sun' ? '#1890ff' : '#8B5CF6',
+                      padding: '4px 8px'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.firstChild && (e.currentTarget.firstChild.style.transform = 'translateY(-2px)');
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.firstChild && (e.currentTarget.firstChild.style.transform = 'translateY(0)');
+                    }}
+                  >
+                    <span style={{
+                      display: 'inline-block',
+                      transition: 'transform 0.2s ease',
+                      fontSize: '20px',
+                    }}>
+                      {showMore ? '▲' : '▼'}
+                    </span>
+                  </div>
+                )}
+              </>
             )}
-          </div>
+                  </div>
             </>
           )}
 
-          {/* For Writing challenges, show the right-side action choices like student preview */}
-          {challengeType === 'WR' && (
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              {/* Card 1: Write Essay Here */}
-              <div
-                style={{
-                  flex: 1,
-                  minHeight: '200px',
-                  borderRadius: '12px',
-                  border: '2px solid rgba(24,144,255,0.35)',
-                  background: 'linear-gradient(135deg, rgba(230,245,255,0.75), rgba(186,231,255,0.55))',
-                  boxShadow: '0 2px 10px rgba(24,144,255,0.12)',
-                  padding: '24px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  textAlign: 'center'
-                }}
-              >
-                <div>
-                  <div style={{ fontSize: '34px', marginBottom: '6px' }}>📝</div>
-                  <div style={{
-                    fontWeight: 700,
-                    fontSize: '16px',
-                    color: '#1d4ed8',
-                    marginBottom: '6px'
-                  }}>
-                    Write Essay Here
-                  </div>
-                  <div style={{ color: '#6b7280', fontSize: '13px' }}>
-                    Type your essay directly in the text area
-                  </div>
-                </div>
-              </div>
-
-              {/* Card 2: Upload */}
-              <div
-                style={{
-                  flex: 1,
-                  minHeight: '200px',
-                  borderRadius: '12px',
-                  border: '2px solid rgba(82,196,26,0.35)',
-                  background: 'linear-gradient(135deg, rgba(240,255,240,0.7), rgba(230,255,230,0.55))',
-                  boxShadow: '0 2px 10px rgba(82,196,26,0.12)',
-                  padding: '24px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  textAlign: 'center'
-                }}
-              >
-                <div>
-                  <div style={{ fontSize: '34px', marginBottom: '6px' }}>📎</div>
-                  <div style={{
-                    fontWeight: 700,
-                    fontSize: '16px',
-                    color: '#15803d',
-                    marginBottom: '6px'
-                  }}>
-                    Upload
-                  </div>
-                  <div style={{ color: '#6b7280', fontSize: '13px' }}>
-                    Upload image of your handwritten essay (Max 5MB)
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
 
           {/* Questions inside passage */}
           {challengeType !== 'WR' && challengeType !== 'SP' && passage.questions && passage.questions.length > 0 && (
@@ -722,7 +602,6 @@ const SortablePassageItem = memo(
                           style={{ 
                             marginBottom: '16px', 
                             fontSize: '15px', 
-                            fontWeight: 500,
                             lineHeight: '1.8'
                           }}
                           dangerouslySetInnerHTML={{ __html: renderFillBlankQuestionInline(question, theme) }}
@@ -735,7 +614,6 @@ const SortablePassageItem = memo(
                           style={{ 
                             marginBottom: '16px', 
                             fontSize: '15px', 
-                            fontWeight: 500,
                             lineHeight: '1.8'
                           }}
                           dangerouslySetInnerHTML={{ __html: renderDropdownQuestionInline(question, theme) }}
@@ -862,7 +740,6 @@ const SortablePassageItem = memo(
                           style={{ 
                             marginBottom: '16px', 
                             fontSize: '15px', 
-                            fontWeight: 500,
                             lineHeight: '1.8'
                           }}
                           dangerouslySetInnerHTML={{ __html: renderDragDropQuestionInline(question, theme) }}
@@ -889,11 +766,11 @@ const SortablePassageItem = memo(
                                   border: '2px solid rgba(82, 196, 26, 0.5)',
                                   borderRadius: '8px',
                                   fontSize: '14px',
-                                  fontWeight: 500,
+                                  fontWeight: 400,
                                   color: '#000000'
                                 }}
                               >
-                                <span style={{ fontWeight: 700, color: 'black', marginRight: '8px' }}>
+                                <span style={{ fontWeight: 400, color: 'black', marginRight: '8px' }}>
                                   ({idx + 1})
                                 </span>
                                 <span>{item.value}</span>
@@ -914,7 +791,7 @@ const SortablePassageItem = memo(
                                   border: '1.5px solid rgba(0, 0, 0, 0.15)',
                                   borderRadius: '8px',
                                   fontSize: '14px',
-                                  fontWeight: 500,
+                                  fontWeight: 400,
                                   color: '#666'
                                 }}
                               >
@@ -931,7 +808,6 @@ const SortablePassageItem = memo(
                           style={{ 
                             marginBottom: '16px', 
                             fontSize: '15px', 
-                            fontWeight: 500,
                             lineHeight: '1.8'
                           }}
                           dangerouslySetInnerHTML={{ __html: renderRearrangeQuestionInline(question, theme) }}
@@ -955,11 +831,11 @@ const SortablePassageItem = memo(
                                   border: '2px solid rgba(82, 196, 26, 0.5)',
                                   borderRadius: '8px',
                                   fontSize: '14px',
-                                  fontWeight: 500
+                                  fontWeight: 400
                                 }}
                               >
                                 <span style={{ 
-                                  fontWeight: 700, 
+                                  fontWeight: 400, 
                                   color: '#000000',
                                   fontSize: '15px'
                                 }}>
@@ -980,7 +856,6 @@ const SortablePassageItem = memo(
                           style={{ 
                             marginBottom: '16px', 
                             fontSize: '15px', 
-                            fontWeight: 500,
                             lineHeight: '1.8'
                           }}
                           dangerouslySetInnerHTML={{ __html: question.questionText || question.question }}
@@ -1054,8 +929,7 @@ const SortablePassageItem = memo(
                           className="question-text-content"
                           style={{ 
                             marginBottom: '16px', 
-                            fontSize: '15px', 
-                            fontWeight: 500 
+                            fontSize: '15px' 
                           }}
                           dangerouslySetInnerHTML={{ __html: question.question }}
                         />
@@ -1091,6 +965,7 @@ const SortablePassageItem = memo(
                                     defaultChecked={!!option.isCorrect}
                                     onChange={() => {}}
                                     style={{ width: '18px', height: '18px', accentColor: theme === 'sun' ? '#1890ff' : '#8B5CF6' }}
+                                  disabled
                                   />
                                   <span style={{ fontWeight: 400 }}>{key}.</span>
                                   <span className="option-text" style={{ flex: 1, display: 'block', lineHeight: '1.6' }} dangerouslySetInnerHTML={{ __html: option.text }} />
@@ -1951,7 +1826,6 @@ const SortableQuestionItem = memo(
             style={{ 
               marginBottom: '16px', 
               fontSize: '15px', 
-              fontWeight: 500,
               lineHeight: '1.8'
             }}
             dangerouslySetInnerHTML={{ __html: displayText }}
@@ -2301,7 +2175,7 @@ const SortableQuestionItem = memo(
                       background: theme === 'sun' ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.08)'
                     }}
                   >
-                    <div style={{ fontSize: '14px', fontWeight: 600, marginBottom: '12px', color: textColor }}>
+                    <div style={{ fontSize: '14px', marginBottom: '12px', color: textColor }}>
                       Complete the sentence by dragging words into the blanks:
                     </div>
                     <div
@@ -2324,7 +2198,7 @@ const SortableQuestionItem = memo(
                       background: theme === 'sun' ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.08)'
                     }}
                   >
-                    <div style={{ fontSize: '14px', fontWeight: 600, marginBottom: '12px', color: textColor }}>
+                    <div style={{ fontSize: '14px', marginBottom: '12px', color: textColor }}>
                       Drag these words to complete the sentence:
                     </div>
                     {allChips.length > 0 && (
@@ -2398,7 +2272,7 @@ const SortableQuestionItem = memo(
                       background: theme === 'sun' ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.08)'
                     }}
                   >
-                    <div style={{ fontSize: '14px', fontWeight: 600, marginBottom: '12px', color: textColor }}>
+                    <div style={{ fontSize: '14px', marginBottom: '12px', color: textColor }}>
                       Drop the words here in order:
                     </div>
                     <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
@@ -2433,7 +2307,7 @@ const SortableQuestionItem = memo(
                       background: theme === 'sun' ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.08)'
                     }}
                   >
-                    <div style={{ fontSize: '14px', fontWeight: 600, marginBottom: '12px', color: textColor }}>
+                    <div style={{ fontSize: '14px', marginBottom: '12px', color: textColor }}>
                       Drag these words to the slots above:
                     </div>
                     <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
@@ -2545,6 +2419,7 @@ const SortableQuestionItem = memo(
                               accentColor: '#1890ff',
                               cursor: 'not-allowed'
                             }} 
+                            disabled
                           />
                           <span style={{ 
                             flexShrink: 0, 
@@ -2654,8 +2529,9 @@ const SortableQuestionItem = memo(
                               width: '18px',
                               height: '18px',
                               accentColor: '#1890ff',
-                              cursor: 'pointer'
+                              cursor: 'not-allowed'
                             }} 
+                            disabled
                           />
                           <span style={{ 
                             flexShrink: 0, 
@@ -2726,7 +2602,7 @@ const SortableQuestionItem = memo(
                           ? '2px solid rgba(82, 196, 26, 0.4)'
                           : `2px solid ${theme === 'sun' ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.1)'}`,
                         borderRadius: '12px',
-                        cursor: 'pointer',
+                                    cursor: 'default',
                         minHeight: '48px'
                       }}
                     >
@@ -2736,6 +2612,7 @@ const SortableQuestionItem = memo(
                         defaultChecked={!!option.isCorrect}
                         onChange={() => {}}
                         style={{ width: '18px', height: '18px', accentColor: theme === 'sun' ? '#1890ff' : '#8B5CF6' }}
+                        disabled
                       />
                       <span style={{ fontWeight: 400 }}>{key}.</span>
                       <span className="option-text" style={{ flex: 1, display: 'block', lineHeight: '1.6' }} dangerouslySetInnerHTML={{ __html: option.text }} />
@@ -2918,6 +2795,8 @@ const DailyChallengeContent = () => {
     }
   }, [id]);
 
+  const [totalElements, setTotalElements] = useState(0);
+
   const fetchQuestions = useCallback(async () => {
     if (!id) {
       setLoading(false);
@@ -3067,6 +2946,11 @@ const DailyChallengeContent = () => {
 
         console.log('Mapped Questions:', mappedQuestions);
         console.log('Mapped Passages:', mappedPassages);
+
+        // Calculate total elements (questions count) from API or derived
+        const derivedTotal = mappedQuestions.length + mappedPassages.reduce((sum, p) => sum + (Array.isArray(p.questions) ? p.questions.length : 0), 0);
+        const apiTotal = response.totalElements ?? response.data?.totalElements ?? null;
+        setTotalElements(Number.isFinite(apiTotal) ? apiTotal : derivedTotal);
 
         // Sort questions by orderNumber to ensure correct order
         const sortedQuestions = mappedQuestions.sort((a, b) => (a.orderNumber || 0) - (b.orderNumber || 0));
@@ -4176,7 +4060,7 @@ const DailyChallengeContent = () => {
   ];
 
   // Temporarily hide Import/Export UI
-  const showImportExport = false;
+  const showImportExport = true;
 
   // Custom Header Component
   const customHeader = (
@@ -4321,47 +4205,60 @@ const DailyChallengeContent = () => {
               {t('dailyChallenge.preview')}
             </Button>
 
-            {/* Add Question/Passage Button - Single button for all types */}
-            <Button 
-              icon={<PlusOutlined />}
-              className={`create-button ${theme}-create-button`}
-              onClick={handleAddQuestion}
-              style={{
-                height: '40px',
-                borderRadius: '8px',
-                fontWeight: 500,
-                fontSize: '16px',
-                padding: '0 24px',
-                border: 'none',
-                transition: 'all 0.3s ease',
-                background: theme === 'sun' 
-                  ? 'linear-gradient(135deg, rgba(102, 174, 255, 0.6), rgba(60, 153, 255, 0.6))'
-                  : 'linear-gradient(135deg, rgba(181, 176, 192, 0.7), rgba(163, 158, 187, 0.7), rgba(131, 119, 160, 0.7), rgba(172, 165, 192, 0.7), rgba(109, 95, 143, 0.7))',
-                color: theme === 'sun' ? '#000000' : '#000000',
-                boxShadow: theme === 'sun' ? '0 2px 8px rgba(60, 153, 255, 0.2)' : '0 2px 8px rgba(131, 119, 160, 0.3)',
-                opacity: 0.9
-              }}
-            >
-              {t('dailyChallenge.addQuestion')}
-            </Button>
+            {/* Add Question/Passage Button - hidden when published */}
+            {status !== 'published' && (
+              <Button 
+                icon={<PlusOutlined />}
+                className={`create-button ${theme}-create-button`}
+                onClick={handleAddQuestion}
+                style={{
+                  height: '40px',
+                  borderRadius: '8px',
+                  fontWeight: 500,
+                  fontSize: '16px',
+                  padding: '0 24px',
+                  border: 'none',
+                  transition: 'all 0.3s ease',
+                  background: theme === 'sun' 
+                    ? 'linear-gradient(135deg, rgba(102, 174, 255, 0.6), rgba(60, 153, 255, 0.6))'
+                    : 'linear-gradient(135deg, rgba(181, 176, 192, 0.7), rgba(163, 158, 187, 0.7), rgba(131, 119, 160, 0.7), rgba(172, 165, 192, 0.7), rgba(109, 95, 143, 0.7))',
+                  color: theme === 'sun' ? '#000000' : '#000000',
+                  boxShadow: theme === 'sun' ? '0 2px 8px rgba(60, 153, 255, 0.2)' : '0 2px 8px rgba(131, 119, 160, 0.3)',
+                  opacity: 0.9
+                }}
+              >
+                {t('dailyChallenge.addQuestion')}
+              </Button>
+            )}
             
-            {/* Save Dropdown - Save as Draft or Published */}
+            {/* Save Dropdown - hide Draft when already published */}
             <Dropdown
               menu={{ 
-                items: [
-                  {
-                    key: 'draft',
-                    label: <span style={{ color: '#000000' }}>Save as Draft</span>,
-                    icon: <FileTextOutlined style={{ color: '#000000' }} />,
-                    onClick: () => handleSaveChanges('draft'),
-                  },
-                  {
-                    key: 'published',
-                    label: <span style={{ color: '#000000' }}>Save as Published</span>,
-                    icon: <CheckCircleOutlined style={{ color: '#000000' }} />,
-                    onClick: handlePublishConfirm,
-                  },
-                ]
+                items: (
+                  status === 'published'
+                    ? [
+                        {
+                          key: 'published',
+                          label: <span style={{ color: '#000000' }}>{t('dailyChallenge.saveAsPublished') || 'Save as Published'}</span>,
+                          icon: <CheckCircleOutlined style={{ color: '#000000' }} />,
+                          onClick: handlePublishConfirm,
+                        },
+                      ]
+                    : [
+                        {
+                          key: 'draft',
+                          label: <span style={{ color: '#000000' }}>{t('dailyChallenge.saveAsDraft') || 'Save as Draft'}</span>,
+                          icon: <FileTextOutlined style={{ color: '#000000' }} />,
+                          onClick: () => handleSaveChanges('draft'),
+                        },
+                        {
+                          key: 'published',
+                          label: <span style={{ color: '#000000' }}>{t('dailyChallenge.saveAsPublished') || 'Save as Published'}</span>,
+                          icon: <CheckCircleOutlined style={{ color: '#000000' }} />,
+                          onClick: handlePublishConfirm,
+                        },
+                      ]
+                )
               }}
               trigger={['click']}
             >
@@ -4383,7 +4280,7 @@ const DailyChallengeContent = () => {
                   boxShadow: theme === 'sun' ? '0 2px 8px rgba(60, 153, 255, 0.3)' : '0 2px 8px rgba(131, 119, 160, 0.3)'
                 }}
               >
-                Save <DownOutlined />
+                {t('common.save') || 'Lưu'} <DownOutlined />
               </Button>
             </Dropdown>
           </div>
@@ -4737,7 +4634,11 @@ const DailyChallengeContent = () => {
                     backdropFilter: 'blur(10px)'
                   }}
                 >
-            <Input
+            <div style={{ display: 'flex', gap: '12px', alignItems: 'center', justifyContent: 'space-between' }}>
+              <Typography.Text style={{ fontWeight: 400, color: '#000', whiteSpace: 'nowrap', fontSize: '16px' }}>
+                {`Total: ${totalElements} questions • Remaining: ${Math.max(0, 100 - (Number(totalElements) || 0))} questions`}
+              </Typography.Text>
+              <Input
                   prefix={<SearchOutlined />}
                   value={searchText}
                   onChange={(e) => handleSearch(e.target.value)}
@@ -4753,6 +4654,7 @@ const DailyChallengeContent = () => {
                     }}
               allowClear
                 />
+            </div>
                 </Card>
         </div>
 
@@ -4863,16 +4765,25 @@ const DailyChallengeContent = () => {
                     {questionType.type === "reorder" && "🔀"}
                     {questionType.type === "rewrite" && "✍️"}
                   </div>
-                  <div className="question-type-name">{questionType.name}</div>
+                  <div className="question-type-name">
+                    {questionType.type === 'multiple-choice' && (t('dailyChallenge.multipleChoice') || 'Multiple Choice')}
+                    {questionType.type === 'multiple-select' && (t('dailyChallenge.multipleSelect') || 'Multiple Select')}
+                    {questionType.type === 'true-false' && (t('dailyChallenge.trueFalse') || 'True/False')}
+                    {questionType.type === 'fill-blank' && (t('dailyChallenge.fillBlank') || 'Fill in the Blank')}
+                    {questionType.type === 'dropdown' && (t('dailyChallenge.dropdown') || 'Dropdown')}
+                    {questionType.type === 'drag-drop' && (t('dailyChallenge.dragDrop') || 'Drag and Drop')}
+                    {questionType.type === 'reorder' && (t('dailyChallenge.rearrange') || 'Rearrange')}
+                    {questionType.type === 'rewrite' && (t('dailyChallenge.rewrite') || 'Re-write')}
+                  </div>
                   <div className="question-type-description">
-                    {questionType.type === "multiple-choice" && "Choose one correct answer"}
-                    {questionType.type === "multiple-select" && "Choose multiple correct answers"}
-                    {questionType.type === "true-false" && "True or False question"}
-                    {questionType.type === "fill-blank" && "Fill in the blank spaces"}
-                    {questionType.type === "dropdown" && (t('dailyChallenge.dropdownDesc') || "Select the correct option from dropdown")}
-                    {questionType.type === "drag-drop" && "Drag and drop items to arrange"}
-                    {questionType.type === "reorder" && "Reorder words or items"}
-                    {questionType.type === "rewrite" && "Rewrite the sentence as instructed"}
+                    {questionType.type === 'multiple-choice' && (t('dailyChallenge.multipleChoiceDesc') || 'Choose one correct answer')}
+                    {questionType.type === 'multiple-select' && (t('dailyChallenge.multipleSelectDesc') || 'Select all correct answers')}
+                    {questionType.type === 'true-false' && (t('dailyChallenge.trueFalseDesc') || 'Choose True or False')}
+                    {questionType.type === 'fill-blank' && (t('dailyChallenge.fillBlankDesc') || 'Fill in the blank with the correct answer')}
+                    {questionType.type === 'dropdown' && (t('dailyChallenge.dropdownDesc') || 'Select the correct answer from the dropdown menu')}
+                    {questionType.type === 'drag-drop' && (t('dailyChallenge.dragDropDesc') || 'Drag and drop the correct word into each blank to complete the passage.')}
+                    {questionType.type === 'reorder' && (t('dailyChallenge.rearrangeDesc') || 'Rearrange the words to make a correct sentence')}
+                    {questionType.type === 'rewrite' && (t('dailyChallenge.rewriteDesc') || 'Rewrite the sentences as instructed')}
                   </div>
                 </div>
               ))}
@@ -4881,7 +4792,7 @@ const DailyChallengeContent = () => {
 
           {/* AI Generate - Featured */}
           <div className="question-type-category">
-            <h3 className="category-title">AI Features</h3>
+            <h3 className="category-title">{t('dailyChallenge.aiFeatures', { defaultValue: 'AI Features' })}</h3>
             <div className="category-grid">
               <div
                 className={`question-type-card ${theme}-question-type-card question-type-card-featured`}
@@ -4894,11 +4805,11 @@ const DailyChallengeContent = () => {
                     style={{ width: '44px', height: '44px', filter: theme === 'sun' ? 'none' : 'brightness(0.9)' }} 
                   />
                 </div>
-                <div className="question-type-name">{questionTypes[0].name}</div>
+                <div className="question-type-name">{t('dailyChallenge.aiGenerateQuestions', { defaultValue: 'AI Generate Questions' })}</div>
                 <div className="question-type-description">
-                  Generate questions automatically with AI assistance
+                  {t('dailyChallenge.aiGenerateQuestionsDesc', { defaultValue: 'Generate questions automatically with AI assistance' })}
                 </div>
-                <div className="featured-badge">✨ AI Powered</div>
+                <div className="featured-badge">✨ {t('dailyChallenge.aiPowered', { defaultValue: 'AI Powered' })}</div>
               </div>
             </div>
           </div>
@@ -5327,7 +5238,7 @@ const DailyChallengeContent = () => {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <Typography.Text strong>{sentenceCase(t('dailyChallenge.shuffleQuestion') || t('dailyChallenge.shuffleAnswers') || 'Shuffle questions')}</Typography.Text>
                 <span style={{ fontWeight: 700, color: shuffleQuestion ? '#52c41a' : '#ff4d4f' }}>
-                  {shuffleQuestion ? (t('common.on') || 'ON') : (t('common.off') || 'OFF')}
+                  {shuffleQuestion ? sentenceCase(t('common.on') || 'ON') : sentenceCase(t('common.off') || 'OFF')}
                 </span>
               </div>
             </Card>
@@ -5335,7 +5246,7 @@ const DailyChallengeContent = () => {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <Typography.Text strong>{sentenceCase(t('dailyChallenge.antiCheatMode') || 'Anti-cheat mode')}</Typography.Text>
                 <span style={{ fontWeight: 700, color: antiCheatModeEnabled ? '#52c41a' : '#ff4d4f' }}>
-                  {antiCheatModeEnabled ? (t('common.on') || 'ON') : (t('common.off') || 'OFF')}
+                  {antiCheatModeEnabled ? sentenceCase(t('common.on') || 'ON') : sentenceCase(t('common.off') || 'OFF')}
                 </span>
               </div>
             </Card>
@@ -5343,7 +5254,7 @@ const DailyChallengeContent = () => {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <Typography.Text strong>{sentenceCase(t('dailyChallenge.translateOnScreen') || 'Translate on screen')}</Typography.Text>
                 <span style={{ fontWeight: 700, color: translateOnScreen ? '#52c41a' : '#ff4d4f' }}>
-                  {translateOnScreen ? (t('common.on') || 'ON') : (t('common.off') || 'OFF')}
+                  {translateOnScreen ? sentenceCase(t('common.on') || 'ON') : sentenceCase(t('common.off') || 'OFF')}
                 </span>
               </div>
             </Card>
