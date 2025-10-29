@@ -571,7 +571,7 @@ const AIGenerateReading = () => {
 
   return (
     <ThemedLayout customHeader={customHeader} contentMargin={10}>
-      <div className={`ai-generate-wrapper ${theme}-ai-generate-wrapper`}>
+      <div className={`ai-generate-wrapper allow-motion ${theme}-ai-generate-wrapper`}>
         <div style={{ padding: '24px', maxWidth: '1500px', margin: '0 auto' }}>
         {/* Hierarchy info bar */}
         <div
@@ -1150,7 +1150,7 @@ const AIGenerateReading = () => {
           {/* Loading Animation - identical visual to AIGenerateQuestions */}
           {isGenerating && (
             <Card
-              className={`loading-card ${theme}-loading-card`}
+              className={`loading-card allow-motion ${theme}-loading-card`}
               style={{
                 borderRadius: '16px',
                 border: theme === 'sun' 
