@@ -29,6 +29,18 @@ const dailyChallengeApi = {
 		});
 	},
 
+	// Export a challenge worksheet; backend returns a downloadable URL
+	exportWorksheet: (challengeId) => {
+		const url = `/daily-challenges/${challengeId}/export-worksheet`;
+		console.log('ExportWorksheet API - URL:', url);
+		return axiosClient.get(url, {
+			headers: {
+				'accept': '*/*',
+			},
+			responseType: 'blob'
+		});
+	},
+
 	// Gọi OpenAI service để sinh câu hỏi theo cấu hình
 	generateAIQuestions: async (payload) => {
 		// payload expected: { challengeId, questionTypeConfigs: [{questionType, numberOfQuestions}], description }
