@@ -597,20 +597,12 @@ const SortablePassageItem = memo(
               </div>
             )}
             
-            <style>{`
-              img {
-                max-width: 300px;
-                max-height: 300px;
-                width: auto;
-                height: auto;
-                object-fit: contain;
-                margin: 8px 0;
-                display: block;
-              }
-            `}</style>
             {/* Don't show passage.content for LI - it's shown through transcript button instead */}
             {challengeType !== 'LI' && (
-              <div dangerouslySetInnerHTML={{ __html: processPassageContent(passage.content, theme, challengeType) }} />
+              <div 
+                className="passage-text-content"
+                dangerouslySetInnerHTML={{ __html: processPassageContent(passage.content, theme, challengeType) }} 
+              />
             )}
           </div>
             </>
@@ -725,8 +717,9 @@ const SortablePassageItem = memo(
                   <div className="question-content">
                     {/* Render question based on type with inline replacements */}
                     {question.type === 'FILL_IN_THE_BLANK' ? (
-                      <div>
+                      <div className="question-text-wrapper">
                         <div 
+                          className="question-text-content"
                           style={{ 
                             marginBottom: '16px', 
                             fontSize: '15px', 
@@ -737,8 +730,9 @@ const SortablePassageItem = memo(
                         />
                       </div>
                     ) : question.type === 'DROPDOWN' ? (
-                      <div>
+                      <div className="question-text-wrapper">
                         <div 
+                          className="question-text-content"
                           style={{ 
                             marginBottom: '16px', 
                             fontSize: '15px', 
@@ -863,8 +857,9 @@ const SortablePassageItem = memo(
                         )}
                       </div>
                     ) : question.type === 'DRAG_AND_DROP' ? (
-                      <div>
+                      <div className="question-text-wrapper">
                         <div 
+                          className="question-text-content"
                           style={{ 
                             marginBottom: '16px', 
                             fontSize: '15px', 
@@ -931,8 +926,9 @@ const SortablePassageItem = memo(
                         )}
                       </div>
                     ) : question.type === 'REARRANGE' ? (
-                      <div>
+                      <div className="question-text-wrapper">
                         <div 
+                          className="question-text-content"
                           style={{ 
                             marginBottom: '16px', 
                             fontSize: '15px', 
@@ -979,8 +975,9 @@ const SortablePassageItem = memo(
                         )}
                       </div>
                     ) : question.type === 'REWRITE' ? (
-                      <div>
+                      <div className="question-text-wrapper">
                         <div 
+                          className="question-text-content"
                           style={{ 
                             marginBottom: '16px', 
                             fontSize: '15px', 
@@ -1054,6 +1051,7 @@ const SortablePassageItem = memo(
                     ) : (
                       <>
                         <div 
+                          className="question-text-content"
                           style={{ 
                             marginBottom: '16px', 
                             fontSize: '15px', 
@@ -2195,6 +2193,7 @@ const SortableQuestionItem = memo(
               }
               return (
                 <div 
+                  className="question-text-content"
                   style={{ 
                     marginBottom: '16px', 
                     fontSize: '15px', 
@@ -2245,15 +2244,16 @@ const SortableQuestionItem = memo(
               });
               return (
                 <div 
-                    style={{ 
-                      marginBottom: '12px', 
-                      fontSize: '15px', 
-                      fontWeight: 350,
-                      lineHeight: '1.8',
-                      color: textColor
-                    }}
-                    dangerouslySetInnerHTML={{ __html: displayText }}
-                  />
+                  className="question-text-content"
+                  style={{ 
+                    marginBottom: '12px', 
+                    fontSize: '15px', 
+                    fontWeight: 350,
+                    lineHeight: '1.8',
+                    color: textColor
+                  }}
+                  dangerouslySetInnerHTML={{ __html: displayText }}
+                />
               );
             })()
           ) : question.type === 'DROPDOWN' ? (
@@ -2303,6 +2303,7 @@ const SortableQuestionItem = memo(
                       Complete the sentence by dragging words into the blanks:
                     </div>
                     <div
+                      className="question-text-content"
                       style={{
                         fontSize: '15px',
                         fontWeight: 350,
@@ -2475,8 +2476,7 @@ const SortableQuestionItem = memo(
             renderRewriteQuestion()
           ) : (['MULTIPLE_CHOICE','MULTIPLE_SELECT'].includes(question.type) && challengeType === 'GV') ? (
             (() => {
-              const toPlain = (s) => (typeof s === 'string' ? s.replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g,' ').replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/\s+/g,' ').trim() : s);
-              const questionText = toPlain(question.question || question.questionText || '');
+              const questionText = question.question || question.questionText || '';
               const optionsFromApi = Array.isArray(question.options) && question.options.length > 0 ? question.options : [];
               const isMulti = question.type === 'MULTIPLE_SELECT';
               const correctBg = theme === 'sun' ? 'rgba(82, 196, 26, 0.12)' : 'rgba(115, 209, 61, 0.15)';
@@ -2487,16 +2487,18 @@ const SortableQuestionItem = memo(
               const baseBorderMoon = 'rgba(138, 122, 255, 0.15)';
               return (
                 <>
-                  <Typography.Text style={{ 
-                    fontSize: '15px', 
-                    fontWeight: 350,
-                    marginBottom: '12px',
-                    display: 'block',
-                    lineHeight: '1.8',
-                    color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)'
-                  }}>
-                    {questionText}
-                  </Typography.Text>
+                  <div 
+                    className="question-text-content"
+                    style={{ 
+                      fontSize: '15px', 
+                      fontWeight: 350,
+                      marginBottom: '12px',
+                      display: 'block',
+                      lineHeight: '1.8',
+                      color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)'
+                    }}
+                    dangerouslySetInnerHTML={{ __html: questionText }}
+                  />
 
                   <div className="question-options" style={{ 
                     display: 'grid', 
@@ -2550,14 +2552,17 @@ const SortableQuestionItem = memo(
                           }}>
                             {key}.
                           </span>
-                          <Typography.Text style={{ 
-                            fontSize: '14px',
-                            color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)',
-                            fontWeight: '350',
-                            flex: 1
-                          }}>
-                            {toPlain(opt.text)}
-                          </Typography.Text>
+                          <span 
+                            className="option-text"
+                            style={{ 
+                              fontSize: '14px',
+                              color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)',
+                              fontWeight: '350',
+                              flex: 1,
+                              lineHeight: '1.6'
+                            }}
+                            dangerouslySetInnerHTML={{ __html: opt.text || '' }}
+                          />
                           {isCorrect && (
                             <span style={{
                               position: 'absolute',
@@ -2578,8 +2583,7 @@ const SortableQuestionItem = memo(
             })()
           ) : (question.type === 'TRUE_OR_FALSE' && challengeType === 'GV') ? (
             (() => {
-              const toPlain = (s) => (typeof s === 'string' ? s.replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g,' ').replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/\s+/g,' ').trim() : s);
-              const questionText = toPlain(question.question || question.questionText || '');
+              const questionText = question.question || question.questionText || '';
               const optionsFromApi = Array.isArray(question.options) && question.options.length > 0
                 ? question.options
                 : [
@@ -2594,16 +2598,18 @@ const SortableQuestionItem = memo(
               const baseBorderMoon = 'rgba(138, 122, 255, 0.15)';
               return (
                 <>
-                  <Typography.Text style={{ 
-                    fontSize: '15px', 
-                    fontWeight: 350,
-                    marginBottom: '12px',
-                    display: 'block',
-                    lineHeight: '1.8',
-                    color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)'
-                  }}>
-                    {questionText}
-                  </Typography.Text>
+                  <div 
+                    className="question-text-content"
+                    style={{ 
+                      fontSize: '15px', 
+                      fontWeight: 350,
+                      marginBottom: '12px',
+                      display: 'block',
+                      lineHeight: '1.8',
+                      color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)'
+                    }}
+                    dangerouslySetInnerHTML={{ __html: questionText }}
+                  />
 
                   <div className="question-options" style={{ 
                     display: 'grid', 
@@ -2657,14 +2663,17 @@ const SortableQuestionItem = memo(
                           }}>
                             {key}.
                           </span>
-                          <Typography.Text style={{ 
-                            fontSize: '14px',
-                            color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)',
-                            fontWeight: '350',
-                            flex: 1
-                          }}>
-                            {toPlain(opt.text)}
-                          </Typography.Text>
+                          <span 
+                            className="option-text"
+                            style={{ 
+                              fontSize: '14px',
+                              color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)',
+                              fontWeight: '350',
+                              flex: 1,
+                              lineHeight: '1.6'
+                            }}
+                            dangerouslySetInnerHTML={{ __html: opt.text || '' }}
+                          />
                           {isCorrect && (
                             <span style={{
                               position: 'absolute',
