@@ -5,6 +5,25 @@
   scrollbar-width: thin; /* Firefox */
   scrollbar-color: rgba(24, 144, 255, 0.4) transparent;
 }
+.question-settings-scroll {
+  /* Visible scrollbar for the Question Settings list */
+  scrollbar-width: thin; /* Firefox */
+  scrollbar-color: rgba(24, 144, 255, 0.6) transparent;
+}
+.ai-generate-wrapper .question-settings-scroll::-webkit-scrollbar {
+  width: 10px;
+}
+.ai-generate-wrapper .question-settings-scroll::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.05);
+  border-radius: 10px;
+}
+.ai-generate-wrapper .question-settings-scroll::-webkit-scrollbar-thumb {
+  background: rgba(113, 179, 253, 0.6);
+  border-radius: 10px;
+}
+.moon-ai-generate-wrapper .question-settings-scroll::-webkit-scrollbar-thumb {
+  background: rgba(138, 122, 255, 0.6);
+}
 .sun-ai-generate-wrapper .ai-preview-scroll {
   scrollbar-color: rgba(24, 144, 255, 0.6) transparent;
 }
