@@ -74,6 +74,16 @@ const MultipleChoiceModal = ({
 		tempDiv.innerHTML = html || '';
 		return (tempDiv.textContent || tempDiv.innerText || '').trim();
 	}, []);
+
+	// Allow image-only content detection
+	const containsImage = useCallback((html) => {
+		if (!html) return false;
+		return /<img\b/i.test(html);
+	}, []);
+
+	const hasContent = useCallback((html) => {
+		return !!getPlainText(html) || containsImage(html);
+	}, [getPlainText, containsImage]);
 	
 	// Sun theme colors (fixed)
 	const primaryColor = '#1890ff';
@@ -342,9 +352,9 @@ const MultipleChoiceModal = ({
 	}, []);
 
 	const handleSave = () => {
-		// Validate editor data
-		if (!editorData || !editorData.trim()) {
-			spaceToast.warning('Please enter the question text');
+		// Validate question content: allow text or image-only
+		if (!hasContent(editorData)) {
+			spaceToast.warning('Please add question content (text or image)');
 			return;
 		}
 
@@ -361,9 +371,9 @@ const MultipleChoiceModal = ({
 				return;
 			}
 
-			const hasEmptyOptions = options.some((opt) => !getPlainText(opt.text));
+			const hasEmptyOptions = options.some((opt) => !hasContent(opt.text));
 			if (hasEmptyOptions) {
-				spaceToast.warning('Please fill in all option texts');
+				spaceToast.warning('Please add content for all options (text or image)');
 				return;
 			}
 

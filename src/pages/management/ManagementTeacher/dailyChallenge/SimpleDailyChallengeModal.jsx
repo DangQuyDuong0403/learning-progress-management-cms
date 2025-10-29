@@ -18,11 +18,11 @@ const { TextArea } = Input;
 const { Option } = Select;
 
 const questionTypeOptions = [
-  { value: "GV", label: "Grammar & Vocabulary" },
-  { value: "RE", label: "Reading" },
-  { value: "LI", label: "Listening" },
-  { value: "WR", label: "Writing" },
-  { value: "SP", label: "Speaking" },
+  { value: "GV" },
+  { value: "RE" },
+  { value: "LI" },
+  { value: "WR" },
+  { value: "SP" },
 ];
 
 const SimpleDailyChallengeModal = ({
@@ -284,7 +284,7 @@ const SimpleDailyChallengeModal = ({
               
               {/* Display field */}
               <Form.Item
-                label={<span>Challenge Type</span>}>
+                label={<span>{t('dailyChallenge.questionType')}</span>}>
                 <div style={{
                   padding: '8px 12px',
                   background: theme === 'sun' 
@@ -307,7 +307,7 @@ const SimpleDailyChallengeModal = ({
               <Form.Item
                 label={
                   <span>
-                    Challenge Type
+                    {t('dailyChallenge.questionType')}
                     <span style={{ color: 'red', marginLeft: '4px' }}>*</span>
                   </span>
                 }
@@ -315,16 +315,16 @@ const SimpleDailyChallengeModal = ({
                 rules={[
                   {
                     required: true,
-                    message: 'Please select challenge type',
+                    message: t('dailyChallenge.questionTypeRequired'),
                   },
                 ]}>
                 <Select 
-                  placeholder="Select challenge type"
+                  placeholder={t('dailyChallenge.selectQuestionType')}
                   style={{ height: '40px' }}
                 >
                   {questionTypeOptions.map(option => (
                     <Option key={option.value} value={option.value}>
-                      {option.label}
+                      {t(`dailyChallenge.typeNames.${option.value}`)}
                     </Option>
                   ))}
                 </Select>

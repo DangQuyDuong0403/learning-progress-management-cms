@@ -73,6 +73,16 @@ const MultipleSelectModal = ({
 		return (tempDiv.textContent || tempDiv.innerText || '').trim();
 	}, []);
 
+	// Allow image-only content detection
+	const containsImage = useCallback((html) => {
+		if (!html) return false;
+		return /<img\b/i.test(html);
+	}, []);
+
+	const hasContent = useCallback((html) => {
+		return !!getPlainText(html) || containsImage(html);
+	}, [getPlainText, containsImage]);
+
 	
 	// Sun theme colors (fixed)
 	const primaryColor = '#1890ff';
@@ -271,7 +281,17 @@ const MultipleSelectModal = ({
 		}
 		editorChangeTimeoutRef.current = setTimeout(() => {
 			const data = editor.getData();
+			const plainText = getPlainText(data);
 			setEditorData(prevData => {
+				// Enforce max length of 600 characters for question (based on plain text)
+				if (plainText.length > 600) {
+					spaceToast.warning('Maximum 600 characters allowed for the question');
+					// Revert editor content to previous valid state
+					if (editor) {
+						editor.setData(prevData || '');
+					}
+					return prevData;
+				}
 				// Only update if data actually changed
 				if (prevData !== data) {
 					return data;
@@ -279,7 +299,7 @@ const MultipleSelectModal = ({
 				return prevData;
 			});
 		}, 150);
-	}, []);
+	}, [getPlainText]);
 
 	// Debounced option change handler
 	const optionChangeTimeoutRef = useRef({});
@@ -320,9 +340,9 @@ const MultipleSelectModal = ({
 	}, []);
 
 	const handleSave = () => {
-		// Validate editor data
-		if (!editorData || !editorData.trim()) {
-			spaceToast.warning('Please enter the question text');
+		// Validate question content: allow text or image-only
+		if (!hasContent(editorData)) {
+			spaceToast.warning('Please add question content (text or image)');
 			return;
 		}
 
@@ -343,9 +363,9 @@ const MultipleSelectModal = ({
 			spaceToast.warning('Multiple select questions should have more than one correct answer. Consider using Multiple Choice instead.');
 		}
 
-		const hasEmptyOptions = options.some((opt) => !getPlainText(opt.text));
+		const hasEmptyOptions = options.some((opt) => !hasContent(opt.text));
 		if (hasEmptyOptions) {
-			spaceToast.warning('Please fill in all option texts');
+			spaceToast.warning('Please add content for all options (text or image)');
 			return;
 		}
 
@@ -561,6 +581,17 @@ const MultipleSelectModal = ({
 										editorRef.current = editor;
 									}}
 								/>
+								{/* Character Counter for Question */}
+								<div style={{
+									marginTop: '6px',
+									marginRight: '16px',
+									textAlign: 'right',
+									fontSize: '12px',
+									fontWeight: 600,
+									color: getPlainText(editorData).length > 600 ? '#ff4d4f' : '#595959'
+								}}>
+									{`${Math.min(getPlainText(editorData).length, 600)}/600`}
+								</div>
 					</div>
 				</div>
 					</div>

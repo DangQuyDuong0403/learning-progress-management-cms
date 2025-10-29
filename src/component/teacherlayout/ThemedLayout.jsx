@@ -3,6 +3,8 @@ import { Layout as AntLayout } from 'antd';
 import { useTheme } from '../../contexts/ThemeContext';
 import ThemedHeader from '../ThemedHeader';
 import './ThemedLayout.css';
+import { OverlayScrollbarsComponent } from 'overlayscrollbars-react';
+import 'overlayscrollbars/overlayscrollbars.css';
 
 const { Content } = AntLayout;
 
@@ -56,19 +58,35 @@ const ThemedLayout = ({ children, customHeader, contentMargin = 20, contentPaddi
         <Content
           className={`themed-content ${theme}-content`}
           style={{
-            margin: `${contentMargin}px`,
-            padding: `${contentPadding}px`,
+            margin: `${contentMargin}px 0`,
+            padding: `${contentPadding}px 0`,
             borderRadius: '8px',
             minHeight: 'calc(100vh - 112px)',
             maxHeight: 'calc(100vh - 112px)',
-            overflow: 'auto',
+            overflow: 'hidden',
             width: '100%',
             maxWidth: '100%',
             position: 'relative',
+            paddingLeft: '40px',
             zIndex: 1
           }}
         >
-          {children}
+          <OverlayScrollbarsComponent
+            options={{
+              scrollbars: {
+                autoHide: 'leave',
+                autoHideSuspend: false,
+                theme: 'os-theme-custom',
+                visibility: 'auto',
+                pointers: ['mouse', 'touch', 'pen']
+              },
+              overflow: { x: 'hidden', y: 'scroll' }
+            }}
+            style={{ height: 'calc(100vh - 112px)', width: '100%' }}
+            className={`themed-sidebar-scrollbar themed-content-scrollbar ${theme}-content-scrollbar`}
+          >
+            {children}
+          </OverlayScrollbarsComponent>
           
           {/* Sun Theme Background Decorations - Only for Sun Theme */}
           {theme === 'sun' && (

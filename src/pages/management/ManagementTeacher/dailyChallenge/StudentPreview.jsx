@@ -1186,7 +1186,11 @@ const SectionQuestionItem = ({ question, index, theme }) => {
                             const oldIndex = Object.keys(currentState.droppedItems).find(i => currentState.droppedItems[i] === currentState.draggedItem && parseInt(i) !== index);
                             if (oldIndex !== undefined) delete newState.droppedItems[parseInt(oldIndex)];
                           } else {
-                            newState.sourceItems = currentState.sourceItems.filter(item => item !== currentState.draggedItem);
+                            // Remove only one occurrence from source to preserve duplicates
+                            const newSource = [...currentState.sourceItems];
+                            const rmIdx = newSource.findIndex(item => item === currentState.draggedItem);
+                            if (rmIdx !== -1) newSource.splice(rmIdx, 1);
+                            newState.sourceItems = newSource;
                           }
                           newState.droppedItems = { ...currentState.droppedItems, [index]: currentState.draggedItem };
                         }
@@ -1214,7 +1218,8 @@ const SectionQuestionItem = ({ question, index, theme }) => {
                       const handleDragEnd = () => {
                         if (currentState.draggedItem && !currentState.isDraggingFromSource && !currentState.wasDropped) {
                           const newState = { ...currentState };
-                          if (!newState.sourceItems.includes(currentState.draggedItem)) newState.sourceItems = [...newState.sourceItems, currentState.draggedItem];
+                          // Return item back to source without deduping to preserve duplicates
+                          newState.sourceItems = [...newState.sourceItems, currentState.draggedItem];
                           const oldIndex = Object.keys(currentState.droppedItems).find(i => currentState.droppedItems[i] === currentState.draggedItem);
                           if (oldIndex !== undefined) delete newState.droppedItems[oldIndex];
                           newState.draggedItem = null;
@@ -1321,7 +1326,8 @@ const SectionQuestionItem = ({ question, index, theme }) => {
                               e.preventDefault();
                               const newState = { ...currentState, wasDropped: true };
                               if (currentState.draggedItem && !currentState.isDraggingFromSource) {
-                                if (!newState.sourceItems.includes(currentState.draggedItem)) newState.sourceItems = [...newState.sourceItems, currentState.draggedItem];
+                                // Return item back to source without deduping to preserve duplicates
+                                newState.sourceItems = [...newState.sourceItems, currentState.draggedItem];
                                 const oldIndex = Object.keys(currentState.droppedItems).find(i => currentState.droppedItems[i] === currentState.draggedItem);
                                 if (oldIndex) delete newState.droppedItems[oldIndex];
                                 newState.draggedItem = null;
@@ -2237,8 +2243,12 @@ const ListeningSectionItem = ({ question, index, theme }) => {
                             if (!currentState.isDraggingFromSource) {
                               const oldIndex = Object.keys(currentState.droppedItems).find(i => currentState.droppedItems[i] === currentState.draggedItem && parseInt(i) !== index);
                               if (oldIndex !== undefined) delete newState.droppedItems[parseInt(oldIndex)];
-                            } else {
-                              newState.sourceItems = currentState.sourceItems.filter(item => item !== currentState.draggedItem);
+                          } else {
+                              // Remove only one occurrence from source to preserve duplicates
+                              const newSource = [...currentState.sourceItems];
+                              const rmIdx = newSource.findIndex(item => item === currentState.draggedItem);
+                              if (rmIdx !== -1) newSource.splice(rmIdx, 1);
+                              newState.sourceItems = newSource;
                             }
                             newState.droppedItems = { ...currentState.droppedItems, [index]: currentState.draggedItem };
                           }
@@ -2250,7 +2260,8 @@ const ListeningSectionItem = ({ question, index, theme }) => {
                         const handleDragEnd = () => {
                           if (currentState.draggedItem && !currentState.isDraggingFromSource && !currentState.wasDropped) {
                             const newState = { ...currentState };
-                            if (!newState.sourceItems.includes(currentState.draggedItem)) newState.sourceItems = [...newState.sourceItems, currentState.draggedItem];
+                            // Return item back to source without deduping to preserve duplicates
+                            newState.sourceItems = [...newState.sourceItems, currentState.draggedItem];
                             const oldIndex = Object.keys(currentState.droppedItems).find(i => currentState.droppedItems[i] === currentState.draggedItem);
                             if (oldIndex !== undefined) delete newState.droppedItems[oldIndex];
                             newState.draggedItem = null; newState.isDraggingFromSource = false; newState.dragOverIndex = null; newState.wasDropped = false;
@@ -2284,7 +2295,7 @@ const ListeningSectionItem = ({ question, index, theme }) => {
                         ))}
                         </div>
                       </div>
-                            <div onDrop={(e)=>{ e.preventDefault(); const newState={...currentState, wasDropped:true}; if(currentState.draggedItem && !currentState.isDraggingFromSource){ if(!newState.sourceItems.includes(currentState.draggedItem)) newState.sourceItems=[...newState.sourceItems, currentState.draggedItem]; const oldIndex=Object.keys(currentState.droppedItems).find(i=>currentState.droppedItems[i]===currentState.draggedItem); if(oldIndex){ delete newState.droppedItems[oldIndex]; } newState.draggedItem=null; newState.isDraggingFromSource=false; newState.dragOverIndex=null; setReorderStates(prev=>({ ...prev, [questionId]: newState })); } }} onDragOver={(e)=>{e.preventDefault();}} style={{ padding:'16px', background: theme==='sun'?'#ffffff':'rgba(255,255,255,0.03)', borderRadius:'8px', border:`1px solid ${theme==='sun'?'#e8e8e8':'rgba(255,255,255,0.1)'}` }}>
+                            <div onDrop={(e)=>{ e.preventDefault(); const newState={...currentState, wasDropped:true}; if(currentState.draggedItem && !currentState.isDraggingFromSource){ newState.sourceItems=[...newState.sourceItems, currentState.draggedItem]; const oldIndex=Object.keys(currentState.droppedItems).find(i=>currentState.droppedItems[i]===currentState.draggedItem); if(oldIndex){ delete newState.droppedItems[oldIndex]; } newState.draggedItem=null; newState.isDraggingFromSource=false; newState.dragOverIndex=null; setReorderStates(prev=>({ ...prev, [questionId]: newState })); } }} onDragOver={(e)=>{e.preventDefault();}} style={{ padding:'16px', background: theme==='sun'?'#ffffff':'rgba(255,255,255,0.03)', borderRadius:'8px', border:`1px solid ${theme==='sun'?'#e8e8e8':'rgba(255,255,255,0.1)'}` }}>
                               <div style={{ fontSize:'14px', fontWeight:350, marginBottom:'12px', color: theme==='sun'?'rgb(15,23,42)':'rgb(45,27,105)' }}>Drag these words to the slots above:</div>
                               <div style={{ display:'flex', flexWrap:'wrap', gap:'8px' }}>
                                 {currentState.sourceItems.map((item, idx) => (
@@ -4930,8 +4941,13 @@ const ReorderContainer = ({ theme, data }) => {
           });
         }
       } else {
-        // Remove from source if it was from source
-        setSourceItems(prev => prev.filter(item => item !== draggedItem));
+        // Remove only one occurrence from source to preserve duplicates
+        setSourceItems(prev => {
+          const arr = [...prev];
+          const idx = arr.findIndex(item => item === draggedItem);
+          if (idx !== -1) arr.splice(idx, 1);
+          return arr;
+        });
       }
       
       // Place the new item in the slot
@@ -4959,13 +4975,8 @@ const ReorderContainer = ({ theme, data }) => {
     // If we're dragging from a slot (not from source) and not dropped in a slot or source area,
     // return the item to source
     if (draggedItem && !isDraggingFromSource && !wasDropped) {
-      setSourceItems(prev => {
-        // Only add if not already in source to avoid duplicates
-        if (!prev.includes(draggedItem)) {
-          return [...prev, draggedItem];
-        }
-        return prev;
-      });
+      // Return item back to source without deduping to preserve duplicates
+      setSourceItems(prev => [...prev, draggedItem]);
       
       // Remove from the slot
       const oldIndex = Object.keys(droppedItems).find(i => droppedItems[i] === draggedItem);
@@ -5156,12 +5167,8 @@ const ReorderContainer = ({ theme, data }) => {
             setWasDropped(true);
             // If dropping from slot back to source
             if (draggedItem && !isDraggingFromSource) {
-              setSourceItems(prev => {
-                if (!prev.includes(draggedItem)) {
-                  return [...prev, draggedItem];
-                }
-                return prev;
-              });
+              // Return item back to source without deduping to preserve duplicates
+              setSourceItems(prev => [...prev, draggedItem]);
               // Remove from slot
               const oldIndex = Object.keys(droppedItems).find(i => droppedItems[i] === draggedItem);
               if (oldIndex) {

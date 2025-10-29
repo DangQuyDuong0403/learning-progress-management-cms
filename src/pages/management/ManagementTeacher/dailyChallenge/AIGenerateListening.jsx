@@ -365,7 +365,7 @@ const AIGenerateListening = () => {
 
   return (
     <ThemedLayout customHeader={customHeader} contentMargin={10}>
-      <div className={`ai-generate-wrapper ${theme}-ai-generate-wrapper`}>
+      <div className={`ai-generate-wrapper allow-motion ${theme}-ai-generate-wrapper`}>
         <div style={{ padding: '24px', maxWidth: '1500px', margin: '0 auto' }}>
           {/* Hierarchy info bar (same as Reading page) */}
           <div
@@ -529,7 +529,7 @@ const AIGenerateListening = () => {
                         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                           <CloudUploadOutlined style={{ fontSize: 24, color: '#000000' }} />
                           <Typography.Text strong style={{ color: theme === 'sun' ? '#1E40AF' : '#8377A0' }}>
-                            Upload Question File
+                            Generate question from file
                           </Typography.Text>
                         </div>
                       </Card>
@@ -545,7 +545,7 @@ const AIGenerateListening = () => {
                         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                           <EditOutlined style={{ fontSize: 24, color: '#000000' }} />
                           <Typography.Text strong style={{ color: theme === 'sun' ? '#1E40AF' : '#8377A0' }}>
-                            Create Question Manually
+                            Generate question manually
                           </Typography.Text>
                         </div>
                       </Card>
@@ -686,7 +686,7 @@ const AIGenerateListening = () => {
           </Card>
 
           {isGenerating && (
-            <Card className={`loading-card ${theme}-loading-card`} style={{ borderRadius: '16px', border: theme === 'sun' ? '2px solid rgba(113, 179, 253, 0.25)' : '2px solid rgba(138, 122, 255, 0.2)', boxShadow: theme === 'sun' ? '0 4px 16px rgba(113, 179, 253, 0.1)' : '0 4px 16px rgba(138, 122, 255, 0.12)', background: theme === 'sun' ? 'linear-gradient(135deg, rgba(255, 255, 255, 1) 0%, rgba(240, 249, 255, 0.95) 100%)' : 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(244, 240, 255, 0.95) 100%)', marginTop: '24px', marginBottom: '24px', backdropFilter: 'blur(10px)', animation: 'fadeInUp 0.5s ease-out' }}>
+            <Card className={`loading-card allow-motion ${theme}-loading-card`} style={{ borderRadius: '16px', border: theme === 'sun' ? '2px solid rgba(113, 179, 253, 0.25)' : '2px solid rgba(138, 92, 255, 0.2)', boxShadow: theme === 'sun' ? '0 4px 16px rgba(113, 179, 253, 0.1)' : '0 4px 16px rgba(138, 122, 255, 0.12)', background: theme === 'sun' ? 'linear-gradient(135deg, rgba(255, 255, 255, 1) 0%, rgba(240, 249, 255, 0.95) 100%)' : 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(244, 240, 255, 0.95) 100%)', marginTop: '24px', marginBottom: '24px', backdropFilter: 'blur(10px)', animation: 'fadeInUp 0.5s ease-out' }}>
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '40px 20px', textAlign: 'center' }}>
                 <div style={{ position: 'relative', width: '120px', height: '120px', marginBottom: '24px' }}>
                   <div style={{ position: 'absolute', top: 0, left: 0, width: '120px', height: '120px', border: `3px solid ${primaryColor}20`, borderRadius: '50%', borderTop: `3px solid ${primaryColor}`, animation: 'spin 2s linear infinite' }} />

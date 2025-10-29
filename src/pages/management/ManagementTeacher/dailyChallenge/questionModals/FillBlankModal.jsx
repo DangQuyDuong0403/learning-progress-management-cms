@@ -56,6 +56,8 @@ const throttle = (func, limit) => {
 const FillBlankModal = ({ visible, onCancel, onSave, questionData = null }) => {
 	const [blanks, setBlanksState] = useState([]);
 	const [points, setPoints] = useState(1);
+	const [questionCharCount, setQuestionCharCount] = useState(0);
+	const [editorVersion, setEditorVersion] = useState(0);
 	const [selectedImage, setSelectedImage] = useState(null);
 	const [tableDropdownOpen, setTableDropdownOpen] = useState(false);
 	const [hoveredCell, setHoveredCell] = useState({ row: 0, col: 0 });
@@ -66,6 +68,7 @@ const FillBlankModal = ({ visible, onCancel, onSave, questionData = null }) => {
 	const savedRangeRef = useRef(null);
 	const blanksRef = useRef([]);
 	const deletionInProgressRef = useRef(new Set());
+	const lastValidHtmlRef = useRef('');
 
 	// Custom setBlanks that also updates ref
 	const setBlanks = useCallback((newBlanks) => {
@@ -127,28 +130,36 @@ const FillBlankModal = ({ visible, onCancel, onSave, questionData = null }) => {
 							}
 						}
 
-						// Add blank
+						// Add blank (respect max 10 blanks)
 						const positionId = match[1];
 						const blankData = contentData.find(
 							(item) => item.positionId === positionId
 						);
-						const blankId = `blank-${Date.now()}-${positionId}`;
+						if (blanksData.length < 10) {
+							const blankId = `blank-${Date.now()}-${positionId}`;
+							const blankItem = {
+								type: 'blank',
+								id: blankId,
+								positionId: positionId,
+								answer: blankData?.value || '',
+								color: blankColors[blanksData.length % blankColors.length],
+							};
+							result.push(blankItem);
 
-						const blankItem = {
-							type: 'blank',
-							id: blankId,
-							positionId: positionId,
-							answer: blankData?.value || '',
-							color: blankColors[blanksData.length % blankColors.length],
-						};
-						result.push(blankItem);
-
-						blanksData.push({
-							id: blankId,
-							positionId: positionId,
-							answer: blankData?.value || '',
-							color: blankColors[blanksData.length % blankColors.length],
-						});
+							blanksData.push({
+								id: blankId,
+								positionId: positionId,
+								answer: blankData?.value || '',
+								color: blankColors[blanksData.length % blankColors.length],
+							});
+						} else {
+							// Max blanks reached: keep placeholder text as-is
+							result.push({
+								type: 'text',
+								content: match[0],
+								id: `text-${Date.now()}-${lastIndex}`,
+							});
+						}
 
 						lastIndex = regex.lastIndex;
 					}
@@ -241,22 +252,24 @@ const FillBlankModal = ({ visible, onCancel, onSave, questionData = null }) => {
 			setBlanks(blanksData);
 			editorContentRef.current = parsed;
 			blanksRef.current = blanksData;
+			// Bump version to trigger editor DOM (re)build after parsing completes
+			setEditorVersion((v) => v + 1);
 		},
 		[blankColors, setBlanks]
 	);
 
 	// Initialize editor content from questionData
 	useEffect(() => {
-		if (visible) {
-			if (questionData?.questionText && questionData?.content?.data) {
-				// Parse existing question
-				parseQuestionText(questionData.questionText, questionData.content.data);
-			} else {
-				// New question
-				setBlanks([]);
-			}
-			setPoints(questionData?.points || 1);
-		}
+    if (visible) {
+        if (questionData?.questionText) {
+            // Parse existing question (allow empty content.data)
+            parseQuestionText(questionData.questionText, questionData?.content?.data || []);
+        } else {
+            // New question
+            setBlanks([]);
+        }
+        setPoints(questionData?.points || 1);
+    }
 	}, [questionData, visible, parseQuestionText, setBlanks]);
 
 	// Generate position ID
@@ -1099,7 +1112,12 @@ const FillBlankModal = ({ visible, onCancel, onSave, questionData = null }) => {
 					patternIndex = bracketIndex;
 				}
 
-				if (patternIndex !== -1) {
+					if (patternIndex !== -1) {
+						// Respect maximum of 10 blanks
+						if (blanksRef.current.length >= 10) {
+							spaceToast.warning('Maximum 10 blanks allowed');
+							break;
+						}
 					// Found a pattern in this text node
 
 					// Create blank
@@ -1232,6 +1250,22 @@ const FillBlankModal = ({ visible, onCancel, onSave, questionData = null }) => {
 	const handleEditorInput = useCallback(
 		(e) => {
 			const element = e.currentTarget;
+			// Enforce max 1000 characters (plain text length)
+			const plainText = (element.textContent || '').trim();
+			if (plainText.length > 1000) {
+				spaceToast.warning('Maximum 1000 characters allowed for the question');
+				// Revert to last valid HTML snapshot
+				if (lastValidHtmlRef.current !== '' && editorRef.current) {
+					editorRef.current.innerHTML = lastValidHtmlRef.current;
+				}
+				setQuestionCharCount(Math.min(plainText.length, 1000));
+				// Update popup after revert
+				updatePopupPosition();
+				return;
+			}
+			// Update last valid HTML snapshot and counter
+			lastValidHtmlRef.current = editorRef.current ? editorRef.current.innerHTML : '';
+			setQuestionCharCount(plainText.length);
 
 			// Check if any blanks were removed from DOM (throttled)
 			checkRemovedBlanksThrottled(element);
@@ -1248,6 +1282,13 @@ const FillBlankModal = ({ visible, onCancel, onSave, questionData = null }) => {
 	// Insert blank at saved cursor position
 	const insertBlankAtCursor = useCallback(() => {
 		if (!editorRef.current || !savedRangeRef.current) return;
+
+		// Limit to maximum of 10 blanks
+		if (blanksRef.current.length >= 10) {
+			spaceToast.warning('Maximum 10 blanks allowed');
+			setShowBlankPopup(false);
+			return;
+		}
 
 		// Don't insert blank if cursor is inside another blank
 		if (isCursorInsideBlank()) {
@@ -1587,7 +1628,7 @@ const FillBlankModal = ({ visible, onCancel, onSave, questionData = null }) => {
 		const currentBlanks = blanksRef.current;
 
 		if (currentEditorContent.length === 0) {
-			editorInitializedRef.current = true;
+			// Wait for parsed content to arrive (parseQuestionText will bump editorVersion)
 			return;
 		}
 
@@ -1626,8 +1667,21 @@ const FillBlankModal = ({ visible, onCancel, onSave, questionData = null }) => {
 			updateBlankNumbers();
 		});
 
+		// Initialize last valid HTML and character count
+		lastValidHtmlRef.current = editorRef.current ? editorRef.current.innerHTML : '';
+		const initialPlain = editorRef.current ? (editorRef.current.textContent || '').trim() : '';
+		setQuestionCharCount(initialPlain.length);
+
 		editorInitializedRef.current = true;
 	}, [visible, createBlankElement, updateBlankNumbers, blankColors]);
+
+// Re-run initialization when parsed content arrives
+useEffect(() => {
+	if (!visible) return;
+	// Allow re-initialization after parsing
+	editorInitializedRef.current = false;
+	// Trigger init effect above
+}, [editorVersion, visible]);
 
 	// Get blanks ordered by DOM position
 	const orderedBlanks = useMemo(() => {
@@ -2266,6 +2320,19 @@ const FillBlankModal = ({ visible, onCancel, onSave, questionData = null }) => {
 							}}
 							data-placeholder='Type your question here... The + Blank button will follow your cursor'
 						/>
+
+						{/* Character Counter for Question (1000 max) */}
+						<div
+							style={{
+								marginTop: '6px',
+								marginRight: '16px',
+								textAlign: 'right',
+								fontSize: '12px',
+								fontWeight: 600,
+								color: questionCharCount >= 1000 ? '#ff4d4f' : '#595959',
+							}}>
+							{`${Math.min(questionCharCount, 1000)}/1000`}
+						</div>
 
 						{/* Blank Popup */}
 						{showBlankPopup && (

@@ -97,7 +97,7 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
       }
       
       // Enforce 50-character limit like DragDropModal
-      blankAnswer = (blankAnswer || '').slice(0, 50);
+      blankAnswer = (blankAnswer || '').slice(0, 100);
 
       console.log('ReorderModal - Processing blank:', {
         positionId,
@@ -163,7 +163,7 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
     if (backendOptions && backendOptions.length > 0) {
       const words = backendOptions.map((option, index) => ({
         id: `word-${option.key || index}`,
-        text: (option.text || '').slice(0, 50),
+        text: (option.text || '').slice(0, 100),
         originalIndex: option.isCorrect ? sortedBlanks.findIndex(b => b.answer === option.text) : -1,
         currentIndex: index,
         color: option.isCorrect ? blankColors[index % blankColors.length] : '#999999',
@@ -190,7 +190,7 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
       .filter(blank => blank.answer && blank.answer.trim())
       .map((blank, index) => ({
         id: blank.id,
-        text: (blank.answer || '').slice(0, 50),
+        text: (blank.answer || '').slice(0, 100),
         originalIndex: index, // Correct original position in sentence
         currentIndex: index,  // Will be updated after shuffle
         color: blank.color,
@@ -227,7 +227,7 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
 
   // Handle blank answer change (moved earlier so creators can use it)
   const handleBlankAnswerChange = useCallback((blankId, value) => {
-    const limitedValue = (value || '').slice(0, 50);
+    const limitedValue = (value || '').slice(0, 100);
     setBlanks(prev => {
       const newBlanks = prev.map(blank => 
         blank.id === blankId ? { ...blank, answer: limitedValue } : blank
@@ -419,7 +419,7 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
     const input = document.createElement('input');
     input.type = 'text';
     input.placeholder = 'type answer...';
-    input.value = (blank.answer || '').slice(0, 50);
+    input.value = (blank.answer || '').slice(0, 100);
     input.className = 'blank-input';
     input.style.cssText = `
       border: none;
@@ -441,7 +441,7 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
     // Character counter (hidden by default in compact mode)
     const counter = document.createElement('span');
     counter.className = 'blank-char-counter';
-    counter.textContent = `${input.value.length}/50`;
+    counter.textContent = `${input.value.length}/100`;
     counter.style.cssText = `
       font-size: 12px;
       color: #999;
@@ -451,13 +451,13 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
     // Optimize input handling with debounce for state update
     let inputTimeout;
     input.addEventListener('input', (e) => {
-      const newValue = (e.target.value || '').slice(0, 50);
+      const newValue = (e.target.value || '').slice(0, 100);
       if (e.target.value !== newValue) {
         e.target.value = newValue;
       }
       // Update answer text in real-time (instant visual feedback)
       answerText.textContent = newValue || '';
-      counter.textContent = `${newValue.length}/50`;
+      counter.textContent = `${newValue.length}/100`;
       
       // Debounce state update to reduce re-renders
       clearTimeout(inputTimeout);
@@ -590,17 +590,26 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
     return span;
   }, [handleBlankAnswerChange, handleDeleteBlankElement, updatePopupPosition]);
 
-  // Initialize from questionData
+  // Initialize from questionData (robustly waits for editor to mount)
   useEffect(() => {
-    if (visible && questionData?.questionText && editorRef.current) {
+    if (!visible || !questionData?.questionText) return;
+
+    let cancelled = false;
+    const attemptInit = () => {
+      if (cancelled) return;
+      if (!editorRef.current) {
+        requestAnimationFrame(attemptInit);
+        return;
+      }
+
       console.log('ReorderModal - Initializing with questionData:', questionData);
       console.log('ReorderModal - questionData.content?.data:', questionData?.content?.data);
       console.log('ReorderModal - questionData.options:', questionData?.options);
       console.log('ReorderModal - questionData.incorrectOptions:', questionData?.incorrectOptions);
-      
+
       // Parse existing question - pass content.data and options
       const { parsed: parsedContent, blanksData } = parseQuestionText(
-        questionData.questionText, 
+        questionData.questionText,
         questionData.content?.data || [],
         questionData.options || []
       );
@@ -610,15 +619,15 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
       if (blanksData.length > MAX_ITEMS) {
         spaceToast.warning(`Maximum ${MAX_ITEMS} items allowed. Extra items were ignored.`);
       }
-      
+
       // Set blanks state
       setBlanks(limitedBlanksData);
       console.log('ReorderModal - State updated with parsed data, blanksData length:', limitedBlanksData.length);
-      
+
       // Build editor DOM from parsed content
       editorRef.current.innerHTML = '';
       let blankCounter = 0;
-      parsedContent.forEach((item, index) => {
+      parsedContent.forEach((item) => {
         console.log('ReorderModal - Processing item:', item);
         if (item.type === 'text') {
           if (item.content) {
@@ -637,12 +646,12 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
           }
         }
       });
-      
+
       // Update blank numbers after populating editor
       requestAnimationFrame(() => {
         updateBlankNumbers();
       });
-      
+
       // Handle shuffledWords from backend
       if (questionData.shuffledWords && questionData.shuffledWords.length > 0) {
         setShuffledWords(questionData.shuffledWords);
@@ -651,10 +660,13 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
         const finalWords = createShuffledWords(limitedBlanksData, questionData.options);
         setShuffledWords(finalWords);
       }
-    }
-    if (visible) {
+
+      // Points
       setPoints(questionData?.points || 1);
-    }
+    };
+
+    attemptInit();
+    return () => { cancelled = true; };
   }, [questionData, visible, parseQuestionText, createBlankElement, updateBlankNumbers, createShuffledWords]);
 
   const handlePaste = useCallback((e) => {

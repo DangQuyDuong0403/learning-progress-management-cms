@@ -46,6 +46,16 @@ const TrueFalseModal = ({ visible, onCancel, onSave, questionData = null, saving
 		return (tmp.textContent || tmp.innerText || '').trim();
 	}, []);
 
+	// Allow image-only content detection for question
+	const containsImage = useCallback((html) => {
+		if (!html) return false;
+		return /<img\b/i.test(html);
+	}, []);
+
+	const hasContent = useCallback((html) => {
+		return !!stripHtml(html) || containsImage(html);
+	}, [stripHtml, containsImage]);
+
 	// Sun theme colors (fixed)
 	const primaryColor = '#1890ff';
 
@@ -151,7 +161,7 @@ const TrueFalseModal = ({ visible, onCancel, onSave, questionData = null, saving
 				}
 			}, 0);
 		}
-	}, [questionData, visible]);
+	}, [questionData, visible, stripHtml]);
 
 	// Debounced editor change handler for main question
 	const editorChangeTimeoutRef = useRef(null);
@@ -161,7 +171,16 @@ const TrueFalseModal = ({ visible, onCancel, onSave, questionData = null, saving
 		}
 		editorChangeTimeoutRef.current = setTimeout(() => {
 			const data = editor.getData();
+			const plainText = stripHtml(data);
 			setEditorData(prevData => {
+				// Enforce max length of 600 characters (based on plain text)
+				if (plainText.length > 600) {
+					spaceToast.warning('Maximum 600 characters allowed for the question');
+					if (editor) {
+						editor.setData(prevData || '');
+					}
+					return prevData;
+				}
 				// Only update if data actually changed
 				if (prevData !== data) {
 					return data;
@@ -169,7 +188,7 @@ const TrueFalseModal = ({ visible, onCancel, onSave, questionData = null, saving
 				return prevData;
 			});
 		}, 150);
-	}, []);
+	}, [stripHtml]);
 
 	// Cleanup timeouts on unmount
 	useEffect(() => {
@@ -182,9 +201,9 @@ const TrueFalseModal = ({ visible, onCancel, onSave, questionData = null, saving
 	}, []);
 
 	const handleSave = () => {
-		// Validate editor data
-		if (!editorData || !editorData.trim()) {
-			spaceToast.warning('Please enter the question text');
+		// Validate question content: allow text or image-only
+		if (!hasContent(editorData)) {
+			spaceToast.warning('Please add question content (text or image)');
 			return;
 		}
 
@@ -386,6 +405,17 @@ const TrueFalseModal = ({ visible, onCancel, onSave, questionData = null, saving
 										editorRef.current = editor;
 									}}
 								/>
+							{/* Character Counter for Question */}
+							<div style={{
+								marginTop: '6px',
+								marginRight: '16px',
+								textAlign: 'right',
+								fontSize: '12px',
+								fontWeight: 600,
+								color: stripHtml(editorData).length > 600 ? '#ff4d4f' : '#595959'
+							}}>
+								{`${Math.min(stripHtml(editorData).length, 600)}/600`}
+							</div>
 							</div>
 						</div>
 					</div>

@@ -537,17 +537,24 @@
   }
 }
 
-/* Reduced motion support */
+/* Reduced motion support
+   Note: allow animations when parent has .allow-motion (for critical spinners) */
 @media (prefers-reduced-motion: reduce) {
-  .ai-generate-wrapper * {
+  .ai-generate-wrapper:not(.allow-motion) * {
     animation: none !important;
     transition: none !important;
   }
-  
-  .loading-card,
-  .preview-card {
+  .ai-generate-wrapper:not(.allow-motion) .loading-card,
+  .ai-generate-wrapper:not(.allow-motion) .preview-card {
     animation: none !important;
   }
+}
+
+/* Ensure core spinners still animate inside allow-motion containers */
+.ai-generate-wrapper.allow-motion .ant-btn-loading-icon,
+.ai-generate-wrapper.allow-motion .ant-spin-dot,
+.ai-generate-wrapper.allow-motion .spin {
+  animation: spin 1s linear infinite !important;
 }
 
 /* Normalize CKEditor HTML output inside preview */

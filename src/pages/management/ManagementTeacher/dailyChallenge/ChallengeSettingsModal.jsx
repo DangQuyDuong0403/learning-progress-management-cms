@@ -419,10 +419,11 @@ const ChallengeSettingsModal = ({
                   ({ getFieldValue }) => ({
                     validator(_, value) {
                       const startDate = getFieldValue('startDate');
-                      if (!value || !startDate || value.isAfter(startDate)) {
+                      // Valid when endDate is same or after startDate
+                      if (!value || !startDate || !value.isBefore(startDate)) {
                         return Promise.resolve();
                       }
-                      return Promise.reject(new Error(t('dailyChallenge.endDateMustBeAfterStartDate') || 'End date must be after start date!'));
+                      return Promise.reject(new Error(t('dailyChallenge.endDateMustBeAfterStartDate') || 'End date must be on or after start date!'));
                     },
                   }),
                 ]}
