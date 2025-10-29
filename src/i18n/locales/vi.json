@@ -1792,6 +1792,7 @@
     "startDateRequired": "Ngày bắt đầu là bắt buộc",
     "endDateRequired": "Ngày kết thúc là bắt buộc",
     "DRAFT": "Bản nháp",
+    "endDateMustBeAfterStartDate": "Ngày kết thúc phải sau ngày bắt đầu",
     "PUBLISHED": "Đã xuất bản",
     "mode": "Chế Độ",
     "configuration": "Cấu Hình",

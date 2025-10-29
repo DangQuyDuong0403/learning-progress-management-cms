@@ -1800,6 +1800,7 @@
     "type": "Type",
     "startDateRequired": "Start date is required",
     "endDateRequired": "End date is required",
+    "endDateMustBeAfterStartDate": "End date must be after start date",
     "no": "No",
     "DRAFT": "Draft",
     "PUBLISHED": "Published",

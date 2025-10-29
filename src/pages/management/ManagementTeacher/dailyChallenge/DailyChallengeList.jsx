@@ -52,6 +52,7 @@ const DailyChallengeList = ({ readOnly = false }) => {
   const { theme } = useTheme();
   const { user } = useSelector((state) => state.auth);
   const { enterDailyChallengeMenu, exitDailyChallengeMenu, updateChallengeCount } = useDailyChallengeMenu();
+  const isTeachingAssistant = (user?.role || '').toUpperCase() === 'TEACHING_ASSISTANT';
   
   // Set page title based on whether it's class-specific or general
   usePageTitle(classId ? `Class ${classId} Daily Challenges` : 'Daily Challenge Management');
@@ -856,7 +857,7 @@ const DailyChallengeList = ({ readOnly = false }) => {
                 <span className="lesson-text" style={{ transition: 'opacity 0.3s ease' }}>
                   {text}
                 </span>
-                {!readOnly && (
+                {!readOnly && !isTeachingAssistant && (
                   <Button
                     className="lesson-create-btn"
                     icon={<PlusOutlined />}
@@ -1107,7 +1108,7 @@ const DailyChallengeList = ({ readOnly = false }) => {
               title={t('dailyChallenge.viewDetails')}
               className="action-btn-view"
             />
-            {!readOnly && (
+            {!readOnly && !isTeachingAssistant && (
               <>
                 <Button
                   type="text"
@@ -1253,7 +1254,7 @@ const DailyChallengeList = ({ readOnly = false }) => {
               </div>
             )}
           </div>
-          {!readOnly && (
+          {!readOnly && !isTeachingAssistant && (
             <div className="action-buttons" style={{ marginLeft: 'auto' }}>
               <Button 
                 icon={<PlusOutlined />}
