@@ -1782,6 +1782,7 @@
     "no": "Không"
   },
   "dailyChallenge": {
+    "max50Questions": "Tối đa 50 câu hỏi cho một lần tạo",
     "duplicateTypesNotAllowed": "Mỗi loại câu hỏi chỉ được chọn một lần",
     "dailyChallengeManagement": "Quản lý Daily Challenge",
     "createChallenge": "Tạo Challenge",

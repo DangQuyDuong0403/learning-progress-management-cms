@@ -82,6 +82,28 @@ const dailyChallengeApi = {
 		});
 	},
 
+	// Parse questions from uploaded file with optional description prompt
+	parseQuestionsFromFile: async (file, description = '') => {
+		// Build absolute URL to /api/openai/parse-questions-from-file
+		const base = (typeof axiosClient?.defaults?.baseURL === 'string') ? axiosClient.defaults.baseURL : '';
+		const baseApi = base.includes('/api/v1')
+			? base.replace('/api/v1', '/api')
+			: (base.endsWith('/api') ? base : (base.replace(/\/$/, '') + '/api'));
+		const absoluteUrl = `${baseApi}/openai/parse-questions-from-file` + (description && description.trim() ? `?description=${encodeURIComponent(description.trim())}` : '');
+		console.log('ParseQuestionsFromFile API - URL:', absoluteUrl);
+		console.log('ParseQuestionsFromFile API - FileName:', file?.name, 'Description:', description);
+
+		const formData = new FormData();
+		if (file) formData.append('file', file);
+
+		return axiosClient.post(absoluteUrl, formData, {
+			headers: {
+				'Content-Type': 'multipart/form-data',
+				'accept': '*/*',
+			},
+		});
+	},
+
 	// Lấy tất cả daily challenges của teacher (không theo class cụ thể)
 	getAllDailyChallenges: (params = {}) => {
 		const queryParams = new URLSearchParams();
@@ -115,6 +137,17 @@ const dailyChallengeApi = {
 		const url = `/daily-challenges/${id}`;
 		console.log('GetDailyChallengeById API - URL:', url);
 		
+		return axiosClient.get(url, {
+			headers: {
+				'accept': '*/*',
+			}
+		});
+	},
+
+	// Lấy thông tin phân cấp (level/chapter/lesson) của daily challenge
+	getChallengeHierarchy: (id) => {
+		const url = `/daily-challenges/${id}/hierarchy`;
+		console.log('GetChallengeHierarchy API - URL:', url);
 		return axiosClient.get(url, {
 			headers: {
 				'accept': '*/*',
