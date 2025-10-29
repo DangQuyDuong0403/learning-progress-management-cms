@@ -60,6 +60,7 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 	const [blanks, setBlanks] = useState([]);
 	const [incorrectOptions, setIncorrectOptions] = useState([]);
 	const [points, setPoints] = useState(1);
+	const [questionCharCount, setQuestionCharCount] = useState(0);
 	const [selectedImage, setSelectedImage] = useState(null);
 	const [tableDropdownOpen, setTableDropdownOpen] = useState(false);
 	const [hoveredCell, setHoveredCell] = useState({ row: 0, col: 0 });
@@ -69,6 +70,7 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 	const fileInputRef = useRef(null);
 	const savedRangeRef = useRef(null);
 	const deletionInProgressRef = useRef(new Set());
+	const lastValidHtmlRef = useRef('');
 
 	// Limit for incorrect options
 	const MAX_INCORRECT_OPTIONS = 10;
@@ -811,7 +813,7 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 
 	// Handle blank answer change
 	const handleBlankAnswerChange = useCallback((blankId, value) => {
-		const limitedValue = (value ?? '').slice(0, 50);
+		const limitedValue = (value ?? '').slice(0, 200);
 		setBlanks((prev) =>
 			prev.map((blank) =>
 				blank.id === blankId ? { ...blank, answer: limitedValue } : blank
@@ -827,7 +829,7 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 				const chipAnswer = editorRef.current.querySelector(
 					`[data-blank-id="${b.id}"] .blank-answer-text`
 				);
-				const limited = (b.answer || '').slice(0, 50);
+				const limited = (b.answer || '').slice(0, 200);
 				if (chipAnswer && chipAnswer.textContent !== limited) {
 					chipAnswer.textContent = limited;
 				}
@@ -841,7 +843,7 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 					`[data-blank-id="${b.id}"] .blank-char-counter`
 				);
 				if (chipCounter) {
-					chipCounter.textContent = `${limited.length}/50`;
+					chipCounter.textContent = `${limited.length}/200`;
 				}
 			});
 		} catch (e) {
@@ -974,14 +976,14 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 		white-space: nowrap;
 		vertical-align: middle;
 	`;
-			answerText.textContent = (blank.answer || '').slice(0, 50);
+			answerText.textContent = (blank.answer || '').slice(0, 200);
 
 			// Input field (hidden by default in compact mode)
 			const input = document.createElement('input');
 			input.type = 'text';
 			input.placeholder = 'type answer...';
-			input.value = (blank.answer || '').slice(0, 50);
-			input.maxLength = 100;
+			input.value = (blank.answer || '').slice(0, 200);
+			input.maxLength = 200;
 			input.className = 'blank-input';
 			input.style.cssText = `
 			border: none;
@@ -1002,7 +1004,7 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 			// Character counter (hidden by default in compact mode)
 			const counter = document.createElement('span');
 			counter.className = 'blank-char-counter';
-			counter.textContent = `${input.value.length}/100`;
+			counter.textContent = `${input.value.length}/200`;
 			counter.style.cssText = `
 			font-size: 12px;
 			color: #999;
@@ -1017,7 +1019,7 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 			// Optimize input handling with debounce for state update
 			let inputTimeout;
 			input.addEventListener('input', (e) => {
-				const newValue = (e.target.value || '').slice(0, 50);
+				const newValue = (e.target.value || '').slice(0, 200);
 				if (e.target.value !== newValue) {
 					e.target.value = newValue;
 				}
@@ -1313,6 +1315,21 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 	const handleEditorInput = useCallback(
 		(e) => {
 			const element = e.currentTarget;
+			// Enforce max 600 characters (plain text length)
+			const plainText = (element.textContent || '').trim();
+			if (plainText.length > 600) {
+				spaceToast.warning('Maximum 600 characters allowed for the question');
+				// Revert to last valid HTML snapshot
+				if (lastValidHtmlRef.current !== '' && editorRef.current) {
+					editorRef.current.innerHTML = lastValidHtmlRef.current;
+				}
+				setQuestionCharCount(Math.min(plainText.length, 600));
+				updatePopupPosition();
+				return;
+			}
+			// Update last valid HTML snapshot and counter
+			lastValidHtmlRef.current = editorRef.current ? editorRef.current.innerHTML : '';
+			setQuestionCharCount(plainText.length);
 
 			// Check if any blanks were removed from DOM (throttled)
 			checkRemovedBlanksThrottled(element);
@@ -1467,7 +1484,7 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 
 	// Change incorrect option text
 	const handleIncorrectOptionChange = (id, value) => {
-		const limited = (value ?? '').slice(0, 50);
+		const limited = (value ?? '').slice(0, 200);
 		setIncorrectOptions((prev) =>
 			prev.map((opt) => (opt.id === id ? { ...opt, text: limited } : opt))
 		);
@@ -1738,6 +1755,10 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 		});
 
 		editorInitializedRef.current = true;
+		// Initialize last valid HTML and character count
+		lastValidHtmlRef.current = editorRef.current ? editorRef.current.innerHTML : '';
+		const initialPlain = editorRef.current ? (editorRef.current.textContent || '').trim() : '';
+		setQuestionCharCount(initialPlain.length);
 		console.log('DragDropModal - Editor initialization complete');
 	}, [visible, editorContent, blanks, incorrectOptions.length, createBlankElement, updateBlankNumbers, blankColors, questionData]);
 
@@ -2349,7 +2370,7 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 					/>
 
 					{/* Editor */}
-					<div style={{ position: 'relative', marginBottom: '24px' }}>
+						<div style={{ position: 'relative', marginBottom: '24px' }}>
 						<div
 							ref={editorRef}
 							contentEditable
@@ -2382,6 +2403,19 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 							}}
 							data-placeholder='Type your question here... The + Blank button will follow your cursor'
 						/>
+
+							{/* Character Counter for Question (600 max) */}
+							<div
+								style={{
+									marginTop: '6px',
+									marginRight: '16px',
+									textAlign: 'right',
+									fontSize: '12px',
+									fontWeight: 600,
+									color: questionCharCount >= 600 ? '#ff4d4f' : '#595959',
+								}}>
+								{`${Math.min(questionCharCount, 600)}/600`}
+							</div>
 
 						{/* Blank Popup */}
 						{showBlankPopup && (
@@ -2488,12 +2522,12 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 													{index + 1}
 												</span>
 										<Input
-											value={(blank.answer || '').slice(0, 50)}
-											onChange={(e) => {
-												const v = (e.target.value || '').slice(0, 50);
+																value={(blank.answer || '').slice(0, 200)}
+																onChange={(e) => {
+																	const v = (e.target.value || '').slice(0, 200);
 												handleBlankAnswerChange(blank.id, v);
 											}}
-											maxLength={100}
+																maxLength={200}
 											placeholder={'Type correct option'}
 											style={{
 												flex: 1,
@@ -2510,7 +2544,7 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 												whiteSpace: 'nowrap',
 											}}
 										>
-											{`${(blank.answer || '').slice(0, 50).length}/100`}
+																{`${(blank.answer || '').slice(0, 200).length}/200`}
 										</span>
 											</div>
 										))
@@ -2576,11 +2610,11 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 											gap: '8px',
 										}}>
 											<Input
-												value={(option.text || '').slice(0, 50)}
+																value={(option.text || '').slice(0, 200)}
 												onChange={(e) =>
 													handleIncorrectOptionChange(option.id, e.target.value)
 												}
-												maxLength={100}
+																maxLength={200}
 												placeholder={`Incorrect option ${index + 1}`}
 												style={{
 													flex: 1,
@@ -2597,7 +2631,7 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 													whiteSpace: 'nowrap',
 												}}
 											>
-												{`${(option.text || '').slice(0, 50).length}/100`}
+																{`${(option.text || '').slice(0, 200).length}/200`}
 											</span>
 										<Button
 											type='text'
