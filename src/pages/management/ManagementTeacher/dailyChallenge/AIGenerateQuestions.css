@@ -546,3 +546,17 @@
 .preview-card .option-item {
   align-items: center;
 }
+
+/* Disable hover lift/highlight for containers in AI Generate pages */
+.ai-generate-wrapper .prompt-description-card:hover,
+.ai-generate-wrapper .sun-prompt-description-card:hover,
+.ai-generate-wrapper .moon-prompt-description-card:hover,
+.ai-generate-wrapper .question-types-card:hover,
+.ai-generate-wrapper .sun-question-types-card:hover,
+.ai-generate-wrapper .moon-question-types-card:hover,
+.ai-generate-wrapper .preview-card:hover,
+.ai-generate-wrapper .sun-preview-card:hover,
+.ai-generate-wrapper .moon-preview-card:hover {
+  transform: none !important;
+  box-shadow: none !important;
+}

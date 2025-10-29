@@ -1,10 +1,9 @@
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { useRef } from "react";
 import {
   Button,
   Card,
-  Divider,
   Input,
-  Select,
   Tooltip,
   Typography,
 } from "antd";
@@ -12,10 +11,11 @@ import {
   ArrowLeftOutlined,
   DeleteOutlined,
   EditOutlined,
-  PlusOutlined,
   SaveOutlined,
   ThunderboltOutlined,
   CheckOutlined,
+  CloudUploadOutlined,
+  FileTextOutlined,
   CopyOutlined,
 } from "@ant-design/icons";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
@@ -50,40 +50,60 @@ const AIGenerateReading = () => {
   // Page title same as AI Questions page
   usePageTitle('AI Question Generation');
 
-  const challengeInfo = {
+  const challengeInfo = useMemo(() => ({
     classId: location.state?.classId || null,
     className: location.state?.className || null,
     challengeId: location.state?.challengeId || id,
     challengeName: location.state?.challengeName || null,
     challengeType: 'READING',
-  };
+  }), [
+    id,
+    location.state?.classId,
+    location.state?.className,
+    location.state?.challengeId,
+    location.state?.challengeName,
+  ]);
 
-  // Step control
-  const [step, setStep] = useState(1);
-
-  // Step 1 - Generate reading passage
+  // Single prompt input used for both passage generation and question generation
   const [passagePrompt, setPassagePrompt] = useState("");
   const [numParagraphs, setNumParagraphs] = useState(1);
   const [generatingPassage, setGeneratingPassage] = useState(false);
   const [passage, setPassage] = useState("");
+  // passage input mode: null (not chosen), 'generate' shows paragraphs and generate button; 'manual' hides them
+  const [passageMode, setPassageMode] = useState(null);
 
-  // Step 2 - Configure question generation and preview
-  const [promptDescription, setPromptDescription] = useState("");
-  const [questionTypeConfigs, setQuestionTypeConfigs] = useState([
-    { questionType: "MULTIPLE_CHOICE", numberOfQuestions: 1 },
-  ]);
+  // Configure question generation and preview: list all types, quantities default 0
+  const allQuestionTypes = useMemo(() => [
+    'MULTIPLE_CHOICE',
+    'MULTIPLE_SELECT',
+    'TRUE_OR_FALSE',
+    'FILL_IN_THE_BLANK',
+    'DROPDOWN',
+    'DRAG_AND_DROP',
+    'REARRANGE',
+  ], []);
+  const [questionTypeConfigs, setQuestionTypeConfigs] = useState(
+    () => allQuestionTypes.map((qt) => ({ questionType: qt, numberOfQuestions: 0 }))
+  );
   const [isGenerating, setIsGenerating] = useState(false);
   const [saving, setSaving] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [questions, setQuestions] = useState([]);
   // Local selections for interactive preview of Dropdown type
   const [dropdownSelections, setDropdownSelections] = useState({});
+  const [uploadedFileName, setUploadedFileName] = useState('');
+  const [uploadedFile, setUploadedFile] = useState(null);
+  // Question settings mode on the right: null (choose), 'manual', 'upload'
+  const [questionSettingsMode, setQuestionSettingsMode] = useState(null);
+  const uploadInputRef = useRef(null);
 
   const [isEditModalVisible, setIsEditModalVisible] = useState(false);
   const [editingQuestion, setEditingQuestion] = useState(null);
+  const [hierarchy, setHierarchy] = useState(null);
 
   const primaryColor = theme === 'sun' ? '#1890ff' : '#8B5CF6';
   const primaryColorWithAlpha = theme === 'sun' ? 'rgba(24, 144, 255, 0.1)' : 'rgba(139, 92, 246, 0.1)';
+  const MAX_FILE_MB = 10; // max upload size shown and validated on client
 
   const availableQuestionTypes = useMemo(() => [
     { value: "MULTIPLE_CHOICE", label: t('dailyChallenge.multipleChoice') || 'Multiple Choice', icon: '📝', color: primaryColor, bgColor: primaryColorWithAlpha },
@@ -95,22 +115,7 @@ const AIGenerateReading = () => {
     { value: "REARRANGE", label: 'Reorder', icon: '🔀', color: primaryColor, bgColor: primaryColorWithAlpha },
   ], [t, primaryColor, primaryColorWithAlpha]);
 
-  // Helpers (match AIGenerateQuestions behaviors)
-  const stripHtml = useCallback((html) => {
-    if (!html) return '';
-    try {
-      const tmp = document.createElement('div');
-      tmp.innerHTML = String(html);
-      const text = tmp.textContent || tmp.innerText || '';
-      return text;
-    } catch (e) {
-      return String(html);
-    }
-  }, []);
-  const removePosMarkers = useCallback((text) => {
-    if (!text) return '';
-    return String(text).replace(/\[\[pos_[a-zA-Z0-9]+\]\]/g, '');
-  }, []);
+  // Helpers (match AIGenerateQuestions behaviors) - unused utilities removed
 
   // Normalizer borrowed from AIGenerateQuestions (slightly trimmed to fit)
   const normalizeQuestionsFromAI = useCallback((rawList) => {
@@ -130,11 +135,21 @@ const AIGenerateReading = () => {
           return { id: nextId(), type, title: `Question ${counter}`, question: q?.question || q?.questionText || '', options: opts, points: q?.points ?? q?.score ?? 1 };
         }
         case 'TRUE_OR_FALSE': {
-          const backendOptions = Array.isArray(q?.options) ? q.options : [];
-          const options = backendOptions.length ? backendOptions.map((o, i) => ({ key: toKey(i), text: o?.text ?? o?.value ?? '', isCorrect: Boolean(o?.isCorrect || o?.correct) })) : [
-            { key: 'A', text: 'True', isCorrect: String(q?.correctAnswer || '').toLowerCase() === 'true' },
-            { key: 'B', text: 'False', isCorrect: String(q?.correctAnswer || '').toLowerCase() === 'false' },
-          ];
+          const optionsSource = Array.isArray(q?.options)
+            ? q.options
+            : Array.isArray(q?.content?.data)
+              ? q.content.data
+              : [];
+          const options = optionsSource.length
+            ? optionsSource.map((o, i) => ({
+                key: toKey(i),
+                text: o?.text ?? o?.value ?? '',
+                isCorrect: Boolean(o?.isCorrect || o?.correct)
+              }))
+            : [
+                { key: 'A', text: 'True', isCorrect: String(q?.correctAnswer || '').toLowerCase() === 'true' },
+                { key: 'B', text: 'False', isCorrect: String(q?.correctAnswer || '').toLowerCase() === 'false' },
+              ];
           return { id: nextId(), type: 'TRUE_OR_FALSE', title: `Question ${counter}`, question: q?.question || q?.questionText || '', options, points: q?.points ?? q?.score ?? 1 };
         }
         case 'FILL_IN_THE_BLANK':
@@ -171,6 +186,22 @@ const AIGenerateReading = () => {
     }).filter(Boolean).map((q, idx) => ({ ...q, id: idx + 1, title: `Question ${idx + 1}` }));
   }, []);
 
+  // Fetch hierarchy info (level/chapter/lesson) for the header info bar
+  useEffect(() => {
+    let mounted = true;
+    const fetchHierarchy = async () => {
+      try {
+        const res = await dailyChallengeApi.getChallengeHierarchy(id);
+        const data = res?.data?.data || res?.data || res;
+        if (mounted) setHierarchy(data || null);
+      } catch (e) {
+        if (mounted) setHierarchy(null);
+      }
+    };
+    if (id) fetchHierarchy();
+    return () => { mounted = false; };
+  }, [id]);
+
   // Step 1: call passage generation
   const handleGeneratePassage = useCallback(async () => {
     if (!passagePrompt.trim()) {
@@ -189,8 +220,8 @@ const AIGenerateReading = () => {
       const data = res?.data?.data || res?.data || res;
       const text = data?.passage || data?.content || data?.sectionsContent || '';
       if (!text) throw new Error('No passage returned');
+      // Keep generated passage internally; do not overwrite the user's prompt
       setPassage(text);
-      setStep(2);
       spaceToast.success('Passage generated');
     } catch (err) {
       console.error('Generate passage error:', err);
@@ -200,39 +231,7 @@ const AIGenerateReading = () => {
     }
   }, [challengeInfo.challengeId, passagePrompt, numParagraphs, t]);
 
-  // Step 2: question type config helpers
-  const handleAddQuestionType = useCallback(() => {
-    if (questionTypeConfigs.length >= 8) {
-      spaceToast.warning(t('dailyChallenge.maxQuestionTypesReached') || 'Maximum 8 question types allowed');
-      return;
-    }
-    const used = new Set(questionTypeConfigs.map(q => q.questionType));
-    const next = availableQuestionTypes.find(qt => !used.has(qt.value));
-    if (!next) {
-      spaceToast.warning(t('dailyChallenge.duplicateTypesNotAllowed') || 'Each question type must be unique');
-      return;
-    }
-    setQuestionTypeConfigs(prev => [...prev, { questionType: next.value, numberOfQuestions: 1 }]);
-  }, [questionTypeConfigs, availableQuestionTypes, t]);
-
-  const handleRemoveQuestionType = useCallback((index) => {
-    if (questionTypeConfigs.length > 1) {
-      setQuestionTypeConfigs(prev => prev.filter((_, i) => i !== index));
-    } else {
-      spaceToast.warning(t('dailyChallenge.minOneQuestionType') || 'At least one question type is required');
-    }
-  }, [questionTypeConfigs.length, t]);
-
-  const handleQuestionTypeChange = useCallback((index, value) => {
-    setQuestionTypeConfigs(prev => {
-      const existsElsewhere = prev.some((cfg, i) => i !== index && cfg.questionType === value);
-      if (existsElsewhere) {
-        spaceToast.warning(t('dailyChallenge.duplicateTypesNotAllowed') || 'This question type is already selected');
-        return prev;
-      }
-      return prev.map((item, i) => (i === index ? { ...item, questionType: value } : item));
-    });
-  }, [t]);
+  // Quantity change handler
 
   const handleNumberOfQuestionsChange = useCallback((index, value) => {
     setQuestionTypeConfigs(prev => prev.map((item, i) => (i === index ? { ...item, numberOfQuestions: value } : item)));
@@ -240,8 +239,16 @@ const AIGenerateReading = () => {
 
   // Step 2: call content-based questions generation
   const handleGenerateWithAI = useCallback(async () => {
-    if (!passage || !passage.trim()) {
-      spaceToast.error('Passage is empty. Generate it in Step 1');
+    // Use current prompt content as passage source if local passage is empty
+    const sourcePassage = (passage && passage.trim()) ? passage : (passagePrompt || '').trim();
+    if (!sourcePassage) {
+      spaceToast.error('Passage is empty. Please generate or paste passage in the prompt box');
+      return;
+    }
+    // Enforce total questions limit <= 100
+    const totalRequested = (questionTypeConfigs || []).reduce((sum, c) => sum + (Number(c.numberOfQuestions) || 0), 0);
+    if (totalRequested > 100) {
+      spaceToast.error(t('dailyChallenge.max100Questions') || 'You can request at most 100 questions in total');
       return;
     }
     try {
@@ -255,17 +262,19 @@ const AIGenerateReading = () => {
               id: 0,
               sectionTitle: 'Reading Section',
               sectionsUrl: '',
-              sectionsContent: passage,
+              sectionsContent: sourcePassage,
               orderNumber: 1,
               resourceType: 'DOCUMENT',
             },
-            questionTypeConfigs: questionTypeConfigs.map((c) => ({
-              questionType: c.questionType,
-              numberOfQuestions: Number(c.numberOfQuestions) || 1,
-            })),
+            questionTypeConfigs: questionTypeConfigs
+              .filter((c) => Number(c.numberOfQuestions) > 0)
+              .map((c) => ({
+                questionType: c.questionType,
+                numberOfQuestions: Math.max(0, Number(c.numberOfQuestions) || 0),
+              })),
           },
         ],
-        description: promptDescription,
+        description: '',
       };
       const res = await dailyChallengeApi.generateContentBasedQuestions(payload);
       let rawList = [];
@@ -290,16 +299,32 @@ const AIGenerateReading = () => {
     } finally {
       setIsGenerating(false);
     }
-  }, [challengeInfo.challengeId, passage, questionTypeConfigs, promptDescription, t, normalizeQuestionsFromAI]);
+  }, [challengeInfo.challengeId, passage, passagePrompt, questionTypeConfigs, t, normalizeQuestionsFromAI]);
 
   // Save generated questions into a section
   const handleSave = useCallback(async () => {
-    if (!passage.trim()) {
+    const currentPassage = (passageMode === 'manual') ? (passagePrompt || '') : (passage || '');
+    if (!currentPassage.trim()) {
       spaceToast.error('Passage is empty');
       return;
     }
     try {
       setSaving(true);
+      // Capture existing sections BEFORE save to compute append positions and detect new ids later
+      let beforeSections = [];
+      try {
+        const existing = await dailyChallengeApi.getSectionsByChallenge(id, { page: 0, size: 100 });
+        beforeSections = Array.isArray(existing?.data) ? existing.data : (Array.isArray(existing) ? existing : []);
+        console.log('[AI Reading Save] Before save - existing sections (id -> order):', beforeSections.map(s => ({ id: s?.section?.id ?? s?.id, order: s?.section?.orderNumber ?? s?.orderNumber })));
+      } catch (e) {
+        beforeSections = [];
+      }
+      const baseOrder = beforeSections.reduce((max, item) => {
+        const ord = Number(item?.section?.orderNumber ?? item?.orderNumber ?? 0);
+        return Number.isFinite(ord) && ord > max ? ord : max;
+      }, 0);
+      console.log('[AI Reading Save] Computed baseOrder =', baseOrder);
+
       // Transform preview questions -> API schema (reuse simplified mapping)
       const toApiQuestion = (q, orderNumber) => {
         const toData = (d) => Array.isArray(d) ? d : [];
@@ -332,21 +357,47 @@ const AIGenerateReading = () => {
             return { questionText: q.question || '', orderNumber, score: 1, questionType: 'MULTIPLE_CHOICE', content: { data: [] }, toBeDeleted: false };
         }
       };
-
+      // For reading: one section contains multiple questions, each question has its own orderNumber
       const apiQuestions = (questions || []).map((q, idx) => toApiQuestion(q, idx + 1));
       const sectionData = {
         section: {
           sectionTitle: 'AI Generated Reading',
           sectionsUrl: '',
-          sectionsContent: passage,
-          orderNumber: 1,
+          sectionsContent: currentPassage,
+          orderNumber: baseOrder + 1,
           resourceType: 'DOCUMENT',
         },
         questions: apiQuestions,
       };
-
-      const sectionsDataArray = [sectionData];
-      const resp = await dailyChallengeApi.bulkSaveSections(id, sectionsDataArray);
+      console.log('[AI Reading Save] Section to create (orderNumber):', sectionData.section.orderNumber, 'questions:', apiQuestions.length);
+      const resp = await dailyChallengeApi.saveSectionWithQuestions(id, sectionData);
+      // After creating, force correct ordering: existing sections keep order, new ones appended
+      try {
+        const afterRes = await dailyChallengeApi.getSectionsByChallenge(id, { page: 0, size: 100 });
+        const afterSections = Array.isArray(afterRes?.data) ? afterRes.data : (Array.isArray(afterRes) ? afterRes : []);
+        console.log('[AI Reading Save] After save - all sections (id -> order):', afterSections.map(s => ({ id: s?.section?.id ?? s?.id, order: s?.section?.orderNumber ?? s?.orderNumber })));
+        const beforeIds = new Set(beforeSections.map(s => s?.section?.id ?? s?.id));
+        const existingOrdered = beforeSections
+          .map(s => ({ id: s?.section?.id ?? s?.id, orderNumber: Number(s?.section?.orderNumber ?? s?.orderNumber ?? 0) }))
+          .filter(x => x.id != null)
+          .sort((a, b) => a.orderNumber - b.orderNumber);
+        const newOnes = afterSections
+          .filter(s => !beforeIds.has(s?.section?.id ?? s?.id))
+          .map(s => ({ id: s?.section?.id ?? s?.id, createdAt: s?.section?.createdAt ?? s?.createdAt ?? '' }))
+          .filter(x => x.id != null)
+          .sort((a, b) => String(a.createdAt).localeCompare(String(b.createdAt)));
+        const finalBulk = [];
+        let seq = 0;
+        existingOrdered.forEach(x => finalBulk.push({ id: x.id, orderNumber: ++seq }));
+        newOnes.forEach(x => finalBulk.push({ id: x.id, orderNumber: ++seq }));
+        console.log('[AI Reading Save] Reorder payload:', finalBulk);
+        if (finalBulk.length > 0) {
+          const reorderResp = await dailyChallengeApi.bulkUpdateSections(id, finalBulk);
+          console.log('[AI Reading Save] Reorder response:', reorderResp);
+        }
+      } catch (reorderError) {
+        console.warn('[AI Reading Save] Reorder after save failed, continuing:', reorderError);
+      }
       spaceToast.success(resp?.message || t('dailyChallenge.saveSuccess') || 'Saved successfully');
 
       const userRole = user?.role?.toLowerCase();
@@ -367,7 +418,41 @@ const AIGenerateReading = () => {
     } finally {
       setSaving(false);
     }
-  }, [id, passage, questions, navigate, user, challengeInfo, t]);
+  }, [id, passage, passagePrompt, passageMode, questions, navigate, user, challengeInfo, t]);
+
+  // Parse questions from uploaded file using OpenAI service
+  const handleGenerateFromFile = useCallback(async () => {
+    if (!uploadedFile) {
+      spaceToast.error('Please upload a file first');
+      return;
+    }
+    try {
+      setIsGenerating(true);
+      setShowPreview(false);
+      const res = await dailyChallengeApi.parseQuestionsFromFile(uploadedFile, passagePrompt || '');
+      let rawList = [];
+      if (Array.isArray(res)) rawList = res;
+      else if (Array.isArray(res?.questions)) rawList = res.questions;
+      else if (Array.isArray(res?.data?.questions)) rawList = res.data.questions;
+      else if (Array.isArray(res?.data)) rawList = res.data;
+      else if (Array.isArray(res?.result?.questions)) rawList = res.result.questions;
+      const normalized = normalizeQuestionsFromAI(rawList);
+      if (!normalized.length) {
+        spaceToast.warning('No questions parsed from file');
+        setQuestions([]);
+        setShowPreview(false);
+      } else {
+        setQuestions(normalized);
+        setShowPreview(true);
+        spaceToast.success('Questions generated from file');
+      }
+    } catch (err) {
+      console.error('Generate from file error:', err);
+      spaceToast.error(err?.response?.data?.message || err?.message || 'Failed to generate from file');
+    } finally {
+      setIsGenerating(false);
+    }
+  }, [uploadedFile, passagePrompt, normalizeQuestionsFromAI]);
 
   const handleBack = useCallback(() => {
     const userRole = user?.role?.toLowerCase();
@@ -477,10 +562,81 @@ const AIGenerateReading = () => {
   );
 
   return (
-    <ThemedLayout customHeader={customHeader}>
+    <ThemedLayout customHeader={customHeader} contentMargin={10}>
       <div className={`ai-generate-wrapper ${theme}-ai-generate-wrapper`}>
-        <div style={{ padding: '24px', maxWidth: '1200px', margin: '0 auto' }}>
-          {/* Step 1 - Generate Passage */}
+        <div style={{ padding: '24px', maxWidth: '1500px', margin: '0 auto' }}>
+        {/* Hierarchy info bar */}
+        <div
+          style={{
+            display: 'flex',
+            gap: 12,
+            flexWrap: 'wrap',
+            alignItems: 'center',
+            marginBottom: 12,
+          }}
+        >
+          {hierarchy && (
+            <>
+              <div style={{
+                padding: '8px 12px',
+                borderRadius: 12,
+                border: `2px solid ${theme === 'sun' ? 'rgba(24, 144, 255, 0.35)' : 'rgba(139, 92, 246, 0.35)'}`,
+                background: theme === 'sun'
+                  ? 'linear-gradient(135deg, rgba(240,249,255,0.65), rgba(255,255,255,0.9))'
+                  : 'linear-gradient(135deg, rgba(244,240,255,0.35), rgba(255,255,255,0.08))',
+                color: theme === 'sun' ? '#0f172a' : '#e5e7eb',
+                fontWeight: 600,
+              }}>
+                Level: {hierarchy?.level?.levelName || hierarchy?.level?.name || '—'}
+              </div>
+              <div style={{
+                padding: '8px 12px',
+                borderRadius: 12,
+                border: `2px solid ${theme === 'sun' ? 'rgba(24, 144, 255, 0.35)' : 'rgba(139, 92, 246, 0.35)'}`,
+                background: theme === 'sun'
+                  ? 'linear-gradient(135deg, rgba(240,249,255,0.65), rgba(255,255,255,0.9))'
+                  : 'linear-gradient(135deg, rgba(244,240,255,0.35), rgba(255,255,255,0.08))',
+                color: theme === 'sun' ? '#0f172a' : '#e5e7eb',
+                fontWeight: 600,
+              }}>
+                Chapter: {hierarchy?.chapter?.chapterName || hierarchy?.chapter?.name || '—'}
+              </div>
+              <div style={{
+                padding: '8px 12px',
+                borderRadius: 12,
+                border: `2px solid ${theme === 'sun' ? 'rgba(24, 144, 255, 0.35)' : 'rgba(139, 92, 246, 0.35)'}`,
+                background: theme === 'sun'
+                  ? 'linear-gradient(135deg, rgba(240,249,255,0.65), rgba(255,255,255,0.9))'
+                  : 'linear-gradient(135deg, rgba(244,240,255,0.35), rgba(255,255,255,0.08))',
+                color: theme === 'sun' ? '#0f172a' : '#e5e7eb',
+                fontWeight: 600,
+              }}>
+                Lesson: {hierarchy?.lesson?.lessonName || hierarchy?.lesson?.name || '—'}
+              </div>
+            </>
+          )}
+        </div>
+        {/* Frosted outer frame around both containers and the button */}
+        <Card
+          style={{
+            borderRadius: '20px',
+            border: theme === 'sun'
+              ? '2px solid rgba(24, 144, 255, 0.35)'
+              : '2px solid rgba(139, 92, 246, 0.35)',
+            background: theme === 'sun'
+              ? 'linear-gradient(180deg, rgba(255,255,255,0.60) 0%, rgba(240,249,255,0.55) 100%)'
+              : 'linear-gradient(180deg, rgba(255,255,255,0.50) 0%, rgba(244,240,255,0.45) 100%)',
+            backdropFilter: 'blur(6px)',
+            boxShadow: theme === 'sun'
+              ? '0 8px 24px rgba(24, 144, 255, 0.12)'
+              : '0 8px 24px rgba(139, 92, 246, 0.12)',
+            padding: 16
+          }}
+          bodyStyle={{ padding: 16 }}
+        >
+        {/* Two-column layout: left = Generate with AI (2/3), right = Question Type Configuration (1/3) */}
+        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '20px', alignItems: 'stretch' }}>
+          {/* Left: Generate with AI */}
           <Card
             className={`prompt-description-card ${theme}-prompt-description-card`}
             style={{
@@ -494,255 +650,491 @@ const AIGenerateReading = () => {
               background: theme === 'sun'
                 ? 'linear-gradient(135deg, rgba(255, 255, 255, 1) 0%, rgba(240, 249, 255, 0.95) 100%)'
                 : 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(244, 240, 255, 0.95) 100%)',
-              marginBottom: '24px',
               backdropFilter: 'blur(10px)'
             }}
           >
-            <Title level={3} style={{ textAlign: 'center', color: theme === 'sun' ? '#1890ff' : '#8B5CF6' }}>
-              Step 1: Generate passage with AI
+            <Title level={3} style={{ textAlign: 'center', color: theme === 'sun' ? '#1890ff' : '#8B5CF6', marginTop: 0, fontSize: '26px' }}>
+              Text Prompt
             </Title>
-             <TextArea
-              value={passagePrompt}
-              onChange={(e) => setPassagePrompt(e.target.value)}
-              autoSize={{ minRows: 4, maxRows: 8 }}
-              placeholder={t('dailyChallenge.pleaseEnterPrompt') || 'Describe the topic and difficulty (e.g., "theo IELTS 6.5")'}
-              style={{
-                marginTop: 12,
-                fontSize: '15px',
-                borderRadius: '12px',
-                border: theme === 'sun'
-                  ? '2px solid rgba(113, 179, 253, 0.3)'
-                  : '2px solid rgba(138, 122, 255, 0.3)',
-                background: theme === 'sun'
-                   ? 'rgba(240, 249, 255, 0.5)'
-                   : 'rgba(244, 240, 255, 0.3)',
-                 outline: 'none',
-                 boxShadow: 'none'
-              }}
-            />
-            <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginTop: 16 }}>
-              <span style={{
-                color: theme === 'sun' ? '#000000' : '#FFFFFF',
-                fontWeight: 600
-              }}>Paragraphs:</span>
-              <Input
-                type="number"
-                min={1}
-                max={10}
+
+            {/* Initial mode selector centered */}
+            {passageMode === null && (
+              <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', width: '100%', marginTop: 12, minHeight: '460px' }}>
+                <div style={{ width: '100%' }}>
+                  {/* Option: Add text & media manually */}
+                  <Card
+                    hoverable
+                    onClick={() => { setPassageMode('manual'); setPassage(''); }}
+                    style={{
+                      borderRadius: '12px',
+                      border: theme === 'sun'
+                        ? '2px solid rgba(113, 179, 253, 0.3)'
+                        : '2px solid rgba(138, 122, 255, 0.3)',
+                      background: theme === 'sun'
+                        ? 'linear-gradient(135deg, rgba(230, 245, 255, 0.5) 0%, rgba(186, 231, 255, 0.4) 100%)'
+                        : 'rgba(255, 255, 255, 0.5)',
+                      cursor: 'pointer',
+                      marginBottom: 16
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                      <FileTextOutlined style={{ fontSize: 24, color: '#000000' }} />
+                      <Typography.Text strong style={{ color: theme === 'sun' ? '#1E40AF' : '#8377A0' }}>
+                        Add text manually
+                      </Typography.Text>
+                    </div>
+                  </Card>
+
+                  {/* Option: Generate with AI (Generate passage) */}
+                  <Card
+                    hoverable
+                    onClick={() => setPassageMode('generate')}
+                    style={{
+                      borderRadius: '12px',
+                      border: theme === 'sun'
+                        ? '2px solid rgba(250, 173, 20, 0.3)'
+                        : '2px solid rgba(138, 122, 255, 0.3)',
+                      background: theme === 'sun'
+                        ? 'linear-gradient(135deg, rgba(255, 251, 230, 0.5) 0%, rgba(255, 236, 179, 0.4) 100%)'
+                        : 'rgba(255, 255, 255, 0.5)',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                      <span style={{ fontSize: 22 }}>✨</span>
+                      <Typography.Text strong style={{ color: theme === 'sun' ? '#1E40AF' : '#8377A0' }}>
+                        Generate with AI
+                      </Typography.Text>
+                    </div>
+                  </Card>
+                </div>
+              </div>
+            )}
+
+            {passageMode !== null && (
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
+              <Button
+                icon={<ArrowLeftOutlined />}
+                onClick={() => setPassageMode(null)}
+                className={`class-menu-back-button ${theme}-class-menu-back-button`}
                 style={{
-                  width: 100,
+                  height: '32px',
                   borderRadius: '8px',
-                  border: theme === 'sun'
-                    ? '2px solid rgba(113, 179, 253, 0.5)'
-                    : '2px solid rgba(138, 122, 255, 0.5)',
-                  background: theme === 'sun' ? '#fff' : 'rgba(255, 255, 255, 0.1)',
+                  fontWeight: '500',
                   fontSize: '14px',
-                  fontWeight: 600
-                }}
-                value={numParagraphs}
-                onChange={(e) => setNumParagraphs(parseInt(e.target.value) || 1)}
-              />
-               <Button
-                type="primary"
-                icon={<ThunderboltOutlined />}
-                loading={generatingPassage}
-                onClick={handleGeneratePassage}
-                style={{
-                   marginLeft: 'auto',
-                  height: '40px',
-                  borderRadius: '8px',
-                  fontSize: '16px',
-                  fontWeight: 500,
-                  padding: '0 24px',
-                  background: theme === 'sun'
-                    ? 'linear-gradient(135deg, #66AEFF, #3C99FF)'
-                    : 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)',
-                  border: 'none',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  border: '1px solid rgba(0, 0, 0, 0.1)',
+                  background: '#ffffff',
                   color: '#000000',
-                  boxShadow: theme === 'sun'
-                    ? '0 2px 8px rgba(60, 153, 255, 0.3)'
-                    : '0 2px 8px rgba(131, 119, 160, 0.3)',
+                  backdropFilter: 'blur(10px)',
                   transition: 'all 0.3s ease'
                 }}
               >
-                {generatingPassage ? (t('dailyChallenge.generating') || 'Generating...') : 'Generate Passage'}
+                {t('common.back')}
               </Button>
             </div>
-            {passage && (
-              <div className="ai-preview-scroll" style={{ marginTop: 16, padding: 16, border: '1px solid rgba(0,0,0,0.1)', borderRadius: 8, background: theme === 'sun' ? '#fff' : 'rgba(255,255,255,0.05)', position: 'relative' }}>
-                <Title level={4} style={{ marginTop: 0, color: theme === 'sun' ? '#000000' : '#8B5CF6' }}>Preview</Title>
-                <Tooltip title={t('common.copy') || 'Copy'}>
-                  <Button
-                    type="text"
-                    icon={<CopyOutlined />}
-                    onClick={() => {
-                      try {
-                        navigator.clipboard.writeText(passage);
-                        spaceToast.success('Copied passage to clipboard');
-                      } catch (e) {
-                        spaceToast.error('Copy failed');
-                      }
-                    }}
-                    style={{
-                      position: 'absolute',
-                      top: 8,
-                      right: 8,
-                      borderRadius: '8px',
-                      color: theme === 'sun' ? '#1890ff' : '#8B5CF6',
-                    }}
-                  />
-                </Tooltip>
-                <div style={{ whiteSpace: 'pre-wrap', lineHeight: 1.8, color: theme === 'sun' ? '#000000' : 'rgb(45, 27, 105)' }}>{passage}</div>
-              </div>
             )}
-          </Card>
 
-          {/* Step 2 - Configure and Generate Questions (UI mirrors AIGenerateQuestions) */}
-          <Card
-            className={`prompt-description-card ${theme}-prompt-description-card`}
-            style={{
-              borderRadius: '16px',
-              border: theme === 'sun' 
-                ? '2px solid rgba(113, 179, 253, 0.25)' 
-                : '2px solid rgba(138, 122, 255, 0.2)',
-              boxShadow: theme === 'sun' 
-                ? '0 4px 16px rgba(113, 179, 253, 0.1)' 
-                : '0 4px 16px rgba(138, 122, 255, 0.12)',
-              background: theme === 'sun'
-                ? 'linear-gradient(135deg, rgba(255, 255, 255, 1) 0%, rgba(240, 249, 255, 0.95) 100%)'
-                : 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(244, 240, 255, 0.95) 100%)',
-              backdropFilter: 'blur(10px)'
-            }}
-          >
-            <Title level={3} style={{ textAlign: 'center', color: theme === 'sun' ? '#1890ff' : '#8B5CF6' }}>
-              Step 2: Generate question with AI
-            </Title>
-
+            {passageMode !== null && (
             <TextArea
-              value={promptDescription}
-              onChange={(e) => setPromptDescription(e.target.value)}
-              autoSize={{ minRows: 4, maxRows: 8 }}
-              placeholder={t('dailyChallenge.pleaseEnterPrompt') || 'Provide extra instructions (optional)'}
+              value={passagePrompt}
+              onChange={(e) => { const v = e.target.value; setPassagePrompt(v); }}
+              autoSize={{ minRows: (passageMode === 'generate' && passage) ? 4 : 16, maxRows: 22 }}
+              placeholder={t('dailyChallenge.pleaseEnterPrompt') || 'Enter prompt or paste passage here'}
               style={{
-                marginTop: 12,
+                marginTop: 23,
                 fontSize: '15px',
                 borderRadius: '12px',
-                border: theme === 'sun'
-                  ? '2px solid rgba(113, 179, 253, 0.3)'
-                  : '2px solid rgba(138, 122, 255, 0.3)',
+                border: `2px solid ${primaryColor}99`,
                 background: theme === 'sun'
                   ? 'rgba(240, 249, 255, 0.5)'
                   : 'rgba(244, 240, 255, 0.3)',
                 outline: 'none',
-                boxShadow: 'none'
+                boxShadow: 'none',
+                minHeight: (passageMode === 'generate' && passage) ? '120px' : '360px'
               }}
-            />
+            />)}
 
-            <Divider style={{ margin: '24px 0' }} />
-
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-              <Title level={3} style={{ margin: 0, fontSize: '20px', color: theme === 'sun' ? '#1890ff' : '#8B5CF6' }}>
-                {t('dailyChallenge.questionTypeConfiguration') || 'Question Type Configuration'}
-              </Title>
-              <Tooltip title={t('dailyChallenge.addQuestionType') || 'Add Question Type'}>
-                <Button type="dashed" icon={<PlusOutlined />} onClick={handleAddQuestionType}>{t('dailyChallenge.addQuestionType') || 'Add Question Type'}</Button>
-              </Tooltip>
+            {passageMode !== null && (
+            <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginTop: 16, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+              {passageMode === 'generate' && (
+                <>
+                  <span style={{
+                    color: theme === 'sun' ? '#000000' : '#FFFFFF',
+                    fontWeight: 600,
+                    marginRight: 8
+                  }}>Paragraphs:</span>
+                  <Input
+                    type="number"
+                    min={1}
+                    max={10}
+                    style={{
+                      width: 100,
+                      borderRadius: '8px',
+                      border: theme === 'sun'
+                        ? '2px solid rgba(113, 179, 253, 0.5)'
+                        : '2px solid rgba(138, 122, 255, 0.5)',
+                      background: theme === 'sun' ? '#fff' : 'rgba(255, 255, 255, 0.1)',
+                      fontSize: '14px',
+                      fontWeight: 600
+                    }}
+                    value={numParagraphs}
+                    onChange={(e) => setNumParagraphs(parseInt(e.target.value) || 1)}
+                  />
+                  <Button
+                    type="primary"
+                    icon={<ThunderboltOutlined />}
+                    loading={generatingPassage}
+                    onClick={handleGeneratePassage}
+                    style={{
+                      height: '40px',
+                      borderRadius: '8px',
+                      fontSize: '16px',
+                      fontWeight: 500,
+                      padding: '0 24px',
+                      background: theme === 'sun'
+                        ? 'linear-gradient(135deg, #66AEFF, #3C99FF)'
+                        : 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)',
+                      border: 'none',
+                      color: '#000000',
+                      boxShadow: theme === 'sun'
+                        ? '0 2px 8px rgba(60, 153, 255, 0.3)'
+                        : '0 2px 8px rgba(131, 119, 160, 0.3)',
+                      transition: 'all 0.3s ease'
+                    }}
+                  >
+                    {generatingPassage ? (t('dailyChallenge.generating') || 'Generating...') : 'Generate Passage'}
+                  </Button>
+                </>
+              )}
             </div>
+            )}
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '16px' }}>
-              {questionTypeConfigs.map((config, index) => {
-                const qt = availableQuestionTypes.find(x => x.value === config.questionType);
-                return (
-                  <div key={index} style={{ borderRadius: 12, padding: 16, border: `2px solid ${qt?.color}30`, background: theme === 'sun' ? `linear-gradient(135deg, ${qt?.bgColor}, rgba(255,255,255,0.8))` : `linear-gradient(135deg, ${qt?.bgColor}, rgba(255,255,255,0.05))` }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                      <div style={{ width: 44, height: 44, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, background: `${qt?.color}20`, border: `2px solid ${qt?.color}40` }}>{qt?.icon}</div>
-                      <Select value={config.questionType} onChange={(v) => handleQuestionTypeChange(index, v)} style={{ flex: 1 }}>
-                        {availableQuestionTypes.map(opt => (
-                          <Select.Option key={opt.value} value={opt.value}><span style={{ marginRight: 8 }}>{opt.icon}</span>{opt.label}</Select.Option>
-                        ))}
-                      </Select>
-                       <Tooltip title={t('dailyChallenge.numberOfQuestions') || 'Number of Questions'}>
-                         <Input
-                           type="number"
-                           min={1}
-                           max={100}
-                           value={config.numberOfQuestions}
-                           onChange={(e) => handleNumberOfQuestionsChange(index, parseInt(e.target.value) || 1)}
-                           style={{
-                             width: 80,
-                             borderRadius: '8px',
-                             border: theme === 'sun'
-                               ? `2px solid ${qt?.color || '#1890ff'}40`
-                               : `2px solid ${qt?.color || '#8B5CF6'}40`,
-                             background: theme === 'sun' ? '#fff' : 'rgba(255, 255, 255, 0.1)',
-                             fontSize: '14px',
-                             fontWeight: 600
-                           }}
-                         />
-                       </Tooltip>
-                      <Tooltip title={t('dailyChallenge.removeQuestionType') || 'Remove'}>
-                        <Button
-                          type="text"
-                          danger
-                          icon={<DeleteOutlined />}
-                          onClick={() => handleRemoveQuestionType(index)}
-                          style={{ 
-                            width: '40px', 
-                            height: '40px',
-                            borderRadius: '10px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            fontSize: '16px',
-                            color: '#ff4d4f',
-                            background: 'rgba(255, 77, 79, 0.1)',
-                            border: '1px solid rgba(255, 77, 79, 0.2)',
-                            transition: 'all 0.3s ease',
-                            flexShrink: 0
-                          }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.background = 'rgba(255, 77, 79, 0.2)';
-                            e.currentTarget.style.transform = 'scale(1.05)';
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.background = 'rgba(255, 77, 79, 0.1)';
-                            e.currentTarget.style.transform = 'scale(1)';
-                          }}
-                        />
-                      </Tooltip>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 24 }}>
-              <Button
-                type="primary"
-                icon={<ThunderboltOutlined />}
-                loading={isGenerating}
-                onClick={handleGenerateWithAI}
+            {/* Generated passage preview inside the left container (only for Generate with AI mode) */}
+            {passageMode === 'generate' && passage && (
+              <div
                 style={{
-                  height: '40px',
-                  borderRadius: '8px',
-                  fontSize: '16px',
-                  fontWeight: 500,
-                  padding: '0 24px',
+                  marginTop: 16,
+                  padding: 16,
+                  borderRadius: 12,
+                  border: theme === 'sun'
+                    ? '2px solid rgba(113, 179, 253, 0.25)'
+                    : '2px solid rgba(138, 122, 255, 0.2)',
                   background: theme === 'sun'
-                    ? 'linear-gradient(135deg, #66AEFF, #3C99FF)'
-                    : 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)',
-                  border: 'none',
-                  color: '#000000',
-                  boxShadow: theme === 'sun'
-                    ? '0 2px 8px rgba(60, 153, 255, 0.3)'
-                    : '0 2px 8px rgba(131, 119, 160, 0.3)',
-                  transition: 'all 0.3s ease'
+                    ? 'linear-gradient(135deg, rgba(255, 255, 255, 1) 0%, rgba(240, 249, 255, 0.95) 100%)'
+                    : 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(244, 240, 255, 0.95) 100%)',
+                  maxHeight: 320,
+                  overflowY: 'auto',
+                  position: 'relative'
                 }}
               >
-                {isGenerating ? (t('dailyChallenge.generating') || 'Generating...') : 'Generate question'}
+                <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', height: 36, marginBottom: 8 }}>
+                  <Tooltip title={t('common.copy') || 'Copy'}>
+                    <Button
+                      type="text"
+                      icon={<CopyOutlined />}
+                      onClick={async () => {
+                        try {
+                          await navigator.clipboard.writeText(passage || '');
+                          spaceToast.success(t('common.copied') || 'Copied');
+                        } catch (e) {
+                          spaceToast.error(t('common.copyFailed') || 'Copy failed');
+                        }
+                      }}
+                      style={{ color: theme === 'sun' ? '#1890ff' : '#8B5CF6' }}
+                    />
+                  </Tooltip>
+                </div>
+                <div style={{ whiteSpace: 'pre-wrap', lineHeight: 1.8, fontSize: 15, color: theme === 'sun' ? '#000000' : 'rgb(45, 27, 105)' }}>
+                  {passage}
+                </div>
+              </div>
+            )}
+          </Card>
+
+          {/* Right: Question Type Configuration */}
+          <Card
+            className={`prompt-description-card ${theme}-prompt-description-card`}
+            style={{
+              borderRadius: '16px',
+              border: theme === 'sun' 
+                ? '2px solid rgba(113, 179, 253, 0.25)' 
+                : '2px solid rgba(138, 122, 255, 0.2)',
+              boxShadow: theme === 'sun' 
+                ? '0 4px 16px rgba(113, 179, 253, 0.1)' 
+                : '0 4px 16px rgba(138, 122, 255, 0.12)',
+              background: theme === 'sun'
+                ? 'linear-gradient(135deg, rgba(255, 255, 255, 1) 0%, rgba(240, 249, 255, 0.95) 100%)'
+                : 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(244, 240, 255, 0.95) 100%)',
+              backdropFilter: 'blur(10px)'
+            }}
+          >
+            {/* Title on its own line to align with left card title */}
+            <Title level={3} style={{ margin: 0, fontSize: '26px', color: theme === 'sun' ? '#1890ff' : '#8B5CF6', marginTop: 0, textAlign: 'center' }}>
+              Question Settings
+            </Title>
+            {/* Hidden input to allow direct upload from the option card */}
+            <input
+              ref={uploadInputRef}
+              type="file"
+              accept=".doc,.docx"
+              style={{ display: 'none' }}
+              onChange={(e) => {
+                const f = e.target.files && e.target.files[0];
+                if (f && f.size > MAX_FILE_MB * 1024 * 1024) {
+                  spaceToast.error(`File too large. Max ${MAX_FILE_MB}MB`);
+                  e.target.value = '';
+                  setUploadedFile(null);
+                  setUploadedFileName('');
+                  return;
+                }
+                setUploadedFileName(f ? f.name : '');
+                setUploadedFile(f || null);
+              }}
+            />
+            {/* Mode chooser for right side */}
+            {questionSettingsMode === null && (
+              <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', width: '100%', marginTop: 12, minHeight: '460px' }}>
+                <div style={{ width: '100%' }}>
+                  {/* Option: Upload File */}
+                  <Card
+                    hoverable
+                    onClick={() => {
+                      setQuestionSettingsMode('upload');
+                      if (uploadInputRef.current) {
+                        uploadInputRef.current.click();
+                      }
+                    }}
+                    style={{
+                      borderRadius: '12px',
+                      border: theme === 'sun'
+                        ? '2px solid rgba(82, 196, 26, 0.3)'
+                        : '2px solid rgba(138, 122, 255, 0.3)',
+                      background: theme === 'sun'
+                        ? 'linear-gradient(135deg, rgba(237, 250, 230, 0.5) 0%, rgba(207, 244, 192, 0.4) 100%)'
+                        : 'rgba(255, 255, 255, 0.5)',
+                      cursor: 'pointer',
+                      marginBottom: 16
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                      <CloudUploadOutlined style={{ fontSize: 24, color: '#000000' }} />
+                      <Typography.Text strong style={{ color: theme === 'sun' ? '#1E40AF' : '#8377A0' }}>
+                        Upload File
+                      </Typography.Text>
+                    </div>
+                  </Card>
+                  {uploadedFileName && (
+                    <div style={{ marginTop: 10, fontSize: 12, opacity: 0.8, textAlign: 'center' }}>{uploadedFileName}</div>
+                  )}
+
+                  {/* Option: Settings Manually */}
+                  <Card
+                    hoverable
+                    onClick={() => setQuestionSettingsMode('manual')}
+                    style={{
+                      borderRadius: '12px',
+                      border: theme === 'sun'
+                        ? '2px solid rgba(113, 179, 253, 0.3)'
+                        : '2px solid rgba(138, 122, 255, 0.3)',
+                      background: theme === 'sun'
+                        ? 'linear-gradient(135deg, rgba(230, 245, 255, 0.5) 0%, rgba(186, 231, 255, 0.4) 100%)'
+                        : 'rgba(255, 255, 255, 0.5)',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                      <EditOutlined style={{ fontSize: 24, color: '#000000' }} />
+                      <Typography.Text strong style={{ color: theme === 'sun' ? '#1E40AF' : '#8377A0' }}>
+                        Setting Manually
+                      </Typography.Text>
+                    </div>
+                  </Card>
+                </div>
+              </div>
+            )}
+
+            {questionSettingsMode === 'upload' && (
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: 16, width: '100%' }}>
+                <Button
+                  icon={<ArrowLeftOutlined />}
+                  onClick={() => setQuestionSettingsMode(null)}
+                  className={`class-menu-back-button ${theme}-class-menu-back-button`}
+                  style={{ height: '32px', borderRadius: '8px', fontWeight: 500, fontSize: '14px', marginBottom: 16, alignSelf: 'flex-start' }}
+                >
+                  {t('common.back')}
+                </Button>
+
+                <label
+                  htmlFor="question-upload-input"
+                  style={{
+                    width: 380,
+                    height: 220,
+                    borderRadius: 20,
+                    border: `2px dashed ${theme === 'sun' ? 'rgba(24, 144, 255, 0.7)' : 'rgba(139, 92, 246, 0.7)'}`,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    background: theme === 'sun' ? 'linear-gradient(135deg, rgba(255,255,255,0.95), rgba(240, 249, 255, 0.6))' : 'linear-gradient(135deg, rgba(255,255,255,0.92), rgba(244, 240, 255, 0.6))',
+                    boxShadow: theme === 'sun' ? '0 8px 24px rgba(24, 144, 255, 0.08)' : '0 8px 24px rgba(139, 92, 246, 0.08)'
+                  }}
+                >
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
+                    <CloudUploadOutlined style={{ fontSize: 56, color: theme === 'sun' ? '#1890ff' : '#8B5CF6' }} />
+                    <Typography.Text style={{ fontWeight: 700, color: theme === 'sun' ? '#1E40AF' : '#6F61A8' }}>Click to upload</Typography.Text>
+                    <Typography.Text style={{ fontSize: 12, opacity: 0.8, color: theme === 'sun' ? '#0f172a' : '#d1cde8' }}>
+                      Supported: .doc, .docx — Max {MAX_FILE_MB}MB
+                    </Typography.Text>
+                  </div>
+                </label>
+                <input
+                  id="question-upload-input"
+                  type="file"
+                  accept=".doc,.docx"
+                  style={{ display: 'none' }}
+                  onChange={(e) => {
+                    const f = e.target.files && e.target.files[0];
+                    if (f && f.size > MAX_FILE_MB * 1024 * 1024) {
+                      spaceToast.error(`File too large. Max ${MAX_FILE_MB}MB`);
+                      e.target.value = '';
+                      setUploadedFile(null);
+                      setUploadedFileName('');
+                      return;
+                    }
+                    setUploadedFileName(f ? f.name : '');
+                    setUploadedFile(f || null);
+                  }}
+                />
+                {uploadedFileName && (
+                  <div style={{ marginTop: 10, fontSize: 13, fontWeight: 600, color: theme === 'sun' ? '#1E40AF' : '#d1cde8' }}>{uploadedFileName}</div>
+                )}
+                <Button
+                  type="primary"
+                  icon={<ThunderboltOutlined />}
+                  loading={isGenerating}
+                  disabled={!uploadedFile}
+                  onClick={handleGenerateFromFile}
+                  style={{
+                    marginTop: 16,
+                    height: '40px',
+                    borderRadius: '8px',
+                    fontSize: '16px',
+                    fontWeight: 500,
+                    padding: '0 24px',
+                    background: theme === 'sun'
+                      ? 'linear-gradient(135deg, #66AEFF, #3C99FF)'
+                      : 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)',
+                    border: 'none',
+                    color: '#000000',
+                  }}
+                >
+                  Generate From File
+                </Button>
+              </div>
+            )}
+
+            {questionSettingsMode === 'manual' && (
+            <>
+            {/* Controls row below the title */}
+            <div style={{ display: 'flex', justifyContent: 'flex-start', marginTop: 12, marginBottom: 20 }}>
+              <Button
+                icon={<ArrowLeftOutlined />}
+                onClick={() => setQuestionSettingsMode(null)}
+                className={`class-menu-back-button ${theme}-class-menu-back-button`}
+                style={{ height: '32px', borderRadius: '8px', fontWeight: 500, fontSize: '14px' }}
+              >
+                {t('common.back')}
               </Button>
             </div>
+
+            {/* Outer container to hold the question types */}
+            <div
+              style={{
+                border: `2px solid ${theme === 'sun' ? 'rgba(24, 144, 255, 0.6)' : 'rgba(139, 92, 246, 0.6)'}`,
+                borderRadius: '16px',
+                background: theme === 'sun' ? 'rgba(24, 144, 255, 0.06)' : 'rgba(139, 92, 246, 0.08)',
+                padding: '12px',
+                boxShadow: theme === 'sun' 
+                  ? 'inset 0 0 0 1px rgba(24, 144, 255, 0.05)'
+                  : 'inset 0 0 0 1px rgba(139, 92, 246, 0.08)',
+                height: '400px',
+              overflowY: 'auto'
+              }}
+            >
+              {/* Scroll container: show all types with quantity 0-10 */}
+              <div style={{ height: '360px', overflowY: 'scroll', paddingRight: '8px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(1, 1fr)', gap: '16px' }}>
+                {availableQuestionTypes.map((qt) => {
+                  const cfgIndex = questionTypeConfigs.findIndex(c => c.questionType === qt.value);
+                  const current = cfgIndex >= 0 ? questionTypeConfigs[cfgIndex] : { numberOfQuestions: 0 };
+                  return (
+                    <div key={qt.value} style={{ borderRadius: 12, padding: 16, border: `2px solid ${qt?.color}30`, background: theme === 'sun' ? `linear-gradient(135deg, ${qt?.bgColor}, rgba(255,255,255,0.8))` : `linear-gradient(135deg, ${qt?.bgColor}, rgba(255,255,255,0.05))` }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                        <div style={{ width: 44, height: 44, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, background: `${qt?.color}20`, border: `2px solid ${qt?.color}40` }}>{qt?.icon}</div>
+                        <div style={{ flex: 1, fontWeight: 600, color: '#000000' }}>{qt.label}</div>
+                        <Tooltip title={t('dailyChallenge.numberOfQuestions') || 'Number of Questions'}>
+                          <Input
+                            type="number"
+                            min={0}
+                            value={current.numberOfQuestions}
+                            onChange={(e) => handleNumberOfQuestionsChange(cfgIndex, Math.max(0, parseInt(e.target.value) || 0))}
+                            style={{
+                              width: 80,
+                              borderRadius: '8px',
+                              border: theme === 'sun'
+                                ? `2px solid ${qt?.color || '#1890ff'}40`
+                                : `2px solid ${qt?.color || '#8B5CF6'}40`,
+                              background: theme === 'sun' ? '#fff' : 'rgba(255, 255, 255, 0.1)',
+                              fontSize: '14px',
+                              color: '#000000',
+                              fontWeight: 600
+                            }}
+                          />
+                        </Tooltip>
+                      </div>
+                    </div>
+                  );
+                })}
+                </div>
+              </div>
+            </div>
+            </>
+            )}
           </Card>
+        </div>
+
+        {/* Generate Questions button below the two containers */}
+        <div style={{ display: 'flex', justifyContent: 'center', marginTop: 20, gap: 12, flexWrap: 'wrap' }}>
+          <Button
+            type="primary"
+            icon={<ThunderboltOutlined />}
+            loading={isGenerating}
+            onClick={handleGenerateWithAI}
+            style={{
+              height: '56px',
+              minWidth: '360px',
+              borderRadius: '28px',
+              fontSize: '18px',
+              fontWeight: 700,
+              padding: '0 36px',
+              background: theme === 'sun'
+                ? 'linear-gradient(135deg, #66AEFF, #3C99FF)'
+                : 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)',
+              border: 'none',
+              color: '#000000',
+              boxShadow: theme === 'sun'
+                ? '0 2px 8px rgba(60, 153, 255, 0.3)'
+                : '0 2px 8px rgba(131, 119, 160, 0.3)',
+              transition: 'all 0.3s ease'
+            }}
+          >
+            {isGenerating ? (t('dailyChallenge.generating') || 'Generating...') : 'Generate Questions'}
+          </Button>
+        </div>
+        </Card>
 
           {/* Loading Animation - identical visual to AIGenerateQuestions */}
           {isGenerating && (
@@ -759,7 +1151,8 @@ const AIGenerateReading = () => {
                 background: theme === 'sun'
                   ? 'linear-gradient(135deg, rgba(255, 255, 255, 1) 0%, rgba(240, 249, 255, 0.95) 100%)'
                   : 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(244, 240, 255, 0.95) 100%)',
-                marginBottom: '24px',
+              marginTop: '24px',
+              marginBottom: '24px',
                 backdropFilter: 'blur(10px)',
                 animation: 'fadeInUp 0.5s ease-out'
               }}

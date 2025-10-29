@@ -1,21 +1,19 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useRef, useMemo, useEffect } from "react";
 import {
   Button,
   Input,
-  Select,
   Typography,
   Card,
   Tooltip,
-  Divider,
 } from "antd";
 import {
   ArrowLeftOutlined,
-  PlusOutlined,
   DeleteOutlined,
   SaveOutlined,
   ThunderboltOutlined,
   CheckOutlined,
   EditOutlined,
+  CloudUploadOutlined,
 } from "@ant-design/icons";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import ThemedLayout from "../../../../component/teacherlayout/ThemedLayout";
@@ -45,6 +43,7 @@ const AIGenerateQuestions = () => {
   const { theme } = useTheme();
   const { id } = useParams();
   const { user } = useSelector((state) => state.auth);
+  const [hierarchy, setHierarchy] = useState(null);
   
   // Set page title
   usePageTitle('AI Question Generation');
@@ -60,12 +59,28 @@ const AIGenerateQuestions = () => {
   
   // State for prompt input
   const [promptDescription, setPromptDescription] = useState("");
-  const [isTextAreaFocused, setIsTextAreaFocused] = useState(false);
   
-  // State for question type configurations
-  const [questionTypeConfigs, setQuestionTypeConfigs] = useState([
-    { questionType: "MULTIPLE_CHOICE", numberOfQuestions: 1 }
-  ]);
+  
+  // Question settings mode on the right: null (choose), 'manual', 'upload'
+  const [questionSettingsMode, setQuestionSettingsMode] = useState(null);
+  const uploadInputRef = useRef(null);
+  const [uploadedFileName, setUploadedFileName] = useState('');
+  const [uploadedFile, setUploadedFile] = useState(null);
+
+  // State for question type configurations (list all types, default quantity 0)
+  const allQuestionTypes = useMemo(() => [
+    'MULTIPLE_CHOICE',
+    'MULTIPLE_SELECT',
+    'TRUE_OR_FALSE',
+    'FILL_IN_THE_BLANK',
+    'DROPDOWN',
+    'DRAG_AND_DROP',
+    'REARRANGE',
+    'REWRITE'
+  ], []);
+  const [questionTypeConfigs, setQuestionTypeConfigs] = useState(
+    () => allQuestionTypes.map((qt) => ({ questionType: qt, numberOfQuestions: 0 }))
+  );
   
   const [saving, setSaving] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -175,6 +190,7 @@ const AIGenerateQuestions = () => {
   // Question types available - All with same theme colors
   const primaryColor = theme === 'sun' ? '#1890ff' : '#8B5CF6';
   const primaryColorWithAlpha = theme === 'sun' ? 'rgba(24, 144, 255, 0.1)' : 'rgba(139, 92, 246, 0.1)';
+  const MAX_FILE_MB = 10;
   
   const availableQuestionTypes = React.useMemo(() => [
     { 
@@ -235,6 +251,22 @@ const AIGenerateQuestions = () => {
     },
   ], [t, primaryColor, primaryColorWithAlpha]);
 
+  // Fetch hierarchy info (level/chapter/lesson) for the header info bar
+  useEffect(() => {
+    let mounted = true;
+    const fetchHierarchy = async () => {
+      try {
+        const res = await dailyChallengeApi.getChallengeHierarchy(id);
+        const data = res?.data?.data || res?.data || res;
+        if (mounted) setHierarchy(data || null);
+      } catch (e) {
+        if (mounted) setHierarchy(null);
+      }
+    };
+    if (id) fetchHierarchy();
+    return () => { mounted = false; };
+  }, [id]);
+
   // Helpers
   const stripHtml = useCallback((html) => {
     if (!html) return '';
@@ -253,48 +285,11 @@ const AIGenerateQuestions = () => {
     return String(text).replace(/\[\[pos_[a-zA-Z0-9]+\]\]/g, '');
   }, []);
   
-  // Handle adding a new question type configuration (no duplicate types)
-  const handleAddQuestionType = useCallback(() => {
-    if (questionTypeConfigs.length >= 8) {
-      spaceToast.warning(t('dailyChallenge.maxQuestionTypesReached') || 'Maximum 8 question types allowed');
-      return;
-    }
-    const used = new Set(questionTypeConfigs.map(q => q.questionType));
-    const next = availableQuestionTypes.find(qt => !used.has(qt.value));
-    if (!next) {
-      spaceToast.warning(t('dailyChallenge.duplicateTypesNotAllowed') || 'Each question type must be unique');
-      return;
-    }
-    setQuestionTypeConfigs(prev => [...prev, { questionType: next.value, numberOfQuestions: 1 }]);
-  }, [questionTypeConfigs, t, availableQuestionTypes]);
-  
-  // Handle removing a question type configuration
-  const handleRemoveQuestionType = useCallback((index) => {
-    if (questionTypeConfigs.length > 1) {
-      setQuestionTypeConfigs(prev => prev.filter((_, i) => i !== index));
-    } else {
-      spaceToast.warning(t('dailyChallenge.minOneQuestionType') || 'At least one question type is required');
-    }
-  }, [questionTypeConfigs.length, t]);
-  
-  // Handle updating question type
-  const handleQuestionTypeChange = useCallback((index, value) => {
-    setQuestionTypeConfigs(prev => {
-      // Prevent selecting a type already used in another config
-      const existsElsewhere = prev.some((cfg, i) => i !== index && cfg.questionType === value);
-      if (existsElsewhere) {
-        spaceToast.warning(t('dailyChallenge.duplicateTypesNotAllowed') || 'This question type is already selected');
-        return prev;
-      }
-      return prev.map((item, i) => (i === index ? { ...item, questionType: value } : item));
-    });
-  }, [t]);
-  
-  // Handle updating number of questions
+  // Handle updating number of questions (manual settings)
   const handleNumberOfQuestionsChange = useCallback((index, value) => {
-    setQuestionTypeConfigs(prev => prev.map((item, i) => 
-      i === index ? { ...item, numberOfQuestions: value } : item
-    ));
+    setQuestionTypeConfigs(prev => prev.map((item, i) => (
+      i === index ? { ...item, numberOfQuestions: Math.max(0, Number(value) || 0) } : item
+    )));
   }, []);
   
   // Map backend AI response -> UI preview model for 8 supported types
@@ -518,10 +513,12 @@ const AIGenerateQuestions = () => {
       setShowPreview(false);
       const payload = {
         challengeId: challengeInfo.challengeId || id,
-        questionTypeConfigs: questionTypeConfigs.map((c) => ({
-          questionType: c.questionType,
-          numberOfQuestions: Number(c.numberOfQuestions) || 1,
-        })),
+        questionTypeConfigs: (questionTypeConfigs || [])
+          .filter(c => Number(c.numberOfQuestions) > 0)
+          .map((c) => ({
+            questionType: c.questionType,
+            numberOfQuestions: Number(c.numberOfQuestions) || 1,
+          })),
         description: promptDescription,
       };
       const res = await dailyChallengeApi.generateAIQuestions(payload);
@@ -566,6 +563,40 @@ const AIGenerateQuestions = () => {
     }
   }, [promptDescription, t, challengeInfo.challengeId, id, questionTypeConfigs, normalizeQuestionsFromAI]);
 
+  // Generate questions from uploaded file + optional description
+  const handleGenerateFromFile = useCallback(async () => {
+    if (!uploadedFile) {
+      spaceToast.error('Please upload a file first');
+      return;
+    }
+    try {
+      setIsGenerating(true);
+      setShowPreview(false);
+      const res = await dailyChallengeApi.parseQuestionsFromFile(uploadedFile, promptDescription || '');
+      let rawList = [];
+      if (Array.isArray(res)) rawList = res;
+      else if (Array.isArray(res?.questions)) rawList = res.questions;
+      else if (Array.isArray(res?.data?.questions)) rawList = res.data.questions;
+      else if (Array.isArray(res?.data)) rawList = res.data;
+      else if (Array.isArray(res?.result?.questions)) rawList = res.result.questions;
+      const normalized = normalizeQuestionsFromAI(rawList);
+      if (!normalized.length) {
+        spaceToast.warning('No questions parsed from file');
+        setQuestions([]);
+        setShowPreview(false);
+      } else {
+        setQuestions(normalized);
+        setShowPreview(true);
+        spaceToast.success('Questions generated from file');
+      }
+    } catch (err) {
+      console.error('Generate from file error:', err);
+      spaceToast.error(err?.response?.data?.message || err?.message || 'Failed to generate from file');
+    } finally {
+      setIsGenerating(false);
+    }
+  }, [uploadedFile, promptDescription, normalizeQuestionsFromAI]);
+
   // Handle save
   const handleSave = useCallback(async () => {
     // Validation
@@ -576,6 +607,21 @@ const AIGenerateQuestions = () => {
     
     try {
       setSaving(true);
+
+      // Capture existing sections BEFORE save to compute append positions and detect new ids later
+      let beforeSections = [];
+      try {
+        const existing = await dailyChallengeApi.getSectionsByChallenge(id, { page: 0, size: 100 });
+        beforeSections = Array.isArray(existing?.data) ? existing.data : (Array.isArray(existing) ? existing : []);
+        console.log('[AI Save] Before save - existing sections (id -> order):', beforeSections.map(s => ({ id: s?.section?.id ?? s?.id, order: s?.section?.orderNumber ?? s?.orderNumber })));
+      } catch (e) {
+        beforeSections = [];
+      }
+      const baseOrder = beforeSections.reduce((max, item) => {
+        const ord = Number(item?.section?.orderNumber ?? item?.orderNumber ?? 0);
+        return Number.isFinite(ord) && ord > max ? ord : max;
+      }, 0);
+      console.log('[AI Save] Computed baseOrder =', baseOrder);
 
       // Transform current preview questions -> API schema
       const transformQuestionToApiFormat = (q, orderNumber) => {
@@ -685,24 +731,54 @@ const AIGenerateQuestions = () => {
         }
       };
 
-      const apiQuestions = (questions || []).map((q, idx) => transformQuestionToApiFormat(q, idx + 1));
+      const apiQuestions = (questions || []).map((q, idx) => transformQuestionToApiFormat(q, 1));
 
-      const sectionData = {
+      // Each question should be saved in its own section in order
+      const sectionsDataArray = apiQuestions.map((apiQ, idx) => ({
         section: {
-          sectionTitle: 'AI Generated Section',
+          sectionTitle: 'AI Generated Question',
           sectionsUrl: '',
-          sectionsContent: promptDescription || 'AI generated questions',
-          orderNumber: 1,
+          sectionsContent: promptDescription || 'AI generated question',
+          orderNumber: baseOrder + idx + 1,
           resourceType: 'NONE',
         },
-        questions: apiQuestions,
-      };
+        questions: [apiQ],
+      }));
 
-      // Wrap in array for bulk-save API
-      const sectionsDataArray = [sectionData];
-
+      console.log('[AI Save] Sections to create (orderNumbers):', sectionsDataArray.map((s, i) => ({ i, orderNumber: s.section.orderNumber })));
       console.log('Saving AI section with questions:', sectionsDataArray);
       const resp = await dailyChallengeApi.bulkSaveSections(id, sectionsDataArray);
+      // After creating, force correct ordering: existing sections keep order, new ones appended
+      try {
+        const afterRes = await dailyChallengeApi.getSectionsByChallenge(id, { page: 0, size: 1000 });
+        const afterSections = Array.isArray(afterRes?.data) ? afterRes.data : (Array.isArray(afterRes) ? afterRes : []);
+        console.log('[AI Save] After save - all sections (id -> order):', afterSections.map(s => ({ id: s?.section?.id ?? s?.id, order: s?.section?.orderNumber ?? s?.orderNumber })));
+        const beforeIds = new Set(beforeSections.map(s => s?.section?.id ?? s?.id));
+        const existingOrdered = beforeSections
+          .map(s => ({ id: s?.section?.id ?? s?.id, orderNumber: Number(s?.section?.orderNumber ?? s?.orderNumber ?? 0) }))
+          .filter(x => x.id != null)
+          .sort((a, b) => a.orderNumber - b.orderNumber);
+        const newOnes = afterSections
+          .filter(s => !beforeIds.has(s?.section?.id ?? s?.id))
+          .map(s => ({
+            id: s?.section?.id ?? s?.id,
+            createdAt: s?.section?.createdAt ?? s?.createdAt ?? '',
+          }))
+          .filter(x => x.id != null)
+          .sort((a, b) => String(a.createdAt).localeCompare(String(b.createdAt)));
+        // Rebuild with correct sequence: first existing in their original order, then new ones
+        const finalBulk = [];
+        let seq = 0;
+        existingOrdered.forEach(x => finalBulk.push({ id: x.id, orderNumber: ++seq }));
+        newOnes.forEach(x => finalBulk.push({ id: x.id, orderNumber: ++seq }));
+        console.log('[AI Save] Reorder payload:', finalBulk);
+        if (finalBulk.length > 0) {
+          const reorderResp = await dailyChallengeApi.bulkUpdateSections(id, finalBulk);
+          console.log('[AI Save] Reorder response:', reorderResp);
+        }
+      } catch (reorderError) {
+        console.warn('Reorder after save failed, continuing:', reorderError);
+      }
       spaceToast.success(resp?.message || t('dailyChallenge.aiQuestionsGenerated') || 'AI questions generated successfully!');
 
       // Navigate back to content page
@@ -1112,265 +1188,388 @@ const AIGenerateQuestions = () => {
   return (
     <ThemedLayout customHeader={customHeader}>
       <div className={`ai-generate-wrapper ${theme}-ai-generate-wrapper`}>
-        <div style={{ padding: '24px', maxWidth: '1200px', margin: '0 auto' }}>
-          
-          {/* Prompt Description Card */}
-          <Card
-            className={`prompt-description-card ${theme}-prompt-description-card`}
+        <div style={{ padding: '24px', maxWidth: '1500px', margin: '0 auto' }}>
+          {/* Hierarchy info bar */}
+          <div
             style={{
-              borderRadius: '16px',
-              border: theme === 'sun' 
-                ? '2px solid rgba(113, 179, 253, 0.25)' 
-                : '2px solid rgba(138, 122, 255, 0.2)',
-              boxShadow: theme === 'sun' 
-                ? '0 4px 16px rgba(113, 179, 253, 0.1)' 
-                : '0 4px 16px rgba(138, 122, 255, 0.12)',
-              background: theme === 'sun'
-                ? 'linear-gradient(135deg, rgba(255, 255, 255, 1) 0%, rgba(240, 249, 255, 0.95) 100%)'
-                : 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(244, 240, 255, 0.95) 100%)',
-              marginBottom: '24px',
-              backdropFilter: 'blur(10px)'
+              display: 'flex',
+              gap: 12,
+              flexWrap: 'wrap',
+              alignItems: 'center',
+              marginBottom: 12,
             }}
           >
-            <Title level={3} style={{ 
-              marginTop: 0, 
-              marginBottom: '16px', 
-              fontSize: '22px', 
-              fontWeight: 700,
-              textAlign: 'center',
-              color: theme === 'sun' ? '#1890ff' : '#8B5CF6'
-            }}>
-              {t('dailyChallenge.createReading') || 'Create Questions with AI'}
-            </Title>
-            
-            <TextArea
-              value={promptDescription}
-              onChange={(e) => setPromptDescription(e.target.value)}
-              onFocus={() => setIsTextAreaFocused(true)}
-              onBlur={() => setIsTextAreaFocused(false)}
-              autoSize={{ minRows: 6, maxRows: 10 }}
-              style={{
-                fontSize: '15px',
-                borderRadius: '12px',
-                border: isTextAreaFocused
-                  ? theme === 'sun'
-                    ? '2px solid rgba(24, 144, 255, 0.6)'
-                    : '2px solid rgba(139, 92, 246, 0.6)'
-                  : theme === 'sun'
-                  ? '2px solid rgba(113, 179, 253, 0.3)'
-                  : '2px solid rgba(138, 122, 255, 0.3)',
-                background: theme === 'sun'
-                  ? 'rgba(240, 249, 255, 0.5)'
-                  : 'rgba(244, 240, 255, 0.3)',
-                outline: 'none',
-              }}
-            />
-            
-            <Divider style={{ margin: '24px 0' }} />
-            
-            {/* Question Type Configuration Section */}
-            <div style={{ marginTop: '24px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-              <Title level={3} style={{ 
-                marginTop: 0, 
-                marginBottom: 0, 
-                fontSize: '20px', 
-                fontWeight: 700,
-                color: theme === 'sun' ? '#1890ff' : '#8B5CF6'
-              }}>
-                {t('dailyChallenge.questionTypeConfiguration') || 'Question Type Configuration'}
-              </Title>
-              
-              <Tooltip title={t('dailyChallenge.addQuestionType') || 'Add Question Type'}>
-                <Button
-                  type="dashed"
-                  icon={<PlusOutlined />}
-                  onClick={handleAddQuestionType}
+            {hierarchy && (
+              <>
+                <div style={{
+                  padding: '8px 12px',
+                  borderRadius: 12,
+                  border: `2px solid ${theme === 'sun' ? 'rgba(24, 144, 255, 0.35)' : 'rgba(139, 92, 246, 0.35)'}`,
+                  background: theme === 'sun'
+                    ? 'linear-gradient(135deg, rgba(240,249,255,0.65), rgba(255,255,255,0.9))'
+                    : 'linear-gradient(135deg, rgba(244,240,255,0.35), rgba(255,255,255,0.08))',
+                  color: theme === 'sun' ? '#0f172a' : '#e5e7eb',
+                  fontWeight: 600,
+                }}>
+                  Level: {hierarchy?.level?.levelName || hierarchy?.level?.name || '—'}
+                </div>
+                <div style={{
+                  padding: '8px 12px',
+                  borderRadius: 12,
+                  border: `2px solid ${theme === 'sun' ? 'rgba(24, 144, 255, 0.35)' : 'rgba(139, 92, 246, 0.35)'}`,
+                  background: theme === 'sun'
+                    ? 'linear-gradient(135deg, rgba(240,249,255,0.65), rgba(255,255,255,0.9))'
+                    : 'linear-gradient(135deg, rgba(244,240,255,0.35), rgba(255,255,255,0.08))',
+                  color: theme === 'sun' ? '#0f172a' : '#e5e7eb',
+                  fontWeight: 600,
+                }}>
+                  Chapter: {hierarchy?.chapter?.chapterName || hierarchy?.chapter?.name || '—'}
+                </div>
+                <div style={{
+                  padding: '8px 12px',
+                  borderRadius: 12,
+                  border: `2px solid ${theme === 'sun' ? 'rgba(24, 144, 255, 0.35)' : 'rgba(139, 92, 246, 0.35)'}`,
+                  background: theme === 'sun'
+                    ? 'linear-gradient(135deg, rgba(240,249,255,0.65), rgba(255,255,255,0.9))'
+                    : 'linear-gradient(135deg, rgba(244,240,255,0.35), rgba(255,255,255,0.08))',
+                  color: theme === 'sun' ? '#0f172a' : '#e5e7eb',
+                  fontWeight: 600,
+                }}>
+                  Lesson: {hierarchy?.lesson?.lessonName || hierarchy?.lesson?.name || '—'}
+                </div>
+              </>
+            )}
+          </div>
+          {/* Frosted outer frame around both containers and the button */}
+          <Card
+            style={{
+              borderRadius: '20px',
+              border: theme === 'sun'
+                ? '2px solid rgba(24, 144, 255, 0.35)'
+                : '2px solid rgba(139, 92, 246, 0.35)',
+              background: theme === 'sun'
+                ? 'linear-gradient(180deg, rgba(255,255,255,0.60) 0%, rgba(240,249,255,0.55) 100%)'
+                : 'linear-gradient(180deg, rgba(255,255,255,0.50) 0%, rgba(244,240,255,0.45) 100%)',
+              backdropFilter: 'blur(6px)',
+              boxShadow: theme === 'sun'
+                ? '0 8px 24px rgba(24, 144, 255, 0.12)'
+                : '0 8px 24px rgba(139, 92, 246, 0.12)',
+              padding: 16
+            }}
+            bodyStyle={{ padding: 16 }}
+          >
+            {/* Two-column layout: left = Text Prompt (2/3), right = Question Settings (1/3) */}
+            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '20px', alignItems: 'stretch' }}>
+              {/* Left: Text Prompt (no passage) */}
+              <Card
+                className={`prompt-description-card ${theme}-prompt-description-card`}
+                style={{
+                  borderRadius: '16px',
+                  border: theme === 'sun' 
+                    ? '2px solid rgba(113, 179, 253, 0.25)' 
+                    : '2px solid rgba(138, 122, 255, 0.2)',
+                  boxShadow: theme === 'sun' 
+                    ? '0 4px 16px rgba(113, 179, 253, 0.1)' 
+                    : '0 4px 16px rgba(138, 122, 255, 0.12)',
+                  background: theme === 'sun'
+                    ? 'linear-gradient(135deg, rgba(255, 255, 255, 1) 0%, rgba(240, 249, 255, 0.95) 100%)'
+                    : 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(244, 240, 255, 0.95) 100%)',
+                  backdropFilter: 'blur(10px)',
+                  minHeight: '540px'
+                }}
+              >
+                <Title level={3} style={{ textAlign: 'center', color: theme === 'sun' ? '#1890ff' : '#8B5CF6', marginTop: 0, fontSize: '26px' }}>
+                  Text Prompt
+                </Title>
+                {/* Spacer to align top edge with right panel when in manual mode */}
+                {questionSettingsMode === 'manual' && (
+                  <div style={{ display: 'flex', justifyContent: 'flex-start', marginTop: 12, marginBottom: 20 }}>
+                    <div style={{ height: 20 }} />
+                  </div>
+                )}
+                <TextArea
+                  value={promptDescription}
+                  onChange={(e) => setPromptDescription(e.target.value)}
+                  autoSize={{ minRows: 16, maxRows: 26 }}
+                  placeholder={t('dailyChallenge.pleaseEnterPrompt') || 'Enter prompt here'}
                   style={{
-                    borderRadius: '8px',
-                    border: theme === 'sun'
-                      ? '2px dashed rgba(113, 179, 253, 0.5)'
-                      : '2px dashed rgba(138, 122, 255, 0.5)',
-                    color: theme === 'sun' ? '#1890ff' : '#8B5CF6',
-                    height: '38px',
-                    fontSize: '14px',
-                    fontWeight: 600
+                    marginTop: 12,
+                    fontSize: '15px',
+                    borderRadius: '12px',
+                    border: `2px solid ${primaryColor}99`,
+                    background: theme === 'sun'
+                      ? 'rgba(240, 249, 255, 0.5)'
+                      : 'rgba(244, 240, 255, 0.3)',
+                    outline: 'none',
+                    boxShadow: 'none',
+                    minHeight: '460px'
                   }}
-                >
-                  {t('dailyChallenge.addQuestionType') || 'Add Question Type'}
-                </Button>
-              </Tooltip>
+                />
+              </Card>
+
+              {/* Right: Question Settings (with Upload or Manual modes) */}
+              <Card
+                className={`prompt-description-card ${theme}-prompt-description-card`}
+                style={{
+                  borderRadius: '16px',
+                  border: theme === 'sun' 
+                    ? '2px solid rgba(113, 179, 253, 0.25)' 
+                    : '2px solid rgba(138, 122, 255, 0.2)',
+                  boxShadow: theme === 'sun' 
+                    ? '0 4px 16px rgba(113, 179, 253, 0.1)' 
+                    : '0 4px 16px rgba(138, 122, 255, 0.12)',
+                  background: theme === 'sun'
+                    ? 'linear-gradient(135deg, rgba(255, 255, 255, 1) 0%, rgba(240, 249, 255, 0.95) 100%)'
+                    : 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(244, 240, 255, 0.95) 100%)',
+                  backdropFilter: 'blur(10px)',
+                  minHeight: '540px'
+                }}
+              >
+                <Title level={3} style={{ margin: 0, fontSize: '26px', color: theme === 'sun' ? '#1890ff' : '#8B5CF6', marginTop: 0, textAlign: 'center' }}>
+                  Question Settings
+                </Title>
+
+                {/* Hidden input to allow direct upload from the option card */}
+                <input
+                  ref={uploadInputRef}
+                  type="file"
+                  accept=".doc,.docx"
+                  style={{ display: 'none' }}
+                  onChange={(e) => {
+                    const f = e.target.files && e.target.files[0];
+                    if (f && f.size > MAX_FILE_MB * 1024 * 1024) {
+                      spaceToast.error(`File too large. Max ${MAX_FILE_MB}MB`);
+                      e.target.value = '';
+                      setUploadedFile(null);
+                      setUploadedFileName('');
+                      return;
+                    }
+                    setUploadedFileName(f ? f.name : '');
+                    setUploadedFile(f || null);
+                  }}
+                />
+
+                {/* Mode chooser for right side */}
+                {questionSettingsMode === null && (
+                  <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', width: '100%', marginTop: 12, minHeight: '460px' }}>
+                    <div style={{ width: '100%' }}>
+                      {/* Option: Upload File */}
+                      <Card
+                        hoverable
+                        onClick={() => {
+                          setQuestionSettingsMode('upload');
+                          if (uploadInputRef.current) uploadInputRef.current.click();
+                        }}
+                        style={{
+                          borderRadius: '12px',
+                          border: theme === 'sun'
+                            ? '2px solid rgba(82, 196, 26, 0.3)'
+                            : '2px solid rgba(138, 122, 255, 0.3)',
+                          background: theme === 'sun'
+                            ? 'linear-gradient(135deg, rgba(237, 250, 230, 0.5) 0%, rgba(207, 244, 192, 0.4) 100%)'
+                            : 'rgba(255, 255, 255, 0.5)',
+                          cursor: 'pointer',
+                          marginBottom: 16
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                          <CloudUploadOutlined style={{ fontSize: 24, color: '#000000' }} />
+                          <Typography.Text strong style={{ color: theme === 'sun' ? '#1E40AF' : '#8377A0' }}>
+                            Upload File
+                          </Typography.Text>
+                        </div>
+                      </Card>
+                      {uploadedFileName && (
+                        <div style={{ marginTop: 10, fontSize: 12, opacity: 0.8, textAlign: 'center' }}>{uploadedFileName}</div>
+                      )}
+
+                      {/* Option: Settings Manually */}
+                      <Card
+                        hoverable
+                        onClick={() => setQuestionSettingsMode('manual')}
+                        style={{
+                          borderRadius: '12px',
+                          border: theme === 'sun'
+                            ? '2px solid rgba(113, 179, 253, 0.3)'
+                            : '2px solid rgba(138, 122, 255, 0.3)',
+                          background: theme === 'sun'
+                            ? 'linear-gradient(135deg, rgba(230, 245, 255, 0.5) 0%, rgba(186, 231, 255, 0.4) 100%)'
+                            : 'rgba(255, 255, 255, 0.5)',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                          <EditOutlined style={{ fontSize: 24, color: '#000000' }} />
+                          <Typography.Text strong style={{ color: theme === 'sun' ? '#1E40AF' : '#8377A0' }}>
+                            Setting Manually
+                          </Typography.Text>
+                        </div>
+                      </Card>
+                    </div>
+                  </div>
+                )}
+
+                {questionSettingsMode === 'upload' && (
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: 16, width: '100%' }}>
+                    <Button
+                      icon={<ArrowLeftOutlined />}
+                      onClick={() => setQuestionSettingsMode(null)}
+                      className={`class-menu-back-button ${theme}-class-menu-back-button`}
+                      style={{ height: '32px', borderRadius: '8px', fontWeight: 500, fontSize: '14px', marginBottom: 16, alignSelf: 'flex-start' }}
+                    >
+                      {t('common.back')}
+                    </Button>
+
+                    <label
+                      htmlFor="question-upload-input"
+                      style={{
+                        width: 380,
+                        height: 220,
+                        borderRadius: 20,
+                        border: `2px dashed ${theme === 'sun' ? 'rgba(24, 144, 255, 0.7)' : 'rgba(139, 92, 246, 0.7)'}`,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        cursor: 'pointer',
+                        background: theme === 'sun' ? 'linear-gradient(135deg, rgba(255,255,255,0.95), rgba(240, 249, 255, 0.6))' : 'linear-gradient(135deg, rgba(255,255,255,0.92), rgba(244, 240, 255, 0.6))',
+                        boxShadow: theme === 'sun' ? '0 8px 24px rgba(24, 144, 255, 0.08)' : '0 8px 24px rgba(139, 92, 246, 0.08)'
+                      }}
+                    >
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
+                        <CloudUploadOutlined style={{ fontSize: 56, color: theme === 'sun' ? '#1890ff' : '#8B5CF6' }} />
+                        <Typography.Text style={{ fontWeight: 700, color: theme === 'sun' ? '#1E40AF' : '#6F61A8' }}>Click to upload</Typography.Text>
+                        <Typography.Text style={{ fontSize: 12, opacity: 0.8, color: theme === 'sun' ? '#0f172a' : '#d1cde8' }}>
+                          Supported: .doc, .docx — Max {MAX_FILE_MB}MB
+                        </Typography.Text>
+                      </div>
+                    </label>
+                    <input
+                      id="question-upload-input"
+                      type="file"
+                      accept=".doc,.docx"
+                      style={{ display: 'none' }}
+                      onChange={(e) => {
+                        const f = e.target.files && e.target.files[0];
+                        if (f && f.size > MAX_FILE_MB * 1024 * 1024) {
+                          spaceToast.error(`File too large. Max ${MAX_FILE_MB}MB`);
+                          e.target.value = '';
+                          setUploadedFile(null);
+                          setUploadedFileName('');
+                          return;
+                        }
+                        setUploadedFileName(f ? f.name : '');
+                        setUploadedFile(f || null);
+                      }}
+                    />
+                    {uploadedFileName && (
+                      <div style={{ marginTop: 10, fontSize: 13, fontWeight: 600, color: theme === 'sun' ? '#1E40AF' : '#d1cde8' }}>{uploadedFileName}</div>
+                    )}
+                    <Button
+                      type="primary"
+                      icon={<ThunderboltOutlined />}
+                      loading={isGenerating}
+                      disabled={!uploadedFile}
+                      onClick={handleGenerateFromFile}
+                      style={{
+                        marginTop: 16,
+                        height: '40px',
+                        borderRadius: '8px',
+                        fontSize: '16px',
+                        fontWeight: 500,
+                        padding: '0 24px',
+                        background: theme === 'sun'
+                          ? 'linear-gradient(135deg, #66AEFF, #3C99FF)'
+                          : 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)',
+                        border: 'none',
+                        color: '#000000',
+                      }}
+                    >
+                      Generate From File
+                    </Button>
+                  </div>
+                )}
+
+                {questionSettingsMode === 'manual' && (
+                  <>
+                    <div style={{ display: 'flex', justifyContent: 'flex-start', marginTop: 12, marginBottom: 20 }}>
+                      <Button
+                        icon={<ArrowLeftOutlined />}
+                        onClick={() => setQuestionSettingsMode(null)}
+                        className={`class-menu-back-button ${theme}-class-menu-back-button`}
+                        style={{ height: '32px', borderRadius: '8px', fontWeight: 500, fontSize: '14px' }}
+                      >
+                        {t('common.back')}
+                      </Button>
+                    </div>
+
+                    <div
+                      style={{
+                        border: `2px solid ${theme === 'sun' ? 'rgba(24, 144, 255, 0.6)' : 'rgba(139, 92, 246, 0.6)'}`,
+                        borderRadius: '16px',
+                        background: theme === 'sun' ? 'rgba(24, 144, 255, 0.06)' : 'rgba(139, 92, 246, 0.08)',
+                        padding: '12px',
+                        boxShadow: theme === 'sun' 
+                          ? 'inset 0 0 0 1px rgba(24, 144, 255, 0.05)'
+                          : 'inset 0 0 0 1px rgba(139, 92, 246, 0.08)',
+                        height: '400px',
+                        overflowY: 'auto'
+                      }}
+                    >
+                      <div style={{ height: '360px', overflowY: 'scroll', paddingRight: '8px' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(1, 1fr)', gap: '16px' }}>
+                          {availableQuestionTypes.map((qt) => {
+                            const cfgIndex = questionTypeConfigs.findIndex(c => c.questionType === qt.value);
+                            const current = cfgIndex >= 0 ? questionTypeConfigs[cfgIndex] : { numberOfQuestions: 0 };
+                            return (
+                              <div key={qt.value} style={{ borderRadius: 12, padding: 16, border: `2px solid ${qt?.color}30`, background: theme === 'sun' ? `linear-gradient(135deg, ${qt?.bgColor}, rgba(255,255,255,0.8))` : `linear-gradient(135deg, ${qt?.bgColor}, rgba(255,255,255,0.05))` }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                                  <div style={{ width: 44, height: 44, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, background: `${qt?.color}20`, border: `2px solid ${qt?.color}40` }}>{qt?.icon}</div>
+                                  <div style={{ flex: 1, fontWeight: 600, color: '#000000' }}>{qt.label}</div>
+                                  <Tooltip title={t('dailyChallenge.numberOfQuestions') || 'Number of Questions'}>
+                                    <Input
+                                      type="number"
+                                      min={0}
+                                      value={current.numberOfQuestions}
+                                      onChange={(e) => handleNumberOfQuestionsChange(cfgIndex, Math.max(0, parseInt(e.target.value) || 0))}
+                                      style={{
+                                        width: 80,
+                                        borderRadius: '8px',
+                                        border: theme === 'sun'
+                                          ? `2px solid ${qt?.color || '#1890ff'}40`
+                                          : `2px solid ${qt?.color || '#8B5CF6'}40`,
+                                        background: theme === 'sun' ? '#fff' : 'rgba(255, 255, 255, 0.1)',
+                                        fontSize: '14px',
+                                        color: '#000000',
+                                        fontWeight: 600
+                                      }}
+                                    />
+                                  </Tooltip>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </Card>
             </div>
-            
-             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '16px' }}>
-               {questionTypeConfigs.map((config, index) => {
-                 const questionType = availableQuestionTypes.find(qt => qt.value === config.questionType);
-                 
-                 return (
-                   <div
-                     key={index}
-                     style={{
-                       borderRadius: '12px',
-                       border: `2px solid ${questionType?.color}30`,
-                       background: theme === 'sun'
-                         ? `linear-gradient(135deg, ${questionType?.bgColor}, rgba(255, 255, 255, 0.8))`
-                         : `linear-gradient(135deg, ${questionType?.bgColor}, rgba(255, 255, 255, 0.05))`,
-                       padding: '16px',
-                       boxShadow: theme === 'sun'
-                         ? `0 4px 16px ${questionType?.color}20`
-                         : `0 4px 16px ${questionType?.color}30`,
-                       transition: 'all 0.3s ease',
-                       position: 'relative',
-                       overflow: 'hidden'
-                     }}
-                     onMouseEnter={(e) => {
-                       e.currentTarget.style.transform = 'translateY(-2px)';
-                       e.currentTarget.style.boxShadow = theme === 'sun'
-                         ? `0 8px 24px ${questionType?.color}30`
-                         : `0 8px 24px ${questionType?.color}40`;
-                     }}
-                     onMouseLeave={(e) => {
-                       e.currentTarget.style.transform = 'translateY(0)';
-                       e.currentTarget.style.boxShadow = theme === 'sun'
-                         ? `0 4px 16px ${questionType?.color}20`
-                         : `0 4px 16px ${questionType?.color}30`;
-                     }}
-                   >
-                     {/* Background Pattern */}
-                     <div
-                       style={{
-                         position: 'absolute',
-                         top: '-20px',
-                         right: '-20px',
-                         width: '80px',
-                         height: '80px',
-                         borderRadius: '50%',
-                         background: `radial-gradient(circle, ${questionType?.color}15, transparent)`,
-                         opacity: 0.6
-                       }}
-                     />
-                     
-                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px', position: 'relative', zIndex: 1 }}>
-                       {/* Question Type Icon & Select */}
-                       <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: '1 1 auto', minWidth: 0 }}>
-                         <div
-                           style={{
-                             width: '44px',
-                             height: '44px',
-                             borderRadius: '12px',
-                             background: `linear-gradient(135deg, ${questionType?.color}20, ${questionType?.color}40)`,
-                             display: 'flex',
-                             alignItems: 'center',
-                             justifyContent: 'center',
-                             fontSize: '22px',
-                             boxShadow: `0 4px 12px ${questionType?.color}30`,
-                             border: `2px solid ${questionType?.color}40`,
-                             transition: 'all 0.3s ease',
-                             flexShrink: 0
-                           }}
-                           onMouseEnter={(e) => {
-                             e.currentTarget.style.transform = 'scale(1.05) rotate(5deg)';
-                             e.currentTarget.style.boxShadow = `0 6px 16px ${questionType?.color}40`;
-                           }}
-                           onMouseLeave={(e) => {
-                             e.currentTarget.style.transform = 'scale(1) rotate(0deg)';
-                             e.currentTarget.style.boxShadow = `0 4px 12px ${questionType?.color}30`;
-                           }}
-                         >
-                           {questionType?.icon}
-                         </div>
-                         <Select
-                           value={config.questionType}
-                           onChange={(value) => handleQuestionTypeChange(index, value)}
-                           style={{ 
-                             flex: '1 1 auto',
-                             minWidth: 0,
-                             borderRadius: '10px'
-                           }}
-                           size="default"
-                         >
-                           {availableQuestionTypes.map(qt => (
-                             <Select.Option key={qt.value} value={qt.value}>
-                               <span style={{ marginRight: '8px', fontSize: '16px' }}>{qt.icon}</span>
-                               {qt.label}
-                             </Select.Option>
-                           ))}
-                         </Select>
-                       </div>
-                       
-                       {/* Number of Questions */}
-                       <Tooltip title={t('dailyChallenge.numberOfQuestions') || 'Number of Questions'}>
-                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: '0 0 auto' }}>
-                           <Input
-                             type="number"
-                             value={config.numberOfQuestions}
-                             onChange={(e) => handleNumberOfQuestionsChange(index, parseInt(e.target.value) || 1)}
-                             placeholder="#"
-                             style={{ 
-                               width: '70px', 
-                               borderRadius: '8px',
-                               border: `1px solid ${questionType?.color}40`,
-                               background: theme === 'sun' ? '#fff' : 'rgba(255, 255, 255, 0.1)',
-                               fontSize: '14px',
-                               fontWeight: '600'
-                             }}
-                             size="default"
-                             min={1}
-                             max={100}
-                           />
-                         </div>
-                       </Tooltip>
-                       
-                       {/* Delete Button */}
-                       <Tooltip title={t('dailyChallenge.removeQuestionType') || 'Remove'}>
-                         <Button
-                           type="text"
-                           danger
-                           icon={<DeleteOutlined />}
-                           onClick={() => handleRemoveQuestionType(index)}
-                           style={{ 
-                             width: '40px', 
-                             height: '40px',
-                             borderRadius: '10px',
-                             display: 'flex',
-                             alignItems: 'center',
-                             justifyContent: 'center',
-                             fontSize: '16px',
-                             color: '#ff4d4f',
-                             background: 'rgba(255, 77, 79, 0.1)',
-                             border: '1px solid rgba(255, 77, 79, 0.2)',
-                             transition: 'all 0.3s ease',
-                             flexShrink: 0
-                           }}
-                           onMouseEnter={(e) => {
-                             e.currentTarget.style.background = 'rgba(255, 77, 79, 0.2)';
-                             e.currentTarget.style.transform = 'scale(1.05)';
-                           }}
-                           onMouseLeave={(e) => {
-                             e.currentTarget.style.background = 'rgba(255, 77, 79, 0.1)';
-                             e.currentTarget.style.transform = 'scale(1)';
-                           }}
-                         />
-                       </Tooltip>
-                     </div>
-                   </div>
-                 );
-               })}
-             </div>
-            
-            {/* Generate Button */}
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '24px' }}>
+
+            {/* Generate Questions button below the two containers */}
+            <div style={{ display: 'flex', justifyContent: 'center', marginTop: 20, gap: 12, flexWrap: 'wrap' }}>
               <Button
                 type="primary"
                 icon={<ThunderboltOutlined />}
-                onClick={handleGenerateWithAI}
                 loading={isGenerating}
+                onClick={handleGenerateWithAI}
                 style={{
-                  height: '40px',
-                  borderRadius: '8px',
-                  fontSize: '16px',
-                  fontWeight: 500,
-                  padding: '0 24px',
+                  height: '56px',
+                  minWidth: '360px',
+                  borderRadius: '28px',
+                  fontSize: '18px',
+                  fontWeight: 700,
+                  padding: '0 36px',
                   background: theme === 'sun'
                     ? 'linear-gradient(135deg, #66AEFF, #3C99FF)'
                     : 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)',
@@ -1382,10 +1581,9 @@ const AIGenerateQuestions = () => {
                   transition: 'all 0.3s ease'
                 }}
               >
-                {isGenerating ? (t('dailyChallenge.generating') || 'Generating...') : (t('dailyChallenge.generateWithAI') || 'Generate with AI')}
+                {isGenerating ? (t('dailyChallenge.generating') || 'Generating...') : 'Generate Questions'}
               </Button>
             </div>
-          </div>
           </Card>
 
           {/* Loading Animation */}
