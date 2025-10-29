@@ -3075,6 +3075,17 @@ const SpeakingSectionItem = ({ question, index, theme }) => {
                 : '#8B5CF6 rgba(138, 122, 255, 0.2)'
             }}>
             
+            {/* Maximum Recording Time */}
+            <div style={{
+              marginBottom: '16px',
+              fontWeight: '600',
+              fontSize: '20px',
+              color: theme === 'sun' ? '#1E40AF' : '#1F2937',
+              textAlign: 'left'
+            }}>
+              🎤 Maximum limit 3 minutes
+            </div>
+            
             <div style={{
               fontSize: '15px',
               lineHeight: '1.8',
@@ -4461,13 +4472,14 @@ const DropdownContainer = ({ theme, data }) => {
 // Drag and Drop Container Component
 const DragDropContainer = ({ theme, data }) => {
   const [droppedItems, setDroppedItems] = React.useState({});
+  // Use ALL values from API (including duplicates) as draggable options; fallback to a simple list
   const [availableItems, setAvailableItems] = React.useState(() => {
-    const incorrect = (data?.content?.data || []).filter(it => !it.positionId || it.correct === false).map(it => it.value).filter(Boolean);
-    const correct = (data?.content?.data || []).filter(it => it.positionId && it.correct === true).map(it => it.value).filter(Boolean);
-    const combined = Array.from(new Set([...incorrect, ...correct]));
-    return combined.length ? combined : ['love','like','enjoy','hate'];
+    const all = (data?.content?.data || []).map(it => it?.value).filter(Boolean);
+    return all.length ? all : ['love', 'like', 'enjoy', 'hate'];
   });
   const [dragOverPosition, setDragOverPosition] = React.useState(null);
+
+  const toPlain = (s) => (typeof s === 'string' ? s.replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' ').trim() : s);
 
   const handleDragStart = (e, item, isDropped = false, positionId = null) => {
     e.dataTransfer.setData('text/plain', item);
@@ -4486,23 +4498,26 @@ const DragDropContainer = ({ theme, data }) => {
       const newItems = { ...prev };
       const currentItem = newItems[positionId];
       
-      // If dropping from another position
       if (fromPositionId && fromPositionId !== positionId) {
         newItems[positionId] = item;
         if (fromPositionId in newItems) {
           delete newItems[fromPositionId];
         }
-        // Return the old item from target position to available list
         if (currentItem) {
           setAvailableItems(prev => [...prev, currentItem]);
         }
         return newItems;
       }
       
-      // If dropping from available list
       if (!isDropped) {
         newItems[positionId] = item;
-        setAvailableItems(prev => prev.filter(i => i !== item));
+        setAvailableItems(prev => {
+          const idx = prev.indexOf(item);
+          if (idx === -1) return prev; // safety
+          const copy = [...prev];
+          copy.splice(idx, 1);
+          return copy;
+        });
       }
       
       return newItems;
@@ -4511,15 +4526,11 @@ const DragDropContainer = ({ theme, data }) => {
 
   const handleDragStartFromDropped = (e, item, positionId) => {
     handleDragStart(e, item, true, positionId);
-    
-    // Remove from dropped items immediately
     setDroppedItems(prev => {
       const newItems = { ...prev };
       delete newItems[positionId];
       return newItems;
     });
-    
-    // Add back to available items
     setAvailableItems(prev => [...prev, item]);
   };
 
@@ -4529,11 +4540,26 @@ const DragDropContainer = ({ theme, data }) => {
   };
 
   const handleDragLeave = (e) => {
-    // Only clear if we're actually leaving the drop zone
     if (!e.currentTarget.contains(e.relatedTarget)) {
       setDragOverPosition(null);
     }
   };
+
+  // Parse questionText from API to create dynamic sentence with placeholders
+  const questionText = data?.questionText || data?.question || '';
+  const parts = React.useMemo(() => {
+    const result = [];
+    const regex = /\[\[pos_(.*?)\]\]/g;
+    let last = 0; let match; let idx = 0;
+    while ((match = regex.exec(questionText)) !== null) {
+      if (match.index > last) result.push({ type: 'text', content: questionText.slice(last, match.index) });
+      const posId = match[1];
+      result.push({ type: 'position', positionId: `pos_${posId}`, index: idx++ });
+      last = match.index + match[0].length;
+    }
+    if (last < questionText.length) result.push({ type: 'text', content: questionText.slice(last) });
+    return result;
+  }, [questionText]);
 
   return (
     <div
@@ -4607,16 +4633,6 @@ const DragDropContainer = ({ theme, data }) => {
             borderRadius: '12px',
             border: `1px solid ${theme === 'sun' ? '#e8e8e8' : 'rgba(255, 255, 255, 0.1)'}`,
           }}>
-            <Typography.Text style={{ 
-              fontSize: '14px', 
-              fontWeight: 350,
-              marginBottom: '16px',
-              display: 'block',
-              color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)'
-            }}>
-              Complete the sentence by dragging words into the blanks:
-            </Typography.Text>
-            
             <div style={{ 
               fontSize: '15px', 
               fontWeight: 350,
@@ -4624,129 +4640,76 @@ const DragDropContainer = ({ theme, data }) => {
               color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)',
               marginBottom: '16px'
             }}>
-              I 
-              {droppedItems.pos_1 ? (
-                <div
-                  draggable
-                  onDragStart={(e) => handleDragStartFromDropped(e, droppedItems.pos_1, 'pos_1')}
-                  style={{
-                    minWidth: '120px',
-                    height: '32px',
-                    margin: '0 8px',
-                    background: theme === 'sun' ? 'rgba(24, 144, 255, 0.15)' : 'rgba(138, 122, 255, 0.18)',
-                    border: `2px solid ${theme === 'sun' ? '#1890ff' : '#8B5CF6'}`,
-                    borderRadius: '8px',
-                    display: 'inline-block',
-                    padding: '4px 12px',
-                    fontSize: '15px',
-                    fontWeight: '350',
-                    color: theme === 'sun' ? '#1890ff' : '#8B5CF6',
-                    cursor: 'grab',
-                    transition: 'all 0.2s ease',
-                    verticalAlign: 'top',
-                    lineHeight: '1.4',
-                    boxSizing: 'border-box',
-                    textAlign: 'center'
-                  }}
-                >
-                  {droppedItems.pos_1}
-                </div>
-              ) : (
-                <div
-                  onDrop={(e) => handleDrop(e, 'pos_1')}
-                  onDragOver={(e) => handleDragOver(e, 'pos_1')}
-                  onDragLeave={handleDragLeave}
-                  style={{
-                    minWidth: '120px',
-                    height: '32px',
-                    margin: '0 8px',
-                    background: dragOverPosition === 'pos_1' 
-                      ? (theme === 'sun' ? 'rgba(24, 144, 255, 0.2)' : 'rgba(138, 122, 255, 0.25)')
-                      : '#ffffff',
-                    border: `2px ${dragOverPosition === 'pos_1' ? 'solid' : 'dashed'} ${dragOverPosition === 'pos_1' ? (theme === 'sun' ? '#1890ff' : '#8B5CF6') : 'rgba(0, 0, 0, 0.5)'}`,
-                    borderRadius: '8px',
-                    display: 'inline-block',
-                    padding: '4px 12px',
-                    fontSize: '15px',
-                    fontWeight: '350',
-                    color: dragOverPosition === 'pos_1' ? (theme === 'sun' ? '#1890ff' : '#8B5CF6') : 'rgba(0, 0, 0, 0.5)',
-                    cursor: 'pointer',
-                    transition: 'all 0.3s ease',
-                    verticalAlign: 'top',
-                    lineHeight: '1.4',
-                    boxSizing: 'border-box',
-                    textAlign: 'center',
-                    transform: dragOverPosition === 'pos_1' ? 'scale(1.05)' : 'scale(1)',
-                    boxShadow: dragOverPosition === 'pos_1' 
-                      ? (theme === 'sun' ? '0 4px 12px rgba(24, 144, 255, 0.3)' : '0 4px 12px rgba(138, 122, 255, 0.3)')
-                      : 'none'
-                  }}
-                >
-                  {dragOverPosition === 'pos_1' ? 'Drop here!' : 'Drop here'}
-                </div>
-              )}
-              programming and 
-              {droppedItems.pos_2 ? (
-                <div
-                  draggable
-                  onDragStart={(e) => handleDragStartFromDropped(e, droppedItems.pos_2, 'pos_2')}
-                  style={{
-                    minWidth: '120px',
-                    height: '32px',
-                    margin: '0 8px',
-                    background: theme === 'sun' ? 'rgba(24, 144, 255, 0.15)' : 'rgba(138, 122, 255, 0.18)',
-                    border: `2px solid ${theme === 'sun' ? '#1890ff' : '#8B5CF6'}`,
-                    borderRadius: '8px',
-                    display: 'inline-block',
-                    padding: '4px 12px',
-                    fontSize: '15px',
-                    fontWeight: '350',
-                    color: theme === 'sun' ? '#1890ff' : '#8B5CF6',
-                    cursor: 'grab',
-                    transition: 'all 0.2s ease',
-                    verticalAlign: 'top',
-                    lineHeight: '1.4',
-                    boxSizing: 'border-box',
-                    textAlign: 'center'
-                  }}
-                >
-                  {droppedItems.pos_2}
-                </div>
-              ) : (
-                <div
-                  onDrop={(e) => handleDrop(e, 'pos_2')}
-                  onDragOver={(e) => handleDragOver(e, 'pos_2')}
-                  onDragLeave={handleDragLeave}
-                  style={{
-                    minWidth: '120px',
-                    height: '32px',
-                    margin: '0 8px',
-                    background: dragOverPosition === 'pos_2' 
-                      ? (theme === 'sun' ? 'rgba(24, 144, 255, 0.2)' : 'rgba(138, 122, 255, 0.25)')
-                      : '#ffffff',
-                    border: `2px ${dragOverPosition === 'pos_2' ? 'solid' : 'dashed'} ${dragOverPosition === 'pos_2' ? (theme === 'sun' ? '#1890ff' : '#8B5CF6') : 'rgba(0, 0, 0, 0.5)'}`,
-                    borderRadius: '8px',
-                    display: 'inline-block',
-                    padding: '4px 12px',
-                    fontSize: '15px',
-                    fontWeight: '350',
-                    color: dragOverPosition === 'pos_2' ? (theme === 'sun' ? '#1890ff' : '#8B5CF6') : 'rgba(0, 0, 0, 0.5)',
-                    cursor: 'pointer',
-                    transition: 'all 0.3s ease',
-                    verticalAlign: 'top',
-                    lineHeight: '1.4',
-                    boxSizing: 'border-box',
-                    textAlign: 'center',
-                    transform: dragOverPosition === 'pos_2' ? 'scale(1.05)' : 'scale(1)',
-                    boxShadow: dragOverPosition === 'pos_2' 
-                      ? (theme === 'sun' ? '0 4px 12px rgba(24, 144, 255, 0.3)' : '0 4px 12px rgba(138, 122, 255, 0.3)')
-                      : 'none'
-                  }}
-                >
-                  {dragOverPosition === 'pos_2' ? 'Drop here!' : 'Drop here'}
-                </div>
-              )}
-              it very much.
+              {parts.length > 0 ? (
+                parts.map((part, pIdx) => (
+                  <React.Fragment key={pIdx}>
+                    {part.type === 'text' ? (
+                      toPlain(part.content)
+                    ) : (
+                      droppedItems[part.positionId] ? (
+                        <div
+                          draggable
+                          onDragStart={(e) => handleDragStartFromDropped(e, droppedItems[part.positionId], part.positionId)}
+                          style={{
+                            minWidth: '120px',
+                            height: '32px',
+                            margin: '0 8px',
+                            background: theme === 'sun' ? 'rgba(24, 144, 255, 0.15)' : 'rgba(138, 122, 255, 0.18)',
+                            border: `2px solid ${theme === 'sun' ? '#1890ff' : '#8B5CF6'}`,
+                            borderRadius: '8px',
+                            display: 'inline-block',
+                            padding: '4px 12px',
+                            fontSize: '15px',
+                            fontWeight: '350',
+                            color: theme === 'sun' ? '#1890ff' : '#8B5CF6',
+                            cursor: 'grab',
+                            transition: 'all 0.2s ease',
+                            verticalAlign: 'top',
+                            lineHeight: '1.4',
+                            boxSizing: 'border-box',
+                            textAlign: 'center'
+                          }}
+                        >
+                          {toPlain(droppedItems[part.positionId])}
+                        </div>
+                      ) : (
+                        <div
+                          onDrop={(e) => handleDrop(e, part.positionId)}
+                          onDragOver={(e) => handleDragOver(e, part.positionId)}
+                          onDragLeave={handleDragLeave}
+                          style={{
+                            minWidth: '120px',
+                            height: '32px',
+                            margin: '0 8px',
+                            background: dragOverPosition === part.positionId 
+                              ? (theme === 'sun' ? 'rgba(24, 144, 255, 0.2)' : 'rgba(138, 122, 255, 0.25)')
+                              : '#ffffff',
+                            border: `2px ${dragOverPosition === part.positionId ? 'solid' : 'dashed'} ${dragOverPosition === part.positionId ? (theme === 'sun' ? '#1890ff' : '#8B5CF6') : 'rgba(0, 0, 0, 0.5)'}`,
+                            borderRadius: '8px',
+                            display: 'inline-block',
+                            padding: '4px 12px',
+                            fontSize: '15px',
+                            fontWeight: '350',
+                            color: dragOverPosition === part.positionId ? (theme === 'sun' ? '#1890ff' : '#8B5CF6') : 'rgba(0, 0, 0, 0.5)',
+                            cursor: 'pointer',
+                            transition: 'all 0.3s ease',
+                            verticalAlign: 'top',
+                            lineHeight: '1.4',
+                            boxSizing: 'border-box',
+                            textAlign: 'center',
+                            transform: dragOverPosition === part.positionId ? 'scale(1.05)' : 'scale(1)',
+                            boxShadow: dragOverPosition === part.positionId 
+                              ? (theme === 'sun' ? '0 4px 12px rgba(24, 144, 255, 0.3)' : '0 4px 12px rgba(138, 122, 255, 0.3)')
+                              : 'none'
+                          }}
+                        >
+                          {dragOverPosition === part.positionId ? 'Drop here!' : 'Drop here'}
+                        </div>
+                      )
+                    )}
+                  </React.Fragment>
+                ))
+              ) : null}
             </div>
           </div>
 
