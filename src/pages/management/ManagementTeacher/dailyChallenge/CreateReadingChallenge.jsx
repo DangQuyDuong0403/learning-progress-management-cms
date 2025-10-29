@@ -143,11 +143,12 @@ const CreateReadingChallenge = () => {
       };
     } else {
       // New mode - start with empty passage
+      // For Writing (WR) and Speaking (SP) challenges, automatically set type to "manual" to show editor immediately
       return {
         id: 1,
         title: isWritingChallenge ? "Writing Prompt" : "Passage",
         content: "",
-        type: null,
+        type: (isWritingChallenge || isSpeakingChallenge) ? "manual" : null, // Auto-show editor for WR/SP
         questions: [],
         audioFile: null,
         audioUrl: null
