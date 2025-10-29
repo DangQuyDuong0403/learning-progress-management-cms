@@ -109,7 +109,6 @@ const processPassageContent = (content, theme, challengeType) => {
         background: ${badgeBgColor};
         border: 2px solid ${badgeBorderColor};
         border-radius: 8px;
-        font-weight: 600;
         font-size: 14px;
         color: ${badgeColor};
         margin: 0 4px;
@@ -1035,13 +1034,14 @@ const SortablePassageItem = memo(
                                   }}>
                                     {idx + 1}.
                                   </span>
-                                  <div 
-                                    style={{ 
-                                      flex: 1,
-                                      lineHeight: '1.4'
-                                    }}
-                                    dangerouslySetInnerHTML={{ __html: item.value }} 
-                                  />
+                    <div 
+                      style={{ 
+                        flex: 1,
+                        lineHeight: '1.4',
+                        fontWeight: 200
+                      }}
+                      dangerouslySetInnerHTML={{ __html: item.value }} 
+                    />
                                 </div>
                               ))}
                             </div>
@@ -1092,7 +1092,7 @@ const SortablePassageItem = memo(
                                     onChange={() => {}}
                                     style={{ width: '18px', height: '18px', accentColor: theme === 'sun' ? '#1890ff' : '#8B5CF6' }}
                                   />
-                                  <span style={{ fontWeight: 600 }}>{key}.</span>
+                                  <span style={{ fontWeight: 400 }}>{key}.</span>
                                   <span className="option-text" style={{ flex: 1, display: 'block', lineHeight: '1.6' }} dangerouslySetInnerHTML={{ __html: option.text }} />
                                   {option.isCorrect && (
                                     <span style={{ color: '#52c41a', fontSize: '16px' }}></span>
@@ -1177,7 +1177,7 @@ const renderFillBlankQuestionInline = (question, theme) => {
     const value = posToValue[pid];
     displayText = displayText.replace(
       pattern,
-      `<span style="display:inline-flex;align-items:center;gap:6px;padding:4px 12px;background:${correctBg};border:2px solid ${correctBorder};border-radius:8px;font-weight:600;color:black;margin:0 6px 6px 6px;">${value}</span>`
+      `<span style="display:inline-flex;align-items:center;gap:6px;padding:4px 12px;background:${correctBg};border:2px solid ${correctBorder};border-radius:8px;color:black;margin:0 6px 6px 6px;">${value}</span>`
     );
   });
 
@@ -1213,8 +1213,8 @@ const renderDropdownQuestionInline = (question, theme) => {
       .filter((v) => v !== null && v !== undefined && String(v).length > 0)
       .map(v => String(v).replace(/<[^>]*>/g,' ').replace(/&nbsp;/g,' ').trim());
     const selectedIndex = Math.max(0, opts.findIndex(v => v === correctValue));
-    const optionsHtml = opts.map(v => `<option value="${v}" ${v === correctValue ? 'selected' : ''}>${v}</option>`).join('');
-    const selectHtml = `<select data-idx="${selectedIndex}" onchange="this.selectedIndex=this.dataset.idx" style="display:inline-block;width:120px;height:32px;padding:4px 12px;margin:0 8px;background:${bg};border:2px solid ${border};border-radius:8px;font-size:14px;font-weight:600;color:black;cursor:pointer;outline:none;text-align:center;box-sizing:border-box;overflow:hidden;text-overflow:ellipsis;">${optionsHtml}</select>`;
+    const optionsHtml = opts.map(v => `<option style="white-space: normal; word-break: break-word; overflow-wrap: anywhere; line-height: 1.4;" value="${v}" ${v === correctValue ? 'selected' : ''} title="${v}">${v}</option>`).join('');
+    const selectHtml = `<select data-idx="${selectedIndex}" onchange="this.selectedIndex=this.dataset.idx" style="display:inline-block;width:120px;max-width:120px;height:32px;padding:4px 12px;margin:0 8px;background:${bg};border:2px solid ${border};border-radius:8px;font-size:14px;color:black;cursor:pointer;outline:none;text-align:center;box-sizing:border-box;overflow:hidden;white-space:normal;appearance:auto;">${optionsHtml}</select>`;
     displayText = displayText.replace(pattern, selectHtml);
   });
 
@@ -1244,7 +1244,7 @@ const renderDragDropQuestionInline = (question, theme) => {
     
     displayText = displayText.replace(
       pattern,
-      `<span style="display:inline-flex;align-items:center;justify-content:center;min-width:100px;min-height:28px;padding:4px 12px;margin:0 6px;background:${placeholderBg};border:2px dashed ${placeholderBorder};border-radius:6px;font-size:14px;font-weight:500;color:${placeholderText};">Drop here</span>`
+      `<span style="display:inline-flex;align-items:center;justify-content:center;min-width:100px;min-height:28px;padding:4px 12px;margin:0 6px;background:${placeholderBg};border:2px dashed ${placeholderBorder};border-radius:6px;font-size:14px;color:${placeholderText};">Drop here</span>`
     );
   });
 
@@ -1271,7 +1271,7 @@ const renderRearrangeQuestionInline = (question, theme) => {
     
     displayText = displayText.replace(
       pattern,
-      `<span style="display:inline-flex;align-items:center;justify-content:center;min-width:80px;height:36px;padding:4px 10px;margin:0 6px;background:#ffffff;border:2px dashed ${slotBorder};border-radius:6px;font-size:12px;font-weight:600;color:${slotText};">${number}</span>`
+      `<span style="display:inline-flex;align-items:center;justify-content:center;min-width:80px;height:36px;padding:4px 10px;margin:0 6px;background:#ffffff;border:2px dashed ${slotBorder};border-radius:6px;font-size:12px;color:${slotText};">${number}</span>`
     );
   });
 
@@ -1358,7 +1358,7 @@ const SortableQuestionItem = memo(
           const value = posToVal[pid];
           displayText = displayText.replace(
             pattern,
-            `<span style="display:inline-flex;align-items:center;gap:6px;padding:4px 12px;background:${correctBg};border:2px solid ${correctBorder};border-radius:8px;font-weight:600;color:${correctText};margin:0 4px;">${value}</span>`
+            `<span style="display:inline-flex;align-items:center;gap:6px;padding:4px 12px;background:${correctBg};border:2px solid ${correctBorder};border-radius:8px;color:${correctText};margin:0 4px;">${value}</span>`
           );
         });
       }
@@ -1453,7 +1453,7 @@ const SortableQuestionItem = memo(
           const opts = allOptions.map(v => String(v).replace(/<[^>]*>/g,' ').replace(/&nbsp;/g,' ').trim()).filter(Boolean);
           const correctVal = (correctOption?.value || '').replace(/<[^>]*>/g,' ').replace(/&nbsp;/g,' ').trim();
           const optionsHtml = opts.map(v => `<option value="${v}" ${v === correctVal ? 'selected' : ''}>${v}</option>`).join('');
-          const replaced = `<select style="display:inline-block;width:120px;height:32px;padding:4px 12px;margin:0 8px;background:rgba(24, 144, 255, 0.08);border:2px solid ${dropdownBorderColor};border-radius:8px;font-size:14px;font-weight:600;color:${dropdownColor};cursor:pointer;outline:none;text-align:center;box-sizing:border-box;overflow:hidden;text-overflow:ellipsis;">${optionsHtml}</select>`;
+          const replaced = `<select style="display:inline-block;width:120px;height:32px;padding:4px 12px;margin:0 8px;background:rgba(24, 144, 255, 0.08);border:2px solid ${dropdownBorderColor};border-radius:8px;font-size:14px;color:${dropdownColor};cursor:pointer;outline:none;text-align:center;box-sizing:border-box;overflow:hidden;text-overflow:ellipsis;">${optionsHtml}</select>`;
           displayText = displayText.replace(pattern, replaced);
           
           // Store dropdown data
@@ -1631,7 +1631,7 @@ const SortableQuestionItem = memo(
           // Replace pattern with styled blank format
           displayText = displayText.replace(
             pattern,
-            `<span style="display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; background: linear-gradient(135deg, ${blankBgColor}, ${blankBgColor.replace('0.08', '0.15').replace('0.15', '0.25')}); border: 2px solid ${blankBorderColor}; border-radius: 8px; font-weight: 600; color: ${blankColor}; margin: 0 4px;">
+              `<span style="display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; background: linear-gradient(135deg, ${blankBgColor}, ${blankBgColor.replace('0.08', '0.15').replace('0.15', '0.25')}); border: 2px solid ${blankBorderColor}; border-radius: 8px; color: ${blankColor}; margin: 0 4px;">
               <span style="width: 18px; height: 18px; border-radius: 50%; background: ${blankColor}; color: white; display: inline-flex; align-items: center; justify-content: center; font-size: 11px;">${number}</span>
               <span style="text-decoration: underline; padding: 0 2px;">____</span>
             </span>`
@@ -1699,7 +1699,7 @@ const SortableQuestionItem = memo(
                       border: `2px solid ${blankBorderColor}`,
                       borderRadius: '8px',
                       fontSize: '14px',
-                      fontWeight: 500
+                      fontWeight: 400
                     }}
                   >
                     <span style={{ 
@@ -1745,7 +1745,7 @@ const SortableQuestionItem = memo(
                       border: `1.5px solid ${incorrectBorderColor}`,
                       borderRadius: '8px',
                       fontSize: '13px',
-                      fontWeight: 500,
+                      fontWeight: 400,
                       color: incorrectTextColor
                     }}
                   >
@@ -1800,7 +1800,7 @@ const SortableQuestionItem = memo(
           // Replace pattern with styled blank format
           displayText = displayText.replace(
             pattern,
-            `<span style="display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; background: linear-gradient(135deg, ${wordBgStart}, ${wordBgEnd}); border: 2px solid ${wordBorderColor}; border-radius: 8px; font-weight: 600; color: ${wordBorderColor}; margin: 0 4px;">
+            `<span style="display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; background: linear-gradient(135deg, ${wordBgStart}, ${wordBgEnd}); border: 2px solid ${wordBorderColor}; border-radius: 8px; color: ${wordBorderColor}; margin: 0 4px;">
               <span style="width: 18px; height: 18px; border-radius: 50%; background: ${wordBorderColor}; color: white; display: inline-flex; align-items: center; justify-content: center; font-size: 11px;">${number}</span>
               <span style="text-decoration: underline; padding: 0 2px;">____</span>
             </span>`
@@ -1859,7 +1859,7 @@ const SortableQuestionItem = memo(
                       border: '2px solid rgba(82, 196, 26, 0.5)',
                       borderRadius: '8px',
                       fontSize: '14px',
-                      fontWeight: 500
+                      fontWeight: 400
                     }}
                   >
                     <span style={{ 
@@ -1899,7 +1899,7 @@ const SortableQuestionItem = memo(
             <div 
               style={{ 
                 fontSize: '15px',
-                fontWeight: 500,
+                fontWeight: 400,
                 color: textColor,
                 lineHeight: '1.8'
               }}
@@ -2010,7 +2010,8 @@ const SortableQuestionItem = memo(
                     <div 
                       style={{ 
                         flex: 1,
-                        lineHeight: '1.4'
+                        lineHeight: '1.4',
+                        fontWeight: 400
                       }}
                       dangerouslySetInnerHTML={{ __html: item.value }} 
                     />
@@ -2076,6 +2077,7 @@ const SortableQuestionItem = memo(
                         flex: 1,
                         lineHeight: '1.4',
                         marginBottom: '0px',
+                        fontWeight: 400,
                       }}
                       dangerouslySetInnerHTML={{ __html: ans.answer }} 
                     />
@@ -2187,7 +2189,7 @@ const SortableQuestionItem = memo(
                     .trim();
                   displayText = displayText.replace(
                     pattern,
-                    `<span style="display:inline-flex;align-items:center;gap:6px;padding:4px 12px;background:${correctBg};border:2px solid ${correctBorder};border-radius:8px;font-weight:600;color:black;margin:0 6px 6px 6px;">${value}</span>`
+                    `<span style="display:inline-flex;align-items:center;gap:6px;padding:4px 12px;background:${correctBg};border:2px solid ${correctBorder};border-radius:8px;color:black;margin:0 6px 6px 6px;">${value}</span>`
                   );
                 });
               }
@@ -2236,10 +2238,10 @@ const SortableQuestionItem = memo(
                   .map((opt, i) => {
                     const text = toPlain(opt);
                     const isSelected = i === (selectedIndex >= 0 ? selectedIndex : 0);
-                    return `<option value="${text}" ${isSelected ? 'selected' : ''}>${text}</option>`;
+                    return `<option style=\"white-space: normal; word-break: break-word; overflow-wrap: anywhere; line-height: 1.4;\" value=\"${text}\" ${isSelected ? 'selected' : ''} title=\"${text}\">${text}</option>`;
                   })
                   .join('');
-                const selectHtml = `<select data-idx="${selectedIndex >= 0 ? selectedIndex : 0}" onchange="this.selectedIndex=this.dataset.idx" style="display:inline-block;min-width:160px;height:36px;padding:0 12px;margin:0 6px;background:rgba(82, 196, 26, 0.12);border:2px solid rgba(82, 196, 26, 0.5);border-radius:10px;font-size:14px;font-weight:600;color:black;cursor:pointer;outline:none;text-align:center;">${optionsHtml}</select>`;
+                const selectHtml = `<select data-idx=\"${selectedIndex >= 0 ? selectedIndex : 0}\" onchange=\"this.selectedIndex=this.dataset.idx\" style=\"display:inline-block;width:160px;max-width:160px;height:36px;padding:0 12px;margin:0 6px;background:rgba(82, 196, 26, 0.12);border:2px solid rgba(82, 196, 26, 0.5);border-radius:10px;font-size:14px;color:black;cursor:pointer;outline:none;text-align:center;box-sizing:border-box;overflow:hidden;white-space:normal;appearance:auto;\">${optionsHtml}</select>`;
                 displayText = displayText.replace(pattern, selectHtml);
               });
               return (
@@ -2283,7 +2285,7 @@ const SortableQuestionItem = memo(
                     const pattern = `[[pos_${item.positionId}]]`;
                     displayText = displayText.replace(
                       pattern,
-                      `<span style="display:inline-flex;align-items:center;justify-content:center;min-width:140px;height:34px;border-radius:8px;border:2px dashed ${dashedColor};background:transparent;color:${dashedColor};font-weight:600;">Drop here</span>`
+                      `<span style="display:inline-flex;align-items:center;justify-content:center;min-width:140px;height:34px;border-radius:8px;border:2px dashed ${dashedColor};background:transparent;color:${dashedColor};">Drop here</span>`
                     );
                   }
                 });
@@ -2343,7 +2345,7 @@ const SortableQuestionItem = memo(
                               background: chip.isCorrect ? correctBgColor : wrongBgColor,
                               color: chip.isCorrect ? correctTextColor : wrongTextColor,
                               fontSize: '14px',
-                              fontWeight: 500,
+                              fontWeight: 400,
                               boxShadow: theme === 'sun' ? '0 2px 6px rgba(113,179,253,0.08)' : '0 2px 6px rgba(138,122,255,0.08)'
                             }}
                           >
@@ -2547,7 +2549,7 @@ const SortableQuestionItem = memo(
                           <span style={{ 
                             flexShrink: 0, 
                             color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)', 
-                            fontWeight: '600',
+                            fontWeight: 400,
                             fontSize: '16px'
                           }}>
                             {key}.
@@ -2658,7 +2660,7 @@ const SortableQuestionItem = memo(
                           <span style={{ 
                             flexShrink: 0, 
                             color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)', 
-                            fontWeight: '600',
+                            fontWeight: 400,
                             fontSize: '16px'
                           }}>
                             {key}.
@@ -2735,7 +2737,7 @@ const SortableQuestionItem = memo(
                         onChange={() => {}}
                         style={{ width: '18px', height: '18px', accentColor: theme === 'sun' ? '#1890ff' : '#8B5CF6' }}
                       />
-                      <span style={{ fontWeight: 600 }}>{key}.</span>
+                      <span style={{ fontWeight: 400 }}>{key}.</span>
                       <span className="option-text" style={{ flex: 1, display: 'block', lineHeight: '1.6' }} dangerouslySetInnerHTML={{ __html: option.text }} />
                       {option.isCorrect && (
                         <span style={{ color: '#52c41a', fontSize: '16px' }}>✓</span>
@@ -2911,7 +2913,7 @@ const DailyChallengeContent = () => {
       setChallengeLoading(false);
     } catch (error) {
       console.error('Error fetching challenge details:', error);
-      spaceToast.error(error.response?.data?.message || 'Failed to load challenge details');
+      spaceToast.error(error.response?.data?.error || 'Failed to load challenge details');
       setChallengeLoading(false);
     }
   }, [id]);
@@ -3084,7 +3086,7 @@ const DailyChallengeContent = () => {
       setLoading(false);
     } catch (error) {
       console.error('Error fetching questions:', error);
-      spaceToast.error(error.response?.data?.message);
+      spaceToast.error(error.response?.data?.error || 'Failed to load questions');
       
       // On error, set empty arrays
       setQuestions([]);
