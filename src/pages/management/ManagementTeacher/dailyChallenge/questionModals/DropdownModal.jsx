@@ -59,6 +59,7 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 	const [editorContent, setEditorContent] = useState([]);
 	const [dropdowns, setDropdowns] = useState([]);
 	const [points, setPoints] = useState(1);
+	const [questionCharCount, setQuestionCharCount] = useState(0);
 	const [selectedImage, setSelectedImage] = useState(null);
 	const [tableDropdownOpen, setTableDropdownOpen] = useState(false);
 	const [hoveredCell, setHoveredCell] = useState({ row: 0, col: 0 });
@@ -68,6 +69,7 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 	const fileInputRef = useRef(null);
 	const savedRangeRef = useRef(null);
 	const deletionInProgressRef = useRef(new Set());
+	const lastValidHtmlRef = useRef('');
 
 	// Colors for dropdowns - matching ReorderModal color palette (avoid red as first color)
 	const dropdownColors = useMemo(
@@ -290,8 +292,8 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 	}, []);
 
 	// Handle dropdown answer change
-	const handleDropdownAnswerChange = useCallback((dropdownId, value) => {
-		const limitedValue = (value ?? '').slice(0, 50);
+    const handleDropdownAnswerChange = useCallback((dropdownId, value) => {
+        const limitedValue = (value ?? '').slice(0, 200);
 		setDropdowns((prev) =>
 			prev.map((dropdown) =>
 				dropdown.id === dropdownId
@@ -483,7 +485,7 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 			input.placeholder = 'type correct answer...';
 			input.value = dropdown.correctAnswer || '';
 			input.className = 'dropdown-input';
-			input.maxLength = 100;
+			input.maxLength = 200;
 			input.style.cssText = `
 			border: none;
 			outline: none;
@@ -502,7 +504,7 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 			// Character counter (hidden by default in compact mode)
 			const counter = document.createElement('span');
 			counter.className = 'dropdown-char-counter';
-			counter.textContent = `${(input.value || '').length}/100`;
+			counter.textContent = `${(input.value || '').length}/200`;
 			counter.style.cssText = `
 			font-size: 12px;
 			color: #999;
@@ -518,13 +520,13 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 			let inputTimeout;
 			input.addEventListener('input', (e) => {
 				const newValueRaw = e.target.value || '';
-				const newValue = newValueRaw.slice(0, 50);
+				const newValue = newValueRaw.slice(0, 200);
 				if (newValueRaw !== newValue) {
 					e.target.value = newValue;
 				}
 				// Update answer text and counter in real-time
 				answerText.textContent = newValue || '';
-				counter.textContent = `${newValue.length}/50`;
+				counter.textContent = `${newValue.length}/200`;
 
 				// Debounce state update to reduce re-renders
 				clearTimeout(inputTimeout);
@@ -1350,6 +1352,22 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 	const handleEditorInput = useCallback(
 		(e) => {
 			const element = e.currentTarget;
+			// Enforce max 600 characters (plain text length)
+			const plainText = (element.textContent || '').trim();
+			if (plainText.length > 600) {
+				spaceToast.warning('Maximum 600 characters allowed for the question');
+				// Revert to last valid HTML snapshot
+				if (lastValidHtmlRef.current !== '' && editorRef.current) {
+					editorRef.current.innerHTML = lastValidHtmlRef.current;
+				}
+				setQuestionCharCount(Math.min(plainText.length, 600));
+				// Update popup after revert
+				updatePopupPosition();
+				return;
+			}
+			// Update last valid HTML snapshot and counter
+			lastValidHtmlRef.current = editorRef.current ? editorRef.current.innerHTML : '';
+			setQuestionCharCount(plainText.length);
 
 			// Check if any dropdowns were removed from DOM (throttled)
 			checkRemovedDropdownsThrottled(element);
@@ -1374,17 +1392,20 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 	// Add incorrect option to a specific dropdown
 	const handleAddIncorrectOption = (dropdownId) => {
 		setDropdowns((prev) =>
-			prev.map((dropdown) =>
-				dropdown.id === dropdownId
-					? {
-							...dropdown,
-							incorrectOptions: [
-								...dropdown.incorrectOptions,
-								{ id: Date.now(), text: '' },
-							],
-					  }
-					: dropdown
-			)
+			prev.map((dropdown) => {
+				if (dropdown.id !== dropdownId) return dropdown;
+				if ((dropdown.incorrectOptions || []).length >= 10) {
+					spaceToast.warning('Maximum 10 incorrect options allowed');
+					return dropdown;
+				}
+				return {
+					...dropdown,
+					incorrectOptions: [
+						...(dropdown.incorrectOptions || []),
+						{ id: Date.now(), text: '' },
+					],
+				};
+			})
 		);
 	};
 
@@ -1406,7 +1427,7 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 
 	// Change incorrect option text for a specific dropdown
 	const handleIncorrectOptionChange = (dropdownId, optionId, value) => {
-		const limitedValue = (value ?? '').slice(0, 50);
+		const limitedValue = (value ?? '').slice(0, 200);
 		setDropdowns((prev) =>
 			prev.map((dropdown) =>
 				dropdown.id === dropdownId
@@ -1877,6 +1898,10 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 		});
 
 		editorInitializedRef.current = true;
+		// Initialize last valid HTML and character count
+		lastValidHtmlRef.current = editorRef.current ? editorRef.current.innerHTML : '';
+		const initialPlain = editorRef.current ? (editorRef.current.textContent || '').trim() : '';
+		setQuestionCharCount(initialPlain.length);
 		console.log('DropdownModal - Editor initialization complete');
 	}, [
 		visible,
@@ -2512,7 +2537,7 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 					/>
 
 					{/* Editor */}
-					<div style={{ position: 'relative', marginBottom: '24px' }}>
+						<div style={{ position: 'relative', marginBottom: '24px' }}>
 						<div
 							ref={editorRef}
 							contentEditable
@@ -2545,6 +2570,19 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 							}}
 							data-placeholder='Type your question here... The + Dropdown button will follow your cursor'
 						/>
+
+							{/* Character Counter for Question (600 max) */}
+							<div
+								style={{
+									marginTop: '6px',
+									marginRight: '16px',
+									textAlign: 'right',
+									fontSize: '12px',
+									fontWeight: 600,
+									color: questionCharCount >= 600 ? '#ff4d4f' : '#595959',
+								}}>
+								{`${Math.min(questionCharCount, 600)}/600`}
+							</div>
 
 						{/* Dropdown Popup */}
 						{showDropdownPopup && (
@@ -2667,7 +2705,7 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 															e.target.value
 														)
 													}
-													maxLength={100}
+										maxLength={200}
 													placeholder='Type correct option'
 													style={{
 														padding: '10px 12px',
@@ -2686,9 +2724,9 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 														color: '#999',
 														whiteSpace: 'nowrap',
 													}}>
-													{`${
-														(dropdown.correctAnswer || '').slice(0, 50).length
-													}/100`}
+																{`${
+																	(dropdown.correctAnswer || '').slice(0, 200).length
+																}/200`}
 												</span>
 											</div>
 										</div>
@@ -2749,7 +2787,7 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 																	e.target.value
 																)
 															}
-															maxLength={100}
+																maxLength={200}
 															placeholder={`Option ${optIndex + 1}`}
 															style={{
 																flex: 1,
@@ -2766,7 +2804,7 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 																color: '#999',
 																whiteSpace: 'nowrap',
 															}}>
-															{`${(option.text || '').slice(0, 50).length}/100`}
+																	{`${(option.text || '').slice(0, 200).length}/200`}
 														</span>
 														<Button
 															type='text'
