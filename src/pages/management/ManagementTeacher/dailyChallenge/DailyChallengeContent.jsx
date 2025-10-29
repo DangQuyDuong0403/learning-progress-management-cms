@@ -251,8 +251,8 @@ const SortablePassageItem = memo(
           </div>
         </div>
 
-        <div className="passage-content" style={(challengeType === 'RE' || challengeType === 'LI') ? { display: 'flex', gap: '24px', minHeight: '500px' } : undefined}>
-          {(challengeType === 'RE' || challengeType === 'LI') && (
+        <div className="passage-content" style={(challengeType === 'RE' || challengeType === 'LI' || challengeType === 'WR' || challengeType === 'SP') ? { display: 'flex', gap: '24px', minHeight: '500px' } : undefined}>
+          {(challengeType === 'RE' || challengeType === 'LI' || challengeType === 'SP') && (
             <style>{`
               .reading-passage-scrollbar::-webkit-scrollbar { width: 8px; }
               .reading-passage-scrollbar::-webkit-scrollbar-track { background: ${theme === 'sun' ? 'rgba(24, 144, 255, 0.1)' : 'rgba(138, 122, 255, 0.1)'}; border-radius: 4px; }
@@ -262,54 +262,236 @@ const SortablePassageItem = memo(
               .transcript-scrollbar::-webkit-scrollbar-track { background: ${theme === 'sun' ? 'rgba(24, 144, 255, 0.1)' : 'rgba(138, 122, 255, 0.1)'}; border-radius: 4px; }
               .transcript-scrollbar::-webkit-scrollbar-thumb { background: ${theme === 'sun' ? '#1890ff' : '#8B5CF6'}; border-radius: 4px; border: 1px solid ${theme === 'sun' ? 'rgba(24, 144, 255, 0.2)' : 'rgba(138, 122, 255, 0.2)'}; }
               .transcript-scrollbar::-webkit-scrollbar-thumb:hover { background: ${theme === 'sun' ? '#40a9ff' : '#a78bfa'}; }
+              .speaking-prompt-scrollbar::-webkit-scrollbar { width: 8px; }
+              .speaking-prompt-scrollbar::-webkit-scrollbar-track { background: ${theme === 'sun' ? 'rgba(24, 144, 255, 0.1)' : 'rgba(138, 122, 255, 0.1)'}; border-radius: 4px; }
+              .speaking-prompt-scrollbar::-webkit-scrollbar-thumb { background: ${theme === 'sun' ? '#1890ff' : '#8B5CF6'}; border-radius: 4px; border: 1px solid ${theme === 'sun' ? 'rgba(24, 144, 255, 0.2)' : 'rgba(138, 122, 255, 0.2)'}; }
+              .speaking-prompt-scrollbar::-webkit-scrollbar-thumb:hover { background: ${theme === 'sun' ? '#40a9ff' : '#a78bfa'}; }
             `}</style>
           )}
-          {/* Audio Player for Listening and Speaking Passages (render here except LI, where audio is shown inside transcript box) */}
-          {(((passage.type === 'LISTENING_PASSAGE') && challengeType !== 'LI') || passage.type === 'SPEAKING_PASSAGE') && passage.audioUrl && (
-            <div style={{
-              marginBottom: '16px',
-              padding: '16px',
-              background: theme === 'sun' 
-                ? 'rgba(240, 249, 255, 0.5)' 
-                : 'rgba(244, 240, 255, 0.3)',
-              borderRadius: '8px',
-              border: theme === 'sun' 
-                ? '1px solid rgba(113, 179, 253, 0.2)' 
-                : '1px solid rgba(138, 122, 255, 0.2)'
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
-                <span style={{ fontSize: '16px' }}>🎵</span>
-                <span style={{ fontWeight: 500, color: theme === 'sun' ? '#1E40AF' : '#8377A0' }}>
-                  Audio File
-                </span>
+          
+          {/* For Speaking challenges, use two-column layout: Left - Prompt, Right - Recording/Upload */}
+          {challengeType === 'SP' ? (
+            <>
+              {/* Left Section - Prompt/Question */}
+              <div 
+                className="speaking-prompt-scrollbar"
+                style={{
+                  flex: '1',
+                  padding: '20px',
+                  background: theme === 'sun' ? '#f9f9f9' : 'rgba(255, 255, 255, 0.02)',
+                  borderRadius: '12px',
+                  border: `1px solid ${theme === 'sun' ? '#e8e8e8' : 'rgba(255, 255, 255, 0.1)'}`,
+                  overflowY: 'auto',
+                  maxHeight: '500px',
+                  scrollbarWidth: 'thin',
+                  scrollbarColor: theme === 'sun' 
+                    ? '#1890ff rgba(24, 144, 255, 0.2)' 
+                    : '#8B5CF6 rgba(138, 122, 255, 0.2)'
+                }}
+              >
+                {/* Audio Player if available */}
+                {passage.audioUrl && (
+                  <div style={{
+                    marginBottom: '16px',
+                    padding: '16px',
+                    background: theme === 'sun' 
+                      ? 'rgba(240, 249, 255, 0.5)' 
+                      : 'rgba(244, 240, 255, 0.3)',
+                    borderRadius: '8px',
+                    border: theme === 'sun' 
+                      ? '1px solid rgba(113, 179, 253, 0.2)' 
+                      : '1px solid rgba(138, 122, 255, 0.2)'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
+                      <span style={{ fontSize: '16px' }}>🎵</span>
+                      <span style={{ fontWeight: 500, color: theme === 'sun' ? '#1E40AF' : '#8377A0' }}>
+                        Audio File
+                      </span>
+                    </div>
+                    <audio controls style={{ width: '100%' }}>
+                      <source src={passage.audioUrl} type="audio/mpeg" />
+                      Your browser does not support the audio element.
+                    </audio>
+                  </div>
+                )}
+                
+                {/* Passage/Prompt Content */}
+                <div style={{
+                  fontSize: '15px',
+                  lineHeight: '1.8',
+                  color: theme === 'sun' ? '#333' : '#1F2937',
+                  textAlign: 'justify'
+                }}>
+                  <div dangerouslySetInnerHTML={{ __html: processPassageContent(passage.content, theme, challengeType) }} />
+                </div>
               </div>
-              <audio controls style={{ width: '100%' }}>
-                <source src={passage.audioUrl} type="audio/mpeg" />
-                Your browser does not support the audio element.
-              </audio>
-            </div>
-          )}
 
-          {/* Passage Text */}
-          <div 
-            className={(challengeType === 'RE' || challengeType === 'LI') ? 'reading-passage-scrollbar' : undefined}
-            style={{ 
-              marginBottom: '16px', 
-              fontSize: '15px', 
-              fontWeight: 500,
-              lineHeight: '1.8',
-              padding: '16px',
-              background: theme === 'sun' 
-                ? 'rgba(240, 249, 255, 0.5)' 
-                : 'rgba(244, 240, 255, 0.3)',
-              borderRadius: '8px',
-              border: theme === 'sun' 
-                ? '1px solid rgba(113, 179, 253, 0.2)' 
-                : '1px solid rgba(138, 122, 255, 0.2)',
-              color: '#000000',
-              ...((challengeType === 'RE' || challengeType === 'LI') ? { flex: 1, overflowY: 'auto', maxHeight: '600px' } : {})
-            }}
-          >
+              {/* Right Section - Recording and Upload Area */}
+              <div style={{
+                flex: '1',
+                padding: '24px',
+                background: theme === 'sun' ? '#ffffff' : 'rgba(255, 255, 255, 0.03)',
+                borderRadius: '12px',
+                border: `1px solid ${theme === 'sun' ? '#e8e8e8' : 'rgba(255, 255, 255, 0.1)'}`,
+                textAlign: 'center'
+              }}>
+                {/* Recording Component */}
+                <div style={{ marginBottom: '24px' }}>
+                  <div
+                    style={{
+                      width: '120px',
+                      height: '120px',
+                      borderRadius: '50%',
+                      background: theme === 'sun'
+                        ? 'linear-gradient(135deg, rgba(24, 144, 255, 0.15) 0%, rgba(60, 153, 255, 0.15) 100%)'
+                        : 'linear-gradient(135deg, rgba(139, 92, 246, 0.15) 0%, rgba(167, 139, 250, 0.15) 100%)',
+                      border: `3px solid ${theme === 'sun' ? '#1890ff' : '#8B5CF6'}`,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      margin: '0 auto 16px',
+                      cursor: 'pointer',
+                      transition: 'all 0.3s ease'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.transform = 'scale(1.1)';
+                      e.currentTarget.style.boxShadow = theme === 'sun'
+                        ? '0 4px 16px rgba(24, 144, 255, 0.3)'
+                        : '0 4px 16px rgba(139, 92, 246, 0.3)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = 'scale(1)';
+                      e.currentTarget.style.boxShadow = 'none';
+                    }}
+                  >
+                    <img 
+                      src="/img/icon-mic.png" 
+                      alt="Mic"
+                      style={{ width: '48px', height: '48px', opacity: theme === 'sun' ? 0.9 : 0.95 }}
+                    />
+                  </div>
+                  <div style={{
+                    fontSize: '16px',
+                    fontWeight: '600',
+                    color: theme === 'sun' ? '#1890ff' : '#8B5CF6',
+                    marginBottom: '8px'
+                  }}>
+                    Click to start recording
+                  </div>
+                  <div style={{
+                    fontSize: '12px',
+                    color: theme === 'sun' ? '#666' : '#999'
+                  }}>
+                    Press the microphone to record your response
+                  </div>
+                </div>
+
+                {/* Upload Audio Section */}
+                <div style={{ 
+                  marginTop: '24px', 
+                  paddingTop: '24px', 
+                  borderTop: `1px solid ${theme === 'sun' ? '#e8e8e8' : 'rgba(255, 255, 255, 0.2)'}` 
+                }}>
+                  <div style={{ 
+                    fontSize: '18px', 
+                    fontWeight: '600',
+                    color: theme === 'sun' ? '#333' : '#1F2937',
+                    marginBottom: '16px'
+                  }}>
+                    Upload Audio File (Optional):
+                  </div>
+                  
+                  <div style={{
+                    padding: '20px',
+                    background: theme === 'sun' 
+                      ? 'linear-gradient(135deg, rgba(237, 250, 230, 0.5) 0%, rgba(207, 244, 192, 0.4) 100%)'
+                      : 'linear-gradient(135deg, rgba(255, 255, 255, 0.5) 0%, rgba(244, 240, 255, 0.5) 100%)',
+                    border: `2px solid ${theme === 'sun' 
+                      ? 'rgba(82, 196, 26, 0.3)' 
+                      : 'rgba(138, 122, 255, 0.3)'}`,
+                    borderRadius: '12px',
+                    cursor: 'pointer',
+                    textAlign: 'center',
+                    transition: 'all 0.3s ease'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = 'translateY(-2px)';
+                    e.currentTarget.style.boxShadow = theme === 'sun' 
+                      ? '0 4px 12px rgba(82, 196, 26, 0.2)'
+                      : '0 4px 12px rgba(138, 122, 255, 0.25)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = 'translateY(0)';
+                    e.currentTarget.style.boxShadow = 'none';
+                  }}
+                  >
+                    <div style={{ fontSize: '32px', marginBottom: '8px' }}>📎</div>
+                    <div style={{ 
+                      fontSize: '16px', 
+                      fontWeight: '600',
+                      color: theme === 'sun' ? '#1E40AF' : '#8377A0',
+                      marginBottom: '4px'
+                    }}>
+                      Upload Audio
+                    </div>
+                    <div style={{ 
+                      fontSize: '13px',
+                      color: theme === 'sun' ? '#666' : '#999'
+                    }}>
+                      Upload MP3 audio file (Max 5MB)
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </>
+          ) : (
+            <>
+              {/* Audio Player for Listening Passages (render here except LI, where audio is shown inside transcript box) */}
+              {((passage.type === 'LISTENING_PASSAGE') && challengeType !== 'LI') && passage.audioUrl && (
+                <div style={{
+                  marginBottom: '16px',
+                  padding: '16px',
+                  background: theme === 'sun' 
+                    ? 'rgba(240, 249, 255, 0.5)' 
+                    : 'rgba(244, 240, 255, 0.3)',
+                  borderRadius: '8px',
+                  border: theme === 'sun' 
+                    ? '1px solid rgba(113, 179, 253, 0.2)' 
+                    : '1px solid rgba(138, 122, 255, 0.2)'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
+                    <span style={{ fontSize: '16px' }}>🎵</span>
+                    <span style={{ fontWeight: 500, color: theme === 'sun' ? '#1E40AF' : '#8377A0' }}>
+                      Audio File
+                    </span>
+                  </div>
+                  <audio controls style={{ width: '100%' }}>
+                    <source src={passage.audioUrl} type="audio/mpeg" />
+                    Your browser does not support the audio element.
+                  </audio>
+                </div>
+              )}
+
+              {/* Passage Text */}
+              <div 
+                className={(challengeType === 'RE' || challengeType === 'LI' || challengeType === 'WR') ? 'reading-passage-scrollbar' : undefined}
+                style={{ 
+                  marginBottom: '16px', 
+                  fontSize: '15px', 
+                  fontWeight: 500,
+                  lineHeight: '1.8',
+                  padding: '16px',
+                  background: theme === 'sun' 
+                    ? 'rgba(240, 249, 255, 0.5)' 
+                    : 'rgba(244, 240, 255, 0.3)',
+                  borderRadius: '8px',
+                  border: theme === 'sun' 
+                    ? '1px solid rgba(113, 179, 253, 0.2)' 
+                    : '1px solid rgba(138, 122, 255, 0.2)',
+                  color: '#000000',
+                  ...((challengeType === 'RE' || challengeType === 'LI' || challengeType === 'WR') ? { flex: 1, overflowY: 'auto', maxHeight: '600px' } : {})
+                }}
+              >
             {/* For Listening, show audio player inside the left box */}
             {challengeType === 'LI' && passage.audioUrl && (
               <div style={{
@@ -431,6 +613,77 @@ const SortablePassageItem = memo(
               <div dangerouslySetInnerHTML={{ __html: processPassageContent(passage.content, theme, challengeType) }} />
             )}
           </div>
+            </>
+          )}
+
+          {/* For Writing challenges, show the right-side action choices like student preview */}
+          {challengeType === 'WR' && (
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              {/* Card 1: Write Essay Here */}
+              <div
+                style={{
+                  flex: 1,
+                  minHeight: '200px',
+                  borderRadius: '12px',
+                  border: '2px solid rgba(24,144,255,0.35)',
+                  background: 'linear-gradient(135deg, rgba(230,245,255,0.75), rgba(186,231,255,0.55))',
+                  boxShadow: '0 2px 10px rgba(24,144,255,0.12)',
+                  padding: '24px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  textAlign: 'center'
+                }}
+              >
+                <div>
+                  <div style={{ fontSize: '34px', marginBottom: '6px' }}>📝</div>
+                  <div style={{
+                    fontWeight: 700,
+                    fontSize: '16px',
+                    color: '#1d4ed8',
+                    marginBottom: '6px'
+                  }}>
+                    Write Essay Here
+                  </div>
+                  <div style={{ color: '#6b7280', fontSize: '13px' }}>
+                    Type your essay directly in the text area
+                  </div>
+                </div>
+              </div>
+
+              {/* Card 2: Upload */}
+              <div
+                style={{
+                  flex: 1,
+                  minHeight: '200px',
+                  borderRadius: '12px',
+                  border: '2px solid rgba(82,196,26,0.35)',
+                  background: 'linear-gradient(135deg, rgba(240,255,240,0.7), rgba(230,255,230,0.55))',
+                  boxShadow: '0 2px 10px rgba(82,196,26,0.12)',
+                  padding: '24px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  textAlign: 'center'
+                }}
+              >
+                <div>
+                  <div style={{ fontSize: '34px', marginBottom: '6px' }}>📎</div>
+                  <div style={{
+                    fontWeight: 700,
+                    fontSize: '16px',
+                    color: '#15803d',
+                    marginBottom: '6px'
+                  }}>
+                    Upload
+                  </div>
+                  <div style={{ color: '#6b7280', fontSize: '13px' }}>
+                    Upload image of your handwritten essay (Max 5MB)
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Questions inside passage */}
           {challengeType !== 'WR' && challengeType !== 'SP' && passage.questions && passage.questions.length > 0 && (
@@ -2009,13 +2262,13 @@ const SortableQuestionItem = memo(
             (() => {
               if (!question.questionText) return null;
               const borderColor = theme === 'sun' ? '#66AEFF' : '#A78BFA';
-              const dashedColor = theme === 'sun' ? 'rgba(0,0,0,0.45)' : 'rgba(255,255,255,0.6)';
+              const dashedColor = theme === 'sun' ? 'rgba(0,0,0,0.45)' : 'rgba(56, 56, 56, 0.75)';
               const textColor = theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)';
               const correctBorderColor = 'rgba(82, 196, 26, 0.7)';
               const correctTextColor = '#000000';
               const correctBgColor = 'rgba(82, 196, 26, 0.12)';
-              const wrongBorderColor = theme === 'sun' ? '#d9d9d9' : 'rgba(255,255,255,0.35)';
-              const wrongTextColor = theme === 'sun' ? 'rgba(0,0,0,0.55)' : 'rgba(255,255,255,0.65)';
+              const wrongBorderColor = theme === 'sun' ? '#d9d9d9' : 'rgba(56, 56, 56, 0.75)';
+              const wrongTextColor = theme === 'sun' ? 'rgba(0,0,0,0.55)' : 'rgba(56, 56, 56, 0.75)';
               const wrongBgColor = theme === 'sun' ? 'rgba(0,0,0,0.03)' : 'rgba(255,255,255,0.06)';
               // Build placeholders in question text for each correct item having positionId
               let displayText = question.questionText;
@@ -2123,7 +2376,7 @@ const SortableQuestionItem = memo(
           ) : (question.type === 'REARRANGE' && challengeType === 'GV') ? (
             (() => {
               const textColor = theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)';
-              const dashedColor = theme === 'sun' ? 'rgba(0,0,0,0.45)' : 'rgba(255,255,255,0.6)';
+              const dashedColor = theme === 'sun' ? 'rgba(0,0,0,0.45)' : 'rgba(56, 56, 56, 0.75)';
               const borderColor = theme === 'sun' ? '#66AEFF' : '#A78BFA';
               const values = Array.isArray(question.content?.data)
                 ? question.content.data.map((i) => i?.value).filter(Boolean)
