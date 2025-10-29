@@ -1,6 +1,61 @@
 /* ===== THEMED LAYOUT BASE STYLES ===== */
 .themed-layout {
 	transition: all 0.3s ease;
+	overflow: hidden;
+}
+
+/* Hide scrollbar for themed-layout */
+.themed-layout::-webkit-scrollbar {
+	display: none;
+}
+
+.themed-layout {
+	scrollbar-width: none;
+	-ms-overflow-style: none;
+}
+
+/* ===== CUSTOM SCROLLBAR FOR CONTENT ===== */
+/* Force show scrollbar in themed-content */
+.space-theme .themed-content::-webkit-scrollbar,
+.sun-theme .themed-content::-webkit-scrollbar {
+	width: 12px !important;
+	display: block !important;
+}
+
+.space-theme .themed-content::-webkit-scrollbar-track,
+.sun-theme .themed-content::-webkit-scrollbar-track {
+	background: rgba(0, 0, 0, 0.1) !important;
+	border-radius: 6px;
+}
+
+.space-theme .themed-content::-webkit-scrollbar-thumb,
+.sun-theme .themed-content::-webkit-scrollbar-thumb {
+	background: #888 !important;
+	border-radius: 6px;
+	border: 2px solid transparent;
+	background-clip: padding-box;
+}
+
+.space-theme .themed-content::-webkit-scrollbar-thumb:hover,
+.sun-theme .themed-content::-webkit-scrollbar-thumb:hover {
+	background: #555 !important;
+	background-clip: padding-box;
+}
+
+.space-theme .themed-content,
+.sun-theme .themed-content {
+	scrollbar-width: auto !important;
+	scrollbar-color: #888 rgba(0, 0, 0, 0.1) !important;
+	-ms-overflow-style: scrollbar !important;
+}
+
+.space-theme .themed-main-layout,
+.sun-theme .themed-main-layout {
+	scrollbar-width: auto !important;
+	scrollbar-color: #888 rgba(0, 0, 0, 0.1) !important;
+	-ms-overflow-style: scrollbar !important;
+	overflow: hidden;
+	box-sizing: border-box;
 }
 
 /* ===== FLOATING ANIMATION FOR SPACE THEME ===== */
