@@ -94,6 +94,17 @@ export default function ThemedHeader() {
     }
   };
 
+  // Brand click: navigate to dashboard (teacher -> teacher dashboard)
+  const handleBrandClick = () => {
+    const role = user?.role?.toLowerCase();
+    if (role === 'teacher') {
+      navigate('/teacher/dashboard');
+      return;
+    }
+    // Fallback to role-based dashboard
+    handleBackToDashboard();
+  };
+
   const handleBackToSyllabusList = () => {
     // If custom back URL is provided, use it
     if (syllabusData?.backUrl) {
@@ -174,7 +185,7 @@ export default function ThemedHeader() {
           }}>
             {/* Logo and CAMKEY Text - Show for users without sidebar when not in special menus */}
             {shouldShowLogo() && (
-              <div style={{
+              <div onClick={handleBrandClick} style={{
                 display: 'flex',
                 alignItems: 'center',
                 gap: '12px',
@@ -204,7 +215,8 @@ export default function ThemedHeader() {
                   fontSize: '32px',
                   fontWeight: 700,
                   color: theme === 'sun' ? '#1E40AF' : '#FFFFFF',
-                  textShadow: theme === 'sun' ? '0 0 5px rgba(30, 64, 175, 0.3)' : '0 0 15px rgba(134, 134, 134, 0.8)'
+                  textShadow: theme === 'sun' ? '0 0 5px rgba(30, 64, 175, 0.3)' : '0 0 15px rgba(134, 134, 134, 0.8)',
+                  cursor: 'pointer'
                 }}>
                   CAMKEY
                 </span>
