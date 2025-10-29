@@ -165,7 +165,10 @@ const CreateReadingChallenge = () => {
   // Question management state
   const [activeModal, setActiveModal] = useState(null);
   const [editingQuestion, setEditingQuestion] = useState(null);
+  const [editingIndex, setEditingIndex] = useState(null);
   const [questionTypeModalVisible, setQuestionTypeModalVisible] = useState(false);
+  // Drag and drop state for RE/LI question list
+  const [draggingIndex, setDraggingIndex] = useState(null);
   
   // Speaking recording time setting - Fixed at 3 minutes (180 seconds)
   // eslint-disable-next-line no-unused-vars
@@ -712,7 +715,7 @@ const CreateReadingChallenge = () => {
     setQuestionTypeModalVisible(false);
   };
 
-  const handleEditQuestion = (question) => {
+  const handleEditQuestion = (question, actualIndex) => {
     console.log('Editing question:', question);
     
     // Normalize backend enum types to modal keys
@@ -728,10 +731,12 @@ const CreateReadingChallenge = () => {
     const normalizedType = modalTypeMap[question.type] || question.type;
     
     // Transform question data to match modal expectations
-    const transformedQuestion = {
+    let transformedQuestion = {
       ...question,
       // Ensure question text is available
       question: question.question || question.questionText || '',
+      // Generic fallback so modals always have questionText
+      questionText: question.questionText || question.question || '',
       // Ensure type is normalized
       type: normalizedType,
       // Ensure options are properly formatted for multiple choice/select
@@ -747,12 +752,56 @@ const CreateReadingChallenge = () => {
                     (question.options?.find(option => option.isCorrect)?.text || 
                      question.content?.data?.find(item => item.correct)?.value || 'False')
     };
+
+    // Special handling for FILL_IN_THE_BLANK to guarantee modal pre-populates
+    if (normalizedType === 'fill-blank' || normalizedType === 'FILL_IN_THE_BLANK') {
+      transformedQuestion = {
+        ...transformedQuestion,
+        // Modal requires questionText to parse placeholders; fallback from question
+        questionText: transformedQuestion.questionText || transformedQuestion.question || '',
+        // Ensure content shape is present for modal parsing
+        content: (question.content && Array.isArray(question.content.data))
+          ? { data: question.content.data.map(d => ({ ...d })) }
+          : { data: [] },
+      };
+    }
+
+    // Special handling for REARRANGE to guarantee modal pre-populates
+    if (normalizedType === 'reorder') {
+      transformedQuestion = {
+        ...transformedQuestion,
+        questionText: (() => {
+          const qt = question.questionText || question.question || '';
+          if (qt && /\[\[pos_[a-z0-9]+\]\]/.test(qt)) return qt;
+          if (Array.isArray(question.content?.data) && question.content.data.length > 0) {
+            return question.content.data.map(item => `[[pos_${item.positionId}]]`).join(' ');
+          }
+          return qt;
+        })(),
+        content: question.content && Array.isArray(question.content.data)
+          ? { data: question.content.data.map(d => ({ ...d })) }
+          : { data: [] },
+        options: Array.isArray(question.options) && question.options.length > 0
+          ? question.options.map(opt => ({ ...opt }))
+          : (Array.isArray(question.content?.data)
+              ? question.content.data.map((item, idx) => ({
+                  key: item.id || `option_${idx}`,
+                  text: item.value || item.text || '',
+                  isCorrect: true
+                }))
+              : []),
+        shuffledWords: Array.isArray(question.shuffledWords)
+          ? question.shuffledWords.map(w => ({ ...w }))
+          : undefined,
+      };
+    }
     
     console.log('Transformed question for modal:', transformedQuestion);
     console.log('Original question options:', question.options);
     console.log('Original question content.data:', question.content?.data);
     
     setEditingQuestion(transformedQuestion);
+    setEditingIndex(typeof actualIndex === 'number' ? actualIndex : null);
     setActiveModal(normalizedType);
   };
 
@@ -775,10 +824,74 @@ const CreateReadingChallenge = () => {
     spaceToast.success("Question marked for deletion");
   };
 
+  // Reorder helper: reorder only visible (non-deleted) questions in-place
+  const reorderVisibleQuestions = (sourceVisibleIndex, targetVisibleIndex) => {
+    setPassage(prevPassage => {
+      const allQuestions = prevPassage.questions || [];
+      const visible = allQuestions.filter(q => q?.toBeDeleted !== true);
+      if (
+        sourceVisibleIndex === null ||
+        targetVisibleIndex === null ||
+        sourceVisibleIndex === targetVisibleIndex ||
+        sourceVisibleIndex < 0 ||
+        targetVisibleIndex < 0 ||
+        sourceVisibleIndex >= visible.length ||
+        targetVisibleIndex >= visible.length
+      ) {
+        return prevPassage;
+      }
+
+      const reorderedVisible = [...visible];
+      const [moved] = reorderedVisible.splice(sourceVisibleIndex, 1);
+      reorderedVisible.splice(targetVisibleIndex, 0, moved);
+
+      // Merge back: replace non-deleted items in order with reorderedVisible
+      const merged = [];
+      let vIdx = 0;
+      for (const q of allQuestions) {
+        if (q?.toBeDeleted === true) {
+          merged.push(q);
+        } else {
+          merged.push(reorderedVisible[vIdx++]);
+        }
+      }
+
+      return { ...prevPassage, questions: merged };
+    });
+  };
+
+  const handleDragStart = (index) => {
+    setDraggingIndex(index);
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+  };
+
+  const handleDrop = (targetIndex) => {
+    if (draggingIndex === null) return;
+    reorderVisibleQuestions(draggingIndex, targetIndex);
+    setDraggingIndex(null);
+  };
+
+  const handleDragEnd = () => {
+    setDraggingIndex(null);
+  };
+
   const handleSaveQuestion = (questionData) => {
     setPassage(prevPassage => {
       if (editingQuestion) {
-        // Update existing question
+        // Update existing question by array index when available, otherwise by id
+        if (typeof editingIndex === 'number' && editingIndex >= 0 && editingIndex < prevPassage.questions.length) {
+          const updated = [...prevPassage.questions];
+          updated[editingIndex] = {
+            ...updated[editingIndex],
+            ...questionData,
+            id: updated[editingIndex].id, // preserve id if any
+            isFromBackend: updated[editingIndex].isFromBackend === true || editingQuestion.isFromBackend === true
+          };
+          return { ...prevPassage, questions: updated };
+        }
         return {
           ...prevPassage,
           questions: prevPassage.questions.map(q =>
@@ -809,11 +922,50 @@ const CreateReadingChallenge = () => {
     spaceToast.success(editingQuestion ? "Question updated successfully!" : "Question added successfully!");
     setActiveModal(null);
     setEditingQuestion(null);
+    setEditingIndex(null);
   };
 
   const handleCancelModal = () => {
     setActiveModal(null);
     setEditingQuestion(null);
+  };
+
+  // Duplicate question for RE/LI with deep-cloned content and normalized fields
+  const duplicateQuestion = (sourceQuestion) => {
+    if (!sourceQuestion) return;
+    const clonedContent = sourceQuestion.content
+      ? {
+          ...sourceQuestion.content,
+          data: Array.isArray(sourceQuestion.content.data)
+            ? sourceQuestion.content.data.map(item => ({ ...item }))
+            : [],
+        }
+      : undefined;
+
+    const titleA = sourceQuestion.question || '';
+    const titleB = sourceQuestion.questionText || '';
+    const baseTitle = (titleA || titleB || '').trim();
+
+    const duplicated = {
+      ...sourceQuestion,
+      id: undefined,
+      // Keep UI title with (Copy), but preserve original questionText (especially for [[pos_]] placeholders)
+      question: baseTitle ? `${baseTitle}` : '(Copy)',
+      questionText: sourceQuestion.questionText || sourceQuestion.question || '',
+      points: sourceQuestion.points || sourceQuestion.score || 1,
+      score: sourceQuestion.points || sourceQuestion.score || 1,
+      isFromBackend: false,
+      toBeDeleted: false,
+      content: clonedContent,
+      // Preserve shuffledWords if present for preview in ReorderModal
+      shuffledWords: Array.isArray(sourceQuestion.shuffledWords) ? sourceQuestion.shuffledWords.map(w => ({ ...w })) : undefined,
+    };
+
+    setPassage(prevPassage => ({
+      ...prevPassage,
+      questions: [...(prevPassage.questions || []), duplicated],
+    }));
+    spaceToast.success('Question duplicated!');
   };
 
   const getQuestionTypeLabel = (type) => {
@@ -1590,7 +1742,7 @@ const CreateReadingChallenge = () => {
                   maxHeight: '500px', 
                   overflowY: 'auto',
                   overflowX: 'hidden'
-                }}>
+                }} role="list">
                       {visibleQuestions.length === 0 ? (
                     <div className="rc-empty-questions" style={{ 
                       padding: '40px 20px',
@@ -1627,8 +1779,16 @@ const CreateReadingChallenge = () => {
                           display: 'flex',
                           alignItems: 'center',
                           gap: '12px',
-                          transition: 'all 0.3s ease'
+                          transition: 'all 0.3s ease',
+                          cursor: 'grab',
+                          opacity: draggingIndex === index ? 0.6 : 1
                         }}
+                        role="listitem"
+                        draggable={!isWritingChallenge && !isSpeakingChallenge}
+                        onDragStart={() => handleDragStart(index)}
+                        onDragOver={handleDragOver}
+                        onDrop={() => handleDrop(index)}
+                        onDragEnd={handleDragEnd}
                       >
                             <div className="rc-question-handle">
                           <HolderOutlined style={{ 
@@ -1637,7 +1797,7 @@ const CreateReadingChallenge = () => {
                             fontSize: '16px'
                           }} />
                             </div>
-                            <div onClick={() => handleEditQuestion(question)} style={{ flex: 1, cursor: "pointer" }}>
+                            <div onClick={() => handleEditQuestion(question, (passage.questions || []).findIndex(q => q === question))} style={{ flex: 1, cursor: "pointer" }}>
                           <div className="rc-question-type" style={{
                             fontSize: '12px',
                             fontWeight: 600,
@@ -1657,7 +1817,7 @@ const CreateReadingChallenge = () => {
                           <Button
                             type="text"
                             icon={<EditOutlined />}
-                            onClick={() => handleEditQuestion(question)}
+                            onClick={() => handleEditQuestion(question, (passage.questions || []).findIndex(q => q === question))}
                             size="small"
                             style={{ 
                               color: theme === 'sun' ? '#1890ff' : '#8377A0'
@@ -1666,19 +1826,7 @@ const CreateReadingChallenge = () => {
                           <Button
                             type="text"
                             icon={<CopyOutlined />}
-                            onClick={() => {
-                              const { id, ...rest } = question;
-                              const newQuestion = {
-                                ...rest,
-                                question: `${question.question} (Copy)`,
-                                isFromBackend: false
-                              };
-                              setPassage(prevPassage => ({
-                                ...prevPassage,
-                                questions: [...prevPassage.questions, newQuestion]
-                              }));
-                              spaceToast.success("Question duplicated!");
-                            }}
+                            onClick={() => duplicateQuestion(question)}
                             size="small"
                             style={{
                               color: theme === 'sun' ? '#1890ff' : '#8377A0'
