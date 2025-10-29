@@ -1,6 +1,6 @@
 import { useSelector } from "react-redux";
 import { Navigate, useLocation } from "react-router-dom";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { decodeJWT, getRoleFromToken } from "../utils/jwtUtils";
 import { spaceToast } from "../component/SpaceToastify";
 
@@ -13,6 +13,24 @@ const RoleBasedPrivateRoute = ({ children, requiredRoles = [], allowedPaths = []
   const location = useLocation();
   const [isValidating, setIsValidating] = useState(true);
   const [isAuthorized, setIsAuthorized] = useState(false);
+  const hasNotifiedRef = useRef(false);
+
+  const notifyOnce = (message, storageKey = 'rbpr_last_toast') => {
+    try {
+      const now = Date.now();
+      const last = parseInt(sessionStorage.getItem(storageKey) || '0', 10);
+      if (!hasNotifiedRef.current && (!last || now - last > 1200)) {
+        spaceToast.error(message);
+        hasNotifiedRef.current = true;
+        sessionStorage.setItem(storageKey, String(now));
+      }
+    } catch (e) {
+      if (!hasNotifiedRef.current) {
+        spaceToast.error(message);
+        hasNotifiedRef.current = true;
+      }
+    }
+  };
 
   useEffect(() => {
     const validateRoleAccess = async () => {
@@ -57,7 +75,7 @@ const RoleBasedPrivateRoute = ({ children, requiredRoles = [], allowedPaths = []
         // 5. Kiểm tra trạng thái mustChangePassword
         if (mustChangePassword) {
           console.warn('🚨 SECURITY ALERT: User must change password');
-          spaceToast.error('You must complete password setup before accessing this area');
+          notifyOnce('You must complete password setup before accessing this area');
           setIsAuthorized(false);
           setIsValidating(false);
           return;
@@ -72,7 +90,7 @@ const RoleBasedPrivateRoute = ({ children, requiredRoles = [], allowedPaths = []
 
           if (!hasRequiredRole) {
             console.warn(`🚨 AUTHORIZATION ERROR: User role ${userRole} not in required roles ${requiredRoles.join(', ')}`);
-            spaceToast.error('You do not have permission to access this area');
+            notifyOnce('You do not have permission to access this area');
             setIsAuthorized(false);
             setIsValidating(false);
             return;
@@ -87,7 +105,7 @@ const RoleBasedPrivateRoute = ({ children, requiredRoles = [], allowedPaths = []
 
           if (!isPathAllowed) {
             console.warn(`🚨 PATH ACCESS ERROR: Path ${location.pathname} not in allowed paths`);
-            spaceToast.error('You do not have permission to access this path');
+            notifyOnce('You do not have permission to access this path');
             setIsAuthorized(false);
             setIsValidating(false);
             return;
@@ -107,6 +125,11 @@ const RoleBasedPrivateRoute = ({ children, requiredRoles = [], allowedPaths = []
 
     validateRoleAccess();
   }, [isAuthenticated, location.pathname, requiredRoles, allowedPaths]);
+
+  // Reset toast guard whenever path changes so future pages can show messages again
+  useEffect(() => {
+    hasNotifiedRef.current = false;
+  }, [location.pathname]);
 
   // Hiển thị loading trong khi validate
   if (isValidating) {
