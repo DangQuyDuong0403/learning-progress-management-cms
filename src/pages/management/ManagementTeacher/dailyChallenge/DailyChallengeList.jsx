@@ -573,15 +573,40 @@ const DailyChallengeList = ({ readOnly = false }) => {
 
   const handleCreateSuccess = async (newChallenge) => {
     try {
-      // Call API to create challenge
-      await dailyChallengeApi.createDailyChallenge(newChallenge);
+      // Challenge has already been created by the modal, just extract ID and redirect
+      let challengeId = null;
       
-      // Refresh the list from API
-      await fetchDailyChallenges();
+      // Extract challenge ID from the already created challenge data
+      if (newChallenge?.id) {
+        challengeId = newChallenge.id;
+      } else if (newChallenge?.data?.id) {
+        challengeId = newChallenge.data.id;
+      }
+      
+      console.log('Created challenge data received:', newChallenge);
+      console.log('Extracted challenge ID:', challengeId);
+      
+      if (challengeId) {
+        // Redirect to performance screen of the newly created challenge
+        navigate(`/teacher/daily-challenges/detail/${challengeId}`, {
+          state: {
+            classId: classId,
+            className: classData?.name,
+            challengeId: challengeId,
+            challengeName: newChallenge.challengeName,
+            lessonName: newChallenge.lessonName,
+            fromCreate: true // Flag to indicate this came from creation
+          }
+        });
+      } else {
+        // If no ID found, refresh the list and show success message
+        await fetchDailyChallenges();
+        spaceToast.success(t('dailyChallenge.createSuccess'));
+      }
       
       setShowCreateModal(false);
     } catch (error) {
-      console.error('Error creating challenge:', error);
+      console.error('Error handling create success:', error);
       const errorMessage = error.response?.data?.error || error.message || t('dailyChallenge.createError');
       spaceToast.error(errorMessage);
     }
@@ -905,10 +930,22 @@ const DailyChallengeList = ({ readOnly = false }) => {
           );
         }
         
+        // Define status colors
+        const getStatusColor = (status) => {
+          switch (status) {
+            case 'DRAFT':
+              return 'rgb(223, 175, 56)';
+            case 'PUBLISHED':
+              return 'rgb(56, 223, 65)';
+            default:
+              return '#000000';
+          }
+        };
+        
         return (
           <span style={{
             fontSize: '20px',
-            color: '#000000'
+            color: getStatusColor(status),
           }}>
             {STATUS_LABEL[status] || status || ''}
           </span>

@@ -13,6 +13,7 @@ import { useTheme } from "../../../../contexts/ThemeContext";
 import { spaceToast } from "../../../../component/SpaceToastify";
 import { useParams } from "react-router-dom";
 import teacherManagementApi from "../../../../apis/backend/teacherManagement";
+import { dailyChallengeApi } from "../../../../apis/apis";
 
 const { TextArea } = Input;
 const { Option } = Select;
@@ -174,9 +175,6 @@ const SimpleDailyChallengeModal = ({
       
       console.log('Final challengeType:', challengeType);
       
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
       const challengeData = {
         challengeName: values.challengeName,
         classLessonId: values.classLessonId,
@@ -186,15 +184,29 @@ const SimpleDailyChallengeModal = ({
 
       console.log('Challenge data to send:', challengeData);
 
+      // Call the actual API
+      const response = await dailyChallengeApi.createDailyChallenge(challengeData);
+      
+      console.log('Create challenge API response:', response);
+      
+      // Extract challenge ID and other data from response
+      let createdChallenge = challengeData;
+      if (response?.data?.data) {
+        createdChallenge = { ...challengeData, ...response.data.data };
+      } else if (response?.data) {
+        createdChallenge = { ...challengeData, ...response.data };
+      }
+
       spaceToast.success(t('dailyChallenge.createChallengeSuccess'));
       form.resetFields();
-      onCreateSuccess(challengeData);
+      onCreateSuccess(createdChallenge);
     } catch (error) {
-      console.error('Validation error:', error);
+      console.error('Error creating challenge:', error);
       if (error.errorFields) {
         spaceToast.error(t('common.pleaseFillAllRequiredFields'));
       } else {
-        spaceToast.error(t('dailyChallenge.createChallengeError'));
+        const errorMessage = error.response?.data?.error || error.message || t('dailyChallenge.createChallengeError');
+        spaceToast.error(errorMessage);
       }
     } finally {
       setIsButtonDisabled(false);
