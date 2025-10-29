@@ -57,6 +57,7 @@ const FillBlankModal = ({ visible, onCancel, onSave, questionData = null }) => {
 	const [blanks, setBlanksState] = useState([]);
 	const [points, setPoints] = useState(1);
 	const [questionCharCount, setQuestionCharCount] = useState(0);
+	const [editorVersion, setEditorVersion] = useState(0);
 	const [selectedImage, setSelectedImage] = useState(null);
 	const [tableDropdownOpen, setTableDropdownOpen] = useState(false);
 	const [hoveredCell, setHoveredCell] = useState({ row: 0, col: 0 });
@@ -251,22 +252,24 @@ const FillBlankModal = ({ visible, onCancel, onSave, questionData = null }) => {
 			setBlanks(blanksData);
 			editorContentRef.current = parsed;
 			blanksRef.current = blanksData;
+			// Bump version to trigger editor DOM (re)build after parsing completes
+			setEditorVersion((v) => v + 1);
 		},
 		[blankColors, setBlanks]
 	);
 
 	// Initialize editor content from questionData
 	useEffect(() => {
-		if (visible) {
-			if (questionData?.questionText && questionData?.content?.data) {
-				// Parse existing question
-				parseQuestionText(questionData.questionText, questionData.content.data);
-			} else {
-				// New question
-				setBlanks([]);
-			}
-			setPoints(questionData?.points || 1);
-		}
+    if (visible) {
+        if (questionData?.questionText) {
+            // Parse existing question (allow empty content.data)
+            parseQuestionText(questionData.questionText, questionData?.content?.data || []);
+        } else {
+            // New question
+            setBlanks([]);
+        }
+        setPoints(questionData?.points || 1);
+    }
 	}, [questionData, visible, parseQuestionText, setBlanks]);
 
 	// Generate position ID
@@ -1625,7 +1628,7 @@ const FillBlankModal = ({ visible, onCancel, onSave, questionData = null }) => {
 		const currentBlanks = blanksRef.current;
 
 		if (currentEditorContent.length === 0) {
-			editorInitializedRef.current = true;
+			// Wait for parsed content to arrive (parseQuestionText will bump editorVersion)
 			return;
 		}
 
@@ -1671,6 +1674,14 @@ const FillBlankModal = ({ visible, onCancel, onSave, questionData = null }) => {
 
 		editorInitializedRef.current = true;
 	}, [visible, createBlankElement, updateBlankNumbers, blankColors]);
+
+// Re-run initialization when parsed content arrives
+useEffect(() => {
+	if (!visible) return;
+	// Allow re-initialization after parsing
+	editorInitializedRef.current = false;
+	// Trigger init effect above
+}, [editorVersion, visible]);
 
 	// Get blanks ordered by DOM position
 	const orderedBlanks = useMemo(() => {

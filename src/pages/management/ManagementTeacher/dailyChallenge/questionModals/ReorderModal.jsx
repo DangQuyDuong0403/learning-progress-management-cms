@@ -590,17 +590,26 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
     return span;
   }, [handleBlankAnswerChange, handleDeleteBlankElement, updatePopupPosition]);
 
-  // Initialize from questionData
+  // Initialize from questionData (robustly waits for editor to mount)
   useEffect(() => {
-    if (visible && questionData?.questionText && editorRef.current) {
+    if (!visible || !questionData?.questionText) return;
+
+    let cancelled = false;
+    const attemptInit = () => {
+      if (cancelled) return;
+      if (!editorRef.current) {
+        requestAnimationFrame(attemptInit);
+        return;
+      }
+
       console.log('ReorderModal - Initializing with questionData:', questionData);
       console.log('ReorderModal - questionData.content?.data:', questionData?.content?.data);
       console.log('ReorderModal - questionData.options:', questionData?.options);
       console.log('ReorderModal - questionData.incorrectOptions:', questionData?.incorrectOptions);
-      
+
       // Parse existing question - pass content.data and options
       const { parsed: parsedContent, blanksData } = parseQuestionText(
-        questionData.questionText, 
+        questionData.questionText,
         questionData.content?.data || [],
         questionData.options || []
       );
@@ -610,15 +619,15 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
       if (blanksData.length > MAX_ITEMS) {
         spaceToast.warning(`Maximum ${MAX_ITEMS} items allowed. Extra items were ignored.`);
       }
-      
+
       // Set blanks state
       setBlanks(limitedBlanksData);
       console.log('ReorderModal - State updated with parsed data, blanksData length:', limitedBlanksData.length);
-      
+
       // Build editor DOM from parsed content
       editorRef.current.innerHTML = '';
       let blankCounter = 0;
-      parsedContent.forEach((item, index) => {
+      parsedContent.forEach((item) => {
         console.log('ReorderModal - Processing item:', item);
         if (item.type === 'text') {
           if (item.content) {
@@ -637,12 +646,12 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
           }
         }
       });
-      
+
       // Update blank numbers after populating editor
       requestAnimationFrame(() => {
         updateBlankNumbers();
       });
-      
+
       // Handle shuffledWords from backend
       if (questionData.shuffledWords && questionData.shuffledWords.length > 0) {
         setShuffledWords(questionData.shuffledWords);
@@ -651,10 +660,13 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
         const finalWords = createShuffledWords(limitedBlanksData, questionData.options);
         setShuffledWords(finalWords);
       }
-    }
-    if (visible) {
+
+      // Points
       setPoints(questionData?.points || 1);
-    }
+    };
+
+    attemptInit();
+    return () => { cancelled = true; };
   }, [questionData, visible, parseQuestionText, createBlankElement, updateBlankNumbers, createShuffledWords]);
 
   const handlePaste = useCallback((e) => {
