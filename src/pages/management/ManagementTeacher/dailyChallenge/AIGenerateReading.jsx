@@ -112,7 +112,7 @@ const AIGenerateReading = () => {
     { value: "FILL_IN_THE_BLANK", label: t('dailyChallenge.fillBlank') || 'Fill in the Blank', icon: '✏️', color: primaryColor, bgColor: primaryColorWithAlpha },
     { value: "DROPDOWN", label: 'Dropdown', icon: '📋', color: primaryColor, bgColor: primaryColorWithAlpha },
     { value: "DRAG_AND_DROP", label: 'Drag and Drop', icon: '🔄', color: primaryColor, bgColor: primaryColorWithAlpha },
-    { value: "REARRANGE", label: 'Reorder', icon: '🔀', color: primaryColor, bgColor: primaryColorWithAlpha },
+    { value: "REARRANGE", label: 'Rearrange', icon: '🔀', color: primaryColor, bgColor: primaryColorWithAlpha },
   ], [t, primaryColor, primaryColorWithAlpha]);
 
   // Helpers (match AIGenerateQuestions behaviors) - unused utilities removed
@@ -1237,7 +1237,7 @@ const AIGenerateReading = () => {
                          question.type === 'FILL_IN_THE_BLANK' ? 'Fill in the Blank' :
                          question.type === 'DROPDOWN' ? 'Dropdown' :
                          question.type === 'DRAG_AND_DROP' ? 'Drag and Drop' :
-                         question.type === 'REARRANGE' ? 'Reorder' :
+                         question.type === 'REARRANGE' ? 'Rearrange' :
                          question.type === 'REWRITE' ? 'Re-write' : question.type}
                       </Typography.Text>
                     </div>
@@ -1697,7 +1697,7 @@ const AIGenerateReading = () => {
                       </>
                     )}
 
-                    {/* Reorder */}
+                    {/* Rearrange */}
                     {question.type === 'REARRANGE' && (
                       <>
                         <Typography.Text style={{ 

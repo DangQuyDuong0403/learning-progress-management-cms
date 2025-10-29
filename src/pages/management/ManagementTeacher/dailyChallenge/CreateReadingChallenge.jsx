@@ -1807,7 +1807,7 @@ const CreateReadingChallenge = () => {
               textAlign: 'center',
               marginBottom: '4px'
             }}>
-              Choose a question type
+              {t('dailyChallenge.chooseQuestionType') || 'Choose a question type'}
             </div>
           }
           open={questionTypeModalVisible}
@@ -1821,13 +1821,13 @@ const CreateReadingChallenge = () => {
             <div className="question-type-category">
               <div className="category-grid">
                 {[
-                  { id: 1, name: "Multiple choice", type: "multiple-choice" },
-                  { id: 2, name: "Multiple select", type: "multiple-select" },
-                  { id: 3, name: "True or false", type: "true-false" },
-                  { id: 4, name: "Fill in the blank", type: "fill-blank" },
-                  { id: 5, name: "Dropdown", type: "dropdown" },
-                  { id: 6, name: "Drag and drop", type: "drag-drop" },
-                  { id: 7, name: "Reorder", type: "reorder" },
+                  { id: 1, name: t('dailyChallenge.multipleChoice') || "Multiple choice", type: "multiple-choice" },
+                  { id: 2, name: t('dailyChallenge.multipleSelect') || "Multiple select", type: "multiple-select" },
+                  { id: 3, name: t('dailyChallenge.trueFalse') || "True or false", type: "true-false" },
+                  { id: 4, name: t('dailyChallenge.fillBlank') || "Fill in the blank", type: "fill-blank" },
+                  { id: 5, name: t('dailyChallenge.dropdown') || "Dropdown", type: "dropdown" },
+                  { id: 6, name: t('dailyChallenge.dragDrop') || "Drag and drop", type: "drag-drop" },
+                  { id: 7, name: t('dailyChallenge.rearrange') || "Rearrange", type: "reorder" },
                 ].map((questionType) => (
                   <div
                     key={questionType.id}
@@ -1845,13 +1845,13 @@ const CreateReadingChallenge = () => {
                     </div>
                     <div className="question-type-name">{questionType.name}</div>
                     <div className="question-type-description">
-                      {questionType.type === "multiple-choice" && "Choose one correct answer"}
-                      {questionType.type === "multiple-select" && "Choose multiple correct answers"}
-                      {questionType.type === "true-false" && "True or False question"}
-                      {questionType.type === "fill-blank" && "Fill in the blank spaces"}
-                      {questionType.type === "dropdown" && "Select the correct option from dropdown"}
-                      {questionType.type === "drag-drop" && "Drag and drop items to arrange"}
-                      {questionType.type === "reorder" && "Reorder words or items"}
+                      {questionType.type === "multiple-choice" && (t('dailyChallenge.multipleChoiceDesc') || 'Choose one correct answer')}
+                      {questionType.type === "multiple-select" && (t('dailyChallenge.multipleSelectDesc') || 'Choose multiple correct answers')}
+                      {questionType.type === "true-false" && (t('dailyChallenge.trueFalseDesc') || 'True or False question')}
+                      {questionType.type === "fill-blank" && (t('dailyChallenge.fillBlankDesc') || 'Fill in the blank spaces')}
+                      {questionType.type === "dropdown" && (t('dailyChallenge.dropdownDesc') || 'Select the correct option from dropdown')}
+                      {questionType.type === "drag-drop" && (t('dailyChallenge.dragDropDesc') || 'Drag and drop items to arrange')}
+                      {questionType.type === "reorder" && (t('dailyChallenge.rearrangeDesc') || 'Rearrange words or items')}
                     </div>
                   </div>
                 ))}

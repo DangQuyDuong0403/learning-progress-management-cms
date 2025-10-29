@@ -20,6 +20,7 @@ import {
   SearchOutlined,
 } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import ThemedLayout from "../../../../component/teacherlayout/ThemedLayout";
 import {
   MultipleChoiceModal,
@@ -75,7 +76,7 @@ const questionTypes = [
   { id: 4, name: "Fill in the blank", type: "fill-blank" },
   { id: 5, name: "Dropdown", type: "dropdown" },
   { id: 6, name: "Drag and drop", type: "drag-drop" },
-  { id: 7, name: "Reorder", type: "reorder" },
+  { id: 7, name: "Rearrange", type: "reorder" },
   { id: 8, name: "Re-write", type: "rewrite" },
 ];
 
@@ -238,6 +239,7 @@ const DraggableQuestionItem = ({ question, index, onDelete, onMove }) => {
 
 const CreateGrammarVocabularyChallenge = () => {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   
   const [challengeName, setChallengeName]        = useState("");
   const [selectedChapter, setSelectedChapter]   = useState(null);
@@ -557,17 +559,27 @@ const CreateGrammarVocabularyChallenge = () => {
                 {questionType.type === "reorder" && "🔀"}
                 {questionType.type === "rewrite" && "✍️"}
               </div>
-              <div className="gvc-question-type-name">{questionType.name}</div>
+              <div className="gvc-question-type-name">
+                {questionType.type === "ai-generate" && (t?.('dailyChallenge.aiGenerate') || questionType.name)}
+                {questionType.type === "multiple-choice" && (t?.('dailyChallenge.multipleChoice') || questionType.name)}
+                {questionType.type === "multiple-select" && (t?.('dailyChallenge.multipleSelect') || questionType.name)}
+                {questionType.type === "true-false" && (t?.('dailyChallenge.trueFalse') || questionType.name)}
+                {questionType.type === "fill-blank" && (t?.('dailyChallenge.fillBlank') || questionType.name)}
+                {questionType.type === "dropdown" && (t?.('dailyChallenge.dropdown') || questionType.name)}
+                {questionType.type === "drag-drop" && (t?.('dailyChallenge.dragDrop') || questionType.name)}
+                {questionType.type === "reorder" && (t?.('dailyChallenge.rearrange') || questionType.name)}
+                {questionType.type === "rewrite" && (t?.('dailyChallenge.rewrite') || questionType.name)}
+              </div>
               <div className="gvc-question-type-description" style={questionType.featured ? { color: 'rgba(255,255,255,0.95)' } : {}}>
-                {questionType.type === "ai-generate" && "Generate questions automatically with AI"}
-                {questionType.type === "multiple-choice" && "Choose one correct answer"}
-                {questionType.type === "multiple-select" && "Choose multiple correct answers"}
-                {questionType.type === "true-false" && "True or False"}
-                {questionType.type === "fill-blank" && "Fill in the blank"}
-                {questionType.type === "dropdown" && "Select from list"}
-                {questionType.type === "drag-drop" && "Drag and drop to arrange"}
-                {questionType.type === "reorder" && "Reorder the sequence"}
-                {questionType.type === "rewrite" && "Rewrite the sentence"}
+                {questionType.type === "ai-generate" && (t?.('dailyChallenge.aiGenerateDesc') || 'Generate questions automatically with AI')}
+                {questionType.type === "multiple-choice" && (t?.('dailyChallenge.multipleChoiceDesc') || 'Choose one correct answer')}
+                {questionType.type === "multiple-select" && (t?.('dailyChallenge.multipleSelectDesc') || 'Choose multiple correct answers')}
+                {questionType.type === "true-false" && (t?.('dailyChallenge.trueFalseDesc') || 'True or False')}
+                {questionType.type === "fill-blank" && (t?.('dailyChallenge.fillBlankDesc') || 'Fill in the blank')}
+                {questionType.type === "dropdown" && (t?.('dailyChallenge.dropdownDesc') || 'Select from list')}
+                {questionType.type === "drag-drop" && (t?.('dailyChallenge.dragDropDesc') || 'Drag and drop to arrange')}
+                {questionType.type === "reorder" && (t?.('dailyChallenge.rearrangeDesc') || 'Rearrange the sequence')}
+                {questionType.type === "rewrite" && (t?.('dailyChallenge.rewriteDesc') || 'Rewrite the sentence')}
               </div>
             </div>
           ))}
