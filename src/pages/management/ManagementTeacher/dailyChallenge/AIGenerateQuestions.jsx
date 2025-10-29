@@ -237,7 +237,7 @@ const AIGenerateQuestions = () => {
     },
     { 
       value: "REARRANGE", 
-      label: 'Reorder', 
+      label: 'Rearrange', 
       icon: '🔀',
       color: primaryColor,
       bgColor: primaryColorWithAlpha
@@ -1757,7 +1757,7 @@ const AIGenerateQuestions = () => {
                          question.type === 'FILL_IN_THE_BLANK' ? 'Fill in the Blank' :
                          question.type === 'DROPDOWN' ? 'Dropdown' :
                          question.type === 'DRAG_AND_DROP' ? 'Drag and Drop' :
-                         question.type === 'REARRANGE' ? 'Reorder' :
+                         question.type === 'REARRANGE' ? 'Rearrange' :
                          question.type === 'REWRITE' ? 'Re-write' : question.type}
                       </Typography.Text>
                     </div>
@@ -2346,7 +2346,7 @@ const AIGenerateQuestions = () => {
                       </>
                     )}
 
-                    {/* Reorder/Rearrange */}
+                    {/* Rearrange */}
                     {question.type === 'REARRANGE' && question.sourceItems && (
                       <>
                         <Typography.Text style={{ 

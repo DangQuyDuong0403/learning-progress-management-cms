@@ -30,6 +30,7 @@ const debounce = (func, wait) => {
 
 
 const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
+  const MAX_ITEMS = 10;
   const [points, setPoints] = useState(1);
   const [shuffledWords, setShuffledWords] = useState([]);
   const [showBlankPopup, setShowBlankPopup] = useState(false);
@@ -603,10 +604,16 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
         questionData.content?.data || [],
         questionData.options || []
       );
+
+      // Enforce maximum items when loading existing data
+      const limitedBlanksData = blanksData.length > MAX_ITEMS ? blanksData.slice(0, MAX_ITEMS) : blanksData;
+      if (blanksData.length > MAX_ITEMS) {
+        spaceToast.warning(`Maximum ${MAX_ITEMS} items allowed. Extra items were ignored.`);
+      }
       
       // Set blanks state
-      setBlanks(blanksData);
-      console.log('ReorderModal - State updated with parsed data, blanksData length:', blanksData.length);
+      setBlanks(limitedBlanksData);
+      console.log('ReorderModal - State updated with parsed data, blanksData length:', limitedBlanksData.length);
       
       // Build editor DOM from parsed content
       editorRef.current.innerHTML = '';
@@ -619,7 +626,7 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
           }
         } else if (item.type === 'blank') {
           // Find the corresponding blank data from blanksData
-          const blankData = blanksData.find(b => b.id === item.id);
+          const blankData = limitedBlanksData.find(b => b.id === item.id);
           if (blankData) {
             console.log('ReorderModal - Creating blank element for:', blankData);
             const blankElement = createBlankElement(blankData, blankCounter);
@@ -641,7 +648,7 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
         setShuffledWords(questionData.shuffledWords);
       } else {
         // If no shuffledWords from backend, create them from blanks and options
-        const finalWords = createShuffledWords(blanksData, questionData.options);
+        const finalWords = createShuffledWords(limitedBlanksData, questionData.options);
         setShuffledWords(finalWords);
       }
     }
@@ -674,6 +681,13 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
   // Insert blank at saved cursor position
   const insertBlankAtCursor = useCallback(() => {
     if (!editorRef.current || !savedRangeRef.current) return;
+
+    // Enforce maximum number of items
+    if (blanks.length >= MAX_ITEMS) {
+      spaceToast.warning(`You can add up to ${MAX_ITEMS} items.`);
+      setShowBlankPopup(false);
+      return;
+    }
 
     // Don't insert blank if cursor is inside another blank
     if (isCursorInsideBlank()) {
@@ -1082,7 +1096,7 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
             animation: 'pulse 2s infinite'
           }} />
           <span style={{ fontSize: '24px', fontWeight: 600 }}>
-            {questionData ? 'Edit Reorder Question' : 'Create Reorder Question'}
+            {questionData ? 'Edit Rearrange Question' : 'Create Rearrange Question'}
           </span>
         </div>
       }
@@ -1246,6 +1260,7 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
                   icon={<ThunderboltOutlined />}
                   onClick={insertBlankAtCursor}
                   size="small"
+                  disabled={blanks.length >= MAX_ITEMS}
                   style={{
                     background: 'linear-gradient(135deg, #66AEFF, #3C99FF)',
                     border: 'none',
@@ -1256,7 +1271,7 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
                     color: '#000000',
                   }}
                 >
-                  Add Item
+                  {blanks.length >= MAX_ITEMS ? `Max ${MAX_ITEMS} items` : 'Add Item'}
                 </Button>
               </div>
             )}
@@ -1270,7 +1285,7 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
             marginBottom: '24px',
             fontStyle: 'italic'
           }}>
-            Each item above = 1 word. Students will see shuffled words below and reorder them.
+            Each item above = 1 word. Students will see shuffled words below and reorder them. (Max 10 items)
               </div>
 
           {/* Shuffled Words Preview */}
