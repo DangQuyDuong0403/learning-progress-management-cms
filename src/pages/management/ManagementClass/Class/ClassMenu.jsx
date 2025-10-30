@@ -11,7 +11,6 @@ import {
   BookOutlined,
   SolutionOutlined,
   EyeOutlined,
-  TrophyOutlined,
 } from "@ant-design/icons";
 import ThemedLayoutWithSidebar from "../../../../component/ThemedLayout";
 import ThemedLayoutNoSidebar from "../../../../component/teacherlayout/ThemedLayout";
@@ -174,7 +173,7 @@ const ClassMenu = () => {
       id: "daily-challenge",
       title: t('classMenu.dailyChallenge'),
       description: t('classMenu.dailyChallengeDescription'),
-      icon: <TrophyOutlined style={{ fontSize: '48px', color: '#eb2f96' }} />,
+      icon: <img src="/img/dc-icon.png" alt="daily-challenge" style={{ width: '60px', height: '60px' }} />,
       path: userRole === 'student' ? `${routePrefix}/daily-challenges/${id}` : `${routePrefix}/daily-challenges/${id}`,
       color: "#eb2f96",
       hideForRoles: ['manager'], // Only hide for manager, allow student, teacher, and teaching_assistant to see
@@ -182,7 +181,9 @@ const ClassMenu = () => {
     {
       id: "teachers",
       title: t('classMenu.teachers'),
-      description: t('classMenu.teachersDescription'),
+      description: userRole === 'teacher'
+        ? t('classMenu.viewTeachers', 'View teachers')
+        : t('classMenu.teachersDescription'),
       icon: <SolutionOutlined style={{ fontSize: '48px', color: '#52c41a' }} />,
       path: `${routePrefix}/teachers/${id}`,
       color: "#52c41a",
@@ -191,7 +192,9 @@ const ClassMenu = () => {
     {
       id: "students",
       title: t('classMenu.students'),
-      description: t('classMenu.studentsDescription'),
+      description: userRole === 'teacher'
+        ? t('classMenu.viewStudents', 'View students')
+        : t('classMenu.studentsDescription'),
       icon: <TeamOutlined style={{ fontSize: '48px', color: '#1890ff' }} />,
       path: `${routePrefix}/student/${id}`,
       color: "#1890ff",

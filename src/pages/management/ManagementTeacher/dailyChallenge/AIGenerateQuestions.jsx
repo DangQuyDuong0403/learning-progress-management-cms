@@ -1191,57 +1191,7 @@ const AIGenerateQuestions = () => {
     <ThemedLayout customHeader={customHeader}>
       <div className={`ai-generate-wrapper allow-motion ${theme}-ai-generate-wrapper`}>
         <div style={{ padding: '24px', maxWidth: '1500px', margin: '0 auto' }}>
-          {/* Hierarchy info bar */}
-          <div
-            style={{
-              display: 'flex',
-              gap: 12,
-              flexWrap: 'wrap',
-              alignItems: 'center',
-              marginBottom: 12,
-            }}
-          >
-            {hierarchy && (
-              <>
-                <div style={{
-                  padding: '8px 12px',
-                  borderRadius: 12,
-                  border: `2px solid ${theme === 'sun' ? 'rgba(24, 144, 255, 0.35)' : 'rgba(139, 92, 246, 0.35)'}`,
-                  background: theme === 'sun'
-                    ? 'linear-gradient(135deg, rgba(240,249,255,0.65), rgba(255,255,255,0.9))'
-                    : 'linear-gradient(135deg, rgba(244,240,255,0.35), rgba(255,255,255,0.08))',
-                  color: theme === 'sun' ? '#0f172a' : '#e5e7eb',
-                  fontWeight: 600,
-                }}>
-                  Level: {hierarchy?.level?.levelName || hierarchy?.level?.name || '—'}
-                </div>
-                <div style={{
-                  padding: '8px 12px',
-                  borderRadius: 12,
-                  border: `2px solid ${theme === 'sun' ? 'rgba(24, 144, 255, 0.35)' : 'rgba(139, 92, 246, 0.35)'}`,
-                  background: theme === 'sun'
-                    ? 'linear-gradient(135deg, rgba(240,249,255,0.65), rgba(255,255,255,0.9))'
-                    : 'linear-gradient(135deg, rgba(244,240,255,0.35), rgba(255,255,255,0.08))',
-                  color: theme === 'sun' ? '#0f172a' : '#e5e7eb',
-                  fontWeight: 600,
-                }}>
-                  Chapter: {hierarchy?.chapter?.chapterName || hierarchy?.chapter?.name || '—'}
-                </div>
-                <div style={{
-                  padding: '8px 12px',
-                  borderRadius: 12,
-                  border: `2px solid ${theme === 'sun' ? 'rgba(24, 144, 255, 0.35)' : 'rgba(139, 92, 246, 0.35)'}`,
-                  background: theme === 'sun'
-                    ? 'linear-gradient(135deg, rgba(240,249,255,0.65), rgba(255,255,255,0.9))'
-                    : 'linear-gradient(135deg, rgba(244,240,255,0.35), rgba(255,255,255,0.08))',
-                  color: theme === 'sun' ? '#0f172a' : '#e5e7eb',
-                  fontWeight: 600,
-                }}>
-                  Lesson: {hierarchy?.lesson?.lessonName || hierarchy?.lesson?.name || '—'}
-                </div>
-              </>
-            )}
-          </div>
+          {/* Hierarchy info moved inside the main container */}
           {/* Frosted outer frame around both containers and the button */}
           <Card
             style={{
@@ -1260,6 +1210,28 @@ const AIGenerateQuestions = () => {
             }}
             bodyStyle={{ padding: 16 }}
           >
+            {/* White chips for Level/Chapter/Lesson inside container */}
+            {hierarchy && (
+              <div
+                style={{
+                  display: 'flex',
+                  gap: 12,
+                  flexWrap: 'wrap',
+                  alignItems: 'center',
+                  marginBottom: 12,
+                }}
+              >
+                <div style={{ padding: '8px 12px', borderRadius: 12, border: '1px solid rgba(0,0,0,0.1)', background: '#ffffff', color: '#000000', fontWeight: 600 }}>
+                  Level: Flayer
+                </div>
+                <div style={{ padding: '8px 12px', borderRadius: 12, border: '1px solid rgba(0,0,0,0.1)', background: '#ffffff', color: '#000000', fontWeight: 600 }}>
+                  Chapter: Chapter của MinhPQ
+                </div>
+                <div style={{ padding: '8px 12px', borderRadius: 12, border: '1px solid rgba(0,0,0,0.1)', background: '#ffffff', color: '#000000', fontWeight: 600 }}>
+                  Lesson: Lessone of MinhPQ 2
+                </div>
+              </div>
+            )}
             {/* Two-column layout: left = Text Prompt (2/3), right = Question Settings (1/3) */}
             <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '20px', alignItems: 'stretch' }}>
               {/* Left: Text Prompt (no passage) */}

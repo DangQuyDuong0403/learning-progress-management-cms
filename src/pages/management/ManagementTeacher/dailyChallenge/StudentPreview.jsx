@@ -8,7 +8,7 @@ import {
   MenuOutlined,
   CloseOutlined,
 } from "@ant-design/icons";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useLocation } from "react-router-dom";
 import ThemedLayout from "../../../../component/teacherlayout/ThemedLayout";
 import LoadingWithEffect from "../../../../component/spinner/LoadingWithEffect";
 import "./DailyChallengeContent.css";
@@ -16,6 +16,7 @@ import { useTranslation } from "react-i18next";
 import { useTheme } from "../../../../contexts/ThemeContext";
 import usePageTitle from "../../../../hooks/usePageTitle";
 import { dailyChallengeApi } from "../../../../apis/apis";
+import classManagementApi from "../../../../apis/backend/classManagement";
 
 // Helper function to replace [[dur_3]] with HTML badge
 const processPassageContent = (content, theme, challengeType) => {
@@ -5489,6 +5490,7 @@ const FillBlankContainer = ({ theme, data }) => {
 const StudentPreview = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const location = useLocation();
   const { id } = useParams();
   const { theme } = useTheme();
   
@@ -5500,6 +5502,10 @@ const StudentPreview = () => {
   const [speakingSections, setSpeakingSections] = useState([]);
   const [challengeType, setChallengeType] = useState(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [challengeInfo, setChallengeInfo] = useState({
+    className: location.state?.className || location.state?.class?.name || location.state?.class?.className || null,
+    challengeName: location.state?.challengeName || location.state?.name || location.state?.title || null,
+  });
   const questionRefs = useRef({});
   
   usePageTitle('Daily Challenge Preview');
@@ -5513,6 +5519,27 @@ const StudentPreview = () => {
         const detailRes = await dailyChallengeApi.getDailyChallengeById(id);
         const cType = detailRes?.data?.challengeType || null;
         setChallengeType(cType);
+        // set header info (class/challenge names) if available
+        const d = detailRes?.data || {};
+        setChallengeInfo(prev => ({
+          ...prev,
+          challengeName: d.challengeName || d.name || d.title || prev.challengeName,
+          className: d.className || d.class?.name || d.class?.className || prev.className,
+        }));
+        // If class name is still missing but we have classId, fetch it
+        const clsId = d.classId || d.class?.id || d.classIdRef;
+        if ((!d.className && !d.class?.name && !d.class?.className) && clsId) {
+          try {
+            const clsRes = await classManagementApi.getClassDetail(clsId);
+            const clsData = clsRes?.data || {};
+            setChallengeInfo(prev => ({
+              ...prev,
+              className: clsData.className || clsData.name || prev.className,
+            }));
+          } catch (e) {
+            // ignore if fails; we still have challengeName
+          }
+        }
 
         const response = await dailyChallengeApi.getSectionsByChallenge(id, { page: 0, size: 100 });
         const apiSections = response?.data || [];
@@ -5720,6 +5747,9 @@ const StudentPreview = () => {
   };
 
   // Custom Header Component
+  const subtitle = (challengeInfo.className && challengeInfo.challengeName)
+    ? `${challengeInfo.className} / ${challengeInfo.challengeName}`
+    : (challengeInfo.challengeName || 'Daily Challenge');
   const customHeader = (
     <header className={`themed-header ${theme}-header`}>
       <nav className="themed-navbar">
@@ -5760,7 +5790,7 @@ const StudentPreview = () => {
                 fontWeight: 350,
                 opacity: 0.5
               }}>|</span>
-              <span>Daily Challenge Preview - Student View</span>
+              <span>{subtitle}</span>
             </div>
           </div>
         </div>
