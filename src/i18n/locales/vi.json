@@ -1,5 +1,7 @@
 {
   "common": {
+    "on": "Bật",
+    "off": "Tắt",
     "login": "Đăng nhập",
     "logout": "Đăng xuất",
     "profile": "Hồ sơ",

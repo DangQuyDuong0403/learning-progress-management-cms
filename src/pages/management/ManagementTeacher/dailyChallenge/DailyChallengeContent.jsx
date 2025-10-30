@@ -5194,9 +5194,6 @@ const DailyChallengeContent = () => {
         }}
       >
         <div style={{ padding: '8px 4px' }}>
-          <Typography.Paragraph style={{ marginBottom: 12, textAlign: 'center' }}>
-            {t('dailyChallenge.publishWarning') || 'You are about to publish this challenge. Please verify the following settings:'}
-          </Typography.Paragraph>
           
           {/* Challenge Configuration */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
@@ -5204,7 +5201,7 @@ const DailyChallengeContent = () => {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <Typography.Text strong>{t('dailyChallenge.mode') || 'Challenge Mode'}</Typography.Text>
                 <span style={{ 
-                  fontWeight: 700, 
+              
                   color: challengeMode === 'exam' ? '#ff4d4f' : '#52c41a',
                   fontSize: '13px'
                 }}>
@@ -5217,7 +5214,7 @@ const DailyChallengeContent = () => {
             <Card size="small" style={{ background: theme === 'sun' ? '#fafafa' : 'rgba(255, 255, 255, 0.05)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <Typography.Text strong>{t('dailyChallenge.duration') || 'Duration'}</Typography.Text>
-                <span style={{ fontWeight: 700, fontSize: '13px', color: theme === 'sun' ? '#333' : '#000000' }}>
+                <span style={{  fontSize: '13px', color: theme === 'sun' ? '#333' : '#000000' }}>
                   {durationMinutes 
                     ? `${durationMinutes} ${t('dailyChallenge.minutes') || 'minutes'}`
                     : t('common.notSet') || 'Not Set'}
@@ -5227,7 +5224,7 @@ const DailyChallengeContent = () => {
             <Card size="small" style={{ background: theme === 'sun' ? '#fafafa' : 'rgba(255, 255, 255, 0.05)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <Typography.Text strong>{t('dailyChallenge.startDate') || 'Start Date'}</Typography.Text>
-                <span style={{ fontWeight: 700, fontSize: '13px', color: theme === 'sun' ? '#333' : '#000000' }}>
+                <span style={{ fontSize: '13px', color: theme === 'sun' ? '#333' : '#000000' }}>
                   {startDate 
                     ? new Date(startDate).toLocaleDateString('vi-VN', { 
                         day: '2-digit', 
@@ -5243,7 +5240,7 @@ const DailyChallengeContent = () => {
             <Card size="small" style={{ background: theme === 'sun' ? '#fafafa' : 'rgba(255, 255, 255, 0.05)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <Typography.Text strong>{t('dailyChallenge.endDate') || 'End Date'}</Typography.Text>
-                <span style={{ fontWeight: 700, fontSize: '13px', color: theme === 'sun' ? '#333' : '#000000' }}>
+                <span style={{ fontSize: '13px', color: theme === 'sun' ? '#333' : '#000000' }}>
                   {endDate 
                     ? new Date(endDate).toLocaleDateString('vi-VN', { 
                         day: '2-digit', 
@@ -5263,7 +5260,7 @@ const DailyChallengeContent = () => {
             <Card size="small" style={{ background: theme === 'sun' ? '#fafafa' : 'rgba(255, 255, 255, 0.05)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <Typography.Text strong>{sentenceCase(t('dailyChallenge.shuffleQuestion') || t('dailyChallenge.shuffleAnswers') || 'Shuffle questions')}</Typography.Text>
-                <span style={{ fontWeight: 700, color: shuffleQuestion ? '#52c41a' : '#ff4d4f' }}>
+                <span style={{  color: shuffleQuestion ? '#52c41a' : '#ff4d4f' }}>
                   {shuffleQuestion ? sentenceCase(t('common.on') || 'ON') : sentenceCase(t('common.off') || 'OFF')}
                 </span>
               </div>
@@ -5271,7 +5268,7 @@ const DailyChallengeContent = () => {
             <Card size="small" style={{ background: theme === 'sun' ? '#fafafa' : 'rgba(255, 255, 255, 0.05)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <Typography.Text strong>{sentenceCase(t('dailyChallenge.antiCheatMode') || 'Anti-cheat mode')}</Typography.Text>
-                <span style={{ fontWeight: 700, color: antiCheatModeEnabled ? '#52c41a' : '#ff4d4f' }}>
+                <span style={{  color: antiCheatModeEnabled ? '#52c41a' : '#ff4d4f' }}>
                   {antiCheatModeEnabled ? sentenceCase(t('common.on') || 'ON') : sentenceCase(t('common.off') || 'OFF')}
                 </span>
               </div>
@@ -5279,14 +5276,14 @@ const DailyChallengeContent = () => {
             <Card size="small" style={{ gridColumn: '1 / span 2', background: theme === 'sun' ? '#fafafa' : 'rgba(255, 255, 255, 0.05)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <Typography.Text strong>{sentenceCase(t('dailyChallenge.translateOnScreen') || 'Translate on screen')}</Typography.Text>
-                <span style={{ fontWeight: 700, color: translateOnScreen ? '#52c41a' : '#ff4d4f' }}>
+                <span style={{  color: translateOnScreen ? '#52c41a' : '#ff4d4f' }}>
                   {translateOnScreen ? sentenceCase(t('common.on') || 'ON') : sentenceCase(t('common.off') || 'OFF')}
                 </span>
               </div>
             </Card>
           </div>
 
-          <Typography.Paragraph style={{ marginTop: 12, color: '#faad14', fontWeight: 600, textAlign: 'center' }}>
+          <Typography.Paragraph style={{ marginTop: 12, color: 'black', textAlign: 'center', fontStyle: 'italic' }}>
             {t('dailyChallenge.publishWarningMessage') || 'Once published, students will be able to access this challenge. This action cannot be undone.'}
           </Typography.Paragraph>
         </div>
