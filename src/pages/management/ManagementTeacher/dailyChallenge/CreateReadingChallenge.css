@@ -63,7 +63,6 @@
 }
 
 .rc-passage-content {
-  padding: 24px 0;
   height: calc(100% - 80px);
   max-height: 700px;
   display: flex;
@@ -133,6 +132,7 @@
   height: 100%;
   color: white;
 }
+
 
 .rc-question-card .ant-card-body {
   color: white;

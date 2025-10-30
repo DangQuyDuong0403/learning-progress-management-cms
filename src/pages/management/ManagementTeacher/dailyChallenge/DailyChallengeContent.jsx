@@ -239,7 +239,19 @@ const SortablePassageItem = memo(
           </div>
         </div>
 
-        <div className="passage-content" style={(challengeType === 'RE' || challengeType === 'LI' || challengeType === 'SP') ? { display: 'flex', gap: '24px', minHeight: '500px' } : undefined}>
+        <div
+          className="passage-content"
+          style={
+            (challengeType === 'RE' || challengeType === 'LI' || challengeType === 'SP')
+              ? {
+                  display: 'flex',
+                  gap: '24px',
+                  // Keep fixed minHeight for Reading/Listening, but let Speaking shrink to content
+                  ...(challengeType === 'SP' ? {} : { minHeight: '500px' })
+                }
+              : undefined
+          }
+        >
           {(challengeType === 'RE' || challengeType === 'LI' || challengeType === 'SP') && (
             <style>{`
               .reading-passage-scrollbar::-webkit-scrollbar { width: 8px; }
@@ -4510,7 +4522,7 @@ const DailyChallengeContent = () => {
 
                   {/* Challenge Mode (View Only) */}
                   <div style={{ marginBottom: '16px' }}>
-                    <Typography.Title level={5} style={{ marginTop: 0, marginBottom: '12px', fontSize: '16px', fontWeight: 600, textAlign: 'center' }}>
+                    <Typography.Title level={5} style={{ marginTop: 0, marginBottom: '12px', fontSize: '18px', fontWeight: 600, textAlign: 'center', color: 'rgb(24, 144, 255)' }}>
                       {t('dailyChallenge.mode')}
                   </Typography.Title>
                     <div style={{ 
@@ -4529,7 +4541,7 @@ const DailyChallengeContent = () => {
 
                   {/* Challenge Configuration (View Only) */}
                   <div style={{ marginBottom: '16px' }}>
-                    <Typography.Title level={5} style={{ marginTop: 0, marginBottom: '12px', fontSize: '16px', fontWeight: 600, textAlign: 'center' }}>
+                    <Typography.Title level={5} style={{ marginTop: 0, marginBottom: '12px', fontSize: '18px', fontWeight: 600, textAlign: 'center', color: 'rgb(24, 144, 255)' }}>
                       {t('dailyChallenge.configuration')}
                   </Typography.Title>
                   <div>
@@ -4548,7 +4560,7 @@ const DailyChallengeContent = () => {
                         <Typography.Text style={{ fontSize: '12px', color: '#666', display: 'block', marginBottom: '4px' }}>
                           {t('dailyChallenge.questionType')}
                                 </Typography.Text>
-                        <Typography.Text strong style={{ fontSize: '14px' }}>
+                        <Typography.Text strong style={{ fontSize: '14px', color: 'rgb(223, 175, 56)' }}>
                           {challengeDetails?.challengeType ? getChallengeTypeName(challengeDetails.challengeType) : t('common.notSet')}
                                 </Typography.Text>
                             </div>
@@ -4589,7 +4601,7 @@ const DailyChallengeContent = () => {
 
                   {/* Settings (View Only) */}
                   <div>
-                    <Typography.Title level={5} style={{ marginTop: 0, marginBottom: '12px', fontSize: '16px', fontWeight: 600, textAlign: 'center' }}>
+                    <Typography.Title level={5} style={{ marginTop: 0, marginBottom: '12px', fontSize: '18px', fontWeight: 600, textAlign: 'center', color: 'rgb(24, 144, 255)' }}>
                       {t('common.settings')}
                   </Typography.Title>
                   <div>
@@ -4666,7 +4678,7 @@ const DailyChallengeContent = () => {
                 >
             <div style={{ display: 'flex', gap: '12px', alignItems: 'center', justifyContent: 'space-between' }}>
               <Typography.Text style={{ fontWeight: 400, color: '#000', whiteSpace: 'nowrap', fontSize: '16px' }}>
-                <span style={{ fontWeight: 700 }}>Total:</span> {displayTotals.count} {displayTotals.label} • <span style={{ fontWeight: 700 }}>Remaining:</span> {displayTotals.remaining} {displayTotals.label}
+                <span style={{ fontWeight: 700 }}>Total:</span> {displayTotals.count} questions • <span style={{ fontWeight: 700 }}>Remaining:</span> {displayTotals.remaining} questions
               </Typography.Text>
               <Input
                   prefix={<SearchOutlined />}
