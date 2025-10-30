@@ -47,7 +47,7 @@ const { Title, Text } = Typography;
 
 const CreateReadingChallenge = () => {
   const MAX_READING_CONTENT_LENGTH = 10000;
-  const MAX_LISTENING_CONTENT_LENGTH = 3000;
+  const MAX_LISTENING_CONTENT_LENGTH = 10000;
   const MAX_WRITING_SPEAKING_CONTENT_LENGTH = 1500;
   const navigate = useNavigate();
   const location = useLocation();
@@ -245,7 +245,7 @@ const CreateReadingChallenge = () => {
       if (maxLength !== null) {
         const plainText = getPlainText(passage.content || '');
         if (plainText.length > maxLength) {
-          const challengeType = isWritingChallenge ? 'Writing' : isSpeakingChallenge ? 'Speaking' : 'Reading';
+          const challengeType = isWritingChallenge ? 'Writing' : isSpeakingChallenge ? 'Speaking' : isListeningChallenge ? 'Listening' : 'Reading';
           spaceToast.warning(`${challengeType} passage must be at most ${maxLength} characters.`);
           setIsSaving(false);
           return;
@@ -594,7 +594,7 @@ const CreateReadingChallenge = () => {
     if (maxLength !== null) {
       const plainText = getPlainTextInline(content);
       if (plainText.length > maxLength) {
-        const challengeType = isWritingChallenge ? 'Writing' : isSpeakingChallenge ? 'Speaking' : 'Reading';
+        const challengeType = isWritingChallenge ? 'Writing' : isSpeakingChallenge ? 'Speaking' : isListeningChallenge ? 'Listening' : 'Reading';
         spaceToast.warning(`${challengeType} passage is limited to ${maxLength} characters.`);
         return;
       }
@@ -1607,7 +1607,7 @@ const CreateReadingChallenge = () => {
                             }}>
                               {isWritingChallenge ? 'Add writing topic manually' : 
                                isSpeakingChallenge ? 'Add speaking topic manually' : 
-                               'Add text manually'}
+                               isListeningChallenge ? 'Add transcript' : 'Add text manually'}
                             </Text>
                           </Space>
                         </Card>
