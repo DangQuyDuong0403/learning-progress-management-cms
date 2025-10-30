@@ -105,7 +105,6 @@ const MultipleSelectModal = ({
 				'bulletedList',
 				'numberedList',
 				'|',
-				'blockQuote',
 				'link',
 				'|',
 				'undo',
