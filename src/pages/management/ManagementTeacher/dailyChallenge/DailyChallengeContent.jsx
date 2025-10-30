@@ -129,17 +129,7 @@ const SortablePassageItem = memo(
       return () => window.cancelAnimationFrame(id);
     }, [challengeType, passage?.content, showMore]);
     
-    const toPlainText = (html) => {
-      if (!html) return '';
-      return String(html)
-        .replace(/<[^>]*>/g, ' ')
-        .replace(/&nbsp;/g, ' ')
-        .replace(/&amp;/g, '&')
-        .replace(/&lt;/g, '<')
-        .replace(/&gt;/g, '>')
-        .replace(/\s+/g, ' ')
-        .trim();
-    };
+    // Removed plain-text transcript conversion to preserve rich content (bold, images, tables)
     
     const animateLayoutChanges = useCallback((args) => {
       const { isSorting, wasDragging } = args;
@@ -494,7 +484,19 @@ const SortablePassageItem = memo(
                       marginTop: '16px'
                     }}
                   >
-                    {passage.transcript ? toPlainText(passage.transcript) : passage.content ? toPlainText(passage.content) : 'No transcript available'}
+                    <style>{`
+                      .transcript-content img { max-width: 100%; height: auto; }
+                      .transcript-content table { width: 100%; border-collapse: collapse; }
+                      .transcript-content table, .transcript-content th, .transcript-content td { border: 1px solid #e5e7eb; }
+                      .transcript-content th, .transcript-content td { padding: 6px; }
+                    `}</style>
+                    <div
+                      className="transcript-content"
+                      style={{ wordBreak: 'break-word' }}
+                      dangerouslySetInnerHTML={{
+                        __html: passage.transcript || passage.content || 'No transcript available'
+                      }}
+                    />
                   </div>
                 )}
               </div>
@@ -2111,7 +2113,9 @@ const SortableQuestionItem = memo(
                   .map((opt, i) => {
                     const text = toPlain(opt);
                     const isSelected = i === (selectedIndex >= 0 ? selectedIndex : 0);
-                    return `<option style=\"white-space: normal; word-break: break-word; overflow-wrap: anywhere; line-height: 1.4;\" value=\"${text}\" ${isSelected ? 'selected' : ''} title=\"${text}\">${text}</option>`;
+                    const isCorrect = toPlain(opt) === toPlain(g.correct);
+                    const color = isCorrect ? '#000000' : '#999999';
+                    return `<option style=\"white-space: normal; word-break: break-word; overflow-wrap: anywhere; line-height: 1.4; color: ${color};\" value=\"${text}\" ${isSelected ? 'selected' : ''} title=\"${text}\">${text}</option>`;
                   })
                   .join('');
                 const selectHtml = `<select data-idx=\"${selectedIndex >= 0 ? selectedIndex : 0}\" onchange=\"this.selectedIndex=this.dataset.idx\" style=\"display:inline-block;width:160px;max-width:160px;height:36px;padding:0 12px;margin:0 6px;background:rgba(82, 196, 26, 0.12);border:2px solid rgba(82, 196, 26, 0.5);border-radius:10px;font-size:14px;color:black;cursor:pointer;outline:none;text-align:center;box-sizing:border-box;overflow:hidden;white-space:normal;appearance:auto;\">${optionsHtml}</select>`;

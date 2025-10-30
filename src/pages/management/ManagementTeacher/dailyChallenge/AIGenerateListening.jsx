@@ -372,7 +372,7 @@ const AIGenerateListening = () => {
             style={{ borderRadius: '20px', border: theme === 'sun' ? '2px solid rgba(24, 144, 255, 0.35)' : '2px solid rgba(139, 92, 246, 0.35)', background: theme === 'sun' ? 'linear-gradient(180deg, rgba(255,255,255,0.60) 0%, rgba(240,249,255,0.55) 100%)' : 'linear-gradient(180deg, rgba(255,255,255,0.50) 0%, rgba(244,240,255,0.45) 100%)', backdropFilter: 'blur(6px)', boxShadow: theme === 'sun' ? '0 8px 24px rgba(24, 144, 255, 0.12)' : '0 8px 24px rgba(139, 92, 246, 0.12)', padding: 16 }}
             bodyStyle={{ padding: 16 }}
           >
-            {/* White chips for Level/Chapter/Lesson inside container */}
+            {/* White chips for Level/Chapter/Lesson inside container (from API) */}
             {hierarchy && (
               <div
                 style={{
@@ -384,13 +384,13 @@ const AIGenerateListening = () => {
                 }}
               >
                 <div style={{ padding: '8px 12px', borderRadius: 12, border: '1px solid rgba(0,0,0,0.1)', background: '#ffffff', color: '#000000', fontWeight: 600 }}>
-                  Level: Flayer
+                  Level: {hierarchy?.level?.levelName || hierarchy?.level?.name || '—'}
                 </div>
                 <div style={{ padding: '8px 12px', borderRadius: 12, border: '1px solid rgba(0,0,0,0.1)', background: '#ffffff', color: '#000000', fontWeight: 600 }}>
-                  Chapter: Chapter của MinhPQ
+                  Chapter: {hierarchy?.chapter?.chapterName || hierarchy?.chapter?.name || '—'}
                 </div>
                 <div style={{ padding: '8px 12px', borderRadius: 12, border: '1px solid rgba(0,0,0,0.1)', background: '#ffffff', color: '#000000', fontWeight: 600 }}>
-                  Lesson: Lessone of MinhPQ 2
+                  Lesson: {hierarchy?.lesson?.lessonName || hierarchy?.lesson?.name || '—'}
                 </div>
               </div>
             )}
@@ -517,7 +517,7 @@ const AIGenerateListening = () => {
                         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                           <EditOutlined style={{ fontSize: 24, color: '#000000' }} />
                           <Typography.Text strong style={{ color: theme === 'sun' ? '#1E40AF' : '#8377A0' }}>
-                            Generate question manually
+                            Generate question from settings
                           </Typography.Text>
                         </div>
                       </Card>
