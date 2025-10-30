@@ -4,20 +4,20 @@
   padding: 0;
   width: 100%;
   box-sizing: border-box;
-  background: rgba(45, 27, 105, 0.75);
+  background: transparent; /* show themed background behind */
   backdrop-filter: none;
   position: relative;
   z-index: 2;
 }
 
 .space-theme .daily-challenge-list-wrapper {
-  background: rgba(110, 92, 172, 0.5);
-  backdrop-filter: blur(7px);
+  background: transparent;
+  backdrop-filter: none;
 }
 
 .sun-theme .daily-challenge-list-wrapper {
-  background: #E6F5FF !important;
-  backdrop-filter: blur(1px);
+  background: transparent !important;
+  backdrop-filter: none;
 }
 
 /* ===== PAGE TITLE STYLES ===== */
@@ -392,7 +392,7 @@
 }
 
 .sun-theme .filter-button {
-  background: rgba(255, 255, 255, 0.1);
+  background: #e6f5ff;
   border: 1px solid rgba(0, 0, 0, 0.2);
   color: #000;
 }
