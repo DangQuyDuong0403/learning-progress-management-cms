@@ -1,7 +1,7 @@
 {
   "common": {
-    "on": "on",
-    "off": "off",
+    "on": "On",
+    "off": "Off",
     "login": "Login",
     "logout": "Logout",
     "profile": "Profile",
