@@ -803,10 +803,10 @@ const ClassStudent = () => {
     return <span style={{ color: '#000000', fontSize: '20px' }}>{config.text}</span>;
   };
 
-  // Single useEffect to handle all changes with debounce
+  // Single useEffect to handle all changes with debounce (search, filter, sort, pagination)
   useEffect(() => {
     // Skip if this is the initial load (handled by the first useEffect)
-    if (!searchText && statusFilter === 'all' && sortConfig.sortBy === 'joinedAt' && sortConfig.sortDir === 'desc') {
+    if (!searchText && statusFilter === 'all' && sortConfig.sortBy === 'joinedAt' && sortConfig.sortDir === 'desc' && pagination.current === 1) {
       return;
     }
 
@@ -814,7 +814,7 @@ const ClassStudent = () => {
       setLoading(true);
       try {
         const apiParams = {
-          page: 0,
+          page: (pagination.current - 1) < 0 ? 0 : (pagination.current - 1),
           size: pagination.pageSize,
           text: searchText,
           status: statusFilter,
@@ -831,7 +831,7 @@ const ClassStudent = () => {
           setPagination(prev => ({
             ...prev,
             total: response.totalElements || 0,
-            current: 1,
+            current: (apiParams.page || 0) + 1,
           }));
         } else {
           spaceToast.error(response.message || t('classDetail.loadingStudents'));
@@ -848,7 +848,7 @@ const ClassStudent = () => {
     
     return () => clearTimeout(timeoutId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchText, statusFilter, sortConfig.sortBy, sortConfig.sortDir, pagination.pageSize, id]);
+  }, [searchText, statusFilter, sortConfig.sortBy, sortConfig.sortDir, pagination.pageSize, pagination.current, id]);
   
   // Handle pagination change
   const handleTableChange = (paginationInfo, filters, sorter) => {
