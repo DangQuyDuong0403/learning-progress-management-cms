@@ -7,6 +7,7 @@ import {
   Typography,
   Tooltip,
   Modal,
+  Card,
 } from "antd";
 import {
   SearchOutlined,
@@ -87,6 +88,7 @@ const DailyChallengeList = ({ readOnly = false }) => {
     challengeId: null,
     challengeTitle: '',
   });
+  const [publishDetails, setPublishDetails] = useState(null);
 
   // Build unique lesson list from current allChallenges to avoid extra API calls
   const availableLessons = React.useMemo(() => {
@@ -717,6 +719,23 @@ const DailyChallengeList = ({ readOnly = false }) => {
         challengeId: id,
         challengeTitle: challenge.title,
       });
+      // Fetch challenge details to display in confirm modal (mode/duration/dates/settings)
+      try {
+        const detailRes = await dailyChallengeApi.getDailyChallengeById(id);
+        const data = detailRes?.data || {};
+        setPublishDetails({
+          challengeMode: data.challengeMethod === 'TEST' ? 'exam' : 'normal',
+          durationMinutes: data.durationMinutes,
+          startDate: data.startDate,
+          endDate: data.endDate,
+          shuffleQuestion: !!(data.shuffleQuestion || data.shuffleAnswers),
+          translateOnScreen: !!data.translateOnScreen,
+          antiCheatModeEnabled: !!data.hasAntiCheat,
+        });
+      } catch (e) {
+        console.warn('Failed to load challenge details for publish modal', e);
+        setPublishDetails(null);
+      }
     } else {
       // Direct unpublish for PUBLISHED challenges
       await handlePublishConfirm(id, 'DRAFT');
@@ -810,11 +829,13 @@ const DailyChallengeList = ({ readOnly = false }) => {
 
   const handlePublishModalCancel = () => {
     setPublishModal({ visible: false, challengeId: null, challengeTitle: '' });
+    setPublishDetails(null);
   };
 
   const handlePublishModalConfirm = async () => {
     await handlePublishConfirm(publishModal.challengeId, 'PUBLISHED');
     setPublishModal({ visible: false, challengeId: null, challengeTitle: '' });
+    setPublishDetails(null);
   };
 
   const columns = [
@@ -1452,31 +1473,20 @@ const DailyChallengeList = ({ readOnly = false }) => {
             <div style={{ 
               fontSize: '20px', 
               fontWeight: '600', 
-              color: 'rgb(24, 144, 255)',
+              color: theme === 'sun' ? 'rgb(113, 179, 253)' : 'rgb(138, 122, 255)',
               textAlign: 'center',
-              padding: '10px 0',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '10px',
+              padding: '10px 0'
             }}>
-              <CheckCircleOutlined style={{ color: 'rgb(24, 144, 255)' }} />
-              {t('dailyChallenge.confirmPublishChallenge') || 'Confirm Publish Challenge'}
+              {t('dailyChallenge.confirmPublishChallenge') || 'Confirm publish challenge'}
             </div>
           }
           open={publishModal.visible}
           onOk={handlePublishModalConfirm}
           onCancel={handlePublishModalCancel}
-          okText={t('dailyChallenge.publishNow') || 'Publish Now'}
+          okText={t('dailyChallenge.publishNow') || 'Publish now'}
           cancelText={t('common.cancel') || 'Cancel'}
-          width={500}
+          width={600}
           centered
-          bodyStyle={{
-            padding: '30px 40px',
-            fontSize: '16px',
-            lineHeight: '1.6',
-            textAlign: 'center'
-          }}
           okButtonProps={{
             style: {
               backgroundColor: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, rgb(90, 31, 184) 0%, rgb(138, 122, 255) 100%)',
@@ -1497,35 +1507,91 @@ const DailyChallengeList = ({ readOnly = false }) => {
             }
           }}
         >
-          <div style={{
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            gap: '20px'
-          }}>
-            <div style={{
-              fontSize: '48px',
-              color: '#ff4d4f',
-              marginBottom: '10px'
-            }}>
-              ⚠️
+          <div style={{ padding: '8px 4px' }}>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+              <Card size="small" style={{ background: theme === 'sun' ? '#fafafa' : 'rgba(255, 255, 255, 0.05)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Typography.Text strong>{t('dailyChallenge.mode') || 'Challenge Mode'}</Typography.Text>
+                  <span style={{ 
+                    
+                    color: (publishDetails?.challengeMode === 'exam') ? '#ff4d4f' : '#52c41a',
+                    fontSize: '13px'
+                  }}>
+                    {(publishDetails?.challengeMode === 'exam') 
+                      ? (t('dailyChallenge.examMode') || 'Exam Mode')
+                      : (t('dailyChallenge.normalMode') || 'Normal Mode')}
+                  </span>
+                </div>
+              </Card>
+              <Card size="small" style={{ background: theme === 'sun' ? '#fafafa' : 'rgba(255, 255, 255, 0.05)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Typography.Text strong>{t('dailyChallenge.duration') || 'Duration'}</Typography.Text>
+                  <span style={{  fontSize: '13px', color: theme === 'sun' ? '#333' : '#000000' }}>
+                    {publishDetails?.durationMinutes 
+                      ? `${publishDetails.durationMinutes} ${t('dailyChallenge.minutes') || 'minutes'}`
+                      : t('common.notSet') || 'Not Set'}
+                  </span>
+                </div>
+              </Card>
+              <Card size="small" style={{ background: theme === 'sun' ? '#fafafa' : 'rgba(255, 255, 255, 0.05)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Typography.Text strong>{t('dailyChallenge.startDate') || 'Start Date'}</Typography.Text>
+                  <span style={{ fontSize: '13px', color: theme === 'sun' ? '#333' : '#000000' }}>
+                    {publishDetails?.startDate 
+                      ? new Date(publishDetails.startDate).toLocaleDateString('vi-VN', { 
+                          day: '2-digit', month: '2-digit', year: 'numeric',
+                          hour: '2-digit', minute: '2-digit'
+                        })
+                      : t('common.notSet') || 'Not Set'}
+                  </span>
+                </div>
+              </Card>
+              <Card size="small" style={{ background: theme === 'sun' ? '#fafafa' : 'rgba(255, 255, 255, 0.05)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Typography.Text strong>{t('dailyChallenge.endDate') || 'End Date'}</Typography.Text>
+                  <span style={{ fontSize: '13px', color: theme === 'sun' ? '#333' : '#000000' }}>
+                    {publishDetails?.endDate 
+                      ? new Date(publishDetails.endDate).toLocaleDateString('vi-VN', { 
+                          day: '2-digit', month: '2-digit', year: 'numeric',
+                          hour: '2-digit', minute: '2-digit'
+                        })
+                      : t('common.notSet') || 'Not Set'}
+                  </span>
+                </div>
+              </Card>
             </div>
-            <p style={{
-              fontSize: '18px',
-              color: '#333',
-              margin: 0,
-              fontWeight: '500'
-            }}>
-              {t('dailyChallenge.publishConfirmQuestion') || 'Are you sure you want to publish this challenge?'}
-            </p>
-            <p style={{
-              fontSize: '16px',
-              color: '#666',
-              margin: 0,
-              lineHeight: '1.5'
-            }}>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+              <Card size="small" style={{ background: theme === 'sun' ? '#fafafa' : 'rgba(255, 255, 255, 0.05)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Typography.Text strong>{t('dailyChallenge.shuffleQuestion') || t('dailyChallenge.shuffleAnswers') || 'Shuffle questions'}</Typography.Text>
+                  <span style={{ color: publishDetails?.shuffleQuestion ? '#52c41a' : '#ff4d4f' }}>
+                    {publishDetails?.shuffleQuestion ? (t('common.on') || 'ON') : (t('common.off') || 'OFF')}
+                  </span>
+                </div>
+              </Card>
+              <Card size="small" style={{ background: theme === 'sun' ? '#fafafa' : 'rgba(255, 255, 255, 0.05)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Typography.Text strong>{t('dailyChallenge.antiCheatMode') || 'Anti-cheat mode'}</Typography.Text>
+                  <span style={{ color: publishDetails?.antiCheatModeEnabled ? '#52c41a' : '#ff4d4f' }}>
+                    {publishDetails?.antiCheatModeEnabled ? (t('common.on') || 'ON') : (t('common.off') || 'OFF')}
+                  </span>
+                </div>
+              </Card>
+              <Card size="small" style={{ gridColumn: '1 / span 2', background: theme === 'sun' ? '#fafafa' : 'rgba(255, 255, 255, 0.05)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Typography.Text strong>{t('dailyChallenge.translateOnScreen') || 'Translate on screen'}</Typography.Text>
+                  <span style={{ color: publishDetails?.translateOnScreen ? '#52c41a' : '#ff4d4f' }}>
+                    {publishDetails?.translateOnScreen ? (t('common.on') || 'ON') : (t('common.off') || 'OFF')}
+                  </span>
+                </div>
+              </Card>
+            </div>
+
+            <Typography.Paragraph style={{ marginTop: 12, color: 'black', textAlign: 'center', fontStyle: 'italic' }}>
               {t('dailyChallenge.publishWarningMessage') || 'Once published, students will be able to access this challenge. This action cannot be undone.'}
-            </p>
+            </Typography.Paragraph>
           </div>
         </Modal>
         
