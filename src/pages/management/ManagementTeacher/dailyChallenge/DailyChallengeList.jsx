@@ -829,8 +829,8 @@ const DailyChallengeList = ({ readOnly = false }) => {
       title: t('dailyChallenge.lesson'),
       dataIndex: 'lessonName',
       key: 'lessonName',
-      width: 200,
-      align: 'center',
+      width: 220,
+      align: 'left',
       render: (text, record) => {
         // Only render lesson name for the first challenge in each lesson
         if (record.isFirstChallengeInLesson) {
@@ -845,16 +845,17 @@ const DailyChallengeList = ({ readOnly = false }) => {
                   textOverflow: 'ellipsis',
                   whiteSpace: 'nowrap',
                   borderRadius: '4px',
-                  textAlign: 'center',
+                  textAlign: 'left',
                   position: 'relative',
                   cursor: 'pointer',
                   height: '100%',
                   display: 'flex',
                   alignItems: 'center',
-                  justifyContent: 'center'
+                  justifyContent: 'flex-start',
+                  width: '100%'
                 }}
               >
-                <span className="lesson-text" style={{ transition: 'opacity 0.3s ease' }}>
+                <span className="lesson-text" style={{ transition: 'opacity 0.3s ease', display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%' }}>
                   {text}
                 </span>
                 {!readOnly && !isTeachingAssistant && (
