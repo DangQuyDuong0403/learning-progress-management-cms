@@ -85,7 +85,6 @@ const RewriteModal = ({ visible, onCancel, onSave, questionData = null }) => {
         'bulletedList',
         'numberedList',
         '|',
-        'blockQuote',
         'link',
         '|',
         'undo',

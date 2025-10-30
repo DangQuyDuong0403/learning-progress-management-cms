@@ -77,7 +77,6 @@ const TrueFalseModal = ({ visible, onCancel, onSave, questionData = null, saving
 				'bulletedList',
 				'numberedList',
 				'|',
-				'blockQuote',
 				'link',
 				'|',
 				'undo',
