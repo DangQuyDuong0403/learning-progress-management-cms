@@ -1210,7 +1210,7 @@ const AIGenerateQuestions = () => {
             }}
             bodyStyle={{ padding: 16 }}
           >
-            {/* White chips for Level/Chapter/Lesson inside container */}
+            {/* White chips for Level/Chapter/Lesson inside container (from API) */}
             {hierarchy && (
               <div
                 style={{
@@ -1222,13 +1222,13 @@ const AIGenerateQuestions = () => {
                 }}
               >
                 <div style={{ padding: '8px 12px', borderRadius: 12, border: '1px solid rgba(0,0,0,0.1)', background: '#ffffff', color: '#000000', fontWeight: 600 }}>
-                  Level: Flayer
+                  Level: {hierarchy?.level?.levelName || hierarchy?.level?.name || '—'}
                 </div>
                 <div style={{ padding: '8px 12px', borderRadius: 12, border: '1px solid rgba(0,0,0,0.1)', background: '#ffffff', color: '#000000', fontWeight: 600 }}>
-                  Chapter: Chapter của MinhPQ
+                  Chapter: {hierarchy?.chapter?.chapterName || hierarchy?.chapter?.name || '—'}
                 </div>
                 <div style={{ padding: '8px 12px', borderRadius: 12, border: '1px solid rgba(0,0,0,0.1)', background: '#ffffff', color: '#000000', fontWeight: 600 }}>
-                  Lesson: Lessone of MinhPQ 2
+                  Lesson: {hierarchy?.lesson?.lessonName || hierarchy?.lesson?.name || '—'}
                 </div>
               </div>
             )}
@@ -1375,7 +1375,7 @@ const AIGenerateQuestions = () => {
                         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                           <EditOutlined style={{ fontSize: 24, color: '#000000' }} />
                           <Typography.Text strong style={{ color: theme === 'sun' ? '#1E40AF' : '#8377A0' }}>
-                            Generate question manually
+                            Generate question from settings 
                           </Typography.Text>
                         </div>
                       </Card>
