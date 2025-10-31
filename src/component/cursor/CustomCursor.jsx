@@ -55,13 +55,32 @@ export default function CustomCursor() {
         };
 
         const interactiveSelectors = [
+            // Native interactive elements
             'a',
             'button',
             'input',
             'textarea',
             'select',
+            'label',
+            '[contenteditable="true"]',
             '[role="button"]',
+            '[role="tab"]',
+            '[role="menuitem"]',
+            '[role="link"]',
+            // App-specific hooks
             '.clickable',
+            '[data-interactive="true"]',
+            // Ant Design common controls
+            '.ant-btn',
+            '.ant-input',
+            '.ant-input-affix-wrapper',
+            '.ant-select',
+            '.ant-select-selector',
+            '.ant-tabs-tab',
+            '.ant-tabs-tab-btn',
+            '.ant-segmented-item',
+            '.ant-switch',
+            '.ant-pagination-item',
         ];
 
         // Hover state is handled in onMove via elementFromPoint
