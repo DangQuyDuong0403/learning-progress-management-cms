@@ -20,11 +20,12 @@
     width: 34px;
     height: 34px;
     transform-origin: 50% 50%;
-    transition: opacity 180ms ease, filter 180ms ease, transform 120ms ease;
+    transition: opacity 180ms ease, filter 180ms ease;
     filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
     z-index: 10000; /* keep above rocket */
     --cc-scale: 1;
 }
+.cc-cursor-helmet[data-hover="0"] { opacity: 0; }
 .cc-cursor-helmet[data-hover="1"] {
     /* Drive scale via CSS variable, composed into inline transform */
     --cc-scale: 1.12;
@@ -46,16 +47,16 @@
 body.custom-cursor-enabled {
     cursor: none !important;
 }
-/* But keep text cursor for text fields for usability */
-body.custom-cursor-enabled input,
-body.custom-cursor-enabled textarea {
-    cursor: text !important;
-}
-body.custom-cursor-enabled a,
-body.custom-cursor-enabled button,
-body.custom-cursor-enabled [role="button"],
-body.custom-cursor-enabled .clickable {
+/* Hide native cursor for all descendants by default */
+body.custom-cursor-enabled * {
     cursor: none !important;
+}
+/* But keep text cursor for text-editable fields for usability */
+body.custom-cursor-enabled input:focus,
+body.custom-cursor-enabled textarea:focus,
+body.custom-cursor-enabled [contenteditable]:focus,
+body.custom-cursor-enabled [contenteditable="true"]:focus {
+    cursor: text !important;
 }
 
 
