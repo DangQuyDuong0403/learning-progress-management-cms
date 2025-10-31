@@ -378,7 +378,10 @@ export const spaceToast = {
           background: 'linear-gradient(135deg, rgba(255, 179, 71, 0.15) 0%, rgba(255, 179, 71, 0.05) 100%)',
           border: '2px solid rgba(255, 179, 71, 0.6)',
           position: 'relative',
-          animation: 'bounce 1s ease-in-out infinite',
+          // Use subtle float animation to avoid layout jump to top-left
+          animation: 'float 2s ease-in-out infinite',
+          willChange: 'transform',
+          transform: 'translateZ(0)',
           boxShadow: '0 0 20px rgba(255, 179, 71, 0.4), inset 0 0 20px rgba(255, 179, 71, 0.1)',
           flexShrink: 0,
           overflow: 'hidden'

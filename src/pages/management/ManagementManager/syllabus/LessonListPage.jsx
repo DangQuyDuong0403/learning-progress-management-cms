@@ -898,7 +898,7 @@ const LessonListPage = () => {
 						key="validate" 
 						onClick={handleValidateFile}
 						loading={validateLoading}
-						disabled={importModal.fileList.length === 0 || validateLoading}
+						disabled={validateLoading}
 						style={{
 							background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, #7228d9 0%, #9c88ff 100%)',
 							borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : '#7228d9',
@@ -920,7 +920,7 @@ const LessonListPage = () => {
 						type="primary"
 						onClick={handleImportOk}
 						loading={importModal.uploading}
-						disabled={importModal.fileList.length === 0 || importModal.uploading}
+						disabled={importModal.uploading}
 						style={{
 							background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, #7228d9 0%, #9c88ff 100%)',
 							borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : '#7228d9',
