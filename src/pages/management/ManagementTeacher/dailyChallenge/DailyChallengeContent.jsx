@@ -3512,7 +3512,7 @@ const DailyChallengeContent = () => {
     setPublishConfirmModalVisible(false);
   }, []);
 
-  const handleSaveChanges = useCallback(async (saveAsStatus) => {
+  const handleSaveChanges = useCallback(async (saveAsStatus, options = { silent: false }) => {
     // Check if there are any visible questions or passages (not deleted)
     const visibleQuestions = questions.filter(q => !q.toBeDeleted);
     const visiblePassages = passages.filter(p => !p.toBeDeleted);
@@ -3601,13 +3601,17 @@ const DailyChallengeContent = () => {
         // Update local status
         setStatus(saveAsStatus);
         
-        spaceToast.success(
-          saveAsStatus === 'published' 
-            ? t('dailyChallenge.savedAsPublished') || 'Saved and published successfully!'
-            : t('dailyChallenge.savedAsDraft') || 'Saved as draft successfully!'
-        );
+        if (!options?.silent) {
+          spaceToast.success(
+            saveAsStatus === 'published' 
+              ? t('dailyChallenge.savedAsPublished') || 'Saved and published successfully!'
+              : t('dailyChallenge.savedAsDraft') || 'Saved as draft successfully!'
+          );
+        }
       } else {
-        spaceToast.success('Changes saved successfully!');
+        if (!options?.silent) {
+          spaceToast.success('Changes saved successfully!');
+        }
       }
 
       // Refresh questions and passages from API to get updated data
@@ -3649,6 +3653,31 @@ const DailyChallengeContent = () => {
     setAntiCheatModeEnabled(settingsData.antiCheatModeEnabled);
     setSettingsModalVisible(false);
   }, []);
+
+  // Auto-save silently every 5 minutes based on current status
+  useEffect(() => {
+    const intervalMs = 5 * 60 * 1000; // reduced to 1 minute for testing
+    let isSaving = false;
+    const timer = setInterval(async () => {
+      if (loading || isSaving) return;
+      const hasChanges =
+        (Array.isArray(questions) && questions.some(q => q?.isModified || q?.toBeDeleted)) ||
+        (Array.isArray(passages) && passages.some(p => p?.isModified || p?.toBeDeleted));
+      if (!hasChanges) return;
+      isSaving = true;
+      try {
+        const nextStatus = status === 'published' ? 'published' : 'draft';
+        console.log('[AutoSave] Starting silent auto-save as', nextStatus, 'at', new Date().toISOString());
+        await handleSaveChanges(nextStatus, { silent: true });
+        console.log('[AutoSave] Completed silent auto-save at', new Date().toISOString());
+      } catch (e) {
+        // silent
+      } finally {
+        isSaving = false;
+      }
+    }, intervalMs);
+    return () => clearInterval(timer);
+  }, [status, questions, passages, handleSaveChanges, loading]);
 
   // Import is disabled in this screen (export-only)
 

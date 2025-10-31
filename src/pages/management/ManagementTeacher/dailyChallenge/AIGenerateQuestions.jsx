@@ -504,11 +504,6 @@ const AIGenerateQuestions = () => {
 
   // Handle AI generation
   const handleGenerateWithAI = useCallback(async () => {
-    // Validation
-    if (!promptDescription.trim()) {
-      spaceToast.error(t('dailyChallenge.pleaseEnterPrompt') || 'Please enter a prompt description');
-      return;
-    }
     
     try {
       setIsGenerating(true);
@@ -601,11 +596,6 @@ const AIGenerateQuestions = () => {
 
   // Handle save
   const handleSave = useCallback(async () => {
-    // Validation
-    if (!promptDescription.trim()) {
-      spaceToast.error(t('dailyChallenge.pleaseEnterPrompt') || 'Please enter a prompt description');
-      return;
-    }
     
     try {
       setSaving(true);

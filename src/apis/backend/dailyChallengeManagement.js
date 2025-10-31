@@ -253,6 +253,28 @@ const dailyChallengeApi = {
 		});
 	},
 
+	// Lấy danh sách student submissions qua service challenge-submissions
+	// Endpoint theo swagger: /challenge-submissions/challenge/{challengeId}/submissions
+	// Hỗ trợ page (0-based), size, text (search), sortBy, sortDir
+	getChallengeSubmissions: (challengeId, params = {}) => {
+		const queryParams = new URLSearchParams();
+		if (params.page !== undefined) queryParams.append('page', params.page);
+		if (params.size !== undefined) queryParams.append('size', params.size);
+		if (params.text && params.text.trim()) queryParams.append('text', params.text.trim());
+		if (params.sortBy) queryParams.append('sortBy', params.sortBy);
+		if (params.sortDir) queryParams.append('sortDir', params.sortDir);
+
+		const url = `/challenge-submissions/challenge/${challengeId}/submissions${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
+		console.log('GetChallengeSubmissions API - URL:', url);
+		console.log('GetChallengeSubmissions API - Params:', params);
+
+		return axiosClient.get(url, {
+			headers: {
+				'accept': '*/*',
+			},
+		});
+	},
+
 	// Lấy thống kê performance của daily challenge
 	getDailyChallengePerformance: (challengeId) => {
 		const url = `/daily-challenges/${challengeId}/performance`;

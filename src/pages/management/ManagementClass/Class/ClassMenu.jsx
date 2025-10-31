@@ -11,6 +11,8 @@ import {
   BookOutlined,
   SolutionOutlined,
   EyeOutlined,
+  BarChartOutlined,
+  ReadOutlined,
 } from "@ant-design/icons";
 import ThemedLayoutWithSidebar from "../../../../component/ThemedLayout";
 import ThemedLayoutNoSidebar from "../../../../component/teacherlayout/ThemedLayout";
@@ -160,6 +162,7 @@ const ClassMenu = () => {
       icon: <HistoryOutlined style={{ fontSize: '48px', color: '#fa8c16' }} />,
       path: `${routePrefix}/activities/${id}`,
       color: "#fa8c16",
+      hideForRoles: ['student'],
     },
     {
       id: "chapters-lessons",
@@ -168,11 +171,14 @@ const ClassMenu = () => {
       icon: <BookOutlined style={{ fontSize: '48px', color: '#722ed1' }} />,
       path: `${routePrefix}/chapters/${id}`,
       color: "#722ed1",
+      hideForRoles: ['student'],
     },
     {
       id: "daily-challenge",
       title: t('classMenu.dailyChallenge'),
-      description: t('classMenu.dailyChallengeDescription'),
+      description: userRole === 'student' 
+        ? t('classMenu.dailyChallengeStudentDescription', 'View and take daily challenges') 
+        : t('classMenu.dailyChallengeDescription'),
       icon: <img src="/img/dc-icon.png" alt="daily-challenge" style={{ width: '60px', height: '60px' }} />,
       path: userRole === 'student' ? `${routePrefix}/daily-challenges/${id}` : `${routePrefix}/daily-challenges/${id}`,
       color: "#eb2f96",
@@ -202,8 +208,28 @@ const ClassMenu = () => {
     },
   ];
 
+  // Append student-specific items
+  const studentExtras = userRole === 'student' ? [
+    {
+      id: "performance-report",
+      title: t('classMenu.myPerformanceReport', 'My Performance Report'),
+      description: t('classMenu.myPerformanceReportDescription', 'View your performance and progress'),
+      icon: <BarChartOutlined style={{ fontSize: '48px', color: '#00bcd4' }} />,
+      path: `${routePrefix}/performance/${id}`,
+      color: "#00bcd4",
+    },
+    {
+      id: "gradebook",
+      title: t('classMenu.myGradebook', 'My Gradebook'),
+      description: t('classMenu.myGradebookDescription', 'See your grades across activities'),
+      icon: <ReadOutlined style={{ fontSize: '48px', color: '#1890ff' }} />,
+      path: `${routePrefix}/gradebook/${id}`,
+      color: "#1890ff",
+    },
+  ] : [];
+
   // Filter menu items based on user role
-  const menuItems = allMenuItems.filter(item => {
+  const menuItems = [...allMenuItems, ...studentExtras].filter(item => {
     if (item.hideForRoles && item.hideForRoles.includes(userRole)) {
       return false;
     }
