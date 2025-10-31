@@ -310,15 +310,33 @@ const SyllabusList = () => {
 	};
 
 	const handleImportOk = async () => {
+		if (importModal.uploading) return;
 		if (importModal.fileList.length === 0) {
 			spaceToast.warning(t('syllabusManagement.selectFileToImport'));
+			return;
+		}
+
+		const rawFile = importModal.fileList[0];
+		const file = rawFile.originFileObj || rawFile;
+		const allowedTypes = [
+			'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+			'application/vnd.ms-excel',
+		];
+		if (!allowedTypes.includes(file.type) && !file.name?.match(/\.(xlsx|xls)$/i)) {
+			spaceToast.error(t('syllabusManagement.invalidFileType') || 'Please select a valid Excel (.xlsx, .xls) file');
+			return;
+		}
+		const maxSize = 10 * 1024 * 1024;
+		if (file.size > maxSize) {
+			spaceToast.error(t('syllabusManagement.fileTooLarge') || 'File size must be less than 10MB');
 			return;
 		}
 
 		setImportModal(prev => ({ ...prev, uploading: true }));
 		
 		try {
-			const file = importModal.fileList[0];
+			const rawFile = importModal.fileList[0];
+			const file = rawFile.originFileObj || rawFile;
 			
 			// Create FormData object
 			const formData = new FormData();
@@ -347,6 +365,7 @@ const SyllabusList = () => {
 	};
 
 	const handleValidateFile = async () => {
+		if (validateLoading) return;
 		if (importModal.fileList.length === 0) {
 			spaceToast.warning(t('syllabusManagement.selectFileToValidate'));
 			return;
@@ -355,7 +374,23 @@ const SyllabusList = () => {
 		setValidateLoading(true);
 		
 		try {
-			const file = importModal.fileList[0];
+			const rawFile = importModal.fileList[0];
+			const file = rawFile.originFileObj || rawFile;
+			const allowedTypes = [
+				'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+				'application/vnd.ms-excel',
+			];
+			if (!allowedTypes.includes(file.type) && !file.name?.match(/\.(xlsx|xls)$/i)) {
+				spaceToast.error(t('syllabusManagement.invalidFileType') || 'Please select a valid Excel (.xlsx, .xls) file');
+				setValidateLoading(false);
+				return;
+			}
+			const maxSize = 10 * 1024 * 1024;
+			if (file.size > maxSize) {
+				spaceToast.error(t('syllabusManagement.fileTooLarge') || 'File size must be less than 10MB');
+				setValidateLoading(false);
+				return;
+			}
 			
 			// Create FormData object
 			const formData = new FormData();
@@ -1445,7 +1480,7 @@ const SyllabusList = () => {
 						key="validate" 
 						onClick={handleValidateFile}
 						loading={validateLoading}
-						disabled={importModal.fileList.length === 0 || validateLoading}
+						disabled={validateLoading}
 						style={{
 							background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, #7228d9 0%, #9c88ff 100%)',
 							borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : '#7228d9',
@@ -1467,7 +1502,7 @@ const SyllabusList = () => {
 						type="primary"
 						onClick={handleImportOk}
 						loading={importModal.uploading}
-						disabled={importModal.fileList.length === 0 || importModal.uploading}
+						disabled={importModal.uploading}
 						style={{
 							background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, #7228d9 0%, #9c88ff 100%)',
 							borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : '#7228d9',
