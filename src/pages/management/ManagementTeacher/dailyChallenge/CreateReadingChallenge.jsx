@@ -60,8 +60,8 @@ const CreateReadingChallenge = () => {
   React.useEffect(() => {
     const editorStyles = `
       .rc-ckeditor-wrapper .ck-editor__editable {
-        min-height: 300px !important;
-        max-height: calc(100vh - 300px) !important;
+        min-height: 420px !important;
+        max-height: calc(100vh - 220px) !important;
         overflow-y: auto !important;
       }
       .rc-ckeditor-wrapper .ck-editor {
@@ -1303,20 +1303,21 @@ const CreateReadingChallenge = () => {
                   height: '100%',
                   display: 'flex',
                   flexDirection: 'column',
-                  overflow: 'hidden'
+                  overflow: 'hidden',
                 }}
               >
 
 
                  {/* Audio File Section - Only for Listening and Speaking Challenges (Inside Passage Card) */}
-                 {(isListeningChallenge || isSpeakingChallenge) && !isWritingChallenge && (
-                   <div style={{ marginBottom: '12px' }}>
+                {(isListeningChallenge || isSpeakingChallenge) && !isWritingChallenge && (
+                  <div style={{ marginBottom: '4px' }}>
                       <div style={{ 
                         display: 'flex', 
                         alignItems: 'center', 
                         justifyContent: 'center',
                         marginBottom: '8px',
                         position: 'relative'
+                    
                       }}>
                       <Title level={4} style={{ 
                         margin: 0,
@@ -1353,9 +1354,9 @@ const CreateReadingChallenge = () => {
                        )}
                       </div>
                      
-                     {passage.audioUrl ? (
-                       <div style={{
-                         padding: '8px',
+                    {passage.audioUrl ? (
+                      <div style={{
+                        padding: '6px',
                          background: theme === 'sun' 
                            ? 'rgba(240, 249, 255, 0.5)' 
                            : 'rgba(244, 240, 255, 0.3)',
@@ -1363,7 +1364,7 @@ const CreateReadingChallenge = () => {
                          border: theme === 'sun' 
                            ? '1px solid rgba(113, 179, 253, 0.3)' 
                            : '1px solid rgba(138, 122, 255, 0.3)',
-                         marginBottom: '8px'
+                        marginBottom: '6px'
                        }}>
                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
                            <span style={{ fontSize: '12px', fontWeight: 500, color: theme === 'sun' ? '#1E40AF' : '#8377A0' }}>
@@ -1384,7 +1385,7 @@ const CreateReadingChallenge = () => {
                          </audio>
                        </div>
                      ) : (
-                       <Card 
+                      <Card 
                          hoverable 
                          className="rc-audio-upload-card"
                          style={{ 
@@ -1397,8 +1398,8 @@ const CreateReadingChallenge = () => {
                              ? 'linear-gradient(135deg, rgba(230, 245, 255, 0.3) 0%, rgba(186, 231, 255, 0.2) 100%)'
                              : 'rgba(255, 255, 255, 0.3)',
                            cursor: isProcessingAudio ? 'not-allowed' : 'pointer',
-                           textAlign: 'center',
-                           padding: '12px'
+                           textAlign: 'center'
+                          
                          }}
                        >
                          <Upload
@@ -1434,16 +1435,45 @@ const CreateReadingChallenge = () => {
                      )}
                    </div>
                  )}
-                 {/* Title - Always show at top */}
-                 <div style={{ marginBottom: '32px' }}>
+               {/* Title - Always show at top */}
+               <div style={{ marginBottom: '0px', position: 'relative' }}>
+                  {passage?.type === 'manual' && !(isWritingChallenge || isSpeakingChallenge) && (
+                    <Button
+                      type="text"
+                      icon={<ArrowLeftOutlined />}
+                      onClick={() => {
+                        setPassage(prevPassage => ({ ...prevPassage, type: null }));
+                      }}
+                      className="rc-back-to-options-btn"
+                      style={{
+                        position: 'absolute',
+                        left: 0,
+                        top: '50%',
+                        transform: 'translateY(-50%)',
+                        color: theme === 'sun' ? '#1E40AF' : '#8377A0',
+                        fontWeight: 500
+                        
+                      }}
+                    >
+                      {'Back to options'}
+                    </Button>
+                  )}
                    <Title level={3} style={{ 
                      textAlign: "center", 
                      color: theme === 'sun' ? '#1E40AF' : '#8377A0'
                    }}>
-                     {editingPassage 
-                       ? (isWritingChallenge ? 'Edit writing topic' : 'Edit passage')
-                       : (isWritingChallenge ? 'Add writing topic' : 'Add passage')
-                     }
+                    {editingPassage
+                      ? (isWritingChallenge
+                          ? 'Edit writing topic'
+                          : isListeningChallenge
+                            ? 'Edit transcript'
+                            : 'Edit passage')
+                      : (isWritingChallenge
+                          ? 'Add writing topic'
+                          : isListeningChallenge
+                            ? 'Add transcript'
+                            : 'Add passage')
+                    }
                    </Title>
                  </div>
 
@@ -1452,24 +1482,7 @@ const CreateReadingChallenge = () => {
                    {passage?.type === "manual" ? (
                      /* Text Editor - Full space when manual is selected */
                      <div className="rc-text-editor-full" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-                      <div className="rc-text-editor-header" style={{ marginBottom: '12px', flexShrink: 0 }}>
-                        {!(isWritingChallenge || isSpeakingChallenge) && (
-                          <Button
-                            type="text"
-                            icon={<ArrowLeftOutlined />}
-                            onClick={() => {
-                              setPassage(prevPassage => ({ ...prevPassage, type: null }));
-                            }}
-                            className="rc-back-to-options-btn"
-                            style={{
-                              color: theme === 'sun' ? '#1E40AF' : '#8377A0',
-                              fontWeight: 500
-                            }}
-                          >
-                            {'Back to options'}
-                          </Button>
-                        )}
-                      </div>
+                    
                        <div 
                          className={`rc-ckeditor-wrapper ${theme}-ckeditor-wrapper`}
                          style={{
@@ -1607,7 +1620,7 @@ const CreateReadingChallenge = () => {
                             }}>
                               {isWritingChallenge ? 'Add writing topic manually' : 
                                isSpeakingChallenge ? 'Add speaking topic manually' : 
-                               isListeningChallenge ? 'Add transcript' : 'Add text manually'}
+                               isListeningChallenge ? 'Add transcript' : 'Add passage manually'}
                             </Text>
                           </Space>
                         </Card>

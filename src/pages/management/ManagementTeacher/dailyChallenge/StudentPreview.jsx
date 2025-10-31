@@ -1954,7 +1954,7 @@ const ListeningSectionItem = ({ question, index, theme }) => {
                     lineHeight: '1.8',
                     color: theme === 'sun' ? '#333' : '#333',
                     textAlign: 'justify',
-                    maxHeight: '300px',
+                    maxHeight: '358px',
                     overflowY: 'auto',
                     scrollbarWidth: 'thin',
                     scrollbarColor: theme === 'sun' 
