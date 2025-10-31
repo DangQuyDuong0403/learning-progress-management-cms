@@ -23,9 +23,11 @@
     transition: opacity 180ms ease, filter 180ms ease, transform 120ms ease;
     filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
     z-index: 10000; /* keep above rocket */
+    --cc-scale: 1;
 }
 .cc-cursor-helmet[data-hover="1"] {
-    transform: scale(1.12);
+    /* Drive scale via CSS variable, composed into inline transform */
+    --cc-scale: 1.12;
     filter: drop-shadow(0 4px 10px rgba(0,0,0,0.25));
 }
 

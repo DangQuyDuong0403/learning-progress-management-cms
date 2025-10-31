@@ -16,17 +16,18 @@ export default function CustomCursor() {
         // Hide the system cursor while this component is mounted
         document.body.classList.add('custom-cursor-enabled');
 
-        const pointer = { x: window.innerWidth / 2, y: window.innerHeight / 2 };
-        const current = { x: pointer.x, y: pointer.y }; // follower position
-        const last = { x: pointer.x, y: pointer.y }; // for velocity/angle
+        // Ensure cursors are visible immediately on mount
+        helmetEl.dataset.visible = '1';
+        rocketEl.dataset.visible = '1';
 
-        let rafId = 0;
+        const pointer = { x: window.innerWidth / 2, y: window.innerHeight / 2 };
 
         const onMove = (e) => {
             pointer.x = e.clientX;
             pointer.y = e.clientY;
-            // Position helmet directly at pointer (centered)
-            helmetEl.style.transform = `translate3d(${pointer.x}px, ${pointer.y}px, 0)`;
+            // Position both elements centered at pointer; helmet scales via CSS var
+            helmetEl.style.transform = `translate3d(${pointer.x}px, ${pointer.y}px, 0) translate(-50%, -50%) scale(var(--cc-scale, 1))`;
+            rocketEl.style.transform = `translate3d(${pointer.x}px, ${pointer.y}px, 0) translate(-50%, -50%)`;
 
             // Determine if pointer is over an interactive element
             const el = document.elementFromPoint(e.clientX, e.clientY);
@@ -65,21 +66,7 @@ export default function CustomCursor() {
 
         // Hover state is handled in onMove via elementFromPoint
 
-        const animate = () => {
-
-            // Smoothly move follower towards pointer using critically damped spring-like lerp
-            const smoothing = 0.15; // smaller is slower; tuned for smooth trailing
-            current.x += (pointer.x - current.x) * smoothing;
-            current.y += (pointer.y - current.y) * smoothing;
-
-            last.x = current.x;
-            last.y = current.y;
-
-            // Keep rocket trailing without rotation
-            rocketEl.style.transform = `translate3d(${current.x}px, ${current.y}px, 0)`;
-
-            rafId = requestAnimationFrame(animate);
-        };
+        // No trailing animation needed; rocket snaps to pointer in onMove
 
         window.addEventListener('pointermove', onMove, { passive: true });
         window.addEventListener('pointerenter', onPointerEnter);
@@ -87,12 +74,12 @@ export default function CustomCursor() {
         // We rely on pointermove + elementFromPoint, so no mouseover/mouseout listeners needed
 
         // Initial position in center
-        helmetEl.style.transform = `translate3d(${pointer.x}px, ${pointer.y}px, 0)`;
-        rocketEl.style.transform = `translate3d(${pointer.x}px, ${pointer.y}px, 0)`;
-        rafId = requestAnimationFrame(animate);
+        helmetEl.style.transform = `translate3d(${pointer.x}px, ${pointer.y}px, 0) translate(-50%, -50%) scale(var(--cc-scale, 1))`;
+        rocketEl.style.transform = `translate3d(${pointer.x}px, ${pointer.y}px, 0) translate(-50%, -50%)`;
+        // No RAF loop since both elements are updated on pointermove
 
         return () => {
-            cancelAnimationFrame(rafId);
+            // No RAF loop to cancel
             window.removeEventListener('pointermove', onMove);
             window.removeEventListener('pointerenter', onPointerEnter);
             window.removeEventListener('pointerleave', onPointerLeave);
