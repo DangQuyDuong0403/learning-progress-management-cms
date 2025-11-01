@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
   Button,
   Typography,
@@ -13,6 +13,8 @@ import {
   CheckOutlined,
   DownloadOutlined,
   MessageOutlined,
+  ClockCircleOutlined,
+  TrophyOutlined,
 } from "@ant-design/icons";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import ThemedLayout from "../../../component/teacherlayout/ThemedLayout";
@@ -6161,6 +6163,11 @@ const StudentDailyChallengeResult = () => {
     questionId: null,
   });
   
+  // Score and time state
+  const [totalScore, setTotalScore] = useState(0);
+  const [maxScore, setMaxScore] = useState(10);
+  const [timeSpent, setTimeSpent] = useState(location.state?.timeSpent || '00:00');
+  
   usePageTitle('Daily Challenge - View Result');
   
   useEffect(() => {
@@ -6581,6 +6588,288 @@ In conclusion, writing is not just about putting words on paper—it is about cr
     });
   };
 
+  // Calculate score from student answers
+  const calculateScore = useCallback(() => {
+    let correctCount = 0;
+    let totalCount = 0;
+    let totalPoints = 0;
+    let earnedPoints = 0;
+
+    // Calculate score for individual questions
+    questions.forEach(q => {
+      if (!q.id || q.id.includes('blank')) return;
+      
+      const studentAnswer = studentAnswers[q.id];
+      if (studentAnswer === undefined || studentAnswer === null || studentAnswer === '') return;
+      
+      totalCount++;
+      const points = q.points || 1;
+      totalPoints += points;
+
+      let isCorrect = false;
+
+      if (q.type === 'MULTIPLE_CHOICE' || q.type === 'TRUE_OR_FALSE') {
+        const correctOption = q.options?.find(opt => opt.isCorrect);
+        if (q.type === 'TRUE_OR_FALSE') {
+          isCorrect = studentAnswer === (correctOption?.text || correctOption?.key);
+        } else {
+          isCorrect = studentAnswer === correctOption?.key;
+        }
+      } else if (q.type === 'MULTIPLE_SELECT') {
+        const correctKeys = q.options?.filter(opt => opt.isCorrect).map(opt => opt.key) || [];
+        const studentKeys = Array.isArray(studentAnswer) ? studentAnswer : [];
+        isCorrect = correctKeys.length === studentKeys.length && 
+                   correctKeys.every(key => studentKeys.includes(key));
+      } else if (q.type === 'FILL_IN_THE_BLANK') {
+        const contentData = q.content?.data || [];
+        let allCorrect = true;
+        contentData.forEach(item => {
+          if (item.positionId && item.correct) {
+            const studentAnswerForPosition = studentAnswer[item.positionId];
+            if (studentAnswerForPosition !== item.value) {
+              allCorrect = false;
+            }
+          }
+        });
+        isCorrect = allCorrect;
+      } else if (q.type === 'DROPDOWN') {
+        const contentData = q.content?.data || [];
+        let allCorrect = true;
+        contentData.forEach(item => {
+          if (item.positionId && item.correct) {
+            const studentAnswerForPosition = studentAnswer[item.positionId];
+            if (studentAnswerForPosition !== item.value) {
+              allCorrect = false;
+            }
+          }
+        });
+        isCorrect = allCorrect;
+      } else if (q.type === 'DRAG_AND_DROP') {
+        const contentData = q.content?.data || [];
+        let allCorrect = true;
+        contentData.forEach(item => {
+          if (item.positionId && item.correct) {
+            const studentAnswerForPosition = studentAnswer[item.positionId];
+            if (studentAnswerForPosition !== item.value) {
+              allCorrect = false;
+            }
+          }
+        });
+        isCorrect = allCorrect;
+      } else if (q.type === 'REARRANGE') {
+        const contentData = q.content?.data || [];
+        const correctOrder = contentData
+          .slice()
+          .sort((a, b) => {
+            const posA = parseInt((a.positionId || '').replace('pos_', ''));
+            const posB = parseInt((b.positionId || '').replace('pos_', ''));
+            return posA - posB;
+          })
+          .map(item => item.value)
+          .filter(Boolean);
+        const studentOrder = Array.isArray(studentAnswer) ? studentAnswer : [];
+        isCorrect = JSON.stringify(correctOrder) === JSON.stringify(studentOrder);
+      } else if (q.type === 'REWRITE') {
+        const contentData = q.content?.data || [];
+        const correctAnswer = contentData[0]?.value || '';
+        isCorrect = studentAnswer.trim().toLowerCase() === correctAnswer.trim().toLowerCase();
+      }
+
+      if (isCorrect) {
+        correctCount++;
+        earnedPoints += points;
+      }
+    });
+
+    // Calculate score for Reading sections
+    readingSections.forEach(section => {
+      if (section.questions && section.questions.length > 0) {
+        section.questions.forEach(q => {
+          const studentAnswer = studentAnswers[q.id];
+          if (studentAnswer === undefined || studentAnswer === null || studentAnswer === '') return;
+          
+          totalCount++;
+          const points = q.points || 1;
+          totalPoints += points;
+
+          let isCorrect = false;
+
+          if (q.type === 'MULTIPLE_CHOICE' || q.type === 'TRUE_OR_FALSE') {
+            const correctOption = q.options?.find(opt => opt.isCorrect);
+            if (q.type === 'TRUE_OR_FALSE') {
+              isCorrect = studentAnswer === (correctOption?.text || correctOption?.key);
+            } else {
+              isCorrect = studentAnswer === correctOption?.key;
+            }
+          } else if (q.type === 'MULTIPLE_SELECT') {
+            const correctKeys = q.options?.filter(opt => opt.isCorrect).map(opt => opt.key) || [];
+            const studentKeys = Array.isArray(studentAnswer) ? studentAnswer : [];
+            isCorrect = correctKeys.length === studentKeys.length && 
+                       correctKeys.every(key => studentKeys.includes(key));
+          } else if (q.type === 'FILL_IN_THE_BLANK') {
+            const contentData = q.content?.data || [];
+            let allCorrect = true;
+            contentData.forEach(item => {
+              if (item.positionId && item.correct) {
+                const studentAnswerForPosition = studentAnswer[item.positionId];
+                if (studentAnswerForPosition !== item.value) {
+                  allCorrect = false;
+                }
+              }
+            });
+            isCorrect = allCorrect;
+          } else if (q.type === 'DROPDOWN') {
+            const contentData = q.content?.data || [];
+            let allCorrect = true;
+            contentData.forEach(item => {
+              if (item.positionId && item.correct) {
+                const studentAnswerForPosition = studentAnswer[item.positionId];
+                if (studentAnswerForPosition !== item.value) {
+                  allCorrect = false;
+                }
+              }
+            });
+            isCorrect = allCorrect;
+          } else if (q.type === 'DRAG_AND_DROP') {
+            const contentData = q.content?.data || [];
+            let allCorrect = true;
+            contentData.forEach(item => {
+              if (item.positionId && item.correct) {
+                const studentAnswerForPosition = studentAnswer[item.positionId];
+                if (studentAnswerForPosition !== item.value) {
+                  allCorrect = false;
+                }
+              }
+            });
+            isCorrect = allCorrect;
+          } else if (q.type === 'REARRANGE') {
+            const contentData = q.content?.data || [];
+            const correctOrder = contentData
+              .slice()
+              .sort((a, b) => {
+                const posA = parseInt((a.positionId || '').replace('pos_', ''));
+                const posB = parseInt((b.positionId || '').replace('pos_', ''));
+                return posA - posB;
+              })
+              .map(item => item.value)
+              .filter(Boolean);
+            const studentOrder = Array.isArray(studentAnswer) ? studentAnswer : [];
+            isCorrect = JSON.stringify(correctOrder) === JSON.stringify(studentOrder);
+          }
+
+          if (isCorrect) {
+            correctCount++;
+            earnedPoints += points;
+          }
+        });
+      }
+    });
+
+    // Calculate score for Listening sections
+    listeningSections.forEach(section => {
+      if (section.questions && section.questions.length > 0) {
+        section.questions.forEach(q => {
+          const studentAnswer = studentAnswers[q.id];
+          if (studentAnswer === undefined || studentAnswer === null || studentAnswer === '') return;
+          
+          totalCount++;
+          const points = q.points || 1;
+          totalPoints += points;
+
+          let isCorrect = false;
+
+          if (q.type === 'MULTIPLE_CHOICE' || q.type === 'TRUE_OR_FALSE') {
+            const correctOption = q.options?.find(opt => opt.isCorrect);
+            if (q.type === 'TRUE_OR_FALSE') {
+              isCorrect = studentAnswer === (correctOption?.text || correctOption?.key);
+            } else {
+              isCorrect = studentAnswer === correctOption?.key;
+            }
+          } else if (q.type === 'MULTIPLE_SELECT') {
+            const correctKeys = q.options?.filter(opt => opt.isCorrect).map(opt => opt.key) || [];
+            const studentKeys = Array.isArray(studentAnswer) ? studentAnswer : [];
+            isCorrect = correctKeys.length === studentKeys.length && 
+                       correctKeys.every(key => studentKeys.includes(key));
+          } else if (q.type === 'FILL_IN_THE_BLANK') {
+            const contentData = q.content?.data || [];
+            let allCorrect = true;
+            contentData.forEach(item => {
+              if (item.positionId && item.correct) {
+                const studentAnswerForPosition = studentAnswer[item.positionId];
+                if (studentAnswerForPosition !== item.value) {
+                  allCorrect = false;
+                }
+              }
+            });
+            isCorrect = allCorrect;
+          } else if (q.type === 'DROPDOWN') {
+            const contentData = q.content?.data || [];
+            let allCorrect = true;
+            contentData.forEach(item => {
+              if (item.positionId && item.correct) {
+                const studentAnswerForPosition = studentAnswer[item.positionId];
+                if (studentAnswerForPosition !== item.value) {
+                  allCorrect = false;
+                }
+              }
+            });
+            isCorrect = allCorrect;
+          } else if (q.type === 'DRAG_AND_DROP') {
+            const contentData = q.content?.data || [];
+            let allCorrect = true;
+            contentData.forEach(item => {
+              if (item.positionId && item.correct) {
+                const studentAnswerForPosition = studentAnswer[item.positionId];
+                if (studentAnswerForPosition !== item.value) {
+                  allCorrect = false;
+                }
+              }
+            });
+            isCorrect = allCorrect;
+          } else if (q.type === 'REARRANGE') {
+            const contentData = q.content?.data || [];
+            const correctOrder = contentData
+              .slice()
+              .sort((a, b) => {
+                const posA = parseInt((a.positionId || '').replace('pos_', ''));
+                const posB = parseInt((b.positionId || '').replace('pos_', ''));
+                return posA - posB;
+              })
+              .map(item => item.value)
+              .filter(Boolean);
+            const studentOrder = Array.isArray(studentAnswer) ? studentAnswer : [];
+            isCorrect = JSON.stringify(correctOrder) === JSON.stringify(studentOrder);
+          }
+
+          if (isCorrect) {
+            correctCount++;
+            earnedPoints += points;
+          }
+        });
+      }
+    });
+
+    // Normalize score to 0-10 scale
+    const normalizedScore = totalPoints > 0 ? (earnedPoints / totalPoints) * 10 : 0;
+    return {
+      score: parseFloat(normalizedScore.toFixed(1)),
+      maxScore: 10,
+      correctCount,
+      totalCount,
+      earnedPoints,
+      totalPoints
+    };
+  }, [questions, readingSections, listeningSections, studentAnswers]);
+
+  // Update score when student answers change
+  useEffect(() => {
+    if (studentAnswers && Object.keys(studentAnswers).length > 0) {
+      const scoreData = calculateScore();
+      setTotalScore(scoreData.score);
+      setMaxScore(scoreData.maxScore);
+    }
+  }, [studentAnswers, calculateScore]);
+
   // Navigate to question
   const scrollToQuestion = (questionId) => {
     const element = questionRefs.current[questionId];
@@ -6638,6 +6927,14 @@ In conclusion, writing is not just about putting words on paper—it is about cr
   const subtitle = (challengeInfo.className && challengeInfo.challengeName)
     ? `${challengeInfo.className} / ${challengeInfo.challengeName}`
     : (challengeInfo.challengeName || 'Daily Challenge');
+  
+  // Get score color based on score
+  const getScoreColor = (score) => {
+    if (score >= 8) return '#14961A'; // Green for good score (>= 8)
+    if (score >= 5) return '#DFAF38'; // Yellow for average score (5-7.9)
+    return '#FF4D4F'; // Red for low score (< 5)
+  };
+
   const customHeader = (
     <header className={`themed-header ${theme}-header`}>
       <nav className="themed-navbar">
@@ -6679,6 +6976,60 @@ In conclusion, writing is not just about putting words on paper—it is about cr
                 opacity: 0.5
               }}>|</span>
               <span>{subtitle}</span>
+            </div>
+          </div>
+          
+          {/* Score and Time Display - Top Right Corner */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '20px',
+            marginRight: '16px'
+          }}>
+            {/* Time Spent */}
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '6px 12px',
+              borderRadius: '8px',
+              background: theme === 'sun' ? 'rgba(113, 179, 253, 0.1)' : 'rgba(138, 122, 255, 0.1)',
+              border: `1px solid ${theme === 'sun' ? 'rgba(113, 179, 253, 0.3)' : 'rgba(138, 122, 255, 0.3)'}`
+            }}>
+              <ClockCircleOutlined style={{
+                fontSize: '16px',
+                color: theme === 'sun' ? '#1E40AF' : '#8A7AFF'
+              }} />
+              <span style={{
+                fontSize: '14px',
+                fontWeight: 600,
+                color: theme === 'sun' ? '#1E40AF' : '#8A7AFF'
+              }}>
+                {timeSpent}
+              </span>
+            </div>
+            
+            {/* Score */}
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '6px 12px',
+              borderRadius: '8px',
+              background: theme === 'sun' ? 'rgba(113, 179, 253, 0.1)' : 'rgba(138, 122, 255, 0.1)',
+              border: `1px solid ${theme === 'sun' ? 'rgba(113, 179, 253, 0.3)' : 'rgba(138, 122, 255, 0.3)'}`
+            }}>
+              <TrophyOutlined style={{
+                fontSize: '16px',
+                color: getScoreColor(totalScore)
+              }} />
+              <span style={{
+                fontSize: '14px',
+                fontWeight: 700,
+                color: getScoreColor(totalScore)
+              }}>
+                {totalScore.toFixed(1)}/{maxScore}
+              </span>
             </div>
           </div>
         </div>
