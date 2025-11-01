@@ -3296,7 +3296,6 @@ const DailyChallengeContent = () => {
   const handleCreateQuestion = useCallback(async (questionData) => {
     try {
       setSavingQuestion(true);
-      setModalVisible(false);
 
       // Transform question to API format
       // Compute next section/order position based only on section orderNumbers
@@ -3333,27 +3332,31 @@ const DailyChallengeContent = () => {
       // Refresh questions from API
       await fetchQuestions();
       
-      spaceToast.success(response.message);
-      
-      // Reset modal states
-      setCurrentModalType(null);
-      setEditingQuestion(null);
+      // Only close modal when backend returns a non-empty success message
+      const successMsgCreate = typeof response?.message === 'string' ? response.message.trim() : '';
+      if (successMsgCreate) {
+        spaceToast.success(successMsgCreate);
+        // Reset modal states and close
+        setModalVisible(false);
+        setCurrentModalType(null);
+        setEditingQuestion(null);
+      } else {
+        // Keep modal open if there is no explicit success message
+        spaceToast.warning(t('dailyChallenge.noSuccessMessage') || 'No success message returned from server');
+      }
     } catch (error) {
       console.error('Error creating question:', error);
       spaceToast.error(error.response?.data?.error || error.message || 'Failed to create question');
-      setModalVisible(false);
-      setCurrentModalType(null);
-      setEditingQuestion(null);
+      // Keep modal open on error for user to correct inputs
     } finally {
       setSavingQuestion(false);
     }
-  }, [id, fetchQuestions, transformQuestionToApiFormat, getSectionContent, questions, passages]);
+  }, [id, fetchQuestions, transformQuestionToApiFormat, getSectionContent, questions, passages, t]);
 
   // Handle updating an existing question
   const handleUpdateQuestion = useCallback(async (questionData) => {
     try {
       setSavingQuestion(true);
-      setModalVisible(false);
 
       // Use existing order number
       const orderNumber = editingQuestion.orderNumber || 1;
@@ -3386,22 +3389,23 @@ const DailyChallengeContent = () => {
       // Refresh questions from API
       await fetchQuestions();
       
-      spaceToast.success(response.message || 'Question updated successfully!');
-      
-      // Close modal and reset states
-      setModalVisible(false);
-      setCurrentModalType(null);
-      setEditingQuestion(null);
+      // Only close modal when backend returns a success message
+      if (response?.message) {
+        spaceToast.success(response.message || 'Question updated successfully!');
+        setModalVisible(false);
+        setCurrentModalType(null);
+        setEditingQuestion(null);
+      } else {
+        spaceToast.warning(t('dailyChallenge.noSuccessMessage') || 'No success message returned from server');
+      }
     } catch (error) {
       console.error('Error updating question:', error);
       spaceToast.error(error.response?.data?.error || error.message || 'Failed to update question');
-      setModalVisible(false);
-      setCurrentModalType(null);
-      setEditingQuestion(null);
+      // Keep modal open on error for user to correct inputs
     } finally {
       setSavingQuestion(false);
     }
-  }, [editingQuestion, id, fetchQuestions, transformQuestionToApiFormat, getSectionContent, currentChallengeType]);
+  }, [editingQuestion, id, fetchQuestions, transformQuestionToApiFormat, getSectionContent, currentChallengeType, t]);
 
   // Main handler - route to create or update
   const handleModalSave = useCallback(async (questionData) => {
@@ -3512,7 +3516,7 @@ const DailyChallengeContent = () => {
     setPublishConfirmModalVisible(false);
   }, []);
 
-  const handleSaveChanges = useCallback(async (saveAsStatus) => {
+  const handleSaveChanges = useCallback(async (saveAsStatus, options = { silent: false }) => {
     // Check if there are any visible questions or passages (not deleted)
     const visibleQuestions = questions.filter(q => !q.toBeDeleted);
     const visiblePassages = passages.filter(p => !p.toBeDeleted);
@@ -3601,13 +3605,17 @@ const DailyChallengeContent = () => {
         // Update local status
         setStatus(saveAsStatus);
         
-        spaceToast.success(
-          saveAsStatus === 'published' 
-            ? t('dailyChallenge.savedAsPublished') || 'Saved and published successfully!'
-            : t('dailyChallenge.savedAsDraft') || 'Saved as draft successfully!'
-        );
+        if (!options?.silent) {
+          spaceToast.success(
+            saveAsStatus === 'published' 
+              ? t('dailyChallenge.savedAsPublished') || 'Saved and published successfully!'
+              : t('dailyChallenge.savedAsDraft') || 'Saved as draft successfully!'
+          );
+        }
       } else {
-        spaceToast.success('Changes saved successfully!');
+        if (!options?.silent) {
+          spaceToast.success('Changes saved successfully!');
+        }
       }
 
       // Refresh questions and passages from API to get updated data
@@ -3649,6 +3657,31 @@ const DailyChallengeContent = () => {
     setAntiCheatModeEnabled(settingsData.antiCheatModeEnabled);
     setSettingsModalVisible(false);
   }, []);
+
+  // Auto-save silently every 5 minutes based on current status
+  useEffect(() => {
+    const intervalMs = 5 * 60 * 1000; // reduced to 1 minute for testing
+    let isSaving = false;
+    const timer = setInterval(async () => {
+      if (loading || isSaving) return;
+      const hasChanges =
+        (Array.isArray(questions) && questions.some(q => q?.isModified || q?.toBeDeleted)) ||
+        (Array.isArray(passages) && passages.some(p => p?.isModified || p?.toBeDeleted));
+      if (!hasChanges) return;
+      isSaving = true;
+      try {
+        const nextStatus = status === 'published' ? 'published' : 'draft';
+        console.log('[AutoSave] Starting silent auto-save as', nextStatus, 'at', new Date().toISOString());
+        await handleSaveChanges(nextStatus, { silent: true });
+        console.log('[AutoSave] Completed silent auto-save at', new Date().toISOString());
+      } catch (e) {
+        // silent
+      } finally {
+        isSaving = false;
+      }
+    }, intervalMs);
+    return () => clearInterval(timer);
+  }, [status, questions, passages, handleSaveChanges, loading]);
 
   // Import is disabled in this screen (export-only)
 

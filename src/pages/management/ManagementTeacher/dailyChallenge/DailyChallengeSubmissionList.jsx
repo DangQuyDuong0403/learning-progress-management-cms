@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   Button,
   Input,
@@ -16,124 +16,77 @@ import ThemedLayout from "../../../../component/teacherlayout/ThemedLayout";
 import LoadingWithEffect from "../../../../component/spinner/LoadingWithEffect";
 import "./DailyChallengeList.css";
 import { spaceToast } from "../../../../component/SpaceToastify";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useTheme } from "../../../../contexts/ThemeContext";
 import { useDailyChallengeMenu } from "../../../../contexts/DailyChallengeMenuContext";
 import usePageTitle from "../../../../hooks/usePageTitle";
-
-// Mock data - danh sách học sinh đã làm bài
-const mockSubmissions = [
-  {
-    id: 1,
-    studentId: "SE12345",
-    studentName: "Nguyễn Văn A",
-    email: "anvn@example.com",
-    status: "completed",
-    score: 8.5,
-    submittedAt: "2024-01-15 10:30:00",
-    timeSpent: 25, // minutes
-  },
-  {
-    id: 2,
-    studentId: "SE12346",
-    studentName: "Trần Thị B",
-    email: "btt@example.com",
-    status: "completed",
-    score: 9.0,
-    submittedAt: "2024-01-15 11:00:00",
-    timeSpent: 28,
-  },
-  {
-    id: 3,
-    studentId: "SE12347",
-    studentName: "Lê Văn C",
-    email: "clv@example.com",
-    status: "not_started",
-    score: null,
-    submittedAt: null,
-    timeSpent: null,
-  },
-  {
-    id: 4,
-    studentId: "SE12348",
-    studentName: "Phạm Thị D",
-    email: "dpt@example.com",
-    status: "in_progress",
-    score: null,
-    submittedAt: null,
-    timeSpent: null,
-  },
-  {
-    id: 5,
-    studentId: "SE12349",
-    studentName: "Hoàng Văn E",
-    email: "ehv@example.com",
-    status: "completed",
-    score: 7.5,
-    submittedAt: "2024-01-15 14:20:00",
-    timeSpent: 30,
-  },
-];
+import { dailyChallengeApi } from "../../../../apis/apis";
+import { useSelector } from "react-redux";
 
 const DailyChallengeSubmissionList = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { theme } = useTheme();
   const { id } = useParams();
+  const location = useLocation();
+  const { user } = useSelector((state) => state.auth);
   const { enterDailyChallengeMenu, exitDailyChallengeMenu, updateChallengeCount } = useDailyChallengeMenu();
   
   // Set page title
   usePageTitle('Daily Challenge Management / Submissions');
   
   const [loading, setLoading] = useState(false);
-  const [submissions, setSubmissions] = useState([]);
+  const [rows, setRows] = useState([]);
+  const [total, setTotal] = useState(0);
   const [searchText, setSearchText] = useState("");
-  const [statusFilter, setStatusFilter] = useState([]);
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
 
-  // Filter dropdown state and refs
-  const [filterDropdown, setFilterDropdown] = useState({
-    visible: false,
-    selectedStatuses: [],
-  });
-  const filterContainerRef = useRef(null);
-
-  // Close dropdown when clicking outside
+  // Debounce search text
   useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (filterDropdown.visible && filterContainerRef.current) {
-        if (!filterContainerRef.current.contains(event.target)) {
-          setFilterDropdown((prev) => ({ ...prev, visible: false }));
-        }
-      }
-    };
-
-    if (filterDropdown.visible) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [filterDropdown.visible]);
-
-  // Filter option lists
-  const statusOptions = ["completed", "in_progress", "not_started"];
+    const handle = setTimeout(() => setDebouncedSearch(searchText.trim()), 400);
+    return () => clearTimeout(handle);
+  }, [searchText]);
 
   const fetchSubmissions = useCallback(async () => {
     setLoading(true);
     try {
-      // Simulate API call
-      setTimeout(() => {
-        setSubmissions(mockSubmissions);
-        setLoading(false);
-      }, 1000);
+      const res = await dailyChallengeApi.getChallengeSubmissions(id, {
+        page: currentPage - 1,
+        size: pageSize,
+        text: debouncedSearch,
+        sortBy: 'createdAt',
+        sortDir: 'asc',
+      });
+
+      const items = res?.data?.data?.content || res?.data?.data || res?.data || [];
+      const totalElements =
+        res?.data?.totalElements ||
+        res?.data?.data?.totalElements ||
+        res?.data?.pagination?.totalElements ||
+        res?.data?.total ||
+        (Array.isArray(items) ? items.length : 0);
+
+      const mapped = (Array.isArray(items) ? items : []).map((it) => ({
+        submissionId: it?.submissionId ?? it?.id,
+        studentName: it?.studentName ?? '-',
+        submissionStatus: it?.submissionStatus ?? '-',
+        plagiarismScore: it?.plagiarismScore ?? null,
+        totalScore: it?.totalScore ?? null,
+      }));
+
+      setRows(mapped);
+      setTotal(totalElements);
     } catch (error) {
       spaceToast.error(t('dailyChallenge.loadSubmissionsError'));
+      setRows([]);
+      setTotal(0);
+    } finally {
       setLoading(false);
     }
-  }, [t]);
+  }, [id, currentPage, pageSize, debouncedSearch, t]);
 
   useEffect(() => {
     fetchSubmissions();
@@ -141,80 +94,64 @@ const DailyChallengeSubmissionList = () => {
 
   // Enter/exit daily challenge menu mode
   useEffect(() => {
-    // Set backPath to performance page
-    const backPath = `/teacher/daily-challenges/detail/${id}`;
-    enterDailyChallengeMenu(0, null, backPath);
+    // Derive info from navigation state (passed from Performance.jsx)
+    const challengeInfo = {
+      classId: location.state?.classId || null,
+      className: location.state?.className || null,
+      challengeId: location.state?.challengeId || id,
+      challengeName: location.state?.challengeName || null,
+    };
+
+    const getBackPath = () => {
+      if (challengeInfo.classId) {
+        const userRole = user?.role?.toLowerCase();
+        if (userRole === 'teacher' || userRole === 'teaching_assistant') {
+          return `/teacher/classes/daily-challenges/${challengeInfo.classId}`;
+        } else {
+          return `/manager/classes/daily-challenges/${challengeInfo.classId}`;
+        }
+      }
+      const userRole = user?.role?.toLowerCase();
+      return userRole === 'teacher' || userRole === 'teaching_assistant' 
+        ? '/teacher/daily-challenges' 
+        : '/manager/daily-challenges';
+    };
+
+    const getSubtitle = () => {
+      if (challengeInfo.className && challengeInfo.challengeName) {
+        return `${challengeInfo.className} / ${challengeInfo.challengeName}`;
+      } else if (challengeInfo.challengeName) {
+        return challengeInfo.challengeName;
+      }
+      return null;
+    };
+
+    enterDailyChallengeMenu(0, getSubtitle(), getBackPath(), challengeInfo.className);
     
     return () => {
       exitDailyChallengeMenu();
     };
-  }, [enterDailyChallengeMenu, exitDailyChallengeMenu, id]);
+  }, [enterDailyChallengeMenu, exitDailyChallengeMenu, id, location.state, user]);
 
-  // Update challenge count when filters change
+  // Update total count in floating menu
   useEffect(() => {
-    const filteredCount = submissions.filter((submission) => {
-      const matchesSearch =
-        searchText === "" ||
-        submission.studentName.toLowerCase().includes(searchText.toLowerCase()) ||
-        submission.studentId.toLowerCase().includes(searchText.toLowerCase()) ||
-        submission.email.toLowerCase().includes(searchText.toLowerCase());
-
-      const matchesStatus = statusFilter.length === 0 || statusFilter.includes(submission.status);
-
-      return matchesSearch && matchesStatus;
-    }).length;
-    
-    updateChallengeCount(filteredCount);
-  }, [submissions, searchText, statusFilter, updateChallengeCount]);
+    updateChallengeCount(total);
+  }, [total, updateChallengeCount]);
 
   const handleSearch = (value) => {
     setSearchText(value);
     setCurrentPage(1);
   };
 
-  // Filter dropdown handlers
-  const handleFilterToggle = () => {
-    setFilterDropdown((prev) => ({ ...prev, visible: !prev.visible }));
-  };
-
-  const handleFilterSubmit = () => {
-    setStatusFilter(filterDropdown.selectedStatuses);
-    setCurrentPage(1);
-    setFilterDropdown((prev) => ({ ...prev, visible: false }));
-  };
-
-  const handleFilterReset = () => {
-    setFilterDropdown((prev) => ({ ...prev, selectedStatuses: [] }));
-    setStatusFilter([]);
-    setCurrentPage(1);
-  };
-
   const handleViewClick = (submission) => {
-    navigate(`/teacher/daily-challenges/detail/${id}/submission/${submission.id}`);
+    navigate(`/teacher/daily-challenges/detail/${id}/submission/${submission.submissionId}`);
   };
 
-  const getStatusText = (status) => {
-    const statusConfig = {
-      completed: t('dailyChallenge.completed'),
-      in_progress: t('dailyChallenge.inProgress'),
-      not_started: t('dailyChallenge.notStarted'),
-    };
-
-    return statusConfig[status] || statusConfig.not_started;
-  };
-
-  // Filter data based on search and filters
-  const filteredSubmissions = submissions.filter((submission) => {
-    const matchesSearch =
-      searchText === "" ||
-      submission.studentName.toLowerCase().includes(searchText.toLowerCase()) ||
-      submission.studentId.toLowerCase().includes(searchText.toLowerCase()) ||
-      submission.email.toLowerCase().includes(searchText.toLowerCase());
-
-    const matchesStatus = statusFilter.length === 0 || statusFilter.includes(submission.status);
-
-    return matchesSearch && matchesStatus;
-  });
+  // Fetch when pagination or search changes
+  useEffect(() => {
+    fetchSubmissions();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentPage, pageSize, debouncedSearch]);
 
   const columns = [
     {
@@ -225,81 +162,43 @@ const DailyChallengeSubmissionList = () => {
       render: (_, __, index) => (currentPage - 1) * pageSize + index + 1,
     },
     {
-      title: t('dailyChallenge.studentId'),
-      dataIndex: 'studentId',
-      key: 'studentId',
-      width: 120,
-      align: 'center',
-    },
-    {
       title: t('dailyChallenge.studentName'),
       dataIndex: 'studentName',
       key: 'studentName',
-      width: 200,
+      width: 220,
       align: 'left',
-      ellipsis: {
-        showTitle: false,
-      },
+      ellipsis: { showTitle: false },
       render: (text) => (
-        <Tooltip placement="topLeft" title={text}>
-          <span style={{ 
-            display: 'block',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
-            textAlign: 'left'
-          }}>
-            {text}
-          </span>
-        </Tooltip>
-      ),
-    },
-    {
-      title: t('dailyChallenge.email'),
-      dataIndex: 'email',
-      key: 'email',
-      width: 200,
-      align: 'left',
-      ellipsis: {
-        showTitle: false,
-      },
-      render: (text) => (
-        <Tooltip placement="topLeft" title={text}>
-          <span style={{ 
-            display: 'block',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
-            textAlign: 'left'
-          }}>
-            {text}
+        <Tooltip placement="topLeft" title={text || '-' }>
+          <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textAlign: 'left' }}>
+            {text || '-'}
           </span>
         </Tooltip>
       ),
     },
     {
       title: t('dailyChallenge.status'),
-      dataIndex: 'status',
-      key: 'status',
-      width: 120,
+      dataIndex: 'submissionStatus',
+      key: 'submissionStatus',
+      width: 150,
       align: 'center',
-      render: (status) => getStatusText(status),
+      render: (status) => status || '-',
     },
     {
-      title: t('dailyChallenge.score'),
-      dataIndex: 'score',
-      key: 'score',
-      width: 100,
+      title: 'Plagiarism Score',
+      dataIndex: 'plagiarismScore',
+      key: 'plagiarismScore',
+      width: 160,
       align: 'center',
-      render: (score) => score !== null ? `${score}/10` : '-',
+      render: (v) => (v === null || v === undefined ? '-' : v),
     },
     {
-      title: t('dailyChallenge.submittedAt'),
-      dataIndex: 'submittedAt',
-      key: 'submittedAt',
-      width: 180,
+      title: 'Total Score',
+      dataIndex: 'totalScore',
+      key: 'totalScore',
+      width: 130,
       align: 'center',
-      render: (time) => time || '-',
+      render: (v) => (v === null || v === undefined ? '-' : v),
     },
     {
       title: t('dailyChallenge.actions'),
@@ -314,7 +213,7 @@ const DailyChallengeSubmissionList = () => {
             onClick={() => handleViewClick(record)}
             title={t('dailyChallenge.viewDetails')}
             className="action-btn-view"
-            disabled={record.status === 'not_started'}
+            disabled={!record?.submissionId}
           />
         </Space>
       ),
@@ -335,78 +234,6 @@ const DailyChallengeSubmissionList = () => {
             style={{ flex: '1', minWidth: '250px', maxWidth: '400px', width: '350px', height: '40px', fontSize: '16px' }}
             allowClear
           />
-          <div ref={filterContainerRef} style={{ position: 'relative' }}>
-            <Button 
-              icon={<FilterOutlined />}
-              onClick={handleFilterToggle}
-              className={`filter-button ${theme}-filter-button ${filterDropdown.visible ? 'active' : ''} ${statusFilter.length > 0 ? 'has-filters' : ''}`}
-            >
-              {t('common.filter')}
-            </Button>
-            
-            {/* Filter Dropdown Panel */}
-            {filterDropdown.visible && (
-              <div className={`filter-dropdown-panel ${theme}-filter-dropdown`}>
-                <div style={{ padding: '20px' }}>
-                  <div style={{ marginBottom: '24px' }}>
-                    {/* Status Filter */}
-                    <div>
-                      <Typography.Title level={5} style={{ marginBottom: '12px', fontSize: '16px' }}>
-                        {t('dailyChallenge.status')}
-                      </Typography.Title>
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                        {statusOptions.map((statusKey) => {
-                          // Map status key to translation key
-                          const statusTextMap = {
-                            'completed': 'completed',
-                            'in_progress': 'inProgress',
-                            'not_started': 'notStarted'
-                          };
-                          return (
-                            <Button
-                              key={statusKey}
-                              onClick={() => {
-                                const newStatuses = filterDropdown.selectedStatuses.includes(statusKey)
-                                  ? filterDropdown.selectedStatuses.filter((s) => s !== statusKey)
-                                  : [...filterDropdown.selectedStatuses, statusKey];
-                                setFilterDropdown((prev) => ({ ...prev, selectedStatuses: newStatuses }));
-                              }}
-                              className={`filter-option ${filterDropdown.selectedStatuses.includes(statusKey) ? 'selected' : ''}`}
-                            >
-                              {t(`dailyChallenge.${statusTextMap[statusKey]}`)}
-                            </Button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Action Buttons */}
-                  <div style={{ 
-                    display: 'flex', 
-                    justifyContent: 'space-between', 
-                    marginTop: '20px',
-                    paddingTop: '16px',
-                    borderTop: '1px solid #f0f0f0'
-                  }}>
-                    <Button
-                      onClick={handleFilterReset}
-                      className="filter-reset-button"
-                    >
-                      {t('common.reset')}
-                    </Button>
-                    <Button
-                      type="primary"
-                      onClick={handleFilterSubmit}
-                      className="filter-submit-button"
-                    >
-                      {t('common.viewResults')}
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
         </div>
 
         {/* Table Section */}
@@ -414,22 +241,22 @@ const DailyChallengeSubmissionList = () => {
           <LoadingWithEffect loading={loading} message={t('dailyChallenge.loadingSubmissions')}>
             <Table
               columns={columns}
-              dataSource={filteredSubmissions}
-              rowKey="id"
+              dataSource={rows}
+              rowKey="submissionId"
               pagination={{
                 current: currentPage,
                 pageSize: pageSize,
-                total: filteredSubmissions.length,
+                total: total,
                 onChange: setCurrentPage,
                 onShowSizeChange: (current, size) => setPageSize(size),
                 showSizeChanger: true,
                 showQuickJumper: true,
-                showTotal: (total, range) =>
-                  `${range[0]}-${range[1]} ${t('dailyChallenge.of')} ${total} ${t('dailyChallenge.submissions')}`,
+                showTotal: (tot, range) =>
+                  `${range[0]}-${range[1]} ${t('dailyChallenge.of')} ${tot} ${t('dailyChallenge.submissions')}`,
                 className: `${theme}-pagination`,
                 pageSizeOptions: ['10', '20', '50', '100'],
               }}
-              scroll={{ x: 800 }}
+              scroll={{ x: 700 }}
               className={`daily-challenge-table ${theme}-daily-challenge-table`}
             />
           </LoadingWithEffect>
