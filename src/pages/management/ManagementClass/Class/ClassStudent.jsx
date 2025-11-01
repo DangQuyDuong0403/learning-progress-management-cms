@@ -103,6 +103,7 @@ const ClassStudent = () => {
   
   // Refs for click outside detection
   const filterContainerRef = useRef(null);
+  const hasInitialized = useRef(false);
 
   // Status options for filter
   const statusOptions = [
@@ -805,8 +806,9 @@ const ClassStudent = () => {
 
   // Single useEffect to handle all changes with debounce (search, filter, sort, pagination)
   useEffect(() => {
-    // Skip if this is the initial load (handled by the first useEffect)
-    if (!searchText && statusFilter === 'all' && sortConfig.sortBy === 'joinedAt' && sortConfig.sortDir === 'desc' && pagination.current === 1) {
+    // Skip only the very first render (true initial load handled by initial effect)
+    if (!hasInitialized.current) {
+      hasInitialized.current = true;
       return;
     }
 

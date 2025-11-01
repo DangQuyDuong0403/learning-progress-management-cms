@@ -9,6 +9,7 @@ import EnhancedPrivateRoute from "./routers/EnhancedPrivateRoute";
 import RoleBasedPrivateRoute from "./routers/RoleBasedPrivateRoute";
 import SpaceToastify from "../src/component/SpaceToastify";
 import CustomCursor from "./component/cursor/CustomCursor";
+import TextTranslator from "./component/TextTranslator";
 import { useAuthMonitor } from "./utils/useAuthMonitor";
 
 export default function App() {
@@ -63,6 +64,7 @@ export default function App() {
             <SpaceToastify />
           </Router>
           <CustomCursor />
+          <TextTranslator enabled={true} />
           </DailyChallengeMenuProvider>
         </SyllabusMenuProvider>
       </ClassMenuProvider>

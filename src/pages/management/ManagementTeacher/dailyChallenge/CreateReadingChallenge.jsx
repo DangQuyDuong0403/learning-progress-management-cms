@@ -104,7 +104,7 @@ const CreateReadingChallenge = () => {
   
   // Get challenge info from navigation state or URL params
   const challengeInfo = location.state || {};
-  const { challengeId, challengeName, classId, className, editingPassage } = challengeInfo;
+  const { challengeId, challengeName, classId, className, editingPassage, isManualMode } = challengeInfo;
   
   // Use challenge ID from URL params if available, otherwise from state
   const currentChallengeId = id || challengeId;
@@ -144,11 +144,12 @@ const CreateReadingChallenge = () => {
     } else {
       // New mode - start with empty passage
       // For Writing (WR) and Speaking (SP) challenges, automatically set type to "manual" to show editor immediately
+      // If isManualMode flag is set (from RE/LI modal), also show editor immediately
       return {
         id: 1,
         title: isWritingChallenge ? "Writing Prompt" : "Passage",
         content: "",
-        type: (isWritingChallenge || isSpeakingChallenge) ? "manual" : null, // Auto-show editor for WR/SP
+        type: (isWritingChallenge || isSpeakingChallenge || isManualMode) ? "manual" : null, // Auto-show editor for WR/SP or manual mode from modal
         questions: [],
         audioFile: null,
         audioUrl: null
@@ -1437,7 +1438,7 @@ const CreateReadingChallenge = () => {
                  )}
                {/* Title - Always show at top */}
                <div style={{ marginBottom: '0px', position: 'relative' }}>
-                  {passage?.type === 'manual' && !(isWritingChallenge || isSpeakingChallenge) && (
+                  {passage?.type === 'manual' && !(isWritingChallenge || isSpeakingChallenge) && !isManualMode && (
                     <Button
                       type="text"
                       icon={<ArrowLeftOutlined />}
@@ -1627,8 +1628,8 @@ const CreateReadingChallenge = () => {
 
                         {/* PDF Upload removed */}
 
-                        {/* Create by AI - Hidden for Writing (WR) and Speaking (SP) challenges */}
-                        {!isWritingChallenge && !isSpeakingChallenge && (
+                        {/* Create by AI - Hidden for Writing (WR), Speaking (SP) challenges, and when isManualMode is true */}
+                        {!isWritingChallenge && !isSpeakingChallenge && !isManualMode && (
                         <Card
                           hoverable
                           className="rc-passage-option-card"
