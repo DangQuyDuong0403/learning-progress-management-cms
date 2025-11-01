@@ -1812,7 +1812,7 @@
     "PUBLISHED": "Published",
     "confirmPublishChallenge": "Confirm Publish Challenge",
     "publishWarning": "Publish Warning",
-    "publishNow": "Publish Now",
+    "publishNow": "Publish",
     "publishConfirmQuestion": "Are you sure you want to publish this challenge?",
     "mode": "Mode",
     "publishWarningMessage": "Once published, students will be able to access this challenge. This action cannot be undone.",
