@@ -56,6 +56,8 @@ const ROUTER_PAGE = {
 	MANAGER_STUDENT_PROGRESS: '/manager/student/:id/progress',
 	// Spinner Demo
 	SPINNER_DEMO: '/spinner-demo',
+	// Test Security Demo
+	TEST_DEMO: '/test-demo',
 	// Manager Management Routes
 	MANAGER_CLASSES: '/manager/classes',
 	MANAGER_CLASS_MENU: '/manager/classes/menu/:id',
