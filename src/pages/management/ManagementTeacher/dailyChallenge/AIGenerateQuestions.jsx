@@ -55,6 +55,7 @@ const AIGenerateQuestions = () => {
     challengeId: location.state?.challengeId || id,
     challengeName: location.state?.challengeName || null,
     challengeType: location.state?.challengeType || null,
+    aiSource: location.state?.aiSource || null, // 'settings' or 'file'
   });
   
   // State for prompt input
@@ -62,7 +63,16 @@ const AIGenerateQuestions = () => {
   
   
   // Question settings mode on the right: null (choose), 'manual', 'upload'
-  const [questionSettingsMode, setQuestionSettingsMode] = useState(null);
+  // Auto-set based on aiSource from navigation state
+  const [questionSettingsMode, setQuestionSettingsMode] = useState(() => {
+    const aiSource = location.state?.aiSource;
+    if (aiSource === 'settings') {
+      return 'manual';
+    } else if (aiSource === 'file') {
+      return 'upload';
+    }
+    return null;
+  });
   const uploadInputRef = useRef(null);
   const [uploadedFileName, setUploadedFileName] = useState('');
   const [uploadedFile, setUploadedFile] = useState(null);
@@ -1245,12 +1255,7 @@ const AIGenerateQuestions = () => {
                 <Title level={3} style={{ textAlign: 'center', color: theme === 'sun' ? '#1890ff' : '#8B5CF6', marginTop: 0, fontSize: '26px' }}>
                   Add Prompt
                 </Title>
-                {/* Spacer to align top edge with right panel when in manual mode */}
-                {questionSettingsMode === 'manual' && (
-                  <div style={{ display: 'flex', justifyContent: 'flex-start', marginTop: 12, marginBottom: 20 }}>
-                    <div style={{ height: 20 }} />
-                  </div>
-                )}
+            
                 <TextArea
                   value={promptDescription}
                   onChange={(e) => setPromptDescription(e.target.value)}
@@ -1375,14 +1380,17 @@ const AIGenerateQuestions = () => {
 
                 {questionSettingsMode === 'upload' && (
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: 16, width: '100%', minHeight: 540 }}>
-                    <Button
-                      icon={<ArrowLeftOutlined />}
-                      onClick={() => setQuestionSettingsMode(null)}
-                      className={`class-menu-back-button ${theme}-class-menu-back-button`}
-                      style={{ height: '32px', borderRadius: '8px', fontWeight: 500, fontSize: '14px', marginBottom: 16, alignSelf: 'flex-start' }}
-                    >
-                      {t('common.back')}
-                    </Button>
+                    {/* Hide Back button if mode was set from modal (aiSource exists) */}
+                    {!challengeInfo.aiSource && (
+                      <Button
+                        icon={<ArrowLeftOutlined />}
+                        onClick={() => setQuestionSettingsMode(null)}
+                        className={`class-menu-back-button ${theme}-class-menu-back-button`}
+                        style={{ height: '32px', borderRadius: '8px', fontWeight: 500, fontSize: '14px', marginBottom: 16, alignSelf: 'flex-start' }}
+                      >
+                        {t('common.back')}
+                      </Button>
+                    )}
 
                     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: '100%' }}>
                       <label
@@ -1457,16 +1465,22 @@ const AIGenerateQuestions = () => {
 
                 {questionSettingsMode === 'manual' && (
                   <>
-                    <div style={{ display: 'flex', justifyContent: 'flex-start', marginTop: 12, marginBottom: 20 }}>
-                      <Button
-                        icon={<ArrowLeftOutlined />}
-                        onClick={() => setQuestionSettingsMode(null)}
-                        className={`class-menu-back-button ${theme}-class-menu-back-button`}
-                        style={{ height: '32px', borderRadius: '8px', fontWeight: 500, fontSize: '14px' }}
-                      >
-                        {t('common.back')}
-                      </Button>
-                    </div>
+                    {/* Hide Back button if mode was set from modal (aiSource exists) */}
+                    {!challengeInfo.aiSource && (
+                      <div style={{ display: 'flex', justifyContent: 'flex-start', marginTop: 12, marginBottom: 20 }}>
+                        <Button
+                          icon={<ArrowLeftOutlined />}
+                          onClick={() => setQuestionSettingsMode(null)}
+                          className={`class-menu-back-button ${theme}-class-menu-back-button`}
+                          style={{ height: '32px', borderRadius: '8px', fontWeight: 500, fontSize: '14px' }}
+                        >
+                          {t('common.back')}
+                        </Button>
+                      </div>
+                    )}
+                    {challengeInfo.aiSource && (
+                      <div style={{ marginBottom: 20 }}></div>
+                    )}
 
                     <div
                       style={{

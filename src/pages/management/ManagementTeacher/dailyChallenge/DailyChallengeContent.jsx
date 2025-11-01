@@ -2667,9 +2667,8 @@ const SortableQuestionItem = memo(
 
 SortableQuestionItem.displayName = 'SortableQuestionItem';
 
-// Question types constant
+// Question types constant (AI options are handled separately in modal)
 const questionTypes = [
-  { id: 0, name: "AI Generate Questions", type: "ai-generate", featured: true },
   { id: 1, name: "Multiple choice", type: "multiple-choice" },
   { id: 2, name: "Multiple select", type: "multiple-select" },
   { id: 3, name: "True or false", type: "true-false" },
@@ -2743,6 +2742,7 @@ const DailyChallengeContent = () => {
     uploading: false
   });
   const [publishConfirmModalVisible, setPublishConfirmModalVisible] = useState(false);
+  const [reLiAddQuestionModalVisible, setReLiAddQuestionModalVisible] = useState(false);
 
   // Memoized challenge type to use in dependencies cleanly
   const currentChallengeType = challengeDetails?.challengeType;
@@ -3101,22 +3101,15 @@ const DailyChallengeContent = () => {
   const handleAddQuestion = useCallback(() => {
     const challengeType = challengeDetails?.challengeType;
     
-    if (challengeType === 'RE' || challengeType === 'LI' || challengeType === 'WR' || challengeType === 'SP') {
-      // For Reading/Listening/Writing/Speaking challenges, navigate to CreateReadingChallenge
+    if (challengeType === 'RE' || challengeType === 'LI') {
+      // For Reading/Listening challenges, show modal with 3 options
+      setReLiAddQuestionModalVisible(true);
+    } else if (challengeType === 'WR' || challengeType === 'SP') {
+      // For Writing/Speaking challenges, navigate to CreateReadingChallenge
       const userRole = user?.role?.toLowerCase();
       
       let basePath;
-      if (challengeType === 'RE') {
-        // Reading challenge
-        basePath = userRole === 'teaching_assistant' 
-          ? `/teaching-assistant/daily-challenges/create/reading/${id}`
-          : `/teacher/daily-challenges/create/reading/${id}`;
-      } else if (challengeType === 'LI') {
-        // Listening challenge
-        basePath = userRole === 'teaching_assistant' 
-          ? `/teaching-assistant/daily-challenges/create/listening/${id}`
-          : `/teacher/daily-challenges/create/listening/${id}`;
-      } else if (challengeType === 'WR') {
+      if (challengeType === 'WR') {
         // Writing challenge
         basePath = userRole === 'teaching_assistant' 
           ? `/teaching-assistant/daily-challenges/create/writing/${id}`
@@ -3145,30 +3138,52 @@ const DailyChallengeContent = () => {
 
 
   const handleQuestionTypeClick = useCallback((questionType) => {
-    // Check if AI generation is selected
-    if (questionType.type === 'ai-generate') {
-      // Navigate to AI generation page
-      const userRole = user?.role?.toLowerCase();
-      const aiPath = userRole === 'teaching_assistant'
-        ? `/teaching-assistant/daily-challenges/create/ai/${id}`
-        : `/teacher/daily-challenges/create/ai/${id}`;
-      
-      navigate(aiPath, {
-        state: {
-          challengeId: id,
-          challengeName: challengeDetails?.challengeName,
-          challengeType: challengeDetails?.challengeType,
-          classId: challengeInfo.classId,
-          className: challengeInfo.className
-        }
-      });
-      
-      setQuestionTypeModalVisible(false);
-    } else {
-      setCurrentModalType(questionType.type);
-      setModalVisible(true);
-      setQuestionTypeModalVisible(false);
-    }
+    // Regular question types (not AI)
+    setCurrentModalType(questionType.type);
+    setModalVisible(true);
+    setQuestionTypeModalVisible(false);
+  }, []);
+
+  // Handler for GV AI Generate from Settings
+  const handleGvAiGenerateFromSettings = useCallback(() => {
+    const userRole = user?.role?.toLowerCase();
+    const aiPath = userRole === 'teaching_assistant'
+      ? `/teaching-assistant/daily-challenges/create/ai/${id}`
+      : `/teacher/daily-challenges/create/ai/${id}`;
+    
+    navigate(aiPath, {
+      state: {
+        challengeId: id,
+        challengeName: challengeDetails?.challengeName,
+        challengeType: challengeDetails?.challengeType,
+        classId: challengeInfo.classId,
+        className: challengeInfo.className,
+        aiSource: 'settings'
+      }
+    });
+    
+    setQuestionTypeModalVisible(false);
+  }, [id, user, navigate, challengeDetails, challengeInfo]);
+
+  // Handler for GV AI Generate from File
+  const handleGvAiGenerateFromFile = useCallback(() => {
+    const userRole = user?.role?.toLowerCase();
+    const aiPath = userRole === 'teaching_assistant'
+      ? `/teaching-assistant/daily-challenges/create/ai/${id}`
+      : `/teacher/daily-challenges/create/ai/${id}`;
+    
+    navigate(aiPath, {
+      state: {
+        challengeId: id,
+        challengeName: challengeDetails?.challengeName,
+        challengeType: challengeDetails?.challengeType,
+        classId: challengeInfo.classId,
+        className: challengeInfo.className,
+        aiSource: 'file'
+      }
+    });
+    
+    setQuestionTypeModalVisible(false);
   }, [id, user, navigate, challengeDetails, challengeInfo]);
 
   // Helper function to transform question data to API format
@@ -3424,6 +3439,82 @@ const DailyChallengeContent = () => {
 
   const handleQuestionTypeModalCancel = useCallback(() => {
     setQuestionTypeModalVisible(false);
+  }, []);
+
+  // Handlers for RE/LI Add Question Modal
+  const handleReLiAddQuestionManual = useCallback(() => {
+    const challengeType = challengeDetails?.challengeType;
+    const userRole = user?.role?.toLowerCase();
+    
+    let basePath;
+    if (challengeType === 'RE') {
+      basePath = userRole === 'teaching_assistant' 
+        ? `/teaching-assistant/daily-challenges/create/reading/${id}`
+        : `/teacher/daily-challenges/create/reading/${id}`;
+    } else if (challengeType === 'LI') {
+      basePath = userRole === 'teaching_assistant' 
+        ? `/teaching-assistant/daily-challenges/create/listening/${id}`
+        : `/teacher/daily-challenges/create/listening/${id}`;
+    }
+    
+    navigate(basePath, {
+      state: {
+        challengeId: id,
+        challengeName: challengeDetails?.challengeName,
+        challengeType: challengeType,
+        classId: challengeInfo.classId,
+        className: challengeInfo.className,
+        isManualMode: true // Flag to indicate manual mode selected from modal
+      }
+    });
+    
+    setReLiAddQuestionModalVisible(false);
+  }, [challengeDetails, id, challengeInfo, navigate, user]);
+
+  const handleReLiAiGenerateFromSettings = useCallback(() => {
+    const challengeType = challengeDetails?.challengeType;
+    const userRole = user?.role?.toLowerCase();
+    const aiPath = userRole === 'teaching_assistant'
+      ? `/teaching-assistant/daily-challenges/create/ai/${id}`
+      : `/teacher/daily-challenges/create/ai/${id}`;
+    
+    navigate(aiPath, {
+      state: {
+        challengeId: id,
+        challengeName: challengeDetails?.challengeName,
+        challengeType: challengeType,
+        classId: challengeInfo.classId,
+        className: challengeInfo.className,
+        aiSource: 'settings'
+      }
+    });
+    
+    setReLiAddQuestionModalVisible(false);
+  }, [challengeDetails, id, challengeInfo, navigate, user]);
+
+  const handleReLiAiGenerateFromFile = useCallback(() => {
+    const challengeType = challengeDetails?.challengeType;
+    const userRole = user?.role?.toLowerCase();
+    const aiPath = userRole === 'teaching_assistant'
+      ? `/teaching-assistant/daily-challenges/create/ai/${id}`
+      : `/teacher/daily-challenges/create/ai/${id}`;
+    
+    navigate(aiPath, {
+      state: {
+        challengeId: id,
+        challengeName: challengeDetails?.challengeName,
+        challengeType: challengeType,
+        classId: challengeInfo.classId,
+        className: challengeInfo.className,
+        aiSource: 'file'
+      }
+    });
+    
+    setReLiAddQuestionModalVisible(false);
+  }, [challengeDetails, id, challengeInfo, navigate, user]);
+
+  const handleReLiAddQuestionModalCancel = useCallback(() => {
+    setReLiAddQuestionModalVisible(false);
   }, []);
 
   const handleEditQuestion = useCallback((questionId) => {
@@ -4824,7 +4915,7 @@ const DailyChallengeContent = () => {
           {/* Question Types */}
           <div className="question-type-category">
             <div className="category-grid">
-              {questionTypes.slice(1).map((questionType) => (
+              {questionTypes.map((questionType) => (
                 <div
                   key={questionType.id}
                   className={`question-type-card ${theme}-question-type-card`}
@@ -4865,13 +4956,14 @@ const DailyChallengeContent = () => {
             </div>
           </div>
 
-          {/* AI Generate - Featured */}
+          {/* AI Features */}
           <div className="question-type-category">
             <h3 className="category-title">{t('dailyChallenge.aiFeatures', { defaultValue: 'AI Features' })}</h3>
             <div className="category-grid">
+              {/* AI Generate from Settings */}
               <div
                 className={`question-type-card ${theme}-question-type-card question-type-card-featured`}
-                onClick={() => handleQuestionTypeClick(questionTypes[0])}
+                onClick={handleGvAiGenerateFromSettings}
               >
                 <div className="question-type-icon-wrapper featured-icon">
                   <img 
@@ -4880,9 +4972,115 @@ const DailyChallengeContent = () => {
                     style={{ width: '44px', height: '44px', filter: theme === 'sun' ? 'none' : 'brightness(0.9)' }} 
                   />
                 </div>
-                <div className="question-type-name">{t('dailyChallenge.aiGenerateQuestions', { defaultValue: 'AI Generate Questions' })}</div>
+                <div className="question-type-name">
+                  {t('dailyChallenge.aiGenerateFromSettings') || 'AI Generate Question from Settings'}
+                </div>
                 <div className="question-type-description">
-                  {t('dailyChallenge.aiGenerateQuestionsDesc', { defaultValue: 'Generate questions automatically with AI assistance' })}
+                  {t('dailyChallenge.aiGenerateFromSettingsDesc') || 'Generate questions automatically using challenge settings'}
+                </div>
+                <div className="featured-badge">✨ {t('dailyChallenge.aiPowered', { defaultValue: 'AI Powered' })}</div>
+              </div>
+
+              {/* AI Generate from File */}
+              <div
+                className={`question-type-card ${theme}-question-type-card question-type-card-featured`}
+                onClick={handleGvAiGenerateFromFile}
+              >
+                <div className="question-type-icon-wrapper featured-icon">
+                  <UploadOutlined style={{ fontSize: '32px' }} />
+                </div>
+                <div className="question-type-name">
+                  {t('dailyChallenge.aiGenerateFromFile') || 'AI Generate Question from File'}
+                </div>
+                <div className="question-type-description">
+                  {t('dailyChallenge.aiGenerateFromFileDesc') || 'Upload a file and let AI generate questions from it'}
+                </div>
+                <div className="featured-badge">✨ {t('dailyChallenge.aiPowered', { defaultValue: 'AI Powered' })}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </Modal>
+
+      {/* RE/LI Add Question Modal */}
+      <Modal
+        title={
+          <div style={{ 
+            fontSize: '22px', 
+            fontWeight: 700, 
+            color: theme === 'sun' ? '#1890ff' : '#8B5CF6',
+            display: 'block', 
+            textAlign: 'center',
+            marginBottom: '4px'
+          }}>
+            {t('dailyChallenge.addQuestion') || 'Add Question'}
+          </div>
+        }
+        open={reLiAddQuestionModalVisible}
+        onCancel={handleReLiAddQuestionModalCancel}
+        footer={null}
+        width={720}
+        className={`gvc-question-type-modal ${theme}-question-type-modal`}
+      >
+        <div className="question-type-modal-container">
+          {/* Manual Option */}
+          <div className="question-type-category">
+            <div className="category-grid">
+              <div
+                className={`question-type-card ${theme}-question-type-card`}
+                onClick={handleReLiAddQuestionManual}
+              >
+                <div className="question-type-icon-wrapper">
+                  <FileTextOutlined style={{ fontSize: '32px' }} />
+                </div>
+                <div className="question-type-name">
+                  {t('dailyChallenge.addQuestionManual') || 'Add Question Manual'}
+                </div>
+                <div className="question-type-description">
+                  {t('dailyChallenge.addQuestionManualDesc') || 'Create questions manually with full control over content and format'}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* AI Features */}
+          <div className="question-type-category">
+            <h3 className="category-title">{t('dailyChallenge.aiFeatures', { defaultValue: 'AI Features' })}</h3>
+            <div className="category-grid">
+              {/* AI Generate from Settings */}
+              <div
+                className={`question-type-card ${theme}-question-type-card question-type-card-featured`}
+                onClick={handleReLiAiGenerateFromSettings}
+              >
+                <div className="question-type-icon-wrapper featured-icon">
+                  <img 
+                    src="/img/ai-icon.png" 
+                    alt="AI" 
+                    style={{ width: '44px', height: '44px', filter: theme === 'sun' ? 'none' : 'brightness(0.9)' }} 
+                  />
+                </div>
+                <div className="question-type-name">
+                  {t('dailyChallenge.aiGenerateFromSettings') || 'AI Generate Question from Settings'}
+                </div>
+                <div className="question-type-description">
+                  {t('dailyChallenge.aiGenerateFromSettingsDesc') || 'Generate questions automatically using challenge settings'}
+                </div>
+                <div className="featured-badge">✨ {t('dailyChallenge.aiPowered', { defaultValue: 'AI Powered' })}</div>
+              </div>
+
+              {/* AI Generate from File */}
+              <div
+                className={`question-type-card ${theme}-question-type-card question-type-card-featured`}
+                onClick={handleReLiAiGenerateFromFile}
+              >
+                <div className="question-type-icon-wrapper featured-icon">
+                  <UploadOutlined style={{ fontSize: '32px' }} />
+                </div>
+                <div className="question-type-name">
+                  {t('dailyChallenge.aiGenerateFromFile') || 'AI Generate Question from File'}
+                </div>
+                <div className="question-type-description">
+                  {t('dailyChallenge.aiGenerateFromFileDesc') || 'Upload a file and let AI generate questions from it'}
                 </div>
                 <div className="featured-badge">✨ {t('dailyChallenge.aiPowered', { defaultValue: 'AI Powered' })}</div>
               </div>

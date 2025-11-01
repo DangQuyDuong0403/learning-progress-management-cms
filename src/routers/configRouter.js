@@ -32,6 +32,7 @@ import StudentLearningProgressOverview from '../pages/management/ManagementManag
 import TeacherList from '../pages/management/ManagementManager/teacher/TeacherList.jsx';
 import TeacherProfile from '../pages/management/ManagementManager/teacher/TeacherProfile.jsx';
 import SpinnerDemo from '../pages/SpinnerDemo.jsx';
+import TestDemo from '../pages/test/TestDemo.jsx';
 //manager
 import ClassList from '../pages/management/ManagementClass/Class/ClassList.jsx';
 import ClassListTable from '../pages/management/ManagementClass/Class/ClassListTable.jsx';
@@ -813,6 +814,16 @@ const CONFIG_ROUTER = [
 		menuName: 'Spinner Demo',
 		exact: true,
 		key: 'SPINNER_DEMO',
+		private: false, // Có thể truy cập mà không cần đăng nhập
+	},
+	{
+		show: false,
+		component: TestDemo,
+		// icon: <TestOutlined />,
+		path: ROUTER_PAGE.TEST_DEMO,
+		menuName: 'Test Security Demo',
+		exact: true,
+		key: 'TEST_DEMO',
 		private: false, // Có thể truy cập mà không cần đăng nhập
 	},
 	
