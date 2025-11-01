@@ -1010,7 +1010,7 @@ const ClassListTable = () => {
 							onClick={() => handleViewDetail(record)}
 						/>
 					</Tooltip>
-					{record.status !== 'FINISHED' && (
+					{(record.status === 'UPCOMING_END' || record.status === 'PENDING') && (
 						<Tooltip title={t('classManagement.changeStatus')}>
 							<Button
 								type="text"
