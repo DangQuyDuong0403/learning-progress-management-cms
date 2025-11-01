@@ -70,6 +70,8 @@ import ManagerDashboard from '../pages/management/ManagementManager/ManagerDashb
 import StudentDashboard from '../pages/management/ManagementStudent/StudentDashboard';
 import StudentClassList from '../pages/management/ManagementStudent/StudentClassList.jsx';
 import StudentDailyChallengeList from '../pages/management/ManagementStudent/StudentDailyChallengeList.jsx';
+import StudentDailyChallengeTake from '../pages/management/ManagementStudent/StudentDailyChallengeTake.jsx';
+import StudentDailyChallengeResult from '../pages/management/ManagementStudent/StudentDailyChallengeResult.jsx';
   
 const CONFIG_ROUTER = [
 	//   {
@@ -296,6 +298,26 @@ const CONFIG_ROUTER = [
 		menuName: 'Class Daily Challenges',
 		exact: true,
 		key: 'STUDENT_CLASS_DAILY_CHALLENGES',
+		private: true,
+		role: ['student', 'test_taker'],
+	},
+	{
+		show: false,
+		component: StudentDailyChallengeTake,
+		path: ROUTER_PAGE.STUDENT_DAILY_CHALLENGE_TAKE,
+		menuName: 'Take Daily Challenge',
+		exact: true,
+		key: 'STUDENT_DAILY_CHALLENGE_TAKE',
+		private: true,
+		role: ['student', 'test_taker'],
+	},
+	{
+		show: false,
+		component: StudentDailyChallengeResult,
+		path: ROUTER_PAGE.STUDENT_DAILY_CHALLENGE_RESULT,
+		menuName: 'View Daily Challenge Result',
+		exact: true,
+		key: 'STUDENT_DAILY_CHALLENGE_RESULT',
 		private: true,
 		role: ['student', 'test_taker'],
 	},
