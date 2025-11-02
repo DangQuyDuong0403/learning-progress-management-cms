@@ -4,7 +4,7 @@
   padding: 0;
   width: 100%;
   box-sizing: border-box;
-  background: rgba(45, 27, 105, 0.75);
+  background: transparent;
   backdrop-filter: none;
   position: relative;
   z-index: 2;
@@ -13,7 +13,7 @@
 }
 
 .sun-sdc-wrapper {
-  background: #E6F5FF !important;
+  background: transparent !important;
   backdrop-filter: blur(1px);
 }
 
