@@ -605,26 +605,26 @@ const StudentDailyChallengeList = () => {
                   padding: '0 16px',
                   fontSize: '14px',
                   background: theme === 'sun' 
-                    ? 'rgb(255, 165, 0)' 
-                    : 'linear-gradient(135deg, #FF8C42 19%, #FF7F50 64%, #FF6B35 75%, #FF8C69 97%, #FF6347 100%)',
+                    ? 'rgb(243, 188, 88)' 
+                    : 'linear-gradient(135deg, #F3BC58 19%, #E8B04D 64%, #DD9F42 75%, #F3BC58 97%, #D89637 100%)',
                   borderColor: theme === 'sun' 
-                    ? 'rgb(255, 165, 0)' 
-                    : '#FF6347',
+                    ? 'rgb(243, 188, 88)' 
+                    : '#D89637',
                   color: '#000',
                   border: 'none',
                 }}
                 onMouseEnter={(e) => {
                   if (theme === 'sun') {
-                    e.currentTarget.style.background = 'rgb(255, 140, 0)';
+                    e.currentTarget.style.background = 'rgb(230, 175, 75)';
                   } else {
-                    e.currentTarget.style.background = 'linear-gradient(135deg, #FF7A32 19%, #FF6F40 64%, #FF5B25 75%, #FF7C59 97%, #FF5343 100%)';
+                    e.currentTarget.style.background = 'linear-gradient(135deg, #E8B04D 19%, #DD9F42 64%, #D28F37 75%, #E8B04D 97%, #C8862D 100%)';
                   }
                 }}
                 onMouseLeave={(e) => {
                   if (theme === 'sun') {
-                    e.currentTarget.style.background = 'rgb(255, 165, 0)';
+                    e.currentTarget.style.background = 'rgb(243, 188, 88)';
                   } else {
-                    e.currentTarget.style.background = 'linear-gradient(135deg, #FF8C42 19%, #FF7F50 64%, #FF6B35 75%, #FF8C69 97%, #FF6347 100%)';
+                    e.currentTarget.style.background = 'linear-gradient(135deg, #F3BC58 19%, #E8B04D 64%, #DD9F42 75%, #F3BC58 97%, #D89637 100%)';
                   }
                 }}
               >

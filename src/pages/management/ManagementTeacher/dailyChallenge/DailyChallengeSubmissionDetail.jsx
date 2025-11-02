@@ -3,11 +3,13 @@ import {
   Button,
   Space,
   Typography,
-  Avatar,
-  Tag,
-  Progress,
   Modal,
   Input,
+  Row,
+  Col,
+  Card,
+  Tooltip,
+  Divider,
 } from "antd";
 import {
   ClockCircleOutlined,
@@ -15,8 +17,14 @@ import {
   CheckCircleOutlined,
   CloseCircleOutlined,
   MinusCircleOutlined,
-  MessageOutlined,
   CommentOutlined,
+  MenuFoldOutlined,
+  MenuUnfoldOutlined,
+  SwapOutlined,
+  CopyOutlined,
+  FileTextOutlined,
+  EditOutlined,
+  PlayCircleOutlined,
 } from "@ant-design/icons";
 import ThemedLayout from "../../../../component/teacherlayout/ThemedLayout";
 import LoadingWithEffect from "../../../../component/spinner/LoadingWithEffect";
@@ -42,6 +50,7 @@ const DailyChallengeSubmissionDetail = () => {
   const [submissionData, setSubmissionData] = useState(null);
   const [filterStatus, setFilterStatus] = useState('all'); // all, correct, incorrect, unanswered
   const [challengeType, setChallengeType] = useState('GV'); // GV, RE, LI, WR, SP
+  const [isCollapsed, setIsCollapsed] = useState(false); // Sidebar collapse state
 
   // Generate fake data for all question types
   const [fakeData, setFakeData] = useState(null);
@@ -62,6 +71,17 @@ const DailyChallengeSubmissionDetail = () => {
   
   // Store feedbacks for questions and sections
   const [feedbacks, setFeedbacks] = useState({});
+  
+  // Anti-cheat data
+  const [antiCheatData, setAntiCheatData] = useState(null);
+  
+  // Score modal state
+  const [scoreModal, setScoreModal] = useState({
+    visible: false,
+    score: '',
+    comment: '',
+    isEdit: false,
+  });
   
   // Handlers for feedback modal
   const handleOpenAddFeedback = (id, type = 'question') => {
@@ -355,57 +375,100 @@ const DailyChallengeSubmissionDetail = () => {
     // Sort feedbacks by start position
     const sortedFeedbacks = [...sectionFeedbacks].sort((a, b) => a.startIndex - b.startIndex);
     
-    const parts = [];
-    let lastIndex = 0;
+    // Create array of all break points (start and end indices)
+    const breakPoints = new Set([0]); // Start from 0 to ensure we render text from beginning
+    sortedFeedbacks.forEach(feedback => {
+      breakPoints.add(feedback.startIndex);
+      breakPoints.add(feedback.endIndex);
+    });
+    breakPoints.add(text.length); // Add end of text
+    const sortedBreakPoints = Array.from(breakPoints).sort((a, b) => a - b);
     
-    sortedFeedbacks.forEach((feedback, idx) => {
-      // Add text before highlight
-      if (feedback.startIndex > lastIndex) {
+    const parts = [];
+    
+    // Process each segment between break points
+    for (let i = 0; i < sortedBreakPoints.length - 1; i++) {
+      const segmentStart = sortedBreakPoints[i];
+      const segmentEnd = sortedBreakPoints[i + 1];
+      
+      if (segmentStart >= text.length || segmentStart >= segmentEnd) continue;
+      
+      // Find all highlights that cover this segment
+      const activeHighlights = sortedFeedbacks.filter(fb => 
+        fb.startIndex < segmentEnd && fb.endIndex > segmentStart
+      );
+      
+      const segmentText = text.substring(segmentStart, segmentEnd);
+      
+      if (segmentText.length === 0) continue; // Skip empty segments
+      
+      if (activeHighlights.length === 0) {
+        // No highlights in this segment, render as plain text
         parts.push(
-          <span key={`text-${idx}`}>
-            {text.substring(lastIndex, feedback.startIndex)}
+          <span key={`text-${segmentStart}-${segmentEnd}`}>
+            {segmentText}
+          </span>
+        );
+      } else if (activeHighlights.length === 1) {
+        // Single highlight, render with highlight
+        const feedback = activeHighlights[0];
+        parts.push(
+          <span
+            key={`highlight-${feedback.id}-${segmentStart}-${segmentEnd}`}
+            onClick={() => handleHighlightClick(feedback)}
+            style={{
+              backgroundColor: '#FFEB3B',
+              cursor: 'pointer',
+              padding: '2px 4px',
+              borderRadius: '3px',
+              fontWeight: '500',
+              transition: 'all 0.2s ease',
+              display: 'inline',
+            }}
+            onMouseEnter={(e) => {
+              e.target.style.backgroundColor = '#FFD700';
+              e.target.style.transform = 'scale(1.02)';
+            }}
+            onMouseLeave={(e) => {
+              e.target.style.backgroundColor = '#FFEB3B';
+              e.target.style.transform = 'scale(1)';
+            }}
+          >
+            {segmentText}
+          </span>
+        );
+      } else {
+        // Multiple highlights overlap in this segment
+        // Render with the first highlight (or we could use a different strategy)
+        const feedback = activeHighlights[0];
+        parts.push(
+          <span
+            key={`highlight-overlap-${segmentStart}-${segmentEnd}`}
+            onClick={() => handleHighlightClick(feedback)}
+            style={{
+              backgroundColor: '#FFEB3B',
+              cursor: 'pointer',
+              padding: '2px 4px',
+              borderRadius: '3px',
+              fontWeight: '500',
+              transition: 'all 0.2s ease',
+              display: 'inline',
+              position: 'relative',
+            }}
+            onMouseEnter={(e) => {
+              e.target.style.backgroundColor = '#FFD700';
+              e.target.style.transform = 'scale(1.02)';
+            }}
+            onMouseLeave={(e) => {
+              e.target.style.backgroundColor = '#FFEB3B';
+              e.target.style.transform = 'scale(1)';
+            }}
+            title={`Multiple comments: ${activeHighlights.map(fb => fb.comment.substring(0, 30)).join(', ')}`}
+          >
+            {segmentText}
           </span>
         );
       }
-      
-      // Add highlighted text
-      const highlightedText = text.substring(feedback.startIndex, feedback.endIndex);
-      parts.push(
-        <span
-          key={`highlight-${idx}`}
-          onClick={() => handleHighlightClick(feedback)}
-          style={{
-            backgroundColor: '#FFEB3B',
-            cursor: 'pointer',
-            padding: '2px 4px',
-            borderRadius: '3px',
-            fontWeight: '500',
-            transition: 'all 0.2s ease',
-            display: 'inline',
-          }}
-          onMouseEnter={(e) => {
-            e.target.style.backgroundColor = '#FFD700';
-            e.target.style.transform = 'scale(1.02)';
-          }}
-          onMouseLeave={(e) => {
-            e.target.style.backgroundColor = '#FFEB3B';
-            e.target.style.transform = 'scale(1)';
-          }}
-        >
-          {highlightedText}
-        </span>
-      );
-      
-      lastIndex = feedback.endIndex;
-    });
-    
-    // Add remaining text after last highlight
-    if (lastIndex < text.length) {
-      parts.push(
-        <span key="text-final">
-          {text.substring(lastIndex)}
-        </span>
-      );
     }
     
     return parts;
@@ -682,7 +745,7 @@ const mockSubmissionDetail = {
         timeLimit: 60,
   },
   submission: {
-    score: 8.5,
+    score: 0,
         totalPoints: 85,
         maxPoints: 100,
         correctCount: 25,
@@ -696,6 +759,73 @@ const mockSubmissionDetail = {
     };
 
     setSubmissionData(mockSubmissionDetail);
+
+    // Mock anti-cheat data based on SubmissionLogEvent structure
+    const mockAntiCheatData = {
+      totalViolations: 4,
+      tabBlurCount: 2,
+      copyCount: 1,
+      pasteCount: 1,
+      totalTabBlurDuration: 120000, // milliseconds
+      events: [
+        {
+          event: 'START',
+          timestamp: '2024-01-15T10:20:00Z',
+          questionId: null,
+          oldValue: null,
+          newValue: null,
+          durationMs: null,
+          content: null,
+        },
+        {
+          event: 'TAB_BLUR',
+          timestamp: '2024-01-15T10:25:30Z',
+          durationMs: 45000,
+          questionId: null,
+          oldValue: null,
+          newValue: null,
+          content: null,
+        },
+        {
+          event: 'COPY',
+          timestamp: '2024-01-15T10:26:15Z',
+          content: 'Đã chặn Ctrl+C / Ctrl+Insert',
+          questionId: 1,
+          oldValue: null,
+          newValue: null,
+          durationMs: null,
+        },
+        {
+          event: 'TAB_BLUR',
+          timestamp: '2024-01-15T10:27:00Z',
+          durationMs: 75000,
+          questionId: null,
+          oldValue: null,
+          newValue: null,
+          content: null,
+        },
+        {
+          event: 'PASTE',
+          timestamp: '2024-01-15T10:28:20Z',
+          content: 'Đã chặn Ctrl+V / Shift+Insert',
+          questionId: 2,
+          oldValue: null,
+          newValue: null,
+          durationMs: null,
+        },
+        {
+          event: 'ANSWER_CHANGE',
+          timestamp: '2024-01-15T10:29:10Z',
+          questionId: 3,
+          oldValue: ['A'],
+          newValue: ['B'],
+          durationMs: null,
+          content: null,
+        },
+      ],
+    };
+
+    setAntiCheatData(mockAntiCheatData);
     setLoading(false);
   }, []);
 
@@ -736,6 +866,54 @@ const mockSubmissionDetail = {
 
   const { student, submission } = submissionData;
   const { questions, readingSections, listeningSections, writingSections, speakingSections } = fakeData;
+
+  // Handlers for score modal
+  const handleOpenAddScore = () => {
+    setScoreModal({
+      visible: true,
+      score: '',
+      comment: '',
+      isEdit: false,
+    });
+  };
+  
+  const handleOpenEditScore = () => {
+    setScoreModal({
+      visible: true,
+      score: submission?.score || '',
+      comment: '',
+      isEdit: true,
+    });
+  };
+  
+  const handleCloseScoreModal = () => {
+    setScoreModal({
+      visible: false,
+      score: '',
+      comment: '',
+      isEdit: false,
+    });
+  };
+  
+  const handleSaveScore = () => {
+    const scoreValue = parseFloat(scoreModal.score);
+    if (isNaN(scoreValue) || scoreValue < 0 || scoreValue > 10) {
+      spaceToast.error('Score must be between 0 and 10');
+      return;
+    }
+    
+    // Update submissionData with the new score
+    setSubmissionData(prev => ({
+      ...prev,
+      submission: {
+        ...prev.submission,
+        score: scoreValue,
+      }
+    }));
+    
+    spaceToast.success(scoreModal.isEdit ? 'Score updated successfully' : 'Score added successfully');
+    handleCloseScoreModal();
+  };
 
   // Helper function to render section questions (used in Reading/Listening sections)
   const renderSectionQuestion = (q, qIndex, sectionType = 'reading') => {
@@ -1786,32 +1964,6 @@ const mockSubmissionDetail = {
             }}>
               Question {questionNumber}
             </Typography.Text>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              {!getFeedback(q.id, 'question') ? (
-                <Button
-                  size="small"
-                  onClick={() => handleOpenAddFeedback(q.id, 'question')}
-                  style={{
-                    fontSize: '13px',
-                    height: '28px',
-                    padding: '0 12px'
-                  }}
-                >
-                  Add Feedback
-                </Button>
-              ) : (
-                <Button
-                  size="small"
-                  onClick={() => handleOpenEditFeedback(q.id, 'question')}
-                  style={{
-                    fontSize: '13px',
-                    height: '28px',
-                    padding: '0 12px'
-                  }}
-                >
-                  Edit Feedback
-                </Button>
-              )}
               <Typography.Text style={{ 
                 fontSize: '14px', 
                 color: theme === 'sun' ? 'rgba(0, 0, 0, 0.5)' : 'rgba(255, 255, 255, 0.5)',
@@ -1819,7 +1971,6 @@ const mockSubmissionDetail = {
               }}>
                 {q.type.replace('_', ' ')}
               </Typography.Text>
-            </div>
           </div>
           <div className="question-content" style={{ paddingLeft: '36px', marginTop: '16px' }}>
             <div 
@@ -2748,163 +2899,533 @@ const mockSubmissionDetail = {
 
   return (
     <ThemedLayout>
-      <div className={`sdc-wrapper ${theme}-sdc-wrapper`}>
-        {/* Student Info Card */}
-        <div className="sdc-student-info-section" style={{ padding: '24px' }}>
-          <div className={`sdc-student-info-card ${theme}-sdc-student-info-card`} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div style={{ display: 'flex', alignItems: 'center', flex: 1 }}>
-              <div className="sdc-student-avatar-section">
-                <Avatar
-                  size={80}
-                  src={student.avatar}
+      <div className={`sdc-wrapper ${theme}-sdc-wrapper`} style={{ padding: '24px' }}>
+        <Row gutter={24}>
+          {/* Left Section - Student Info & Performance */}
+          <Col 
+            xs={24} 
+            lg={isCollapsed ? 2 : 6}
+            style={{ 
+              transition: 'all 0.3s ease'
+            }}
+          >
+            <div className="settings-scroll-container" style={{ 
+              position: 'sticky', 
+              top: '0px', 
+              height: isCollapsed ? 'calc(100vh - 40px)' : 'auto',
+              maxHeight: 'calc(100vh - 40px)', 
+              overflowY: isCollapsed ? 'hidden' : 'auto', 
+              paddingBottom: isCollapsed ? '0px' : '80px', 
+              paddingLeft: isCollapsed ? '12px' : '24px', 
+              paddingRight: isCollapsed ? '0px' : '24px', 
+              transition: 'all 0.3s ease',
+              display: isCollapsed ? 'flex' : 'block',
+              alignItems: isCollapsed ? 'center' : 'flex-start',
+              justifyContent: isCollapsed ? 'flex-start' : 'flex-start'
+            }}>
+              {/* Collapsed State - Show only toggle button */}
+              {isCollapsed ? (
+                <Tooltip title={t('common.expand') || 'Expand'} placement="right">
+                  <div
+                    onClick={() => setIsCollapsed(false)}
+                    style={{
+                      width: '40px',
+                      height: '40px',
+                      borderRadius: '50%',
+                      display: 'flex',
+            alignItems: 'center',
+                      justifyContent: 'center',
+                      cursor: 'pointer',
+                      transition: 'all 0.3s ease',
+                      flexShrink: 0,
+                      background: theme === 'sun'
+                        ? 'linear-gradient(135deg, rgba(102, 174, 255, 0.2), rgba(60, 153, 255, 0.2))'
+                        : 'linear-gradient(135deg, rgba(181, 176, 192, 0.25), rgba(131, 119, 160, 0.25))',
+                      border: theme === 'sun'
+                        ? '2px solid rgba(102, 174, 255, 0.4)'
+                        : '2px solid rgba(181, 176, 192, 0.4)',
+                      boxShadow: theme === 'sun'
+                        ? '0 2px 8px rgba(60, 153, 255, 0.2)'
+                        : '0 2px 8px rgba(131, 119, 160, 0.25)',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.transform = 'scale(1.1)';
+                      e.currentTarget.style.background = theme === 'sun'
+                        ? 'linear-gradient(135deg, rgba(102, 174, 255, 0.35), rgba(60, 153, 255, 0.35))'
+                        : 'linear-gradient(135deg, rgba(181, 176, 192, 0.4), rgba(131, 119, 160, 0.4))';
+                      e.currentTarget.style.boxShadow = theme === 'sun'
+                        ? '0 4px 12px rgba(60, 153, 255, 0.35)'
+                        : '0 4px 12px rgba(131, 119, 160, 0.4)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = 'scale(1)';
+                      e.currentTarget.style.background = theme === 'sun'
+                        ? 'linear-gradient(135deg, rgba(102, 174, 255, 0.2), rgba(60, 153, 255, 0.2))'
+                        : 'linear-gradient(135deg, rgba(181, 176, 192, 0.25), rgba(131, 119, 160, 0.25))';
+                      e.currentTarget.style.boxShadow = theme === 'sun'
+                        ? '0 2px 8px rgba(60, 153, 255, 0.2)'
+                        : '0 2px 8px rgba(131, 119, 160, 0.25)';
+                    }}
+                  >
+                    <MenuUnfoldOutlined
+                      style={{
+                        fontSize: '20px',
+                        color: theme === 'sun' ? '#1890ff' : '#8377A0',
+                      }}
+                    />
+                  </div>
+                </Tooltip>
+              ) : (
+                /* Expanded State - Show full student info */
+                <Card
+                  className={`settings-container-card ${theme}-settings-container-card`}
                   style={{
-                    backgroundColor: theme === 'sun' ? '#1890ff' : '#722ed1',
-                    fontSize: '32px',
-                    fontWeight: 'bold',
+                    borderRadius: '16px',
+                    border: theme === 'sun' 
+                      ? '2px solid rgba(113, 179, 253, 0.25)' 
+                      : '2px solid rgba(138, 122, 255, 0.2)',
+                    boxShadow: theme === 'sun' 
+                      ? '0 4px 16px rgba(113, 179, 253, 0.1)' 
+                      : '0 4px 16px rgba(138, 122, 255, 0.12)',
+                    background: theme === 'sun'
+                      ? 'linear-gradient(135deg, rgba(255, 255, 255, 1) 0%, rgba(240, 249, 255, 0.95) 100%)'
+                      : 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(244, 240, 255, 0.95) 100%)',
+                    backdropFilter: 'blur(10px)'
                   }}
                 >
-                  {student.name.charAt(0)}
-                </Avatar>
-              </div>
-              <div className="sdc-student-details">
-                <Typography.Title level={3} style={{ margin: 0, marginBottom: '4px' }}>
-                  {student.name}
-                </Typography.Title>
-                <Typography.Text type="secondary" style={{ fontSize: '16px', display: 'block', marginBottom: '8px' }}>
-                  {student.id} • {student.email}
-                </Typography.Text>
-                <Space size="middle">
-                  <Tag color="blue" style={{ fontSize: '14px', padding: '4px 12px' }}>
-                    {student.class}
-                  </Tag>
-                  <Tag color="green" style={{ fontSize: '14px', padding: '4px 12px' }}>
-                    {student.level}
-                  </Tag>
-                </Space>
-              </div>
+                  {/* Header with Collapse Icon */}
+                  <div style={{ 
+                    display: 'flex', 
+                    justifyContent: 'flex-end',
+                    alignItems: 'center',
+                    marginBottom: '20px',
+                    paddingBottom: '16px',
+                    borderBottom: theme === 'sun' 
+                      ? '2px solid rgba(113, 179, 253, 0.15)' 
+                      : '2px solid rgba(138, 122, 255, 0.15)'
+                  }}>
+                    <Tooltip title={t('common.collapse') || 'Collapse'} placement="left">
+                      <div
+                        onClick={() => setIsCollapsed(true)}
+                        style={{
+                          width: '40px',
+                          height: '40px',
+                          borderRadius: '50%',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          cursor: 'pointer',
+                          transition: 'all 0.3s ease',
+                          background: theme === 'sun'
+                            ? 'linear-gradient(135deg, rgba(102, 174, 255, 0.15), rgba(60, 153, 255, 0.15))'
+                            : 'linear-gradient(135deg, rgba(181, 176, 192, 0.2), rgba(131, 119, 160, 0.2))',
+                          border: theme === 'sun'
+                            ? '2px solid rgba(102, 174, 255, 0.3)'
+                            : '2px solid rgba(181, 176, 192, 0.3)',
+                          boxShadow: theme === 'sun'
+                            ? '0 2px 8px rgba(60, 153, 255, 0.15)'
+                            : '0 2px 8px rgba(131, 119, 160, 0.2)',
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.transform = 'scale(1.1)';
+                          e.currentTarget.style.background = theme === 'sun'
+                            ? 'linear-gradient(135deg, rgba(102, 174, 255, 0.25), rgba(60, 153, 255, 0.25))'
+                            : 'linear-gradient(135deg, rgba(181, 176, 192, 0.3), rgba(131, 119, 160, 0.3))';
+                          e.currentTarget.style.boxShadow = theme === 'sun'
+                            ? '0 4px 12px rgba(60, 153, 255, 0.3)'
+                            : '0 4px 12px rgba(131, 119, 160, 0.35)';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.transform = 'scale(1)';
+                          e.currentTarget.style.background = theme === 'sun'
+                            ? 'linear-gradient(135deg, rgba(102, 174, 255, 0.15), rgba(60, 153, 255, 0.15))'
+                            : 'linear-gradient(135deg, rgba(181, 176, 192, 0.2), rgba(131, 119, 160, 0.2))';
+                          e.currentTarget.style.boxShadow = theme === 'sun'
+                            ? '0 2px 8px rgba(60, 153, 255, 0.15)'
+                            : '0 2px 8px rgba(131, 119, 160, 0.2)';
+                        }}
+                      >
+                        <MenuFoldOutlined
+                          style={{
+                            fontSize: '18px',
+                            color: theme === 'sun' ? '#1890ff' : '#8377A0',
+                          }}
+                        />
             </div>
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <Button
-                className={`tab-button ${theme}-tab-button`}
-                onClick={() => {
-                  spaceToast.info('Add score feature coming soon');
-                }}
-              >
-                Add Score
-              </Button>
-              <Button
-                className={`tab-button ${theme}-tab-button`}
-                onClick={() => {
-                  spaceToast.info('Edit score feature coming soon');
-                }}
-              >
-                Edit Score
-              </Button>
+                    </Tooltip>
             </div>
-          </div>
+
+                  {/* Performance Summary - Moved to top */}
+                  <div style={{ marginBottom: '16px' }}>
+                    <Typography.Title level={5} style={{ marginTop: 0, marginBottom: '12px', fontSize: '18px', fontWeight: 600, textAlign: 'center', color: 'rgb(24, 144, 255)' }}>
+                      Performance
+                    </Typography.Title>
+                    
+                    {/* Score Card */}
+                    <div style={{ marginBottom: '12px', padding: '12px', background: theme === 'sun' ? 'rgba(24, 144, 255, 0.1)' : 'rgba(24, 144, 255, 0.15)', borderRadius: '8px', border: '2px solid rgba(24, 144, 255, 0.3)' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
+                        <TrophyOutlined style={{ fontSize: '20px', color: '#1890ff' }} />
+                        <Typography.Text style={{ fontSize: '13px', fontWeight: 600 }}>Score</Typography.Text>
+                      </div>
+                      <Typography.Text strong style={{ fontSize: '20px', color: '#1890ff' }}>
+                        {submission.score > 0 ? `${submission.score}/10` : ' - '}
+              </Typography.Text>
+            </div>
+
+                    {/* Add/Edit Score Button */}
+                    <div style={{ marginBottom: '12px' }}>
+              {!submission.score || submission.score === 0 ? (
+                <Button
+                  className={`tab-button ${theme}-tab-button`}
+                  onClick={handleOpenAddScore}
+                  size="small"
+                  style={{ width: '100%' }}
+                >
+                  Add Score
+                </Button>
+              ) : (
+                <Button
+                  className={`tab-button ${theme}-tab-button`}
+                  onClick={handleOpenEditScore}
+                  size="small"
+                  style={{ width: '100%' }}
+                >
+                  Edit Score
+                </Button>
+              )}
         </div>
 
-        {/* Performance Summary Cards */}
-        <div className="sdc-performance-cards-section" style={{ padding: '0 24px 24px 24px' }}>
-          <div className="sdc-performance-cards-grid">
-            <div className={`sdc-performance-card ${theme}-sdc-performance-card`}>
-              <div className="sdc-card-icon" style={{ color: '#1890ff' }}>
-                <TrophyOutlined style={{ fontSize: '32px' }} />
+                    {/* Time Spent Card */}
+                    <div style={{ marginBottom: '12px', padding: '12px', background: theme === 'sun' ? 'rgba(250, 173, 20, 0.1)' : 'rgba(250, 173, 20, 0.15)', borderRadius: '8px', border: '2px solid rgba(250, 173, 20, 0.3)' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
+                        <ClockCircleOutlined style={{ fontSize: '20px', color: '#faad14' }} />
+                        <Typography.Text style={{ fontSize: '13px', fontWeight: 600 }}>Time Spent</Typography.Text>
               </div>
-              <div className="sdc-card-content">
-                <Typography.Title level={2} style={{ margin: 0, color: '#1890ff' }}>
-                  {submission.score}/10
-                </Typography.Title>
-                <Typography.Text type="secondary">Score</Typography.Text>
-              </div>
+                      <Typography.Text strong style={{ fontSize: '20px', color: '#faad14' }}>
+                        {submission.timeSpent} Minutes
+                      </Typography.Text>
             </div>
 
-            <div className={`sdc-performance-card ${theme}-sdc-performance-card`}>
-              <div className="sdc-card-icon" style={{ color: '#52c41a' }}>
-                <CheckCircleOutlined style={{ fontSize: '32px' }} />
-              </div>
-              <div className="sdc-card-content">
-                <Typography.Title level={2} style={{ margin: 0, color: '#52c41a' }}>
-                  {submission.totalPoints}/{submission.maxPoints}
-                </Typography.Title>
-                <Typography.Text type="secondary">Points</Typography.Text>
-              </div>
-            </div>
-
-            <div className={`sdc-performance-card ${theme}-sdc-performance-card`}>
-              <div className="sdc-card-icon" style={{ color: '#faad14' }}>
-                <ClockCircleOutlined style={{ fontSize: '32px' }} />
-              </div>
-              <div className="sdc-card-content">
-                <Typography.Title level={2} style={{ margin: 0, color: '#faad14' }}>
-                  {submission.timeSpent}
-                </Typography.Title>
-                <Typography.Text type="secondary">Minutes</Typography.Text>
-              </div>
-            </div>
-
-            <div className={`sdc-performance-card ${theme}-sdc-performance-card`}>
-              <div className="sdc-card-content" style={{ width: '100%' }}>
-                <Typography.Title level={2} style={{ margin: 0, marginBottom: '8px' }}>
-                  {submission.accuracy}%
-                </Typography.Title>
-                <Progress
-                  percent={submission.accuracy}
-                  strokeColor={{
-                    '0%': '#52c41a',
-                    '100%': '#1890ff',
-                  }}
-                  showInfo={false}
-                />
-                <Typography.Text type="secondary">Accuracy</Typography.Text>
-              </div>
-            </div>
-
-            <div className={`sdc-performance-card ${theme}-sdc-performance-card sdc-summary-card`}>
-              <div className="sdc-card-content" style={{ width: '100%' }}>
-                <Space direction="vertical" size="small" style={{ width: '100%' }}>
+                    {/* Answer Summary */}
+                    <div style={{ padding: '12px', background: theme === 'sun' ? '#f9f9f9' : 'rgba(255, 255, 255, 0.05)', borderRadius: '8px', border: `1px solid ${theme === 'sun' ? '#e8e8e8' : 'rgba(255, 255, 255, 0.1)'}` }}>
+                <Space direction="vertical" size={8} style={{ width: '100%' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <Space>
-                      <CheckCircleOutlined style={{ color: '#52c41a', fontSize: '18px' }} />
-                      <Typography.Text>Correct</Typography.Text>
+                    <Space size={8}>
+                            <CheckCircleOutlined style={{ color: '#52c41a', fontSize: '16px' }} />
+                            <Typography.Text style={{ fontSize: '13px' }}>Correct</Typography.Text>
                     </Space>
-                    <Typography.Text strong style={{ fontSize: '18px', color: '#52c41a' }}>
+                          <Typography.Text strong style={{ fontSize: '16px', color: '#52c41a' }}>
                       {submission.correctCount}
                     </Typography.Text>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <Space>
-                      <CloseCircleOutlined style={{ color: '#ff4d4f', fontSize: '18px' }} />
-                      <Typography.Text>Incorrect</Typography.Text>
+                    <Space size={8}>
+                            <CloseCircleOutlined style={{ color: '#ff4d4f', fontSize: '16px' }} />
+                            <Typography.Text style={{ fontSize: '13px' }}>Incorrect</Typography.Text>
                     </Space>
-                    <Typography.Text strong style={{ fontSize: '18px', color: '#ff4d4f' }}>
+                          <Typography.Text strong style={{ fontSize: '16px', color: '#ff4d4f' }}>
                       {submission.incorrectCount}
                     </Typography.Text>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <Space>
-                      <MinusCircleOutlined style={{ color: '#8c8c8c', fontSize: '18px' }} />
-                      <Typography.Text>Unanswered</Typography.Text>
+                    <Space size={8}>
+                            <MinusCircleOutlined style={{ color: '#faad14', fontSize: '16px' }} />
+                            <Typography.Text style={{ fontSize: '13px' }}>Unanswered</Typography.Text>
                     </Space>
-                    <Typography.Text strong style={{ fontSize: '18px', color: '#8c8c8c' }}>
+                          <Typography.Text strong style={{ fontSize: '16px', color: '#faad14' }}>
                       {submission.unansweredCount}
                     </Typography.Text>
                   </div>
                 </Space>
               </div>
             </div>
+
+                  <Divider style={{ margin: '16px 0' }} />
+
+                  {/* Student Info */}
+                  <div style={{ marginBottom: '16px' }}>
+                    <Typography.Title level={5} style={{ marginTop: 0, marginBottom: '12px', fontSize: '18px', fontWeight: 600, textAlign: 'center', color: 'rgb(24, 144, 255)' }}>
+                      Student Information
+                    </Typography.Title>
+                    <div style={{ marginBottom: '12px', paddingBottom: '12px', borderBottom: '1px solid #f0f0f0' }}>
+                      <Typography.Text style={{ fontSize: '12px', color: '#666', display: 'block', marginBottom: '4px' }}>
+                        Student Name
+                      </Typography.Text>
+                      <Typography.Text strong style={{ fontSize: '14px' }}>
+                        {student.name}
+                      </Typography.Text>
+                    </div>
+                    <div style={{ marginBottom: '12px', paddingBottom: '12px', borderBottom: '1px solid #f0f0f0' }}>
+                      <Typography.Text style={{ fontSize: '12px', color: '#666', display: 'block', marginBottom: '4px' }}>
+                        Student ID
+                      </Typography.Text>
+                      <Typography.Text strong style={{ fontSize: '14px' }}>
+                        {student.id}
+                      </Typography.Text>
+                    </div>
+                    <div style={{ marginBottom: '12px', paddingBottom: '12px', borderBottom: '1px solid #f0f0f0' }}>
+                      <Typography.Text style={{ fontSize: '12px', color: '#666', display: 'block', marginBottom: '4px' }}>
+                        Level
+                      </Typography.Text>
+                      <Typography.Text strong style={{ fontSize: '14px' }}>
+                        {student.level}
+                      </Typography.Text>
           </div>
         </div>
 
-        {/* Questions Review - New structure using fakeData */}
-        <div className="sdc-questions-review-section" style={{ padding: '0 24px 24px 24px' }}>
+                  <Divider style={{ margin: '16px 0' }} />
+
+                  {/* Anti-Cheat Summary */}
+                  {antiCheatData && (
+                    <div style={{ marginBottom: '16px' }}>
+                      <Typography.Title level={5} style={{ marginTop: 0, marginBottom: '12px', fontSize: '18px', fontWeight: 600, textAlign: 'center', color: 'rgb(24, 144, 255)' }}>
+                        Anti-Cheat Monitoring
+                      </Typography.Title>
+                      
+                      {/* Violation Cards */}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '12px' }}>
+                        {/* Tab Blur Card */}
+                        <div style={{ padding: '10px 12px', background: theme === 'sun' ? 'rgba(255, 152, 0, 0.1)' : 'rgba(255, 152, 0, 0.15)', borderRadius: '8px', border: '2px solid rgba(255, 152, 0, 0.3)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <Typography.Text style={{ fontSize: '12px', fontWeight: 600, color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' }}>
+                            CHUYỂN TAB
+                          </Typography.Text>
+                          <Typography.Text strong style={{ fontSize: '18px', color: '#ff9800' }}>
+                            {antiCheatData.tabBlurCount}
+                          </Typography.Text>
+                        </div>
+
+                        {/* Copy Card */}
+                        <div style={{ padding: '10px 12px', background: theme === 'sun' ? 'rgba(244, 67, 54, 0.1)' : 'rgba(244, 67, 54, 0.15)', borderRadius: '8px', border: '2px solid rgba(244, 67, 54, 0.3)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <Typography.Text style={{ fontSize: '12px', fontWeight: 600, color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' }}>
+                            COPY
+                          </Typography.Text>
+                          <Typography.Text strong style={{ fontSize: '18px', color: '#f44336' }}>
+                            {antiCheatData.copyCount}
+                          </Typography.Text>
+                        </div>
+
+                        {/* Paste Card */}
+                        <div style={{ padding: '10px 12px', background: theme === 'sun' ? 'rgba(156, 39, 176, 0.1)' : 'rgba(156, 39, 176, 0.15)', borderRadius: '8px', border: '2px solid rgba(156, 39, 176, 0.3)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <Typography.Text style={{ fontSize: '12px', fontWeight: 600, color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' }}>
+                            PASTE
+                          </Typography.Text>
+                          <Typography.Text strong style={{ fontSize: '18px', color: '#9c27b0' }}>
+                            {antiCheatData.pasteCount}
+                          </Typography.Text>
+                        </div>
+                      </div>
+
+                      {/* Total Violations Card */}
+                      <div style={{ padding: '14px', background: theme === 'sun' ? 'linear-gradient(135deg, rgba(63, 81, 181, 0.15) 0%, rgba(103, 58, 183, 0.15) 100%)' : 'linear-gradient(135deg, rgba(63, 81, 181, 0.2) 0%, rgba(103, 58, 183, 0.2) 100%)', borderRadius: '8px', border: '2px solid rgba(103, 58, 183, 0.4)', marginBottom: '12px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <Typography.Text strong style={{ fontSize: '14px', fontWeight: 600, color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' }}>
+                            TỔNG VI PHẠM
+                          </Typography.Text>
+                          <Typography.Text strong style={{ fontSize: '24px', color: theme === 'sun' ? '#3f51b5' : '#673ab7', fontWeight: 700 }}>
+                            {antiCheatData.totalViolations}
+                          </Typography.Text>
+                        </div>
+                      </div>
+
+                      {/* Total Tab Blur Duration */}
+                      {antiCheatData.totalTabBlurDuration > 0 && (
+                        <div style={{ padding: '10px 12px', background: theme === 'sun' ? '#f9f9f9' : 'rgba(255, 255, 255, 0.05)', borderRadius: '8px', border: `1px solid ${theme === 'sun' ? '#e8e8e8' : 'rgba(255, 255, 255, 0.1)'}`, marginBottom: '12px' }}>
+                          <Typography.Text style={{ fontSize: '12px', color: theme === 'sun' ? '#666' : '#999', display: 'block', marginBottom: '4px' }}>
+                            Tổng thời gian rời khỏi tab
+                          </Typography.Text>
+                          <Typography.Text strong style={{ fontSize: '14px', color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' }}>
+                            {Math.floor(antiCheatData.totalTabBlurDuration / 1000)} giây
+                            {antiCheatData.totalTabBlurDuration >= 60000 && ` (${Math.floor(antiCheatData.totalTabBlurDuration / 60000)} phút)`}
+                          </Typography.Text>
+                        </div>
+                      )}
+
+                      {/* Activity Log */}
+                      {antiCheatData.events && antiCheatData.events.length > 0 && (
+                        <div style={{ marginTop: '12px' }}>
+                          <Typography.Title level={5} style={{ marginTop: 0, marginBottom: '10px', fontSize: '14px', fontWeight: 600, textAlign: 'center', color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' }}>
+                            NHẬT KÝ HOẠT ĐỘNG
+                          </Typography.Title>
+                          <div style={{ 
+                            maxHeight: '300px', 
+                            overflowY: 'auto', 
+                            padding: '8px',
+                            background: theme === 'sun' ? '#f9f9f9' : 'rgba(255, 255, 255, 0.03)',
+                            borderRadius: '8px',
+                            border: `1px solid ${theme === 'sun' ? '#e8e8e8' : 'rgba(255, 255, 255, 0.1)'}`
+                          }}>
+                            {antiCheatData.events.map((eventItem, index) => {
+                              // Get event icon and description
+                              let icon, description, color;
+                              switch (eventItem.event) {
+                                case 'START':
+                                  icon = <PlayCircleOutlined />;
+                                  description = 'Bắt đầu làm bài';
+                                  color = '#52c41a';
+                                  break;
+                                case 'TAB_BLUR':
+                                  icon = <SwapOutlined />;
+                                  description = eventItem.durationMs 
+                                    ? `Nội dung bị ẩn để quay lại (${Math.floor(eventItem.durationMs / 1000)}s)`
+                                    : 'Nội dung bị ẩn để quay lại';
+                                  color = '#ff9800';
+                                  break;
+                                case 'COPY':
+                                  icon = <CopyOutlined />;
+                                  description = eventItem.content || 'Đã chặn Ctrl+C / Ctrl+Insert';
+                                  color = '#f44336';
+                                  break;
+                                case 'PASTE':
+                                  icon = <FileTextOutlined />;
+                                  description = eventItem.content || 'Đã chặn Ctrl+V / Shift+Insert';
+                                  color = '#9c27b0';
+                                  break;
+                                case 'ANSWER_CHANGE':
+                                  icon = <EditOutlined />;
+                                  description = `Thay đổi câu trả lời: ${eventItem.oldValue?.join(', ') || 'N/A'} → ${eventItem.newValue?.join(', ') || 'N/A'}`;
+                                  color = '#1890ff';
+                                  break;
+                                default:
+                                  icon = <ClockCircleOutlined />;
+                                  description = eventItem.event;
+                                  color = '#666';
+                              }
+
+                              // Format timestamp
+                              const formatTimestamp = (timestamp) => {
+                                if (!timestamp) return '';
+                                try {
+                                  const date = new Date(timestamp);
+                                  const hours = date.getHours().toString().padStart(2, '0');
+                                  const minutes = date.getMinutes().toString().padStart(2, '0');
+                                  const seconds = date.getSeconds().toString().padStart(2, '0');
+                                  const day = date.getDate();
+                                  const month = date.getMonth() + 1;
+                                  const year = date.getFullYear();
+                                  return `${hours}:${minutes}:${seconds} ${day}/${month}/${year}`;
+                                } catch {
+                                  return timestamp;
+                                }
+                              };
+
+                              return (
+                                <div 
+                                  key={index}
+                                  style={{ 
+                                    display: 'flex',
+                                    gap: '8px',
+                                    padding: '8px 10px',
+                                    marginBottom: '8px',
+                                    background: theme === 'sun' ? '#ffffff' : 'rgba(255, 255, 255, 0.05)',
+                                    borderRadius: '6px',
+                                    border: `1px solid ${theme === 'sun' ? '#e8e8e8' : 'rgba(255, 255, 255, 0.1)'}`,
+                                    fontSize: '12px'
+                                  }}
+                                >
+                                  <div style={{ 
+                                    color, 
+                                    fontSize: '14px', 
+                                    display: 'flex', 
+                                    alignItems: 'center',
+                                    flexShrink: 0
+                                  }}>
+                                    {icon}
+                                  </div>
+                                  <div style={{ flex: 1, minWidth: 0 }}>
+                                    <div style={{ 
+                                      fontWeight: 600,
+                                      color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)',
+                                      marginBottom: '2px',
+                                      fontSize: '11px'
+                                    }}>
+                                      {eventItem.event.replace('_', ' ')}
+                                      {eventItem.questionId && (
+                                        <span style={{ 
+                                          color: theme === 'sun' ? '#666' : '#999',
+                                          marginLeft: '6px',
+                                          fontWeight: 400
+                                        }}>
+                                          (Q{eventItem.questionId})
+                                        </span>
+                                      )}
+                                    </div>
+                                    <div style={{ 
+                                      color: theme === 'sun' ? '#666' : '#999',
+                                      fontSize: '11px',
+                                      lineHeight: '1.4'
+                                    }}>
+                                      {description}
+                                    </div>
+                                  </div>
+                                  <div style={{ 
+                                    fontSize: '10px',
+                                    color: theme === 'sun' ? '#999' : '#777',
+                                    flexShrink: 0,
+                                    textAlign: 'right',
+                                    whiteSpace: 'nowrap'
+                                  }}>
+                                    {formatTimestamp(eventItem.timestamp)}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </Card>
+              )}
+            </div>
+          </Col>
+
+          {/* Right Section - Questions Review */}
+          <Col 
+            xs={24} 
+            lg={isCollapsed ? 22 : 18}
+            style={{ 
+              transition: 'all 0.3s ease'
+            }}
+          >
+            <div className="sdc-questions-review-section" style={{ padding: '0' }}>
           {/* Grammar & Vocabulary Questions */}
           {questions.length > 0 && (
-            <div style={{ marginBottom: '32px' }}>
-              <Typography.Title level={3} style={{ marginBottom: '24px', color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' }}>
+            <div className={`question-item ${theme}-question-item`} style={{ marginBottom: '24px', borderRadius: '16px', padding: '24px', border: '2px solid', borderColor: theme === 'sun' ? 'rgba(113, 179, 253, 0.25)' : 'rgba(138, 122, 255, 0.2)', background: theme === 'sun' ? 'linear-gradient(135deg, rgba(255, 255, 255, 1) 0%, rgba(240, 249, 255, 0.95) 100%)' : 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(244, 240, 255, 0.95) 100%)', boxShadow: theme === 'sun' ? '0 4px 16px rgba(113, 179, 253, 0.1)' : '0 4px 16px rgba(138, 122, 255, 0.12)' }}>
+              <div className="question-header" style={{ paddingBottom: '14px', marginBottom: '16px', borderBottom: '2px solid', borderBottomColor: theme === 'sun' ? 'rgba(113, 179, 253, 0.25)' : 'rgba(138, 122, 255, 0.2)', position: 'relative', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <Typography.Text strong style={{ fontSize: '20px', color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' }}>
                 Grammar & Vocabulary
-              </Typography.Title>
-          <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+                  </Typography.Text>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  {!getFeedback('grammar-vocabulary', 'section') ? (
+                    <Button
+                      size="small"
+                      onClick={() => handleOpenAddFeedback('grammar-vocabulary', 'section')}
+                      style={{
+                        fontSize: '13px',
+                        height: '28px',
+                        padding: '0 12px'
+                      }}
+                    >
+                      Add Feedback
+                    </Button>
+                  ) : (
+                    <Button
+                      size="small"
+                      onClick={() => handleOpenEditFeedback('grammar-vocabulary', 'section')}
+                      style={{
+                        fontSize: '13px',
+                        height: '28px',
+                        padding: '0 12px'
+                      }}
+                    >
+                      Edit Feedback
+                    </Button>
+                  )}
+                </div>
+              </div>
+          <Space direction="vertical" size={16} style={{ width: '100%' }}>
                 {questions.map((q, idx) => renderQuestion(q, idx))}
           </Space>
         </div>
@@ -2912,11 +3433,11 @@ const mockSubmissionDetail = {
 
           {/* Reading Sections */}
           {readingSections.length > 0 && (
-            <div style={{ marginBottom: '32px' }}>
-              <Typography.Title level={3} style={{ marginBottom: '24px', color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' }}>
+            <div style={{ marginBottom: '24px' }}>
+              <Typography.Title level={4} style={{ marginBottom: '16px', fontSize: '18px', fontWeight: 600, color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' }}>
                 Reading
                     </Typography.Title>
-          <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+          <Space direction="vertical" size={16} style={{ width: '100%' }}>
                 {readingSections.map((section, idx) => renderReadingSection(section, idx))}
               </Space>
                   </div>
@@ -2924,11 +3445,11 @@ const mockSubmissionDetail = {
 
           {/* Listening Sections */}
           {listeningSections.length > 0 && (
-            <div style={{ marginBottom: '32px' }}>
-              <Typography.Title level={3} style={{ marginBottom: '24px', color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' }}>
+            <div style={{ marginBottom: '24px' }}>
+              <Typography.Title level={4} style={{ marginBottom: '16px', fontSize: '18px', fontWeight: 600, color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' }}>
                 Listening
                     </Typography.Title>
-              <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+              <Space direction="vertical" size={16} style={{ width: '100%' }}>
                 {listeningSections.map((section, idx) => renderListeningSection(section, idx))}
               </Space>
                   </div>
@@ -2936,11 +3457,11 @@ const mockSubmissionDetail = {
 
           {/* Writing Sections */}
           {writingSections.length > 0 && (
-            <div style={{ marginBottom: '32px' }}>
-              <Typography.Title level={3} style={{ marginBottom: '24px', color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' }}>
+            <div style={{ marginBottom: '24px' }}>
+              <Typography.Title level={4} style={{ marginBottom: '16px', fontSize: '18px', fontWeight: 600, color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' }}>
                 Writing
               </Typography.Title>
-              <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+              <Space direction="vertical" size={16} style={{ width: '100%' }}>
                 {writingSections.map((section, idx) => renderWritingSection(section, idx))}
               </Space>
                         </div>
@@ -2948,16 +3469,18 @@ const mockSubmissionDetail = {
 
           {/* Speaking Sections */}
           {speakingSections.length > 0 && (
-            <div style={{ marginBottom: '32px' }}>
-              <Typography.Title level={3} style={{ marginBottom: '24px', color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' }}>
+            <div style={{ marginBottom: '24px' }}>
+              <Typography.Title level={4} style={{ marginBottom: '16px', fontSize: '18px', fontWeight: 600, color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' }}>
                 Speaking
               </Typography.Title>
-              <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+              <Space direction="vertical" size={16} style={{ width: '100%' }}>
                 {speakingSections.map((section, idx) => renderSpeakingSection(section, idx))}
               </Space>
                     </div>
                   )}
                   </div>
+          </Col>
+        </Row>
                 </div>
 
       {/* Feedback Modal */}
@@ -3047,6 +3570,129 @@ const mockSubmissionDetail = {
               lineHeight: '1.6',
             }}
           />
+        </div>
+      </Modal>
+
+      {/* Score Modal */}
+      <Modal
+        title={
+          <div
+            style={{
+              fontSize: '28px',
+              fontWeight: '600',
+              color: 'rgb(24, 144, 255)',
+              textAlign: 'center',
+              padding: '10px 0',
+            }}>
+            {scoreModal.isEdit ? 'Edit Score' : 'Add Score'}
+            </div>
+        }
+        open={scoreModal.visible}
+        onCancel={handleCloseScoreModal}
+        width={600}
+        footer={[
+          <Button 
+            key="cancel" 
+            onClick={handleCloseScoreModal}
+            style={{
+              height: '32px',
+              fontWeight: '500',
+              fontSize: '16px',
+              padding: '4px 15px',
+              width: '100px'
+            }}>
+            Cancel
+          </Button>,
+          <Button 
+            key="save" 
+            type="primary" 
+            onClick={handleSaveScore}
+            style={{
+              background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, #7228d9 0%, #9c88ff 100%)',
+              borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : '#7228d9',
+              color: theme === 'sun' ? '#000' : '#fff',
+              borderRadius: '6px',
+              height: '32px',
+              fontWeight: '500',
+              fontSize: '16px',
+              padding: '4px 15px',
+              width: '100px',
+              transition: 'all 0.3s ease',
+              boxShadow: 'none'
+            }}
+            onMouseEnter={(e) => {
+              if (theme === 'sun') {
+                e.target.style.background = 'rgb(95, 160, 240)';
+                e.target.style.borderColor = 'rgb(95, 160, 240)';
+                e.target.style.transform = 'translateY(-1px)';
+                e.target.style.boxShadow = '0 4px 12px rgba(113, 179, 253, 0.4)';
+              } else {
+                e.target.style.background = 'linear-gradient(135deg, #5a1fb8 0%, #8a7aff 100%)';
+                e.target.style.borderColor = '#5a1fb8';
+                e.target.style.transform = 'translateY(-1px)';
+                e.target.style.boxShadow = '0 4px 12px rgba(114, 40, 217, 0.4)';
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (theme === 'sun') {
+                e.target.style.background = 'rgb(113, 179, 253)';
+                e.target.style.borderColor = 'rgb(113, 179, 253)';
+                e.target.style.transform = 'translateY(0)';
+                e.target.style.boxShadow = 'none';
+              } else {
+                e.target.style.background = 'linear-gradient(135deg, #7228d9 0%, #9c88ff 100%)';
+                e.target.style.borderColor = '#7228d9';
+                e.target.style.transform = 'translateY(0)';
+                e.target.style.boxShadow = 'none';
+              }
+            }}>
+            {scoreModal.isEdit ? 'Update' : 'Add'}
+          </Button>
+        ]}>
+        <div style={{ padding: '20px 0' }}>
+          <div style={{ marginBottom: '24px' }}>
+            <Typography.Text strong style={{ 
+              fontSize: '16px', 
+              display: 'block', 
+              marginBottom: '12px',
+              color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)'
+            }}>
+              Score (0-10):
+            </Typography.Text>
+            <Input
+              type="number"
+              min="0"
+              max="10"
+              step="0.1"
+              value={scoreModal.score}
+              onChange={(e) => setScoreModal(prev => ({ ...prev, score: e.target.value }))}
+              placeholder="Enter score (0-10)"
+              style={{
+                fontSize: '16px',
+                height: '42px'
+              }}
+            />
+          </div>
+          <div>
+            <Typography.Text strong style={{ 
+              fontSize: '16px', 
+              display: 'block', 
+              marginBottom: '12px',
+              color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)'
+            }}>
+              Comment (Optional):
+            </Typography.Text>
+            <Input.TextArea
+              rows={4}
+              value={scoreModal.comment}
+              onChange={(e) => setScoreModal(prev => ({ ...prev, comment: e.target.value }))}
+              placeholder="Enter any additional comments about this score..."
+              style={{
+                fontSize: '14px',
+                lineHeight: '1.6',
+              }}
+            />
+          </div>
         </div>
       </Modal>
 
