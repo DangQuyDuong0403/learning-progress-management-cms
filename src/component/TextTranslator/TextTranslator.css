@@ -16,6 +16,11 @@
   pointer-events: auto;
   backdrop-filter: blur(10px);
   overflow: hidden;
+  /* Đảm bảo popup có thể scroll nội dung dài */
+  display: flex;
+  flex-direction: column;
+  /* Giới hạn chiều cao để không tạo scrollbar ở document level */
+  max-height: 60vh;
 }
 
 /* Hiệu ứng glow mặt trời */
@@ -77,6 +82,32 @@
   backdrop-filter: blur(8px);
   border-radius: 14px;
   margin: 2px;
+  /* Cho phép scroll nội dung dài */
+  overflow-y: auto;
+  overflow-x: hidden;
+  /* Giới hạn chiều cao để scrollbar xuất hiện */
+  max-height: calc(60vh - 20px);
+  /* Custom scrollbar cho đẹp hơn */
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 215, 0, 0.6) transparent;
+}
+
+.translation-popup-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.translation-popup-content::-webkit-scrollbar-track {
+  background: transparent;
+  border-radius: 10px;
+}
+
+.translation-popup-content::-webkit-scrollbar-thumb {
+  background: rgba(255, 215, 0, 0.6);
+  border-radius: 10px;
+}
+
+.translation-popup-content::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 215, 0, 0.8);
 }
 
 .translation-loading {
@@ -166,15 +197,29 @@
 
 .translation-popup-arrow {
   position: absolute;
-  bottom: -10px;
   left: 50%;
   transform: translateX(-50%);
   width: 0;
   height: 0;
+  z-index: 1;
+}
+
+/* Arrow hướng xuống (popup ở trên) */
+.translation-popup-arrow.arrow-down {
+  bottom: -10px;
   border-left: 10px solid transparent;
   border-right: 10px solid transparent;
   border-top: 10px solid #ffb347;
   filter: drop-shadow(0 2px 4px rgba(255, 179, 71, 0.3));
+}
+
+/* Arrow hướng lên (popup ở dưới) */
+.translation-popup-arrow.arrow-up {
+  top: -10px;
+  border-left: 10px solid transparent;
+  border-right: 10px solid transparent;
+  border-bottom: 10px solid #ffb347;
+  filter: drop-shadow(0 -2px 4px rgba(255, 179, 71, 0.3));
 }
 
 /* Responsive cho mobile */
@@ -236,9 +281,14 @@
   background: linear-gradient(90deg, transparent, #8B5CF6, #6366f1, transparent);
 }
 
-.dark-theme .translation-popup-arrow {
+.dark-theme .translation-popup-arrow.arrow-down {
   border-top-color: #8B5CF6;
   filter: drop-shadow(0 2px 4px rgba(139, 92, 246, 0.4));
+}
+
+.dark-theme .translation-popup-arrow.arrow-up {
+  border-bottom-color: #8B5CF6;
+  filter: drop-shadow(0 -2px 4px rgba(139, 92, 246, 0.4));
 }
 
 .dark-theme .translation-loading {
@@ -262,14 +312,15 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  animation: fadeInUp 0.3s ease-out, buttonGlow 2s ease-in-out infinite;
+  /* Tránh animation đẩy theo trục X làm che con trỏ khi hiện ra */
+  animation: buttonGlow 2s ease-in-out infinite;
   transition: all 0.3s ease;
   outline: none;
   padding: 0;
 }
 
 .translate-button:hover {
-  transform: translateX(-50%) translateY(-100%) scale(1.1);
+  transform: translateY(-100%) scale(1.1);
   box-shadow: 
     0 6px 20px rgba(255, 215, 0, 0.4),
     0 3px 10px rgba(135, 206, 235, 0.4),
@@ -278,7 +329,7 @@
 }
 
 .translate-button:active {
-  transform: translateX(-50%) translateY(-100%) scale(0.95);
+  transform: translateY(-100%) scale(0.95);
 }
 
 .translate-icon {

@@ -1,12 +1,60 @@
 import axios from 'axios';
+import axiosClient from '../index.js';
 
 /**
- * Translation API service - Sử dụng nhiều API miễn phí
- * Không cần API key, tự động fallback nếu một API lỗi
+ * Translation API service - Sử dụng API backend mới với fallback về các API miễn phí
  */
 
 /**
- * Dịch text sử dụng MyMemory API (miễn phí, không cần key)
+ * Dịch text sử dụng API backend mới (Azure Translator)
+ * @param {string} text - Text cần dịch
+ * @param {string} sourceLang - Ngôn ngữ nguồn (mặc định: 'en')
+ * @param {string} targetLang - Ngôn ngữ đích (mặc định: 'vi')
+ * @returns {Promise<string>} - Text đã dịch
+ */
+const translateWithBackendAPI = async (text, sourceLang = 'en', targetLang = 'vi') => {
+  try {
+    // Build absolute URL to /api/openai/translate
+    const base = (typeof axiosClient?.defaults?.baseURL === 'string') ? axiosClient.defaults.baseURL : '';
+    const baseApi = base.includes('/api/v1')
+      ? base.replace('/api/v1', '/api')
+      : (base.endsWith('/api') ? base : (base.replace(/\/$/, '') + '/api'));
+    const absoluteUrl = `${baseApi}/openai/translate`;
+    
+    console.log('🌐 Calling translate API:', absoluteUrl);
+    console.log('📝 Text to translate:', text);
+    
+    const response = await axiosClient.post(absoluteUrl, { text }, {
+      headers: {
+        'Content-Type': 'application/json',
+        'accept': '*/*',
+      },
+    });
+
+    console.log('✅ Translate API response:', response);
+
+    // axiosClient interceptor returns response.data, so response is already the data object
+    // Response format: { traceId, success, message, data: { originalText, translatedText, fromLanguage, toLanguage }, timestamp }
+    if (response && response.success && response.data && response.data.translatedText) {
+      console.log('✅ Translated text:', response.data.translatedText);
+      return response.data.translatedText;
+    }
+    
+    console.error('❌ Invalid response format:', response);
+    throw new Error('Invalid backend API response');
+  } catch (error) {
+    console.error('❌ Translate API error:', error);
+    console.error('❌ Error details:', {
+      message: error.message,
+      response: error.response?.data,
+      status: error.response?.status,
+    });
+    throw error;
+  }
+};
+
+/**
+ * Dịch text sử dụng MyMemory API (miễn phí, không cần key) - Fallback
  * @param {string} text - Text cần dịch
  * @param {string} sourceLang - Ngôn ngữ nguồn
  * @param {string} targetLang - Ngôn ngữ đích
@@ -64,48 +112,62 @@ const translateWithGoogle = async (text, sourceLang = 'en', targetLang = 'vi') =
 
 /**
  * Dịch text từ tiếng Anh sang tiếng Việt
- * Tự động thử các API khác nhau nếu một API lỗi
+ * Thử API backend mới trước, tự động fallback về các API miễn phí nếu lỗi
  * @param {string} text - Text cần dịch
  * @returns {Promise<string>} - Text đã dịch
  */
 export const translateText = async (text) => {
-  // Thử MyMemory API trước (không cần key, miễn phí, ổn định)
+  // Thử API backend mới trước (có xác thực, chất lượng tốt hơn)
   try {
-    return await translateWithMyMemory(text, 'en', 'vi');
+    return await translateWithBackendAPI(text, 'en', 'vi');
   } catch (error) {
-    console.warn('MyMemory translation failed, trying Google Translate fallback:', error.message);
+    console.warn('Backend API translation failed, trying MyMemory fallback:', error.message);
     
-    // Fallback: thử Google Translate không chính thức
+    // Fallback: thử MyMemory API
     try {
-      return await translateWithGoogle(text, 'en', 'vi');
+      return await translateWithMyMemory(text, 'en', 'vi');
     } catch (fallbackError) {
-      console.error('All translation methods failed:', fallbackError);
-      throw new Error('Không thể dịch text này. Vui lòng thử lại sau.');
+      console.warn('MyMemory translation failed, trying Google Translate fallback:', fallbackError.message);
+      
+      // Fallback cuối: thử Google Translate không chính thức
+      try {
+        return await translateWithGoogle(text, 'en', 'vi');
+      } catch (finalError) {
+        console.error('All translation methods failed:', finalError);
+        throw new Error('Không thể dịch text này. Vui lòng thử lại sau.');
+      }
     }
   }
 };
 
 /**
  * Dịch text với tùy chọn ngôn ngữ nguồn và đích
- * Tự động thử các API khác nhau nếu một API lỗi
+ * Thử API backend mới trước, tự động fallback về các API miễn phí nếu lỗi
  * @param {string} text - Text cần dịch
  * @param {string} sourceLang - Ngôn ngữ nguồn (mặc định: 'en')
  * @param {string} targetLang - Ngôn ngữ đích (mặc định: 'vi')
  * @returns {Promise<string>} - Text đã dịch
  */
 export const translateTextCustom = async (text, sourceLang = 'en', targetLang = 'vi') => {
-  // Thử MyMemory API trước
+  // Thử API backend mới trước
   try {
-    return await translateWithMyMemory(text, sourceLang, targetLang);
+    return await translateWithBackendAPI(text, sourceLang, targetLang);
   } catch (error) {
-    console.warn('MyMemory translation failed, trying Google Translate fallback:', error.message);
+    console.warn('Backend API translation failed, trying MyMemory fallback:', error.message);
     
-    // Fallback: thử Google Translate không chính thức
+    // Fallback: thử MyMemory API
     try {
-      return await translateWithGoogle(text, sourceLang, targetLang);
+      return await translateWithMyMemory(text, sourceLang, targetLang);
     } catch (fallbackError) {
-      console.error('All translation methods failed:', fallbackError);
-      throw new Error('Không thể dịch text này. Vui lòng thử lại sau.');
+      console.warn('MyMemory translation failed, trying Google Translate fallback:', fallbackError.message);
+      
+      // Fallback cuối: thử Google Translate không chính thức
+      try {
+        return await translateWithGoogle(text, sourceLang, targetLang);
+      } catch (finalError) {
+        console.error('All translation methods failed:', finalError);
+        throw new Error('Không thể dịch text này. Vui lòng thử lại sau.');
+      }
     }
   }
 };
