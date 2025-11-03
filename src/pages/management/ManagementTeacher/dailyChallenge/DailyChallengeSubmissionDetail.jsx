@@ -13,35 +13,46 @@ import {
 } from "antd";
 import {
   ClockCircleOutlined,
-  TrophyOutlined,
   CheckCircleOutlined,
   CloseCircleOutlined,
   MinusCircleOutlined,
   CommentOutlined,
   MenuFoldOutlined,
   MenuUnfoldOutlined,
+  CloseOutlined,
+  MenuOutlined,
   SwapOutlined,
   CopyOutlined,
   FileTextOutlined,
   EditOutlined,
   PlayCircleOutlined,
+  DeleteOutlined,
+  ArrowLeftOutlined,
+  UpOutlined,
+  DownOutlined,
+  PlusCircleOutlined,
+  StarOutlined,
+  SaveOutlined,
 } from "@ant-design/icons";
 import ThemedLayout from "../../../../component/teacherlayout/ThemedLayout";
 import LoadingWithEffect from "../../../../component/spinner/LoadingWithEffect";
 import "./DailyChallengeSubmissionDetail.css";
 import { spaceToast } from "../../../../component/SpaceToastify";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useTheme } from "../../../../contexts/ThemeContext";
 import { useDailyChallengeMenu } from "../../../../contexts/DailyChallengeMenuContext";
 import usePageTitle from "../../../../hooks/usePageTitle";
-import { generateFakeDataByType } from "../../../../constants/fakeData";
+import { dailyChallengeApi } from "../../../../apis/apis";
+import { CKEditor } from '@ckeditor/ckeditor5-react';
+import ClassicEditor from '@ckeditor/ckeditor5-build-classic';
 
 const DailyChallengeSubmissionDetail = () => {
   const { t } = useTranslation();
   const { theme } = useTheme();
   const { id, submissionId } = useParams();
-  const { enterDailyChallengeMenu, exitDailyChallengeMenu } = useDailyChallengeMenu();
+  const navigate = useNavigate();
+  const { enterDailyChallengeMenu, exitDailyChallengeMenu, dailyChallengeData } = useDailyChallengeMenu();
   
   // Set page title
   usePageTitle('Daily Challenge - Submission Detail');
@@ -51,6 +62,8 @@ const DailyChallengeSubmissionDetail = () => {
   const [filterStatus, setFilterStatus] = useState('all'); // all, correct, incorrect, unanswered
   const [challengeType, setChallengeType] = useState('GV'); // GV, RE, LI, WR, SP
   const [isCollapsed, setIsCollapsed] = useState(false); // Sidebar collapse state
+  const [activeTab, setActiveTab] = useState('info'); // 'info' or 'questions'
+  const questionRefs = React.useRef({});
 
   // Generate fake data for all question types
   const [fakeData, setFakeData] = useState(null);
@@ -66,6 +79,7 @@ const DailyChallengeSubmissionDetail = () => {
     id: null,
     type: null, // 'question' or 'section'
     feedback: '',
+    score: '',
     isEdit: false,
   });
   
@@ -83,25 +97,66 @@ const DailyChallengeSubmissionDetail = () => {
     isEdit: false,
   });
   
+  // Teacher feedback state
+  const [teacherFeedback, setTeacherFeedback] = useState('');
+  const [savingFeedback, setSavingFeedback] = useState(false);
+  const [savingGrading, setSavingGrading] = useState(false);
+  
+  // AI feedback state
+  const [aiFeedback, setAiFeedback] = useState('');
+  const [generatingAiFeedback, setGeneratingAiFeedback] = useState(false);
+  
+  // Performance collapse state
+  const [isPerformanceCollapsed, setIsPerformanceCollapsed] = useState(false);
+  
+  // Other sections collapse states (default collapsed)
+  const [isTeacherFeedbackCollapsed, setIsTeacherFeedbackCollapsed] = useState(true);
+  const [isAiFeedbackCollapsed, setIsAiFeedbackCollapsed] = useState(true);
+  const [isAntiCheatCollapsed, setIsAntiCheatCollapsed] = useState(true);
+  
   // Handlers for feedback modal
+  // Helper to locate submissionQuestionId for a section
+  const getSubmissionQuestionIdForSection = (sectionId) => {
+    const findIn = (arr) => (arr || []).find((s) => s.id === sectionId);
+    const sec = findIn(fakeData?.writingSections) || findIn(fakeData?.speakingSections);
+    if (!sec) return null;
+    const q = (sec.questions && sec.questions[0]) || null;
+    return (q && (q.submissionQuestionId || q.id)) || null;
+  };
+
   const handleOpenAddFeedback = (id, type = 'question') => {
+    let prefillScore = '';
+    if (type === 'section') {
+      const subQId = getSubmissionQuestionIdForSection(id);
+      if (subQId) prefillScore = questionScores[subQId] ?? '';
+    }
     setFeedbackModal({
       visible: true,
       id,
       type,
       feedback: '',
+      score: prefillScore,
       isEdit: false,
     });
   };
+
+  // Per-question scores for Writing and Speaking (keyed by submissionQuestionId or questionId)
+  const [questionScores, setQuestionScores] = useState({});
   
   const handleOpenEditFeedback = (id, type = 'question') => {
     const key = `${type}-${id}`;
     const existingFeedback = feedbacks[key] || '';
+    let prefillScore = '';
+    if (type === 'section') {
+      const subQId = getSubmissionQuestionIdForSection(id);
+      if (subQId) prefillScore = questionScores[subQId] ?? '';
+    }
     setFeedbackModal({
       visible: true,
       id,
       type,
       feedback: existingFeedback,
+      score: prefillScore,
       isEdit: true,
     });
   };
@@ -112,6 +167,7 @@ const DailyChallengeSubmissionDetail = () => {
       id: null,
       type: null,
       feedback: '',
+      score: '',
       isEdit: false,
     });
   };
@@ -123,10 +179,63 @@ const DailyChallengeSubmissionDetail = () => {
         ...prev,
         [key]: feedbackModal.feedback,
       }));
+      // Save score for section if provided
+      if (feedbackModal.type === 'section') {
+        const subQId = getSubmissionQuestionIdForSection(feedbackModal.id);
+        if (subQId) {
+          setQuestionScores(prev => ({
+            ...prev,
+            [subQId]: feedbackModal.score,
+          }));
+        }
+      }
       spaceToast.success(feedbackModal.isEdit ? 'Feedback updated successfully' : 'Feedback added successfully');
       handleCloseFeedbackModal();
     }
   };
+  
+  // Handle delete feedback
+  const handleDeleteFeedback = () => {
+    if (feedbackModal.id && feedbackModal.type) {
+      const key = `${feedbackModal.type}-${feedbackModal.id}`;
+      setFeedbacks(prev => {
+        const newFeedbacks = { ...prev };
+        delete newFeedbacks[key];
+        return newFeedbacks;
+      });
+      spaceToast.success('Feedback deleted successfully');
+      handleCloseFeedbackModal();
+    }
+  };
+  
+  // Handle delete feedback directly (without modal)
+  const handleDeleteFeedbackDirect = (id, type = 'question') => {
+    const key = `${type}-${id}`;
+    setFeedbacks(prev => {
+      const newFeedbacks = { ...prev };
+      delete newFeedbacks[key];
+      return newFeedbacks;
+    });
+    spaceToast.success('Feedback deleted successfully');
+  };
+
+  // Memoized handlers for feedback modal input to prevent lag
+  const handleFeedbackInputChange = useCallback((e) => {
+    const value = e.target.value;
+    setFeedbackModal(prev => ({ ...prev, feedback: value }));
+  }, []);
+
+  // Memoized handlers for score modal inputs to prevent lag
+  const handleScoreInputChange = useCallback((e) => {
+    const value = e.target.value;
+    setScoreModal(prev => ({ ...prev, score: value }));
+  }, []);
+
+  // Memoized handler for comment modal input to prevent lag
+  const handleCommentInputChange = useCallback((e) => {
+    const value = e.target.value;
+    setCommentModal(prev => ({ ...prev, comment: value }));
+  }, []);
   
   // Helper function to get feedback for a question or section
   const getFeedback = (id, type = 'question') => {
@@ -145,6 +254,7 @@ const DailyChallengeSubmissionDetail = () => {
   });
   const [selectedComment, setSelectedComment] = useState(null);
   const [showCommentSidebar, setShowCommentSidebar] = useState(false);
+  const [hoveredHighlightId, setHoveredHighlightId] = useState(null);
   const [commentModal, setCommentModal] = useState({
     visible: false,
     sectionId: null,
@@ -164,9 +274,9 @@ const DailyChallengeSubmissionDetail = () => {
     }
     
     const range = selection.getRangeAt(0);
-    const selectedText = selection.toString().trim();
+    const selectedText = selection.toString();
     
-    if (!selectedText) {
+    if (!selectedText || selectedText.trim().length === 0) {
       setTextSelection({ visible: false, sectionId: null, startIndex: null, endIndex: null, position: { x: 0, y: 0 } });
       return;
     }
@@ -182,77 +292,32 @@ const DailyChallengeSubmissionDetail = () => {
     const essayText = studentAnswer?.text || studentAnswer?.essay || '';
     if (!essayText) return;
     
-    // Get all text nodes in the container to calculate accurate indices
-    // This works even when text has highlights (spans)
-    const getAllTextNodes = (element) => {
-      const textNodes = [];
-      const walker = document.createTreeWalker(
-        element,
-        NodeFilter.SHOW_TEXT,
-        null
-      );
-      let node;
-      while ((node = walker.nextNode())) {
-        textNodes.push(node);
-      }
-      return textNodes;
-    };
+    // Calculate indices based on plain text
+    // Create a range from the start of textElement to the start of selection
+    const startRange = document.createRange();
+    startRange.setStart(textElement, 0);
+    startRange.setEnd(range.startContainer, range.startOffset);
+    let startIndex = startRange.toString().length;
     
-    const textNodes = getAllTextNodes(textElement);
-    let startIndex = 0;
-    let endIndex = 0;
-    let foundStart = false;
-    let foundEnd = false;
+    // Create a range from the start of textElement to the end of selection
+    const endRange = document.createRange();
+    endRange.setStart(textElement, 0);
+    endRange.setEnd(range.endContainer, range.endOffset);
+    let endIndex = endRange.toString().length;
     
-    for (let i = 0; i < textNodes.length; i++) {
-      const textNode = textNodes[i];
-      const nodeText = textNode.textContent;
-      
-      if (!foundStart) {
-        if (range.startContainer === textNode || textNode.contains(range.startContainer)) {
-          if (range.startContainer === textNode) {
-            startIndex += range.startOffset;
-          } else {
-            // Find position within this node
-            const tempRange = document.createRange();
-            tempRange.setStart(textNode, 0);
-            tempRange.setEnd(range.startContainer, range.startOffset);
-            startIndex += tempRange.toString().length;
-          }
-          foundStart = true;
-        } else {
-          startIndex += nodeText.length;
-        }
+    // Verify the calculated indices match the selected text
+    const calculatedText = essayText.substring(startIndex, endIndex);
+    // Allow some flexibility for whitespace differences
+    if (calculatedText.trim() !== selectedText.trim() && 
+        !calculatedText.includes(selectedText.trim()) && 
+        !selectedText.trim().includes(calculatedText)) {
+      // If mismatch, try to find the text in the essay
+      const trimmedSelected = selectedText.trim();
+      const foundIndex = essayText.indexOf(trimmedSelected);
+      if (foundIndex !== -1) {
+        startIndex = foundIndex;
+        endIndex = foundIndex + trimmedSelected.length;
       }
-      
-      if (!foundEnd) {
-        if (range.endContainer === textNode || textNode.contains(range.endContainer)) {
-          if (range.endContainer === textNode) {
-            endIndex += range.endOffset;
-          } else {
-            // Find position within this node
-            const tempRange = document.createRange();
-            tempRange.setStart(textNode, 0);
-            tempRange.setEnd(range.endContainer, range.endOffset);
-            endIndex += tempRange.toString().length;
-          }
-          foundEnd = true;
-          break;
-        } else {
-          endIndex += nodeText.length;
-        }
-      } else {
-        break;
-      }
-    }
-    
-    // Fallback: use simple calculation
-    if (!foundStart || !foundEnd) {
-      const startRange = document.createRange();
-      startRange.setStart(textElement, 0);
-      startRange.setEnd(range.startContainer, range.startOffset);
-      startIndex = startRange.toString().length;
-      endIndex = startIndex + selectedText.length;
     }
     
     // Get position for floating toolbar - align with selected text, next to translate icon
@@ -334,6 +399,27 @@ const DailyChallengeSubmissionDetail = () => {
     }
   };
   
+  // Handle delete comment
+  const handleDeleteComment = () => {
+    if (selectedComment) {
+      const sectionId = Object.keys(writingSectionFeedbacks).find(id => 
+        writingSectionFeedbacks[id]?.some(fb => fb.id === selectedComment.id)
+      );
+      
+      if (sectionId) {
+        setWritingSectionFeedbacks(prev => {
+          const sectionFeedbacks = prev[sectionId] || [];
+          const updated = sectionFeedbacks.filter(fb => fb.id !== selectedComment.id);
+          return { ...prev, [sectionId]: updated };
+        });
+        
+        spaceToast.success('Comment deleted successfully');
+        setShowCommentSidebar(false);
+        setSelectedComment(null);
+      }
+    }
+  };
+  
   // Handle click on highlighted text
   const handleHighlightClick = (feedback) => {
     setSelectedComment(feedback);
@@ -375,97 +461,126 @@ const DailyChallengeSubmissionDetail = () => {
     // Sort feedbacks by start position
     const sortedFeedbacks = [...sectionFeedbacks].sort((a, b) => a.startIndex - b.startIndex);
     
-    // Create array of all break points (start and end indices)
-    const breakPoints = new Set([0]); // Start from 0 to ensure we render text from beginning
+    // Track which highlight is currently active (clicked)
+    const isActiveHighlight = selectedComment && selectedComment.id;
+    
+    // Create intervals from highlights - merge overlapping intervals
+    // Each interval contains: {start, end, feedbacks: [array of feedback ids]}
+    const intervals = [];
+    const breakpoints = new Set();
+    
+    // Collect all breakpoints (start and end indices)
     sortedFeedbacks.forEach(feedback => {
-      breakPoints.add(feedback.startIndex);
-      breakPoints.add(feedback.endIndex);
+      breakpoints.add(feedback.startIndex);
+      breakpoints.add(feedback.endIndex);
     });
-    breakPoints.add(text.length); // Add end of text
-    const sortedBreakPoints = Array.from(breakPoints).sort((a, b) => a - b);
     
-    const parts = [];
+    // Sort breakpoints
+    const sortedBreakpoints = Array.from(breakpoints).sort((a, b) => a - b);
     
-    // Process each segment between break points
-    for (let i = 0; i < sortedBreakPoints.length - 1; i++) {
-      const segmentStart = sortedBreakPoints[i];
-      const segmentEnd = sortedBreakPoints[i + 1];
+    // Create intervals from breakpoints
+    for (let i = 0; i < sortedBreakpoints.length - 1; i++) {
+      const start = sortedBreakpoints[i];
+      const end = sortedBreakpoints[i + 1];
       
-      if (segmentStart >= text.length || segmentStart >= segmentEnd) continue;
-      
-      // Find all highlights that cover this segment
-      const activeHighlights = sortedFeedbacks.filter(fb => 
-        fb.startIndex < segmentEnd && fb.endIndex > segmentStart
+      // Find all feedbacks that cover this interval
+      const coveringFeedbacks = sortedFeedbacks.filter(fb => 
+        fb.startIndex <= start && fb.endIndex >= end
       );
       
-      const segmentText = text.substring(segmentStart, segmentEnd);
+      if (coveringFeedbacks.length > 0) {
+        intervals.push({
+          start,
+          end,
+          feedbacks: coveringFeedbacks
+        });
+      }
+    }
+    
+    // Render intervals and plain text segments
+    const parts = [];
+    let currentIndex = 0;
+    
+    intervals.forEach((interval, idx) => {
+      // Add plain text before this interval
+      if (interval.start > currentIndex) {
+        const plainText = text.substring(currentIndex, interval.start);
+        if (plainText) {
+          parts.push(
+            <span key={`text-${currentIndex}-${interval.start}`}>
+              {plainText}
+            </span>
+          );
+        }
+      }
       
-      if (segmentText.length === 0) continue; // Skip empty segments
+      // Render the highlighted text for this interval (only once, no duplication)
+      const intervalText = text.substring(interval.start, interval.end);
       
-      if (activeHighlights.length === 0) {
-        // No highlights in this segment, render as plain text
+      // Determine which feedback to use for styling (prioritize active one)
+      const activeFeedback = interval.feedbacks.find(fb => fb.id === isActiveHighlight);
+      const displayFeedback = activeFeedback || interval.feedbacks[0];
+      const isActive = activeFeedback !== undefined;
+      
+      // Check if any feedback in this interval is hovered
+      const isHovered = interval.feedbacks.some(fb => fb.id === hoveredHighlightId);
+      
+      // Determine background color: active > hovered > normal
+      const backgroundColor = isActive ? '#FFD700' : (isHovered ? '#FFD700' : '#FFEB3B');
+      const fontWeight = (isActive || isHovered) ? '600' : '500';
+      const boxShadow = (isActive || isHovered) ? '0 2px 4px rgba(0, 0, 0, 0.2)' : 'none';
+      
+      // Create click handler that handles all covering feedbacks
+      const handleClick = (e) => {
+        // If multiple feedbacks cover this text, prioritize the active one or the first one
+        if (displayFeedback) {
+          handleHighlightClick(displayFeedback);
+        }
+      };
+      
+      // Handle hover - set hovered state for all feedbacks in this interval
+      const handleMouseEnter = () => {
+        if (interval.feedbacks.length > 0) {
+          // Use the display feedback ID for hover state
+          setHoveredHighlightId(displayFeedback.id);
+        }
+      };
+      
+      const handleMouseLeave = () => {
+        setHoveredHighlightId(null);
+      };
+      
+      parts.push(
+        <span
+          key={`highlight-${interval.start}-${interval.end}-${idx}`}
+          onClick={handleClick}
+          onMouseEnter={handleMouseEnter}
+          onMouseLeave={handleMouseLeave}
+          style={{
+            backgroundColor,
+            cursor: 'pointer',
+            padding: '2px 0',
+            borderRadius: '3px',
+            fontWeight,
+            transition: 'all 0.2s ease',
+            display: 'inline',
+            boxShadow,
+          }}
+        >
+          {intervalText}
+        </span>
+      );
+      
+      currentIndex = interval.end;
+    });
+    
+    // Add remaining text after last interval
+    if (currentIndex < text.length) {
+      const remainingText = text.substring(currentIndex);
+      if (remainingText) {
         parts.push(
-          <span key={`text-${segmentStart}-${segmentEnd}`}>
-            {segmentText}
-          </span>
-        );
-      } else if (activeHighlights.length === 1) {
-        // Single highlight, render with highlight
-        const feedback = activeHighlights[0];
-        parts.push(
-          <span
-            key={`highlight-${feedback.id}-${segmentStart}-${segmentEnd}`}
-            onClick={() => handleHighlightClick(feedback)}
-            style={{
-              backgroundColor: '#FFEB3B',
-              cursor: 'pointer',
-              padding: '2px 4px',
-              borderRadius: '3px',
-              fontWeight: '500',
-              transition: 'all 0.2s ease',
-              display: 'inline',
-            }}
-            onMouseEnter={(e) => {
-              e.target.style.backgroundColor = '#FFD700';
-              e.target.style.transform = 'scale(1.02)';
-            }}
-            onMouseLeave={(e) => {
-              e.target.style.backgroundColor = '#FFEB3B';
-              e.target.style.transform = 'scale(1)';
-            }}
-          >
-            {segmentText}
-          </span>
-        );
-      } else {
-        // Multiple highlights overlap in this segment
-        // Render with the first highlight (or we could use a different strategy)
-        const feedback = activeHighlights[0];
-        parts.push(
-          <span
-            key={`highlight-overlap-${segmentStart}-${segmentEnd}`}
-            onClick={() => handleHighlightClick(feedback)}
-            style={{
-              backgroundColor: '#FFEB3B',
-              cursor: 'pointer',
-              padding: '2px 4px',
-              borderRadius: '3px',
-              fontWeight: '500',
-              transition: 'all 0.2s ease',
-              display: 'inline',
-              position: 'relative',
-            }}
-            onMouseEnter={(e) => {
-              e.target.style.backgroundColor = '#FFD700';
-              e.target.style.transform = 'scale(1.02)';
-            }}
-            onMouseLeave={(e) => {
-              e.target.style.backgroundColor = '#FFEB3B';
-              e.target.style.transform = 'scale(1)';
-            }}
-            title={`Multiple comments: ${activeHighlights.map(fb => fb.comment.substring(0, 30)).join(', ')}`}
-          >
-            {segmentText}
+          <span key={`text-final-${currentIndex}`}>
+            {remainingText}
           </span>
         );
       }
@@ -491,356 +606,506 @@ const DailyChallengeSubmissionDetail = () => {
     };
   }, [textSelection.visible]);
 
-  useEffect(() => {
-    // Generate fake data for all types to show all question types
-    const gvData = generateFakeDataByType('GV');
-    const reData = generateFakeDataByType('RE');
-    const liData = generateFakeDataByType('LI');
-    const wrData = generateFakeDataByType('WR');
-    const spData = generateFakeDataByType('SP');
-
-    // Combine all questions
-    const allQuestions = [
-      ...gvData.questions,
-      ...reData.questions,
-      ...reData.readingSections.flatMap(s => s.questions || []),
-      ...liData.listeningSections.flatMap(s => s.questions || []),
-      ...wrData.writingSections,
-      ...spData.speakingSections,
-    ];
-
-    setFakeData({
-      questions: gvData.questions,
-      readingSections: reData.readingSections,
-      listeningSections: liData.listeningSections,
-      writingSections: wrData.writingSections,
-      speakingSections: spData.speakingSections,
-    });
-
-    // Generate mock student answers similar to StudentDailyChallengeResult
-    const mockAnswers = {};
-    
-    // Generate answers for GV questions
-    gvData.questions.forEach(q => {
-      if (q.type === 'MULTIPLE_CHOICE' || q.type === 'TRUE_OR_FALSE') {
-        const correctOption = q.options?.find(opt => opt.isCorrect);
-        const wrongOption = q.options?.find(opt => !opt.isCorrect);
-        if (q.id.endsWith('b')) {
-          mockAnswers[q.id] = q.type === 'TRUE_OR_FALSE' ? (wrongOption?.text || wrongOption?.key) : wrongOption?.key;
-        } else {
-          mockAnswers[q.id] = q.type === 'TRUE_OR_FALSE' ? (correctOption?.text || correctOption?.key) : correctOption?.key;
-        }
-      } else if (q.type === 'MULTIPLE_SELECT') {
-        const correctKeys = q.options?.filter(opt => opt.isCorrect).map(opt => opt.key) || [];
-        mockAnswers[q.id] = q.id.endsWith('b') ? [correctKeys[0]] : correctKeys;
-      } else if (q.type === 'FILL_IN_THE_BLANK') {
-        const contentData = q.content?.data || [];
-        const fillBlankAnswers = {};
-        contentData.forEach(item => {
-          if (item.positionId && item.correct) {
-            fillBlankAnswers[item.positionId] = q.id === 'gv-4' ? item.value : 'wrong';
-          }
-        });
-        mockAnswers[q.id] = fillBlankAnswers;
-      } else if (q.type === 'DROPDOWN') {
-        const contentData = q.content?.data || [];
-        const dropdownAnswers = {};
-        contentData.forEach(item => {
-          if (item.positionId && item.correct) {
-            dropdownAnswers[item.positionId] = q.id === 'gv-5' ? item.value : 'wrong';
-          }
-        });
-        mockAnswers[q.id] = dropdownAnswers;
-      } else if (q.type === 'DRAG_AND_DROP') {
-        const contentData = q.content?.data || [];
-        const dragDropAnswers = {};
-        contentData.forEach(item => {
-          if (item.positionId && item.correct) {
-            dragDropAnswers[item.positionId] = q.id === 'gv-6' ? item.value : 'wrong';
-          }
-        });
-        mockAnswers[q.id] = dragDropAnswers;
-      } else if (q.type === 'REARRANGE') {
-        const contentData = q.content?.data || [];
-        const correctOrder = contentData
-          .slice()
-          .sort((a, b) => {
-            const posA = parseInt((a.positionId || '').replace('pos_', ''));
-            const posB = parseInt((b.positionId || '').replace('pos_', ''));
-            return posA - posB;
-          })
-          .map(item => item.value)
-          .filter(Boolean);
-        mockAnswers[q.id] = q.id === 'gv-7' ? correctOrder : [...correctOrder].reverse();
-      } else if (q.type === 'REWRITE') {
-        const contentData = q.content?.data || [];
-        const correctAnswer = contentData[0]?.value || '';
-        mockAnswers[q.id] = q.id === 'gv-8' ? correctAnswer : 'Wrong answer';
-      }
-    });
-
-    // Generate answers for Reading sections
-    reData.readingSections.forEach(section => {
-      section.questions?.forEach(q => {
-        if (q.type === 'MULTIPLE_CHOICE' || q.type === 'TRUE_OR_FALSE') {
-          const correctOption = q.options?.find(opt => opt.isCorrect);
-          mockAnswers[q.id] = q.type === 'TRUE_OR_FALSE' ? (correctOption?.text || correctOption?.key) : correctOption?.key;
-        } else if (q.type === 'MULTIPLE_SELECT') {
-          const correctKeys = q.options?.filter(opt => opt.isCorrect).map(opt => opt.key) || [];
-          mockAnswers[q.id] = correctKeys;
-        } else if (q.type === 'FILL_IN_THE_BLANK') {
-          const contentData = q.content?.data || [];
-          const fillBlankAnswers = {};
-          contentData.forEach(item => {
-            if (item.positionId && item.correct) {
-              fillBlankAnswers[item.positionId] = item.value;
-            }
-          });
-          mockAnswers[q.id] = fillBlankAnswers;
-        } else if (q.type === 'DROPDOWN') {
-          const contentData = q.content?.data || [];
-          const dropdownAnswers = {};
-          contentData.forEach(item => {
-            if (item.positionId && item.correct) {
-              dropdownAnswers[item.positionId] = item.value;
-            }
-          });
-          mockAnswers[q.id] = dropdownAnswers;
-        } else if (q.type === 'DRAG_AND_DROP') {
-          const contentData = q.content?.data || [];
-          const dragDropAnswers = {};
-          contentData.forEach(item => {
-            if (item.positionId && item.correct) {
-              dragDropAnswers[item.positionId] = item.value;
-            }
-          });
-          mockAnswers[q.id] = dragDropAnswers;
-        } else if (q.type === 'REARRANGE') {
-          const contentData = q.content?.data || [];
-          const correctOrder = contentData
-            .slice()
-            .sort((a, b) => {
-              const posA = parseInt((a.positionId || '').replace('pos_', ''));
-              const posB = parseInt((b.positionId || '').replace('pos_', ''));
-              return posA - posB;
-            })
-            .map(item => item.value)
-            .filter(Boolean);
-          mockAnswers[q.id] = correctOrder;
-        }
-      });
-    });
-
-    // Generate answers for Listening sections
-    liData.listeningSections.forEach(section => {
-      section.questions?.forEach(q => {
-        if (q.type === 'MULTIPLE_CHOICE' || q.type === 'TRUE_OR_FALSE') {
-          const correctOption = q.options?.find(opt => opt.isCorrect);
-          mockAnswers[q.id] = q.type === 'TRUE_OR_FALSE' ? (correctOption?.text || correctOption?.key) : correctOption?.key;
-        } else if (q.type === 'MULTIPLE_SELECT') {
-          const correctKeys = q.options?.filter(opt => opt.isCorrect).map(opt => opt.key) || [];
-          mockAnswers[q.id] = correctKeys;
-        } else if (q.type === 'FILL_IN_THE_BLANK') {
-          const contentData = q.content?.data || [];
-          const fillBlankAnswers = {};
-          contentData.forEach(item => {
-            if (item.positionId && item.correct) {
-              fillBlankAnswers[item.positionId] = item.value;
-            }
-          });
-          mockAnswers[q.id] = fillBlankAnswers;
-        } else if (q.type === 'DROPDOWN') {
-          const contentData = q.content?.data || [];
-          const dropdownAnswers = {};
-          contentData.forEach(item => {
-            if (item.positionId && item.correct) {
-              dropdownAnswers[item.positionId] = item.value;
-            }
-          });
-          mockAnswers[q.id] = dropdownAnswers;
-        } else if (q.type === 'DRAG_AND_DROP') {
-          const contentData = q.content?.data || [];
-          const dragDropAnswers = {};
-          contentData.forEach(item => {
-            if (item.positionId && item.correct) {
-              dragDropAnswers[item.positionId] = item.value;
-            }
-          });
-          mockAnswers[q.id] = dragDropAnswers;
-        } else if (q.type === 'REARRANGE') {
-          const contentData = q.content?.data || [];
-          const correctOrder = contentData
-            .slice()
-            .sort((a, b) => {
-              const posA = parseInt((a.positionId || '').replace('pos_', ''));
-              const posB = parseInt((b.positionId || '').replace('pos_', ''));
-              return posA - posB;
-            })
-            .map(item => item.value)
-            .filter(Boolean);
-          mockAnswers[q.id] = correctOrder;
-        }
-      });
-    });
-
-    // Generate answers for Writing sections
-    wrData.writingSections.forEach((section, sectionIdx) => {
-      if (sectionIdx === 0) {
-        mockAnswers[section.id] = {
-          text: `Writing is an essential skill that plays a crucial role in communication, education, and professional development. Throughout my academic journey, I have come to understand the importance of effective writing and the impact it has on expressing thoughts, ideas, and arguments clearly and persuasively.
-
-First and foremost, writing allows individuals to communicate complex ideas in a structured and coherent manner. Unlike verbal communication, which can be spontaneous and sometimes unclear, writing provides the opportunity to carefully organize thoughts, revise content, and ensure clarity. This process of drafting, editing, and refining helps writers develop critical thinking skills and enhances their ability to analyze and synthesize information.
-
-Moreover, writing serves as a powerful tool for learning and knowledge retention. When students write about what they have learned, they engage in active processing of information, which helps solidify their understanding. Research has shown that writing promotes deeper learning and better comprehension of subject matter. Whether it's taking notes, writing essays, or creating summaries, the act of writing helps individuals internalize and remember information more effectively.
-
-In addition to academic benefits, writing is indispensable in professional settings. From composing emails and reports to creating proposals and presentations, strong writing skills are highly valued by employers across all industries. Clear, concise, and well-structured written communication can lead to better collaboration, improved decision-making, and enhanced professional reputation.
-
-Furthermore, writing provides a means of personal expression and creativity. Through creative writing, individuals can explore their imagination, express emotions, and share stories with others. Journaling, for instance, can be therapeutic and help individuals process their thoughts and experiences. Writing poetry, fiction, or personal narratives allows people to connect with themselves and others on a deeper level.
-
-Despite its numerous benefits, many people find writing challenging. Common obstacles include writer's block, lack of confidence, and difficulty organizing thoughts. However, with practice, patience, and proper guidance, anyone can improve their writing skills. Regular writing practice, reading widely, and seeking feedback from peers or mentors are effective strategies for enhancing writing abilities.
-
-In conclusion, writing is a fundamental skill that contributes significantly to personal, academic, and professional success. It enables effective communication, promotes learning, facilitates professional growth, and provides a platform for creative expression. As we continue to navigate an increasingly information-driven world, the ability to write well becomes even more important. Therefore, investing time and effort in developing strong writing skills is not just beneficial but essential for anyone seeking to succeed in today's society.`,
-        };
-      } else {
-        // Section 2 (index 1) should have image files
-        mockAnswers[section.id] = {
-          files: [
-            {
-              name: 'banana.jpg',
-              url: '/img/banana.jpg',
-              imageUrl: '/img/banana.jpg',
-              type: 'image/jpeg'
-            }
-          ],
-        };
-      }
-    });
-
-    // Generate answers for Speaking sections
-    spData.speakingSections.forEach((section, sectionIdx) => {
-      mockAnswers[section.id] = {
-        audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3',
-        audio: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3'
-      };
-    });
-
-    setStudentAnswers(mockAnswers);
-
-    // Mock submission data
-const mockSubmissionDetail = {
-  id: 1,
-  student: {
-    id: "SE12345",
-    name: "Nguyễn Văn A",
-    email: "anvn@example.com",
-    avatar: null,
-    class: "SE1801",
-    level: "Basic",
-  },
-  challenge: {
-    id: 1,
-        title: "Daily Challenge - All Question Types",
-        totalQuestions: allQuestions.length,
-        totalPoints: 100,
-        timeLimit: 60,
-  },
-  submission: {
-    score: 0,
-        totalPoints: 85,
-        maxPoints: 100,
-        correctCount: 25,
-        incorrectCount: 5,
-        unansweredCount: 2,
-        accuracy: 85,
-        timeSpent: 45,
-    submittedAt: "2024-01-15 10:30:00",
-    status: "completed",
-  },
-    };
-
-    setSubmissionData(mockSubmissionDetail);
-
-    // Mock anti-cheat data based on SubmissionLogEvent structure
-    const mockAntiCheatData = {
-      totalViolations: 4,
-      tabBlurCount: 2,
-      copyCount: 1,
-      pasteCount: 1,
-      totalTabBlurDuration: 120000, // milliseconds
-      events: [
-        {
-          event: 'START',
-          timestamp: '2024-01-15T10:20:00Z',
-          questionId: null,
-          oldValue: null,
-          newValue: null,
-          durationMs: null,
-          content: null,
-        },
-        {
-          event: 'TAB_BLUR',
-          timestamp: '2024-01-15T10:25:30Z',
-          durationMs: 45000,
-          questionId: null,
-          oldValue: null,
-          newValue: null,
-          content: null,
-        },
-        {
-          event: 'COPY',
-          timestamp: '2024-01-15T10:26:15Z',
-          content: 'Đã chặn Ctrl+C / Ctrl+Insert',
-          questionId: 1,
-          oldValue: null,
-          newValue: null,
-          durationMs: null,
-        },
-        {
-          event: 'TAB_BLUR',
-          timestamp: '2024-01-15T10:27:00Z',
-          durationMs: 75000,
-          questionId: null,
-          oldValue: null,
-          newValue: null,
-          content: null,
-        },
-        {
-          event: 'PASTE',
-          timestamp: '2024-01-15T10:28:20Z',
-          content: 'Đã chặn Ctrl+V / Shift+Insert',
-          questionId: 2,
-          oldValue: null,
-          newValue: null,
-          durationMs: null,
-        },
-        {
-          event: 'ANSWER_CHANGE',
-          timestamp: '2024-01-15T10:29:10Z',
-          questionId: 3,
-          oldValue: ['A'],
-          newValue: ['B'],
-          durationMs: null,
-          content: null,
-        },
-      ],
-    };
-
-    setAntiCheatData(mockAntiCheatData);
-    setLoading(false);
-  }, []);
+  // Note: Fake data generation is removed - now using API data from fetchSubmissionDetail
 
   const fetchSubmissionDetail = useCallback(async () => {
+    if (!submissionId) {
+      spaceToast.error('Submission ID is required');
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     try {
-      // Data is already loaded in useEffect
-      setTimeout(() => {
-        setLoading(false);
-      }, 1000);
+      const response = await dailyChallengeApi.getSubmissionResult(submissionId);
+      const apiData = response?.data?.data || response?.data || {};
+      
+      const sectionDetails = apiData.sectionDetails || [];
+      const challengeId = apiData.challengeId || id;
+      const submissionChallengeId = apiData.submissionChallengeId || submissionId;
+
+      // Map API response to component's expected format
+      const readingSections = [];
+      const listeningSections = [];
+      const writingSections = [];
+      const speakingSections = [];
+      const questions = [];
+      const studentAnswersMap = {};
+      let totalQuestions = 0;
+      let totalScore = 0;
+      let receivedScore = 0;
+      let correctCount = 0;
+      let incorrectCount = 0;
+      let unansweredCount = 0;
+
+      sectionDetails.forEach((sectionDetail) => {
+        const section = sectionDetail.section || {};
+        const questionResults = sectionDetail.questionResults || [];
+        const sectionTitle = (section.sectionTitle || '').toLowerCase();
+        
+        // Determine section type using multiple signals (title, content, resource, question types)
+        const hasAudio = !!section.sectionsUrl;
+        const hasLongPassage = !!section.sectionsContent &&
+          section.sectionsContent.replace(/<[^>]*>/g, '').trim().length > 120 &&
+          !/(choose|select|dropdown|drag|drop|fill|rearrange|rewrite)/i.test(section.sectionsContent || '');
+        const hasRewriteQuestion = (sectionDetail.questionResults || []).some(q => q?.questionType === 'REWRITE');
+
+        let sectionType = 'listening'; // default
+        // 1) Strong signals by explicit title first
+        if (sectionTitle.includes('writing')) {
+          sectionType = 'writing';
+        } else if (sectionTitle.includes('reading')) {
+          sectionType = 'reading';
+        } else if (sectionTitle.includes('speaking')) {
+          sectionType = 'speaking';
+        } else if (sectionTitle.includes('listening')) {
+          sectionType = 'listening';
+        } else {
+          // 2) Heuristics as fallback
+          if (hasAudio) sectionType = 'listening';
+          else if (hasRewriteQuestion) sectionType = 'writing';
+          else if (hasLongPassage) sectionType = 'reading';
+        }
+
+        // Map questions
+        const mappedQuestions = questionResults.map((q) => {
+          totalQuestions++;
+          totalScore += q.score || 0;
+          receivedScore += q.receivedScore || 0;
+          
+          // Count correct, incorrect, unanswered
+          if (q.receivedScore > 0) {
+            correctCount++;
+          } else if (q.submittedContent && q.submittedContent.data && q.submittedContent.data.length > 0) {
+            incorrectCount++;
+          } else {
+            unansweredCount++;
+          }
+
+          const questionContent = q.questionContent?.data || [];
+          const submittedContent = q.submittedContent?.data || [];
+
+          // Map student answers based on question type
+          if (q.questionType === 'MULTIPLE_CHOICE' || q.questionType === 'TRUE_OR_FALSE') {
+            const submitted = submittedContent?.[0];
+            if (submitted?.id) {
+              if (q.questionType === 'TRUE_OR_FALSE') {
+                // Map A/B (or ids) to displayed value True/False based on questionContent
+                const matched = questionContent.find(opt => opt.id === submitted.id);
+                const mappedValue = matched?.value || (submitted.id === 'True' ? 'True' : submitted.id === 'False' ? 'False' : undefined);
+                if (mappedValue) {
+                  studentAnswersMap[q.questionId] = mappedValue; // 'True' or 'False'
+                }
+              } else {
+                // For multiple choice, use the option id (A, B, C, etc.)
+                studentAnswersMap[q.questionId] = submitted.id;
+              }
+            }
+          } else if (q.questionType === 'MULTIPLE_SELECT') {
+            const submittedKeys = submittedContent?.map(s => s.id).filter(Boolean) || [];
+            studentAnswersMap[q.questionId] = submittedKeys;
+          } else if (q.questionType === 'FILL_IN_THE_BLANK') {
+            const submitted = submittedContent?.[0];
+            const fillBlankAnswers = {};
+            // For fill in the blank, need to match submitted answer with correct positionId
+            if (submitted && submitted.value) {
+              // Method 1: Try to find matching option in questionContent by id (most reliable)
+              const matchingOption = questionContent.find(opt => 
+                opt.id === (submitted.positionId || submitted.id)
+              );
+              
+              // Get positionId from questionContent (used in questionText placeholders like [[pos_m7yytf]])
+              let posId = matchingOption?.positionId;
+              
+              // If positionId found from matching, map it
+              if (posId) {
+                // Map with "pos_" prefix (as used in questionText)
+                fillBlankAnswers[`pos_${posId}`] = submitted.value;
+                // Also map without prefix as fallback
+                fillBlankAnswers[posId] = submitted.value;
+              }
+              
+              // Method 2: Always map by questionContent[0].positionId if it exists (fallback)
+              if (questionContent.length > 0 && questionContent[0].positionId) {
+                const firstPosId = questionContent[0].positionId;
+                fillBlankAnswers[`pos_${firstPosId}`] = submitted.value;
+                fillBlankAnswers[firstPosId] = submitted.value;
+              }
+              
+              // Method 3: Map by submitted positionId/id as additional fallback
+              const submittedPosId = submitted.positionId || submitted.id;
+              if (submittedPosId) {
+                fillBlankAnswers[submittedPosId] = submitted.value;
+                fillBlankAnswers[`pos_${submittedPosId}`] = submitted.value;
+              }
+            }
+            studentAnswersMap[q.questionId] = fillBlankAnswers;
+          } else if (q.questionType === 'DROPDOWN') {
+            const submitted = submittedContent?.[0];
+            const dropdownAnswers = {};
+            if (submitted && submitted.id) {
+              // Find the option in questionContent that matches the submitted id
+              const matchedItem = questionContent.find(item => item.id === submitted.id);
+              
+              if (matchedItem) {
+                // Get the value from matchedItem (not the id)
+                const selectedValue = matchedItem.value || '';
+                
+                // Map by positionId (with and without "pos_" prefix)
+                if (matchedItem.positionId) {
+                  dropdownAnswers[`pos_${matchedItem.positionId}`] = selectedValue;
+                  dropdownAnswers[matchedItem.positionId] = selectedValue;
+                }
+                
+                // Also map by all positionIds in questionContent for this positionId
+                questionContent.forEach(opt => {
+                  if (opt.positionId === matchedItem.positionId && opt.positionId) {
+                    dropdownAnswers[`pos_${opt.positionId}`] = selectedValue;
+                    dropdownAnswers[opt.positionId] = selectedValue;
+                  }
+                });
+              } else if (submitted.positionId) {
+                // Fallback: if no match by id, try to find by positionId
+                const matchedByPosId = questionContent.find(item => item.positionId === submitted.positionId);
+                if (matchedByPosId && matchedByPosId.value) {
+                  dropdownAnswers[`pos_${submitted.positionId}`] = matchedByPosId.value;
+                  dropdownAnswers[submitted.positionId] = matchedByPosId.value;
+                }
+              }
+              
+              // Always map by first positionId from questionContent if exists (fallback)
+              if (questionContent.length > 0 && questionContent[0].positionId) {
+                const firstPosId = questionContent[0].positionId;
+                const firstMatched = questionContent.find(item => item.id === submitted.id);
+                if (firstMatched && firstMatched.value) {
+                  dropdownAnswers[`pos_${firstPosId}`] = firstMatched.value;
+                  dropdownAnswers[firstPosId] = firstMatched.value;
+                }
+              }
+            }
+            studentAnswersMap[q.questionId] = dropdownAnswers;
+          } else if (q.questionType === 'DRAG_AND_DROP') {
+            const dragDropAnswers = {};
+            submittedContent?.forEach(submitted => {
+              if (submitted && submitted.id) {
+                // Find the option in questionContent that matches the submitted id
+                const matchedItem = questionContent.find(item => item.id === submitted.id);
+                
+                // Get the value from matchedItem (not the id)
+                const selectedValue = matchedItem?.value || '';
+                
+                if (selectedValue) {
+                  // Get positionId from submitted or matchedItem
+                  const posId = submitted.positionId || matchedItem?.positionId;
+                  
+                  // Map with and without "pos_" prefix
+                  if (posId) {
+                    const rawPosId = posId.replace(/^pos_/, ''); // Remove "pos_" prefix if exists
+                    dragDropAnswers[posId] = selectedValue;
+                    dragDropAnswers[rawPosId] = selectedValue;
+                    // Also map with "pos_" prefix if rawPosId
+                    if (rawPosId !== posId) {
+                      dragDropAnswers[`pos_${rawPosId}`] = selectedValue;
+                    }
+                  }
+                }
+              }
+            });
+            studentAnswersMap[q.questionId] = dragDropAnswers;
+          } else if (q.questionType === 'REARRANGE') {
+            // For rearrange, map positionId to item value (not id) in order
+            const submittedOrder = submittedContent
+              ?.filter(s => s.positionId && s.id)
+              .sort((a, b) => {
+                // Sort by positionId
+                const posA = a.positionId.replace(/^pos_/, '');
+                const posB = b.positionId.replace(/^pos_/, '');
+                return posA.localeCompare(posB);
+              })
+              .map(s => {
+                // Find the option in questionContent that matches the submitted id
+                const matchedItem = questionContent.find(item => item.id === s.id);
+                // Return the value from matchedItem (not the id)
+                return matchedItem?.value || s.id; // Fallback to id if value not found
+              })
+              .filter(Boolean) || [];
+            studentAnswersMap[q.questionId] = submittedOrder;
+          } else if (q.questionType === 'WRITING') {
+            // For writing, store student's essay per section id to render on the right
+            const essayText = (submittedContent?.[0]?.value || '').trim();
+            if (essayText) {
+              const current = studentAnswersMap[section.id] || {};
+              studentAnswersMap[section.id] = { ...current, text: essayText };
+            }
+          }
+
+          // Map options for multiple choice/select
+          const options = questionContent.map((item) => ({
+            key: item.id,
+            text: item.value || '',
+            isCorrect: item.correct || false,
+          }));
+
+          return {
+            id: q.questionId,
+            submissionQuestionId: q.submissionQuestionId,
+            type: q.questionType,
+            question: q.questionText || '',
+            options: options.length > 0 ? options : undefined,
+            content: questionContent.length > 0 ? { data: questionContent } : undefined,
+            points: q.score || 0,
+            receivedScore: q.receivedScore || 0,
+            orderNumber: q.orderNumber || 0,
+          };
+        });
+
+        // Detect Grammar & Vocabulary (GV) sections and push questions directly
+        const allowedGVTypes = new Set([
+          'MULTIPLE_CHOICE',
+          'MULTIPLE_SELECT',
+          'TRUE_OR_FALSE',
+          'FILL_IN_THE_BLANK',
+          'DROPDOWN',
+          'DRAG_AND_DROP',
+          'REARRANGE',
+          'REWRITE',
+        ]);
+
+        const looksLikeGV = (() => {
+          const noExplicitTitle = !section.sectionTitle || section.sectionTitle.trim() === '';
+          const noMedia = !section.sectionsUrl;
+          const noReadingWritingSpeakingKeyword = !/(reading|writing|speaking|listen)/i.test(section.sectionTitle || '');
+          const textLooksInstructional = !section.sectionsContent || /(choose|select|fill|dropdown|drag|drop|rearrange|rewrite)/i.test(section.sectionsContent);
+          const onlyGVTypes = questionResults.length > 0 && questionResults.every(qr => allowedGVTypes.has(qr?.questionType));
+          const resourceNone = !section.resourceType || section.resourceType === 'NONE';
+          return noExplicitTitle && noMedia && resourceNone && textLooksInstructional && onlyGVTypes && noReadingWritingSpeakingKeyword;
+        })();
+
+        if (looksLikeGV) {
+          // Treat as Grammar & Vocabulary: flatten into questions list
+          questions.push(...mappedQuestions);
+        } else {
+          // Create section object with fields tailored by section type
+          const baseSection = {
+            id: section.id,
+            title: section.sectionTitle || '',
+            questions: mappedQuestions,
+            points: mappedQuestions.reduce((sum, q) => sum + (q.points || 0), 0),
+            orderNumber: section.orderNumber || 0,
+            resourceType: section.resourceType || 'FILE',
+          };
+
+          const mappedSection = (() => {
+            if (sectionType === 'reading') {
+              return {
+                ...baseSection,
+                passage: section.sectionsContent || '',
+              };
+            }
+            if (sectionType === 'listening') {
+              return {
+                ...baseSection,
+                transcript: section.sectionsContent || '',
+                audioUrl: section.sectionsUrl || '',
+              };
+            }
+            if (sectionType === 'writing') {
+              return {
+                ...baseSection,
+                prompt: section.sectionsContent || '',
+              };
+            }
+            // speaking or others
+            return {
+              ...baseSection,
+              transcript: section.sectionsContent || '',
+              audioUrl: section.sectionsUrl || '',
+            };
+          })();
+
+          // Add to appropriate array
+          if (sectionType === 'reading') {
+            readingSections.push(mappedSection);
+          } else if (sectionType === 'listening') {
+            listeningSections.push(mappedSection);
+          } else if (sectionType === 'writing') {
+            writingSections.push(mappedSection);
+          } else if (sectionType === 'speaking') {
+            speakingSections.push(mappedSection);
+          } else {
+            // Default to listening if type is unclear
+            listeningSections.push(mappedSection);
+          }
+        }
+      });
+
+      // Set fakeData (keeping the name for compatibility)
+      setFakeData({
+        questions,
+        readingSections,
+        listeningSections,
+        writingSections,
+        speakingSections,
+      });
+
+      // Set student answers
+      setStudentAnswers(studentAnswersMap);
+
+      // Set submission data
+      // Check if API provides accuracy, score, or other submission data directly
+      const apiSubmissionData = apiData.submission || apiData.submissionResult || {};
+      
+      setSubmissionData({
+        id: submissionChallengeId,
+        student: {
+          id: apiData.studentId || null,
+          name: apiData.studentName || null,
+          email: apiData.studentEmail || null,
+          avatar: apiData.studentAvatar || null,
+          class: apiData.studentClass || null,
+          level: apiData.studentLevel || null,
+        },
+        challenge: {
+          id: challengeId,
+          title: apiData.challengeTitle || null,
+          totalQuestions,
+          totalPoints: apiSubmissionData.totalPoints || totalScore,
+          maxPoints: apiSubmissionData.maxPoints || totalScore,
+          timeLimit: apiData.timeLimit || apiSubmissionData.timeLimit || 0,
+        },
+        submission: {
+          score: apiSubmissionData.score != null ? apiSubmissionData.score : receivedScore,
+          totalPoints: apiSubmissionData.totalPoints != null ? apiSubmissionData.totalPoints : receivedScore,
+          maxPoints: apiSubmissionData.maxPoints != null ? apiSubmissionData.maxPoints : totalScore,
+          correctCount: apiSubmissionData.correctCount != null ? apiSubmissionData.correctCount : correctCount,
+          incorrectCount: apiSubmissionData.incorrectCount != null ? apiSubmissionData.incorrectCount : incorrectCount,
+          unansweredCount: apiSubmissionData.unansweredCount != null ? apiSubmissionData.unansweredCount : unansweredCount,
+          accuracy: apiSubmissionData.accuracy != null ? apiSubmissionData.accuracy : (totalScore > 0 ? Math.round((receivedScore / totalScore) * 100) : 0),
+          timeSpent: apiSubmissionData.timeSpent != null ? apiSubmissionData.timeSpent : (apiSubmissionData.timeUsed || 0),
+          submittedAt: apiSubmissionData.submittedAt || apiSubmissionData.submittedDate || null,
+          status: apiSubmissionData.status || 'completed',
+        },
+      });
+
+      // Fetch grading summary for sidebar Performance (override fake/calculated numbers)
+      try {
+        const gradingRes = await dailyChallengeApi.getSubmissionGradingResult(submissionChallengeId);
+        const gradingData = gradingRes?.data?.data || gradingRes?.data || null;
+        if (gradingData) {
+          // Map grading fields to local state
+          const score = gradingData.totalScore;
+          const maxPointsFromGrading = gradingData.maxPossibleScore;
+          const accuracyPct = gradingData.scorePercentage != null ? Math.round(gradingData.scorePercentage) : undefined;
+          const correct = gradingData.correctAnswers;
+          const incorrect = gradingData.wrongAnswers;
+          const unanswered = (gradingData.skipped || 0) + (gradingData.empty || 0);
+
+          setSubmissionData(prev => ({
+            ...prev,
+            challenge: {
+              ...prev.challenge,
+              totalQuestions: gradingData.totalQuestions ?? prev.challenge?.totalQuestions,
+              maxPoints: maxPointsFromGrading ?? prev.challenge?.maxPoints,
+            },
+            submission: {
+              ...prev.submission,
+              score: score ?? prev.submission?.score,
+              totalPoints: score ?? prev.submission?.totalPoints,
+              maxPoints: maxPointsFromGrading ?? prev.submission?.maxPoints,
+              correctCount: correct ?? prev.submission?.correctCount,
+              incorrectCount: incorrect ?? prev.submission?.incorrectCount,
+              unansweredCount: unanswered ?? prev.submission?.unansweredCount,
+              accuracy: accuracyPct ?? prev.submission?.accuracy,
+            },
+          }));
+
+          // Prefill teacher & AI feedback from grading service if provided
+          if (typeof gradingData.teacherFeedback === 'string') {
+            setTeacherFeedback(gradingData.teacherFeedback);
+          }
+          if (typeof gradingData.aiSummary === 'string') {
+            setAiFeedback(gradingData.aiSummary);
+          }
+        }
+      } catch (e) {
+        // Non-blocking: ignore if grading summary not available
+        console.warn('GetSubmissionGradingResult failed:', e?.response?.data || e?.message);
+      }
+
+      // Set anti-cheat data (mock data for now, can be replaced with API data later)
+      // TODO: Replace with actual anti-cheat data from API when available
+      const mockAntiCheatData = {
+        totalViolations: 4,
+        tabBlurCount: 2,
+        copyCount: 1,
+        pasteCount: 1,
+        totalTabBlurDuration: 120000, // milliseconds
+        events: [
+          {
+            event: 'START',
+            timestamp: new Date().toISOString(),
+            questionId: null,
+            oldValue: null,
+            newValue: null,
+            durationMs: null,
+            content: null,
+          },
+          {
+            event: 'TAB_BLUR',
+            timestamp: new Date(Date.now() - 600000).toISOString(),
+            durationMs: 45000,
+            questionId: null,
+            oldValue: null,
+            newValue: null,
+            content: null,
+          },
+          {
+            event: 'COPY',
+            timestamp: new Date(Date.now() - 540000).toISOString(),
+            content: 'Đã chặn Ctrl+C / Ctrl+Insert',
+            questionId: 1,
+            oldValue: null,
+            newValue: null,
+            durationMs: null,
+          },
+          {
+            event: 'TAB_BLUR',
+            timestamp: new Date(Date.now() - 480000).toISOString(),
+            durationMs: 75000,
+            questionId: null,
+            oldValue: null,
+            newValue: null,
+            content: null,
+          },
+          {
+            event: 'PASTE',
+            timestamp: new Date(Date.now() - 420000).toISOString(),
+            content: 'Đã chặn Ctrl+V / Shift+Insert',
+            questionId: 2,
+            oldValue: null,
+            newValue: null,
+            durationMs: null,
+          },
+          {
+            event: 'ANSWER_CHANGE',
+            timestamp: new Date(Date.now() - 360000).toISOString(),
+            questionId: 3,
+            oldValue: ['A'],
+            newValue: ['B'],
+            durationMs: null,
+            content: null,
+          },
+        ],
+      };
+      setAntiCheatData(mockAntiCheatData);
+
+      setLoading(false);
     } catch (error) {
-      spaceToast.error('Error loading submission detail');
+      console.error('Error fetching submission detail:', error);
+      spaceToast.error(error.response?.data?.message || 'Error loading submission detail');
       setLoading(false);
     }
-  }, []);
+  }, [submissionId, id]);
 
   useEffect(() => {
     fetchSubmissionDetail();
@@ -856,9 +1121,152 @@ const mockSubmissionDetail = {
     };
   }, [enterDailyChallengeMenu, exitDailyChallengeMenu, id]);
 
+  // Build question navigation list (must be before early return)
+  const getQuestionNavigation = useCallback(() => {
+    if (!fakeData) return [];
+    const { questions, readingSections, listeningSections, writingSections, speakingSections } = fakeData;
+    const navigation = [];
+    let questionNumber = 1;
+
+    // Grammar & Vocabulary questions
+    if (questions.length > 0) {
+      questions.forEach((q) => {
+        navigation.push({ 
+          id: `gv-${q.id}`, 
+          type: 'question', 
+          title: `Question ${questionNumber++}` 
+        });
+      });
+    }
+
+    // Reading sections
+    if (readingSections.length > 0) {
+      readingSections.forEach((s, idx) => {
+        const count = s.questions?.length || 0;
+        const start = questionNumber;
+        const end = count > 0 ? start + count - 1 : start;
+        navigation.push({ 
+          id: `reading-${idx + 1}`, 
+          type: 'section', 
+          title: `Reading ${idx + 1}: Question ${start}-${end}` 
+        });
+        questionNumber = end + 1;
+      });
+    }
+
+    // Listening sections
+    if (listeningSections.length > 0) {
+      listeningSections.forEach((s, idx) => {
+        const count = s.questions?.length || 0;
+        const start = questionNumber;
+        const end = count > 0 ? start + count - 1 : start;
+        navigation.push({ 
+          id: `listening-${idx + 1}`, 
+          type: 'section', 
+          title: `Listening ${idx + 1}: Question ${start}-${end}` 
+        });
+        questionNumber = end + 1;
+      });
+    }
+
+    // Writing sections
+    if (writingSections.length > 0) {
+      writingSections.forEach((s, idx) => {
+        navigation.push({ 
+          id: `writing-${idx + 1}`, 
+          type: 'section', 
+          title: `Writing ${idx + 1}` 
+        });
+      });
+    }
+
+    // Speaking sections
+    if (speakingSections.length > 0) {
+      speakingSections.forEach((s, idx) => {
+        navigation.push({ 
+          id: `speaking-${idx + 1}`, 
+          type: 'section', 
+          title: `Speaking ${idx + 1}` 
+        });
+      });
+    }
+
+    return navigation;
+  }, [fakeData]);
+
   if (loading || !submissionData || !fakeData) {
+    // Custom header for loading state
+    const loadingHeader = (
+      <header className={`themed-header ${theme}-header`}>
+        <nav className="themed-navbar">
+          <div className="themed-navbar-content">
+            <div className="themed-navbar-brand" style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '16px',
+              flex: 1
+            }}>
+              <Button
+                icon={<ArrowLeftOutlined />}
+                onClick={() => {
+                  if (dailyChallengeData?.backPath) {
+                    navigate(dailyChallengeData.backPath);
+                  } else {
+                    navigate(-1);
+                  }
+                }}
+                className={`daily-challenge-menu-back-button ${theme}-daily-challenge-menu-back-button`}
+                style={{
+                  height: '32px',
+                  borderRadius: '8px',
+                  fontWeight: '500',
+                  fontSize: '14px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  border: '1px solid rgba(0, 0, 0, 0.1)',
+                  background: '#ffffff',
+                  color: '#000000',
+                  backdropFilter: 'blur(10px)',
+                  transition: 'all 0.3s ease'
+                }}
+                onMouseEnter={(e) => {
+                  e.target.style.transform = 'translateY(-2px)';
+                  e.target.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.15)';
+                  e.target.style.filter = 'brightness(0.95)';
+                  e.target.style.borderColor = 'rgba(0, 0, 0, 0.2)';
+                }}
+                onMouseLeave={(e) => {
+                  e.target.style.transform = 'translateY(0)';
+                  e.target.style.boxShadow = 'none';
+                  e.target.style.filter = 'none';
+                  e.target.style.borderColor = 'rgba(0, 0, 0, 0.1)';
+                }}
+              >
+                {t('common.back')}
+              </Button>
+              <div style={{
+                height: '24px',
+                width: '1px',
+                backgroundColor: theme === 'sun' ? 'rgba(30, 64, 175, 0.3)' : 'rgba(255, 255, 255, 0.3)'
+              }} />
+              <h2 style={{
+                margin: 0,
+                fontSize: '20px',
+                fontWeight: '600',
+                color: theme === 'sun' ? '#1e40af' : '#fff',
+                textShadow: theme === 'sun' ? '0 0 5px rgba(30, 64, 175, 0.3)' : '0 0 15px rgba(134, 134, 134, 0.8)'
+              }}>
+                {t('dailyChallenge.dailyChallengeManagement')}
+              </h2>
+            </div>
+          </div>
+        </nav>
+      </header>
+    );
+
     return (
-      <ThemedLayout>
+      <ThemedLayout customHeader={loadingHeader}>
         <LoadingWithEffect loading={loading} message="Loading submission details..." />
       </ThemedLayout>
     );
@@ -875,6 +1283,70 @@ const mockSubmissionDetail = {
       comment: '',
       isEdit: false,
     });
+  };
+
+  // Build grading payload and save
+  const handleSaveGrading = async () => {
+    if (!submissionData?.id && !submissionId) {
+      spaceToast.error('Missing submission ID');
+      return;
+    }
+    const subId = submissionId || submissionData?.id;
+    try {
+      setSavingGrading(true);
+
+      // Base payload
+      const payload = {
+        totalScore: submission?.score ?? 0,
+        overallFeedback: (teacherFeedback || '').trim(),
+        questionGradings: []
+      };
+
+      // Writing: include per-section grading with highlights
+      if (Array.isArray(writingSections) && writingSections.length > 0) {
+        writingSections.forEach((sec) => {
+          const qId = (sec.questions && (sec.questions[0]?.submissionQuestionId || sec.questions[0]?.id)) || sec.id;
+          const fb = getFeedback(sec.id, 'section') || '';
+          const highlights = Array.isArray(writingSectionFeedbacks?.[sec.id])
+            ? writingSectionFeedbacks[sec.id].map((h) => ({
+                startIndex: h.startIndex ?? 0,
+                endIndex: h.endIndex ?? 0,
+                comment: h.comment || '',
+                id: h.id || undefined,
+                timestamp: h.timestamp || undefined,
+              }))
+            : [];
+          payload.questionGradings.push({
+            submissionQuestionId: qId,
+            score: Number(questionScores[qId]) || 0,
+            feedback: fb,
+            highlightComments: highlights,
+          });
+        });
+      }
+
+      // Speaking: include per-section grading (no highlights)
+      if (Array.isArray(speakingSections) && speakingSections.length > 0) {
+        speakingSections.forEach((sec) => {
+          const qId = (sec.questions && (sec.questions[0]?.submissionQuestionId || sec.questions[0]?.id)) || sec.id;
+          const fb = getFeedback(sec.id, 'section') || '';
+          payload.questionGradings.push({
+            submissionQuestionId: qId,
+            score: Number(questionScores[qId]) || 0,
+            feedback: fb,
+            highlightComments: [],
+          });
+        });
+      }
+
+      await dailyChallengeApi.gradeSubmission(subId, payload);
+      spaceToast.success('Saved grading successfully');
+    } catch (err) {
+      console.error('Save grading failed:', err);
+      spaceToast.error(err?.response?.data?.message || 'Failed to save grading');
+    } finally {
+      setSavingGrading(false);
+    }
   };
   
   const handleOpenEditScore = () => {
@@ -915,6 +1387,71 @@ const mockSubmissionDetail = {
     handleCloseScoreModal();
   };
 
+  // Handle save teacher feedback
+  const handleSaveTeacherFeedback = async () => {
+    try {
+      setSavingFeedback(true);
+      // TODO: Call API to save teacher feedback
+      // await dailyChallengeApi.saveTeacherFeedback(submissionId, teacherFeedback);
+      
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      spaceToast.success('Teacher feedback saved successfully');
+    } catch (error) {
+      console.error('Error saving teacher feedback:', error);
+      spaceToast.error(error.response?.data?.error || 'Failed to save teacher feedback');
+    } finally {
+      setSavingFeedback(false);
+    }
+  };
+
+  // Handle generate AI feedback
+  const handleGenerateAiFeedback = async () => {
+    try {
+      setGeneratingAiFeedback(true);
+      // TODO: Call API to generate AI feedback
+      // const response = await dailyChallengeApi.generateAiFeedback(submissionId);
+      
+      // Simulate API call with AI-generated feedback
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      // Mock AI feedback based on submission data
+      const mockAiFeedback = `Based on the submission analysis:
+
+**Overall Performance:**
+- Score: ${submission.score}/${submission.maxPoints ?? submission.totalPoints ?? submissionData?.challenge?.maxPoints ?? 0}
+- Accuracy: ${submission.accuracy}%
+- Correct Answers: ${submission.correctCount}
+- Incorrect Answers: ${submission.incorrectCount}
+
+**Strengths:**
+The student demonstrated good understanding in several areas and showed consistent effort throughout the challenge.
+
+**Areas for Improvement:**
+There are opportunities to enhance performance, particularly in areas with incorrect answers. Consider reviewing the specific question types that posed challenges.
+
+**Recommendations:**
+Continue practicing with similar exercises to reinforce understanding and improve accuracy.`;
+
+      setAiFeedback(mockAiFeedback);
+      spaceToast.success('AI feedback generated successfully');
+    } catch (error) {
+      console.error('Error generating AI feedback:', error);
+      spaceToast.error(error.response?.data?.error || 'Failed to generate AI feedback');
+    } finally {
+      setGeneratingAiFeedback(false);
+    }
+  };
+
+  // Scroll to question function
+  const scrollToQuestion = (questionId) => {
+    const element = questionRefs.current[questionId];
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
+
   // Helper function to render section questions (used in Reading/Listening sections)
   const renderSectionQuestion = (q, qIndex, sectionType = 'reading') => {
     const questionText = q.questionText || q.question || '';
@@ -924,7 +1461,7 @@ const mockSubmissionDetail = {
       const options = q.options || [];
       const isMulti = q.type === 'MULTIPLE_SELECT';
       const correctOption = options.find(opt => opt.isCorrect);
-      const correctKey = correctOption?.key;
+      const correctKey = q.type === 'TRUE_OR_FALSE' ? (correctOption?.text) : correctOption?.key;
       const correctKeys = isMulti ? options.filter(opt => opt.isCorrect).map(opt => opt.key) : [];
       
       return (
@@ -1007,23 +1544,51 @@ const mockSubmissionDetail = {
           }
           inputIndex += 1;
           const positionId = `pos_${match[2]}`;
-          const correctItem = contentData.find(item => item.positionId === positionId && item.correct);
+          const rawPositionId = match[2]; // Without "pos_" prefix
+          
+          // Find correct item - check both with and without "pos_" prefix
+          let correctItem = contentData.find(item => 
+            (item.positionId === positionId || item.positionId === rawPositionId) && item.correct
+          );
+          // Fallback: if no correct item found, try to find any item with matching positionId
+          if (!correctItem) {
+            correctItem = contentData.find(item => 
+              item.positionId === positionId || item.positionId === rawPositionId
+            );
+          }
           const correctAnswer = correctItem?.value || '';
+          
           let studentAnswer = '';
           if (typeof studentAnswerObj === 'object' && studentAnswerObj !== null) {
-            studentAnswer = studentAnswerObj[positionId] || studentAnswerObj[match[2]] || '';
+            // Check multiple possible keys
+            studentAnswer = studentAnswerObj[positionId] || 
+                          studentAnswerObj[rawPositionId] || 
+                          studentAnswerObj[match[2]] || 
+                          '';
           } else if (typeof studentAnswerObj === 'string') {
             studentAnswer = studentAnswerObj;
           }
-          const isCorrect = studentAnswer.trim().toLowerCase() === correctAnswer.trim().toLowerCase();
+          const isCorrect = correctAnswer && studentAnswer.trim().toLowerCase() === correctAnswer.trim().toLowerCase();
+          const isUnanswered = !studentAnswer || studentAnswer.trim().length === 0;
+          const displayValue = isUnanswered ? (correctAnswer || '') : studentAnswer;
+          const bgColor = isCorrect
+            ? (theme === 'sun' ? 'rgba(82, 196, 26, 0.1)' : 'rgba(82, 196, 26, 0.15)')
+            : isUnanswered
+              ? (theme === 'sun' ? 'rgba(250, 173, 20, 0.12)' : 'rgba(250, 173, 20, 0.2)')
+              : (theme === 'sun' ? 'rgba(255, 77, 79, 0.1)' : 'rgba(255, 77, 79, 0.15)');
+          const borderColor = isCorrect ? 'rgb(82, 196, 26)' : (isUnanswered ? '#faad14' : 'rgb(255, 77, 79)');
+          const textColor = isCorrect ? (theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)') : (isUnanswered ? '#faad14' : (theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)'));
+          const fontWeight = isUnanswered ? 600 : 400;
           
           parts.push(
-            <input key={`fill_blank_input_${inputIndex}`} type="text" value={studentAnswer} readOnly disabled style={{ display: 'inline-block', minWidth: '120px', maxWidth: '200px', minHeight: '32px', padding: '4px 12px', margin: '0 8px', background: isCorrect ? (theme === 'sun' ? 'rgba(82, 196, 26, 0.1)' : 'rgba(82, 196, 26, 0.15)') : (theme === 'sun' ? 'rgba(255, 77, 79, 0.1)' : 'rgba(255, 77, 79, 0.15)'), border: `2px solid ${isCorrect ? 'rgb(82, 196, 26)' : 'rgb(255, 77, 79)'}`, borderRadius: '8px', cursor: 'not-allowed', outline: 'none', lineHeight: '1.4', fontSize: '14px', boxSizing: 'border-box', textAlign: 'center', color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)', fontWeight: '400', verticalAlign: 'middle' }} />
+            <input key={`fill_blank_input_${inputIndex}`} type="text" value={displayValue} readOnly disabled style={{ display: 'inline-block', minWidth: '120px', maxWidth: '200px', minHeight: '32px', padding: '4px 12px', margin: '0 8px', background: bgColor, border: `2px solid ${borderColor}`, borderRadius: '8px', cursor: 'not-allowed', outline: 'none', lineHeight: '1.4', fontSize: '14px', boxSizing: 'border-box', textAlign: 'center', color: textColor, fontWeight, verticalAlign: 'middle' }} />
           );
           
-          if (!isCorrect && studentAnswer) {
+          // Show correct answer only when answered wrong (not for unanswered since shown inside input)
+          if (!isCorrect && correctAnswer && !(isUnanswered)) {
+            const answerColor = '#52c41a';
             parts.push(
-              <span key={`answer_${inputIndex}`} style={{ fontSize: '15px', color: '#52c41a', fontWeight: 600, whiteSpace: 'nowrap', marginLeft: '8px' }}>
+              <span key={`answer_${inputIndex}`} style={{ fontSize: '15px', color: answerColor, fontWeight: 600, whiteSpace: 'nowrap', marginLeft: '8px', marginRight: '8px', display: 'inline-block' }}>
                 {correctAnswer}
               </span>
             );
@@ -1063,19 +1628,37 @@ const mockSubmissionDetail = {
             parts.push(<span key={`text_${idx}`} className="question-text-content" dangerouslySetInnerHTML={{ __html: questionText.slice(last, match.index) }} />);
           }
           const positionId = `pos_${match[1]}`;
+          const rawPositionId = match[1]; // Without "pos_" prefix
+          
           const optionsForPosition = contentData.filter(opt => {
             const optPosId = String(opt.positionId || '');
-            const matchPosId = String(positionId);
-            return optPosId === matchPosId;
-  }) || [];
-          const correctItem = optionsForPosition.find(it => it.correct);
+            return optPosId === positionId || optPosId === rawPositionId;
+          }) || [];
+          
+          const correctItem = optionsForPosition.find(it => it.correct) || 
+                             (optionsForPosition.length > 0 ? optionsForPosition[0] : null);
           const correctAnswer = correctItem?.value || '';
-          const studentAnswer = studentAnswerObj[positionId] || studentAnswerObj[match[1]] || '';
-          const isCorrect = studentAnswer.trim().toLowerCase() === correctAnswer.trim().toLowerCase();
+          
+          // Get student answer - check multiple possible keys
+          const studentAnswer = studentAnswerObj[positionId] || 
+                              studentAnswerObj[rawPositionId] || 
+                              studentAnswerObj[match[1]] || 
+                              '';
+          
+          const isCorrect = correctAnswer && studentAnswer.trim().toLowerCase() === correctAnswer.trim().toLowerCase();
+          const isUnanswered = !studentAnswer || studentAnswer.trim().length === 0;
+          const displayedValue = isUnanswered ? correctAnswer : studentAnswer;
           const optionValues = optionsForPosition.map(it => it.value).filter(Boolean);
+          const ddBg = isCorrect
+            ? (theme === 'sun' ? 'rgba(82, 196, 26, 0.1)' : 'rgba(82, 196, 26, 0.15)')
+            : isUnanswered
+              ? (theme === 'sun' ? 'rgba(250, 173, 20, 0.12)' : 'rgba(250, 173, 20, 0.2)')
+              : (theme === 'sun' ? 'rgba(255, 77, 79, 0.1)' : 'rgba(255, 77, 79, 0.15)');
+          const ddBorder = isCorrect ? 'rgb(82, 196, 26)' : (isUnanswered ? '#faad14' : 'rgb(255, 77, 79)');
+          const ddColor = isUnanswered ? '#faad14' : (isCorrect ? '#52c41a' : '#ff4d4f');
           
           parts.push(
-            <select key={`dd_${q.id}_${idx++}`} value={studentAnswer || ''} disabled style={{ display: 'inline-block', minWidth: '120px', height: '32px', padding: '4px 12px', margin: '0 8px', background: isCorrect ? (theme === 'sun' ? 'rgba(82, 196, 26, 0.1)' : 'rgba(82, 196, 26, 0.15)') : (theme === 'sun' ? 'rgba(255, 77, 79, 0.1)' : 'rgba(255, 77, 79, 0.15)'), border: `2px solid ${isCorrect ? 'rgb(82, 196, 26)' : 'rgb(255, 77, 79)'}`, borderRadius: '8px', fontSize: '14px', fontWeight: 600, color: isCorrect ? '#52c41a' : '#ff4d4f', cursor: 'not-allowed', outline: 'none', verticalAlign: 'middle', textAlign: 'center', textAlignLast: 'center' }}>
+            <select key={`dd_${q.id}_${idx++}`} value={displayedValue || ''} disabled style={{ display: 'inline-block', minWidth: '120px', height: '32px', padding: '4px 12px', margin: '0 8px', background: ddBg, border: `2px solid ${ddBorder}`, borderRadius: '8px', fontSize: '14px', fontWeight: 600, color: ddColor, cursor: 'not-allowed', outline: 'none', verticalAlign: 'middle', textAlign: 'center', textAlignLast: 'center' }}>
               <option value="" disabled hidden style={{ textAlign: 'center' }}>Select</option>
               {optionValues.map((opt, optIdx) => (
                 <option key={optIdx} value={opt}>{opt}</option>
@@ -1083,9 +1666,10 @@ const mockSubmissionDetail = {
             </select>
           );
           
-          if (!isCorrect && studentAnswer) {
+          // Only show side correct answer when answered wrong. For unanswered, we put it inside the select.
+          if (!isCorrect && correctAnswer && !isUnanswered) {
             parts.push(
-              <span key={`answer_${idx++}`} style={{ fontSize: '15px', color: '#52c41a', fontWeight: 600, whiteSpace: 'nowrap', marginLeft: '8px' }}>
+              <span key={`answer_${idx++}`} style={{ fontSize: '15px', color: '#52c41a', fontWeight: 600, whiteSpace: 'nowrap', marginLeft: '8px', marginRight: '8px', display: 'inline-block' }}>
                 {correctAnswer}
               </span>
             );
@@ -1135,21 +1719,46 @@ const mockSubmissionDetail = {
                   if (part.type === 'text') {
                     return <span key={pIdx} dangerouslySetInnerHTML={{ __html: part.content || '' }} />;
                   }
-                  const studentAnswer = studentAnswerObj[part.positionId] || '';
-                  const correctItem = contentData.find(item => {
+                  
+                  // Extract raw positionId from part.positionId (e.g., "pos_dqn1x8" -> "dqn1x8")
+                  const rawPositionId = part.positionId.replace(/^pos_/, '');
+                  
+                  // Get student answer - check multiple possible keys
+                  const studentAnswer = studentAnswerObj[part.positionId] || 
+                                      studentAnswerObj[rawPositionId] || 
+                                      '';
+                  
+                  // Find correct item - check both with and without "pos_" prefix
+                  let correctItem = contentData.find(item => {
                     const itemPosId = String(item.positionId || '');
-                    const matchPosId = String(part.positionId);
-                    return itemPosId === matchPosId && item.correct;
+                    return (itemPosId === part.positionId || itemPosId === rawPositionId) && item.correct;
                   });
+                  
+                  // Fallback: if no correct item found, try to find any item with matching positionId
+                  if (!correctItem) {
+                    correctItem = contentData.find(item => {
+                      const itemPosId = String(item.positionId || '');
+                      return itemPosId === part.positionId || itemPosId === rawPositionId;
+                    });
+                  }
+                  
                   const correctAnswer = correctItem?.value || '';
-                  const isCorrect = studentAnswer.trim().toLowerCase() === correctAnswer.trim().toLowerCase();
+                  const isCorrect = correctAnswer && studentAnswer.trim().toLowerCase() === correctAnswer.trim().toLowerCase();
                   
                   return (
                     <React.Fragment key={pIdx}>
                       {studentAnswer ? (
-                        <div style={{ minWidth: '120px', height: '32px', margin: '0 8px', background: isCorrect ? (theme === 'sun' ? 'rgba(82, 196, 26, 0.1)' : 'rgba(82, 196, 26, 0.15)') : (theme === 'sun' ? 'rgba(255, 77, 79, 0.1)' : 'rgba(255, 77, 79, 0.15)'), border: `2px solid ${isCorrect ? 'rgb(82, 196, 26)' : 'rgb(255, 77, 79)'}`, borderRadius: '8px', display: 'inline-block', padding: '4px 12px', fontSize: '15px', fontWeight: '350', color: isCorrect ? '#52c41a' : '#ff4d4f', cursor: 'not-allowed', verticalAlign: 'middle', lineHeight: '1.4', boxSizing: 'border-box', textAlign: 'center' }} dangerouslySetInnerHTML={{ __html: studentAnswer || '' }} />
+                        <>
+                          <div style={{ minWidth: '120px', minHeight: '32px', maxWidth: '200px', margin: '0 8px', background: isCorrect ? (theme === 'sun' ? 'rgba(82, 196, 26, 0.1)' : 'rgba(82, 196, 26, 0.15)') : (theme === 'sun' ? 'rgba(255, 77, 79, 0.1)' : 'rgba(255, 77, 79, 0.15)'), border: `2px solid ${isCorrect ? 'rgb(82, 196, 26)' : 'rgb(255, 77, 79)'}`, borderRadius: '8px', display: 'inline-block', padding: '4px 12px', fontSize: '15px', fontWeight: '350', color: isCorrect ? '#52c41a' : '#ff4d4f', cursor: 'not-allowed', verticalAlign: 'middle', lineHeight: '1.4', boxSizing: 'border-box', textAlign: 'center', wordBreak: 'break-word', wordWrap: 'break-word', overflow: 'hidden', whiteSpace: 'normal' }} dangerouslySetInnerHTML={{ __html: studentAnswer || '' }} />
+                          {/* Show correct answer if wrong (same as Fill in the Blank) */}
+                          {!isCorrect && correctAnswer && (
+                            <span style={{ fontSize: '15px', color: '#52c41a', fontWeight: 600, whiteSpace: 'nowrap', marginLeft: '8px', marginRight: '8px', display: 'inline-block' }}>
+                              {correctAnswer}
+                            </span>
+                          )}
+                        </>
                       ) : (
-                        <div style={{ minWidth: '120px', height: '32px', margin: '0 8px', background: '#ffffff', border: '2px dashed rgba(0, 0, 0, 0.3)', borderRadius: '8px', display: 'inline-block', padding: '4px 12px', fontSize: '15px', color: 'rgba(0, 0, 0, 0.5)', cursor: 'not-allowed', verticalAlign: 'middle', lineHeight: '1.4', boxSizing: 'border-box', textAlign: 'center' }}>Empty</div>
+                        <div style={{ minWidth: '120px', minHeight: '32px', maxWidth: '200px', margin: '0 8px', background: (theme === 'sun' ? 'rgba(250, 173, 20, 0.12)' : 'rgba(250, 173, 20, 0.2)'), border: `2px solid #faad14`, borderRadius: '8px', display: 'inline-block', padding: '4px 12px', fontSize: '15px', fontWeight: '600', color: '#faad14', cursor: 'not-allowed', verticalAlign: 'middle', lineHeight: '1.4', boxSizing: 'border-box', textAlign: 'center' }} dangerouslySetInnerHTML={{ __html: correctAnswer || '' }} />
                       )}
                     </React.Fragment>
                   );
@@ -1178,14 +1787,33 @@ const mockSubmissionDetail = {
       const contentData = q.content?.data || [];
       const studentAnswer = studentAnswers?.[q.id] || [];
       
-      const correctOrder = contentData.slice().sort((a, b) => {
-        const posA = parseInt((a.positionId || '').replace('pos_', ''));
-        const posB = parseInt((b.positionId || '').replace('pos_', ''));
-        return posA - posB;
-      }).map(item => item.value).filter(Boolean);
+      // Get correct order by sorting by positionId (alphabetically, as positionId is string)
+      const correctOrder = contentData
+        .slice()
+        .sort((a, b) => {
+          const posA = (a.positionId || '').replace(/^pos_/, '');
+          const posB = (b.positionId || '').replace(/^pos_/, '');
+          return posA.localeCompare(posB);
+        })
+        .map(item => item.value)
+        .filter(Boolean);
       
-      const studentOrder = Array.isArray(studentAnswer) ? studentAnswer : (typeof studentAnswer === 'object' && studentAnswer !== null ? Object.keys(studentAnswer).sort((a, b) => parseInt(a) - parseInt(b)).map(key => studentAnswer[key]).filter(Boolean) : []);
-      const isCorrect = studentOrder.length === correctOrder.length && studentOrder.every((word, idx) => word.trim().toLowerCase() === correctOrder[idx].trim().toLowerCase());
+      // Student answer should be an array of values (not ids) from mapping
+      const studentOrder = Array.isArray(studentAnswer) 
+        ? studentAnswer 
+        : (typeof studentAnswer === 'object' && studentAnswer !== null 
+            ? Object.keys(studentAnswer)
+                .sort((a, b) => {
+                  const posA = String(a).replace(/^pos_/, '');
+                  const posB = String(b).replace(/^pos_/, '');
+                  return posA.localeCompare(posB);
+                })
+                .map(key => studentAnswer[key])
+                .filter(Boolean) 
+            : []);
+      
+      const isCorrect = studentOrder.length === correctOrder.length && 
+        studentOrder.every((word, idx) => word.trim().toLowerCase() === correctOrder[idx].trim().toLowerCase());
       const displayText = ((questionText).replace(/\[\[pos_.*?\]\]/g, '')).trim();
 
       return (
@@ -1202,7 +1830,11 @@ const mockSubmissionDetail = {
                   <span style={{ fontSize: '14px', fontWeight: '600', color: isCorrect ? '#52c41a' : '#ff4d4f', textAlign: 'center', padding: '8px 12px' }}>{word}</span>
                 </div>
               )) : (
-                <Typography.Text style={{ fontSize: '14px', color: 'rgba(0, 0, 0, 0.5)', fontStyle: 'italic' }}>No answer provided</Typography.Text>
+                correctOrder.map((word, index) => (
+                  <div key={index} style={{ minWidth: '100px', height: '60px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid #faad14', borderRadius: '8px', background: theme === 'sun' ? 'rgba(250, 173, 20, 0.12)' : 'rgba(250, 173, 20, 0.2)', cursor: 'not-allowed' }}>
+                    <span style={{ fontSize: '14px', fontWeight: '600', color: '#faad14', textAlign: 'center', padding: '8px 12px' }}>{word}</span>
+                  </div>
+                ))
               )}
             </div>
           </div>
@@ -1242,42 +1874,13 @@ const mockSubmissionDetail = {
   const renderReadingSection = (section, index) => {
     return (
       <div key={section.id || index} className={`question-item ${theme}-question-item`} style={{ marginBottom: '24px', borderRadius: '16px', padding: '24px', border: '2px solid', borderColor: theme === 'sun' ? 'rgba(113, 179, 253, 0.25)' : 'rgba(138, 122, 255, 0.2)', background: theme === 'sun' ? 'linear-gradient(135deg, rgba(255, 255, 255, 1) 0%, rgba(240, 249, 255, 0.95) 100%)' : 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(244, 240, 255, 0.95) 100%)', boxShadow: theme === 'sun' ? '0 4px 16px rgba(113, 179, 253, 0.1)' : '0 4px 16px rgba(138, 122, 255, 0.12)' }}>
-        <div className="question-header" style={{ paddingBottom: '14px', marginBottom: '16px', borderBottom: '2px solid', borderBottomColor: theme === 'sun' ? 'rgba(113, 179, 253, 0.25)' : 'rgba(138, 122, 255, 0.2)', position: 'relative', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div>
-            <Typography.Text strong style={{ fontSize: '20px', color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' }}>
-              {index + 1}. Reading Section
-            </Typography.Text>
-            <Typography.Text style={{ marginLeft: '12px', fontSize: '14px', opacity: 0.7 }}>
-              ({section.points} {section.points > 1 ? 'points' : 'point'})
-            </Typography.Text>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            {!getFeedback(section.id, 'section') ? (
-              <Button
-                size="small"
-                onClick={() => handleOpenAddFeedback(section.id, 'section')}
-                style={{
-                  fontSize: '13px',
-                  height: '28px',
-                  padding: '0 12px'
-                }}
-              >
-                Add Feedback
-              </Button>
-            ) : (
-              <Button
-                size="small"
-                onClick={() => handleOpenEditFeedback(section.id, 'section')}
-                style={{
-                  fontSize: '13px',
-                  height: '28px',
-                  padding: '0 12px'
-                }}
-              >
-                Edit Feedback
-              </Button>
-            )}
-          </div>
+        <div className="question-header" style={{ paddingBottom: '14px', marginBottom: '16px', borderBottom: '2px solid', borderBottomColor: theme === 'sun' ? 'rgba(113, 179, 253, 0.25)' : 'rgba(138, 122, 255, 0.2)' }}>
+          <Typography.Text strong style={{ fontSize: '20px', color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' }}>
+            {index + 1}. Reading Section
+          </Typography.Text>
+          <Typography.Text style={{ marginLeft: '12px', fontSize: '14px', opacity: 0.7 }}>
+            ({section.points} {section.points > 1 ? 'points' : 'point'})
+          </Typography.Text>
         </div>
         <div style={{ display: 'flex', gap: '24px', minHeight: '500px' }}>
           <div className="reading-passage-scrollbar" style={{ flex: '1', padding: '20px', background: theme === 'sun' ? '#f9f9f9' : 'rgba(255, 255, 255, 0.02)', borderRadius: '12px', border: `1px solid ${theme === 'sun' ? '#e8e8e8' : 'rgba(255, 255, 255, 0.1)'}`, overflowY: 'auto', maxHeight: '600px', scrollbarWidth: 'thin', scrollbarColor: theme === 'sun' ? '#1890ff rgba(24, 144, 255, 0.2)' : '#8B5CF6 rgba(138, 122, 255, 0.2)' }}>
@@ -1305,42 +1908,13 @@ const mockSubmissionDetail = {
   const renderListeningSection = (section, index) => {
     return (
       <div key={section.id || index} className={`question-item ${theme}-question-item`} style={{ marginBottom: '24px', borderRadius: '16px', padding: '24px', border: '2px solid', borderColor: theme === 'sun' ? 'rgba(113, 179, 253, 0.25)' : 'rgba(138, 122, 255, 0.2)', background: theme === 'sun' ? 'linear-gradient(135deg, rgba(255, 255, 255, 1) 0%, rgba(240, 249, 255, 0.95) 100%)' : 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(244, 240, 255, 0.95) 100%)', boxShadow: theme === 'sun' ? '0 4px 16px rgba(113, 179, 253, 0.1)' : '0 4px 16px rgba(138, 122, 255, 0.12)' }}>
-        <div className="question-header" style={{ paddingBottom: '14px', marginBottom: '16px', borderBottom: '2px solid', borderBottomColor: theme === 'sun' ? 'rgba(113, 179, 253, 0.25)' : 'rgba(138, 122, 255, 0.2)', position: 'relative', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div>
-            <Typography.Text strong style={{ fontSize: '20px', color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' }}>
-              {index + 1}. Listening Section
-            </Typography.Text>
-            <Typography.Text style={{ marginLeft: '12px', fontSize: '14px', opacity: 0.7 }}>
-              ({section.points} {section.points > 1 ? 'points' : 'point'})
-            </Typography.Text>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            {!getFeedback(section.id, 'section') ? (
-              <Button
-                size="small"
-                onClick={() => handleOpenAddFeedback(section.id, 'section')}
-                style={{
-                  fontSize: '13px',
-                  height: '28px',
-                  padding: '0 12px'
-                }}
-              >
-                Add Feedback
-              </Button>
-            ) : (
-              <Button
-                size="small"
-                onClick={() => handleOpenEditFeedback(section.id, 'section')}
-                style={{
-                  fontSize: '13px',
-                  height: '28px',
-                  padding: '0 12px'
-                }}
-              >
-                Edit Feedback
-              </Button>
-            )}
-          </div>
+        <div className="question-header" style={{ paddingBottom: '14px', marginBottom: '16px', borderBottom: '2px solid', borderBottomColor: theme === 'sun' ? 'rgba(113, 179, 253, 0.25)' : 'rgba(138, 122, 255, 0.2)' }}>
+          <Typography.Text strong style={{ fontSize: '20px', color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' }}>
+            {index + 1}. Listening Section
+          </Typography.Text>
+          <Typography.Text style={{ marginLeft: '12px', fontSize: '14px', opacity: 0.7 }}>
+            ({section.points} {section.points > 1 ? 'points' : 'point'})
+          </Typography.Text>
         </div>
         <div style={{ display: 'flex', gap: '24px', minHeight: '500px' }}>
           <div className="listening-passage-scrollbar" style={{ flex: '1', padding: '20px', background: theme === 'sun' ? '#f9f9f9' : 'rgba(255, 255, 255, 0.02)', borderRadius: '12px', border: `1px solid ${theme === 'sun' ? '#e8e8e8' : 'rgba(255, 255, 255, 0.1)'}`, overflowY: 'auto', maxHeight: '600px', scrollbarWidth: 'thin', scrollbarColor: theme === 'sun' ? '#1890ff rgba(24, 144, 255, 0.2)' : '#8B5CF6 rgba(138, 122, 255, 0.2)' }}>
@@ -1373,19 +1947,60 @@ const mockSubmissionDetail = {
 
   // Render Writing Section
   const renderWritingSection = (section, index) => {
+    const qIdForScore = (section.questions && (section.questions[0]?.submissionQuestionId || section.questions[0]?.id)) || section.id;
     const studentAnswer = studentAnswers?.[section.id] || {};
     const studentEssayText = studentAnswer?.text || studentAnswer?.essay || '';
     const studentFiles = Array.isArray(studentAnswer?.files) ? studentAnswer.files : [];
 
     return (
       <div key={section.id || index} className={`question-item ${theme}-question-item`} style={{ marginBottom: '24px', borderRadius: '16px', padding: '24px', border: '2px solid', borderColor: theme === 'sun' ? 'rgba(113, 179, 253, 0.25)' : 'rgba(138, 122, 255, 0.2)', background: theme === 'sun' ? 'linear-gradient(135deg, rgba(255, 255, 255, 1) 0%, rgba(240, 249, 255, 0.95) 100%)' : 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(244, 240, 255, 0.95) 100%)', boxShadow: theme === 'sun' ? '0 4px 16px rgba(113, 179, 253, 0.1)' : '0 4px 16px rgba(138, 122, 255, 0.12)' }}>
-        <div className="question-header" style={{ paddingBottom: '14px', marginBottom: '16px', borderBottom: '2px solid', borderBottomColor: theme === 'sun' ? 'rgba(113, 179, 253, 0.25)' : 'rgba(138, 122, 255, 0.2)', position: 'relative' }}>
-          <Typography.Text strong style={{ fontSize: '16px', color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' }}>
-            {index + 1}. Writing Section
-          </Typography.Text>
-          <Typography.Text style={{ marginLeft: '12px', fontSize: '14px', opacity: 0.7 }}>
-            ({section.points} {section.points > 1 ? 'points' : 'point'})
-          </Typography.Text>
+        <div className="question-header" style={{ paddingBottom: '14px', marginBottom: '16px', borderBottom: '2px solid', borderBottomColor: theme === 'sun' ? 'rgba(113, 179, 253, 0.25)' : 'rgba(138, 122, 255, 0.2)', position: 'relative', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div>
+            <Typography.Text strong style={{ fontSize: '16px', color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' }}>
+              {index + 1}. Writing Section
+            </Typography.Text>
+            <Typography.Text style={{ marginLeft: '12px', fontSize: '14px', opacity: 0.7 }}>
+              ({section.points} {section.points > 1 ? 'points' : 'point'})
+            </Typography.Text>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            {!getFeedback(section.id, 'section') ? (
+              <>
+                <Button
+                  size="small"
+                  style={{ fontSize: '13px', height: '28px', padding: '0 12px' }}
+                >
+                  Generate AI Feedback
+                </Button>
+                <Button
+                  size="small"
+                  onClick={() => handleOpenAddFeedback(section.id, 'section')}
+                  style={{ fontSize: '13px', height: '28px', padding: '0 12px' }}
+                >
+                  Add Score/Feedback
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button
+                  danger
+                  size="small"
+                  icon={<DeleteOutlined />}
+                  onClick={() => handleDeleteFeedbackDirect(section.id, 'section')}
+                  style={{ fontSize: '13px', height: '28px', padding: '0 12px' }}
+                >
+                  Delete
+                </Button>
+                <Button
+                  size="small"
+                  onClick={() => handleOpenEditFeedback(section.id, 'section')}
+                  style={{ fontSize: '13px', height: '28px', padding: '0 12px' }}
+                >
+                  Edit Score/Feedback
+                </Button>
+              </>
+            )}
+          </div>
         </div>
         <div style={{ display: 'flex', gap: '24px', minHeight: '600px', position: 'relative' }}>
           <div className="writing-prompt-scrollbar" style={{ flex: '1', padding: '20px', background: theme === 'sun' ? '#f9f9f9' : 'rgba(255, 255, 255, 0.02)', borderRadius: '12px', border: `1px solid ${theme === 'sun' ? '#e8e8e8' : 'rgba(255, 255, 255, 0.1)'}`, overflowY: 'auto', maxHeight: '600px', scrollbarWidth: 'thin', scrollbarColor: theme === 'sun' ? '#1890ff rgba(24, 144, 255, 0.2)' : '#8B5CF6 rgba(138, 122, 255, 0.2)' }}>
@@ -1479,14 +2094,27 @@ const mockSubmissionDetail = {
                         }}
                       >
                         <CommentOutlined style={{ 
-                          fontSize: '18px', 
+                          fontSize: '16px', 
                           color: theme === 'sun' ? '#1890ff' : '#8B5CF6' 
                         }} />
                       </button>
                     </div>
                   )}
                 </div>
-              ) : null}
+              ) : (
+                <div
+                  style={{
+                    padding: '16px',
+                    background: theme === 'sun' ? '#fffbe6' : 'rgba(255, 255, 255, 0.06)',
+                    border: `1px dashed ${theme === 'sun' ? '#faad14' : 'rgba(250, 173, 20, 0.6)'}`,
+                    borderRadius: '8px',
+                    color: theme === 'sun' ? '#ad6800' : '#eab308',
+                    fontSize: '14px'
+                  }}
+                >
+                  The student left this writing blank.
+                </div>
+              )}
               {studentFiles.length > 0 && (
                 <div style={{ marginTop: studentEssayText ? '20px' : '0' }}>
                   <div style={{
@@ -1592,6 +2220,7 @@ const mockSubmissionDetail = {
 
   // Render Speaking Section
   const renderSpeakingSection = (section, index) => {
+    const qIdForScore = (section.questions && (section.questions[0]?.submissionQuestionId || section.questions[0]?.id)) || section.id;
     const studentAnswer = studentAnswers?.[section.id] || {};
     const audioUrl = studentAnswer?.audioUrl || studentAnswer?.audio || null;
     const sectionId = section.id || `speaking-${index}`;
@@ -1697,29 +2326,56 @@ const mockSubmissionDetail = {
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             {!getFeedback(section.id, 'section') ? (
-              <Button
-                size="small"
-                onClick={() => handleOpenAddFeedback(section.id, 'section')}
-                style={{
-                  fontSize: '13px',
-                  height: '28px',
-                  padding: '0 12px'
-                }}
-              >
-                Add Feedback
-              </Button>
+              <>
+                <Button
+                  size="small"
+                  style={{
+                    fontSize: '13px',
+                    height: '28px',
+                    padding: '0 12px'
+                  }}
+                >
+                  Generate AI Feedback
+                </Button>
+                <Button
+                  size="small"
+                  onClick={() => handleOpenAddFeedback(section.id, 'section')}
+                  style={{
+                    fontSize: '13px',
+                    height: '28px',
+                    padding: '0 12px'
+                  }}
+                >
+                  Add Score/Feedback
+                </Button>
+              </>
             ) : (
-              <Button
-                size="small"
-                onClick={() => handleOpenEditFeedback(section.id, 'section')}
-                style={{
-                  fontSize: '13px',
-                  height: '28px',
-                  padding: '0 12px'
-                }}
-              >
-                Edit Feedback
-              </Button>
+              <>
+                <Button
+                  danger
+                  size="small"
+                  icon={<DeleteOutlined />}
+                  onClick={() => handleDeleteFeedbackDirect(section.id, 'section')}
+                  style={{
+                    fontSize: '13px',
+                    height: '28px',
+                    padding: '0 12px'
+                  }}
+                >
+                  Delete
+                </Button>
+                <Button
+                  size="small"
+                  onClick={() => handleOpenEditFeedback(section.id, 'section')}
+                  style={{
+                    fontSize: '13px',
+                    height: '28px',
+                    padding: '0 12px'
+                  }}
+                >
+                  Edit Score/Feedback
+                </Button>
+              </>
             )}
           </div>
         </div>
@@ -1920,7 +2576,7 @@ const mockSubmissionDetail = {
       const options = q.options || [];
       const isMulti = q.type === 'MULTIPLE_SELECT';
       const correctOption = options.find(opt => opt.isCorrect);
-      const correctKey = correctOption?.key;
+      const correctKey = q.type === 'TRUE_OR_FALSE' ? (correctOption?.text) : correctOption?.key;
       const correctKeys = isMulti ? options.filter(opt => opt.isCorrect).map(opt => opt.key) : [];
       
       const isCorrect = isMulti 
@@ -2106,23 +2762,48 @@ const mockSubmissionDetail = {
           inputIndex += 1;
           
           const positionId = `pos_${match[2]}`;
-          const correctItem = contentData.find(item => item.positionId === positionId && item.correct);
+          const rawPositionId = match[2]; // Without "pos_" prefix
+          
+          // Find correct item - check both with and without "pos_" prefix
+          let correctItem = contentData.find(item => 
+            (item.positionId === positionId || item.positionId === rawPositionId) && item.correct
+          );
+          // Fallback: if no correct item found, try to find any item with matching positionId
+          if (!correctItem) {
+            correctItem = contentData.find(item => 
+              item.positionId === positionId || item.positionId === rawPositionId
+            );
+          }
           const correctAnswer = correctItem?.value || '';
           
           let studentAnswer = '';
           if (typeof studentAnswerObj === 'object' && studentAnswerObj !== null) {
-            studentAnswer = studentAnswerObj[positionId] || studentAnswerObj[match[2]] || '';
+            // Check multiple possible keys
+            studentAnswer = studentAnswerObj[positionId] || 
+                          studentAnswerObj[rawPositionId] || 
+                          studentAnswerObj[match[2]] || 
+                          '';
           } else if (typeof studentAnswerObj === 'string') {
             studentAnswer = studentAnswerObj;
           }
           
-          const isCorrect = studentAnswer.trim().toLowerCase() === correctAnswer.trim().toLowerCase();
-          
+          const isCorrect = correctAnswer && studentAnswer.trim().toLowerCase() === correctAnswer.trim().toLowerCase();
+          const isUnanswered = !studentAnswer || studentAnswer.trim().length === 0;
+          const displayValue = isUnanswered ? (correctAnswer || '') : studentAnswer;
+          const bgColor = isCorrect
+            ? (theme === 'sun' ? 'rgba(82, 196, 26, 0.1)' : 'rgba(82, 196, 26, 0.15)')
+            : isUnanswered
+              ? (theme === 'sun' ? 'rgba(250, 173, 20, 0.12)' : 'rgba(250, 173, 20, 0.2)')
+              : (theme === 'sun' ? 'rgba(255, 77, 79, 0.1)' : 'rgba(255, 77, 79, 0.15)');
+          const borderColor = isCorrect ? 'rgb(82, 196, 26)' : (isUnanswered ? '#faad14' : 'rgb(255, 77, 79)');
+          const textColor = isCorrect ? (theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)') : (isUnanswered ? '#faad14' : (theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)'));
+          const fontWeight = isUnanswered ? 600 : 400;
+
           elements.push(
             <input
               key={`fill_blank_input_${inputIndex}`}
               type="text"
-              value={studentAnswer}
+              value={displayValue}
               readOnly
               disabled
               style={{
@@ -2132,10 +2813,8 @@ const mockSubmissionDetail = {
                 minHeight: '32px',
                 padding: '4px 12px',
                 margin: '0 8px',
-                background: isCorrect 
-                  ? (theme === 'sun' ? 'rgba(82, 196, 26, 0.1)' : 'rgba(82, 196, 26, 0.15)')
-                  : (theme === 'sun' ? 'rgba(255, 77, 79, 0.1)' : 'rgba(255, 77, 79, 0.15)'),
-                border: `2px solid ${isCorrect ? 'rgb(82, 196, 26)' : 'rgb(255, 77, 79)'}`,
+                background: bgColor,
+                border: `2px solid ${borderColor}`,
                 borderRadius: '8px',
                 cursor: 'not-allowed',
                 outline: 'none',
@@ -2143,23 +2822,27 @@ const mockSubmissionDetail = {
                 fontSize: '14px',
                 boxSizing: 'border-box',
                 textAlign: 'center',
-                color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)',
-                fontWeight: '400',
+                color: textColor,
+                fontWeight,
                 verticalAlign: 'middle'
               }}
             />
           );
           
-          if (!isCorrect && studentAnswer) {
+          // Show correct answer only when answered wrong (not for unanswered since we show inside input)
+          if (!isCorrect && correctAnswer && !(isUnanswered)) {
+            const answerColor = '#52c41a';
             elements.push(
               <span 
                 key={`answer_${inputIndex}`}
                 style={{ 
                   fontSize: '15px',
-                  color: '#52c41a',
+                  color: answerColor,
                   fontWeight: 600,
                   whiteSpace: 'nowrap',
-                  marginLeft: '8px'
+                  marginLeft: '8px',
+                  marginRight: '8px',
+                  display: 'inline-block'
                 }}
               >
                 {correctAnswer}
@@ -2260,22 +2943,39 @@ const mockSubmissionDetail = {
             );
           }
           const positionId = `pos_${match[1]}`;
+          const rawPositionId = match[1]; // Without "pos_" prefix
+          
           const optionsForPosition = contentData.filter(opt => {
             const optPosId = String(opt.positionId || '');
-            const matchPosId = String(positionId);
-            return optPosId === matchPosId;
+            return optPosId === positionId || optPosId === rawPositionId;
           }) || [];
           
-          const correctItem = optionsForPosition.find(it => it.correct);
+          const correctItem = optionsForPosition.find(it => it.correct) || 
+                             (optionsForPosition.length > 0 ? optionsForPosition[0] : null);
           const correctAnswer = correctItem?.value || '';
-          const studentAnswer = studentAnswerObj[positionId] || studentAnswerObj[match[1]] || '';
-          const isCorrect = studentAnswer.trim().toLowerCase() === correctAnswer.trim().toLowerCase();
+          
+          // Get student answer - check multiple possible keys
+          const studentAnswer = studentAnswerObj[positionId] || 
+                              studentAnswerObj[rawPositionId] || 
+                              studentAnswerObj[match[1]] || 
+                              '';
+          
+          const isCorrect = correctAnswer && studentAnswer.trim().toLowerCase() === correctAnswer.trim().toLowerCase();
+          const isUnanswered = !studentAnswer || studentAnswer.trim().length === 0;
+          const displayedValue = isUnanswered ? correctAnswer : studentAnswer;
           const optionValues = optionsForPosition.map(it => it.value).filter(Boolean);
+          const ddBg = isCorrect
+            ? (theme === 'sun' ? 'rgba(82, 196, 26, 0.1)' : 'rgba(82, 196, 26, 0.15)')
+            : isUnanswered
+              ? (theme === 'sun' ? 'rgba(250, 173, 20, 0.12)' : 'rgba(250, 173, 20, 0.2)')
+              : (theme === 'sun' ? 'rgba(255, 77, 79, 0.1)' : 'rgba(255, 77, 79, 0.15)');
+          const ddBorder = isCorrect ? 'rgb(82, 196, 26)' : (isUnanswered ? '#faad14' : 'rgb(255, 77, 79)');
+          const ddColor = isUnanswered ? '#faad14' : (isCorrect ? '#52c41a' : '#ff4d4f');
           
           parts.push(
             <select
               key={`dd_${q.id}_${idx++}`}
-              value={studentAnswer || ''}
+              value={displayedValue || ''}
               disabled
               style={{
                 display: 'inline-block',
@@ -2283,14 +2983,12 @@ const mockSubmissionDetail = {
                 height: '32px',
                 padding: '4px 12px',
                 margin: '0 8px',
-                background: isCorrect 
-                  ? (theme === 'sun' ? 'rgba(82, 196, 26, 0.1)' : 'rgba(82, 196, 26, 0.15)')
-                  : (theme === 'sun' ? 'rgba(255, 77, 79, 0.1)' : 'rgba(255, 77, 79, 0.15)'),
-                border: `2px solid ${isCorrect ? 'rgb(82, 196, 26)' : 'rgb(255, 77, 79)'}`,
+                background: ddBg,
+                border: `2px solid ${ddBorder}`,
                 borderRadius: '8px',
                 fontSize: '14px',
                 fontWeight: 600,
-                color: isCorrect ? '#52c41a' : '#ff4d4f',
+                color: ddColor,
                 cursor: 'not-allowed',
                 outline: 'none',
                 verticalAlign: 'middle',
@@ -2305,7 +3003,8 @@ const mockSubmissionDetail = {
             </select>
           );
           
-          if (!isCorrect && studentAnswer) {
+          // Only show side answer when answered wrong; for unanswered it's inside select
+          if (!isCorrect && correctAnswer && !isUnanswered) {
             parts.push(
               <span 
                 key={`answer_${idx++}`}
@@ -2314,7 +3013,9 @@ const mockSubmissionDetail = {
                   color: '#52c41a',
                   fontWeight: 600,
                   whiteSpace: 'nowrap',
-                  marginLeft: '8px'
+                  marginLeft: '8px',
+                  marginRight: '8px',
+                  display: 'inline-block'
                 }}
               >
                 {correctAnswer}
@@ -2477,56 +3178,88 @@ const mockSubmissionDetail = {
                     if (part.type === 'text') {
                       return <span key={pIdx} dangerouslySetInnerHTML={{ __html: part.content || '' }} />;
                     }
-                    const studentAnswer = studentAnswerObj[part.positionId] || '';
-                    const correctItem = contentData.find(item => {
+                    
+                    // Extract raw positionId from part.positionId (e.g., "pos_dqn1x8" -> "dqn1x8")
+                    const rawPositionId = part.positionId.replace(/^pos_/, '');
+                    
+                    // Get student answer - check multiple possible keys
+                    const studentAnswer = studentAnswerObj[part.positionId] || 
+                                        studentAnswerObj[rawPositionId] || 
+                                        '';
+                    
+                    // Find correct item - check both with and without "pos_" prefix
+                    let correctItem = contentData.find(item => {
                       const itemPosId = String(item.positionId || '');
-                      const matchPosId = String(part.positionId);
-                      return itemPosId === matchPosId && item.correct;
+                      return (itemPosId === part.positionId || itemPosId === rawPositionId) && item.correct;
                     });
+                    
+                    // Fallback: if no correct item found, try to find any item with matching positionId
+                    if (!correctItem) {
+                      correctItem = contentData.find(item => {
+                        const itemPosId = String(item.positionId || '');
+                        return itemPosId === part.positionId || itemPosId === rawPositionId;
+                      });
+                    }
+                    
                     const correctAnswer = correctItem?.value || '';
-                    const isCorrect = studentAnswer.trim().toLowerCase() === correctAnswer.trim().toLowerCase();
+                    const isCorrect = correctAnswer && studentAnswer.trim().toLowerCase() === correctAnswer.trim().toLowerCase();
                     
                     return (
                       <React.Fragment key={pIdx}>
                         {studentAnswer ? (
-                          <div style={{
-                            minWidth: '120px',
-                            height: '32px',
-                            margin: '0 8px',
-                            background: isCorrect 
-                              ? (theme === 'sun' ? 'rgba(82, 196, 26, 0.1)' : 'rgba(82, 196, 26, 0.15)')
-                              : (theme === 'sun' ? 'rgba(255, 77, 79, 0.1)' : 'rgba(255, 77, 79, 0.15)'),
-                            border: `2px solid ${isCorrect ? 'rgb(82, 196, 26)' : 'rgb(255, 77, 79)'}`,
-                            borderRadius: '8px',
-                            display: 'inline-block',
-                            padding: '4px 12px',
-                            fontSize: '15px',
-                            fontWeight: '350',
-                            color: isCorrect ? '#52c41a' : '#ff4d4f',
-                            cursor: 'not-allowed',
-                            verticalAlign: 'middle',
-                            lineHeight: '1.4',
-                            boxSizing: 'border-box',
-                            textAlign: 'center'
-                          }} dangerouslySetInnerHTML={{ __html: studentAnswer || '' }} />
+                          <>
+                            <div style={{
+                              minWidth: '120px',
+                              minHeight: '32px',
+                              maxWidth: '200px',
+                              margin: '0 8px',
+                              background: isCorrect 
+                                ? (theme === 'sun' ? 'rgba(82, 196, 26, 0.1)' : 'rgba(82, 196, 26, 0.15)')
+                                : (theme === 'sun' ? 'rgba(255, 77, 79, 0.1)' : 'rgba(255, 77, 79, 0.15)'),
+                              border: `2px solid ${isCorrect ? 'rgb(82, 196, 26)' : 'rgb(255, 77, 79)'}`,
+                              borderRadius: '8px',
+                              display: 'inline-block',
+                              padding: '4px 12px',
+                              fontSize: '15px',
+                              fontWeight: '350',
+                              color: isCorrect ? '#52c41a' : '#ff4d4f',
+                              cursor: 'not-allowed',
+                              verticalAlign: 'middle',
+                              lineHeight: '1.4',
+                              boxSizing: 'border-box',
+                              textAlign: 'center',
+                              wordBreak: 'break-word',
+                              wordWrap: 'break-word',
+                              overflow: 'hidden',
+                              whiteSpace: 'normal'
+                            }} dangerouslySetInnerHTML={{ __html: studentAnswer || '' }} />
+                            {/* Show correct answer if wrong (same as Fill in the Blank) */}
+                            {!isCorrect && correctAnswer && (
+                              <span style={{ fontSize: '15px', color: '#52c41a', fontWeight: 600, whiteSpace: 'nowrap', marginLeft: '8px', marginRight: '8px', display: 'inline-block' }}>
+                                {correctAnswer}
+                              </span>
+                            )}
+                          </>
                         ) : (
                           <div style={{
                             minWidth: '120px',
-                            height: '32px',
+                            minHeight: '32px',
+                            maxWidth: '200px',
                             margin: '0 8px',
-                            background: '#ffffff',
-                            border: '2px dashed rgba(0, 0, 0, 0.3)',
+                            background: (theme === 'sun' ? 'rgba(250, 173, 20, 0.12)' : 'rgba(250, 173, 20, 0.2)'),
+                            border: '2px solid #faad14',
                             borderRadius: '8px',
                             display: 'inline-block',
                             padding: '4px 12px',
                             fontSize: '15px',
-                            color: 'rgba(0, 0, 0, 0.5)',
+                            fontWeight: '600',
+                            color: '#faad14',
                             cursor: 'not-allowed',
                             verticalAlign: 'middle',
                             lineHeight: '1.4',
                             boxSizing: 'border-box',
                             textAlign: 'center'
-                          }}>Empty</div>
+                          }} dangerouslySetInnerHTML={{ __html: correctAnswer || '' }} />
                         )}
                       </React.Fragment>
                     );
@@ -2578,20 +3311,29 @@ const mockSubmissionDetail = {
       const contentData = q.content?.data || [];
       const studentAnswer = studentAnswers?.[q.id] || [];
       
+      // Get correct order by sorting by positionId (alphabetically, as positionId is string)
       const correctOrder = contentData
         .slice()
         .sort((a, b) => {
-          const posA = parseInt((a.positionId || '').replace('pos_', ''));
-          const posB = parseInt((b.positionId || '').replace('pos_', ''));
-          return posA - posB;
+          const posA = (a.positionId || '').replace(/^pos_/, '');
+          const posB = (b.positionId || '').replace(/^pos_/, '');
+          return posA.localeCompare(posB);
         })
         .map(item => item.value)
         .filter(Boolean);
       
+      // Student answer should be an array of values (not ids) from mapping
       const studentOrder = Array.isArray(studentAnswer) 
         ? studentAnswer 
-        : (typeof studentAnswer === 'object' && studentAnswer !== null
-            ? Object.keys(studentAnswer).sort((a, b) => parseInt(a) - parseInt(b)).map(key => studentAnswer[key]).filter(Boolean)
+        : (typeof studentAnswer === 'object' && studentAnswer !== null 
+            ? Object.keys(studentAnswer)
+                .sort((a, b) => {
+                  const posA = String(a).replace(/^pos_/, '');
+                  const posB = String(b).replace(/^pos_/, '');
+                  return posA.localeCompare(posB);
+                })
+                .map(key => studentAnswer[key])
+                .filter(Boolean) 
             : []);
       
       const isCorrect = studentOrder.length === correctOrder.length && 
@@ -2672,9 +3414,23 @@ const mockSubmissionDetail = {
                     </span>
                   </div>
                 )) : (
-                  <Typography.Text style={{ fontSize: '14px', color: 'rgba(0, 0, 0, 0.5)', fontStyle: 'italic' }}>
-                    No answer provided
-                  </Typography.Text>
+                  correctOrder.map((word, index) => (
+                    <div key={index} style={{
+                      minWidth: '100px',
+                      height: '60px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      border: '2px solid #faad14',
+                      borderRadius: '8px',
+                      background: theme === 'sun' ? 'rgba(250, 173, 20, 0.12)' : 'rgba(250, 173, 20, 0.2)',
+                      cursor: 'not-allowed'
+                    }}>
+                      <span style={{ fontSize: '14px', fontWeight: '600', color: '#faad14', textAlign: 'center', padding: '8px 12px' }}>
+                        {word}
+                      </span>
+                    </div>
+                  ))
                 )}
               </div>
             </div>
@@ -2897,345 +3653,1119 @@ const mockSubmissionDetail = {
     );
   };
 
+  // Custom header with back button, title, and score buttons (after data is loaded)
+  const customHeader = (
+    <header className={`themed-header ${theme}-header`}>
+      <nav className="themed-navbar">
+        <div className="themed-navbar-content">
+          <div className="themed-navbar-brand" style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '16px',
+            flex: 1
+          }}>
+            <Button
+              icon={<ArrowLeftOutlined />}
+              onClick={() => {
+                if (dailyChallengeData?.backPath) {
+                  navigate(dailyChallengeData.backPath);
+                } else {
+                  navigate(-1);
+                }
+              }}
+              className={`daily-challenge-menu-back-button ${theme}-daily-challenge-menu-back-button`}
+              style={{
+                height: '32px',
+                borderRadius: '8px',
+                fontWeight: '500',
+                fontSize: '14px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                border: '1px solid rgba(0, 0, 0, 0.1)',
+                background: '#ffffff',
+                color: '#000000',
+                backdropFilter: 'blur(10px)',
+                transition: 'all 0.3s ease'
+              }}
+              onMouseEnter={(e) => {
+                e.target.style.transform = 'translateY(-2px)';
+                e.target.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.15)';
+                e.target.style.filter = 'brightness(0.95)';
+                e.target.style.borderColor = 'rgba(0, 0, 0, 0.2)';
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.transform = 'translateY(0)';
+                e.target.style.boxShadow = 'none';
+                e.target.style.filter = 'none';
+                e.target.style.borderColor = 'rgba(0, 0, 0, 0.1)';
+              }}
+            >
+              {t('common.back')}
+            </Button>
+            <div style={{
+              height: '24px',
+              width: '1px',
+              backgroundColor: theme === 'sun' ? 'rgba(30, 64, 175, 0.3)' : 'rgba(255, 255, 255, 0.3)'
+            }} />
+            <h2 style={{
+              margin: 0,
+              fontSize: '20px',
+              fontWeight: '600',
+              color: theme === 'sun' ? '#1e40af' : '#fff',
+              textShadow: theme === 'sun' ? '0 0 5px rgba(30, 64, 175, 0.3)' : '0 0 15px rgba(134, 134, 134, 0.8)'
+            }}>
+              {t('dailyChallenge.dailyChallengeManagement')}
+            </h2>
+          </div>
+          {/* Right actions */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginLeft: 'auto' }}>
+            <Button
+              icon={<SaveOutlined />}
+              loading={savingGrading}
+              onClick={handleSaveGrading}
+              className={`create-button ${theme}-create-button`}
+              style={{
+                height: '40px',
+                borderRadius: '8px',
+                fontWeight: 500,
+                fontSize: '16px',
+                padding: '0 24px',
+                border: 'none',
+                transition: 'all 0.3s ease',
+                background: theme === 'sun'
+                  ? 'linear-gradient(135deg, #66AEFF, #3C99FF)'
+                  : 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)',
+                color: '#000000',
+                boxShadow: theme === 'sun' ? '0 2px 8px rgba(60, 153, 255, 0.3)' : '0 2px 8px rgba(131, 119, 160, 0.3)'
+              }}
+            >
+              {t('common.save') || 'Save'}
+            </Button>
+          </div>
+        </div>
+      </nav>
+    </header>
+  );
+
   return (
-    <ThemedLayout>
-      <div className={`sdc-wrapper ${theme}-sdc-wrapper`} style={{ padding: '24px' }}>
+    <ThemedLayout customHeader={customHeader}>
+      {/* Sidebar Toggle Button when collapsed - Show button on left edge */}
+      {isCollapsed && (
+        <button
+          onClick={() => setIsCollapsed(false)}
+          style={{
+            position: 'fixed',
+            left: '0',
+            top: '50%',
+            transform: 'translateY(-50%)',
+            zIndex: 10001,
+            background: theme === 'sun' ? 'rgba(113, 179, 253, 0.9)' : 'rgba(138, 122, 255, 0.9)',
+            border: 'none',
+            borderTopRightRadius: '8px',
+            borderBottomRightRadius: '8px',
+            padding: '10px 8px',
+            cursor: 'pointer',
+            transition: 'all 0.3s ease',
+            color: '#fff',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+            display: 'flex',
+            alignItems: 'center',
+          }}
+        >
+          <MenuOutlined />
+        </button>
+      )}
+      <div className={`sdc-wrapper ${theme}-sdc-wrapper`} style={{ padding: '24px', position: 'relative' }}>
+        <style>{`
+          .ck-editor__editable_inline { min-height: 220px; }
+          .ck-content { white-space: pre-wrap; word-break: break-word; overflow-wrap: anywhere; color: #000 !important; }
+          .ck.ck-toolbar .ck-toolbar__items { flex-wrap: wrap; }
+           /* Make default AntD textareas taller by default (sidebar + modals) */
+          .ant-input-textarea textarea { min-height: 160px; }
+          .ant-modal .ant-input-textarea textarea { min-height: 160px; }
+        `}</style>
         <Row gutter={24}>
           {/* Left Section - Student Info & Performance */}
           <Col 
             xs={24} 
-            lg={isCollapsed ? 2 : 6}
+            lg={isCollapsed ? 0 : 6}
             style={{ 
-              transition: 'all 0.3s ease'
+              transition: 'all 0.3s ease',
+              overflowX: 'visible',
+              overflowY: 'hidden',
+              position: 'relative'
             }}
           >
-            <div className="settings-scroll-container" style={{ 
+
+            <div className="settings-scroll-container" style={{
               position: 'sticky', 
               top: '0px', 
-              height: isCollapsed ? 'calc(100vh - 40px)' : 'auto',
+              height: 'auto',
               maxHeight: 'calc(100vh - 40px)', 
-              overflowY: isCollapsed ? 'hidden' : 'auto', 
-              paddingBottom: isCollapsed ? '0px' : '80px', 
-              paddingLeft: isCollapsed ? '12px' : '24px', 
-              paddingRight: isCollapsed ? '0px' : '24px', 
+              overflowY: 'auto', 
+              overflowX: 'visible',
+              paddingBottom: '80px', 
+              
+              paddingRight: '40px', 
               transition: 'all 0.3s ease',
-              display: isCollapsed ? 'flex' : 'block',
-              alignItems: isCollapsed ? 'center' : 'flex-start',
-              justifyContent: isCollapsed ? 'flex-start' : 'flex-start'
+              display: 'block',
+              scrollbarWidth: 'none', /* Firefox */
+              msOverflowStyle: 'none', /* IE and Edge */
             }}>
-              {/* Collapsed State - Show only toggle button */}
-              {isCollapsed ? (
-                <Tooltip title={t('common.expand') || 'Expand'} placement="right">
-                  <div
-                    onClick={() => setIsCollapsed(false)}
-                    style={{
-                      width: '40px',
-                      height: '40px',
-                      borderRadius: '50%',
-                      display: 'flex',
-            alignItems: 'center',
-                      justifyContent: 'center',
-                      cursor: 'pointer',
-                      transition: 'all 0.3s ease',
-                      flexShrink: 0,
-                      background: theme === 'sun'
-                        ? 'linear-gradient(135deg, rgba(102, 174, 255, 0.2), rgba(60, 153, 255, 0.2))'
-                        : 'linear-gradient(135deg, rgba(181, 176, 192, 0.25), rgba(131, 119, 160, 0.25))',
-                      border: theme === 'sun'
-                        ? '2px solid rgba(102, 174, 255, 0.4)'
-                        : '2px solid rgba(181, 176, 192, 0.4)',
-                      boxShadow: theme === 'sun'
-                        ? '0 2px 8px rgba(60, 153, 255, 0.2)'
-                        : '0 2px 8px rgba(131, 119, 160, 0.25)',
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.transform = 'scale(1.1)';
-                      e.currentTarget.style.background = theme === 'sun'
-                        ? 'linear-gradient(135deg, rgba(102, 174, 255, 0.35), rgba(60, 153, 255, 0.35))'
-                        : 'linear-gradient(135deg, rgba(181, 176, 192, 0.4), rgba(131, 119, 160, 0.4))';
-                      e.currentTarget.style.boxShadow = theme === 'sun'
-                        ? '0 4px 12px rgba(60, 153, 255, 0.35)'
-                        : '0 4px 12px rgba(131, 119, 160, 0.4)';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.transform = 'scale(1)';
-                      e.currentTarget.style.background = theme === 'sun'
-                        ? 'linear-gradient(135deg, rgba(102, 174, 255, 0.2), rgba(60, 153, 255, 0.2))'
-                        : 'linear-gradient(135deg, rgba(181, 176, 192, 0.25), rgba(131, 119, 160, 0.25))';
-                      e.currentTarget.style.boxShadow = theme === 'sun'
-                        ? '0 2px 8px rgba(60, 153, 255, 0.2)'
-                        : '0 2px 8px rgba(131, 119, 160, 0.25)';
-                    }}
-                  >
-                    <MenuUnfoldOutlined
-                      style={{
-                        fontSize: '20px',
-                        color: theme === 'sun' ? '#1890ff' : '#8377A0',
-                      }}
-                    />
-                  </div>
-                </Tooltip>
-              ) : (
-                /* Expanded State - Show full student info */
-                <Card
-                  className={`settings-container-card ${theme}-settings-container-card`}
+              <style>{`
+                .settings-scroll-container::-webkit-scrollbar {
+                  display: none; /* Chrome, Safari, Opera */
+                }
+              `}</style>
+              <Card
+                className={`settings-container-card ${theme}-settings-container-card`}
+                style={{
+                  borderRadius: '16px',
+                  border: theme === 'sun' 
+                    ? '2px solid rgba(113, 179, 253, 0.25)' 
+                    : '2px solid rgba(138, 122, 255, 0.2)',
+                  boxShadow: theme === 'sun' 
+                    ? '0 4px 16px rgba(113, 179, 253, 0.1)' 
+                    : '0 4px 16px rgba(138, 122, 255, 0.12)',
+                  background: theme === 'sun'
+                    ? 'linear-gradient(135deg, rgba(255, 255, 255, 1) 0%, rgba(240, 249, 255, 0.95) 100%)'
+                    : 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(244, 240, 255, 0.95) 100%)',
+                  backdropFilter: 'blur(10px)',
+                  position: 'relative'
+                }}
+              >
+                {/* Sidebar Toggle Button - Positioned at the right edge of Card */}
+                <button
+                  onClick={() => setIsCollapsed(true)}
                   style={{
-                    borderRadius: '16px',
-                    border: theme === 'sun' 
-                      ? '2px solid rgba(113, 179, 253, 0.25)' 
-                      : '2px solid rgba(138, 122, 255, 0.2)',
-                    boxShadow: theme === 'sun' 
-                      ? '0 4px 16px rgba(113, 179, 253, 0.1)' 
-                      : '0 4px 16px rgba(138, 122, 255, 0.12)',
-                    background: theme === 'sun'
-                      ? 'linear-gradient(135deg, rgba(255, 255, 255, 1) 0%, rgba(240, 249, 255, 0.95) 100%)'
-                      : 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(244, 240, 255, 0.95) 100%)',
-                    backdropFilter: 'blur(10px)'
+                    position: 'absolute',
+                    right: '-32px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    zIndex: 1001,
+                    background: theme === 'sun' ? 'rgba(113, 179, 253, 0.9)' : 'rgba(138, 122, 255, 0.9)',
+                    border: 'none',
+                    borderTopRightRadius: '8px',
+                    borderBottomRightRadius: '8px',
+                    padding: '10px 8px',
+                    cursor: 'pointer',
+                    transition: 'all 0.3s ease',
+                    color: '#fff',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+                    display: 'flex',
+                    alignItems: 'center',
                   }}
                 >
-                  {/* Header with Collapse Icon */}
+                  <CloseOutlined />
+                </button>
+
+                  {/* Header with Tabs */}
                   <div style={{ 
-                    display: 'flex', 
-                    justifyContent: 'flex-end',
-                    alignItems: 'center',
                     marginBottom: '20px',
                     paddingBottom: '16px',
                     borderBottom: theme === 'sun' 
                       ? '2px solid rgba(113, 179, 253, 0.15)' 
                       : '2px solid rgba(138, 122, 255, 0.15)'
                   }}>
-                    <Tooltip title={t('common.collapse') || 'Collapse'} placement="left">
-                      <div
-                        onClick={() => setIsCollapsed(true)}
+                    {/* Tab Navigation */}
+                    <div style={{
+                      borderBottom: `1px solid ${theme === 'sun' ? '#e0e0e0' : 'rgba(255, 255, 255, 0.1)'}`,
+                      marginBottom: '16px'
+                    }}>
+                      <div style={{ display: 'flex', gap: '0px', width: '100%' }}>
+                        <button
+                          onClick={() => setActiveTab('info')}
+                          style={{
+                            flex: 1,
+                            padding: '6px 16px',
+                            cursor: 'pointer',
+                            fontSize: '14px',
+                            fontWeight: activeTab === 'info' ? 500 : 400,
+                            transition: 'all 0.2s ease',
+                            background: activeTab === 'info'
+                              ? (theme === 'sun' 
+                                  ? 'linear-gradient(135deg, rgba(148, 163, 184, 0.06) 0%, rgba(148, 163, 184, 0.03) 100%)'
+                                  : 'linear-gradient(135deg, rgba(226, 232, 240, 0.08) 0%, rgba(226, 232, 240, 0.04) 100%)')
+                              : 'transparent',
+                            border: activeTab === 'info'
+                              ? `1px solid ${theme === 'sun' ? 'rgba(148, 163, 184, 0.15)' : 'rgba(226, 232, 240, 0.2)'}`
+                              : 'none',
+                            borderBottom: activeTab === 'info'
+                              ? `2px solid ${theme === 'sun' ? '#1a73e8' : '#8B5CF6'}`
+                              : '2px solid transparent',
+                            borderRadius: '8px 8px 0 0',
+                            color: activeTab === 'info'
+                              ? (theme === 'sun' ? '#1a73e8' : '#8B5CF6')
+                              : (theme === 'sun' ? '#5f6368' : 'rgba(255, 255, 255, 0.6)'),
+                            marginBottom: '-1px',
+                            position: 'relative'
+                          }}
+                          onMouseEnter={(e) => {
+                            if (activeTab !== 'info') {
+                              e.currentTarget.style.color = theme === 'sun' ? '#1a73e8' : '#8B5CF6';
+                              e.currentTarget.style.backgroundColor = theme === 'sun' ? 'rgba(26, 115, 232, 0.04)' : 'rgba(139, 92, 246, 0.1)';
+                            }
+                          }}
+                          onMouseLeave={(e) => {
+                            if (activeTab !== 'info') {
+                              e.currentTarget.style.color = theme === 'sun' ? '#5f6368' : 'rgba(255, 255, 255, 0.6)';
+                              e.currentTarget.style.backgroundColor = 'transparent';
+                            }
+                          }}
+                        >
+                          Info
+                        </button>
+                        <button
+                          onClick={() => setActiveTab('questions')}
+                          style={{
+                            flex: 1,
+                            padding: '6px 16px',
+                            cursor: 'pointer',
+                            fontSize: '14px',
+                            fontWeight: activeTab === 'questions' ? 500 : 400,
+                            transition: 'all 0.2s ease',
+                            background: activeTab === 'questions'
+                              ? (theme === 'sun' 
+                                  ? 'linear-gradient(135deg, rgba(148, 163, 184, 0.06) 0%, rgba(148, 163, 184, 0.03) 100%)'
+                                  : 'linear-gradient(135deg, rgba(226, 232, 240, 0.08) 0%, rgba(226, 232, 240, 0.04) 100%)')
+                              : 'transparent',
+                            border: activeTab === 'questions'
+                              ? `1px solid ${theme === 'sun' ? 'rgba(148, 163, 184, 0.15)' : 'rgba(226, 232, 240, 0.2)'}`
+                              : 'none',
+                            borderBottom: activeTab === 'questions'
+                              ? `2px solid ${theme === 'sun' ? '#1a73e8' : '#8B5CF6'}`
+                              : '2px solid transparent',
+                            borderRadius: '8px 8px 0 0',
+                            color: activeTab === 'questions'
+                              ? (theme === 'sun' ? '#1a73e8' : '#8B5CF6')
+                              : (theme === 'sun' ? '#5f6368' : 'rgba(255, 255, 255, 0.6)'),
+                            marginBottom: '-1px',
+                            position: 'relative'
+                          }}
+                          onMouseEnter={(e) => {
+                            if (activeTab !== 'questions') {
+                              e.currentTarget.style.color = theme === 'sun' ? '#1a73e8' : '#8B5CF6';
+                              e.currentTarget.style.backgroundColor = theme === 'sun' ? 'rgba(26, 115, 232, 0.04)' : 'rgba(139, 92, 246, 0.1)';
+                            }
+                          }}
+                          onMouseLeave={(e) => {
+                            if (activeTab !== 'questions') {
+                              e.currentTarget.style.color = theme === 'sun' ? '#5f6368' : 'rgba(255, 255, 255, 0.6)';
+                              e.currentTarget.style.backgroundColor = 'transparent';
+                            }
+                          }}
+                        >
+                          Questions
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Tab Content */}
+                  {activeTab === 'info' ? (
+                    <>
+                      {/* Performance & Student Information Summary */}
+                      <div style={{ marginBottom: '16px' }}>
+                        <div 
+                          onClick={() => setIsPerformanceCollapsed(!isPerformanceCollapsed)}
+                      style={{ 
+                        cursor: 'pointer',
+                        marginBottom: '12px',
+                        padding: '3px 16px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '8px',
+                        background: theme === 'sun' 
+                          ? 'linear-gradient(135deg, rgba(148, 163, 184, 0.06) 0%, rgba(148, 163, 184, 0.03) 100%)'
+                          : 'linear-gradient(135deg, rgba(226, 232, 240, 0.08) 0%, rgba(226, 232, 240, 0.04) 100%)',
+                        borderRadius: '8px',
+                        border: `1px solid ${theme === 'sun' ? 'rgba(148, 163, 184, 0.15)' : 'rgba(226, 232, 240, 0.2)'}`,
+                        transition: 'all 0.3s ease',
+                        boxShadow: theme === 'sun' 
+                          ? '0 1px 4px rgba(148, 163, 184, 0.05)' 
+                          : '0 1px 4px rgba(226, 232, 240, 0.08)'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = theme === 'sun' 
+                          ? 'linear-gradient(135deg, rgba(148, 163, 184, 0.1) 0%, rgba(148, 163, 184, 0.06) 100%)'
+                          : 'linear-gradient(135deg, rgba(226, 232, 240, 0.12) 0%, rgba(226, 232, 240, 0.08) 100%)';
+                        e.currentTarget.style.transform = 'translateY(-1px)';
+                        e.currentTarget.style.boxShadow = theme === 'sun' 
+                          ? '0 2px 8px rgba(148, 163, 184, 0.1)' 
+                          : '0 2px 8px rgba(226, 232, 240, 0.15)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = theme === 'sun' 
+                          ? 'linear-gradient(135deg, rgba(148, 163, 184, 0.06) 0%, rgba(148, 163, 184, 0.03) 100%)'
+                          : 'linear-gradient(135deg, rgba(226, 232, 240, 0.08) 0%, rgba(226, 232, 240, 0.04) 100%)';
+                        e.currentTarget.style.transform = 'translateY(0)';
+                        e.currentTarget.style.boxShadow = theme === 'sun' 
+                          ? '0 1px 4px rgba(148, 163, 184, 0.05)' 
+                          : '0 1px 4px rgba(226, 232, 240, 0.08)';
+                      }}
+                    >
+                      <Typography.Title 
+                        level={5} 
+                        style={{ 
+                          margin: 0,
+                          fontSize: '16px', 
+                          fontWeight: 500, 
+                          color: theme === 'sun' ? '#4a5568' : '#e2e8f0',
+                          userSelect: 'none'
+                        }}
+                      >
+                        Performance
+                      </Typography.Title>
+                      {isPerformanceCollapsed ? (
+                        <DownOutlined style={{ fontSize: '14px', color: theme === 'sun' ? '#4a5568' : '#e2e8f0' }} />
+                      ) : (
+                        <UpOutlined style={{ fontSize: '14px', color: theme === 'sun' ? '#4a5568' : '#e2e8f0' }} />
+                      )}
+                    </div>
+                    
+                    {!isPerformanceCollapsed && (
+                      <>
+                        {/* Score Circle */}
+                        <div style={{ marginBottom: '20px', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                          <div style={{ position: 'relative', display: 'inline-block' }}>
+                            {/* Star icon at top-right */}
+                            <StarOutlined
+                              style={{
+                                position: 'absolute',
+                                top: '-8px',
+                                right: '-8px',
+                                fontSize: '24px',
+                                color: '#FFD700',
+                                zIndex: 2,
+                                filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.2))'
+                              }}
+                            />
+                            {/* Circular Score Display */}
+                            <div
+                              style={{
+                                width: '120px',
+                                height: '120px',
+                                borderRadius: '50%',
+                                background: theme === 'sun' ? '#E8F5E9' : 'rgba(232, 245, 233, 0.8)',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                justifyContent: 'center',
+                                alignItems: 'center',
+                                position: 'relative',
+                                border: `3px solid ${theme === 'sun' ? '#C8E6C9' : 'rgba(200, 230, 201, 0.6)'}`
+                              }}
+                            >
+                              {submission.score != null && submission.score !== undefined ? (
+                                <>
+                                  <Typography.Text
+                                    strong
+                                    style={{
+                                      fontSize: '36px',
+                                      fontWeight: 700,
+                                      color: '#4CAF50',
+                                      lineHeight: '1',
+                                      marginBottom: '4px'
+                                    }}
+                                  >
+                                    {`${submission.score}/${submission.maxPoints ?? submission.totalPoints ?? submissionData?.challenge?.maxPoints ?? 0}`}
+                                  </Typography.Text>
+                                  <Typography.Text
+                                    style={{
+                                      fontSize: '12px',
+                                      color: theme === 'sun' ? '#666' : '#999',
+                                      fontWeight: 400
+                                    }}
+                                  >
+                                    Score
+                                  </Typography.Text>
+                                </>
+                              ) : (
+                                <>
+                                  <Typography.Text
+                                    strong
+                                    style={{
+                                      fontSize: '36px',
+                                      fontWeight: 700,
+                                      color: theme === 'sun' ? '#999' : '#666',
+                                      lineHeight: '1',
+                                      marginBottom: '4px'
+                                    }}
+                                  >
+                                    -
+                                  </Typography.Text>
+                                  <Typography.Text
+                                    style={{
+                                      fontSize: '12px',
+                                      color: theme === 'sun' ? '#666' : '#999',
+                                      fontWeight: 400
+                                    }}
+                                  >
+                                    Score
+                                  </Typography.Text>
+                                </>
+                              )}
+                            </div>
+                            {submission.score != null && submission.score !== undefined && (
+                              <Button
+                                type="text"
+                                icon={<EditOutlined />}
+                                onClick={handleOpenEditScore}
+                                style={{
+                                  position: 'absolute',
+                                  bottom: '-8px',
+                                  right: '-8px',
+                                  padding: '4px 8px',
+                                  color: theme === 'sun' ? '#1890ff' : '#8377A0',
+                                  fontSize: '16px',
+                                  background: theme === 'sun' ? '#fff' : 'rgba(255, 255, 255, 0.9)',
+                                  borderRadius: '50%',
+                                  width: '32px',
+                                  height: '32px',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                                }}
+                                title="Edit Score"
+                              />
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Pass/Fail Status */}
+                        {submission.score != null && submission.score !== undefined ? (() => {
+                          return submission.score >= 5 ? (
+                            <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+                              <Typography.Text
+                                strong
+                                style={{
+                                  fontSize: '18px',
+                                  fontWeight: 700,
+                                  color: '#4CAF50',
+                                  textTransform: 'uppercase',
+                                  letterSpacing: '1px'
+                                }}
+                              >
+                                PASSED
+                              </Typography.Text>
+                            </div>
+                          ) : (
+                            <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+                              <Typography.Text
+                                strong
+                                style={{
+                                  fontSize: '18px',
+                                  fontWeight: 700,
+                                  color: '#f44336',
+                                  textTransform: 'uppercase',
+                                  letterSpacing: '1px'
+                                }}
+                              >
+                                FAILED
+                              </Typography.Text>
+                            </div>
+                          );
+                        })() : null}
+
+                        {/* Question Breakdown Grid */}
+                        <div style={{
+                          display: 'grid',
+                          gridTemplateColumns: 'repeat(2, 1fr)',
+                          gap: '12px',
+                          marginBottom: '20px'
+                        }}>
+                          {/* Total Card */}
+                          <div style={{
+                            padding: '16px',
+                            background: theme === 'sun' ? '#F5F5F5' : 'rgba(255, 255, 255, 0.1)',
+                            borderRadius: '8px',                                
+                            height: '50px',
+                            textAlign: 'center',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            border: `1px solid ${theme === 'sun' ? '#E0E0E0' : 'rgba(255, 255, 255, 0.1)'}`
+                          }}>
+                            <Typography.Text
+                              strong
+                              style={{
+                                fontSize: '24px',
+                                fontWeight: 700,
+                                color: '#1890ff',
+                                display: 'block',
+                                marginBottom: '0px',
+                                lineHeight: '1'
+                              }}
+                            >
+                              {(submission.correctCount != null && submission.incorrectCount != null && submission.unansweredCount != null) 
+                                ? (submission.correctCount + submission.incorrectCount + submission.unansweredCount)
+                                : '-'}
+                            </Typography.Text>
+                            <Typography.Text
+                              style={{
+                                fontSize: '12px',
+                                color: theme === 'sun' ? '#666' : '#999',
+                                display: 'block'
+                              }}
+                            >
+                              Total
+                            </Typography.Text>
+                          </div>
+
+                          {/* Correct Card */}
+                          <div style={{
+                            padding: '16px',
+                            background: theme === 'sun' ? '#F5F5F5' : 'rgba(255, 255, 255, 0.1)',
+                            borderRadius: '8px',
+                            textAlign: 'center',
+                            height: '50px',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            border: `1px solid ${theme === 'sun' ? '#E0E0E0' : 'rgba(255, 255, 255, 0.1)'}`
+                          }}>
+                            <Typography.Text
+                              strong
+                              style={{
+                                fontSize: '24px',
+                                fontWeight: 700,
+                                color: '#1890ff',
+                                display: 'block',
+                                marginBottom: '0px',
+                                lineHeight: '1'
+                              }}
+                            >
+                              {submission.correctCount != null ? submission.correctCount : '-'}
+                            </Typography.Text>
+                            <Typography.Text
+                              style={{
+                                fontSize: '12px',
+                                color: theme === 'sun' ? '#666' : '#999',
+                                display: 'block'
+                              }}
+                            >
+                              Correct
+                            </Typography.Text>
+                          </div>
+
+                          {/* Incorrect Card */}
+                          <div style={{
+                            padding: '16px',
+                            background: theme === 'sun' ? '#F5F5F5' : 'rgba(255, 255, 255, 0.1)',
+                            borderRadius: '8px',
+                            textAlign: 'center',
+                            height: '50px',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            border: `1px solid ${theme === 'sun' ? '#E0E0E0' : 'rgba(255, 255, 255, 0.1)'}`
+                          }}>
+                            <Typography.Text
+                              strong
+                              style={{
+                                fontSize: '24px',
+                                fontWeight: 700,
+                                color: '#1890ff',
+                                display: 'block',
+                                marginBottom: '0px',
+                                lineHeight: '1'
+                              }}
+                            >
+                              {submission.incorrectCount != null ? submission.incorrectCount : '-'}
+                            </Typography.Text>
+                            <Typography.Text
+                              style={{
+                                fontSize: '12px',
+                                color: theme === 'sun' ? '#666' : '#999',
+                                display: 'block'
+                              }}
+                            >
+                              Incorrect
+                            </Typography.Text>
+                          </div>
+
+                          {/* Unanswered Card */}
+                          <div style={{
+                            padding: '16px',
+                            background: theme === 'sun' ? '#F5F5F5' : 'rgba(255, 255, 255, 0.1)',
+                            borderRadius: '8px',
+                            textAlign: 'center',
+                            height: '50px',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            border: `1px solid ${theme === 'sun' ? '#E0E0E0' : 'rgba(255, 255, 255, 0.1)'}`
+                          }}>
+                            <Typography.Text
+                              strong
+                              style={{
+                                fontSize: '24px',
+                                fontWeight: 700,
+                                color: '#1890ff',
+                                display: 'block',
+                                marginBottom: '0px',
+                                lineHeight: '1'
+                              }}
+                            >
+                              {submission.unansweredCount != null ? submission.unansweredCount : '-'}
+                            </Typography.Text>
+                            <Typography.Text
+                              style={{
+                                fontSize: '12px',
+                                color: theme === 'sun' ? '#666' : '#999',
+                                display: 'block'
+                              }}
+                            >
+                              Unanswered
+                            </Typography.Text>
+                          </div>
+                        </div>
+
+                        {/* Submission Details */}
+                        <div style={{
+                          padding: '12px 0',
+                          borderTop: `1px solid ${theme === 'sun' ? '#E0E0E0' : 'rgba(255, 255, 255, 0.1)'}`
+                        }}>
+                          <Space direction="vertical" size={8} style={{ width: '100%' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <Typography.Text style={{ fontSize: '12px', color: theme === 'sun' ? '#666' : '#999' }}>
+                                Time Used:
+                              </Typography.Text>
+                              <Typography.Text style={{ fontSize: '12px', fontWeight: 500, color: theme === 'sun' ? '#000' : '#fff' }}>
+                                {submission.timeSpent != null ? `${submission.timeSpent} minutes` : '-'}
+                              </Typography.Text>
+                            </div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <Typography.Text style={{ fontSize: '12px', color: theme === 'sun' ? '#666' : '#999' }}>
+                                Time Limit:
+                              </Typography.Text>
+                              <Typography.Text style={{ fontSize: '12px', fontWeight: 500, color: theme === 'sun' ? '#000' : '#fff' }}>
+                                {submissionData.challenge?.timeLimit ? `${submissionData.challenge.timeLimit} minutes` : '-'}
+                              </Typography.Text>
+                            </div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <Typography.Text style={{ fontSize: '12px', color: theme === 'sun' ? '#666' : '#999' }}>
+                                Submitted:
+                              </Typography.Text>
+                              <Typography.Text style={{ fontSize: '12px', fontWeight: 500, color: theme === 'sun' ? '#000' : '#fff' }}>
+                                {submission.submittedAt ? new Date(submission.submittedAt).toLocaleDateString('en-US', {
+                                  month: 'short',
+                                  day: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit'
+                                }) : '-'}
+                              </Typography.Text>
+                            </div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <Typography.Text style={{ fontSize: '12px', color: theme === 'sun' ? '#666' : '#999' }}>
+                                Status:
+                              </Typography.Text>
+                              {submission.status ? (
+                                <Space size={4}>
+                                  <CheckCircleOutlined style={{ color: '#52c41a', fontSize: '14px' }} />
+                                  <Typography.Text style={{ fontSize: '12px', fontWeight: 500, color: '#52c41a' }}>
+                                    On Time
+                                  </Typography.Text>
+                                </Space>
+                              ) : (
+                                <Typography.Text style={{ fontSize: '12px', fontWeight: 500, color: theme === 'sun' ? '#000' : '#fff' }}>
+                                  -
+                                </Typography.Text>
+                              )}
+                            </div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <Typography.Text style={{ fontSize: '12px', color: theme === 'sun' ? '#666' : '#999' }}>
+                                Method:
+                              </Typography.Text>
+                              <Typography.Text style={{ fontSize: '12px', fontWeight: 500, color: theme === 'sun' ? '#000' : '#fff' }}>
+                                {submissionData.submission?.method || submissionData.submission?.submissionMethod || 'Manual'}
+                              </Typography.Text>
+                            </div>
+                          </Space>
+                        </div>
+                      </>
+                      )}
+                      </div>
+
+                      <Divider style={{ margin: '16px 0' }} />
+
+                      {/* Teacher Feedback Section */}
+                      <div style={{ marginBottom: '16px' }}>
+                    <div 
+                      onClick={() => setIsTeacherFeedbackCollapsed(!isTeacherFeedbackCollapsed)}
+                      style={{ 
+                        cursor: 'pointer',
+                        marginBottom: '12px',
+                        padding: '3px 16px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '8px',
+                        background: theme === 'sun' 
+                          ? 'linear-gradient(135deg, rgba(148, 163, 184, 0.06) 0%, rgba(148, 163, 184, 0.03) 100%)'
+                          : 'linear-gradient(135deg, rgba(226, 232, 240, 0.08) 0%, rgba(226, 232, 240, 0.04) 100%)',
+                        borderRadius: '8px',
+                        border: `1px solid ${theme === 'sun' ? 'rgba(148, 163, 184, 0.15)' : 'rgba(226, 232, 240, 0.2)'}`,
+                        transition: 'all 0.3s ease',
+                        boxShadow: theme === 'sun' 
+                          ? '0 1px 4px rgba(148, 163, 184, 0.05)' 
+                          : '0 1px 4px rgba(226, 232, 240, 0.08)'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = theme === 'sun' 
+                          ? 'linear-gradient(135deg, rgba(148, 163, 184, 0.1) 0%, rgba(148, 163, 184, 0.06) 100%)'
+                          : 'linear-gradient(135deg, rgba(226, 232, 240, 0.12) 0%, rgba(226, 232, 240, 0.08) 100%)';
+                        e.currentTarget.style.transform = 'translateY(-1px)';
+                        e.currentTarget.style.boxShadow = theme === 'sun' 
+                          ? '0 2px 8px rgba(148, 163, 184, 0.1)' 
+                          : '0 2px 8px rgba(226, 232, 240, 0.15)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = theme === 'sun' 
+                          ? 'linear-gradient(135deg, rgba(148, 163, 184, 0.06) 0%, rgba(148, 163, 184, 0.03) 100%)'
+                          : 'linear-gradient(135deg, rgba(226, 232, 240, 0.08) 0%, rgba(226, 232, 240, 0.04) 100%)';
+                        e.currentTarget.style.transform = 'translateY(0)';
+                        e.currentTarget.style.boxShadow = theme === 'sun' 
+                          ? '0 1px 4px rgba(148, 163, 184, 0.05)' 
+                          : '0 1px 4px rgba(226, 232, 240, 0.08)';
+                      }}
+                    >
+                      <Typography.Title 
+                        level={5} 
+                        style={{ 
+                          margin: 0,
+                          fontSize: '16px', 
+                          fontWeight: 500, 
+                          color: theme === 'sun' ? '#4a5568' : '#e2e8f0',
+                          userSelect: 'none'
+                        }}
+                      >
+                        Teacher Feedback
+                      </Typography.Title>
+                      {isTeacherFeedbackCollapsed ? (
+                        <DownOutlined style={{ fontSize: '14px', color: theme === 'sun' ? '#4a5568' : '#e2e8f0' }} />
+                      ) : (
+                        <UpOutlined style={{ fontSize: '14px', color: theme === 'sun' ? '#4a5568' : '#e2e8f0' }} />
+                      )}
+                    </div>
+                    {!isTeacherFeedbackCollapsed && (
+                      <>
+                    <div style={{ marginBottom: '12px' }}>
+                      <div style={{ border: '1px solid #eee', borderRadius: '8px', overflow: 'visible' }}>
+                        <CKEditor
+                          editor={ClassicEditor}
+                          data={teacherFeedback}
+                          onChange={(event, editor) => setTeacherFeedback(editor.getData())}
+                          config={{
+                            toolbar: { items: ['heading','|','bold','italic','underline','|','bulletedList','numberedList','|','link','undo','redo'], shouldNotGroupWhenFull: true }
+                          }}
+                        />
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '30px' }}>
+                      <Button
+                        type="primary"
+                        onClick={handleSaveTeacherFeedback}
+                        loading={savingFeedback}
+                        disabled={savingFeedback}
+                        className={`create-button ${theme}-create-button`}
                         style={{
-                          width: '40px',
-                          height: '40px',
-                          borderRadius: '50%',
+                          height: '36px',
+                          borderRadius: '6px',
+                          fontWeight: '500',
+                          fontSize: '14px',
+                          padding: '0 16px',
+                          border: 'none',
+                          transition: 'all 0.3s ease',
+                          background: theme === 'sun' 
+                            ? 'rgb(243, 188, 88)' 
+                            : 'linear-gradient(135deg, #F3BC58 19%, #E8B04D 64%, #DD9F42 75%, #F3BC58 97%, #D89637 100%)',
+                          color: '#000',
+                        }}
+                        onMouseEnter={(e) => {
+                          if (theme === 'sun') {
+                            e.currentTarget.style.background = 'rgb(230, 175, 75)';
+                          } else {
+                            e.currentTarget.style.background = 'linear-gradient(135deg, #E8B04D 19%, #DD9F42 64%, #D28F37 75%, #E8B04D 97%, #C8862D 100%)';
+                          }
+                        }}
+                        onMouseLeave={(e) => {
+                          if (theme === 'sun') {
+                            e.currentTarget.style.background = 'rgb(243, 188, 88)';
+                          } else {
+                            e.currentTarget.style.background = 'linear-gradient(135deg, #F3BC58 19%, #E8B04D 64%, #DD9F42 75%, #F3BC58 97%, #D89637 100%)';
+                          }
+                        }}
+                      >
+                        Save
+                      </Button>
+                    </div>
+                      </>
+                      )}
+                      </div>
+
+                      <Divider style={{ margin: '16px 0' }} />
+
+                      {/* AI Feedback Section */}
+                      <div style={{ marginBottom: '16px' }}>
+                    <div 
+                      onClick={() => setIsAiFeedbackCollapsed(!isAiFeedbackCollapsed)}
+                      style={{ 
+                        cursor: 'pointer',
+                        marginBottom: '12px',
+                        padding: '3px 16px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '8px',
+                        background: theme === 'sun' 
+                          ? 'linear-gradient(135deg, rgba(148, 163, 184, 0.06) 0%, rgba(148, 163, 184, 0.03) 100%)'
+                          : 'linear-gradient(135deg, rgba(226, 232, 240, 0.08) 0%, rgba(226, 232, 240, 0.04) 100%)',
+                        borderRadius: '8px',
+                        border: `1px solid ${theme === 'sun' ? 'rgba(148, 163, 184, 0.15)' : 'rgba(226, 232, 240, 0.2)'}`,
+                        transition: 'all 0.3s ease',
+                        boxShadow: theme === 'sun' 
+                          ? '0 1px 4px rgba(148, 163, 184, 0.05)' 
+                          : '0 1px 4px rgba(226, 232, 240, 0.08)'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = theme === 'sun' 
+                          ? 'linear-gradient(135deg, rgba(148, 163, 184, 0.1) 0%, rgba(148, 163, 184, 0.06) 100%)'
+                          : 'linear-gradient(135deg, rgba(226, 232, 240, 0.12) 0%, rgba(226, 232, 240, 0.08) 100%)';
+                        e.currentTarget.style.transform = 'translateY(-1px)';
+                        e.currentTarget.style.boxShadow = theme === 'sun' 
+                          ? '0 2px 8px rgba(148, 163, 184, 0.1)' 
+                          : '0 2px 8px rgba(226, 232, 240, 0.15)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = theme === 'sun' 
+                          ? 'linear-gradient(135deg, rgba(148, 163, 184, 0.06) 0%, rgba(148, 163, 184, 0.03) 100%)'
+                          : 'linear-gradient(135deg, rgba(226, 232, 240, 0.08) 0%, rgba(226, 232, 240, 0.04) 100%)';
+                        e.currentTarget.style.transform = 'translateY(0)';
+                        e.currentTarget.style.boxShadow = theme === 'sun' 
+                          ? '0 1px 4px rgba(148, 163, 184, 0.05)' 
+                          : '0 1px 4px rgba(226, 232, 240, 0.08)';
+                      }}
+                    >
+                      <Typography.Title 
+                        level={5} 
+                        style={{ 
+                          margin: 0,
+                          fontSize: '16px', 
+                          fontWeight: 500, 
+                          color: theme === 'sun' ? '#4a5568' : '#e2e8f0',
+                          userSelect: 'none'
+                        }}
+                      >
+                        AI Feedback
+                      </Typography.Title>
+                      {isAiFeedbackCollapsed ? (
+                        <DownOutlined style={{ fontSize: '14px', color: theme === 'sun' ? '#4a5568' : '#e2e8f0' }} />
+                      ) : (
+                        <UpOutlined style={{ fontSize: '14px', color: theme === 'sun' ? '#4a5568' : '#e2e8f0' }} />
+                      )}
+                    </div>
+                    {!isAiFeedbackCollapsed && (
+                      <>
+                    <div style={{ marginBottom: '12px' }}>
+                      {aiFeedback ? (
+                        <div style={{
+                          padding: '12px',
+                          background: theme === 'sun' ? '#f9f9f9' : 'rgba(255, 255, 255, 0.05)',
+                          borderRadius: '8px',
+                          border: `1px solid ${theme === 'sun' ? '#e8e8e8' : 'rgba(255, 255, 255, 0.1)'}`,
+                          minHeight: '100px',
+                          maxHeight: '300px',
+                          overflowY: 'auto',
+                          fontSize: '14px',
+                          lineHeight: '1.6',
+                          color: theme === 'sun' ? '#333' : '#ddd',
+                          whiteSpace: 'pre-wrap'
+                        }}>
+                          {aiFeedback}
+                        </div>
+                      ) : (
+                        <div style={{
+                          padding: '20px',
+                          textAlign: 'center',
+                          color: theme === 'sun' ? '#999' : '#666',
+                          fontSize: '14px',
+                          background: theme === 'sun' ? '#f9f9f9' : 'rgba(255, 255, 255, 0.05)',
+                          borderRadius: '8px',
+                          border: `1px dashed ${theme === 'sun' ? '#e8e8e8' : 'rgba(255, 255, 255, 0.1)'}`
+                        }}>
+                          No AI feedback generated yet. Click the button below to generate.
+                        </div>
+                      )}
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '12px' }}>
+                      <Button
+                        type="primary"
+                        onClick={handleGenerateAiFeedback}
+                        loading={generatingAiFeedback}
+                        disabled={generatingAiFeedback}
+                        className={`create-button ${theme}-create-button`}
+                        style={{
+                          height: '36px',
+                          borderRadius: '6px',
+                          fontWeight: '500',
+                          fontSize: '14px',
+                          padding: '0 16px',
+                          border: 'none',
+                          transition: 'all 0.3s ease',
+                          background: theme === 'sun' 
+                            ? 'rgb(243, 188, 88)' 
+                            : 'linear-gradient(135deg, #F3BC58 19%, #E8B04D 64%, #DD9F42 75%, #F3BC58 97%, #D89637 100%)',
+                          color: '#000',
+                        }}
+                        onMouseEnter={(e) => {
+                          if (theme === 'sun') {
+                            e.currentTarget.style.background = 'rgb(230, 175, 75)';
+                          } else {
+                            e.currentTarget.style.background = 'linear-gradient(135deg, #E8B04D 19%, #DD9F42 64%, #D28F37 75%, #E8B04D 97%, #C8862D 100%)';
+                          }
+                        }}
+                        onMouseLeave={(e) => {
+                          if (theme === 'sun') {
+                            e.currentTarget.style.background = 'rgb(243, 188, 88)';
+                          } else {
+                            e.currentTarget.style.background = 'linear-gradient(135deg, #F3BC58 19%, #E8B04D 64%, #DD9F42 75%, #F3BC58 97%, #D89637 100%)';
+                          }
+                        }}
+                      >
+                        {aiFeedback ? 'Regenerate' : '✨ Generate Feedback'}
+                      </Button>
+                    </div>
+                      </>
+                      )}
+                      </div>
+
+                      <Divider style={{ margin: '16px 0' }} />
+
+                      {/* Anti-Cheat Summary */}
+                      {antiCheatData && (
+                        <div style={{ marginBottom: '16px' }}>
+                          <div 
+                            onClick={() => setIsAntiCheatCollapsed(!isAntiCheatCollapsed)}
+                        style={{ 
+                          cursor: 'pointer',
+                          marginBottom: '12px',
+                          padding: '3px 16px',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
-                          cursor: 'pointer',
+                          gap: '8px',
+                          background: theme === 'sun' 
+                            ? 'linear-gradient(135deg, rgba(148, 163, 184, 0.06) 0%, rgba(148, 163, 184, 0.03) 100%)'
+                            : 'linear-gradient(135deg, rgba(226, 232, 240, 0.08) 0%, rgba(226, 232, 240, 0.04) 100%)',
+                          borderRadius: '8px',
+                          border: `1px solid ${theme === 'sun' ? 'rgba(148, 163, 184, 0.15)' : 'rgba(226, 232, 240, 0.2)'}`,
                           transition: 'all 0.3s ease',
-                          background: theme === 'sun'
-                            ? 'linear-gradient(135deg, rgba(102, 174, 255, 0.15), rgba(60, 153, 255, 0.15))'
-                            : 'linear-gradient(135deg, rgba(181, 176, 192, 0.2), rgba(131, 119, 160, 0.2))',
-                          border: theme === 'sun'
-                            ? '2px solid rgba(102, 174, 255, 0.3)'
-                            : '2px solid rgba(181, 176, 192, 0.3)',
-                          boxShadow: theme === 'sun'
-                            ? '0 2px 8px rgba(60, 153, 255, 0.15)'
-                            : '0 2px 8px rgba(131, 119, 160, 0.2)',
+                          boxShadow: theme === 'sun' 
+                            ? '0 1px 4px rgba(148, 163, 184, 0.05)' 
+                            : '0 1px 4px rgba(226, 232, 240, 0.08)'
                         }}
                         onMouseEnter={(e) => {
-                          e.currentTarget.style.transform = 'scale(1.1)';
-                          e.currentTarget.style.background = theme === 'sun'
-                            ? 'linear-gradient(135deg, rgba(102, 174, 255, 0.25), rgba(60, 153, 255, 0.25))'
-                            : 'linear-gradient(135deg, rgba(181, 176, 192, 0.3), rgba(131, 119, 160, 0.3))';
-                          e.currentTarget.style.boxShadow = theme === 'sun'
-                            ? '0 4px 12px rgba(60, 153, 255, 0.3)'
-                            : '0 4px 12px rgba(131, 119, 160, 0.35)';
+                          e.currentTarget.style.background = theme === 'sun' 
+                            ? 'linear-gradient(135deg, rgba(148, 163, 184, 0.1) 0%, rgba(148, 163, 184, 0.06) 100%)'
+                            : 'linear-gradient(135deg, rgba(226, 232, 240, 0.12) 0%, rgba(226, 232, 240, 0.08) 100%)';
+                          e.currentTarget.style.transform = 'translateY(-1px)';
+                          e.currentTarget.style.boxShadow = theme === 'sun' 
+                            ? '0 2px 8px rgba(148, 163, 184, 0.1)' 
+                            : '0 2px 8px rgba(226, 232, 240, 0.15)';
                         }}
                         onMouseLeave={(e) => {
-                          e.currentTarget.style.transform = 'scale(1)';
-                          e.currentTarget.style.background = theme === 'sun'
-                            ? 'linear-gradient(135deg, rgba(102, 174, 255, 0.15), rgba(60, 153, 255, 0.15))'
-                            : 'linear-gradient(135deg, rgba(181, 176, 192, 0.2), rgba(131, 119, 160, 0.2))';
-                          e.currentTarget.style.boxShadow = theme === 'sun'
-                            ? '0 2px 8px rgba(60, 153, 255, 0.15)'
-                            : '0 2px 8px rgba(131, 119, 160, 0.2)';
+                          e.currentTarget.style.background = theme === 'sun' 
+                            ? 'linear-gradient(135deg, rgba(148, 163, 184, 0.06) 0%, rgba(148, 163, 184, 0.03) 100%)'
+                            : 'linear-gradient(135deg, rgba(226, 232, 240, 0.08) 0%, rgba(226, 232, 240, 0.04) 100%)';
+                          e.currentTarget.style.transform = 'translateY(0)';
+                          e.currentTarget.style.boxShadow = theme === 'sun' 
+                            ? '0 1px 4px rgba(148, 163, 184, 0.05)' 
+                            : '0 1px 4px rgba(226, 232, 240, 0.08)';
                         }}
                       >
-                        <MenuFoldOutlined
-                          style={{
-                            fontSize: '18px',
-                            color: theme === 'sun' ? '#1890ff' : '#8377A0',
+                        <Typography.Title 
+                          level={5} 
+                          style={{ 
+                            margin: 0,
+                            fontSize: '16px', 
+                            fontWeight: 500, 
+                            color: theme === 'sun' ? '#4a5568' : '#e2e8f0',
+                            userSelect: 'none'
                           }}
-                        />
-            </div>
-                    </Tooltip>
-            </div>
+                        >
+                          Anti-Cheat
+                        </Typography.Title>
+                        {isAntiCheatCollapsed ? (
+                          <DownOutlined style={{ fontSize: '14px', color: theme === 'sun' ? '#4a5568' : '#e2e8f0' }} />
+                        ) : (
+                          <UpOutlined style={{ fontSize: '14px', color: theme === 'sun' ? '#4a5568' : '#e2e8f0' }} />
+                        )}
+                          </div>
+                          {!isAntiCheatCollapsed && (
+                            <>
+                              {/* Violation Cards */}
+                              <div style={{ marginBottom: '12px' }}>
+                        <div style={{ display: 'flex', gap: '16px', marginBottom: '12px' }}>
+                          {/* Tab Blur Card */}
+                          <div style={{ flex: 1, paddingBottom: '12px', borderBottom: '1px solid #f0f0f0' }}>
+                            <Typography.Text style={{ fontSize: '12px', fontWeight: 400, color: theme === 'sun' ? '#666' : '#999', display: 'block', marginBottom: '4px' }}>
+                              Tab switch
+                            </Typography.Text>
+                            <Typography.Text style={{ fontSize: '14px', color: theme === 'sun' ? '#000' : '#fff' }}>
+                              {antiCheatData.tabBlurCount}
+                            </Typography.Text>
+                          </div>
 
-                  {/* Performance Summary - Moved to top */}
-                  <div style={{ marginBottom: '16px' }}>
-                    <Typography.Title level={5} style={{ marginTop: 0, marginBottom: '12px', fontSize: '18px', fontWeight: 600, textAlign: 'center', color: 'rgb(24, 144, 255)' }}>
-                      Performance
-                    </Typography.Title>
-                    
-                    {/* Score Card */}
-                    <div style={{ marginBottom: '12px', padding: '12px', background: theme === 'sun' ? 'rgba(24, 144, 255, 0.1)' : 'rgba(24, 144, 255, 0.15)', borderRadius: '8px', border: '2px solid rgba(24, 144, 255, 0.3)' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
-                        <TrophyOutlined style={{ fontSize: '20px', color: '#1890ff' }} />
-                        <Typography.Text style={{ fontSize: '13px', fontWeight: 600 }}>Score</Typography.Text>
-                      </div>
-                      <Typography.Text strong style={{ fontSize: '20px', color: '#1890ff' }}>
-                        {submission.score > 0 ? `${submission.score}/10` : ' - '}
-              </Typography.Text>
-            </div>
-
-                    {/* Add/Edit Score Button */}
-                    <div style={{ marginBottom: '12px' }}>
-              {!submission.score || submission.score === 0 ? (
-                <Button
-                  className={`tab-button ${theme}-tab-button`}
-                  onClick={handleOpenAddScore}
-                  size="small"
-                  style={{ width: '100%' }}
-                >
-                  Add Score
-                </Button>
-              ) : (
-                <Button
-                  className={`tab-button ${theme}-tab-button`}
-                  onClick={handleOpenEditScore}
-                  size="small"
-                  style={{ width: '100%' }}
-                >
-                  Edit Score
-                </Button>
-              )}
-        </div>
-
-                    {/* Time Spent Card */}
-                    <div style={{ marginBottom: '12px', padding: '12px', background: theme === 'sun' ? 'rgba(250, 173, 20, 0.1)' : 'rgba(250, 173, 20, 0.15)', borderRadius: '8px', border: '2px solid rgba(250, 173, 20, 0.3)' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
-                        <ClockCircleOutlined style={{ fontSize: '20px', color: '#faad14' }} />
-                        <Typography.Text style={{ fontSize: '13px', fontWeight: 600 }}>Time Spent</Typography.Text>
-              </div>
-                      <Typography.Text strong style={{ fontSize: '20px', color: '#faad14' }}>
-                        {submission.timeSpent} Minutes
-                      </Typography.Text>
-            </div>
-
-                    {/* Answer Summary */}
-                    <div style={{ padding: '12px', background: theme === 'sun' ? '#f9f9f9' : 'rgba(255, 255, 255, 0.05)', borderRadius: '8px', border: `1px solid ${theme === 'sun' ? '#e8e8e8' : 'rgba(255, 255, 255, 0.1)'}` }}>
-                <Space direction="vertical" size={8} style={{ width: '100%' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <Space size={8}>
-                            <CheckCircleOutlined style={{ color: '#52c41a', fontSize: '16px' }} />
-                            <Typography.Text style={{ fontSize: '13px' }}>Correct</Typography.Text>
-                    </Space>
-                          <Typography.Text strong style={{ fontSize: '16px', color: '#52c41a' }}>
-                      {submission.correctCount}
-                    </Typography.Text>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <Space size={8}>
-                            <CloseCircleOutlined style={{ color: '#ff4d4f', fontSize: '16px' }} />
-                            <Typography.Text style={{ fontSize: '13px' }}>Incorrect</Typography.Text>
-                    </Space>
-                          <Typography.Text strong style={{ fontSize: '16px', color: '#ff4d4f' }}>
-                      {submission.incorrectCount}
-                    </Typography.Text>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <Space size={8}>
-                            <MinusCircleOutlined style={{ color: '#faad14', fontSize: '16px' }} />
-                            <Typography.Text style={{ fontSize: '13px' }}>Unanswered</Typography.Text>
-                    </Space>
-                          <Typography.Text strong style={{ fontSize: '16px', color: '#faad14' }}>
-                      {submission.unansweredCount}
-                    </Typography.Text>
-                  </div>
-                </Space>
-              </div>
-            </div>
-
-                  <Divider style={{ margin: '16px 0' }} />
-
-                  {/* Student Info */}
-                  <div style={{ marginBottom: '16px' }}>
-                    <Typography.Title level={5} style={{ marginTop: 0, marginBottom: '12px', fontSize: '18px', fontWeight: 600, textAlign: 'center', color: 'rgb(24, 144, 255)' }}>
-                      Student Information
-                    </Typography.Title>
-                    <div style={{ marginBottom: '12px', paddingBottom: '12px', borderBottom: '1px solid #f0f0f0' }}>
-                      <Typography.Text style={{ fontSize: '12px', color: '#666', display: 'block', marginBottom: '4px' }}>
-                        Student Name
-                      </Typography.Text>
-                      <Typography.Text strong style={{ fontSize: '14px' }}>
-                        {student.name}
-                      </Typography.Text>
-                    </div>
-                    <div style={{ marginBottom: '12px', paddingBottom: '12px', borderBottom: '1px solid #f0f0f0' }}>
-                      <Typography.Text style={{ fontSize: '12px', color: '#666', display: 'block', marginBottom: '4px' }}>
-                        Student ID
-                      </Typography.Text>
-                      <Typography.Text strong style={{ fontSize: '14px' }}>
-                        {student.id}
-                      </Typography.Text>
-                    </div>
-                    <div style={{ marginBottom: '12px', paddingBottom: '12px', borderBottom: '1px solid #f0f0f0' }}>
-                      <Typography.Text style={{ fontSize: '12px', color: '#666', display: 'block', marginBottom: '4px' }}>
-                        Level
-                      </Typography.Text>
-                      <Typography.Text strong style={{ fontSize: '14px' }}>
-                        {student.level}
-                      </Typography.Text>
-          </div>
-        </div>
-
-                  <Divider style={{ margin: '16px 0' }} />
-
-                  {/* Anti-Cheat Summary */}
-                  {antiCheatData && (
-                    <div style={{ marginBottom: '16px' }}>
-                      <Typography.Title level={5} style={{ marginTop: 0, marginBottom: '12px', fontSize: '18px', fontWeight: 600, textAlign: 'center', color: 'rgb(24, 144, 255)' }}>
-                        Anti-Cheat Monitoring
-                      </Typography.Title>
-                      
-                      {/* Violation Cards */}
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '12px' }}>
-                        {/* Tab Blur Card */}
-                        <div style={{ padding: '10px 12px', background: theme === 'sun' ? 'rgba(255, 152, 0, 0.1)' : 'rgba(255, 152, 0, 0.15)', borderRadius: '8px', border: '2px solid rgba(255, 152, 0, 0.3)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <Typography.Text style={{ fontSize: '12px', fontWeight: 600, color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' }}>
-                            CHUYỂN TAB
-                          </Typography.Text>
-                          <Typography.Text strong style={{ fontSize: '18px', color: '#ff9800' }}>
-                            {antiCheatData.tabBlurCount}
-                          </Typography.Text>
+                          {/* Copy Card */}
+                          <div style={{ flex: 1, paddingBottom: '12px', borderBottom: '1px solid #f0f0f0' }}>
+                            <Typography.Text style={{ fontSize: '12px', fontWeight: 400, color: theme === 'sun' ? '#666' : '#999', display: 'block', marginBottom: '4px' }}>
+                              Copy
+                            </Typography.Text>
+                            <Typography.Text style={{ fontSize: '14px', color: theme === 'sun' ? '#000' : '#fff' }}>
+                              {antiCheatData.copyCount}
+                            </Typography.Text>
+                          </div>
                         </div>
 
-                        {/* Copy Card */}
-                        <div style={{ padding: '10px 12px', background: theme === 'sun' ? 'rgba(244, 67, 54, 0.1)' : 'rgba(244, 67, 54, 0.15)', borderRadius: '8px', border: '2px solid rgba(244, 67, 54, 0.3)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <Typography.Text style={{ fontSize: '12px', fontWeight: 600, color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' }}>
-                            COPY
-                          </Typography.Text>
-                          <Typography.Text strong style={{ fontSize: '18px', color: '#f44336' }}>
-                            {antiCheatData.copyCount}
-                          </Typography.Text>
-                        </div>
+                        <div style={{ display: 'flex', gap: '16px', marginBottom: '12px' }}>
+                          {/* Paste Card */}
+                          <div style={{ flex: 1, paddingBottom: '12px', borderBottom: '1px solid #f0f0f0' }}>
+                            <Typography.Text style={{ fontSize: '12px', fontWeight: 400, color: theme === 'sun' ? '#666' : '#999', display: 'block', marginBottom: '4px' }}>
+                              Paste
+                            </Typography.Text>
+                            <Typography.Text style={{ fontSize: '14px', color: theme === 'sun' ? '#000' : '#fff' }}>
+                              {antiCheatData.pasteCount}
+                            </Typography.Text>
+                          </div>
 
-                        {/* Paste Card */}
-                        <div style={{ padding: '10px 12px', background: theme === 'sun' ? 'rgba(156, 39, 176, 0.1)' : 'rgba(156, 39, 176, 0.15)', borderRadius: '8px', border: '2px solid rgba(156, 39, 176, 0.3)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <Typography.Text style={{ fontSize: '12px', fontWeight: 600, color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' }}>
-                            PASTE
-                          </Typography.Text>
-                          <Typography.Text strong style={{ fontSize: '18px', color: '#9c27b0' }}>
-                            {antiCheatData.pasteCount}
-                          </Typography.Text>
-                        </div>
-                      </div>
-
-                      {/* Total Violations Card */}
-                      <div style={{ padding: '14px', background: theme === 'sun' ? 'linear-gradient(135deg, rgba(63, 81, 181, 0.15) 0%, rgba(103, 58, 183, 0.15) 100%)' : 'linear-gradient(135deg, rgba(63, 81, 181, 0.2) 0%, rgba(103, 58, 183, 0.2) 100%)', borderRadius: '8px', border: '2px solid rgba(103, 58, 183, 0.4)', marginBottom: '12px' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <Typography.Text strong style={{ fontSize: '14px', fontWeight: 600, color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' }}>
-                            TỔNG VI PHẠM
-                          </Typography.Text>
-                          <Typography.Text strong style={{ fontSize: '24px', color: theme === 'sun' ? '#3f51b5' : '#673ab7', fontWeight: 700 }}>
-                            {antiCheatData.totalViolations}
-                          </Typography.Text>
+                          {/* Total Violations Card */}
+                          <div style={{ flex: 1, paddingBottom: '12px', borderBottom: '1px solid #f0f0f0' }}>
+                            <Typography.Text style={{ fontSize: '12px', fontWeight: 400, color: theme === 'sun' ? '#666' : '#999', display: 'block', marginBottom: '4px' }}>
+                              Total violations
+                            </Typography.Text>
+                            <Typography.Text style={{ fontSize: '14px', color: theme === 'sun' ? '#000' : '#fff' }}>
+                              {antiCheatData.totalViolations}
+                            </Typography.Text>
+                          </div>
                         </div>
                       </div>
 
                       {/* Total Tab Blur Duration */}
                       {antiCheatData.totalTabBlurDuration > 0 && (
-                        <div style={{ padding: '10px 12px', background: theme === 'sun' ? '#f9f9f9' : 'rgba(255, 255, 255, 0.05)', borderRadius: '8px', border: `1px solid ${theme === 'sun' ? '#e8e8e8' : 'rgba(255, 255, 255, 0.1)'}`, marginBottom: '12px' }}>
-                          <Typography.Text style={{ fontSize: '12px', color: theme === 'sun' ? '#666' : '#999', display: 'block', marginBottom: '4px' }}>
-                            Tổng thời gian rời khỏi tab
+                        <div style={{ marginBottom: '12px', paddingBottom: '12px', borderBottom: '1px solid #f0f0f0' }}>
+                          <Typography.Text style={{ fontSize: '12px', fontWeight: 400, color: theme === 'sun' ? '#666' : '#999', display: 'block', marginBottom: '4px' }}>
+                            Total time away from tab
                           </Typography.Text>
-                          <Typography.Text strong style={{ fontSize: '14px', color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' }}>
-                            {Math.floor(antiCheatData.totalTabBlurDuration / 1000)} giây
-                            {antiCheatData.totalTabBlurDuration >= 60000 && ` (${Math.floor(antiCheatData.totalTabBlurDuration / 60000)} phút)`}
+                          <Typography.Text style={{ fontSize: '14px', color: theme === 'sun' ? '#000' : '#fff' }}>
+                            {Math.floor(antiCheatData.totalTabBlurDuration / 1000)} seconds
+                            {antiCheatData.totalTabBlurDuration >= 60000 && ` (${Math.floor(antiCheatData.totalTabBlurDuration / 60000)} minutes)`}
                           </Typography.Text>
                         </div>
                       )}
@@ -3244,45 +4774,55 @@ const mockSubmissionDetail = {
                       {antiCheatData.events && antiCheatData.events.length > 0 && (
                         <div style={{ marginTop: '12px' }}>
                           <Typography.Title level={5} style={{ marginTop: 0, marginBottom: '10px', fontSize: '14px', fontWeight: 600, textAlign: 'center', color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' }}>
-                            NHẬT KÝ HOẠT ĐỘNG
+                            ACTIVITY LOG
                           </Typography.Title>
-                          <div style={{ 
-                            maxHeight: '300px', 
-                            overflowY: 'auto', 
-                            padding: '8px',
-                            background: theme === 'sun' ? '#f9f9f9' : 'rgba(255, 255, 255, 0.03)',
-                            borderRadius: '8px',
-                            border: `1px solid ${theme === 'sun' ? '#e8e8e8' : 'rgba(255, 255, 255, 0.1)'}`
-                          }}>
+                          <div 
+                            className="activity-log-scrollbar"
+                            style={{ 
+                              maxHeight: '300px', 
+                              overflowY: 'auto', 
+                              padding: '8px',
+                              background: theme === 'sun' ? '#f9f9f9' : 'rgba(255, 255, 255, 0.03)',
+                              borderRadius: '8px',
+                              border: `1px solid ${theme === 'sun' ? '#e8e8e8' : 'rgba(255, 255, 255, 0.1)'}`,
+                              scrollbarWidth: 'none', /* Firefox */
+                              msOverflowStyle: 'none', /* IE and Edge */
+                            }}
+                          >
+                            <style>{`
+                              .activity-log-scrollbar::-webkit-scrollbar { 
+                                display: none; /* Chrome, Safari, Opera */
+                              }
+                            `}</style>
                             {antiCheatData.events.map((eventItem, index) => {
                               // Get event icon and description
                               let icon, description, color;
                               switch (eventItem.event) {
                                 case 'START':
                                   icon = <PlayCircleOutlined />;
-                                  description = 'Bắt đầu làm bài';
+                                  description = 'Started test';
                                   color = '#52c41a';
                                   break;
                                 case 'TAB_BLUR':
                                   icon = <SwapOutlined />;
                                   description = eventItem.durationMs 
-                                    ? `Nội dung bị ẩn để quay lại (${Math.floor(eventItem.durationMs / 1000)}s)`
-                                    : 'Nội dung bị ẩn để quay lại';
+                                    ? `Content hidden to return (${Math.floor(eventItem.durationMs / 1000)}s)`
+                                    : 'Content hidden to return';
                                   color = '#ff9800';
                                   break;
                                 case 'COPY':
                                   icon = <CopyOutlined />;
-                                  description = eventItem.content || 'Đã chặn Ctrl+C / Ctrl+Insert';
+                                  description = eventItem.content || 'Blocked Ctrl+C / Ctrl+Insert';
                                   color = '#f44336';
                                   break;
                                 case 'PASTE':
                                   icon = <FileTextOutlined />;
-                                  description = eventItem.content || 'Đã chặn Ctrl+V / Shift+Insert';
+                                  description = eventItem.content || 'Blocked Ctrl+V / Shift+Insert';
                                   color = '#9c27b0';
                                   break;
                                 case 'ANSWER_CHANGE':
                                   icon = <EditOutlined />;
-                                  description = `Thay đổi câu trả lời: ${eventItem.oldValue?.join(', ') || 'N/A'} → ${eventItem.newValue?.join(', ') || 'N/A'}`;
+                                  description = `Answer changed: ${eventItem.oldValue?.join(', ') || 'N/A'} → ${eventItem.newValue?.join(', ') || 'N/A'}`;
                                   color = '#1890ff';
                                   break;
                                 default:
@@ -3369,20 +4909,66 @@ const mockSubmissionDetail = {
                                 </div>
                               );
                             })}
-                          </div>
-                        </div>
+                              </div>
+                            </div>
+                          )}
+                        </>
                       )}
                     </div>
                   )}
+                    </>
+                  ) : (
+                    /* Questions Tab */
+                    <>
+                      <div className="question-sidebar-header" style={{ marginBottom: '16px', paddingBottom: '16px', borderBottom: theme === 'sun' ? '2px solid rgba(113, 179, 253, 0.15)' : '2px solid rgba(138, 122, 255, 0.15)' }}>
+                        <h3 style={{ fontSize: '20px', fontWeight: 700, textAlign: 'center', color: 'rgb(24, 144, 255)', margin: 0 }}>Questions</h3>
+                      </div>
+                      <div style={{ 
+                        maxHeight: 'calc(100vh - 280px)', 
+                        overflowY: 'auto',
+                        paddingRight: '8px'
+                      }}>
+                        <div className="question-sidebar-list">
+                          {getQuestionNavigation().map((item) => (
+                            <div
+                              key={item.id}
+                              className={`question-sidebar-item ${item.type === 'section' ? 'question-sidebar-section' : ''}`}
+                              onClick={() => scrollToQuestion(item.id)}
+                              style={{ 
+                                fontWeight: 'normal', 
+                                textAlign: 'center', 
+                                color: theme === 'sun' ? '#000000' : '#FFFFFF',
+                                padding: '10px',
+                                marginBottom: '4px',
+                                cursor: 'pointer',
+                                borderRadius: '4px',
+                                transition: 'all 0.2s ease',
+                                fontSize: '14px'
+                              }}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.background = theme === 'sun' 
+                                  ? 'rgba(24, 144, 255, 0.1)' 
+                                  : 'rgba(138, 122, 255, 0.15)';
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.background = 'transparent';
+                              }}
+                            >
+                              {item.title}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </>
+                  )}
                 </Card>
-              )}
-            </div>
-          </Col>
+              </div>
+            </Col>
 
           {/* Right Section - Questions Review */}
           <Col 
             xs={24} 
-            lg={isCollapsed ? 22 : 18}
+            lg={isCollapsed ? 24 : 18}
             style={{ 
               transition: 'all 0.3s ease'
             }}
@@ -3390,43 +4976,18 @@ const mockSubmissionDetail = {
             <div className="sdc-questions-review-section" style={{ padding: '0' }}>
           {/* Grammar & Vocabulary Questions */}
           {questions.length > 0 && (
-            <div className={`question-item ${theme}-question-item`} style={{ marginBottom: '24px', borderRadius: '16px', padding: '24px', border: '2px solid', borderColor: theme === 'sun' ? 'rgba(113, 179, 253, 0.25)' : 'rgba(138, 122, 255, 0.2)', background: theme === 'sun' ? 'linear-gradient(135deg, rgba(255, 255, 255, 1) 0%, rgba(240, 249, 255, 0.95) 100%)' : 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(244, 240, 255, 0.95) 100%)', boxShadow: theme === 'sun' ? '0 4px 16px rgba(113, 179, 253, 0.1)' : '0 4px 16px rgba(138, 122, 255, 0.12)' }}>
-              <div className="question-header" style={{ paddingBottom: '14px', marginBottom: '16px', borderBottom: '2px solid', borderBottomColor: theme === 'sun' ? 'rgba(113, 179, 253, 0.25)' : 'rgba(138, 122, 255, 0.2)', position: 'relative', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div>
-                  <Typography.Text strong style={{ fontSize: '20px', color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' }}>
-                Grammar & Vocabulary
-                  </Typography.Text>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  {!getFeedback('grammar-vocabulary', 'section') ? (
-                    <Button
-                      size="small"
-                      onClick={() => handleOpenAddFeedback('grammar-vocabulary', 'section')}
-                      style={{
-                        fontSize: '13px',
-                        height: '28px',
-                        padding: '0 12px'
-                      }}
-                    >
-                      Add Feedback
-                    </Button>
-                  ) : (
-                    <Button
-                      size="small"
-                      onClick={() => handleOpenEditFeedback('grammar-vocabulary', 'section')}
-                      style={{
-                        fontSize: '13px',
-                        height: '28px',
-                        padding: '0 12px'
-                      }}
-                    >
-                      Edit Feedback
-                    </Button>
-                  )}
-                </div>
+            <div 
+              className={`question-item ${theme}-question-item`} 
+              style={{ marginBottom: '24px', borderRadius: '16px', padding: '24px', border: '2px solid', borderColor: theme === 'sun' ? 'rgba(113, 179, 253, 0.25)' : 'rgba(138, 122, 255, 0.2)', background: theme === 'sun' ? 'linear-gradient(135deg, rgba(255, 255, 255, 1) 0%, rgba(240, 249, 255, 0.95) 100%)' : 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(244, 240, 255, 0.95) 100%)', boxShadow: theme === 'sun' ? '0 4px 16px rgba(113, 179, 253, 0.1)' : '0 4px 16px rgba(138, 122, 255, 0.12)' }}>
+              <div className="question-header" style={{ paddingBottom: '14px', marginBottom: '16px', borderBottom: '2px solid', borderBottomColor: theme === 'sun' ? 'rgba(113, 179, 253, 0.25)' : 'rgba(138, 122, 255, 0.2)' }}>
+              
               </div>
           <Space direction="vertical" size={16} style={{ width: '100%' }}>
-                {questions.map((q, idx) => renderQuestion(q, idx))}
+                {questions.map((q, idx) => (
+                  <div key={q.id} ref={el => questionRefs.current[`gv-${q.id}`] = el}>
+                    {renderQuestion(q, idx)}
+                  </div>
+                ))}
           </Space>
         </div>
           )}
@@ -3434,11 +4995,13 @@ const mockSubmissionDetail = {
           {/* Reading Sections */}
           {readingSections.length > 0 && (
             <div style={{ marginBottom: '24px' }}>
-              <Typography.Title level={4} style={{ marginBottom: '16px', fontSize: '18px', fontWeight: 600, color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' }}>
-                Reading
-                    </Typography.Title>
+            
           <Space direction="vertical" size={16} style={{ width: '100%' }}>
-                {readingSections.map((section, idx) => renderReadingSection(section, idx))}
+                {readingSections.map((section, idx) => (
+                  <div key={section.id || idx} ref={el => questionRefs.current[`reading-${idx + 1}`] = el}>
+                    {renderReadingSection(section, idx)}
+                  </div>
+                ))}
               </Space>
                   </div>
           )}
@@ -3446,11 +5009,13 @@ const mockSubmissionDetail = {
           {/* Listening Sections */}
           {listeningSections.length > 0 && (
             <div style={{ marginBottom: '24px' }}>
-              <Typography.Title level={4} style={{ marginBottom: '16px', fontSize: '18px', fontWeight: 600, color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' }}>
-                Listening
-                    </Typography.Title>
+             
               <Space direction="vertical" size={16} style={{ width: '100%' }}>
-                {listeningSections.map((section, idx) => renderListeningSection(section, idx))}
+                {listeningSections.map((section, idx) => (
+                  <div key={section.id || idx} ref={el => questionRefs.current[`listening-${idx + 1}`] = el}>
+                    {renderListeningSection(section, idx)}
+                  </div>
+                ))}
               </Space>
                   </div>
           )}
@@ -3458,11 +5023,13 @@ const mockSubmissionDetail = {
           {/* Writing Sections */}
           {writingSections.length > 0 && (
             <div style={{ marginBottom: '24px' }}>
-              <Typography.Title level={4} style={{ marginBottom: '16px', fontSize: '18px', fontWeight: 600, color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' }}>
-                Writing
-              </Typography.Title>
+            
               <Space direction="vertical" size={16} style={{ width: '100%' }}>
-                {writingSections.map((section, idx) => renderWritingSection(section, idx))}
+                {writingSections.map((section, idx) => (
+                  <div key={section.id || idx} ref={el => questionRefs.current[`writing-${idx + 1}`] = el}>
+                    {renderWritingSection(section, idx)}
+                  </div>
+                ))}
               </Space>
                         </div>
                   )}
@@ -3470,11 +5037,13 @@ const mockSubmissionDetail = {
           {/* Speaking Sections */}
           {speakingSections.length > 0 && (
             <div style={{ marginBottom: '24px' }}>
-              <Typography.Title level={4} style={{ marginBottom: '16px', fontSize: '18px', fontWeight: 600, color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' }}>
-                Speaking
-              </Typography.Title>
+            
               <Space direction="vertical" size={16} style={{ width: '100%' }}>
-                {speakingSections.map((section, idx) => renderSpeakingSection(section, idx))}
+                {speakingSections.map((section, idx) => (
+                  <div key={section.id || idx} ref={el => questionRefs.current[`speaking-${idx + 1}`] = el}>
+                    {renderSpeakingSection(section, idx)}
+                  </div>
+                ))}
               </Space>
                     </div>
                   )}
@@ -3494,7 +5063,7 @@ const mockSubmissionDetail = {
               textAlign: 'center',
               padding: '10px 0',
             }}>
-            {feedbackModal.isEdit ? 'Edit Feedback' : 'Add Feedback'}
+            {feedbackModal.isEdit ? 'Edit Score/Feedback' : 'Add Score/Feedback'}
             </div>
         }
         open={feedbackModal.visible}
@@ -3518,9 +5087,9 @@ const mockSubmissionDetail = {
             type="primary" 
             onClick={handleSaveFeedback}
             style={{
-              background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, #7228d9 0%, #9c88ff 100%)',
+              background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)',
               borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : '#7228d9',
-              color: theme === 'sun' ? '#000' : '#fff',
+              color: '#000',
               borderRadius: '6px',
               height: '32px',
               fontWeight: '500',
@@ -3528,48 +5097,54 @@ const mockSubmissionDetail = {
               padding: '4px 15px',
               width: '100px',
               transition: 'all 0.3s ease',
-              boxShadow: 'none'
+              border: 'none',
             }}
             onMouseEnter={(e) => {
               if (theme === 'sun') {
-                e.target.style.background = 'rgb(95, 160, 240)';
-                e.target.style.borderColor = 'rgb(95, 160, 240)';
-                e.target.style.transform = 'translateY(-1px)';
-                e.target.style.boxShadow = '0 4px 12px rgba(113, 179, 253, 0.4)';
+                e.currentTarget.style.background = 'rgb(93, 159, 233)';
               } else {
-                e.target.style.background = 'linear-gradient(135deg, #5a1fb8 0%, #8a7aff 100%)';
-                e.target.style.borderColor = '#5a1fb8';
-                e.target.style.transform = 'translateY(-1px)';
-                e.target.style.boxShadow = '0 4px 12px rgba(114, 40, 217, 0.4)';
+                e.currentTarget.style.background = 'linear-gradient(135deg, #9C8FB0 19%, #9588AB 64%, #726795 75%, #9A95B0 97%, #5D4F7F 100%)';
               }
             }}
             onMouseLeave={(e) => {
               if (theme === 'sun') {
-                e.target.style.background = 'rgb(113, 179, 253)';
-                e.target.style.borderColor = 'rgb(113, 179, 253)';
-                e.target.style.transform = 'translateY(0)';
-                e.target.style.boxShadow = 'none';
+                e.currentTarget.style.background = 'rgb(113, 179, 253)';
               } else {
-                e.target.style.background = 'linear-gradient(135deg, #7228d9 0%, #9c88ff 100%)';
-                e.target.style.borderColor = '#7228d9';
-                e.target.style.transform = 'translateY(0)';
-                e.target.style.boxShadow = 'none';
+                e.currentTarget.style.background = 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)';
               }
             }}>
             {feedbackModal.isEdit ? 'Update' : 'Add'}
           </Button>
         ]}>
         <div style={{ padding: '20px 0' }}>
-          <Input.TextArea
-            rows={6}
-            value={feedbackModal.feedback}
-            onChange={(e) => setFeedbackModal(prev => ({ ...prev, feedback: e.target.value }))}
-            placeholder="Enter your feedback for this question..."
-            style={{
-              fontSize: '14px',
-              lineHeight: '1.6',
-            }}
-          />
+          {feedbackModal.type === 'section' && (
+            <div style={{ marginBottom: '12px' }}>
+              <Typography.Text strong style={{ fontSize: '14px', display: 'block', marginBottom: '6px' }}>Score</Typography.Text>
+              <Input
+                type="number"
+                min="0"
+                value={feedbackModal.score}
+                onChange={(e) => setFeedbackModal(prev => ({ ...prev, score: e.target.value }))}
+                placeholder="Enter score for this question"
+              />
+            </div>
+          )}
+          <div style={{ border: '1px solid #eee', borderRadius: '6px', overflow: 'visible' }}>
+            <CKEditor
+              editor={ClassicEditor}
+              data={feedbackModal.feedback}
+              onChange={(event, editor) => {
+                const data = editor.getData();
+                setFeedbackModal(prev => ({ ...prev, feedback: data }));
+              }}
+              config={{
+                toolbar: {
+                  items: ['bold','italic','underline','|','bulletedList','numberedList','|','link','undo','redo'],
+                  shouldNotGroupWhenFull: true
+                }
+              }}
+            />
+          </div>
         </div>
       </Modal>
 
@@ -3608,9 +5183,9 @@ const mockSubmissionDetail = {
             type="primary" 
             onClick={handleSaveScore}
             style={{
-              background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, #7228d9 0%, #9c88ff 100%)',
+              background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)',
               borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : '#7228d9',
-              color: theme === 'sun' ? '#000' : '#fff',
+              color: '#000',
               borderRadius: '6px',
               height: '32px',
               fontWeight: '500',
@@ -3618,32 +5193,20 @@ const mockSubmissionDetail = {
               padding: '4px 15px',
               width: '100px',
               transition: 'all 0.3s ease',
-              boxShadow: 'none'
+              border: 'none',
             }}
             onMouseEnter={(e) => {
               if (theme === 'sun') {
-                e.target.style.background = 'rgb(95, 160, 240)';
-                e.target.style.borderColor = 'rgb(95, 160, 240)';
-                e.target.style.transform = 'translateY(-1px)';
-                e.target.style.boxShadow = '0 4px 12px rgba(113, 179, 253, 0.4)';
+                e.currentTarget.style.background = 'rgb(93, 159, 233)';
               } else {
-                e.target.style.background = 'linear-gradient(135deg, #5a1fb8 0%, #8a7aff 100%)';
-                e.target.style.borderColor = '#5a1fb8';
-                e.target.style.transform = 'translateY(-1px)';
-                e.target.style.boxShadow = '0 4px 12px rgba(114, 40, 217, 0.4)';
+                e.currentTarget.style.background = 'linear-gradient(135deg, #9C8FB0 19%, #9588AB 64%, #726795 75%, #9A95B0 97%, #5D4F7F 100%)';
               }
             }}
             onMouseLeave={(e) => {
               if (theme === 'sun') {
-                e.target.style.background = 'rgb(113, 179, 253)';
-                e.target.style.borderColor = 'rgb(113, 179, 253)';
-                e.target.style.transform = 'translateY(0)';
-                e.target.style.boxShadow = 'none';
+                e.currentTarget.style.background = 'rgb(113, 179, 253)';
               } else {
-                e.target.style.background = 'linear-gradient(135deg, #7228d9 0%, #9c88ff 100%)';
-                e.target.style.borderColor = '#7228d9';
-                e.target.style.transform = 'translateY(0)';
-                e.target.style.boxShadow = 'none';
+                e.currentTarget.style.background = 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)';
               }
             }}>
             {scoreModal.isEdit ? 'Update' : 'Add'}
@@ -3665,31 +5228,11 @@ const mockSubmissionDetail = {
               max="10"
               step="0.1"
               value={scoreModal.score}
-              onChange={(e) => setScoreModal(prev => ({ ...prev, score: e.target.value }))}
+              onChange={handleScoreInputChange}
               placeholder="Enter score (0-10)"
               style={{
                 fontSize: '16px',
                 height: '42px'
-              }}
-            />
-          </div>
-          <div>
-            <Typography.Text strong style={{ 
-              fontSize: '16px', 
-              display: 'block', 
-              marginBottom: '12px',
-              color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)'
-            }}>
-              Comment (Optional):
-            </Typography.Text>
-            <Input.TextArea
-              rows={4}
-              value={scoreModal.comment}
-              onChange={(e) => setScoreModal(prev => ({ ...prev, comment: e.target.value }))}
-              placeholder="Enter any additional comments about this score..."
-              style={{
-                fontSize: '14px',
-                lineHeight: '1.6',
               }}
             />
           </div>
@@ -3747,9 +5290,9 @@ const mockSubmissionDetail = {
             type="primary" 
             onClick={handleSaveComment}
             style={{
-              background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, #7228d9 0%, #9c88ff 100%)',
+              background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)',
               borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : '#7228d9',
-              color: theme === 'sun' ? '#000' : '#fff',
+              color: '#000',
               borderRadius: '6px',
               height: '32px',
               fontWeight: '500',
@@ -3757,32 +5300,20 @@ const mockSubmissionDetail = {
               padding: '4px 15px',
               width: '100px',
               transition: 'all 0.3s ease',
-              boxShadow: 'none'
+              border: 'none',
             }}
             onMouseEnter={(e) => {
               if (theme === 'sun') {
-                e.target.style.background = 'rgb(95, 160, 240)';
-                e.target.style.borderColor = 'rgb(95, 160, 240)';
-                e.target.style.transform = 'translateY(-1px)';
-                e.target.style.boxShadow = '0 4px 12px rgba(113, 179, 253, 0.4)';
+                e.currentTarget.style.background = 'rgb(93, 159, 233)';
               } else {
-                e.target.style.background = 'linear-gradient(135deg, #5a1fb8 0%, #8a7aff 100%)';
-                e.target.style.borderColor = '#5a1fb8';
-                e.target.style.transform = 'translateY(-1px)';
-                e.target.style.boxShadow = '0 4px 12px rgba(114, 40, 217, 0.4)';
+                e.currentTarget.style.background = 'linear-gradient(135deg, #9C8FB0 19%, #9588AB 64%, #726795 75%, #9A95B0 97%, #5D4F7F 100%)';
               }
             }}
             onMouseLeave={(e) => {
               if (theme === 'sun') {
-                e.target.style.background = 'rgb(113, 179, 253)';
-                e.target.style.borderColor = 'rgb(113, 179, 253)';
-                e.target.style.transform = 'translateY(0)';
-                e.target.style.boxShadow = 'none';
+                e.currentTarget.style.background = 'rgb(113, 179, 253)';
               } else {
-                e.target.style.background = 'linear-gradient(135deg, #7228d9 0%, #9c88ff 100%)';
-                e.target.style.borderColor = '#7228d9';
-                e.target.style.transform = 'translateY(0)';
-                e.target.style.boxShadow = 'none';
+                e.currentTarget.style.background = 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)';
               }
             }}>
             {commentModal.isEdit ? 'Update' : 'Add'}
@@ -3792,8 +5323,11 @@ const mockSubmissionDetail = {
           <Input.TextArea
             rows={6}
             value={commentModal.comment}
-            onChange={(e) => setCommentModal(prev => ({ ...prev, comment: e.target.value }))}
+            onChange={handleCommentInputChange}
             placeholder="Enter your comment for the selected text..."
+            maxLength={2000}
+            showCount
+            autoSize={{ minRows: 6, maxRows: 10 }}
             style={{
               fontSize: '14px',
               lineHeight: '1.6',
@@ -3918,8 +5452,24 @@ const mockSubmissionDetail = {
             return null;
           })()}
 
-          {/* Edit Button */}
-          <div style={{ marginTop: '16px', display: 'flex', justifyContent: 'flex-end' }}>
+          {/* Edit and Delete Buttons */}
+          <div style={{ marginTop: '16px', display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
+            <Button
+              danger
+              icon={<DeleteOutlined />}
+              onClick={handleDeleteComment}
+              style={{
+                borderRadius: '8px',
+                fontWeight: 500,
+                fontSize: '14px',
+                height: '36px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+              }}
+            >
+              Delete
+            </Button>
             <Button
               type="default"
               onClick={handleEditCommentFromSidebar}
@@ -3948,3 +5498,4 @@ const mockSubmissionDetail = {
 };
 
 export default DailyChallengeSubmissionDetail;
+
