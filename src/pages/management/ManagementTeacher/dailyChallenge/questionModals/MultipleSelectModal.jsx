@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
-import { Modal, Button, Select, Tooltip } from 'antd';
+import { Modal, Button, InputNumber, Tooltip } from 'antd';
 import { spaceToast } from '../../../../../component/SpaceToastify';
 import {
 	PlusOutlined,
@@ -413,16 +413,12 @@ const MultipleSelectModal = ({
 	};
 
 	const pointsMenu = (
-		<Select
+		<InputNumber
 			value={points}
-			onChange={setPoints}
-			style={{ width: 90 }}
-			options={[
-				{ value: 1, label: '1 point' },
-				{ value: 2, label: '2 points' },
-				{ value: 3, label: '3 points' },
-				{ value: 5, label: '5 points' },
-			]}
+			onChange={(v) => setPoints(Number(v) || 0)}
+			min={0}
+			max={100}
+			style={{ width: 100 }}
 		/>
 	);
 
@@ -477,7 +473,8 @@ const MultipleSelectModal = ({
 					<div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
 						<div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
 							<CheckOutlined style={{ color: '#52c41a', fontSize: '16px' }} />
-						{pointsMenu}
+							<span style={{ fontSize: '13px', fontWeight: 600, color: '#666' }}>Score</span>
+							{pointsMenu}
 					</div>
 
 					<Button
