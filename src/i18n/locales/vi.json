@@ -1791,6 +1791,7 @@
     "challengeTitle": "Tên Challenge",
     "type": "Loại",
     "no": "STT",
+    "completion": "Hoàn thành",
     "startDateRequired": "Ngày bắt đầu là bắt buộc",
     "endDateRequired": "Ngày kết thúc là bắt buộc",
     "DRAFT": "Bản nháp",

@@ -49,6 +49,9 @@ const ChallengeSettingsModal = ({
     antiCheatModeEnabled: false,
     translateOnScreen: false,
   });
+  const status = (initialValues?.challengeStatus || initialValues?.status || '').toUpperCase();
+  const isInProgress = status === 'IN_PROGRESS';
+  const isClosed = status === 'CLOSED';
 
   useEffect(() => {
     if (visible) {
@@ -407,6 +410,7 @@ const ChallengeSettingsModal = ({
                   placeholder={t('dailyChallenge.selectStartDate')}
                   format="DD/MM/YYYY HH:mm"
                   showTime
+                  disabled={isInProgress || isClosed}
                 />
               </Form.Item>
             </Col>
@@ -433,6 +437,7 @@ const ChallengeSettingsModal = ({
                   placeholder={t('dailyChallenge.selectEndDate')}
                   format="DD/MM/YYYY HH:mm"
                   showTime
+                  disabled={isClosed}
                   disabledDate={(current) => {
                     const startDate = form.getFieldValue('startDate');
                     return startDate && current && current.isBefore(startDate, 'day');

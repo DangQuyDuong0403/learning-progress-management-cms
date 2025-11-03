@@ -47,8 +47,9 @@ const EditDailyChallengeModal = ({
     hasAntiCheat: false,
     translateOnScreen: false,
   });
+  const [challengeStatus, setChallengeStatus] = useState(null);
 
-  console.log("aaaaaa",challengeData);
+
   
   // Fetch latest detail by id when modal opens; fallback to incoming data
   useEffect(() => {
@@ -71,6 +72,7 @@ const EditDailyChallengeModal = ({
             endDate: data.endDate ? dayjs(data.endDate) : null,
           });
           setChallengeMode(data.challengeMethod === 'TEST' ? 'exam' : (data.challengeMode || 'normal'));
+          setChallengeStatus(data.challengeStatus || data.status || null);
           return;
         }
       } catch (e) {
@@ -90,6 +92,7 @@ const EditDailyChallengeModal = ({
           endDate: challengeData.endDate ? dayjs(challengeData.endDate) : null,
         });
         setChallengeMode(challengeData.challengeMethod === 'TEST' ? 'exam' : (challengeData.challengeMode || 'normal'));
+        setChallengeStatus(challengeData.challengeStatus || challengeData.status || null);
       }
     };
 
@@ -97,6 +100,9 @@ const EditDailyChallengeModal = ({
       loadDetail();
     }
   }, [visible, challengeData, form]);
+
+  const isInProgress = (challengeStatus || '').toUpperCase() === 'IN_PROGRESS';
+  const isClosed = (challengeStatus || '').toUpperCase() === 'CLOSED';
 
   const performSave = async (values) => {
     try {
@@ -551,6 +557,7 @@ const EditDailyChallengeModal = ({
                   placeholder={t('dailyChallenge.selectStartDate')}
                   format="YYYY-MM-DD HH:mm"
                   showTime
+                  disabled={isInProgress || isClosed}
                 />
               </Form.Item>
             </Col>
@@ -584,6 +591,7 @@ const EditDailyChallengeModal = ({
                   placeholder={t('dailyChallenge.selectEndDate')}
                   format="YYYY-MM-DD HH:mm"
                   showTime
+                  disabled={isClosed}
                 />
               </Form.Item>
             </Col>

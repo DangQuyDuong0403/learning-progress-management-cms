@@ -54,3 +54,10 @@ code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
 }
+
+/* Remove extra spacing under paragraphs rendered inside option HTML
+   for Multiple Choice and Multiple Select answers in the LI taking screen */
+.question-options .option-text p,
+.option-text p {
+  margin-bottom: 0;
+}
