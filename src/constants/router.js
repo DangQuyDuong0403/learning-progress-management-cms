@@ -26,6 +26,8 @@ const ROUTER_PAGE = {
 	STUDENT_DAILY_CHALLENGES: '/student/daily-challenges',
 	STUDENT_CLASS_DAILY_CHALLENGES: '/student/classes/daily-challenges/:classId',
 	STUDENT_DAILY_CHALLENGE_DETAIL: '/student/daily-challenges/detail/:id',
+	STUDENT_DAILY_CHALLENGE_TAKE: '/student/daily-challenges/take/:id',
+	STUDENT_DAILY_CHALLENGE_RESULT: '/student/daily-challenges/result/:id',
 	// Admin Management Routes
 	ADMIN_DASHBOARD: '/admin/dashboard',
 	ADMIN_ACCOUNTS: '/admin/accounts',
@@ -56,6 +58,8 @@ const ROUTER_PAGE = {
 	MANAGER_STUDENT_PROGRESS: '/manager/student/:id/progress',
 	// Spinner Demo
 	SPINNER_DEMO: '/spinner-demo',
+	// Test Security Demo
+	TEST_DEMO: '/test-demo',
 	// Manager Management Routes
 	MANAGER_CLASSES: '/manager/classes',
 	MANAGER_CLASS_MENU: '/manager/classes/menu/:id',

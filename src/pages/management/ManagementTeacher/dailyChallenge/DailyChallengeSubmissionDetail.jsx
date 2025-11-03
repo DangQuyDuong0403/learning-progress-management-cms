@@ -3,157 +3,56 @@ import {
   Button,
   Space,
   Typography,
-  Avatar,
-  Tag,
-  Progress,
+  Modal,
+  Input,
+  Row,
+  Col,
+  Card,
+  Tooltip,
+  Divider,
 } from "antd";
 import {
   ClockCircleOutlined,
-  TrophyOutlined,
   CheckCircleOutlined,
   CloseCircleOutlined,
   MinusCircleOutlined,
+  CommentOutlined,
+  MenuFoldOutlined,
+  MenuUnfoldOutlined,
+  CloseOutlined,
+  MenuOutlined,
+  SwapOutlined,
+  CopyOutlined,
+  FileTextOutlined,
+  EditOutlined,
+  PlayCircleOutlined,
+  DeleteOutlined,
+  ArrowLeftOutlined,
+  UpOutlined,
+  DownOutlined,
+  PlusCircleOutlined,
+  StarOutlined,
+  SaveOutlined,
 } from "@ant-design/icons";
 import ThemedLayout from "../../../../component/teacherlayout/ThemedLayout";
 import LoadingWithEffect from "../../../../component/spinner/LoadingWithEffect";
 import "./DailyChallengeSubmissionDetail.css";
 import { spaceToast } from "../../../../component/SpaceToastify";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useTheme } from "../../../../contexts/ThemeContext";
 import { useDailyChallengeMenu } from "../../../../contexts/DailyChallengeMenuContext";
 import usePageTitle from "../../../../hooks/usePageTitle";
-
-// Mock data - chi tiết bài làm của học sinh
-const mockSubmissionDetail = {
-  id: 1,
-  student: {
-    id: "SE12345",
-    name: "Nguyễn Văn A",
-    email: "anvn@example.com",
-    avatar: null,
-    class: "SE1801",
-    level: "Basic",
-  },
-  challenge: {
-    id: 1,
-    title: "Daily Challenge - Math & Logic",
-    totalQuestions: 10,
-    totalPoints: 20,
-    timeLimit: 30, // minutes
-  },
-  submission: {
-    score: 8.5,
-    totalPoints: 17,
-    maxPoints: 20,
-    correctCount: 7,
-    incorrectCount: 2,
-    unansweredCount: 1,
-    accuracy: 70, // percentage
-    timeSpent: 25, // minutes
-    submittedAt: "2024-01-15 10:30:00",
-    status: "completed",
-  },
-  answers: [
-    {
-      questionId: 1,
-      questionNumber: 1,
-      questionText: "Hàm f(x) xác định với mọi số x với f(x) = |x+3| + |x+2|. Với giá trị nào của x thì f(x) = f(x-1) ?",
-      questionType: "multiple-choice",
-      options: [
-        { key: "A", text: "-3", isCorrect: false },
-        { key: "B", text: "-2", isCorrect: true },
-        { key: "C", text: "-1", isCorrect: false },
-        { key: "D", text: "1", isCorrect: false },
-        { key: "E", text: "2", isCorrect: false },
-      ],
-      studentAnswer: "B",
-      correctAnswer: "B",
-      isCorrect: true,
-      points: 2,
-      maxPoints: 2,
-      timeSpent: 2.5,
-    },
-    {
-      questionId: 2,
-      questionNumber: 2,
-      questionText: "Tại đại học FPT, 40% sinh viên là thành viên của cả câu lạc bộ cờ vua và câu lạc bộ bơi lội. Nếu 20% thành viên của câu lạc bộ bơi không phải là thành viên của câu lạc bộ cờ vua, thì bao nhiêu phần trăm tổng số học sinh FPT là thành viên của câu lạc bộ bơi?",
-      questionType: "multiple-choice",
-      options: [
-        { key: "A", text: "20%", isCorrect: false },
-        { key: "B", text: "30%", isCorrect: false },
-        { key: "C", text: "40%", isCorrect: false },
-        { key: "D", text: "50%", isCorrect: true },
-      ],
-      studentAnswer: "B",
-      correctAnswer: "D",
-      isCorrect: false,
-      points: 0,
-      maxPoints: 2,
-      timeSpent: 3.2,
-    },
-    {
-      questionId: 3,
-      questionNumber: 3,
-      questionText: "What is the capital of France?",
-      questionType: "multiple-choice",
-      options: [
-        { key: "A", text: "London", isCorrect: false },
-        { key: "B", text: "Berlin", isCorrect: false },
-        { key: "C", text: "Paris", isCorrect: true },
-        { key: "D", text: "Madrid", isCorrect: false },
-      ],
-      studentAnswer: "C",
-      correctAnswer: "C",
-      isCorrect: true,
-      points: 2,
-      maxPoints: 2,
-      timeSpent: 1.5,
-    },
-    {
-      questionId: 4,
-      questionNumber: 4,
-      questionText: "Which programming language is known as the 'language of the web'?",
-      questionType: "multiple-choice",
-      options: [
-        { key: "A", text: "Python", isCorrect: false },
-        { key: "B", text: "JavaScript", isCorrect: true },
-        { key: "C", text: "Java", isCorrect: false },
-        { key: "D", text: "C++", isCorrect: false },
-      ],
-      studentAnswer: "A",
-      correctAnswer: "B",
-      isCorrect: false,
-      points: 0,
-      maxPoints: 2,
-      timeSpent: 2.8,
-    },
-    {
-      questionId: 5,
-      questionNumber: 5,
-      questionText: "What is 2 + 2?",
-      questionType: "multiple-choice",
-      options: [
-        { key: "A", text: "3", isCorrect: false },
-        { key: "B", text: "4", isCorrect: true },
-        { key: "C", text: "5", isCorrect: false },
-        { key: "D", text: "6", isCorrect: false },
-      ],
-      studentAnswer: null,
-      correctAnswer: "B",
-      isCorrect: false,
-      points: 0,
-      maxPoints: 2,
-      timeSpent: 0,
-    },
-  ],
-};
+import { dailyChallengeApi } from "../../../../apis/apis";
+import { CKEditor } from '@ckeditor/ckeditor5-react';
+import ClassicEditor from '@ckeditor/ckeditor5-build-classic';
 
 const DailyChallengeSubmissionDetail = () => {
   const { t } = useTranslation();
   const { theme } = useTheme();
   const { id, submissionId } = useParams();
-  const { enterDailyChallengeMenu, exitDailyChallengeMenu } = useDailyChallengeMenu();
+  const navigate = useNavigate();
+  const { enterDailyChallengeMenu, exitDailyChallengeMenu, dailyChallengeData } = useDailyChallengeMenu();
   
   // Set page title
   usePageTitle('Daily Challenge - Submission Detail');
@@ -161,20 +60,1052 @@ const DailyChallengeSubmissionDetail = () => {
   const [loading, setLoading] = useState(false);
   const [submissionData, setSubmissionData] = useState(null);
   const [filterStatus, setFilterStatus] = useState('all'); // all, correct, incorrect, unanswered
+  const [challengeType, setChallengeType] = useState('GV'); // GV, RE, LI, WR, SP
+  const [isCollapsed, setIsCollapsed] = useState(false); // Sidebar collapse state
+  const [activeTab, setActiveTab] = useState('info'); // 'info' or 'questions'
+  const questionRefs = React.useRef({});
+
+  // Generate fake data for all question types
+  const [fakeData, setFakeData] = useState(null);
+  const [studentAnswers, setStudentAnswers] = useState({});
+  
+  // Audio state for Speaking Sections with audio
+  const [audioStates, setAudioStates] = useState({});
+  const audioRefs = React.useRef({});
+  
+  // Feedback modal state
+  const [feedbackModal, setFeedbackModal] = useState({
+    visible: false,
+    id: null,
+    type: null, // 'question' or 'section'
+    feedback: '',
+    score: '',
+    isEdit: false,
+  });
+  
+  // Store feedbacks for questions and sections
+  const [feedbacks, setFeedbacks] = useState({});
+  
+  // Anti-cheat data
+  const [antiCheatData, setAntiCheatData] = useState(null);
+  
+  // Score modal state
+  const [scoreModal, setScoreModal] = useState({
+    visible: false,
+    score: '',
+    comment: '',
+    isEdit: false,
+  });
+  
+  // Teacher feedback state
+  const [teacherFeedback, setTeacherFeedback] = useState('');
+  const [savingFeedback, setSavingFeedback] = useState(false);
+  const [savingGrading, setSavingGrading] = useState(false);
+  
+  // AI feedback state
+  const [aiFeedback, setAiFeedback] = useState('');
+  const [generatingAiFeedback, setGeneratingAiFeedback] = useState(false);
+  
+  // Performance collapse state
+  const [isPerformanceCollapsed, setIsPerformanceCollapsed] = useState(false);
+  
+  // Other sections collapse states (default collapsed)
+  const [isTeacherFeedbackCollapsed, setIsTeacherFeedbackCollapsed] = useState(true);
+  const [isAiFeedbackCollapsed, setIsAiFeedbackCollapsed] = useState(true);
+  const [isAntiCheatCollapsed, setIsAntiCheatCollapsed] = useState(true);
+  
+  // Handlers for feedback modal
+  // Helper to locate submissionQuestionId for a section
+  const getSubmissionQuestionIdForSection = (sectionId) => {
+    const findIn = (arr) => (arr || []).find((s) => s.id === sectionId);
+    const sec = findIn(fakeData?.writingSections) || findIn(fakeData?.speakingSections);
+    if (!sec) return null;
+    const q = (sec.questions && sec.questions[0]) || null;
+    return (q && (q.submissionQuestionId || q.id)) || null;
+  };
+
+  const handleOpenAddFeedback = (id, type = 'question') => {
+    let prefillScore = '';
+    if (type === 'section') {
+      const subQId = getSubmissionQuestionIdForSection(id);
+      if (subQId) prefillScore = questionScores[subQId] ?? '';
+    }
+    setFeedbackModal({
+      visible: true,
+      id,
+      type,
+      feedback: '',
+      score: prefillScore,
+      isEdit: false,
+    });
+  };
+
+  // Per-question scores for Writing and Speaking (keyed by submissionQuestionId or questionId)
+  const [questionScores, setQuestionScores] = useState({});
+  
+  const handleOpenEditFeedback = (id, type = 'question') => {
+    const key = `${type}-${id}`;
+    const existingFeedback = feedbacks[key] || '';
+    let prefillScore = '';
+    if (type === 'section') {
+      const subQId = getSubmissionQuestionIdForSection(id);
+      if (subQId) prefillScore = questionScores[subQId] ?? '';
+    }
+    setFeedbackModal({
+      visible: true,
+      id,
+      type,
+      feedback: existingFeedback,
+      score: prefillScore,
+      isEdit: true,
+    });
+  };
+  
+  const handleCloseFeedbackModal = () => {
+    setFeedbackModal({
+      visible: false,
+      id: null,
+      type: null,
+      feedback: '',
+      score: '',
+      isEdit: false,
+    });
+  };
+  
+  const handleSaveFeedback = () => {
+    if (feedbackModal.id && feedbackModal.type) {
+      const key = `${feedbackModal.type}-${feedbackModal.id}`;
+      setFeedbacks(prev => ({
+        ...prev,
+        [key]: feedbackModal.feedback,
+      }));
+      // Save score for section if provided
+      if (feedbackModal.type === 'section') {
+        const subQId = getSubmissionQuestionIdForSection(feedbackModal.id);
+        if (subQId) {
+          setQuestionScores(prev => ({
+            ...prev,
+            [subQId]: feedbackModal.score,
+          }));
+        }
+      }
+      spaceToast.success(feedbackModal.isEdit ? 'Feedback updated successfully' : 'Feedback added successfully');
+      handleCloseFeedbackModal();
+    }
+  };
+  
+  // Handle delete feedback
+  const handleDeleteFeedback = () => {
+    if (feedbackModal.id && feedbackModal.type) {
+      const key = `${feedbackModal.type}-${feedbackModal.id}`;
+      setFeedbacks(prev => {
+        const newFeedbacks = { ...prev };
+        delete newFeedbacks[key];
+        return newFeedbacks;
+      });
+      spaceToast.success('Feedback deleted successfully');
+      handleCloseFeedbackModal();
+    }
+  };
+  
+  // Handle delete feedback directly (without modal)
+  const handleDeleteFeedbackDirect = (id, type = 'question') => {
+    const key = `${type}-${id}`;
+    setFeedbacks(prev => {
+      const newFeedbacks = { ...prev };
+      delete newFeedbacks[key];
+      return newFeedbacks;
+    });
+    spaceToast.success('Feedback deleted successfully');
+  };
+
+  // Memoized handlers for feedback modal input to prevent lag
+  const handleFeedbackInputChange = useCallback((e) => {
+    const value = e.target.value;
+    setFeedbackModal(prev => ({ ...prev, feedback: value }));
+  }, []);
+
+  // Memoized handlers for score modal inputs to prevent lag
+  const handleScoreInputChange = useCallback((e) => {
+    const value = e.target.value;
+    setScoreModal(prev => ({ ...prev, score: value }));
+  }, []);
+
+  // Memoized handler for comment modal input to prevent lag
+  const handleCommentInputChange = useCallback((e) => {
+    const value = e.target.value;
+    setCommentModal(prev => ({ ...prev, comment: value }));
+  }, []);
+  
+  // Helper function to get feedback for a question or section
+  const getFeedback = (id, type = 'question') => {
+    const key = `${type}-${id}`;
+    return feedbacks[key] || null;
+  };
+  
+  // State for text selection and comments in Writing sections
+  const [writingSectionFeedbacks, setWritingSectionFeedbacks] = useState({});
+  const [textSelection, setTextSelection] = useState({
+    visible: false,
+    sectionId: null,
+    startIndex: null,
+    endIndex: null,
+    position: { x: 0, y: 0 },
+  });
+  const [selectedComment, setSelectedComment] = useState(null);
+  const [showCommentSidebar, setShowCommentSidebar] = useState(false);
+  const [hoveredHighlightId, setHoveredHighlightId] = useState(null);
+  const [commentModal, setCommentModal] = useState({
+    visible: false,
+    sectionId: null,
+    startIndex: null,
+    endIndex: null,
+    comment: '',
+    isEdit: false,
+    feedbackId: null,
+  });
+  
+  // Handle text selection in Writing Section
+  const handleTextSelection = (sectionId, textElement) => {
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0) {
+      setTextSelection({ visible: false, sectionId: null, startIndex: null, endIndex: null, position: { x: 0, y: 0 } });
+      return;
+    }
+    
+    const range = selection.getRangeAt(0);
+    const selectedText = selection.toString();
+    
+    if (!selectedText || selectedText.trim().length === 0) {
+      setTextSelection({ visible: false, sectionId: null, startIndex: null, endIndex: null, position: { x: 0, y: 0 } });
+      return;
+    }
+    
+    // Check if selection is within the textElement
+    if (!textElement.contains(range.commonAncestorContainer)) {
+      setTextSelection({ visible: false, sectionId: null, startIndex: null, endIndex: null, position: { x: 0, y: 0 } });
+      return;
+    }
+    
+    // Get the plain text of the essay
+    const studentAnswer = studentAnswers?.[sectionId] || {};
+    const essayText = studentAnswer?.text || studentAnswer?.essay || '';
+    if (!essayText) return;
+    
+    // Calculate indices based on plain text
+    // Create a range from the start of textElement to the start of selection
+    const startRange = document.createRange();
+    startRange.setStart(textElement, 0);
+    startRange.setEnd(range.startContainer, range.startOffset);
+    let startIndex = startRange.toString().length;
+    
+    // Create a range from the start of textElement to the end of selection
+    const endRange = document.createRange();
+    endRange.setStart(textElement, 0);
+    endRange.setEnd(range.endContainer, range.endOffset);
+    let endIndex = endRange.toString().length;
+    
+    // Verify the calculated indices match the selected text
+    const calculatedText = essayText.substring(startIndex, endIndex);
+    // Allow some flexibility for whitespace differences
+    if (calculatedText.trim() !== selectedText.trim() && 
+        !calculatedText.includes(selectedText.trim()) && 
+        !selectedText.trim().includes(calculatedText)) {
+      // If mismatch, try to find the text in the essay
+      const trimmedSelected = selectedText.trim();
+      const foundIndex = essayText.indexOf(trimmedSelected);
+      if (foundIndex !== -1) {
+        startIndex = foundIndex;
+        endIndex = foundIndex + trimmedSelected.length;
+      }
+    }
+    
+    // Get position for floating toolbar - align with selected text, next to translate icon
+    const rect = range.getBoundingClientRect();
+    const containerRect = textElement.getBoundingClientRect();
+    
+    // Calculate position relative to container: bên cạnh text được select (sau translate icon)
+    // Translate icon thường xuất hiện ở giữa dòng text (theo chiều cao)
+    const relativeX = rect.right - containerRect.left + 10; // Ngay sau text được select
+    const relativeY = rect.top - containerRect.top + (rect.height / 2); // Giữa dòng text để thẳng hàng với translate icon
+    
+    setTextSelection({
+      visible: true,
+      sectionId,
+      startIndex,
+      endIndex,
+      position: {
+        x: relativeX,
+        y: relativeY, // Center of the selected text line
+      },
+    });
+  };
+  
+  // Handle add comment button click
+  const handleAddComment = () => {
+    if (textSelection.sectionId !== null && textSelection.startIndex !== null && textSelection.endIndex !== null) {
+      setCommentModal({
+        visible: true,
+        sectionId: textSelection.sectionId,
+        startIndex: textSelection.startIndex,
+        endIndex: textSelection.endIndex,
+        comment: '',
+        isEdit: false,
+        feedbackId: null,
+      });
+      setTextSelection({ visible: false, sectionId: null, startIndex: null, endIndex: null, position: { x: 0, y: 0 } });
+      window.getSelection()?.removeAllRanges();
+    }
+  };
+  
+  // Handle save comment
+  const handleSaveComment = () => {
+    if (commentModal.sectionId && commentModal.startIndex !== null && commentModal.endIndex !== null) {
+      const sectionId = commentModal.sectionId;
+      const feedbackId = commentModal.feedbackId || `feedback-${Date.now()}-${Math.random()}`;
+      
+      const newFeedback = {
+        id: feedbackId,
+        startIndex: commentModal.startIndex,
+        endIndex: commentModal.endIndex,
+        comment: commentModal.comment,
+        timestamp: new Date().toISOString(),
+      };
+      
+      setWritingSectionFeedbacks(prev => {
+        const sectionFeedbacks = prev[sectionId] || [];
+        if (commentModal.isEdit) {
+          // Update existing feedback
+          const updated = sectionFeedbacks.map(fb => 
+            fb.id === feedbackId ? newFeedback : fb
+          );
+          return { ...prev, [sectionId]: updated };
+        } else {
+          // Add new feedback
+          return { ...prev, [sectionId]: [...sectionFeedbacks, newFeedback] };
+        }
+      });
+      
+      spaceToast.success(commentModal.isEdit ? 'Comment updated successfully' : 'Comment added successfully');
+      setCommentModal({
+        visible: false,
+        sectionId: null,
+        startIndex: null,
+        endIndex: null,
+        comment: '',
+        isEdit: false,
+        feedbackId: null,
+      });
+    }
+  };
+  
+  // Handle delete comment
+  const handleDeleteComment = () => {
+    if (selectedComment) {
+      const sectionId = Object.keys(writingSectionFeedbacks).find(id => 
+        writingSectionFeedbacks[id]?.some(fb => fb.id === selectedComment.id)
+      );
+      
+      if (sectionId) {
+        setWritingSectionFeedbacks(prev => {
+          const sectionFeedbacks = prev[sectionId] || [];
+          const updated = sectionFeedbacks.filter(fb => fb.id !== selectedComment.id);
+          return { ...prev, [sectionId]: updated };
+        });
+        
+        spaceToast.success('Comment deleted successfully');
+        setShowCommentSidebar(false);
+        setSelectedComment(null);
+      }
+    }
+  };
+  
+  // Handle click on highlighted text
+  const handleHighlightClick = (feedback) => {
+    setSelectedComment(feedback);
+    setShowCommentSidebar(true);
+  };
+  
+  // Handle edit comment from sidebar
+  const handleEditCommentFromSidebar = () => {
+    if (selectedComment) {
+      const sectionId = Object.keys(writingSectionFeedbacks).find(id => 
+        writingSectionFeedbacks[id]?.some(fb => fb.id === selectedComment.id)
+      );
+      
+      if (sectionId) {
+        setCommentModal({
+          visible: true,
+          sectionId,
+          startIndex: selectedComment.startIndex,
+          endIndex: selectedComment.endIndex,
+          comment: selectedComment.comment,
+          isEdit: true,
+          feedbackId: selectedComment.id,
+        });
+        setShowCommentSidebar(false);
+        setSelectedComment(null);
+      }
+    }
+  };
+  
+  // Render essay with highlights
+  const renderEssayWithHighlights = (text, sectionId) => {
+    if (!text) return text;
+    
+    const sectionFeedbacks = writingSectionFeedbacks[sectionId] || [];
+    if (sectionFeedbacks.length === 0) {
+      return text;
+    }
+    
+    // Sort feedbacks by start position
+    const sortedFeedbacks = [...sectionFeedbacks].sort((a, b) => a.startIndex - b.startIndex);
+    
+    // Track which highlight is currently active (clicked)
+    const isActiveHighlight = selectedComment && selectedComment.id;
+    
+    // Create intervals from highlights - merge overlapping intervals
+    // Each interval contains: {start, end, feedbacks: [array of feedback ids]}
+    const intervals = [];
+    const breakpoints = new Set();
+    
+    // Collect all breakpoints (start and end indices)
+    sortedFeedbacks.forEach(feedback => {
+      breakpoints.add(feedback.startIndex);
+      breakpoints.add(feedback.endIndex);
+    });
+    
+    // Sort breakpoints
+    const sortedBreakpoints = Array.from(breakpoints).sort((a, b) => a - b);
+    
+    // Create intervals from breakpoints
+    for (let i = 0; i < sortedBreakpoints.length - 1; i++) {
+      const start = sortedBreakpoints[i];
+      const end = sortedBreakpoints[i + 1];
+      
+      // Find all feedbacks that cover this interval
+      const coveringFeedbacks = sortedFeedbacks.filter(fb => 
+        fb.startIndex <= start && fb.endIndex >= end
+      );
+      
+      if (coveringFeedbacks.length > 0) {
+        intervals.push({
+          start,
+          end,
+          feedbacks: coveringFeedbacks
+        });
+      }
+    }
+    
+    // Render intervals and plain text segments
+    const parts = [];
+    let currentIndex = 0;
+    
+    intervals.forEach((interval, idx) => {
+      // Add plain text before this interval
+      if (interval.start > currentIndex) {
+        const plainText = text.substring(currentIndex, interval.start);
+        if (plainText) {
+          parts.push(
+            <span key={`text-${currentIndex}-${interval.start}`}>
+              {plainText}
+            </span>
+          );
+        }
+      }
+      
+      // Render the highlighted text for this interval (only once, no duplication)
+      const intervalText = text.substring(interval.start, interval.end);
+      
+      // Determine which feedback to use for styling (prioritize active one)
+      const activeFeedback = interval.feedbacks.find(fb => fb.id === isActiveHighlight);
+      const displayFeedback = activeFeedback || interval.feedbacks[0];
+      const isActive = activeFeedback !== undefined;
+      
+      // Check if any feedback in this interval is hovered
+      const isHovered = interval.feedbacks.some(fb => fb.id === hoveredHighlightId);
+      
+      // Determine background color: active > hovered > normal
+      const backgroundColor = isActive ? '#FFD700' : (isHovered ? '#FFD700' : '#FFEB3B');
+      const fontWeight = (isActive || isHovered) ? '600' : '500';
+      const boxShadow = (isActive || isHovered) ? '0 2px 4px rgba(0, 0, 0, 0.2)' : 'none';
+      
+      // Create click handler that handles all covering feedbacks
+      const handleClick = (e) => {
+        // If multiple feedbacks cover this text, prioritize the active one or the first one
+        if (displayFeedback) {
+          handleHighlightClick(displayFeedback);
+        }
+      };
+      
+      // Handle hover - set hovered state for all feedbacks in this interval
+      const handleMouseEnter = () => {
+        if (interval.feedbacks.length > 0) {
+          // Use the display feedback ID for hover state
+          setHoveredHighlightId(displayFeedback.id);
+        }
+      };
+      
+      const handleMouseLeave = () => {
+        setHoveredHighlightId(null);
+      };
+      
+      parts.push(
+        <span
+          key={`highlight-${interval.start}-${interval.end}-${idx}`}
+          onClick={handleClick}
+          onMouseEnter={handleMouseEnter}
+          onMouseLeave={handleMouseLeave}
+          style={{
+            backgroundColor,
+            cursor: 'pointer',
+            padding: '2px 0',
+            borderRadius: '3px',
+            fontWeight,
+            transition: 'all 0.2s ease',
+            display: 'inline',
+            boxShadow,
+          }}
+        >
+          {intervalText}
+        </span>
+      );
+      
+      currentIndex = interval.end;
+    });
+    
+    // Add remaining text after last interval
+    if (currentIndex < text.length) {
+      const remainingText = text.substring(currentIndex);
+      if (remainingText) {
+        parts.push(
+          <span key={`text-final-${currentIndex}`}>
+            {remainingText}
+          </span>
+        );
+      }
+    }
+    
+    return parts;
+  };
+
+  // Hide floating toolbar when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (textSelection.visible) {
+        const selection = window.getSelection();
+        if (selection && selection.rangeCount === 0) {
+          setTextSelection({ visible: false, sectionId: null, startIndex: null, endIndex: null, position: { x: 0, y: 0 } });
+        }
+      }
+    };
+    
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [textSelection.visible]);
+
+  // Note: Fake data generation is removed - now using API data from fetchSubmissionDetail
 
   const fetchSubmissionDetail = useCallback(async () => {
+    if (!submissionId) {
+      spaceToast.error('Submission ID is required');
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     try {
-      // Simulate API call
-      setTimeout(() => {
-        setSubmissionData(mockSubmissionDetail);
-        setLoading(false);
-      }, 1000);
+      const response = await dailyChallengeApi.getSubmissionResult(submissionId);
+      const apiData = response?.data?.data || response?.data || {};
+      
+      const sectionDetails = apiData.sectionDetails || [];
+      const challengeId = apiData.challengeId || id;
+      const submissionChallengeId = apiData.submissionChallengeId || submissionId;
+
+      // Map API response to component's expected format
+      const readingSections = [];
+      const listeningSections = [];
+      const writingSections = [];
+      const speakingSections = [];
+      const questions = [];
+      const studentAnswersMap = {};
+      let totalQuestions = 0;
+      let totalScore = 0;
+      let receivedScore = 0;
+      let correctCount = 0;
+      let incorrectCount = 0;
+      let unansweredCount = 0;
+
+      sectionDetails.forEach((sectionDetail) => {
+        const section = sectionDetail.section || {};
+        const questionResults = sectionDetail.questionResults || [];
+        const sectionTitle = (section.sectionTitle || '').toLowerCase();
+        
+        // Determine section type using multiple signals (title, content, resource, question types)
+        const hasAudio = !!section.sectionsUrl;
+        const hasLongPassage = !!section.sectionsContent &&
+          section.sectionsContent.replace(/<[^>]*>/g, '').trim().length > 120 &&
+          !/(choose|select|dropdown|drag|drop|fill|rearrange|rewrite)/i.test(section.sectionsContent || '');
+        const hasRewriteQuestion = (sectionDetail.questionResults || []).some(q => q?.questionType === 'REWRITE');
+
+        let sectionType = 'listening'; // default
+        // 1) Strong signals by explicit title first
+        if (sectionTitle.includes('writing')) {
+          sectionType = 'writing';
+        } else if (sectionTitle.includes('reading')) {
+          sectionType = 'reading';
+        } else if (sectionTitle.includes('speaking')) {
+          sectionType = 'speaking';
+        } else if (sectionTitle.includes('listening')) {
+          sectionType = 'listening';
+        } else {
+          // 2) Heuristics as fallback
+          if (hasAudio) sectionType = 'listening';
+          else if (hasRewriteQuestion) sectionType = 'writing';
+          else if (hasLongPassage) sectionType = 'reading';
+        }
+
+        // Map questions
+        const mappedQuestions = questionResults.map((q) => {
+          totalQuestions++;
+          totalScore += q.score || 0;
+          receivedScore += q.receivedScore || 0;
+          
+          // Count correct, incorrect, unanswered
+          if (q.receivedScore > 0) {
+            correctCount++;
+          } else if (q.submittedContent && q.submittedContent.data && q.submittedContent.data.length > 0) {
+            incorrectCount++;
+          } else {
+            unansweredCount++;
+          }
+
+          const questionContent = q.questionContent?.data || [];
+          const submittedContent = q.submittedContent?.data || [];
+
+          // Map student answers based on question type
+          if (q.questionType === 'MULTIPLE_CHOICE' || q.questionType === 'TRUE_OR_FALSE') {
+            const submitted = submittedContent?.[0];
+            if (submitted?.id) {
+              if (q.questionType === 'TRUE_OR_FALSE') {
+                // Map A/B (or ids) to displayed value True/False based on questionContent
+                const matched = questionContent.find(opt => opt.id === submitted.id);
+                const mappedValue = matched?.value || (submitted.id === 'True' ? 'True' : submitted.id === 'False' ? 'False' : undefined);
+                if (mappedValue) {
+                  studentAnswersMap[q.questionId] = mappedValue; // 'True' or 'False'
+                }
+              } else {
+                // For multiple choice, use the option id (A, B, C, etc.)
+                studentAnswersMap[q.questionId] = submitted.id;
+              }
+            }
+          } else if (q.questionType === 'MULTIPLE_SELECT') {
+            const submittedKeys = submittedContent?.map(s => s.id).filter(Boolean) || [];
+            studentAnswersMap[q.questionId] = submittedKeys;
+          } else if (q.questionType === 'FILL_IN_THE_BLANK') {
+            const submitted = submittedContent?.[0];
+            const fillBlankAnswers = {};
+            // For fill in the blank, need to match submitted answer with correct positionId
+            if (submitted && submitted.value) {
+              // Method 1: Try to find matching option in questionContent by id (most reliable)
+              const matchingOption = questionContent.find(opt => 
+                opt.id === (submitted.positionId || submitted.id)
+              );
+              
+              // Get positionId from questionContent (used in questionText placeholders like [[pos_m7yytf]])
+              let posId = matchingOption?.positionId;
+              
+              // If positionId found from matching, map it
+              if (posId) {
+                // Map with "pos_" prefix (as used in questionText)
+                fillBlankAnswers[`pos_${posId}`] = submitted.value;
+                // Also map without prefix as fallback
+                fillBlankAnswers[posId] = submitted.value;
+              }
+              
+              // Method 2: Always map by questionContent[0].positionId if it exists (fallback)
+              if (questionContent.length > 0 && questionContent[0].positionId) {
+                const firstPosId = questionContent[0].positionId;
+                fillBlankAnswers[`pos_${firstPosId}`] = submitted.value;
+                fillBlankAnswers[firstPosId] = submitted.value;
+              }
+              
+              // Method 3: Map by submitted positionId/id as additional fallback
+              const submittedPosId = submitted.positionId || submitted.id;
+              if (submittedPosId) {
+                fillBlankAnswers[submittedPosId] = submitted.value;
+                fillBlankAnswers[`pos_${submittedPosId}`] = submitted.value;
+              }
+            }
+            studentAnswersMap[q.questionId] = fillBlankAnswers;
+          } else if (q.questionType === 'DROPDOWN') {
+            const submitted = submittedContent?.[0];
+            const dropdownAnswers = {};
+            if (submitted && submitted.id) {
+              // Find the option in questionContent that matches the submitted id
+              const matchedItem = questionContent.find(item => item.id === submitted.id);
+              
+              if (matchedItem) {
+                // Get the value from matchedItem (not the id)
+                const selectedValue = matchedItem.value || '';
+                
+                // Map by positionId (with and without "pos_" prefix)
+                if (matchedItem.positionId) {
+                  dropdownAnswers[`pos_${matchedItem.positionId}`] = selectedValue;
+                  dropdownAnswers[matchedItem.positionId] = selectedValue;
+                }
+                
+                // Also map by all positionIds in questionContent for this positionId
+                questionContent.forEach(opt => {
+                  if (opt.positionId === matchedItem.positionId && opt.positionId) {
+                    dropdownAnswers[`pos_${opt.positionId}`] = selectedValue;
+                    dropdownAnswers[opt.positionId] = selectedValue;
+                  }
+                });
+              } else if (submitted.positionId) {
+                // Fallback: if no match by id, try to find by positionId
+                const matchedByPosId = questionContent.find(item => item.positionId === submitted.positionId);
+                if (matchedByPosId && matchedByPosId.value) {
+                  dropdownAnswers[`pos_${submitted.positionId}`] = matchedByPosId.value;
+                  dropdownAnswers[submitted.positionId] = matchedByPosId.value;
+                }
+              }
+              
+              // Always map by first positionId from questionContent if exists (fallback)
+              if (questionContent.length > 0 && questionContent[0].positionId) {
+                const firstPosId = questionContent[0].positionId;
+                const firstMatched = questionContent.find(item => item.id === submitted.id);
+                if (firstMatched && firstMatched.value) {
+                  dropdownAnswers[`pos_${firstPosId}`] = firstMatched.value;
+                  dropdownAnswers[firstPosId] = firstMatched.value;
+                }
+              }
+            }
+            studentAnswersMap[q.questionId] = dropdownAnswers;
+          } else if (q.questionType === 'DRAG_AND_DROP') {
+            const dragDropAnswers = {};
+            submittedContent?.forEach(submitted => {
+              if (submitted && submitted.id) {
+                // Find the option in questionContent that matches the submitted id
+                const matchedItem = questionContent.find(item => item.id === submitted.id);
+                
+                // Get the value from matchedItem (not the id)
+                const selectedValue = matchedItem?.value || '';
+                
+                if (selectedValue) {
+                  // Get positionId from submitted or matchedItem
+                  const posId = submitted.positionId || matchedItem?.positionId;
+                  
+                  // Map with and without "pos_" prefix
+                  if (posId) {
+                    const rawPosId = posId.replace(/^pos_/, ''); // Remove "pos_" prefix if exists
+                    dragDropAnswers[posId] = selectedValue;
+                    dragDropAnswers[rawPosId] = selectedValue;
+                    // Also map with "pos_" prefix if rawPosId
+                    if (rawPosId !== posId) {
+                      dragDropAnswers[`pos_${rawPosId}`] = selectedValue;
+                    }
+                  }
+                }
+              }
+            });
+            studentAnswersMap[q.questionId] = dragDropAnswers;
+          } else if (q.questionType === 'REARRANGE') {
+            // For rearrange, map positionId to item value (not id) in order
+            const submittedOrder = submittedContent
+              ?.filter(s => s.positionId && s.id)
+              .sort((a, b) => {
+                // Sort by positionId
+                const posA = a.positionId.replace(/^pos_/, '');
+                const posB = b.positionId.replace(/^pos_/, '');
+                return posA.localeCompare(posB);
+              })
+              .map(s => {
+                // Find the option in questionContent that matches the submitted id
+                const matchedItem = questionContent.find(item => item.id === s.id);
+                // Return the value from matchedItem (not the id)
+                return matchedItem?.value || s.id; // Fallback to id if value not found
+              })
+              .filter(Boolean) || [];
+            studentAnswersMap[q.questionId] = submittedOrder;
+          } else if (q.questionType === 'WRITING') {
+            // For writing, store student's essay per section id to render on the right
+            const essayText = (submittedContent?.[0]?.value || '').trim();
+            if (essayText) {
+              const current = studentAnswersMap[section.id] || {};
+              studentAnswersMap[section.id] = { ...current, text: essayText };
+            }
+          }
+
+          // Map options for multiple choice/select
+          const options = questionContent.map((item) => ({
+            key: item.id,
+            text: item.value || '',
+            isCorrect: item.correct || false,
+          }));
+
+          return {
+            id: q.questionId,
+            submissionQuestionId: q.submissionQuestionId,
+            type: q.questionType,
+            question: q.questionText || '',
+            options: options.length > 0 ? options : undefined,
+            content: questionContent.length > 0 ? { data: questionContent } : undefined,
+            points: q.score || 0,
+            receivedScore: q.receivedScore || 0,
+            orderNumber: q.orderNumber || 0,
+          };
+        });
+
+        // Detect Grammar & Vocabulary (GV) sections and push questions directly
+        const allowedGVTypes = new Set([
+          'MULTIPLE_CHOICE',
+          'MULTIPLE_SELECT',
+          'TRUE_OR_FALSE',
+          'FILL_IN_THE_BLANK',
+          'DROPDOWN',
+          'DRAG_AND_DROP',
+          'REARRANGE',
+          'REWRITE',
+        ]);
+
+        const looksLikeGV = (() => {
+          const noExplicitTitle = !section.sectionTitle || section.sectionTitle.trim() === '';
+          const noMedia = !section.sectionsUrl;
+          const noReadingWritingSpeakingKeyword = !/(reading|writing|speaking|listen)/i.test(section.sectionTitle || '');
+          const textLooksInstructional = !section.sectionsContent || /(choose|select|fill|dropdown|drag|drop|rearrange|rewrite)/i.test(section.sectionsContent);
+          const onlyGVTypes = questionResults.length > 0 && questionResults.every(qr => allowedGVTypes.has(qr?.questionType));
+          const resourceNone = !section.resourceType || section.resourceType === 'NONE';
+          return noExplicitTitle && noMedia && resourceNone && textLooksInstructional && onlyGVTypes && noReadingWritingSpeakingKeyword;
+        })();
+
+        if (looksLikeGV) {
+          // Treat as Grammar & Vocabulary: flatten into questions list
+          questions.push(...mappedQuestions);
+        } else {
+          // Create section object with fields tailored by section type
+          const baseSection = {
+            id: section.id,
+            title: section.sectionTitle || '',
+            questions: mappedQuestions,
+            points: mappedQuestions.reduce((sum, q) => sum + (q.points || 0), 0),
+            orderNumber: section.orderNumber || 0,
+            resourceType: section.resourceType || 'FILE',
+          };
+
+          const mappedSection = (() => {
+            if (sectionType === 'reading') {
+              return {
+                ...baseSection,
+                passage: section.sectionsContent || '',
+              };
+            }
+            if (sectionType === 'listening') {
+              return {
+                ...baseSection,
+                transcript: section.sectionsContent || '',
+                audioUrl: section.sectionsUrl || '',
+              };
+            }
+            if (sectionType === 'writing') {
+              return {
+                ...baseSection,
+                prompt: section.sectionsContent || '',
+              };
+            }
+            // speaking or others
+            return {
+              ...baseSection,
+              transcript: section.sectionsContent || '',
+              audioUrl: section.sectionsUrl || '',
+            };
+          })();
+
+          // Add to appropriate array
+          if (sectionType === 'reading') {
+            readingSections.push(mappedSection);
+          } else if (sectionType === 'listening') {
+            listeningSections.push(mappedSection);
+          } else if (sectionType === 'writing') {
+            writingSections.push(mappedSection);
+          } else if (sectionType === 'speaking') {
+            speakingSections.push(mappedSection);
+          } else {
+            // Default to listening if type is unclear
+            listeningSections.push(mappedSection);
+          }
+        }
+      });
+
+      // Set fakeData (keeping the name for compatibility)
+      setFakeData({
+        questions,
+        readingSections,
+        listeningSections,
+        writingSections,
+        speakingSections,
+      });
+
+      // Set student answers
+      setStudentAnswers(studentAnswersMap);
+
+      // Set submission data
+      // Check if API provides accuracy, score, or other submission data directly
+      const apiSubmissionData = apiData.submission || apiData.submissionResult || {};
+      
+      setSubmissionData({
+        id: submissionChallengeId,
+        student: {
+          id: apiData.studentId || null,
+          name: apiData.studentName || null,
+          email: apiData.studentEmail || null,
+          avatar: apiData.studentAvatar || null,
+          class: apiData.studentClass || null,
+          level: apiData.studentLevel || null,
+        },
+        challenge: {
+          id: challengeId,
+          title: apiData.challengeTitle || null,
+          totalQuestions,
+          totalPoints: apiSubmissionData.totalPoints || totalScore,
+          maxPoints: apiSubmissionData.maxPoints || totalScore,
+          timeLimit: apiData.timeLimit || apiSubmissionData.timeLimit || 0,
+        },
+        submission: {
+          score: apiSubmissionData.score != null ? apiSubmissionData.score : receivedScore,
+          totalPoints: apiSubmissionData.totalPoints != null ? apiSubmissionData.totalPoints : receivedScore,
+          maxPoints: apiSubmissionData.maxPoints != null ? apiSubmissionData.maxPoints : totalScore,
+          correctCount: apiSubmissionData.correctCount != null ? apiSubmissionData.correctCount : correctCount,
+          incorrectCount: apiSubmissionData.incorrectCount != null ? apiSubmissionData.incorrectCount : incorrectCount,
+          unansweredCount: apiSubmissionData.unansweredCount != null ? apiSubmissionData.unansweredCount : unansweredCount,
+          accuracy: apiSubmissionData.accuracy != null ? apiSubmissionData.accuracy : (totalScore > 0 ? Math.round((receivedScore / totalScore) * 100) : 0),
+          timeSpent: apiSubmissionData.timeSpent != null ? apiSubmissionData.timeSpent : (apiSubmissionData.timeUsed || 0),
+          submittedAt: apiSubmissionData.submittedAt || apiSubmissionData.submittedDate || null,
+          status: apiSubmissionData.status || 'completed',
+        },
+      });
+
+      // Fetch grading summary for sidebar Performance (override fake/calculated numbers)
+      try {
+        const gradingRes = await dailyChallengeApi.getSubmissionGradingResult(submissionChallengeId);
+        const gradingData = gradingRes?.data?.data || gradingRes?.data || null;
+        if (gradingData) {
+          // Map grading fields to local state
+          const score = gradingData.totalScore;
+          const maxPointsFromGrading = gradingData.maxPossibleScore;
+          const accuracyPct = gradingData.scorePercentage != null ? Math.round(gradingData.scorePercentage) : undefined;
+          const correct = gradingData.correctAnswers;
+          const incorrect = gradingData.wrongAnswers;
+          const unanswered = (gradingData.skipped || 0) + (gradingData.empty || 0);
+
+          setSubmissionData(prev => ({
+            ...prev,
+            challenge: {
+              ...prev.challenge,
+              totalQuestions: gradingData.totalQuestions ?? prev.challenge?.totalQuestions,
+              maxPoints: maxPointsFromGrading ?? prev.challenge?.maxPoints,
+            },
+            submission: {
+              ...prev.submission,
+              score: score ?? prev.submission?.score,
+              totalPoints: score ?? prev.submission?.totalPoints,
+              maxPoints: maxPointsFromGrading ?? prev.submission?.maxPoints,
+              correctCount: correct ?? prev.submission?.correctCount,
+              incorrectCount: incorrect ?? prev.submission?.incorrectCount,
+              unansweredCount: unanswered ?? prev.submission?.unansweredCount,
+              accuracy: accuracyPct ?? prev.submission?.accuracy,
+            },
+          }));
+
+          // Prefill teacher & AI feedback from grading service if provided
+          if (typeof gradingData.teacherFeedback === 'string') {
+            setTeacherFeedback(gradingData.teacherFeedback);
+          }
+          if (typeof gradingData.aiSummary === 'string') {
+            setAiFeedback(gradingData.aiSummary);
+          }
+        }
+      } catch (e) {
+        // Non-blocking: ignore if grading summary not available
+        console.warn('GetSubmissionGradingResult failed:', e?.response?.data || e?.message);
+      }
+
+      // Set anti-cheat data (mock data for now, can be replaced with API data later)
+      // TODO: Replace with actual anti-cheat data from API when available
+      const mockAntiCheatData = {
+        totalViolations: 4,
+        tabBlurCount: 2,
+        copyCount: 1,
+        pasteCount: 1,
+        totalTabBlurDuration: 120000, // milliseconds
+        events: [
+          {
+            event: 'START',
+            timestamp: new Date().toISOString(),
+            questionId: null,
+            oldValue: null,
+            newValue: null,
+            durationMs: null,
+            content: null,
+          },
+          {
+            event: 'TAB_BLUR',
+            timestamp: new Date(Date.now() - 600000).toISOString(),
+            durationMs: 45000,
+            questionId: null,
+            oldValue: null,
+            newValue: null,
+            content: null,
+          },
+          {
+            event: 'COPY',
+            timestamp: new Date(Date.now() - 540000).toISOString(),
+            content: 'Đã chặn Ctrl+C / Ctrl+Insert',
+            questionId: 1,
+            oldValue: null,
+            newValue: null,
+            durationMs: null,
+          },
+          {
+            event: 'TAB_BLUR',
+            timestamp: new Date(Date.now() - 480000).toISOString(),
+            durationMs: 75000,
+            questionId: null,
+            oldValue: null,
+            newValue: null,
+            content: null,
+          },
+          {
+            event: 'PASTE',
+            timestamp: new Date(Date.now() - 420000).toISOString(),
+            content: 'Đã chặn Ctrl+V / Shift+Insert',
+            questionId: 2,
+            oldValue: null,
+            newValue: null,
+            durationMs: null,
+          },
+          {
+            event: 'ANSWER_CHANGE',
+            timestamp: new Date(Date.now() - 360000).toISOString(),
+            questionId: 3,
+            oldValue: ['A'],
+            newValue: ['B'],
+            durationMs: null,
+            content: null,
+          },
+        ],
+      };
+      setAntiCheatData(mockAntiCheatData);
+
+      setLoading(false);
     } catch (error) {
-      spaceToast.error('Error loading submission detail');
+      console.error('Error fetching submission detail:', error);
+      spaceToast.error(error.response?.data?.message || 'Error loading submission detail');
       setLoading(false);
     }
-  }, []);
+  }, [submissionId, id]);
 
   useEffect(() => {
     fetchSubmissionDetail();
@@ -190,314 +1121,4378 @@ const DailyChallengeSubmissionDetail = () => {
     };
   }, [enterDailyChallengeMenu, exitDailyChallengeMenu, id]);
 
-  // Filter questions based on status
-  const filteredAnswers = submissionData?.answers.filter((answer) => {
-    if (filterStatus === 'all') return true;
-    if (filterStatus === 'correct') return answer.isCorrect;
-    if (filterStatus === 'incorrect') return !answer.isCorrect && answer.studentAnswer !== null;
-    if (filterStatus === 'unanswered') return answer.studentAnswer === null;
-    return true;
-  }) || [];
+  // Build question navigation list (must be before early return)
+  const getQuestionNavigation = useCallback(() => {
+    if (!fakeData) return [];
+    const { questions, readingSections, listeningSections, writingSections, speakingSections } = fakeData;
+    const navigation = [];
+    let questionNumber = 1;
 
-  const getStatusIcon = (answer) => {
-    if (answer.studentAnswer === null) {
-      return <MinusCircleOutlined style={{ fontSize: '24px', color: '#8c8c8c' }} />;
+    // Grammar & Vocabulary questions
+    if (questions.length > 0) {
+      questions.forEach((q) => {
+        navigation.push({ 
+          id: `gv-${q.id}`, 
+          type: 'question', 
+          title: `Question ${questionNumber++}` 
+        });
+      });
     }
-    return answer.isCorrect ? (
-      <CheckCircleOutlined style={{ fontSize: '24px', color: '#52c41a' }} />
-    ) : (
-      <CloseCircleOutlined style={{ fontSize: '24px', color: '#ff4d4f' }} />
+
+    // Reading sections
+    if (readingSections.length > 0) {
+      readingSections.forEach((s, idx) => {
+        const count = s.questions?.length || 0;
+        const start = questionNumber;
+        const end = count > 0 ? start + count - 1 : start;
+        navigation.push({ 
+          id: `reading-${idx + 1}`, 
+          type: 'section', 
+          title: `Reading ${idx + 1}: Question ${start}-${end}` 
+        });
+        questionNumber = end + 1;
+      });
+    }
+
+    // Listening sections
+    if (listeningSections.length > 0) {
+      listeningSections.forEach((s, idx) => {
+        const count = s.questions?.length || 0;
+        const start = questionNumber;
+        const end = count > 0 ? start + count - 1 : start;
+        navigation.push({ 
+          id: `listening-${idx + 1}`, 
+          type: 'section', 
+          title: `Listening ${idx + 1}: Question ${start}-${end}` 
+        });
+        questionNumber = end + 1;
+      });
+    }
+
+    // Writing sections
+    if (writingSections.length > 0) {
+      writingSections.forEach((s, idx) => {
+        navigation.push({ 
+          id: `writing-${idx + 1}`, 
+          type: 'section', 
+          title: `Writing ${idx + 1}` 
+        });
+      });
+    }
+
+    // Speaking sections
+    if (speakingSections.length > 0) {
+      speakingSections.forEach((s, idx) => {
+        navigation.push({ 
+          id: `speaking-${idx + 1}`, 
+          type: 'section', 
+          title: `Speaking ${idx + 1}` 
+        });
+      });
+    }
+
+    return navigation;
+  }, [fakeData]);
+
+  if (loading || !submissionData || !fakeData) {
+    // Custom header for loading state
+    const loadingHeader = (
+      <header className={`themed-header ${theme}-header`}>
+        <nav className="themed-navbar">
+          <div className="themed-navbar-content">
+            <div className="themed-navbar-brand" style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '16px',
+              flex: 1
+            }}>
+              <Button
+                icon={<ArrowLeftOutlined />}
+                onClick={() => {
+                  if (dailyChallengeData?.backPath) {
+                    navigate(dailyChallengeData.backPath);
+                  } else {
+                    navigate(-1);
+                  }
+                }}
+                className={`daily-challenge-menu-back-button ${theme}-daily-challenge-menu-back-button`}
+                style={{
+                  height: '32px',
+                  borderRadius: '8px',
+                  fontWeight: '500',
+                  fontSize: '14px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  border: '1px solid rgba(0, 0, 0, 0.1)',
+                  background: '#ffffff',
+                  color: '#000000',
+                  backdropFilter: 'blur(10px)',
+                  transition: 'all 0.3s ease'
+                }}
+                onMouseEnter={(e) => {
+                  e.target.style.transform = 'translateY(-2px)';
+                  e.target.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.15)';
+                  e.target.style.filter = 'brightness(0.95)';
+                  e.target.style.borderColor = 'rgba(0, 0, 0, 0.2)';
+                }}
+                onMouseLeave={(e) => {
+                  e.target.style.transform = 'translateY(0)';
+                  e.target.style.boxShadow = 'none';
+                  e.target.style.filter = 'none';
+                  e.target.style.borderColor = 'rgba(0, 0, 0, 0.1)';
+                }}
+              >
+                {t('common.back')}
+              </Button>
+              <div style={{
+                height: '24px',
+                width: '1px',
+                backgroundColor: theme === 'sun' ? 'rgba(30, 64, 175, 0.3)' : 'rgba(255, 255, 255, 0.3)'
+              }} />
+              <h2 style={{
+                margin: 0,
+                fontSize: '20px',
+                fontWeight: '600',
+                color: theme === 'sun' ? '#1e40af' : '#fff',
+                textShadow: theme === 'sun' ? '0 0 5px rgba(30, 64, 175, 0.3)' : '0 0 15px rgba(134, 134, 134, 0.8)'
+              }}>
+                {t('dailyChallenge.dailyChallengeManagement')}
+              </h2>
+            </div>
+          </div>
+        </nav>
+      </header>
     );
-  };
 
-  const getStatusClass = (answer) => {
-    if (answer.studentAnswer === null) return 'unanswered';
-    return answer.isCorrect ? 'correct' : 'incorrect';
-  };
-
-  if (loading || !submissionData) {
     return (
-      <ThemedLayout>
+      <ThemedLayout customHeader={loadingHeader}>
         <LoadingWithEffect loading={loading} message="Loading submission details..." />
       </ThemedLayout>
     );
   }
 
-  const { student, challenge, submission, answers } = submissionData;
+  const { student, submission } = submissionData;
+  const { questions, readingSections, listeningSections, writingSections, speakingSections } = fakeData;
 
-  return (
-    <ThemedLayout>
-      <div className={`sdc-wrapper ${theme}-sdc-wrapper`}>
-        {/* Student Info Card */}
-        <div className="sdc-student-info-section" style={{ padding: '24px' }}>
-          <div className={`sdc-student-info-card ${theme}-sdc-student-info-card`} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div style={{ display: 'flex', alignItems: 'center', flex: 1 }}>
-              <div className="sdc-student-avatar-section">
-                <Avatar
-                  size={80}
-                  src={student.avatar}
-                  style={{
-                    backgroundColor: theme === 'sun' ? '#1890ff' : '#722ed1',
-                    fontSize: '32px',
-                    fontWeight: 'bold',
-                  }}
-                >
-                  {student.name.charAt(0)}
-                </Avatar>
-              </div>
-              <div className="sdc-student-details">
-                <Typography.Title level={3} style={{ margin: 0, marginBottom: '4px' }}>
-                  {student.name}
-                </Typography.Title>
-                <Typography.Text type="secondary" style={{ fontSize: '16px', display: 'block', marginBottom: '8px' }}>
-                  {student.id} • {student.email}
-                </Typography.Text>
-                <Space size="middle">
-                  <Tag color="blue" style={{ fontSize: '14px', padding: '4px 12px' }}>
-                    {student.class}
-                  </Tag>
-                  <Tag color="green" style={{ fontSize: '14px', padding: '4px 12px' }}>
-                    {student.level}
-                  </Tag>
-                </Space>
+  // Handlers for score modal
+  const handleOpenAddScore = () => {
+    setScoreModal({
+      visible: true,
+      score: '',
+      comment: '',
+      isEdit: false,
+    });
+  };
+
+  // Build grading payload and save
+  const handleSaveGrading = async () => {
+    if (!submissionData?.id && !submissionId) {
+      spaceToast.error('Missing submission ID');
+      return;
+    }
+    const subId = submissionId || submissionData?.id;
+    try {
+      setSavingGrading(true);
+
+      // Base payload
+      const payload = {
+        totalScore: submission?.score ?? 0,
+        overallFeedback: (teacherFeedback || '').trim(),
+        questionGradings: []
+      };
+
+      // Writing: include per-section grading with highlights
+      if (Array.isArray(writingSections) && writingSections.length > 0) {
+        writingSections.forEach((sec) => {
+          const qId = (sec.questions && (sec.questions[0]?.submissionQuestionId || sec.questions[0]?.id)) || sec.id;
+          const fb = getFeedback(sec.id, 'section') || '';
+          const highlights = Array.isArray(writingSectionFeedbacks?.[sec.id])
+            ? writingSectionFeedbacks[sec.id].map((h) => ({
+                startIndex: h.startIndex ?? 0,
+                endIndex: h.endIndex ?? 0,
+                comment: h.comment || '',
+                id: h.id || undefined,
+                timestamp: h.timestamp || undefined,
+              }))
+            : [];
+          payload.questionGradings.push({
+            submissionQuestionId: qId,
+            score: Number(questionScores[qId]) || 0,
+            feedback: fb,
+            highlightComments: highlights,
+          });
+        });
+      }
+
+      // Speaking: include per-section grading (no highlights)
+      if (Array.isArray(speakingSections) && speakingSections.length > 0) {
+        speakingSections.forEach((sec) => {
+          const qId = (sec.questions && (sec.questions[0]?.submissionQuestionId || sec.questions[0]?.id)) || sec.id;
+          const fb = getFeedback(sec.id, 'section') || '';
+          payload.questionGradings.push({
+            submissionQuestionId: qId,
+            score: Number(questionScores[qId]) || 0,
+            feedback: fb,
+            highlightComments: [],
+          });
+        });
+      }
+
+      await dailyChallengeApi.gradeSubmission(subId, payload);
+      spaceToast.success('Saved grading successfully');
+    } catch (err) {
+      console.error('Save grading failed:', err);
+      spaceToast.error(err?.response?.data?.message || 'Failed to save grading');
+    } finally {
+      setSavingGrading(false);
+    }
+  };
+  
+  const handleOpenEditScore = () => {
+    setScoreModal({
+      visible: true,
+      score: submission?.score || '',
+      comment: '',
+      isEdit: true,
+    });
+  };
+  
+  const handleCloseScoreModal = () => {
+    setScoreModal({
+      visible: false,
+      score: '',
+      comment: '',
+      isEdit: false,
+    });
+  };
+  
+  const handleSaveScore = () => {
+    const scoreValue = parseFloat(scoreModal.score);
+    if (isNaN(scoreValue) || scoreValue < 0 || scoreValue > 10) {
+      spaceToast.error('Score must be between 0 and 10');
+      return;
+    }
+    
+    // Update submissionData with the new score
+    setSubmissionData(prev => ({
+      ...prev,
+      submission: {
+        ...prev.submission,
+        score: scoreValue,
+      }
+    }));
+    
+    spaceToast.success(scoreModal.isEdit ? 'Score updated successfully' : 'Score added successfully');
+    handleCloseScoreModal();
+  };
+
+  // Handle save teacher feedback
+  const handleSaveTeacherFeedback = async () => {
+    try {
+      setSavingFeedback(true);
+      // TODO: Call API to save teacher feedback
+      // await dailyChallengeApi.saveTeacherFeedback(submissionId, teacherFeedback);
+      
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      spaceToast.success('Teacher feedback saved successfully');
+    } catch (error) {
+      console.error('Error saving teacher feedback:', error);
+      spaceToast.error(error.response?.data?.error || 'Failed to save teacher feedback');
+    } finally {
+      setSavingFeedback(false);
+    }
+  };
+
+  // Handle generate AI feedback
+  const handleGenerateAiFeedback = async () => {
+    try {
+      setGeneratingAiFeedback(true);
+      // TODO: Call API to generate AI feedback
+      // const response = await dailyChallengeApi.generateAiFeedback(submissionId);
+      
+      // Simulate API call with AI-generated feedback
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      // Mock AI feedback based on submission data
+      const mockAiFeedback = `Based on the submission analysis:
+
+**Overall Performance:**
+- Score: ${submission.score}/${submission.maxPoints ?? submission.totalPoints ?? submissionData?.challenge?.maxPoints ?? 0}
+- Accuracy: ${submission.accuracy}%
+- Correct Answers: ${submission.correctCount}
+- Incorrect Answers: ${submission.incorrectCount}
+
+**Strengths:**
+The student demonstrated good understanding in several areas and showed consistent effort throughout the challenge.
+
+**Areas for Improvement:**
+There are opportunities to enhance performance, particularly in areas with incorrect answers. Consider reviewing the specific question types that posed challenges.
+
+**Recommendations:**
+Continue practicing with similar exercises to reinforce understanding and improve accuracy.`;
+
+      setAiFeedback(mockAiFeedback);
+      spaceToast.success('AI feedback generated successfully');
+    } catch (error) {
+      console.error('Error generating AI feedback:', error);
+      spaceToast.error(error.response?.data?.error || 'Failed to generate AI feedback');
+    } finally {
+      setGeneratingAiFeedback(false);
+    }
+  };
+
+  // Scroll to question function
+  const scrollToQuestion = (questionId) => {
+    const element = questionRefs.current[questionId];
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
+
+  // Helper function to render section questions (used in Reading/Listening sections)
+  const renderSectionQuestion = (q, qIndex, sectionType = 'reading') => {
+    const questionText = q.questionText || q.question || '';
+    const studentAnswer = studentAnswers?.[q.id];
+
+    if (q.type === 'MULTIPLE_CHOICE' || q.type === 'TRUE_OR_FALSE' || q.type === 'MULTIPLE_SELECT') {
+      const options = q.options || [];
+      const isMulti = q.type === 'MULTIPLE_SELECT';
+      const correctOption = options.find(opt => opt.isCorrect);
+      const correctKey = q.type === 'TRUE_OR_FALSE' ? (correctOption?.text) : correctOption?.key;
+      const correctKeys = isMulti ? options.filter(opt => opt.isCorrect).map(opt => opt.key) : [];
+      
+      return (
+        <div key={q.id} style={{
+          padding: '16px',
+          background: theme === 'sun' ? '#f8f9fa' : 'rgba(255, 255, 255, 0.05)',
+          borderRadius: '8px',
+          border: `2px solid ${theme === 'sun' ? '#1890ff' : '#8B5CF6'}`
+        }}>
+          <div style={{ fontSize: '16px', fontWeight: 600, marginBottom: '8px' }}>
+            Question {qIndex + 1}:
+          </div>
+          <div className="question-text-content" style={{ marginBottom: '10px' }} dangerouslySetInnerHTML={{ __html: questionText }} />
+          <div className="question-options" style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '12px' }}>
+            {(q.type === 'TRUE_OR_FALSE' ? ['True', 'False'] : options).map((opt, idx) => {
+              let key, text;
+              if (q.type === 'TRUE_OR_FALSE') {
+                key = opt;
+                text = opt;
+              } else {
+                key = opt.key || String.fromCharCode(65 + idx);
+                text = opt.text || '';
+              }
+              
+              const isCorrectAnswer = isMulti ? correctKeys.includes(key) : (key === correctKey || (q.type === 'TRUE_OR_FALSE' && opt === correctKey));
+              const isSelected = isMulti ? (Array.isArray(studentAnswer) && studentAnswer.includes(key)) : (studentAnswer === key || (q.type === 'TRUE_OR_FALSE' && opt === studentAnswer));
+              const isSelectedWrong = isSelected && !isCorrectAnswer;
+              const isCorrectMissing = !isSelected && isCorrectAnswer && isMulti;
+              
+              return (
+                <div key={key} style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '10px',
+                  padding: '12px 14px',
+                  background: isCorrectAnswer || isCorrectMissing
+                    ? (theme === 'sun' ? 'rgba(82, 196, 26, 0.15)' : 'rgba(82, 196, 26, 0.2)')
+                    : isSelectedWrong
+                      ? (theme === 'sun' ? 'rgba(255, 77, 79, 0.15)' : 'rgba(255, 77, 79, 0.2)')
+                    : (theme === 'sun' ? '#fff' : 'rgba(255,255,255,0.03)'),
+                  border: `2px solid ${isCorrectAnswer || isCorrectMissing ? 'rgb(82, 196, 26)' : isSelectedWrong ? 'rgb(255, 77, 79)' : (theme === 'sun' ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.1)')}`,
+                  borderRadius: '12px',
+                  cursor: 'default',
+                  minHeight: '50px',
+                  boxSizing: 'border-box',
+                }}>
+                  <input type={isMulti ? 'checkbox' : 'radio'} checked={isSelected || (!isSelected && isCorrectAnswer)} disabled style={{ width: '18px', height: '18px', accentColor: isCorrectAnswer || isCorrectMissing ? '#52c41a' : (isSelectedWrong ? '#ff4d4f' : (theme === 'sun' ? '#1890ff' : '#8B5CF6')), cursor: 'not-allowed', opacity: 1 }} />
+                  <span style={{ fontWeight: 600, color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)', fontSize: '16px' }}>
+                    {q.type === 'TRUE_OR_FALSE' ? (opt === 'True' ? 'A' : 'B') : key}.
+                  </span>
+                  <span className="option-text" style={{ flex: 1, lineHeight: '1.6', color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)', fontWeight: '350' }} dangerouslySetInnerHTML={{ __html: q.type === 'TRUE_OR_FALSE' ? opt : text }} />
+                  {isSelectedWrong && <CloseCircleOutlined style={{ fontSize: '22px', color: '#ff4d4f', marginLeft: 'auto', fontWeight: 'bold' }} />}
+                  {(isCorrectAnswer || isCorrectMissing) && !isSelectedWrong && <CheckCircleOutlined style={{ fontSize: '20px', color: '#52c41a', marginLeft: 'auto' }} />}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      );
+    }
+
+    // FILL_IN_THE_BLANK for sections
+    if (q.type === 'FILL_IN_THE_BLANK') {
+      const contentData = q.content?.data || [];
+      const studentAnswerObj = studentAnswers?.[q.id] || {};
+      
+      const renderFillBlankForSection = () => {
+        const parts = [];
+        const regex = /(\[\[pos_(.*?)\]\])/g;
+        let lastIndex = 0;
+        let match;
+        let inputIndex = 0;
+        
+        while ((match = regex.exec(questionText)) !== null) {
+          if (match.index > lastIndex) {
+            const textContent = questionText.slice(lastIndex, match.index);
+            parts.push(
+              <span key={`text_${inputIndex}`} className="question-text-content" dangerouslySetInnerHTML={{ __html: textContent }} />
+            );
+          }
+          inputIndex += 1;
+          const positionId = `pos_${match[2]}`;
+          const rawPositionId = match[2]; // Without "pos_" prefix
+          
+          // Find correct item - check both with and without "pos_" prefix
+          let correctItem = contentData.find(item => 
+            (item.positionId === positionId || item.positionId === rawPositionId) && item.correct
+          );
+          // Fallback: if no correct item found, try to find any item with matching positionId
+          if (!correctItem) {
+            correctItem = contentData.find(item => 
+              item.positionId === positionId || item.positionId === rawPositionId
+            );
+          }
+          const correctAnswer = correctItem?.value || '';
+          
+          let studentAnswer = '';
+          if (typeof studentAnswerObj === 'object' && studentAnswerObj !== null) {
+            // Check multiple possible keys
+            studentAnswer = studentAnswerObj[positionId] || 
+                          studentAnswerObj[rawPositionId] || 
+                          studentAnswerObj[match[2]] || 
+                          '';
+          } else if (typeof studentAnswerObj === 'string') {
+            studentAnswer = studentAnswerObj;
+          }
+          const isCorrect = correctAnswer && studentAnswer.trim().toLowerCase() === correctAnswer.trim().toLowerCase();
+          const isUnanswered = !studentAnswer || studentAnswer.trim().length === 0;
+          const displayValue = isUnanswered ? (correctAnswer || '') : studentAnswer;
+          const bgColor = isCorrect
+            ? (theme === 'sun' ? 'rgba(82, 196, 26, 0.1)' : 'rgba(82, 196, 26, 0.15)')
+            : isUnanswered
+              ? (theme === 'sun' ? 'rgba(250, 173, 20, 0.12)' : 'rgba(250, 173, 20, 0.2)')
+              : (theme === 'sun' ? 'rgba(255, 77, 79, 0.1)' : 'rgba(255, 77, 79, 0.15)');
+          const borderColor = isCorrect ? 'rgb(82, 196, 26)' : (isUnanswered ? '#faad14' : 'rgb(255, 77, 79)');
+          const textColor = isCorrect ? (theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)') : (isUnanswered ? '#faad14' : (theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)'));
+          const fontWeight = isUnanswered ? 600 : 400;
+          
+          parts.push(
+            <input key={`fill_blank_input_${inputIndex}`} type="text" value={displayValue} readOnly disabled style={{ display: 'inline-block', minWidth: '120px', maxWidth: '200px', minHeight: '32px', padding: '4px 12px', margin: '0 8px', background: bgColor, border: `2px solid ${borderColor}`, borderRadius: '8px', cursor: 'not-allowed', outline: 'none', lineHeight: '1.4', fontSize: '14px', boxSizing: 'border-box', textAlign: 'center', color: textColor, fontWeight, verticalAlign: 'middle' }} />
+          );
+          
+          // Show correct answer only when answered wrong (not for unanswered since shown inside input)
+          if (!isCorrect && correctAnswer && !(isUnanswered)) {
+            const answerColor = '#52c41a';
+            parts.push(
+              <span key={`answer_${inputIndex}`} style={{ fontSize: '15px', color: answerColor, fontWeight: 600, whiteSpace: 'nowrap', marginLeft: '8px', marginRight: '8px', display: 'inline-block' }}>
+                {correctAnswer}
+              </span>
+            );
+          }
+          lastIndex = match.index + match[0].length;
+        }
+        if (lastIndex < questionText.length) {
+          parts.push(
+            <span key={`text_final`} className="question-text-content" dangerouslySetInnerHTML={{ __html: questionText.slice(lastIndex) }} />
+          );
+        }
+        return parts;
+      };
+
+      return (
+        <div key={q.id} style={{ padding: '16px', background: theme === 'sun' ? '#f8f9fa' : 'rgba(255, 255, 255, 0.05)', borderRadius: '8px', border: `2px solid ${theme === 'sun' ? '#1890ff' : '#8B5CF6'}` }}>
+          <div style={{ fontSize: '16px', fontWeight: 600, marginBottom: '8px' }}>Question {qIndex + 1}:</div>
+          <div style={{ fontSize: '15px', fontWeight: 350, lineHeight: '1.8', color: '#000000' }}>{renderFillBlankForSection()}</div>
+        </div>
+      );
+    }
+
+    // DROPDOWN for sections
+    if (q.type === 'DROPDOWN') {
+      const contentData = q.content?.data || [];
+      const studentAnswerObj = studentAnswers?.[q.id] || {};
+      
+      const renderDropdownForSection = () => {
+        const parts = [];
+        const regex = /\[\[pos_(.*?)\]\]/g;
+        let last = 0;
+        let match;
+        let idx = 0;
+        
+        while ((match = regex.exec(questionText)) !== null) {
+          if (match.index > last) {
+            parts.push(<span key={`text_${idx}`} className="question-text-content" dangerouslySetInnerHTML={{ __html: questionText.slice(last, match.index) }} />);
+          }
+          const positionId = `pos_${match[1]}`;
+          const rawPositionId = match[1]; // Without "pos_" prefix
+          
+          const optionsForPosition = contentData.filter(opt => {
+            const optPosId = String(opt.positionId || '');
+            return optPosId === positionId || optPosId === rawPositionId;
+          }) || [];
+          
+          const correctItem = optionsForPosition.find(it => it.correct) || 
+                             (optionsForPosition.length > 0 ? optionsForPosition[0] : null);
+          const correctAnswer = correctItem?.value || '';
+          
+          // Get student answer - check multiple possible keys
+          const studentAnswer = studentAnswerObj[positionId] || 
+                              studentAnswerObj[rawPositionId] || 
+                              studentAnswerObj[match[1]] || 
+                              '';
+          
+          const isCorrect = correctAnswer && studentAnswer.trim().toLowerCase() === correctAnswer.trim().toLowerCase();
+          const isUnanswered = !studentAnswer || studentAnswer.trim().length === 0;
+          const displayedValue = isUnanswered ? correctAnswer : studentAnswer;
+          const optionValues = optionsForPosition.map(it => it.value).filter(Boolean);
+          const ddBg = isCorrect
+            ? (theme === 'sun' ? 'rgba(82, 196, 26, 0.1)' : 'rgba(82, 196, 26, 0.15)')
+            : isUnanswered
+              ? (theme === 'sun' ? 'rgba(250, 173, 20, 0.12)' : 'rgba(250, 173, 20, 0.2)')
+              : (theme === 'sun' ? 'rgba(255, 77, 79, 0.1)' : 'rgba(255, 77, 79, 0.15)');
+          const ddBorder = isCorrect ? 'rgb(82, 196, 26)' : (isUnanswered ? '#faad14' : 'rgb(255, 77, 79)');
+          const ddColor = isUnanswered ? '#faad14' : (isCorrect ? '#52c41a' : '#ff4d4f');
+          
+          parts.push(
+            <select key={`dd_${q.id}_${idx++}`} value={displayedValue || ''} disabled style={{ display: 'inline-block', minWidth: '120px', height: '32px', padding: '4px 12px', margin: '0 8px', background: ddBg, border: `2px solid ${ddBorder}`, borderRadius: '8px', fontSize: '14px', fontWeight: 600, color: ddColor, cursor: 'not-allowed', outline: 'none', verticalAlign: 'middle', textAlign: 'center', textAlignLast: 'center' }}>
+              <option value="" disabled hidden style={{ textAlign: 'center' }}>Select</option>
+              {optionValues.map((opt, optIdx) => (
+                <option key={optIdx} value={opt}>{opt}</option>
+              ))}
+            </select>
+          );
+          
+          // Only show side correct answer when answered wrong. For unanswered, we put it inside the select.
+          if (!isCorrect && correctAnswer && !isUnanswered) {
+            parts.push(
+              <span key={`answer_${idx++}`} style={{ fontSize: '15px', color: '#52c41a', fontWeight: 600, whiteSpace: 'nowrap', marginLeft: '8px', marginRight: '8px', display: 'inline-block' }}>
+                {correctAnswer}
+              </span>
+            );
+          }
+          last = match.index + match[0].length;
+        }
+        if (last < questionText.length) {
+          parts.push(<span key={`text_final_${idx}`} className="question-text-content" dangerouslySetInnerHTML={{ __html: questionText.slice(last) }} />);
+        }
+        return parts;
+      };
+
+      return (
+        <div key={q.id} style={{ padding: '16px', background: theme === 'sun' ? '#f8f9fa' : 'rgba(255, 255, 255, 0.05)', borderRadius: '8px', border: `2px solid ${theme === 'sun' ? '#1890ff' : '#8B5CF6'}` }}>
+          <div style={{ fontSize: '16px', fontWeight: 600, marginBottom: '8px' }}>Question {qIndex + 1}:</div>
+          <div style={{ fontSize: '15px', fontWeight: 350, lineHeight: '1.8', color: '#000000' }}>{renderDropdownForSection()}</div>
+        </div>
+      );
+    }
+
+    // DRAG_AND_DROP for sections
+    if (q.type === 'DRAG_AND_DROP') {
+      const contentData = q.content?.data || [];
+      const studentAnswerObj = studentAnswers?.[q.id] || {};
+      const text = questionText;
+      const parts = [];
+      const regex = /\[\[pos_(.*?)\]\]/g;
+      let last = 0;
+      let match;
+      let idx = 0;
+      
+      while ((match = regex.exec(text)) !== null) {
+        if (match.index > last) parts.push({ type: 'text', content: text.slice(last, match.index) });
+        const posId = match[1];
+        parts.push({ type: 'position', positionId: `pos_${posId}`, index: idx++ });
+        last = match.index + match[0].length;
+      }
+      if (last < text.length) parts.push({ type: 'text', content: text.slice(last) });
+
+      return (
+        <div key={q.id} style={{ padding: '16px', background: theme === 'sun' ? '#f8f9fa' : 'rgba(255, 255, 255, 0.05)', borderRadius: '8px', border: `2px solid ${theme === 'sun' ? '#1890ff' : '#8B5CF6'}` }}>
+          <div style={{ fontSize: '16px', fontWeight: 600, marginBottom: '8px' }}>Question {qIndex + 1}:</div>
+          <div style={{ display: 'flex', gap: '24px', minHeight: '300px' }}>
+            <div style={{ flex: '1', padding: '20px', background: theme === 'sun' ? '#f9f9f9' : 'rgba(255, 255, 255, 0.02)', borderRadius: '12px', border: `1px solid ${theme === 'sun' ? '#e8e8e8' : 'rgba(255, 255, 255, 0.1)'}` }}>
+              <div style={{ fontSize: '15px', fontWeight: 350, lineHeight: '1.8', color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' }}>
+                {parts.map((part, pIdx) => {
+                  if (part.type === 'text') {
+                    return <span key={pIdx} dangerouslySetInnerHTML={{ __html: part.content || '' }} />;
+                  }
+                  
+                  // Extract raw positionId from part.positionId (e.g., "pos_dqn1x8" -> "dqn1x8")
+                  const rawPositionId = part.positionId.replace(/^pos_/, '');
+                  
+                  // Get student answer - check multiple possible keys
+                  const studentAnswer = studentAnswerObj[part.positionId] || 
+                                      studentAnswerObj[rawPositionId] || 
+                                      '';
+                  
+                  // Find correct item - check both with and without "pos_" prefix
+                  let correctItem = contentData.find(item => {
+                    const itemPosId = String(item.positionId || '');
+                    return (itemPosId === part.positionId || itemPosId === rawPositionId) && item.correct;
+                  });
+                  
+                  // Fallback: if no correct item found, try to find any item with matching positionId
+                  if (!correctItem) {
+                    correctItem = contentData.find(item => {
+                      const itemPosId = String(item.positionId || '');
+                      return itemPosId === part.positionId || itemPosId === rawPositionId;
+                    });
+                  }
+                  
+                  const correctAnswer = correctItem?.value || '';
+                  const isCorrect = correctAnswer && studentAnswer.trim().toLowerCase() === correctAnswer.trim().toLowerCase();
+                  
+                  return (
+                    <React.Fragment key={pIdx}>
+                      {studentAnswer ? (
+                        <>
+                          <div style={{ minWidth: '120px', minHeight: '32px', maxWidth: '200px', margin: '0 8px', background: isCorrect ? (theme === 'sun' ? 'rgba(82, 196, 26, 0.1)' : 'rgba(82, 196, 26, 0.15)') : (theme === 'sun' ? 'rgba(255, 77, 79, 0.1)' : 'rgba(255, 77, 79, 0.15)'), border: `2px solid ${isCorrect ? 'rgb(82, 196, 26)' : 'rgb(255, 77, 79)'}`, borderRadius: '8px', display: 'inline-block', padding: '4px 12px', fontSize: '15px', fontWeight: '350', color: isCorrect ? '#52c41a' : '#ff4d4f', cursor: 'not-allowed', verticalAlign: 'middle', lineHeight: '1.4', boxSizing: 'border-box', textAlign: 'center', wordBreak: 'break-word', wordWrap: 'break-word', overflow: 'hidden', whiteSpace: 'normal' }} dangerouslySetInnerHTML={{ __html: studentAnswer || '' }} />
+                          {/* Show correct answer if wrong (same as Fill in the Blank) */}
+                          {!isCorrect && correctAnswer && (
+                            <span style={{ fontSize: '15px', color: '#52c41a', fontWeight: 600, whiteSpace: 'nowrap', marginLeft: '8px', marginRight: '8px', display: 'inline-block' }}>
+                              {correctAnswer}
+                            </span>
+                          )}
+                        </>
+                      ) : (
+                        <div style={{ minWidth: '120px', minHeight: '32px', maxWidth: '200px', margin: '0 8px', background: (theme === 'sun' ? 'rgba(250, 173, 20, 0.12)' : 'rgba(250, 173, 20, 0.2)'), border: `2px solid #faad14`, borderRadius: '8px', display: 'inline-block', padding: '4px 12px', fontSize: '15px', fontWeight: '600', color: '#faad14', cursor: 'not-allowed', verticalAlign: 'middle', lineHeight: '1.4', boxSizing: 'border-box', textAlign: 'center' }} dangerouslySetInnerHTML={{ __html: correctAnswer || '' }} />
+                      )}
+                    </React.Fragment>
+                  );
+                })}
               </div>
             </div>
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <Button
-                className={`tab-button ${theme}-tab-button`}
-                onClick={() => {
-                  // Handle add score/feedback
-                  spaceToast.info('Add score/feedback feature coming soon');
-                }}
-              >
-                {t('dailyChallenge.addScoreFeedback')}
-              </Button>
-              <Button
-                className={`tab-button ${theme}-tab-button`}
-                onClick={() => {
-                  // Handle edit score/feedback
-                  spaceToast.info('Edit score/feedback feature coming soon');
-                }}
-              >
-                {t('dailyChallenge.editScoreFeedback')}
-              </Button>
+            <div style={{ flex: '1', padding: '20px', background: theme === 'sun' ? '#ffffff' : 'rgba(255, 255, 255, 0.03)', borderRadius: '12px', border: `1px solid ${theme === 'sun' ? '#e8e8e8' : 'rgba(255, 255, 255, 0.1)'}` }}>
+              <Typography.Text style={{ fontSize: '14px', fontWeight: 350, marginBottom: '16px', display: 'block', color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' }}>Available words:</Typography.Text>
+              <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center', minHeight: '120px' }}>
+                {contentData.map((item, idx) => {
+                  const itemValue = item?.value || '';
+                  const isCorrectWord = item?.correct === true;
+                  return (
+                    <div key={idx} style={{ padding: '12px 20px', background: isCorrectWord ? (theme === 'sun' ? 'rgba(82, 196, 26, 0.15)' : 'rgba(82, 196, 26, 0.2)') : (theme === 'sun' ? 'rgba(255, 77, 79, 0.15)' : 'rgba(255, 77, 79, 0.2)'), border: `2px solid ${isCorrectWord ? '#52c41a' : '#ff4d4f'}`, borderRadius: '12px', fontSize: '16px', fontWeight: '600', color: isCorrectWord ? '#52c41a' : '#ff4d4f', cursor: 'default', userSelect: 'none', minWidth: '80px', textAlign: 'center' }} dangerouslySetInnerHTML={{ __html: itemValue }} />
+                  );
+                })}
+              </div>
             </div>
           </div>
         </div>
+      );
+    }
 
-        {/* Performance Summary Cards */}
-        <div className="sdc-performance-cards-section" style={{ padding: '0 24px 24px 24px' }}>
-          <div className="sdc-performance-cards-grid">
-            <div className={`sdc-performance-card ${theme}-sdc-performance-card`}>
-              <div className="sdc-card-icon" style={{ color: '#1890ff' }}>
-                <TrophyOutlined style={{ fontSize: '32px' }} />
-              </div>
-              <div className="sdc-card-content">
-                <Typography.Title level={2} style={{ margin: 0, color: '#1890ff' }}>
-                  {submission.score}/10
-                </Typography.Title>
-                <Typography.Text type="secondary">Score</Typography.Text>
-              </div>
-            </div>
+    // REARRANGE for sections
+    if (q.type === 'REARRANGE') {
+      const contentData = q.content?.data || [];
+      const studentAnswer = studentAnswers?.[q.id] || [];
+      
+      // Get correct order by sorting by positionId (alphabetically, as positionId is string)
+      const correctOrder = contentData
+        .slice()
+        .sort((a, b) => {
+          const posA = (a.positionId || '').replace(/^pos_/, '');
+          const posB = (b.positionId || '').replace(/^pos_/, '');
+          return posA.localeCompare(posB);
+        })
+        .map(item => item.value)
+        .filter(Boolean);
+      
+      // Student answer should be an array of values (not ids) from mapping
+      const studentOrder = Array.isArray(studentAnswer) 
+        ? studentAnswer 
+        : (typeof studentAnswer === 'object' && studentAnswer !== null 
+            ? Object.keys(studentAnswer)
+                .sort((a, b) => {
+                  const posA = String(a).replace(/^pos_/, '');
+                  const posB = String(b).replace(/^pos_/, '');
+                  return posA.localeCompare(posB);
+                })
+                .map(key => studentAnswer[key])
+                .filter(Boolean) 
+            : []);
+      
+      const isCorrect = studentOrder.length === correctOrder.length && 
+        studentOrder.every((word, idx) => word.trim().toLowerCase() === correctOrder[idx].trim().toLowerCase());
+      const displayText = ((questionText).replace(/\[\[pos_.*?\]\]/g, '')).trim();
 
-            <div className={`sdc-performance-card ${theme}-sdc-performance-card`}>
-              <div className="sdc-card-icon" style={{ color: '#52c41a' }}>
-                <CheckCircleOutlined style={{ fontSize: '32px' }} />
-              </div>
-              <div className="sdc-card-content">
-                <Typography.Title level={2} style={{ margin: 0, color: '#52c41a' }}>
-                  {submission.totalPoints}/{submission.maxPoints}
-                </Typography.Title>
-                <Typography.Text type="secondary">Points</Typography.Text>
-              </div>
-            </div>
-
-            <div className={`sdc-performance-card ${theme}-sdc-performance-card`}>
-              <div className="sdc-card-icon" style={{ color: '#faad14' }}>
-                <ClockCircleOutlined style={{ fontSize: '32px' }} />
-              </div>
-              <div className="sdc-card-content">
-                <Typography.Title level={2} style={{ margin: 0, color: '#faad14' }}>
-                  {submission.timeSpent}
-                </Typography.Title>
-                <Typography.Text type="secondary">Minutes</Typography.Text>
-              </div>
-            </div>
-
-            <div className={`sdc-performance-card ${theme}-sdc-performance-card`}>
-              <div className="sdc-card-content" style={{ width: '100%' }}>
-                <Typography.Title level={2} style={{ margin: 0, marginBottom: '8px' }}>
-                  {submission.accuracy}%
-                </Typography.Title>
-                <Progress
-                  percent={submission.accuracy}
-                  strokeColor={{
-                    '0%': '#52c41a',
-                    '100%': '#1890ff',
-                  }}
-                  showInfo={false}
-                />
-                <Typography.Text type="secondary">Accuracy</Typography.Text>
-              </div>
-            </div>
-
-            <div className={`sdc-performance-card ${theme}-sdc-performance-card sdc-summary-card`}>
-              <div className="sdc-card-content" style={{ width: '100%' }}>
-                <Space direction="vertical" size="small" style={{ width: '100%' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <Space>
-                      <CheckCircleOutlined style={{ color: '#52c41a', fontSize: '18px' }} />
-                      <Typography.Text>Correct</Typography.Text>
-                    </Space>
-                    <Typography.Text strong style={{ fontSize: '18px', color: '#52c41a' }}>
-                      {submission.correctCount}
-                    </Typography.Text>
+      return (
+        <div key={q.id} style={{ padding: '16px', background: theme === 'sun' ? '#f8f9fa' : 'rgba(255, 255, 255, 0.05)', borderRadius: '8px', border: `2px solid ${theme === 'sun' ? '#1890ff' : '#8B5CF6'}` }}>
+          <div style={{ fontSize: '16px', fontWeight: 600, marginBottom: '8px' }}>Question {qIndex + 1}:</div>
+          <div style={{ fontSize: '15px', fontWeight: 350, marginBottom: '16px', lineHeight: '1.8', color: '#000000' }}>
+            <div className="question-text-content" dangerouslySetInnerHTML={{ __html: displayText || 'Rearrange the words to form a correct sentence:' }} />
+          </div>
+          <div style={{ marginBottom: '24px', padding: '20px', background: theme === 'sun' ? '#f9f9f9' : 'rgba(255, 255, 255, 0.02)', borderRadius: '12px', border: `1px solid ${theme === 'sun' ? '#e8e8e8' : 'rgba(255, 255, 255, 0.1)'}` }}>
+            <Typography.Text style={{ fontSize: '14px', fontWeight: 350, marginBottom: '16px', display: 'block', color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' }}>Your answer:</Typography.Text>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px' }}>
+              {studentOrder.length > 0 ? studentOrder.map((word, index) => (
+                <div key={index} style={{ minWidth: '100px', height: '60px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: `2px solid ${isCorrect ? '#52c41a' : '#ff4d4f'}`, borderRadius: '8px', background: isCorrect ? (theme === 'sun' ? 'rgba(82, 196, 26, 0.15)' : 'rgba(82, 196, 26, 0.2)') : (theme === 'sun' ? 'rgba(255, 77, 79, 0.15)' : 'rgba(255, 77, 79, 0.2)'), cursor: 'not-allowed' }}>
+                  <span style={{ fontSize: '14px', fontWeight: '600', color: isCorrect ? '#52c41a' : '#ff4d4f', textAlign: 'center', padding: '8px 12px' }}>{word}</span>
+                </div>
+              )) : (
+                correctOrder.map((word, index) => (
+                  <div key={index} style={{ minWidth: '100px', height: '60px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid #faad14', borderRadius: '8px', background: theme === 'sun' ? 'rgba(250, 173, 20, 0.12)' : 'rgba(250, 173, 20, 0.2)', cursor: 'not-allowed' }}>
+                    <span style={{ fontSize: '14px', fontWeight: '600', color: '#faad14', textAlign: 'center', padding: '8px 12px' }}>{word}</span>
                   </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <Space>
-                      <CloseCircleOutlined style={{ color: '#ff4d4f', fontSize: '18px' }} />
-                      <Typography.Text>Incorrect</Typography.Text>
-                    </Space>
-                    <Typography.Text strong style={{ fontSize: '18px', color: '#ff4d4f' }}>
-                      {submission.incorrectCount}
-                    </Typography.Text>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <Space>
-                      <MinusCircleOutlined style={{ color: '#8c8c8c', fontSize: '18px' }} />
-                      <Typography.Text>Unanswered</Typography.Text>
-                    </Space>
-                    <Typography.Text strong style={{ fontSize: '18px', color: '#8c8c8c' }}>
-                      {submission.unansweredCount}
-                    </Typography.Text>
-                  </div>
-                </Space>
-              </div>
+                ))
+              )}
             </div>
           </div>
-        </div>
-
-        {/* Filter Tabs */}
-        <div className="sdc-filter-tabs-section" style={{ padding: '0 24px 16px 24px' }}>
-          <Space size="middle">
-            <Button
-              type={filterStatus === 'all' ? 'primary' : 'default'}
-              onClick={() => setFilterStatus('all')}
-              className={`sdc-filter-tab ${theme}-sdc-filter-tab ${filterStatus === 'all' ? 'sdc-active' : ''}`}
-            >
-              All ({answers.length})
-            </Button>
-            <Button
-              type={filterStatus === 'correct' ? 'primary' : 'default'}
-              onClick={() => setFilterStatus('correct')}
-              className={`sdc-filter-tab ${theme}-sdc-filter-tab ${filterStatus === 'correct' ? 'sdc-active' : ''}`}
-              style={{ borderColor: filterStatus === 'correct' ? '#52c41a' : undefined }}
-            >
-              Correct ({submission.correctCount})
-            </Button>
-            <Button
-              type={filterStatus === 'incorrect' ? 'primary' : 'default'}
-              onClick={() => setFilterStatus('incorrect')}
-              className={`sdc-filter-tab ${theme}-sdc-filter-tab ${filterStatus === 'incorrect' ? 'sdc-active' : ''}`}
-              style={{ borderColor: filterStatus === 'incorrect' ? '#ff4d4f' : undefined }}
-            >
-              Incorrect ({submission.incorrectCount})
-            </Button>
-            <Button
-              type={filterStatus === 'unanswered' ? 'primary' : 'default'}
-              onClick={() => setFilterStatus('unanswered')}
-              className={`sdc-filter-tab ${theme}-sdc-filter-tab ${filterStatus === 'unanswered' ? 'sdc-active' : ''}`}
-              style={{ borderColor: filterStatus === 'unanswered' ? '#8c8c8c' : undefined }}
-            >
-              Unanswered ({submission.unansweredCount})
-            </Button>
-          </Space>
-        </div>
-
-        {/* Questions Review */}
-        <div className="sdc-questions-review-section" style={{ padding: '0 24px 24px 24px' }}>
-          <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-            {filteredAnswers.map((answer) => (
-              <div
-                key={answer.questionId}
-                className={`sdc-question-review-card ${theme}-sdc-question-review-card sdc-${getStatusClass(answer)}`}
-              >
-                <div className="sdc-question-header">
-                  <div className="sdc-question-status">
-                    {getStatusIcon(answer)}
-                    <Typography.Title level={4} style={{ margin: 0, marginLeft: '12px' }}>
-                      Question {answer.questionNumber}
-                    </Typography.Title>
+          {!isCorrect && studentOrder.length > 0 && (
+            <div style={{ marginBottom: '24px', padding: '20px', background: theme === 'sun' ? '#ffffff' : 'rgba(255, 255, 255, 0.03)', borderRadius: '12px', border: `1px solid ${theme === 'sun' ? '#e8e8e8' : 'rgba(255, 255, 255, 0.1)'}` }}>
+              <Typography.Text style={{ fontSize: '14px', fontWeight: 350, marginBottom: '16px', display: 'block', color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' }}>Correct order:</Typography.Text>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px' }}>
+                {correctOrder.map((word, index) => (
+                  <div key={index} style={{ minWidth: '100px', height: '60px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid #52c41a', borderRadius: '8px', background: theme === 'sun' ? 'rgba(82, 196, 26, 0.15)' : 'rgba(82, 196, 26, 0.2)', cursor: 'default' }}>
+                    <span style={{ fontSize: '14px', fontWeight: '600', color: '#52c41a', textAlign: 'center', padding: '8px 12px' }}>{word}</span>
                   </div>
-                  <div className="sdc-question-meta">
-                    <Tag color={answer.isCorrect ? 'success' : answer.studentAnswer === null ? 'default' : 'error'}>
-                      {answer.points}/{answer.maxPoints} pts
-                    </Tag>
-                    {answer.timeSpent > 0 && (
-                      <Tag icon={<ClockCircleOutlined />} color="blue">
-                        {answer.timeSpent.toFixed(1)} min
-                      </Tag>
-                    )}
-                  </div>
-                </div>
-
-                <div className="sdc-question-content">
-                  <Typography.Paragraph style={{ fontSize: '16px', fontWeight: 500, marginBottom: '16px' }}>
-                    {answer.questionText}
-                  </Typography.Paragraph>
-
-                  <div className="sdc-question-options">
-                    {answer.options.map((option) => {
-                      const isStudentAnswer = option.key === answer.studentAnswer;
-                      const isCorrectAnswer = option.isCorrect;
-                      
-                      let optionClass = 'sdc-option-item';
-                      if (isStudentAnswer && isCorrectAnswer) {
-                        optionClass += ' sdc-student-correct';
-                      } else if (isStudentAnswer && !isCorrectAnswer) {
-                        optionClass += ' sdc-student-incorrect';
-                      } else if (isCorrectAnswer) {
-                        optionClass += ' sdc-correct-answer';
-                      }
-
-                      return (
-                        <div key={option.key} className={optionClass}>
-                          <Typography.Text>
-                            <span className="sdc-option-key">{option.key}.</span> {option.text}
-                          </Typography.Text>
-                          {isStudentAnswer && isCorrectAnswer && (
-                            <CheckCircleOutlined style={{ color: '#52c41a', fontSize: '18px', marginLeft: 'auto' }} />
-                          )}
-                          {isStudentAnswer && !isCorrectAnswer && (
-                            <CloseCircleOutlined style={{ color: '#ff4d4f', fontSize: '18px', marginLeft: 'auto' }} />
-                          )}
-                          {!isStudentAnswer && isCorrectAnswer && answer.studentAnswer !== null && (
-                            <Tag color="success" style={{ marginLeft: 'auto' }}>Correct Answer</Tag>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-
-                  {answer.studentAnswer === null && (
-                    <div className="sdc-unanswered-notice">
-                      <Typography.Text type="secondary" italic>
-                        Student did not answer this question
-                      </Typography.Text>
-                    </div>
-                  )}
-                </div>
+                ))}
               </div>
-            ))}
-          </Space>
-
-          {filteredAnswers.length === 0 && (
-            <div style={{ textAlign: 'center', padding: '40px', color: '#999' }}>
-              <Typography.Text>No questions found with the selected filter</Typography.Text>
             </div>
           )}
         </div>
+      );
+    }
+
+    // Default placeholder for unknown types in sections
+    return (
+      <div key={q.id} style={{
+        padding: '16px',
+        background: theme === 'sun' ? '#f8f9fa' : 'rgba(255, 255, 255, 0.05)',
+        borderRadius: '8px',
+        border: `2px solid ${theme === 'sun' ? '#1890ff' : '#8B5CF6'}`
+      }}>
+        <div style={{ fontSize: '16px', fontWeight: 600, marginBottom: '8px' }}>
+          Question {qIndex + 1}:
+        </div>
+        <div className="question-text-content" style={{ marginBottom: '10px' }} dangerouslySetInnerHTML={{ __html: questionText }} />
       </div>
+    );
+  };
+
+  // Render Reading Section
+  const renderReadingSection = (section, index) => {
+    return (
+      <div key={section.id || index} className={`question-item ${theme}-question-item`} style={{ marginBottom: '24px', borderRadius: '16px', padding: '24px', border: '2px solid', borderColor: theme === 'sun' ? 'rgba(113, 179, 253, 0.25)' : 'rgba(138, 122, 255, 0.2)', background: theme === 'sun' ? 'linear-gradient(135deg, rgba(255, 255, 255, 1) 0%, rgba(240, 249, 255, 0.95) 100%)' : 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(244, 240, 255, 0.95) 100%)', boxShadow: theme === 'sun' ? '0 4px 16px rgba(113, 179, 253, 0.1)' : '0 4px 16px rgba(138, 122, 255, 0.12)' }}>
+        <div className="question-header" style={{ paddingBottom: '14px', marginBottom: '16px', borderBottom: '2px solid', borderBottomColor: theme === 'sun' ? 'rgba(113, 179, 253, 0.25)' : 'rgba(138, 122, 255, 0.2)' }}>
+          <Typography.Text strong style={{ fontSize: '20px', color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' }}>
+            {index + 1}. Reading Section
+          </Typography.Text>
+          <Typography.Text style={{ marginLeft: '12px', fontSize: '14px', opacity: 0.7 }}>
+            ({section.points} {section.points > 1 ? 'points' : 'point'})
+          </Typography.Text>
+        </div>
+        <div style={{ display: 'flex', gap: '24px', minHeight: '500px' }}>
+          <div className="reading-passage-scrollbar" style={{ flex: '1', padding: '20px', background: theme === 'sun' ? '#f9f9f9' : 'rgba(255, 255, 255, 0.02)', borderRadius: '12px', border: `1px solid ${theme === 'sun' ? '#e8e8e8' : 'rgba(255, 255, 255, 0.1)'}`, overflowY: 'auto', maxHeight: '600px', scrollbarWidth: 'thin', scrollbarColor: theme === 'sun' ? '#1890ff rgba(24, 144, 255, 0.2)' : '#8B5CF6 rgba(138, 122, 255, 0.2)' }}>
+            <div className="passage-text-content" style={{ fontSize: '15px', lineHeight: '1.8', color: theme === 'sun' ? '#333' : '#1F2937', textAlign: 'justify' }} dangerouslySetInnerHTML={{ __html: section.passage || '' }} />
+          </div>
+          <div style={{ flex: '1', background: theme === 'sun' ? '#ffffff' : 'rgba(255, 255, 255, 0.03)', borderRadius: '12px', border: `1px solid ${theme === 'sun' ? '#e8e8e8' : 'rgba(255, 255, 255, 0.1)'}`, overflowY: 'auto', maxHeight: '600px' }}>
+            <div style={{ padding: '20px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                {section.questions?.map((q, qIndex) => renderSectionQuestion(q, qIndex, 'reading'))}
+              </div>
+            </div>
+          </div>
+        </div>
+        <style>{`
+          .reading-passage-scrollbar::-webkit-scrollbar { width: 8px; }
+          .reading-passage-scrollbar::-webkit-scrollbar-track { background: ${theme === 'sun' ? 'rgba(24, 144, 255, 0.1)' : 'rgba(138, 122, 255, 0.1)'}; border-radius: 4px; }
+          .reading-passage-scrollbar::-webkit-scrollbar-thumb { background: ${theme === 'sun' ? '#1890ff' : '#8B5CF6'}; border-radius: 4px; border: 1px solid ${theme === 'sun' ? 'rgba(24, 144, 255, 0.2)' : 'rgba(138, 122, 255, 0.2)'}; }
+          .reading-passage-scrollbar::-webkit-scrollbar-thumb:hover { background: ${theme === 'sun' ? '#40a9ff' : '#a78bfa'}; }
+        `}</style>
+      </div>
+    );
+  };
+
+  // Render Listening Section
+  const renderListeningSection = (section, index) => {
+    return (
+      <div key={section.id || index} className={`question-item ${theme}-question-item`} style={{ marginBottom: '24px', borderRadius: '16px', padding: '24px', border: '2px solid', borderColor: theme === 'sun' ? 'rgba(113, 179, 253, 0.25)' : 'rgba(138, 122, 255, 0.2)', background: theme === 'sun' ? 'linear-gradient(135deg, rgba(255, 255, 255, 1) 0%, rgba(240, 249, 255, 0.95) 100%)' : 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(244, 240, 255, 0.95) 100%)', boxShadow: theme === 'sun' ? '0 4px 16px rgba(113, 179, 253, 0.1)' : '0 4px 16px rgba(138, 122, 255, 0.12)' }}>
+        <div className="question-header" style={{ paddingBottom: '14px', marginBottom: '16px', borderBottom: '2px solid', borderBottomColor: theme === 'sun' ? 'rgba(113, 179, 253, 0.25)' : 'rgba(138, 122, 255, 0.2)' }}>
+          <Typography.Text strong style={{ fontSize: '20px', color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' }}>
+            {index + 1}. Listening Section
+          </Typography.Text>
+          <Typography.Text style={{ marginLeft: '12px', fontSize: '14px', opacity: 0.7 }}>
+            ({section.points} {section.points > 1 ? 'points' : 'point'})
+          </Typography.Text>
+        </div>
+        <div style={{ display: 'flex', gap: '24px', minHeight: '500px' }}>
+          <div className="listening-passage-scrollbar" style={{ flex: '1', padding: '20px', background: theme === 'sun' ? '#f9f9f9' : 'rgba(255, 255, 255, 0.02)', borderRadius: '12px', border: `1px solid ${theme === 'sun' ? '#e8e8e8' : 'rgba(255, 255, 255, 0.1)'}`, overflowY: 'auto', maxHeight: '600px', scrollbarWidth: 'thin', scrollbarColor: theme === 'sun' ? '#1890ff rgba(24, 144, 255, 0.2)' : '#8B5CF6 rgba(138, 122, 255, 0.2)' }}>
+            <div style={{ background: theme === 'sun' ? '#ffffff' : 'rgba(255, 255, 255, 0.05)', borderRadius: '12px', padding: '20px', marginBottom: '20px', border: `1px solid ${theme === 'sun' ? '#e8e8e8' : 'rgba(255, 255, 255, 0.1)'}`, boxShadow: theme === 'sun' ? '0 2px 8px rgba(0, 0, 0, 0.1)' : '0 2px 8px rgba(0, 0, 0, 0.2)' }}>
+              <Typography.Text style={{ fontSize: '16px', fontWeight: 600, marginBottom: '12px', display: 'block' }}>Audio Transcript</Typography.Text>
+              <audio controls style={{ width: '100%', marginBottom: '16px' }}>
+                <source src={section.audioUrl} type="audio/wav" />
+                Your browser does not support the audio element.
+              </audio>
+              <div className="passage-text-content" style={{ fontSize: '15px', lineHeight: '1.8', color: theme === 'sun' ? '#333' : '#1F2937', textAlign: 'justify' }} dangerouslySetInnerHTML={{ __html: section.transcript || '' }} />
+            </div>
+          </div>
+          <div style={{ flex: '1', background: theme === 'sun' ? '#ffffff' : 'rgba(255, 255, 255, 0.03)', borderRadius: '12px', border: `1px solid ${theme === 'sun' ? '#e8e8e8' : 'rgba(255, 255, 255, 0.1)'}`, overflowY: 'auto', maxHeight: '600px' }}>
+            <div style={{ padding: '20px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                {section.questions?.map((q, qIndex) => renderSectionQuestion(q, qIndex, 'listening'))}
+              </div>
+            </div>
+          </div>
+        </div>
+        <style>{`
+          .listening-passage-scrollbar::-webkit-scrollbar { width: 8px; }
+          .listening-passage-scrollbar::-webkit-scrollbar-track { background: ${theme === 'sun' ? 'rgba(24, 144, 255, 0.1)' : 'rgba(138, 122, 255, 0.1)'}; border-radius: 4px; }
+          .listening-passage-scrollbar::-webkit-scrollbar-thumb { background: ${theme === 'sun' ? '#1890ff' : '#8B5CF6'}; border-radius: 4px; border: 1px solid ${theme === 'sun' ? 'rgba(24, 144, 255, 0.2)' : 'rgba(138, 122, 255, 0.2)'}; }
+          .listening-passage-scrollbar::-webkit-scrollbar-thumb:hover { background: ${theme === 'sun' ? '#40a9ff' : '#a78bfa'}; }
+        `}</style>
+      </div>
+    );
+  };
+
+  // Render Writing Section
+  const renderWritingSection = (section, index) => {
+    const qIdForScore = (section.questions && (section.questions[0]?.submissionQuestionId || section.questions[0]?.id)) || section.id;
+    const studentAnswer = studentAnswers?.[section.id] || {};
+    const studentEssayText = studentAnswer?.text || studentAnswer?.essay || '';
+    const studentFiles = Array.isArray(studentAnswer?.files) ? studentAnswer.files : [];
+
+    return (
+      <div key={section.id || index} className={`question-item ${theme}-question-item`} style={{ marginBottom: '24px', borderRadius: '16px', padding: '24px', border: '2px solid', borderColor: theme === 'sun' ? 'rgba(113, 179, 253, 0.25)' : 'rgba(138, 122, 255, 0.2)', background: theme === 'sun' ? 'linear-gradient(135deg, rgba(255, 255, 255, 1) 0%, rgba(240, 249, 255, 0.95) 100%)' : 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(244, 240, 255, 0.95) 100%)', boxShadow: theme === 'sun' ? '0 4px 16px rgba(113, 179, 253, 0.1)' : '0 4px 16px rgba(138, 122, 255, 0.12)' }}>
+        <div className="question-header" style={{ paddingBottom: '14px', marginBottom: '16px', borderBottom: '2px solid', borderBottomColor: theme === 'sun' ? 'rgba(113, 179, 253, 0.25)' : 'rgba(138, 122, 255, 0.2)', position: 'relative', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div>
+            <Typography.Text strong style={{ fontSize: '16px', color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' }}>
+              {index + 1}. Writing Section
+            </Typography.Text>
+            <Typography.Text style={{ marginLeft: '12px', fontSize: '14px', opacity: 0.7 }}>
+              ({section.points} {section.points > 1 ? 'points' : 'point'})
+            </Typography.Text>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            {!getFeedback(section.id, 'section') ? (
+              <>
+                <Button
+                  size="small"
+                  style={{ fontSize: '13px', height: '28px', padding: '0 12px' }}
+                >
+                  Generate AI Feedback
+                </Button>
+                <Button
+                  size="small"
+                  onClick={() => handleOpenAddFeedback(section.id, 'section')}
+                  style={{ fontSize: '13px', height: '28px', padding: '0 12px' }}
+                >
+                  Add Score/Feedback
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button
+                  danger
+                  size="small"
+                  icon={<DeleteOutlined />}
+                  onClick={() => handleDeleteFeedbackDirect(section.id, 'section')}
+                  style={{ fontSize: '13px', height: '28px', padding: '0 12px' }}
+                >
+                  Delete
+                </Button>
+                <Button
+                  size="small"
+                  onClick={() => handleOpenEditFeedback(section.id, 'section')}
+                  style={{ fontSize: '13px', height: '28px', padding: '0 12px' }}
+                >
+                  Edit Score/Feedback
+                </Button>
+              </>
+            )}
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: '24px', minHeight: '600px', position: 'relative' }}>
+          <div className="writing-prompt-scrollbar" style={{ flex: '1', padding: '20px', background: theme === 'sun' ? '#f9f9f9' : 'rgba(255, 255, 255, 0.02)', borderRadius: '12px', border: `1px solid ${theme === 'sun' ? '#e8e8e8' : 'rgba(255, 255, 255, 0.1)'}`, overflowY: 'auto', maxHeight: '600px', scrollbarWidth: 'thin', scrollbarColor: theme === 'sun' ? '#1890ff rgba(24, 144, 255, 0.2)' : '#8B5CF6 rgba(138, 122, 255, 0.2)' }}>
+            <div className="passage-text-content" style={{ fontSize: '15px', lineHeight: '1.8', color: theme === 'sun' ? '#333' : '#1F2937', textAlign: 'justify' }} dangerouslySetInnerHTML={{ __html: section.prompt || '' }} />
+          </div>
+          <div style={{ flex: '1', background: theme === 'sun' ? '#ffffff' : 'rgba(255, 255, 255, 0.03)', borderRadius: '12px', border: `1px solid ${theme === 'sun' ? '#e8e8e8' : 'rgba(255, 255, 255, 0.1)'}`, overflowY: 'auto', maxHeight: '600px', position: 'relative' }}>
+            <div style={{ padding: '20px' }}>
+              {studentEssayText ? (
+                <div>
+                  <Typography.Text style={{ fontSize: '14px', fontWeight: 600, marginBottom: '12px', display: 'block' }}>Student's Essay:</Typography.Text>
+                  <div 
+                    id={`essay-container-${section.id}`}
+                    onMouseUp={(e) => {
+                      if (index === 0) {
+                        handleTextSelection(section.id, e.currentTarget);
+                      }
+                    }}
+                    onMouseDown={(e) => {
+                      if (index === 0) {
+                        // Clear selection when clicking
+                        setTimeout(() => {
+                          const selection = window.getSelection();
+                          if (selection && selection.rangeCount > 0) {
+                            const range = selection.getRangeAt(0);
+                            if (range.collapsed) {
+                              setTextSelection({ visible: false, sectionId: null, startIndex: null, endIndex: null, position: { x: 0, y: 0 } });
+                            }
+                          }
+                        }, 0);
+                      }
+                    }}
+                    style={{ 
+                      padding: '16px', 
+                      background: theme === 'sun' ? '#f9f9f9' : 'rgba(255, 255, 255, 0.05)', 
+                      borderRadius: '8px', 
+                      border: `1px solid ${theme === 'sun' ? '#e8e8e8' : 'rgba(255, 255, 255, 0.1)'}`, 
+                      whiteSpace: 'pre-wrap', 
+                      wordWrap: 'break-word', 
+                      lineHeight: '1.8', 
+                      fontSize: '14px', 
+                      color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)',
+                      userSelect: index === 0 ? 'text' : 'none',
+                      cursor: index === 0 ? 'text' : 'default',
+                      position: 'relative',
+                      minHeight: '200px'
+                    }}
+                  >
+                    {index === 0 && writingSectionFeedbacks[section.id]?.length > 0 ? (
+                      renderEssayWithHighlights(studentEssayText, section.id)
+                    ) : (
+                      studentEssayText
+                    )}
+                  </div>
+                  {/* Floating Toolbar for text selection */}
+                  {index === 0 && textSelection.visible && textSelection.sectionId === section.id && (
+                    <div
+                      style={{
+                        position: 'absolute',
+                        left: `${textSelection.position.x}px`,
+                        top: `${textSelection.position.y}px`,
+                        transform: 'translateY(-50%)', // Center vertically with the selected line
+                        zIndex: 1000,
+                        display: 'flex',
+                        alignItems: 'center',
+                      }}
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <button
+                        onClick={handleAddComment}
+                        style={{
+                          width: '40px',
+                          height: '40px',
+                          borderRadius: '50%',
+                          border: 'none',
+                          background: theme === 'sun' ? '#ffffff' : 'rgba(255, 255, 255, 0.95)',
+                          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.15)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          cursor: 'pointer',
+                          transition: 'all 0.2s ease',
+                          padding: 0,
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.transform = 'scale(1.1)';
+                          e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.2)';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.transform = 'scale(1)';
+                          e.currentTarget.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.15)';
+                        }}
+                      >
+                        <CommentOutlined style={{ 
+                          fontSize: '16px', 
+                          color: theme === 'sun' ? '#1890ff' : '#8B5CF6' 
+                        }} />
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div
+                  style={{
+                    padding: '16px',
+                    background: theme === 'sun' ? '#fffbe6' : 'rgba(255, 255, 255, 0.06)',
+                    border: `1px dashed ${theme === 'sun' ? '#faad14' : 'rgba(250, 173, 20, 0.6)'}`,
+                    borderRadius: '8px',
+                    color: theme === 'sun' ? '#ad6800' : '#eab308',
+                    fontSize: '14px'
+                  }}
+                >
+                  The student left this writing blank.
+                </div>
+              )}
+              {studentFiles.length > 0 && (
+                <div style={{ marginTop: studentEssayText ? '20px' : '0' }}>
+                  <div style={{
+                    fontSize: '18px',
+                    fontWeight: '600',
+                    marginBottom: '16px',
+                    color: theme === 'sun' ? '#333' : '#1F2937'
+                  }}>
+                    {studentEssayText ? 'Uploaded Images:' : 'Student Uploaded Images:'}
+                  </div>
+                  <div style={{ 
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '20px',
+                    marginTop: '12px'
+                  }}>
+                    {studentFiles.map((file, fileIdx) => (
+                      <div
+                        key={file.id || file.name || fileIdx}
+                        style={{
+                          position: 'relative',
+                          background: theme === 'sun' 
+                            ? 'linear-gradient(135deg, rgba(24, 144, 255, 0.08) 0%, rgba(64, 169, 255, 0.05) 100%)'
+                            : 'linear-gradient(135deg, rgba(138, 122, 255, 0.12) 0%, rgba(167, 139, 250, 0.08) 100%)',
+                          border: `1px solid ${theme === 'sun' 
+                            ? 'rgba(24, 144, 255, 0.2)' 
+                            : 'rgba(138, 122, 255, 0.25)'}`,
+                          borderRadius: '8px',
+                          overflow: 'hidden',
+                          transition: 'all 0.3s ease',
+                          width: '100%'
+                        }}
+                      >
+                        {/* Show image if it's an image file */}
+                        {(file.type?.startsWith('image/') || file.url || file.imageUrl) && (
+                          <div style={{ 
+                            width: '100%',
+                            display: 'flex',
+                            justifyContent: 'center',
+                            alignItems: 'center',
+                            background: theme === 'sun' ? '#fafafa' : 'rgba(0, 0, 0, 0.2)',
+                            padding: '20px',
+                            minHeight: '400px'
+                          }}>
+                            <img
+                              src={file.url || file.imageUrl || (file instanceof File ? URL.createObjectURL(file) : '')}
+                              alt={file.name || 'Uploaded image'}
+                              style={{
+                                maxWidth: '100%',
+                                maxHeight: '600px',
+                                width: 'auto',
+                                height: 'auto',
+                                objectFit: 'contain',
+                                display: 'block',
+                                cursor: 'pointer',
+                                borderRadius: '4px'
+                              }}
+                              onError={(e) => {
+                                // Hide image if failed to load
+                                e.target.style.display = 'none';
+                              }}
+                            />
+                          </div>
+                        )}
+                        <div style={{
+                          padding: '12px 16px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          borderTop: `1px solid ${theme === 'sun' 
+                            ? 'rgba(24, 144, 255, 0.15)' 
+                            : 'rgba(138, 122, 255, 0.2)'}`
+                        }}>
+                          <span style={{ 
+                            color: theme === 'sun' ? '#333' : '#1F2937',
+                            fontSize: '14px',
+                            fontWeight: '500',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                            flex: 1
+                          }}>
+                            {file.name || 'Image'}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+        <style>{`
+          .writing-prompt-scrollbar::-webkit-scrollbar { width: 8px; }
+          .writing-prompt-scrollbar::-webkit-scrollbar-track { background: ${theme === 'sun' ? 'rgba(24, 144, 255, 0.1)' : 'rgba(138, 122, 255, 0.1)'}; border-radius: 4px; }
+          .writing-prompt-scrollbar::-webkit-scrollbar-thumb { background: ${theme === 'sun' ? '#1890ff' : '#8B5CF6'}; border-radius: 4px; border: 1px solid ${theme === 'sun' ? 'rgba(24, 144, 255, 0.2)' : 'rgba(138, 122, 255, 0.2)'}; }
+          .writing-prompt-scrollbar::-webkit-scrollbar-thumb:hover { background: ${theme === 'sun' ? '#40a9ff' : '#a78bfa'}; }
+        `}</style>
+      </div>
+    );
+  };
+
+  // Render Speaking Section
+  const renderSpeakingSection = (section, index) => {
+    const qIdForScore = (section.questions && (section.questions[0]?.submissionQuestionId || section.questions[0]?.id)) || section.id;
+    const studentAnswer = studentAnswers?.[section.id] || {};
+    const audioUrl = studentAnswer?.audioUrl || studentAnswer?.audio || null;
+    const sectionId = section.id || `speaking-${index}`;
+    const audioState = audioStates[sectionId] || { isPlaying: false, currentTime: 0, duration: 0, volume: 1 };
+    
+    // Get or create audio ref for this section
+    if (!audioRefs.current[sectionId]) {
+      audioRefs.current[sectionId] = React.createRef();
+    }
+    const audioRef = audioRefs.current[sectionId];
+
+    // Initialize audio state if not exists
+    if (!audioStates[sectionId] && section.audioUrl) {
+      setTimeout(() => {
+        setAudioStates(prev => ({
+          ...prev,
+          [sectionId]: { isPlaying: false, currentTime: 0, duration: 0, volume: 1 }
+        }));
+      }, 0);
+    }
+
+    const togglePlayPause = () => {
+      if (audioRef.current) {
+        if (audioState.isPlaying) {
+          audioRef.current.pause();
+        } else {
+          audioRef.current.play();
+        }
+        setAudioStates(prev => ({
+          ...prev,
+          [sectionId]: { ...(prev[sectionId] || {}), isPlaying: !audioState.isPlaying }
+        }));
+      }
+    };
+
+    const handleTimeUpdate = () => {
+      if (audioRef.current) {
+        setAudioStates(prev => ({
+          ...prev,
+          [sectionId]: { ...(prev[sectionId] || {}), currentTime: audioRef.current.currentTime }
+        }));
+      }
+    };
+
+    const handleLoadedMetadata = () => {
+      if (audioRef.current) {
+        setAudioStates(prev => ({
+          ...prev,
+          [sectionId]: { ...(prev[sectionId] || {}), duration: audioRef.current.duration }
+        }));
+      }
+    };
+
+    const handleSeek = (e) => {
+      if (audioRef.current) {
+        const rect = e.currentTarget.getBoundingClientRect();
+        const clickX = e.clientX - rect.left;
+        const width = rect.width;
+        const newTime = (clickX / width) * audioState.duration;
+        audioRef.current.currentTime = newTime;
+        setAudioStates(prev => ({
+          ...prev,
+          [sectionId]: { ...(prev[sectionId] || {}), currentTime: newTime }
+        }));
+      }
+    };
+
+    const handleVolumeChange = (e) => {
+      const newVolume = parseFloat(e.target.value);
+      setAudioStates(prev => ({
+        ...prev,
+        [sectionId]: { ...(prev[sectionId] || {}), volume: newVolume }
+      }));
+      if (audioRef.current) {
+        audioRef.current.volume = newVolume;
+      }
+    };
+
+    const formatTime = (time) => {
+      const minutes = Math.floor(time / 60);
+      const seconds = Math.floor(time % 60);
+      return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+    };
+
+    const hasAudio = section.audioUrl || section.type === 'SPEAKING_WITH_AUDIO_SECTION';
+
+    return (
+      <div key={section.id || index} className={`question-item ${theme}-question-item`} style={{ marginBottom: '24px', borderRadius: '16px', padding: '24px', border: '2px solid', borderColor: theme === 'sun' ? 'rgba(113, 179, 253, 0.25)' : 'rgba(138, 122, 255, 0.2)', background: theme === 'sun' ? 'linear-gradient(135deg, rgba(255, 255, 255, 1) 0%, rgba(240, 249, 255, 0.95) 100%)' : 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(244, 240, 255, 0.95) 100%)', boxShadow: theme === 'sun' ? '0 4px 16px rgba(113, 179, 253, 0.1)' : '0 4px 16px rgba(138, 122, 255, 0.12)' }}>
+        <style>{`
+          .speaking-audio-prompt-scrollbar::-webkit-scrollbar { width: 8px; }
+          .speaking-audio-prompt-scrollbar::-webkit-scrollbar-track { background: ${theme === 'sun' ? 'rgba(24, 144, 255, 0.1)' : 'rgba(138, 122, 255, 0.1)'}; border-radius: 4px; }
+          .speaking-audio-prompt-scrollbar::-webkit-scrollbar-thumb { background: ${theme === 'sun' ? '#1890ff' : '#8B5CF6'}; border-radius: 4px; border: 1px solid ${theme === 'sun' ? 'rgba(24, 144, 255, 0.2)' : 'rgba(138, 122, 255, 0.2)'}; }
+          .speaking-audio-prompt-scrollbar::-webkit-scrollbar-thumb:hover { background: ${theme === 'sun' ? '#40a9ff' : '#a78bfa'}; }
+        `}</style>
+        <div className="question-header" style={{ paddingBottom: '14px', marginBottom: '16px', borderBottom: '2px solid', borderBottomColor: theme === 'sun' ? 'rgba(113, 179, 253, 0.25)' : 'rgba(138, 122, 255, 0.2)', position: 'relative', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div>
+            <Typography.Text strong style={{ fontSize: hasAudio ? '20px' : '16px', color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' }}>
+              {index + 1}. {hasAudio ? 'Speaking With Audio Section' : 'Speaking Section'}
+            </Typography.Text>
+            <Typography.Text style={{ marginLeft: '12px', fontSize: '14px', opacity: 0.7 }}>
+              ({section.points} {section.points > 1 ? 'points' : 'point'})
+            </Typography.Text>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            {!getFeedback(section.id, 'section') ? (
+              <>
+                <Button
+                  size="small"
+                  style={{
+                    fontSize: '13px',
+                    height: '28px',
+                    padding: '0 12px'
+                  }}
+                >
+                  Generate AI Feedback
+                </Button>
+                <Button
+                  size="small"
+                  onClick={() => handleOpenAddFeedback(section.id, 'section')}
+                  style={{
+                    fontSize: '13px',
+                    height: '28px',
+                    padding: '0 12px'
+                  }}
+                >
+                  Add Score/Feedback
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button
+                  danger
+                  size="small"
+                  icon={<DeleteOutlined />}
+                  onClick={() => handleDeleteFeedbackDirect(section.id, 'section')}
+                  style={{
+                    fontSize: '13px',
+                    height: '28px',
+                    padding: '0 12px'
+                  }}
+                >
+                  Delete
+                </Button>
+                <Button
+                  size="small"
+                  onClick={() => handleOpenEditFeedback(section.id, 'section')}
+                  style={{
+                    fontSize: '13px',
+                    height: '28px',
+                    padding: '0 12px'
+                  }}
+                >
+                  Edit Score/Feedback
+                </Button>
+              </>
+            )}
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: '24px', alignItems: hasAudio ? 'flex-start' : 'stretch', minHeight: hasAudio ? '500px' : '400px' }}>
+          {/* Left Section - Audio Player (if has audio) or Prompt */}
+          <div 
+            className={hasAudio ? "speaking-audio-prompt-scrollbar" : ""}
+            style={{ 
+              flex: '1', 
+              padding: '20px', 
+              background: theme === 'sun' ? '#f9f9f9' : 'rgba(255, 255, 255, 0.02)', 
+              borderRadius: '12px', 
+              border: `1px solid ${theme === 'sun' ? '#e8e8e8' : 'rgba(255, 255, 255, 0.1)'}`,
+              overflowY: hasAudio ? 'auto' : 'visible',
+              maxHeight: hasAudio ? '500px' : 'none',
+              scrollbarWidth: hasAudio ? 'thin' : 'auto',
+              scrollbarColor: hasAudio ? (theme === 'sun' ? '#1890ff rgba(24, 144, 255, 0.2)' : '#8B5CF6 rgba(138, 122, 255, 0.2)') : 'auto'
+            }}>
+            {hasAudio && section.audioUrl ? (
+              <>
+                {/* Maximum Recording Time */}
+                <div style={{
+                  marginBottom: '16px',
+                  fontWeight: '600',
+                  fontSize: '20px',
+                  color: theme === 'sun' ? '#1E40AF' : '#1F2937',
+                  textAlign: 'left'
+                }}>
+                  🎤 Maximum limit 3 minutes
+                </div>
+
+                {/* Audio Player */}
+                <div style={{
+                  background: theme === 'sun' ? '#ffffff' : 'rgba(255, 255, 255, 0.05)',
+                  borderRadius: '12px',
+                  padding: '20px',
+                  marginBottom: '20px',
+                  border: `1px solid ${theme === 'sun' ? '#e8e8e8' : 'rgba(255, 255, 255, 0.1)'}`,
+                  boxShadow: theme === 'sun' 
+                    ? '0 2px 8px rgba(0, 0, 0, 0.1)' 
+                    : '0 2px 8px rgba(0, 0, 0, 0.2)'
+                }}>
+                  <audio
+                    ref={audioRef}
+                    src={section.audioUrl}
+                    onTimeUpdate={handleTimeUpdate}
+                    onLoadedMetadata={handleLoadedMetadata}
+                    onEnded={() => setAudioStates(prev => ({ ...prev, [sectionId]: { ...(prev[sectionId] || {}), isPlaying: false } }))}
+                    style={{ display: 'none' }}
+                  >
+                    <source src={section.audioUrl} type="audio/wav" />
+                    Your browser does not support the audio element.
+                  </audio>
+
+                  {/* Audio Controls */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '16px' }}>
+                    {/* Play/Pause Button */}
+                    <button
+                      onClick={togglePlayPause}
+                      style={{
+                        width: '48px',
+                        height: '48px',
+                        borderRadius: '50%',
+                        border: 'none',
+                        background: theme === 'sun' ? '#1890ff' : '#8B5CF6',
+                        color: 'white',
+                        fontSize: '20px',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        transition: 'all 0.3s ease',
+                        boxShadow: theme === 'sun' 
+                          ? '0 4px 12px rgba(24, 144, 255, 0.3)' 
+                          : '0 4px 12px rgba(138, 122, 255, 0.3)'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.transform = 'scale(1.1)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.transform = 'scale(1)';
+                      }}
+                    >
+                      {audioState.isPlaying ? '⏸️' : '▶️'}
+                    </button>
+
+                    {/* Time Display */}
+                    <div style={{
+                      fontSize: '14px',
+                      fontWeight: '600',
+                      color: theme === 'sun' ? '#333' : '#1F2937',
+                      minWidth: '80px'
+                    }}>
+                      {formatTime(audioState.currentTime)} / {formatTime(audioState.duration)}
+                    </div>
+
+                    {/* Progress Bar */}
+                    <div
+                      style={{
+                        flex: 1,
+                        height: '6px',
+                        background: theme === 'sun' ? '#e8e8e8' : 'rgba(255, 255, 255, 0.2)',
+                        borderRadius: '3px',
+                        cursor: 'pointer',
+                        position: 'relative'
+                      }}
+                      onClick={handleSeek}
+                    >
+                      <div
+                        style={{
+                          width: `${audioState.duration ? (audioState.currentTime / audioState.duration) * 100 : 0}%`,
+                          height: '100%',
+                          background: theme === 'sun' ? '#1890ff' : '#8B5CF6',
+                          borderRadius: '3px',
+                          transition: 'width 0.1s ease'
+                        }}
+                      />
+                    </div>
+
+                    {/* Volume Control */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{ 
+                        fontSize: '16px',
+                        color: theme === 'sun' ? '#666' : '#ccc'
+                      }}>🔊</span>
+                      <input
+                        type="range"
+                        min="0"
+                        max="1"
+                        step="0.1"
+                        value={audioState.volume}
+                        onChange={handleVolumeChange}
+                        style={{
+                          width: '60px',
+                          accentColor: theme === 'sun' ? '#1890ff' : '#8B5CF6'
+                        }}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Transcript Content */}
+                {section.transcript && (
+                  <div style={{
+                    background: '#ffffff',
+                    borderRadius: '8px',
+                    padding: '16px',
+                    border: `1px solid ${theme === 'sun' ? '#e8e8e8' : 'rgba(138, 122, 255, 0.3)'}`,
+                    fontSize: '15px',
+                    lineHeight: '1.8',
+                    color: '#333',
+                    textAlign: 'justify',
+                    boxShadow: theme === 'sun' 
+                      ? '0 2px 8px rgba(0, 0, 0, 0.1)' 
+                      : '0 2px 8px rgba(138, 122, 255, 0.2)'
+                  }}>
+                    <div dangerouslySetInnerHTML={{ __html: section.transcript }} />
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="passage-text-content" style={{ fontSize: '15px', lineHeight: '1.8', color: theme === 'sun' ? '#333' : '#1F2937', textAlign: 'justify' }} dangerouslySetInnerHTML={{ __html: section.prompt || '' }} />
+            )}
+          </div>
+          
+          {/* Right Section - Recording Area */}
+          <div style={{ flex: '1', background: theme === 'sun' ? '#ffffff' : 'rgba(255, 255, 255, 0.03)', borderRadius: '12px', border: `1px solid ${theme === 'sun' ? '#e8e8e8' : 'rgba(255, 255, 255, 0.1)'}`, padding: hasAudio ? '24px' : '20px', textAlign: hasAudio ? 'center' : 'left' }}>
+            <Typography.Text style={{ fontSize: '16px', fontWeight: '600', marginBottom: '12px', display: 'block' }}>
+              {hasAudio ? (audioUrl ? 'Student Recorded Audio:' : 'Record Your Response:') : "Student's Recording:"}
+            </Typography.Text>
+            {audioUrl ? (
+              <div>
+                <audio controls style={{ width: '100%', height: hasAudio ? '40px' : 'auto' }}>
+                  <source src={audioUrl} type="audio/mpeg" />
+                  <source src={audioUrl} type="audio/wav" />
+                  <source src={audioUrl} type="audio/mp3" />
+                  Your browser does not support the audio element.
+                </audio>
+              </div>
+            ) : (
+              <Typography.Text type="secondary" style={{ fontSize: '14px', fontStyle: 'italic' }}>
+                {hasAudio ? 'No recording submitted' : 'No recording submitted'}
+              </Typography.Text>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // Simple question renderer component (inline for simplicity)
+  const renderQuestion = (q, qIndex) => {
+    const questionNumber = qIndex + 1;
+    const questionText = q.questionText || q.question || '';
+    const studentAnswer = studentAnswers?.[q.id];
+
+    if (q.type === 'MULTIPLE_CHOICE' || q.type === 'TRUE_OR_FALSE' || q.type === 'MULTIPLE_SELECT') {
+      const options = q.options || [];
+      const isMulti = q.type === 'MULTIPLE_SELECT';
+      const correctOption = options.find(opt => opt.isCorrect);
+      const correctKey = q.type === 'TRUE_OR_FALSE' ? (correctOption?.text) : correctOption?.key;
+      const correctKeys = isMulti ? options.filter(opt => opt.isCorrect).map(opt => opt.key) : [];
+      
+      const isCorrect = isMulti 
+        ? Array.isArray(studentAnswer) && correctKeys.every(k => studentAnswer.includes(k)) && studentAnswer.every(k => correctKeys.includes(k))
+        : studentAnswer === correctKey;
+
+      return (
+        <div
+          key={q.id}
+          className={`question-item ${theme}-question-item`}
+          style={{
+            marginBottom: '24px',
+            borderRadius: '16px',
+            padding: '24px',
+            border: '2px solid',
+            borderColor: theme === 'sun' 
+              ? 'rgba(113, 179, 253, 0.25)' 
+              : 'rgba(138, 122, 255, 0.2)',
+            background: theme === 'sun' 
+              ? 'linear-gradient(135deg, rgba(255, 255, 255, 1) 0%, rgba(240, 249, 255, 0.95) 100%)'
+              : 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(244, 240, 255, 0.95) 100%)',
+            boxShadow: theme === 'sun' 
+              ? '0 4px 16px rgba(113, 179, 253, 0.1)'
+              : '0 4px 16px rgba(138, 122, 255, 0.12)',
+          }}
+        >
+          <div className="question-header" style={{
+            paddingBottom: '14px',
+            marginBottom: '16px',
+            borderBottom: '2px solid',
+            borderBottomColor: theme === 'sun' 
+              ? 'rgba(113, 179, 253, 0.25)' 
+              : 'rgba(138, 122, 255, 0.2)',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center'
+          }}>
+            <Typography.Text strong style={{ 
+              fontSize: '16px', 
+              color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' 
+            }}>
+              Question {questionNumber}
+            </Typography.Text>
+              <Typography.Text style={{ 
+                fontSize: '14px', 
+                color: theme === 'sun' ? 'rgba(0, 0, 0, 0.5)' : 'rgba(255, 255, 255, 0.5)',
+                fontStyle: 'italic'
+              }}>
+                {q.type.replace('_', ' ')}
+              </Typography.Text>
+          </div>
+          <div className="question-content" style={{ paddingLeft: '36px', marginTop: '16px' }}>
+            <div 
+              className="question-text-content"
+              style={{ 
+                fontSize: '15px', 
+                fontWeight: 350,
+                marginBottom: '12px',
+                lineHeight: '1.8',
+                color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)'
+              }}
+              dangerouslySetInnerHTML={{ __html: questionText }}
+            />
+            <div className="question-options" style={{ 
+              display: 'grid', 
+              gridTemplateColumns: 'repeat(2, 1fr)', 
+              gap: '14px', 
+              marginTop: '12px' 
+            }}>
+              {(q.type === 'TRUE_OR_FALSE' ? ['True', 'False'] : options).map((opt, idx) => {
+                let key, text;
+                if (q.type === 'TRUE_OR_FALSE') {
+                  key = opt;
+                  text = opt;
+                } else {
+                  key = opt.key || String.fromCharCode(65 + idx);
+                  text = opt.text || '';
+                }
+                
+                const isCorrectAnswer = isMulti 
+                  ? correctKeys.includes(key)
+                  : (key === correctKey || (q.type === 'TRUE_OR_FALSE' && opt === correctKey));
+                
+                const isSelected = isMulti 
+                  ? (Array.isArray(studentAnswer) && studentAnswer.includes(key))
+                  : (studentAnswer === key || (q.type === 'TRUE_OR_FALSE' && opt === studentAnswer));
+                
+                const isSelectedWrong = isSelected && !isCorrectAnswer;
+                const isCorrectMissing = !isSelected && isCorrectAnswer && isMulti;
+                
+                return (
+                  <div key={key} style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '12px',
+                    padding: '14px 18px',
+                    background: isCorrectAnswer || isCorrectMissing
+                      ? (theme === 'sun' ? 'rgba(82, 196, 26, 0.15)' : 'rgba(82, 196, 26, 0.2)')
+                      : isSelectedWrong
+                        ? (theme === 'sun' ? 'rgba(255, 77, 79, 0.15)' : 'rgba(255, 77, 79, 0.2)')
+                      : (theme === 'sun' ? '#fff' : 'rgba(255,255,255,0.03)'),
+                    border: `2px solid ${
+                      isCorrectAnswer || isCorrectMissing
+                        ? 'rgb(82, 196, 26)'
+                        : isSelectedWrong
+                          ? 'rgb(255, 77, 79)'
+                        : (theme === 'sun' ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.1)')
+                    }`,
+                    borderRadius: '12px',
+                  }}>
+                    <input 
+                      type={isMulti ? 'checkbox' : 'radio'}
+                      checked={isSelected || (!isSelected && isCorrectAnswer)}
+                      disabled
+                      style={{ 
+                        width: '18px',
+                        height: '18px',
+                        accentColor: theme === 'sun' ? '#1890ff' : '#8B5CF6',
+                      }} 
+                    />
+                    <span style={{ 
+                      flexShrink: 0, 
+                      color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)', 
+                      fontWeight: '600',
+                      fontSize: '16px'
+                    }}>
+                      {q.type === 'TRUE_OR_FALSE' ? (opt === 'True' ? 'A' : 'B') : key}.
+                    </span>
+                    <span 
+                      className="option-text"
+                      style={{ 
+                        flex: 1, 
+                        lineHeight: '1.6',
+                        color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)',
+                        fontWeight: '350'
+                      }}
+                      dangerouslySetInnerHTML={{ __html: q.type === 'TRUE_OR_FALSE' ? opt : text }}
+                    />
+                    {isSelectedWrong && (
+                      <CloseCircleOutlined style={{
+                        fontSize: '22px',
+                        color: '#ff4d4f',
+                      }} />
+                    )}
+                    {!isSelected && isCorrectAnswer && (
+                      <CheckCircleOutlined style={{
+                        fontSize: '22px',
+                        color: '#52c41a',
+                      }} />
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // FILL_IN_THE_BLANK
+    if (q.type === 'FILL_IN_THE_BLANK') {
+      const contentData = q.content?.data || [];
+      const studentAnswerObj = studentAnswers?.[q.id] || {};
+      
+      const renderFillBlankInputs = () => {
+        const elements = [];
+        const regex = /(\[\[pos_(.*?)\]\])/g;
+        let lastIndex = 0;
+        let match;
+        let inputIndex = 0;
+        
+        while ((match = regex.exec(questionText)) !== null) {
+          if (match.index > lastIndex) {
+            const textContent = questionText.slice(lastIndex, match.index);
+            elements.push(
+              <span 
+                key={`text_${inputIndex}`}
+                className="question-text-content"
+                dangerouslySetInnerHTML={{ __html: textContent }}
+              />
+            );
+          }
+          inputIndex += 1;
+          
+          const positionId = `pos_${match[2]}`;
+          const rawPositionId = match[2]; // Without "pos_" prefix
+          
+          // Find correct item - check both with and without "pos_" prefix
+          let correctItem = contentData.find(item => 
+            (item.positionId === positionId || item.positionId === rawPositionId) && item.correct
+          );
+          // Fallback: if no correct item found, try to find any item with matching positionId
+          if (!correctItem) {
+            correctItem = contentData.find(item => 
+              item.positionId === positionId || item.positionId === rawPositionId
+            );
+          }
+          const correctAnswer = correctItem?.value || '';
+          
+          let studentAnswer = '';
+          if (typeof studentAnswerObj === 'object' && studentAnswerObj !== null) {
+            // Check multiple possible keys
+            studentAnswer = studentAnswerObj[positionId] || 
+                          studentAnswerObj[rawPositionId] || 
+                          studentAnswerObj[match[2]] || 
+                          '';
+          } else if (typeof studentAnswerObj === 'string') {
+            studentAnswer = studentAnswerObj;
+          }
+          
+          const isCorrect = correctAnswer && studentAnswer.trim().toLowerCase() === correctAnswer.trim().toLowerCase();
+          const isUnanswered = !studentAnswer || studentAnswer.trim().length === 0;
+          const displayValue = isUnanswered ? (correctAnswer || '') : studentAnswer;
+          const bgColor = isCorrect
+            ? (theme === 'sun' ? 'rgba(82, 196, 26, 0.1)' : 'rgba(82, 196, 26, 0.15)')
+            : isUnanswered
+              ? (theme === 'sun' ? 'rgba(250, 173, 20, 0.12)' : 'rgba(250, 173, 20, 0.2)')
+              : (theme === 'sun' ? 'rgba(255, 77, 79, 0.1)' : 'rgba(255, 77, 79, 0.15)');
+          const borderColor = isCorrect ? 'rgb(82, 196, 26)' : (isUnanswered ? '#faad14' : 'rgb(255, 77, 79)');
+          const textColor = isCorrect ? (theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)') : (isUnanswered ? '#faad14' : (theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)'));
+          const fontWeight = isUnanswered ? 600 : 400;
+
+          elements.push(
+            <input
+              key={`fill_blank_input_${inputIndex}`}
+              type="text"
+              value={displayValue}
+              readOnly
+              disabled
+              style={{
+                display: 'inline-block',
+                minWidth: '120px',
+                maxWidth: '200px',
+                minHeight: '32px',
+                padding: '4px 12px',
+                margin: '0 8px',
+                background: bgColor,
+                border: `2px solid ${borderColor}`,
+                borderRadius: '8px',
+                cursor: 'not-allowed',
+                outline: 'none',
+                lineHeight: '1.4',
+                fontSize: '14px',
+                boxSizing: 'border-box',
+                textAlign: 'center',
+                color: textColor,
+                fontWeight,
+                verticalAlign: 'middle'
+              }}
+            />
+          );
+          
+          // Show correct answer only when answered wrong (not for unanswered since we show inside input)
+          if (!isCorrect && correctAnswer && !(isUnanswered)) {
+            const answerColor = '#52c41a';
+            elements.push(
+              <span 
+                key={`answer_${inputIndex}`}
+                style={{ 
+                  fontSize: '15px',
+                  color: answerColor,
+                  fontWeight: 600,
+                  whiteSpace: 'nowrap',
+                  marginLeft: '8px',
+                  marginRight: '8px',
+                  display: 'inline-block'
+                }}
+              >
+                {correctAnswer}
+              </span>
+            );
+          }
+          
+          lastIndex = match.index + match[0].length;
+        }
+        if (lastIndex < questionText.length) {
+          const textContent = questionText.slice(lastIndex);
+          elements.push(
+            <span 
+              key={`text_final`}
+              className="question-text-content"
+              dangerouslySetInnerHTML={{ __html: textContent }}
+            />
+          );
+        }
+        
+        return elements;
+      };
+
+    return (
+        <div
+          key={q.id}
+          className={`question-item ${theme}-question-item`}
+          style={{
+            marginBottom: '24px',
+            borderRadius: '16px',
+            padding: '24px',
+            border: '2px solid',
+            borderColor: theme === 'sun' 
+              ? 'rgba(113, 179, 253, 0.25)' 
+              : 'rgba(138, 122, 255, 0.2)',
+            background: theme === 'sun' 
+              ? 'linear-gradient(135deg, rgba(255, 255, 255, 1) 0%, rgba(240, 249, 255, 0.95) 100%)'
+              : 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(244, 240, 255, 0.95) 100%)',
+            boxShadow: theme === 'sun' 
+              ? '0 4px 16px rgba(113, 179, 253, 0.1)'
+              : '0 4px 16px rgba(138, 122, 255, 0.12)',
+          }}
+        >
+          <div className="question-header" style={{
+            paddingBottom: '14px',
+            marginBottom: '16px',
+            borderBottom: '2px solid',
+            borderBottomColor: theme === 'sun' 
+              ? 'rgba(113, 179, 253, 0.25)' 
+              : 'rgba(138, 122, 255, 0.2)',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center'
+          }}>
+            <Typography.Text strong style={{ 
+              fontSize: '16px', 
+              color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' 
+            }}>
+              Question {questionNumber}
+            </Typography.Text>
+            <Typography.Text style={{ 
+              fontSize: '14px', 
+              color: theme === 'sun' ? 'rgba(0, 0, 0, 0.5)' : 'rgba(255, 255, 255, 0.5)',
+              fontStyle: 'italic'
+            }}>
+              Fill in the Blank
+            </Typography.Text>
+          </div>
+          <div className="question-content" style={{ paddingLeft: '36px', marginTop: '16px' }}>
+            <div style={{ marginBottom: '16px', fontSize: '15px', fontWeight: 350, lineHeight: '1.8', color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' }}>
+              {renderFillBlankInputs()}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // DROPDOWN
+    if (q.type === 'DROPDOWN') {
+      const contentData = q.content?.data || [];
+      const studentAnswerObj = studentAnswers?.[q.id] || {};
+      
+      const renderDropdownSelects = () => {
+        const parts = [];
+        const regex = /\[\[pos_(.*?)\]\]/g;
+        let last = 0;
+        let match;
+        let idx = 0;
+        
+        while ((match = regex.exec(questionText)) !== null) {
+          if (match.index > last) {
+            parts.push(
+              <span 
+                key={`text_${idx}`}
+                className="question-text-content"
+                dangerouslySetInnerHTML={{ __html: questionText.slice(last, match.index) }}
+              />
+            );
+          }
+          const positionId = `pos_${match[1]}`;
+          const rawPositionId = match[1]; // Without "pos_" prefix
+          
+          const optionsForPosition = contentData.filter(opt => {
+            const optPosId = String(opt.positionId || '');
+            return optPosId === positionId || optPosId === rawPositionId;
+          }) || [];
+          
+          const correctItem = optionsForPosition.find(it => it.correct) || 
+                             (optionsForPosition.length > 0 ? optionsForPosition[0] : null);
+          const correctAnswer = correctItem?.value || '';
+          
+          // Get student answer - check multiple possible keys
+          const studentAnswer = studentAnswerObj[positionId] || 
+                              studentAnswerObj[rawPositionId] || 
+                              studentAnswerObj[match[1]] || 
+                              '';
+          
+          const isCorrect = correctAnswer && studentAnswer.trim().toLowerCase() === correctAnswer.trim().toLowerCase();
+          const isUnanswered = !studentAnswer || studentAnswer.trim().length === 0;
+          const displayedValue = isUnanswered ? correctAnswer : studentAnswer;
+          const optionValues = optionsForPosition.map(it => it.value).filter(Boolean);
+          const ddBg = isCorrect
+            ? (theme === 'sun' ? 'rgba(82, 196, 26, 0.1)' : 'rgba(82, 196, 26, 0.15)')
+            : isUnanswered
+              ? (theme === 'sun' ? 'rgba(250, 173, 20, 0.12)' : 'rgba(250, 173, 20, 0.2)')
+              : (theme === 'sun' ? 'rgba(255, 77, 79, 0.1)' : 'rgba(255, 77, 79, 0.15)');
+          const ddBorder = isCorrect ? 'rgb(82, 196, 26)' : (isUnanswered ? '#faad14' : 'rgb(255, 77, 79)');
+          const ddColor = isUnanswered ? '#faad14' : (isCorrect ? '#52c41a' : '#ff4d4f');
+          
+          parts.push(
+            <select
+              key={`dd_${q.id}_${idx++}`}
+              value={displayedValue || ''}
+              disabled
+              style={{
+                display: 'inline-block',
+                minWidth: '120px',
+                height: '32px',
+                padding: '4px 12px',
+                margin: '0 8px',
+                background: ddBg,
+                border: `2px solid ${ddBorder}`,
+                borderRadius: '8px',
+                fontSize: '14px',
+                fontWeight: 600,
+                color: ddColor,
+                cursor: 'not-allowed',
+                outline: 'none',
+                verticalAlign: 'middle',
+                textAlign: 'center',
+                textAlignLast: 'center',
+              }}
+            >
+              <option value="" disabled hidden style={{ textAlign: 'center' }}>Select</option>
+              {optionValues.map((opt, optIdx) => (
+                <option key={optIdx} value={opt}>{opt}</option>
+              ))}
+            </select>
+          );
+          
+          // Only show side answer when answered wrong; for unanswered it's inside select
+          if (!isCorrect && correctAnswer && !isUnanswered) {
+            parts.push(
+              <span 
+                key={`answer_${idx++}`}
+                style={{ 
+                  fontSize: '15px',
+                  color: '#52c41a',
+                  fontWeight: 600,
+                  whiteSpace: 'nowrap',
+                  marginLeft: '8px',
+                  marginRight: '8px',
+                  display: 'inline-block'
+                }}
+              >
+                {correctAnswer}
+              </span>
+            );
+          }
+          
+          last = match.index + match[0].length;
+        }
+        if (last < questionText.length) {
+          parts.push(
+            <span 
+              key={`text_final_${idx}`}
+              className="question-text-content"
+              dangerouslySetInnerHTML={{ __html: questionText.slice(last) }}
+            />
+          );
+        }
+        return parts;
+      };
+
+      return (
+        <div
+          key={q.id}
+          className={`question-item ${theme}-question-item`}
+          style={{
+            marginBottom: '24px',
+            borderRadius: '16px',
+            padding: '24px',
+            border: '2px solid',
+            borderColor: theme === 'sun' 
+              ? 'rgba(113, 179, 253, 0.25)' 
+              : 'rgba(138, 122, 255, 0.2)',
+            background: theme === 'sun' 
+              ? 'linear-gradient(135deg, rgba(255, 255, 255, 1) 0%, rgba(240, 249, 255, 0.95) 100%)'
+              : 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(244, 240, 255, 0.95) 100%)',
+            boxShadow: theme === 'sun' 
+              ? '0 4px 16px rgba(113, 179, 253, 0.1)'
+              : '0 4px 16px rgba(138, 122, 255, 0.12)',
+          }}
+        >
+          <div className="question-header" style={{
+            paddingBottom: '14px',
+            marginBottom: '16px',
+            borderBottom: '2px solid',
+            borderBottomColor: theme === 'sun' 
+              ? 'rgba(113, 179, 253, 0.25)' 
+              : 'rgba(138, 122, 255, 0.2)',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center'
+          }}>
+            <Typography.Text strong style={{ 
+              fontSize: '16px', 
+              color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' 
+            }}>
+              Question {questionNumber}
+            </Typography.Text>
+            <Typography.Text style={{ 
+              fontSize: '14px', 
+              color: theme === 'sun' ? 'rgba(0, 0, 0, 0.5)' : 'rgba(255, 255, 255, 0.5)',
+              fontStyle: 'italic'
+            }}>
+              Dropdown
+            </Typography.Text>
+          </div>
+          <div className="question-content" style={{ paddingLeft: '36px', marginTop: '16px' }}>
+            <div style={{ 
+              fontSize: '15px', 
+              fontWeight: 350,
+              lineHeight: '1.8',
+              color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)',
+              marginBottom: '16px'
+            }}>
+              {renderDropdownSelects()}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // DRAG_AND_DROP
+    if (q.type === 'DRAG_AND_DROP') {
+      const contentData = q.content?.data || [];
+      const studentAnswerObj = studentAnswers?.[q.id] || {};
+      const text = questionText;
+      const parts = [];
+      const regex = /\[\[pos_(.*?)\]\]/g;
+      let last = 0;
+      let match;
+      let idx = 0;
+      
+      while ((match = regex.exec(text)) !== null) {
+        if (match.index > last) parts.push({ type: 'text', content: text.slice(last, match.index) });
+        const posId = match[1];
+        parts.push({ type: 'position', positionId: `pos_${posId}`, index: idx++ });
+        last = match.index + match[0].length;
+      }
+      if (last < text.length) parts.push({ type: 'text', content: text.slice(last) });
+
+      return (
+        <div
+          key={q.id}
+          className={`question-item ${theme}-question-item`}
+          style={{
+            marginBottom: '24px',
+            borderRadius: '16px',
+            padding: '24px',
+            border: '2px solid',
+            borderColor: theme === 'sun' 
+              ? 'rgba(113, 179, 253, 0.25)' 
+              : 'rgba(138, 122, 255, 0.2)',
+            background: theme === 'sun' 
+              ? 'linear-gradient(135deg, rgba(255, 255, 255, 1) 0%, rgba(240, 249, 255, 0.95) 100%)'
+              : 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(244, 240, 255, 0.95) 100%)',
+            boxShadow: theme === 'sun' 
+              ? '0 4px 16px rgba(113, 179, 253, 0.1)'
+              : '0 4px 16px rgba(138, 122, 255, 0.12)',
+          }}
+        >
+          <div className="question-header" style={{
+            paddingBottom: '14px',
+            marginBottom: '16px',
+            borderBottom: '2px solid',
+            borderBottomColor: theme === 'sun' 
+              ? 'rgba(113, 179, 253, 0.25)' 
+              : 'rgba(138, 122, 255, 0.2)',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center'
+          }}>
+            <Typography.Text strong style={{ 
+              fontSize: '16px', 
+              color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' 
+            }}>
+              Question {questionNumber}
+            </Typography.Text>
+            <Typography.Text style={{ 
+              fontSize: '14px', 
+              color: theme === 'sun' ? 'rgba(0, 0, 0, 0.5)' : 'rgba(255, 255, 255, 0.5)',
+              fontStyle: 'italic'
+            }}>
+              Drag and Drop
+            </Typography.Text>
+          </div>
+          <div className="question-content" style={{ paddingLeft: '36px', marginTop: '16px' }}>
+            <div style={{ display: 'flex', gap: '24px', minHeight: '300px' }}>
+              <div style={{
+                flex: '1',
+                padding: '20px',
+                background: theme === 'sun' ? '#f9f9f9' : 'rgba(255, 255, 255, 0.02)',
+                borderRadius: '12px',
+                border: `1px solid ${theme === 'sun' ? '#e8e8e8' : 'rgba(255, 255, 255, 0.1)'}`,
+              }}>
+                <div style={{ fontSize: '16px', fontWeight: 600, marginBottom: '8px' }}>
+                  Question:
+                </div>
+                <div style={{ fontSize: '15px', fontWeight: 350, lineHeight: '1.8', color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' }}>
+                  {parts.map((part, pIdx) => {
+                    if (part.type === 'text') {
+                      return <span key={pIdx} dangerouslySetInnerHTML={{ __html: part.content || '' }} />;
+                    }
+                    
+                    // Extract raw positionId from part.positionId (e.g., "pos_dqn1x8" -> "dqn1x8")
+                    const rawPositionId = part.positionId.replace(/^pos_/, '');
+                    
+                    // Get student answer - check multiple possible keys
+                    const studentAnswer = studentAnswerObj[part.positionId] || 
+                                        studentAnswerObj[rawPositionId] || 
+                                        '';
+                    
+                    // Find correct item - check both with and without "pos_" prefix
+                    let correctItem = contentData.find(item => {
+                      const itemPosId = String(item.positionId || '');
+                      return (itemPosId === part.positionId || itemPosId === rawPositionId) && item.correct;
+                    });
+                    
+                    // Fallback: if no correct item found, try to find any item with matching positionId
+                    if (!correctItem) {
+                      correctItem = contentData.find(item => {
+                        const itemPosId = String(item.positionId || '');
+                        return itemPosId === part.positionId || itemPosId === rawPositionId;
+                      });
+                    }
+                    
+                    const correctAnswer = correctItem?.value || '';
+                    const isCorrect = correctAnswer && studentAnswer.trim().toLowerCase() === correctAnswer.trim().toLowerCase();
+                    
+                    return (
+                      <React.Fragment key={pIdx}>
+                        {studentAnswer ? (
+                          <>
+                            <div style={{
+                              minWidth: '120px',
+                              minHeight: '32px',
+                              maxWidth: '200px',
+                              margin: '0 8px',
+                              background: isCorrect 
+                                ? (theme === 'sun' ? 'rgba(82, 196, 26, 0.1)' : 'rgba(82, 196, 26, 0.15)')
+                                : (theme === 'sun' ? 'rgba(255, 77, 79, 0.1)' : 'rgba(255, 77, 79, 0.15)'),
+                              border: `2px solid ${isCorrect ? 'rgb(82, 196, 26)' : 'rgb(255, 77, 79)'}`,
+                              borderRadius: '8px',
+                              display: 'inline-block',
+                              padding: '4px 12px',
+                              fontSize: '15px',
+                              fontWeight: '350',
+                              color: isCorrect ? '#52c41a' : '#ff4d4f',
+                              cursor: 'not-allowed',
+                              verticalAlign: 'middle',
+                              lineHeight: '1.4',
+                              boxSizing: 'border-box',
+                              textAlign: 'center',
+                              wordBreak: 'break-word',
+                              wordWrap: 'break-word',
+                              overflow: 'hidden',
+                              whiteSpace: 'normal'
+                            }} dangerouslySetInnerHTML={{ __html: studentAnswer || '' }} />
+                            {/* Show correct answer if wrong (same as Fill in the Blank) */}
+                            {!isCorrect && correctAnswer && (
+                              <span style={{ fontSize: '15px', color: '#52c41a', fontWeight: 600, whiteSpace: 'nowrap', marginLeft: '8px', marginRight: '8px', display: 'inline-block' }}>
+                                {correctAnswer}
+                              </span>
+                            )}
+                          </>
+                        ) : (
+                          <div style={{
+                            minWidth: '120px',
+                            minHeight: '32px',
+                            maxWidth: '200px',
+                            margin: '0 8px',
+                            background: (theme === 'sun' ? 'rgba(250, 173, 20, 0.12)' : 'rgba(250, 173, 20, 0.2)'),
+                            border: '2px solid #faad14',
+                            borderRadius: '8px',
+                            display: 'inline-block',
+                            padding: '4px 12px',
+                            fontSize: '15px',
+                            fontWeight: '600',
+                            color: '#faad14',
+                            cursor: 'not-allowed',
+                            verticalAlign: 'middle',
+                            lineHeight: '1.4',
+                            boxSizing: 'border-box',
+                            textAlign: 'center'
+                          }} dangerouslySetInnerHTML={{ __html: correctAnswer || '' }} />
+                        )}
+                      </React.Fragment>
+                    );
+                  })}
+                </div>
+              </div>
+              <div style={{
+                flex: '1',
+                padding: '20px',
+                background: theme === 'sun' ? '#ffffff' : 'rgba(255, 255, 255, 0.03)',
+                borderRadius: '12px',
+                border: `1px solid ${theme === 'sun' ? '#e8e8e8' : 'rgba(255, 255, 255, 0.1)'}`,
+              }}>
+                <Typography.Text style={{ fontSize: '14px', fontWeight: 350, marginBottom: '16px', display: 'block', color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' }}>
+                  Available words:
+                </Typography.Text>
+                <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center', minHeight: '120px' }}>
+                  {contentData.map((item, idx) => {
+                    const itemValue = item?.value || '';
+                    const isCorrectWord = item?.correct === true;
+                    return (
+                      <div key={idx} style={{
+                        padding: '12px 20px',
+                        background: isCorrectWord
+                          ? (theme === 'sun' ? 'rgba(82, 196, 26, 0.15)' : 'rgba(82, 196, 26, 0.2)')
+                          : (theme === 'sun' ? 'rgba(255, 77, 79, 0.15)' : 'rgba(255, 77, 79, 0.2)'),
+                        border: `2px solid ${isCorrectWord ? '#52c41a' : '#ff4d4f'}`,
+                        borderRadius: '12px',
+                        fontSize: '16px',
+                        fontWeight: '600',
+                        color: isCorrectWord ? '#52c41a' : '#ff4d4f',
+                        cursor: 'default',
+                        userSelect: 'none',
+                        minWidth: '80px',
+                        textAlign: 'center',
+                      }} dangerouslySetInnerHTML={{ __html: itemValue }} />
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // REARRANGE
+    if (q.type === 'REARRANGE') {
+      const contentData = q.content?.data || [];
+      const studentAnswer = studentAnswers?.[q.id] || [];
+      
+      // Get correct order by sorting by positionId (alphabetically, as positionId is string)
+      const correctOrder = contentData
+        .slice()
+        .sort((a, b) => {
+          const posA = (a.positionId || '').replace(/^pos_/, '');
+          const posB = (b.positionId || '').replace(/^pos_/, '');
+          return posA.localeCompare(posB);
+        })
+        .map(item => item.value)
+        .filter(Boolean);
+      
+      // Student answer should be an array of values (not ids) from mapping
+      const studentOrder = Array.isArray(studentAnswer) 
+        ? studentAnswer 
+        : (typeof studentAnswer === 'object' && studentAnswer !== null 
+            ? Object.keys(studentAnswer)
+                .sort((a, b) => {
+                  const posA = String(a).replace(/^pos_/, '');
+                  const posB = String(b).replace(/^pos_/, '');
+                  return posA.localeCompare(posB);
+                })
+                .map(key => studentAnswer[key])
+                .filter(Boolean) 
+            : []);
+      
+      const isCorrect = studentOrder.length === correctOrder.length && 
+        studentOrder.every((word, idx) => word.trim().toLowerCase() === correctOrder[idx].trim().toLowerCase());
+      
+      const displayText = ((questionText).replace(/\[\[pos_.*?\]\]/g, '')).trim();
+
+      return (
+        <div
+          key={q.id}
+          className={`question-item ${theme}-question-item`}
+          style={{
+            marginBottom: '24px',
+            borderRadius: '16px',
+            padding: '24px',
+            border: '2px solid',
+            borderColor: theme === 'sun' 
+              ? 'rgba(113, 179, 253, 0.25)' 
+              : 'rgba(138, 122, 255, 0.2)',
+            background: theme === 'sun' 
+              ? 'linear-gradient(135deg, rgba(255, 255, 255, 1) 0%, rgba(240, 249, 255, 0.95) 100%)'
+              : 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(244, 240, 255, 0.95) 100%)',
+            boxShadow: theme === 'sun' 
+              ? '0 4px 16px rgba(113, 179, 253, 0.1)'
+              : '0 4px 16px rgba(138, 122, 255, 0.12)',
+          }}
+        >
+          <div className="question-header" style={{
+            paddingBottom: '14px',
+            marginBottom: '16px',
+            borderBottom: '2px solid',
+            borderBottomColor: theme === 'sun' 
+              ? 'rgba(113, 179, 253, 0.25)' 
+              : 'rgba(138, 122, 255, 0.2)',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center'
+          }}>
+            <Typography.Text strong style={{ 
+              fontSize: '16px', 
+              color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' 
+            }}>
+              Question {questionNumber}
+            </Typography.Text>
+            <Typography.Text style={{ 
+              fontSize: '14px', 
+              color: theme === 'sun' ? 'rgba(0, 0, 0, 0.5)' : 'rgba(255, 255, 255, 0.5)',
+              fontStyle: 'italic'
+            }}>
+              Rearrange
+            </Typography.Text>
+          </div>
+          <div className="question-content" style={{ paddingLeft: '36px', marginTop: '16px' }}>
+            <div style={{ fontSize: '15px', fontWeight: 350, marginBottom: '16px', lineHeight: '1.8', color: '#000000' }}>
+              <div className="question-text-content" dangerouslySetInnerHTML={{ __html: displayText || 'Rearrange the words to form a correct sentence:' }} />
+            </div>
+            <div style={{ marginBottom: '24px', padding: '20px', background: theme === 'sun' ? '#f9f9f9' : 'rgba(255, 255, 255, 0.02)', borderRadius: '12px', border: `1px solid ${theme === 'sun' ? '#e8e8e8' : 'rgba(255, 255, 255, 0.1)'}` }}>
+              <Typography.Text style={{ fontSize: '14px', fontWeight: 350, marginBottom: '16px', display: 'block', color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' }}>
+                Your answer:
+              </Typography.Text>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px' }}>
+                {studentOrder.length > 0 ? studentOrder.map((word, index) => (
+                  <div key={index} style={{
+                    minWidth: '100px',
+                    height: '60px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    border: `2px solid ${isCorrect ? '#52c41a' : '#ff4d4f'}`,
+                    borderRadius: '8px',
+                    background: isCorrect
+                      ? (theme === 'sun' ? 'rgba(82, 196, 26, 0.15)' : 'rgba(82, 196, 26, 0.2)')
+                      : (theme === 'sun' ? 'rgba(255, 77, 79, 0.15)' : 'rgba(255, 77, 79, 0.2)'),
+                    cursor: 'not-allowed'
+                  }}>
+                    <span style={{ fontSize: '14px', fontWeight: '600', color: isCorrect ? '#52c41a' : '#ff4d4f', textAlign: 'center', padding: '8px 12px' }}>
+                      {word}
+                    </span>
+                  </div>
+                )) : (
+                  correctOrder.map((word, index) => (
+                    <div key={index} style={{
+                      minWidth: '100px',
+                      height: '60px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      border: '2px solid #faad14',
+                      borderRadius: '8px',
+                      background: theme === 'sun' ? 'rgba(250, 173, 20, 0.12)' : 'rgba(250, 173, 20, 0.2)',
+                      cursor: 'not-allowed'
+                    }}>
+                      <span style={{ fontSize: '14px', fontWeight: '600', color: '#faad14', textAlign: 'center', padding: '8px 12px' }}>
+                        {word}
+                      </span>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+            {!isCorrect && studentOrder.length > 0 && (
+              <div style={{ marginBottom: '24px', padding: '20px', background: theme === 'sun' ? '#ffffff' : 'rgba(255, 255, 255, 0.03)', borderRadius: '12px', border: `1px solid ${theme === 'sun' ? '#e8e8e8' : 'rgba(255, 255, 255, 0.1)'}` }}>
+                <Typography.Text style={{ fontSize: '14px', fontWeight: 350, marginBottom: '16px', display: 'block', color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' }}>
+                  Correct order:
+                </Typography.Text>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px' }}>
+                  {correctOrder.map((word, index) => (
+                    <div key={index} style={{
+                      minWidth: '100px',
+                      height: '60px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      border: '2px solid #52c41a',
+                      borderRadius: '8px',
+                      background: theme === 'sun' ? 'rgba(82, 196, 26, 0.15)' : 'rgba(82, 196, 26, 0.2)',
+                      cursor: 'default'
+                    }}>
+                      <span style={{ fontSize: '14px', fontWeight: '600', color: '#52c41a', textAlign: 'center', padding: '8px 12px' }}>
+                        {word}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    // REWRITE
+    if (q.type === 'REWRITE') {
+      const contentData = q.content?.data || [];
+      const studentAnswer = studentAnswers?.[q.id] || '';
+      
+      const correctAnswers = contentData.map(item => item?.value || '').filter(Boolean);
+      const isCorrect = (() => {
+        if (!studentAnswer || correctAnswers.length === 0) return false;
+        const normalizedStudent = studentAnswer.trim().toLowerCase();
+        return correctAnswers.some(correct => 
+          correct.trim().toLowerCase() === normalizedStudent
+        );
+      })();
+      
+      const displayQuestionText = (questionText).replace(/\[\[pos_.*?\]\]/g, '');
+
+      return (
+        <div
+          key={q.id}
+          className={`question-item ${theme}-question-item`}
+          style={{
+            marginBottom: '24px',
+            borderRadius: '16px',
+            padding: '24px',
+            border: '2px solid',
+            borderColor: theme === 'sun' 
+              ? 'rgba(113, 179, 253, 0.25)' 
+              : 'rgba(138, 122, 255, 0.2)',
+            background: theme === 'sun' 
+              ? 'linear-gradient(135deg, rgba(255, 255, 255, 1) 0%, rgba(240, 249, 255, 0.95) 100%)'
+              : 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(244, 240, 255, 0.95) 100%)',
+            boxShadow: theme === 'sun' 
+              ? '0 4px 16px rgba(113, 179, 253, 0.1)'
+              : '0 4px 16px rgba(138, 122, 255, 0.12)',
+          }}
+        >
+          <div className="question-header" style={{
+            paddingBottom: '14px',
+            marginBottom: '16px',
+            borderBottom: '2px solid',
+            borderBottomColor: theme === 'sun' 
+              ? 'rgba(113, 179, 253, 0.25)' 
+              : 'rgba(138, 122, 255, 0.2)',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center'
+          }}>
+            <Typography.Text strong style={{ 
+              fontSize: '16px', 
+              color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' 
+            }}>
+              Question {questionNumber}
+            </Typography.Text>
+            <Typography.Text style={{ 
+              fontSize: '14px', 
+              color: theme === 'sun' ? 'rgba(0, 0, 0, 0.5)' : 'rgba(255, 255, 255, 0.5)',
+              fontStyle: 'italic'
+            }}>
+              Rewrite
+            </Typography.Text>
+          </div>
+          <div className="question-content" style={{ paddingLeft: '36px', marginTop: '16px' }}>
+            <div 
+              className="question-text-content"
+              style={{ 
+                fontSize: '15px', 
+                fontWeight: 350,
+                marginBottom: '16px',
+                lineHeight: '1.8',
+                color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)'
+              }}
+              dangerouslySetInnerHTML={{ __html: displayQuestionText }}
+            />
+            <div style={{ marginTop: '20px' }}>
+              <Typography.Text style={{ fontSize: '14px', fontWeight: 350, marginBottom: '8px', display: 'block', color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' }}>
+                Your answer:
+              </Typography.Text>
+              <div style={{
+                width: '100%',
+                minHeight: '80px',
+                padding: '12px 16px',
+                border: `2px solid ${studentAnswer ? (isCorrect ? '#52c41a' : '#ff4d4f') : (theme === 'sun' ? '#1890ff' : '#8B5CF6')}`,
+                borderRadius: '8px',
+                backgroundColor: studentAnswer
+                  ? (isCorrect ? (theme === 'sun' ? 'rgba(82, 196, 26, 0.1)' : 'rgba(82, 196, 26, 0.15)') : (theme === 'sun' ? 'rgba(255, 77, 79, 0.1)' : 'rgba(255, 77, 79, 0.15)'))
+                  : (theme === 'sun' ? 'rgba(255, 255, 255, 0.9)' : 'rgba(255, 255, 255, 0.85)'),
+                color: studentAnswer ? (isCorrect ? '#52c41a' : '#ff4d4f') : (theme === 'sun' ? '#000000' : '#FFFFFF'),
+                fontSize: '14px',
+                fontFamily: 'inherit',
+                outline: 'none',
+                whiteSpace: 'pre-wrap',
+                wordWrap: 'break-word',
+                cursor: 'not-allowed'
+              }}>
+                {studentAnswer || 'No answer provided'}
+              </div>
+            </div>
+            {correctAnswers.length > 0 && (
+              <div style={{ marginTop: '20px' }}>
+                <Typography.Text style={{ fontSize: '14px', fontWeight: 350, marginBottom: '8px', display: 'block', color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' }}>
+                  Correct answer{correctAnswers.length > 1 ? 's' : ''}:
+                </Typography.Text>
+                {correctAnswers.map((correctAnswer, idx) => (
+                  <div key={idx} style={{
+                    width: '100%',
+                    minHeight: '80px',
+                    padding: '12px 16px',
+                    border: '2px solid #52c41a',
+                    borderRadius: '8px',
+                    backgroundColor: theme === 'sun' ? 'rgba(82, 196, 26, 0.1)' : 'rgba(82, 196, 26, 0.15)',
+                    color: '#52c41a',
+                    fontSize: '14px',
+                    fontFamily: 'inherit',
+                    whiteSpace: 'pre-wrap',
+                    wordWrap: 'break-word',
+                    marginBottom: idx < correctAnswers.length - 1 ? '8px' : '0',
+                    cursor: 'default'
+                  }}>
+                    {correctAnswer}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    // Default placeholder for unknown types
+    return (
+      <div
+        key={q.id}
+        className={`question-item ${theme}-question-item`}
+        style={{
+          marginBottom: '24px',
+          borderRadius: '16px',
+          padding: '24px',
+          border: '2px solid',
+          borderColor: theme === 'sun' 
+            ? 'rgba(113, 179, 253, 0.25)' 
+            : 'rgba(138, 122, 255, 0.2)',
+          background: theme === 'sun' 
+            ? 'linear-gradient(135deg, rgba(255, 255, 255, 1) 0%, rgba(240, 249, 255, 0.95) 100%)'
+            : 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(244, 240, 255, 0.95) 100%)',
+        }}
+      >
+        <div className="question-header" style={{
+          paddingBottom: '14px',
+          marginBottom: '16px',
+          borderBottom: '2px solid',
+          borderBottomColor: theme === 'sun' 
+            ? 'rgba(113, 179, 253, 0.25)' 
+            : 'rgba(138, 122, 255, 0.2)',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center'
+        }}>
+          <Typography.Text strong style={{ 
+            fontSize: '16px', 
+            color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' 
+          }}>
+            Question {questionNumber}
+          </Typography.Text>
+          <Typography.Text style={{ 
+            fontSize: '14px', 
+            color: theme === 'sun' ? 'rgba(0, 0, 0, 0.5)' : 'rgba(255, 255, 255, 0.5)',
+            fontStyle: 'italic'
+          }}>
+            {q.type.replace('_', ' ')}
+          </Typography.Text>
+        </div>
+        <div className="question-content" style={{ paddingLeft: '36px', marginTop: '16px' }}>
+          <div 
+            className="question-text-content"
+            style={{ 
+              fontSize: '15px', 
+              fontWeight: 350,
+              marginBottom: '12px',
+              lineHeight: '1.8',
+              color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)'
+            }}
+            dangerouslySetInnerHTML={{ __html: questionText }}
+          />
+        </div>
+      </div>
+    );
+  };
+
+  // Custom header with back button, title, and score buttons (after data is loaded)
+  const customHeader = (
+    <header className={`themed-header ${theme}-header`}>
+      <nav className="themed-navbar">
+        <div className="themed-navbar-content">
+          <div className="themed-navbar-brand" style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '16px',
+            flex: 1
+          }}>
+            <Button
+              icon={<ArrowLeftOutlined />}
+              onClick={() => {
+                if (dailyChallengeData?.backPath) {
+                  navigate(dailyChallengeData.backPath);
+                } else {
+                  navigate(-1);
+                }
+              }}
+              className={`daily-challenge-menu-back-button ${theme}-daily-challenge-menu-back-button`}
+              style={{
+                height: '32px',
+                borderRadius: '8px',
+                fontWeight: '500',
+                fontSize: '14px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                border: '1px solid rgba(0, 0, 0, 0.1)',
+                background: '#ffffff',
+                color: '#000000',
+                backdropFilter: 'blur(10px)',
+                transition: 'all 0.3s ease'
+              }}
+              onMouseEnter={(e) => {
+                e.target.style.transform = 'translateY(-2px)';
+                e.target.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.15)';
+                e.target.style.filter = 'brightness(0.95)';
+                e.target.style.borderColor = 'rgba(0, 0, 0, 0.2)';
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.transform = 'translateY(0)';
+                e.target.style.boxShadow = 'none';
+                e.target.style.filter = 'none';
+                e.target.style.borderColor = 'rgba(0, 0, 0, 0.1)';
+              }}
+            >
+              {t('common.back')}
+            </Button>
+            <div style={{
+              height: '24px',
+              width: '1px',
+              backgroundColor: theme === 'sun' ? 'rgba(30, 64, 175, 0.3)' : 'rgba(255, 255, 255, 0.3)'
+            }} />
+            <h2 style={{
+              margin: 0,
+              fontSize: '20px',
+              fontWeight: '600',
+              color: theme === 'sun' ? '#1e40af' : '#fff',
+              textShadow: theme === 'sun' ? '0 0 5px rgba(30, 64, 175, 0.3)' : '0 0 15px rgba(134, 134, 134, 0.8)'
+            }}>
+              {t('dailyChallenge.dailyChallengeManagement')}
+            </h2>
+          </div>
+          {/* Right actions */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginLeft: 'auto' }}>
+            <Button
+              icon={<SaveOutlined />}
+              loading={savingGrading}
+              onClick={handleSaveGrading}
+              className={`create-button ${theme}-create-button`}
+              style={{
+                height: '40px',
+                borderRadius: '8px',
+                fontWeight: 500,
+                fontSize: '16px',
+                padding: '0 24px',
+                border: 'none',
+                transition: 'all 0.3s ease',
+                background: theme === 'sun'
+                  ? 'linear-gradient(135deg, #66AEFF, #3C99FF)'
+                  : 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)',
+                color: '#000000',
+                boxShadow: theme === 'sun' ? '0 2px 8px rgba(60, 153, 255, 0.3)' : '0 2px 8px rgba(131, 119, 160, 0.3)'
+              }}
+            >
+              {t('common.save') || 'Save'}
+            </Button>
+          </div>
+        </div>
+      </nav>
+    </header>
+  );
+
+  return (
+    <ThemedLayout customHeader={customHeader}>
+      {/* Sidebar Toggle Button when collapsed - Show button on left edge */}
+      {isCollapsed && (
+        <button
+          onClick={() => setIsCollapsed(false)}
+          style={{
+            position: 'fixed',
+            left: '0',
+            top: '50%',
+            transform: 'translateY(-50%)',
+            zIndex: 10001,
+            background: theme === 'sun' ? 'rgba(113, 179, 253, 0.9)' : 'rgba(138, 122, 255, 0.9)',
+            border: 'none',
+            borderTopRightRadius: '8px',
+            borderBottomRightRadius: '8px',
+            padding: '10px 8px',
+            cursor: 'pointer',
+            transition: 'all 0.3s ease',
+            color: '#fff',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+            display: 'flex',
+            alignItems: 'center',
+          }}
+        >
+          <MenuOutlined />
+        </button>
+      )}
+      <div className={`sdc-wrapper ${theme}-sdc-wrapper`} style={{ padding: '24px', position: 'relative' }}>
+        <style>{`
+          .ck-editor__editable_inline { min-height: 220px; }
+          .ck-content { white-space: pre-wrap; word-break: break-word; overflow-wrap: anywhere; color: #000 !important; }
+          .ck.ck-toolbar .ck-toolbar__items { flex-wrap: wrap; }
+           /* Make default AntD textareas taller by default (sidebar + modals) */
+          .ant-input-textarea textarea { min-height: 160px; }
+          .ant-modal .ant-input-textarea textarea { min-height: 160px; }
+        `}</style>
+        <Row gutter={24}>
+          {/* Left Section - Student Info & Performance */}
+          <Col 
+            xs={24} 
+            lg={isCollapsed ? 0 : 6}
+            style={{ 
+              transition: 'all 0.3s ease',
+              overflowX: 'visible',
+              overflowY: 'hidden',
+              position: 'relative'
+            }}
+          >
+
+            <div className="settings-scroll-container" style={{
+              position: 'sticky', 
+              top: '0px', 
+              height: 'auto',
+              maxHeight: 'calc(100vh - 40px)', 
+              overflowY: 'auto', 
+              overflowX: 'visible',
+              paddingBottom: '80px', 
+              
+              paddingRight: '40px', 
+              transition: 'all 0.3s ease',
+              display: 'block',
+              scrollbarWidth: 'none', /* Firefox */
+              msOverflowStyle: 'none', /* IE and Edge */
+            }}>
+              <style>{`
+                .settings-scroll-container::-webkit-scrollbar {
+                  display: none; /* Chrome, Safari, Opera */
+                }
+              `}</style>
+              <Card
+                className={`settings-container-card ${theme}-settings-container-card`}
+                style={{
+                  borderRadius: '16px',
+                  border: theme === 'sun' 
+                    ? '2px solid rgba(113, 179, 253, 0.25)' 
+                    : '2px solid rgba(138, 122, 255, 0.2)',
+                  boxShadow: theme === 'sun' 
+                    ? '0 4px 16px rgba(113, 179, 253, 0.1)' 
+                    : '0 4px 16px rgba(138, 122, 255, 0.12)',
+                  background: theme === 'sun'
+                    ? 'linear-gradient(135deg, rgba(255, 255, 255, 1) 0%, rgba(240, 249, 255, 0.95) 100%)'
+                    : 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(244, 240, 255, 0.95) 100%)',
+                  backdropFilter: 'blur(10px)',
+                  position: 'relative'
+                }}
+              >
+                {/* Sidebar Toggle Button - Positioned at the right edge of Card */}
+                <button
+                  onClick={() => setIsCollapsed(true)}
+                  style={{
+                    position: 'absolute',
+                    right: '-32px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    zIndex: 1001,
+                    background: theme === 'sun' ? 'rgba(113, 179, 253, 0.9)' : 'rgba(138, 122, 255, 0.9)',
+                    border: 'none',
+                    borderTopRightRadius: '8px',
+                    borderBottomRightRadius: '8px',
+                    padding: '10px 8px',
+                    cursor: 'pointer',
+                    transition: 'all 0.3s ease',
+                    color: '#fff',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+                    display: 'flex',
+                    alignItems: 'center',
+                  }}
+                >
+                  <CloseOutlined />
+                </button>
+
+                  {/* Header with Tabs */}
+                  <div style={{ 
+                    marginBottom: '20px',
+                    paddingBottom: '16px',
+                    borderBottom: theme === 'sun' 
+                      ? '2px solid rgba(113, 179, 253, 0.15)' 
+                      : '2px solid rgba(138, 122, 255, 0.15)'
+                  }}>
+                    {/* Tab Navigation */}
+                    <div style={{
+                      borderBottom: `1px solid ${theme === 'sun' ? '#e0e0e0' : 'rgba(255, 255, 255, 0.1)'}`,
+                      marginBottom: '16px'
+                    }}>
+                      <div style={{ display: 'flex', gap: '0px', width: '100%' }}>
+                        <button
+                          onClick={() => setActiveTab('info')}
+                          style={{
+                            flex: 1,
+                            padding: '6px 16px',
+                            cursor: 'pointer',
+                            fontSize: '14px',
+                            fontWeight: activeTab === 'info' ? 500 : 400,
+                            transition: 'all 0.2s ease',
+                            background: activeTab === 'info'
+                              ? (theme === 'sun' 
+                                  ? 'linear-gradient(135deg, rgba(148, 163, 184, 0.06) 0%, rgba(148, 163, 184, 0.03) 100%)'
+                                  : 'linear-gradient(135deg, rgba(226, 232, 240, 0.08) 0%, rgba(226, 232, 240, 0.04) 100%)')
+                              : 'transparent',
+                            border: activeTab === 'info'
+                              ? `1px solid ${theme === 'sun' ? 'rgba(148, 163, 184, 0.15)' : 'rgba(226, 232, 240, 0.2)'}`
+                              : 'none',
+                            borderBottom: activeTab === 'info'
+                              ? `2px solid ${theme === 'sun' ? '#1a73e8' : '#8B5CF6'}`
+                              : '2px solid transparent',
+                            borderRadius: '8px 8px 0 0',
+                            color: activeTab === 'info'
+                              ? (theme === 'sun' ? '#1a73e8' : '#8B5CF6')
+                              : (theme === 'sun' ? '#5f6368' : 'rgba(255, 255, 255, 0.6)'),
+                            marginBottom: '-1px',
+                            position: 'relative'
+                          }}
+                          onMouseEnter={(e) => {
+                            if (activeTab !== 'info') {
+                              e.currentTarget.style.color = theme === 'sun' ? '#1a73e8' : '#8B5CF6';
+                              e.currentTarget.style.backgroundColor = theme === 'sun' ? 'rgba(26, 115, 232, 0.04)' : 'rgba(139, 92, 246, 0.1)';
+                            }
+                          }}
+                          onMouseLeave={(e) => {
+                            if (activeTab !== 'info') {
+                              e.currentTarget.style.color = theme === 'sun' ? '#5f6368' : 'rgba(255, 255, 255, 0.6)';
+                              e.currentTarget.style.backgroundColor = 'transparent';
+                            }
+                          }}
+                        >
+                          Info
+                        </button>
+                        <button
+                          onClick={() => setActiveTab('questions')}
+                          style={{
+                            flex: 1,
+                            padding: '6px 16px',
+                            cursor: 'pointer',
+                            fontSize: '14px',
+                            fontWeight: activeTab === 'questions' ? 500 : 400,
+                            transition: 'all 0.2s ease',
+                            background: activeTab === 'questions'
+                              ? (theme === 'sun' 
+                                  ? 'linear-gradient(135deg, rgba(148, 163, 184, 0.06) 0%, rgba(148, 163, 184, 0.03) 100%)'
+                                  : 'linear-gradient(135deg, rgba(226, 232, 240, 0.08) 0%, rgba(226, 232, 240, 0.04) 100%)')
+                              : 'transparent',
+                            border: activeTab === 'questions'
+                              ? `1px solid ${theme === 'sun' ? 'rgba(148, 163, 184, 0.15)' : 'rgba(226, 232, 240, 0.2)'}`
+                              : 'none',
+                            borderBottom: activeTab === 'questions'
+                              ? `2px solid ${theme === 'sun' ? '#1a73e8' : '#8B5CF6'}`
+                              : '2px solid transparent',
+                            borderRadius: '8px 8px 0 0',
+                            color: activeTab === 'questions'
+                              ? (theme === 'sun' ? '#1a73e8' : '#8B5CF6')
+                              : (theme === 'sun' ? '#5f6368' : 'rgba(255, 255, 255, 0.6)'),
+                            marginBottom: '-1px',
+                            position: 'relative'
+                          }}
+                          onMouseEnter={(e) => {
+                            if (activeTab !== 'questions') {
+                              e.currentTarget.style.color = theme === 'sun' ? '#1a73e8' : '#8B5CF6';
+                              e.currentTarget.style.backgroundColor = theme === 'sun' ? 'rgba(26, 115, 232, 0.04)' : 'rgba(139, 92, 246, 0.1)';
+                            }
+                          }}
+                          onMouseLeave={(e) => {
+                            if (activeTab !== 'questions') {
+                              e.currentTarget.style.color = theme === 'sun' ? '#5f6368' : 'rgba(255, 255, 255, 0.6)';
+                              e.currentTarget.style.backgroundColor = 'transparent';
+                            }
+                          }}
+                        >
+                          Questions
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Tab Content */}
+                  {activeTab === 'info' ? (
+                    <>
+                      {/* Performance & Student Information Summary */}
+                      <div style={{ marginBottom: '16px' }}>
+                        <div 
+                          onClick={() => setIsPerformanceCollapsed(!isPerformanceCollapsed)}
+                      style={{ 
+                        cursor: 'pointer',
+                        marginBottom: '12px',
+                        padding: '3px 16px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '8px',
+                        background: theme === 'sun' 
+                          ? 'linear-gradient(135deg, rgba(148, 163, 184, 0.06) 0%, rgba(148, 163, 184, 0.03) 100%)'
+                          : 'linear-gradient(135deg, rgba(226, 232, 240, 0.08) 0%, rgba(226, 232, 240, 0.04) 100%)',
+                        borderRadius: '8px',
+                        border: `1px solid ${theme === 'sun' ? 'rgba(148, 163, 184, 0.15)' : 'rgba(226, 232, 240, 0.2)'}`,
+                        transition: 'all 0.3s ease',
+                        boxShadow: theme === 'sun' 
+                          ? '0 1px 4px rgba(148, 163, 184, 0.05)' 
+                          : '0 1px 4px rgba(226, 232, 240, 0.08)'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = theme === 'sun' 
+                          ? 'linear-gradient(135deg, rgba(148, 163, 184, 0.1) 0%, rgba(148, 163, 184, 0.06) 100%)'
+                          : 'linear-gradient(135deg, rgba(226, 232, 240, 0.12) 0%, rgba(226, 232, 240, 0.08) 100%)';
+                        e.currentTarget.style.transform = 'translateY(-1px)';
+                        e.currentTarget.style.boxShadow = theme === 'sun' 
+                          ? '0 2px 8px rgba(148, 163, 184, 0.1)' 
+                          : '0 2px 8px rgba(226, 232, 240, 0.15)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = theme === 'sun' 
+                          ? 'linear-gradient(135deg, rgba(148, 163, 184, 0.06) 0%, rgba(148, 163, 184, 0.03) 100%)'
+                          : 'linear-gradient(135deg, rgba(226, 232, 240, 0.08) 0%, rgba(226, 232, 240, 0.04) 100%)';
+                        e.currentTarget.style.transform = 'translateY(0)';
+                        e.currentTarget.style.boxShadow = theme === 'sun' 
+                          ? '0 1px 4px rgba(148, 163, 184, 0.05)' 
+                          : '0 1px 4px rgba(226, 232, 240, 0.08)';
+                      }}
+                    >
+                      <Typography.Title 
+                        level={5} 
+                        style={{ 
+                          margin: 0,
+                          fontSize: '16px', 
+                          fontWeight: 500, 
+                          color: theme === 'sun' ? '#4a5568' : '#e2e8f0',
+                          userSelect: 'none'
+                        }}
+                      >
+                        Performance
+                      </Typography.Title>
+                      {isPerformanceCollapsed ? (
+                        <DownOutlined style={{ fontSize: '14px', color: theme === 'sun' ? '#4a5568' : '#e2e8f0' }} />
+                      ) : (
+                        <UpOutlined style={{ fontSize: '14px', color: theme === 'sun' ? '#4a5568' : '#e2e8f0' }} />
+                      )}
+                    </div>
+                    
+                    {!isPerformanceCollapsed && (
+                      <>
+                        {/* Score Circle */}
+                        <div style={{ marginBottom: '20px', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                          <div style={{ position: 'relative', display: 'inline-block' }}>
+                            {/* Star icon at top-right */}
+                            <StarOutlined
+                              style={{
+                                position: 'absolute',
+                                top: '-8px',
+                                right: '-8px',
+                                fontSize: '24px',
+                                color: '#FFD700',
+                                zIndex: 2,
+                                filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.2))'
+                              }}
+                            />
+                            {/* Circular Score Display */}
+                            <div
+                              style={{
+                                width: '120px',
+                                height: '120px',
+                                borderRadius: '50%',
+                                background: theme === 'sun' ? '#E8F5E9' : 'rgba(232, 245, 233, 0.8)',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                justifyContent: 'center',
+                                alignItems: 'center',
+                                position: 'relative',
+                                border: `3px solid ${theme === 'sun' ? '#C8E6C9' : 'rgba(200, 230, 201, 0.6)'}`
+                              }}
+                            >
+                              {submission.score != null && submission.score !== undefined ? (
+                                <>
+                                  <Typography.Text
+                                    strong
+                                    style={{
+                                      fontSize: '36px',
+                                      fontWeight: 700,
+                                      color: '#4CAF50',
+                                      lineHeight: '1',
+                                      marginBottom: '4px'
+                                    }}
+                                  >
+                                    {`${submission.score}/${submission.maxPoints ?? submission.totalPoints ?? submissionData?.challenge?.maxPoints ?? 0}`}
+                                  </Typography.Text>
+                                  <Typography.Text
+                                    style={{
+                                      fontSize: '12px',
+                                      color: theme === 'sun' ? '#666' : '#999',
+                                      fontWeight: 400
+                                    }}
+                                  >
+                                    Score
+                                  </Typography.Text>
+                                </>
+                              ) : (
+                                <>
+                                  <Typography.Text
+                                    strong
+                                    style={{
+                                      fontSize: '36px',
+                                      fontWeight: 700,
+                                      color: theme === 'sun' ? '#999' : '#666',
+                                      lineHeight: '1',
+                                      marginBottom: '4px'
+                                    }}
+                                  >
+                                    -
+                                  </Typography.Text>
+                                  <Typography.Text
+                                    style={{
+                                      fontSize: '12px',
+                                      color: theme === 'sun' ? '#666' : '#999',
+                                      fontWeight: 400
+                                    }}
+                                  >
+                                    Score
+                                  </Typography.Text>
+                                </>
+                              )}
+                            </div>
+                            {submission.score != null && submission.score !== undefined && (
+                              <Button
+                                type="text"
+                                icon={<EditOutlined />}
+                                onClick={handleOpenEditScore}
+                                style={{
+                                  position: 'absolute',
+                                  bottom: '-8px',
+                                  right: '-8px',
+                                  padding: '4px 8px',
+                                  color: theme === 'sun' ? '#1890ff' : '#8377A0',
+                                  fontSize: '16px',
+                                  background: theme === 'sun' ? '#fff' : 'rgba(255, 255, 255, 0.9)',
+                                  borderRadius: '50%',
+                                  width: '32px',
+                                  height: '32px',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                                }}
+                                title="Edit Score"
+                              />
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Pass/Fail Status */}
+                        {submission.score != null && submission.score !== undefined ? (() => {
+                          return submission.score >= 5 ? (
+                            <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+                              <Typography.Text
+                                strong
+                                style={{
+                                  fontSize: '18px',
+                                  fontWeight: 700,
+                                  color: '#4CAF50',
+                                  textTransform: 'uppercase',
+                                  letterSpacing: '1px'
+                                }}
+                              >
+                                PASSED
+                              </Typography.Text>
+                            </div>
+                          ) : (
+                            <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+                              <Typography.Text
+                                strong
+                                style={{
+                                  fontSize: '18px',
+                                  fontWeight: 700,
+                                  color: '#f44336',
+                                  textTransform: 'uppercase',
+                                  letterSpacing: '1px'
+                                }}
+                              >
+                                FAILED
+                              </Typography.Text>
+                            </div>
+                          );
+                        })() : null}
+
+                        {/* Question Breakdown Grid */}
+                        <div style={{
+                          display: 'grid',
+                          gridTemplateColumns: 'repeat(2, 1fr)',
+                          gap: '12px',
+                          marginBottom: '20px'
+                        }}>
+                          {/* Total Card */}
+                          <div style={{
+                            padding: '16px',
+                            background: theme === 'sun' ? '#F5F5F5' : 'rgba(255, 255, 255, 0.1)',
+                            borderRadius: '8px',                                
+                            height: '50px',
+                            textAlign: 'center',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            border: `1px solid ${theme === 'sun' ? '#E0E0E0' : 'rgba(255, 255, 255, 0.1)'}`
+                          }}>
+                            <Typography.Text
+                              strong
+                              style={{
+                                fontSize: '24px',
+                                fontWeight: 700,
+                                color: '#1890ff',
+                                display: 'block',
+                                marginBottom: '0px',
+                                lineHeight: '1'
+                              }}
+                            >
+                              {(submission.correctCount != null && submission.incorrectCount != null && submission.unansweredCount != null) 
+                                ? (submission.correctCount + submission.incorrectCount + submission.unansweredCount)
+                                : '-'}
+                            </Typography.Text>
+                            <Typography.Text
+                              style={{
+                                fontSize: '12px',
+                                color: theme === 'sun' ? '#666' : '#999',
+                                display: 'block'
+                              }}
+                            >
+                              Total
+                            </Typography.Text>
+                          </div>
+
+                          {/* Correct Card */}
+                          <div style={{
+                            padding: '16px',
+                            background: theme === 'sun' ? '#F5F5F5' : 'rgba(255, 255, 255, 0.1)',
+                            borderRadius: '8px',
+                            textAlign: 'center',
+                            height: '50px',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            border: `1px solid ${theme === 'sun' ? '#E0E0E0' : 'rgba(255, 255, 255, 0.1)'}`
+                          }}>
+                            <Typography.Text
+                              strong
+                              style={{
+                                fontSize: '24px',
+                                fontWeight: 700,
+                                color: '#1890ff',
+                                display: 'block',
+                                marginBottom: '0px',
+                                lineHeight: '1'
+                              }}
+                            >
+                              {submission.correctCount != null ? submission.correctCount : '-'}
+                            </Typography.Text>
+                            <Typography.Text
+                              style={{
+                                fontSize: '12px',
+                                color: theme === 'sun' ? '#666' : '#999',
+                                display: 'block'
+                              }}
+                            >
+                              Correct
+                            </Typography.Text>
+                          </div>
+
+                          {/* Incorrect Card */}
+                          <div style={{
+                            padding: '16px',
+                            background: theme === 'sun' ? '#F5F5F5' : 'rgba(255, 255, 255, 0.1)',
+                            borderRadius: '8px',
+                            textAlign: 'center',
+                            height: '50px',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            border: `1px solid ${theme === 'sun' ? '#E0E0E0' : 'rgba(255, 255, 255, 0.1)'}`
+                          }}>
+                            <Typography.Text
+                              strong
+                              style={{
+                                fontSize: '24px',
+                                fontWeight: 700,
+                                color: '#1890ff',
+                                display: 'block',
+                                marginBottom: '0px',
+                                lineHeight: '1'
+                              }}
+                            >
+                              {submission.incorrectCount != null ? submission.incorrectCount : '-'}
+                            </Typography.Text>
+                            <Typography.Text
+                              style={{
+                                fontSize: '12px',
+                                color: theme === 'sun' ? '#666' : '#999',
+                                display: 'block'
+                              }}
+                            >
+                              Incorrect
+                            </Typography.Text>
+                          </div>
+
+                          {/* Unanswered Card */}
+                          <div style={{
+                            padding: '16px',
+                            background: theme === 'sun' ? '#F5F5F5' : 'rgba(255, 255, 255, 0.1)',
+                            borderRadius: '8px',
+                            textAlign: 'center',
+                            height: '50px',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            border: `1px solid ${theme === 'sun' ? '#E0E0E0' : 'rgba(255, 255, 255, 0.1)'}`
+                          }}>
+                            <Typography.Text
+                              strong
+                              style={{
+                                fontSize: '24px',
+                                fontWeight: 700,
+                                color: '#1890ff',
+                                display: 'block',
+                                marginBottom: '0px',
+                                lineHeight: '1'
+                              }}
+                            >
+                              {submission.unansweredCount != null ? submission.unansweredCount : '-'}
+                            </Typography.Text>
+                            <Typography.Text
+                              style={{
+                                fontSize: '12px',
+                                color: theme === 'sun' ? '#666' : '#999',
+                                display: 'block'
+                              }}
+                            >
+                              Unanswered
+                            </Typography.Text>
+                          </div>
+                        </div>
+
+                        {/* Submission Details */}
+                        <div style={{
+                          padding: '12px 0',
+                          borderTop: `1px solid ${theme === 'sun' ? '#E0E0E0' : 'rgba(255, 255, 255, 0.1)'}`
+                        }}>
+                          <Space direction="vertical" size={8} style={{ width: '100%' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <Typography.Text style={{ fontSize: '12px', color: theme === 'sun' ? '#666' : '#999' }}>
+                                Time Used:
+                              </Typography.Text>
+                              <Typography.Text style={{ fontSize: '12px', fontWeight: 500, color: theme === 'sun' ? '#000' : '#fff' }}>
+                                {submission.timeSpent != null ? `${submission.timeSpent} minutes` : '-'}
+                              </Typography.Text>
+                            </div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <Typography.Text style={{ fontSize: '12px', color: theme === 'sun' ? '#666' : '#999' }}>
+                                Time Limit:
+                              </Typography.Text>
+                              <Typography.Text style={{ fontSize: '12px', fontWeight: 500, color: theme === 'sun' ? '#000' : '#fff' }}>
+                                {submissionData.challenge?.timeLimit ? `${submissionData.challenge.timeLimit} minutes` : '-'}
+                              </Typography.Text>
+                            </div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <Typography.Text style={{ fontSize: '12px', color: theme === 'sun' ? '#666' : '#999' }}>
+                                Submitted:
+                              </Typography.Text>
+                              <Typography.Text style={{ fontSize: '12px', fontWeight: 500, color: theme === 'sun' ? '#000' : '#fff' }}>
+                                {submission.submittedAt ? new Date(submission.submittedAt).toLocaleDateString('en-US', {
+                                  month: 'short',
+                                  day: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit'
+                                }) : '-'}
+                              </Typography.Text>
+                            </div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <Typography.Text style={{ fontSize: '12px', color: theme === 'sun' ? '#666' : '#999' }}>
+                                Status:
+                              </Typography.Text>
+                              {submission.status ? (
+                                <Space size={4}>
+                                  <CheckCircleOutlined style={{ color: '#52c41a', fontSize: '14px' }} />
+                                  <Typography.Text style={{ fontSize: '12px', fontWeight: 500, color: '#52c41a' }}>
+                                    On Time
+                                  </Typography.Text>
+                                </Space>
+                              ) : (
+                                <Typography.Text style={{ fontSize: '12px', fontWeight: 500, color: theme === 'sun' ? '#000' : '#fff' }}>
+                                  -
+                                </Typography.Text>
+                              )}
+                            </div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <Typography.Text style={{ fontSize: '12px', color: theme === 'sun' ? '#666' : '#999' }}>
+                                Method:
+                              </Typography.Text>
+                              <Typography.Text style={{ fontSize: '12px', fontWeight: 500, color: theme === 'sun' ? '#000' : '#fff' }}>
+                                {submissionData.submission?.method || submissionData.submission?.submissionMethod || 'Manual'}
+                              </Typography.Text>
+                            </div>
+                          </Space>
+                        </div>
+                      </>
+                      )}
+                      </div>
+
+                      <Divider style={{ margin: '16px 0' }} />
+
+                      {/* Teacher Feedback Section */}
+                      <div style={{ marginBottom: '16px' }}>
+                    <div 
+                      onClick={() => setIsTeacherFeedbackCollapsed(!isTeacherFeedbackCollapsed)}
+                      style={{ 
+                        cursor: 'pointer',
+                        marginBottom: '12px',
+                        padding: '3px 16px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '8px',
+                        background: theme === 'sun' 
+                          ? 'linear-gradient(135deg, rgba(148, 163, 184, 0.06) 0%, rgba(148, 163, 184, 0.03) 100%)'
+                          : 'linear-gradient(135deg, rgba(226, 232, 240, 0.08) 0%, rgba(226, 232, 240, 0.04) 100%)',
+                        borderRadius: '8px',
+                        border: `1px solid ${theme === 'sun' ? 'rgba(148, 163, 184, 0.15)' : 'rgba(226, 232, 240, 0.2)'}`,
+                        transition: 'all 0.3s ease',
+                        boxShadow: theme === 'sun' 
+                          ? '0 1px 4px rgba(148, 163, 184, 0.05)' 
+                          : '0 1px 4px rgba(226, 232, 240, 0.08)'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = theme === 'sun' 
+                          ? 'linear-gradient(135deg, rgba(148, 163, 184, 0.1) 0%, rgba(148, 163, 184, 0.06) 100%)'
+                          : 'linear-gradient(135deg, rgba(226, 232, 240, 0.12) 0%, rgba(226, 232, 240, 0.08) 100%)';
+                        e.currentTarget.style.transform = 'translateY(-1px)';
+                        e.currentTarget.style.boxShadow = theme === 'sun' 
+                          ? '0 2px 8px rgba(148, 163, 184, 0.1)' 
+                          : '0 2px 8px rgba(226, 232, 240, 0.15)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = theme === 'sun' 
+                          ? 'linear-gradient(135deg, rgba(148, 163, 184, 0.06) 0%, rgba(148, 163, 184, 0.03) 100%)'
+                          : 'linear-gradient(135deg, rgba(226, 232, 240, 0.08) 0%, rgba(226, 232, 240, 0.04) 100%)';
+                        e.currentTarget.style.transform = 'translateY(0)';
+                        e.currentTarget.style.boxShadow = theme === 'sun' 
+                          ? '0 1px 4px rgba(148, 163, 184, 0.05)' 
+                          : '0 1px 4px rgba(226, 232, 240, 0.08)';
+                      }}
+                    >
+                      <Typography.Title 
+                        level={5} 
+                        style={{ 
+                          margin: 0,
+                          fontSize: '16px', 
+                          fontWeight: 500, 
+                          color: theme === 'sun' ? '#4a5568' : '#e2e8f0',
+                          userSelect: 'none'
+                        }}
+                      >
+                        Teacher Feedback
+                      </Typography.Title>
+                      {isTeacherFeedbackCollapsed ? (
+                        <DownOutlined style={{ fontSize: '14px', color: theme === 'sun' ? '#4a5568' : '#e2e8f0' }} />
+                      ) : (
+                        <UpOutlined style={{ fontSize: '14px', color: theme === 'sun' ? '#4a5568' : '#e2e8f0' }} />
+                      )}
+                    </div>
+                    {!isTeacherFeedbackCollapsed && (
+                      <>
+                    <div style={{ marginBottom: '12px' }}>
+                      <div style={{ border: '1px solid #eee', borderRadius: '8px', overflow: 'visible' }}>
+                        <CKEditor
+                          editor={ClassicEditor}
+                          data={teacherFeedback}
+                          onChange={(event, editor) => setTeacherFeedback(editor.getData())}
+                          config={{
+                            toolbar: { items: ['heading','|','bold','italic','underline','|','bulletedList','numberedList','|','link','undo','redo'], shouldNotGroupWhenFull: true }
+                          }}
+                        />
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '30px' }}>
+                      <Button
+                        type="primary"
+                        onClick={handleSaveTeacherFeedback}
+                        loading={savingFeedback}
+                        disabled={savingFeedback}
+                        className={`create-button ${theme}-create-button`}
+                        style={{
+                          height: '36px',
+                          borderRadius: '6px',
+                          fontWeight: '500',
+                          fontSize: '14px',
+                          padding: '0 16px',
+                          border: 'none',
+                          transition: 'all 0.3s ease',
+                          background: theme === 'sun' 
+                            ? 'rgb(243, 188, 88)' 
+                            : 'linear-gradient(135deg, #F3BC58 19%, #E8B04D 64%, #DD9F42 75%, #F3BC58 97%, #D89637 100%)',
+                          color: '#000',
+                        }}
+                        onMouseEnter={(e) => {
+                          if (theme === 'sun') {
+                            e.currentTarget.style.background = 'rgb(230, 175, 75)';
+                          } else {
+                            e.currentTarget.style.background = 'linear-gradient(135deg, #E8B04D 19%, #DD9F42 64%, #D28F37 75%, #E8B04D 97%, #C8862D 100%)';
+                          }
+                        }}
+                        onMouseLeave={(e) => {
+                          if (theme === 'sun') {
+                            e.currentTarget.style.background = 'rgb(243, 188, 88)';
+                          } else {
+                            e.currentTarget.style.background = 'linear-gradient(135deg, #F3BC58 19%, #E8B04D 64%, #DD9F42 75%, #F3BC58 97%, #D89637 100%)';
+                          }
+                        }}
+                      >
+                        Save
+                      </Button>
+                    </div>
+                      </>
+                      )}
+                      </div>
+
+                      <Divider style={{ margin: '16px 0' }} />
+
+                      {/* AI Feedback Section */}
+                      <div style={{ marginBottom: '16px' }}>
+                    <div 
+                      onClick={() => setIsAiFeedbackCollapsed(!isAiFeedbackCollapsed)}
+                      style={{ 
+                        cursor: 'pointer',
+                        marginBottom: '12px',
+                        padding: '3px 16px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '8px',
+                        background: theme === 'sun' 
+                          ? 'linear-gradient(135deg, rgba(148, 163, 184, 0.06) 0%, rgba(148, 163, 184, 0.03) 100%)'
+                          : 'linear-gradient(135deg, rgba(226, 232, 240, 0.08) 0%, rgba(226, 232, 240, 0.04) 100%)',
+                        borderRadius: '8px',
+                        border: `1px solid ${theme === 'sun' ? 'rgba(148, 163, 184, 0.15)' : 'rgba(226, 232, 240, 0.2)'}`,
+                        transition: 'all 0.3s ease',
+                        boxShadow: theme === 'sun' 
+                          ? '0 1px 4px rgba(148, 163, 184, 0.05)' 
+                          : '0 1px 4px rgba(226, 232, 240, 0.08)'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = theme === 'sun' 
+                          ? 'linear-gradient(135deg, rgba(148, 163, 184, 0.1) 0%, rgba(148, 163, 184, 0.06) 100%)'
+                          : 'linear-gradient(135deg, rgba(226, 232, 240, 0.12) 0%, rgba(226, 232, 240, 0.08) 100%)';
+                        e.currentTarget.style.transform = 'translateY(-1px)';
+                        e.currentTarget.style.boxShadow = theme === 'sun' 
+                          ? '0 2px 8px rgba(148, 163, 184, 0.1)' 
+                          : '0 2px 8px rgba(226, 232, 240, 0.15)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = theme === 'sun' 
+                          ? 'linear-gradient(135deg, rgba(148, 163, 184, 0.06) 0%, rgba(148, 163, 184, 0.03) 100%)'
+                          : 'linear-gradient(135deg, rgba(226, 232, 240, 0.08) 0%, rgba(226, 232, 240, 0.04) 100%)';
+                        e.currentTarget.style.transform = 'translateY(0)';
+                        e.currentTarget.style.boxShadow = theme === 'sun' 
+                          ? '0 1px 4px rgba(148, 163, 184, 0.05)' 
+                          : '0 1px 4px rgba(226, 232, 240, 0.08)';
+                      }}
+                    >
+                      <Typography.Title 
+                        level={5} 
+                        style={{ 
+                          margin: 0,
+                          fontSize: '16px', 
+                          fontWeight: 500, 
+                          color: theme === 'sun' ? '#4a5568' : '#e2e8f0',
+                          userSelect: 'none'
+                        }}
+                      >
+                        AI Feedback
+                      </Typography.Title>
+                      {isAiFeedbackCollapsed ? (
+                        <DownOutlined style={{ fontSize: '14px', color: theme === 'sun' ? '#4a5568' : '#e2e8f0' }} />
+                      ) : (
+                        <UpOutlined style={{ fontSize: '14px', color: theme === 'sun' ? '#4a5568' : '#e2e8f0' }} />
+                      )}
+                    </div>
+                    {!isAiFeedbackCollapsed && (
+                      <>
+                    <div style={{ marginBottom: '12px' }}>
+                      {aiFeedback ? (
+                        <div style={{
+                          padding: '12px',
+                          background: theme === 'sun' ? '#f9f9f9' : 'rgba(255, 255, 255, 0.05)',
+                          borderRadius: '8px',
+                          border: `1px solid ${theme === 'sun' ? '#e8e8e8' : 'rgba(255, 255, 255, 0.1)'}`,
+                          minHeight: '100px',
+                          maxHeight: '300px',
+                          overflowY: 'auto',
+                          fontSize: '14px',
+                          lineHeight: '1.6',
+                          color: theme === 'sun' ? '#333' : '#ddd',
+                          whiteSpace: 'pre-wrap'
+                        }}>
+                          {aiFeedback}
+                        </div>
+                      ) : (
+                        <div style={{
+                          padding: '20px',
+                          textAlign: 'center',
+                          color: theme === 'sun' ? '#999' : '#666',
+                          fontSize: '14px',
+                          background: theme === 'sun' ? '#f9f9f9' : 'rgba(255, 255, 255, 0.05)',
+                          borderRadius: '8px',
+                          border: `1px dashed ${theme === 'sun' ? '#e8e8e8' : 'rgba(255, 255, 255, 0.1)'}`
+                        }}>
+                          No AI feedback generated yet. Click the button below to generate.
+                        </div>
+                      )}
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '12px' }}>
+                      <Button
+                        type="primary"
+                        onClick={handleGenerateAiFeedback}
+                        loading={generatingAiFeedback}
+                        disabled={generatingAiFeedback}
+                        className={`create-button ${theme}-create-button`}
+                        style={{
+                          height: '36px',
+                          borderRadius: '6px',
+                          fontWeight: '500',
+                          fontSize: '14px',
+                          padding: '0 16px',
+                          border: 'none',
+                          transition: 'all 0.3s ease',
+                          background: theme === 'sun' 
+                            ? 'rgb(243, 188, 88)' 
+                            : 'linear-gradient(135deg, #F3BC58 19%, #E8B04D 64%, #DD9F42 75%, #F3BC58 97%, #D89637 100%)',
+                          color: '#000',
+                        }}
+                        onMouseEnter={(e) => {
+                          if (theme === 'sun') {
+                            e.currentTarget.style.background = 'rgb(230, 175, 75)';
+                          } else {
+                            e.currentTarget.style.background = 'linear-gradient(135deg, #E8B04D 19%, #DD9F42 64%, #D28F37 75%, #E8B04D 97%, #C8862D 100%)';
+                          }
+                        }}
+                        onMouseLeave={(e) => {
+                          if (theme === 'sun') {
+                            e.currentTarget.style.background = 'rgb(243, 188, 88)';
+                          } else {
+                            e.currentTarget.style.background = 'linear-gradient(135deg, #F3BC58 19%, #E8B04D 64%, #DD9F42 75%, #F3BC58 97%, #D89637 100%)';
+                          }
+                        }}
+                      >
+                        {aiFeedback ? 'Regenerate' : '✨ Generate Feedback'}
+                      </Button>
+                    </div>
+                      </>
+                      )}
+                      </div>
+
+                      <Divider style={{ margin: '16px 0' }} />
+
+                      {/* Anti-Cheat Summary */}
+                      {antiCheatData && (
+                        <div style={{ marginBottom: '16px' }}>
+                          <div 
+                            onClick={() => setIsAntiCheatCollapsed(!isAntiCheatCollapsed)}
+                        style={{ 
+                          cursor: 'pointer',
+                          marginBottom: '12px',
+                          padding: '3px 16px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '8px',
+                          background: theme === 'sun' 
+                            ? 'linear-gradient(135deg, rgba(148, 163, 184, 0.06) 0%, rgba(148, 163, 184, 0.03) 100%)'
+                            : 'linear-gradient(135deg, rgba(226, 232, 240, 0.08) 0%, rgba(226, 232, 240, 0.04) 100%)',
+                          borderRadius: '8px',
+                          border: `1px solid ${theme === 'sun' ? 'rgba(148, 163, 184, 0.15)' : 'rgba(226, 232, 240, 0.2)'}`,
+                          transition: 'all 0.3s ease',
+                          boxShadow: theme === 'sun' 
+                            ? '0 1px 4px rgba(148, 163, 184, 0.05)' 
+                            : '0 1px 4px rgba(226, 232, 240, 0.08)'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.background = theme === 'sun' 
+                            ? 'linear-gradient(135deg, rgba(148, 163, 184, 0.1) 0%, rgba(148, 163, 184, 0.06) 100%)'
+                            : 'linear-gradient(135deg, rgba(226, 232, 240, 0.12) 0%, rgba(226, 232, 240, 0.08) 100%)';
+                          e.currentTarget.style.transform = 'translateY(-1px)';
+                          e.currentTarget.style.boxShadow = theme === 'sun' 
+                            ? '0 2px 8px rgba(148, 163, 184, 0.1)' 
+                            : '0 2px 8px rgba(226, 232, 240, 0.15)';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.background = theme === 'sun' 
+                            ? 'linear-gradient(135deg, rgba(148, 163, 184, 0.06) 0%, rgba(148, 163, 184, 0.03) 100%)'
+                            : 'linear-gradient(135deg, rgba(226, 232, 240, 0.08) 0%, rgba(226, 232, 240, 0.04) 100%)';
+                          e.currentTarget.style.transform = 'translateY(0)';
+                          e.currentTarget.style.boxShadow = theme === 'sun' 
+                            ? '0 1px 4px rgba(148, 163, 184, 0.05)' 
+                            : '0 1px 4px rgba(226, 232, 240, 0.08)';
+                        }}
+                      >
+                        <Typography.Title 
+                          level={5} 
+                          style={{ 
+                            margin: 0,
+                            fontSize: '16px', 
+                            fontWeight: 500, 
+                            color: theme === 'sun' ? '#4a5568' : '#e2e8f0',
+                            userSelect: 'none'
+                          }}
+                        >
+                          Anti-Cheat
+                        </Typography.Title>
+                        {isAntiCheatCollapsed ? (
+                          <DownOutlined style={{ fontSize: '14px', color: theme === 'sun' ? '#4a5568' : '#e2e8f0' }} />
+                        ) : (
+                          <UpOutlined style={{ fontSize: '14px', color: theme === 'sun' ? '#4a5568' : '#e2e8f0' }} />
+                        )}
+                          </div>
+                          {!isAntiCheatCollapsed && (
+                            <>
+                              {/* Violation Cards */}
+                              <div style={{ marginBottom: '12px' }}>
+                        <div style={{ display: 'flex', gap: '16px', marginBottom: '12px' }}>
+                          {/* Tab Blur Card */}
+                          <div style={{ flex: 1, paddingBottom: '12px', borderBottom: '1px solid #f0f0f0' }}>
+                            <Typography.Text style={{ fontSize: '12px', fontWeight: 400, color: theme === 'sun' ? '#666' : '#999', display: 'block', marginBottom: '4px' }}>
+                              Tab switch
+                            </Typography.Text>
+                            <Typography.Text style={{ fontSize: '14px', color: theme === 'sun' ? '#000' : '#fff' }}>
+                              {antiCheatData.tabBlurCount}
+                            </Typography.Text>
+                          </div>
+
+                          {/* Copy Card */}
+                          <div style={{ flex: 1, paddingBottom: '12px', borderBottom: '1px solid #f0f0f0' }}>
+                            <Typography.Text style={{ fontSize: '12px', fontWeight: 400, color: theme === 'sun' ? '#666' : '#999', display: 'block', marginBottom: '4px' }}>
+                              Copy
+                            </Typography.Text>
+                            <Typography.Text style={{ fontSize: '14px', color: theme === 'sun' ? '#000' : '#fff' }}>
+                              {antiCheatData.copyCount}
+                            </Typography.Text>
+                          </div>
+                        </div>
+
+                        <div style={{ display: 'flex', gap: '16px', marginBottom: '12px' }}>
+                          {/* Paste Card */}
+                          <div style={{ flex: 1, paddingBottom: '12px', borderBottom: '1px solid #f0f0f0' }}>
+                            <Typography.Text style={{ fontSize: '12px', fontWeight: 400, color: theme === 'sun' ? '#666' : '#999', display: 'block', marginBottom: '4px' }}>
+                              Paste
+                            </Typography.Text>
+                            <Typography.Text style={{ fontSize: '14px', color: theme === 'sun' ? '#000' : '#fff' }}>
+                              {antiCheatData.pasteCount}
+                            </Typography.Text>
+                          </div>
+
+                          {/* Total Violations Card */}
+                          <div style={{ flex: 1, paddingBottom: '12px', borderBottom: '1px solid #f0f0f0' }}>
+                            <Typography.Text style={{ fontSize: '12px', fontWeight: 400, color: theme === 'sun' ? '#666' : '#999', display: 'block', marginBottom: '4px' }}>
+                              Total violations
+                            </Typography.Text>
+                            <Typography.Text style={{ fontSize: '14px', color: theme === 'sun' ? '#000' : '#fff' }}>
+                              {antiCheatData.totalViolations}
+                            </Typography.Text>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Total Tab Blur Duration */}
+                      {antiCheatData.totalTabBlurDuration > 0 && (
+                        <div style={{ marginBottom: '12px', paddingBottom: '12px', borderBottom: '1px solid #f0f0f0' }}>
+                          <Typography.Text style={{ fontSize: '12px', fontWeight: 400, color: theme === 'sun' ? '#666' : '#999', display: 'block', marginBottom: '4px' }}>
+                            Total time away from tab
+                          </Typography.Text>
+                          <Typography.Text style={{ fontSize: '14px', color: theme === 'sun' ? '#000' : '#fff' }}>
+                            {Math.floor(antiCheatData.totalTabBlurDuration / 1000)} seconds
+                            {antiCheatData.totalTabBlurDuration >= 60000 && ` (${Math.floor(antiCheatData.totalTabBlurDuration / 60000)} minutes)`}
+                          </Typography.Text>
+                        </div>
+                      )}
+
+                      {/* Activity Log */}
+                      {antiCheatData.events && antiCheatData.events.length > 0 && (
+                        <div style={{ marginTop: '12px' }}>
+                          <Typography.Title level={5} style={{ marginTop: 0, marginBottom: '10px', fontSize: '14px', fontWeight: 600, textAlign: 'center', color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' }}>
+                            ACTIVITY LOG
+                          </Typography.Title>
+                          <div 
+                            className="activity-log-scrollbar"
+                            style={{ 
+                              maxHeight: '300px', 
+                              overflowY: 'auto', 
+                              padding: '8px',
+                              background: theme === 'sun' ? '#f9f9f9' : 'rgba(255, 255, 255, 0.03)',
+                              borderRadius: '8px',
+                              border: `1px solid ${theme === 'sun' ? '#e8e8e8' : 'rgba(255, 255, 255, 0.1)'}`,
+                              scrollbarWidth: 'none', /* Firefox */
+                              msOverflowStyle: 'none', /* IE and Edge */
+                            }}
+                          >
+                            <style>{`
+                              .activity-log-scrollbar::-webkit-scrollbar { 
+                                display: none; /* Chrome, Safari, Opera */
+                              }
+                            `}</style>
+                            {antiCheatData.events.map((eventItem, index) => {
+                              // Get event icon and description
+                              let icon, description, color;
+                              switch (eventItem.event) {
+                                case 'START':
+                                  icon = <PlayCircleOutlined />;
+                                  description = 'Started test';
+                                  color = '#52c41a';
+                                  break;
+                                case 'TAB_BLUR':
+                                  icon = <SwapOutlined />;
+                                  description = eventItem.durationMs 
+                                    ? `Content hidden to return (${Math.floor(eventItem.durationMs / 1000)}s)`
+                                    : 'Content hidden to return';
+                                  color = '#ff9800';
+                                  break;
+                                case 'COPY':
+                                  icon = <CopyOutlined />;
+                                  description = eventItem.content || 'Blocked Ctrl+C / Ctrl+Insert';
+                                  color = '#f44336';
+                                  break;
+                                case 'PASTE':
+                                  icon = <FileTextOutlined />;
+                                  description = eventItem.content || 'Blocked Ctrl+V / Shift+Insert';
+                                  color = '#9c27b0';
+                                  break;
+                                case 'ANSWER_CHANGE':
+                                  icon = <EditOutlined />;
+                                  description = `Answer changed: ${eventItem.oldValue?.join(', ') || 'N/A'} → ${eventItem.newValue?.join(', ') || 'N/A'}`;
+                                  color = '#1890ff';
+                                  break;
+                                default:
+                                  icon = <ClockCircleOutlined />;
+                                  description = eventItem.event;
+                                  color = '#666';
+                              }
+
+                              // Format timestamp
+                              const formatTimestamp = (timestamp) => {
+                                if (!timestamp) return '';
+                                try {
+                                  const date = new Date(timestamp);
+                                  const hours = date.getHours().toString().padStart(2, '0');
+                                  const minutes = date.getMinutes().toString().padStart(2, '0');
+                                  const seconds = date.getSeconds().toString().padStart(2, '0');
+                                  const day = date.getDate();
+                                  const month = date.getMonth() + 1;
+                                  const year = date.getFullYear();
+                                  return `${hours}:${minutes}:${seconds} ${day}/${month}/${year}`;
+                                } catch {
+                                  return timestamp;
+                                }
+                              };
+
+                              return (
+                                <div 
+                                  key={index}
+                                  style={{ 
+                                    display: 'flex',
+                                    gap: '8px',
+                                    padding: '8px 10px',
+                                    marginBottom: '8px',
+                                    background: theme === 'sun' ? '#ffffff' : 'rgba(255, 255, 255, 0.05)',
+                                    borderRadius: '6px',
+                                    border: `1px solid ${theme === 'sun' ? '#e8e8e8' : 'rgba(255, 255, 255, 0.1)'}`,
+                                    fontSize: '12px'
+                                  }}
+                                >
+                                  <div style={{ 
+                                    color, 
+                                    fontSize: '14px', 
+                                    display: 'flex', 
+                                    alignItems: 'center',
+                                    flexShrink: 0
+                                  }}>
+                                    {icon}
+                                  </div>
+                                  <div style={{ flex: 1, minWidth: 0 }}>
+                                    <div style={{ 
+                                      fontWeight: 600,
+                                      color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)',
+                                      marginBottom: '2px',
+                                      fontSize: '11px'
+                                    }}>
+                                      {eventItem.event.replace('_', ' ')}
+                                      {eventItem.questionId && (
+                                        <span style={{ 
+                                          color: theme === 'sun' ? '#666' : '#999',
+                                          marginLeft: '6px',
+                                          fontWeight: 400
+                                        }}>
+                                          (Q{eventItem.questionId})
+                                        </span>
+                                      )}
+                                    </div>
+                                    <div style={{ 
+                                      color: theme === 'sun' ? '#666' : '#999',
+                                      fontSize: '11px',
+                                      lineHeight: '1.4'
+                                    }}>
+                                      {description}
+                                    </div>
+                                  </div>
+                                  <div style={{ 
+                                    fontSize: '10px',
+                                    color: theme === 'sun' ? '#999' : '#777',
+                                    flexShrink: 0,
+                                    textAlign: 'right',
+                                    whiteSpace: 'nowrap'
+                                  }}>
+                                    {formatTimestamp(eventItem.timestamp)}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                              </div>
+                            </div>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  )}
+                    </>
+                  ) : (
+                    /* Questions Tab */
+                    <>
+                      <div className="question-sidebar-header" style={{ marginBottom: '16px', paddingBottom: '16px', borderBottom: theme === 'sun' ? '2px solid rgba(113, 179, 253, 0.15)' : '2px solid rgba(138, 122, 255, 0.15)' }}>
+                        <h3 style={{ fontSize: '20px', fontWeight: 700, textAlign: 'center', color: 'rgb(24, 144, 255)', margin: 0 }}>Questions</h3>
+                      </div>
+                      <div style={{ 
+                        maxHeight: 'calc(100vh - 280px)', 
+                        overflowY: 'auto',
+                        paddingRight: '8px'
+                      }}>
+                        <div className="question-sidebar-list">
+                          {getQuestionNavigation().map((item) => (
+                            <div
+                              key={item.id}
+                              className={`question-sidebar-item ${item.type === 'section' ? 'question-sidebar-section' : ''}`}
+                              onClick={() => scrollToQuestion(item.id)}
+                              style={{ 
+                                fontWeight: 'normal', 
+                                textAlign: 'center', 
+                                color: theme === 'sun' ? '#000000' : '#FFFFFF',
+                                padding: '10px',
+                                marginBottom: '4px',
+                                cursor: 'pointer',
+                                borderRadius: '4px',
+                                transition: 'all 0.2s ease',
+                                fontSize: '14px'
+                              }}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.background = theme === 'sun' 
+                                  ? 'rgba(24, 144, 255, 0.1)' 
+                                  : 'rgba(138, 122, 255, 0.15)';
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.background = 'transparent';
+                              }}
+                            >
+                              {item.title}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </Card>
+              </div>
+            </Col>
+
+          {/* Right Section - Questions Review */}
+          <Col 
+            xs={24} 
+            lg={isCollapsed ? 24 : 18}
+            style={{ 
+              transition: 'all 0.3s ease'
+            }}
+          >
+            <div className="sdc-questions-review-section" style={{ padding: '0' }}>
+          {/* Grammar & Vocabulary Questions */}
+          {questions.length > 0 && (
+            <div 
+              className={`question-item ${theme}-question-item`} 
+              style={{ marginBottom: '24px', borderRadius: '16px', padding: '24px', border: '2px solid', borderColor: theme === 'sun' ? 'rgba(113, 179, 253, 0.25)' : 'rgba(138, 122, 255, 0.2)', background: theme === 'sun' ? 'linear-gradient(135deg, rgba(255, 255, 255, 1) 0%, rgba(240, 249, 255, 0.95) 100%)' : 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(244, 240, 255, 0.95) 100%)', boxShadow: theme === 'sun' ? '0 4px 16px rgba(113, 179, 253, 0.1)' : '0 4px 16px rgba(138, 122, 255, 0.12)' }}>
+              <div className="question-header" style={{ paddingBottom: '14px', marginBottom: '16px', borderBottom: '2px solid', borderBottomColor: theme === 'sun' ? 'rgba(113, 179, 253, 0.25)' : 'rgba(138, 122, 255, 0.2)' }}>
+              
+              </div>
+          <Space direction="vertical" size={16} style={{ width: '100%' }}>
+                {questions.map((q, idx) => (
+                  <div key={q.id} ref={el => questionRefs.current[`gv-${q.id}`] = el}>
+                    {renderQuestion(q, idx)}
+                  </div>
+                ))}
+          </Space>
+        </div>
+          )}
+
+          {/* Reading Sections */}
+          {readingSections.length > 0 && (
+            <div style={{ marginBottom: '24px' }}>
+            
+          <Space direction="vertical" size={16} style={{ width: '100%' }}>
+                {readingSections.map((section, idx) => (
+                  <div key={section.id || idx} ref={el => questionRefs.current[`reading-${idx + 1}`] = el}>
+                    {renderReadingSection(section, idx)}
+                  </div>
+                ))}
+              </Space>
+                  </div>
+          )}
+
+          {/* Listening Sections */}
+          {listeningSections.length > 0 && (
+            <div style={{ marginBottom: '24px' }}>
+             
+              <Space direction="vertical" size={16} style={{ width: '100%' }}>
+                {listeningSections.map((section, idx) => (
+                  <div key={section.id || idx} ref={el => questionRefs.current[`listening-${idx + 1}`] = el}>
+                    {renderListeningSection(section, idx)}
+                  </div>
+                ))}
+              </Space>
+                  </div>
+          )}
+
+          {/* Writing Sections */}
+          {writingSections.length > 0 && (
+            <div style={{ marginBottom: '24px' }}>
+            
+              <Space direction="vertical" size={16} style={{ width: '100%' }}>
+                {writingSections.map((section, idx) => (
+                  <div key={section.id || idx} ref={el => questionRefs.current[`writing-${idx + 1}`] = el}>
+                    {renderWritingSection(section, idx)}
+                  </div>
+                ))}
+              </Space>
+                        </div>
+                  )}
+
+          {/* Speaking Sections */}
+          {speakingSections.length > 0 && (
+            <div style={{ marginBottom: '24px' }}>
+            
+              <Space direction="vertical" size={16} style={{ width: '100%' }}>
+                {speakingSections.map((section, idx) => (
+                  <div key={section.id || idx} ref={el => questionRefs.current[`speaking-${idx + 1}`] = el}>
+                    {renderSpeakingSection(section, idx)}
+                  </div>
+                ))}
+              </Space>
+                    </div>
+                  )}
+                  </div>
+          </Col>
+        </Row>
+                </div>
+
+      {/* Feedback Modal */}
+      <Modal
+        title={
+          <div
+            style={{
+              fontSize: '28px',
+              fontWeight: '600',
+              color: 'rgb(24, 144, 255)',
+              textAlign: 'center',
+              padding: '10px 0',
+            }}>
+            {feedbackModal.isEdit ? 'Edit Score/Feedback' : 'Add Score/Feedback'}
+            </div>
+        }
+        open={feedbackModal.visible}
+        onCancel={handleCloseFeedbackModal}
+        width={600}
+        footer={[
+          <Button 
+            key="cancel" 
+            onClick={handleCloseFeedbackModal}
+            style={{
+              height: '32px',
+              fontWeight: '500',
+              fontSize: '16px',
+              padding: '4px 15px',
+              width: '100px'
+            }}>
+            Cancel
+          </Button>,
+          <Button 
+            key="save" 
+            type="primary" 
+            onClick={handleSaveFeedback}
+            style={{
+              background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)',
+              borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : '#7228d9',
+              color: '#000',
+              borderRadius: '6px',
+              height: '32px',
+              fontWeight: '500',
+              fontSize: '16px',
+              padding: '4px 15px',
+              width: '100px',
+              transition: 'all 0.3s ease',
+              border: 'none',
+            }}
+            onMouseEnter={(e) => {
+              if (theme === 'sun') {
+                e.currentTarget.style.background = 'rgb(93, 159, 233)';
+              } else {
+                e.currentTarget.style.background = 'linear-gradient(135deg, #9C8FB0 19%, #9588AB 64%, #726795 75%, #9A95B0 97%, #5D4F7F 100%)';
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (theme === 'sun') {
+                e.currentTarget.style.background = 'rgb(113, 179, 253)';
+              } else {
+                e.currentTarget.style.background = 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)';
+              }
+            }}>
+            {feedbackModal.isEdit ? 'Update' : 'Add'}
+          </Button>
+        ]}>
+        <div style={{ padding: '20px 0' }}>
+          {feedbackModal.type === 'section' && (
+            <div style={{ marginBottom: '12px' }}>
+              <Typography.Text strong style={{ fontSize: '14px', display: 'block', marginBottom: '6px' }}>Score</Typography.Text>
+              <Input
+                type="number"
+                min="0"
+                value={feedbackModal.score}
+                onChange={(e) => setFeedbackModal(prev => ({ ...prev, score: e.target.value }))}
+                placeholder="Enter score for this question"
+              />
+            </div>
+          )}
+          <div style={{ border: '1px solid #eee', borderRadius: '6px', overflow: 'visible' }}>
+            <CKEditor
+              editor={ClassicEditor}
+              data={feedbackModal.feedback}
+              onChange={(event, editor) => {
+                const data = editor.getData();
+                setFeedbackModal(prev => ({ ...prev, feedback: data }));
+              }}
+              config={{
+                toolbar: {
+                  items: ['bold','italic','underline','|','bulletedList','numberedList','|','link','undo','redo'],
+                  shouldNotGroupWhenFull: true
+                }
+              }}
+            />
+          </div>
+        </div>
+      </Modal>
+
+      {/* Score Modal */}
+      <Modal
+        title={
+          <div
+            style={{
+              fontSize: '28px',
+              fontWeight: '600',
+              color: 'rgb(24, 144, 255)',
+              textAlign: 'center',
+              padding: '10px 0',
+            }}>
+            {scoreModal.isEdit ? 'Edit Score' : 'Add Score'}
+            </div>
+        }
+        open={scoreModal.visible}
+        onCancel={handleCloseScoreModal}
+        width={600}
+        footer={[
+          <Button 
+            key="cancel" 
+            onClick={handleCloseScoreModal}
+            style={{
+              height: '32px',
+              fontWeight: '500',
+              fontSize: '16px',
+              padding: '4px 15px',
+              width: '100px'
+            }}>
+            Cancel
+          </Button>,
+          <Button 
+            key="save" 
+            type="primary" 
+            onClick={handleSaveScore}
+            style={{
+              background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)',
+              borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : '#7228d9',
+              color: '#000',
+              borderRadius: '6px',
+              height: '32px',
+              fontWeight: '500',
+              fontSize: '16px',
+              padding: '4px 15px',
+              width: '100px',
+              transition: 'all 0.3s ease',
+              border: 'none',
+            }}
+            onMouseEnter={(e) => {
+              if (theme === 'sun') {
+                e.currentTarget.style.background = 'rgb(93, 159, 233)';
+              } else {
+                e.currentTarget.style.background = 'linear-gradient(135deg, #9C8FB0 19%, #9588AB 64%, #726795 75%, #9A95B0 97%, #5D4F7F 100%)';
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (theme === 'sun') {
+                e.currentTarget.style.background = 'rgb(113, 179, 253)';
+              } else {
+                e.currentTarget.style.background = 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)';
+              }
+            }}>
+            {scoreModal.isEdit ? 'Update' : 'Add'}
+          </Button>
+        ]}>
+        <div style={{ padding: '20px 0' }}>
+          <div style={{ marginBottom: '24px' }}>
+            <Typography.Text strong style={{ 
+              fontSize: '16px', 
+              display: 'block', 
+              marginBottom: '12px',
+              color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)'
+            }}>
+              Score (0-10):
+            </Typography.Text>
+            <Input
+              type="number"
+              min="0"
+              max="10"
+              step="0.1"
+              value={scoreModal.score}
+              onChange={handleScoreInputChange}
+              placeholder="Enter score (0-10)"
+              style={{
+                fontSize: '16px',
+                height: '42px'
+              }}
+            />
+          </div>
+        </div>
+      </Modal>
+
+      {/* Comment Modal for Writing Section */}
+      <Modal
+        title={
+          <div
+            style={{
+              fontSize: '28px',
+              fontWeight: '600',
+              color: 'rgb(24, 144, 255)',
+              textAlign: 'center',
+              padding: '10px 0',
+            }}>
+            {commentModal.isEdit ? 'Edit Comment' : 'Add Comment'}
+                        </div>
+        }
+        open={commentModal.visible}
+        onCancel={() => setCommentModal({
+          visible: false,
+          sectionId: null,
+          startIndex: null,
+          endIndex: null,
+          comment: '',
+          isEdit: false,
+          feedbackId: null,
+        })}
+        width={600}
+        footer={[
+          <Button 
+            key="cancel" 
+            onClick={() => setCommentModal({
+              visible: false,
+              sectionId: null,
+              startIndex: null,
+              endIndex: null,
+              comment: '',
+              isEdit: false,
+              feedbackId: null,
+            })}
+            style={{
+              height: '32px',
+              fontWeight: '500',
+              fontSize: '16px',
+              padding: '4px 15px',
+              width: '100px'
+            }}>
+            Cancel
+          </Button>,
+          <Button 
+            key="save" 
+            type="primary" 
+            onClick={handleSaveComment}
+            style={{
+              background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)',
+              borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : '#7228d9',
+              color: '#000',
+              borderRadius: '6px',
+              height: '32px',
+              fontWeight: '500',
+              fontSize: '16px',
+              padding: '4px 15px',
+              width: '100px',
+              transition: 'all 0.3s ease',
+              border: 'none',
+            }}
+            onMouseEnter={(e) => {
+              if (theme === 'sun') {
+                e.currentTarget.style.background = 'rgb(93, 159, 233)';
+              } else {
+                e.currentTarget.style.background = 'linear-gradient(135deg, #9C8FB0 19%, #9588AB 64%, #726795 75%, #9A95B0 97%, #5D4F7F 100%)';
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (theme === 'sun') {
+                e.currentTarget.style.background = 'rgb(113, 179, 253)';
+              } else {
+                e.currentTarget.style.background = 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)';
+              }
+            }}>
+            {commentModal.isEdit ? 'Update' : 'Add'}
+          </Button>
+        ]}>
+        <div style={{ padding: '20px 0' }}>
+          <Input.TextArea
+            rows={6}
+            value={commentModal.comment}
+            onChange={handleCommentInputChange}
+            placeholder="Enter your comment for the selected text..."
+            maxLength={2000}
+            showCount
+            autoSize={{ minRows: 6, maxRows: 10 }}
+            style={{
+              fontSize: '14px',
+              lineHeight: '1.6',
+            }}
+          />
+                  </div>
+      </Modal>
+
+      {/* Comment Sidebar for viewing/editing comments */}
+      {showCommentSidebar && selectedComment && (
+        <div style={{
+          position: 'fixed',
+          right: '24px',
+          top: '50%',
+          transform: 'translateY(-50%)',
+          width: '350px',
+          maxWidth: 'calc(100vw - 48px)',
+          maxHeight: '80vh',
+          background: theme === 'sun' ? '#ffffff' : 'rgba(255, 255, 255, 0.95)',
+          borderRadius: '12px',
+          border: `1px solid ${theme === 'sun' ? '#e8e8e8' : 'rgba(255, 255, 255, 0.2)'}`,
+          padding: '20px',
+          overflowY: 'auto',
+          boxShadow: theme === 'sun' 
+            ? '0 4px 16px rgba(0, 0, 0, 0.15)'
+            : '0 4px 16px rgba(0, 0, 0, 0.3)',
+          zIndex: 1000,
+        }}>
+          {/* Comment Header */}
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: '16px',
+            paddingBottom: '12px',
+            borderBottom: `1px solid ${theme === 'sun' ? '#e8e8e8' : 'rgba(0, 0, 0, 0.1)'}`
+          }}>
+            <div>
+              <Typography.Text strong style={{
+                fontSize: '16px',
+                color: theme === 'sun' ? '#333' : '#1F2937'
+              }}>
+                Teacher Comment
+                      </Typography.Text>
+              <div style={{
+                fontSize: '12px',
+                color: theme === 'sun' ? '#999' : '#777',
+                marginTop: '4px'
+              }}>
+                {selectedComment.timestamp ? new Date(selectedComment.timestamp).toLocaleDateString() : new Date().toLocaleDateString()} {new Date(selectedComment.timestamp || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </div>
+                </div>
+            <Button
+              type="text"
+              icon={<CloseCircleOutlined />}
+              onClick={() => {
+                setShowCommentSidebar(false);
+                setSelectedComment(null);
+              }}
+              style={{
+                minWidth: 'auto',
+                width: '32px',
+                height: '32px',
+                padding: 0,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}
+            />
+              </div>
+
+          {/* Comment Content */}
+          <div style={{
+            fontSize: '14px',
+            lineHeight: '1.8',
+            color: theme === 'sun' ? '#333' : '#1F2937',
+            whiteSpace: 'pre-wrap',
+            wordBreak: 'break-word',
+            marginBottom: '16px'
+          }}>
+            {selectedComment.comment || 'No comment provided.'}
+            </div>
+
+          {/* Highlighted Text Reference */}
+          {(() => {
+            const sectionId = Object.keys(writingSectionFeedbacks).find(id => 
+              writingSectionFeedbacks[id]?.some(fb => fb.id === selectedComment.id)
+            );
+            if (sectionId) {
+              const studentAnswer = studentAnswers?.[sectionId] || {};
+              const essayText = studentAnswer?.text || studentAnswer?.essay || '';
+              if (essayText && selectedComment.startIndex !== undefined) {
+                const highlightedText = essayText.substring(selectedComment.startIndex, selectedComment.endIndex);
+                return (
+                  <div style={{
+                    marginTop: '16px',
+                    padding: '12px',
+                    background: theme === 'sun' ? '#fff9c4' : 'rgba(255, 235, 59, 0.2)',
+                    borderRadius: '8px',
+                    border: `1px solid ${theme === 'sun' ? '#ffeb3b' : 'rgba(255, 235, 59, 0.5)'}`
+                  }}>
+                    <Typography.Text style={{
+                      fontSize: '12px',
+                      fontWeight: '600',
+                      color: theme === 'sun' ? '#666' : '#999',
+                      display: 'block',
+                      marginBottom: '6px'
+                    }}>
+                      Highlighted text:
+                    </Typography.Text>
+                    <Typography.Text style={{
+                      fontSize: '13px',
+                      color: theme === 'sun' ? '#333' : '#1F2937',
+                      fontStyle: 'italic'
+                    }}>
+                      "{highlightedText}"
+                    </Typography.Text>
+        </div>
+                );
+              }
+            }
+            return null;
+          })()}
+
+          {/* Edit and Delete Buttons */}
+          <div style={{ marginTop: '16px', display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
+            <Button
+              danger
+              icon={<DeleteOutlined />}
+              onClick={handleDeleteComment}
+              style={{
+                borderRadius: '8px',
+                fontWeight: 500,
+                fontSize: '14px',
+                height: '36px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+              }}
+            >
+              Delete
+            </Button>
+            <Button
+              type="default"
+              onClick={handleEditCommentFromSidebar}
+              style={{
+                borderRadius: '8px',
+                fontWeight: 500,
+                fontSize: '14px',
+                height: '36px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                border: `2px solid ${theme === 'sun' ? 'rgba(113, 179, 253, 0.4)' : 'rgba(138, 122, 255, 0.4)'}`,
+                background: theme === 'sun' 
+                  ? 'rgba(113, 179, 253, 0.1)' 
+                  : 'rgba(138, 122, 255, 0.1)',
+                color: theme === 'sun' ? '#1890ff' : '#8B5CF6',
+              }}
+            >
+              Edit Comment
+            </Button>
+      </div>
+        </div>
+      )}
     </ThemedLayout>
   );
 };

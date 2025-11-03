@@ -229,7 +229,6 @@ const DailyChallengeSubmissionList = () => {
             prefix={<SearchOutlined />}
             value={searchText}
             onChange={(e) => handleSearch(e.target.value)}
-            placeholder={t('dailyChallenge.searchSubmissions')}
             className={`search-input ${theme}-search-input`}
             style={{ flex: '1', minWidth: '250px', maxWidth: '400px', width: '350px', height: '40px', fontSize: '16px' }}
             allowClear
