@@ -297,6 +297,33 @@ const dailyChallengeApi = {
 		});
 	},
 
+  // Lấy grading summary cho submission (dùng cho sidebar Performance)
+  // Endpoint: /grading/challenges/submission/{submissionId}/result
+  getSubmissionGradingResult: (submissionId) => {
+    const url = `/grading/challenges/submission/${submissionId}/result`;
+    console.log('GetSubmissionGradingResult API - URL:', url);
+    console.log('GetSubmissionGradingResult API - SubmissionId:', submissionId);
+    
+    return axiosClient.get(url, {
+      headers: {
+        'accept': '*/*',
+      },
+    });
+  },
+
+  // Lưu kết quả chấm điểm cho submission
+  // Endpoint: POST /grading/challenges/submission/{submissionId}/grade
+  gradeSubmission: (submissionId, payload) => {
+    const url = `/grading/challenges/submission/${submissionId}/grade`;
+    console.log('GradeSubmission API - URL:', url, 'Payload:', payload);
+    return axiosClient.post(url, payload, {
+      headers: {
+        'accept': '*/*',
+        'Content-Type': 'application/json',
+      },
+    });
+  },
+
 	// Lấy thống kê performance của daily challenge
 	getDailyChallengePerformance: (challengeId) => {
 		const url = `/daily-challenges/${challengeId}/performance`;

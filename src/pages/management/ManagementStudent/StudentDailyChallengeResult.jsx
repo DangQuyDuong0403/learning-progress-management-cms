@@ -3,6 +3,12 @@ import {
   Button,
   Typography,
   Modal,
+  Row,
+  Col,
+  Card,
+  Tooltip,
+  Divider,
+  Space,
 } from "antd";
 import {
   ArrowLeftOutlined,
@@ -15,6 +21,11 @@ import {
   MessageOutlined,
   ClockCircleOutlined,
   TrophyOutlined,
+  MinusCircleOutlined,
+  UpOutlined,
+  DownOutlined,
+  MenuFoldOutlined,
+  MenuUnfoldOutlined,
 } from "@ant-design/icons";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import ThemedLayout from "../../../component/teacherlayout/ThemedLayout";
@@ -6168,6 +6179,20 @@ const StudentDailyChallengeResult = () => {
   const [maxScore, setMaxScore] = useState(10);
   const [timeSpent, setTimeSpent] = useState(location.state?.timeSpent || '00:00');
   
+  // Sidebar states
+  const [isCollapsed, setIsCollapsed] = useState(false); // Sidebar collapse state
+  const [activeTab, setActiveTab] = useState('info'); // 'info' or 'questions'
+  
+  // Performance collapse state
+  const [isPerformanceCollapsed, setIsPerformanceCollapsed] = useState(false);
+  
+  // Other sections collapse states (default collapsed)
+  const [isTeacherFeedbackCollapsed, setIsTeacherFeedbackCollapsed] = useState(true);
+  const [isAiFeedbackCollapsed, setIsAiFeedbackCollapsed] = useState(true);
+  
+  // Mock submission data (will be calculated from student answers)
+  const [submissionData, setSubmissionData] = useState(null);
+  
   usePageTitle('Daily Challenge - View Result');
   
   useEffect(() => {
@@ -6591,6 +6616,9 @@ In conclusion, writing is not just about putting words on paper—it is about cr
   // Calculate score from student answers
   const calculateScore = useCallback(() => {
     let correctCount = 0;
+    let incorrectCount = 0;
+    let answeredCount = 0;
+    let totalQuestions = 0;
     let totalCount = 0;
     let totalPoints = 0;
     let earnedPoints = 0;
@@ -6599,9 +6627,13 @@ In conclusion, writing is not just about putting words on paper—it is about cr
     questions.forEach(q => {
       if (!q.id || q.id.includes('blank')) return;
       
+      totalQuestions++;
       const studentAnswer = studentAnswers[q.id];
-      if (studentAnswer === undefined || studentAnswer === null || studentAnswer === '') return;
+      const hasAnswer = studentAnswer !== undefined && studentAnswer !== null && studentAnswer !== '';
       
+      if (!hasAnswer) return;
+      
+      answeredCount++;
       totalCount++;
       const points = q.points || 1;
       totalPoints += points;
@@ -6678,6 +6710,8 @@ In conclusion, writing is not just about putting words on paper—it is about cr
       if (isCorrect) {
         correctCount++;
         earnedPoints += points;
+      } else {
+        incorrectCount++;
       }
     });
 
@@ -6685,9 +6719,13 @@ In conclusion, writing is not just about putting words on paper—it is about cr
     readingSections.forEach(section => {
       if (section.questions && section.questions.length > 0) {
         section.questions.forEach(q => {
+          totalQuestions++;
           const studentAnswer = studentAnswers[q.id];
-          if (studentAnswer === undefined || studentAnswer === null || studentAnswer === '') return;
+          const hasAnswer = studentAnswer !== undefined && studentAnswer !== null && studentAnswer !== '';
           
+          if (!hasAnswer) return;
+          
+          answeredCount++;
           totalCount++;
           const points = q.points || 1;
           totalPoints += points;
@@ -6760,6 +6798,8 @@ In conclusion, writing is not just about putting words on paper—it is about cr
           if (isCorrect) {
             correctCount++;
             earnedPoints += points;
+          } else {
+            incorrectCount++;
           }
         });
       }
@@ -6769,9 +6809,13 @@ In conclusion, writing is not just about putting words on paper—it is about cr
     listeningSections.forEach(section => {
       if (section.questions && section.questions.length > 0) {
         section.questions.forEach(q => {
+          totalQuestions++;
           const studentAnswer = studentAnswers[q.id];
-          if (studentAnswer === undefined || studentAnswer === null || studentAnswer === '') return;
+          const hasAnswer = studentAnswer !== undefined && studentAnswer !== null && studentAnswer !== '';
           
+          if (!hasAnswer) return;
+          
+          answeredCount++;
           totalCount++;
           const points = q.points || 1;
           totalPoints += points;
@@ -6844,10 +6888,15 @@ In conclusion, writing is not just about putting words on paper—it is about cr
           if (isCorrect) {
             correctCount++;
             earnedPoints += points;
+          } else {
+            incorrectCount++;
           }
         });
       }
     });
+
+    // Calculate unanswered count
+    const unansweredCount = totalQuestions - answeredCount;
 
     // Normalize score to 0-10 scale
     const normalizedScore = totalPoints > 0 ? (earnedPoints / totalPoints) * 10 : 0;
@@ -6855,9 +6904,12 @@ In conclusion, writing is not just about putting words on paper—it is about cr
       score: parseFloat(normalizedScore.toFixed(1)),
       maxScore: 10,
       correctCount,
+      incorrectCount,
+      unansweredCount,
       totalCount,
       earnedPoints,
-      totalPoints
+      totalPoints,
+      totalQuestions
     };
   }, [questions, readingSections, listeningSections, studentAnswers]);
 
@@ -6867,8 +6919,43 @@ In conclusion, writing is not just about putting words on paper—it is about cr
       const scoreData = calculateScore();
       setTotalScore(scoreData.score);
       setMaxScore(scoreData.maxScore);
+      
+      // Convert timeSpent string to minutes (e.g., "45:30" or "45 minutes")
+      let timeSpentMinutes = 0;
+      if (timeSpent) {
+        if (typeof timeSpent === 'string') {
+          if (timeSpent.includes(':')) {
+            // Format: "45:30"
+            const parts = timeSpent.split(':');
+            timeSpentMinutes = parseInt(parts[0]) || 0;
+          } else if (timeSpent.includes('minutes') || timeSpent.includes('minute')) {
+            // Format: "45 minutes"
+            const match = timeSpent.match(/(\d+)/);
+            timeSpentMinutes = match ? parseInt(match[1]) : 0;
+          } else {
+            // Try to parse as number
+            const num = parseInt(timeSpent);
+            timeSpentMinutes = isNaN(num) ? 0 : num;
+          }
+        } else if (typeof timeSpent === 'number') {
+          timeSpentMinutes = timeSpent;
+        }
+      }
+      
+      // Create submission data
+      setSubmissionData({
+        score: scoreData.score,
+        totalPoints: scoreData.earnedPoints,
+        maxPoints: scoreData.totalPoints,
+        correctCount: scoreData.correctCount,
+        incorrectCount: scoreData.incorrectCount,
+        unansweredCount: scoreData.unansweredCount,
+        accuracy: scoreData.totalCount > 0 ? Math.round((scoreData.correctCount / scoreData.totalCount) * 100) : 0,
+        timeSpent: timeSpentMinutes,
+        status: 'completed',
+      });
     }
-  }, [studentAnswers, calculateScore]);
+  }, [studentAnswers, calculateScore, timeSpent]);
 
   // Navigate to question
   const scrollToQuestion = (questionId) => {
@@ -7038,56 +7125,614 @@ In conclusion, writing is not just about putting words on paper—it is about cr
   );
 
   const questionNav = getQuestionNavigation();
+  const submission = submissionData || {
+    score: totalScore,
+    correctCount: 0,
+    incorrectCount: 0,
+    unansweredCount: 0,
+    timeSpent: 0,
+  };
 
   return (
     <ThemedLayout customHeader={customHeader}>
-      <div className={`daily-challenge-content-wrapper ${theme}-daily-challenge-content-wrapper`}>
-        {/* Sidebar Toggle Button */}
-        <button
-          className={`question-sidebar-toggle ${theme}-question-sidebar-toggle ${isSidebarOpen ? 'open' : ''}`}
-          onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-          style={{
-            position: 'fixed',
-            left: isSidebarOpen ? '200px' : '0',
-            top: '50%',
-            transform: 'translateY(-50%)',
-            zIndex: 1001,
-            background: theme === 'sun' ? 'rgba(113, 179, 253, 0.9)' : 'rgba(138, 122, 255, 0.9)',
-            border: 'none',
-            borderTopRightRadius: '8px',
-            borderBottomRightRadius: '8px',
-            padding: '10px 8px',
-            cursor: 'pointer',
-            transition: 'left 0.3s ease',
-            color: '#fff',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
-            display: 'flex',
-            alignItems: 'center',
-          }}
-        >
-          {isSidebarOpen ? <CloseOutlined /> : <MenuOutlined />}
-        </button>
+      <div className={`sdc-wrapper ${theme}-sdc-wrapper`} style={{ padding: '24px' }}>
+        <Row gutter={24}>
+          {/* Left Section - Info & Performance */}
+          <Col 
+            xs={24} 
+            lg={isCollapsed ? 2 : 6}
+            style={{ 
+              transition: 'all 0.3s ease'
+            }}
+          >
+            <div className="settings-scroll-container" style={{ 
+              position: 'sticky', 
+              top: '0px', 
+              height: isCollapsed ? 'calc(100vh - 40px)' : 'auto',
+              maxHeight: 'calc(100vh - 40px)', 
+              overflowY: isCollapsed ? 'hidden' : 'auto', 
+              paddingBottom: isCollapsed ? '0px' : '80px', 
+              paddingLeft: isCollapsed ? '12px' : '24px', 
+              paddingRight: isCollapsed ? '0px' : '24px', 
+              transition: 'all 0.3s ease',
+              display: isCollapsed ? 'flex' : 'block',
+              alignItems: isCollapsed ? 'center' : 'flex-start',
+              justifyContent: isCollapsed ? 'flex-start' : 'flex-start'
+            }}>
+              {/* Collapsed State - Show only toggle button */}
+              {isCollapsed ? (
+                <Tooltip title={t('common.expand') || 'Expand'} placement="right">
+                  <div
+                    onClick={() => setIsCollapsed(false)}
+                    style={{
+                      width: '40px',
+                      height: '40px',
+                      borderRadius: '50%',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      cursor: 'pointer',
+                      transition: 'all 0.3s ease',
+                      flexShrink: 0,
+                      background: theme === 'sun'
+                        ? 'linear-gradient(135deg, rgba(102, 174, 255, 0.2), rgba(60, 153, 255, 0.2))'
+                        : 'linear-gradient(135deg, rgba(181, 176, 192, 0.25), rgba(131, 119, 160, 0.25))',
+                      border: theme === 'sun'
+                        ? '2px solid rgba(102, 174, 255, 0.4)'
+                        : '2px solid rgba(181, 176, 192, 0.4)',
+                      boxShadow: theme === 'sun'
+                        ? '0 2px 8px rgba(60, 153, 255, 0.2)'
+                        : '0 2px 8px rgba(131, 119, 160, 0.25)',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.transform = 'scale(1.1)';
+                      e.currentTarget.style.background = theme === 'sun'
+                        ? 'linear-gradient(135deg, rgba(102, 174, 255, 0.35), rgba(60, 153, 255, 0.35))'
+                        : 'linear-gradient(135deg, rgba(181, 176, 192, 0.4), rgba(131, 119, 160, 0.4))';
+                      e.currentTarget.style.boxShadow = theme === 'sun'
+                        ? '0 4px 12px rgba(60, 153, 255, 0.35)'
+                        : '0 4px 12px rgba(131, 119, 160, 0.4)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = 'scale(1)';
+                      e.currentTarget.style.background = theme === 'sun'
+                        ? 'linear-gradient(135deg, rgba(102, 174, 255, 0.2), rgba(60, 153, 255, 0.2))'
+                        : 'linear-gradient(135deg, rgba(181, 176, 192, 0.25), rgba(131, 119, 160, 0.25))';
+                      e.currentTarget.style.boxShadow = theme === 'sun'
+                        ? '0 2px 8px rgba(60, 153, 255, 0.2)'
+                        : '0 2px 8px rgba(131, 119, 160, 0.25)';
+                    }}
+                  >
+                    <MenuUnfoldOutlined
+                      style={{
+                        fontSize: '20px',
+                        color: theme === 'sun' ? '#1890ff' : '#8377A0',
+                      }}
+                    />
+                  </div>
+                </Tooltip>
+              ) : (
+                /* Expanded State - Show full info */
+                <Card
+                  className={`settings-container-card ${theme}-settings-container-card`}
+                  style={{
+                    borderRadius: '16px',
+                    border: theme === 'sun' 
+                      ? '2px solid rgba(113, 179, 253, 0.25)' 
+                      : '2px solid rgba(138, 122, 255, 0.2)',
+                    boxShadow: theme === 'sun' 
+                      ? '0 4px 16px rgba(113, 179, 253, 0.1)' 
+                      : '0 4px 16px rgba(138, 122, 255, 0.12)',
+                    background: theme === 'sun'
+                      ? 'linear-gradient(135deg, rgba(255, 255, 255, 1) 0%, rgba(240, 249, 255, 0.95) 100%)'
+                      : 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(244, 240, 255, 0.95) 100%)',
+                    backdropFilter: 'blur(10px)'
+                  }}
+                >
+                  {/* Collapse Icon - At the top */}
+                  <div style={{ 
+                    display: 'flex', 
+                    justifyContent: 'flex-end',
+                    alignItems: 'center',
+                    marginBottom: '16px',
+                    paddingBottom: '16px',
+                    borderBottom: theme === 'sun' 
+                      ? '2px solid rgba(113, 179, 253, 0.15)' 
+                      : '2px solid rgba(138, 122, 255, 0.15)'
+                  }}>
+                    <Tooltip title={t('common.collapse') || 'Collapse'} placement="left">
+                      <div
+                        onClick={() => setIsCollapsed(true)}
+                        style={{
+                          width: '40px',
+                          height: '40px',
+                          borderRadius: '50%',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          cursor: 'pointer',
+                          transition: 'all 0.3s ease',
+                          background: theme === 'sun'
+                            ? 'linear-gradient(135deg, rgba(102, 174, 255, 0.15), rgba(60, 153, 255, 0.15))'
+                            : 'linear-gradient(135deg, rgba(181, 176, 192, 0.2), rgba(131, 119, 160, 0.2))',
+                          border: theme === 'sun'
+                            ? '2px solid rgba(102, 174, 255, 0.3)'
+                            : '2px solid rgba(181, 176, 192, 0.3)',
+                          boxShadow: theme === 'sun'
+                            ? '0 2px 8px rgba(60, 153, 255, 0.15)'
+                            : '0 2px 8px rgba(131, 119, 160, 0.2)',
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.transform = 'scale(1.1)';
+                          e.currentTarget.style.background = theme === 'sun'
+                            ? 'linear-gradient(135deg, rgba(102, 174, 255, 0.25), rgba(60, 153, 255, 0.25))'
+                            : 'linear-gradient(135deg, rgba(181, 176, 192, 0.3), rgba(131, 119, 160, 0.3))';
+                          e.currentTarget.style.boxShadow = theme === 'sun'
+                            ? '0 4px 12px rgba(60, 153, 255, 0.3)'
+                            : '0 4px 12px rgba(131, 119, 160, 0.35)';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.transform = 'scale(1)';
+                          e.currentTarget.style.background = theme === 'sun'
+                            ? 'linear-gradient(135deg, rgba(102, 174, 255, 0.15), rgba(60, 153, 255, 0.15))'
+                            : 'linear-gradient(135deg, rgba(181, 176, 192, 0.2), rgba(131, 119, 160, 0.2))';
+                          e.currentTarget.style.boxShadow = theme === 'sun'
+                            ? '0 2px 8px rgba(60, 153, 255, 0.15)'
+                            : '0 2px 8px rgba(131, 119, 160, 0.2)';
+                        }}
+                      >
+                        <MenuFoldOutlined
+                          style={{
+                            fontSize: '16px',
+                            color: theme === 'sun' ? '#1890ff' : '#8377A0',
+                          }}
+                        />
+                      </div>
+                    </Tooltip>
+                  </div>
 
-        {/* Question Sidebar */}
-        <div className={`question-sidebar ${theme}-question-sidebar ${isSidebarOpen ? 'open' : ''}`}>
-          <div className="question-sidebar-header">
-            <h3 style={{ fontSize: '20px', fontWeight: 700, textAlign: 'center', color: '#000000' }}>Questions</h3>
-          </div>
-          <div className="question-sidebar-list">
-            {questionNav.map((item) => (
-              <div
-                key={item.id}
-                className={`question-sidebar-item ${item.type === 'section' ? 'question-sidebar-section' : ''}`}
-                onClick={() => scrollToQuestion(item.id)}
-                style={{ fontWeight: 'normal', textAlign: 'center', color: '#000000' }}
-              >
-                {item.title}
-              </div>
-            ))}
-          </div>
-        </div>
+                  {/* Header with Tabs */}
+                  <div style={{ 
+                    marginBottom: '20px',
+                    paddingBottom: '16px',
+                    borderBottom: theme === 'sun' 
+                      ? '2px solid rgba(113, 179, 253, 0.15)' 
+                      : '2px solid rgba(138, 122, 255, 0.15)'
+                  }}>
+                    {/* Tab Navigation */}
+                    <div style={{
+                      borderBottom: `1px solid ${theme === 'sun' ? '#e0e0e0' : 'rgba(255, 255, 255, 0.1)'}`,
+                      marginBottom: '16px'
+                    }}>
+                      <div style={{ display: 'flex', gap: '0px', width: '100%' }}>
+                        <button
+                          onClick={() => setActiveTab('info')}
+                          style={{
+                            flex: 1,
+                            padding: '6px 16px',
+                            cursor: 'pointer',
+                            fontSize: '14px',
+                            fontWeight: activeTab === 'info' ? 500 : 400,
+                            transition: 'all 0.2s ease',
+                            background: activeTab === 'info'
+                              ? (theme === 'sun' 
+                                  ? 'linear-gradient(135deg, rgba(148, 163, 184, 0.06) 0%, rgba(148, 163, 184, 0.03) 100%)'
+                                  : 'linear-gradient(135deg, rgba(226, 232, 240, 0.08) 0%, rgba(226, 232, 240, 0.04) 100%)')
+                              : 'transparent',
+                            border: activeTab === 'info'
+                              ? `1px solid ${theme === 'sun' ? 'rgba(148, 163, 184, 0.15)' : 'rgba(226, 232, 240, 0.2)'}`
+                              : 'none',
+                            borderBottom: activeTab === 'info'
+                              ? `2px solid ${theme === 'sun' ? '#1a73e8' : '#8B5CF6'}`
+                              : '2px solid transparent',
+                            borderRadius: '8px 8px 0 0',
+                            color: activeTab === 'info'
+                              ? (theme === 'sun' ? '#1a73e8' : '#8B5CF6')
+                              : (theme === 'sun' ? '#5f6368' : 'rgba(255, 255, 255, 0.6)'),
+                            marginBottom: '-1px',
+                            position: 'relative'
+                          }}
+                          onMouseEnter={(e) => {
+                            if (activeTab !== 'info') {
+                              e.currentTarget.style.color = theme === 'sun' ? '#1a73e8' : '#8B5CF6';
+                              e.currentTarget.style.backgroundColor = theme === 'sun' ? 'rgba(26, 115, 232, 0.04)' : 'rgba(139, 92, 246, 0.1)';
+                            }
+                          }}
+                          onMouseLeave={(e) => {
+                            if (activeTab !== 'info') {
+                              e.currentTarget.style.color = theme === 'sun' ? '#5f6368' : 'rgba(255, 255, 255, 0.6)';
+                              e.currentTarget.style.backgroundColor = 'transparent';
+                            }
+                          }}
+                        >
+                          Info
+                        </button>
+                        <button
+                          onClick={() => setActiveTab('questions')}
+                          style={{
+                            flex: 1,
+                            padding: '6px 16px',
+                            cursor: 'pointer',
+                            fontSize: '14px',
+                            fontWeight: activeTab === 'questions' ? 500 : 400,
+                            transition: 'all 0.2s ease',
+                            background: activeTab === 'questions'
+                              ? (theme === 'sun' 
+                                  ? 'linear-gradient(135deg, rgba(148, 163, 184, 0.06) 0%, rgba(148, 163, 184, 0.03) 100%)'
+                                  : 'linear-gradient(135deg, rgba(226, 232, 240, 0.08) 0%, rgba(226, 232, 240, 0.04) 100%)')
+                              : 'transparent',
+                            border: activeTab === 'questions'
+                              ? `1px solid ${theme === 'sun' ? 'rgba(148, 163, 184, 0.15)' : 'rgba(226, 232, 240, 0.2)'}`
+                              : 'none',
+                            borderBottom: activeTab === 'questions'
+                              ? `2px solid ${theme === 'sun' ? '#1a73e8' : '#8B5CF6'}`
+                              : '2px solid transparent',
+                            borderRadius: '8px 8px 0 0',
+                            color: activeTab === 'questions'
+                              ? (theme === 'sun' ? '#1a73e8' : '#8B5CF6')
+                              : (theme === 'sun' ? '#5f6368' : 'rgba(255, 255, 255, 0.6)'),
+                            marginBottom: '-1px',
+                            position: 'relative'
+                          }}
+                          onMouseEnter={(e) => {
+                            if (activeTab !== 'questions') {
+                              e.currentTarget.style.color = theme === 'sun' ? '#1a73e8' : '#8B5CF6';
+                              e.currentTarget.style.backgroundColor = theme === 'sun' ? 'rgba(26, 115, 232, 0.04)' : 'rgba(139, 92, 246, 0.1)';
+                            }
+                          }}
+                          onMouseLeave={(e) => {
+                            if (activeTab !== 'questions') {
+                              e.currentTarget.style.color = theme === 'sun' ? '#5f6368' : 'rgba(255, 255, 255, 0.6)';
+                              e.currentTarget.style.backgroundColor = 'transparent';
+                            }
+                          }}
+                        >
+                          Questions
+                        </button>
+                      </div>
+                    </div>
+                  </div>
 
-        <div className={`question-content-container ${isSidebarOpen ? 'with-sidebar' : ''}`} style={{ padding: '24px' }}>
+                  {/* Tab Content */}
+                  {activeTab === 'info' ? (
+                    <>
+                      {/* Performance Section */}
+                      <div style={{ marginBottom: '16px' }}>
+                        <div 
+                          onClick={() => setIsPerformanceCollapsed(!isPerformanceCollapsed)}
+                          style={{ 
+                            cursor: 'pointer',
+                            marginBottom: '12px',
+                            padding: '3px 16px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '8px',
+                            background: theme === 'sun' 
+                              ? 'linear-gradient(135deg, rgba(148, 163, 184, 0.06) 0%, rgba(148, 163, 184, 0.03) 100%)'
+                              : 'linear-gradient(135deg, rgba(226, 232, 240, 0.08) 0%, rgba(226, 232, 240, 0.04) 100%)',
+                            borderRadius: '8px',
+                            border: `1px solid ${theme === 'sun' ? 'rgba(148, 163, 184, 0.15)' : 'rgba(226, 232, 240, 0.2)'}`,
+                            transition: 'all 0.3s ease',
+                            boxShadow: theme === 'sun' 
+                              ? '0 1px 4px rgba(148, 163, 184, 0.05)' 
+                              : '0 1px 4px rgba(226, 232, 240, 0.08)'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.background = theme === 'sun' 
+                              ? 'linear-gradient(135deg, rgba(148, 163, 184, 0.1) 0%, rgba(148, 163, 184, 0.06) 100%)'
+                              : 'linear-gradient(135deg, rgba(226, 232, 240, 0.12) 0%, rgba(226, 232, 240, 0.08) 100%)';
+                            e.currentTarget.style.transform = 'translateY(-1px)';
+                            e.currentTarget.style.boxShadow = theme === 'sun' 
+                              ? '0 2px 8px rgba(148, 163, 184, 0.1)' 
+                              : '0 2px 8px rgba(226, 232, 240, 0.15)';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.background = theme === 'sun' 
+                              ? 'linear-gradient(135deg, rgba(148, 163, 184, 0.06) 0%, rgba(148, 163, 184, 0.03) 100%)'
+                              : 'linear-gradient(135deg, rgba(226, 232, 240, 0.08) 0%, rgba(226, 232, 240, 0.04) 100%)';
+                            e.currentTarget.style.transform = 'translateY(0)';
+                            e.currentTarget.style.boxShadow = theme === 'sun' 
+                              ? '0 1px 4px rgba(148, 163, 184, 0.05)' 
+                              : '0 1px 4px rgba(226, 232, 240, 0.08)';
+                          }}
+                        >
+                          <Typography.Title 
+                            level={5} 
+                            style={{ 
+                              margin: 0,
+                              fontSize: '16px', 
+                              fontWeight: 500, 
+                              color: theme === 'sun' ? '#4a5568' : '#e2e8f0',
+                              userSelect: 'none'
+                            }}
+                          >
+                            Performance
+                          </Typography.Title>
+                          {isPerformanceCollapsed ? (
+                            <DownOutlined style={{ fontSize: '14px', color: theme === 'sun' ? '#4a5568' : '#e2e8f0' }} />
+                          ) : (
+                            <UpOutlined style={{ fontSize: '14px', color: theme === 'sun' ? '#4a5568' : '#e2e8f0' }} />
+                          )}
+                        </div>
+                        
+                        {!isPerformanceCollapsed && (
+                          <>
+                            {/* Score Card */}
+                            <div style={{ marginBottom: '16px', padding: '16px' }}>
+                              <div style={{ marginBottom: '12px' }}>
+                                <Typography.Text style={{ fontSize: '12px', fontWeight: 400, color: theme === 'sun' ? '#666' : '#999', display: 'block' }}>
+                                  Score
+                                </Typography.Text>
+                              </div>
+                              <div style={{ textAlign: 'center' }}>
+                                <div style={{ position: 'relative', display: 'inline-block' }}>
+                                  <Typography.Text strong style={{ fontSize: '32px', color: '#1890ff', display: 'block', lineHeight: '1.2' }}>
+                                    {submission.score.toFixed(1)}/10
+                                  </Typography.Text>
+                                  <Typography.Text style={{ 
+                                    fontSize: '11px', 
+                                    fontStyle: 'italic',
+                                    color: theme === 'sun' ? '#999' : '#888',
+                                    display: 'block',
+                                    marginTop: '4px'
+                                  }}>
+                                    {submission.timeSpent || 0} minutes
+                                  </Typography.Text>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Answer Summary */}
+                            <div style={{ padding: '12px', background: theme === 'sun' ? '#f9f9f9' : 'rgba(255, 255, 255, 0.05)', borderRadius: '8px', border: `1px solid ${theme === 'sun' ? '#e8e8e8' : 'rgba(255, 255, 255, 0.1)'}` }}>
+                              <Space direction="vertical" size={8} style={{ width: '100%' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                  <Space size={8}>
+                                    <CheckCircleOutlined style={{ color: '#52c41a', fontSize: '16px' }} />
+                                    <Typography.Text style={{ fontSize: '13px' }}>Correct</Typography.Text>
+                                  </Space>
+                                  <Typography.Text strong style={{ fontSize: '16px', color: '#52c41a' }}>
+                                    {submission.correctCount || 0}
+                                  </Typography.Text>
+                                </div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                  <Space size={8}>
+                                    <CloseCircleOutlined style={{ color: '#ff4d4f', fontSize: '16px' }} />
+                                    <Typography.Text style={{ fontSize: '13px' }}>Incorrect</Typography.Text>
+                                  </Space>
+                                  <Typography.Text strong style={{ fontSize: '16px', color: '#ff4d4f' }}>
+                                    {submission.incorrectCount || 0}
+                                  </Typography.Text>
+                                </div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                  <Space size={8}>
+                                    <MinusCircleOutlined style={{ color: '#faad14', fontSize: '16px' }} />
+                                    <Typography.Text style={{ fontSize: '13px' }}>Unanswered</Typography.Text>
+                                  </Space>
+                                  <Typography.Text strong style={{ fontSize: '16px', color: '#faad14' }}>
+                                    {submission.unansweredCount || 0}
+                                  </Typography.Text>
+                                </div>
+                              </Space>
+                            </div>
+                          </>
+                        )}
+                      </div>
+
+                      <Divider style={{ margin: '16px 0' }} />
+
+                      {/* Teacher Feedback Section - View Only */}
+                      <div style={{ marginBottom: '16px' }}>
+                        <div 
+                          onClick={() => setIsTeacherFeedbackCollapsed(!isTeacherFeedbackCollapsed)}
+                          style={{ 
+                            cursor: 'pointer',
+                            marginBottom: '12px',
+                            padding: '3px 16px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '8px',
+                            background: theme === 'sun' 
+                              ? 'linear-gradient(135deg, rgba(148, 163, 184, 0.06) 0%, rgba(148, 163, 184, 0.03) 100%)'
+                              : 'linear-gradient(135deg, rgba(226, 232, 240, 0.08) 0%, rgba(226, 232, 240, 0.04) 100%)',
+                            borderRadius: '8px',
+                            border: `1px solid ${theme === 'sun' ? 'rgba(148, 163, 184, 0.15)' : 'rgba(226, 232, 240, 0.2)'}`,
+                            transition: 'all 0.3s ease',
+                            boxShadow: theme === 'sun' 
+                              ? '0 1px 4px rgba(148, 163, 184, 0.05)' 
+                              : '0 1px 4px rgba(226, 232, 240, 0.08)'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.background = theme === 'sun' 
+                              ? 'linear-gradient(135deg, rgba(148, 163, 184, 0.1) 0%, rgba(148, 163, 184, 0.06) 100%)'
+                              : 'linear-gradient(135deg, rgba(226, 232, 240, 0.12) 0%, rgba(226, 232, 240, 0.08) 100%)';
+                            e.currentTarget.style.transform = 'translateY(-1px)';
+                            e.currentTarget.style.boxShadow = theme === 'sun' 
+                              ? '0 2px 8px rgba(148, 163, 184, 0.1)' 
+                              : '0 2px 8px rgba(226, 232, 240, 0.15)';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.background = theme === 'sun' 
+                              ? 'linear-gradient(135deg, rgba(148, 163, 184, 0.06) 0%, rgba(148, 163, 184, 0.03) 100%)'
+                              : 'linear-gradient(135deg, rgba(226, 232, 240, 0.08) 0%, rgba(226, 232, 240, 0.04) 100%)';
+                            e.currentTarget.style.transform = 'translateY(0)';
+                            e.currentTarget.style.boxShadow = theme === 'sun' 
+                              ? '0 1px 4px rgba(148, 163, 184, 0.05)' 
+                              : '0 1px 4px rgba(226, 232, 240, 0.08)';
+                          }}
+                        >
+                          <Typography.Title 
+                            level={5} 
+                            style={{ 
+                              margin: 0,
+                              fontSize: '16px', 
+                              fontWeight: 500, 
+                              color: theme === 'sun' ? '#4a5568' : '#e2e8f0',
+                              userSelect: 'none'
+                            }}
+                          >
+                            Teacher Feedback
+                          </Typography.Title>
+                          {isTeacherFeedbackCollapsed ? (
+                            <DownOutlined style={{ fontSize: '14px', color: theme === 'sun' ? '#4a5568' : '#e2e8f0' }} />
+                          ) : (
+                            <UpOutlined style={{ fontSize: '14px', color: theme === 'sun' ? '#4a5568' : '#e2e8f0' }} />
+                          )}
+                        </div>
+                        {!isTeacherFeedbackCollapsed && (
+                          <div style={{
+                            padding: '12px',
+                            background: theme === 'sun' ? '#f9f9f9' : 'rgba(255, 255, 255, 0.05)',
+                            borderRadius: '8px',
+                            border: `1px solid ${theme === 'sun' ? '#e8e8e8' : 'rgba(255, 255, 255, 0.1)'}`,
+                            minHeight: '100px',
+                            fontSize: '14px',
+                            lineHeight: '1.6',
+                            color: theme === 'sun' ? '#333' : '#ddd',
+                            whiteSpace: 'pre-wrap'
+                          }}>
+                            No feedback available yet.
+                          </div>
+                        )}
+                      </div>
+
+                      <Divider style={{ margin: '16px 0' }} />
+
+                      {/* AI Feedback Section - View Only */}
+                      <div style={{ marginBottom: '16px' }}>
+                        <div 
+                          onClick={() => setIsAiFeedbackCollapsed(!isAiFeedbackCollapsed)}
+                          style={{ 
+                            cursor: 'pointer',
+                            marginBottom: '12px',
+                            padding: '3px 16px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '8px',
+                            background: theme === 'sun' 
+                              ? 'linear-gradient(135deg, rgba(148, 163, 184, 0.06) 0%, rgba(148, 163, 184, 0.03) 100%)'
+                              : 'linear-gradient(135deg, rgba(226, 232, 240, 0.08) 0%, rgba(226, 232, 240, 0.04) 100%)',
+                            borderRadius: '8px',
+                            border: `1px solid ${theme === 'sun' ? 'rgba(148, 163, 184, 0.15)' : 'rgba(226, 232, 240, 0.2)'}`,
+                            transition: 'all 0.3s ease',
+                            boxShadow: theme === 'sun' 
+                              ? '0 1px 4px rgba(148, 163, 184, 0.05)' 
+                              : '0 1px 4px rgba(226, 232, 240, 0.08)'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.background = theme === 'sun' 
+                              ? 'linear-gradient(135deg, rgba(148, 163, 184, 0.1) 0%, rgba(148, 163, 184, 0.06) 100%)'
+                              : 'linear-gradient(135deg, rgba(226, 232, 240, 0.12) 0%, rgba(226, 232, 240, 0.08) 100%)';
+                            e.currentTarget.style.transform = 'translateY(-1px)';
+                            e.currentTarget.style.boxShadow = theme === 'sun' 
+                              ? '0 2px 8px rgba(148, 163, 184, 0.1)' 
+                              : '0 2px 8px rgba(226, 232, 240, 0.15)';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.background = theme === 'sun' 
+                              ? 'linear-gradient(135deg, rgba(148, 163, 184, 0.06) 0%, rgba(148, 163, 184, 0.03) 100%)'
+                              : 'linear-gradient(135deg, rgba(226, 232, 240, 0.08) 0%, rgba(226, 232, 240, 0.04) 100%)';
+                            e.currentTarget.style.transform = 'translateY(0)';
+                            e.currentTarget.style.boxShadow = theme === 'sun' 
+                              ? '0 1px 4px rgba(148, 163, 184, 0.05)' 
+                              : '0 1px 4px rgba(226, 232, 240, 0.08)';
+                          }}
+                        >
+                          <Typography.Title 
+                            level={5} 
+                            style={{ 
+                              margin: 0,
+                              fontSize: '16px', 
+                              fontWeight: 500, 
+                              color: theme === 'sun' ? '#4a5568' : '#e2e8f0',
+                              userSelect: 'none'
+                            }}
+                          >
+                            AI Feedback
+                          </Typography.Title>
+                          {isAiFeedbackCollapsed ? (
+                            <DownOutlined style={{ fontSize: '14px', color: theme === 'sun' ? '#4a5568' : '#e2e8f0' }} />
+                          ) : (
+                            <UpOutlined style={{ fontSize: '14px', color: theme === 'sun' ? '#4a5568' : '#e2e8f0' }} />
+                          )}
+                        </div>
+                        {!isAiFeedbackCollapsed && (
+                          <div style={{
+                            padding: '12px',
+                            background: theme === 'sun' ? '#f9f9f9' : 'rgba(255, 255, 255, 0.05)',
+                            borderRadius: '8px',
+                            border: `1px solid ${theme === 'sun' ? '#e8e8e8' : 'rgba(255, 255, 255, 0.1)'}`,
+                            minHeight: '100px',
+                            fontSize: '14px',
+                            lineHeight: '1.6',
+                            color: theme === 'sun' ? '#333' : '#ddd',
+                            whiteSpace: 'pre-wrap'
+                          }}>
+                            No AI feedback available yet.
+                          </div>
+                        )}
+                      </div>
+                    </>
+                  ) : (
+                    /* Questions Tab */
+                    <>
+                      <div className="question-sidebar-header" style={{ marginBottom: '16px', paddingBottom: '16px', borderBottom: theme === 'sun' ? '2px solid rgba(113, 179, 253, 0.15)' : '2px solid rgba(138, 122, 255, 0.15)' }}>
+                        <h3 style={{ fontSize: '20px', fontWeight: 700, textAlign: 'center', color: 'rgb(24, 144, 255)', margin: 0 }}>Questions</h3>
+                      </div>
+                      <div style={{ 
+                        maxHeight: 'calc(100vh - 280px)', 
+                        overflowY: 'auto',
+                        paddingRight: '8px'
+                      }}>
+                        <div className="question-sidebar-list">
+                          {questionNav.map((item) => (
+                            <div
+                              key={item.id}
+                              className={`question-sidebar-item ${item.type === 'section' ? 'question-sidebar-section' : ''}`}
+                              onClick={() => scrollToQuestion(item.id)}
+                              style={{ 
+                                fontWeight: 'normal', 
+                                textAlign: 'center', 
+                                color: theme === 'sun' ? '#000000' : '#FFFFFF',
+                                padding: '10px',
+                                marginBottom: '4px',
+                                cursor: 'pointer',
+                                borderRadius: '4px',
+                                transition: 'all 0.2s ease',
+                                fontSize: '14px'
+                              }}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.background = theme === 'sun' 
+                                  ? 'rgba(24, 144, 255, 0.1)' 
+                                  : 'rgba(138, 122, 255, 0.15)';
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.background = 'transparent';
+                              }}
+                            >
+                              {item.title}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </Card>
+              )}
+            </div>
+          </Col>
+
+          {/* Right Section - Questions Review */}
+          <Col 
+            xs={24} 
+            lg={isCollapsed ? 22 : 18}
+            style={{ 
+              transition: 'all 0.3s ease'
+            }}
+          >
+            <div className="sdc-questions-review-section" style={{ padding: '0' }}>
           <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
             <LoadingWithEffect loading={loading} message="Loading questions...">
               <div className="questions-list">
@@ -7159,6 +7804,8 @@ In conclusion, writing is not just about putting words on paper—it is about cr
             </LoadingWithEffect>
           </div>
         </div>
+          </Col>
+        </Row>
       </div>
       
       {/* Feedback Modal */}
