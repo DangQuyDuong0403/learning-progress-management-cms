@@ -16,166 +16,78 @@ import {
 import ThemedLayout from "../../../component/teacherlayout/ThemedLayout";
 import LoadingWithEffect from "../../../component/spinner/LoadingWithEffect";
 import "../ManagementTeacher/dailyChallenge/DailyChallengeList.css";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useTheme } from "../../../contexts/ThemeContext";
+import { dailyChallengeApi } from "../../../apis/apis";
 
-// Fake data generator
-const generateFakeData = () => {
-  const lessons = [
-    { id: 1, name: "Lesson 1: Introduction to English" },
-    { id: 2, name: "Lesson 2: Basic Grammar" },
-    { id: 3, name: "Lesson 3: Vocabulary Building" },
-    { id: 4, name: "Lesson 4: Reading Comprehension" },
-    { id: 5, name: "Lesson 5: Speaking Practice" },
-  ];
-
-  const types = ["GV", "RE", "LI", "WR", "SP"];
-  // Student view only shows PUBLISHED challenges
-  const status = "PUBLISHED";
+// Transform API response data to match UI structure
+const transformApiData = (apiData) => {
+  const flattened = [];
   
-  const challenges = [];
-  let challengeId = 1;
-
-  // First, create 5 challenges with each type (GV, RE, LI, WR, SP)
-  const firstFiveTypes = ["GV", "RE", "LI", "WR", "SP"];
-  const firstLesson = lessons[0];
+  if (!Array.isArray(apiData)) {
+    return flattened;
+  }
   
-  for (let i = 0; i < 5; i++) {
-    const type = firstFiveTypes[i];
-    const startDate = new Date();
-    startDate.setDate(startDate.getDate() - Math.floor(Math.random() * 30));
-    const endDate = new Date(startDate);
-    endDate.setDate(endDate.getDate() + Math.floor(Math.random() * 7) + 1);
-
-    // First 5 challenges should have no score (not attempted) - for testing
-    const totalScore = null; // All first 5 challenges are not attempted yet
-
-    challenges.push({
-      id: challengeId++,
-      title: `${type} Challenge ${i + 1} - ${firstLesson.name.split(':')[0]}`,
-      type: type,
-      status: status, // Always PUBLISHED for student view
-      startDate: startDate.toISOString().split('T')[0],
-      endDate: endDate.toISOString().split('T')[0],
-      lessonId: firstLesson.id,
-      lessonName: firstLesson.name,
-      lessonOrder: 1,
-      isFirstChallengeInLesson: i === 0,
-      totalChallengesInLesson: 5,
-      rowSpan: i === 0 ? 5 : 0,
-      description: `This is a ${type} challenge for ${firstLesson.name}`,
-      timeLimit: 30 + Math.floor(Math.random() * 30),
-      totalQuestions: 10 + Math.floor(Math.random() * 20),
-      createdAt: startDate.toISOString().split('T')[0],
-      hasAntiCheat: Math.random() > 0.5,
-      shuffleQuestion: Math.random() > 0.5,
-      translateOnScreen: Math.random() > 0.5,
-      challengeMode: Math.random() > 0.5 ? 'exam' : 'normal',
-        totalScore: totalScore, // Total score (0-10) or null if not attempted
+  apiData.forEach((lesson) => {
+    const challenges = lesson.challenges || [];
+    
+    if (challenges.length === 0) {
+      // Create a placeholder row for lessons without challenges
+      const emptyLessonRow = {
+        id: `empty-lesson-${lesson.classLessonId}`,
+        title: null,
+        type: null,
+        status: null,
+        startDate: null,
+        endDate: null,
+        lessonId: lesson.classLessonId,
+        lessonName: lesson.classLessonName,
+        lessonOrder: lesson.orderNumber,
+        isFirstChallengeInLesson: true,
+        totalChallengesInLesson: 0,
+        rowSpan: 1,
+        totalScore: null,
+        submissionChallengeId: null,
+        submissionStatus: null,
+        isEmptyLesson: true, // Flag to identify empty lessons
+      };
+      flattened.push(emptyLessonRow);
+    } else {
+      challenges.forEach((challenge, index) => {
+        const transformedChallenge = {
+          id: challenge.id,
+          title: challenge.challengeName,
+          type: challenge.challengeType,
+          status: challenge.challengeStatus,
+          startDate: challenge.startDate,
+          endDate: challenge.endDate,
+          lessonId: lesson.classLessonId,
+          lessonName: lesson.classLessonName,
+          lessonOrder: lesson.orderNumber,
+          isFirstChallengeInLesson: index === 0,
+          totalChallengesInLesson: challenges.length,
+          rowSpan: index === 0 ? challenges.length : 0,
+          totalScore: challenge.totalScore,
+          submissionChallengeId: challenge.submissionChallengeId,
+          submissionStatus: challenge.submissionStatus,
+          isEmptyLesson: false,
+        };
+        
+        flattened.push(transformedChallenge);
       });
     }
-
-  // Then, continue generating random challenges for other lessons
-  lessons.forEach((lesson, lessonIndex) => {
-    if (lessonIndex === 0) return; // Skip first lesson as we already handled it
-    
-    let challengesPerLesson, lessonChallenges;
-    
-    // Special handling for lesson 2 (lessonIndex === 1): 5 challenges with all 5 types and all have scores
-    if (lessonIndex === 1) {
-      challengesPerLesson = 5;
-      lessonChallenges = [];
-      const allTypes = ["GV", "RE", "LI", "WR", "SP"];
-      
-      for (let i = 0; i < 5; i++) {
-        const type = allTypes[i];
-        const startDate = new Date();
-        startDate.setDate(startDate.getDate() - Math.floor(Math.random() * 30));
-        const endDate = new Date(startDate);
-        endDate.setDate(endDate.getDate() + Math.floor(Math.random() * 7) + 1);
-
-        // All lesson 2 challenges have scores (completed)
-        const totalScore = parseFloat((Math.random() * 10).toFixed(1)); // Random score between 0-10
-
-        lessonChallenges.push({
-          id: challengeId++,
-          title: `${type} Challenge ${i + 1} - ${lesson.name.split(':')[0]}`,
-          type: type,
-          status: status,
-          startDate: startDate.toISOString().split('T')[0],
-          endDate: endDate.toISOString().split('T')[0],
-          lessonId: lesson.id,
-          lessonName: lesson.name,
-          lessonOrder: lessonIndex + 1,
-          isFirstChallengeInLesson: i === 0,
-          totalChallengesInLesson: 5,
-          rowSpan: i === 0 ? 5 : 0,
-          description: `This is a ${type} challenge for ${lesson.name}`,
-          timeLimit: 30 + Math.floor(Math.random() * 30),
-          totalQuestions: 10 + Math.floor(Math.random() * 20),
-          createdAt: startDate.toISOString().split('T')[0],
-          hasAntiCheat: Math.random() > 0.5,
-          shuffleQuestion: Math.random() > 0.5,
-          translateOnScreen: Math.random() > 0.5,
-          challengeMode: Math.random() > 0.5 ? 'exam' : 'normal',
-          totalScore: totalScore, // All have scores
-        });
-      }
-    } else {
-      // Other lessons: random 2-4 challenges
-      challengesPerLesson = Math.floor(Math.random() * 3) + 2;
-      lessonChallenges = [];
-      
-      for (let i = 0; i < challengesPerLesson; i++) {
-        const type = types[Math.floor(Math.random() * types.length)];
-        
-        const startDate = new Date();
-        startDate.setDate(startDate.getDate() - Math.floor(Math.random() * 30));
-        const endDate = new Date(startDate);
-        endDate.setDate(endDate.getDate() + Math.floor(Math.random() * 7) + 1);
-
-        // Random score: null (not attempted), or a score between 0-10
-        const totalScore = Math.random() > 0.3 
-          ? parseFloat((Math.random() * 10).toFixed(1)) // 70% chance of having a score (0-10, 1 decimal)
-          : null; // 30% chance of not attempted yet
-
-        lessonChallenges.push({
-          id: challengeId++,
-          title: `${type} Challenge ${i + 1} - ${lesson.name.split(':')[0]}`,
-          type: type,
-          status: status, // Always PUBLISHED for student view
-          startDate: startDate.toISOString().split('T')[0],
-          endDate: endDate.toISOString().split('T')[0],
-          lessonId: lesson.id,
-          lessonName: lesson.name,
-          lessonOrder: lessonIndex + 1,
-          isFirstChallengeInLesson: i === 0,
-          totalChallengesInLesson: challengesPerLesson,
-          rowSpan: i === 0 ? challengesPerLesson : 0,
-          description: `This is a ${type} challenge for ${lesson.name}`,
-          timeLimit: 30 + Math.floor(Math.random() * 30),
-          totalQuestions: 10 + Math.floor(Math.random() * 20),
-          createdAt: startDate.toISOString().split('T')[0],
-          hasAntiCheat: Math.random() > 0.5,
-          shuffleQuestion: Math.random() > 0.5,
-          translateOnScreen: Math.random() > 0.5,
-          challengeMode: Math.random() > 0.5 ? 'exam' : 'normal',
-          totalScore: totalScore, // Total score (0-10) or null if not attempted
-        });
-      }
-    }
-    
-    challenges.push(...lessonChallenges);
   });
-
-  return challenges;
+  
+  return flattened;
 };
 
 const StudentDailyChallengeList = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { theme } = useTheme();
+  const location = useLocation();
+  const { classId } = useParams();
   
   const [loading, setLoading] = useState(false);
   const [dailyChallenges, setDailyChallenges] = useState([]);
@@ -227,17 +139,54 @@ const StudentDailyChallengeList = () => {
     }
   }, [t]);
 
-  // Load fake data on mount
+  // Load data from API
   useEffect(() => {
-    setLoading(true);
-    // Simulate API call delay
-    setTimeout(() => {
-      const fakeData = generateFakeData();
-      setAllChallenges(fakeData);
-      setTotalItems(fakeData.length);
-      setLoading(false);
-    }, 500);
-  }, []);
+    const resolvedClassId = classId || location.state?.classId;
+    
+    if (!resolvedClassId) {
+      return;
+    }
+
+    const fetchData = async () => {
+      setLoading(true);
+      try {
+        // Fetch all data (no pagination) - client-side pagination will handle it
+        const response = await dailyChallengeApi.getStudentDailyChallengesByClass(resolvedClassId, {
+          text: searchDebounce || undefined,
+        });
+
+        // Handle both possible response structures
+        // Axios wraps response in response.data, so if API returns {success: true, data: [...]}
+        // it becomes response.data = {success: true, data: [...]}
+        let responseData = null;
+        if (response.data?.data && Array.isArray(response.data.data)) {
+          // Standard structure: { success: true, data: [...] }
+          responseData = response.data.data;
+        } else if (Array.isArray(response.data)) {
+          // Direct array structure: [...]
+          responseData = response.data;
+        } else if (response.data?.success && response.data?.data) {
+          responseData = response.data.data;
+        }
+
+        if (responseData && Array.isArray(responseData)) {
+          const transformedData = transformApiData(responseData);
+          setAllChallenges(transformedData);
+          setTotalItems(transformedData.length);
+        } else {
+          setAllChallenges([]);
+          setTotalItems(0);
+        }
+      } catch (error) {
+        setAllChallenges([]);
+        setTotalItems(0);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [classId, location.state?.classId, searchDebounce]);
 
   // Compute lesson-aware pagination: recalculate rowSpan and first-in-lesson within the current page window
   const computePagedRows = useCallback((fullList, page, size) => {
@@ -289,6 +238,17 @@ const StudentDailyChallengeList = () => {
   // Build filtered full list (type/search) - only PUBLISHED challenges shown
   const filteredAllChallenges = useMemo(() => {
     return allChallenges.filter((challenge) => {
+      // Empty lessons (lessons without challenges) should always be shown
+      if (challenge.isEmptyLesson) {
+        // Only filter by search text if provided
+        if (searchDebounce) {
+          const matchesSearch = challenge.lessonName?.toLowerCase().includes(searchDebounce.toLowerCase());
+          return matchesSearch;
+        }
+        return true; // Show empty lessons when no search filter
+      }
+      
+      // For regular challenges, apply type and search filters
       const matchesType = typeFilter.length === 0 || typeFilter.includes(challenge.type);
       const matchesSearch = searchDebounce === "" || 
         challenge.title?.toLowerCase().includes(searchDebounce.toLowerCase()) ||
@@ -354,6 +314,7 @@ const StudentDailyChallengeList = () => {
         lessonName: challenge.lessonName,
         challengeType: challenge.type, // Pass challenge type (GV, RE, LI, WR, SP)
         type: challenge.type, // Also pass as 'type' for compatibility
+        submissionChallengeId: challenge.submissionChallengeId, // Pass submissionChallengeId for saving/submitting
       }
     });
   };
@@ -444,7 +405,10 @@ const StudentDailyChallengeList = () => {
       ellipsis: {
         showTitle: false,
       },
-      render: (text) => {
+      render: (text, record) => {
+        if (record.isEmptyLesson) {
+          return <span style={{ color: '#999' }}></span>;
+        }
         return (
           <Tooltip placement="topLeft" title={text}>
             <span style={{ 
@@ -466,7 +430,10 @@ const StudentDailyChallengeList = () => {
       key: 'type',
       width: 150,
       align: 'center',
-      render: (type) => {
+      render: (type, record) => {
+        if (record.isEmptyLesson) {
+          return <span style={{ color: '#999' }}></span>;
+        }
         return (
           <span style={{
             padding: '4px 8px',
@@ -486,7 +453,7 @@ const StudentDailyChallengeList = () => {
       width: 120,
       align: 'center',
       render: (startDate) => {
-        return startDate ? new Date(startDate).toLocaleDateString() : '-';
+        return startDate ? new Date(startDate).toLocaleDateString() : '';
       },
     },
     {
@@ -496,7 +463,7 @@ const StudentDailyChallengeList = () => {
       width: 120,
       align: 'center',
       render: (endDate) => {
-        return endDate ? new Date(endDate).toLocaleDateString() : '-';
+        return endDate ? new Date(endDate).toLocaleDateString() : '';
       },
     },
     {
@@ -547,6 +514,11 @@ const StudentDailyChallengeList = () => {
       width: 180,
       align: 'center',
       render: (_, record) => {
+        // Don't show actions for empty lessons
+        if (record.isEmptyLesson) {
+          return <span style={{ color: '#999' }}></span>;
+        }
+        
         // Check if challenge has been attempted (has score)
         const hasScore = record.totalScore !== null && record.totalScore !== undefined;
         

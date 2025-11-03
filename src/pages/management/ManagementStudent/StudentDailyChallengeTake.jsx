@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, createContext, useContext } from "react";
 import {
   Button,
   Typography,
@@ -20,6 +20,39 @@ import { useTranslation } from "react-i18next";
 import { useTheme } from "../../../contexts/ThemeContext";
 import usePageTitle from "../../../hooks/usePageTitle";
 import { spaceToast } from "../../../component/SpaceToastify";
+import dailyChallengeApi from "../../../apis/backend/dailyChallengeManagement";
+
+// Context for collecting answers from child components
+const AnswerCollectionContext = createContext(null);
+// Context for restoring answers to child components
+const AnswerRestorationContext = createContext(null);
+
+// Memoized HTML renderer to keep DOM stable and preserve text selection
+const MemoizedHTML = React.memo(
+  function MemoizedHTML({ html, className, style }) {
+    return (
+      <div
+        className={className}
+        style={style}
+        dangerouslySetInnerHTML={{ __html: html }}
+      />
+    );
+  },
+  (prev, next) => {
+    if (prev.html !== next.html) return false;
+    if (prev.className !== next.className) return false;
+    const prevStyle = prev.style || {};
+    const nextStyle = next.style || {};
+    const prevKeys = Object.keys(prevStyle);
+    const nextKeys = Object.keys(nextStyle);
+    if (prevKeys.length !== nextKeys.length) return false;
+    for (let i = 0; i < prevKeys.length; i++) {
+      const k = prevKeys[i];
+      if (prevStyle[k] !== nextStyle[k]) return false;
+    }
+    return true;
+  }
+);
 
 // Helper function to replace [[dur_3]] with HTML badge
 const processPassageContent = (content, theme, challengeType) => {
@@ -34,423 +67,12 @@ const processPassageContent = (content, theme, challengeType) => {
   return content;
 };
 
-// Fake data for different question types
-const generateFakeQuestions = () => {
-  return [
-    {
-      id: 1,
-      type: 'SECTION',
-      title: 'The Concept of Nationality',
-      passage: `Nationality is a legal relationship between an individual and a nation. It is the status of belonging to a particular nation, whether by birth or naturalization. This relationship grants certain rights and responsibilities to the individual within that nation's territory.
-
-The concept of nationality has evolved over time and varies significantly between different countries and legal systems. In some countries, nationality is determined by the place of birth (jus soli), while in others, it is determined by the nationality of one's parents (jus sanguinis). Some countries use a combination of both principles.
-
-Nationality provides individuals with various rights, including the right to vote, the right to work without restrictions, the right to access public services, and the right to protection by their government when traveling abroad. It also comes with responsibilities such as paying taxes, obeying laws, and potentially serving in the military.
-
-The process of acquiring nationality can happen through birth, descent, naturalization, or other legal means depending on the country's laws. Some individuals may hold multiple nationalities, while others may be stateless if they don't possess the nationality of any country.
-
-In the modern world, nationality plays a crucial role in determining an individual's identity, legal status, and relationship with the state. It affects everything from travel documents to educational opportunities and employment prospects.
-
-Throughout history, the concept of nationality has been shaped by various factors including wars, migrations, colonial periods, and political changes. The formation of nation-states in Europe during the 19th century marked a significant turning point in how nationality was understood and implemented. Before this period, people's identities were often tied to their local communities, religious affiliations, or feudal relationships rather than to a specific nation.
-
-The French Revolution played a particularly important role in developing modern concepts of citizenship and nationality. The revolutionary government introduced the idea that all citizens were equal before the law, regardless of their social status or birth. This principle influenced many other countries and helped establish the foundation for modern nationality laws.
-
-In the 20th century, two world wars and numerous conflicts led to massive population movements and changes in national boundaries. These events forced many countries to reconsider their nationality laws and policies. The Holocaust, in particular, highlighted the dangers of statelessness and led to international efforts to protect refugees and stateless persons.
-
-Today, globalization has created new challenges for nationality laws. Increased international travel, migration, and the rise of multinational corporations have made it more common for people to have connections to multiple countries. Some countries have responded by allowing dual or multiple citizenship, while others maintain stricter policies.
-
-The digital age has also introduced new considerations for nationality. Online communities, virtual citizenship programs, and digital nomad visas are challenging traditional concepts of territorial-based nationality. Some countries are experimenting with digital citizenship programs that allow people to participate in governance and access services without physically residing in the country.
-
-Climate change is another factor that may influence nationality laws in the future. As sea levels rise and extreme weather events become more frequent, some island nations may face existential threats. This could lead to new forms of nationality or citizenship arrangements for displaced populations.
-
-International organizations like the United Nations have developed various conventions and protocols to address issues related to nationality, statelessness, and refugee protection. These international frameworks help ensure that nationality laws respect human rights and provide protection for vulnerable populations.
-
-The future of nationality will likely continue to evolve as societies adapt to new challenges and opportunities. Technological advances, environmental changes, and shifting political landscapes will all play a role in shaping how we understand and implement nationality in the years to come.`,
-      questions: [
-        {
-          id: 1,
-          type: 'MULTIPLE_CHOICE',
-          question: 'What is nationality?',
-          options: [
-            { key: 'A', text: 'A historical event', isCorrect: false },
-            { key: 'B', text: 'A legal relationship between an individual and a nation', isCorrect: true },
-            { key: 'C', text: 'A cultural tradition', isCorrect: false },
-            { key: 'D', text: 'A type of government', isCorrect: false },
-          ],
-          points: 1
-        },
-        {
-          id: 2,
-          type: 'MULTIPLE_SELECT',
-          question: 'Which of the following are ways to acquire nationality? (Select all that apply)',
-          options: [
-            { key: 'A', text: 'Birth', isCorrect: true },
-            { key: 'B', text: 'Descent', isCorrect: true },
-            { key: 'C', text: 'Naturalization', isCorrect: true },
-            { key: 'D', text: 'Marriage only', isCorrect: false },
-          ],
-          points: 2
-        },
-        {
-          id: 3,
-          type: 'TRUE_OR_FALSE',
-          question: 'The French Revolution played a particularly important role in developing modern concepts of citizenship and nationality.',
-          options: [
-            { key: 'True', text: 'True', isCorrect: true },
-            { key: 'False', text: 'False', isCorrect: false },
-          ],
-          points: 1
-        },
-        {
-          id: 4,
-          type: 'FILL_IN_THE_BLANK',
-          questionText: 'Nationality is a legal relationship between an individual and a _______.',
-          content: {
-            data: [
-              { id: 1, value: 'nation', positionId: 'pos_1', correct: true }
-            ]
-          },
-          points: 2
-        },
-        {
-          id: 5,
-          type: 'DROPDOWN',
-          questionText: 'Complete the sentence: Nationality can be acquired through _______ or naturalization.',
-          content: {
-            data: [
-              { id: 1, value: 'birth', positionId: 'pos_1', correct: true },
-              { id: 2, value: 'death', positionId: 'pos_1', correct: false },
-              { id: 3, value: 'marriage', positionId: 'pos_1', correct: false },
-              { id: 4, value: 'travel', positionId: 'pos_1', correct: false },
-            ]
-          },
-          points: 2
-        },
-        {
-          id: 6,
-          type: 'DRAG_AND_DROP',
-          questionText: 'Complete the sentence: I _______ programming and _______ it very much.',
-          content: {
-            data: [
-              { id: 1, value: 'love', positionId: 'pos_1', correct: true },
-              { id: 2, value: 'enjoy', positionId: 'pos_2', correct: true },
-              { id: 3, value: 'like', correct: false },
-              { id: 4, value: 'hate', correct: false },
-            ]
-          },
-          points: 3
-        },
-        {
-          id: 7,
-          type: 'REARRANGE',
-          questionText: 'Rearrange the words to form a correct sentence:',
-          content: {
-            data: [
-              { id: 1, value: 'The', positionId: 'pos_1' },
-              { id: 2, value: 'flower', positionId: 'pos_2' },
-              { id: 3, value: 'is', positionId: 'pos_3' },
-              { id: 4, value: 'very', positionId: 'pos_4' },
-              { id: 5, value: 'much', positionId: 'pos_5' },
-            ]
-          },
-          points: 3
-        }
-      ],
-      points: 11,
-      questionText: 'Read the passage and answer the questions',
-    },
-    {
-      id: 2,
-      type: 'LISTENING_SECTION',
-      title: 'Climate Change and Environmental Protection',
-      audioUrl: 'https://www.soundjay.com/misc/sounds/bell-ringing-05.wav', // Placeholder audio URL
-      duration: '2:45',
-      transcript: `Climate change is one of the most pressing issues of our time. It refers to long-term shifts in global temperatures and weather patterns. While climate variations are natural, human activities have been the main driver of climate change since the 1800s, primarily due to burning fossil fuels like coal, oil, and gas.
-
-The greenhouse effect is a natural process that warms the Earth's surface. When the Sun's energy reaches the Earth's atmosphere, some of it is reflected back to space, and the rest is absorbed and re-radiated by greenhouse gases. These gases include water vapor, carbon dioxide, methane, nitrous oxide, and ozone. However, human activities have increased the concentration of these gases in the atmosphere, particularly carbon dioxide, which has increased by about 50% since the Industrial Revolution.
-
-The consequences of climate change are already visible and will become more severe over time. Rising global temperatures lead to more frequent and intense heatwaves, droughts, and wildfires. Melting glaciers and ice sheets contribute to rising sea levels, threatening coastal communities worldwide. Changes in precipitation patterns affect agriculture and water supplies, while ocean acidification threatens marine ecosystems.
-
-To address climate change, countries around the world have committed to reducing greenhouse gas emissions. The Paris Agreement, adopted in 2015, aims to limit global temperature rise to well below 2 degrees Celsius above pre-industrial levels, with efforts to limit it to 1.5 degrees. This requires transitioning to renewable energy sources, improving energy efficiency, and implementing sustainable practices across all sectors.
-
-Individual actions also matter in the fight against climate change. People can reduce their carbon footprint by using public transportation, cycling, or walking instead of driving. Energy conservation at home, such as using LED light bulbs and improving insulation, can significantly reduce energy consumption. Choosing sustainable products and reducing waste through recycling and composting are other ways individuals can contribute.
-
-The transition to a sustainable future requires innovation, investment, and international cooperation. Renewable energy technologies like solar and wind power are becoming increasingly cost-effective and widespread. Electric vehicles are gaining popularity as battery technology improves. Green building practices and sustainable agriculture methods are being adopted worldwide.
-
-Education and awareness are crucial for addressing climate change. Understanding the science behind climate change helps people make informed decisions about their lifestyle choices and support policies that promote environmental protection. Young people, in particular, are playing an important role in climate activism, demanding action from governments and corporations.
-
-The future of our planet depends on the actions we take today. While the challenges are significant, there is still hope if we act decisively and collectively. By working together, we can create a more sustainable world for future generations.`,
-      questions: [
-        {
-          id: 8,
-          type: 'MULTIPLE_CHOICE',
-          question: 'What is the main cause of climate change since the 1800s?',
-          options: [
-            { key: 'A', text: 'Natural climate variations', isCorrect: false },
-            { key: 'B', text: 'Human activities, particularly burning fossil fuels', isCorrect: true },
-            { key: 'C', text: 'Solar radiation changes', isCorrect: false },
-            { key: 'D', text: 'Volcanic eruptions', isCorrect: false },
-          ],
-          points: 1
-        },
-        {
-          id: 9,
-          type: 'MULTIPLE_SELECT',
-          question: 'Which of the following are consequences of climate change? (Select all that apply)',
-          options: [
-            { key: 'A', text: 'Rising sea levels', isCorrect: true },
-            { key: 'B', text: 'More frequent heatwaves', isCorrect: true },
-            { key: 'C', text: 'Ocean acidification', isCorrect: true },
-            { key: 'D', text: 'Decreased global temperatures', isCorrect: false },
-          ],
-          points: 2
-        },
-        {
-          id: 10,
-          type: 'TRUE_OR_FALSE',
-          question: 'The Paris Agreement aims to limit global temperature rise to well below 2 degrees Celsius.',
-          options: [
-            { key: 'True', text: 'True', isCorrect: true },
-            { key: 'False', text: 'False', isCorrect: false },
-          ],
-          points: 1
-        },
-        {
-          id: 11,
-          type: 'FILL_IN_THE_BLANK',
-          questionText: 'The greenhouse effect is a _______ process that warms the Earth\'s surface.',
-          content: {
-            data: [
-              { id: 1, value: 'natural', positionId: 'pos_1', correct: true }
-            ]
-          },
-          points: 2
-        }
-      ],
-      points: 6,
-      questionText: 'Listen to the audio and answer the questions',
-    },
-    {
-      id: 3,
-      type: 'SPEAKING_SECTION',
-      title: 'Describe Your Hometown',
-      prompt: `Please describe your hometown in English. Your response should include:
-
-**Requirements:**
-- Minimum 60 seconds
-- Speak clearly and at a moderate pace
-- Use proper pronunciation
-- Cover the following topics: location, notable places, and what you like about it
-
-**Topic Focus:**
-Discuss:
-1. Location and basic information about your hometown
-2. Notable places or landmarks
-3. What you like most about your hometown
-4. Any interesting facts or personal experiences
-
-**Tips for Success:**
-- Plan your answer before recording
-- Use transition words (first, secondly, finally, etc.)
-- Speak naturally and confidently
-- Make sure to speak for at least 60 seconds
-
-**Time Limit:** 3 minutes to record
-
-Good luck with your speaking!`,
-      timeLimit: 60,
-      points: 15,
-      questionText: 'Record your speaking response',
-    },
-    {
-      id: 4,
-      type: 'SPEAKING_WITH_AUDIO_SECTION',
-      title: 'Speaking Based on Audio',
-      audioUrl: '/audio/sample-speaking-audio.mp3',
-      transcript: `Phiên âm tiếng Anh của "quả chuối" (banana) là /bəˈnɑːnə/. Từ này có trọng âm rơi vào âm tiết thứ hai.
-
-**Từ vựng:** Banana
-**Phiên âm:** /bəˈnɑːnə/
-**Trọng âm:** Nhấn vào âm tiết thứ hai
-
-![Banana](/img/banana.jpg)`,
-      timeLimit: 180,
-      points: 20,
-      questionText: 'Listen to the audio and answer the questions',
-    },
-    {
-      id: 5,
-      type: 'WRITING_SECTION',
-      title: 'Environmental Conservation Essay',
-      prompt: `Write an essay about environmental conservation. Your essay should include:
-
-**Requirements:**
-- Minimum 300 words
-- Use proper essay structure (introduction, body paragraphs, conclusion)
-- Include specific examples of environmental issues
-- Suggest practical solutions
-- Use formal academic language
-
-**Topic Focus:**
-Choose one of the following environmental issues to focus on:
-1. Climate change and its global impact
-2. Deforestation and loss of biodiversity
-3. Water pollution and scarcity
-4. Renewable energy solutions
-5. Sustainable living practices
-
-**Evaluation Criteria:**
-- Content and ideas (40%)
-- Organization and structure (25%)
-- Language use and vocabulary (20%)
-- Grammar and mechanics (15%)
-
-**Tips for Success:**
-- Plan your essay before writing
-- Use clear topic sentences for each paragraph
-- Support your arguments with evidence
-- Proofread your work before submitting
-- Stay within the word limit
-
-**Time Limit:** 60 minutes
-
-Good luck with your writing!`,
-      wordLimit: 300,
-      timeLimit: 60,
-      points: 25,
-      questionText: 'Write an essay based on the given prompt',
-    },
-    {
-      id: 2,
-      type: 'MULTIPLE_CHOICE',
-      question: 'What is the capital city of Vietnam?',
-      options: [
-        { key: 'A', text: 'Ho Chi Minh City', isCorrect: false },
-        { key: 'B', text: 'Hanoi', isCorrect: true },
-        { key: 'C', text: 'Da Nang', isCorrect: false },
-        { key: 'D', text: 'Can Tho', isCorrect: false },
-      ],
-      points: 1,
-      questionText: 'What is the capital city of Vietnam?',
-    },
-    {
-      id: 2,
-      type: 'MULTIPLE_SELECT',
-      question: 'Which of the following are Southeast Asian countries? (Select all that apply)',
-      options: [
-        { key: 'A', text: 'Vietnam', isCorrect: true },
-        { key: 'B', text: 'Thailand', isCorrect: true },
-        { key: 'C', text: 'Japan', isCorrect: false },
-        { key: 'D', text: 'Malaysia', isCorrect: true },
-      ],
-      points: 2,
-      questionText: 'Which of the following are Southeast Asian countries? (Select all that apply)',
-    },
-    {
-      id: 3,
-      type: 'TRUE_OR_FALSE',
-      question: 'The Earth revolves around the Sun.',
-      options: [
-        { key: 'True', text: 'True', isCorrect: true },
-        { key: 'False', text: 'False', isCorrect: false },
-      ],
-      points: 1,
-      questionText: 'The Earth revolves around the Sun.',
-    },
-    {
-      id: 4,
-      type: 'FILL_IN_THE_BLANK',
-      questionText: 'The largest planet in our solar system is _______.',
-      content: {
-        data: [
-          { id: 1, value: 'Jupiter', positionId: 'pos_1', correct: true }
-        ]
-      },
-      points: 2,
-    },
-    {
-      id: 5,
-      type: 'DROPDOWN',
-      questionText: 'Paris is the capital city of [[pos_1]].',
-      content: {
-        data: [
-          { id: 1, value: 'France', positionId: 'pos_1', correct: true },
-          { id: 2, value: 'Germany', positionId: 'pos_1', correct: false },
-          { id: 3, value: 'Italy', positionId: 'pos_1', correct: false },
-        ]
-      },
-      points: 2,
-    },
-    {
-      id: 6,
-      type: 'DRAG_AND_DROP',
-      questionText: 'Arrange the words to form a correct sentence: [[pos_1]] [[pos_2]] [[pos_3]].',
-      content: {
-        data: [
-          { id: 1, value: 'I', positionId: 'pos_1', correct: true },
-          { id: 2, value: 'love', positionId: 'pos_2', correct: true },
-          { id: 3, value: 'programming', positionId: 'pos_3', correct: true },
-          { id: 4, value: 'hate', correct: false },
-          { id: 5, value: 'coding', correct: false },
-        ]
-      },
-      points: 3,
-    },
-    {
-      id: 7,
-      type: 'REARRANGE',
-      questionText: 'Rearrange to form a correct sentence: [[pos_1]] [[pos_2]] [[pos_3]] [[pos_4]] beautiful.',
-      content: {
-        data: [
-          { id: 1, value: 'The', positionId: 'pos_1' },
-          { id: 2, value: 'flower', positionId: 'pos_2' },
-          { id: 3, value: 'is', positionId: 'pos_3' },
-          { id: 4, value: 'very', positionId: 'pos_4' },
-        ]
-      },
-      points: 3,
-    },
-    {
-      id: 8,
-      type: 'REWRITE',
-      questionText: 'Rewrite the sentence in passive voice: The teacher explains the lesson.',
-      content: {
-        data: [
-          { id: 1, value: 'The lesson is explained by the teacher.' }
-        ]
-      },
-      points: 5,
-    },
-    {
-      id: 9,
-      type: 'MULTIPLE_CHOICE',
-      question: 'Which programming language is used for web development?',
-      options: [
-        { key: 'A', text: 'JavaScript', isCorrect: true },
-        { key: 'B', text: 'Assembly', isCorrect: false },
-        { key: 'C', text: 'Machine Code', isCorrect: false },
-        { key: 'D', text: 'Binary', isCorrect: false },
-      ],
-      points: 1,
-      questionText: 'Which programming language is used for web development?',
-    },
-    {
-      id: 10,
-      type: 'TRUE_OR_FALSE',
-      question: 'React is a JavaScript library for building user interfaces.',
-      options: [
-        { key: 'True', text: 'True', isCorrect: true },
-        { key: 'False', text: 'False', isCorrect: false },
-      ],
-      points: 1,
-      questionText: 'React is a JavaScript library for building user interfaces.',
-    },
-  ];
-};
 
 
 // Section Question Component for Reading/Listening sections
-const SectionQuestionItem = ({ question, index, theme }) => {
+const SectionQuestionItem = ({ question, index, theme, sectionScore }) => {
+  const registerAnswerCollector = useContext(AnswerCollectionContext);
+  const registerAnswerRestorer = useContext(AnswerRestorationContext);
   const [selectedAnswers, setSelectedAnswers] = useState({});
   const [droppedItems, setDroppedItems] = useState({});
   const [availableItems, setAvailableItems] = useState({});
@@ -493,6 +115,159 @@ const SectionQuestionItem = ({ question, index, theme }) => {
       });
     }
   }, [question.questions]);
+
+  // Local refs for Fill-in-the-Blank inputs to avoid caret jumps
+  const fillBlankRefs = useRef({});
+
+  // Register answer collectors for all questions in this section
+  useEffect(() => {
+    if (!registerAnswerCollector || !question.questions) return;
+
+    const unregisterFunctions = [];
+
+    question.questions.forEach(q => {
+      const getAnswer = () => {
+        let answer = null;
+
+        if (q.type === 'MULTIPLE_CHOICE' || q.type === 'TRUE_OR_FALSE') {
+          answer = selectedAnswers[q.id] || null;
+        } else if (q.type === 'MULTIPLE_SELECT') {
+          answer = selectedAnswers[q.id] || [];
+        } else if (q.type === 'DROPDOWN') {
+          // Collect all dropdown answers for this question
+          const dropdownAnswers = {};
+          Object.keys(selectedAnswers).forEach(key => {
+            if (key.startsWith(`${q.id}_pos_`)) {
+              const positionId = key.split('_pos_')[1];
+              dropdownAnswers[key] = selectedAnswers[key];
+            }
+          });
+          answer = Object.keys(dropdownAnswers).length > 0 ? dropdownAnswers : null;
+        } else if (q.type === 'FILL_IN_THE_BLANK' || q.type === 'FILL_BLANK') {
+          // Collect all fill-in-the-blank answers for this question
+          const fibAnswers = {};
+          Object.keys(selectedAnswers).forEach(key => {
+            if (key.startsWith(`${q.id}_pos_`)) {
+              fibAnswers[key] = selectedAnswers[key];
+            }
+          });
+          answer = Object.keys(fibAnswers).length > 0 ? fibAnswers : null;
+        } else if (q.type === 'DRAG_AND_DROP') {
+          answer = droppedItems[q.id] || null;
+        } else if (q.type === 'REARRANGE' || q.type === 'REORDER') {
+          const reorderState = reorderStates[q.id];
+          if (reorderState?.items && Array.isArray(reorderState.items) && reorderState.items.length > 0) {
+            answer = reorderState.items;
+          } else if (reorderState?.droppedItems && typeof reorderState.droppedItems === 'object') {
+            // Derive ordered array from droppedItems mapping
+            const indices = Object.keys(reorderState.droppedItems)
+              .map(k => parseInt(k, 10))
+              .filter(i => !Number.isNaN(i))
+              .sort((a, b) => a - b);
+            const arr = indices.map(i => reorderState.droppedItems[i]).filter(Boolean);
+            answer = arr.length > 0 ? arr : null;
+          } else {
+            answer = null;
+          }
+        }
+
+        if (!answer) return null;
+        // Normalize questionType for API
+        const normalizedType = (q.type === 'FILL_IN_THE_BLANK') ? 'FILL_BLANK'
+          : (q.type === 'REARRANGE') ? 'REORDER'
+          : q.type;
+        return { answer, questionType: normalizedType };
+      };
+
+      const unregister = registerAnswerCollector(q.id, getAnswer);
+      if (unregister) {
+        unregisterFunctions.push(unregister);
+      }
+    });
+
+    return () => {
+      unregisterFunctions.forEach(unregister => unregister());
+    };
+  }, [registerAnswerCollector, question.questions, selectedAnswers, droppedItems, reorderStates]);
+
+  // Sync restored FIB values into DOM without breaking caret (only when not focused)
+  useEffect(() => {
+    if (!question?.questions) return;
+    question.questions.forEach(q => {
+      if (q.type !== 'FILL_IN_THE_BLANK' && q.type !== 'FILL_BLANK') return;
+      Object.keys(selectedAnswers).forEach(key => {
+        if (!key.startsWith(`${q.id}_pos_`)) return;
+        const el = fillBlankRefs.current[key];
+        const value = selectedAnswers[key] ?? '';
+        if (el && document.activeElement !== el) {
+          if ((el.textContent || '') !== String(value)) {
+            el.textContent = String(value);
+          }
+        }
+      });
+    });
+  }, [selectedAnswers, question?.questions]);
+
+  // Register answer restorers for all questions in this section
+  useEffect(() => {
+    if (!registerAnswerRestorer || !question.questions) return;
+
+    const unregisterFunctions = [];
+
+    question.questions.forEach(q => {
+      const setAnswer = (answer) => {
+        if (!answer && answer !== 0 && answer !== '') return;
+
+        if (q.type === 'MULTIPLE_CHOICE' || q.type === 'TRUE_OR_FALSE') {
+          if (typeof answer === 'string') {
+            setSelectedAnswers(prev => ({ ...prev, [q.id]: answer }));
+          }
+        } else if (q.type === 'MULTIPLE_SELECT') {
+          if (Array.isArray(answer)) {
+            setSelectedAnswers(prev => ({ ...prev, [q.id]: answer }));
+          }
+        } else if (q.type === 'DROPDOWN') {
+          if (typeof answer === 'object' && answer !== null && !Array.isArray(answer)) {
+            setSelectedAnswers(prev => ({ ...prev, ...answer }));
+          }
+          } else if (q.type === 'FILL_IN_THE_BLANK' || q.type === 'FILL_BLANK') {
+            if (typeof answer === 'object' && answer !== null && !Array.isArray(answer)) {
+              setSelectedAnswers(prev => ({ ...prev, ...answer }));
+            }
+        } else if (q.type === 'DRAG_AND_DROP') {
+          if (typeof answer === 'object' && answer !== null && !Array.isArray(answer)) {
+            setDroppedItems(prev => ({ ...prev, [q.id]: answer }));
+          }
+        } else if (q.type === 'REARRANGE' || q.type === 'REORDER') {
+          if (Array.isArray(answer)) {
+            // Place restored items into dropped slots by index
+            const dropped = answer.reduce((acc, val, idx) => {
+              if (val !== undefined && val !== null && String(val).trim() !== '') acc[idx] = val;
+              return acc;
+            }, {});
+            const reorderState = {
+              sourceItems: [],
+              droppedItems: dropped,
+              dragOverIndex: null,
+              draggedItem: null,
+              isDraggingFromSource: false,
+              wasDropped: false
+            };
+            setReorderStates(prev => ({ ...prev, [q.id]: reorderState }));
+          }
+        }
+      };
+
+      const unregister = registerAnswerRestorer(q.id, setAnswer);
+      if (unregister) {
+        unregisterFunctions.push(unregister);
+      }
+    });
+
+    return () => {
+      unregisterFunctions.forEach(unregister => unregister());
+    };
+  }, [registerAnswerRestorer, question.questions]);
 
   const handleAnswerSelect = (questionId, optionKey) => {
     setSelectedAnswers(prev => ({
@@ -550,7 +325,10 @@ const SectionQuestionItem = ({ question, index, theme }) => {
         borderBottomColor: theme === 'sun' 
           ? 'rgba(113, 179, 253, 0.25)' 
           : 'rgba(138, 122, 255, 0.2)',
-        position: 'relative'
+        position: 'relative',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center'
       }}>
         <Typography.Text strong style={{ 
           fontSize: '20px', 
@@ -558,9 +336,12 @@ const SectionQuestionItem = ({ question, index, theme }) => {
         }}>
           {index + 1}. Reading Section
         </Typography.Text>
-        <Typography.Text style={{ marginLeft: '12px', fontSize: '14px', opacity: 0.7 }}>
-          ({question.points} {question.points > 1 ? 'points' : 'point'})
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          
+          <Typography.Text style={{ fontSize: '14px', opacity: 0.7 }}>
+            ({question.points || sectionScore?.totalScore || 0} {question.points !== 1 ? 'points' : 'point'})
         </Typography.Text>
+        </div>
       </div>
 
       {/* Two Column Layout */}
@@ -581,17 +362,19 @@ const SectionQuestionItem = ({ question, index, theme }) => {
               ? '#1890ff rgba(24, 144, 255, 0.2)' 
               : '#8B5CF6 rgba(138, 122, 255, 0.2)'
           }}>
-         
-          <div 
-            className="passage-text-content"
-            style={{
-              fontSize: '15px',
-              lineHeight: '1.8',
-              color: theme === 'sun' ? '#333' : '#1F2937',
-              textAlign: 'justify'
-            }}
-            dangerouslySetInnerHTML={{ __html: question.passage || '' }}
-          />
+
+          {React.useMemo(() => (
+            <div 
+              className="passage-text-content"
+              style={{
+                fontSize: '15px',
+                lineHeight: '1.8',
+                color: theme === 'sun' ? '#333' : '#1F2937',
+                textAlign: 'justify'
+              }}
+              dangerouslySetInnerHTML={{ __html: question.passage || '' }}
+            />
+          ), [question.passage, theme])}
         </div>
 
         {/* Right Column - Questions */}
@@ -646,10 +429,10 @@ const SectionQuestionItem = ({ question, index, theme }) => {
                           <div style={{ fontSize: '16px', fontWeight: 600, marginBottom: '8px' }}>
                             Question {qIndex + 1}:
                           </div>
-                          <div 
+                          <MemoizedHTML 
                             className="question-text-content"
                             style={{ marginBottom: '10px' }}
-                            dangerouslySetInnerHTML={{ __html: q.questionText || q.question || '' }}
+                            html={q.questionText || q.question || ''}
                           />
                           <div className="question-options" style={{ 
                             display: 'grid', 
@@ -721,7 +504,17 @@ const SectionQuestionItem = ({ question, index, theme }) => {
                               );
                             }
                             const positionId = match[1];
-                            const optionsForPosition = q.content?.data?.filter(opt => opt.positionId === positionId) || [];
+                            const contentData = q.content?.data || [];
+                            // Check if any options have positionId
+                            const hasPositionIds = contentData.some(opt => opt.positionId);
+                            // If options have positionId, filter by positionId; otherwise use all options
+                            const optionsForPosition = hasPositionIds
+                              ? contentData.filter(opt => {
+                                  const optPosId = String(opt.positionId || '');
+                                  const matchPosId = String(positionId);
+                                  return optPosId === matchPosId;
+                                })
+                              : contentData;
                             parts.push(
                             <select
                                 key={`dd_${q.id}_${idx++}`}
@@ -751,7 +544,7 @@ const SectionQuestionItem = ({ question, index, theme }) => {
                             >
                               <option value="">Select</option>
                                 {optionsForPosition.map((item) => (
-                                  <option key={item.id} value={item.value} dangerouslySetInnerHTML={{ __html: item.value || '' }}>
+                                  <option key={item.id} value={item.value || ''} dangerouslySetInnerHTML={{ __html: item.value || '' }}>
                                   </option>
                               ))}
                             </select>
@@ -1074,7 +867,7 @@ const SectionQuestionItem = ({ question, index, theme }) => {
                         </div>
                       );
                     })()
-                  ) : q.type === 'FILL_IN_THE_BLANK' ? (
+                  ) : (q.type === 'FILL_IN_THE_BLANK' || q.type === 'FILL_BLANK' || q.questionType === 'FILL_BLANK' || q.questionType === 'FILL_IN_THE_BLANK') ? (
                     // Fill in the Blank
                     <div style={{ 
                       marginBottom: '16px',
@@ -1094,12 +887,34 @@ const SectionQuestionItem = ({ question, index, theme }) => {
                           let last = 0; let match; let idx = 0;
                           while ((match = regex.exec(text)) !== null) {
                             if (match.index > last) parts.push(text.slice(last, match.index));
+                            const positionId = match[1];
                             parts.push(
                             <span
                                 key={`fib_${q.id}_${idx++}`}
                               className="paragraph-input"
                               contentEditable
                                 suppressContentEditableWarning
+                              onInput={(e) => {
+                                const textVal = e.currentTarget.textContent || e.currentTarget.innerText || '';
+                                setSelectedAnswers(prev => ({
+                                  ...prev,
+                                  [`${q.id}_pos_${positionId}`]: textVal
+                                }));
+                              }}
+                              onBlur={(e) => {
+                                const textVal = e.currentTarget.textContent || e.currentTarget.innerText || '';
+                                setSelectedAnswers(prev => ({
+                                  ...prev,
+                                  [`${q.id}_pos_${positionId}`]: textVal
+                                }));
+                              }}
+                              ref={(el) => {
+                                if (el) {
+                                  fillBlankRefs.current[`${q.id}_pos_${positionId}`] = el;
+                                } else {
+                                  delete fillBlankRefs.current[`${q.id}_pos_${positionId}`];
+                                }
+                              }}
                               style={{
                                 display: 'inline-flex',
                                 alignItems: 'center',
@@ -1136,14 +951,15 @@ const SectionQuestionItem = ({ question, index, theme }) => {
                   ) : q.type === 'REARRANGE' ? (
                     // Reorder Question - align behavior with single GV Rearrange
                     (() => {
-                      const questionId = `reorder_${q.id}`;
-                      const currentState = reorderStates[questionId] || {
+                      const questionId = q.id;
+                      const currentState = {
                         sourceItems: q.content?.data?.map(item => item.value) || [],
                         droppedItems: {},
                         dragOverIndex: null,
                         draggedItem: null,
                         isDraggingFromSource: false,
-                        wasDropped: false
+                        wasDropped: false,
+                        ...(reorderStates[questionId] || {})
                       };
 
                       // Compute number of slots based on provided words
@@ -1589,7 +1405,9 @@ const SectionQuestionItem = ({ question, index, theme }) => {
 };
 
 // Listening Section Component
-const ListeningSectionItem = ({ question, index, theme }) => {
+const ListeningSectionItem = ({ question, index, theme, sectionScore }) => {
+  const registerAnswerCollector = useContext(AnswerCollectionContext);
+  const registerAnswerRestorer = useContext(AnswerRestorationContext);
   const [selectedAnswers, setSelectedAnswers] = useState({});
   const [droppedItems, setDroppedItems] = useState({});
   const [availableItems, setAvailableItems] = useState({});
@@ -1611,6 +1429,107 @@ const ListeningSectionItem = ({ question, index, theme }) => {
       .replace(/\s+/g, ' ')
       .trim();
   };
+
+  // Register answer collectors for all questions in this section
+  useEffect(() => {
+    if (!registerAnswerCollector || !question.questions) return;
+
+    const unregisterFunctions = [];
+
+    question.questions.forEach(q => {
+      const getAnswer = () => {
+        let answer = null;
+
+        if (q.type === 'MULTIPLE_CHOICE' || q.type === 'TRUE_OR_FALSE') {
+          answer = selectedAnswers[q.id] || null;
+        } else if (q.type === 'MULTIPLE_SELECT') {
+          answer = selectedAnswers[q.id] || [];
+        } else if (q.type === 'DROPDOWN') {
+          // Collect all dropdown answers for this question
+          const dropdownAnswers = {};
+          Object.keys(selectedAnswers).forEach(key => {
+            if (key.startsWith(`${q.id}_pos_`)) {
+              dropdownAnswers[key] = selectedAnswers[key];
+            }
+          });
+          answer = Object.keys(dropdownAnswers).length > 0 ? dropdownAnswers : null;
+        } else if (q.type === 'DRAG_AND_DROP') {
+          answer = droppedItems[q.id] || null;
+        } else if (q.type === 'REARRANGE' || q.type === 'REORDER') {
+          const reorderState = reorderStates[q.id];
+          answer = reorderState?.items || null;
+        }
+
+        return answer ? { answer, questionType: q.type } : null;
+      };
+
+      const unregister = registerAnswerCollector(q.id, getAnswer);
+      if (unregister) {
+        unregisterFunctions.push(unregister);
+      }
+    });
+
+    return () => {
+      unregisterFunctions.forEach(unregister => unregister());
+    };
+  }, [registerAnswerCollector, question.questions, selectedAnswers, droppedItems, reorderStates]);
+
+  // Register answer restorers for all questions in this section
+  useEffect(() => {
+    if (!registerAnswerRestorer || !question.questions) return;
+
+    const unregisterFunctions = [];
+
+    question.questions.forEach(q => {
+      const setAnswer = (answer) => {
+        if (!answer && answer !== 0 && answer !== '') return;
+
+        if (q.type === 'MULTIPLE_CHOICE' || q.type === 'TRUE_OR_FALSE') {
+          if (typeof answer === 'string') {
+            setSelectedAnswers(prev => ({ ...prev, [q.id]: answer }));
+          }
+        } else if (q.type === 'MULTIPLE_SELECT') {
+          if (Array.isArray(answer)) {
+            setSelectedAnswers(prev => ({ ...prev, [q.id]: answer }));
+          }
+        } else if (q.type === 'DROPDOWN') {
+          if (typeof answer === 'object' && answer !== null && !Array.isArray(answer)) {
+            setSelectedAnswers(prev => ({ ...prev, ...answer }));
+          }
+        } else if (q.type === 'DRAG_AND_DROP') {
+          if (typeof answer === 'object' && answer !== null && !Array.isArray(answer)) {
+            setDroppedItems(prev => ({ ...prev, [q.id]: answer }));
+          }
+        } else if (q.type === 'REARRANGE' || q.type === 'REORDER') {
+          if (Array.isArray(answer)) {
+            // Place restored items into dropped slots by index
+            const dropped = answer.reduce((acc, val, idx) => {
+              if (val !== undefined && val !== null && String(val).trim() !== '') acc[idx] = val;
+              return acc;
+            }, {});
+            const reorderState = {
+              sourceItems: [],
+              droppedItems: dropped,
+              dragOverIndex: null,
+              draggedItem: null,
+              isDraggingFromSource: false,
+              wasDropped: false
+            };
+            setReorderStates(prev => ({ ...prev, [q.id]: reorderState }));
+          }
+        }
+      };
+
+      const unregister = registerAnswerRestorer(q.id, setAnswer);
+      if (unregister) {
+        unregisterFunctions.push(unregister);
+      }
+    });
+
+    return () => {
+      unregisterFunctions.forEach(unregister => unregister());
+    };
+  }, [registerAnswerRestorer, question.questions]);
 
   // Initialize available items for DRAG_AND_DROP questions (include all values)
   useEffect(() => {
@@ -1731,7 +1650,10 @@ const ListeningSectionItem = ({ question, index, theme }) => {
           borderBottomColor: theme === 'sun' 
             ? 'rgba(113, 179, 253, 0.25)' 
             : 'rgba(138, 122, 255, 0.2)',
-          position: 'relative'
+          position: 'relative',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center'
         }}>
           <Typography.Text strong style={{ 
             fontSize: '20px', 
@@ -1739,9 +1661,24 @@ const ListeningSectionItem = ({ question, index, theme }) => {
           }}>
             {index + 1}. Listening Section
           </Typography.Text>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            {sectionScore && (
+              <Typography.Text style={{ 
+                fontSize: '14px', 
+                fontWeight: 600,
+                color: theme === 'sun' ? '#52c41a' : '#73d13d',
+                padding: '4px 12px',
+                background: theme === 'sun' ? 'rgba(82, 196, 26, 0.1)' : 'rgba(115, 209, 61, 0.15)',
+                borderRadius: '8px',
+                border: `1px solid ${theme === 'sun' ? '#52c41a' : '#73d13d'}`
+              }}>
+                Score: {sectionScore.receivedScore}/{sectionScore.totalScore} ({sectionScore.percentage}%)
+              </Typography.Text>
+            )}
           <Typography.Text style={{ marginLeft: '12px', fontSize: '14px', opacity: 0.7 }}>
-            ({question.points} {question.points > 1 ? 'points' : 'point'})
+              ({question.points || sectionScore?.totalScore || 0} {question.points !== 1 ? 'points' : 'point'})
           </Typography.Text>
+          </div>
         </div>
 
         {/* Two Column Layout */}
@@ -1915,7 +1852,17 @@ const ListeningSectionItem = ({ question, index, theme }) => {
                             while ((match = regex.exec(text)) !== null) {
                               if (match.index > last) parts.push(text.slice(last, match.index));
                               const positionId = match[1];
-                              const optionsForPosition = q.content?.data?.filter(opt => opt.positionId === positionId) || [];
+                              const contentData = q.content?.data || [];
+                              // Check if any options have positionId
+                              const hasPositionIds = contentData.some(opt => opt.positionId);
+                              // If options have positionId, filter by positionId; otherwise use all options
+                              const optionsForPosition = hasPositionIds
+                                ? contentData.filter(opt => {
+                                    const optPosId = String(opt.positionId || '');
+                                    const matchPosId = String(positionId);
+                                    return optPosId === matchPosId;
+                                  })
+                                : contentData;
                               parts.push(
                               <select
                                   key={`dd_${q.id}_${idx++}`}
@@ -1945,8 +1892,8 @@ const ListeningSectionItem = ({ question, index, theme }) => {
                               >
                                 <option value="">Select</option>
                                   {optionsForPosition.map((item) => (
-                                    <option key={item.id} value={(item.value || '').replace(/<[^>]*>/g,' ')}>
-                                      {(item.value || '').replace(/<[^>]*>/g,' ')}
+                                    <option key={item.id} value={item.value || ''}>
+                                      {item.value || ''}
                                   </option>
                                 ))}
                               </select>
@@ -2084,7 +2031,7 @@ const ListeningSectionItem = ({ question, index, theme }) => {
                           </div>
                         );
                       })()
-                    ) : q.type === 'FILL_IN_THE_BLANK' ? (
+                    ) : (q.type === 'FILL_IN_THE_BLANK' || q.type === 'FILL_BLANK' || q.questionType === 'FILL_BLANK' || q.questionType === 'FILL_IN_THE_BLANK') ? (
                       <div style={{ 
                         marginBottom: '16px',
                         fontSize: '15px', 
@@ -2115,14 +2062,15 @@ const ListeningSectionItem = ({ question, index, theme }) => {
                       </div>
                     ) : q.type === 'REARRANGE' ? (
                       (() => {
-                        const questionId = `reorder_${q.id}`;
-                        const currentState = reorderStates[questionId] || {
+                        const questionId = q.id;
+                        const currentState = {
                           sourceItems: q.content?.data?.map(item => item.value) || [],
                           droppedItems: {},
                           dragOverIndex: null,
                           draggedItem: null,
                           isDraggingFromSource: false,
-                          wasDropped: false
+                          wasDropped: false,
+                          ...(reorderStates[questionId] || {})
                         };
                         const numSlots = (q.content?.data?.filter(it => it?.value)?.length) || currentState.sourceItems.length || 0;
                         // Remove placeholder tokens but keep HTML formatting
@@ -2421,6 +2369,8 @@ const ListeningSectionItem = ({ question, index, theme }) => {
 
 // Writing Section Component
 const WritingSectionItem = ({ question, index, theme }) => {
+  const registerAnswerCollector = useContext(AnswerCollectionContext);
+  const registerAnswerRestorer = useContext(AnswerRestorationContext);
   const [essayText, setEssayText] = useState('');
   const [uploadedFiles, setUploadedFiles] = useState([]);
   const [wordCount, setWordCount] = useState(0);
@@ -2449,6 +2399,53 @@ const WritingSectionItem = ({ question, index, theme }) => {
     const words = essayText.trim().split(/\s+/).filter(word => word.length > 0);
     setWordCount(words.length);
   }, [essayText]);
+
+  // Register answer collector so Writing answers are included in submit payload
+  useEffect(() => {
+    if (!registerAnswerCollector || !question?.id) return;
+
+    const getAnswer = () => {
+      const text = (essayText || '').trim();
+      if (text) {
+        return { answer: text, questionType: 'WRITING' };
+      }
+      if (Array.isArray(uploadedFiles) && uploadedFiles.length > 0) {
+        const files = uploadedFiles
+          .map(f => (typeof f === 'string' ? f : (f?.value || f?.name)))
+          .filter(Boolean);
+        if (files.length > 0) {
+          return { answer: files, questionType: 'WRITING' };
+        }
+      }
+      return null;
+    };
+
+    const unregister = registerAnswerCollector(question.id, getAnswer);
+    return unregister;
+  }, [registerAnswerCollector, question?.id, essayText, uploadedFiles]);
+
+  // Register answer restorer to prefill saved writing text from drafts/results
+  useEffect(() => {
+    if (!registerAnswerRestorer || !question?.id) return;
+
+    const setAnswer = (answer) => {
+      if (typeof answer === 'string') {
+        setEssayText(answer);
+        return;
+      }
+      if (Array.isArray(answer) && answer.length > 0) {
+        const first = answer.find(Boolean);
+        if (first) setEssayText(String(first));
+        return;
+      }
+      if (answer && typeof answer === 'object' && answer.text) {
+        setEssayText(String(answer.text));
+      }
+    };
+
+    const unregister = registerAnswerRestorer(question.id, setAnswer);
+    return unregister;
+  }, [registerAnswerRestorer, question?.id]);
 
 
   const handleFileUpload = (event) => {
@@ -2609,7 +2606,7 @@ const WritingSectionItem = ({ question, index, theme }) => {
                         left: '0',
                         color: theme === 'sun' ? '#1890ff' : '#8B5CF6',
                         fontWeight: 'bold'
-                      }}>{line.match(/^\d+\./)[0]}</span>
+                      }}>{(line.match(/^\d+\./) || [''])[0]}</span>
                       {line.replace(/^\d+\.\s*/, '')}
                     </div>
                   );
@@ -2901,6 +2898,8 @@ const WritingSectionItem = ({ question, index, theme }) => {
 
 // Speaking Section Component
 const SpeakingSectionItem = ({ question, index, theme }) => {
+  const registerAnswerCollector = useContext(AnswerCollectionContext);
+  const registerAnswerRestorer = useContext(AnswerRestorationContext);
   const [isRecording, setIsRecording] = useState(false);
   const [audioUrl, setAudioUrl] = useState(null);
   const [uploadedFiles, setUploadedFiles] = useState([]);
@@ -2980,6 +2979,48 @@ const SpeakingSectionItem = ({ question, index, theme }) => {
   const removeRecording = () => {
     setAudioUrl(null);
   };
+
+  // Register answer collector for Speaking
+  useEffect(() => {
+    if (!registerAnswerCollector || !question?.id) return;
+
+    const getAnswer = () => {
+      // Prefer recorded audio URL, else any uploaded file URLs/names
+      if (audioUrl) {
+        return { answer: audioUrl, questionType: 'SPEAKING' };
+      }
+      if (Array.isArray(uploadedFiles) && uploadedFiles.length > 0) {
+        const files = uploadedFiles
+          .map(f => (typeof f === 'string' ? f : (f?.url || f?.name)))
+          .filter(Boolean);
+        if (files.length > 0) return { answer: files, questionType: 'SPEAKING' };
+      }
+      return null;
+    };
+
+    const unregister = registerAnswerCollector(question.id, getAnswer);
+    return unregister;
+  }, [registerAnswerCollector, question?.id, audioUrl, uploadedFiles]);
+
+  // Register restorer to prefill speaking answer from draft/result
+  useEffect(() => {
+    if (!registerAnswerRestorer || !question?.id) return;
+
+    const setAnswer = (answer) => {
+      if (typeof answer === 'string') {
+        // Assume it's a url or text
+        setAudioUrl(answer);
+        return;
+      }
+      if (Array.isArray(answer) && answer.length > 0) {
+        const first = answer.find(Boolean);
+        if (first) setAudioUrl(String(first));
+      }
+    };
+
+    const unregister = registerAnswerRestorer(question.id, setAnswer);
+    return unregister;
+  }, [registerAnswerRestorer, question?.id]);
 
   return (
     <>
@@ -3310,6 +3351,8 @@ const SpeakingSectionItem = ({ question, index, theme }) => {
 
 // Speaking With Audio Section Component
 const SpeakingWithAudioSectionItem = ({ question, index, theme }) => {
+  const registerAnswerCollector = useContext(AnswerCollectionContext);
+  const registerAnswerRestorer = useContext(AnswerRestorationContext);
   const [isRecording, setIsRecording] = useState(false);
   const [audioUrl, setAudioUrl] = useState(null);
   const [uploadedFiles, setUploadedFiles] = useState([]);
@@ -3390,6 +3433,46 @@ const SpeakingWithAudioSectionItem = ({ question, index, theme }) => {
   const removeFile = (fileId) => {
     setUploadedFiles(prev => prev.filter(file => file.id !== fileId));
   };
+
+  // Register answer collector for Speaking with audio prompt
+  useEffect(() => {
+    if (!registerAnswerCollector || !question?.id) return;
+
+    const getAnswer = () => {
+      if (audioUrl) {
+        return { answer: audioUrl, questionType: 'SPEAKING' };
+      }
+      if (Array.isArray(uploadedFiles) && uploadedFiles.length > 0) {
+        const files = uploadedFiles
+          .map(f => (typeof f === 'string' ? f : (f?.url || f?.name)))
+          .filter(Boolean);
+        if (files.length > 0) return { answer: files, questionType: 'SPEAKING' };
+      }
+      return null;
+    };
+
+    const unregister = registerAnswerCollector(question.id, getAnswer);
+    return unregister;
+  }, [registerAnswerCollector, question?.id, audioUrl, uploadedFiles]);
+
+  // Register restorer to prefill saved speaking answer
+  useEffect(() => {
+    if (!registerAnswerRestorer || !question?.id) return;
+
+    const setAnswer = (answer) => {
+      if (typeof answer === 'string') {
+        setAudioUrl(answer);
+        return;
+      }
+      if (Array.isArray(answer) && answer.length > 0) {
+        const first = answer.find(Boolean);
+        if (first) setAudioUrl(String(first));
+      }
+    };
+
+    const unregister = registerAnswerRestorer(question.id, setAnswer);
+    return unregister;
+  }, [registerAnswerRestorer, question?.id]);
 
   const removeRecording = () => {
     setAudioUrl(null);
@@ -3901,11 +3984,24 @@ const SpeakingWithAudioSectionItem = ({ question, index, theme }) => {
 
 // Multiple Choice Container Component
 const MultipleChoiceContainer = ({ theme, data }) => {
+  const registerAnswerCollector = useContext(AnswerCollectionContext);
   const [selectedAnswer, setSelectedAnswer] = React.useState(null);
   const questionText = data?.question || data?.questionText || 'What is the capital city of Vietnam?';
   const optionsFromApi = Array.isArray(data?.options) && data.options.length > 0
     ? data.options
     : null;
+
+  // Register answer collector
+  React.useEffect(() => {
+    if (!registerAnswerCollector || !data?.id) return;
+    
+    const getAnswer = () => {
+      return selectedAnswer ? { answer: selectedAnswer, questionType: 'MULTIPLE_CHOICE' } : null;
+    };
+    
+    const unregister = registerAnswerCollector(data.id, getAnswer);
+    return unregister;
+  }, [registerAnswerCollector, data?.id, selectedAnswer]);
 
   return (
     <div
@@ -4058,9 +4154,22 @@ const MultipleChoiceContainer = ({ theme, data }) => {
 
 // Multiple Select Container Component
 const MultipleSelectContainer = ({ theme, data }) => {
+  const registerAnswerCollector = useContext(AnswerCollectionContext);
   const [selectedAnswers, setSelectedAnswers] = React.useState([]);
   const questionText = data?.question || data?.questionText || 'Which of the following are Southeast Asian countries? (Select all that apply)';
   const optionsFromApi = Array.isArray(data?.options) && data.options.length > 0 ? data.options : null;
+
+  // Register answer collector
+  React.useEffect(() => {
+    if (!registerAnswerCollector || !data?.id) return;
+    
+    const getAnswer = () => {
+      return selectedAnswers.length > 0 ? { answer: selectedAnswers, questionType: 'MULTIPLE_SELECT' } : null;
+    };
+    
+    const unregister = registerAnswerCollector(data.id, getAnswer);
+    return unregister;
+  }, [registerAnswerCollector, data?.id, selectedAnswers]);
 
   const toggleAnswer = (key) => {
     if (selectedAnswers.includes(key)) {
@@ -4220,8 +4329,21 @@ const MultipleSelectContainer = ({ theme, data }) => {
 
 // True/False Container Component
 const TrueFalseContainer = ({ theme, data }) => {
+  const registerAnswerCollector = useContext(AnswerCollectionContext);
   const [selectedAnswer, setSelectedAnswer] = React.useState(null);
   const questionText = data?.question || data?.questionText || 'The Earth revolves around the Sun.';
+
+  // Register answer collector
+  React.useEffect(() => {
+    if (!registerAnswerCollector || !data?.id) return;
+    
+    const getAnswer = () => {
+      return selectedAnswer ? { answer: selectedAnswer, questionType: 'TRUE_OR_FALSE' } : null;
+    };
+    
+    const unregister = registerAnswerCollector(data.id, getAnswer);
+    return unregister;
+  }, [registerAnswerCollector, data?.id, selectedAnswer]);
 
   return (
     <div
@@ -4370,10 +4492,27 @@ const TrueFalseContainer = ({ theme, data }) => {
 
 // Dropdown Container Component
 const DropdownContainer = ({ theme, data }) => {
+  const registerAnswerCollector = useContext(AnswerCollectionContext);
   const [selectedAnswers, setSelectedAnswers] = React.useState({});
   const questionText = data?.questionText || data?.question || 'Choose the correct words to complete the sentence:';
   const contentData = Array.isArray(data?.content?.data) ? data.content.data : [];
   
+  // Register answer collector
+  React.useEffect(() => {
+    if (!registerAnswerCollector || !data?.id) return;
+    
+    const getAnswer = () => {
+      // Format dropdown answers with positionId keys
+      const formattedAnswers = {};
+      Object.keys(selectedAnswers).forEach(posId => {
+        formattedAnswers[`${data.id}_pos_${posId}`] = selectedAnswers[posId];
+      });
+      return Object.keys(formattedAnswers).length > 0 ? { answer: formattedAnswers, questionType: 'DROPDOWN' } : null;
+    };
+    
+    const unregister = registerAnswerCollector(data.id, getAnswer);
+    return unregister;
+  }, [registerAnswerCollector, data?.id, selectedAnswers]);
 
   const handleDropdownChange = (positionId, value) => {
     setSelectedAnswers(prev => ({
@@ -4466,14 +4605,23 @@ const DropdownContainer = ({ theme, data }) => {
               // Add dropdown for this position
               const positionIdNum = match[1]; // Extract number from [[pos_1]] -> "1"
               const positionId = `pos_${positionIdNum}`; // Convert to "pos_1" to match data format
-              const opts = contentData
-                .filter(it => {
-                  const itPosId = String(it.positionId || '');
-                  const matchPosId = String(positionId);
-                  return itPosId === matchPosId;
-                })
-                .map(it => it.value)
-                .filter(Boolean);
+              
+              // Check if any options have positionId
+              const hasPositionIds = contentData.some(it => it.positionId);
+              
+              // If options have positionId, filter by positionId; otherwise use all options
+              const opts = hasPositionIds
+                ? contentData
+                    .filter(it => {
+                      const itPosId = String(it.positionId || '');
+                      const matchPosId = String(positionId);
+                      return itPosId === matchPosId;
+                    })
+                    .map(it => it.value || it.text || '')
+                    .filter(Boolean)
+                : contentData
+                    .map(it => it.value || it.text || '')
+                    .filter(Boolean);
 
               parts.push(
                 <select
@@ -4556,6 +4704,7 @@ const DropdownContainer = ({ theme, data }) => {
 
 // Drag and Drop Container Component
 const DragDropContainer = ({ theme, data }) => {
+  const registerAnswerCollector = useContext(AnswerCollectionContext);
   const [droppedItems, setDroppedItems] = React.useState({});
   // Use ALL values from API (including duplicates) as draggable options; fallback to a simple list
   const [availableItems, setAvailableItems] = React.useState(() => {
@@ -4563,6 +4712,18 @@ const DragDropContainer = ({ theme, data }) => {
     return all.length ? all : ['love', 'like', 'enjoy', 'hate'];
   });
   const [dragOverPosition, setDragOverPosition] = React.useState(null);
+
+  // Register answer collector
+  React.useEffect(() => {
+    if (!registerAnswerCollector || !data?.id) return;
+    
+    const getAnswer = () => {
+      return Object.keys(droppedItems).length > 0 ? { answer: droppedItems, questionType: 'DRAG_AND_DROP' } : null;
+    };
+    
+    const unregister = registerAnswerCollector(data.id, getAnswer);
+    return unregister;
+  }, [registerAnswerCollector, data?.id, droppedItems]);
 
   const handleDragStart = (e, item, isDropped = false, positionId = null) => {
     e.dataTransfer.setData('text/plain', item);
@@ -4873,6 +5034,7 @@ const DragDropContainer = ({ theme, data }) => {
 
 // Reorder Container Component
 const ReorderContainer = ({ theme, data }) => {
+  const registerAnswerCollector = useContext(AnswerCollectionContext);
   const [sourceItems, setSourceItems] = React.useState(() => {
     const words = (data?.content?.data || [])
       .map(it => it.value)
@@ -4884,6 +5046,22 @@ const ReorderContainer = ({ theme, data }) => {
   const [draggedItem, setDraggedItem] = React.useState(null);
   const [isDraggingFromSource, setIsDraggingFromSource] = React.useState(false);
   const [wasDropped, setWasDropped] = React.useState(false);
+
+  // Register answer collector
+  React.useEffect(() => {
+    if (!registerAnswerCollector || !data?.id) return;
+    
+    const getAnswer = () => {
+      // Get items in order from droppedItems
+      const orderedItems = Array.from({ length: Object.keys(droppedItems).length }, (_, i) => {
+        return droppedItems[i] || null;
+      }).filter(Boolean);
+      return orderedItems.length > 0 ? { answer: orderedItems, questionType: 'REORDER' } : null;
+    };
+    
+    const unregister = registerAnswerCollector(data.id, getAnswer);
+    return unregister;
+  }, [registerAnswerCollector, data?.id, droppedItems]);
   const numSlots = React.useMemo(() => {
     const countFromData = (data?.content?.data || [])
       .map(it => it.value)
@@ -5249,10 +5427,23 @@ const ReorderContainer = ({ theme, data }) => {
 
 // Rewrite Container Component
 const RewriteContainer = ({ theme, data }) => {
+  const registerAnswerCollector = useContext(AnswerCollectionContext);
   const [answer, setAnswer] = React.useState('');
   // Remove placeholder tokens but keep HTML formatting
   const questionText = (data?.questionText || data?.question || 'Rewrite the following sentence using different words:')
     .replace(/\[\[pos_.*?\]\]/g, '');
+
+  // Register answer collector
+  React.useEffect(() => {
+    if (!registerAnswerCollector || !data?.id) return;
+    
+    const getAnswer = () => {
+      return answer ? { answer: answer, questionType: 'REWRITE' } : null;
+    };
+    
+    const unregister = registerAnswerCollector(data.id, getAnswer);
+    return unregister;
+  }, [registerAnswerCollector, data?.id, answer]);
 
   return (
     <div
@@ -5350,7 +5541,33 @@ const RewriteContainer = ({ theme, data }) => {
 
 // Fill in the Blank Container Component
 const FillBlankContainer = ({ theme, data }) => {
+  const registerAnswerCollector = useContext(AnswerCollectionContext);
+  const [blankAnswers, setBlankAnswers] = React.useState({});
   const questionText = data?.questionText || data?.question || 'Fill in the blanks';
+  
+  // Register answer collector
+  React.useEffect(() => {
+    if (!registerAnswerCollector || !data?.id) return;
+    
+    const getAnswer = () => {
+      // Format blank answers with positionId keys
+      const formattedAnswers = {};
+      Object.keys(blankAnswers).forEach(posId => {
+        const value = blankAnswers[posId];
+        // Include even empty strings, but trim to check if really empty
+        if (value !== null && value !== undefined && String(value).trim() !== '') {
+          formattedAnswers[`${data.id}_pos_${posId}`] = String(value).trim();
+        }
+      });
+      // Always return answer object, even if empty, so the question is tracked
+      const result = { answer: formattedAnswers, questionType: 'FILL_BLANK' };
+      return result;
+    };
+    
+    const unregister = registerAnswerCollector(data.id, getAnswer);
+    return unregister;
+  }, [registerAnswerCollector, data?.id, blankAnswers]);
+  
   // Parse questionText and render editable spans where [[pos_x]] appears
   const renderWithInputs = () => {
     const elements = [];
@@ -5370,12 +5587,27 @@ const FillBlankContainer = ({ theme, data }) => {
         );
       }
       inputIndex += 1;
+      const positionId = match[2];
       elements.push(
         <span
           key={`fill_blank_input_${inputIndex}`}
           className="paragraph-input"
           contentEditable
           suppressContentEditableWarning
+          onInput={(e) => {
+            const text = e.target.textContent || e.target.innerText || '';
+            setBlankAnswers(prev => ({
+              ...prev,
+              [positionId]: text
+            }));
+          }}
+          onBlur={(e) => {
+            const text = e.target.textContent || e.target.innerText || '';
+            setBlankAnswers(prev => ({
+              ...prev,
+              [positionId]: text
+            }));
+          }}
           style={{
             display: 'inline-flex',
             alignItems: 'center',
@@ -5478,350 +5710,162 @@ const FillBlankContainer = ({ theme, data }) => {
 
 
 // Generate fake data based on challenge type
-const generateFakeDataByType = (challengeType) => {
+// Transform API response data to component format
+const transformApiDataToComponentFormat = (apiResponse, challengeType) => {
   const questions = [];
   const readingSections = [];
   const listeningSections = [];
   const writingSections = [];
   const speakingSections = [];
 
-  if (challengeType === 'GV') {
-    // Grammar & Vocabulary - individual questions
-    questions.push(
-      {
-        id: 'gv-1',
-        type: 'MULTIPLE_CHOICE',
-        questionText: 'Choose the correct word to complete the sentence: "I have _____ finished my homework."',
-        question: 'Choose the correct word to complete the sentence: "I have _____ finished my homework."',
-        options: [
-          { key: 'A', text: 'already', isCorrect: true },
-          { key: 'B', text: 'yet', isCorrect: false },
-          { key: 'C', text: 'still', isCorrect: false },
-          { key: 'D', text: 'just', isCorrect: false },
-        ],
-        points: 1,
-        orderNumber: 1,
-      },
-      {
-        id: 'gv-2',
-        type: 'MULTIPLE_SELECT',
-        questionText: 'Select all the synonyms of "beautiful":',
-        question: 'Select all the synonyms of "beautiful":',
-        options: [
-          { key: 'A', text: 'pretty', isCorrect: true },
-          { key: 'B', text: 'ugly', isCorrect: false },
-          { key: 'C', text: 'gorgeous', isCorrect: true },
-          { key: 'D', text: 'lovely', isCorrect: true },
-        ],
-        points: 2,
-        orderNumber: 2,
-      },
-      {
-        id: 'gv-3',
-        type: 'TRUE_OR_FALSE',
-        questionText: 'The word "quickly" is an adjective.',
-        question: 'The word "quickly" is an adjective.',
-        options: [
-          { key: 'A', text: 'True', isCorrect: false },
-          { key: 'B', text: 'False', isCorrect: true },
-        ],
-        points: 1,
-        orderNumber: 3,
-      },
-      {
-        id: 'gv-4',
-        type: 'FILL_IN_THE_BLANK',
-        questionText: 'Complete the sentence: "She [[pos_1]] to the store yesterday."',
-        question: 'Complete the sentence: "She _____ to the store yesterday."',
-        content: {
-          data: [
-            { id: 1, value: 'went', positionId: 'pos_1', correct: true }
-          ]
-        },
-        points: 2,
-        orderNumber: 4,
-      },
-      {
-        id: 'gv-5',
-        type: 'DROPDOWN',
-        questionText: 'Choose the correct word: "I like to read books [[pos_1]] my free time."',
-        question: 'Choose the correct word: "I like to read books _____ my free time."',
-        content: {
-          data: [
-            { id: 1, value: 'in', positionId: 'pos_1', correct: true },
-            { id: 2, value: 'on', positionId: 'pos_1', correct: false },
-            { id: 3, value: 'at', positionId: 'pos_1', correct: false },
-            { id: 4, value: 'by', positionId: 'pos_1', correct: false },
-          ]
-        },
-        points: 2,
-        orderNumber: 5,
-      },
-      {
-        id: 'gv-6',
-        type: 'DRAG_AND_DROP',
-        questionText: 'Complete the sentence: I [[pos_1]] programming and [[pos_2]] it very much.',
-        question: 'Complete the sentence: I _____ programming and _____ it very much.',
-        content: {
-          data: [
-            { id: 1, value: 'love', positionId: 'pos_1', correct: true },
-            { id: 2, value: 'enjoy', positionId: 'pos_2', correct: true },
-            { id: 3, value: 'like', correct: false },
-            { id: 4, value: 'hate', correct: false },
-            { id: 5, value: 'dislike', correct: false },
-          ]
-        },
-        points: 3,
-        orderNumber: 6,
-      },
-      {
-        id: 'gv-7',
-        type: 'REARRANGE',
-        questionText: 'Rearrange the words to form a correct sentence: [[pos_1]] [[pos_2]] [[pos_3]] quickly.',
-        question: 'Rearrange the words to form a correct sentence.',
-        content: {
-          data: [
-            { id: 1, value: 'He', positionId: 'pos_1' },
-            { id: 2, value: 'runs', positionId: 'pos_2' },
-            { id: 3, value: 'very', positionId: 'pos_3' },
-          ]
-        },
-        points: 2,
-        orderNumber: 7,
-      },
-      {
-        id: 'gv-8',
-        type: 'REWRITE',
-        questionText: 'Rewrite the sentence in passive voice: "The teacher explains the lesson."',
-        question: 'Rewrite the sentence in passive voice: "The teacher explains the lesson."',
-        content: {
-          data: [
-            { id: 1, value: 'The lesson is explained by the teacher.' }
-          ]
-        },
-        points: 5,
-        orderNumber: 8,
-      }
-    );
-  } else if (challengeType === 'RE') {
-    readingSections.push({
-      id: 'reading-1',
-      type: 'SECTION',
-      title: 'The Benefits of Reading',
-      passage: `Reading is one of the most important skills we can develop. It opens up new worlds and ideas, improves our vocabulary, and enhances our ability to think critically. When we read regularly, we expose ourselves to different perspectives and cultures, which helps us become more empathetic and understanding individuals.
-
-Reading also improves our writing skills. By seeing how other authors structure their sentences and paragraphs, we learn to express our own ideas more clearly and effectively. Additionally, reading reduces stress and helps us relax, making it an excellent way to unwind after a long day.
-
-Studies have shown that people who read regularly have better memory and cognitive function. Reading exercises our brain, keeping it active and healthy. It's like going to the gym, but for your mind.
-
-Whether you prefer fiction or non-fiction, novels or articles, the important thing is to make reading a regular part of your life. Start with just a few minutes each day, and gradually increase the time as you develop the habit.`,
-      questions: [
-        {
-          id: 're-1',
-          type: 'MULTIPLE_CHOICE',
-          questionText: 'According to the passage, reading helps us become more:',
-          question: 'According to the passage, reading helps us become more:',
-          options: [
-            { key: 'A', text: 'intelligent', isCorrect: false },
-            { key: 'B', text: 'empathetic', isCorrect: true },
-            { key: 'C', text: 'competitive', isCorrect: false },
-            { key: 'D', text: 'wealthy', isCorrect: false },
-          ],
-          points: 1,
-          orderNumber: 1,
-        },
-        {
-          id: 're-2',
-          type: 'MULTIPLE_SELECT',
-          questionText: 'According to the passage, which of the following are benefits of reading? (Select all that apply)',
-          question: 'According to the passage, which of the following are benefits of reading? (Select all that apply)',
-          options: [
-            { key: 'A', text: 'Improves vocabulary', isCorrect: true },
-            { key: 'B', text: 'Reduces stress', isCorrect: true },
-            { key: 'C', text: 'Improves memory', isCorrect: true },
-            { key: 'D', text: 'Increases wealth', isCorrect: false },
-          ],
-          points: 2,
-          orderNumber: 2,
-        },
-        {
-          id: 're-3',
-          type: 'TRUE_OR_FALSE',
-          questionText: 'The passage states that reading only improves vocabulary.',
-          question: 'The passage states that reading only improves vocabulary.',
-          options: [
-            { key: 'A', text: 'True', isCorrect: false },
-            { key: 'B', text: 'False', isCorrect: true },
-          ],
-          points: 1,
-          orderNumber: 3,
-        },
-        {
-          id: 're-4',
-          type: 'FILL_IN_THE_BLANK',
-          questionText: 'Complete the sentence based on the passage: "Reading exercises our [[pos_1]], keeping it [[pos_2]] and healthy."',
-          question: 'Complete the sentence based on the passage: "Reading exercises our _____, keeping it _____ and healthy."',
-          content: {
-            data: [
-              { id: 1, value: 'brain', positionId: 'pos_1', correct: true },
-              { id: 2, value: 'active', positionId: 'pos_2', correct: true }
-            ]
-          },
-          points: 2,
-          orderNumber: 4,
-        },
-        {
-          id: 're-5',
-          type: 'DROPDOWN',
-          questionText: 'Based on the passage: "Reading is like going to the [[pos_1]], but for your [[pos_2]]."',
-          question: 'Based on the passage: "Reading is like going to the _____, but for your _____."',
-          content: {
-            data: [
-              { id: 1, value: 'gym', positionId: 'pos_1', correct: true },
-              { id: 2, value: 'park', positionId: 'pos_1', correct: false },
-              { id: 3, value: 'library', positionId: 'pos_1', correct: false },
-              { id: 4, value: 'mind', positionId: 'pos_2', correct: true },
-              { id: 5, value: 'body', positionId: 'pos_2', correct: false },
-              { id: 6, value: 'health', positionId: 'pos_2', correct: false },
-            ]
-          },
-          points: 2,
-          orderNumber: 5,
-        },
-        {
-          id: 're-6',
-          type: 'DRAG_AND_DROP',
-          questionText: 'Complete the sentence: Reading [[pos_1]] us to different [[pos_2]] and cultures.',
-          question: 'Complete the sentence: Reading _____ us to different _____ and cultures.',
-          content: {
-            data: [
-              { id: 1, value: 'exposes', positionId: 'pos_1', correct: true },
-              { id: 2, value: 'perspectives', positionId: 'pos_2', correct: true },
-              { id: 3, value: 'introduces', correct: false },
-              { id: 4, value: 'shows', correct: false },
-              { id: 5, value: 'ideas', correct: false },
-            ]
-          },
-          points: 3,
-          orderNumber: 6,
-        },
-        {
-          id: 're-7',
-          type: 'REARRANGE',
-          questionText: 'Rearrange the words to form a sentence from the passage: [[pos_1]] [[pos_2]] [[pos_3]] [[pos_4]] to make reading a regular part of your life.',
-          question: 'Rearrange the words to form a sentence from the passage.',
-          content: {
-            data: [
-              { id: 1, value: 'The', positionId: 'pos_1' },
-              { id: 2, value: 'important', positionId: 'pos_2' },
-              { id: 3, value: 'thing', positionId: 'pos_3' },
-              { id: 4, value: 'is', positionId: 'pos_4' },
-            ]
-          },
-          points: 2,
-          orderNumber: 7,
-        },
-      ],
-      points: 13,
-    });
-  } else if (challengeType === 'LI') {
-    listeningSections.push({
-      id: 'listening-1',
-      type: 'LISTENING_SECTION',
-      title: 'A Day at the Beach',
-      audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3',
-      duration: '3:45',
-      transcript: `Speaker: Welcome to today's listening practice. We're going to talk about planning a perfect day at the beach.
-
-First, you should check the weather forecast. You don't want to go to the beach on a rainy day. Once you know the weather will be nice, pack your essentials. Bring sunscreen, a hat, sunglasses, towels, and plenty of water.
-
-When you arrive at the beach, find a good spot. It's best to set up near the water but not too close, as the tide might come in. Make sure you have some shade available, especially if you're planning to stay for several hours.
-
-Remember to apply sunscreen every two hours and drink water regularly to stay hydrated. Most importantly, have fun and enjoy your day at the beach!`,
-      questions: [
-        {
-          id: 'li-1',
-          type: 'MULTIPLE_CHOICE',
-          questionText: 'What should you check before going to the beach?',
-          question: 'What should you check before going to the beach?',
-          options: [
-            { key: 'A', text: 'The traffic', isCorrect: false },
-            { key: 'B', text: 'The weather forecast', isCorrect: true },
-            { key: 'C', text: 'The prices', isCorrect: false },
-            { key: 'D', text: 'The time', isCorrect: false },
-          ],
-          points: 1,
-          orderNumber: 1,
-        },
-        {
-          id: 'li-2',
-          type: 'MULTIPLE_CHOICE',
-          questionText: 'How often should you apply sunscreen?',
-          question: 'How often should you apply sunscreen?',
-          options: [
-            { key: 'A', text: 'Every hour', isCorrect: false },
-            { key: 'B', text: 'Every two hours', isCorrect: true },
-            { key: 'C', text: 'Once in the morning', isCorrect: false },
-            { key: 'D', text: 'Only when needed', isCorrect: false },
-          ],
-          points: 1,
-          orderNumber: 2,
-        },
-      ],
-      points: 2,
-    });
-  } else if (challengeType === 'WR') {
-    writingSections.push({
-      id: 'writing-1',
-      type: 'WRITING_SECTION',
-      title: 'Essay Writing',
-      prompt: `Write an essay of at least 250 words about the importance of learning English in today's world. Your essay should include:
-
-1. An introduction explaining why English is important
-2. At least two main reasons supporting your viewpoint
-3. Examples to illustrate your points
-4. A conclusion summarizing your main ideas
-
-Make sure to use proper grammar, vocabulary, and sentence structure.`,
-      wordLimit: 250,
-      timeLimit: 60,
-      points: 10,
-      questionText: 'Write an essay based on the given prompt',
-    });
-  } else if (challengeType === 'SP') {
-    speakingSections.push({
-      id: 'speaking-1',
-      type: 'SPEAKING_SECTION',
-      title: 'Describe Your Hometown',
-      prompt: `Describe your hometown. You should talk about:
-- Where it is located
-- What it is famous for
-- What you like and dislike about it
-- Any changes you would like to see
-
-You have 2 minutes to prepare and 3 minutes to speak.`,
-      points: 10,
-      audioUrl: null,
-    });
-    speakingSections.push({
-      id: 'speaking-2',
-      type: 'SPEAKING_WITH_AUDIO_SECTION',
-      title: 'Respond to Audio Prompt',
-      prompt: 'Listen to the audio and respond to the questions asked.',
-      audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3',
-      transcript: 'Speaker: Can you tell me about your favorite hobby? What do you like about it? How long have you been doing it?',
-      points: 10,
-    });
+  if (!apiResponse || !apiResponse.data || !Array.isArray(apiResponse.data)) {
+    return { questions, readingSections, listeningSections, writingSections, speakingSections };
   }
 
-  return {
-    questions,
-    readingSections,
-    listeningSections,
-    writingSections,
-    speakingSections,
-  };
+  apiResponse.data.forEach((item) => {
+    const section = item.section || {};
+    const sectionQuestions = item.questions || [];
+
+    if (sectionQuestions.length === 0) return;
+
+    // Helper function to transform options from {id, value} to {key, text}
+    const transformOptions = (contentData, questionType) => {
+      if (!Array.isArray(contentData) || contentData.length === 0) return [];
+      
+      // For TRUE_OR_FALSE, convert {id, value} to {key, text} format
+      if (questionType === 'TRUE_OR_FALSE') {
+        return contentData.map(opt => ({
+          key: opt.id || (opt.value === 'True' ? 'A' : 'B'),
+          text: opt.value || ''
+        }));
+      }
+      
+      // For other types, convert {id, value} to {key, text} format
+      return contentData.map(opt => ({
+        key: opt.id || opt.key || String.fromCharCode(65 + contentData.indexOf(opt)),
+        text: opt.value || opt.text || ''
+      }));
+    };
+
+    // Check questionType and resourceType to determine section type
+    const firstQuestionType = sectionQuestions?.[0]?.questionType || '';
+    const resourceType = section.resourceType || '';
+    const sectionTitle = (section.sectionTitle || '').toLowerCase();
+    const hasAudioUrl = section.sectionsUrl && section.sectionsUrl.trim() !== '';
+    const isAudioFile = hasAudioUrl && (section.sectionsUrl.match(/\.(mp3|wav|ogg|m4a|aac)$/i));
+    
+    // Determine if this is a Listening section
+    const isListeningSection = 
+      firstQuestionType === 'LISTENING' || 
+      resourceType === 'AUDIO' || 
+      (resourceType === 'FILE' && isAudioFile) ||
+      sectionTitle.includes('listening');
+    
+    // Determine if this is a Reading section
+    const isReadingSection = 
+      firstQuestionType === 'READING' || 
+      (resourceType === 'DOCUMENT' && !isListeningSection);
+    
+    if (firstQuestionType === 'WRITING') {
+      // Writing section
+      sectionQuestions.forEach((q) => {
+        writingSections.push({
+          id: q.id,
+          type: 'WRITING_SECTION',
+          title: section.sectionTitle || 'Writing Section',
+          prompt: q.questionText || section.sectionsContent || '',
+          questionText: q.questionText || section.sectionsContent || '',
+          wordLimit: null,
+          timeLimit: null,
+          points: null,
+          orderNumber: q.orderNumber || section.orderNumber || 0,
+        });
+      });
+    } else if (firstQuestionType === 'SPEAKING') {
+      // Speaking section - ensure id is the real questionId
+      sectionQuestions.forEach((q) => {
+        const hasAudio = section.sectionsUrl && section.sectionsUrl.trim() !== '';
+        speakingSections.push({
+          id: q.id,
+          type: hasAudio ? 'SPEAKING_WITH_AUDIO_SECTION' : 'SPEAKING_SECTION',
+          title: section.sectionTitle || 'Speaking Section',
+          prompt: q.questionText || section.sectionsContent || '',
+          points: null,
+          audioUrl: hasAudio ? section.sectionsUrl : null,
+          transcript: section.sectionsContent || '',
+          orderNumber: q.orderNumber || section.orderNumber || 0,
+        });
+      });
+    } else if (isListeningSection) {
+      // Listening section
+      listeningSections.push({
+        id: section.id,
+        type: 'LISTENING_SECTION',
+        title: section.sectionTitle || 'Listening Section',
+        audioUrl: section.sectionsUrl || '',
+        duration: null,
+        transcript: section.sectionsContent || '',
+        questions: sectionQuestions.map(q => ({
+          id: q.id,
+          type: q.questionType,
+          questionText: q.questionText || '',
+          question: q.questionText || '',
+          options: transformOptions(q.content?.data, q.questionType),
+          content: q.content || { data: [] },
+          points: null,
+          orderNumber: q.orderNumber || 0,
+        })),
+        points: null,
+        orderNumber: section.orderNumber || 0,
+      });
+    } else if (isReadingSection) {
+      // Reading section
+      readingSections.push({
+        id: section.id,
+        type: 'SECTION',
+        title: section.sectionTitle || 'Reading Section',
+        passage: section.sectionsContent || '',
+        questions: sectionQuestions.map(q => ({
+          id: q.id,
+          type: q.questionType,
+          questionText: q.questionText || '',
+          question: q.questionText || '',
+          options: transformOptions(q.content?.data, q.questionType),
+          content: q.content || { data: [] },
+          points: null,
+          orderNumber: q.orderNumber || 0,
+        })),
+        points: null,
+        orderNumber: section.orderNumber || 0,
+      });
+    } else {
+      // Individual questions (GV type) - add to questions array
+      sectionQuestions.forEach((q) => {
+        questions.push({
+          id: q.id,
+          type: q.questionType,
+          questionText: q.questionText || '',
+          question: q.questionText || '',
+          options: transformOptions(q.content?.data, q.questionType),
+          content: q.content || { data: [] },
+          points: null,
+          orderNumber: q.orderNumber || 0,
+        });
+      });
+    }
+  });
+
+  // Sort sections and questions by orderNumber
+  const sortByOrder = (a, b) => (a.orderNumber || 0) - (b.orderNumber || 0);
+  readingSections.sort(sortByOrder);
+  listeningSections.sort(sortByOrder);
+  writingSections.sort(sortByOrder);
+  speakingSections.sort(sortByOrder);
+  questions.sort(sortByOrder);
+
+  return { questions, readingSections, listeningSections, writingSections, speakingSections };
 };
+
 
 const StudentDailyChallengeTake = () => {
   const { t } = useTranslation();
@@ -5844,34 +5888,247 @@ const StudentDailyChallengeTake = () => {
   });
   const questionRefs = useRef({});
   const [submitModalVisible, setSubmitModalVisible] = useState(false);
+  const [submissionChallengeId, setSubmissionChallengeId] = useState(null);
+  
+  // Section scores - store scores for each section
+  const [sectionScores, setSectionScores] = useState({});
+  
+  // Answer collection system: store answer getter functions from child components
+  const answerCollectorsRef = useRef(new Map());
+  // Answer restoration system: store answer setter functions from child components
+  const answerRestorersRef = useRef(new Map());
   
   // Timer state - countdown from 60 minutes (3600 seconds)
   const [timeRemaining, setTimeRemaining] = useState(60 * 60); // 60 minutes in seconds
   
   usePageTitle('Daily Challenge - Take Challenge');
   
+  // Transform draft API response (sectionDetails format) to sections format
+  const transformDraftResponseToSectionsFormat = (draftResponse, challengeType) => {
+    if (!draftResponse) {
+      console.warn('⚠️ Draft response is undefined');
+      return null;
+    }
+    
+    if (!draftResponse.data) {
+      console.warn('⚠️ Draft response missing data:', draftResponse);
+      return null;
+    }
+    
+    if (!draftResponse.data.sectionDetails) {
+      console.warn('⚠️ Draft response missing sectionDetails:', draftResponse.data);
+      return null;
+    }
+
+    const sectionDetails = draftResponse.data.sectionDetails;
+    
+    if (!Array.isArray(sectionDetails)) {
+      console.warn('⚠️ sectionDetails is not an array:', sectionDetails);
+      return null;
+    }
+    
+    const transformedSections = [];
+
+    sectionDetails.forEach((sectionDetail) => {
+      if (!sectionDetail) {
+        console.warn('⚠️ Section detail is undefined');
+        return;
+      }
+      
+      const { section, questionResults, questions } = sectionDetail;
+      
+      if (!section) {
+        console.warn('⚠️ Section is undefined in sectionDetail:', sectionDetail);
+        return;
+      }
+      
+      // Draft API returns 'questions', Result API returns 'questionResults'
+      // Handle both formats
+      const questionDataList = questionResults || questions;
+      
+      if (!questionDataList) {
+        console.warn('⚠️ Section missing both questionResults and questions:', sectionDetail);
+        return;
+      }
+      
+      if (!Array.isArray(questionDataList)) {
+        console.warn('⚠️ questionResults/questions is not an array:', questionDataList);
+        return;
+      }
+
+      const transformedQuestions = questionDataList.map((qr) => {
+        // Handle both question object structure and direct question data
+        // For draft API: qr = {question: {...}, submittedContent: {...}}
+        // For result API: qr = {questionId, question: {...}, submittedContent: {...}}
+        const questionData = qr.question || qr;
+        
+        return {
+          id: qr.questionId || questionData.id,
+          questionType: qr.questionType || questionData.questionType,
+          questionText: questionData.questionText || qr.questionText || '',
+          content: questionData.content || qr.content || { data: [] },
+          orderNumber: questionData.orderNumber || qr.orderNumber || 0,
+        };
+      });
+
+      // Ensure section object has all required properties for Reading/Listening sections
+      const enhancedSection = {
+        ...section,
+        // Make sure these properties exist for Reading/Listening sections
+        sectionsUrl: section.sectionsUrl || section.url || section.audioUrl || '',
+        sectionsContent: section.sectionsContent || section.content || section.passage || section.transcript || '',
+        sectionTitle: section.sectionTitle || section.title || 'Section',
+        resourceType: section.resourceType || (section.sectionsUrl ? 'FILE' : 'DOCUMENT'),
+        orderNumber: section.orderNumber || 0,
+      };
+
+      transformedSections.push({
+        section: enhancedSection,
+        questions: transformedQuestions,
+      });
+    });
+
+    // Debug logs removed
+
+    // Create a response object similar to getPublicSectionsByChallenge format
+    return {
+      success: true,
+      data: transformedSections,
+    };
+  };
+
   useEffect(() => {
     // Get challenge type from location state
     const type = location.state?.challengeType || location.state?.type || 'GV';
+    const challengeId = id; // Get challengeId from URL params
     
-    // Simulate loading delay
-    setLoading(true);
-    setTimeout(() => {
-      setChallengeType(type);
-      setChallengeInfo({
-        challengeName: location.state?.challengeName || 'Daily Challenge',
-        className: location.state?.lessonName || null,
-      });
-      
-      const fakeData = generateFakeDataByType(type);
-      setQuestions(fakeData.questions);
-      setReadingSections(fakeData.readingSections);
-      setListeningSections(fakeData.listeningSections);
-      setWritingSections(fakeData.writingSections);
-      setSpeakingSections(fakeData.speakingSections);
+    if (!challengeId) {
+      spaceToast.error('Challenge ID is missing');
       setLoading(false);
-    }, 500);
-  }, [location.state]);
+      return;
+    }
+
+    setChallengeType(type);
+    setChallengeInfo({
+      challengeName: location.state?.challengeName || 'Daily Challenge',
+      className: location.state?.lessonName || null,
+    });
+    
+    // Get submissionChallengeId from location state
+    let initialSubmissionId = location.state?.submissionChallengeId;
+    if (initialSubmissionId) {
+      setSubmissionChallengeId(initialSubmissionId);
+    }
+    
+    // Load data from API
+    setLoading(true);
+    
+    // First, try to get submissionChallengeId if not provided
+    const getSubmissionIdPromise = initialSubmissionId 
+      ? Promise.resolve({ data: { id: initialSubmissionId } })
+      : dailyChallengeApi.getChallengeSubmissions(challengeId, { page: 0, size: 1 })
+        .then((submissionsResponse) => {
+          if (submissionsResponse && submissionsResponse.success) {
+            const submissions = submissionsResponse.data?.content || submissionsResponse.data || [];
+            if (Array.isArray(submissions) && submissions.length > 0) {
+              const currentSubmission = submissions.find(sub => sub.challengeId === parseInt(challengeId)) || submissions[0];
+              return currentSubmission && currentSubmission.id ? { data: { id: currentSubmission.id } } : null;
+            }
+          }
+          return null;
+        });
+
+    getSubmissionIdPromise
+      .then((submissionData) => {
+        const finalSubmissionId = submissionData?.data?.id || initialSubmissionId;
+        
+        if (!finalSubmissionId) {
+          // If no submission exists yet, fall back to public sections API
+          return dailyChallengeApi.getPublicSectionsByChallenge(challengeId, { page: 0, size: 100 })
+            .then((sectionsResponse) => {
+              if (sectionsResponse && sectionsResponse.success) {
+                const transformedData = transformApiDataToComponentFormat(sectionsResponse, type);
+                setQuestions(transformedData.questions);
+                setReadingSections(transformedData.readingSections);
+                setListeningSections(transformedData.listeningSections);
+                setWritingSections(transformedData.writingSections);
+                setSpeakingSections(transformedData.speakingSections);
+              }
+              setLoading(false);
+            });
+        }
+
+        // Update submissionChallengeId state
+        setSubmissionChallengeId(finalSubmissionId);
+        
+        // Use draft API to get both questions and saved answers
+        return dailyChallengeApi.getDraftSubmission(finalSubmissionId)
+          .then((draftResponse) => {
+            if (draftResponse && draftResponse.success) {
+              
+              // Transform draft response to sections format
+              const sectionsResponse = transformDraftResponseToSectionsFormat(draftResponse, type);
+              
+              if (sectionsResponse) {
+                try {
+                  // Load sections/questions from draft response
+                  const transformedData = transformApiDataToComponentFormat(sectionsResponse, type);
+                  if (transformedData) {
+                    setQuestions(transformedData.questions || []);
+                    setReadingSections(transformedData.readingSections || []);
+                    setListeningSections(transformedData.listeningSections || []);
+                    setWritingSections(transformedData.writingSections || []);
+                    setSpeakingSections(transformedData.speakingSections || []);
+                  }
+                } catch (error) {
+                  console.error('❌ Error transforming draft response to sections:', error);
+                  console.error('Draft response:', draftResponse);
+                  console.error('Sections response:', sectionsResponse);
+                }
+              }
+              
+              // Restore saved answers from draft response
+              if (draftResponse.data) {
+                // Delay restoration slightly to ensure components are mounted
+                // Use requestAnimationFrame to wait for next render cycle
+                requestAnimationFrame(() => {
+                  setTimeout(() => {
+                    try {
+                      restoreAnswersFromResult(draftResponse.data);
+                    } catch (error) {
+                      console.error('❌ Error in restoreAnswersFromResult:', error);
+                      console.error('Data structure:', draftResponse.data);
+                    }
+                  }, 300);
+                });
+              }
+            }
+          })
+          .catch((error) => {
+            console.error('Error loading draft submission:', error);
+            // Fall back to public sections API if draft API fails
+            return dailyChallengeApi.getPublicSectionsByChallenge(challengeId, { page: 0, size: 100 })
+              .then((sectionsResponse) => {
+                if (sectionsResponse && sectionsResponse.success) {
+                  const transformedData = transformApiDataToComponentFormat(sectionsResponse, type);
+                  setQuestions(transformedData.questions);
+                  setReadingSections(transformedData.readingSections);
+                  setListeningSections(transformedData.listeningSections);
+                  setWritingSections(transformedData.writingSections);
+                  setSpeakingSections(transformedData.speakingSections);
+                }
+              });
+          });
+      })
+      .catch((error) => {
+        console.error('Error loading challenge data:', error);
+        const errorMessage = error.response?.data?.error || error.response?.data?.message || 'Failed to load challenge data';
+        spaceToast.error(errorMessage);
+      })
+      .finally(() => {
+        setLoading(false);
+      });
+  }, [id, location.state]);
 
   // Start countdown timer when component mounts
   useEffect(() => {
@@ -5892,6 +6149,8 @@ const StudentDailyChallengeTake = () => {
     }
   }, [loading]);
 
+
+
   // Format time as MM:SS
   const formatTime = (seconds) => {
     const mins = Math.floor(seconds / 60);
@@ -5899,11 +6158,451 @@ const StudentDailyChallengeTake = () => {
     return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
   };
 
-  // Handle save
-  const handleSave = () => {
-    // TODO: Implement save functionality
-    console.log('Save clicked');
-    spaceToast.success('Saved successfully');
+  // Register answer collector function from child components
+  const registerAnswerCollector = (questionId, getAnswerFn) => {
+    answerCollectorsRef.current.set(questionId, getAnswerFn);
+    return () => {
+      answerCollectorsRef.current.delete(questionId);
+    };
+  };
+
+  // Register answer restorer function from child components
+  const registerAnswerRestorer = (questionId, setAnswerFn) => {
+    answerRestorersRef.current.set(questionId, setAnswerFn);
+    return () => {
+      answerRestorersRef.current.delete(questionId);
+    };
+  };
+
+  // Helper function to format answers according to API structure
+  const formatAnswerForAPI = (questionId, answer, questionType) => {
+    // Normalize equivalent types
+    const normalizedType = (questionType === 'FILL_IN_THE_BLANK') ? 'FILL_BLANK'
+      : (questionType === 'REARRANGE') ? 'REORDER'
+      : questionType;
+    // For FILL_BLANK, always process even if answer object is empty
+    if (normalizedType !== 'FILL_BLANK' && normalizedType !== 'REWRITE') {
+      if (!answer && answer !== 0 && answer !== '') {
+        return null; // Skip empty answers for other types
+      }
+    }
+
+    const contentData = [];
+
+    // Handle different answer types based on question type
+    if (normalizedType === 'MULTIPLE_CHOICE' || normalizedType === 'TRUE_OR_FALSE') {
+      // Single answer: string (option key like 'A', 'B', etc.)
+      if (typeof answer === 'string') {
+        contentData.push({
+          id: answer,
+          value: answer,
+          positionId: null
+        });
+      }
+    } else if (normalizedType === 'MULTIPLE_SELECT') {
+      // Multiple answers: array of option keys
+      if (Array.isArray(answer) && answer.length > 0) {
+        answer.forEach(optKey => {
+          contentData.push({
+            id: optKey,
+            value: optKey,
+            positionId: null
+          });
+        });
+      }
+    } else if (normalizedType === 'DROPDOWN') {
+      // Dropdown: answer is an object with positionId keys like { "qId_pos_1": "value", ... }
+      // or a single value if not using positionId
+      if (typeof answer === 'object' && answer !== null && !Array.isArray(answer)) {
+        Object.keys(answer).forEach(key => {
+          const positionId = key.includes('_pos_') ? key.split('_pos_')[1] : null;
+          const value = answer[key];
+          if (value) {
+            contentData.push({
+              id: value,
+              value: value,
+              positionId: positionId
+            });
+          }
+        });
+      } else if (typeof answer === 'string' && answer) {
+        contentData.push({
+          id: answer,
+          value: answer,
+          positionId: null
+        });
+      }
+    } else if (normalizedType === 'DRAG_AND_DROP') {
+      // Drag and drop: answer is an object with positionId keys like { "pos_1": "value", ... }
+      if (typeof answer === 'object' && answer !== null && !Array.isArray(answer)) {
+        Object.keys(answer).forEach(positionId => {
+          const value = answer[positionId];
+          if (value) {
+            contentData.push({
+              id: value,
+              value: value,
+              positionId: positionId
+            });
+          }
+        });
+      }
+    } else if (normalizedType === 'REORDER') {
+      // Reorder: answer is an array of values in order
+      if (Array.isArray(answer) && answer.length > 0) {
+        answer.forEach((value, index) => {
+          if (value) {
+            contentData.push({
+              id: value,
+              value: value,
+              positionId: String(index)
+            });
+          }
+        });
+      }
+    } else if (normalizedType === 'FILL_BLANK' || normalizedType === 'REWRITE') {
+      // Fill blank/Rewrite: answer is a string or object with positionId keys
+      // Formatting fill blank answers
+      if (typeof answer === 'string' && answer) {
+        contentData.push({
+          id: answer,
+          value: answer,
+          positionId: null
+        });
+      } else if (typeof answer === 'object' && answer !== null && !Array.isArray(answer)) {
+        Object.keys(answer).forEach(key => {
+          // Extract positionId: key format is "questionId_pos_positionId" or just "positionId"
+          let positionId = key;
+          if (key.includes('_pos_')) {
+            const parts = key.split('_pos_');
+            positionId = parts.length > 1 ? parts[parts.length - 1] : key;
+          }
+          const value = answer[key];
+          // Only add if value exists and is not empty after trim
+          if (value !== null && value !== undefined && String(value).trim() !== '') {
+            contentData.push({
+              id: String(value),
+              value: String(value),
+              positionId: positionId
+            });
+          } else {
+            // Skip empty values
+          }
+        });
+      }
+      // End formatting
+    } else if (questionType === 'WRITING' || questionType === 'SPEAKING') {
+      // Writing/Speaking: answer can be text string or file references
+      if (typeof answer === 'string' && answer) {
+        contentData.push({
+          id: 'text',
+          value: answer,
+          positionId: null
+        });
+      } else if (Array.isArray(answer)) {
+        // File uploads or multiple parts
+        answer.forEach((item, index) => {
+          if (typeof item === 'string') {
+            contentData.push({
+              id: item,
+              value: item,
+              positionId: String(index)
+            });
+          } else if (item && item.value) {
+            contentData.push({
+              id: item.id || item.value,
+              value: item.value,
+              positionId: item.positionId || String(index)
+            });
+          }
+        });
+      }
+    }
+
+    if (contentData.length === 0) {
+      return null; // Skip if no valid answer data
+    }
+
+    return {
+      questionId: questionId,
+      content: {
+        data: contentData
+      }
+    };
+  };
+
+  // Restore answers from API result
+  const restoreAnswersFromResult = (resultData, retryCount = 0) => {
+    if (!resultData) {
+      console.warn('⚠️ restoreAnswersFromResult: resultData is undefined');
+      return;
+    }
+    
+    if (!resultData.sectionDetails) {
+      console.warn('⚠️ restoreAnswersFromResult: sectionDetails is missing', resultData);
+      return;
+    }
+    
+    if (!Array.isArray(resultData.sectionDetails)) {
+      console.warn('⚠️ restoreAnswersFromResult: sectionDetails is not an array', resultData.sectionDetails);
+      return;
+    }
+    
+    const { sectionDetails, challengeId, submissionChallengeId: resultSubmissionId } = resultData;
+    
+    // Update submissionChallengeId if provided
+    if (resultSubmissionId) {
+      setSubmissionChallengeId(resultSubmissionId);
+    }
+    
+    // Calculate section scores
+    const scores = {};
+    const pendingRestorations = [];
+    
+    sectionDetails.forEach((sectionDetail) => {
+      if (!sectionDetail) {
+        console.warn('⚠️ Section detail is undefined');
+        return;
+      }
+      
+      const { section, questionResults, questions } = sectionDetail;
+      
+      if (!section) {
+        console.warn('⚠️ Section is undefined in sectionDetail:', sectionDetail);
+        return;
+      }
+      
+      // Draft API returns 'questions', Result API returns 'questionResults'
+      // Handle both formats
+      const questionDataList = questionResults || questions;
+      
+      if (!questionDataList) {
+        console.warn('⚠️ Section missing both questionResults and questions:', sectionDetail);
+        return;
+      }
+      
+      if (!Array.isArray(questionDataList)) {
+        console.warn('⚠️ questionResults/questions is not an array:', questionDataList);
+        return;
+      }
+      
+      const sectionId = section.id;
+      
+      // Calculate total score for this section
+      let totalScore = 0;
+      let totalReceivedScore = 0;
+      
+      questionDataList.forEach((qr) => {
+        // Handle both formats:
+        // Draft API: {question: {id, ...}, submittedContent: {...}}
+        // Result API: {questionId, question: {...}, submittedContent: {...}}
+        const questionId = qr.questionId || qr.question?.id || qr.id;
+        const submittedContent = qr.submittedContent;
+        const receivedScore = qr.receivedScore;
+        const questionType = qr.questionType || qr.question?.type || qr.type;
+        const score = qr.score;
+        totalScore += score || 0;
+        totalReceivedScore += receivedScore || 0;
+        
+        // Debug logging
+        if (submittedContent && submittedContent.data && submittedContent.data.length > 0) {
+          console.log(`📝 Found saved answer for question ${questionId}:`, submittedContent.data);
+        }
+        
+        // Restore answer from submittedContent
+        const setAnswerFn = answerRestorersRef.current.get(questionId);
+        
+        if (!setAnswerFn) {
+          console.log(`❌ No restorer function found for question ${questionId}. Available restorers:`, Array.from(answerRestorersRef.current.keys()));
+        }
+        
+        if (setAnswerFn && submittedContent) {
+          try {
+            // Parse answer data from API format
+            const answerData = submittedContent?.data || [];
+            let restoredAnswer = null;
+            
+            if (answerData.length === 0) return;
+            
+            // Determine question type from answer data structure
+            if (answerData.length === 1 && !answerData[0].positionId) {
+              // Single answer (MULTIPLE_CHOICE, TRUE_OR_FALSE, etc.)
+              restoredAnswer = answerData[0].value;
+            } else if (answerData.some(item => item.positionId)) {
+              // Multiple answers with positionId
+              if (questionType === 'REORDER' || questionType === 'REARRANGE') {
+                // Build ordered array by index in positionId
+                const temp = [];
+                answerData.forEach(item => {
+                  const idxStr = String(item.positionId || '');
+                  const idx = parseInt(idxStr, 10);
+                  if (!Number.isNaN(idx)) {
+                    temp[idx] = item.value;
+                  }
+                });
+                // Compact to pure array of defined values in order
+                restoredAnswer = temp.filter(v => v !== undefined);
+              } else if (questionType === 'DRAG_AND_DROP') {
+                const answerObj = {};
+                answerData.forEach(item => {
+                  const rawPos = String(item.positionId || '');
+                  const normalizedPos = rawPos.includes('_pos_') ? rawPos.split('_pos_').pop() : rawPos;
+                  if (normalizedPos) answerObj[normalizedPos] = item.value;
+                });
+                restoredAnswer = Object.keys(answerObj).length > 0 ? answerObj : null;
+              } else {
+                // Default for dropdown/fill-like questions: prefix with questionId
+                const answerObj = {};
+                answerData.forEach(item => {
+                  const rawPos = String(item.positionId || '');
+                  const normalizedPos = rawPos.includes('_pos_') ? rawPos.split('_pos_').pop() : rawPos;
+                  const key = `${questionId}_pos_${normalizedPos || 'default'}`;
+                  answerObj[key] = item.value;
+                });
+                restoredAnswer = Object.keys(answerObj).length > 0 ? answerObj : null;
+              }
+            } else {
+              // Multiple answers without positionId (MULTIPLE_SELECT, REORDER, etc.)
+              restoredAnswer = answerData.map(item => item.value);
+            }
+            
+            if (restoredAnswer !== null) {
+              setAnswerFn(restoredAnswer);
+              console.log(`✅ Restored answer for question ${questionId}:`, restoredAnswer);
+            }
+          } catch (error) {
+            console.error(`Error restoring answer for question ${questionId}:`, error);
+          }
+        } else if (submittedContent && submittedContent.data && submittedContent.data.length > 0) {
+          // If restorer function not found but we have answer data, store for retry
+          pendingRestorations.push({ questionId, qr });
+          if (retryCount === 0) {
+            console.log(`⏳ Waiting for restorer function for question ${questionId}`);
+          }
+        }
+      });
+      
+      // Store section score
+      if (sectionId) {
+        scores[sectionId] = {
+          totalScore,
+          receivedScore: totalReceivedScore,
+          percentage: totalScore > 0 ? Math.round((totalReceivedScore / totalScore) * 100) : 0
+        };
+      }
+    });
+    
+    // Update section scores state
+    setSectionScores(scores);
+    
+    // Retry restoration for pending questions if components haven't mounted yet
+    if (pendingRestorations.length > 0 && retryCount < 10) {
+      setTimeout(() => {
+        restoreAnswersFromResult(resultData, retryCount + 1);
+      }, 500);
+    } else if (pendingRestorations.length > 0) {
+      console.warn(`⚠️ Could not restore ${pendingRestorations.length} answers after ${retryCount} retries`);
+    }
+  };
+
+  // Collect all answers from registered collectors
+  const collectAllAnswers = () => {
+    const questionAnswers = [];
+    
+    // Collect from all registered answer collectors
+    answerCollectorsRef.current.forEach((getAnswerFn, questionId) => {
+      try {
+        const answerData = getAnswerFn();
+        if (answerData) {
+          const { answer, questionType } = answerData;
+          const formattedAnswer = formatAnswerForAPI(questionId, answer, questionType);
+          if (formattedAnswer) {
+            questionAnswers.push(formattedAnswer);
+          }
+        }
+      } catch (error) {
+        console.error(`❌ Error collecting answer for question ${questionId}:`, error);
+      }
+    });
+    
+    return questionAnswers;
+  };
+
+  // Handle save (save as draft)
+  const handleSave = async () => {
+    // If submissionChallengeId is not available, try to get it first
+    let currentSubmissionId = submissionChallengeId;
+    
+    if (!currentSubmissionId) {
+      try {
+        // Try to get submission from API
+        const submissionsResponse = await dailyChallengeApi.getChallengeSubmissions(id, { page: 0, size: 1 });
+        if (submissionsResponse && submissionsResponse.success) {
+          const submissions = submissionsResponse.data?.content || submissionsResponse.data || [];
+          if (Array.isArray(submissions) && submissions.length > 0) {
+            const currentSubmission = submissions.find(sub => sub.challengeId === parseInt(id)) || submissions[0];
+            if (currentSubmission && currentSubmission.id) {
+              currentSubmissionId = currentSubmission.id;
+              setSubmissionChallengeId(currentSubmissionId);
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching submission:', error);
+      }
+      
+      // If still no submission ID, show error
+      if (!currentSubmissionId) {
+        spaceToast.error('Submission ID is missing. Please refresh and try again.');
+        return;
+      }
+    }
+
+    try {
+      const questionAnswers = collectAllAnswers();
+      
+      const submitData = {
+        saveAsDraft: true,
+        questionAnswers: questionAnswers
+      };
+
+      setLoading(true);
+      const response = await dailyChallengeApi.submitDailyChallenge(currentSubmissionId, submitData);
+      
+      if (response && response.success) {
+        spaceToast.success('Progress saved successfully');
+        
+        // Get submissionChallengeId from response and update state
+        const responseSubmissionId = response.data?.submissionChallengeId || response.data?.id || currentSubmissionId;
+        if (responseSubmissionId && responseSubmissionId !== currentSubmissionId) {
+          setSubmissionChallengeId(responseSubmissionId);
+          currentSubmissionId = responseSubmissionId;
+        }
+        
+        // Reload draft data from API to ensure sync with server
+        if (currentSubmissionId) {
+          try {
+            console.log('🔄 Reloading draft data after save...');
+            const draftResponse = await dailyChallengeApi.getDraftSubmission(currentSubmissionId);
+            if (draftResponse && draftResponse.success && draftResponse.data) {
+              // Restore answers from fresh draft data
+              setTimeout(() => {
+                restoreAnswersFromResult(draftResponse.data);
+              }, 300);
+              console.log('✅ Draft data reloaded after save');
+            }
+          } catch (error) {
+            console.error('Error reloading draft data after save:', error);
+            // Don't show error to user - save was successful
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error saving progress:', error);
+      const errorMessage = error.response?.data?.error || error.response?.data?.message || 'Failed to save progress';
+      spaceToast.error(errorMessage);
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Handle submit - show confirmation modal
@@ -5912,20 +6611,73 @@ const StudentDailyChallengeTake = () => {
   };
 
   // Confirm submit - handle actual submission
-  const handleConfirmSubmit = () => {
-    // TODO: Implement actual submit functionality
-    console.log('Submitting challenge...');
+  const handleConfirmSubmit = async () => {
+    // If submissionChallengeId is not available, try to get it first
+    let currentSubmissionId = submissionChallengeId;
+    
+    if (!currentSubmissionId) {
+      try {
+        // Try to get submission from API
+        const submissionsResponse = await dailyChallengeApi.getChallengeSubmissions(id, { page: 0, size: 1 });
+        if (submissionsResponse && submissionsResponse.success) {
+          const submissions = submissionsResponse.data?.content || submissionsResponse.data || [];
+          if (Array.isArray(submissions) && submissions.length > 0) {
+            const currentSubmission = submissions.find(sub => sub.challengeId === parseInt(id)) || submissions[0];
+            if (currentSubmission && currentSubmission.id) {
+              currentSubmissionId = currentSubmission.id;
+              setSubmissionChallengeId(currentSubmissionId);
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching submission:', error);
+      }
+      
+      // If still no submission ID, show error
+      if (!currentSubmissionId) {
+        spaceToast.error('Submission ID is missing. Please refresh and try again.');
+        setSubmitModalVisible(false);
+        return;
+      }
+    }
+
+    try {
+      const questionAnswers = collectAllAnswers();
+      
+      const submitData = {
+        saveAsDraft: false,
+        questionAnswers: questionAnswers
+      };
+
+      setLoading(true);
+      const response = await dailyChallengeApi.submitDailyChallenge(currentSubmissionId, submitData);
     
     // Close modal
     setSubmitModalVisible(false);
     
-    // Show success toast
+      if (response && response.success) {
     spaceToast.success('Submitted successfully');
+        
+        // Get submissionChallengeId from response and update state
+        const responseSubmissionId = response.data?.submissionChallengeId || response.data?.id || currentSubmissionId;
+        if (responseSubmissionId && responseSubmissionId !== currentSubmissionId) {
+          setSubmissionChallengeId(responseSubmissionId);
+          currentSubmissionId = responseSubmissionId;
+        }
     
-    // Navigate back to challenge list after short delay
+    // Navigate to class daily challenge page after short delay
     setTimeout(() => {
-      navigate('/student/daily-challenges');
+      navigate('/student/classes/daily-challenges/81');
     }, 1500);
+      } 
+    } catch (error) {
+      console.error('Error submitting challenge:', error);
+      const errorMessage = error.response?.data?.error || error.response?.data?.message || 'Failed to submit';
+      spaceToast.error(errorMessage);
+      setSubmitModalVisible(false);
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Cancel submit
@@ -6200,12 +6952,20 @@ const StudentDailyChallengeTake = () => {
         <div className={`question-content-container ${isSidebarOpen ? 'with-sidebar' : ''}`} style={{ padding: '24px' }}>
           <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
             <LoadingWithEffect loading={loading} message="Loading questions...">
+              <AnswerCollectionContext.Provider value={registerAnswerCollector}>
+                <AnswerRestorationContext.Provider value={registerAnswerRestorer}>
               <div className="questions-list">
                 {/* Render Reading sections when challenge type is RE */}
                 {challengeType === 'RE' && readingSections.length > 0 && (
                   readingSections.map((section, index) => (
                     <div key={`reading-wrap-${section.id || index}`} ref={el => (questionRefs.current[`reading-${index + 1}`] = el)}>
-                      <SectionQuestionItem key={section.id || `section_${index}`} question={section} index={index} theme={theme} />
+                      <SectionQuestionItem 
+                        key={section.id || `section_${index}`} 
+                        question={section} 
+                        index={index} 
+                        theme={theme} 
+                        sectionScore={sectionScores[section.id]}
+                      />
                 </div>
                   ))
                 )}
@@ -6241,7 +7001,7 @@ const StudentDailyChallengeTake = () => {
                     {q.type === 'TRUE_OR_FALSE' && (
                       <TrueFalseContainer theme={theme} data={q} />
                     )}
-                    {q.type === 'FILL_IN_THE_BLANK' && (
+                    {(q.type === 'FILL_IN_THE_BLANK' || q.type === 'FILL_BLANK' || q.questionType === 'FILL_BLANK' || q.questionType === 'FILL_IN_THE_BLANK') && (
                       <FillBlankContainer theme={theme} data={q} />
                     )}
                     {q.type === 'DROPDOWN' && (
@@ -6261,11 +7021,19 @@ const StudentDailyChallengeTake = () => {
                 {challengeType === 'LI' && listeningSections.length > 0 && (
                   listeningSections.map((section, index) => (
                     <div key={`listening-wrap-${section.id || index}`} ref={el => (questionRefs.current[`listening-${index + 1}`] = el)}>
-                      <ListeningSectionItem key={section.id || `listening_${index}`} question={section} index={index} theme={theme} />
+                      <ListeningSectionItem 
+                        key={section.id || `listening_${index}`} 
+                        question={section} 
+                        index={index} 
+                        theme={theme} 
+                        sectionScore={sectionScores[section.id]}
+                      />
                     </div>
                   ))
                 )}
               </div>
+                </AnswerRestorationContext.Provider>
+              </AnswerCollectionContext.Provider>
             </LoadingWithEffect>
           </div>
         </div>
@@ -6390,3 +7158,4 @@ const StudentDailyChallengeTake = () => {
 };
 
 export default StudentDailyChallengeTake;
+
