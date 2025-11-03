@@ -27,6 +27,33 @@ const AnswerCollectionContext = createContext(null);
 // Context for restoring answers to child components
 const AnswerRestorationContext = createContext(null);
 
+// Memoized HTML renderer to keep DOM stable and preserve text selection
+const MemoizedHTML = React.memo(
+  function MemoizedHTML({ html, className, style }) {
+    return (
+      <div
+        className={className}
+        style={style}
+        dangerouslySetInnerHTML={{ __html: html }}
+      />
+    );
+  },
+  (prev, next) => {
+    if (prev.html !== next.html) return false;
+    if (prev.className !== next.className) return false;
+    const prevStyle = prev.style || {};
+    const nextStyle = next.style || {};
+    const prevKeys = Object.keys(prevStyle);
+    const nextKeys = Object.keys(nextStyle);
+    if (prevKeys.length !== nextKeys.length) return false;
+    for (let i = 0; i < prevKeys.length; i++) {
+      const k = prevKeys[i];
+      if (prevStyle[k] !== nextStyle[k]) return false;
+    }
+    return true;
+  }
+);
+
 // Helper function to replace [[dur_3]] with HTML badge
 const processPassageContent = (content, theme, challengeType) => {
   if (!content) return '';
@@ -335,17 +362,19 @@ const SectionQuestionItem = ({ question, index, theme, sectionScore }) => {
               ? '#1890ff rgba(24, 144, 255, 0.2)' 
               : '#8B5CF6 rgba(138, 122, 255, 0.2)'
           }}>
-         
-          <div 
-            className="passage-text-content"
-            style={{
-              fontSize: '15px',
-              lineHeight: '1.8',
-              color: theme === 'sun' ? '#333' : '#1F2937',
-              textAlign: 'justify'
-            }}
-            dangerouslySetInnerHTML={{ __html: question.passage || '' }}
-          />
+
+          {React.useMemo(() => (
+            <div 
+              className="passage-text-content"
+              style={{
+                fontSize: '15px',
+                lineHeight: '1.8',
+                color: theme === 'sun' ? '#333' : '#1F2937',
+                textAlign: 'justify'
+              }}
+              dangerouslySetInnerHTML={{ __html: question.passage || '' }}
+            />
+          ), [question.passage, theme])}
         </div>
 
         {/* Right Column - Questions */}
@@ -400,10 +429,10 @@ const SectionQuestionItem = ({ question, index, theme, sectionScore }) => {
                           <div style={{ fontSize: '16px', fontWeight: 600, marginBottom: '8px' }}>
                             Question {qIndex + 1}:
                           </div>
-                          <div 
+                          <MemoizedHTML 
                             className="question-text-content"
                             style={{ marginBottom: '10px' }}
-                            dangerouslySetInnerHTML={{ __html: q.questionText || q.question || '' }}
+                            html={q.questionText || q.question || ''}
                           />
                           <div className="question-options" style={{ 
                             display: 'grid', 

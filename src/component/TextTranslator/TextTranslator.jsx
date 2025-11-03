@@ -18,6 +18,7 @@ const TextTranslator = ({ enabled = true }) => {
   const showTranslateButtonRef = useRef(false);
   const bodyScrollDisabledRef = useRef(false);
   const scrollPositionRef = useRef(0);
+  const [isInPassageSelection, setIsInPassageSelection] = useState(false);
 
   useEffect(() => {
     if (!enabled) return;
@@ -80,14 +81,13 @@ const TextTranslator = ({ enabled = true }) => {
         // Kiểm tra xem text có chứa ký tự tiếng Anh không
         const hasEnglishChars = /[a-zA-Z]/.test(selectedText);
         
-        // Giới hạn độ dài: 2000 ký tự cho reading passage, 500 cho các vùng khác
-        const maxLength = isInPassageContent ? 2000 : 500;
-        
+        // Giới hạn độ dài: 2000 ký tự cho reading passage, 500 cho các vùng khác (nhưng vẫn hiển thị button trong passage khi vượt quá)
         console.log('🔍 Text selection check:', {
           selectedText: selectedText.substring(0, 50) + '...',
           hasEnglishChars,
           textLength: selectedText.length,
-          maxLength,
+          maxLengthReading: 2000,
+          maxLengthOther: 500,
           isInPassageContent,
           rect: range ? {
             width: range.getBoundingClientRect().width,
@@ -97,7 +97,10 @@ const TextTranslator = ({ enabled = true }) => {
           } : null,
         });
         
-        if (hasEnglishChars && selectedText.length <= maxLength && range) {
+        // Cho phép hiển thị button nếu: có chữ cái tiếng Anh và có range, và
+        // - Nếu nằm trong passage: KHÔNG giới hạn độ dài (vẫn cho hiện button)
+        // - Nếu không nằm trong passage: giới hạn 500 ký tự
+        if (hasEnglishChars && range && (isInPassageContent || selectedText.length <= 500)) {
           const rect = range.getBoundingClientRect();
           
           // Chỉ hiện button nếu có vị trí hợp lệ (có ít nhất width hoặc height, hoặc có tọa độ hợp lệ)
@@ -106,11 +109,9 @@ const TextTranslator = ({ enabled = true }) => {
                                     rect.left < window.innerWidth && rect.top < window.innerHeight);
           
           if (hasValidPosition) {
-            // Tính toán vị trí button lệch khỏi con trỏ để không che chuột
-            const horizontalOffset = 24; // đẩy sang phải một chút
-            const verticalOffset = 28;   // đẩy lên trên một chút
-            const buttonX = (rect.width > 0 ? rect.right : rect.left) + horizontalOffset;
-            const buttonY = rect.top - verticalOffset;
+            // Tính toán vị trí button: ở giữa selection nếu có width, nếu không thì dùng left
+            const buttonX = rect.width > 0 ? rect.left + rect.width / 2 : rect.left;
+            const buttonY = rect.top - 10;
             
             // Chỉ update position và text nếu text khác với text hiện tại hoặc button chưa hiển thị
             // Điều này ngăn button bị di chuyển khi đã hiển thị và đang chuẩn bị click
@@ -118,6 +119,7 @@ const TextTranslator = ({ enabled = true }) => {
             if (!showTranslateButtonRef.current || isNewSelection) {
               setSelectedText(selectedText);
               lastSelectedTextRef.current = selectedText;
+              setIsInPassageSelection(!!isInPassageContent);
               setPopupPosition({
                 x: buttonX,
                 y: buttonY
@@ -138,8 +140,10 @@ const TextTranslator = ({ enabled = true }) => {
           console.log('⚠️ Text selection not valid for translation:', {
             hasEnglishChars,
             textLength: selectedText.length,
-            maxLength,
-            exceedsLimit: selectedText.length > maxLength,
+            maxLengthReading: 2000,
+            maxLengthOther: 500,
+            exceedsLimitReading: isInPassageContent && selectedText.length > 2000,
+            exceedsLimitOther: !isInPassageContent && selectedText.length > 500,
             hasRange: !!range,
           });
           setShowPopup(false);
@@ -257,6 +261,16 @@ const TextTranslator = ({ enabled = true }) => {
       // Chọn placement ban đầu dựa trên không gian có sẵn
       const initialPlacement = (spaceAbove >= requiredSpace && spaceAbove >= spaceBelow) ? 'above' : 'below';
       setPopupPlacement(initialPlacement);
+
+      // Nếu là selection trong passage và vượt quá 2000 ký tự: hiển thị popup cảnh báo, không gọi API
+      if (isInPassageSelection && textToTranslate.length > 2000) {
+        setShowTranslateButton(false);
+        showTranslateButtonRef.current = false;
+        setShowPopup(true);
+        setIsLoading(false);
+        setTranslatedText('Đã vượt quá 2000 kí tự. Vui lòng chọn đoạn ngắn hơn.');
+        return;
+      }
       
       // Set state trước khi gọi API để UI update ngay
       setShowTranslateButton(false);
@@ -337,12 +351,12 @@ const TextTranslator = ({ enabled = true }) => {
         y = popupPosition.y - 10;
       }
 
-      // Điều chỉnh theo chiều ngang
-      if (rect.right > window.innerWidth) {
-        x = window.innerWidth - rect.width - 10;
-      }
-      if (rect.left < 0) {
-        x = 10;
+      // Điều chỉnh theo chiều ngang (clamp centerX vì dùng translateX(-50%))
+      if (rect.width > 0) {
+        const minCenterX = 10 + rect.width / 2;
+        const maxCenterX = window.innerWidth - 10 - rect.width / 2;
+        const clampedCenterX = Math.min(Math.max(x, minCenterX), maxCenterX);
+        x = clampedCenterX;
       }
 
       // Điều chỉnh theo chiều dọc để đảm bảo popup luôn trong viewport
@@ -378,17 +392,20 @@ const TextTranslator = ({ enabled = true }) => {
       const rect = element.getBoundingClientRect();
       let { x, y } = popupPosition;
 
-      // Điều chỉnh theo chiều ngang
-      if (rect.right > window.innerWidth) {
-        x = window.innerWidth - rect.width - 10;
-      }
-      if (rect.left < 0) {
-        x = 10;
+      // Điều chỉnh theo chiều ngang (clamp centerX vì dùng translateX(-50%))
+      if (rect.width > 0) {
+        const minCenterX = 10 + rect.width / 2;
+        const maxCenterX = window.innerWidth - 10 - rect.width / 2;
+        const clampedCenterX = Math.min(Math.max(x, minCenterX), maxCenterX);
+        x = clampedCenterX;
       }
 
       // Điều chỉnh theo chiều dọc
-      if (rect.top < 0) {
-        y = popupPosition.y + rect.height + 20;
+      if (rect.top < 10) {
+        y = Math.max(popupPosition.y, rect.height + 10);
+      } else if (rect.bottom > window.innerHeight - 10) {
+        // Với translateY(-100%), rect.bottom xấp xỉ bằng y; giới hạn trong viewport
+        y = Math.min(popupPosition.y, window.innerHeight - 10);
       }
 
       if (x !== popupPosition.x || y !== popupPosition.y) {
@@ -424,8 +441,8 @@ const TextTranslator = ({ enabled = true }) => {
           style={{
             left: `${popupPosition.x}px`,
             top: `${popupPosition.y}px`,
-            transform: 'translateY(-100%)',
-            zIndex: 10002, // Đảm bảo button luôn ở trên
+            transform: 'translateX(-50%) translateY(-100%)',
+            zIndex: 9001, // Thấp hơn custom cursor để không che con trỏ
             pointerEvents: 'auto', // Đảm bảo có thể click được
           }}
           title="Dịch text này"
@@ -457,7 +474,9 @@ const TextTranslator = ({ enabled = true }) => {
             ) : (
               <>
                 <div className="translation-original">
-                  <strong>EN:</strong> {selectedText}
+                  <strong>EN:</strong> {isInPassageSelection && selectedText.length > 2000 
+                    ? 'Exceeded 2000 characters. Please select a shorter paragraph.' 
+                    : selectedText}
                 </div>
                 <div className="translation-separator"></div>
                 <div className="translation-result">
