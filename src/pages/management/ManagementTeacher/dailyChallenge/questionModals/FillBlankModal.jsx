@@ -5,7 +5,7 @@ import React, {
 	useCallback,
 	useMemo,
 } from 'react';
-import { Modal, Button, Select, Tooltip, Dropdown } from 'antd';
+import { Modal, Button, InputNumber, Tooltip, Dropdown } from 'antd';
 import { spaceToast } from '../../../../../component/SpaceToastify';
 import {
 	CheckOutlined,
@@ -59,6 +59,7 @@ const FillBlankModal = ({ visible, onCancel, onSave, questionData = null }) => {
 	const [questionCharCount, setQuestionCharCount] = useState(0);
 	const [editorVersion, setEditorVersion] = useState(0);
 	const [selectedImage, setSelectedImage] = useState(null);
+	const [saving, setSaving] = useState(false);
 	const [tableDropdownOpen, setTableDropdownOpen] = useState(false);
 	const [hoveredCell, setHoveredCell] = useState({ row: 0, col: 0 });
 	const [showBlankPopup, setShowBlankPopup] = useState(false);
@@ -1451,8 +1452,8 @@ const FillBlankModal = ({ visible, onCancel, onSave, questionData = null }) => {
 		[selectedImage]
 	);
 
-	// Handle save
-	const handleSave = () => {
+    // Handle save
+    const handleSave = async () => {
 		if (!editorRef.current) return;
 
 		// Validate
@@ -1594,8 +1595,19 @@ const FillBlankModal = ({ visible, onCancel, onSave, questionData = null }) => {
 		console.log('Full Question Data:', newQuestionData);
 		console.log('================================');
 
-		onSave(newQuestionData);
-		handleCancel();
+		try {
+			setSaving(true);
+			const ret = onSave(newQuestionData);
+			if (ret && typeof ret.then === 'function') {
+				await ret;
+				handleCancel();
+			}
+			// If onSave is sync and manages modal externally, do not auto-close
+		} catch (e) {
+			spaceToast.error('Failed to save question');
+		} finally {
+			setSaving(false);
+		}
 	};
 
 	// Handle cancel
@@ -1722,16 +1734,12 @@ useEffect(() => {
 	}, [showBlankPopup]);
 
 	const pointsMenu = (
-		<Select
+		<InputNumber
 			value={points}
-			onChange={setPoints}
-			style={{ width: 90 }}
-			options={[
-				{ value: 1, label: '1 point' },
-				{ value: 2, label: '2 points' },
-				{ value: 3, label: '3 points' },
-				{ value: 5, label: '5 points' },
-			]}
+			onChange={(v) => setPoints(Number(v) || 0)}
+			min={0}
+			max={100}
+			style={{ width: 100 }}
 		/>
 	);
 
@@ -1842,12 +1850,14 @@ useEffect(() => {
 					<div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
 						<div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
 							<CheckOutlined style={{ color: '#52c41a', fontSize: '16px' }} />
+							<span style={{ fontSize: '13px', fontWeight: 600, color: '#666' }}>Score</span>
 							{pointsMenu}
 						</div>
 
 						<Button
 							type='primary'
 							onClick={handleSave}
+							loading={saving}
 							size='large'
 							style={{
 								height: '44px',

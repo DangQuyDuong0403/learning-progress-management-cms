@@ -30,11 +30,27 @@ const AnswerRestorationContext = createContext(null);
 // Memoized HTML renderer to keep DOM stable and preserve text selection
 const MemoizedHTML = React.memo(
   function MemoizedHTML({ html, className, style }) {
+    const enhanceImages = (rawHtml) => {
+      if (!rawHtml) return '';
+      // If image has no style attribute, add fixed size. If it has style, append our constraints.
+      let result = String(rawHtml)
+        .replace(/<img(?![^>]*style=)/gi, '<img style="width:300px;height:300px;object-fit:contain;"')
+        .replace(/<img([^>]*?)style="([^"]*)"/gi, (m, prefix, styles) => {
+          const appended = styles.includes('width') || styles.includes('height')
+            ? `${styles}; width:300px; height:300px; object-fit:contain;`
+            : `${styles}; width:300px; height:300px; object-fit:contain;`;
+          return `<img${prefix}style="${appended}"`;
+        });
+      return result;
+    };
+
+    const processedHtml = enhanceImages(html);
+
     return (
       <div
         className={className}
         style={style}
-        dangerouslySetInnerHTML={{ __html: html }}
+        dangerouslySetInnerHTML={{ __html: processedHtml }}
       />
     );
   },
@@ -54,17 +70,25 @@ const MemoizedHTML = React.memo(
   }
 );
 
-// Helper function to replace [[dur_3]] with HTML badge
+// Helper function: process passage/transcript HTML and normalize media
 const processPassageContent = (content, theme, challengeType) => {
   if (!content) return '';
-  
+  // Constrain all images to 300x300 for consistent layout
+  const enhanceImages = (rawHtml) => String(rawHtml)
+    .replace(/<img(?![^>]*style=)/gi, '<img style="width:300px;height:300px;object-fit:contain;"')
+    .replace(/<img([^>]*?)style="([^"]*)"/gi, (m, prefix, styles) => {
+      return `<img${prefix}style="${styles}; width:300px; height:300px; object-fit:contain;"`;
+    });
+
+  let processed = enhanceImages(content);
+
   // Only process for Speaking challenges
   if (challengeType === 'SP') {
     // Remove [[dur_3]] without replacement, as the static badge is now handled separately
-    return content.replace(/\[\[dur_3\]\]/g, '');
+    processed = processed.replace(/\[\[dur_3\]\]/g, '');
   }
-  
-  return content;
+
+  return processed;
 };
 
 
@@ -3350,7 +3374,7 @@ const SpeakingSectionItem = ({ question, index, theme }) => {
 };
 
 // Speaking With Audio Section Component
-const SpeakingWithAudioSectionItem = ({ question, index, theme }) => {
+const SpeakingWithAudioSectionItem = ({ question, index, theme, sectionScore }) => {
   const registerAnswerCollector = useContext(AnswerCollectionContext);
   const registerAnswerRestorer = useContext(AnswerRestorationContext);
   const [isRecording, setIsRecording] = useState(false);
@@ -3577,15 +3601,28 @@ const SpeakingWithAudioSectionItem = ({ question, index, theme }) => {
             : 'rgba(138, 122, 255, 0.2)',
           position: 'relative'
         }}>
-          <Typography.Text strong style={{ 
+        <Typography.Text strong style={{ 
             fontSize: '20px', 
             color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' 
           }}>
             {index + 1}. Speaking With Audio Section
           </Typography.Text>
-          <Typography.Text style={{ marginLeft: '12px', fontSize: '14px', opacity: 0.7 }}>
-            ({question.points} {question.points > 1 ? 'points' : 'point'})
+        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '12px', marginLeft: '12px' }}>
+          {sectionScore && (
+            <Typography.Text style={{ 
+              fontSize: '14px', 
+              padding: '2px 8px', 
+              borderRadius: '8px', 
+              background: theme === 'sun' ? 'rgba(82, 196, 26, 0.1)' : 'rgba(115, 209, 61, 0.15)',
+              border: `1px solid ${theme === 'sun' ? '#52c41a' : '#73d13d'}`
+            }}>
+              Score: {sectionScore.receivedScore}/{sectionScore.totalScore} ({sectionScore.percentage}%)
+            </Typography.Text>
+          )}
+          <Typography.Text style={{ fontSize: '14px', opacity: 0.7 }}>
+            ({question.points || sectionScore?.totalScore || 0} {(question.points || sectionScore?.totalScore || 0) !== 1 ? 'points' : 'point'})
           </Typography.Text>
+        </div>
         </div>
 
         {/* Layout: Left - Audio Player, Right - Recording */}
@@ -3985,6 +4022,7 @@ const SpeakingWithAudioSectionItem = ({ question, index, theme }) => {
 // Multiple Choice Container Component
 const MultipleChoiceContainer = ({ theme, data }) => {
   const registerAnswerCollector = useContext(AnswerCollectionContext);
+  const registerAnswerRestorer = useContext(AnswerRestorationContext);
   const [selectedAnswer, setSelectedAnswer] = React.useState(null);
   const questionText = data?.question || data?.questionText || 'What is the capital city of Vietnam?';
   const optionsFromApi = Array.isArray(data?.options) && data.options.length > 0
@@ -4002,6 +4040,18 @@ const MultipleChoiceContainer = ({ theme, data }) => {
     const unregister = registerAnswerCollector(data.id, getAnswer);
     return unregister;
   }, [registerAnswerCollector, data?.id, selectedAnswer]);
+
+  // Register answer restorer (for submittedContent)
+  React.useEffect(() => {
+    if (!registerAnswerRestorer || !data?.id) return;
+
+    const unregister = registerAnswerRestorer(data.id, (restored) => {
+      if (typeof restored === 'string' && restored) {
+        setSelectedAnswer(restored);
+      }
+    });
+    return unregister;
+  }, [registerAnswerRestorer, data?.id]);
 
   return (
     <div
@@ -4155,6 +4205,7 @@ const MultipleChoiceContainer = ({ theme, data }) => {
 // Multiple Select Container Component
 const MultipleSelectContainer = ({ theme, data }) => {
   const registerAnswerCollector = useContext(AnswerCollectionContext);
+  const registerAnswerRestorer = useContext(AnswerRestorationContext);
   const [selectedAnswers, setSelectedAnswers] = React.useState([]);
   const questionText = data?.question || data?.questionText || 'Which of the following are Southeast Asian countries? (Select all that apply)';
   const optionsFromApi = Array.isArray(data?.options) && data.options.length > 0 ? data.options : null;
@@ -4170,6 +4221,20 @@ const MultipleSelectContainer = ({ theme, data }) => {
     const unregister = registerAnswerCollector(data.id, getAnswer);
     return unregister;
   }, [registerAnswerCollector, data?.id, selectedAnswers]);
+
+  // Register answer restorer (for submittedContent)
+  React.useEffect(() => {
+    if (!registerAnswerRestorer || !data?.id) return;
+
+    const unregister = registerAnswerRestorer(data.id, (restored) => {
+      if (Array.isArray(restored)) {
+        setSelectedAnswers(restored);
+      } else if (typeof restored === 'string' && restored) {
+        setSelectedAnswers([restored]);
+      }
+    });
+    return unregister;
+  }, [registerAnswerRestorer, data?.id]);
 
   const toggleAnswer = (key) => {
     if (selectedAnswers.includes(key)) {
@@ -4330,6 +4395,7 @@ const MultipleSelectContainer = ({ theme, data }) => {
 // True/False Container Component
 const TrueFalseContainer = ({ theme, data }) => {
   const registerAnswerCollector = useContext(AnswerCollectionContext);
+  const registerAnswerRestorer = useContext(AnswerRestorationContext);
   const [selectedAnswer, setSelectedAnswer] = React.useState(null);
   const questionText = data?.question || data?.questionText || 'The Earth revolves around the Sun.';
 
@@ -4344,6 +4410,18 @@ const TrueFalseContainer = ({ theme, data }) => {
     const unregister = registerAnswerCollector(data.id, getAnswer);
     return unregister;
   }, [registerAnswerCollector, data?.id, selectedAnswer]);
+
+  // Register answer restorer (for submittedContent)
+  React.useEffect(() => {
+    if (!registerAnswerRestorer || !data?.id) return;
+
+    const unregister = registerAnswerRestorer(data.id, (restored) => {
+      if (typeof restored === 'string' && restored) {
+        setSelectedAnswer(restored);
+      }
+    });
+    return unregister;
+  }, [registerAnswerRestorer, data?.id]);
 
   return (
     <div
@@ -4493,6 +4571,7 @@ const TrueFalseContainer = ({ theme, data }) => {
 // Dropdown Container Component
 const DropdownContainer = ({ theme, data }) => {
   const registerAnswerCollector = useContext(AnswerCollectionContext);
+  const registerAnswerRestorer = useContext(AnswerRestorationContext);
   const [selectedAnswers, setSelectedAnswers] = React.useState({});
   const questionText = data?.questionText || data?.question || 'Choose the correct words to complete the sentence:';
   const contentData = Array.isArray(data?.content?.data) ? data.content.data : [];
@@ -4513,6 +4592,32 @@ const DropdownContainer = ({ theme, data }) => {
     const unregister = registerAnswerCollector(data.id, getAnswer);
     return unregister;
   }, [registerAnswerCollector, data?.id, selectedAnswers]);
+
+  // Register answer restorer (for submittedContent)
+  React.useEffect(() => {
+    if (!registerAnswerRestorer || !data?.id) return;
+
+    const unregister = registerAnswerRestorer(data.id, (restored) => {
+      // restored is an object like { `${qId}_pos_${pos}`: value, ... } or { pos: value }
+      if (restored && typeof restored === 'object' && !Array.isArray(restored)) {
+        const mapped = {};
+        Object.keys(restored).forEach((key) => {
+          // Extract position id after '_pos_'
+          let pos = key;
+          if (key.includes('_pos_')) {
+            const parts = key.split('_pos_');
+            pos = parts[parts.length - 1];
+          }
+          if (!String(pos).startsWith('pos_')) {
+            pos = `pos_${pos}`;
+          }
+          mapped[pos] = restored[key];
+        });
+        setSelectedAnswers(mapped);
+      }
+    });
+    return unregister;
+  }, [registerAnswerRestorer, data?.id]);
 
   const handleDropdownChange = (positionId, value) => {
     setSelectedAnswers(prev => ({
@@ -4705,6 +4810,7 @@ const DropdownContainer = ({ theme, data }) => {
 // Drag and Drop Container Component
 const DragDropContainer = ({ theme, data }) => {
   const registerAnswerCollector = useContext(AnswerCollectionContext);
+  const registerAnswerRestorer = useContext(AnswerRestorationContext);
   const [droppedItems, setDroppedItems] = React.useState({});
   // Use ALL values from API (including duplicates) as draggable options; fallback to a simple list
   const [availableItems, setAvailableItems] = React.useState(() => {
@@ -4724,6 +4830,29 @@ const DragDropContainer = ({ theme, data }) => {
     const unregister = registerAnswerCollector(data.id, getAnswer);
     return unregister;
   }, [registerAnswerCollector, data?.id, droppedItems]);
+
+  // Register answer restorer (for submittedContent)
+  React.useEffect(() => {
+    if (!registerAnswerRestorer || !data?.id) return;
+
+    const unregister = registerAnswerRestorer(data.id, (restored) => {
+      // restored is an object mapping position -> value; normalize keys to 'pos_*'
+      if (restored && typeof restored === 'object' && !Array.isArray(restored)) {
+        const normalized = {};
+        Object.keys(restored).forEach((k) => {
+          const key = String(k).startsWith('pos_') ? String(k) : `pos_${k}`;
+          normalized[key] = restored[k];
+        });
+        setDroppedItems(normalized);
+        // Rebuild available items by removing dropped ones from the pool
+        const all = (data?.content?.data || []).map(it => it?.value).filter(Boolean);
+        const pool = all.length ? all : ['love', 'like', 'enjoy', 'hate'];
+        const remaining = pool.filter(v => !Object.values(normalized).includes(v));
+        setAvailableItems(remaining);
+      }
+    });
+    return unregister;
+  }, [registerAnswerRestorer, data?.id, data?.content?.data]);
 
   const handleDragStart = (e, item, isDropped = false, positionId = null) => {
     e.dataTransfer.setData('text/plain', item);
@@ -5035,6 +5164,7 @@ const DragDropContainer = ({ theme, data }) => {
 // Reorder Container Component
 const ReorderContainer = ({ theme, data }) => {
   const registerAnswerCollector = useContext(AnswerCollectionContext);
+  const registerAnswerRestorer = useContext(AnswerRestorationContext);
   const [sourceItems, setSourceItems] = React.useState(() => {
     const words = (data?.content?.data || [])
       .map(it => it.value)
@@ -5062,6 +5192,25 @@ const ReorderContainer = ({ theme, data }) => {
     const unregister = registerAnswerCollector(data.id, getAnswer);
     return unregister;
   }, [registerAnswerCollector, data?.id, droppedItems]);
+
+  // Register answer restorer (for submittedContent)
+  React.useEffect(() => {
+    if (!registerAnswerRestorer || !data?.id) return;
+
+    const unregister = registerAnswerRestorer(data.id, (restored) => {
+      if (Array.isArray(restored)) {
+        const mapping = {};
+        restored.forEach((val, idx) => { mapping[idx] = val; });
+        setDroppedItems(mapping);
+        // Remove restored items from source list
+        const words = (data?.content?.data || []).map(it => it?.value).filter(Boolean);
+        const pool = words.length ? words : ['I','love','programming','very','much'];
+        const remaining = pool.filter(v => !restored.includes(v));
+        setSourceItems(remaining);
+      }
+    });
+    return unregister;
+  }, [registerAnswerRestorer, data?.id, data?.content?.data]);
   const numSlots = React.useMemo(() => {
     const countFromData = (data?.content?.data || [])
       .map(it => it.value)
@@ -5428,6 +5577,7 @@ const ReorderContainer = ({ theme, data }) => {
 // Rewrite Container Component
 const RewriteContainer = ({ theme, data }) => {
   const registerAnswerCollector = useContext(AnswerCollectionContext);
+  const registerAnswerRestorer = useContext(AnswerRestorationContext);
   const [answer, setAnswer] = React.useState('');
   // Remove placeholder tokens but keep HTML formatting
   const questionText = (data?.questionText || data?.question || 'Rewrite the following sentence using different words:')
@@ -5444,6 +5594,30 @@ const RewriteContainer = ({ theme, data }) => {
     const unregister = registerAnswerCollector(data.id, getAnswer);
     return unregister;
   }, [registerAnswerCollector, data?.id, answer]);
+
+  // Register answer restorer (for submittedContent)
+  React.useEffect(() => {
+    if (!registerAnswerRestorer || !data?.id) return;
+
+    const unregister = registerAnswerRestorer(data.id, (restored) => {
+      if (typeof restored === 'string') {
+        setAnswer(restored);
+      } else if (restored && typeof restored === 'object' && !Array.isArray(restored)) {
+        // Concatenate parts in position order if provided as object
+        const parts = Object.keys(restored)
+          .map(k => ({ k, v: restored[k] }))
+          .sort((a, b) => {
+            const pa = parseInt(String(a.k).split('_').pop(), 10);
+            const pb = parseInt(String(b.k).split('_').pop(), 10);
+            return (isNaN(pa) ? 0 : pa) - (isNaN(pb) ? 0 : pb);
+          })
+          .map(x => x.v)
+          .filter(Boolean);
+        if (parts.length) setAnswer(parts.join(' '));
+      }
+    });
+    return unregister;
+  }, [registerAnswerRestorer, data?.id]);
 
   return (
     <div
@@ -5542,6 +5716,7 @@ const RewriteContainer = ({ theme, data }) => {
 // Fill in the Blank Container Component
 const FillBlankContainer = ({ theme, data }) => {
   const registerAnswerCollector = useContext(AnswerCollectionContext);
+  const registerAnswerRestorer = useContext(AnswerRestorationContext);
   const [blankAnswers, setBlankAnswers] = React.useState({});
   const questionText = data?.questionText || data?.question || 'Fill in the blanks';
   
@@ -5567,6 +5742,29 @@ const FillBlankContainer = ({ theme, data }) => {
     const unregister = registerAnswerCollector(data.id, getAnswer);
     return unregister;
   }, [registerAnswerCollector, data?.id, blankAnswers]);
+
+  // Register answer restorer (for submittedContent)
+  React.useEffect(() => {
+    if (!registerAnswerRestorer || !data?.id) return;
+
+    const unregister = registerAnswerRestorer(data.id, (restored) => {
+      if (restored && typeof restored === 'object' && !Array.isArray(restored)) {
+        const mapped = {};
+        Object.keys(restored).forEach((key) => {
+          let pos = key;
+          if (key.includes('_pos_')) {
+            const parts = key.split('_pos_');
+            pos = parts[parts.length - 1];
+          }
+          mapped[pos] = restored[key];
+        });
+        setBlankAnswers(mapped);
+      } else if (typeof restored === 'string' && restored) {
+        setBlankAnswers({ default: restored });
+      }
+    });
+    return unregister;
+  }, [registerAnswerRestorer, data?.id]);
   
   // Parse questionText and render editable spans where [[pos_x]] appears
   const renderWithInputs = () => {
@@ -5590,10 +5788,11 @@ const FillBlankContainer = ({ theme, data }) => {
       const positionId = match[2];
       elements.push(
         <span
-          key={`fill_blank_input_${inputIndex}`}
+          key={`fill_blank_input_${inputIndex}_${blankAnswers[positionId] || ''}`}
           className="paragraph-input"
           contentEditable
           suppressContentEditableWarning
+          dangerouslySetInnerHTML={{ __html: blankAnswers[positionId] || '' }}
           onInput={(e) => {
             const text = e.target.textContent || e.target.innerText || '';
             setBlankAnswers(prev => ({
@@ -6507,23 +6706,31 @@ const StudentDailyChallengeTake = () => {
   // Collect all answers from registered collectors
   const collectAllAnswers = () => {
     const questionAnswers = [];
-    
+
     // Collect from all registered answer collectors
     answerCollectorsRef.current.forEach((getAnswerFn, questionId) => {
       try {
         const answerData = getAnswerFn();
-        if (answerData) {
+        if (answerData && typeof answerData === 'object') {
           const { answer, questionType } = answerData;
           const formattedAnswer = formatAnswerForAPI(questionId, answer, questionType);
           if (formattedAnswer) {
             questionAnswers.push(formattedAnswer);
+          } else {
+            // Include unanswered question explicitly with empty content
+            questionAnswers.push({ questionId, content: { data: [] } });
           }
+        } else {
+          // No answer returned – still include the question with empty content
+          questionAnswers.push({ questionId, content: { data: [] } });
         }
       } catch (error) {
         console.error(`❌ Error collecting answer for question ${questionId}:`, error);
+        // On error, still include the question with empty content to ensure completeness
+        questionAnswers.push({ questionId, content: { data: [] } });
       }
     });
-    
+
     return questionAnswers;
   };
 
@@ -6982,7 +7189,13 @@ const StudentDailyChallengeTake = () => {
                   speakingSections.map((section, index) => (
                     <div key={`speaking-wrap-${section.id || index}`} ref={el => (questionRefs.current[`speaking-${index + 1}`] = el)}>
                       {section.type === 'SPEAKING_WITH_AUDIO_SECTION' ? (
-                        <SpeakingWithAudioSectionItem key={section.id || `speaking_audio_${index}`} question={section} index={index} theme={theme} />
+                        <SpeakingWithAudioSectionItem 
+                          key={section.id || `speaking_audio_${index}`} 
+                          question={section} 
+                          index={index} 
+                          theme={theme} 
+                          sectionScore={sectionScores[section.id]}
+                        />
                       ) : (
                         <SpeakingSectionItem key={section.id || `speaking_${index}`} question={section} index={index} theme={theme} />
                       )}
