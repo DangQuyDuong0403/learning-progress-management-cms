@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import {
   Button,
   Input,
@@ -10,7 +10,6 @@ import {
 import {
   SearchOutlined,
   PlayCircleOutlined,
-  FilterOutlined,
   EyeOutlined,
 } from "@ant-design/icons";
 import ThemedLayout from "../../../component/teacherlayout/ThemedLayout";
@@ -50,6 +49,7 @@ const transformApiData = (apiData) => {
         totalScore: null,
         submissionChallengeId: null,
         submissionStatus: null,
+        late: null,
         isEmptyLesson: true, // Flag to identify empty lessons
       };
       flattened.push(emptyLessonRow);
@@ -71,6 +71,7 @@ const transformApiData = (apiData) => {
           totalScore: challenge.totalScore,
           submissionChallengeId: challenge.submissionChallengeId,
           submissionStatus: challenge.submissionStatus,
+          late: challenge.late,
           isEmptyLesson: false,
         };
         
@@ -92,40 +93,14 @@ const StudentDailyChallengeList = () => {
   const [loading, setLoading] = useState(false);
   const [dailyChallenges, setDailyChallenges] = useState([]);
   const [searchText, setSearchText] = useState("");
-  const [typeFilter, setTypeFilter] = useState([]);
+  // Removed type filter per request
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [totalItems, setTotalItems] = useState(0);
   const [allChallenges, setAllChallenges] = useState([]);
   const [searchDebounce, setSearchDebounce] = useState("");
 
-  // AccountList-style filter dropdown state and refs
-  const [filterDropdown, setFilterDropdown] = useState({
-    visible: false,
-    selectedTypes: [],
-  });
-  const filterContainerRef = useRef(null);
-
-  // Close dropdown when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (filterDropdown.visible && filterContainerRef.current) {
-        if (!filterContainerRef.current.contains(event.target)) {
-          setFilterDropdown((prev) => ({ ...prev, visible: false }));
-        }
-      }
-    };
-
-    if (filterDropdown.visible) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [filterDropdown.visible]);
-
-  // Filter option lists
-  const typeOptions = ["GV", "RE", "WR", "LI", "SP"];
+  // Removed filter dropdown logic per request
 
   // Helper to translate type codes to labels
   const getTypeLabelByCode = useCallback((typeCode) => {
@@ -240,22 +215,20 @@ const StudentDailyChallengeList = () => {
     return allChallenges.filter((challenge) => {
       // Empty lessons (lessons without challenges) should always be shown
       if (challenge.isEmptyLesson) {
-        // Only filter by search text if provided
         if (searchDebounce) {
           const matchesSearch = challenge.lessonName?.toLowerCase().includes(searchDebounce.toLowerCase());
           return matchesSearch;
         }
-        return true; // Show empty lessons when no search filter
+        return true;
       }
-      
-      // For regular challenges, apply type and search filters
-      const matchesType = typeFilter.length === 0 || typeFilter.includes(challenge.type);
-      const matchesSearch = searchDebounce === "" || 
+
+      // Only apply search filter now (type filter removed)
+      const matchesSearch = searchDebounce === "" ||
         challenge.title?.toLowerCase().includes(searchDebounce.toLowerCase()) ||
         challenge.lessonName?.toLowerCase().includes(searchDebounce.toLowerCase());
-      return matchesType && matchesSearch;
+      return matchesSearch;
     });
-  }, [allChallenges, typeFilter, searchDebounce]);
+  }, [allChallenges, searchDebounce]);
 
   // Recompute page data whenever pagination or filtered full list changes
   useEffect(() => {
@@ -288,22 +261,7 @@ const StudentDailyChallengeList = () => {
     setCurrentPage(1);
   };
 
-  // Filter dropdown handlers
-  const handleFilterToggle = () => {
-    setFilterDropdown((prev) => ({ ...prev, visible: !prev.visible }));
-  };
-
-  const handleFilterSubmit = () => {
-    setTypeFilter(filterDropdown.selectedTypes);
-    setCurrentPage(1);
-    setFilterDropdown((prev) => ({ ...prev, visible: false }));
-  };
-
-  const handleFilterReset = () => {
-    setFilterDropdown((prev) => ({ ...prev, selectedTypes: [] }));
-    setTypeFilter([]);
-    setCurrentPage(1);
-  };
+  // Removed filter handlers per request
 
   const handleViewClick = (challenge) => {
     // Navigate to challenge take view (student view)
@@ -409,18 +367,30 @@ const StudentDailyChallengeList = () => {
         if (record.isEmptyLesson) {
           return <span style={{ color: '#999' }}></span>;
         }
+        const isLate = record.late;
+        const subText = isLate === true
+          ? (t('dailyChallenge.late', 'Late'))
+          : (isLate === false ? t('dailyChallenge.onTime', 'On time') : '');
+        const subColor = isLate === true ? 'rgb(255, 77, 79)' : (isLate === false ? 'rgb(20, 150, 26)' : '#999');
         return (
-          <Tooltip placement="topLeft" title={text}>
-            <span style={{ 
-              display: 'block',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
-              textAlign: 'left',
-            }}>
-              {text}
-            </span>
-          </Tooltip>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+            <Tooltip placement="topLeft" title={text}>
+              <span style={{ 
+                display: 'block',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+                textAlign: 'left',
+              }}>
+                {text}
+              </span>
+            </Tooltip>
+            {subText && (
+              <span style={{ marginTop: 4, fontSize: '12px', color: subColor }}>
+                {subText}
+              </span>
+            )}
+          </div>
         );
       },
     },
@@ -519,90 +489,90 @@ const StudentDailyChallengeList = () => {
           return <span style={{ color: '#999' }}></span>;
         }
         
-        // Check if challenge has been attempted (has score)
-        const hasScore = record.totalScore !== null && record.totalScore !== undefined;
-        
+        const status = record.submissionStatus;
+        const renderStartLikeButton = (label) => (
+          <Button
+            type="primary"
+            icon={<PlayCircleOutlined />}
+            onClick={() => handleViewClick(record)}
+            className="action-btn-start"
+            style={{
+              borderRadius: '6px',
+              fontWeight: 500,
+              height: '36px',
+              padding: '0 16px',
+              fontSize: '14px',
+              background: theme === 'sun' 
+                ? 'rgb(243, 188, 88)'
+                : 'linear-gradient(135deg, #F3BC58 19%, #E8B04D 64%, #DD9F42 75%, #F3BC58 97%, #D89637 100%)',
+              borderColor: theme === 'sun' ? 'rgb(243, 188, 88)' : '#D89637',
+              color: '#000',
+              border: 'none',
+            }}
+            onMouseEnter={(e) => {
+              if (theme === 'sun') {
+                e.currentTarget.style.background = 'rgb(230, 175, 75)';
+              } else {
+                e.currentTarget.style.background = 'linear-gradient(135deg, #E8B04D 19%, #DD9F42 64%, #D28F37 75%, #E8B04D 97%, #C8862D 100%)';
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (theme === 'sun') {
+                e.currentTarget.style.background = 'rgb(243, 188, 88)';
+              } else {
+                e.currentTarget.style.background = 'linear-gradient(135deg, #F3BC58 19%, #E8B04D 64%, #DD9F42 75%, #F3BC58 97%, #D89637 100%)';
+              }
+            }}
+          >
+            {label}
+          </Button>
+        );
+
+        const renderViewResultButton = (label) => (
+          <Button
+            type="primary"
+            icon={<EyeOutlined />}
+            onClick={() => handleViewResult(record)}
+            className="action-btn-view-result"
+            style={{
+              borderRadius: '6px',
+              fontWeight: 500,
+              height: '36px',
+              padding: '0 16px',
+              fontSize: '14px',
+              background: theme === 'sun' 
+                ? 'rgb(113, 179, 253)'
+                : 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)',
+              borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : '#7228d9',
+              color: '#000',
+              border: 'none',
+            }}
+            onMouseEnter={(e) => {
+              if (theme === 'sun') {
+                e.currentTarget.style.background = 'rgb(93, 159, 233)';
+              } else {
+                e.currentTarget.style.background = 'linear-gradient(135deg, #9C8FB0 19%, #9588AB 64%, #726795 75%, #9A95B0 97%, #5D4F7F 100%)';
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (theme === 'sun') {
+                e.currentTarget.style.background = 'rgb(113, 179, 253)';
+              } else {
+                e.currentTarget.style.background = 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)';
+              }
+            }}
+          >
+            {label}
+          </Button>
+        );
+
         return (
           <Space size="small">
-            {hasScore ? (
-              // Show "View Result" button if challenge has been completed
-              <Button
-                type="primary"
-                icon={<EyeOutlined />}
-                onClick={() => handleViewResult(record)}
-                className="action-btn-view-result"
-                style={{
-                  borderRadius: '6px',
-                  fontWeight: 500,
-                  height: '36px',
-                  padding: '0 16px',
-                  fontSize: '14px',
-                  background: theme === 'sun' 
-                    ? 'rgb(113, 179, 253)' 
-                    : 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)',
-                  borderColor: theme === 'sun' 
-                    ? 'rgb(113, 179, 253)' 
-                    : '#7228d9',
-                  color: '#000',
-                  border: 'none',
-                }}
-                onMouseEnter={(e) => {
-                  if (theme === 'sun') {
-                    e.currentTarget.style.background = 'rgb(93, 159, 233)';
-                  } else {
-                    e.currentTarget.style.background = 'linear-gradient(135deg, #9C8FB0 19%, #9588AB 64%, #726795 75%, #9A95B0 97%, #5D4F7F 100%)';
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (theme === 'sun') {
-                    e.currentTarget.style.background = 'rgb(113, 179, 253)';
-                  } else {
-                    e.currentTarget.style.background = 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)';
-                  }
-                }}
-              >
-                View Result
-              </Button>
-            ) : (
-              // Show "Start Challenge" button if challenge hasn't been attempted
-              <Button
-                type="primary"
-                icon={<PlayCircleOutlined />}
-                onClick={() => handleViewClick(record)}
-                className="action-btn-start"
-                style={{
-                  borderRadius: '6px',
-                  fontWeight: 500,
-                  height: '36px',
-                  padding: '0 16px',
-                  fontSize: '14px',
-                  background: theme === 'sun' 
-                    ? 'rgb(243, 188, 88)' 
-                    : 'linear-gradient(135deg, #F3BC58 19%, #E8B04D 64%, #DD9F42 75%, #F3BC58 97%, #D89637 100%)',
-                  borderColor: theme === 'sun' 
-                    ? 'rgb(243, 188, 88)' 
-                    : '#D89637',
-                  color: '#000',
-                  border: 'none',
-                }}
-                onMouseEnter={(e) => {
-                  if (theme === 'sun') {
-                    e.currentTarget.style.background = 'rgb(230, 175, 75)';
-                  } else {
-                    e.currentTarget.style.background = 'linear-gradient(135deg, #E8B04D 19%, #DD9F42 64%, #D28F37 75%, #E8B04D 97%, #C8862D 100%)';
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (theme === 'sun') {
-                    e.currentTarget.style.background = 'rgb(243, 188, 88)';
-                  } else {
-                    e.currentTarget.style.background = 'linear-gradient(135deg, #F3BC58 19%, #E8B04D 64%, #DD9F42 75%, #F3BC58 97%, #D89637 100%)';
-                  }
-                }}
-              >
-                {t('dailyChallenge.startChallenge', 'Start Challenge')}
-              </Button>
-            )}
+            {status === 'PENDING' && renderStartLikeButton('Do challenge')}
+            {status === 'DRAFT' && renderStartLikeButton('Edit answer')}
+            {status === 'SUBMITTED' && renderStartLikeButton('View answer')}
+            {status === 'GRADED' && renderViewResultButton('View result')}
+            {!status && renderStartLikeButton(t('dailyChallenge.startChallenge', 'Start Challenge'))}
           </Space>
         );
       },
@@ -649,68 +619,7 @@ const StudentDailyChallengeList = () => {
             allowClear
             placeholder={t('common.search') || 'Search...'}
           />
-          <div ref={filterContainerRef} style={{ position: 'relative' }}>
-            <Button 
-              icon={<FilterOutlined />}
-              onClick={handleFilterToggle}
-              className={`filter-button ${theme}-filter-button ${filterDropdown.visible ? 'active' : ''} ${typeFilter.length > 0 ? 'has-filters' : ''}`}
-            >
-              {t('common.filter') || 'Filter'}
-            </Button>
-            
-            {/* Filter Dropdown Panel */}
-            {filterDropdown.visible && (
-              <div className={`filter-dropdown-panel ${theme}-filter-dropdown`}>
-                <div style={{ padding: '20px' }}>
-                  {/* Type Filter */}
-                  <div style={{ marginBottom: '24px' }}>
-                    <Typography.Title level={5} style={{ marginBottom: '12px', fontSize: '16px' }}>
-                      {t('dailyChallenge.type')}
-                    </Typography.Title>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                      {typeOptions.map((opt) => (
-                        <Button
-                          key={opt}
-                          onClick={() => {
-                            const newTypes = filterDropdown.selectedTypes.includes(opt)
-                              ? filterDropdown.selectedTypes.filter((t) => t !== opt)
-                              : [...filterDropdown.selectedTypes, opt];
-                            setFilterDropdown((prev) => ({ ...prev, selectedTypes: newTypes }));
-                          }}
-                          className={`filter-option ${filterDropdown.selectedTypes.includes(opt) ? 'selected' : ''}`}
-                        >
-                          {getTypeLabelByCode(opt)}
-                        </Button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Action Buttons */}
-                  <div style={{ 
-                    display: 'flex', 
-                    justifyContent: 'space-between', 
-                    marginTop: '20px',
-                    paddingTop: '16px',
-                    borderTop: '1px solid #f0f0f0'
-                  }}>
-                    <Button
-                      onClick={handleFilterReset}
-                      className="filter-reset-button"
-                    >
-                      {t('common.reset')}
-                    </Button>
-                    <Button
-                      type="primary"
-                      onClick={handleFilterSubmit}
-                      className="filter-submit-button"
-                    >
-                      {t('common.viewResults')}
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
+          {/* Filter removed as requested */}
         </div>
 
         {/* Table Section */}

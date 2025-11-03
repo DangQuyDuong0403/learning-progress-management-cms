@@ -2,7 +2,7 @@ import React, { useState, useRef, useCallback, useEffect, useMemo } from "react"
 import {
   Modal,
   Button,
-  Select,
+  InputNumber,
   Tooltip,
 } from "antd";
 import { spaceToast } from '../../../../../component/SpaceToastify';
@@ -56,6 +56,7 @@ const RewriteModal = ({ visible, onCancel, onSave, questionData = null }) => {
     questionData?.correctAnswers || [{ id: 1, answer: "", color: getAnswerColors()[0] }]
   );
   const [points, setPoints] = useState(1);
+  const [saving, setSaving] = useState(false);
   const [hoveredAnswer, setHoveredAnswer] = useState(null);
   const [editorData, setEditorData] = useState('');
   const editorRef = useRef(null);
@@ -292,7 +293,7 @@ const RewriteModal = ({ visible, onCancel, onSave, questionData = null }) => {
     });
   }, []);
 
-  const handleSave = () => {
+  const handleSave = async () => {
     // Validate editor data
     if (!editorData || !editorData.trim()) {
       spaceToast.warning('Please enter the question text');
@@ -329,7 +330,7 @@ const RewriteModal = ({ visible, onCancel, onSave, questionData = null }) => {
     if (!questionTextWithPosition.includes(`[[pos_${positionId}]]`)) {
       questionTextWithPosition += `<br>[[pos_${positionId}]]`;
     }
-
+    
     const newQuestionData = {
       id: questionData?.id || Date.now(),
       type: 'REWRITE',
@@ -350,9 +351,18 @@ const RewriteModal = ({ visible, onCancel, onSave, questionData = null }) => {
     console.log('Content Data:', contentData);
     console.log('Full Question Data:', newQuestionData);
     console.log('================================');
-
-      onSave(newQuestionData);
-    handleCancel();
+    try {
+      setSaving(true);
+      const ret = onSave(newQuestionData);
+      if (ret && typeof ret.then === 'function') {
+        await ret;
+        handleCancel();
+      }
+    } catch (e) {
+      spaceToast.error('Failed to save question');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleCancel = () => {
@@ -364,16 +374,12 @@ const RewriteModal = ({ visible, onCancel, onSave, questionData = null }) => {
   };
 
   const pointsMenu = (
-    <Select
+    <InputNumber
       value={points}
-      onChange={setPoints}
-      style={{ width: 90 }}
-      options={[
-        { value: 1, label: '1 point' },
-        { value: 2, label: '2 points' },
-        { value: 3, label: '3 points' },
-        { value: 5, label: '5 points' },
-      ]}
+      onChange={(v) => setPoints(Number(v) || 0)}
+      min={0}
+      max={100}
+      style={{ width: 100 }}
     />
   );
 
@@ -439,12 +445,14 @@ const RewriteModal = ({ visible, onCancel, onSave, questionData = null }) => {
           <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <CheckOutlined style={{ color: '#52c41a', fontSize: '16px' }} />
+            <span style={{ fontSize: '13px', fontWeight: 600, color: '#666' }}>Score</span>
             {pointsMenu}
           </div>
 
           <Button
             type='primary'
             onClick={handleSave}
+            loading={saving}
               size="large"
             style={{
                 height: '44px',
