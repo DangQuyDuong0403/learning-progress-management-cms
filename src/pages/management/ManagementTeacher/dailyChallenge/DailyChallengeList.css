@@ -299,7 +299,6 @@
 /* Button styles in table */
 .daily-challenge-table .ant-btn {
   border-radius: 6px;
-  margin: 0 2px;
 }
 
 .daily-challenge-table .ant-btn:hover {
@@ -311,10 +310,21 @@
 .action-btn-view,
 .action-btn-edit,
 .action-btn-delete {
-  padding: 4px 8px;
+  padding: 2px 6px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+}
+
+/* Reduce space gap between action buttons inside Ant Space */
+.daily-challenge-table .ant-space {
+  gap: 4px ;
+}
+.daily-challenge-table .ant-space-item {
+  margin-right: 0px;
+}
+.daily-challenge-table .ant-space-item:last-child {
+  margin-right: 0px;
 }
 
 .action-btn-view:hover {
