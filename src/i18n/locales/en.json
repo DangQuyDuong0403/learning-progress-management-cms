@@ -1798,6 +1798,7 @@
     "createChallenge": "Create Challenge",
     "challengeTitle": "Challenge Title",
     "type": "Type",
+    "completion": "Completion",
     "startDateRequired": "Start date is required",
     "endDateRequired": "End date is required",
     "endDateMustBeAfterStartDate": "End date must be after start date",

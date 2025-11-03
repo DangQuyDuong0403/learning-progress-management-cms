@@ -5,7 +5,6 @@ import {
   Space,
   Table,
   Typography,
-  Tooltip,
   Modal,
   Card,
 } from "antd";
@@ -89,6 +88,7 @@ const DailyChallengeList = ({ readOnly = false }) => {
     challengeTitle: '',
   });
   const [publishDetails, setPublishDetails] = useState(null);
+  const [performanceByChallengeId, setPerformanceByChallengeId] = useState({});
 
   // Build unique lesson list from current allChallenges to avoid extra API calls
   const availableLessons = React.useMemo(() => {
@@ -103,11 +103,7 @@ const DailyChallengeList = ({ readOnly = false }) => {
     return Array.from(unique.values());
   }, [allChallenges]);
 
-  // Simple status display mapping for readability (localized)
-  const STATUS_LABEL = {
-    PUBLISHED: t('dailyChallenge.published') || 'Published',
-    DRAFT: t('dailyChallenge.draft') || 'Draft',
-  };
+  // Simple status display mapping removed (labels handled by getStatusLabel)
 
   // AccountList-style filter dropdown state and refs
   const [filterDropdown, setFilterDropdown] = useState({
@@ -143,13 +139,17 @@ const DailyChallengeList = ({ readOnly = false }) => {
     "LI",
     "SP",
   ];
-  const statusOptions = ["DRAFT", "PUBLISHED"];
+  const statusOptions = ["DRAFT", "PUBLISHED", "IN_PROGRESS", "CLOSED"];
   const getStatusLabel = (statusKey) => {
     switch (statusKey) {
       case 'DRAFT':
-        return t('dailyChallenge.draft') || 'Draft';
+        return 'Draft';
       case 'PUBLISHED':
-        return t('dailyChallenge.published') || 'Published';
+        return 'Published';
+      case 'IN_PROGRESS':
+        return 'In Progress';
+      case 'CLOSED':
+        return 'Closed';
       default:
         return statusKey;
     }
@@ -501,6 +501,55 @@ const DailyChallengeList = ({ readOnly = false }) => {
     setDailyChallenges(paged);
   }, [filteredAllChallenges, currentPage, pageSize, computePagedRows]);
 
+  // Fetch completion performance for visible challenges (lazy per page)
+  useEffect(() => {
+    const fetchPerformanceForPage = async () => {
+      const idsToFetch = dailyChallenges
+        .filter((rec) => rec && !rec.isEmptyLesson && rec.id && performanceByChallengeId[rec.id] === undefined)
+        .map((rec) => rec.id);
+      if (idsToFetch.length === 0) return;
+      // Mark as loading to avoid duplicate calls
+      setPerformanceByChallengeId((prev) => {
+        const next = { ...prev };
+        idsToFetch.forEach((id) => { next[id] = next[id] ?? { loading: true }; });
+        return next;
+      });
+      try {
+        const results = await Promise.allSettled(
+          idsToFetch.map(async (id) => {
+            try {
+              const res = await dailyChallengeApi.getDailyChallengePerformance(id);
+              const data = res?.data || res || {};
+              // Normalize potential shapes
+              const completed = data.completedStudents ?? data.completed ?? data.numCompleted ?? 0;
+              const total = data.totalStudents ?? data.total ?? data.numTotal ?? 0;
+              return { id, completed, total };
+            } catch (e) {
+              return { id, completed: null, total: null, error: true };
+            }
+          })
+        );
+        setPerformanceByChallengeId((prev) => {
+          const next = { ...prev };
+          results.forEach((r) => {
+            if (r.status === 'fulfilled' && r.value) {
+              const { id, completed, total } = r.value;
+              next[id] = { completed, total };
+            } else if (r.status === 'rejected') {
+              // Keep placeholder to avoid refetch loops
+              const id = idsToFetch[results.indexOf(r)];
+              next[id] = { completed: null, total: null, error: true };
+            }
+          });
+          return next;
+        });
+      } catch (_) {
+        // noop, placeholders already set
+      }
+    };
+    fetchPerformanceForPage();
+  }, [dailyChallenges, performanceByChallengeId]);
+
   // Keep totalItems in sync with filtered total and correct currentPage bounds
   useEffect(() => {
     const total = filteredAllChallenges.length;
@@ -737,15 +786,20 @@ const DailyChallengeList = ({ readOnly = false }) => {
         setPublishDetails(null);
       }
     } else {
-      // Direct unpublish for PUBLISHED challenges
-      await handlePublishConfirm(id, 'DRAFT');
+      // Unpublish not supported; show notice
+      spaceToast.warning('Unpublish is not supported');
     }
   };
 
   const handlePublishConfirm = async (id, newStatus) => {
     try {
-      // Call API to update status with specific challengeStatus parameter
-      await dailyChallengeApi.updateDailyChallengeStatus(id, newStatus);
+      // Publish via new endpoint; unpublish is not supported by API
+      if (newStatus === 'PUBLISHED') {
+        await dailyChallengeApi.publishDailyChallenge(id);
+      } else {
+        spaceToast.warning('Unpublish is not supported');
+        return;
+      }
       
       // Update local state on success
       setDailyChallenges(
@@ -842,7 +896,7 @@ const DailyChallengeList = ({ readOnly = false }) => {
     {
       title: t('dailyChallenge.no'),
       key: 'stt',
-      width: 70,
+      width: '5%',
       align: 'center',
       render: (_, __, index) => (currentPage - 1) * pageSize + index + 1,
     },
@@ -850,7 +904,7 @@ const DailyChallengeList = ({ readOnly = false }) => {
       title: t('dailyChallenge.lesson'),
       dataIndex: 'lessonName',
       key: 'lessonName',
-      width: 220,
+      width: '15%',
       align: 'left',
       render: (text, record) => {
         // Only render lesson name for the first challenge in each lesson
@@ -863,8 +917,6 @@ const DailyChallengeList = ({ readOnly = false }) => {
                   fontSize: '18px',
                   color: '#333',
                   padding: '8px 12px',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap',
                   borderRadius: '4px',
                   textAlign: 'left',
                   position: 'relative',
@@ -876,7 +928,7 @@ const DailyChallengeList = ({ readOnly = false }) => {
                   width: '100%'
                 }}
               >
-                <span className="lesson-text" style={{ transition: 'opacity 0.3s ease', display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%' }}>
+                <span className="lesson-text" style={{ transition: 'opacity 0.3s ease', display: 'block', whiteSpace: 'normal', wordBreak: 'break-word', maxWidth: '100%', lineHeight: '1.4' }}>
                   {text}
                 </span>
                 {!readOnly && !isTeachingAssistant && (
@@ -924,11 +976,8 @@ const DailyChallengeList = ({ readOnly = false }) => {
       title: t('dailyChallenge.challengeTitle'),
       dataIndex: 'title',
       key: 'title',
-      width: 300,
+      width: '15%',
       align: 'left',
-      ellipsis: {
-        showTitle: false,
-      },
       render: (text, record) => {
         // Show empty state for lessons without challenges
         if (record.isEmptyLesson) {
@@ -939,17 +988,15 @@ const DailyChallengeList = ({ readOnly = false }) => {
         }
         
         return (
-          <Tooltip placement="topLeft" title={text}>
-            <span style={{ 
-              display: 'block',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
-              textAlign: 'left',
-            }}>
-              {text}
-            </span>
-          </Tooltip>
+          <span style={{ 
+            display: 'block',
+            whiteSpace: 'normal',
+            wordBreak: 'break-word',
+            textAlign: 'left',
+            lineHeight: '1.4',
+          }}>
+            {text}
+          </span>
         );
       },
     },
@@ -957,8 +1004,11 @@ const DailyChallengeList = ({ readOnly = false }) => {
       title: t('dailyChallenge.type'),
       dataIndex: 'type',
       key: 'type',
-      width: 150,
+      width:'10%',
       align: 'center',
+      ellipsis: {
+        showTitle: false,
+      },
       render: (type, record) => {
         // Show empty state for lessons without challenges
         if (record.isEmptyLesson) {
@@ -969,12 +1019,18 @@ const DailyChallengeList = ({ readOnly = false }) => {
         }
 
         return (
-          <span style={{
-            padding: '4px 8px',
-            borderRadius: '4px',
-            fontSize: '18px',
-            color: '#000000'
-          }}>
+          <span
+            title={getTypeLabelByCode(type)}
+            style={{
+              display: 'block',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+              maxWidth: '100%',
+              fontSize: '18px',
+              color: '#000000'
+            }}
+          >
             {getTypeLabelByCode(type)}
           </span>
         );
@@ -984,7 +1040,7 @@ const DailyChallengeList = ({ readOnly = false }) => {
       title: t('dailyChallenge.startDate'),
       dataIndex: 'startDate',
       key: 'startDate',
-      width: 120,
+      width: '10%',
       align: 'center',
       render: (startDate, record) => {
         if (record.isEmptyLesson) {
@@ -993,14 +1049,21 @@ const DailyChallengeList = ({ readOnly = false }) => {
             </span>
           );
         }
-        return startDate ? new Date(startDate).toLocaleDateString() : '-';
+        if (!startDate) return '';
+        const d = new Date(startDate);
+        return (
+          <div style={{ lineHeight: 1.2 }}>
+            <div>{d.toLocaleDateString()}</div>
+            <div style={{ fontSize: 12, color: '#666' }}>{d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</div>
+          </div>
+        );
       },
     },
     {
       title: t('dailyChallenge.endDate'),
       dataIndex: 'endDate',
       key: 'endDate',
-      width: 120,
+      width: "10%",
       align: 'center',
       render: (endDate, record) => {
         if (record.isEmptyLesson) {
@@ -1009,14 +1072,45 @@ const DailyChallengeList = ({ readOnly = false }) => {
             </span>
           );
         }
-        return endDate ? new Date(endDate).toLocaleDateString() : '-';
+        if (!endDate) return '';
+        const d = new Date(endDate);
+        return (
+          <div style={{ lineHeight: 1.2 }}>
+            <div>{d.toLocaleDateString()}</div>
+            <div style={{ fontSize: 12, color: '#666' }}>{d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</div>
+          </div>
+        );
       },
+    },
+    {
+      title: t('dailyChallenge.completion') || 'Completion',
+      key: 'completion',
+      width: '10%',
+      align: 'center',
+      render: (_, record) => {
+        if (record.isEmptyLesson) {
+          return (
+            <span >
+            </span>
+          );
+        }
+        const perf = performanceByChallengeId[record.id];
+        if (!perf) return '...';
+        if (perf.error) return '-';
+        const completed = (perf.completed ?? 0);
+        const total = (perf.total ?? 0);
+        return (
+          <span style={{ fontWeight: 500 }}>
+            {completed}/{total}
+          </span>
+        );
+      }
     },
     {
       title: t('dailyChallenge.status'),
       dataIndex: 'status',
       key: 'status',
-      width: 120,
+      width: '10%',
       align: 'center',
       render: (status, record) => {
         if (record.isEmptyLesson) {
@@ -1033,6 +1127,10 @@ const DailyChallengeList = ({ readOnly = false }) => {
               return 'rgb(223, 175, 56)';
             case 'PUBLISHED':
               return 'rgb(20, 150, 26)';
+            case 'IN_PROGRESS':
+              return '#1890ff';
+            case 'CLOSED':
+              return '#8c8c8c';
             default:
               return '#000000';
           }
@@ -1110,7 +1208,7 @@ const DailyChallengeList = ({ readOnly = false }) => {
     {
       title: t('dailyChallenge.actions'),
       key: 'actions',
-      width: 180,
+      width: '10%',
       align: 'center',
       render: (_, record) => {
         // Show empty state for lessons without challenges

@@ -47,6 +47,7 @@ const transformApiData = (apiData) => {
         totalChallengesInLesson: 0,
         rowSpan: 1,
         totalScore: null,
+          scorePercentage: null,
         submissionChallengeId: null,
         submissionStatus: null,
         late: null,
@@ -69,6 +70,7 @@ const transformApiData = (apiData) => {
           totalChallengesInLesson: challenges.length,
           rowSpan: index === 0 ? challenges.length : 0,
           totalScore: challenge.totalScore,
+          scorePercentage: challenge.scorePercentage,
           submissionChallengeId: challenge.submissionChallengeId,
           submissionStatus: challenge.submissionStatus,
           late: challenge.late,
@@ -273,6 +275,7 @@ const StudentDailyChallengeList = () => {
         challengeType: challenge.type, // Pass challenge type (GV, RE, LI, WR, SP)
         type: challenge.type, // Also pass as 'type' for compatibility
         submissionChallengeId: challenge.submissionChallengeId, // Pass submissionChallengeId for saving/submitting
+        submissionStatus: challenge.submissionStatus, // Pass submissionStatus to determine if viewing submitted answer
       }
     });
   };
@@ -331,10 +334,10 @@ const StudentDailyChallengeList = () => {
                   className="lesson-text" 
                   style={{ 
                     display: 'block', 
-                    overflow: 'hidden', 
-                    textOverflow: 'ellipsis', 
-                    whiteSpace: 'nowrap', 
-                    maxWidth: '100%' 
+                    whiteSpace: 'normal',
+                    wordBreak: 'break-word',
+                    overflow: 'visible',
+                    maxWidth: '100%'
                   }}
                 >
                   {text}
@@ -448,7 +451,12 @@ const StudentDailyChallengeList = () => {
           return <span></span>;
         }
 
-        if (totalScore === null || totalScore === undefined) {
+        const hasPercentage = record.scorePercentage !== null && record.scorePercentage !== undefined;
+        const computedScore = hasPercentage
+          ? Number(record.scorePercentage) / 10 // convert percentage (0-100) to 10-point scale
+          : totalScore;
+
+        if (computedScore === null || computedScore === undefined) {
           return (
             <span style={{
               fontSize: '16px',
@@ -470,10 +478,11 @@ const StudentDailyChallengeList = () => {
         return (
           <span style={{
             fontSize: '18px',
-            color: getScoreColor(totalScore),
+            color: getScoreColor(Number(computedScore)),
             fontWeight: 600,
           }}>
-            {totalScore}/10
+            {(typeof computedScore === 'number' ? computedScore.toFixed(1) : (parseFloat(computedScore)?.toFixed ? parseFloat(computedScore).toFixed(1) : String(computedScore)))}
+            /10
           </span>
         );
       },

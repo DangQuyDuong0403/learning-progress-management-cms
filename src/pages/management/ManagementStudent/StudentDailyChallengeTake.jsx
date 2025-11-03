@@ -293,6 +293,24 @@ const SectionQuestionItem = ({ question, index, theme, sectionScore }) => {
     };
   }, [registerAnswerRestorer, question.questions]);
 
+  // Sync restored LI Fill-Blank values to DOM when state changes
+  useEffect(() => {
+    if (!question?.questions) return;
+    question.questions.forEach(q => {
+      if (q.type !== 'FILL_IN_THE_BLANK' && q.type !== 'FILL_BLANK') return;
+      Object.keys(selectedAnswers).forEach(key => {
+        if (!key.startsWith(`${q.id}_pos_`)) return;
+        const el = fillBlankRefs.current[key];
+        const value = selectedAnswers[key] ?? '';
+        if (el && document.activeElement !== el) {
+          if ((el.textContent || '') !== String(value)) {
+            el.textContent = String(value);
+          }
+        }
+      });
+    });
+  }, [selectedAnswers, question?.questions]);
+
   const handleAnswerSelect = (questionId, optionKey) => {
     setSelectedAnswers(prev => ({
       ...prev,
@@ -1437,6 +1455,8 @@ const ListeningSectionItem = ({ question, index, theme, sectionScore }) => {
   const [availableItems, setAvailableItems] = useState({});
   const [dragOverPosition, setDragOverPosition] = useState({});
   const [reorderStates, setReorderStates] = useState({});
+  // Local refs for LI Fill-in-the-Blank inputs
+  const fillBlankRefs = useRef({});
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
@@ -1477,14 +1497,39 @@ const ListeningSectionItem = ({ question, index, theme, sectionScore }) => {
             }
           });
           answer = Object.keys(dropdownAnswers).length > 0 ? dropdownAnswers : null;
+        } else if (q.type === 'FILL_IN_THE_BLANK' || q.type === 'FILL_BLANK') {
+          // Collect LI fill-in-the-blank answers by position
+          const fibAnswers = {};
+          Object.keys(selectedAnswers).forEach(key => {
+            if (key.startsWith(`${q.id}_pos_`)) {
+              fibAnswers[key] = selectedAnswers[key];
+            }
+          });
+          answer = Object.keys(fibAnswers).length > 0 ? fibAnswers : null;
         } else if (q.type === 'DRAG_AND_DROP') {
           answer = droppedItems[q.id] || null;
         } else if (q.type === 'REARRANGE' || q.type === 'REORDER') {
           const reorderState = reorderStates[q.id];
-          answer = reorderState?.items || null;
+          if (reorderState?.items && Array.isArray(reorderState.items) && reorderState.items.length > 0) {
+            answer = reorderState.items;
+          } else if (reorderState?.droppedItems && typeof reorderState.droppedItems === 'object') {
+            // Derive ordered array from droppedItems mapping
+            const indices = Object.keys(reorderState.droppedItems)
+              .map(k => parseInt(k, 10))
+              .filter(i => !Number.isNaN(i))
+              .sort((a, b) => a - b);
+            const arr = indices.map(i => reorderState.droppedItems[i]).filter(Boolean);
+            answer = arr.length > 0 ? arr : null;
+          } else {
+            answer = null;
+          }
         }
 
-        return answer ? { answer, questionType: q.type } : null;
+        // Normalize type names to match API
+        const normalizedType = (q.type === 'FILL_IN_THE_BLANK') ? 'FILL_BLANK'
+          : (q.type === 'REARRANGE') ? 'REORDER'
+          : q.type;
+        return answer ? { answer, questionType: normalizedType } : null;
       };
 
       const unregister = registerAnswerCollector(q.id, getAnswer);
@@ -1519,6 +1564,18 @@ const ListeningSectionItem = ({ question, index, theme, sectionScore }) => {
         } else if (q.type === 'DROPDOWN') {
           if (typeof answer === 'object' && answer !== null && !Array.isArray(answer)) {
             setSelectedAnswers(prev => ({ ...prev, ...answer }));
+          }
+        } else if (q.type === 'FILL_IN_THE_BLANK' || q.type === 'FILL_BLANK') {
+          if (typeof answer === 'object' && answer !== null && !Array.isArray(answer)) {
+            setSelectedAnswers(prev => ({ ...prev, ...answer }));
+            // Push values into corresponding contentEditable spans
+            Object.keys(answer).forEach(key => {
+              const el = fillBlankRefs.current[key];
+              const val = answer[key] ?? '';
+              if (el && document.activeElement !== el) {
+                el.textContent = String(val);
+              }
+            });
           }
         } else if (q.type === 'DRAG_AND_DROP') {
           if (typeof answer === 'object' && answer !== null && !Array.isArray(answer)) {
@@ -1686,19 +1743,6 @@ const ListeningSectionItem = ({ question, index, theme, sectionScore }) => {
             {index + 1}. Listening Section
           </Typography.Text>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            {sectionScore && (
-              <Typography.Text style={{ 
-                fontSize: '14px', 
-                fontWeight: 600,
-                color: theme === 'sun' ? '#52c41a' : '#73d13d',
-                padding: '4px 12px',
-                background: theme === 'sun' ? 'rgba(82, 196, 26, 0.1)' : 'rgba(115, 209, 61, 0.15)',
-                borderRadius: '8px',
-                border: `1px solid ${theme === 'sun' ? '#52c41a' : '#73d13d'}`
-              }}>
-                Score: {sectionScore.receivedScore}/{sectionScore.totalScore} ({sectionScore.percentage}%)
-              </Typography.Text>
-            )}
           <Typography.Text style={{ marginLeft: '12px', fontSize: '14px', opacity: 0.7 }}>
               ({question.points || sectionScore?.totalScore || 0} {question.points !== 1 ? 'points' : 'point'})
           </Typography.Text>
@@ -1877,16 +1921,27 @@ const ListeningSectionItem = ({ question, index, theme, sectionScore }) => {
                               if (match.index > last) parts.push(text.slice(last, match.index));
                               const positionId = match[1];
                               const contentData = q.content?.data || [];
-                              // Check if any options have positionId
+                              // Prefer explicit mapping when provided
                               const hasPositionIds = contentData.some(opt => opt.positionId);
-                              // If options have positionId, filter by positionId; otherwise use all options
-                              const optionsForPosition = hasPositionIds
-                                ? contentData.filter(opt => {
-                                    const optPosId = String(opt.positionId || '');
-                                    const matchPosId = String(positionId);
-                                    return optPosId === matchPosId;
-                                  })
-                                : contentData;
+                              let optionsForPosition;
+                              if (hasPositionIds) {
+                                optionsForPosition = contentData.filter(opt => String(opt.positionId || '') === String(positionId));
+                              } else {
+                                // Fallback: infer groups by option id prefix (e.g., opt1, opt1_1 belong to group 'opt1')
+                                const groupKeyFromId = (id) => {
+                                  if (!id || typeof id !== 'string') return id;
+                                  const m = id.match(/^([^_]+?\d+)/); // take prefix with first number, before underscore
+                                  return (m && m[1]) || id.split('_')[0] || id;
+                                };
+                                const groupKeysInOrder = [];
+                                const seen = new Set();
+                                for (const item of contentData) {
+                                  const gk = groupKeyFromId(item.id);
+                                  if (!seen.has(gk)) { seen.add(gk); groupKeysInOrder.push(gk); }
+                                }
+                                const groupKeyForThisPos = groupKeysInOrder[idx] || groupKeysInOrder[0];
+                                optionsForPosition = contentData.filter(item => groupKeyFromId(item.id) === groupKeyForThisPos);
+                              }
                               parts.push(
                               <select
                                   key={`dd_${q.id}_${idx++}`}
@@ -2074,8 +2129,36 @@ const ListeningSectionItem = ({ question, index, theme, sectionScore }) => {
                             let last = 0; let match; let idx = 0;
                             while ((match = regex.exec(text)) !== null) {
                               if (match.index > last) parts.push(text.slice(last, match.index));
-                            parts.push(
-                              <span key={`fib_${q.id}_${idx++}`} className="paragraph-input" contentEditable suppressContentEditableWarning style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', minWidth:'120px', maxWidth:'200px', minHeight:'32px', padding:'4px 12px', margin:'4px 8px 6px 8px', background: theme==='sun'?'#E9EEFF94':'rgba(255,255,255,0.1)', border:`2px solid ${theme==='sun'?'#1890ff':'#8B5CF6'}`, borderRadius:'8px', cursor:'text', outline:'none', verticalAlign:'top', lineHeight:'1.4', fontSize:'14px', boxSizing:'border-box', color:'#000000', textAlign:'center' }} />
+                              const positionId = match[1];
+                              parts.push(
+                                <span
+                                  key={`fib_${q.id}_${idx++}`}
+                                  className="paragraph-input"
+                                  contentEditable
+                                  suppressContentEditableWarning
+                                  onInput={(e) => {
+                                    const textVal = e.currentTarget.textContent || e.currentTarget.innerText || '';
+                                    setSelectedAnswers(prev => ({
+                                      ...prev,
+                                      [`${q.id}_pos_${positionId}`]: textVal
+                                    }));
+                                  }}
+                                  onBlur={(e) => {
+                                    const textVal = e.currentTarget.textContent || e.currentTarget.innerText || '';
+                                    setSelectedAnswers(prev => ({
+                                      ...prev,
+                                      [`${q.id}_pos_${positionId}`]: textVal
+                                    }));
+                                  }}
+                                  ref={(el) => {
+                                    if (el) {
+                                      fillBlankRefs.current[`${q.id}_pos_${positionId}`] = el;
+                                    } else {
+                                      delete fillBlankRefs.current[`${q.id}_pos_${positionId}`];
+                                    }
+                                  }}
+                                  style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', minWidth:'120px', maxWidth:'200px', minHeight:'32px', padding:'4px 12px', margin:'4px 8px 6px 8px', background: theme==='sun'?'#E9EEFF94':'rgba(255,255,255,0.1)', border:`2px solid ${theme==='sun'?'#1890ff':'#8B5CF6'}`, borderRadius:'8px', cursor:'text', outline:'none', verticalAlign:'top', lineHeight:'1.4', fontSize:'14px', boxSizing:'border-box', color:'#000000', textAlign:'center' }}
+                                />
                               );
                               last = match.index + match[0].length;
                             }
@@ -2455,15 +2538,20 @@ const WritingSectionItem = ({ question, index, theme }) => {
     const setAnswer = (answer) => {
       if (typeof answer === 'string') {
         setEssayText(answer);
+        setWritingMode('handwriting');
         return;
       }
       if (Array.isArray(answer) && answer.length > 0) {
-        const first = answer.find(Boolean);
-        if (first) setEssayText(String(first));
+        // Treat array answers as uploaded files (filenames/urls)
+        const files = answer
+          .filter(Boolean)
+          .map((name) => ({ id: Date.now() + Math.random(), name: String(name), size: 0, type: 'application/octet-stream', url: null }));
+        setUploadedFiles(files);
         return;
       }
       if (answer && typeof answer === 'object' && answer.text) {
         setEssayText(String(answer.text));
+        setWritingMode('handwriting');
       }
     };
 
@@ -2767,7 +2855,6 @@ const WritingSectionItem = ({ question, index, theme }) => {
                   <button
                     onClick={() => {
                       setWritingMode(null);
-                      setEssayText('');
                     }}
                     style={{
                       padding: '6px 12px',
@@ -2921,7 +3008,7 @@ const WritingSectionItem = ({ question, index, theme }) => {
 };
 
 // Speaking Section Component
-const SpeakingSectionItem = ({ question, index, theme }) => {
+const SpeakingSectionItem = ({ question, index, theme, isViewOnly }) => {
   const registerAnswerCollector = useContext(AnswerCollectionContext);
   const registerAnswerRestorer = useContext(AnswerRestorationContext);
   const [isRecording, setIsRecording] = useState(false);
@@ -2950,6 +3037,7 @@ const SpeakingSectionItem = ({ question, index, theme }) => {
   const audioChunksRef = useRef([]);
 
   const startRecording = () => {
+    if (isViewOnly) return;
     navigator.mediaDevices.getUserMedia({ audio: true })
       .then(stream => {
         const mediaRecorder = new MediaRecorder(stream);
@@ -2961,10 +3049,34 @@ const SpeakingSectionItem = ({ question, index, theme }) => {
           audioChunksRef.current.push(event.data);
         };
 
-        mediaRecorder.onstop = () => {
-          const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/mp3' });
-          const url = URL.createObjectURL(audioBlob);
-          setAudioUrl(url);
+        mediaRecorder.onstop = async () => {
+          const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+          // Create temporary blob URL for preview
+          const tempUrl = URL.createObjectURL(audioBlob);
+          setAudioUrl(tempUrl);
+          
+          // Immediately upload to server and replace with server URL
+          try {
+            const ext = 'webm';
+            const file = new File([audioBlob], `speaking-${Date.now()}.${ext}`, { 
+              type: audioBlob.type || 'audio/webm' 
+            });
+            
+            const uploadRes = await dailyChallengeApi.uploadFile(file);
+            const serverUrl = uploadRes?.data?.url || uploadRes?.data || uploadRes;
+            
+            if (serverUrl && typeof serverUrl === 'string') {
+              // Replace temp blob URL with server URL
+              URL.revokeObjectURL(tempUrl);
+              setAudioUrl(serverUrl);
+              console.log('✅ Audio uploaded to server:', serverUrl);
+            } else {
+              console.warn('⚠️ Server did not return valid URL, keeping blob URL');
+            }
+          } catch (error) {
+            console.error('❌ Failed to upload audio:', error);
+            // Keep blob URL as fallback
+          }
         };
 
         mediaRecorder.start();
@@ -2977,6 +3089,7 @@ const SpeakingSectionItem = ({ question, index, theme }) => {
   };
 
   const stopRecording = () => {
+    if (isViewOnly) return;
     if (mediaRecorderRef.current && isRecording) {
       mediaRecorderRef.current.stop();
       mediaRecorderRef.current.stream.getTracks().forEach(track => track.stop());
@@ -2984,23 +3097,53 @@ const SpeakingSectionItem = ({ question, index, theme }) => {
     }
   };
 
-  const handleFileUpload = (event) => {
+  const handleFileUpload = async (event) => {
+    if (isViewOnly) return;
     const files = Array.from(event.target.files);
-    const newFiles = files.map(file => ({
-      id: Date.now() + Math.random(),
-      name: file.name,
-      size: file.size,
-      type: file.type,
-      url: URL.createObjectURL(file)
-    }));
-    setUploadedFiles(prev => [...prev, ...newFiles]);
+    
+    // Upload each file to server and get server URLs
+    const uploadedFilesData = await Promise.all(
+      files.map(async (file) => {
+        try {
+          const uploadRes = await dailyChallengeApi.uploadFile(file);
+          const serverUrl = uploadRes?.data?.url || uploadRes?.data || uploadRes;
+          
+          if (serverUrl && typeof serverUrl === 'string') {
+            console.log('✅ File uploaded to server:', serverUrl);
+            return {
+              id: Date.now() + Math.random(),
+              name: file.name,
+              size: file.size,
+              type: file.type,
+              url: serverUrl // Use server URL instead of blob URL
+            };
+          } else {
+            throw new Error('Server did not return valid URL');
+          }
+        } catch (error) {
+          console.error('❌ Failed to upload file:', file.name, error);
+          // Fallback to blob URL if upload fails
+          return {
+            id: Date.now() + Math.random(),
+            name: file.name,
+            size: file.size,
+            type: file.type,
+            url: URL.createObjectURL(file)
+          };
+        }
+      })
+    );
+    
+    setUploadedFiles(prev => [...prev, ...uploadedFilesData]);
   };
 
   const removeFile = (fileId) => {
+    if (isViewOnly) return;
     setUploadedFiles(prev => prev.filter(file => file.id !== fileId));
   };
 
   const removeRecording = () => {
+    if (isViewOnly) return;
     setAudioUrl(null);
   };
 
@@ -3009,6 +3152,7 @@ const SpeakingSectionItem = ({ question, index, theme }) => {
     if (!registerAnswerCollector || !question?.id) return;
 
     const getAnswer = () => {
+      if (isViewOnly) return null;
       // Prefer recorded audio URL, else any uploaded file URLs/names
       if (audioUrl) {
         return { answer: audioUrl, questionType: 'SPEAKING' };
@@ -3032,13 +3176,16 @@ const SpeakingSectionItem = ({ question, index, theme }) => {
 
     const setAnswer = (answer) => {
       if (typeof answer === 'string') {
-        // Assume it's a url or text
+        // Just set the URL directly (should be server URL now)
         setAudioUrl(answer);
         return;
       }
       if (Array.isArray(answer) && answer.length > 0) {
         const first = answer.find(Boolean);
-        if (first) setAudioUrl(String(first));
+        if (first && typeof first === 'string') {
+          // Just set the URL directly (should be server URL now)
+          setAudioUrl(String(first));
+        }
       }
     };
 
@@ -3160,10 +3307,10 @@ const SpeakingSectionItem = ({ question, index, theme }) => {
             {/* Recorded Audio Display */}
             {audioUrl && (
               <div style={{ marginBottom: '20px' }}>
-                <audio controls style={{ width: '100%', height: '40px' }}>
-                  <source src={audioUrl} type="audio/mpeg" />
+                <audio controls style={{ width: '100%', height: '40px' }} src={audioUrl}>
                   Your browser does not support the audio element.
                 </audio>
+                {!isViewOnly && (
                 <button
                   onClick={removeRecording}
                   style={{
@@ -3190,10 +3337,12 @@ const SpeakingSectionItem = ({ question, index, theme }) => {
                 >
                   ✕ Remove Recording
                 </button>
+                )}
               </div>
             )}
 
             {/* Mic Button - Large and Centered */}
+            {!isViewOnly && (
             <button
               onClick={isRecording ? stopRecording : startRecording}
               style={{
@@ -3238,6 +3387,7 @@ const SpeakingSectionItem = ({ question, index, theme }) => {
                 }} 
               />
             </button>
+            )}
 
             <div style={{
               fontSize: '14px',
@@ -3245,16 +3395,17 @@ const SpeakingSectionItem = ({ question, index, theme }) => {
               color: theme === 'sun' ? '#1E40AF' : '#8B5CF6',
               marginBottom: '8px'
             }}>
-              {isRecording ? 'Recording...' : 'Click to start recording'}
+              {isViewOnly ? 'Submitted answer' : (isRecording ? 'Recording...' : 'Click to start recording')}
             </div>
             <div style={{
               fontSize: '12px',
               color: theme === 'sun' ? '#666' : '#999'
             }}>
-              {isRecording ? 'Click the microphone again to stop' : 'Press the microphone to record your response'}
+              {isViewOnly ? '' : (isRecording ? 'Click the microphone again to stop' : 'Press the microphone to record your response')}
             </div>
 
             {/* Upload Section - Similar to Writing */}
+            {!isViewOnly && (
             <div style={{ marginTop: '24px', paddingTop: '24px', borderTop: `1px solid ${theme === 'sun' ? '#e8e8e8' : 'rgba(255, 255, 255, 0.2)'}` }}>
               <div style={{ 
                 fontSize: '18px', 
@@ -3320,9 +3471,10 @@ const SpeakingSectionItem = ({ question, index, theme }) => {
                 </label>
               </div>
             </div>
+            )}
 
             {/* Uploaded Files */}
-            {uploadedFiles.length > 0 && (
+            {!isViewOnly && uploadedFiles.length > 0 && (
               <div style={{ marginTop: '16px' }}>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', justifyContent: 'center' }}>
                   {uploadedFiles.map((file) => (
@@ -3374,7 +3526,7 @@ const SpeakingSectionItem = ({ question, index, theme }) => {
 };
 
 // Speaking With Audio Section Component
-const SpeakingWithAudioSectionItem = ({ question, index, theme, sectionScore }) => {
+const SpeakingWithAudioSectionItem = ({ question, index, theme, sectionScore, isViewOnly }) => {
   const registerAnswerCollector = useContext(AnswerCollectionContext);
   const registerAnswerRestorer = useContext(AnswerRestorationContext);
   const [isRecording, setIsRecording] = useState(false);
@@ -3408,6 +3560,7 @@ const SpeakingWithAudioSectionItem = ({ question, index, theme, sectionScore }) 
   const audioRef = useRef(null);
 
   const startRecording = () => {
+    if (isViewOnly) return;
     navigator.mediaDevices.getUserMedia({ audio: true })
       .then(stream => {
         const mediaRecorder = new MediaRecorder(stream);
@@ -3419,10 +3572,34 @@ const SpeakingWithAudioSectionItem = ({ question, index, theme, sectionScore }) 
           audioChunksRef.current.push(event.data);
         };
 
-        mediaRecorder.onstop = () => {
-          const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/mp3' });
-          const url = URL.createObjectURL(audioBlob);
-          setAudioUrl(url);
+        mediaRecorder.onstop = async () => {
+          const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+          // Create temporary blob URL for preview
+          const tempUrl = URL.createObjectURL(audioBlob);
+          setAudioUrl(tempUrl);
+          
+          // Immediately upload to server and replace with server URL
+          try {
+            const ext = 'webm';
+            const file = new File([audioBlob], `speaking-${Date.now()}.${ext}`, { 
+              type: audioBlob.type || 'audio/webm' 
+            });
+            
+            const uploadRes = await dailyChallengeApi.uploadFile(file);
+            const serverUrl = uploadRes?.data?.url || uploadRes?.data || uploadRes;
+            
+            if (serverUrl && typeof serverUrl === 'string') {
+              // Replace temp blob URL with server URL
+              URL.revokeObjectURL(tempUrl);
+              setAudioUrl(serverUrl);
+              console.log('✅ Audio uploaded to server:', serverUrl);
+            } else {
+              console.warn('⚠️ Server did not return valid URL, keeping blob URL');
+            }
+          } catch (error) {
+            console.error('❌ Failed to upload audio:', error);
+            // Keep blob URL as fallback
+          }
         };
 
         mediaRecorder.start();
@@ -3435,6 +3612,7 @@ const SpeakingWithAudioSectionItem = ({ question, index, theme, sectionScore }) 
   };
 
   const stopRecording = () => {
+    if (isViewOnly) return;
     if (mediaRecorderRef.current && isRecording) {
       mediaRecorderRef.current.stop();
       mediaRecorderRef.current.stream.getTracks().forEach(track => track.stop());
@@ -3442,19 +3620,48 @@ const SpeakingWithAudioSectionItem = ({ question, index, theme, sectionScore }) 
     }
   };
 
-  const handleFileUpload = (event) => {
+  const handleFileUpload = async (event) => {
+    if (isViewOnly) return;
     const files = Array.from(event.target.files);
-    const newFiles = files.map(file => ({
-      id: Date.now() + Math.random(),
-      name: file.name,
-      size: file.size,
-      type: file.type,
-      url: URL.createObjectURL(file)
-    }));
-    setUploadedFiles(prev => [...prev, ...newFiles]);
+    
+    // Upload each file to server and get server URLs
+    const uploadedFilesData = await Promise.all(
+      files.map(async (file) => {
+        try {
+          const uploadRes = await dailyChallengeApi.uploadFile(file);
+          const serverUrl = uploadRes?.data?.url || uploadRes?.data || uploadRes;
+          
+          if (serverUrl && typeof serverUrl === 'string') {
+            console.log('✅ File uploaded to server:', serverUrl);
+            return {
+              id: Date.now() + Math.random(),
+              name: file.name,
+              size: file.size,
+              type: file.type,
+              url: serverUrl // Use server URL instead of blob URL
+            };
+          } else {
+            throw new Error('Server did not return valid URL');
+          }
+        } catch (error) {
+          console.error('❌ Failed to upload file:', file.name, error);
+          // Fallback to blob URL if upload fails
+          return {
+            id: Date.now() + Math.random(),
+            name: file.name,
+            size: file.size,
+            type: file.type,
+            url: URL.createObjectURL(file)
+          };
+        }
+      })
+    );
+    
+    setUploadedFiles(prev => [...prev, ...uploadedFilesData]);
   };
 
   const removeFile = (fileId) => {
+    if (isViewOnly) return;
     setUploadedFiles(prev => prev.filter(file => file.id !== fileId));
   };
 
@@ -3463,6 +3670,7 @@ const SpeakingWithAudioSectionItem = ({ question, index, theme, sectionScore }) 
     if (!registerAnswerCollector || !question?.id) return;
 
     const getAnswer = () => {
+      if (isViewOnly) return null;
       if (audioUrl) {
         return { answer: audioUrl, questionType: 'SPEAKING' };
       }
@@ -3485,12 +3693,16 @@ const SpeakingWithAudioSectionItem = ({ question, index, theme, sectionScore }) 
 
     const setAnswer = (answer) => {
       if (typeof answer === 'string') {
+        // Just set the URL directly (should be server URL now)
         setAudioUrl(answer);
         return;
       }
       if (Array.isArray(answer) && answer.length > 0) {
         const first = answer.find(Boolean);
-        if (first) setAudioUrl(String(first));
+        if (first && typeof first === 'string') {
+          // Just set the URL directly (should be server URL now)
+          setAudioUrl(String(first));
+        }
       }
     };
 
@@ -3499,6 +3711,7 @@ const SpeakingWithAudioSectionItem = ({ question, index, theme, sectionScore }) 
   }, [registerAnswerRestorer, question?.id]);
 
   const removeRecording = () => {
+    if (isViewOnly) return;
     setAudioUrl(null);
   };
 
@@ -3608,17 +3821,6 @@ const SpeakingWithAudioSectionItem = ({ question, index, theme, sectionScore }) 
             {index + 1}. Speaking With Audio Section
           </Typography.Text>
         <div style={{ display: 'inline-flex', alignItems: 'center', gap: '12px', marginLeft: '12px' }}>
-          {sectionScore && (
-            <Typography.Text style={{ 
-              fontSize: '14px', 
-              padding: '2px 8px', 
-              borderRadius: '8px', 
-              background: theme === 'sun' ? 'rgba(82, 196, 26, 0.1)' : 'rgba(115, 209, 61, 0.15)',
-              border: `1px solid ${theme === 'sun' ? '#52c41a' : '#73d13d'}`
-            }}>
-              Score: {sectionScore.receivedScore}/{sectionScore.totalScore} ({sectionScore.percentage}%)
-            </Typography.Text>
-          )}
           <Typography.Text style={{ fontSize: '14px', opacity: 0.7 }}>
             ({question.points || sectionScore?.totalScore || 0} {(question.points || sectionScore?.totalScore || 0) !== 1 ? 'points' : 'point'})
           </Typography.Text>
@@ -3806,10 +4008,10 @@ const SpeakingWithAudioSectionItem = ({ question, index, theme, sectionScore }) 
             {/* Recorded Audio Display */}
             {audioUrl && (
               <div style={{ marginBottom: '20px' }}>
-                <audio controls style={{ width: '100%', height: '40px' }}>
-                  <source src={audioUrl} type="audio/mpeg" />
+                <audio controls style={{ width: '100%', height: '40px' }} src={audioUrl}>
                   Your browser does not support the audio element.
                 </audio>
+                {!isViewOnly && (
                 <button
                   onClick={removeRecording}
                   style={{
@@ -3836,10 +4038,12 @@ const SpeakingWithAudioSectionItem = ({ question, index, theme, sectionScore }) 
                 >
                   ✕ Remove Recording
                 </button>
+                )}
               </div>
             )}
 
             {/* Mic Button - Large and Centered */}
+            {!isViewOnly && (
             <button
               onClick={isRecording ? stopRecording : startRecording}
               style={{
@@ -3884,6 +4088,7 @@ const SpeakingWithAudioSectionItem = ({ question, index, theme, sectionScore }) 
                 }} 
               />
             </button>
+            )}
 
             <div style={{
               fontSize: '14px',
@@ -3891,16 +4096,17 @@ const SpeakingWithAudioSectionItem = ({ question, index, theme, sectionScore }) 
               color: theme === 'sun' ? '#1E40AF' : '#8B5CF6',
               marginBottom: '8px'
             }}>
-              {isRecording ? 'Recording...' : 'Click to start recording'}
+              {isViewOnly ? 'Submitted answer' : (isRecording ? 'Recording...' : 'Click to start recording')}
             </div>
             <div style={{
               fontSize: '12px',
               color: theme === 'sun' ? '#666' : '#999'
             }}>
-              {isRecording ? 'Click the microphone again to stop' : 'Press the microphone to record your response'}
+              {isViewOnly ? '' : (isRecording ? 'Click the microphone again to stop' : 'Press the microphone to record your response')}
             </div>
 
             {/* Upload Section - Similar to Writing */}
+            {!isViewOnly && (
             <div style={{ marginTop: '24px', paddingTop: '24px', borderTop: `1px solid ${theme === 'sun' ? '#e8e8e8' : 'rgba(255, 255, 255, 0.2)'}` }}>
               <div style={{ 
                 fontSize: '18px', 
@@ -3966,9 +4172,10 @@ const SpeakingWithAudioSectionItem = ({ question, index, theme, sectionScore }) 
                 </label>
               </div>
             </div>
+            )}
 
             {/* Uploaded Files */}
-            {uploadedFiles.length > 0 && (
+            {!isViewOnly && uploadedFiles.length > 0 && (
               <div style={{ marginTop: '16px' }}>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', justifyContent: 'center' }}>
                   {uploadedFiles.map((file) => (
@@ -6196,10 +6403,13 @@ const StudentDailyChallengeTake = () => {
     };
   };
 
+  const [isViewOnly, setIsViewOnly] = useState(false);
+
   useEffect(() => {
     // Get challenge type from location state
     const type = location.state?.challengeType || location.state?.type || 'GV';
     const challengeId = id; // Get challengeId from URL params
+    const submissionStatus = location.state?.submissionStatus; // Get submission status
     
     if (!challengeId) {
       spaceToast.error('Challenge ID is missing');
@@ -6208,6 +6418,10 @@ const StudentDailyChallengeTake = () => {
     }
 
     setChallengeType(type);
+    // Determine initial view-only mode from navigation state
+    if (submissionStatus === 'SUBMITTED' || submissionStatus === 'GRADED') {
+      setIsViewOnly(true);
+    }
     setChallengeInfo({
       challengeName: location.state?.challengeName || 'Daily Challenge',
       className: location.state?.lessonName || null,
@@ -6260,17 +6474,25 @@ const StudentDailyChallengeTake = () => {
         // Update submissionChallengeId state
         setSubmissionChallengeId(finalSubmissionId);
         
-        // Use draft API to get both questions and saved answers
-        return dailyChallengeApi.getDraftSubmission(finalSubmissionId)
-          .then((draftResponse) => {
-            if (draftResponse && draftResponse.success) {
+        // Determine which API to use based on submission status and challenge type
+        // For WR and SP types with SUBMITTED status, use result API instead of draft API
+        const shouldUseResultAPI = (submissionStatus === 'SUBMITTED' || submissionStatus === 'GRADED') && (type === 'WR' || type === 'SP');
+        if (shouldUseResultAPI) setIsViewOnly(true);
+        
+        const apiCall = shouldUseResultAPI 
+          ? dailyChallengeApi.getSubmissionResult(finalSubmissionId)
+          : dailyChallengeApi.getDraftSubmission(finalSubmissionId);
+        
+        return apiCall
+          .then((response) => {
+            if (response && response.success) {
               
-              // Transform draft response to sections format
-              const sectionsResponse = transformDraftResponseToSectionsFormat(draftResponse, type);
+              // Transform response to sections format
+              const sectionsResponse = transformDraftResponseToSectionsFormat(response, type);
               
               if (sectionsResponse) {
                 try {
-                  // Load sections/questions from draft response
+                  // Load sections/questions from response
                   const transformedData = transformApiDataToComponentFormat(sectionsResponse, type);
                   if (transformedData) {
                     setQuestions(transformedData.questions || []);
@@ -6280,23 +6502,26 @@ const StudentDailyChallengeTake = () => {
                     setSpeakingSections(transformedData.speakingSections || []);
                   }
                 } catch (error) {
-                  console.error('❌ Error transforming draft response to sections:', error);
-                  console.error('Draft response:', draftResponse);
+                  console.error('❌ Error transforming response to sections:', error);
+                  console.error('Response:', response);
                   console.error('Sections response:', sectionsResponse);
                 }
               }
               
-              // Restore saved answers from draft response
-              if (draftResponse.data) {
+              // Restore saved answers from response
+              if (response.data) {
+                // If API says submitted/graded, enforce view-only
+                const statusFromApi = response.data?.submission?.status || response.data?.status;
+                if (statusFromApi === 'SUBMITTED' || statusFromApi === 'GRADED') setIsViewOnly(true);
                 // Delay restoration slightly to ensure components are mounted
                 // Use requestAnimationFrame to wait for next render cycle
                 requestAnimationFrame(() => {
                   setTimeout(() => {
                     try {
-                      restoreAnswersFromResult(draftResponse.data);
+                      restoreAnswersFromResult(response.data);
                     } catch (error) {
                       console.error('❌ Error in restoreAnswersFromResult:', error);
-                      console.error('Data structure:', draftResponse.data);
+                      console.error('Data structure:', response.data);
                     }
                   }, 300);
                 });
@@ -6304,8 +6529,8 @@ const StudentDailyChallengeTake = () => {
             }
           })
           .catch((error) => {
-            console.error('Error loading draft submission:', error);
-            // Fall back to public sections API if draft API fails
+            console.error('Error loading submission:', error);
+            // Fall back to public sections API if API fails
             return dailyChallengeApi.getPublicSectionsByChallenge(challengeId, { page: 0, size: 100 })
               .then((sectionsResponse) => {
                 if (sectionsResponse && sectionsResponse.success) {
@@ -6330,8 +6555,10 @@ const StudentDailyChallengeTake = () => {
   }, [id, location.state]);
 
   // Start countdown timer when component mounts
+  // timer/view-only guard now uses state isViewOnly set during data load
+
   useEffect(() => {
-    if (!loading) {
+    if (!loading && !isViewOnly) {
       const interval = setInterval(() => {
         setTimeRemaining(prev => {
           if (prev <= 1) {
@@ -6346,7 +6573,7 @@ const StudentDailyChallengeTake = () => {
         clearInterval(interval);
       };
     }
-  }, [loading]);
+  }, [loading, isViewOnly]);
 
 
 
@@ -6355,6 +6582,58 @@ const StudentDailyChallengeTake = () => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+  };
+
+  // Upload any blob: or data:audio URLs inside formatted answers and replace with server URLs
+  const replaceBlobUrlsInAnswers = async (questionAnswers) => {
+    const uploadedCache = new Map();
+    const toAbsoluteUrl = (res) => {
+      if (res?.data?.url) return res.data.url;
+      if (typeof res?.data === 'string') return res.data;
+      if (typeof res === 'string') return res;
+      return null;
+    };
+    const uploadFromUrl = async (url) => {
+      if (uploadedCache.has(url)) return uploadedCache.get(url);
+      const resp = await fetch(url);
+      const blob = await resp.blob();
+      const ext = (blob.type && blob.type.includes('mp3')) ? 'mp3' : (blob.type && blob.type.includes('wav')) ? 'wav' : 'webm';
+      const file = new File([blob], `speaking-${Date.now()}.${ext}`, { type: blob.type || 'audio/webm' });
+      const res = await dailyChallengeApi.uploadFile(file);
+      const finalUrl = toAbsoluteUrl(res);
+      if (!finalUrl) throw new Error('Upload failed: no url');
+      uploadedCache.set(url, finalUrl);
+      return finalUrl;
+    };
+
+    const processed = [];
+    const uploadErrors = [];
+    for (const qa of questionAnswers) {
+      if (!qa?.content?.data) { processed.push(qa); continue; }
+      const newData = [];
+      for (const item of qa.content.data) {
+        let value = item?.value;
+        if (typeof value === 'string' && (value.startsWith('blob:') || value.startsWith('data:audio'))) {
+          try {
+            value = await uploadFromUrl(value);
+            console.log('✅ Audio blob uploaded successfully, new URL:', value);
+          } catch (e) {
+            console.error('❌ Audio upload failed for speaking answer:', e);
+            uploadErrors.push({ questionId: qa.questionId, error: e.message || 'Upload failed' });
+            // Still include the blob URL - backend might handle it, or user will see error
+          }
+        }
+        newData.push({ ...item, id: item?.id === 'text' ? (item.id) : (item.id || 'text'), value });
+      }
+      processed.push({ ...qa, content: { data: newData } });
+    }
+    
+    // If there were upload errors, log them but don't block submission
+    if (uploadErrors.length > 0) {
+      console.warn('⚠️ Some audio uploads failed:', uploadErrors);
+    }
+    
+    return processed;
   };
 
   // Register answer collector function from child components
@@ -6475,16 +6754,12 @@ const StudentDailyChallengeTake = () => {
             const parts = key.split('_pos_');
             positionId = parts.length > 1 ? parts[parts.length - 1] : key;
           }
-          const value = answer[key];
-          // Only add if value exists and is not empty after trim
-          if (value !== null && value !== undefined && String(value).trim() !== '') {
-            contentData.push({
-              id: String(value),
-              value: String(value),
-              positionId: positionId
-            });
-          } else {
-            // Skip empty values
+          const raw = answer[key];
+          // Accept both plain strings and objects with 'value'
+          const value = (raw && typeof raw === 'object' && 'value' in raw) ? raw.value : raw;
+          // Include value even if it's an empty string to mirror RE behavior
+          if (value !== null && value !== undefined) {
+            contentData.push({ id: String(value), value: String(value), positionId });
           }
         });
       }
@@ -6998,6 +7273,7 @@ const StudentDailyChallengeTake = () => {
           </div>
           
           {/* Timer and Save Button */}
+          {!isViewOnly && (
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
             {/* Timer */}
             <div style={{
@@ -7101,6 +7377,7 @@ const StudentDailyChallengeTake = () => {
               Submit
             </Button>
           </div>
+          )}
         </div>
       </nav>
     </header>
@@ -7194,10 +7471,11 @@ const StudentDailyChallengeTake = () => {
                           question={section} 
                           index={index} 
                           theme={theme} 
+                          isViewOnly={isViewOnly}
                           sectionScore={sectionScores[section.id]}
                         />
                       ) : (
-                        <SpeakingSectionItem key={section.id || `speaking_${index}`} question={section} index={index} theme={theme} />
+                        <SpeakingSectionItem key={section.id || `speaking_${index}`} question={section} index={index} theme={theme} isViewOnly={isViewOnly} />
                       )}
                     </div>
                   ))
