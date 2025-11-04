@@ -34,7 +34,7 @@ const TrueFalseModal = ({ visible, onCancel, onSave, questionData = null, saving
 	const [correctAnswer, setCorrectAnswer] = useState(
 		questionData?.correctAnswer || null
 	);
-	const [points, setPoints] = useState(1);
+    const [weight, setWeight] = useState(1);
 	const [editorData, setEditorData] = useState('');
 	const editorRef = useRef(null);
 
@@ -151,12 +151,12 @@ const TrueFalseModal = ({ visible, onCancel, onSave, questionData = null, saving
 
 					setCorrectAnswer(derivedAnswer);
 					console.log('TrueFalseModal - Derived correctAnswer:', derivedAnswer);
-					setPoints(questionData.points || 1);
+                    setWeight((questionData && (questionData.weight ?? questionData.points)) || 1);
 				} else {
 					// Add mode - reset to defaults
 					setEditorData('');
 					setCorrectAnswer(null);
-					setPoints(1);
+                    setWeight(1);
 				}
 			}, 0);
 		}
@@ -216,7 +216,7 @@ const TrueFalseModal = ({ visible, onCancel, onSave, questionData = null, saving
 			type: 'TRUE_OR_FALSE',
 			title: 'True or false',
 			question: editorData,
-			points: points,
+            weight: weight,
 			options: [
 				{ id: 1, text: 'True', isCorrect: correctAnswer === 'True', key: 'A' },
 				{ id: 2, text: 'False', isCorrect: correctAnswer === 'False', key: 'B' },
@@ -227,20 +227,20 @@ const TrueFalseModal = ({ visible, onCancel, onSave, questionData = null, saving
 		onSave(newQuestionData);
 		setEditorData('');
 		setCorrectAnswer(null);
-		setPoints(1);
+        setWeight(1);
 	};
 
 	const handleCancel = () => {
 		setEditorData('');
 		setCorrectAnswer(null);
-		setPoints(1);
+        setWeight(1);
 		onCancel();
 	};
 
-	const pointsMenu = (
+    const pointsMenu = (
 		<InputNumber
-			value={points}
-			onChange={(v) => setPoints(Number(v) || 0)}
+            value={weight}
+            onChange={(v) => setWeight(Number(v) || 0)}
 			min={0}
 			max={100}
 			style={{ width: 100 }}
@@ -294,11 +294,11 @@ const TrueFalseModal = ({ visible, onCancel, onSave, questionData = null, saving
 				boxShadow: '0 4px 12px rgba(0,0,0,0.05)'
 			}}>
 				<div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center' }}>
-					{/* Points & Save Button */}
+                    {/* Weight & Save Button */}
 					<div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
 						<div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
 							<CheckOutlined style={{ color: '#52c41a', fontSize: '16px' }} />
-							<span style={{ fontSize: '13px', fontWeight: 600, color: '#666' }}>Score</span>
+                            <span style={{ fontSize: '13px', fontWeight: 600, color: '#666' }}>Weight</span>
 							{pointsMenu}
 						</div>
 
