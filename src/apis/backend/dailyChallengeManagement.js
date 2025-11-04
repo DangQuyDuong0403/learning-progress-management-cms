@@ -314,7 +314,7 @@ const dailyChallengeApi = {
 	// Lấy grading summary cho submission (dùng cho sidebar Performance)
 	// NOTE: backend path changed -> new Endpoint: /grading/submission-challenges/{submissionId}/grading
 	getSubmissionGradingResult: (submissionId) => {
-		const url = `/grading/submission-challenges/${submissionId}/grading`;
+		const url = `/grading/submission-challenges/${submissionId}`;
 		console.log('GetSubmissionGradingResult API (new) - URL:', url);
 		console.log('GetSubmissionGradingResult API (new) - SubmissionId:', submissionId);
     

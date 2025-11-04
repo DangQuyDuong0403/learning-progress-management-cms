@@ -55,7 +55,7 @@ const throttle = (func, limit) => {
 
 const FillBlankModal = ({ visible, onCancel, onSave, questionData = null }) => {
 	const [blanks, setBlanksState] = useState([]);
-	const [points, setPoints] = useState(1);
+    const [weight, setWeight] = useState(1);
 	const [questionCharCount, setQuestionCharCount] = useState(0);
 	const [editorVersion, setEditorVersion] = useState(0);
 	const [selectedImage, setSelectedImage] = useState(null);
@@ -269,7 +269,7 @@ const FillBlankModal = ({ visible, onCancel, onSave, questionData = null }) => {
             // New question
             setBlanks([]);
         }
-        setPoints(questionData?.points || 1);
+        setWeight((questionData && (questionData.weight ?? questionData.points)) || 1);
     }
 	}, [questionData, visible, parseQuestionText, setBlanks]);
 
@@ -1581,7 +1581,7 @@ const FillBlankModal = ({ visible, onCancel, onSave, questionData = null }) => {
 			content: {
 				data: contentData,
 			},
-			points: points,
+            weight: weight,
 			// For backward compatibility
 			question: questionText,
 			blanks: blanks,
@@ -1616,7 +1616,7 @@ const FillBlankModal = ({ visible, onCancel, onSave, questionData = null }) => {
 			editorRef.current.innerHTML = '';
 		}
 		setBlanks([]);
-		setPoints(1);
+        setWeight(1);
 		onCancel();
 	};
 
@@ -1733,10 +1733,10 @@ useEffect(() => {
 		};
 	}, [showBlankPopup]);
 
-	const pointsMenu = (
+    const pointsMenu = (
 		<InputNumber
-			value={points}
-			onChange={(v) => setPoints(Number(v) || 0)}
+            value={weight}
+            onChange={(v) => setWeight(Number(v) || 0)}
 			min={0}
 			max={100}
 			style={{ width: 100 }}
@@ -1850,7 +1850,7 @@ useEffect(() => {
 					<div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
 						<div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
 							<CheckOutlined style={{ color: '#52c41a', fontSize: '16px' }} />
-							<span style={{ fontSize: '13px', fontWeight: 600, color: '#666' }}>Score</span>
+                            <span style={{ fontSize: '13px', fontWeight: 600, color: '#666' }}>Weight</span>
 							{pointsMenu}
 						</div>
 

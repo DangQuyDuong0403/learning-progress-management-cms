@@ -26,6 +26,7 @@ import {
   DownOutlined,
   MenuFoldOutlined,
   MenuUnfoldOutlined,
+  StarOutlined,
 } from "@ant-design/icons";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import ThemedLayout from "../../../component/teacherlayout/ThemedLayout";
@@ -35,7 +36,7 @@ import { useTranslation } from "react-i18next";
 import { useTheme } from "../../../contexts/ThemeContext";
 import usePageTitle from "../../../hooks/usePageTitle";
 import { spaceToast } from "../../../component/SpaceToastify";
-import { generateFakeDataByType } from "../../../constants/fakeData";
+import dailyChallengeApi from "../../../apis/backend/dailyChallengeManagement";
 
 // Helper function to replace [[dur_3]] with HTML badge
 const processPassageContent = (content, theme, challengeType) => {
@@ -6164,7 +6165,7 @@ const StudentDailyChallengeResult = () => {
   });
   const questionRefs = useRef({});
   
-  // Mock student answers - simulate what student selected
+  // Student answers
   const [studentAnswers, setStudentAnswers] = useState({});
   
   // Feedback modal state
@@ -6190,7 +6191,7 @@ const StudentDailyChallengeResult = () => {
   const [isTeacherFeedbackCollapsed, setIsTeacherFeedbackCollapsed] = useState(true);
   const [isAiFeedbackCollapsed, setIsAiFeedbackCollapsed] = useState(true);
   
-  // Mock submission data (will be calculated from student answers)
+  // Submission data (calculated from student answers or from API)
   const [submissionData, setSubmissionData] = useState(null);
   
   usePageTitle('Daily Challenge - View Result');
@@ -6199,397 +6200,95 @@ const StudentDailyChallengeResult = () => {
     // Get challenge type from location state
     const type = location.state?.challengeType || location.state?.type || 'GV';
     
-    // Simulate loading delay
     setLoading(true);
-    setTimeout(() => {
-      setChallengeType(type);
-      setChallengeInfo({
-        challengeName: location.state?.challengeName || 'Daily Challenge',
-        className: location.state?.lessonName || null,
-      });
-      
-      const fakeData = generateFakeDataByType(type);
-      setQuestions(fakeData.questions);
-      setReadingSections(fakeData.readingSections);
-      setListeningSections(fakeData.listeningSections);
-      setWritingSections(fakeData.writingSections);
-      setSpeakingSections(fakeData.speakingSections);
-      
-      // Generate mock student answers for GV questions
-      const mockAnswers = {};
-      fakeData.questions.forEach(q => {
-        // Skip questions with 'blank' in id - these should remain unanswered (blank)
-        if (q.id && q.id.includes('blank')) {
-          return; // Skip this question, leave it blank
-        }
-        
-        if (q.type === 'MULTIPLE_CHOICE' || q.type === 'TRUE_OR_FALSE') {
-          const correctOption = q.options?.find(opt => opt.isCorrect);
-          const wrongOption = q.options?.find(opt => !opt.isCorrect);
-          // For questions ending with 'b': use wrong answer, otherwise use correct answer
-          if (q.id.endsWith('b')) {
-            // For True/False, use the text "True" or "False" instead of key
-            if (q.type === 'TRUE_OR_FALSE') {
-              mockAnswers[q.id] = wrongOption?.text || wrongOption?.key; // Wrong answer for demonstration
-            } else {
-              mockAnswers[q.id] = wrongOption?.key; // Wrong answer for demonstration
-            }
-          } else {
-            // For True/False, use the text "True" or "False" instead of key
-            if (q.type === 'TRUE_OR_FALSE') {
-              mockAnswers[q.id] = correctOption?.text || correctOption?.key; // Correct answer
-            } else {
-              mockAnswers[q.id] = correctOption?.key; // Correct answer
-            }
-          }
-        } else if (q.type === 'MULTIPLE_SELECT') {
-          const correctKeys = q.options?.filter(opt => opt.isCorrect).map(opt => opt.key) || [];
-          const incorrectKeys = q.options?.filter(opt => !opt.isCorrect).map(opt => opt.key) || [];
-          // For questions ending with 'b': use wrong answer (mix of correct and incorrect), otherwise use all correct
-          if (q.id.endsWith('b')) {
-            const selected = [];
-            // Select some correct but not all, and add at least one incorrect
-            if (correctKeys.length > 1) {
-              selected.push(correctKeys[0]); // Only first correct answer
-            } else {
-              selected.push(...correctKeys);
-            }
-            if (incorrectKeys.length > 0) {
-              selected.push(incorrectKeys[0]); // Add one wrong answer
-            }
-            mockAnswers[q.id] = selected; // Wrong answer for demonstration
-          } else {
-            mockAnswers[q.id] = correctKeys; // All correct answers
-          }
-        } else if (q.type === 'FILL_IN_THE_BLANK') {
-          // Get correct answers from content.data
-          const contentData = q.content?.data || [];
-          const fillBlankAnswers = {};
-          contentData.forEach(item => {
-            if (item.positionId && item.correct) {
-              const positionId = item.positionId;
-              // For first Fill in the Blank (gv-4): use correct answer (went)
-              // For second Fill in the Blank (gv-4b): use wrong answer (ugly instead of beautiful)
-              if (q.id === 'gv-4') {
-                fillBlankAnswers[positionId] = 'went'; // Correct answer
-              } else if (q.id === 'gv-4b') {
-                fillBlankAnswers[positionId] = 'ugly'; // Wrong answer for demonstration
-              }
-            }
-          });
-          mockAnswers[q.id] = fillBlankAnswers;
-        } else if (q.type === 'DROPDOWN') {
-          const contentData = q.content?.data || [];
-          const dropdownAnswers = {};
-          contentData.forEach(item => {
-            if (item.positionId && item.correct) {
-              const positionId = item.positionId;
-              // For first Dropdown (gv-5): use correct answer (in)
-              // For second Dropdown (gv-5b): use wrong answer (on instead of at)
-              if (q.id === 'gv-5') {
-                dropdownAnswers[positionId] = 'in'; // Correct answer
-              } else if (q.id === 'gv-5b') {
-                dropdownAnswers[positionId] = 'on'; // Wrong answer for demonstration
-              }
-            }
-          });
-          mockAnswers[q.id] = dropdownAnswers;
-        } else if (q.type === 'DRAG_AND_DROP') {
-          const contentData = q.content?.data || [];
-          const dragDropAnswers = {};
-          contentData.forEach(item => {
-            if (item.positionId && item.correct) {
-              const positionId = item.positionId;
-              // For first Drag and Drop (gv-6): use correct answers (love, enjoy)
-              // For second Drag and Drop (gv-6b): use wrong answers (hears instead of listens, enjoys instead of loves)
-              if (q.id === 'gv-6') {
-                if (positionId === 'pos_1') {
-                  dragDropAnswers[positionId] = 'love'; // Correct answer
-                } else if (positionId === 'pos_2') {
-                  dragDropAnswers[positionId] = 'enjoy'; // Correct answer
-                }
-              } else if (q.id === 'gv-6b') {
-                if (positionId === 'pos_1') {
-                  dragDropAnswers[positionId] = 'hears'; // Wrong answer for demonstration
-                } else if (positionId === 'pos_2') {
-                  dragDropAnswers[positionId] = 'enjoys'; // Wrong answer for demonstration
-                }
-              }
-            }
-          });
-          mockAnswers[q.id] = dragDropAnswers;
-        } else if (q.type === 'REARRANGE') {
-          const contentData = q.content?.data || [];
-          // Get correct order (sorted by positionId)
-          const correctOrder = contentData
-            .slice()
-            .sort((a, b) => {
-              const posA = parseInt((a.positionId || '').replace('pos_', ''));
-              const posB = parseInt((b.positionId || '').replace('pos_', ''));
-              return posA - posB;
-            })
-            .map(item => item.value)
-            .filter(Boolean);
-          
-          // For first Reorder (gv-7): use correct order
-          // For second Reorder (gv-7b): use wrong order (swap first two)
-          if (q.id === 'gv-7') {
-            mockAnswers[q.id] = correctOrder; // Correct order
-          } else if (q.id === 'gv-7b') {
-            const wrongOrder = [...correctOrder];
-            if (wrongOrder.length >= 2) {
-              // Swap first two items
-              [wrongOrder[0], wrongOrder[1]] = [wrongOrder[1], wrongOrder[0]];
-            }
-            mockAnswers[q.id] = wrongOrder; // Wrong order for demonstration
-          }
-        } else if (q.type === 'REWRITE') {
-          const contentData = q.content?.data || [];
-          const correctAnswer = contentData[0]?.value || '';
-          
-          // For first Rewrite (gv-8): use correct answer
-          // For second Rewrite (gv-8b): use wrong answer
-          if (q.id === 'gv-8') {
-            mockAnswers[q.id] = correctAnswer; // Correct answer
-          } else if (q.id === 'gv-8b') {
-            mockAnswers[q.id] = 'She said I will finish my homework.'; // Wrong answer for demonstration
-          }
-        }
-      });
-      
-      // Generate mock student answers for Reading sections
-      if (fakeData.readingSections && fakeData.readingSections.length > 0) {
-        fakeData.readingSections.forEach((section, sectionIdx) => {
-          if (section.questions && section.questions.length > 0) {
-            section.questions.forEach((q, qIdx) => {
-              if (q.type === 'MULTIPLE_CHOICE' || q.type === 'TRUE_OR_FALSE') {
-                const correctOption = q.options?.find(opt => opt.isCorrect);
-                const wrongOption = q.options?.find(opt => !opt.isCorrect);
-                
-                // For demonstration: Make first question (re-1) and third question (re-3) have wrong answers
-                // This ensures we can see both correct and wrong answer displays
-                const shouldUseWrongAnswer = (q.id === 're-1' || q.id === 're-3') || (q.id && q.id.endsWith('b'));
-                
-                if (shouldUseWrongAnswer && wrongOption) {
-                  // For True/False, use the text "True" or "False" instead of key
-                  if (q.type === 'TRUE_OR_FALSE') {
-                    mockAnswers[q.id] = wrongOption?.text || wrongOption?.key; // Wrong answer for demonstration
-                  } else {
-                    mockAnswers[q.id] = wrongOption?.key; // Wrong answer for demonstration
-                  }
-                } else {
-                  // For True/False, use the text "True" or "False" instead of key
-                  if (q.type === 'TRUE_OR_FALSE') {
-                    mockAnswers[q.id] = correctOption?.text || correctOption?.key; // Correct answer
-                  } else {
-                    mockAnswers[q.id] = correctOption?.key; // Correct answer
-                  }
-                }
-              } else if (q.type === 'MULTIPLE_SELECT') {
-                const correctKeys = q.options?.filter(opt => opt.isCorrect).map(opt => opt.key) || [];
-                const incorrectKeys = q.options?.filter(opt => !opt.isCorrect).map(opt => opt.key) || [];
-                
-                // For demonstration: Make second question (re-2) have partial wrong answers
-                // Select some correct but not all, and add at least one incorrect
-                const shouldUseWrongAnswer = (q.id === 're-2') || (q.id && q.id.endsWith('b'));
-                
-                if (shouldUseWrongAnswer && incorrectKeys.length > 0) {
-                  const selected = [];
-                  // Select some correct but not all, and add at least one incorrect
-                  if (correctKeys.length > 1) {
-                    selected.push(correctKeys[0]); // Only first correct answer (missing others)
-                  } else if (correctKeys.length > 0) {
-                    selected.push(...correctKeys);
-                  }
-                  if (incorrectKeys.length > 0) {
-                    selected.push(incorrectKeys[0]); // Add one wrong answer
-                  }
-                  mockAnswers[q.id] = selected; // Wrong answer for demonstration
-                } else {
-                  mockAnswers[q.id] = correctKeys; // All correct answers
-                }
-              } else if (q.type === 'FILL_IN_THE_BLANK') {
-                // Get correct answers from content.data
-                const contentData = q.content?.data || [];
-                const fillBlankAnswers = {};
-                contentData.forEach(item => {
-                  if (item.positionId && item.correct) {
-                    const positionId = item.positionId;
-                    // For demonstration: Make first Fill in the Blank (re-4) have wrong answer
-                    // This ensures we can see both correct and wrong answer displays
-                    if (q.id === 're-4') {
-                      // Use wrong answer for demonstration
-                      const wrongAnswers = ['mind', 'head', 'body'];
-                      const wrongAnswer = wrongAnswers[Math.floor(Math.random() * wrongAnswers.length)];
-                      fillBlankAnswers[positionId] = wrongAnswer; // Wrong answer for demonstration
-                    } else {
-                      fillBlankAnswers[positionId] = item.value; // Correct answer
-                    }
-                  }
-                });
-                mockAnswers[q.id] = fillBlankAnswers;
-              } else if (q.type === 'DROPDOWN') {
-                const contentData = q.content?.data || [];
-                const dropdownAnswers = {};
-                contentData.forEach(item => {
-                  if (item.positionId && item.correct) {
-                    const positionId = item.positionId;
-                    // For demonstration: Make Dropdown questions have wrong answers
-                    // This ensures we can see both correct and wrong answer displays
-                    if (q.id === 're-5' || q.id === 're-6') {
-                      // Find wrong option
-                      const wrongItems = contentData.filter(it => 
-                        it.positionId === positionId && !it.correct && it.value
-                      );
-                      if (wrongItems.length > 0) {
-                        dropdownAnswers[positionId] = wrongItems[0].value; // Wrong answer for demonstration
-                      } else {
-                        dropdownAnswers[positionId] = item.value; // Fallback to correct if no wrong option
-                      }
-                    } else {
-                      dropdownAnswers[positionId] = item.value; // Correct answer
-                    }
-                  }
-                });
-                mockAnswers[q.id] = dropdownAnswers;
-              } else if (q.type === 'DRAG_AND_DROP') {
-                const contentData = q.content?.data || [];
-                const dragDropAnswers = {};
-                contentData.forEach(item => {
-                  if (item.positionId && item.correct) {
-                    const positionId = item.positionId;
-                    // For demonstration: Make Drag and Drop questions have wrong answers
-                    // This ensures we can see both correct and wrong answer displays
-                    if (q.id === 're-7' || q.id === 're-8') {
-                      // Find wrong option for this position
-                      const wrongItems = contentData.filter(it => 
-                        it.positionId === positionId && !it.correct && it.value
-                      );
-                      if (wrongItems.length > 0) {
-                        dragDropAnswers[positionId] = wrongItems[0].value; // Wrong answer for demonstration
-                      } else {
-                        dragDropAnswers[positionId] = item.value; // Fallback to correct if no wrong option
-                      }
-                    } else {
-                      dragDropAnswers[positionId] = item.value; // Correct answer
-                    }
-                  }
-                });
-                mockAnswers[q.id] = dragDropAnswers;
-              } else if (q.type === 'REARRANGE') {
-                const contentData = q.content?.data || [];
-                // Get correct order (sorted by positionId)
-                const correctOrder = contentData
-                  .slice()
-                  .sort((a, b) => {
-                    const posA = parseInt((a.positionId || '').replace('pos_', ''));
-                    const posB = parseInt((b.positionId || '').replace('pos_', ''));
-                    return posA - posB;
-                  })
-                  .map(item => item.value)
-                  .filter(Boolean);
-                
-                // For demonstration: Make REARRANGE questions have wrong order
-                // This ensures we can see both correct and wrong answer displays
-                if (q.id === 're-9' || q.id === 're-10') {
-                  // Use wrong order (swap first two)
-                  const wrongOrder = [...correctOrder];
-                  if (wrongOrder.length >= 2) {
-                    // Swap first two items
-                    [wrongOrder[0], wrongOrder[1]] = [wrongOrder[1], wrongOrder[0]];
-                  }
-                  mockAnswers[q.id] = wrongOrder; // Wrong order for demonstration
-                } else {
-                  mockAnswers[q.id] = correctOrder; // Correct order
-                }
-              }
-            });
-          }
-        });
-      }
-      
-      // Generate mock student answers for Writing sections
-      if (fakeData.writingSections && fakeData.writingSections.length > 0) {
-        fakeData.writingSections.forEach((section, sectionIdx) => {
-          if (section.id) {
-            // For demonstration: Create mock answers with essay text and/or images
-            // First writing section has essay text
-            // Second writing section has images (if exists)
-            if (sectionIdx === 0) {
-              mockAnswers[section.id] = {
-                text: `In today's fast-paced world, effective communication skills are more important than ever before. Writing is one of the most fundamental forms of communication, allowing us to express our thoughts, share information, and connect with others across time and space.
-
-A well-written essay demonstrates clarity of thought, logical organization, and the ability to convey complex ideas in an accessible manner. When writing an essay, it is crucial to begin with a clear thesis statement that outlines the main argument or purpose of the piece.
-
-The body paragraphs should provide supporting evidence and examples that reinforce the central thesis. Each paragraph should focus on a single main idea, supported by relevant details and analysis. Transitional phrases help guide the reader from one idea to the next, creating a smooth flow of information.
-
-In conclusion, writing is not just about putting words on paper—it is about crafting a coherent narrative that engages the reader and effectively communicates the intended message.`,
-                essay: `In today's fast-paced world, effective communication skills are more important than ever before. Writing is one of the most fundamental forms of communication, allowing us to express our thoughts, share information, and connect with others across time and space.
-
-A well-written essay demonstrates clarity of thought, logical organization, and the ability to convey complex ideas in an accessible manner. When writing an essay, it is crucial to begin with a clear thesis statement that outlines the main argument or purpose of the piece.
-
-The body paragraphs should provide supporting evidence and examples that reinforce the central thesis. Each paragraph should focus on a single main idea, supported by relevant details and analysis. Transitional phrases help guide the reader from one idea to the next, creating a smooth flow of information.
-
-In conclusion, writing is not just about putting words on paper—it is about crafting a coherent narrative that engages the reader and effectively communicates the intended message.`
-              };
-            } else if (sectionIdx === 1) {
-              // Second writing section has uploaded image (banana.jpg)
-              mockAnswers[section.id] = {
-                files: [
-                  {
-                    id: 'file1',
-                    name: 'banana.jpg',
-                    type: 'image/jpeg',
-                    url: '/img/banana.jpg',
-                    imageUrl: '/img/banana.jpg'
-                  }
-                ]
-              };
-            } else {
-              // Other writing sections might have both text and files
-              mockAnswers[section.id] = {
-                text: 'This is a sample essay answer for the writing section. It demonstrates how student responses are displayed in the result view.',
-                files: [
-                  {
-                    id: 'file1',
-                    name: 'handwriting_sample.jpg',
-                    type: 'image/jpeg',
-                    url: 'https://via.placeholder.com/800x600?text=Handwriting+Sample',
-                    imageUrl: 'https://via.placeholder.com/800x600?text=Handwriting+Sample'
-                  }
-                ]
-              };
-            }
-          }
-        });
-      }
-      
-      // Generate mock student answers for Speaking sections
-      if (fakeData.speakingSections && fakeData.speakingSections.length > 0) {
-        fakeData.speakingSections.forEach((section, sectionIdx) => {
-          if (section.id) {
-            // First speaking section: recorded audio
-            if (sectionIdx === 0) {
-              mockAnswers[section.id] = {
-                audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3',
-                audio: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3'
-              };
-            } else {
-              // Second speaking section (SPEAKING_WITH_AUDIO_SECTION): recorded audio
-              mockAnswers[section.id] = {
-                audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3',
-                audio: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3'
-              };
-            }
-          }
-        });
-      }
-      
-      setStudentAnswers(mockAnswers);
-      
-      setLoading(false);
-    }, 500);
+    
+    // Set challenge type and info from location state
+    setChallengeType(type);
+    setChallengeInfo({
+      challengeName: location.state?.challengeName || 'Daily Challenge',
+      className: location.state?.lessonName || null,
+    });
+    
+    // Load data from location.state if available
+    if (location.state?.questions) {
+      setQuestions(location.state.questions);
+    }
+    if (location.state?.readingSections) {
+      setReadingSections(location.state.readingSections);
+    }
+    if (location.state?.listeningSections) {
+      setListeningSections(location.state.listeningSections);
+    }
+    if (location.state?.writingSections) {
+      setWritingSections(location.state.writingSections);
+    }
+    if (location.state?.speakingSections) {
+      setSpeakingSections(location.state.speakingSections);
+    }
+    if (location.state?.studentAnswers) {
+      setStudentAnswers(location.state.studentAnswers);
+    }
+    
+    setLoading(false);
   }, [location.state]);
+
+  // Fetch grading data from API for Performance collapse
+  useEffect(() => {
+    const fetchGradingData = async () => {
+      // Get submissionChallengeId from location.state (priority) or params (fallback)
+      // Note: id from params should be submissionChallengeId, not challengeId
+      const submissionChallengeId = location.state?.submissionChallengeId || id || location.state?.submissionId;
+      
+      if (!submissionChallengeId) {
+        console.warn('No submissionChallengeId found, skipping grading data fetch');
+        return;
+      }
+      
+      console.log('Fetching grading data for submissionChallengeId:', submissionChallengeId);
+
+      try {
+        const gradingRes = await dailyChallengeApi.getSubmissionGradingResult(submissionChallengeId);
+        const gradingData = gradingRes?.data?.data || gradingRes?.data || null;
+        
+        if (gradingData) {
+          // Map API response to submissionData structure
+          // API response structure: { finalScore, maxPossibleWeight, totalQuestions, correctAnswers, wrongAnswers, skipped, empty, teacherFeedback }
+          const score = gradingData.finalScore != null ? gradingData.finalScore : (gradingData.totalScore != null ? gradingData.totalScore : null);
+          const maxPoints = gradingData.maxPossibleWeight != null ? gradingData.maxPossibleWeight : (gradingData.maxPossibleScore != null ? gradingData.maxPossibleScore : null);
+          const totalQuestions = gradingData.totalQuestions != null ? gradingData.totalQuestions : null;
+          const correctCount = gradingData.correctAnswers != null ? gradingData.correctAnswers : null;
+          const incorrectCount = gradingData.wrongAnswers != null ? gradingData.wrongAnswers : null;
+          const unansweredCount = (gradingData.skipped != null ? gradingData.skipped : 0) + (gradingData.empty != null ? gradingData.empty : 0);
+          
+          // Calculate accuracy percentage if available
+          const accuracy = maxPoints && maxPoints > 0 && score != null 
+            ? Math.round((score / maxPoints) * 100) 
+            : (gradingData.scorePercentage != null ? Math.round(gradingData.scorePercentage) : null);
+
+          setSubmissionData({
+            score: score,
+            totalPoints: score,
+            maxPoints: maxPoints || 10,
+            totalQuestions: totalQuestions,
+            correctCount: correctCount,
+            incorrectCount: incorrectCount,
+            unansweredCount: unansweredCount > 0 ? unansweredCount : null,
+            accuracy: accuracy,
+            timeSpent: location.state?.timeSpent || null,
+            submittedAt: location.state?.submittedAt || null,
+            status: location.state?.status || 'completed',
+            method: location.state?.method || location.state?.submissionMethod || 'Manual',
+            teacherFeedback: gradingData.teacherFeedback || null,
+          });
+        }
+      } catch (error) {
+        console.warn('Failed to fetch grading data:', error?.response?.data || error?.message);
+        // Non-blocking: continue with calculated data if API fails
+      }
+    };
+
+    fetchGradingData();
+  }, [id, location.state]);
 
 
   const handleBack = () => {
@@ -6913,8 +6612,13 @@ In conclusion, writing is not just about putting words on paper—it is about cr
     };
   }, [questions, readingSections, listeningSections, studentAnswers]);
 
-  // Update score when student answers change
+  // Update score when student answers change (fallback if API data not available)
   useEffect(() => {
+    // Only calculate if submissionData is not set from API
+    if (submissionData && submissionData.score != null) {
+      return; // API data already loaded, skip calculation
+    }
+    
     if (studentAnswers && Object.keys(studentAnswers).length > 0) {
       const scoreData = calculateScore();
       setTotalScore(scoreData.score);
@@ -6942,8 +6646,8 @@ In conclusion, writing is not just about putting words on paper—it is about cr
         }
       }
       
-      // Create submission data
-      setSubmissionData({
+      // Create submission data (only if not already set by API)
+      setSubmissionData(prev => prev || {
         score: scoreData.score,
         totalPoints: scoreData.earnedPoints,
         maxPoints: scoreData.totalPoints,
@@ -6955,7 +6659,7 @@ In conclusion, writing is not just about putting words on paper—it is about cr
         status: 'completed',
       });
     }
-  }, [studentAnswers, calculateScore, timeSpent]);
+  }, [studentAnswers, calculateScore, timeSpent, submissionData]);
 
   // Navigate to question
   const scrollToQuestion = (questionId) => {
@@ -7458,59 +7162,342 @@ In conclusion, writing is not just about putting words on paper—it is about cr
                         
                         {!isPerformanceCollapsed && (
                           <>
-                            {/* Score Card */}
-                            <div style={{ marginBottom: '16px', padding: '16px' }}>
-                              <div style={{ marginBottom: '12px' }}>
-                                <Typography.Text style={{ fontSize: '12px', fontWeight: 400, color: theme === 'sun' ? '#666' : '#999', display: 'block' }}>
-                                  Score
-                                </Typography.Text>
-                              </div>
-                              <div style={{ textAlign: 'center' }}>
-                                <div style={{ position: 'relative', display: 'inline-block' }}>
-                                  <Typography.Text strong style={{ fontSize: '32px', color: '#1890ff', display: 'block', lineHeight: '1.2' }}>
-                                    {submission.score.toFixed(1)}/10
-                                  </Typography.Text>
-                                  <Typography.Text style={{ 
-                                    fontSize: '11px', 
-                                    fontStyle: 'italic',
-                                    color: theme === 'sun' ? '#999' : '#888',
-                                    display: 'block',
-                                    marginTop: '4px'
-                                  }}>
-                                    {submission.timeSpent || 0} minutes
-                                  </Typography.Text>
+                            {/* Score Circle */}
+                            <div style={{ marginBottom: '20px', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                              <div style={{ position: 'relative', display: 'inline-block' }}>
+                                {/* Star icon at top-right */}
+                                <StarOutlined
+                                  style={{
+                                    position: 'absolute',
+                                    top: '-8px',
+                                    right: '-8px',
+                                    fontSize: '24px',
+                                    color: '#FFD700',
+                                    zIndex: 2,
+                                    filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.2))'
+                                  }}
+                                />
+                                {/* Circular Score Display */}
+                                <div
+                                  style={{
+                                    width: '120px',
+                                    height: '120px',
+                                    borderRadius: '50%',
+                                    background: theme === 'sun' ? '#E8F5E9' : 'rgba(232, 245, 233, 0.8)',
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    justifyContent: 'center',
+                                    alignItems: 'center',
+                                    position: 'relative',
+                                    border: `3px solid ${theme === 'sun' ? '#C8E6C9' : 'rgba(200, 230, 201, 0.6)'}`
+                                  }}
+                                >
+                                  {submission.score != null && submission.score !== undefined ? (
+                                    <>
+                                      <Typography.Text
+                                        strong
+                                        style={{
+                                          fontSize: '36px',
+                                          fontWeight: 700,
+                                          color: '#4CAF50',
+                                          lineHeight: '1',
+                                          marginBottom: '4px'
+                                        }}
+                                      >
+                                        {`${submission.score}/${submission.maxPoints || 10}`}
+                                      </Typography.Text>
+                                      <Typography.Text
+                                        style={{
+                                          fontSize: '12px',
+                                          color: theme === 'sun' ? '#666' : '#999',
+                                          fontWeight: 400
+                                        }}
+                                      >
+                                        Score
+                                      </Typography.Text>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Typography.Text
+                                        strong
+                                        style={{
+                                          fontSize: '36px',
+                                          fontWeight: 700,
+                                          color: theme === 'sun' ? '#999' : '#666',
+                                          lineHeight: '1',
+                                          marginBottom: '4px'
+                                        }}
+                                      >
+                                        -
+                                      </Typography.Text>
+                                      <Typography.Text
+                                        style={{
+                                          fontSize: '12px',
+                                          color: theme === 'sun' ? '#666' : '#999',
+                                          fontWeight: 400
+                                        }}
+                                      >
+                                        Score
+                                      </Typography.Text>
+                                    </>
+                                  )}
                                 </div>
                               </div>
                             </div>
 
-                            {/* Answer Summary */}
-                            <div style={{ padding: '12px', background: theme === 'sun' ? '#f9f9f9' : 'rgba(255, 255, 255, 0.05)', borderRadius: '8px', border: `1px solid ${theme === 'sun' ? '#e8e8e8' : 'rgba(255, 255, 255, 0.1)'}` }}>
+                            {/* Pass/Fail Status */}
+                            {submission.score != null && submission.score !== undefined ? (() => {
+                              return submission.score >= 5 ? (
+                                <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+                                  <Typography.Text
+                                    strong
+                                    style={{
+                                      fontSize: '18px',
+                                      fontWeight: 700,
+                                      color: '#4CAF50',
+                                      textTransform: 'uppercase',
+                                      letterSpacing: '1px'
+                                    }}
+                                  >
+                                    PASSED
+                                  </Typography.Text>
+                                </div>
+                              ) : (
+                                <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+                                  <Typography.Text
+                                    strong
+                                    style={{
+                                      fontSize: '18px',
+                                      fontWeight: 700,
+                                      color: '#f44336',
+                                      textTransform: 'uppercase',
+                                      letterSpacing: '1px'
+                                    }}
+                                  >
+                                    FAILED
+                                  </Typography.Text>
+                                </div>
+                              );
+                            })() : null}
+
+                            {/* Question Breakdown Grid (hidden for Writing/Speaking submissions) */}
+                            {(!(writingSections.length > 0 || speakingSections.length > 0)) && (
+                              <div style={{
+                                display: 'grid',
+                                gridTemplateColumns: 'repeat(2, 1fr)',
+                                gap: '12px',
+                                marginBottom: '20px'
+                              }}>
+                                {/* Total Card */}
+                                <div style={{
+                                  padding: '16px',
+                                  background: theme === 'sun' ? '#F5F5F5' : 'rgba(255, 255, 255, 0.1)',
+                                  borderRadius: '8px',                                
+                                  height: '50px',
+                                  textAlign: 'center',
+                                  display: 'flex',
+                                  flexDirection: 'column',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  border: `1px solid ${theme === 'sun' ? '#E0E0E0' : 'rgba(255, 255, 255, 0.1)'}`
+                                }}>
+                                  <Typography.Text
+                                    strong
+                                    style={{
+                                      fontSize: '24px',
+                                      fontWeight: 700,
+                                      color: '#1890ff',
+                                      display: 'block',
+                                      marginBottom: '0px',
+                                      lineHeight: '1'
+                                    }}
+                                  >
+                                    {(submission.correctCount != null && submission.incorrectCount != null && submission.unansweredCount != null) 
+                                      ? (submission.correctCount + submission.incorrectCount + submission.unansweredCount)
+                                      : '-'}
+                                  </Typography.Text>
+                                  <Typography.Text
+                                    style={{
+                                      fontSize: '12px',
+                                      color: theme === 'sun' ? '#666' : '#999',
+                                      display: 'block'
+                                    }}
+                                  >
+                                    Total
+                                  </Typography.Text>
+                                </div>
+
+                                {/* Correct Card */}
+                                <div style={{
+                                  padding: '16px',
+                                  background: theme === 'sun' ? '#F5F5F5' : 'rgba(255, 255, 255, 0.1)',
+                                  borderRadius: '8px',
+                                  textAlign: 'center',
+                                  height: '50px',
+                                  display: 'flex',
+                                  flexDirection: 'column',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  border: `1px solid ${theme === 'sun' ? '#E0E0E0' : 'rgba(255, 255, 255, 0.1)'}`
+                                }}>
+                                  <Typography.Text
+                                    strong
+                                    style={{
+                                      fontSize: '24px',
+                                      fontWeight: 700,
+                                      color: '#1890ff',
+                                      display: 'block',
+                                      marginBottom: '0px',
+                                      lineHeight: '1'
+                                    }}
+                                  >
+                                    {submission.correctCount != null ? submission.correctCount : '-'}
+                                  </Typography.Text>
+                                  <Typography.Text
+                                    style={{
+                                      fontSize: '12px',
+                                      color: theme === 'sun' ? '#666' : '#999',
+                                      display: 'block'
+                                    }}
+                                  >
+                                    Correct
+                                  </Typography.Text>
+                                </div>
+
+                                {/* Incorrect Card */}
+                                <div style={{
+                                  padding: '16px',
+                                  background: theme === 'sun' ? '#F5F5F5' : 'rgba(255, 255, 255, 0.1)',
+                                  borderRadius: '8px',
+                                  textAlign: 'center',
+                                  height: '50px',
+                                  display: 'flex',
+                                  flexDirection: 'column',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  border: `1px solid ${theme === 'sun' ? '#E0E0E0' : 'rgba(255, 255, 255, 0.1)'}`
+                                }}>
+                                  <Typography.Text
+                                    strong
+                                    style={{
+                                      fontSize: '24px',
+                                      fontWeight: 700,
+                                      color: '#1890ff',
+                                      display: 'block',
+                                      marginBottom: '0px',
+                                      lineHeight: '1'
+                                    }}
+                                  >
+                                    {submission.incorrectCount != null ? submission.incorrectCount : '-'}
+                                  </Typography.Text>
+                                  <Typography.Text
+                                    style={{
+                                      fontSize: '12px',
+                                      color: theme === 'sun' ? '#666' : '#999',
+                                      display: 'block'
+                                    }}
+                                  >
+                                    Incorrect
+                                  </Typography.Text>
+                                </div>
+
+                                {/* Unanswered Card */}
+                                <div style={{
+                                  padding: '16px',
+                                  background: theme === 'sun' ? '#F5F5F5' : 'rgba(255, 255, 255, 0.1)',
+                                  borderRadius: '8px',
+                                  textAlign: 'center',
+                                  height: '50px',
+                                  display: 'flex',
+                                  flexDirection: 'column',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  border: `1px solid ${theme === 'sun' ? '#E0E0E0' : 'rgba(255, 255, 255, 0.1)'}`
+                                }}>
+                                  <Typography.Text
+                                    strong
+                                    style={{
+                                      fontSize: '24px',
+                                      fontWeight: 700,
+                                      color: '#1890ff',
+                                      display: 'block',
+                                      marginBottom: '0px',
+                                      lineHeight: '1'
+                                    }}
+                                  >
+                                    {submission.unansweredCount != null ? submission.unansweredCount : '-'}
+                                  </Typography.Text>
+                                  <Typography.Text
+                                    style={{
+                                      fontSize: '12px',
+                                      color: theme === 'sun' ? '#666' : '#999',
+                                      display: 'block'
+                                    }}
+                                  >
+                                    Unanswered
+                                  </Typography.Text>
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Submission Details */}
+                            <div style={{
+                              padding: '12px 0',
+                              borderTop: `1px solid ${theme === 'sun' ? '#E0E0E0' : 'rgba(255, 255, 255, 0.1)'}`
+                            }}>
                               <Space direction="vertical" size={8} style={{ width: '100%' }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                  <Space size={8}>
-                                    <CheckCircleOutlined style={{ color: '#52c41a', fontSize: '16px' }} />
-                                    <Typography.Text style={{ fontSize: '13px' }}>Correct</Typography.Text>
-                                  </Space>
-                                  <Typography.Text strong style={{ fontSize: '16px', color: '#52c41a' }}>
-                                    {submission.correctCount || 0}
+                                  <Typography.Text style={{ fontSize: '12px', color: theme === 'sun' ? '#666' : '#999' }}>
+                                    Time Used:
+                                  </Typography.Text>
+                                  <Typography.Text style={{ fontSize: '12px', fontWeight: 500, color: theme === 'sun' ? '#000' : '#fff' }}>
+                                    {submission.timeSpent != null ? `${submission.timeSpent} minutes` : '-'}
                                   </Typography.Text>
                                 </div>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                  <Space size={8}>
-                                    <CloseCircleOutlined style={{ color: '#ff4d4f', fontSize: '16px' }} />
-                                    <Typography.Text style={{ fontSize: '13px' }}>Incorrect</Typography.Text>
-                                  </Space>
-                                  <Typography.Text strong style={{ fontSize: '16px', color: '#ff4d4f' }}>
-                                    {submission.incorrectCount || 0}
+                                  <Typography.Text style={{ fontSize: '12px', color: theme === 'sun' ? '#666' : '#999' }}>
+                                    Time Limit:
+                                  </Typography.Text>
+                                  <Typography.Text style={{ fontSize: '12px', fontWeight: 500, color: theme === 'sun' ? '#000' : '#fff' }}>
+                                    {location.state?.timeLimit ? `${location.state.timeLimit} minutes` : '-'}
                                   </Typography.Text>
                                 </div>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                  <Space size={8}>
-                                    <MinusCircleOutlined style={{ color: '#faad14', fontSize: '16px' }} />
-                                    <Typography.Text style={{ fontSize: '13px' }}>Unanswered</Typography.Text>
-                                  </Space>
-                                  <Typography.Text strong style={{ fontSize: '16px', color: '#faad14' }}>
-                                    {submission.unansweredCount || 0}
+                                  <Typography.Text style={{ fontSize: '12px', color: theme === 'sun' ? '#666' : '#999' }}>
+                                    Submitted:
+                                  </Typography.Text>
+                                  <Typography.Text style={{ fontSize: '12px', fontWeight: 500, color: theme === 'sun' ? '#000' : '#fff' }}>
+                                    {submission.submittedAt ? new Date(submission.submittedAt).toLocaleDateString('en-US', {
+                                      month: 'short',
+                                      day: 'numeric',
+                                      hour: '2-digit',
+                                      minute: '2-digit'
+                                    }) : '-'}
+                                  </Typography.Text>
+                                </div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                  <Typography.Text style={{ fontSize: '12px', color: theme === 'sun' ? '#666' : '#999' }}>
+                                    Status:
+                                  </Typography.Text>
+                                  {submission.status ? (
+                                    <Space size={4}>
+                                      <CheckCircleOutlined style={{ color: '#52c41a', fontSize: '14px' }} />
+                                      <Typography.Text style={{ fontSize: '12px', fontWeight: 500, color: '#52c41a' }}>
+                                        On Time
+                                      </Typography.Text>
+                                    </Space>
+                                  ) : (
+                                    <Typography.Text style={{ fontSize: '12px', fontWeight: 500, color: theme === 'sun' ? '#000' : '#fff' }}>
+                                      -
+                                    </Typography.Text>
+                                  )}
+                                </div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                  <Typography.Text style={{ fontSize: '12px', color: theme === 'sun' ? '#666' : '#999' }}>
+                                    Method:
+                                  </Typography.Text>
+                                  <Typography.Text style={{ fontSize: '12px', fontWeight: 500, color: theme === 'sun' ? '#000' : '#fff' }}>
+                                    {submission.method || submission.submissionMethod || 'Manual'}
                                   </Typography.Text>
                                 </div>
                               </Space>
