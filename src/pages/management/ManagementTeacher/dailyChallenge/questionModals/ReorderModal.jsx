@@ -31,7 +31,7 @@ const debounce = (func, wait) => {
 
 const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
   const MAX_ITEMS = 10;
-  const [points, setPoints] = useState(1);
+  const [weight, setWeight] = useState(1);
   const [shuffledWords, setShuffledWords] = useState([]);
   const [showBlankPopup, setShowBlankPopup] = useState(false);
   const [popupPosition, setPopupPosition] = useState({ x: 0, y: 0 });
@@ -662,8 +662,8 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
         setShuffledWords(finalWords);
       }
 
-      // Points
-      setPoints(questionData?.points || 1);
+      // Weight
+      setWeight((questionData && (questionData.weight ?? questionData.points)) || 1);
     };
 
     attemptInit();
@@ -1030,7 +1030,7 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
       correctAnswer: correctAnswer, // Human readable: "I go to school every day"
       shuffledWords: shuffledWords,
       blanks: blanks, // Store blanks info
-      points: points,
+      weight: weight,
       content: {
         data: contentData
       }
@@ -1065,7 +1065,7 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
     }
     setShuffledWords([]);
     setBlanks([]);
-    setPoints(1);
+    setWeight(1);
     onCancel();
   };
 
@@ -1092,8 +1092,8 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
 
   const pointsMenu = (
     <InputNumber
-      value={points}
-      onChange={(v) => setPoints(Number(v) || 0)}
+      value={weight}
+      onChange={(v) => setWeight(Number(v) || 0)}
       min={0}
       max={100}
       style={{ width: 100 }}
@@ -1168,7 +1168,7 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
           <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <CheckOutlined style={{ color: '#52c41a', fontSize: '16px' }} />
-            <span style={{ fontSize: '13px', fontWeight: 600, color: '#666' }}>Score</span>
+            <span style={{ fontSize: '13px', fontWeight: 600, color: '#666' }}>Weight</span>
             {pointsMenu}
           </div>
 

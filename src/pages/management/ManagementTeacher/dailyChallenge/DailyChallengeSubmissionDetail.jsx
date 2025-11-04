@@ -159,7 +159,9 @@ const DailyChallengeSubmissionDetail = () => {
         spaceToast.error('Không tìm thấy submissionQuestionId cho section này');
         return;
       }
-      const path = `${base}/daily-challenges/detail/${id}/submission/${submissionId}/feedback/${submissionQuestionId}`;
+      // Use challengeId from submissionData, fallback to id from URL params
+      const challengeId = submissionData?.challenge?.id || id;
+      const path = `${base}/daily-challenges/detail/${challengeId}/submission/${submissionId}/feedback/${submissionQuestionId}`;
       // Only allow writing & speaking
       if (!sec) {
         // Not a writing/speaking section → use existing modal flow
@@ -207,35 +209,37 @@ const DailyChallengeSubmissionDetail = () => {
   // Per-question scores for Writing and Speaking (keyed by submissionQuestionId or questionId)
   const [questionScores, setQuestionScores] = useState({});
   
-  const handleOpenEditFeedback = (id, type = 'question') => {
+  const handleOpenEditFeedback = (sectionIdParam, type = 'question') => {
     // For section (writing/speaking), navigate to grading page with existing data
     if (type === 'section') {
       const isTA = typeof window !== 'undefined' && window.location && /teaching-assistant/.test(window.location.pathname);
       const base = isTA ? '/teaching-assistant' : '/teacher';
-      const findIn = (arr) => (arr || []).find((s) => s.id === id);
+      const findIn = (arr) => (arr || []).find((s) => s.id === sectionIdParam);
       const w = findIn(fakeData?.writingSections);
       const s = findIn(fakeData?.speakingSections);
       const sec = w ? { ...w, __kind: 'writing' } : s ? { ...s, __kind: 'speaking' } : null;
       if (!sec) {
         // fallback to modal like old behavior
-        const key = `${type}-${id}`;
+        const key = `${type}-${sectionIdParam}`;
         const existingFeedback = feedbacks[key] || '';
         let prefillScore = '';
-        const subQId = getSubmissionQuestionIdForSection(id);
+        const subQId = getSubmissionQuestionIdForSection(sectionIdParam);
         if (subQId) prefillScore = questionScores[subQId] ?? '';
-        setFeedbackModal({ visible: true, id, type, feedback: existingFeedback, score: prefillScore, isEdit: true });
+        setFeedbackModal({ visible: true, id: sectionIdParam, type, feedback: existingFeedback, score: prefillScore, isEdit: true });
         return;
       }
-      const submissionQuestionId = getSubmissionQuestionIdForSection(id);
+      const submissionQuestionId = getSubmissionQuestionIdForSection(sectionIdParam);
       if (!submissionQuestionId) {
         spaceToast.error('Không tìm thấy submissionQuestionId cho section này');
         return;
       }
-      const path = `${base}/daily-challenges/detail/${id}/submission/${submissionId}/feedback/${submissionQuestionId}`;
+      // Use challengeId from submissionData, fallback to id from URL params (component-level id from useParams)
+      const challengeId = submissionData?.challenge?.id || id;
+      const path = `${base}/daily-challenges/detail/${challengeId}/submission/${submissionId}/feedback/${submissionQuestionId}`;
       const sectionPayload = sec.__kind === 'writing'
         ? { id: sec.id, sectionTitle: sec.title || 'Writing', sectionsContent: sec.prompt || '' }
         : { id: sec.id, sectionTitle: sec.title || 'Speaking', sectionsContent: sec.transcript || '', sectionsUrl: sec.audioUrl || '' };
-      const studentAns = studentAnswers?.[id] || null;
+      const studentAns = studentAnswers?.[sectionIdParam] || null;
       const existing = submissionQuestionId ? gradingBySubmissionQuestionId[submissionQuestionId] : null;
       const prefillScore = (() => {
         if (existing && (existing.receivedWeight != null)) return existing.receivedWeight;
@@ -263,7 +267,7 @@ const DailyChallengeSubmissionDetail = () => {
       navigate(path, { 
         state: { 
           submissionId, 
-          sectionId: id, 
+          sectionId: sectionIdParam, 
           prefill, 
           backState: { from: 'submission-detail' },
           className,
@@ -1283,15 +1287,28 @@ const DailyChallengeSubmissionDetail = () => {
   // Enter/exit daily challenge menu mode
   useEffect(() => {
     const backPath = `/teacher/daily-challenges/detail/${id}/submissions`;
-    // Preserve subtitle/className from previous page (List) so header shows "Class / Challenge"
-    const preservedSubtitle = dailyChallengeData?.subtitle || null;
-    const preservedClassName = dailyChallengeData?.className || null;
+    // Priority: Use location.state if available (when navigating back from AIGenerateFeedback)
+    // Otherwise preserve subtitle/className from dailyChallengeData
+    let preservedSubtitle = dailyChallengeData?.subtitle || null;
+    let preservedClassName = dailyChallengeData?.className || null;
+    
+    // If location.state has header info, use it to update context
+    if (location?.state?.className && location?.state?.challengeName) {
+      preservedSubtitle = `${location.state.className} / ${location.state.challengeName}`;
+      preservedClassName = location.state.className;
+    } else if (location?.state?.challengeName) {
+      preservedSubtitle = location.state.challengeName;
+    } else if (location?.state?.className) {
+      preservedSubtitle = location.state.className;
+      preservedClassName = location.state.className;
+    }
+    
     enterDailyChallengeMenu(0, preservedSubtitle, backPath, preservedClassName);
     
     return () => {
       // Do not exit here to preserve header info when navigating back to list; list page will re-enter and manage state
     };
-  }, [enterDailyChallengeMenu, id, dailyChallengeData?.subtitle, dailyChallengeData?.className]);
+  }, [enterDailyChallengeMenu, id, dailyChallengeData?.subtitle, dailyChallengeData?.className, location?.state?.className, location?.state?.challengeName]);
 
   // Build question navigation list (must be before early return)
   const getQuestionNavigation = useCallback(() => {
@@ -3860,7 +3877,23 @@ const DailyChallengeSubmissionDetail = () => {
               textShadow: theme === 'sun' ? '0 0 5px rgba(30, 64, 175, 0.3)' : '0 0 15px rgba(134, 134, 134, 0.8)'
             }}>
               {(() => {
-                const base = dailyChallengeData?.subtitle || t('dailyChallenge.dailyChallengeManagement');
+                // Priority: Use location.state if available (when navigating back from AIGenerateFeedback)
+                // Otherwise use dailyChallengeData or fallback to default
+                let base;
+                if (location?.state?.className && location?.state?.challengeName) {
+                  // Build from location.state: "className / challengeName"
+                  base = `${location.state.className} / ${location.state.challengeName}`;
+                } else if (location?.state?.challengeName) {
+                  // Only challengeName available
+                  base = location.state.challengeName;
+                } else if (location?.state?.className) {
+                  // Only className available
+                  base = location.state.className;
+                } else {
+                  // Fallback to dailyChallengeData or default
+                  base = dailyChallengeData?.subtitle || t('dailyChallenge.dailyChallengeManagement');
+                }
+                
                 const student = location?.state?.studentName || submissionData?.student?.name || '';
                 return student ? `${base} / ${student}` : base;
               })()}

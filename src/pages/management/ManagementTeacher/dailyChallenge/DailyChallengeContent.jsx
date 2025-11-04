@@ -207,7 +207,7 @@ const SortablePassageItem = memo(
             <div
               style={{ width: 120, textAlign: 'right', fontWeight: 600 }}
             >
-              {passage.points} {t('dailyChallenge.point') || 'điểm'}
+              {passage.weight} weight
             </div>
             <Space size="small">
               <Tooltip title="Edit">
@@ -601,7 +601,7 @@ const SortablePassageItem = memo(
                     </div>
                     <div className="question-controls">
                       <div style={{ width: 120, textAlign: 'right', fontWeight: 600 }}>
-                        {question.points} {t('dailyChallenge.point') || 'điểm'}
+                        {question.weight} weight
                       </div>
                     </div>
                   </div>
@@ -1005,7 +1005,7 @@ const SortablePassageItem = memo(
     return (
       prevProps.passage.id === nextProps.passage.id &&
       prevProps.passage.content === nextProps.passage.content &&
-      prevProps.passage.points === nextProps.passage.points &&
+      prevProps.passage.weight === nextProps.passage.weight &&
       prevProps.theme === nextProps.theme &&
       prevProps.index === nextProps.index
     );
@@ -1867,6 +1867,7 @@ const SortableQuestionItem = memo(
               borderRadius: '12px',
               padding: '16px'
             }}>
+              <style>{`.rewrite-answer p{margin-top:0;margin-bottom:0}`}</style>
               <div style={{ 
                 fontSize: '14px', 
                 fontWeight: 600, 
@@ -1895,7 +1896,7 @@ const SortableQuestionItem = memo(
                       fontWeight: 500,
                       color: textColor,
                       display: 'flex',
-                      alignItems: 'flex-start',
+                      alignItems: 'center',
                       gap: '10px',
                       boxShadow: '0 2px 6px rgba(34, 197, 94, 0.12)'
                     }}
@@ -1903,6 +1904,8 @@ const SortableQuestionItem = memo(
                     <span style={{
                       fontWeight: 700,
                       color: correctColor,
+                      textAlign: 'center',
+                      
                       fontSize: '13px',
                       minWidth: '20px',
                       lineHeight: '1.4'
@@ -1915,6 +1918,7 @@ const SortableQuestionItem = memo(
                         lineHeight: '1.4',
                         fontWeight: 400
                       }}
+                      className="rewrite-answer"
                       dangerouslySetInnerHTML={{ __html: item.value }} 
                     />
                   </div>
@@ -1932,6 +1936,7 @@ const SortableQuestionItem = memo(
               borderRadius: '12px',
               padding: '16px'
             }}>
+              <style>{`.rewrite-answer p{margin-top:0;margin-bottom:0}`}</style>
               <div style={{ 
                 fontSize: '14px', 
                 fontWeight: 600, 
@@ -1960,7 +1965,7 @@ const SortableQuestionItem = memo(
                       fontWeight: 500,
                       color: textColor,
                       display: 'flex',
-                      alignItems: 'flex-start',
+                      alignItems: 'center',
                       gap: '10px',
                       boxShadow: '0 2px 6px rgba(34, 197, 94, 0.12)'
                     }}
@@ -1968,8 +1973,13 @@ const SortableQuestionItem = memo(
                     <span style={{
                       fontWeight: 700,
                       color: correctColor,
+                      textAlign: 'center',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
                       fontSize: '13px',
                       minWidth: '20px',
+                      height: '20px',
                       lineHeight: '1.4'
                     }}>
                       {idx + 1}.
@@ -1981,6 +1991,7 @@ const SortableQuestionItem = memo(
                         marginBottom: '0px',
                         fontWeight: 400,
                       }}
+                      className="rewrite-answer"
                       dangerouslySetInnerHTML={{ __html: ans.answer }} 
                     />
                   </div>
@@ -2038,7 +2049,7 @@ const SortableQuestionItem = memo(
           </div>
           <div className="question-controls">
             <div style={{ width: 120, textAlign: 'right', fontWeight: 600 }}>
-              {question.points} {t('dailyChallenge.point') || 'điểm'}
+              {question.weight} weight
             </div>
             <Space size="small">
               <Tooltip title="Edit">
@@ -2686,7 +2697,7 @@ const SortableQuestionItem = memo(
       prevProps.question.question === nextProps.question.question &&
       prevProps.question.questionText === nextProps.question.questionText &&
       prevProps.question.correctAnswer === nextProps.question.correctAnswer &&
-      prevProps.question.points === nextProps.question.points &&
+      prevProps.question.weight === nextProps.question.weight &&
       prevProps.question.type === nextProps.question.type &&
       prevProps.theme === nextProps.theme &&
       prevProps.index === nextProps.index &&
@@ -2889,12 +2900,15 @@ const DailyChallengeContent = () => {
             }
             
             // Create passage object
+            const totalWeight = Array.isArray(questionsList)
+              ? questionsList.reduce((sum, q) => sum + (Number(q?.weight ?? q?.score ?? 0) || 0), 0)
+              : 0;
             const passage = {
               id: section.id || `passage_${index}`,
               type: passageType,
               content: section.sectionsContent || '',
               audioUrl: section.resourceType === 'FILE' ? section.sectionsUrl : undefined, // Audio URL for listening passages
-              points: 1, // Default points
+              weight: totalWeight, // Sum of question weights in this section
               questions: questionsList.map((question, qIndex) => {
                 // Get question content - parse from content.data array
                 const contentData = question.content?.data || [];
@@ -2915,7 +2929,7 @@ const DailyChallengeContent = () => {
                     id: opt.key || Date.now(),
                     text: opt.text
                   })),
-                  points: question.score || 1,
+                  weight: question.weight || 1,
                   timeLimit: 1,
                   sectionId: section.id,
                   sectionTitle: section.sectionTitle,
@@ -2971,7 +2985,7 @@ const DailyChallengeContent = () => {
                 options: options,
                 content: question.content, // Preserve original content for FillBlank
                 incorrectOptions: incorrectOptions,
-                points: question.score || 1,
+                weight: question.weight || 1,
                 timeLimit: 1,
                 sectionId: section.id,
                 sectionTitle: section.sectionTitle,
@@ -3230,7 +3244,7 @@ const DailyChallengeContent = () => {
         return {
           questionText: questionData.question,
           orderNumber,
-          score: questionData.points || 0.5,
+          weight: (questionData.weight ?? questionData.points ?? 0.5),
           questionType: questionType === 'MULTIPLE_SELECT' ? 'MULTIPLE_SELECT' : 'MULTIPLE_CHOICE',
           content: {
             data: questionData.options ? questionData.options.map((option, optIndex) => ({
@@ -3245,7 +3259,7 @@ const DailyChallengeContent = () => {
         return {
           questionText: questionData.question,
           orderNumber,
-          score: questionData.points || 0.5,
+          weight: (questionData.weight ?? questionData.points ?? 0.5),
           questionType: 'TRUE_OR_FALSE',
           content: {
             data: questionData.options ? questionData.options.map((option, optIndex) => ({
@@ -3260,7 +3274,7 @@ const DailyChallengeContent = () => {
         return {
           questionText: questionData.questionText || questionData.question,
           orderNumber,
-          score: questionData.points || 0.5,
+          weight: (questionData.weight ?? questionData.points ?? 0.5),
           questionType: 'FILL_IN_THE_BLANK',
           content: {
             data: (questionData.content?.data || [])
@@ -3271,7 +3285,7 @@ const DailyChallengeContent = () => {
         return {
           questionText: questionData.questionText || questionData.question,
           orderNumber,
-          score: questionData.points || 0.5,
+          weight: (questionData.weight ?? questionData.points ?? 0.5),
           questionType: 'DROPDOWN',
           content: {
             data: (questionData.content?.data || [])
@@ -3282,7 +3296,7 @@ const DailyChallengeContent = () => {
         return {
           questionText: questionData.questionText || questionData.question,
           orderNumber,
-          score: questionData.points || 1,
+          weight: (questionData.weight ?? questionData.points ?? 1),
           questionType: 'DRAG_AND_DROP',
           content: {
             data: (questionData.content?.data || [])
@@ -3293,7 +3307,7 @@ const DailyChallengeContent = () => {
         return {
           questionText: questionData.questionText || questionData.question,
           orderNumber,
-          score: questionData.points || 1,
+          weight: (questionData.weight ?? questionData.points ?? 1),
           questionType: 'REARRANGE',
           content: {
             data: (questionData.content?.data || [])
@@ -3304,7 +3318,7 @@ const DailyChallengeContent = () => {
         return {
           questionText: questionData.questionText || questionData.question,
           orderNumber,
-          score: questionData.points || 1,
+          weight: (questionData.weight ?? questionData.points ?? 1),
           questionType: 'REWRITE',
           content: {
             data: (questionData.content?.data || [])
@@ -3315,7 +3329,7 @@ const DailyChallengeContent = () => {
         return {
           questionText: questionData.question,
           orderNumber,
-          score: questionData.points || 0.5,
+          weight: (questionData.weight ?? questionData.points ?? 0.5),
           questionType: questionData.type ? questionData.type.toUpperCase().replace(/-/g, '_') : 'MULTIPLE_CHOICE',
           content: {
             data: questionData.options ? questionData.options.map((option, optIndex) => ({
@@ -3991,7 +4005,7 @@ const DailyChallengeContent = () => {
 
   const handlePointsChange = useCallback((questionId, value) => {
     setQuestions(prev => prev.map(q => 
-      q.id === questionId ? { ...q, points: value, isModified: true } : q
+      q.id === questionId ? { ...q, weight: value, isModified: true } : q
     ));
   }, []);
 
@@ -4107,7 +4121,7 @@ const DailyChallengeContent = () => {
 
   const handlePassagePointsChange = useCallback((passageId, value) => {
     setPassages(prev => prev.map(p => 
-      p.id === passageId ? { ...p, points: value, isModified: true } : p
+      p.id === passageId ? { ...p, weight: value, isModified: true } : p
     ));
   }, []);
 

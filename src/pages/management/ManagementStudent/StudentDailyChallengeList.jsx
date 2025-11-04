@@ -69,8 +69,10 @@ const transformApiData = (apiData) => {
           isFirstChallengeInLesson: index === 0,
           totalChallengesInLesson: challenges.length,
           rowSpan: index === 0 ? challenges.length : 0,
-          totalScore: challenge.totalScore,
-          scorePercentage: challenge.scorePercentage,
+          totalScore: challenge.finalScore ?? challenge.totalScore,
+          scorePercentage: null,
+          totalWeight: challenge.totalWeight,
+          maxPossibleWeight: challenge.maxPossibleWeight,
           submissionChallengeId: challenge.submissionChallengeId,
           submissionStatus: challenge.submissionStatus,
           late: challenge.late,
@@ -282,9 +284,12 @@ const StudentDailyChallengeList = () => {
 
   const handleViewResult = (challenge) => {
       // Navigate to result view
-      navigate(`/student/daily-challenges/result/${challenge.id}`, {
+      // Use submissionChallengeId in URL params if available, otherwise use challenge.id
+      const resultId = challenge.submissionChallengeId || challenge.id;
+      navigate(`/student/daily-challenges/result/${resultId}`, {
       state: {
         challengeId: challenge.id,
+        submissionChallengeId: challenge.submissionChallengeId,
         challengeName: challenge.title,
         lessonName: challenge.lessonName,
         challengeType: challenge.type,
@@ -451,10 +456,7 @@ const StudentDailyChallengeList = () => {
           return <span></span>;
         }
 
-        const hasPercentage = record.scorePercentage !== null && record.scorePercentage !== undefined;
-        const computedScore = hasPercentage
-          ? Number(record.scorePercentage) / 10 // convert percentage (0-100) to 10-point scale
-          : totalScore;
+        const computedScore = totalScore;
 
         if (computedScore === null || computedScore === undefined) {
           return (
@@ -476,14 +478,20 @@ const StudentDailyChallengeList = () => {
         };
 
         return (
-          <span style={{
-            fontSize: '18px',
-            color: getScoreColor(Number(computedScore)),
-            fontWeight: 600,
-          }}>
-            {(typeof computedScore === 'number' ? computedScore.toFixed(1) : (parseFloat(computedScore)?.toFixed ? parseFloat(computedScore).toFixed(1) : String(computedScore)))}
-            /10
-          </span>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', lineHeight: 1.2 }}>
+            <span style={{
+              fontSize: '18px',
+              color: getScoreColor(Number(computedScore)),
+              fontWeight: 600,
+            }}>
+              {(typeof computedScore === 'number' ? computedScore.toFixed(1) : (parseFloat(computedScore)?.toFixed ? parseFloat(computedScore).toFixed(1) : String(computedScore)))}
+              /10
+            </span>
+            <span style={{ fontSize: '12px', color: '#888', marginTop: 2 }}>
+              {(typeof record.totalWeight === 'number' ? record.totalWeight.toFixed(2) : (record.totalWeight ?? '-'))}
+              /{record.maxPossibleWeight ?? '-'}
+            </span>
+          </div>
         );
       },
     },

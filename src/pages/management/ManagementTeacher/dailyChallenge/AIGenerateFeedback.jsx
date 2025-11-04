@@ -541,18 +541,28 @@ const AIGenerateFeedback = () => {
         if (!mounted) return;
         const questionText = q?.questionText || '';
         const submittedVal = q?.submittedContent?.data?.[0]?.value || '';
+        const questionType = q?.questionType || '';
+        const isSpeaking = questionType === 'SPEAKING' || prefill?.type === 'speaking';
+        
         // Map to local section/studentAnswer so left container can render prompt (top) and student's answer (below)
         setSection(prev => ({
           ...(prev || {}),
-          id: prev?.id || q?.submissionQuestionId || q?.questionId || 'section-writing',
-          title: prev?.title || 'Writing',
-          sectionTitle: prev?.sectionTitle || 'Writing',
+          id: prev?.id || q?.submissionQuestionId || q?.questionId || (isSpeaking ? 'section-speaking' : 'section-writing'),
+          title: prev?.title || (isSpeaking ? 'Speaking' : 'Writing'),
+          sectionTitle: prev?.sectionTitle || (isSpeaking ? 'Speaking' : 'Writing'),
           prompt: questionText,
           transcript: questionText,
           sectionsContent: questionText,
+          sectionsUrl: prev?.sectionsUrl || q?.sectionsUrl || null,
         }));
         if (submittedVal && typeof submittedVal === 'string') {
-          setStudentAnswer({ text: submittedVal });
+          if (isSpeaking) {
+            // For speaking, store audio URL
+            setStudentAnswer({ audioUrl: submittedVal, audio: submittedVal });
+          } else {
+            // For writing, store text
+            setStudentAnswer({ text: submittedVal });
+          }
         }
       } catch (e) {
         // ignore silently, will fallback to existing data
@@ -591,8 +601,16 @@ const AIGenerateFeedback = () => {
     const path = role === 'teaching_assistant'
       ? `/teaching-assistant/daily-challenges/detail/${challengeId}/submission/${submissionId}`
       : `/teacher/daily-challenges/detail/${challengeId}/submission/${submissionId}`;
-    navigate(path, { state: location.state?.backState });
-  }, [navigate, user, challengeId, submissionId, location.state]);
+    navigate(path, { 
+      state: {
+        ...location.state?.backState,
+        // Preserve header information when navigating back
+        className: className || location.state?.className,
+        challengeName: challengeName || location.state?.challengeName,
+        studentName: studentName || location.state?.studentName,
+      }
+    });
+  }, [navigate, user, challengeId, submissionId, location.state, className, challengeName, studentName]);
 
   const buildPromptFromContent = useCallback(() => {
     const essay = studentAnswer?.text || studentAnswer?.essay || '';
@@ -1040,6 +1058,7 @@ const AIGenerateFeedback = () => {
                               position: 'relative',
                               userSelect: 'text',
                               cursor: 'text',
+                              marginBottom: 16,
                             }}
                             onMouseUp={(e) => {
                               if (section?.id) {
@@ -1053,6 +1072,33 @@ const AIGenerateFeedback = () => {
                             }}
                           >
                             {renderHtmlAsOrderedTextAndImages(durationInfo.cleanedContent)}
+                          </div>
+                          
+                          {/* Student's Audio Recording */}
+                          <div style={{
+                            background: theme === 'sun' ? '#ffffff' : 'rgba(255,255,255,0.03)',
+                            borderRadius: 12,
+                            border: `1px solid ${theme === 'sun' ? '#e8e8e8' : 'rgba(255, 255, 255, 0.1)'}`,
+                            padding: 16,
+                            marginTop: 16,
+                          }}>
+                            <Typography.Text style={{ fontSize: '16px', fontWeight: '600', marginBottom: '12px', display: 'block' }}>
+                              Student's Recording:
+                            </Typography.Text>
+                            {studentAnswer?.audioUrl || studentAnswer?.audio ? (
+                              <div>
+                                <audio controls style={{ width: '100%' }}>
+                                  <source src={studentAnswer?.audioUrl || studentAnswer?.audio} type="audio/mpeg" />
+                                  <source src={studentAnswer?.audioUrl || studentAnswer?.audio} type="audio/wav" />
+                                  <source src={studentAnswer?.audioUrl || studentAnswer?.audio} type="audio/mp3" />
+                                  Your browser does not support the audio element.
+                                </audio>
+                              </div>
+                            ) : (
+                              <Typography.Text type="secondary" style={{ fontSize: '14px', fontStyle: 'italic' }}>
+                                No recording submitted
+                              </Typography.Text>
+                            )}
                           </div>
                         </>
                       );

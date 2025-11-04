@@ -58,7 +58,7 @@ const throttle = (func, limit) => {
 const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 	const [editorContent, setEditorContent] = useState([]);
 	const [dropdowns, setDropdowns] = useState([]);
-	const [points, setPoints] = useState(1);
+    const [weight, setWeight] = useState(1);
 	const [questionCharCount, setQuestionCharCount] = useState(0);
 	const [selectedImage, setSelectedImage] = useState(null);
 	const [saving, setSaving] = useState(false);
@@ -265,7 +265,7 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 				setEditorContent([{ type: 'text', content: '', id: Date.now() }]);
 				setDropdowns([]);
 			}
-			setPoints(questionData?.points || 1);
+            setWeight((questionData && (questionData.weight ?? questionData.points)) || 1);
 		}
 	}, [questionData, visible, parseQuestionText]);
 
@@ -1792,7 +1792,7 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 			content: {
 				data: contentData,
 			},
-			points: points,
+            weight: weight,
 			// For backward compatibility
 			question: questionText,
 			correctAnswer: dropdowns.map((d) => d.correctAnswer).join(', '),
@@ -1827,7 +1827,7 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 		}
 		setDropdowns([]);
 		setEditorContent([]);
-		setPoints(1);
+        setWeight(1);
 		setSelectedImage(null);
 		setShowDropdownPopup(false);
 		editorInitializedRef.current = false;
@@ -1997,10 +1997,10 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 		};
 	}, [showDropdownPopup]);
 
-	const pointsMenu = (
+    const pointsMenu = (
 		<InputNumber
-			value={points}
-			onChange={(v) => setPoints(Number(v) || 0)}
+            value={weight}
+            onChange={(v) => setWeight(Number(v) || 0)}
 			min={0}
 			max={100}
 			style={{ width: 100 }}
@@ -2112,7 +2112,7 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 					<div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
 						<div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
 							<CheckOutlined style={{ color: '#52c41a', fontSize: '16px' }} />
-							<span style={{ fontSize: '13px', fontWeight: 600, color: '#666' }}>Score</span>
+                            <span style={{ fontSize: '13px', fontWeight: 600, color: '#666' }}>Weight</span>
 							{pointsMenu}
 						</div>
 

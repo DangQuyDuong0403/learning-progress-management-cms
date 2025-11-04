@@ -315,8 +315,8 @@ const dailyChallengeApi = {
 	// Endpoint theo thực tế (ảnh swagger): GET /grading/submission-challenges/{submissionId}
 	getSubmissionGradingResult: (submissionId) => {
 		const url = `/grading/submission-challenges/${submissionId}`;
-		console.log('GetSubmissionGradingResult API - URL:', url);
-		console.log('GetSubmissionGradingResult API - SubmissionId:', submissionId);
+		console.log('GetSubmissionGradingResult API (new) - URL:', url);
+		console.log('GetSubmissionGradingResult API (new) - SubmissionId:', submissionId);
     
 		return axiosClient.get(url, {
 			headers: {
