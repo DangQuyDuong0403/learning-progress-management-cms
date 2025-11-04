@@ -31,7 +31,7 @@ const DailyChallengeSubmissionList = () => {
   const { id } = useParams();
   const location = useLocation();
   const { user } = useSelector((state) => state.auth);
-  const { enterDailyChallengeMenu, exitDailyChallengeMenu, updateChallengeCount } = useDailyChallengeMenu();
+  const { enterDailyChallengeMenu, exitDailyChallengeMenu, updateChallengeCount, dailyChallengeData } = useDailyChallengeMenu();
   
   // Set page title
   usePageTitle('Daily Challenge Management / Submissions');
@@ -129,15 +129,18 @@ const DailyChallengeSubmissionList = () => {
       } else if (challengeInfo.challengeName) {
         return challengeInfo.challengeName;
       }
-      return null;
+      // Fallback to previously preserved subtitle from context when no navigation state
+      return (typeof dailyChallengeData?.subtitle === 'string' && dailyChallengeData.subtitle.trim().length > 0)
+        ? dailyChallengeData.subtitle
+        : null;
     };
 
-    enterDailyChallengeMenu(0, getSubtitle(), getBackPath(), challengeInfo.className);
+    enterDailyChallengeMenu(0, getSubtitle(), getBackPath(), challengeInfo.className || dailyChallengeData?.className || null);
     
     return () => {
       exitDailyChallengeMenu();
     };
-  }, [enterDailyChallengeMenu, exitDailyChallengeMenu, id, location.state, user]);
+  }, [enterDailyChallengeMenu, exitDailyChallengeMenu, id, location.state, user, dailyChallengeData?.subtitle, dailyChallengeData?.className]);
 
   // Update total count in floating menu
   useEffect(() => {
@@ -150,7 +153,9 @@ const DailyChallengeSubmissionList = () => {
   };
 
   const handleViewClick = (submission) => {
-    navigate(`/teacher/daily-challenges/detail/${id}/submission/${submission.submissionId}`);
+    navigate(`/teacher/daily-challenges/detail/${id}/submission/${submission.submissionId}`,
+      { state: { studentName: submission?.studentName || null } }
+    );
   };
 
   // Fetch when pagination or search changes

@@ -20,7 +20,7 @@ const DailyChallengePerformance = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useSelector((state) => state.auth);
-  const { enterDailyChallengeMenu, exitDailyChallengeMenu } = useDailyChallengeMenu();
+  const { enterDailyChallengeMenu, exitDailyChallengeMenu, dailyChallengeData } = useDailyChallengeMenu();
   
   // Get data from navigation state or fetch from API
   const [challengeInfo, setChallengeInfo] = useState(() => {
@@ -197,7 +197,10 @@ const DailyChallengePerformance = () => {
       } else if (challengeInfo.challengeName) {
         return challengeInfo.challengeName;
       }
-      return null;
+      // Fallback to preserved subtitle from context if navigation/query lacks info
+      return (typeof dailyChallengeData?.subtitle === 'string' && dailyChallengeData.subtitle.trim().length > 0)
+        ? dailyChallengeData.subtitle
+        : null;
     };
     
     // Enter daily challenge menu mode with backPath and subtitle
@@ -205,14 +208,14 @@ const DailyChallengePerformance = () => {
       0, 
       getSubtitle(), 
       getBackPath(), 
-      challengeInfo.className
+      challengeInfo.className || dailyChallengeData?.className || null
     );
     
     // Exit daily challenge menu mode when component unmounts
     return () => {
       exitDailyChallengeMenu();
     };
-  }, [enterDailyChallengeMenu, exitDailyChallengeMenu, challengeInfo, user]);
+  }, [enterDailyChallengeMenu, exitDailyChallengeMenu, challengeInfo, user, dailyChallengeData?.subtitle, dailyChallengeData?.className]);
 
   useEffect(() => {
     fetchPerformanceData();

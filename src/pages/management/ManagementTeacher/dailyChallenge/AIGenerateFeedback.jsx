@@ -12,7 +12,6 @@ import dailyChallengeApi from '../../../../apis/backend/dailyChallengeManagement
 import { spaceToast } from '../../../../component/SpaceToastify';
 
 const { Title, Text } = Typography;
-const { TextArea } = Input;
 
 // A grading/feedback screen mirroring the layout of AIGenerateQuestions but with
 // left = student's submission (writing/listening) and right = score + feedback (with AI assist)
@@ -21,29 +20,133 @@ const AIGenerateFeedback = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { theme } = useTheme();
-  const { id: challengeId, submissionId: routeSubmissionId, sectionId: routeSectionId } = useParams();
+  const { id: challengeId, submissionId: routeSubmissionId, submissionQuestionId: routeSubmissionQuestionId } = useParams();
   const { user } = useSelector((state) => state.auth);
 
   // From navigation state if provided
   const nav = location.state || {};
   const submissionId = nav.submissionId || routeSubmissionId;
-  const sectionId = nav.sectionId || routeSectionId;
+  const submissionQuestionId = nav.prefill?.submissionQuestionId || routeSubmissionQuestionId;
+  const sectionId = nav.sectionId || null; // Still used for display, but submissionQuestionId is primary
   const prefill = nav.prefill || {};
 
   const primaryColor = theme === 'sun' ? '#1890ff' : '#8B5CF6';
   const primaryColorWithAlpha = theme === 'sun' ? 'rgba(24, 144, 255, 0.1)' : 'rgba(139, 92, 246, 0.1)';
+
+  // Helper: strip html to plain text for speaking transcripts coming from rich editors
+  const stripHtmlToText = React.useCallback((html) => {
+    if (!html || typeof html !== 'string') return '';
+    try {
+      const withoutTags = html.replace(/<[^>]*>/g, ' ');
+      const normalizedSpaces = withoutTags.replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();
+      return normalizedSpaces;
+    } catch {
+      return html;
+    }
+  }, []);
+
+  // Helper: extract image srcs from html (data URLs or http urls)
+  const extractImageSources = React.useCallback((html) => {
+    if (!html || typeof html !== 'string') return [];
+    try {
+      const results = [];
+      const regex = /<img[^>]*src=["']([^"']+)["'][^>]*>/gi;
+      let match;
+      while ((match = regex.exec(html)) !== null) {
+        if (match[1]) results.push(match[1]);
+      }
+      return results;
+    } catch {
+      return [];
+    }
+  }, []);
+
+  // Helper: extract duration marker from content (e.g., [[dur_3]] -> { minutes: 3, found: true })
+  const extractDurationMarker = React.useCallback((html) => {
+    if (!html || typeof html !== 'string') return { found: false, minutes: null, cleanedContent: html };
+    const durPattern = /\[\[dur_(\d+)\]\]/g;
+    let match = durPattern.exec(html);
+    if (match) {
+      const minutes = parseInt(match[1], 10);
+      const cleanedContent = html.replace(durPattern, '').trim();
+      return { found: true, minutes, cleanedContent };
+    }
+    return { found: false, minutes: null, cleanedContent: html };
+  }, []);
+
+  // Helper: render HTML as ordered plain-text chunks + inline images (preserve order)
+  const renderHtmlAsOrderedTextAndImages = React.useCallback((html) => {
+    if (!html || typeof html !== 'string') return null;
+    try {
+      const container = document.createElement('div');
+      container.innerHTML = html;
+      const elements = [];
+      const normalizeText = (t) => (t || '')
+        .replace(/\u00A0/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+      const walk = (node, keyPrefix = 'n') => {
+        if (!node) return;
+        if (node.nodeType === Node.TEXT_NODE) {
+          const text = normalizeText(node.nodeValue || '');
+          if (text) elements.push(<span key={`${keyPrefix}-${elements.length}`}>{text}</span>);
+          return;
+        }
+        if (node.nodeType === Node.ELEMENT_NODE) {
+          if (node.tagName === 'IMG') {
+            const src = node.getAttribute('src');
+            if (src) {
+              elements.push(
+                <img
+                  key={`${keyPrefix}-img-${elements.length}`}
+                  src={src}
+                  alt="speaking-img"
+                  style={{ maxWidth: '100%', width: 120, height: 120, objectFit: 'cover', borderRadius: 8, border: '1px solid rgba(0,0,0,0.06)', margin: '6px 8px' }}
+                />
+              );
+            }
+            return;
+          }
+          // For other elements, recurse through children in order
+          node.childNodes.forEach((child, idx) => walk(child, `${keyPrefix}-${idx}`));
+        }
+      };
+      container.childNodes.forEach((child, idx) => walk(child, `root-${idx}`));
+      return elements;
+    } catch {
+      return stripHtmlToText(html);
+    }
+  }, [stripHtmlToText]);
 
   // Content on the left
   const [loading, setLoading] = useState(false);
   const [submission, setSubmission] = useState(null);
   const [section, setSection] = useState(prefill.section || null);
   const [studentAnswer, setStudentAnswer] = useState(prefill.studentAnswer || null);
+  
+  // Header data
+  const [className, setClassName] = useState(nav.className || null);
+  const [challengeName, setChallengeName] = useState(nav.challengeName || null);
+  const [studentName, setStudentName] = useState(nav.studentName || null);
 
   // Right side controls
   const [score, setScore] = useState(typeof prefill.score === 'number' ? prefill.score : '');
   const [feedback, setFeedback] = useState(prefill.feedback || '');
   const [isGenerating, setIsGenerating] = useState(false);
   const [saving, setSaving] = useState(false);
+  const handleClear = useCallback(() => {
+    try {
+      setScore('');
+      setFeedback('');
+      const secId = section?.id || prefill?.section?.id;
+      if (secId) {
+        setWritingSectionFeedbacks(prev => ({ ...prev, [secId]: [] }));
+      } else {
+        setWritingSectionFeedbacks({});
+      }
+      spaceToast.success('Cleared. Click Save to apply.');
+    } catch {}
+  }, [section?.id, prefill?.section?.id]);
   // Right panel mode: null (choose), 'manual', 'ai'
   const [rightMode, setRightMode] = useState(null);
   const [hasAIGenerated, setHasAIGenerated] = useState(false);
@@ -384,6 +487,21 @@ const AIGenerateFeedback = () => {
         const data = res?.data?.data || res?.data || null;
         if (!mounted || !data) return;
         setSubmission(data);
+        
+        // Extract header data
+        if (data.student?.name && !studentName) {
+          setStudentName(data.student.name);
+        }
+        if (data.className && !className) {
+          setClassName(data.className);
+        }
+        if (data.dailyChallenge?.name && !challengeName) {
+          setChallengeName(data.dailyChallenge.name);
+        }
+        if (data.challengeName && !challengeName) {
+          setChallengeName(data.challengeName);
+        }
+        
         if (!section) {
           const allSections = [].concat(
             data.readingSections || [],
@@ -410,6 +528,64 @@ const AIGenerateFeedback = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [submissionId, sectionId]);
 
+  // Fetch prompt + student's answer by submissionQuestionId (writing/speaking) when provided
+  useEffect(() => {
+    let mounted = true;
+    const fetchSubmissionQuestion = async () => {
+      const subQid = submissionQuestionId || prefill?.submissionQuestionId;
+      if (!subQid) return;
+      try {
+        setLoading(true);
+        const res = await dailyChallengeApi.getSubmissionQuestion(subQid);
+        const q = res?.data?.data || res?.data || {};
+        if (!mounted) return;
+        const questionText = q?.questionText || '';
+        const submittedVal = q?.submittedContent?.data?.[0]?.value || '';
+        // Map to local section/studentAnswer so left container can render prompt (top) and student's answer (below)
+        setSection(prev => ({
+          ...(prev || {}),
+          id: prev?.id || q?.submissionQuestionId || q?.questionId || 'section-writing',
+          title: prev?.title || 'Writing',
+          sectionTitle: prev?.sectionTitle || 'Writing',
+          prompt: questionText,
+          transcript: questionText,
+          sectionsContent: questionText,
+        }));
+        if (submittedVal && typeof submittedVal === 'string') {
+          setStudentAnswer({ text: submittedVal });
+        }
+      } catch (e) {
+        // ignore silently, will fallback to existing data
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchSubmissionQuestion();
+    return () => { mounted = false; };
+  }, [submissionQuestionId, prefill?.submissionQuestionId]);
+
+  // Prefill highlight comments (if navigated from Edit with existing grading)
+  useEffect(() => {
+    const highlights = Array.isArray(prefill?.highlightComments) ? prefill.highlightComments : [];
+    const secId = (section && section.id) || (prefill?.section && prefill.section.id);
+    if (secId && highlights.length > 0) {
+      const mapped = highlights
+        .map((c) => ({
+          id: String(c?.id || `feedback-${Date.now()}-${Math.random()}`),
+          startIndex: Number(c?.startIndex ?? 0),
+          endIndex: Number(c?.endIndex ?? 0),
+          comment: String(c?.comment || ''),
+          timestamp: c?.timestamp || new Date().toISOString(),
+        }))
+        .filter((fb) => fb.endIndex > fb.startIndex && fb.comment);
+      if (mapped.length > 0) {
+        setWritingSectionFeedbacks((prev) => ({ ...prev, [secId]: mapped }));
+      }
+    }
+    // run once when section id becomes available or prefill changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [section?.id, prefill?.highlightComments]);
+
   const handleBack = useCallback(() => {
     const role = user?.role?.toLowerCase();
     const path = role === 'teaching_assistant'
@@ -433,19 +609,8 @@ const AIGenerateFeedback = () => {
         spaceToast.error('AI grading hiện chỉ hỗ trợ cho bài Writing');
         return;
       }
-      // Prefer dedicated grading endpoint for writing if we can find submissionQuestionId
-      let writingSubmissionQuestionId = null;
-      if (sectionType === 'writing') {
-        // Prefer ID passed from SubmissionDetail
-        writingSubmissionQuestionId = prefill?.submissionQuestionId || null;
-        if (!writingSubmissionQuestionId) {
-          const details = (submission?.sectionDetails) || (submission?.data?.sectionDetails) || [];
-          const targetSectionId = sectionId || section?.id;
-          const match = Array.isArray(details) ? details.find(sd => String(sd?.section?.id) === String(targetSectionId)) : null;
-          const firstQ = match?.questionResults?.[0];
-          writingSubmissionQuestionId = firstQ?.submissionQuestionId || firstQ?.id || null;
-        }
-      }
+      // Use submissionQuestionId from URL or prefill
+      const writingSubmissionQuestionId = submissionQuestionId || prefill?.submissionQuestionId || null;
 
       if (!writingSubmissionQuestionId) {
         spaceToast.error('Không tìm thấy submissionQuestionId của section để chấm AI');
@@ -493,30 +658,20 @@ const AIGenerateFeedback = () => {
     } finally {
       setIsGenerating(false);
     }
-  }, [submissionId, sectionId, sectionType, studentAnswer, section, prefill.rubric]);
+  }, [submissionId, submissionQuestionId, sectionId, sectionType, studentAnswer, section, prefill?.submissionQuestionId, prefill?.rubric]);
 
   const handleSave = useCallback(async () => {
     try {
       setSaving(true);
-      // Only support writing grading using submissionQuestionId
-      let writingSubmissionQuestionId = null;
-      if (sectionType === 'writing') {
-        writingSubmissionQuestionId = prefill?.submissionQuestionId || null;
-        if (!writingSubmissionQuestionId) {
-          const details = (submission?.sectionDetails) || (submission?.data?.sectionDetails) || [];
-          const targetSectionId = sectionId || section?.id;
-          const match = Array.isArray(details) ? details.find(sd => String(sd?.section?.id) === String(targetSectionId)) : null;
-          const firstQ = match?.questionResults?.[0];
-          writingSubmissionQuestionId = firstQ?.submissionQuestionId || firstQ?.id || null;
-        }
-      }
+      // Use submissionQuestionId from URL or prefill (works for both writing and speaking)
+      const writingSubmissionQuestionId = submissionQuestionId || prefill?.submissionQuestionId || null;
 
       if (!writingSubmissionQuestionId) {
         spaceToast.error('Không tìm thấy submissionQuestionId của section để lưu chấm điểm');
         return;
       }
 
-      // Build payload
+      // Build payload (BE updated)
       const cleanedFeedback = (feedback || '').replace(/<[^>]*>/g, '').trim();
       const numericScore = Number(score);
       const sectionKey = section?.id;
@@ -531,7 +686,7 @@ const AIGenerateFeedback = () => {
         : [];
 
       const payload = {
-        score: Number.isFinite(numericScore) ? numericScore : 0,
+        receivedWeight: Number.isFinite(numericScore) ? numericScore : 0,
         feedback: cleanedFeedback,
         highlightComments,
       };
@@ -545,23 +700,79 @@ const AIGenerateFeedback = () => {
     } finally {
       setSaving(false);
     }
-  }, [sectionType, prefill?.submissionQuestionId, submission, sectionId, section, writingSectionFeedbacks, score, feedback, t, handleBack]);
+  }, [sectionType, submissionQuestionId, prefill?.submissionQuestionId, submission, sectionId, section, writingSectionFeedbacks, score, feedback, handleBack]);
 
   return (
     <ThemedLayout
       customHeader={(
         <header className={`themed-header ${theme}-header`}>
           <nav className="themed-navbar">
-            <div className="themed-navbar-content" style={{ justifyContent: 'space-between', width: '100%' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                <Button icon={<ArrowLeftOutlined />} onClick={handleBack} className={`class-menu-back-button ${theme}-class-menu-back-button`} style={{ height: 32, borderRadius: 8 }}>
+            <div className="themed-navbar-content">
+              <div className="themed-navbar-brand" style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '16px',
+                flex: 1
+              }}>
+                <Button
+                  icon={<ArrowLeftOutlined />}
+                  onClick={handleBack}
+                  className={`daily-challenge-menu-back-button ${theme}-daily-challenge-menu-back-button`}
+                  style={{
+                    height: '32px',
+                    borderRadius: '8px',
+                    fontWeight: '500',
+                    fontSize: '14px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    border: '1px solid rgba(0, 0, 0, 0.1)',
+                    background: '#ffffff',
+                    color: '#000000',
+                    backdropFilter: 'blur(10px)',
+                    transition: 'all 0.3s ease'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.target.style.transform = 'translateY(-2px)';
+                    e.target.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.15)';
+                    e.target.style.filter = 'brightness(0.95)';
+                    e.target.style.borderColor = 'rgba(0, 0, 0, 0.2)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.style.transform = 'translateY(0)';
+                    e.target.style.boxShadow = 'none';
+                    e.target.style.filter = 'none';
+                    e.target.style.borderColor = 'rgba(0, 0, 0, 0.1)';
+                  }}
+                >
                   {t('common.back')}
                 </Button>
-                <div style={{ fontSize: 18, fontWeight: 600, color: theme === 'sun' ? '#1E40AF' : '#FFFFFF' }}>
-                  {t('dailyChallenge.feedbackAndGrading') || 'Feedback & Grading'}
-                </div>
+                <div style={{
+                  height: '24px',
+                  width: '1px',
+                  backgroundColor: theme === 'sun' ? 'rgba(30, 64, 175, 0.3)' : 'rgba(255, 255, 255, 0.3)'
+                }} />
+                <h2 style={{
+                  margin: 0,
+                  fontSize: '20px',
+                  fontWeight: '600',
+                  color: theme === 'sun' ? '#1e40af' : '#fff',
+                  textShadow: theme === 'sun' ? '0 0 5px rgba(30, 64, 175, 0.3)' : '0 0 15px rgba(134, 134, 134, 0.8)'
+                }}>
+                  {(() => {
+                    const parts = [];
+                    if (className) parts.push(className);
+                    if (challengeName) parts.push(challengeName);
+                    if (studentName) parts.push(studentName);
+                    return parts.length > 0 ? parts.join(' / ') : (t('dailyChallenge.feedbackAndGrading') || 'Feedback & Grading');
+                  })()}
+                </h2>
               </div>
-              <div>
+              {/* Right actions */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginLeft: 'auto' }}>
+                <Button onClick={handleClear} icon={<CloseCircleOutlined />} style={{ height: 40, borderRadius: 8 }}>
+                  Clear
+                </Button>
                 <Button icon={<SaveOutlined />} onClick={handleSave} loading={saving} style={{ height: 40, borderRadius: 8, padding: '0 24px', border: 'none', background: theme === 'sun' ? 'linear-gradient(135deg, #66AEFF, #3C99FF)' : 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)', color: '#000' }}>
                   {t('common.save')}
                 </Button>
@@ -625,6 +836,24 @@ const AIGenerateFeedback = () => {
               <div ref={leftContainerRef} style={{ marginTop: 12, fontSize: 15, lineHeight: 1.8, position: 'relative' }}>
                 {sectionType === 'writing' ? (
                   <>
+                  {/* Prompt (top) */}
+                  <div
+                    style={{
+                      marginBottom: 12,
+                      background: theme === 'sun' ? '#ffffff' : 'rgba(255,255,255,0.04)',
+                      borderRadius: 12,
+                      border: theme === 'sun' ? '1px solid rgba(0,0,0,0.06)' : '1px solid rgba(255,255,255,0.08)',
+                      padding: 16,
+                    }}
+                  >
+                    <Typography.Text strong style={{ display: 'block', marginBottom: 8 }}>Prompt</Typography.Text>
+                    <div
+                      className="html-content"
+                      style={{ color: theme === 'sun' ? '#0f172a' : '#d1cde8', lineHeight: 1.7 }}
+                      dangerouslySetInnerHTML={{ __html: (section?.prompt || section?.sectionsContent || '') }}
+                    />
+                  </div>
+                  {/* Student's Answer (below) */}
                   <div
                     style={{
                       whiteSpace: 'pre-wrap',
@@ -633,7 +862,9 @@ const AIGenerateFeedback = () => {
                       borderRadius: 12,
                       border: theme === 'sun' ? '1px solid rgba(0,0,0,0.06)' : '1px solid rgba(255,255,255,0.08)',
                       padding: 16,
-                      minHeight: 420,
+                      minHeight: 120,
+                      maxHeight: 420,
+                      overflowY: 'auto',
                       position: 'relative',
                       userSelect: 'text',
                       cursor: 'text',
@@ -755,42 +986,77 @@ const AIGenerateFeedback = () => {
                   </>
                 ) : sectionType === 'speaking' ? (
                   <>
-                    {section?.sectionsUrl ? (
-                      <audio controls src={section.sectionsUrl} style={{ width: '100%', marginBottom: 16 }} />
-                    ) : null}
-                    <div
-                      style={{
-                        whiteSpace: 'pre-wrap',
-                        color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)',
-                        background: theme === 'sun' ? '#ffffff' : 'rgba(255,255,255,0.04)',
-                        borderRadius: 12,
-                        border: theme === 'sun' ? '1px solid rgba(0,0,0,0.06)' : '1px solid rgba(255,255,255,0.08)',
-                        padding: 16,
-                        minHeight: 240,
-                        position: 'relative',
-                        userSelect: 'text',
-                        cursor: 'text',
-                      }}
-                      onMouseUp={(e) => {
-                        if (section?.id) {
-                          handleTextSelection(section.id, e.currentTarget);
-                        }
-                      }}
-                      onMouseDown={() => {
-                        setTimeout(() => {
-                          setTextSelection({ visible: false, sectionId: null, startIndex: null, endIndex: null, position: { x: 0, y: 0 } });
-                        }, 0);
-                      }}
-                    >
-                      {section?.id && (writingSectionFeedbacks[section.id]?.length > 0) ? (
-                        renderEssayWithHighlights(
-                          (section?.transcript || section?.sectionsContent || ''),
-                          section.id
-                        )
-                      ) : (
-                        (section?.transcript || section?.sectionsContent || '')
-                      )}
-                    </div>
+                    {(() => {
+                      const rawContent = section?.transcript || section?.sectionsContent || '';
+                      const durationInfo = extractDurationMarker(rawContent);
+                      return (
+                        <>
+                          {/* Voice Recording Badge - extracted from [[dur_3]] */}
+                          {durationInfo.found && (
+                            <div style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '8px',
+                              padding: '6px 12px',
+                              marginBottom: '12px',
+                              borderRadius: '10px',
+                              background: theme === 'sun'
+                                ? 'rgba(24, 144, 255, 0.08)'
+                                : 'rgba(139, 92, 246, 0.15)',
+                              border: `2px solid ${theme === 'sun' ? 'rgba(24, 144, 255, 0.4)' : 'rgba(139, 92, 246, 0.4)'}`,
+                              color: theme === 'sun' ? '#1890ff' : '#8B5CF6',
+                              fontSize: '14px',
+                              fontWeight: 600,
+                              boxShadow: theme === 'sun'
+                                ? '0 2px 6px rgba(24, 144, 255, 0.12)'
+                                : '0 2px 6px rgba(139, 92, 246, 0.12)'
+                            }}>
+                              <span style={{ fontSize: '16px' }}>🎤</span>
+                              <span>Voice Recording {durationInfo.minutes} {durationInfo.minutes === 1 ? 'minute' : 'minutes'}</span>
+                            </div>
+                          )}
+                          {/* Audio File Player */}
+                          {section?.sectionsUrl ? (
+                            <div style={{ marginBottom: 16 }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                                <span style={{ fontSize: 18, color: theme === 'sun' ? '#8B5CF6' : '#A78BFA' }}>🎵</span>
+                                <Typography.Text strong style={{ color: theme === 'sun' ? '#1E40AF' : '#8377A0' }}>
+                                  Audio File
+                                </Typography.Text>
+                              </div>
+                              <audio controls src={section.sectionsUrl} style={{ width: '100%' }} />
+                            </div>
+                          ) : null}
+                          {/* Transcript Content (with [[dur_X]] removed) */}
+                          <div
+                            style={{
+                              whiteSpace: 'pre-wrap',
+                              color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)',
+                              background: theme === 'sun' ? '#ffffff' : 'rgba(255,255,255,0.04)',
+                              borderRadius: 12,
+                              border: theme === 'sun' ? '1px solid rgba(0,0,0,0.06)' : '1px solid rgba(255,255,255,0.08)',
+                              padding: 16,
+                              minHeight: 240,
+                              position: 'relative',
+                              userSelect: 'text',
+                              cursor: 'text',
+                            }}
+                            onMouseUp={(e) => {
+                              if (section?.id) {
+                                handleTextSelection(section.id, e.currentTarget);
+                              }
+                            }}
+                            onMouseDown={() => {
+                              setTimeout(() => {
+                                setTextSelection({ visible: false, sectionId: null, startIndex: null, endIndex: null, position: { x: 0, y: 0 } });
+                              }, 0);
+                            }}
+                          >
+                            {renderHtmlAsOrderedTextAndImages(durationInfo.cleanedContent)}
+                          </div>
+                        </>
+                      );
+                    })()}
                   </>
                 ) : (
                   <>

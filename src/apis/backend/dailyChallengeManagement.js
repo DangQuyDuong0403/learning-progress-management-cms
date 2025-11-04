@@ -352,14 +352,26 @@ const dailyChallengeApi = {
   },
 
   // Grade a specific submission-question (used for Writing AI/manual grading)
-  // Endpoint: POST /grading/submission-questions/{submissionQuestionId}/grading
+  // Endpoint: POST /grading/submission-questions/{submissionQuestionId}
   gradeSubmissionQuestion: (submissionQuestionId, payload) => {
-    const url = `/grading/submission-questions/${submissionQuestionId}/grading`;
+    const url = `/grading/submission-questions/${submissionQuestionId}`;
     console.log('GradeSubmissionQuestion API - URL:', url, 'Payload:', payload);
     return axiosClient.post(url, payload, {
       headers: {
         'accept': '*/*',
         'Content-Type': 'application/json',
+      },
+    });
+  },
+
+  // Get existing grading for a submission-question
+  // Endpoint: GET /grading/submission-questions/{submissionQuestionId}
+  getSubmissionQuestionGrading: (submissionQuestionId) => {
+    const url = `/grading/submission-questions/${submissionQuestionId}`;
+    console.log('GetSubmissionQuestionGrading API - URL:', url);
+    return axiosClient.get(url, {
+      headers: {
+        'accept': '*/*',
       },
     });
   },
@@ -503,10 +515,21 @@ const dailyChallengeApi = {
 		return axiosClient.get(url, {
 			headers: {
 				'accept': '*/*',
-			}
+			},
 		});
 	},
 
+	// Get a single submission question detail (prompt + student's submitted content)
+	// Endpoint: GET /submission/question/{submissionQuestionId}
+	getSubmissionQuestion: (submissionQuestionId) => {
+		const url = `/submission/question/${submissionQuestionId}`;
+		console.log('GetSubmissionQuestion API - URL:', url);
+		return axiosClient.get(url, {
+			headers: {
+				'accept': '*/*',
+			},
+		});
+	},
 	// Get draft submission with questions and saved answers (without correct answers)
 	getDraftSubmission: (submissionChallengeId) => {
 		const url = `/submission/${submissionChallengeId}/draft`;
@@ -515,7 +538,7 @@ const dailyChallengeApi = {
 		return axiosClient.get(url, {
 			headers: {
 				'accept': '*/*',
-			}
+			},
 		});
 	}
 };

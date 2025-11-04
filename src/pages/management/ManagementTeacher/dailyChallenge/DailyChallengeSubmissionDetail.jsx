@@ -38,7 +38,7 @@ import ThemedLayout from "../../../../component/teacherlayout/ThemedLayout";
 import LoadingWithEffect from "../../../../component/spinner/LoadingWithEffect";
 import "./DailyChallengeSubmissionDetail.css";
 import { spaceToast } from "../../../../component/SpaceToastify";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useTheme } from "../../../../contexts/ThemeContext";
 import { useDailyChallengeMenu } from "../../../../contexts/DailyChallengeMenuContext";
@@ -52,6 +52,7 @@ const DailyChallengeSubmissionDetail = () => {
   const { theme } = useTheme();
   const { id, submissionId } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const { enterDailyChallengeMenu, exitDailyChallengeMenu, dailyChallengeData } = useDailyChallengeMenu();
   
   // Set page title
@@ -113,6 +114,9 @@ const DailyChallengeSubmissionDetail = () => {
   
   const [isAntiCheatCollapsed, setIsAntiCheatCollapsed] = useState(true);
   
+  // Cache existing grading per submissionQuestionId
+  const [gradingBySubmissionQuestionId, setGradingBySubmissionQuestionId] = useState({});
+  
   // Handlers for feedback modal
   // Helper to locate submissionQuestionId for a section
   const getSubmissionQuestionIdForSection = (sectionId) => {
@@ -121,6 +125,18 @@ const DailyChallengeSubmissionDetail = () => {
     if (!sec) return null;
     const q = (sec.questions && sec.questions[0]) || null;
     return (q && (q.submissionQuestionId || q.id)) || null;
+  };
+
+  // Check if a section (writing/speaking) already has grading saved
+  const hasExistingGradingForSection = (sectionId) => {
+    const subQId = getSubmissionQuestionIdForSection(sectionId);
+    if (!subQId) return false;
+    const g = gradingBySubmissionQuestionId[subQId];
+    if (!g) return false;
+    const hasScore = Number.isFinite(Number(g.receivedWeight));
+    const hasFb = typeof g.feedback === 'string' && g.feedback.trim() !== '';
+    const hasHighlights = Array.isArray(g.highlightComments) && g.highlightComments.length > 0;
+    return !!(hasScore || hasFb || hasHighlights);
   };
 
   const handleOpenAddFeedback = (sectionId, type = 'question') => {
@@ -139,9 +155,11 @@ const DailyChallengeSubmissionDetail = () => {
       };
       const sec = locateSection(sectionId);
       const submissionQuestionId = getSubmissionQuestionIdForSection(sectionId);
-      const isWriting = sec && sec.__kind === 'writing';
-      const lastIdForUrl = (isWriting && submissionQuestionId) ? submissionQuestionId : sectionId;
-      const path = `${base}/daily-challenges/detail/${id}/submission/${submissionId}/feedback/${lastIdForUrl}`;
+      if (!submissionQuestionId) {
+        spaceToast.error('Không tìm thấy submissionQuestionId cho section này');
+        return;
+      }
+      const path = `${base}/daily-challenges/detail/${id}/submission/${submissionId}/feedback/${submissionQuestionId}`;
       // Only allow writing & speaking
       if (!sec) {
         // Not a writing/speaking section → use existing modal flow
@@ -158,12 +176,25 @@ const DailyChallengeSubmissionDetail = () => {
         const subQId = getSubmissionQuestionIdForSection(sectionId);
         return subQId ? (questionScores[subQId] ?? '') : '';
       })();
+      
+      // Extract header data
+      const className = dailyChallengeData?.className || null;
+      const subtitle = dailyChallengeData?.subtitle || '';
+      // If className is separate, subtitle might be just challenge name, otherwise split "Class / Challenge"
+      const challengeName = className 
+        ? (subtitle.includes(' / ') ? subtitle.split(' / ').slice(1).join(' / ') : subtitle || null)
+        : (subtitle.includes(' / ') ? subtitle.split(' / ')[1] : (subtitle || null));
+      const studentName = submissionData?.student?.name || location?.state?.studentName || null;
+      
       navigate(path, {
         state: {
           submissionId: submissionId,
           sectionId: sectionId,
           prefill: { score: prefillScore, section: sectionPayload, studentAnswer: studentAns, type: derivedType, submissionQuestionId },
           backState: { from: 'submission-detail' },
+          className,
+          challengeName,
+          studentName,
         },
       });
       return;
@@ -177,21 +208,75 @@ const DailyChallengeSubmissionDetail = () => {
   const [questionScores, setQuestionScores] = useState({});
   
   const handleOpenEditFeedback = (id, type = 'question') => {
+    // For section (writing/speaking), navigate to grading page with existing data
+    if (type === 'section') {
+      const isTA = typeof window !== 'undefined' && window.location && /teaching-assistant/.test(window.location.pathname);
+      const base = isTA ? '/teaching-assistant' : '/teacher';
+      const findIn = (arr) => (arr || []).find((s) => s.id === id);
+      const w = findIn(fakeData?.writingSections);
+      const s = findIn(fakeData?.speakingSections);
+      const sec = w ? { ...w, __kind: 'writing' } : s ? { ...s, __kind: 'speaking' } : null;
+      if (!sec) {
+        // fallback to modal like old behavior
+        const key = `${type}-${id}`;
+        const existingFeedback = feedbacks[key] || '';
+        let prefillScore = '';
+        const subQId = getSubmissionQuestionIdForSection(id);
+        if (subQId) prefillScore = questionScores[subQId] ?? '';
+        setFeedbackModal({ visible: true, id, type, feedback: existingFeedback, score: prefillScore, isEdit: true });
+        return;
+      }
+      const submissionQuestionId = getSubmissionQuestionIdForSection(id);
+      if (!submissionQuestionId) {
+        spaceToast.error('Không tìm thấy submissionQuestionId cho section này');
+        return;
+      }
+      const path = `${base}/daily-challenges/detail/${id}/submission/${submissionId}/feedback/${submissionQuestionId}`;
+      const sectionPayload = sec.__kind === 'writing'
+        ? { id: sec.id, sectionTitle: sec.title || 'Writing', sectionsContent: sec.prompt || '' }
+        : { id: sec.id, sectionTitle: sec.title || 'Speaking', sectionsContent: sec.transcript || '', sectionsUrl: sec.audioUrl || '' };
+      const studentAns = studentAnswers?.[id] || null;
+      const existing = submissionQuestionId ? gradingBySubmissionQuestionId[submissionQuestionId] : null;
+      const prefillScore = (() => {
+        if (existing && (existing.receivedWeight != null)) return existing.receivedWeight;
+        return submissionQuestionId ? (questionScores[submissionQuestionId] ?? '') : '';
+      })();
+      const prefill = {
+        score: prefillScore,
+        section: sectionPayload,
+        studentAnswer: studentAns,
+        type: sec.__kind,
+        submissionQuestionId,
+        feedback: existing?.feedback || '',
+        highlightComments: Array.isArray(existing?.highlightComments) ? existing.highlightComments : [],
+      };
+      
+      // Extract header data
+      const className = dailyChallengeData?.className || null;
+      const subtitle = dailyChallengeData?.subtitle || '';
+      // If className is separate, subtitle might be just challenge name, otherwise split "Class / Challenge"
+      const challengeName = className 
+        ? (subtitle.includes(' / ') ? subtitle.split(' / ').slice(1).join(' / ') : subtitle || null)
+        : (subtitle.includes(' / ') ? subtitle.split(' / ')[1] : (subtitle || null));
+      const studentName = submissionData?.student?.name || location?.state?.studentName || null;
+      
+      navigate(path, { 
+        state: { 
+          submissionId, 
+          sectionId: id, 
+          prefill, 
+          backState: { from: 'submission-detail' },
+          className,
+          challengeName,
+          studentName,
+        } 
+      });
+      return;
+    }
+    // Question-level fallback (legacy)
     const key = `${type}-${id}`;
     const existingFeedback = feedbacks[key] || '';
-    let prefillScore = '';
-    if (type === 'section') {
-      const subQId = getSubmissionQuestionIdForSection(id);
-      if (subQId) prefillScore = questionScores[subQId] ?? '';
-    }
-    setFeedbackModal({
-      visible: true,
-      id,
-      type,
-      feedback: existingFeedback,
-      score: prefillScore,
-      isEdit: true,
-    });
+    setFeedbackModal({ visible: true, id, type, feedback: existingFeedback, score: '', isEdit: true });
   };
   
   const handleCloseFeedbackModal = () => {
@@ -870,6 +955,13 @@ const DailyChallengeSubmissionDetail = () => {
               const current = studentAnswersMap[section.id] || {};
               studentAnswersMap[section.id] = { ...current, text: essayText };
             }
+          } else if (q.questionType === 'SPEAKING') {
+            // For speaking, store student's audio recording per section id to render on the right
+            const audioUrl = submittedContent?.[0]?.value || '';
+            if (audioUrl) {
+              const current = studentAnswersMap[section.id] || {};
+              studentAnswersMap[section.id] = { ...current, audioUrl: audioUrl, audio: audioUrl };
+            }
           }
 
           // Map options for multiple choice/select
@@ -1071,6 +1163,44 @@ const DailyChallengeSubmissionDetail = () => {
         console.warn('GetSubmissionGradingResult failed:', e?.response?.data || e?.message);
       }
 
+      // Fetch existing grading for writing/speaking sections to toggle Add/Edit buttons
+      try {
+        const subQIds = [];
+        writingSections.forEach((sec) => {
+          const subQId = (sec?.questions && sec.questions[0]?.submissionQuestionId) || null;
+          if (subQId) subQIds.push(subQId);
+        });
+        speakingSections.forEach((sec) => {
+          const subQId = (sec?.questions && sec.questions[0]?.submissionQuestionId) || null;
+          if (subQId) subQIds.push(subQId);
+        });
+        if (subQIds.length > 0) {
+          const results = await Promise.allSettled(
+            subQIds.map((sid) => dailyChallengeApi.getSubmissionQuestionGrading(sid))
+          );
+          const map = {};
+          results.forEach((r, idx) => {
+            if (r.status === 'fulfilled') {
+              const data = r.value?.data?.data || r.value?.data || null;
+              if (data) {
+                const subQId = subQIds[idx];
+                map[subQId] = {
+                  receivedWeight: data.receivedWeight,
+                  feedback: data.feedback,
+                  highlightComments: data.highlightComments || [],
+                  graderId: data.graderId,
+                  graderName: data.graderName,
+                  timestamp: data.timestamp,
+                };
+              }
+            }
+          });
+          setGradingBySubmissionQuestionId(map);
+        }
+      } catch (err) {
+        // ignore grading prefetch errors
+      }
+
       // Set anti-cheat data (mock data for now, can be replaced with API data later)
       // TODO: Replace with actual anti-cheat data from API when available
       const mockAntiCheatData = {
@@ -1153,12 +1283,15 @@ const DailyChallengeSubmissionDetail = () => {
   // Enter/exit daily challenge menu mode
   useEffect(() => {
     const backPath = `/teacher/daily-challenges/detail/${id}/submissions`;
-    enterDailyChallengeMenu(0, null, backPath);
+    // Preserve subtitle/className from previous page (List) so header shows "Class / Challenge"
+    const preservedSubtitle = dailyChallengeData?.subtitle || null;
+    const preservedClassName = dailyChallengeData?.className || null;
+    enterDailyChallengeMenu(0, preservedSubtitle, backPath, preservedClassName);
     
     return () => {
-      exitDailyChallengeMenu();
+      // Do not exit here to preserve header info when navigating back to list; list page will re-enter and manage state
     };
-  }, [enterDailyChallengeMenu, exitDailyChallengeMenu, id]);
+  }, [enterDailyChallengeMenu, id, dailyChallengeData?.subtitle, dailyChallengeData?.className]);
 
   // Build question navigation list (must be before early return)
   const getQuestionNavigation = useCallback(() => {
@@ -1345,6 +1478,8 @@ const DailyChallengeSubmissionDetail = () => {
       // axiosClient returns response.data by default; support both shapes just in case
       const beMsg = res?.message || res?.msg || res?.data?.message || res?.data?.msg ;
       spaceToast.success(beMsg);
+      // Reload data to update sidebar and all related data
+      await fetchSubmissionDetail();
     } catch (err) {
       console.error('Save grading failed:', err);
       spaceToast.error(err?.response?.data?.message || 'Failed to save grading');
@@ -1444,6 +1579,8 @@ const DailyChallengeSubmissionDetail = () => {
       setTeacherFeedback(overallFeedbackDraft);
       setOverallFeedbackModalVisible(false);
       spaceToast.success(beMsg);
+      // Reload data to update sidebar and all related data
+      await fetchSubmissionDetail();
     } catch (err) {
       console.error('Save overall feedback failed:', err);
       spaceToast.error(err?.response?.data?.message || 'Failed to save feedback');
@@ -1880,6 +2017,19 @@ const DailyChallengeSubmissionDetail = () => {
     );
   };
 
+  // Helper: extract duration marker from content (e.g., [[dur_3]] -> { minutes: 3, found: true })
+  const extractDurationMarker = (html) => {
+    if (!html || typeof html !== 'string') return { found: false, minutes: null, cleanedContent: html };
+    const durPattern = /\[\[dur_(\d+)\]\]/g;
+    let match = durPattern.exec(html);
+    if (match) {
+      const minutes = parseInt(match[1], 10);
+      const cleanedContent = html.replace(durPattern, '').trim();
+      return { found: true, minutes, cleanedContent };
+    }
+    return { found: false, minutes: null, cleanedContent: html };
+  };
+
   // Render Reading Section
   const renderReadingSection = (section, index) => {
     return (
@@ -1974,7 +2124,7 @@ const DailyChallengeSubmissionDetail = () => {
             </Typography.Text>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            {!getFeedback(section.id, 'section') ? (
+            {!hasExistingGradingForSection(section.id) ? (
               <>
                 <Button
                   size="small"
@@ -1986,15 +2136,6 @@ const DailyChallengeSubmissionDetail = () => {
               </>
             ) : (
               <>
-                <Button
-                  danger
-                  size="small"
-                  icon={<DeleteOutlined />}
-                  onClick={() => handleDeleteFeedbackDirect(section.id, 'section')}
-                  style={{ fontSize: '13px', height: '28px', padding: '0 12px' }}
-                >
-                  Delete
-                </Button>
                 <Button
                   size="small"
                   onClick={() => handleOpenEditFeedback(section.id, 'section')}
@@ -2329,7 +2470,7 @@ const DailyChallengeSubmissionDetail = () => {
             </Typography.Text>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            {!getFeedback(section.id, 'section') ? (
+            {!hasExistingGradingForSection(section.id) ? (
               <>
                 <Button
                   size="small"
@@ -2345,19 +2486,6 @@ const DailyChallengeSubmissionDetail = () => {
               </>
             ) : (
               <>
-                <Button
-                  danger
-                  size="small"
-                  icon={<DeleteOutlined />}
-                  onClick={() => handleDeleteFeedbackDirect(section.id, 'section')}
-                  style={{
-                    fontSize: '13px',
-                    height: '28px',
-                    padding: '0 12px'
-                  }}
-                >
-                  Delete
-                </Button>
                 <Button
                   size="small"
                   onClick={() => handleOpenEditFeedback(section.id, 'section')}
@@ -2390,16 +2518,38 @@ const DailyChallengeSubmissionDetail = () => {
             }}>
             {hasAudio && section.audioUrl ? (
               <>
-                {/* Maximum Recording Time */}
-                <div style={{
-                  marginBottom: '16px',
-                  fontWeight: '600',
-                  fontSize: '20px',
-                  color: theme === 'sun' ? '#1E40AF' : '#1F2937',
-                  textAlign: 'left'
-                }}>
-                  🎤 Maximum limit 3 minutes
-                </div>
+                {(() => {
+                  const rawTranscript = section.transcript || '';
+                  const durationInfo = extractDurationMarker(rawTranscript);
+                  return (
+                    <>
+                      {/* Voice Recording Badge - extracted from [[dur_3]] */}
+                      {durationInfo.found && (
+                        <div style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '8px',
+                          padding: '6px 12px',
+                          marginBottom: '12px',
+                          borderRadius: '10px',
+                          background: theme === 'sun'
+                            ? 'rgba(24, 144, 255, 0.08)'
+                            : 'rgba(139, 92, 246, 0.15)',
+                          border: `2px solid ${theme === 'sun' ? 'rgba(24, 144, 255, 0.4)' : 'rgba(139, 92, 246, 0.4)'}`,
+                          color: theme === 'sun' ? '#1890ff' : '#8B5CF6',
+                          fontSize: '14px',
+                          fontWeight: 600,
+                          boxShadow: theme === 'sun'
+                            ? '0 2px 6px rgba(24, 144, 255, 0.12)'
+                            : '0 2px 6px rgba(139, 92, 246, 0.12)'
+                        }}>
+                          <span style={{ fontSize: '16px' }}>🎤</span>
+                          <span>Voice Recording {durationInfo.minutes} {durationInfo.minutes === 1 ? 'minute' : 'minutes'}</span>
+                        </div>
+                      )}
+                    </>
+                  );
+                })()}
 
                 {/* Audio Player */}
                 <div style={{
@@ -2511,7 +2661,7 @@ const DailyChallengeSubmissionDetail = () => {
                   </div>
                 </div>
 
-                {/* Transcript Content */}
+                {/* Transcript Content (with [[dur_X]] removed) */}
                 {section.transcript && (
                   <div style={{
                     background: '#ffffff',
@@ -2526,7 +2676,7 @@ const DailyChallengeSubmissionDetail = () => {
                       ? '0 2px 8px rgba(0, 0, 0, 0.1)' 
                       : '0 2px 8px rgba(138, 122, 255, 0.2)'
                   }}>
-                    <div dangerouslySetInnerHTML={{ __html: section.transcript }} />
+                    <div dangerouslySetInnerHTML={{ __html: extractDurationMarker(section.transcript || '').cleanedContent }} />
                   </div>
                 )}
               </>
@@ -3709,7 +3859,11 @@ const DailyChallengeSubmissionDetail = () => {
               color: theme === 'sun' ? '#1e40af' : '#fff',
               textShadow: theme === 'sun' ? '0 0 5px rgba(30, 64, 175, 0.3)' : '0 0 15px rgba(134, 134, 134, 0.8)'
             }}>
-              {t('dailyChallenge.dailyChallengeManagement')}
+              {(() => {
+                const base = dailyChallengeData?.subtitle || t('dailyChallenge.dailyChallengeManagement');
+                const student = location?.state?.studentName || submissionData?.student?.name || '';
+                return student ? `${base} / ${student}` : base;
+              })()}
             </h2>
           </div>
           {/* Right actions */}
@@ -5030,6 +5184,11 @@ const DailyChallengeSubmissionDetail = () => {
             style={{ height: '36px', borderRadius: '6px', padding: '0 22px' }}
           >
             Cancel
+          </Button>,
+          <Button key="clear" onClick={() => setOverallFeedbackDraft('')}
+            style={{ height: '36px', borderRadius: '6px', padding: '0 22px' }}
+          >
+            Clear
           </Button>,
           <Button key="save" type="primary" loading={savingFeedback} onClick={handleSaveOverallFeedback}
             style={{
