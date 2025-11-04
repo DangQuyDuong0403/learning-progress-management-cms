@@ -102,16 +102,13 @@ const DailyChallengeSubmissionDetail = () => {
   const [savingFeedback, setSavingFeedback] = useState(false);
   const [savingGrading, setSavingGrading] = useState(false);
   
-  // AI feedback state
-  const [aiFeedback, setAiFeedback] = useState('');
-  const [generatingAiFeedback, setGeneratingAiFeedback] = useState(false);
   
   // Performance collapse state
   const [isPerformanceCollapsed, setIsPerformanceCollapsed] = useState(false);
   
   // Other sections collapse states (default collapsed)
   const [isTeacherFeedbackCollapsed, setIsTeacherFeedbackCollapsed] = useState(true);
-  const [isAiFeedbackCollapsed, setIsAiFeedbackCollapsed] = useState(true);
+  
   const [isAntiCheatCollapsed, setIsAntiCheatCollapsed] = useState(true);
   
   // Handlers for feedback modal
@@ -124,20 +121,54 @@ const DailyChallengeSubmissionDetail = () => {
     return (q && (q.submissionQuestionId || q.id)) || null;
   };
 
-  const handleOpenAddFeedback = (id, type = 'question') => {
-    let prefillScore = '';
+  const handleOpenAddFeedback = (sectionId, type = 'question') => {
+    // Navigate to AI feedback grading page for section type
     if (type === 'section') {
-      const subQId = getSubmissionQuestionIdForSection(id);
-      if (subQId) prefillScore = questionScores[subQId] ?? '';
+      const isTA = typeof window !== 'undefined' && window.location && /teaching-assistant/.test(window.location.pathname);
+      const base = isTA ? '/teaching-assistant' : '/teacher';
+      // Build prefill data from the already loaded submission (to show immediately on the left panel)
+      const locateSection = (sid) => {
+        const findIn = (arr) => (arr || []).find((s) => s.id === sid);
+        const w = findIn(fakeData?.writingSections);
+        if (w) return { ...w, __kind: 'writing' };
+        const s = findIn(fakeData?.speakingSections);
+        if (s) return { ...s, __kind: 'speaking' };
+        return null; // Limit to writing & speaking only
+      };
+      const sec = locateSection(sectionId);
+      const submissionQuestionId = getSubmissionQuestionIdForSection(sectionId);
+      const isWriting = sec && sec.__kind === 'writing';
+      const lastIdForUrl = (isWriting && submissionQuestionId) ? submissionQuestionId : sectionId;
+      const path = `${base}/daily-challenges/detail/${id}/submission/${submissionId}/feedback/${lastIdForUrl}`;
+      // Only allow writing & speaking
+      if (!sec) {
+        // Not a writing/speaking section → use existing modal flow
+        let prefillScore = '';
+        setFeedbackModal({ visible: true, id: sectionId, type, feedback: '', score: prefillScore, isEdit: false });
+        return;
+      }
+      const sectionPayload = sec.__kind === 'writing'
+        ? { id: sec.id, sectionTitle: sec.title || 'Writing', sectionsContent: sec.prompt || '' }
+        : { id: sec.id, sectionTitle: sec.title || 'Speaking', sectionsContent: sec.transcript || '', sectionsUrl: sec.audioUrl || '' };
+      const studentAns = studentAnswers?.[sectionId] || null;
+      const derivedType = sec.__kind; // only 'writing' or 'speaking'
+      const prefillScore = (() => {
+        const subQId = getSubmissionQuestionIdForSection(sectionId);
+        return subQId ? (questionScores[subQId] ?? '') : '';
+      })();
+      navigate(path, {
+        state: {
+          submissionId: submissionId,
+          sectionId: sectionId,
+          prefill: { score: prefillScore, section: sectionPayload, studentAnswer: studentAns, type: derivedType, submissionQuestionId },
+          backState: { from: 'submission-detail' },
+        },
+      });
+      return;
     }
-    setFeedbackModal({
-      visible: true,
-      id,
-      type,
-      feedback: '',
-      score: prefillScore,
-      isEdit: false,
-    });
+    // Fallback to modal for question-specific feedback
+    let prefillScore = '';
+    setFeedbackModal({ visible: true, id, type, feedback: '', score: prefillScore, isEdit: false });
   };
 
   // Per-question scores for Writing and Speaking (keyed by submissionQuestionId or questionId)
@@ -189,7 +220,7 @@ const DailyChallengeSubmissionDetail = () => {
           }));
         }
       }
-      spaceToast.success(feedbackModal.isEdit ? 'Feedback updated successfully' : 'Feedback added successfully');
+      // No toast here; header Save will show BE message
       handleCloseFeedbackModal();
     }
   };
@@ -203,7 +234,7 @@ const DailyChallengeSubmissionDetail = () => {
         delete newFeedbacks[key];
         return newFeedbacks;
       });
-      spaceToast.success('Feedback deleted successfully');
+      // Keep delete success toast for UX
       handleCloseFeedbackModal();
     }
   };
@@ -216,7 +247,7 @@ const DailyChallengeSubmissionDetail = () => {
       delete newFeedbacks[key];
       return newFeedbacks;
     });
-    spaceToast.success('Feedback deleted successfully');
+    // Keep delete success toast for UX
   };
 
   // Memoized handlers for feedback modal input to prevent lag
@@ -386,7 +417,7 @@ const DailyChallengeSubmissionDetail = () => {
         }
       });
       
-      spaceToast.success(commentModal.isEdit ? 'Comment updated successfully' : 'Comment added successfully');
+      // Keep comment toasts for UX; unrelated to header Save
       setCommentModal({
         visible: false,
         sectionId: null,
@@ -413,7 +444,7 @@ const DailyChallengeSubmissionDetail = () => {
           return { ...prev, [sectionId]: updated };
         });
         
-        spaceToast.success('Comment deleted successfully');
+        // Keep delete success toast for UX
         setShowCommentSidebar(false);
         setSelectedComment(null);
       }
@@ -1023,9 +1054,6 @@ const DailyChallengeSubmissionDetail = () => {
           if (typeof gradingData.teacherFeedback === 'string') {
             setTeacherFeedback(gradingData.teacherFeedback);
           }
-          if (typeof gradingData.aiSummary === 'string') {
-            setAiFeedback(gradingData.aiSummary);
-          }
         }
       } catch (e) {
         // Non-blocking: ignore if grading summary not available
@@ -1274,6 +1302,7 @@ const DailyChallengeSubmissionDetail = () => {
 
   const { student, submission } = submissionData;
   const { questions, readingSections, listeningSections, writingSections, speakingSections } = fakeData;
+  const hasWritingOrSpeaking = (Array.isArray(writingSections) && writingSections.length > 0) || (Array.isArray(speakingSections) && speakingSections.length > 0);
 
   // Handlers for score modal
   const handleOpenAddScore = () => {
@@ -1294,53 +1323,17 @@ const DailyChallengeSubmissionDetail = () => {
     const subId = submissionId || submissionData?.id;
     try {
       setSavingGrading(true);
-
-      // Base payload
+      // Only summary payload per new API
+      const stripHtml = (html) => (html || '').replace(/<[^>]*>/g, '').trim();
       const payload = {
-        totalScore: submission?.score ?? 0,
-        overallFeedback: (teacherFeedback || '').trim(),
-        questionGradings: []
+        totalScore: Number(submission?.score ?? 0),
+        overallFeedback: stripHtml(teacherFeedback),
       };
 
-      // Writing: include per-section grading with highlights
-      if (Array.isArray(writingSections) && writingSections.length > 0) {
-        writingSections.forEach((sec) => {
-          const qId = (sec.questions && (sec.questions[0]?.submissionQuestionId || sec.questions[0]?.id)) || sec.id;
-          const fb = getFeedback(sec.id, 'section') || '';
-          const highlights = Array.isArray(writingSectionFeedbacks?.[sec.id])
-            ? writingSectionFeedbacks[sec.id].map((h) => ({
-                startIndex: h.startIndex ?? 0,
-                endIndex: h.endIndex ?? 0,
-                comment: h.comment || '',
-                id: h.id || undefined,
-                timestamp: h.timestamp || undefined,
-              }))
-            : [];
-          payload.questionGradings.push({
-            submissionQuestionId: qId,
-            score: Number(questionScores[qId]) || 0,
-            feedback: fb,
-            highlightComments: highlights,
-          });
-        });
-      }
-
-      // Speaking: include per-section grading (no highlights)
-      if (Array.isArray(speakingSections) && speakingSections.length > 0) {
-        speakingSections.forEach((sec) => {
-          const qId = (sec.questions && (sec.questions[0]?.submissionQuestionId || sec.questions[0]?.id)) || sec.id;
-          const fb = getFeedback(sec.id, 'section') || '';
-          payload.questionGradings.push({
-            submissionQuestionId: qId,
-            score: Number(questionScores[qId]) || 0,
-            feedback: fb,
-            highlightComments: [],
-          });
-        });
-      }
-
-      await dailyChallengeApi.gradeSubmission(subId, payload);
-      spaceToast.success('Saved grading successfully');
+      const res = await dailyChallengeApi.saveGradingSummary(subId, payload);
+      // axiosClient returns response.data by default; support both shapes just in case
+      const beMsg = res?.message || res?.msg || res?.data?.message || res?.data?.msg ;
+      spaceToast.success(beMsg);
     } catch (err) {
       console.error('Save grading failed:', err);
       spaceToast.error(err?.response?.data?.message || 'Failed to save grading');
@@ -1383,7 +1376,7 @@ const DailyChallengeSubmissionDetail = () => {
       }
     }));
     
-    spaceToast.success(scoreModal.isEdit ? 'Score updated successfully' : 'Score added successfully');
+    // No toast here; header Save will show BE message
     handleCloseScoreModal();
   };
 
@@ -1397,7 +1390,7 @@ const DailyChallengeSubmissionDetail = () => {
       // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 500));
       
-      spaceToast.success('Teacher feedback saved successfully');
+      // No toast; header Save will show BE message
     } catch (error) {
       console.error('Error saving teacher feedback:', error);
       spaceToast.error(error.response?.data?.error || 'Failed to save teacher feedback');
@@ -1406,43 +1399,7 @@ const DailyChallengeSubmissionDetail = () => {
     }
   };
 
-  // Handle generate AI feedback
-  const handleGenerateAiFeedback = async () => {
-    try {
-      setGeneratingAiFeedback(true);
-      // TODO: Call API to generate AI feedback
-      // const response = await dailyChallengeApi.generateAiFeedback(submissionId);
-      
-      // Simulate API call with AI-generated feedback
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // Mock AI feedback based on submission data
-      const mockAiFeedback = `Based on the submission analysis:
-
-**Overall Performance:**
-- Score: ${submission.score}/${submission.maxPoints ?? submission.totalPoints ?? submissionData?.challenge?.maxPoints ?? 0}
-- Accuracy: ${submission.accuracy}%
-- Correct Answers: ${submission.correctCount}
-- Incorrect Answers: ${submission.incorrectCount}
-
-**Strengths:**
-The student demonstrated good understanding in several areas and showed consistent effort throughout the challenge.
-
-**Areas for Improvement:**
-There are opportunities to enhance performance, particularly in areas with incorrect answers. Consider reviewing the specific question types that posed challenges.
-
-**Recommendations:**
-Continue practicing with similar exercises to reinforce understanding and improve accuracy.`;
-
-      setAiFeedback(mockAiFeedback);
-      spaceToast.success('AI feedback generated successfully');
-    } catch (error) {
-      console.error('Error generating AI feedback:', error);
-      spaceToast.error(error.response?.data?.error || 'Failed to generate AI feedback');
-    } finally {
-      setGeneratingAiFeedback(false);
-    }
-  };
+  
 
   // Scroll to question function
   const scrollToQuestion = (questionId) => {
@@ -1968,12 +1925,6 @@ Continue practicing with similar exercises to reinforce understanding and improv
               <>
                 <Button
                   size="small"
-                  style={{ fontSize: '13px', height: '28px', padding: '0 12px' }}
-                >
-                  Generate AI Feedback
-                </Button>
-                <Button
-                  size="small"
                   onClick={() => handleOpenAddFeedback(section.id, 'section')}
                   style={{ fontSize: '13px', height: '28px', padding: '0 12px' }}
                 >
@@ -2327,16 +2278,6 @@ Continue practicing with similar exercises to reinforce understanding and improv
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             {!getFeedback(section.id, 'section') ? (
               <>
-                <Button
-                  size="small"
-                  style={{
-                    fontSize: '13px',
-                    height: '28px',
-                    padding: '0 12px'
-                  }}
-                >
-                  Generate AI Feedback
-                </Button>
                 <Button
                   size="small"
                   onClick={() => handleOpenAddFeedback(section.id, 'section')}
@@ -4069,7 +4010,7 @@ Continue practicing with similar exercises to reinforce understanding and improv
                                       marginBottom: '4px'
                                     }}
                                   >
-                                    {`${submission.score}/${submission.maxPoints ?? submission.totalPoints ?? submissionData?.challenge?.maxPoints ?? 0}`}
+                                    {`${submission.score}/10`}
                                   </Typography.Text>
                                   <Typography.Text
                                     style={{
@@ -4169,13 +4110,14 @@ Continue practicing with similar exercises to reinforce understanding and improv
                           );
                         })() : null}
 
-                        {/* Question Breakdown Grid */}
-                        <div style={{
-                          display: 'grid',
-                          gridTemplateColumns: 'repeat(2, 1fr)',
-                          gap: '12px',
-                          marginBottom: '20px'
-                        }}>
+                        {/* Question Breakdown Grid (hidden for Writing/Speaking submissions) */}
+                        {!hasWritingOrSpeaking && (
+                          <div style={{
+                            display: 'grid',
+                            gridTemplateColumns: 'repeat(2, 1fr)',
+                            gap: '12px',
+                            marginBottom: '20px'
+                          }}>
                           {/* Total Card */}
                           <div style={{
                             padding: '16px',
@@ -4325,7 +4267,8 @@ Continue practicing with similar exercises to reinforce understanding and improv
                               Unanswered
                             </Typography.Text>
                           </div>
-                        </div>
+                          </div>
+                        )}
 
                         {/* Submission Details */}
                         <div style={{
@@ -4504,142 +4447,6 @@ Continue practicing with similar exercises to reinforce understanding and improv
                         }}
                       >
                         Save
-                      </Button>
-                    </div>
-                      </>
-                      )}
-                      </div>
-
-                      <Divider style={{ margin: '16px 0' }} />
-
-                      {/* AI Feedback Section */}
-                      <div style={{ marginBottom: '16px' }}>
-                    <div 
-                      onClick={() => setIsAiFeedbackCollapsed(!isAiFeedbackCollapsed)}
-                      style={{ 
-                        cursor: 'pointer',
-                        marginBottom: '12px',
-                        padding: '3px 16px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: '8px',
-                        background: theme === 'sun' 
-                          ? 'linear-gradient(135deg, rgba(148, 163, 184, 0.06) 0%, rgba(148, 163, 184, 0.03) 100%)'
-                          : 'linear-gradient(135deg, rgba(226, 232, 240, 0.08) 0%, rgba(226, 232, 240, 0.04) 100%)',
-                        borderRadius: '8px',
-                        border: `1px solid ${theme === 'sun' ? 'rgba(148, 163, 184, 0.15)' : 'rgba(226, 232, 240, 0.2)'}`,
-                        transition: 'all 0.3s ease',
-                        boxShadow: theme === 'sun' 
-                          ? '0 1px 4px rgba(148, 163, 184, 0.05)' 
-                          : '0 1px 4px rgba(226, 232, 240, 0.08)'
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.background = theme === 'sun' 
-                          ? 'linear-gradient(135deg, rgba(148, 163, 184, 0.1) 0%, rgba(148, 163, 184, 0.06) 100%)'
-                          : 'linear-gradient(135deg, rgba(226, 232, 240, 0.12) 0%, rgba(226, 232, 240, 0.08) 100%)';
-                        e.currentTarget.style.transform = 'translateY(-1px)';
-                        e.currentTarget.style.boxShadow = theme === 'sun' 
-                          ? '0 2px 8px rgba(148, 163, 184, 0.1)' 
-                          : '0 2px 8px rgba(226, 232, 240, 0.15)';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.background = theme === 'sun' 
-                          ? 'linear-gradient(135deg, rgba(148, 163, 184, 0.06) 0%, rgba(148, 163, 184, 0.03) 100%)'
-                          : 'linear-gradient(135deg, rgba(226, 232, 240, 0.08) 0%, rgba(226, 232, 240, 0.04) 100%)';
-                        e.currentTarget.style.transform = 'translateY(0)';
-                        e.currentTarget.style.boxShadow = theme === 'sun' 
-                          ? '0 1px 4px rgba(148, 163, 184, 0.05)' 
-                          : '0 1px 4px rgba(226, 232, 240, 0.08)';
-                      }}
-                    >
-                      <Typography.Title 
-                        level={5} 
-                        style={{ 
-                          margin: 0,
-                          fontSize: '16px', 
-                          fontWeight: 500, 
-                          color: theme === 'sun' ? '#4a5568' : '#e2e8f0',
-                          userSelect: 'none'
-                        }}
-                      >
-                        AI Feedback
-                      </Typography.Title>
-                      {isAiFeedbackCollapsed ? (
-                        <DownOutlined style={{ fontSize: '14px', color: theme === 'sun' ? '#4a5568' : '#e2e8f0' }} />
-                      ) : (
-                        <UpOutlined style={{ fontSize: '14px', color: theme === 'sun' ? '#4a5568' : '#e2e8f0' }} />
-                      )}
-                    </div>
-                    {!isAiFeedbackCollapsed && (
-                      <>
-                    <div style={{ marginBottom: '12px' }}>
-                      {aiFeedback ? (
-                        <div style={{
-                          padding: '12px',
-                          background: theme === 'sun' ? '#f9f9f9' : 'rgba(255, 255, 255, 0.05)',
-                          borderRadius: '8px',
-                          border: `1px solid ${theme === 'sun' ? '#e8e8e8' : 'rgba(255, 255, 255, 0.1)'}`,
-                          minHeight: '100px',
-                          maxHeight: '300px',
-                          overflowY: 'auto',
-                          fontSize: '14px',
-                          lineHeight: '1.6',
-                          color: theme === 'sun' ? '#333' : '#ddd',
-                          whiteSpace: 'pre-wrap'
-                        }}>
-                          {aiFeedback}
-                        </div>
-                      ) : (
-                        <div style={{
-                          padding: '20px',
-                          textAlign: 'center',
-                          color: theme === 'sun' ? '#999' : '#666',
-                          fontSize: '14px',
-                          background: theme === 'sun' ? '#f9f9f9' : 'rgba(255, 255, 255, 0.05)',
-                          borderRadius: '8px',
-                          border: `1px dashed ${theme === 'sun' ? '#e8e8e8' : 'rgba(255, 255, 255, 0.1)'}`
-                        }}>
-                          No AI feedback generated yet. Click the button below to generate.
-                        </div>
-                      )}
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '12px' }}>
-                      <Button
-                        type="primary"
-                        onClick={handleGenerateAiFeedback}
-                        loading={generatingAiFeedback}
-                        disabled={generatingAiFeedback}
-                        className={`create-button ${theme}-create-button`}
-                        style={{
-                          height: '36px',
-                          borderRadius: '6px',
-                          fontWeight: '500',
-                          fontSize: '14px',
-                          padding: '0 16px',
-                          border: 'none',
-                          transition: 'all 0.3s ease',
-                          background: theme === 'sun' 
-                            ? 'rgb(243, 188, 88)' 
-                            : 'linear-gradient(135deg, #F3BC58 19%, #E8B04D 64%, #DD9F42 75%, #F3BC58 97%, #D89637 100%)',
-                          color: '#000',
-                        }}
-                        onMouseEnter={(e) => {
-                          if (theme === 'sun') {
-                            e.currentTarget.style.background = 'rgb(230, 175, 75)';
-                          } else {
-                            e.currentTarget.style.background = 'linear-gradient(135deg, #E8B04D 19%, #DD9F42 64%, #D28F37 75%, #E8B04D 97%, #C8862D 100%)';
-                          }
-                        }}
-                        onMouseLeave={(e) => {
-                          if (theme === 'sun') {
-                            e.currentTarget.style.background = 'rgb(243, 188, 88)';
-                          } else {
-                            e.currentTarget.style.background = 'linear-gradient(135deg, #F3BC58 19%, #E8B04D 64%, #DD9F42 75%, #F3BC58 97%, #D89637 100%)';
-                          }
-                        }}
-                      >
-                        {aiFeedback ? 'Regenerate' : '✨ Generate Feedback'}
                       </Button>
                     </div>
                       </>
