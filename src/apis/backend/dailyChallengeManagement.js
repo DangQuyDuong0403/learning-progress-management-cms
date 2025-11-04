@@ -244,6 +244,22 @@ const dailyChallengeApi = {
 		});
 	},
 
+	// Cập nhật status của daily challenge thành PUBLISHED
+	updateDailyChallengeStatus: (id, status) => {
+		if (status === 'PUBLISHED') {
+			// Sử dụng endpoint /publish để publish challenge
+			const url = `/daily-challenges/${id}/publish`;
+			console.log('UpdateDailyChallengeStatus API - URL:', url);
+			return axiosClient.post(url, null, {
+				headers: {
+					'accept': '*/*',
+				}
+			});
+		} else {
+			return Promise.reject(new Error(`Only PUBLISHED status is supported. Got: ${status}`));
+		}
+	},
+
 	// Lấy danh sách submissions của một daily challenge
 	getDailyChallengeSubmissions: (challengeId, params = {}) => {
 		const queryParams = new URLSearchParams();
