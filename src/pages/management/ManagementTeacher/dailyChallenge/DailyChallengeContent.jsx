@@ -3729,29 +3729,45 @@ const DailyChallengeContent = () => {
         sections: bulkUpdateData
       });
 
-      // Step 1: Call bulk update API to save/reorder sections
+      // Step 1: Call bulk update API to save/reorder sections (API trong ảnh: POST /api/v1/sections/bulk/{challengeId})
       const bulkResponse = await dailyChallengeApi.bulkUpdateSections(id, bulkUpdateData);
       console.log('Bulk update response:', bulkResponse);
 
-      // Step 2: Update challenge status if saveAsStatus is provided
-      if (saveAsStatus) {
-        // Convert saveAsStatus to API format (DRAFT or PUBLISHED)
-        const challengeStatus = saveAsStatus === 'published' ? 'PUBLISHED' : 'DRAFT';
+      // Step 2: Update challenge status only when publishing
+      if (saveAsStatus === 'published') {
+        console.log('Updating challenge status to PUBLISHED');
         
-        console.log('Updating challenge status:', challengeStatus);
-        
-        // Call API to update challenge status
-        await dailyChallengeApi.updateDailyChallengeStatus(id, challengeStatus);
+        // Call API to update challenge status to PUBLISHED
+        await dailyChallengeApi.updateDailyChallengeStatus(id, 'PUBLISHED');
         
         // Update local status
-        setStatus(saveAsStatus);
+        setStatus('published');
         
         if (!options?.silent) {
-          spaceToast.success(
-            saveAsStatus === 'published' 
-              ? t('dailyChallenge.savedAsPublished') || 'Saved and published successfully!'
-              : t('dailyChallenge.savedAsDraft') || 'Saved as draft successfully!'
-          );
+          spaceToast.success(t('dailyChallenge.savedAsPublished') || 'Saved and published successfully!');
+          
+          // Navigate back to Daily Challenge list after successful publish
+          const getDailyChallengeListPath = () => {
+            if (challengeInfo.classId) {
+              // If coming from class-specific daily challenges, go back to that list
+              const userRole = user?.role?.toLowerCase();
+              if (userRole === 'teacher') {
+                return `/teacher/classes/daily-challenges/${challengeInfo.classId}`;
+              } 
+            } 
+          };
+          
+          // Navigate after a short delay to show success message
+          setTimeout(() => {
+            navigate(getDailyChallengeListPath());
+          }, 1000);
+        }
+      } else if (saveAsStatus === 'draft') {
+        // Save as Draft: chỉ gọi bulkUpdateSections (đã gọi ở Step 1), không cần update status
+        console.log('Saved as draft (sections updated only)');
+        
+        if (!options?.silent) {
+          spaceToast.success(t('dailyChallenge.savedAsDraft') || 'Saved as draft successfully!');
         }
       } else {
         if (!options?.silent) {
@@ -3772,7 +3788,7 @@ const DailyChallengeContent = () => {
     } finally {
       setLoading(false);
     }
-  }, [id, questions, passages, t, fetchQuestions]);
+  }, [id, questions, passages, t, fetchQuestions, challengeInfo.classId, navigate, user?.role]);
 
   const handlePublishConfirmOk = useCallback(async () => {
     setPublishConfirmModalVisible(false);
@@ -5501,7 +5517,6 @@ const DailyChallengeContent = () => {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <Typography.Text strong>{t('dailyChallenge.mode') || 'Challenge Mode'}</Typography.Text>
                 <span style={{ 
-                  fontWeight: 700, 
                   color: challengeMode === 'exam' ? '#ff4d4f' : '#52c41a',
                   fontSize: '13px'
                 }}>
@@ -5514,7 +5529,7 @@ const DailyChallengeContent = () => {
             <Card size="small" style={{ background: theme === 'sun' ? '#fafafa' : 'rgba(255, 255, 255, 0.05)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <Typography.Text strong>{t('dailyChallenge.duration') || 'Duration'}</Typography.Text>
-                <span style={{ fontWeight: 700, fontSize: '13px', color: theme === 'sun' ? '#333' : '#000000' }}>
+                <span style={{  fontSize: '13px', color: theme === 'sun' ? '#333' : '#000000' }}>
                   {durationMinutes 
                     ? `${durationMinutes} ${t('dailyChallenge.minutes') || 'minutes'}`
                     : t('common.notSet') || 'Not Set'}
@@ -5524,7 +5539,7 @@ const DailyChallengeContent = () => {
             <Card size="small" style={{ background: theme === 'sun' ? '#fafafa' : 'rgba(255, 255, 255, 0.05)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <Typography.Text strong>{t('dailyChallenge.startDate') || 'Start Date'}</Typography.Text>
-                <span style={{ fontWeight: 700, fontSize: '13px', color: theme === 'sun' ? '#333' : '#000000' }}>
+                <span style={{  fontSize: '13px', color: theme === 'sun' ? '#333' : '#000000' }}>
                   {startDate 
                     ? new Date(startDate).toLocaleDateString('vi-VN', { 
                         day: '2-digit', 
@@ -5540,7 +5555,7 @@ const DailyChallengeContent = () => {
             <Card size="small" style={{ background: theme === 'sun' ? '#fafafa' : 'rgba(255, 255, 255, 0.05)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <Typography.Text strong>{t('dailyChallenge.endDate') || 'End Date'}</Typography.Text>
-                <span style={{ fontWeight: 700, fontSize: '13px', color: theme === 'sun' ? '#333' : '#000000' }}>
+                <span style={{ fontSize: '13px', color: theme === 'sun' ? '#333' : '#000000' }}>
                   {endDate 
                     ? new Date(endDate).toLocaleDateString('vi-VN', { 
                         day: '2-digit', 
@@ -5560,7 +5575,7 @@ const DailyChallengeContent = () => {
             <Card size="small" style={{ background: theme === 'sun' ? '#fafafa' : 'rgba(255, 255, 255, 0.05)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <Typography.Text strong>{sentenceCase(t('dailyChallenge.shuffleQuestion') || t('dailyChallenge.shuffleAnswers') || 'Shuffle questions')}</Typography.Text>
-                <span style={{ fontWeight: 700, color: shuffleQuestion ? '#52c41a' : '#ff4d4f' }}>
+                <span style={{color: shuffleQuestion ? '#52c41a' : '#ff4d4f' }}>
                   {shuffleQuestion ? sentenceCase(t('common.on') || 'ON') : sentenceCase(t('common.off') || 'OFF')}
                 </span>
               </div>
@@ -5568,7 +5583,7 @@ const DailyChallengeContent = () => {
             <Card size="small" style={{ background: theme === 'sun' ? '#fafafa' : 'rgba(255, 255, 255, 0.05)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <Typography.Text strong>{sentenceCase(t('dailyChallenge.antiCheatMode') || 'Anti-cheat mode')}</Typography.Text>
-                <span style={{ fontWeight: 700, color: antiCheatModeEnabled ? '#52c41a' : '#ff4d4f' }}>
+                <span style={{color: antiCheatModeEnabled ? '#52c41a' : '#ff4d4f' }}>
                   {antiCheatModeEnabled ? sentenceCase(t('common.on') || 'ON') : sentenceCase(t('common.off') || 'OFF')}
                 </span>
               </div>
@@ -5576,14 +5591,14 @@ const DailyChallengeContent = () => {
             <Card size="small" style={{ gridColumn: '1 / span 2', background: theme === 'sun' ? '#fafafa' : 'rgba(255, 255, 255, 0.05)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <Typography.Text strong>{sentenceCase(t('dailyChallenge.translateOnScreen') || 'Translate on screen')}</Typography.Text>
-                <span style={{ fontWeight: 700, color: translateOnScreen ? '#52c41a' : '#ff4d4f' }}>
+                <span style={{ color: translateOnScreen ? '#52c41a' : '#ff4d4f' }}>
                   {translateOnScreen ? sentenceCase(t('common.on') || 'ON') : sentenceCase(t('common.off') || 'OFF')}
                 </span>
               </div>
             </Card>
           </div>
 
-          <Typography.Paragraph style={{ marginTop: 12, color: '#faad14', fontWeight: 600, textAlign: 'center' }}>
+          <Typography.Paragraph style={{ marginTop: 12, textAlign: 'center', fontStyle: 'italic' }}>
             {t('dailyChallenge.publishWarningMessage') || 'Once published, students will be able to access this challenge. This action cannot be undone.'}
           </Typography.Paragraph>
         </div>
