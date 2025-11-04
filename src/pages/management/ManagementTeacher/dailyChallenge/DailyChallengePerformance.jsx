@@ -20,16 +20,53 @@ const DailyChallengePerformance = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useSelector((state) => state.auth);
-  const { enterDailyChallengeMenu, exitDailyChallengeMenu } = useDailyChallengeMenu();
+  const { enterDailyChallengeMenu, exitDailyChallengeMenu, dailyChallengeData } = useDailyChallengeMenu();
   
   // Get data from navigation state or fetch from API
-  const [challengeInfo, setChallengeInfo] = useState({
-    classId: location.state?.classId || null,
-    className: location.state?.className || null,
-    challengeId: location.state?.challengeId || id,
-    challengeName: location.state?.challengeName || null,
-    lessonName: location.state?.lessonName || null,
+  // Priority: location.state > query params > dailyChallengeData > null
+  const [challengeInfo, setChallengeInfo] = useState(() => {
+    const params = new URLSearchParams(location.search || '');
+    const qp = {
+      classId: params.get('classId'),
+      className: params.get('className'),
+      challengeName: params.get('challengeName'),
+    };
+    return {
+      classId: location.state?.classId || qp.classId || null,
+      className: location.state?.className || qp.className || dailyChallengeData?.className || null,
+      challengeId: location.state?.challengeId || id,
+      challengeName: location.state?.challengeName || qp.challengeName || null,
+      lessonName: location.state?.lessonName || null,
+    };
   });
+  
+  // Update challengeInfo when location.state or query params change (e.g., when navigating back from SubmissionList)
+  useEffect(() => {
+    const params = new URLSearchParams(location.search || '');
+    const qp = {
+      classId: params.get('classId'),
+      className: params.get('className'),
+      challengeName: params.get('challengeName'),
+    };
+    
+    // Check if we need to update challengeInfo
+    const newClassId = location.state?.classId || qp.classId;
+    const newClassName = location.state?.className || qp.className || dailyChallengeData?.className;
+    const newChallengeName = location.state?.challengeName || qp.challengeName;
+    
+    if (newClassId !== challengeInfo.classId || 
+        newClassName !== challengeInfo.className || 
+        newChallengeName !== challengeInfo.challengeName) {
+      setChallengeInfo({
+        classId: newClassId || challengeInfo.classId,
+        className: newClassName || challengeInfo.className,
+        challengeId: location.state?.challengeId || challengeInfo.challengeId || id,
+        challengeName: newChallengeName || challengeInfo.challengeName,
+        lessonName: location.state?.lessonName || challengeInfo.lessonName || null,
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.state, location.search, id, dailyChallengeData?.className]);
   
   // Set page title
   usePageTitle('Daily Challenge Management / Performance');
@@ -183,13 +220,28 @@ const DailyChallengePerformance = () => {
     };
 
     // Determine subtitle for header
+    // Priority: location.state > challengeInfo > dailyChallengeData
     const getSubtitle = () => {
+      // First priority: Use location.state if available (when navigating back from SubmissionList)
+      if (location?.state?.className && location?.state?.challengeName) {
+        return `${location.state.className} / ${location.state.challengeName}`;
+      } else if (location?.state?.challengeName) {
+        return location.state.challengeName;
+      } else if (location?.state?.className) {
+        return location.state.className;
+      }
+      
+      // Second priority: Use challengeInfo
       if (challengeInfo.className && challengeInfo.challengeName) {
         return `${challengeInfo.className} / ${challengeInfo.challengeName}`;
       } else if (challengeInfo.challengeName) {
         return challengeInfo.challengeName;
       }
-      return null;
+      
+      // Fallback to preserved subtitle from context if navigation/query lacks info
+      return (typeof dailyChallengeData?.subtitle === 'string' && dailyChallengeData.subtitle.trim().length > 0)
+        ? dailyChallengeData.subtitle
+        : null;
     };
     
     // Enter daily challenge menu mode with backPath and subtitle
@@ -197,14 +249,14 @@ const DailyChallengePerformance = () => {
       0, 
       getSubtitle(), 
       getBackPath(), 
-      challengeInfo.className
+      challengeInfo.className || dailyChallengeData?.className || null
     );
     
     // Exit daily challenge menu mode when component unmounts
     return () => {
       exitDailyChallengeMenu();
     };
-  }, [enterDailyChallengeMenu, exitDailyChallengeMenu, challengeInfo, user]);
+  }, [enterDailyChallengeMenu, exitDailyChallengeMenu, challengeInfo, user, dailyChallengeData?.subtitle, dailyChallengeData?.className, location?.state?.className, location?.state?.challengeName]);
 
   useEffect(() => {
     fetchPerformanceData();

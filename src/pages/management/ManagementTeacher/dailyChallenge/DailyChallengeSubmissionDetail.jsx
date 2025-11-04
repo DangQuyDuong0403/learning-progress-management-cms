@@ -38,7 +38,7 @@ import ThemedLayout from "../../../../component/teacherlayout/ThemedLayout";
 import LoadingWithEffect from "../../../../component/spinner/LoadingWithEffect";
 import "./DailyChallengeSubmissionDetail.css";
 import { spaceToast } from "../../../../component/SpaceToastify";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useTheme } from "../../../../contexts/ThemeContext";
 import { useDailyChallengeMenu } from "../../../../contexts/DailyChallengeMenuContext";
@@ -52,6 +52,7 @@ const DailyChallengeSubmissionDetail = () => {
   const { theme } = useTheme();
   const { id, submissionId } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const { enterDailyChallengeMenu, exitDailyChallengeMenu, dailyChallengeData } = useDailyChallengeMenu();
   
   // Set page title
@@ -100,6 +101,8 @@ const DailyChallengeSubmissionDetail = () => {
   // Teacher feedback state
   const [teacherFeedback, setTeacherFeedback] = useState('');
   const [savingFeedback, setSavingFeedback] = useState(false);
+  const [overallFeedbackModalVisible, setOverallFeedbackModalVisible] = useState(false);
+  const [overallFeedbackDraft, setOverallFeedbackDraft] = useState('');
   const [savingGrading, setSavingGrading] = useState(false);
   
   
@@ -111,6 +114,9 @@ const DailyChallengeSubmissionDetail = () => {
   
   const [isAntiCheatCollapsed, setIsAntiCheatCollapsed] = useState(true);
   
+  // Cache existing grading per submissionQuestionId
+  const [gradingBySubmissionQuestionId, setGradingBySubmissionQuestionId] = useState({});
+  
   // Handlers for feedback modal
   // Helper to locate submissionQuestionId for a section
   const getSubmissionQuestionIdForSection = (sectionId) => {
@@ -119,6 +125,18 @@ const DailyChallengeSubmissionDetail = () => {
     if (!sec) return null;
     const q = (sec.questions && sec.questions[0]) || null;
     return (q && (q.submissionQuestionId || q.id)) || null;
+  };
+
+  // Check if a section (writing/speaking) already has grading saved
+  const hasExistingGradingForSection = (sectionId) => {
+    const subQId = getSubmissionQuestionIdForSection(sectionId);
+    if (!subQId) return false;
+    const g = gradingBySubmissionQuestionId[subQId];
+    if (!g) return false;
+    const hasScore = Number.isFinite(Number(g.receivedWeight));
+    const hasFb = typeof g.feedback === 'string' && g.feedback.trim() !== '';
+    const hasHighlights = Array.isArray(g.highlightComments) && g.highlightComments.length > 0;
+    return !!(hasScore || hasFb || hasHighlights);
   };
 
   const handleOpenAddFeedback = (sectionId, type = 'question') => {
@@ -137,9 +155,13 @@ const DailyChallengeSubmissionDetail = () => {
       };
       const sec = locateSection(sectionId);
       const submissionQuestionId = getSubmissionQuestionIdForSection(sectionId);
-      const isWriting = sec && sec.__kind === 'writing';
-      const lastIdForUrl = (isWriting && submissionQuestionId) ? submissionQuestionId : sectionId;
-      const path = `${base}/daily-challenges/detail/${id}/submission/${submissionId}/feedback/${lastIdForUrl}`;
+      if (!submissionQuestionId) {
+        spaceToast.error('Không tìm thấy submissionQuestionId cho section này');
+        return;
+      }
+      // Use challengeId from submissionData, fallback to id from URL params
+      const challengeId = submissionData?.challenge?.id || id;
+      const path = `${base}/daily-challenges/detail/${challengeId}/submission/${submissionId}/feedback/${submissionQuestionId}`;
       // Only allow writing & speaking
       if (!sec) {
         // Not a writing/speaking section → use existing modal flow
@@ -156,12 +178,25 @@ const DailyChallengeSubmissionDetail = () => {
         const subQId = getSubmissionQuestionIdForSection(sectionId);
         return subQId ? (questionScores[subQId] ?? '') : '';
       })();
+      
+      // Extract header data
+      const className = dailyChallengeData?.className || null;
+      const subtitle = dailyChallengeData?.subtitle || '';
+      // If className is separate, subtitle might be just challenge name, otherwise split "Class / Challenge"
+      const challengeName = className 
+        ? (subtitle.includes(' / ') ? subtitle.split(' / ').slice(1).join(' / ') : subtitle || null)
+        : (subtitle.includes(' / ') ? subtitle.split(' / ')[1] : (subtitle || null));
+      const studentName = submissionData?.student?.name || location?.state?.studentName || null;
+      
       navigate(path, {
         state: {
           submissionId: submissionId,
           sectionId: sectionId,
           prefill: { score: prefillScore, section: sectionPayload, studentAnswer: studentAns, type: derivedType, submissionQuestionId },
           backState: { from: 'submission-detail' },
+          className,
+          challengeName,
+          studentName,
         },
       });
       return;
@@ -174,22 +209,78 @@ const DailyChallengeSubmissionDetail = () => {
   // Per-question scores for Writing and Speaking (keyed by submissionQuestionId or questionId)
   const [questionScores, setQuestionScores] = useState({});
   
-  const handleOpenEditFeedback = (id, type = 'question') => {
+  const handleOpenEditFeedback = (sectionIdParam, type = 'question') => {
+    // For section (writing/speaking), navigate to grading page with existing data
+    if (type === 'section') {
+      const isTA = typeof window !== 'undefined' && window.location && /teaching-assistant/.test(window.location.pathname);
+      const base = isTA ? '/teaching-assistant' : '/teacher';
+      const findIn = (arr) => (arr || []).find((s) => s.id === sectionIdParam);
+      const w = findIn(fakeData?.writingSections);
+      const s = findIn(fakeData?.speakingSections);
+      const sec = w ? { ...w, __kind: 'writing' } : s ? { ...s, __kind: 'speaking' } : null;
+      if (!sec) {
+        // fallback to modal like old behavior
+        const key = `${type}-${sectionIdParam}`;
+        const existingFeedback = feedbacks[key] || '';
+        let prefillScore = '';
+        const subQId = getSubmissionQuestionIdForSection(sectionIdParam);
+        if (subQId) prefillScore = questionScores[subQId] ?? '';
+        setFeedbackModal({ visible: true, id: sectionIdParam, type, feedback: existingFeedback, score: prefillScore, isEdit: true });
+        return;
+      }
+      const submissionQuestionId = getSubmissionQuestionIdForSection(sectionIdParam);
+      if (!submissionQuestionId) {
+        spaceToast.error('Không tìm thấy submissionQuestionId cho section này');
+        return;
+      }
+      // Use challengeId from submissionData, fallback to id from URL params (component-level id from useParams)
+      const challengeId = submissionData?.challenge?.id || id;
+      const path = `${base}/daily-challenges/detail/${challengeId}/submission/${submissionId}/feedback/${submissionQuestionId}`;
+      const sectionPayload = sec.__kind === 'writing'
+        ? { id: sec.id, sectionTitle: sec.title || 'Writing', sectionsContent: sec.prompt || '' }
+        : { id: sec.id, sectionTitle: sec.title || 'Speaking', sectionsContent: sec.transcript || '', sectionsUrl: sec.audioUrl || '' };
+      const studentAns = studentAnswers?.[sectionIdParam] || null;
+      const existing = submissionQuestionId ? gradingBySubmissionQuestionId[submissionQuestionId] : null;
+      const prefillScore = (() => {
+        if (existing && (existing.receivedWeight != null)) return existing.receivedWeight;
+        return submissionQuestionId ? (questionScores[submissionQuestionId] ?? '') : '';
+      })();
+      const prefill = {
+        score: prefillScore,
+        section: sectionPayload,
+        studentAnswer: studentAns,
+        type: sec.__kind,
+        submissionQuestionId,
+        feedback: existing?.feedback || '',
+        highlightComments: Array.isArray(existing?.highlightComments) ? existing.highlightComments : [],
+      };
+      
+      // Extract header data
+      const className = dailyChallengeData?.className || null;
+      const subtitle = dailyChallengeData?.subtitle || '';
+      // If className is separate, subtitle might be just challenge name, otherwise split "Class / Challenge"
+      const challengeName = className 
+        ? (subtitle.includes(' / ') ? subtitle.split(' / ').slice(1).join(' / ') : subtitle || null)
+        : (subtitle.includes(' / ') ? subtitle.split(' / ')[1] : (subtitle || null));
+      const studentName = submissionData?.student?.name || location?.state?.studentName || null;
+      
+      navigate(path, { 
+        state: { 
+          submissionId, 
+          sectionId: sectionIdParam, 
+          prefill, 
+          backState: { from: 'submission-detail' },
+          className,
+          challengeName,
+          studentName,
+        } 
+      });
+      return;
+    }
+    // Question-level fallback (legacy)
     const key = `${type}-${id}`;
     const existingFeedback = feedbacks[key] || '';
-    let prefillScore = '';
-    if (type === 'section') {
-      const subQId = getSubmissionQuestionIdForSection(id);
-      if (subQId) prefillScore = questionScores[subQId] ?? '';
-    }
-    setFeedbackModal({
-      visible: true,
-      id,
-      type,
-      feedback: existingFeedback,
-      score: prefillScore,
-      isEdit: true,
-    });
+    setFeedbackModal({ visible: true, id, type, feedback: existingFeedback, score: '', isEdit: true });
   };
   
   const handleCloseFeedbackModal = () => {
@@ -868,6 +959,13 @@ const DailyChallengeSubmissionDetail = () => {
               const current = studentAnswersMap[section.id] || {};
               studentAnswersMap[section.id] = { ...current, text: essayText };
             }
+          } else if (q.questionType === 'SPEAKING') {
+            // For speaking, store student's audio recording per section id to render on the right
+            const audioUrl = submittedContent?.[0]?.value || '';
+            if (audioUrl) {
+              const current = studentAnswersMap[section.id] || {};
+              studentAnswersMap[section.id] = { ...current, audioUrl: audioUrl, audio: audioUrl };
+            }
           }
 
           // Map options for multiple choice/select
@@ -1002,6 +1100,8 @@ const DailyChallengeSubmissionDetail = () => {
           totalQuestions,
           totalPoints: apiSubmissionData.totalPoints || totalScore,
           maxPoints: apiSubmissionData.maxPoints || totalScore,
+          totalWeight: apiSubmissionData.totalWeight || apiData.totalWeight || null,
+          maxPossibleWeight: apiSubmissionData.maxPossibleWeight || apiData.maxPossibleWeight || null,
           timeLimit: apiData.timeLimit || apiSubmissionData.timeLimit || 0,
         },
         submission: {
@@ -1018,14 +1118,19 @@ const DailyChallengeSubmissionDetail = () => {
         },
       });
 
-      // Fetch grading summary for sidebar Performance (override fake/calculated numbers)
+        // Prefill teacher feedback from primary submission result if available
+        if (typeof (apiData.teacherFeedback || apiSubmissionData.teacherFeedback) === 'string') {
+          setTeacherFeedback(apiData.teacherFeedback || apiSubmissionData.teacherFeedback);
+        }
+
+        // Fetch grading summary for sidebar Performance (override fake/calculated numbers)
       try {
         const gradingRes = await dailyChallengeApi.getSubmissionGradingResult(submissionChallengeId);
         const gradingData = gradingRes?.data?.data || gradingRes?.data || null;
         if (gradingData) {
           // Map grading fields to local state
-          const score = gradingData.totalScore;
-          const maxPointsFromGrading = gradingData.maxPossibleScore;
+          const score = gradingData.finalScore ?? gradingData.totalScore;
+          const maxPointsFromGrading = gradingData.maxPossibleWeight ?? gradingData.maxPossibleScore;
           const accuracyPct = gradingData.scorePercentage != null ? Math.round(gradingData.scorePercentage) : undefined;
           const correct = gradingData.correctAnswers;
           const incorrect = gradingData.wrongAnswers;
@@ -1037,6 +1142,8 @@ const DailyChallengeSubmissionDetail = () => {
               ...prev.challenge,
               totalQuestions: gradingData.totalQuestions ?? prev.challenge?.totalQuestions,
               maxPoints: maxPointsFromGrading ?? prev.challenge?.maxPoints,
+              totalWeight: gradingData.totalWeight ?? prev.challenge?.totalWeight,
+              maxPossibleWeight: gradingData.maxPossibleWeight ?? prev.challenge?.maxPossibleWeight,
             },
             submission: {
               ...prev.submission,
@@ -1058,6 +1165,44 @@ const DailyChallengeSubmissionDetail = () => {
       } catch (e) {
         // Non-blocking: ignore if grading summary not available
         console.warn('GetSubmissionGradingResult failed:', e?.response?.data || e?.message);
+      }
+
+      // Fetch existing grading for writing/speaking sections to toggle Add/Edit buttons
+      try {
+        const subQIds = [];
+        writingSections.forEach((sec) => {
+          const subQId = (sec?.questions && sec.questions[0]?.submissionQuestionId) || null;
+          if (subQId) subQIds.push(subQId);
+        });
+        speakingSections.forEach((sec) => {
+          const subQId = (sec?.questions && sec.questions[0]?.submissionQuestionId) || null;
+          if (subQId) subQIds.push(subQId);
+        });
+        if (subQIds.length > 0) {
+          const results = await Promise.allSettled(
+            subQIds.map((sid) => dailyChallengeApi.getSubmissionQuestionGrading(sid))
+          );
+          const map = {};
+          results.forEach((r, idx) => {
+            if (r.status === 'fulfilled') {
+              const data = r.value?.data?.data || r.value?.data || null;
+              if (data) {
+                const subQId = subQIds[idx];
+                map[subQId] = {
+                  receivedWeight: data.receivedWeight,
+                  feedback: data.feedback,
+                  highlightComments: data.highlightComments || [],
+                  graderId: data.graderId,
+                  graderName: data.graderName,
+                  timestamp: data.timestamp,
+                };
+              }
+            }
+          });
+          setGradingBySubmissionQuestionId(map);
+        }
+      } catch (err) {
+        // ignore grading prefetch errors
       }
 
       // Set anti-cheat data (mock data for now, can be replaced with API data later)
@@ -1142,12 +1287,28 @@ const DailyChallengeSubmissionDetail = () => {
   // Enter/exit daily challenge menu mode
   useEffect(() => {
     const backPath = `/teacher/daily-challenges/detail/${id}/submissions`;
-    enterDailyChallengeMenu(0, null, backPath);
+    // Priority: Use location.state if available (when navigating back from AIGenerateFeedback)
+    // Otherwise preserve subtitle/className from dailyChallengeData
+    let preservedSubtitle = dailyChallengeData?.subtitle || null;
+    let preservedClassName = dailyChallengeData?.className || null;
+    
+    // If location.state has header info, use it to update context
+    if (location?.state?.className && location?.state?.challengeName) {
+      preservedSubtitle = `${location.state.className} / ${location.state.challengeName}`;
+      preservedClassName = location.state.className;
+    } else if (location?.state?.challengeName) {
+      preservedSubtitle = location.state.challengeName;
+    } else if (location?.state?.className) {
+      preservedSubtitle = location.state.className;
+      preservedClassName = location.state.className;
+    }
+    
+    enterDailyChallengeMenu(0, preservedSubtitle, backPath, preservedClassName);
     
     return () => {
-      exitDailyChallengeMenu();
+      // Do not exit here to preserve header info when navigating back to list; list page will re-enter and manage state
     };
-  }, [enterDailyChallengeMenu, exitDailyChallengeMenu, id]);
+  }, [enterDailyChallengeMenu, id, dailyChallengeData?.subtitle, dailyChallengeData?.className, location?.state?.className, location?.state?.challengeName]);
 
   // Build question navigation list (must be before early return)
   const getQuestionNavigation = useCallback(() => {
@@ -1334,6 +1495,8 @@ const DailyChallengeSubmissionDetail = () => {
       // axiosClient returns response.data by default; support both shapes just in case
       const beMsg = res?.message || res?.msg || res?.data?.message || res?.data?.msg ;
       spaceToast.success(beMsg);
+      // Reload data to update sidebar and all related data
+      await fetchSubmissionDetail();
     } catch (err) {
       console.error('Save grading failed:', err);
       spaceToast.error(err?.response?.data?.message || 'Failed to save grading');
@@ -1394,6 +1557,50 @@ const DailyChallengeSubmissionDetail = () => {
     } catch (error) {
       console.error('Error saving teacher feedback:', error);
       spaceToast.error(error.response?.data?.error || 'Failed to save teacher feedback');
+    } finally {
+      setSavingFeedback(false);
+    }
+  };
+
+  // CKEditor: custom upload adapter (base64) like MultipleChoiceModal
+  function CustomUploadAdapterPlugin(editor) {
+    editor.plugins.get('FileRepository').createUploadAdapter = (loader) => {
+      return {
+        upload: () => {
+          return loader.file.then(file => new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve({ default: reader.result });
+            reader.onerror = (err) => reject(err);
+            reader.readAsDataURL(file);
+          }));
+        },
+        abort: () => {}
+      };
+    };
+  }
+
+  // Header Overall Feedback modal save
+  const handleSaveOverallFeedback = async () => {
+    const subId = submissionId || submissionData?.id;
+    if (!subId) {
+      spaceToast.error('Missing submission ID');
+      return;
+    }
+    try {
+      setSavingFeedback(true);
+      const stripHtml = (html) => (html || '').replace(/<[^>]*>/g, '').trim();
+      const payload = { overallFeedback: stripHtml(overallFeedbackDraft) };
+      const res = await dailyChallengeApi.saveGradingSummary(subId, payload);
+      const beMsg = res?.message || res?.msg || res?.data?.message || res?.data?.msg || 'Saved';
+      // Update local view (sidebar)
+      setTeacherFeedback(overallFeedbackDraft);
+      setOverallFeedbackModalVisible(false);
+      spaceToast.success(beMsg);
+      // Reload data to update sidebar and all related data
+      await fetchSubmissionDetail();
+    } catch (err) {
+      console.error('Save overall feedback failed:', err);
+      spaceToast.error(err?.response?.data?.message || 'Failed to save feedback');
     } finally {
       setSavingFeedback(false);
     }
@@ -1827,6 +2034,19 @@ const DailyChallengeSubmissionDetail = () => {
     );
   };
 
+  // Helper: extract duration marker from content (e.g., [[dur_3]] -> { minutes: 3, found: true })
+  const extractDurationMarker = (html) => {
+    if (!html || typeof html !== 'string') return { found: false, minutes: null, cleanedContent: html };
+    const durPattern = /\[\[dur_(\d+)\]\]/g;
+    let match = durPattern.exec(html);
+    if (match) {
+      const minutes = parseInt(match[1], 10);
+      const cleanedContent = html.replace(durPattern, '').trim();
+      return { found: true, minutes, cleanedContent };
+    }
+    return { found: false, minutes: null, cleanedContent: html };
+  };
+
   // Render Reading Section
   const renderReadingSection = (section, index) => {
     return (
@@ -1921,7 +2141,7 @@ const DailyChallengeSubmissionDetail = () => {
             </Typography.Text>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            {!getFeedback(section.id, 'section') ? (
+            {!hasExistingGradingForSection(section.id) ? (
               <>
                 <Button
                   size="small"
@@ -1933,15 +2153,6 @@ const DailyChallengeSubmissionDetail = () => {
               </>
             ) : (
               <>
-                <Button
-                  danger
-                  size="small"
-                  icon={<DeleteOutlined />}
-                  onClick={() => handleDeleteFeedbackDirect(section.id, 'section')}
-                  style={{ fontSize: '13px', height: '28px', padding: '0 12px' }}
-                >
-                  Delete
-                </Button>
                 <Button
                   size="small"
                   onClick={() => handleOpenEditFeedback(section.id, 'section')}
@@ -2276,7 +2487,7 @@ const DailyChallengeSubmissionDetail = () => {
             </Typography.Text>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            {!getFeedback(section.id, 'section') ? (
+            {!hasExistingGradingForSection(section.id) ? (
               <>
                 <Button
                   size="small"
@@ -2292,19 +2503,6 @@ const DailyChallengeSubmissionDetail = () => {
               </>
             ) : (
               <>
-                <Button
-                  danger
-                  size="small"
-                  icon={<DeleteOutlined />}
-                  onClick={() => handleDeleteFeedbackDirect(section.id, 'section')}
-                  style={{
-                    fontSize: '13px',
-                    height: '28px',
-                    padding: '0 12px'
-                  }}
-                >
-                  Delete
-                </Button>
                 <Button
                   size="small"
                   onClick={() => handleOpenEditFeedback(section.id, 'section')}
@@ -2337,16 +2535,38 @@ const DailyChallengeSubmissionDetail = () => {
             }}>
             {hasAudio && section.audioUrl ? (
               <>
-                {/* Maximum Recording Time */}
-                <div style={{
-                  marginBottom: '16px',
-                  fontWeight: '600',
-                  fontSize: '20px',
-                  color: theme === 'sun' ? '#1E40AF' : '#1F2937',
-                  textAlign: 'left'
-                }}>
-                  🎤 Maximum limit 3 minutes
-                </div>
+                {(() => {
+                  const rawTranscript = section.transcript || '';
+                  const durationInfo = extractDurationMarker(rawTranscript);
+                  return (
+                    <>
+                      {/* Voice Recording Badge - extracted from [[dur_3]] */}
+                      {durationInfo.found && (
+                        <div style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '8px',
+                          padding: '6px 12px',
+                          marginBottom: '12px',
+                          borderRadius: '10px',
+                          background: theme === 'sun'
+                            ? 'rgba(24, 144, 255, 0.08)'
+                            : 'rgba(139, 92, 246, 0.15)',
+                          border: `2px solid ${theme === 'sun' ? 'rgba(24, 144, 255, 0.4)' : 'rgba(139, 92, 246, 0.4)'}`,
+                          color: theme === 'sun' ? '#1890ff' : '#8B5CF6',
+                          fontSize: '14px',
+                          fontWeight: 600,
+                          boxShadow: theme === 'sun'
+                            ? '0 2px 6px rgba(24, 144, 255, 0.12)'
+                            : '0 2px 6px rgba(139, 92, 246, 0.12)'
+                        }}>
+                          <span style={{ fontSize: '16px' }}>🎤</span>
+                          <span>Voice Recording {durationInfo.minutes} {durationInfo.minutes === 1 ? 'minute' : 'minutes'}</span>
+                        </div>
+                      )}
+                    </>
+                  );
+                })()}
 
                 {/* Audio Player */}
                 <div style={{
@@ -2458,7 +2678,7 @@ const DailyChallengeSubmissionDetail = () => {
                   </div>
                 </div>
 
-                {/* Transcript Content */}
+                {/* Transcript Content (with [[dur_X]] removed) */}
                 {section.transcript && (
                   <div style={{
                     background: '#ffffff',
@@ -2473,7 +2693,7 @@ const DailyChallengeSubmissionDetail = () => {
                       ? '0 2px 8px rgba(0, 0, 0, 0.1)' 
                       : '0 2px 8px rgba(138, 122, 255, 0.2)'
                   }}>
-                    <div dangerouslySetInnerHTML={{ __html: section.transcript }} />
+                    <div dangerouslySetInnerHTML={{ __html: extractDurationMarker(section.transcript || '').cleanedContent }} />
                   </div>
                 )}
               </>
@@ -3656,15 +3876,35 @@ const DailyChallengeSubmissionDetail = () => {
               color: theme === 'sun' ? '#1e40af' : '#fff',
               textShadow: theme === 'sun' ? '0 0 5px rgba(30, 64, 175, 0.3)' : '0 0 15px rgba(134, 134, 134, 0.8)'
             }}>
-              {t('dailyChallenge.dailyChallengeManagement')}
+              {(() => {
+                // Priority: Use location.state if available (when navigating back from AIGenerateFeedback)
+                // Otherwise use dailyChallengeData or fallback to default
+                let base;
+                if (location?.state?.className && location?.state?.challengeName) {
+                  // Build from location.state: "className / challengeName"
+                  base = `${location.state.className} / ${location.state.challengeName}`;
+                } else if (location?.state?.challengeName) {
+                  // Only challengeName available
+                  base = location.state.challengeName;
+                } else if (location?.state?.className) {
+                  // Only className available
+                  base = location.state.className;
+                } else {
+                  // Fallback to dailyChallengeData or default
+                  base = dailyChallengeData?.subtitle || t('dailyChallenge.dailyChallengeManagement');
+                }
+                
+                const student = location?.state?.studentName || submissionData?.student?.name || '';
+                return student ? `${base} / ${student}` : base;
+              })()}
             </h2>
           </div>
           {/* Right actions */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginLeft: 'auto' }}>
-            <Button
-              icon={<SaveOutlined />}
-              loading={savingGrading}
-              onClick={handleSaveGrading}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginLeft: 'auto' }}>
+              <Button
+                icon={<FileTextOutlined />}
+                loading={savingFeedback}
+                onClick={() => { setOverallFeedbackDraft(teacherFeedback || ''); setOverallFeedbackModalVisible(true); }}
               className={`create-button ${theme}-create-button`}
               style={{
                 height: '40px',
@@ -3679,9 +3919,9 @@ const DailyChallengeSubmissionDetail = () => {
                   : 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)',
                 color: '#000000',
                 boxShadow: theme === 'sun' ? '0 2px 8px rgba(60, 153, 255, 0.3)' : '0 2px 8px rgba(131, 119, 160, 0.3)'
-              }}
-            >
-              {t('common.save') || 'Save'}
+                }}
+              >
+                {(teacherFeedback && teacherFeedback.replace(/<[^>]*>/g,'').trim().length > 0) ? 'Edit Feedback' : 'Add Feedback'}
             </Button>
           </div>
         </div>
@@ -4048,30 +4288,7 @@ const DailyChallengeSubmissionDetail = () => {
                                 </>
                               )}
                             </div>
-                            {submission.score != null && submission.score !== undefined && (
-                              <Button
-                                type="text"
-                                icon={<EditOutlined />}
-                                onClick={handleOpenEditScore}
-                                style={{
-                                  position: 'absolute',
-                                  bottom: '-8px',
-                                  right: '-8px',
-                                  padding: '4px 8px',
-                                  color: theme === 'sun' ? '#1890ff' : '#8377A0',
-                                  fontSize: '16px',
-                                  background: theme === 'sun' ? '#fff' : 'rgba(255, 255, 255, 0.9)',
-                                  borderRadius: '50%',
-                                  width: '32px',
-                                  height: '32px',
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                  boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
-                                }}
-                                title="Edit Score"
-                              />
-                            )}
+                            {/* Edit score button removed as requested */}
                           </div>
                         </div>
 
@@ -4276,58 +4493,30 @@ const DailyChallengeSubmissionDetail = () => {
                           borderTop: `1px solid ${theme === 'sun' ? '#E0E0E0' : 'rgba(255, 255, 255, 0.1)'}`
                         }}>
                           <Space direction="vertical" size={8} style={{ width: '100%' }}>
+                            
+                            {/* New fields from grading summary */}
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                               <Typography.Text style={{ fontSize: '12px', color: theme === 'sun' ? '#666' : '#999' }}>
-                                Time Used:
+                                Total Weight:
                               </Typography.Text>
                               <Typography.Text style={{ fontSize: '12px', fontWeight: 500, color: theme === 'sun' ? '#000' : '#fff' }}>
-                                {submission.timeSpent != null ? `${submission.timeSpent} minutes` : '-'}
+                                {submissionData.challenge?.totalWeight != null ? submissionData.challenge.totalWeight : '-'}
                               </Typography.Text>
                             </div>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                               <Typography.Text style={{ fontSize: '12px', color: theme === 'sun' ? '#666' : '#999' }}>
-                                Time Limit:
+                                Max Possible Weight:
                               </Typography.Text>
                               <Typography.Text style={{ fontSize: '12px', fontWeight: 500, color: theme === 'sun' ? '#000' : '#fff' }}>
-                                {submissionData.challenge?.timeLimit ? `${submissionData.challenge.timeLimit} minutes` : '-'}
+                                {submissionData.challenge?.maxPossibleWeight != null ? submissionData.challenge.maxPossibleWeight : '-'}
                               </Typography.Text>
                             </div>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                               <Typography.Text style={{ fontSize: '12px', color: theme === 'sun' ? '#666' : '#999' }}>
-                                Submitted:
+                                Total Questions:
                               </Typography.Text>
                               <Typography.Text style={{ fontSize: '12px', fontWeight: 500, color: theme === 'sun' ? '#000' : '#fff' }}>
-                                {submission.submittedAt ? new Date(submission.submittedAt).toLocaleDateString('en-US', {
-                                  month: 'short',
-                                  day: 'numeric',
-                                  hour: '2-digit',
-                                  minute: '2-digit'
-                                }) : '-'}
-                              </Typography.Text>
-                            </div>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                              <Typography.Text style={{ fontSize: '12px', color: theme === 'sun' ? '#666' : '#999' }}>
-                                Status:
-                              </Typography.Text>
-                              {submission.status ? (
-                                <Space size={4}>
-                                  <CheckCircleOutlined style={{ color: '#52c41a', fontSize: '14px' }} />
-                                  <Typography.Text style={{ fontSize: '12px', fontWeight: 500, color: '#52c41a' }}>
-                                    On Time
-                                  </Typography.Text>
-                                </Space>
-                              ) : (
-                                <Typography.Text style={{ fontSize: '12px', fontWeight: 500, color: theme === 'sun' ? '#000' : '#fff' }}>
-                                  -
-                                </Typography.Text>
-                              )}
-                            </div>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                              <Typography.Text style={{ fontSize: '12px', color: theme === 'sun' ? '#666' : '#999' }}>
-                                Method:
-                              </Typography.Text>
-                              <Typography.Text style={{ fontSize: '12px', fontWeight: 500, color: theme === 'sun' ? '#000' : '#fff' }}>
-                                {submissionData.submission?.method || submissionData.submission?.submissionMethod || 'Manual'}
+                                {submissionData.challenge?.totalQuestions != null ? submissionData.challenge.totalQuestions : '-'}
                               </Typography.Text>
                             </div>
                           </Space>
@@ -4397,60 +4586,18 @@ const DailyChallengeSubmissionDetail = () => {
                         <UpOutlined style={{ fontSize: '14px', color: theme === 'sun' ? '#4a5568' : '#e2e8f0' }} />
                       )}
                     </div>
-                    {!isTeacherFeedbackCollapsed && (
-                      <>
-                    <div style={{ marginBottom: '12px' }}>
-                      <div style={{ border: '1px solid #eee', borderRadius: '8px', overflow: 'visible' }}>
-                        <CKEditor
-                          editor={ClassicEditor}
-                          data={teacherFeedback}
-                          onChange={(event, editor) => setTeacherFeedback(editor.getData())}
-                          config={{
-                            toolbar: { items: ['heading','|','bold','italic','underline','|','bulletedList','numberedList','|','link','undo','redo'], shouldNotGroupWhenFull: true }
-                          }}
-                        />
-                      </div>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '30px' }}>
-                      <Button
-                        type="primary"
-                        onClick={handleSaveTeacherFeedback}
-                        loading={savingFeedback}
-                        disabled={savingFeedback}
-                        className={`create-button ${theme}-create-button`}
-                        style={{
-                          height: '36px',
-                          borderRadius: '6px',
-                          fontWeight: '500',
-                          fontSize: '14px',
-                          padding: '0 16px',
-                          border: 'none',
-                          transition: 'all 0.3s ease',
-                          background: theme === 'sun' 
-                            ? 'rgb(243, 188, 88)' 
-                            : 'linear-gradient(135deg, #F3BC58 19%, #E8B04D 64%, #DD9F42 75%, #F3BC58 97%, #D89637 100%)',
-                          color: '#000',
-                        }}
-                        onMouseEnter={(e) => {
-                          if (theme === 'sun') {
-                            e.currentTarget.style.background = 'rgb(230, 175, 75)';
-                          } else {
-                            e.currentTarget.style.background = 'linear-gradient(135deg, #E8B04D 19%, #DD9F42 64%, #D28F37 75%, #E8B04D 97%, #C8862D 100%)';
-                          }
-                        }}
-                        onMouseLeave={(e) => {
-                          if (theme === 'sun') {
-                            e.currentTarget.style.background = 'rgb(243, 188, 88)';
-                          } else {
-                            e.currentTarget.style.background = 'linear-gradient(135deg, #F3BC58 19%, #E8B04D 64%, #DD9F42 75%, #F3BC58 97%, #D89637 100%)';
-                          }
-                        }}
-                      >
-                        Save
-                      </Button>
-                    </div>
-                      </>
-                      )}
+                    {!isTeacherFeedbackCollapsed && (() => {
+                      const displayFeedback = teacherFeedback 
+                        || submissionData?.submission?.teacherFeedback 
+                        || submissionData?.teacherFeedback 
+                        || '';
+                      return (
+                        <div style={{ border: '1px solid #eee', borderRadius: '8px', padding: '16px', background: theme === 'sun' ? '#ffffff' : 'rgba(255,255,255,0.03)' }}>
+                          <div style={{ fontSize: '15px', lineHeight: '1.8', color: theme === 'sun' ? '#333' : '#e2e8f0' }}
+                            dangerouslySetInnerHTML={{ __html: displayFeedback || '<i>No feedback yet</i>' }} />
+                        </div>
+                      );
+                    })()}
                       </div>
 
                       <Divider style={{ margin: '16px 0' }} />
@@ -5043,6 +5190,126 @@ const DailyChallengeSubmissionDetail = () => {
               }}
             />
           </div>
+        </div>
+      </Modal>
+
+      {/* Overall Feedback Modal (header action) - styled like AccountList add modal */}
+      <Modal
+        title={
+          <div
+            style={{
+              fontSize: '20px',
+              fontWeight: 700,
+              color: 'rgb(24, 144, 255)',
+              textAlign: 'center',
+              padding: '6px 0'
+            }}
+          >
+            {teacherFeedback && teacherFeedback.replace(/<[^>]*>/g,'').trim().length > 0 ? 'Edit Feedback' : 'Add Feedback'}
+          </div>
+        }
+        open={overallFeedbackModalVisible}
+        centered
+        onCancel={() => setOverallFeedbackModalVisible(false)}
+        width={640}
+        footer={[
+          <Button key="cancel" onClick={() => setOverallFeedbackModalVisible(false)}
+            style={{ height: '36px', borderRadius: '6px', padding: '0 22px' }}
+          >
+            Cancel
+          </Button>,
+          <Button key="clear" onClick={() => setOverallFeedbackDraft('')}
+            style={{ height: '36px', borderRadius: '6px', padding: '0 22px' }}
+          >
+            Clear
+          </Button>,
+          <Button key="save" type="primary" loading={savingFeedback} onClick={handleSaveOverallFeedback}
+            style={{
+              height: '36px',
+              borderRadius: '6px',
+              fontWeight: 500,
+              padding: '0 24px',
+              border: 'none',
+              background: theme === 'sun' 
+                ? 'linear-gradient(135deg, #66AEFF, #3C99FF)'
+                : 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)',
+              color: '#000000'
+            }}
+          >
+            Save
+          </Button>
+        ]}
+      >
+        {/* Force CKEditor sizing like AIGenerateFeedback to avoid global CSS overrides */}
+        <style>{`
+          .feedback-editor-wrap .ck-editor__editable_inline { 
+            min-height: 300px !important; 
+            max-height: 300px !important; 
+            overflow-y: auto !important; 
+            color: #000 !important; 
+          }
+          .feedback-editor-wrap .ck-editor__main .ck-editor__editable { 
+            min-height: 300px !important; 
+            max-height: 300px !important; 
+            overflow-y: auto !important; 
+            color: #000 !important; 
+          }
+        `}</style>
+        <div className="feedback-editor-wrap" style={{ marginTop: 6, borderRadius: 12, border: `2px solid ${theme === 'sun' ? 'rgba(24, 144, 255, 0.5)' : 'rgba(139, 92, 246, 0.5)'}`, background: theme === 'sun' ? 'rgba(24,144,255,0.08)' : 'rgba(139,92,246,0.12)' }}>
+          <CKEditor
+            editor={ClassicEditor}
+            data={overallFeedbackDraft}
+            onChange={(event, editor) => setOverallFeedbackDraft(editor.getData())}
+            config={{
+              extraPlugins: [CustomUploadAdapterPlugin],
+              placeholder: 'Enter overall feedback...',
+              toolbar: {
+                items: [
+                  'heading',
+                  '|',
+                  'bold',
+                  'italic',
+                  'underline',
+                  '|',
+                  'insertTable',
+                  'imageUpload',
+                  '|',
+                  'bulletedList',
+                  'numberedList',
+                  '|',
+                  'link',
+                  '|',
+                  'undo',
+                  'redo'
+                ],
+                shouldNotGroupWhenFull: false
+              },
+              heading: {
+                options: [
+                  { model: 'paragraph', title: 'Paragraph', class: 'ck-heading_paragraph' },
+                  { model: 'heading1', view: 'h1', title: 'Heading 1', class: 'ck-heading_heading1' },
+                  { model: 'heading2', view: 'h2', title: 'Heading 2', class: 'ck-heading_heading2' },
+                  { model: 'heading3', view: 'h3', title: 'Heading 3', class: 'ck-heading_heading3' }
+                ]
+              },
+              table: { contentToolbar: ['tableColumn', 'tableRow', 'mergeTableCells'] },
+              image: {
+                toolbar: ['imageTextAlternative', '|', 'imageStyle:alignLeft', 'imageStyle:full', 'imageStyle:alignRight'],
+                styles: ['full', 'alignLeft', 'alignRight']
+              }
+            }}
+            onReady={(editor) => {
+              try {
+                const el = editor.ui?.getEditableElement?.();
+                if (el) {
+                  el.style.minHeight = '300px';
+                  el.style.maxHeight = '300px';
+                  el.style.overflowY = 'auto';
+                  el.style.color = '#000';
+                }
+              } catch {}
+            }}
+          />
         </div>
       </Modal>
 
