@@ -26,6 +26,8 @@ import dailyChallengeApi from "../../../apis/backend/dailyChallengeManagement";
 const AnswerCollectionContext = createContext(null);
 // Context for restoring answers to child components
 const AnswerRestorationContext = createContext(null);
+// Context to trigger debounced auto-save when answers change
+const AutoSaveTriggerContext = createContext(null);
 
 // Memoized HTML renderer to keep DOM stable and preserve text selection
 const MemoizedHTML = React.memo(
@@ -97,6 +99,7 @@ const processPassageContent = (content, theme, challengeType) => {
 const SectionQuestionItem = ({ question, index, theme, sectionScore }) => {
   const registerAnswerCollector = useContext(AnswerCollectionContext);
   const registerAnswerRestorer = useContext(AnswerRestorationContext);
+  const triggerAutoSave = useContext(AutoSaveTriggerContext);
   const [selectedAnswers, setSelectedAnswers] = useState({});
   const [droppedItems, setDroppedItems] = useState({});
   const [availableItems, setAvailableItems] = useState({});
@@ -152,11 +155,26 @@ const SectionQuestionItem = ({ question, index, theme, sectionScore }) => {
     question.questions.forEach(q => {
       const getAnswer = () => {
         let answer = null;
+        let options = undefined;
 
         if (q.type === 'MULTIPLE_CHOICE' || q.type === 'TRUE_OR_FALSE') {
           answer = selectedAnswers[q.id] || null;
+          // Build options mapping for MC/TF
+          if (q?.options && Array.isArray(q.options) && q.options.length > 0) {
+            options = q.options.map((opt, idx) => ({ key: opt.key || String.fromCharCode(65 + idx), text: opt.text }));
+          } else if (q?.content?.data && Array.isArray(q.content.data)) {
+            options = q.content.data.map((d, idx) => ({
+              key: q.type === 'TRUE_OR_FALSE' ? (String(d.value).toLowerCase() === 'true' ? 'A' : 'B') : (d.id || String.fromCharCode(65 + idx)),
+              text: d.value
+            }));
+          }
         } else if (q.type === 'MULTIPLE_SELECT') {
           answer = selectedAnswers[q.id] || [];
+          if (q?.options && Array.isArray(q.options) && q.options.length > 0) {
+            options = q.options.map((opt, idx) => ({ key: opt.key || String.fromCharCode(65 + idx), text: opt.text }));
+          } else if (q?.content?.data && Array.isArray(q.content.data)) {
+            options = q.content.data.map((d, idx) => ({ key: d.id || String.fromCharCode(65 + idx), text: d.value }));
+          }
         } else if (q.type === 'DROPDOWN') {
           // Collect all dropdown answers for this question
           const dropdownAnswers = {};
@@ -200,7 +218,7 @@ const SectionQuestionItem = ({ question, index, theme, sectionScore }) => {
         const normalizedType = (q.type === 'FILL_IN_THE_BLANK') ? 'FILL_BLANK'
           : (q.type === 'REARRANGE') ? 'REORDER'
           : q.type;
-        return { answer, questionType: normalizedType };
+        return { answer, questionType: normalizedType, options };
       };
 
       const unregister = registerAnswerCollector(q.id, getAnswer);
@@ -244,11 +262,34 @@ const SectionQuestionItem = ({ question, index, theme, sectionScore }) => {
 
         if (q.type === 'MULTIPLE_CHOICE' || q.type === 'TRUE_OR_FALSE') {
           if (typeof answer === 'string') {
-            setSelectedAnswers(prev => ({ ...prev, [q.id]: answer }));
+            // Map restored text/value back to option key
+            let options = [];
+            if (q?.options && Array.isArray(q.options) && q.options.length > 0) {
+              options = q.options.map((opt, idx) => ({ key: opt.key || String.fromCharCode(65 + idx), text: typeof opt.text === 'string' ? opt.text.replace(/<[^>]*>/g,' ').replace(/&nbsp;/g,' ').replace(/\s+/g,' ').trim() : opt.text }));
+            } else if (q?.content?.data && Array.isArray(q.content.data)) {
+              options = q.content.data.map((d, idx) => ({
+                key: q.type === 'TRUE_OR_FALSE' ? (String(d.value).toLowerCase() === 'true' ? 'A' : 'B') : (d.id || String.fromCharCode(65 + idx)),
+                text: typeof d.value === 'string' ? d.value.replace(/<[^>]*>/g,' ').replace(/&nbsp;/g,' ').replace(/\s+/g,' ').trim() : d.value
+              }));
+            }
+            const normalized = String(answer).replace(/<[^>]*>/g,' ').replace(/&nbsp;/g,' ').replace(/\s+/g,' ').trim();
+            const match = options.find(o => o.text === normalized || o.key === normalized);
+            setSelectedAnswers(prev => ({ ...prev, [q.id]: match ? match.key : normalized }));
           }
         } else if (q.type === 'MULTIPLE_SELECT') {
           if (Array.isArray(answer)) {
-            setSelectedAnswers(prev => ({ ...prev, [q.id]: answer }));
+            let options = [];
+            if (q?.options && Array.isArray(q.options) && q.options.length > 0) {
+              options = q.options.map((opt, idx) => ({ key: opt.key || String.fromCharCode(65 + idx), text: typeof opt.text === 'string' ? opt.text.replace(/<[^>]*>/g,' ').replace(/&nbsp;/g,' ').replace(/\s+/g,' ').trim() : opt.text }));
+            } else if (q?.content?.data && Array.isArray(q.content.data)) {
+              options = q.content.data.map((d, idx) => ({ key: d.id || String.fromCharCode(65 + idx), text: typeof d.value === 'string' ? d.value.replace(/<[^>]*>/g,' ').replace(/&nbsp;/g,' ').replace(/\s+/g,' ').trim() : d.value }));
+            }
+            const keys = answer.map(val => {
+              const normalized = String(val).replace(/<[^>]*>/g,' ').replace(/&nbsp;/g,' ').replace(/\s+/g,' ').trim();
+              const match = options.find(o => o.text === normalized || o.key === normalized);
+              return match ? match.key : normalized;
+            });
+            setSelectedAnswers(prev => ({ ...prev, [q.id]: keys }));
           }
         } else if (q.type === 'DROPDOWN') {
           if (typeof answer === 'object' && answer !== null && !Array.isArray(answer)) {
@@ -292,6 +333,11 @@ const SectionQuestionItem = ({ question, index, theme, sectionScore }) => {
       unregisterFunctions.forEach(unregister => unregister());
     };
   }, [registerAnswerRestorer, question.questions]);
+
+  // Debounced auto-save for RE changes (answers/drag/reorder)
+  useEffect(() => {
+    if (triggerAutoSave) triggerAutoSave();
+  }, [triggerAutoSave, selectedAnswers, droppedItems, reorderStates]);
 
   // Sync restored LI Fill-Blank values to DOM when state changes
   useEffect(() => {
@@ -431,7 +477,10 @@ const SectionQuestionItem = ({ question, index, theme, sectionScore }) => {
           <div style={{ padding: '20px' }}>
             {/* Questions List */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-              {question.questions.map((q, qIndex) => (
+              {question.questions
+                .slice()
+                .sort((a, b) => (a.orderNumber || 0) - (b.orderNumber || 0) || ((a.id || 0) - (b.id || 0)))
+                .map((q, qIndex) => (
                 <div key={q.id} style={{
                   padding: '16px',
                   background: theme === 'sun' ? '#f8f9fa' : 'rgba(255, 255, 255, 0.05)',
@@ -441,10 +490,15 @@ const SectionQuestionItem = ({ question, index, theme, sectionScore }) => {
                   {/* Answer Options */}
                   {q.type === 'MULTIPLE_CHOICE' || q.type === 'TRUE_OR_FALSE' || q.type === 'MULTIPLE_SELECT' ? (
                     (() => {
-                      const options = (q.options && q.options.length ? q.options : (q.content?.data || []).map((d, idx) => ({
-                        key: String.fromCharCode(65 + idx),
-                        text: d.value
-                      })));
+                      const options = (q.options && q.options.length
+                        ? q.options
+                        : (q.content?.data || []).map((d, idx) => ({
+                            // For TRUE/FALSE questions, we don't want to show backend ids like "true_option"
+                            // Build a simple A/B key but rely on text for display
+                            key: q.type === 'TRUE_OR_FALSE' ? (d.value === 'True' ? 'A' : 'B') : String.fromCharCode(65 + idx),
+                            text: d.value
+                          }))
+                      );
                       const isMulti = q.type === 'MULTIPLE_SELECT';
                       const selected = selectedAnswers[q.id] || (isMulti ? [] : null);
                       const isChecked = (k) => isMulti ? (selected || []).includes(k) : selected === k;
@@ -504,7 +558,9 @@ const SectionQuestionItem = ({ question, index, theme, sectionScore }) => {
                                     onChange={() => toggle(key)}
                                     style={{ width: '18px', height: '18px', accentColor: theme === 'sun' ? '#1890ff' : '#8B5CF6' }}
                                   />
-                                  <span style={{ fontWeight: 600 }}>{key}.</span>
+                                  {q.type !== 'TRUE_OR_FALSE' && (
+                                    <span style={{ fontWeight: 600 }}>{key}.</span>
+                                  )}
                                   <span 
                                     className="option-text"
                                     style={{ flex: 1, lineHeight: '1.6' }}
@@ -1450,6 +1506,7 @@ const SectionQuestionItem = ({ question, index, theme, sectionScore }) => {
 const ListeningSectionItem = ({ question, index, theme, sectionScore }) => {
   const registerAnswerCollector = useContext(AnswerCollectionContext);
   const registerAnswerRestorer = useContext(AnswerRestorationContext);
+  const triggerAutoSave = useContext(AutoSaveTriggerContext);
   const [selectedAnswers, setSelectedAnswers] = useState({});
   const [droppedItems, setDroppedItems] = useState({});
   const [availableItems, setAvailableItems] = useState({});
@@ -1611,6 +1668,11 @@ const ListeningSectionItem = ({ question, index, theme, sectionScore }) => {
       unregisterFunctions.forEach(unregister => unregister());
     };
   }, [registerAnswerRestorer, question.questions]);
+
+  // Debounced auto-save for LI changes
+  useEffect(() => {
+    if (triggerAutoSave) triggerAutoSave();
+  }, [triggerAutoSave, selectedAnswers, droppedItems, reorderStates]);
 
   // Initialize available items for DRAG_AND_DROP questions (include all values)
   useEffect(() => {
@@ -1892,7 +1954,10 @@ const ListeningSectionItem = ({ question, index, theme, sectionScore }) => {
             <div style={{ padding: '20px' }}>
               {/* Questions List */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                {question.questions.map((q, qIndex) => (
+                {question.questions
+                  .slice()
+                  .sort((a, b) => (a.orderNumber || 0) - (b.orderNumber || 0) || ((a.id || 0) - (b.id || 0)))
+                  .map((q, qIndex) => (
                   <div key={q.id} style={{
                     padding: '16px',
                     background: theme === 'sun' ? '#f8f9fa' : 'rgba(255, 255, 255, 0.05)',
@@ -2478,6 +2543,7 @@ const ListeningSectionItem = ({ question, index, theme, sectionScore }) => {
 const WritingSectionItem = ({ question, index, theme }) => {
   const registerAnswerCollector = useContext(AnswerCollectionContext);
   const registerAnswerRestorer = useContext(AnswerRestorationContext);
+  const triggerAutoSave = useContext(AutoSaveTriggerContext);
   const [essayText, setEssayText] = useState('');
   const [uploadedFiles, setUploadedFiles] = useState([]);
   const [wordCount, setWordCount] = useState(0);
@@ -2558,6 +2624,11 @@ const WritingSectionItem = ({ question, index, theme }) => {
     const unregister = registerAnswerRestorer(question.id, setAnswer);
     return unregister;
   }, [registerAnswerRestorer, question?.id]);
+
+  // Debounced auto-save for WR changes
+  useEffect(() => {
+    if (triggerAutoSave) triggerAutoSave();
+  }, [triggerAutoSave, essayText, uploadedFiles, writingMode]);
 
 
   const handleFileUpload = (event) => {
@@ -3011,6 +3082,7 @@ const WritingSectionItem = ({ question, index, theme }) => {
 const SpeakingSectionItem = ({ question, index, theme, isViewOnly }) => {
   const registerAnswerCollector = useContext(AnswerCollectionContext);
   const registerAnswerRestorer = useContext(AnswerRestorationContext);
+  const triggerAutoSave = useContext(AutoSaveTriggerContext);
   const [isRecording, setIsRecording] = useState(false);
   const [audioUrl, setAudioUrl] = useState(null);
   const [uploadedFiles, setUploadedFiles] = useState([]);
@@ -3192,6 +3264,11 @@ const SpeakingSectionItem = ({ question, index, theme, isViewOnly }) => {
     const unregister = registerAnswerRestorer(question.id, setAnswer);
     return unregister;
   }, [registerAnswerRestorer, question?.id]);
+
+  // Debounced auto-save for SP changes
+  useEffect(() => {
+    if (triggerAutoSave) triggerAutoSave();
+  }, [triggerAutoSave, isRecording, audioUrl, uploadedFiles]);
 
   return (
     <>
@@ -3529,6 +3606,7 @@ const SpeakingSectionItem = ({ question, index, theme, isViewOnly }) => {
 const SpeakingWithAudioSectionItem = ({ question, index, theme, sectionScore, isViewOnly }) => {
   const registerAnswerCollector = useContext(AnswerCollectionContext);
   const registerAnswerRestorer = useContext(AnswerRestorationContext);
+  const triggerAutoSave = useContext(AutoSaveTriggerContext);
   const [isRecording, setIsRecording] = useState(false);
   const [audioUrl, setAudioUrl] = useState(null);
   const [uploadedFiles, setUploadedFiles] = useState([]);
@@ -3709,6 +3787,10 @@ const SpeakingWithAudioSectionItem = ({ question, index, theme, sectionScore, is
     const unregister = registerAnswerRestorer(question.id, setAnswer);
     return unregister;
   }, [registerAnswerRestorer, question?.id]);
+
+  useEffect(() => {
+    if (triggerAutoSave) triggerAutoSave();
+  }, [triggerAutoSave, isRecording, audioUrl, uploadedFiles, isPlaying, currentTime]);
 
   const removeRecording = () => {
     if (isViewOnly) return;
@@ -4241,7 +4323,13 @@ const MultipleChoiceContainer = ({ theme, data }) => {
     if (!registerAnswerCollector || !data?.id) return;
     
     const getAnswer = () => {
-      return selectedAnswer ? { answer: selectedAnswer, questionType: 'MULTIPLE_CHOICE' } : null;
+      if (!selectedAnswer) return null;
+      const contentOpts = Array.isArray(data?.content?.data) && data.content.data.length > 0
+        ? data.content.data.map((d, idx) => ({ key: d.id || String.fromCharCode(65 + idx), text: d.value }))
+        : null;
+      const baseOptions = optionsFromApi || contentOpts || ['A','B','C','D'].map((k, i) => ({ key: k, text: ['Ho Chi Minh City', 'Hanoi', 'Da Nang', 'Can Tho'][i] }));
+      const options = baseOptions.map((o, idx) => ({ key: o.key || String.fromCharCode(65 + idx), text: o.text }));
+      return { answer: selectedAnswer, questionType: 'MULTIPLE_CHOICE', options };
     };
     
     const unregister = registerAnswerCollector(data.id, getAnswer);
@@ -4254,7 +4342,14 @@ const MultipleChoiceContainer = ({ theme, data }) => {
 
     const unregister = registerAnswerRestorer(data.id, (restored) => {
       if (typeof restored === 'string' && restored) {
-        setSelectedAnswer(restored);
+        const contentOpts = Array.isArray(data?.content?.data) && data.content.data.length > 0
+          ? data.content.data.map((d, idx) => ({ key: d.id || String.fromCharCode(65 + idx), text: d.value }))
+          : null;
+        const baseOptions = optionsFromApi || contentOpts || ['A','B','C','D'].map((k, i) => ({ key: k, text: ['Ho Chi Minh City', 'Hanoi', 'Da Nang', 'Can Tho'][i] }));
+        const options = baseOptions.map((o, idx) => ({ key: o.key || String.fromCharCode(65 + idx), text: typeof o.text === 'string' ? o.text.replace(/<[^>]*>/g,' ').replace(/&nbsp;/g,' ').replace(/\s+/g,' ').trim() : o.text }));
+        const normalized = String(restored).replace(/<[^>]*>/g,' ').replace(/&nbsp;/g,' ').replace(/\s+/g,' ').trim();
+        const match = options.find(o => o.text === normalized || o.key === normalized);
+        setSelectedAnswer(match ? match.key : normalized);
       }
     });
     return unregister;
@@ -4422,7 +4517,13 @@ const MultipleSelectContainer = ({ theme, data }) => {
     if (!registerAnswerCollector || !data?.id) return;
     
     const getAnswer = () => {
-      return selectedAnswers.length > 0 ? { answer: selectedAnswers, questionType: 'MULTIPLE_SELECT' } : null;
+      if (selectedAnswers.length === 0) return null;
+      const contentOpts = Array.isArray(data?.content?.data) && data.content.data.length > 0
+        ? data.content.data.map((d, idx) => ({ key: d.id || String.fromCharCode(65 + idx), text: d.value }))
+        : null;
+      const baseOptions = optionsFromApi || contentOpts || ['A','B','C','D'].map((k,i)=>({ key:k, text: ['Vietnam','Thailand','Japan','Malaysia'][i] }));
+      const options = baseOptions.map((o, idx) => ({ key: o.key || String.fromCharCode(65 + idx), text: o.text }));
+      return { answer: selectedAnswers, questionType: 'MULTIPLE_SELECT', options };
     };
     
     const unregister = registerAnswerCollector(data.id, getAnswer);
@@ -4434,10 +4535,22 @@ const MultipleSelectContainer = ({ theme, data }) => {
     if (!registerAnswerRestorer || !data?.id) return;
 
     const unregister = registerAnswerRestorer(data.id, (restored) => {
+      const contentOpts = Array.isArray(data?.content?.data) && data.content.data.length > 0
+        ? data.content.data.map((d, idx) => ({ key: d.id || String.fromCharCode(65 + idx), text: d.value }))
+        : null;
+      const baseOptions = optionsFromApi || contentOpts || ['A','B','C','D'].map((k,i)=>({ key:k, text: ['Vietnam','Thailand','Japan','Malaysia'][i] }));
+      const options = baseOptions.map((o, idx) => ({ key: o.key || String.fromCharCode(65 + idx), text: typeof o.text === 'string' ? o.text.replace(/<[^>]*>/g,' ').replace(/&nbsp;/g,' ').replace(/\s+/g,' ').trim() : o.text }));
       if (Array.isArray(restored)) {
-        setSelectedAnswers(restored);
+        const keys = restored.map(val => {
+          const normalized = String(val).replace(/<[^>]*>/g,' ').replace(/&nbsp;/g,' ').replace(/\s+/g,' ').trim();
+          const match = options.find(o => o.text === normalized || o.key === normalized);
+          return match ? match.key : normalized;
+        });
+        setSelectedAnswers(keys);
       } else if (typeof restored === 'string' && restored) {
-        setSelectedAnswers([restored]);
+        const normalized = String(restored).replace(/<[^>]*>/g,' ').replace(/&nbsp;/g,' ').replace(/\s+/g,' ').trim();
+        const match = options.find(o => o.text === normalized || o.key === normalized);
+        setSelectedAnswers([match ? match.key : normalized]);
       }
     });
     return unregister;
@@ -4611,7 +4724,12 @@ const TrueFalseContainer = ({ theme, data }) => {
     if (!registerAnswerCollector || !data?.id) return;
     
     const getAnswer = () => {
-      return selectedAnswer ? { answer: selectedAnswer, questionType: 'TRUE_OR_FALSE' } : null;
+      if (!selectedAnswer) return null;
+      const options = [
+        { key: 'A', text: 'True' },
+        { key: 'B', text: 'False' }
+      ];
+      return { answer: selectedAnswer, questionType: 'TRUE_OR_FALSE', options };
     };
     
     const unregister = registerAnswerCollector(data.id, getAnswer);
@@ -6585,6 +6703,21 @@ const StudentDailyChallengeTake = () => {
 
   // Removed localStorage persistence to avoid breaking inputs
 
+  // Debounced auto-save trigger exposed to children via context
+  const autoSaveDebounceRef = useRef(null);
+  const markProgressDirty = React.useCallback(() => {
+    if (loading || isViewOnly) return;
+    try {
+      setAutoSaveStatus('saving');
+    } catch {}
+    if (autoSaveDebounceRef.current) {
+      clearTimeout(autoSaveDebounceRef.current);
+    }
+    autoSaveDebounceRef.current = setTimeout(() => {
+      autoSaveDraftSilently();
+    }, 1500);
+  }, [loading, isViewOnly]);
+
   // Silently save draft (no global loading/toast)
   const autoSaveDraftSilently = async () => {
     if (isViewOnly) return;
@@ -6716,7 +6849,7 @@ const StudentDailyChallengeTake = () => {
   };
 
   // Helper function to format answers according to API structure
-  const formatAnswerForAPI = (questionId, answer, questionType) => {
+  const formatAnswerForAPI = (questionId, answer, questionType, options) => {
     // Normalize equivalent types
     const normalizedType = (questionType === 'FILL_IN_THE_BLANK') ? 'FILL_BLANK'
       : (questionType === 'REARRANGE') ? 'REORDER'
@@ -6730,25 +6863,58 @@ const StudentDailyChallengeTake = () => {
 
     const contentData = [];
 
+    // Helper to map a choice key/text to display text using provided options
+    const getTextForKey = (keyOrText) => {
+      if (Array.isArray(options)) {
+        const found = options.find(o => o && (o.key === keyOrText || o.text === keyOrText));
+        if (found) return found.text ?? String(keyOrText);
+      }
+      return String(keyOrText);
+    };
+    const stripHtml = (s) => String(s).replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();
+
     // Handle different answer types based on question type
     if (normalizedType === 'MULTIPLE_CHOICE' || normalizedType === 'TRUE_OR_FALSE') {
-      // Single answer: string (option key like 'A', 'B', etc.)
+      // Single answer: can be option key like 'A' or text like 'True'
       if (typeof answer === 'string') {
-        contentData.push({
-          id: answer,
-          value: answer,
-          positionId: null
-        });
+        // For TRUE/FALSE, normalize id as 'A' for True and 'B' for False if keys missing
+        let id = answer;
+        let value = getTextForKey(answer);
+        if (normalizedType === 'TRUE_OR_FALSE') {
+          const normalized = answer.trim().toLowerCase();
+          if (!Array.isArray(options)) {
+            id = (normalized === 'true') ? 'A' : (normalized === 'false') ? 'B' : answer;
+            value = (normalized === 'true') ? 'True' : (normalized === 'false') ? 'False' : value;
+          } else {
+            const match = options.find(o => o && (o.text?.toLowerCase() === normalized || o.key === answer));
+            if (match) {
+              id = match.key ?? id;
+              value = match.text ?? value;
+            }
+          }
+        } else if (Array.isArray(options)) {
+          const match = options.find(o => o && (o.key === answer || o.text === answer));
+          if (match) {
+            id = match.key ?? id;
+            value = match.text ?? value;
+          }
+        }
+        contentData.push({ id, value: stripHtml(value), positionId: null });
       }
     } else if (normalizedType === 'MULTIPLE_SELECT') {
-      // Multiple answers: array of option keys
+      // Multiple answers: array of option keys/texts
       if (Array.isArray(answer) && answer.length > 0) {
-        answer.forEach(optKey => {
-          contentData.push({
-            id: optKey,
-            value: optKey,
-            positionId: null
-          });
+        answer.forEach(optKeyOrText => {
+          let id = String(optKeyOrText);
+          let value = getTextForKey(optKeyOrText);
+          if (Array.isArray(options)) {
+            const match = options.find(o => o && (o.key === optKeyOrText || o.text === optKeyOrText));
+            if (match) {
+              id = match.key ?? id;
+              value = match.text ?? value;
+            }
+          }
+          contentData.push({ id, value: stripHtml(value), positionId: null });
         });
       }
     } else if (normalizedType === 'DROPDOWN') {
@@ -6756,7 +6922,18 @@ const StudentDailyChallengeTake = () => {
       // or a single value if not using positionId
       if (typeof answer === 'object' && answer !== null && !Array.isArray(answer)) {
         Object.keys(answer).forEach(key => {
-          const positionId = key.includes('_pos_') ? key.split('_pos_')[1] : null;
+          // Normalize to take only the suffix after '_pos_' or 'pos_'
+          let positionId = null;
+          if (key.includes('_pos_')) {
+            positionId = key.split('_pos_').pop();
+            if (positionId && String(positionId).startsWith('pos_')) {
+              positionId = String(positionId).substring(4);
+            }
+          } else if (key.startsWith('pos_')) {
+            positionId = key.substring(4);
+          } else {
+            positionId = key;
+          }
           const value = answer[key];
           if (value) {
             contentData.push({
@@ -6776,9 +6953,16 @@ const StudentDailyChallengeTake = () => {
     } else if (normalizedType === 'DRAG_AND_DROP') {
       // Drag and drop: answer is an object with positionId keys like { "pos_1": "value", ... }
       if (typeof answer === 'object' && answer !== null && !Array.isArray(answer)) {
-        Object.keys(answer).forEach(positionId => {
-          const value = answer[positionId];
+        Object.keys(answer).forEach(rawPos => {
+          const value = answer[rawPos];
           if (value) {
+            // Normalize position id to remove prefixes
+            let positionId = rawPos;
+            if (rawPos.includes('_pos_')) {
+              positionId = rawPos.split('_pos_').pop();
+            } else if (rawPos.startsWith('pos_')) {
+              positionId = rawPos.substring(4);
+            }
             contentData.push({
               id: value,
               value: value,
@@ -7050,8 +7234,8 @@ const StudentDailyChallengeTake = () => {
       try {
         const answerData = getAnswerFn();
         if (answerData && typeof answerData === 'object') {
-          const { answer, questionType } = answerData;
-          const formattedAnswer = formatAnswerForAPI(questionId, answer, questionType);
+          const { answer, questionType, options } = answerData;
+          const formattedAnswer = formatAnswerForAPI(questionId, answer, questionType, options);
           if (formattedAnswer) {
             questionAnswers.push(formattedAnswer);
           } else {
@@ -7457,6 +7641,10 @@ const StudentDailyChallengeTake = () => {
     </header>
   );
 
+  // Ensure GV questions render in ascending orderNumber like the left nav
+  const sortedQuestions = React.useMemo(() => {
+    return [...questions].sort((a, b) => (a.orderNumber || 0) - (b.orderNumber || 0) || ((a.id || 0) - (b.id || 0)));
+  }, [questions]);
   const questionNav = getQuestionNavigation();
 
   return (
@@ -7512,6 +7700,7 @@ const StudentDailyChallengeTake = () => {
             <LoadingWithEffect loading={loading} message="Loading questions...">
               <AnswerCollectionContext.Provider value={registerAnswerCollector}>
                 <AnswerRestorationContext.Provider value={registerAnswerRestorer}>
+                <AutoSaveTriggerContext.Provider value={markProgressDirty}>
               <div className="questions-list">
                 {/* Render Reading sections when challenge type is RE */}
                 {challengeType === 'RE' && readingSections.length > 0 && (
@@ -7555,7 +7744,7 @@ const StudentDailyChallengeTake = () => {
                   ))
                 )}
                 {/* Dynamic questions preview (hide complex sections) */}
-                {questions.map((q, idx) => (
+                {sortedQuestions.map((q, idx) => (
                   <div key={q.id} ref={el => (questionRefs.current[`q-${q.id}`] = el)}>
                     {q.type === 'MULTIPLE_CHOICE' && (
                       <MultipleChoiceContainer theme={theme} data={q} />
@@ -7597,6 +7786,7 @@ const StudentDailyChallengeTake = () => {
                   ))
                 )}
               </div>
+                </AutoSaveTriggerContext.Provider>
                 </AnswerRestorationContext.Provider>
               </AnswerCollectionContext.Provider>
             </LoadingWithEffect>
