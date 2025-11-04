@@ -59,5 +59,6 @@ code {
    for Multiple Choice and Multiple Select answers in the LI taking screen */
 .question-options .option-text p,
 .option-text p {
+  margin-top: 0;
   margin-bottom: 0;
 }

@@ -299,6 +299,9 @@ const DailyChallengeList = ({ readOnly = false }) => {
                   shuffleQuestion: !!challenge.shuffleQuestion,
                   translateOnScreen: !!challenge.translateOnScreen,
                   challengeMode: challenge.challengeMethod === 'TEST' ? 'exam' : 'normal',
+                  // Completion info from API (prefer direct fields)
+                  submittedCount: typeof challenge.submittedCount === 'number' ? challenge.submittedCount : 0,
+                  totalStudents: typeof lesson.totalStudents === 'number' ? lesson.totalStudents : (typeof lesson.totalStudent === 'number' ? lesson.totalStudent : 0),
                   originalChallenge: challenge,
                 });
               });
@@ -407,6 +410,8 @@ const DailyChallengeList = ({ readOnly = false }) => {
           shuffleQuestion: !!challenge.shuffleQuestion,
           translateOnScreen: !!challenge.translateOnScreen,
           challengeMode: challenge.challengeMethod === 'TEST' ? 'exam' : 'normal',
+          submittedCount: typeof challenge.submittedCount === 'number' ? challenge.submittedCount : undefined,
+          totalStudents: typeof challenge.totalStudents === 'number' ? challenge.totalStudents : (challenge.classLesson?.totalStudents),
           originalChallenge: challenge,
         }));
 
@@ -506,6 +511,7 @@ const DailyChallengeList = ({ readOnly = false }) => {
     const fetchPerformanceForPage = async () => {
       const idsToFetch = dailyChallenges
         .filter((rec) => rec && !rec.isEmptyLesson && rec.id && performanceByChallengeId[rec.id] === undefined)
+        .filter((rec) => rec.submittedCount === undefined || rec.totalStudents === undefined)
         .map((rec) => rec.id);
       if (idsToFetch.length === 0) return;
       // Mark as loading to avoid duplicate calls
@@ -520,9 +526,11 @@ const DailyChallengeList = ({ readOnly = false }) => {
             try {
               const res = await dailyChallengeApi.getDailyChallengePerformance(id);
               const data = res?.data || res || {};
-              // Normalize potential shapes
-              const completed = data.completedStudents ?? data.completed ?? data.numCompleted ?? 0;
-              const total = data.totalStudents ?? data.total ?? data.numTotal ?? 0;
+              // Normalize potential shapes (prefer new fields submittedCount/totalStudents)
+              const completed =
+                data.submittedCount ?? data.completedStudents ?? data.completed ?? data.numCompleted ?? 0;
+              const total =
+                data.totalStudents ?? data.total ?? data.numTotal ?? 0;
               return { id, completed, total };
             } catch (e) {
               return { id, completed: null, total: null, error: true };
@@ -1094,11 +1102,21 @@ const DailyChallengeList = ({ readOnly = false }) => {
             </span>
           );
         }
-        const perf = performanceByChallengeId[record.id];
-        if (!perf) return '...';
-        if (perf.error) return '-';
-        const completed = (perf.completed ?? 0);
-        const total = (perf.total ?? 0);
+        // Prefer direct values from record if provided by API
+        const directCompleted = record.submittedCount;
+        const directTotal = record.totalStudents;
+        let completed;
+        let total;
+        if (typeof directCompleted === 'number' && typeof directTotal === 'number') {
+          completed = directCompleted;
+          total = directTotal;
+        } else {
+          const perf = performanceByChallengeId[record.id];
+          if (!perf) return '...';
+          if (perf.error) return '-';
+          completed = (perf.completed ?? 0);
+          total = (perf.total ?? 0);
+        }
         return (
           <span style={{ fontWeight: 500 }}>
             {completed}/{total}
@@ -1130,7 +1148,7 @@ const DailyChallengeList = ({ readOnly = false }) => {
             case 'IN_PROGRESS':
               return '#1890ff';
             case 'CLOSED':
-              return '#8c8c8c';
+              return 'rgb(229,79,79)';
             default:
               return '#000000';
           }
