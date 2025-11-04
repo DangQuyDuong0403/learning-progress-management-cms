@@ -100,6 +100,8 @@ const DailyChallengeSubmissionDetail = () => {
   // Teacher feedback state
   const [teacherFeedback, setTeacherFeedback] = useState('');
   const [savingFeedback, setSavingFeedback] = useState(false);
+  const [overallFeedbackModalVisible, setOverallFeedbackModalVisible] = useState(false);
+  const [overallFeedbackDraft, setOverallFeedbackDraft] = useState('');
   const [savingGrading, setSavingGrading] = useState(false);
   
   
@@ -1002,6 +1004,8 @@ const DailyChallengeSubmissionDetail = () => {
           totalQuestions,
           totalPoints: apiSubmissionData.totalPoints || totalScore,
           maxPoints: apiSubmissionData.maxPoints || totalScore,
+          totalWeight: apiSubmissionData.totalWeight || apiData.totalWeight || null,
+          maxPossibleWeight: apiSubmissionData.maxPossibleWeight || apiData.maxPossibleWeight || null,
           timeLimit: apiData.timeLimit || apiSubmissionData.timeLimit || 0,
         },
         submission: {
@@ -1018,14 +1022,19 @@ const DailyChallengeSubmissionDetail = () => {
         },
       });
 
-      // Fetch grading summary for sidebar Performance (override fake/calculated numbers)
+        // Prefill teacher feedback from primary submission result if available
+        if (typeof (apiData.teacherFeedback || apiSubmissionData.teacherFeedback) === 'string') {
+          setTeacherFeedback(apiData.teacherFeedback || apiSubmissionData.teacherFeedback);
+        }
+
+        // Fetch grading summary for sidebar Performance (override fake/calculated numbers)
       try {
         const gradingRes = await dailyChallengeApi.getSubmissionGradingResult(submissionChallengeId);
         const gradingData = gradingRes?.data?.data || gradingRes?.data || null;
         if (gradingData) {
           // Map grading fields to local state
-          const score = gradingData.totalScore;
-          const maxPointsFromGrading = gradingData.maxPossibleScore;
+          const score = gradingData.finalScore ?? gradingData.totalScore;
+          const maxPointsFromGrading = gradingData.maxPossibleWeight ?? gradingData.maxPossibleScore;
           const accuracyPct = gradingData.scorePercentage != null ? Math.round(gradingData.scorePercentage) : undefined;
           const correct = gradingData.correctAnswers;
           const incorrect = gradingData.wrongAnswers;
@@ -1037,6 +1046,8 @@ const DailyChallengeSubmissionDetail = () => {
               ...prev.challenge,
               totalQuestions: gradingData.totalQuestions ?? prev.challenge?.totalQuestions,
               maxPoints: maxPointsFromGrading ?? prev.challenge?.maxPoints,
+              totalWeight: gradingData.totalWeight ?? prev.challenge?.totalWeight,
+              maxPossibleWeight: gradingData.maxPossibleWeight ?? prev.challenge?.maxPossibleWeight,
             },
             submission: {
               ...prev.submission,
@@ -1394,6 +1405,48 @@ const DailyChallengeSubmissionDetail = () => {
     } catch (error) {
       console.error('Error saving teacher feedback:', error);
       spaceToast.error(error.response?.data?.error || 'Failed to save teacher feedback');
+    } finally {
+      setSavingFeedback(false);
+    }
+  };
+
+  // CKEditor: custom upload adapter (base64) like MultipleChoiceModal
+  function CustomUploadAdapterPlugin(editor) {
+    editor.plugins.get('FileRepository').createUploadAdapter = (loader) => {
+      return {
+        upload: () => {
+          return loader.file.then(file => new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve({ default: reader.result });
+            reader.onerror = (err) => reject(err);
+            reader.readAsDataURL(file);
+          }));
+        },
+        abort: () => {}
+      };
+    };
+  }
+
+  // Header Overall Feedback modal save
+  const handleSaveOverallFeedback = async () => {
+    const subId = submissionId || submissionData?.id;
+    if (!subId) {
+      spaceToast.error('Missing submission ID');
+      return;
+    }
+    try {
+      setSavingFeedback(true);
+      const stripHtml = (html) => (html || '').replace(/<[^>]*>/g, '').trim();
+      const payload = { overallFeedback: stripHtml(overallFeedbackDraft) };
+      const res = await dailyChallengeApi.saveGradingSummary(subId, payload);
+      const beMsg = res?.message || res?.msg || res?.data?.message || res?.data?.msg || 'Saved';
+      // Update local view (sidebar)
+      setTeacherFeedback(overallFeedbackDraft);
+      setOverallFeedbackModalVisible(false);
+      spaceToast.success(beMsg);
+    } catch (err) {
+      console.error('Save overall feedback failed:', err);
+      spaceToast.error(err?.response?.data?.message || 'Failed to save feedback');
     } finally {
       setSavingFeedback(false);
     }
@@ -3660,11 +3713,11 @@ const DailyChallengeSubmissionDetail = () => {
             </h2>
           </div>
           {/* Right actions */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginLeft: 'auto' }}>
-            <Button
-              icon={<SaveOutlined />}
-              loading={savingGrading}
-              onClick={handleSaveGrading}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginLeft: 'auto' }}>
+              <Button
+                icon={<FileTextOutlined />}
+                loading={savingFeedback}
+                onClick={() => { setOverallFeedbackDraft(teacherFeedback || ''); setOverallFeedbackModalVisible(true); }}
               className={`create-button ${theme}-create-button`}
               style={{
                 height: '40px',
@@ -3679,9 +3732,9 @@ const DailyChallengeSubmissionDetail = () => {
                   : 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)',
                 color: '#000000',
                 boxShadow: theme === 'sun' ? '0 2px 8px rgba(60, 153, 255, 0.3)' : '0 2px 8px rgba(131, 119, 160, 0.3)'
-              }}
-            >
-              {t('common.save') || 'Save'}
+                }}
+              >
+                {(teacherFeedback && teacherFeedback.replace(/<[^>]*>/g,'').trim().length > 0) ? 'Edit Feedback' : 'Add Feedback'}
             </Button>
           </div>
         </div>
@@ -4048,30 +4101,7 @@ const DailyChallengeSubmissionDetail = () => {
                                 </>
                               )}
                             </div>
-                            {submission.score != null && submission.score !== undefined && (
-                              <Button
-                                type="text"
-                                icon={<EditOutlined />}
-                                onClick={handleOpenEditScore}
-                                style={{
-                                  position: 'absolute',
-                                  bottom: '-8px',
-                                  right: '-8px',
-                                  padding: '4px 8px',
-                                  color: theme === 'sun' ? '#1890ff' : '#8377A0',
-                                  fontSize: '16px',
-                                  background: theme === 'sun' ? '#fff' : 'rgba(255, 255, 255, 0.9)',
-                                  borderRadius: '50%',
-                                  width: '32px',
-                                  height: '32px',
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                  boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
-                                }}
-                                title="Edit Score"
-                              />
-                            )}
+                            {/* Edit score button removed as requested */}
                           </div>
                         </div>
 
@@ -4276,58 +4306,30 @@ const DailyChallengeSubmissionDetail = () => {
                           borderTop: `1px solid ${theme === 'sun' ? '#E0E0E0' : 'rgba(255, 255, 255, 0.1)'}`
                         }}>
                           <Space direction="vertical" size={8} style={{ width: '100%' }}>
+                            
+                            {/* New fields from grading summary */}
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                               <Typography.Text style={{ fontSize: '12px', color: theme === 'sun' ? '#666' : '#999' }}>
-                                Time Used:
+                                Total Weight:
                               </Typography.Text>
                               <Typography.Text style={{ fontSize: '12px', fontWeight: 500, color: theme === 'sun' ? '#000' : '#fff' }}>
-                                {submission.timeSpent != null ? `${submission.timeSpent} minutes` : '-'}
+                                {submissionData.challenge?.totalWeight != null ? submissionData.challenge.totalWeight : '-'}
                               </Typography.Text>
                             </div>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                               <Typography.Text style={{ fontSize: '12px', color: theme === 'sun' ? '#666' : '#999' }}>
-                                Time Limit:
+                                Max Possible Weight:
                               </Typography.Text>
                               <Typography.Text style={{ fontSize: '12px', fontWeight: 500, color: theme === 'sun' ? '#000' : '#fff' }}>
-                                {submissionData.challenge?.timeLimit ? `${submissionData.challenge.timeLimit} minutes` : '-'}
+                                {submissionData.challenge?.maxPossibleWeight != null ? submissionData.challenge.maxPossibleWeight : '-'}
                               </Typography.Text>
                             </div>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                               <Typography.Text style={{ fontSize: '12px', color: theme === 'sun' ? '#666' : '#999' }}>
-                                Submitted:
+                                Total Questions:
                               </Typography.Text>
                               <Typography.Text style={{ fontSize: '12px', fontWeight: 500, color: theme === 'sun' ? '#000' : '#fff' }}>
-                                {submission.submittedAt ? new Date(submission.submittedAt).toLocaleDateString('en-US', {
-                                  month: 'short',
-                                  day: 'numeric',
-                                  hour: '2-digit',
-                                  minute: '2-digit'
-                                }) : '-'}
-                              </Typography.Text>
-                            </div>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                              <Typography.Text style={{ fontSize: '12px', color: theme === 'sun' ? '#666' : '#999' }}>
-                                Status:
-                              </Typography.Text>
-                              {submission.status ? (
-                                <Space size={4}>
-                                  <CheckCircleOutlined style={{ color: '#52c41a', fontSize: '14px' }} />
-                                  <Typography.Text style={{ fontSize: '12px', fontWeight: 500, color: '#52c41a' }}>
-                                    On Time
-                                  </Typography.Text>
-                                </Space>
-                              ) : (
-                                <Typography.Text style={{ fontSize: '12px', fontWeight: 500, color: theme === 'sun' ? '#000' : '#fff' }}>
-                                  -
-                                </Typography.Text>
-                              )}
-                            </div>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                              <Typography.Text style={{ fontSize: '12px', color: theme === 'sun' ? '#666' : '#999' }}>
-                                Method:
-                              </Typography.Text>
-                              <Typography.Text style={{ fontSize: '12px', fontWeight: 500, color: theme === 'sun' ? '#000' : '#fff' }}>
-                                {submissionData.submission?.method || submissionData.submission?.submissionMethod || 'Manual'}
+                                {submissionData.challenge?.totalQuestions != null ? submissionData.challenge.totalQuestions : '-'}
                               </Typography.Text>
                             </div>
                           </Space>
@@ -4397,60 +4399,18 @@ const DailyChallengeSubmissionDetail = () => {
                         <UpOutlined style={{ fontSize: '14px', color: theme === 'sun' ? '#4a5568' : '#e2e8f0' }} />
                       )}
                     </div>
-                    {!isTeacherFeedbackCollapsed && (
-                      <>
-                    <div style={{ marginBottom: '12px' }}>
-                      <div style={{ border: '1px solid #eee', borderRadius: '8px', overflow: 'visible' }}>
-                        <CKEditor
-                          editor={ClassicEditor}
-                          data={teacherFeedback}
-                          onChange={(event, editor) => setTeacherFeedback(editor.getData())}
-                          config={{
-                            toolbar: { items: ['heading','|','bold','italic','underline','|','bulletedList','numberedList','|','link','undo','redo'], shouldNotGroupWhenFull: true }
-                          }}
-                        />
-                      </div>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '30px' }}>
-                      <Button
-                        type="primary"
-                        onClick={handleSaveTeacherFeedback}
-                        loading={savingFeedback}
-                        disabled={savingFeedback}
-                        className={`create-button ${theme}-create-button`}
-                        style={{
-                          height: '36px',
-                          borderRadius: '6px',
-                          fontWeight: '500',
-                          fontSize: '14px',
-                          padding: '0 16px',
-                          border: 'none',
-                          transition: 'all 0.3s ease',
-                          background: theme === 'sun' 
-                            ? 'rgb(243, 188, 88)' 
-                            : 'linear-gradient(135deg, #F3BC58 19%, #E8B04D 64%, #DD9F42 75%, #F3BC58 97%, #D89637 100%)',
-                          color: '#000',
-                        }}
-                        onMouseEnter={(e) => {
-                          if (theme === 'sun') {
-                            e.currentTarget.style.background = 'rgb(230, 175, 75)';
-                          } else {
-                            e.currentTarget.style.background = 'linear-gradient(135deg, #E8B04D 19%, #DD9F42 64%, #D28F37 75%, #E8B04D 97%, #C8862D 100%)';
-                          }
-                        }}
-                        onMouseLeave={(e) => {
-                          if (theme === 'sun') {
-                            e.currentTarget.style.background = 'rgb(243, 188, 88)';
-                          } else {
-                            e.currentTarget.style.background = 'linear-gradient(135deg, #F3BC58 19%, #E8B04D 64%, #DD9F42 75%, #F3BC58 97%, #D89637 100%)';
-                          }
-                        }}
-                      >
-                        Save
-                      </Button>
-                    </div>
-                      </>
-                      )}
+                    {!isTeacherFeedbackCollapsed && (() => {
+                      const displayFeedback = teacherFeedback 
+                        || submissionData?.submission?.teacherFeedback 
+                        || submissionData?.teacherFeedback 
+                        || '';
+                      return (
+                        <div style={{ border: '1px solid #eee', borderRadius: '8px', padding: '16px', background: theme === 'sun' ? '#ffffff' : 'rgba(255,255,255,0.03)' }}>
+                          <div style={{ fontSize: '15px', lineHeight: '1.8', color: theme === 'sun' ? '#333' : '#e2e8f0' }}
+                            dangerouslySetInnerHTML={{ __html: displayFeedback || '<i>No feedback yet</i>' }} />
+                        </div>
+                      );
+                    })()}
                       </div>
 
                       <Divider style={{ margin: '16px 0' }} />
@@ -5043,6 +5003,121 @@ const DailyChallengeSubmissionDetail = () => {
               }}
             />
           </div>
+        </div>
+      </Modal>
+
+      {/* Overall Feedback Modal (header action) - styled like AccountList add modal */}
+      <Modal
+        title={
+          <div
+            style={{
+              fontSize: '20px',
+              fontWeight: 700,
+              color: 'rgb(24, 144, 255)',
+              textAlign: 'center',
+              padding: '6px 0'
+            }}
+          >
+            {teacherFeedback && teacherFeedback.replace(/<[^>]*>/g,'').trim().length > 0 ? 'Edit Feedback' : 'Add Feedback'}
+          </div>
+        }
+        open={overallFeedbackModalVisible}
+        centered
+        onCancel={() => setOverallFeedbackModalVisible(false)}
+        width={640}
+        footer={[
+          <Button key="cancel" onClick={() => setOverallFeedbackModalVisible(false)}
+            style={{ height: '36px', borderRadius: '6px', padding: '0 22px' }}
+          >
+            Cancel
+          </Button>,
+          <Button key="save" type="primary" loading={savingFeedback} onClick={handleSaveOverallFeedback}
+            style={{
+              height: '36px',
+              borderRadius: '6px',
+              fontWeight: 500,
+              padding: '0 24px',
+              border: 'none',
+              background: theme === 'sun' 
+                ? 'linear-gradient(135deg, #66AEFF, #3C99FF)'
+                : 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)',
+              color: '#000000'
+            }}
+          >
+            Save
+          </Button>
+        ]}
+      >
+        {/* Force CKEditor sizing like AIGenerateFeedback to avoid global CSS overrides */}
+        <style>{`
+          .feedback-editor-wrap .ck-editor__editable_inline { 
+            min-height: 300px !important; 
+            max-height: 300px !important; 
+            overflow-y: auto !important; 
+            color: #000 !important; 
+          }
+          .feedback-editor-wrap .ck-editor__main .ck-editor__editable { 
+            min-height: 300px !important; 
+            max-height: 300px !important; 
+            overflow-y: auto !important; 
+            color: #000 !important; 
+          }
+        `}</style>
+        <div className="feedback-editor-wrap" style={{ marginTop: 6, borderRadius: 12, border: `2px solid ${theme === 'sun' ? 'rgba(24, 144, 255, 0.5)' : 'rgba(139, 92, 246, 0.5)'}`, background: theme === 'sun' ? 'rgba(24,144,255,0.08)' : 'rgba(139,92,246,0.12)' }}>
+          <CKEditor
+            editor={ClassicEditor}
+            data={overallFeedbackDraft}
+            onChange={(event, editor) => setOverallFeedbackDraft(editor.getData())}
+            config={{
+              extraPlugins: [CustomUploadAdapterPlugin],
+              placeholder: 'Enter overall feedback...',
+              toolbar: {
+                items: [
+                  'heading',
+                  '|',
+                  'bold',
+                  'italic',
+                  'underline',
+                  '|',
+                  'insertTable',
+                  'imageUpload',
+                  '|',
+                  'bulletedList',
+                  'numberedList',
+                  '|',
+                  'link',
+                  '|',
+                  'undo',
+                  'redo'
+                ],
+                shouldNotGroupWhenFull: false
+              },
+              heading: {
+                options: [
+                  { model: 'paragraph', title: 'Paragraph', class: 'ck-heading_paragraph' },
+                  { model: 'heading1', view: 'h1', title: 'Heading 1', class: 'ck-heading_heading1' },
+                  { model: 'heading2', view: 'h2', title: 'Heading 2', class: 'ck-heading_heading2' },
+                  { model: 'heading3', view: 'h3', title: 'Heading 3', class: 'ck-heading_heading3' }
+                ]
+              },
+              table: { contentToolbar: ['tableColumn', 'tableRow', 'mergeTableCells'] },
+              image: {
+                toolbar: ['imageTextAlternative', '|', 'imageStyle:alignLeft', 'imageStyle:full', 'imageStyle:alignRight'],
+                styles: ['full', 'alignLeft', 'alignRight']
+              }
+            }}
+            onReady={(editor) => {
+              try {
+                const el = editor.ui?.getEditableElement?.();
+                if (el) {
+                  el.style.minHeight = '300px';
+                  el.style.maxHeight = '300px';
+                  el.style.overflowY = 'auto';
+                  el.style.color = '#000';
+                }
+              } catch {}
+            }}
+          />
         </div>
       </Modal>
 

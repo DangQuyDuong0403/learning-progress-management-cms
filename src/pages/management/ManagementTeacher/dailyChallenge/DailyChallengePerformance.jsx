@@ -23,12 +23,20 @@ const DailyChallengePerformance = () => {
   const { enterDailyChallengeMenu, exitDailyChallengeMenu } = useDailyChallengeMenu();
   
   // Get data from navigation state or fetch from API
-  const [challengeInfo, setChallengeInfo] = useState({
-    classId: location.state?.classId || null,
-    className: location.state?.className || null,
-    challengeId: location.state?.challengeId || id,
-    challengeName: location.state?.challengeName || null,
-    lessonName: location.state?.lessonName || null,
+  const [challengeInfo, setChallengeInfo] = useState(() => {
+    const params = new URLSearchParams(location.search || '');
+    const qp = {
+      classId: params.get('classId'),
+      className: params.get('className'),
+      challengeName: params.get('challengeName'),
+    };
+    return {
+      classId: location.state?.classId || qp.classId || null,
+      className: location.state?.className || qp.className || null,
+      challengeId: location.state?.challengeId || id,
+      challengeName: location.state?.challengeName || qp.challengeName || null,
+      lessonName: location.state?.lessonName || null,
+    };
   });
   
   // Set page title

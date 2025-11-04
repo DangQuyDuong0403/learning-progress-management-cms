@@ -312,11 +312,11 @@ const dailyChallengeApi = {
 	},
 
 	// Lấy grading summary cho submission (dùng cho sidebar Performance)
-	// NOTE: backend path changed -> new Endpoint: /grading/submission-challenges/{submissionId}/grading
+	// Endpoint theo thực tế (ảnh swagger): GET /grading/submission-challenges/{submissionId}
 	getSubmissionGradingResult: (submissionId) => {
-		const url = `/grading/submission-challenges/${submissionId}/grading`;
-		console.log('GetSubmissionGradingResult API (new) - URL:', url);
-		console.log('GetSubmissionGradingResult API (new) - SubmissionId:', submissionId);
+		const url = `/grading/submission-challenges/${submissionId}`;
+		console.log('GetSubmissionGradingResult API - URL:', url);
+		console.log('GetSubmissionGradingResult API - SubmissionId:', submissionId);
     
 		return axiosClient.get(url, {
 			headers: {
@@ -338,10 +338,10 @@ const dailyChallengeApi = {
     });
   },
 
-  // Lưu tổng kết chấm điểm (totalScore, overallFeedback) cho submission-challenge
-  // Endpoint: POST /grading/submission-challenges/{submissionId}/grading/summary
+  // Lưu tổng kết chấm điểm/overallFeedback cho submission-challenge
+  // Endpoint (updated): POST /grading/submission-challenges/{submissionId}
   saveGradingSummary: (submissionId, payload) => {
-    const url = `/grading/submission-challenges/${submissionId}/grading/summary`;
+    const url = `/grading/submission-challenges/${submissionId}`;
     console.log('SaveGradingSummary API - URL:', url, 'Payload:', payload);
     return axiosClient.post(url, payload, {
       headers: {

@@ -73,7 +73,9 @@ const DailyChallengeSubmissionList = () => {
         submissionId: it?.submissionId ?? it?.id,
         studentName: it?.studentName ?? '-',
         submissionStatus: it?.submissionStatus ?? '-',
-        plagiarismScore: it?.plagiarismScore ?? null,
+        totalWeight: it?.totalWeight ?? it?.weight ?? null,
+        actualDuration: it?.actualDuration ?? it?.duration ?? null,
+        submittedAt: it?.submittedAt ?? it?.createdAt ?? null,
         totalScore: it?.totalScore ?? null,
       }));
 
@@ -106,14 +108,19 @@ const DailyChallengeSubmissionList = () => {
       // Always navigate back to the performance (detail) page for this challenge
       const userRole = user?.role?.toLowerCase();
       const challengeId = challengeInfo.challengeId || id;
+      const qs = new URLSearchParams();
+      if (challengeInfo.classId) qs.set('classId', challengeInfo.classId);
+      if (challengeInfo.className) qs.set('className', challengeInfo.className);
+      if (challengeInfo.challengeName) qs.set('challengeName', challengeInfo.challengeName);
+      const suffix = qs.toString() ? `?${qs.toString()}` : '';
       if (userRole === 'teacher') {
-        return `/teacher/daily-challenges/detail/${challengeId}`;
+        return `/teacher/daily-challenges/detail/${challengeId}${suffix}`;
       }
       if (userRole === 'teaching_assistant') {
-        return `/teaching-assistant/daily-challenges/detail/${challengeId}`;
+        return `/teaching-assistant/daily-challenges/detail/${challengeId}${suffix}`;
       }
       // Fallback: teacher path
-      return `/teacher/daily-challenges/detail/${challengeId}`;
+      return `/teacher/daily-challenges/detail/${challengeId}${suffix}`;
     };
 
     const getSubtitle = () => {
@@ -152,6 +159,63 @@ const DailyChallengeSubmissionList = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentPage, pageSize, debouncedSearch]);
 
+  // Format actual duration in months, weeks, days, hours, minutes, seconds
+  const formatDurationHuman = (raw) => {
+    if (raw === null || raw === undefined) return '-';
+    let totalSeconds = Number(raw);
+    if (!Number.isFinite(totalSeconds)) return String(raw);
+    // Heuristic: if a very large value (likely milliseconds), convert to seconds
+    if (totalSeconds > 1e9) totalSeconds = Math.floor(totalSeconds / 1000);
+    if (totalSeconds < 0) totalSeconds = 0;
+
+    const SEC = 1;
+    const MIN = 60 * SEC;
+    const HOUR = 60 * MIN;
+    const DAY = 24 * HOUR;
+    const WEEK = 7 * DAY;
+    const MONTH = 30 * DAY; // calendar approximation
+
+    const parts = [];
+    const units = [
+      { size: MONTH, label: 'mo' },
+      { size: WEEK, label: 'w' },
+      { size: DAY, label: 'd' },
+      { size: HOUR, label: 'h' },
+      { size: MIN, label: 'm' },
+      { size: SEC, label: 's' },
+    ];
+
+    let remaining = Math.floor(totalSeconds);
+    units.forEach(({ size, label }) => {
+      if (remaining >= size) {
+        const count = Math.floor(remaining / size);
+        remaining -= count * size;
+        parts.push(`${count}${label}`);
+      }
+    });
+
+    return parts.length ? parts.join(' ') : '0s';
+  };
+
+  // Format datetime as DD/MM/YYYY HH:mm:ss (date first then time)
+  const formatDateTimeVi = (value) => {
+    if (!value) return '-';
+    try {
+      const d = new Date(value);
+      if (Number.isNaN(d.getTime())) return String(value);
+      const pad = (n) => String(n).padStart(2, '0');
+      const dd = pad(d.getDate());
+      const mm = pad(d.getMonth() + 1);
+      const yyyy = d.getFullYear();
+      const HH = pad(d.getHours());
+      const MM = pad(d.getMinutes());
+      const SS = pad(d.getSeconds());
+      return `${dd}/${mm}/${yyyy} ${HH}:${MM}:${SS}`;
+    } catch (_) {
+      return String(value);
+    }
+  };
+
   const columns = [
     {
       title: t('common.index'),
@@ -184,12 +248,28 @@ const DailyChallengeSubmissionList = () => {
       render: (status) => status || '-',
     },
     {
-      title: 'Plagiarism Score',
-      dataIndex: 'plagiarismScore',
-      key: 'plagiarismScore',
-      width: 160,
+      title: 'Total Weight',
+      dataIndex: 'totalWeight',
+      key: 'totalWeight',
+      width: 140,
       align: 'center',
       render: (v) => (v === null || v === undefined ? '-' : v),
+    },
+    {
+      title: 'Actual Duration',
+      dataIndex: 'actualDuration',
+      key: 'actualDuration',
+      width: 160,
+      align: 'center',
+      render: (v) => formatDurationHuman(v),
+    },
+    {
+      title: 'Submitted At',
+      dataIndex: 'submittedAt',
+      key: 'submittedAt',
+      width: 200,
+      align: 'center',
+      render: (v) => formatDateTimeVi(v),
     },
     {
       title: 'Total Score',
