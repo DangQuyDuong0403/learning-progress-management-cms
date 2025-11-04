@@ -5994,21 +5994,19 @@ const FillBlankContainer = ({ theme, data }) => {
       inputIndex += 1;
       const positionId = match[2];
       elements.push(
-        <span
-          key={`fill_blank_input_${inputIndex}_${blankAnswers[positionId] || ''}`}
+        <input
+          key={`fill_blank_input_${data.id}_${positionId}`}
           className="paragraph-input"
-          contentEditable
-          suppressContentEditableWarning
-          dangerouslySetInnerHTML={{ __html: blankAnswers[positionId] || '' }}
-          onInput={(e) => {
-            const text = e.target.textContent || e.target.innerText || '';
+          value={blankAnswers[positionId] || ''}
+          onChange={(e) => {
+            const text = e.target.value || '';
             setBlankAnswers(prev => ({
               ...prev,
               [positionId]: text
             }));
           }}
           onBlur={(e) => {
-            const text = e.target.textContent || e.target.innerText || '';
+            const text = e.target.value || '';
             setBlankAnswers(prev => ({
               ...prev,
               [positionId]: text
@@ -6020,21 +6018,17 @@ const FillBlankContainer = ({ theme, data }) => {
             justifyContent: 'center',
             minWidth: '120px',
             maxWidth: '200px',
-            minHeight: '32px',
+            height: '32px',
             padding: '4px 12px',
             margin: '0 8px',
             background: '#E9EEFF94',
             border: `2px solid ${theme === 'sun' ? '#1890ff' : '#8B5CF6'}`,
             borderRadius: '8px',
-            cursor: 'text',
             outline: 'none',
             verticalAlign: 'middle',
             lineHeight: '1.4',
             fontSize: '14px',
             boxSizing: 'border-box',
-            wordWrap: 'break-word',
-            overflowWrap: 'break-word',
-            whiteSpace: 'pre-wrap',
             textAlign: 'center'
           }}
         />
@@ -6296,6 +6290,10 @@ const StudentDailyChallengeTake = () => {
   const [submitModalVisible, setSubmitModalVisible] = useState(false);
   const [submissionChallengeId, setSubmissionChallengeId] = useState(null);
   
+  // Auto-save UI state
+  const [autoSaveStatus, setAutoSaveStatus] = useState('saved'); // 'idle' | 'saving' | 'saved'
+  // Removed immediate localStorage hooks due to input side-effects
+  
   // Section scores - store scores for each section
   const [sectionScores, setSectionScores] = useState({});
   
@@ -6519,6 +6517,7 @@ const StudentDailyChallengeTake = () => {
                   setTimeout(() => {
                     try {
                       restoreAnswersFromResult(response.data);
+                      // LocalStorage overlay removed
                     } catch (error) {
                       console.error('❌ Error in restoreAnswersFromResult:', error);
                       console.error('Data structure:', response.data);
@@ -6583,6 +6582,70 @@ const StudentDailyChallengeTake = () => {
     const secs = seconds % 60;
     return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
   };
+
+  // Removed localStorage persistence to avoid breaking inputs
+
+  // Silently save draft (no global loading/toast)
+  const autoSaveDraftSilently = async () => {
+    if (isViewOnly) return;
+    try {
+      setAutoSaveStatus('saving');
+      const questionAnswers = collectAllAnswers();
+
+      // LocalStorage persistence removed
+
+      // Attempt silent server draft save without toggling global loading
+      let currentSubmissionId = submissionChallengeId;
+      if (!currentSubmissionId) {
+        try {
+          const submissionsResponse = await dailyChallengeApi.getChallengeSubmissions(id, { page: 0, size: 1 });
+          if (submissionsResponse && submissionsResponse.success) {
+            const submissions = submissionsResponse.data?.content || submissionsResponse.data || [];
+            if (Array.isArray(submissions) && submissions.length > 0) {
+              const currentSubmission = submissions.find(sub => sub.challengeId === parseInt(id)) || submissions[0];
+              if (currentSubmission && currentSubmission.id) {
+                currentSubmissionId = currentSubmission.id;
+                setSubmissionChallengeId(currentSubmissionId);
+              }
+            }
+          }
+        } catch (e) {
+          // Silent fail – keep localStorage only
+        }
+      }
+
+      if (currentSubmissionId) {
+        try {
+          const submitData = { saveAsDraft: true, questionAnswers };
+          const resp = await dailyChallengeApi.submitDailyChallenge(currentSubmissionId, submitData);
+          if (resp && resp.success) {
+            const responseSubmissionId = resp.data?.submissionChallengeId || resp.data?.id || currentSubmissionId;
+            if (responseSubmissionId && responseSubmissionId !== currentSubmissionId) {
+              setSubmissionChallengeId(responseSubmissionId);
+            }
+          }
+        } catch (e) {
+          // Silent network/API failure – localStorage still has the draft
+        }
+      }
+
+      setAutoSaveStatus('saved');
+      // Revert to idle after short delay
+      // Keep showing "Saved" to make status visible next to timer
+      // (do not auto-hide)
+    } catch (e) {
+      setAutoSaveStatus('idle');
+    }
+  };
+
+  // Auto-save interval every 90 seconds
+  useEffect(() => {
+    if (loading || isViewOnly) return;
+    const intervalId = setInterval(() => {
+      autoSaveDraftSilently();
+    }, 70 * 1000);
+    return () => clearInterval(intervalId);
+  }, [loading, isViewOnly, submissionChallengeId]);
 
   // Upload any blob: or data:audio URLs inside formatted answers and replace with server URLs
   const replaceBlobUrlsInAnswers = async (questionAnswers) => {
@@ -7011,6 +7074,7 @@ const StudentDailyChallengeTake = () => {
 
   // Handle save (save as draft)
   const handleSave = async () => {
+    setAutoSaveStatus('saving');
     // If submissionChallengeId is not available, try to get it first
     let currentSubmissionId = submissionChallengeId;
     
@@ -7052,6 +7116,7 @@ const StudentDailyChallengeTake = () => {
       
       if (response && response.success) {
         spaceToast.success('Progress saved successfully');
+        setAutoSaveStatus('saved');
         
         // Get submissionChallengeId from response and update state
         const responseSubmissionId = response.data?.submissionChallengeId || response.data?.id || currentSubmissionId;
@@ -7281,6 +7346,15 @@ const StudentDailyChallengeTake = () => {
               alignItems: 'center',
               gap: '10px',
             }}>
+               {/* Auto-save status */}
+               <span style={{
+                fontSize: '12px',
+                color: autoSaveStatus === 'saving' ? '#555' : '#2b8a3e',
+                fontStyle: 'italic',
+                marginLeft: '6px'
+              }}>
+                {autoSaveStatus === 'saving' ? 'Saving…' : 'Saved'}
+              </span>
               <ClockCircleOutlined style={{
                 fontSize: '24px',
                 color: '#000000',
