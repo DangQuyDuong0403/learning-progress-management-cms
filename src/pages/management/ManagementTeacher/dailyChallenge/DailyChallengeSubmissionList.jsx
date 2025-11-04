@@ -103,18 +103,17 @@ const DailyChallengeSubmissionList = () => {
     };
 
     const getBackPath = () => {
-      if (challengeInfo.classId) {
-        const userRole = user?.role?.toLowerCase();
-        if (userRole === 'teacher' || userRole === 'teaching_assistant') {
-          return `/teacher/classes/daily-challenges/${challengeInfo.classId}`;
-        } else {
-          return `/manager/classes/daily-challenges/${challengeInfo.classId}`;
-        }
-      }
+      // Always navigate back to the performance (detail) page for this challenge
       const userRole = user?.role?.toLowerCase();
-      return userRole === 'teacher' || userRole === 'teaching_assistant' 
-        ? '/teacher/daily-challenges' 
-        : '/manager/daily-challenges';
+      const challengeId = challengeInfo.challengeId || id;
+      if (userRole === 'teacher') {
+        return `/teacher/daily-challenges/detail/${challengeId}`;
+      }
+      if (userRole === 'teaching_assistant') {
+        return `/teaching-assistant/daily-challenges/detail/${challengeId}`;
+      }
+      // Fallback: teacher path
+      return `/teacher/daily-challenges/detail/${challengeId}`;
     };
 
     const getSubtitle = () => {

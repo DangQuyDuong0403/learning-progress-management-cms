@@ -1116,10 +1116,10 @@ const renderDragDropQuestionInline = (question, theme) => {
   }
 
   let displayText = question.questionText;
-  // Placeholder should match preview: dashed gray
-  const placeholderBg = '#ffffff';
-  const placeholderBorder = 'rgba(0, 0, 0, 0.5)';
-  const placeholderText = 'rgba(0, 0, 0, 0.5)';
+
+  // Show the correct answers inline inside the blanks
+  const chipBg = 'rgba(82, 196, 26, 0.12)';
+  const chipBorder = 'rgba(82, 196, 26, 0.5)';
 
   // Filter correct options (those with positionId and correct: true)
   const correctOptions = question.content.data.filter(item => 
@@ -1129,10 +1129,17 @@ const renderDragDropQuestionInline = (question, theme) => {
   correctOptions.forEach((item, idx) => {
     const number = idx + 1;
     const pattern = `[[pos_${item.positionId}]]`;
-    
+    const value = String(item.value || '')
+      .replace(/<[^>]*>/g,' ')
+      .replace(/&nbsp;/g,' ')
+      .trim();
+
     displayText = displayText.replace(
       pattern,
-      `<span style="display:inline-flex;align-items:center;justify-content:center;min-width:100px;min-height:28px;padding:4px 12px;margin:0 6px;background:${placeholderBg};border:2px dashed ${placeholderBorder};border-radius:6px;font-size:14px;color:${placeholderText};">Drop here</span>`
+      `<span style="display:inline-flex;align-items:center;gap:6px;padding:4px 12px;background:${chipBg};border:2px solid ${chipBorder};border-radius:8px;color:#000000;margin:0 6px 6px 6px;">
+        <span style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:${chipBorder};color:#ffffff;font-size:11px;">${number}</span>
+        <span style="white-space:normal;word-break:break-word;">${value}</span>
+      </span>`
     );
   });
 
@@ -1146,20 +1153,28 @@ const renderRearrangeQuestionInline = (question, theme) => {
   }
 
   let displayText = question.questionText;
-  // Use dashed gray placeholders like preview
-  const slotBorder = 'rgba(0, 0, 0, 0.5)';
-  const slotText = 'rgba(0, 0, 0, 0.5)';
 
-  // Use data as is
+  // Filled chips with answers inline
+  const chipBg = 'rgba(82, 196, 26, 0.12)';
+  const chipBorder = 'rgba(82, 196, 26, 0.5)';
+
+  // Keep the given order from data
   const sortedData = question.content.data;
   
   sortedData.forEach((item, idx) => {
     const number = idx + 1;
     const pattern = `[[pos_${item.positionId}]]`;
+    const value = String(item.value || '')
+      .replace(/<[^>]*>/g,' ')
+      .replace(/&nbsp;/g,' ')
+      .trim();
     
     displayText = displayText.replace(
       pattern,
-      `<span style="display:inline-flex;align-items:center;justify-content:center;min-width:80px;height:36px;padding:4px 10px;margin:0 6px;background:#ffffff;border:2px dashed ${slotBorder};border-radius:6px;font-size:12px;color:${slotText};">${number}</span>`
+      `<span style="display:inline-flex;align-items:center;gap:6px;padding:6px 12px;margin:0 6px;background:${chipBg};border:2px solid ${chipBorder};border-radius:8px;color:#000000;">
+        <span style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:${chipBorder};color:#ffffff;font-size:11px;">${number}</span>
+        <span style="white-space:normal;word-break:break-word;">${value}</span>
+      </span>`
     );
   });
 
@@ -2153,7 +2168,6 @@ const SortableQuestionItem = memo(
             (() => {
               if (!question.questionText) return null;
               const borderColor = theme === 'sun' ? '#66AEFF' : '#A78BFA';
-              const dashedColor = theme === 'sun' ? 'rgba(0,0,0,0.45)' : 'rgba(56, 56, 56, 0.75)';
               const textColor = theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)';
               const correctBorderColor = 'rgba(82, 196, 26, 0.7)';
               const correctTextColor = '#000000';
@@ -2170,11 +2184,19 @@ const SortableQuestionItem = memo(
                     const isCorrect = Boolean(item?.correct === true || item?.positionId);
                     allChips.push({ value: item.value, isCorrect });
                   }
-                  if (item && item.positionId) {
+                  if (item && item.positionId && item.correct === true) {
                     const pattern = `[[pos_${item.positionId}]]`;
+                    const value = String(item.value || '')
+                      .replace(/<[^>]*>/g,' ')
+                      .replace(/&nbsp;/g,' ')
+                      .trim();
+                    const indexNum = (allChips.filter(c => c.isCorrect).length) + 1;
                     displayText = displayText.replace(
                       pattern,
-                      `<span style="display:inline-flex;align-items:center;justify-content:center;min-width:140px;height:34px;border-radius:8px;border:2px dashed ${dashedColor};background:transparent;color:${dashedColor};">Drop here</span>`
+                      `<span style="display:inline-flex;align-items:center;gap:6px;padding:4px 12px;background:${correctBgColor};border:2px solid ${correctBorderColor};border-radius:8px;color:${correctTextColor};margin:0 6px 6px 6px;">
+                        <span style=\"display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:${correctBorderColor};color:#ffffff;font-size:11px;\">${indexNum}</span>
+                        <span style=\"white-space:normal;word-break:break-word;\">${value}</span>
+                      </span>`
                     );
                   }
                 });
@@ -2268,7 +2290,6 @@ const SortableQuestionItem = memo(
           ) : (question.type === 'REARRANGE' && challengeType === 'GV') ? (
             (() => {
               const textColor = theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)';
-              const dashedColor = theme === 'sun' ? 'rgba(0,0,0,0.45)' : 'rgba(56, 56, 56, 0.75)';
               const borderColor = theme === 'sun' ? '#66AEFF' : '#A78BFA';
               const values = Array.isArray(question.content?.data)
                 ? question.content.data.map((i) => i?.value).filter(Boolean)
@@ -2291,22 +2312,37 @@ const SortableQuestionItem = memo(
                       Drop the words here in order:
                     </div>
                     <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
-                      {Array.from({ length: count }).map((_, idx) => (
+                      {values.map((val, idx) => (
                         <div
                           key={idx}
                           style={{
-                            width: '160px',
-                            height: '70px',
+                            minWidth: '160px',
+                            minHeight: '70px',
                             borderRadius: '10px',
-                            border: `2px dashed ${dashedColor}`,
+                            border: `2px solid ${correctBorderColor}`,
+                            background: 'rgba(82, 196, 26, 0.12)',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            color: dashedColor,
-                            fontWeight: 700
+                            color: '#000000',
+                            fontWeight: 500,
+                            padding: '10px 16px'
                           }}
                         >
-                          {idx + 1}
+                          <span style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            width: '20px',
+                            height: '20px',
+                            borderRadius: '50%',
+                            background: correctBorderColor,
+                            color: '#ffffff',
+                            fontSize: '12px',
+                            fontWeight: 700,
+                            marginRight: '8px'
+                          }}>{idx + 1}</span>
+                          {val}
                         </div>
                       ))}
                     </div>
