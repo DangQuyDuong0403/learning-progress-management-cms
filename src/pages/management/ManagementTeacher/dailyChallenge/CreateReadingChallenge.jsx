@@ -9,6 +9,7 @@ import {
   Upload,
   Divider,
   Modal,
+  InputNumber,
 } from "antd";
 import {
   ArrowLeftOutlined,
@@ -162,6 +163,17 @@ const CreateReadingChallenge = () => {
   const [uploadedAudioFileName, setUploadedAudioFileName] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [charCount, setCharCount] = useState(0);
+  // Weight for WR/SP single-question challenges
+  const [questionWeight, setQuestionWeight] = useState(() => {
+    try {
+      if ((location?.state?.editingPassage || editingPassage) && (isWritingChallenge || isSpeakingChallenge)) {
+        const existing = (location?.state?.editingPassage || editingPassage)?.questions?.[0];
+        const w = existing?.weight ?? existing?.points ?? 1;
+        return Number.isFinite(Number(w)) && Number(w) > 0 ? Number(w) : 1;
+      }
+    } catch (_) {}
+    return 1;
+  });
   
   // Question management state
   const [activeModal, setActiveModal] = useState(null);
@@ -266,6 +278,16 @@ const CreateReadingChallenge = () => {
         return;
       }
 
+      // Validate weight for WR/SP
+      if ((isWritingChallenge || isSpeakingChallenge)) {
+        const numericWeight = Number(questionWeight);
+        if (!Number.isFinite(numericWeight) || numericWeight <= 0) {
+          spaceToast.warning("Please enter a valid positive weight");
+          setIsSaving(false);
+          return;
+        }
+      }
+
       // Map question types to API format
       const mapQuestionType = (type) => {
         const typeMap = {
@@ -296,7 +318,7 @@ const CreateReadingChallenge = () => {
           ...(existingQuestion?.id && { id: existingQuestion.id }),
           questionText: passage.content || '',
           orderNumber: 1,
-          weight: 1,
+          weight: Number(questionWeight) || 1,
           questionType: 'WRITING', // Custom type for writing
           toBeDeleted: false,
           content: {
@@ -320,7 +342,7 @@ const CreateReadingChallenge = () => {
           ...(existingQuestion?.id && { id: existingQuestion.id }),
           questionText: passage.content || '',
           orderNumber: 1,
-          weight: 1,
+          weight: Number(questionWeight) || 1,
           questionType: 'SPEAKING', // Custom type for speaking
           toBeDeleted: false,
           content: {
@@ -1480,6 +1502,31 @@ const CreateReadingChallenge = () => {
 
                  {/* Passage Content */}
                  <div className="rc-passage-content" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                  {(isWritingChallenge || isSpeakingChallenge) && (
+                    <div style={{
+                      marginBottom: '12px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '12px',
+                    }}>
+                      <Text strong style={{ color: theme === 'sun' ? '#1E40AF' : '#8377A0' }}>Question weight</Text>
+                      <InputNumber
+                        min={1}
+                        max={100}
+                        step={1}
+                        value={questionWeight}
+                        onChange={(v) => {
+                          const num = Number(v);
+                          if (Number.isFinite(num) && num > 0) {
+                            setQuestionWeight(num);
+                          } else if (v === null) {
+                            setQuestionWeight(1);
+                          }
+                        }}
+                        style={{ width: 120 }}
+                      />
+                    </div>
+                  )}
                    {passage?.type === "manual" ? (
                      /* Text Editor - Full space when manual is selected */
                      <div className="rc-text-editor-full" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>

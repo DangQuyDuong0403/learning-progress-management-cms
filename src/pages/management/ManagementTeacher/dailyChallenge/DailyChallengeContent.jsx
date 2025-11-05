@@ -3363,13 +3363,18 @@ const DailyChallengeContent = () => {
       setSavingQuestion(true);
 
       // Transform question to API format
-      // Compute next section/order position based only on section orderNumbers
-      const sectionOrderNumbers = passages
-        .map(p => p?.orderNumber)
-        .filter(n => typeof n === 'number');
+      // Compute next section orderNumber from existing sections:
+      // - passages contain DOCUMENT/FILE sections
+      // - GV sections come through questions with their own orderNumber
+      const sectionOrderNumbers = [
+        ...passages.map(p => p?.orderNumber).filter(n => typeof n === 'number'),
+        ...questions.map(q => q?.orderNumber).filter(n => typeof n === 'number')
+      ];
       const nextOrder = (sectionOrderNumbers.length ? Math.max(...sectionOrderNumbers) : 0) + 1;
 
-      const apiQuestion = transformQuestionToApiFormat(questionData, nextOrder, questionData.type);
+      // For GV, let question start at order 1 inside its section; section.orderNumber controls placement
+      const questionOrder = (challengeDetails?.challengeType === 'GV') ? 1 : nextOrder;
+      const apiQuestion = transformQuestionToApiFormat(questionData, questionOrder, questionData.type);
       // Use question as is
       const sanitizedApiQuestion = {
         ...apiQuestion,
@@ -3416,7 +3421,7 @@ const DailyChallengeContent = () => {
     } finally {
       setSavingQuestion(false);
     }
-  }, [id, fetchQuestions, transformQuestionToApiFormat, getSectionContent, questions, passages, t]);
+  }, [id, fetchQuestions, transformQuestionToApiFormat, getSectionContent, questions, passages, t, challengeDetails?.challengeType]);
 
   // Handle updating an existing question
   const handleUpdateQuestion = useCallback(async (questionData) => {
@@ -3524,9 +3529,18 @@ const DailyChallengeContent = () => {
   const handleReLiAiGenerateFromSettings = useCallback(() => {
     const challengeType = challengeDetails?.challengeType;
     const userRole = user?.role?.toLowerCase();
-    const aiPath = userRole === 'teaching_assistant'
-      ? `/teaching-assistant/daily-challenges/create/ai/${id}`
-      : `/teacher/daily-challenges/create/ai/${id}`;
+    // Route based on challenge type:
+    // - RE (Reading) → /ai-reading/:id → AIGenerateReading.jsx
+    // - LI (Listening) → /ai-listening/:id → AIGenerateListening.jsx
+    const aiPath = challengeType === 'LI' ? (
+      userRole === 'teaching_assistant'
+        ? `/teaching-assistant/daily-challenges/create/ai-listening/${id}`
+        : `/teacher/daily-challenges/create/ai-listening/${id}`
+    ) : (
+      userRole === 'teaching_assistant'
+        ? `/teaching-assistant/daily-challenges/create/ai-reading/${id}`
+        : `/teacher/daily-challenges/create/ai-reading/${id}`
+    );
     
     navigate(aiPath, {
       state: {
@@ -3545,9 +3559,18 @@ const DailyChallengeContent = () => {
   const handleReLiAiGenerateFromFile = useCallback(() => {
     const challengeType = challengeDetails?.challengeType;
     const userRole = user?.role?.toLowerCase();
-    const aiPath = userRole === 'teaching_assistant'
-      ? `/teaching-assistant/daily-challenges/create/ai/${id}`
-      : `/teacher/daily-challenges/create/ai/${id}`;
+    // Route based on challenge type:
+    // - RE (Reading) → /ai-reading/:id → AIGenerateReading.jsx
+    // - LI (Listening) → /ai-listening/:id → AIGenerateListening.jsx
+    const aiPath = challengeType === 'LI' ? (
+      userRole === 'teaching_assistant'
+        ? `/teaching-assistant/daily-challenges/create/ai-listening/${id}`
+        : `/teacher/daily-challenges/create/ai-listening/${id}`
+    ) : (
+      userRole === 'teaching_assistant'
+        ? `/teaching-assistant/daily-challenges/create/ai-reading/${id}`
+        : `/teacher/daily-challenges/create/ai-reading/${id}`
+    );
     
     navigate(aiPath, {
       state: {
@@ -3979,19 +4002,21 @@ const DailyChallengeContent = () => {
       // Persist duplicate through API for all challenge types to avoid errors
       setLoading(true);
 
-      // Compute next section/order position based only on section orderNumbers
-      const sectionOrderNumbers = passages
-        .map(p => p?.orderNumber)
-        .filter(n => typeof n === 'number');
+      // Compute next section orderNumber from existing sections (see note above)
+      const sectionOrderNumbers = [
+        ...passages.map(p => p?.orderNumber).filter(n => typeof n === 'number'),
+        ...questions.map(q => q?.orderNumber).filter(n => typeof n === 'number')
+      ];
       const nextOrder = (sectionOrderNumbers.length ? Math.max(...sectionOrderNumbers) : 0) + 1;
 
+      const questionOrderDup = (challengeDetails?.challengeType === 'GV') ? 1 : nextOrder;
       const apiQuestion = transformQuestionToApiFormat(
         {
           ...source,
           question: source.question || source.questionText || '',
           questionText: source.questionText || source.question || '',
         },
-        nextOrder,
+        questionOrderDup,
         source.type
       );
 
@@ -4017,7 +4042,7 @@ const DailyChallengeContent = () => {
     } finally {
       setLoading(false);
     }
-  }, [questions, passages, id, fetchQuestions, transformQuestionToApiFormat, getSectionContent]);
+  }, [questions, passages, id, fetchQuestions, transformQuestionToApiFormat, getSectionContent, challengeDetails?.challengeType]);
 
   const handlePointsChange = useCallback((questionId, value) => {
     setQuestions(prev => prev.map(q => 
