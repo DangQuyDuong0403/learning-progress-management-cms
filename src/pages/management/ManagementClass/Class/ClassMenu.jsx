@@ -37,8 +37,9 @@ const ClassMenu = () => {
   
   // Determine which layout to use based on user role
   const userRole = user?.role?.toLowerCase();
-  const ThemedLayout = (userRole === 'teacher' || userRole === 'teaching_assistant') 
-    ? ThemedLayoutNoSidebar 
+  // Use no-sidebar layout for teacher, teaching assistant, and student
+  const ThemedLayout = (userRole === 'teacher' || userRole === 'teaching_assistant' || userRole === 'student')
+    ? ThemedLayoutNoSidebar
     : ThemedLayoutWithSidebar;
   
   // Set page title
@@ -110,6 +111,8 @@ const ClassMenu = () => {
           case 'teacher':
           case 'teaching_assistant':
             return '/teacher/classes';
+          case 'student':
+            return '/student/classes';
           case 'manager':
             return '/manager/classes';
           default:

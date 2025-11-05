@@ -4,7 +4,7 @@ import { isTokenExpiringSoon } from '../utils/jwtUtils';
 
 // Tạo instance mặc định cho axios
 const axiosClient = axios.create({
-	baseURL: process.env.REACT_APP_API_URL || 'https://learning-progress-management-hndjatgmc3fva3gs.southeastasia-01.azurewebsites.net/learning-progress-management/api/v1',
+	baseURL: process.env.REACT_APP_API_URL,
 	timeout: 200000,
 	// Không set headers mặc định, chỉ gửi token khi cần
 });
