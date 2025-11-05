@@ -1476,6 +1476,14 @@ const FillBlankModal = ({ visible, onCancel, onSave, questionData = null }) => {
 			return;
 		}
 
+		// Validate duplicate blank answers
+		const blankAnswers = blanks.map(blank => (blank.answer || '').toLowerCase().trim());
+		const duplicates = blankAnswers.filter((text, index) => text && blankAnswers.indexOf(text) !== index);
+		if (duplicates.length > 0) {
+			spaceToast.warning('Cannot create duplicate answers. Please ensure all blank answers are unique.');
+			return;
+		}
+
 		// Build backend format by traversing DOM (preserve HTML)
 		let questionText = '';
 		const contentData = [];
