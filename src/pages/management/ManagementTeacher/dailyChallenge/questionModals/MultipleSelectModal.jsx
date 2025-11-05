@@ -368,6 +368,14 @@ const MultipleSelectModal = ({
 			return;
 		}
 
+		// Validate duplicate options (compare plain text)
+		const optionTexts = options.map(opt => getPlainText(opt.text).toLowerCase().trim());
+		const duplicates = optionTexts.filter((text, index) => text && optionTexts.indexOf(text) !== index);
+		if (duplicates.length > 0) {
+			spaceToast.warning('Cannot create duplicate answers. Please ensure all answers are unique.');
+			return;
+		}
+
 		const newQuestionData = {
 			id: questionData?.id || Date.now(),
 			type: 'MULTIPLE_SELECT',

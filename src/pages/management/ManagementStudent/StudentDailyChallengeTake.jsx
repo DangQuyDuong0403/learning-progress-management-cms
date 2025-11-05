@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, createContext, useContext } from "react";
+import React, { useState, useEffect, useRef, createContext, useContext, useCallback } from "react";
 import {
   Button,
   Typography,
@@ -21,6 +21,7 @@ import { useTheme } from "../../../contexts/ThemeContext";
 import usePageTitle from "../../../hooks/usePageTitle";
 import { spaceToast } from "../../../component/SpaceToastify";
 import dailyChallengeApi from "../../../apis/backend/dailyChallengeManagement";
+import { useTestSecurity } from "../../../hooks/useTestSecurity";
 
 // Context for collecting answers from child components
 const AnswerCollectionContext = createContext(null);
@@ -4719,34 +4720,51 @@ const TrueFalseContainer = ({ theme, data }) => {
   const [selectedAnswer, setSelectedAnswer] = React.useState(null);
   const questionText = data?.question || data?.questionText || 'The Earth revolves around the Sun.';
 
+  // Normalize options from API: prefer backend ids (e.g., 'opt1', 'opt2')
+  const tfOptions = React.useMemo(() => {
+    if (Array.isArray(data?.options) && data.options.length > 0) {
+      return data.options.map((opt, idx) => ({
+        key: opt.key || opt.id || (String(opt.text).toLowerCase() === 'true' ? 'opt1' : 'opt2'),
+        text: typeof opt.text === 'string' ? opt.text.replace(/<[^>]*>/g,' ').replace(/&nbsp;/g,' ').replace(/\s+/g,' ').trim() : opt.text
+      }));
+    }
+    const contentData = Array.isArray(data?.content?.data) ? data.content.data : [];
+    return contentData.map((d) => ({
+      key: d.id || (String(d.value).toLowerCase() === 'true' ? 'opt1' : 'opt2'),
+      text: typeof d.value === 'string' ? d.value.replace(/<[^>]*>/g,' ').replace(/&nbsp;/g,' ').replace(/\s+/g,' ').trim() : d.value
+    }));
+  }, [data?.options, data?.content?.data]);
+
   // Register answer collector
   React.useEffect(() => {
     if (!registerAnswerCollector || !data?.id) return;
     
     const getAnswer = () => {
       if (!selectedAnswer) return null;
-      const options = [
-        { key: 'A', text: 'True' },
-        { key: 'B', text: 'False' }
-      ];
+      // Pass options with backend ids so formatter emits id=opt1/opt2
+      const options = tfOptions;
       return { answer: selectedAnswer, questionType: 'TRUE_OR_FALSE', options };
     };
     
     const unregister = registerAnswerCollector(data.id, getAnswer);
     return unregister;
-  }, [registerAnswerCollector, data?.id, selectedAnswer]);
+  }, [registerAnswerCollector, data?.id, selectedAnswer, tfOptions]);
 
   // Register answer restorer (for submittedContent)
   React.useEffect(() => {
     if (!registerAnswerRestorer || !data?.id) return;
 
     const unregister = registerAnswerRestorer(data.id, (restored) => {
-      if (typeof restored === 'string' && restored) {
-        setSelectedAnswer(restored);
+      if (!restored) return;
+      // Accept either backend id ('opt1') or text ('True'/'False')
+      if (typeof restored === 'string') {
+        const normalized = restored.replace(/<[^>]*>/g,' ').replace(/&nbsp;/g,' ').replace(/\s+/g,' ').trim();
+        const match = tfOptions.find(o => o.key === normalized || String(o.text).toLowerCase() === normalized.toLowerCase());
+        setSelectedAnswer(match ? match.key : normalized);
       }
     });
     return unregister;
-  }, [registerAnswerRestorer, data?.id]);
+  }, [registerAnswerRestorer, data?.id, tfOptions]);
 
   return (
     <div
@@ -4819,12 +4837,12 @@ const TrueFalseContainer = ({ theme, data }) => {
           gap: '14px', 
           marginTop: '12px' 
         }}>
-          {['True', 'False'].map((option) => {
-            const isSelected = selectedAnswer === option;
+          {tfOptions.map((opt, idx) => {
+            const isSelected = selectedAnswer === opt.key;
             return (
               <div
-                key={option}
-                onClick={() => setSelectedAnswer(option)}
+                key={opt.key}
+                onClick={() => setSelectedAnswer(opt.key)}
                 className={`option-item ${isSelected ? 'selected-answer' : ''}`}
                 style={{
                   display: 'flex',
@@ -4860,7 +4878,7 @@ const TrueFalseContainer = ({ theme, data }) => {
                   type="radio" 
                   name="question-3"
                   checked={isSelected}
-                  onChange={() => setSelectedAnswer(option)}
+                  onChange={() => setSelectedAnswer(opt.key)}
                   style={{ 
                     width: '18px',
                     height: '18px',
@@ -4874,7 +4892,7 @@ const TrueFalseContainer = ({ theme, data }) => {
                   fontWeight: '600',
                   fontSize: '16px'
                 }}>
-                  {option === 'True' ? 'A' : 'B'}.
+                  {String(opt.text).toLowerCase() === 'true' ? 'A' : 'B'}.
                 </span>
                 <Typography.Text style={{ 
                   fontSize: '14px',
@@ -4882,7 +4900,7 @@ const TrueFalseContainer = ({ theme, data }) => {
                   fontWeight: '350',
                   flex: 1
                 }}>
-                  {option}
+                  {opt.text}
                 </Typography.Text>
               </div>
             );
@@ -6406,7 +6424,7 @@ const StudentDailyChallengeTake = () => {
   });
   const questionRefs = useRef({});
   const [submitModalVisible, setSubmitModalVisible] = useState(false);
-  const [submissionChallengeId, setSubmissionChallengeId] = useState(null);
+  const [submissionId, setSubmissionId] = useState(null);
   
   // Auto-save UI state
   const [autoSaveStatus, setAutoSaveStatus] = useState('saved'); // 'idle' | 'saving' | 'saved'
@@ -6422,6 +6440,13 @@ const StudentDailyChallengeTake = () => {
   
   // Timer state - countdown from 60 minutes (3600 seconds)
   const [timeRemaining, setTimeRemaining] = useState(60 * 60); // 60 minutes in seconds
+
+  // Anti-cheat security state
+  const [violationWarningModalVisible, setViolationWarningModalVisible] = useState(false);
+  const [violationWarningData, setViolationWarningData] = useState(null);
+  const violationCountRef = useRef(new Map()); // Track violation count per type: { 'tab_switch': 1, 'copy': 0, ... }
+  const pendingLogsRef = useRef([]); // Store logs that need to be sent to backend
+  const [isAntiCheatEnabled, setIsAntiCheatEnabled] = useState(false);
   
   usePageTitle('Daily Challenge - Take Challenge');
   
@@ -6521,6 +6546,203 @@ const StudentDailyChallengeTake = () => {
 
   const [isViewOnly, setIsViewOnly] = useState(false);
 
+  // Helper function to find current questionId from active element
+  const getCurrentQuestionId = useCallback(() => {
+    try {
+      const activeElement = document.activeElement;
+      if (!activeElement) return 0;
+
+      // Traverse up the DOM tree to find question container
+      let current = activeElement;
+      while (current && current !== document.body) {
+        // Check if element has data-question-id attribute
+        if (current.dataset?.questionId) {
+          const qId = parseInt(current.dataset.questionId);
+          if (!isNaN(qId)) return qId;
+        }
+
+        // Check if element is inside a question ref
+        for (const [key, ref] of Object.entries(questionRefs.current)) {
+          if (ref && ref.contains && ref.contains(current)) {
+            // Extract questionId from ref key (e.g., "q-123" -> 123)
+            const match = key.match(/q-(\d+)/);
+            if (match) {
+              const qId = parseInt(match[1]);
+              if (!isNaN(qId)) return qId;
+            }
+          }
+        }
+
+        current = current.parentElement;
+      }
+
+      // Fallback: try to find from questionRefs based on scroll position
+      const scrollY = window.scrollY || window.pageYOffset;
+      let closestQuestionId = 0;
+      let minDistance = Infinity;
+
+      for (const [key, ref] of Object.entries(questionRefs.current)) {
+        if (ref && ref.getBoundingClientRect) {
+          const rect = ref.getBoundingClientRect();
+          const distance = Math.abs(rect.top + scrollY - scrollY);
+          if (distance < minDistance && rect.top < window.innerHeight / 2) {
+            minDistance = distance;
+            const match = key.match(/q-(\d+)|(\d+)/);
+            if (match) {
+              const qId = parseInt(match[1] || match[2]);
+              if (!isNaN(qId)) closestQuestionId = qId;
+            }
+          }
+        }
+      }
+
+      return closestQuestionId;
+    } catch (e) {
+      console.error('Error getting current questionId:', e);
+      return 0;
+    }
+  }, []);
+
+  // Helper function to get selected text (for copy)
+  const getSelectedText = useCallback(() => {
+    try {
+      const selection = window.getSelection();
+      if (selection && selection.toString().trim()) {
+        return selection.toString().trim();
+      }
+      return '';
+    } catch (e) {
+      return '';
+    }
+  }, []);
+
+  // Helper function to get clipboard content (for paste) - async
+  const getClipboardContent = useCallback(async () => {
+    try {
+      if (navigator.clipboard && navigator.clipboard.readText) {
+        const text = await navigator.clipboard.readText();
+        return text.trim();
+      }
+    } catch (e) {
+      // Clipboard API might require permission or be blocked
+      console.warn('Cannot read clipboard:', e);
+    }
+    return '';
+  }, []);
+
+  // Convert log entry from useTestSecurity to API format
+  const convertLogToApiFormat = useCallback(async (logEntry) => {
+    if (!logEntry) return null;
+
+    // Map violation type to event name
+    const eventMap = {
+      'tab_switch': 'TAB_SWITCH',
+      'copy': 'COPY_ATTEMPT',
+      'paste': 'PASTE_ATTEMPT'
+    };
+
+    const event = eventMap[logEntry.type] || logEntry.type?.toUpperCase() || 'UNKNOWN';
+    const timestamp = logEntry.timestamp || new Date().toISOString();
+    // Only get questionId for copy/paste events, tab_switch uses 0
+    const questionId = (logEntry.type === 'tab_switch') 
+      ? 0 
+      : (logEntry.questionId || getCurrentQuestionId());
+
+    let oldValue = [];
+    let newValue = [];
+
+    // For copy: capture selected text as oldValue (content being copied)
+    if (logEntry.type === 'copy') {
+      const selectedText = logEntry.selectedText || getSelectedText();
+      if (selectedText) {
+        oldValue = [selectedText];
+      }
+    }
+
+    // For paste: capture clipboard content as newValue (content being pasted)
+    if (logEntry.type === 'paste') {
+      const clipboardText = logEntry.clipboardText || await getClipboardContent();
+      if (clipboardText) {
+        newValue = [clipboardText];
+      }
+    }
+
+    return {
+      event,
+      timestamp,
+      questionId,
+      oldValue,
+      newValue,
+      durationMs: logEntry.durationMs || 0,
+      content: logEntry.message || JSON.stringify(logEntry)
+    };
+  }, [getCurrentQuestionId, getSelectedText, getClipboardContent]);
+
+  // Handle violation callback - first time show warning, second time onwards log and send
+  const handleViolation = useCallback(async (logEntry) => {
+    if (!logEntry || !logEntry.type) return;
+
+    const violationType = logEntry.type;
+    const currentCount = violationCountRef.current.get(violationType) || 0;
+    const newCount = currentCount + 1;
+
+    // Capture additional data for copy/paste
+    let selectedText = '';
+    let clipboardText = '';
+    // Only get questionId for copy/paste, not for tab_switch
+    const questionId = (violationType === 'copy' || violationType === 'paste') 
+      ? getCurrentQuestionId() 
+      : 0;
+
+    if (violationType === 'copy') {
+      // Use selectedText from logEntry if available (captured in useTestSecurity)
+      // Otherwise try to get it again
+      selectedText = logEntry.selectedText || getSelectedText();
+    } else if (violationType === 'paste') {
+      try {
+        clipboardText = await getClipboardContent();
+      } catch (e) {
+        console.warn('Could not read clipboard:', e);
+      }
+    }
+
+    // Enhance logEntry with captured data
+    const enhancedLogEntry = {
+      ...logEntry,
+      questionId,
+      selectedText,
+      clipboardText
+    };
+
+    // Update violation count
+    violationCountRef.current.set(violationType, newCount);
+
+    if (newCount === 1) {
+      // First time: show warning modal with details, don't log
+      setViolationWarningData({
+        type: violationType,
+        message: logEntry.message || 'Hành động không được phép đã được phát hiện',
+        timestamp: logEntry.timestampDisplay || new Date().toLocaleString('vi-VN'),
+        questionId,
+        oldValue: violationType === 'copy' ? (selectedText ? [selectedText] : []) : [],
+        newValue: violationType === 'paste' ? (clipboardText ? [clipboardText] : []) : []
+      });
+      setViolationWarningModalVisible(true);
+    } else {
+      // Second time onwards: add to pending logs to be sent to backend
+      const apiLog = await convertLogToApiFormat(enhancedLogEntry);
+      if (apiLog) {
+        pendingLogsRef.current.push(apiLog);
+      }
+    }
+  }, [getCurrentQuestionId, getSelectedText, getClipboardContent, convertLogToApiFormat]);
+
+  // Initialize useTestSecurity hook
+  useTestSecurity(
+    isAntiCheatEnabled && !isViewOnly,
+    handleViolation
+  );
+
   useEffect(() => {
     // Get challenge type from location state
     const type = location.state?.challengeType || location.state?.type || 'GV';
@@ -6543,16 +6765,16 @@ const StudentDailyChallengeTake = () => {
       className: location.state?.lessonName || null,
     });
     
-    // Get submissionChallengeId from location state
-    let initialSubmissionId = location.state?.submissionChallengeId;
+    // Get submissionId from location state (backward compatible)
+    let initialSubmissionId = location.state?.submissionId || location.state?.submissionChallengeId;
     if (initialSubmissionId) {
-      setSubmissionChallengeId(initialSubmissionId);
+      setSubmissionId(initialSubmissionId);
     }
     
     // Load data from API
     setLoading(true);
     
-    // First, try to get submissionChallengeId if not provided
+    // First, try to get submissionId if not provided
     const getSubmissionIdPromise = initialSubmissionId 
       ? Promise.resolve({ data: { id: initialSubmissionId } })
       : dailyChallengeApi.getChallengeSubmissions(challengeId, { page: 0, size: 1 })
@@ -6587,8 +6809,8 @@ const StudentDailyChallengeTake = () => {
             });
         }
 
-        // Update submissionChallengeId state
-        setSubmissionChallengeId(finalSubmissionId);
+        // Update submissionId state
+        setSubmissionId(finalSubmissionId);
         
         // Determine which API to use based on submission status and challenge type
         // For WR and SP types with SUBMITTED status, use result API instead of draft API
@@ -6668,8 +6890,12 @@ const StudentDailyChallengeTake = () => {
       })
       .finally(() => {
         setLoading(false);
+        // Enable anti-cheat after data is loaded and not in view-only mode
+        if (!isViewOnly) {
+          setIsAntiCheatEnabled(true);
+        }
       });
-  }, [id, location.state]);
+  }, [id, location.state, isViewOnly]);
 
   // Start countdown timer when component mounts
   // timer/view-only guard now uses state isViewOnly set during data load
@@ -6728,7 +6954,7 @@ const StudentDailyChallengeTake = () => {
       // LocalStorage persistence removed
 
       // Attempt silent server draft save without toggling global loading
-      let currentSubmissionId = submissionChallengeId;
+      let currentSubmissionId = submissionId;
       if (!currentSubmissionId) {
         try {
           const submissionsResponse = await dailyChallengeApi.getChallengeSubmissions(id, { page: 0, size: 1 });
@@ -6738,7 +6964,7 @@ const StudentDailyChallengeTake = () => {
               const currentSubmission = submissions.find(sub => sub.challengeId === parseInt(id)) || submissions[0];
               if (currentSubmission && currentSubmission.id) {
                 currentSubmissionId = currentSubmission.id;
-                setSubmissionChallengeId(currentSubmissionId);
+                setSubmissionId(currentSubmissionId);
               }
             }
           }
@@ -6752,13 +6978,28 @@ const StudentDailyChallengeTake = () => {
           const submitData = { saveAsDraft: true, questionAnswers };
           const resp = await dailyChallengeApi.submitDailyChallenge(currentSubmissionId, submitData);
           if (resp && resp.success) {
-            const responseSubmissionId = resp.data?.submissionChallengeId || resp.data?.id || currentSubmissionId;
+            const responseSubmissionId = resp.data?.submissionId || resp.data?.id || currentSubmissionId;
             if (responseSubmissionId && responseSubmissionId !== currentSubmissionId) {
-              setSubmissionChallengeId(responseSubmissionId);
+              setSubmissionId(responseSubmissionId);
             }
           }
         } catch (e) {
           // Silent network/API failure – localStorage still has the draft
+        }
+
+        // Send anti-cheat logs if there are any pending logs
+        if (pendingLogsRef.current.length > 0 && currentSubmissionId) {
+          const logsToSend = [...pendingLogsRef.current];
+          pendingLogsRef.current = []; // Clear pending logs before sending
+          
+          try {
+            await dailyChallengeApi.appendAntiCheatLogs(currentSubmissionId, logsToSend);
+            console.log('Anti-cheat logs sent successfully:', logsToSend.length);
+          } catch (e) {
+            // If sending fails, put logs back to pending for retry
+            pendingLogsRef.current.unshift(...logsToSend);
+            console.error('Failed to send anti-cheat logs:', e);
+          }
         }
       }
 
@@ -6778,7 +7019,7 @@ const StudentDailyChallengeTake = () => {
       autoSaveDraftSilently();
     }, 70 * 1000);
     return () => clearInterval(intervalId);
-  }, [loading, isViewOnly, submissionChallengeId]);
+  }, [loading, isViewOnly, submissionId]);
 
   // Upload any blob: or data:audio URLs inside formatted answers and replace with server URLs
   const replaceBlobUrlsInAnswers = async (questionAnswers) => {
@@ -7068,11 +7309,12 @@ const StudentDailyChallengeTake = () => {
       return;
     }
     
-    const { sectionDetails, challengeId, submissionChallengeId: resultSubmissionId } = resultData;
+    const { sectionDetails, challengeId, submissionId: resultSubmissionId, submissionChallengeId: legacySubmissionId } = resultData;
     
-    // Update submissionChallengeId if provided
-    if (resultSubmissionId) {
-      setSubmissionChallengeId(resultSubmissionId);
+    // Update submissionId if provided
+    const resolvedResultSubmissionId = resultSubmissionId || legacySubmissionId;
+    if (resolvedResultSubmissionId) {
+      setSubmissionId(resolvedResultSubmissionId);
     }
     
     // Calculate section scores
@@ -7259,8 +7501,8 @@ const StudentDailyChallengeTake = () => {
   // Handle save (save as draft)
   const handleSave = async () => {
     setAutoSaveStatus('saving');
-    // If submissionChallengeId is not available, try to get it first
-    let currentSubmissionId = submissionChallengeId;
+    // If submissionId is not available, try to get it first
+    let currentSubmissionId = submissionId;
     
     if (!currentSubmissionId) {
       try {
@@ -7272,7 +7514,7 @@ const StudentDailyChallengeTake = () => {
             const currentSubmission = submissions.find(sub => sub.challengeId === parseInt(id)) || submissions[0];
             if (currentSubmission && currentSubmission.id) {
               currentSubmissionId = currentSubmission.id;
-              setSubmissionChallengeId(currentSubmissionId);
+              setSubmissionId(currentSubmissionId);
             }
           }
         }
@@ -7302,10 +7544,10 @@ const StudentDailyChallengeTake = () => {
         spaceToast.success('Progress saved successfully');
         setAutoSaveStatus('saved');
         
-        // Get submissionChallengeId from response and update state
-        const responseSubmissionId = response.data?.submissionChallengeId || response.data?.id || currentSubmissionId;
+        // Get submissionId from response and update state
+        const responseSubmissionId = response.data?.submissionId || response.data?.id || currentSubmissionId;
         if (responseSubmissionId && responseSubmissionId !== currentSubmissionId) {
-          setSubmissionChallengeId(responseSubmissionId);
+          setSubmissionId(responseSubmissionId);
           currentSubmissionId = responseSubmissionId;
         }
         
@@ -7343,8 +7585,8 @@ const StudentDailyChallengeTake = () => {
 
   // Confirm submit - handle actual submission
   const handleConfirmSubmit = async () => {
-    // If submissionChallengeId is not available, try to get it first
-    let currentSubmissionId = submissionChallengeId;
+    // If submissionId is not available, try to get it first
+    let currentSubmissionId = submissionId;
     
     if (!currentSubmissionId) {
       try {
@@ -7356,7 +7598,7 @@ const StudentDailyChallengeTake = () => {
             const currentSubmission = submissions.find(sub => sub.challengeId === parseInt(id)) || submissions[0];
             if (currentSubmission && currentSubmission.id) {
               currentSubmissionId = currentSubmission.id;
-              setSubmissionChallengeId(currentSubmissionId);
+              setSubmissionId(currentSubmissionId);
             }
           }
         }
@@ -7389,10 +7631,10 @@ const StudentDailyChallengeTake = () => {
       if (response && response.success) {
     spaceToast.success('Submitted successfully');
         
-        // Get submissionChallengeId from response and update state
-        const responseSubmissionId = response.data?.submissionChallengeId || response.data?.id || currentSubmissionId;
+        // Get submissionId from response and update state
+        const responseSubmissionId = response.data?.submissionId || response.data?.id || currentSubmissionId;
         if (responseSubmissionId && responseSubmissionId !== currentSubmissionId) {
-          setSubmissionChallengeId(responseSubmissionId);
+          setSubmissionId(responseSubmissionId);
           currentSubmissionId = responseSubmissionId;
         }
     
@@ -7794,6 +8036,117 @@ const StudentDailyChallengeTake = () => {
         </div>
       </div>
       
+      {/* Violation Warning Modal */}
+      <Modal
+        open={violationWarningModalVisible}
+        closable={false}
+        maskClosable={false}
+        footer={[
+          <Button
+            key="ok"
+            type="primary"
+            onClick={() => setViolationWarningModalVisible(false)}
+            style={{
+              background: theme === 'sun' 
+                ? 'rgb(113, 179, 253)' 
+                : 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)',
+              borderColor: theme === 'sun' 
+                ? 'rgb(113, 179, 253)' 
+                : '#7228d9',
+              color: '#000',
+              border: 'none',
+              fontWeight: 600,
+              height: '40px',
+              padding: '0 24px',
+              fontSize: '15px',
+              borderRadius: '8px',
+            }}
+          >
+            Đã hiểu
+          </Button>
+        ]}
+        title={
+          <div style={{ display: 'flex', alignItems: 'center',justifyContent: 'center', gap: '8px' }}>
+            <span style={{ fontSize: '24px' }}>Cảnh báo vi phạm</span>
+          </div>
+        }
+        styles={{
+          body: {
+            padding: '24px',
+          }
+        }}
+      >
+        <div style={{ marginBottom: '16px' }}>
+          <p style={{ marginBottom: '12px', fontSize: '16px', lineHeight: '1.6' }}>
+            <strong>Lần đầu cảnh báo:</strong> Hệ thống đã phát hiện hành động không được phép.
+          </p>
+          {violationWarningData && (
+            <>
+              <p style={{ marginBottom: '8px', fontSize: '14px' }}>
+                <strong>Loại vi phạm:</strong> {
+                  violationWarningData.type === 'tab_switch' ? '🔄 Chuyển tab' :
+                  violationWarningData.type === 'copy' ? '📋 Copy' :
+                  violationWarningData.type === 'paste' ? '📥 Paste' :
+                  violationWarningData.type
+                }
+              </p>
+              <p style={{ marginBottom: '8px', fontSize: '14px'}}>
+                <strong>Thời gian:</strong> {violationWarningData.timestamp}
+              </p>
+              {violationWarningData.type === 'copy' && violationWarningData.oldValue && violationWarningData.oldValue.length > 0 && (
+                <p style={{ marginBottom: '8px', fontSize: '14px'}}>
+                  <strong>Nội dung đã copy:</strong> 
+                  <div style={{ 
+                    marginTop: '4px', 
+                    padding: '8px', 
+                    backgroundColor: '#f5f5f5', 
+                    borderRadius: '4px',
+                    maxHeight: '100px',
+                    overflow: 'auto',
+                    wordBreak: 'break-word',
+                    fontSize: '12px'
+                  }}>
+                    {violationWarningData.oldValue[0]}
+                  </div>
+                </p>
+              )}
+              {violationWarningData.type === 'paste' && violationWarningData.newValue && violationWarningData.newValue.length > 0 && (
+                <p style={{ marginBottom: '8px', fontSize: '14px'}}>
+                  <strong>Nội dung đã paste:</strong> 
+                  <div style={{ 
+                    marginTop: '4px', 
+                    padding: '8px', 
+                    backgroundColor: '#f5f5f5', 
+                    borderRadius: '4px',
+                    maxHeight: '100px',
+                    overflow: 'auto',
+                    wordBreak: 'break-word',
+                    fontSize: '12px'
+                  }}>
+                    {violationWarningData.newValue[0]}
+                  </div>
+                </p>
+              )}
+              <p style={{ marginBottom: '8px', fontSize: '14px'}}>
+                <strong>Chi tiết:</strong> {violationWarningData.message}
+              </p>
+            </>
+          )}
+          <div style={{ 
+            marginTop: '16px', 
+            padding: '12px', 
+            backgroundColor: '#fff3cd', 
+            borderRadius: '8px',
+            border: '1px solid #ffc107'
+          }}>
+            <p style={{ margin: 0, fontSize: '14px', color: '#856404' }}>
+              <strong>⚠️ Lưu ý:</strong> Đây là lần cảnh báo đầu tiên. Nếu vi phạm tiếp tục xảy ra, 
+              hệ thống sẽ ghi lại và báo cáo lên giáo viên.
+            </p>
+          </div>
+        </div>
+      </Modal>
+
       {/* Submit Confirmation Modal */}
       <Modal
         open={submitModalVisible}
