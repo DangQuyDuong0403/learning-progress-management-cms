@@ -79,6 +79,16 @@ const AIGenerateListening = () => {
     setQuestionTypeConfigs(prev => prev.map((item, i) => (i === index ? { ...item, numberOfQuestions: value } : item)));
   }, []);
 
+  // Initialize right panel (settings/upload) from navigation state
+  useEffect(() => {
+    const source = location.state?.aiSource;
+    if (source === 'settings') {
+      setQuestionSettingsMode('manual');
+    } else if (source === 'file') {
+      setQuestionSettingsMode('upload');
+    }
+  }, [location.state?.aiSource]);
+
   const normalizeQuestionsFromAI = useCallback((rawList) => {
     if (!Array.isArray(rawList)) return [];
     let list = rawList;
