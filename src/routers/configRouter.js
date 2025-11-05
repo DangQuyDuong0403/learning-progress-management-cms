@@ -323,6 +323,16 @@ const CONFIG_ROUTER = [
 		private: true,
 		role: ['student', 'test_taker'],
 	},
+	{
+		show: false,
+		component: DailyChallengeSubmissionDetail,
+		path: ROUTER_PAGE.STUDENT_DAILY_CHALLENGE_SUBMISSION_DETAIL,
+		menuName: 'Daily Challenge Submission Detail',
+		exact: true,
+		key: 'STUDENT_DAILY_CHALLENGE_SUBMISSION_DETAIL',
+		private: true,
+		role: ['student', 'test_taker'],
+	},
 	
 	// Admin Management Routes
 	{

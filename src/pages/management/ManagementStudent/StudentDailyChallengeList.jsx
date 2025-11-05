@@ -308,10 +308,17 @@ const StudentDailyChallengeList = () => {
   };
 
   const handleViewResult = (challenge) => {
-      // Navigate to result view
-      // Use submissionChallengeId in URL params if available, otherwise use challenge.id
-      const resultId = challenge.submissionChallengeId || challenge.id;
-      navigate(`/student/daily-challenges/result/${resultId}`, {
+      // Navigate to submission detail view (same interface as teacher but for student)
+      // Need challengeId and submissionId (submissionChallengeId)
+      const challengeId = challenge.id;
+      const submissionId = challenge.submissionChallengeId;
+      
+      if (!submissionId) {
+        spaceToast.error(t('dailyChallenge.errorNoSubmission', 'No submission found for this challenge.'));
+        return;
+      }
+      
+      navigate(`/student/daily-challenges/detail/${challengeId}/submissions/${submissionId}`, {
       state: {
         challengeId: challenge.id,
         submissionChallengeId: challenge.submissionChallengeId,
@@ -320,6 +327,8 @@ const StudentDailyChallengeList = () => {
         challengeType: challenge.type,
         type: challenge.type,
         viewResult: true, // Flag to indicate viewing result
+        className: challenge.lessonName, // For header display
+        studentName: null, // Student viewing their own submission
       }
     });
   };

@@ -28,6 +28,7 @@ const ROUTER_PAGE = {
 	STUDENT_DAILY_CHALLENGE_DETAIL: '/student/daily-challenges/detail/:id',
 	STUDENT_DAILY_CHALLENGE_TAKE: '/student/daily-challenges/take/:id',
 	STUDENT_DAILY_CHALLENGE_RESULT: '/student/daily-challenges/result/:id',
+	STUDENT_DAILY_CHALLENGE_SUBMISSION_DETAIL: '/student/daily-challenges/detail/:id/submissions/:submissionId',
 	// Admin Management Routes
 	ADMIN_DASHBOARD: '/admin/dashboard',
 	ADMIN_ACCOUNTS: '/admin/accounts',
