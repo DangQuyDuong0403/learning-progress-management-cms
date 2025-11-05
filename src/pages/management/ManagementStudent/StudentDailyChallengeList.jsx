@@ -58,29 +58,33 @@ const transformApiData = (apiData) => {
       flattened.push(emptyLessonRow);
     } else {
       challenges.forEach((challenge, index) => {
+        // Support both old flat structure and new nested structure
+        const dc = challenge.dailyChallenge || challenge || {};
+        const ss = challenge.studentSubmission || {};
+
         const transformedChallenge = {
-          id: challenge.id,
-          title: challenge.challengeName,
-          type: challenge.challengeType,
-          status: challenge.challengeStatus,
-          startDate: challenge.startDate,
-          endDate: challenge.endDate,
+          id: dc.id,
+          title: dc.challengeName,
+          type: dc.challengeType,
+          status: dc.challengeStatus,
+          startDate: dc.startDate,
+          endDate: dc.endDate,
           lessonId: lesson.classLessonId,
           lessonName: lesson.classLessonName,
           lessonOrder: lesson.orderNumber,
           isFirstChallengeInLesson: index === 0,
           totalChallengesInLesson: challenges.length,
           rowSpan: index === 0 ? challenges.length : 0,
-          totalScore: challenge.finalScore ?? challenge.totalScore,
+          totalScore: (ss.finalScore ?? challenge.finalScore ?? challenge.totalScore ?? null),
           scorePercentage: null,
-          totalWeight: challenge.totalWeight,
-          maxPossibleWeight: challenge.maxPossibleWeight,
-          submissionChallengeId: challenge.submissionChallengeId,
-          submissionStatus: challenge.submissionStatus,
-          late: challenge.late,
+          totalWeight: (ss.totalWeight ?? challenge.totalWeight),
+          maxPossibleWeight: (ss.maxPossibleWeight ?? challenge.maxPossibleWeight),
+          submissionChallengeId: (ss.submissionId ?? challenge.submissionChallengeId),
+          submissionStatus: (ss.submissionStatus ?? challenge.submissionStatus),
+          late: (typeof ss.late !== 'undefined' ? ss.late : challenge.late),
           isEmptyLesson: false,
         };
-        
+
         flattened.push(transformedChallenge);
       });
     }

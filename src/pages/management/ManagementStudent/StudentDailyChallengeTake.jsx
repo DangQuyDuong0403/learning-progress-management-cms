@@ -4720,34 +4720,51 @@ const TrueFalseContainer = ({ theme, data }) => {
   const [selectedAnswer, setSelectedAnswer] = React.useState(null);
   const questionText = data?.question || data?.questionText || 'The Earth revolves around the Sun.';
 
+  // Normalize options from API: prefer backend ids (e.g., 'opt1', 'opt2')
+  const tfOptions = React.useMemo(() => {
+    if (Array.isArray(data?.options) && data.options.length > 0) {
+      return data.options.map((opt, idx) => ({
+        key: opt.key || opt.id || (String(opt.text).toLowerCase() === 'true' ? 'opt1' : 'opt2'),
+        text: typeof opt.text === 'string' ? opt.text.replace(/<[^>]*>/g,' ').replace(/&nbsp;/g,' ').replace(/\s+/g,' ').trim() : opt.text
+      }));
+    }
+    const contentData = Array.isArray(data?.content?.data) ? data.content.data : [];
+    return contentData.map((d) => ({
+      key: d.id || (String(d.value).toLowerCase() === 'true' ? 'opt1' : 'opt2'),
+      text: typeof d.value === 'string' ? d.value.replace(/<[^>]*>/g,' ').replace(/&nbsp;/g,' ').replace(/\s+/g,' ').trim() : d.value
+    }));
+  }, [data?.options, data?.content?.data]);
+
   // Register answer collector
   React.useEffect(() => {
     if (!registerAnswerCollector || !data?.id) return;
     
     const getAnswer = () => {
       if (!selectedAnswer) return null;
-      const options = [
-        { key: 'A', text: 'True' },
-        { key: 'B', text: 'False' }
-      ];
+      // Pass options with backend ids so formatter emits id=opt1/opt2
+      const options = tfOptions;
       return { answer: selectedAnswer, questionType: 'TRUE_OR_FALSE', options };
     };
     
     const unregister = registerAnswerCollector(data.id, getAnswer);
     return unregister;
-  }, [registerAnswerCollector, data?.id, selectedAnswer]);
+  }, [registerAnswerCollector, data?.id, selectedAnswer, tfOptions]);
 
   // Register answer restorer (for submittedContent)
   React.useEffect(() => {
     if (!registerAnswerRestorer || !data?.id) return;
 
     const unregister = registerAnswerRestorer(data.id, (restored) => {
-      if (typeof restored === 'string' && restored) {
-        setSelectedAnswer(restored);
+      if (!restored) return;
+      // Accept either backend id ('opt1') or text ('True'/'False')
+      if (typeof restored === 'string') {
+        const normalized = restored.replace(/<[^>]*>/g,' ').replace(/&nbsp;/g,' ').replace(/\s+/g,' ').trim();
+        const match = tfOptions.find(o => o.key === normalized || String(o.text).toLowerCase() === normalized.toLowerCase());
+        setSelectedAnswer(match ? match.key : normalized);
       }
     });
     return unregister;
-  }, [registerAnswerRestorer, data?.id]);
+  }, [registerAnswerRestorer, data?.id, tfOptions]);
 
   return (
     <div
@@ -4820,12 +4837,12 @@ const TrueFalseContainer = ({ theme, data }) => {
           gap: '14px', 
           marginTop: '12px' 
         }}>
-          {['True', 'False'].map((option) => {
-            const isSelected = selectedAnswer === option;
+          {tfOptions.map((opt, idx) => {
+            const isSelected = selectedAnswer === opt.key;
             return (
               <div
-                key={option}
-                onClick={() => setSelectedAnswer(option)}
+                key={opt.key}
+                onClick={() => setSelectedAnswer(opt.key)}
                 className={`option-item ${isSelected ? 'selected-answer' : ''}`}
                 style={{
                   display: 'flex',
@@ -4861,7 +4878,7 @@ const TrueFalseContainer = ({ theme, data }) => {
                   type="radio" 
                   name="question-3"
                   checked={isSelected}
-                  onChange={() => setSelectedAnswer(option)}
+                  onChange={() => setSelectedAnswer(opt.key)}
                   style={{ 
                     width: '18px',
                     height: '18px',
@@ -4875,7 +4892,7 @@ const TrueFalseContainer = ({ theme, data }) => {
                   fontWeight: '600',
                   fontSize: '16px'
                 }}>
-                  {option === 'True' ? 'A' : 'B'}.
+                  {String(opt.text).toLowerCase() === 'true' ? 'A' : 'B'}.
                 </span>
                 <Typography.Text style={{ 
                   fontSize: '14px',
@@ -4883,7 +4900,7 @@ const TrueFalseContainer = ({ theme, data }) => {
                   fontWeight: '350',
                   flex: 1
                 }}>
-                  {option}
+                  {opt.text}
                 </Typography.Text>
               </div>
             );
@@ -6407,7 +6424,7 @@ const StudentDailyChallengeTake = () => {
   });
   const questionRefs = useRef({});
   const [submitModalVisible, setSubmitModalVisible] = useState(false);
-  const [submissionChallengeId, setSubmissionChallengeId] = useState(null);
+  const [submissionId, setSubmissionId] = useState(null);
   
   // Auto-save UI state
   const [autoSaveStatus, setAutoSaveStatus] = useState('saved'); // 'idle' | 'saving' | 'saved'
@@ -6748,16 +6765,16 @@ const StudentDailyChallengeTake = () => {
       className: location.state?.lessonName || null,
     });
     
-    // Get submissionChallengeId from location state
-    let initialSubmissionId = location.state?.submissionChallengeId;
+    // Get submissionId from location state (backward compatible)
+    let initialSubmissionId = location.state?.submissionId || location.state?.submissionChallengeId;
     if (initialSubmissionId) {
-      setSubmissionChallengeId(initialSubmissionId);
+      setSubmissionId(initialSubmissionId);
     }
     
     // Load data from API
     setLoading(true);
     
-    // First, try to get submissionChallengeId if not provided
+    // First, try to get submissionId if not provided
     const getSubmissionIdPromise = initialSubmissionId 
       ? Promise.resolve({ data: { id: initialSubmissionId } })
       : dailyChallengeApi.getChallengeSubmissions(challengeId, { page: 0, size: 1 })
@@ -6792,8 +6809,8 @@ const StudentDailyChallengeTake = () => {
             });
         }
 
-        // Update submissionChallengeId state
-        setSubmissionChallengeId(finalSubmissionId);
+        // Update submissionId state
+        setSubmissionId(finalSubmissionId);
         
         // Determine which API to use based on submission status and challenge type
         // For WR and SP types with SUBMITTED status, use result API instead of draft API
@@ -6937,7 +6954,7 @@ const StudentDailyChallengeTake = () => {
       // LocalStorage persistence removed
 
       // Attempt silent server draft save without toggling global loading
-      let currentSubmissionId = submissionChallengeId;
+      let currentSubmissionId = submissionId;
       if (!currentSubmissionId) {
         try {
           const submissionsResponse = await dailyChallengeApi.getChallengeSubmissions(id, { page: 0, size: 1 });
@@ -6947,7 +6964,7 @@ const StudentDailyChallengeTake = () => {
               const currentSubmission = submissions.find(sub => sub.challengeId === parseInt(id)) || submissions[0];
               if (currentSubmission && currentSubmission.id) {
                 currentSubmissionId = currentSubmission.id;
-                setSubmissionChallengeId(currentSubmissionId);
+                setSubmissionId(currentSubmissionId);
               }
             }
           }
@@ -6961,9 +6978,9 @@ const StudentDailyChallengeTake = () => {
           const submitData = { saveAsDraft: true, questionAnswers };
           const resp = await dailyChallengeApi.submitDailyChallenge(currentSubmissionId, submitData);
           if (resp && resp.success) {
-            const responseSubmissionId = resp.data?.submissionChallengeId || resp.data?.id || currentSubmissionId;
+            const responseSubmissionId = resp.data?.submissionId || resp.data?.id || currentSubmissionId;
             if (responseSubmissionId && responseSubmissionId !== currentSubmissionId) {
-              setSubmissionChallengeId(responseSubmissionId);
+              setSubmissionId(responseSubmissionId);
             }
           }
         } catch (e) {
@@ -7002,7 +7019,7 @@ const StudentDailyChallengeTake = () => {
       autoSaveDraftSilently();
     }, 70 * 1000);
     return () => clearInterval(intervalId);
-  }, [loading, isViewOnly, submissionChallengeId]);
+  }, [loading, isViewOnly, submissionId]);
 
   // Upload any blob: or data:audio URLs inside formatted answers and replace with server URLs
   const replaceBlobUrlsInAnswers = async (questionAnswers) => {
@@ -7292,11 +7309,12 @@ const StudentDailyChallengeTake = () => {
       return;
     }
     
-    const { sectionDetails, challengeId, submissionChallengeId: resultSubmissionId } = resultData;
+    const { sectionDetails, challengeId, submissionId: resultSubmissionId, submissionChallengeId: legacySubmissionId } = resultData;
     
-    // Update submissionChallengeId if provided
-    if (resultSubmissionId) {
-      setSubmissionChallengeId(resultSubmissionId);
+    // Update submissionId if provided
+    const resolvedResultSubmissionId = resultSubmissionId || legacySubmissionId;
+    if (resolvedResultSubmissionId) {
+      setSubmissionId(resolvedResultSubmissionId);
     }
     
     // Calculate section scores
@@ -7483,8 +7501,8 @@ const StudentDailyChallengeTake = () => {
   // Handle save (save as draft)
   const handleSave = async () => {
     setAutoSaveStatus('saving');
-    // If submissionChallengeId is not available, try to get it first
-    let currentSubmissionId = submissionChallengeId;
+    // If submissionId is not available, try to get it first
+    let currentSubmissionId = submissionId;
     
     if (!currentSubmissionId) {
       try {
@@ -7496,7 +7514,7 @@ const StudentDailyChallengeTake = () => {
             const currentSubmission = submissions.find(sub => sub.challengeId === parseInt(id)) || submissions[0];
             if (currentSubmission && currentSubmission.id) {
               currentSubmissionId = currentSubmission.id;
-              setSubmissionChallengeId(currentSubmissionId);
+              setSubmissionId(currentSubmissionId);
             }
           }
         }
@@ -7526,10 +7544,10 @@ const StudentDailyChallengeTake = () => {
         spaceToast.success('Progress saved successfully');
         setAutoSaveStatus('saved');
         
-        // Get submissionChallengeId from response and update state
-        const responseSubmissionId = response.data?.submissionChallengeId || response.data?.id || currentSubmissionId;
+        // Get submissionId from response and update state
+        const responseSubmissionId = response.data?.submissionId || response.data?.id || currentSubmissionId;
         if (responseSubmissionId && responseSubmissionId !== currentSubmissionId) {
-          setSubmissionChallengeId(responseSubmissionId);
+          setSubmissionId(responseSubmissionId);
           currentSubmissionId = responseSubmissionId;
         }
         
@@ -7567,8 +7585,8 @@ const StudentDailyChallengeTake = () => {
 
   // Confirm submit - handle actual submission
   const handleConfirmSubmit = async () => {
-    // If submissionChallengeId is not available, try to get it first
-    let currentSubmissionId = submissionChallengeId;
+    // If submissionId is not available, try to get it first
+    let currentSubmissionId = submissionId;
     
     if (!currentSubmissionId) {
       try {
@@ -7580,7 +7598,7 @@ const StudentDailyChallengeTake = () => {
             const currentSubmission = submissions.find(sub => sub.challengeId === parseInt(id)) || submissions[0];
             if (currentSubmission && currentSubmission.id) {
               currentSubmissionId = currentSubmission.id;
-              setSubmissionChallengeId(currentSubmissionId);
+              setSubmissionId(currentSubmissionId);
             }
           }
         }
@@ -7613,10 +7631,10 @@ const StudentDailyChallengeTake = () => {
       if (response && response.success) {
     spaceToast.success('Submitted successfully');
         
-        // Get submissionChallengeId from response and update state
-        const responseSubmissionId = response.data?.submissionChallengeId || response.data?.id || currentSubmissionId;
+        // Get submissionId from response and update state
+        const responseSubmissionId = response.data?.submissionId || response.data?.id || currentSubmissionId;
         if (responseSubmissionId && responseSubmissionId !== currentSubmissionId) {
-          setSubmissionChallengeId(responseSubmissionId);
+          setSubmissionId(responseSubmissionId);
           currentSubmissionId = responseSubmissionId;
         }
     
