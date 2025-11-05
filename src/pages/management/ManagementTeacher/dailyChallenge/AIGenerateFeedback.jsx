@@ -166,6 +166,10 @@ const AIGenerateFeedback = () => {
   });
   const [isGenerating, setIsGenerating] = useState(false);
   const [saving, setSaving] = useState(false);
+  // Speaking-specific controls
+  const [speakingAge, setSpeakingAge] = useState('');
+  const [speakingReferenceText, setSpeakingReferenceText] = useState('');
+  const [speakingResult, setSpeakingResult] = useState(null);
   const handleClear = useCallback(() => {
     try {
       setScore('');
@@ -237,8 +241,8 @@ const AIGenerateFeedback = () => {
   const popoverRef = React.useRef(null);
   const [commentPopover, setCommentPopover] = useState({ visible: false, x: 0, y: 0, feedback: null });
 
-  const handleCommentInputChange = useCallback((e) => {
-    const value = e.target.value;
+  const handleCommentInputChange = useCallback((event, editor) => {
+    const value = editor ? editor.getData() : (event?.target?.value || '');
     setCommentModal(prev => ({ ...prev, comment: value }));
   }, []);
 
@@ -541,6 +545,11 @@ const AIGenerateFeedback = () => {
     return prefill.type || 'writing';
   }, [section, prefill.type]);
 
+  // Do not prefill speaking reference text; let user input manually
+  useEffect(() => {
+    // intentionally left blank to avoid auto-filling reference text
+  }, [sectionType]);
+
   // Fetch submission result if not fully provided
   useEffect(() => {
     let mounted = true;
@@ -764,61 +773,101 @@ const AIGenerateFeedback = () => {
   const handleGenerateAI = useCallback(async () => {
     try {
       setIsGenerating(true);
-      // Only support writing grading via submissionQuestionId
-      if (sectionType !== 'writing') {
-        spaceToast.error('AI grading hiện chỉ hỗ trợ cho bài Writing');
-        return;
-      }
-      // Use submissionQuestionId from URL or prefill
-      const writingSubmissionQuestionId = submissionQuestionId || prefill?.submissionQuestionId || null;
-
-      if (!writingSubmissionQuestionId) {
-        spaceToast.error('Không tìm thấy submissionQuestionId của section để chấm AI');
-        return;
-      }
-
-      const payload = { submissionQuestionId: writingSubmissionQuestionId };
-
-      const res = await dailyChallengeApi.generateAIFeedback(payload);
-      const raw = res?.data?.data || res?.data || {};
-
-      // Map standardized fields from API
-      const overallFeedback = raw?.overallFeedback || raw?.feedback || '';
-      const suggestedScore = (() => {
-        const val = raw?.suggestedScore ?? raw?.score;
-        return Number.isFinite(Number(val)) ? Number(val) : '';
-      })();
-      const aiComments = Array.isArray(raw?.comments) ? raw.comments : [];
-
-      // Apply to UI: right panel can be edited after generation
-      if (overallFeedback) setFeedback(String(overallFeedback));
-      if (suggestedScore !== '') setScore(suggestedScore);
-
-      if (section?.id && aiComments.length > 0) {
-        const mapped = aiComments
-          .map((c) => ({
-            id: c?.id || `feedback-${Date.now()}-${Math.random()}`,
-            startIndex: Number(c?.startIndex ?? 0),
-            endIndex: Number(c?.endIndex ?? 0),
-            comment: String(c?.comment || ''),
-            timestamp: c?.timestamp || new Date().toISOString(),
-          }))
-          .filter(fb => fb.endIndex > fb.startIndex && fb.comment);
-
-        if (mapped.length > 0) {
-          setWritingSectionFeedbacks(prev => ({ ...prev, [section.id]: mapped }));
+      if (sectionType === 'writing') {
+        // Writing grading via submissionQuestionId
+        const writingSubmissionQuestionId = submissionQuestionId || prefill?.submissionQuestionId || null;
+        if (!writingSubmissionQuestionId) {
+          spaceToast.error('Không tìm thấy submissionQuestionId của section để chấm AI');
+          return;
         }
+        const age = Number.isFinite(Number(speakingAge)) ? Number(speakingAge) : undefined;
+        const payload = { submissionQuestionId: writingSubmissionQuestionId, age };
+        const res = await dailyChallengeApi.generateAIFeedback(payload);
+        const raw = res?.data?.data || res?.data || {};
+        const overallFeedback = raw?.overallFeedback || raw?.feedback || '';
+        const suggestedScore = (() => {
+          const val = raw?.suggestedScore ?? raw?.score;
+          return Number.isFinite(Number(val)) ? Number(val) : '';
+        })();
+        const aiComments = Array.isArray(raw?.comments) ? raw.comments : [];
+        // criteria feedback for writing - format and combine with overall feedback
+        const criteriaFeedback = raw?.criteriaFeedback || null;
+        
+        // Format criteria feedback into HTML and combine with overall feedback
+        let combinedFeedback = overallFeedback || '';
+        if (criteriaFeedback) {
+          const criteriaItems = [
+            { key: 'taskResponse', label: 'Task Response' },
+            { key: 'cohesionCoherence', label: 'Cohesion & Coherence' },
+            { key: 'lexicalResource', label: 'Lexical Resource' },
+            { key: 'grammaticalRangeAccuracy', label: 'Grammatical Range & Accuracy' }
+          ];
+          
+          let criteriaHtml = '';
+          criteriaItems.forEach((it) => {
+            const data = criteriaFeedback[it.key];
+            if (data) {
+              const score = Number.isFinite(Number(data?.score)) ? data.score : '-';
+              const feedback = (data?.feedback || '').trim();
+              if (feedback) {
+                criteriaHtml += `<p><strong>${it.label} (Score: ${score})</strong><br>${feedback}</p>`;
+              }
+            }
+          });
+          
+          if (criteriaHtml) {
+            if (combinedFeedback) {
+              combinedFeedback += '<hr><h3>Detailed Criteria Feedback:</h3>' + criteriaHtml;
+            } else {
+              combinedFeedback = '<h3>Detailed Criteria Feedback:</h3>' + criteriaHtml;
+            }
+          }
+        }
+        
+        if (combinedFeedback) setFeedback(combinedFeedback);
+        if (suggestedScore !== '') setScore(suggestedScore);
+        if (section?.id && aiComments.length > 0) {
+          const mapped = aiComments
+            .map((c) => ({
+              id: c?.id || `feedback-${Date.now()}-${Math.random()}`,
+              startIndex: Number(c?.startIndex ?? 0),
+              endIndex: Number(c?.endIndex ?? 0),
+              comment: String(c?.comment || ''),
+              timestamp: c?.timestamp || new Date().toISOString(),
+            }))
+            .filter(fb => fb.endIndex > fb.startIndex && fb.comment);
+          if (mapped.length > 0) {
+            setWritingSectionFeedbacks(prev => ({ ...prev, [section.id]: mapped }));
+          }
+        }
+        setHasAIGenerated(true);
+        spaceToast.success('AI feedback generated');
+      } else if (sectionType === 'speaking') {
+        // Speaking pronunciation assessment
+        const audioUrl = studentAnswer?.audioUrl || studentAnswer?.audio;
+        if (!audioUrl) {
+          spaceToast.error('Không tìm thấy audio của học sinh để chấm phát âm');
+          return;
+        }
+        const refText = (speakingReferenceText && speakingReferenceText.trim()) ? speakingReferenceText.trim() : undefined;
+        const age = Number.isFinite(Number(speakingAge)) ? Number(speakingAge) : undefined;
+        const res = await dailyChallengeApi.assessPronunciation({ audioUrl, referenceText: refText, age });
+        const data = res?.data?.data || res?.data || {};
+        setSpeakingResult(data || null);
+        // Map to right panel
+        if (typeof data?.pronunciationScore === 'number') setScore(data.pronunciationScore);
+        if (data?.feedback) setFeedback(String(data.feedback));
+        setHasAIGenerated(true);
+        spaceToast.success('Pronunciation assessed');
+      } else {
+        spaceToast.error('AI grading hiện chỉ hỗ trợ cho Writing và Speaking');
       }
-
-      // Mark AI generated so that score/feedback fields appear in AI mode
-      setHasAIGenerated(true);
-      spaceToast.success('AI feedback generated');
     } catch (e) {
       spaceToast.error(e?.response?.data?.message || e?.message || 'Failed to generate AI feedback');
     } finally {
       setIsGenerating(false);
     }
-  }, [submissionId, submissionQuestionId, sectionId, sectionType, studentAnswer, section, prefill?.submissionQuestionId, prefill?.rubric]);
+  }, [submissionId, submissionQuestionId, sectionId, sectionType, studentAnswer, section, prefill?.submissionQuestionId, prefill?.rubric, speakingReferenceText, speakingAge, stripHtmlToText]);
 
   const handleSave = useCallback(async () => {
     try {
@@ -958,6 +1007,18 @@ const AIGenerateFeedback = () => {
             overflow-y: auto !important; 
             color: #000 !important; 
           }
+          .comment-editor-wrap .ck-editor__editable_inline { 
+            min-height: 200px !important; 
+            max-height: 200px !important; 
+            overflow-y: auto !important; 
+            color: #000 !important; 
+          }
+          .comment-editor-wrap .ck-editor__main .ck-editor__editable { 
+            min-height: 200px !important; 
+            max-height: 200px !important; 
+            overflow-y: auto !important; 
+            color: #000 !important; 
+          }
         `}</style>
         <Card
           style={{
@@ -975,7 +1036,7 @@ const AIGenerateFeedback = () => {
           }}
           bodyStyle={{ padding: 16 }}
         >
-              <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 20 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
             {/* Left: Student submission */}
             <Card
               style={{
@@ -1124,7 +1185,7 @@ const AIGenerateFeedback = () => {
                         />
                       </div>
                       <div style={{ fontSize: 13, lineHeight: 1.6, color: theme === 'sun' ? '#333' : '#1F2937', whiteSpace: 'pre-wrap' }}>
-                        {commentPopover.feedback.comment}
+                        {stripHtmlToText(commentPopover.feedback.comment)}
                       </div>
                       <div style={{ marginTop: 12, display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
                         <Button danger icon={<DeleteOutlined />} onClick={handleDeleteComment}>Delete</Button>
@@ -1289,6 +1350,7 @@ const AIGenerateFeedback = () => {
                 backdropFilter: 'blur(10px)',
                 minHeight: 540,
               }}
+              bodyStyle={{ maxHeight: 540, overflowY: 'auto', padding: 16 }}
             >
 
               {/* Mode chooser */}
@@ -1330,7 +1392,7 @@ const AIGenerateFeedback = () => {
               {/* Manual mode: show fields only */}
               {rightMode === 'manual' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                  <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
                     <Button
                       icon={<ArrowLeftOutlined />}
                       onClick={() => setRightMode(null)}
@@ -1339,48 +1401,44 @@ const AIGenerateFeedback = () => {
                     >
                       {t('common.back') || 'Back'}
                     </Button>
-                  </div>
-                  <div>
-                    <Text strong>Score</Text>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 6 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <Input
-                          type="number"
-                          value={score}
-                          onChange={handleScoreChange}
-                          min={0}
-                          max={questionWeight}
-                          step={0.1}
-                          placeholder="0"
-                          status={scoreError ? 'error' : ''}
-                          style={{
-                            width: 120,
-                            borderRadius: 8,
-                            border: scoreError 
-                              ? `2px solid ${theme === 'sun' ? '#ff4d4f' : '#ff7875'}` 
-                              : `2px solid ${primaryColor}40`,
-                            background: theme === 'sun' ? '#fff' : 'rgba(255,255,255,0.08)',
-                          }}
-                        />
-                        <span style={{ fontSize: '16px', color: theme === 'sun' ? '#666' : '#999', fontWeight: 500 }}>
-                          / {questionWeight}
-                        </span>
-                      </div>
-                      {scoreError && (
-                        <div style={{ 
-                          fontSize: '12px', 
-                          color: theme === 'sun' ? '#ff4d4f' : '#ff7875',
-                          marginLeft: 4,
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 4
-                        }}>
-                          <span>⚠️</span>
-                          <span>{scoreError}</span>
-                        </div>
-                      )}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <Text strong>Score</Text>
+                      <Input
+                        type="number"
+                        value={score}
+                        onChange={handleScoreChange}
+                        min={0}
+                        max={questionWeight}
+                        step={0.1}
+                        placeholder="0"
+                        status={scoreError ? 'error' : ''}
+                        style={{
+                          width: 120,
+                          borderRadius: 8,
+                          border: scoreError 
+                            ? `2px solid ${theme === 'sun' ? '#ff4d4f' : '#ff7875'}` 
+                            : `2px solid ${primaryColor}40`,
+                          background: theme === 'sun' ? '#fff' : 'rgba(255,255,255,0.08)',
+                        }}
+                      />
+                      <span style={{ fontSize: '16px', color: theme === 'sun' ? '#666' : '#999', fontWeight: 500 }}>
+                        / {questionWeight}
+                      </span>
                     </div>
                   </div>
+                  {scoreError && (
+                    <div style={{ 
+                      fontSize: '12px', 
+                      color: theme === 'sun' ? '#ff4d4f' : '#ff7875',
+                      marginLeft: 4,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 4
+                    }}>
+                      <span>⚠️</span>
+                      <span>{scoreError}</span>
+                    </div>
+                  )}
                   <div>
                     <Text strong>Feedback</Text>
                     <div className="feedback-editor-wrap" style={{ marginTop: 6, borderRadius: 12, border: `2px solid ${primaryColor}80`, background: theme === 'sun' ? primaryColorWithAlpha : 'rgba(244, 240, 255, 0.15)' }}>
@@ -1411,59 +1469,201 @@ const AIGenerateFeedback = () => {
               {/* AI mode: show button first; after success show fields */}
               {rightMode === 'ai' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                  <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
-                    <Button
-                      icon={<ArrowLeftOutlined />}
-                      onClick={() => { setRightMode(null); setHasAIGenerated(false); }}
-                      className={`class-menu-back-button ${theme}-class-menu-back-button`}
-                      style={{ height: 32, borderRadius: 8, fontWeight: 500, fontSize: 14 }}
-                    >
-                      {t('common.back') || 'Back'}
-                    </Button>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+                    <div style={{ display: 'flex' }}>
+                      <Button
+                        icon={<ArrowLeftOutlined />}
+                        onClick={() => { setRightMode(null); setHasAIGenerated(false); }}
+                        className={`class-menu-back-button ${theme}-class-menu-back-button`}
+                        style={{ height: 32, borderRadius: 8, fontWeight: 500, fontSize: 14 }}
+                      >
+                        {t('common.back') || 'Back'}
+                      </Button>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                      {sectionType === 'writing' && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <Text strong>Age</Text>
+                          <Input
+                            type="number"
+                            min={1}
+                            max={100}
+                            value={speakingAge}
+                            onChange={(e) => setSpeakingAge(e.target.value)}
+                            style={{
+                              width: 80,
+                              borderRadius: 8,
+                              border: `2px solid ${primaryColor}40`,
+                              background: theme === 'sun' ? '#fff' : 'rgba(255,255,255,0.08)',
+                            }}
+                          />
+                        </div>
+                      )}
+                      {hasAIGenerated && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <Text strong>Score</Text>
+                          <Input
+                            type="number"
+                            value={score}
+                            onChange={handleScoreChange}
+                            min={0}
+                            max={questionWeight}
+                            step={0.1}
+                            placeholder="0"
+                            status={scoreError ? 'error' : ''}
+                            style={{
+                              width: 120,
+                              borderRadius: 8,
+                              border: scoreError 
+                                ? `2px solid ${theme === 'sun' ? '#ff4d4f' : '#ff7875'}` 
+                                : `2px solid ${primaryColor}40`,
+                              background: theme === 'sun' ? '#fff' : 'rgba(255,255,255,0.08)',
+                            }}
+                          />
+                          <span style={{ fontSize: '16px', color: theme === 'sun' ? '#666' : '#999', fontWeight: 500 }}>
+                            / {questionWeight}
+                          </span>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                  {hasAIGenerated && (
-                    <>
-                      <div>
-                        <Text strong>Score</Text>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 6 }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                            <Input
-                              type="number"
-                              value={score}
-                              onChange={handleScoreChange}
-                              min={0}
-                              max={questionWeight}
-                              step={0.1}
-                              placeholder="0"
-                              status={scoreError ? 'error' : ''}
-                              style={{
-                                width: 120,
-                                borderRadius: 8,
-                                border: scoreError 
-                                  ? `2px solid ${theme === 'sun' ? '#ff4d4f' : '#ff7875'}` 
-                                  : `2px solid ${primaryColor}40`,
-                                background: theme === 'sun' ? '#fff' : 'rgba(255,255,255,0.08)',
-                              }}
-                            />
-                            <span style={{ fontSize: '16px', color: theme === 'sun' ? '#666' : '#999', fontWeight: 500 }}>
-                              / {questionWeight}
-                            </span>
+                  {sectionType === 'speaking' && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                      {/* Inline form row (top before generation) */}
+                      {!hasAIGenerated && (
+                        <div
+                          style={{
+                            display: 'grid',
+                            gridTemplateColumns: '1fr 180px',
+                            gap: 12,
+                            background: theme === 'sun' ? 'rgba(24,144,255,0.06)' : 'rgba(167,139,250,0.10)',
+                            border: `2px solid ${primaryColor}40`,
+                            borderRadius: 12,
+                            padding: 12
+                          }}
+                        >
+                          {/* Reference Text */}
+                          <div>
+                            <Text strong>Reference text</Text>
+                            <div style={{ marginTop: 6 }}>
+                              <Input.TextArea
+                                rows={3}
+                                value={speakingReferenceText}
+                                onChange={(e) => setSpeakingReferenceText(e.target.value)}
+                                placeholder="Enter text if students were asked to read a passage"
+                                style={{ borderRadius: 8, background: '#fff' }}
+                              />
+                            </div>
                           </div>
-                          {scoreError && (
-                            <div style={{ 
-                              fontSize: '12px', 
-                              color: theme === 'sun' ? '#ff4d4f' : '#ff7875',
-                              marginLeft: 4,
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: 4
-                            }}>
-                              <span>⚠️</span>
-                              <span>{scoreError}</span>
+                          {/* Age */}
+                          <div>
+                            <Text strong>Age</Text>
+                            <div style={{ marginTop: 6 }}>
+                              <Input
+                                type="number"
+                                min={1}
+                                max={100}
+                                value={speakingAge}
+                                onChange={(e) => setSpeakingAge(e.target.value)}
+                                style={{ width: '100%', borderRadius: 8, background: '#fff' }}
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                      {hasAIGenerated && speakingResult && (
+                        <div style={{ marginTop: 0 }}>
+                          <div style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 8,
+                            color: theme === 'sun' ? '#1E40AF' : '#8377A0'
+                          }}>
+                            <Text strong>Pronunciation result</Text>
+                          </div>
+                          <div style={{
+                            marginTop: 8,
+                            display: 'grid',
+                            gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+                            gap: 12
+                          }}>
+                            {[{
+                              label: 'Pronunciation',
+                              value: Number.isFinite(Number(speakingResult?.pronunciationScore)) ? speakingResult.pronunciationScore : '-'
+                            },{
+                              label: 'Accuracy',
+                              value: Number.isFinite(Number(speakingResult?.accuracyScore)) ? speakingResult.accuracyScore : '-'
+                            },{
+                              label: 'Fluency',
+                              value: Number.isFinite(Number(speakingResult?.fluencyScore)) ? speakingResult.fluencyScore : '-'
+                            },{
+                              label: 'Completeness',
+                              value: Number.isFinite(Number(speakingResult?.completenessScore)) ? speakingResult.completenessScore : '-'
+                            },{
+                              label: 'Prosody',
+                              value: Number.isFinite(Number(speakingResult?.prosodyScore)) ? speakingResult.prosodyScore : '-'
+                            }].map((item, idx) => (
+                              <div
+                                key={`${item.label}-${idx}`}
+                                style={{
+                                  borderRadius: 12,
+                                  padding: '12px 14px',
+                                  background: theme === 'sun' ? 'linear-gradient(135deg, rgba(24,144,255,0.06) 0%, rgba(113,179,253,0.08) 100%)' : 'linear-gradient(135deg, rgba(244,240,255,0.10) 0%, rgba(167,139,250,0.12) 100%)',
+                                  border: theme === 'sun' ? '1px solid rgba(24,144,255,0.25)' : '1px solid rgba(138,122,255,0.25)'
+                                }}
+                              >
+                                <div style={{ fontSize: 12, color: theme === 'sun' ? '#1E40AF' : '#8377A0', fontWeight: 600 }}>{item.label}</div>
+                                <div style={{ fontSize: 20, fontWeight: 700, color: theme === 'sun' ? '#0f172a' : '#1F2937', marginTop: 2 }}>{item.value}</div>
+                              </div>
+                            ))}
+                          </div>
+                          {Array.isArray(speakingResult?.words) && speakingResult.words.length > 0 && (
+                            <div style={{ marginTop: 8 }}>
+                              <Text strong>Word details</Text>
+                              <div style={{ marginTop: 6, maxHeight: 200, overflow: 'auto', border: `1px solid ${primaryColor}30`, borderRadius: 8, padding: 8 }}>
+                                {speakingResult.words.map((w, idx) => (
+                                  <div key={`${w?.word || 'w'}-${idx}`} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 6, fontSize: 13, padding: '6px 4px', borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
+                                    <div><b>{w?.word}</b></div>
+                                    <div>Acc: {w?.accuracyScore ?? '-'}</div>
+                                    <div>Err: {w?.errorType || '-'}</div>
+                                    <div>Pos: {w?.position ?? '-'} / Dur: {w?.duration ?? '-'}</div>
+                                  </div>
+                                ))}
+                              </div>
                             </div>
                           )}
+                          {/* Score moved to header row next to Back button */}
+                          <div style={{ marginTop: 4 }}>
+                            <Text strong>Feedback</Text>
+                            <div className="feedback-editor-wrap" style={{ marginTop: 6, borderRadius: 12, border: `2px solid ${primaryColor}80`, background: theme === 'sun' ? primaryColorWithAlpha : 'rgba(244, 240, 255, 0.15)' }}>
+                              <CKEditor
+                                editor={ClassicEditor}
+                                data={feedback}
+                                onChange={(event, editor) => setFeedback(editor.getData())}
+                                config={{
+                                  toolbar: { items: ['undo', 'redo', '|', 'paragraph', '|', 'bold', 'italic', '|', 'bulletedList', 'numberedList', '|', 'imageUpload'] }
+                                }}
+                                onReady={(editor) => {
+                                  try {
+                                    const el = editor.ui?.getEditableElement?.();
+                                    if (el) {
+                                      el.style.minHeight = '300px';
+                                      el.style.maxHeight = '300px';
+                                      el.style.overflowY = 'auto';
+                                      el.style.color = '#000';
+                                    }
+                                  } catch {}
+                                }}
+                              />
+                            </div>
+                          </div>
                         </div>
-                      </div>
+                      )}
+                    </div>
+                  )}
+                  {hasAIGenerated && sectionType !== 'speaking' && (
+                    <>
+                      {/* Score moved to header row next to Back button */}
                       <div>
                         <Text strong>Feedback</Text>
                         <div className="feedback-editor-wrap" style={{ marginTop: 6, borderRadius: 12, border: `2px solid ${primaryColor}80`, background: theme === 'sun' ? primaryColorWithAlpha : 'rgba(244, 240, 255, 0.15)' }}>
@@ -1491,7 +1691,48 @@ const AIGenerateFeedback = () => {
                     </>
                   )}
 
-                  {/* Button stays at bottom */}
+                  {/* Bottom area: after generation, move inputs above the button */}
+                  {sectionType === 'speaking' && hasAIGenerated && (
+                    <div
+                      style={{
+                        display: 'grid',
+                        gridTemplateColumns: '1fr 180px',
+                        gap: 12,
+                        background: theme === 'sun' ? 'rgba(24,144,255,0.06)' : 'rgba(167,139,250,0.10)',
+                        border: `2px solid ${primaryColor}40`,
+                        borderRadius: 12,
+                        padding: 12,
+                        marginTop: 8
+                      }}
+                    >
+                      <div>
+                        <Text strong>Reference text</Text>
+                        <div style={{ marginTop: 6 }}>
+                          <Input.TextArea
+                            rows={3}
+                            value={speakingReferenceText}
+                            onChange={(e) => setSpeakingReferenceText(e.target.value)}
+                            placeholder="Enter text if students were asked to read a passage"
+                            style={{ borderRadius: 8, background: '#fff' }}
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <Text strong>Age</Text>
+                        <div style={{ marginTop: 6 }}>
+                          <Input
+                            type="number"
+                            min={1}
+                            max={100}
+                            value={speakingAge}
+                            onChange={(e) => setSpeakingAge(e.target.value)}
+                            style={{ width: '100%', borderRadius: 8, background: '#fff' }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  {/* Button stays at very bottom */}
                   <div style={{ display: 'flex', justifyContent: 'center', marginTop: 4 }}>
                     <Button
                       type="primary"
@@ -1528,7 +1769,7 @@ const AIGenerateFeedback = () => {
         }
         open={commentModal.visible}
         onCancel={() => setCommentModal({ visible: false, sectionId: null, startIndex: null, endIndex: null, comment: '', isEdit: false, feedbackId: null })}
-        width={600}
+        width={700}
         footer={[
           <Button key="cancel" onClick={() => setCommentModal({ visible: false, sectionId: null, startIndex: null, endIndex: null, comment: '', isEdit: false, feedbackId: null })} style={{ height: '32px', fontWeight: '500', fontSize: '16px', padding: '4px 15px', width: '100px' }}>
             Cancel
@@ -1564,16 +1805,27 @@ const AIGenerateFeedback = () => {
         ]}
       >
         <div style={{ padding: '20px 0' }}>
-          <Input.TextArea
-            rows={6}
-            value={commentModal.comment}
-            onChange={handleCommentInputChange}
-            placeholder="Enter your comment for the selected text..."
-            maxLength={2000}
-            showCount
-            autoSize={{ minRows: 6, maxRows: 10 }}
-            style={{ fontSize: '14px', lineHeight: '1.6' }}
-          />
+          <div className="comment-editor-wrap" style={{ borderRadius: 12, border: `2px solid ${primaryColor}80`, background: theme === 'sun' ? primaryColorWithAlpha : 'rgba(244, 240, 255, 0.15)' }}>
+            <CKEditor
+              editor={ClassicEditor}
+              data={commentModal.comment}
+              onChange={handleCommentInputChange}
+              config={{
+                toolbar: { items: ['undo', 'redo', '|', 'paragraph', '|', 'bold', 'italic', '|', 'bulletedList', 'numberedList'] }
+              }}
+              onReady={(editor) => {
+                try {
+                  const el = editor.ui?.getEditableElement?.();
+                  if (el) {
+                    el.style.minHeight = '200px';
+                    el.style.maxHeight = '200px';
+                    el.style.overflowY = 'auto';
+                    el.style.color = '#000';
+                  }
+                } catch {}
+              }}
+            />
+          </div>
         </div>
       </Modal>
 
@@ -1595,7 +1847,7 @@ const AIGenerateFeedback = () => {
           </div>
 
           <div style={{ fontSize: '14px', lineHeight: '1.8', color: theme === 'sun' ? '#333' : '#1F2937', whiteSpace: 'pre-wrap', wordBreak: 'break-word', marginBottom: '16px' }}>
-            {selectedComment.comment || 'No comment provided.'}
+            {stripHtmlToText(selectedComment.comment) || 'No comment provided.'}
           </div>
 
           <div style={{ marginTop: '16px', display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>

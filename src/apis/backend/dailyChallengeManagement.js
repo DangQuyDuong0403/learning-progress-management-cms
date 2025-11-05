@@ -112,6 +112,28 @@ const dailyChallengeApi = {
 		});
 	},
 
+	// Assess pronunciation for speaking using OpenAI service proxy
+	// Endpoint (swagger image): POST /api/openai/pronunciation-assessment with query params
+	// Params: { audioUrl, referenceText?, age? }
+	assessPronunciation: async ({ audioUrl, referenceText, age } = {}) => {
+		const base = (typeof axiosClient?.defaults?.baseURL === 'string') ? axiosClient.defaults.baseURL : '';
+		const baseApi = base.includes('/api/v1')
+			? base.replace('/api/v1', '/api')
+			: (base.endsWith('/api') ? base : (base.replace(/\/$/, '') + '/api'));
+		const url = `${baseApi}/openai/pronunciation-assessment`;
+		const params = new URLSearchParams();
+		if (audioUrl) params.append('audioUrl', audioUrl);
+		if (referenceText) params.append('referenceText', referenceText);
+		if (age !== undefined && age !== null && age !== '') params.append('age', age);
+		const absoluteUrl = params.toString() ? `${url}?${params.toString()}` : url;
+		console.log('AssessPronunciation API - URL:', absoluteUrl);
+		return axiosClient.post(absoluteUrl, null, {
+			headers: {
+				'accept': '*/*',
+			},
+		});
+	},
+
 	// Parse questions from uploaded file with optional description prompt
 	parseQuestionsFromFile: async (file, description = '') => {
 		// Build absolute URL to /api/openai/parse-questions-from-file

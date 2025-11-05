@@ -67,7 +67,7 @@ const ThemedLayout = ({ children, customHeader, contentMargin = 20, contentPaddi
             width: '100%',
             maxWidth: '100%',
             position: 'relative',
-            paddingLeft: '40px',
+            paddingLeft: 0,
             zIndex: 1
           }}
         >
