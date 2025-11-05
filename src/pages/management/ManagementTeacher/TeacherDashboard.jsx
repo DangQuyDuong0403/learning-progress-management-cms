@@ -77,7 +77,7 @@ const TeacherDashboard = () => {
 
         {/* Menu Cards */}
         <div className="menu-cards-section">
-          <Row gutter={[24, 24]} justify="start">
+          <Row gutter={[24, 24]} justify="center">
             {menuItems.map((item) => (
               <Col xs={24} sm={12} md={8} lg={6} key={item.id}>
                 <Card

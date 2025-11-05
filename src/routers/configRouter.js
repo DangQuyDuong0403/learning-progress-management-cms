@@ -336,7 +336,7 @@ const CONFIG_ROUTER = [
 	
 	// Admin Management Routes
 	{
-		show: false, // Tạm thời ẩn dashboard khỏi sidebar
+		show: true, // Hiển thị Admin Dashboard ở vị trí đầu tiên trong sidebar
 		component: AdminDashboard,
 		// icon: <DashboardOutlined />,
 		path: ROUTER_PAGE.ADMIN_DASHBOARD,

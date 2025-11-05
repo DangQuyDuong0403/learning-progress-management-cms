@@ -24,6 +24,7 @@ import {
   SwapOutlined,
   CopyOutlined,
   FileTextOutlined,
+  EyeOutlined,
   EditOutlined,
   PlayCircleOutlined,
   DeleteOutlined,
@@ -109,6 +110,8 @@ const DailyChallengeSubmissionDetail = () => {
   const [overallFeedbackModalVisible, setOverallFeedbackModalVisible] = useState(false);
   const [overallFeedbackDraft, setOverallFeedbackDraft] = useState('');
   const [savingGrading, setSavingGrading] = useState(false);
+  const [antiCheatModalVisible, setAntiCheatModalVisible] = useState(false);
+  const [antiCheatExpanded, setAntiCheatExpanded] = useState({});
   
   
   // Performance collapse state
@@ -4214,7 +4217,29 @@ const DailyChallengeSubmissionDetail = () => {
               >
                 {(teacherFeedback && teacherFeedback.replace(/<[^>]*>/g,'').trim().length > 0) ? 'Edit Feedback' : 'Add Feedback'}
             </Button>
-              </div>
+              <Button
+                icon={<EyeOutlined />}
+                onClick={() => setAntiCheatModalVisible(true)}
+                disabled={!antiCheatData || !Array.isArray(antiCheatData.events) || antiCheatData.events.length === 0}
+                className={`create-button ${theme}-create-button`}
+                style={{
+                  height: '40px',
+                  borderRadius: '8px',
+                  fontWeight: 500,
+                  fontSize: '16px',
+                  padding: '0 24px',
+                  border: 'none',
+                  transition: 'all 0.3s ease',
+                  background: theme === 'sun'
+                    ? 'linear-gradient(135deg, #FFD36E, #FFB020)'
+                    : 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)',
+                  color: '#000000',
+                  boxShadow: theme === 'sun' ? '0 2px 8px rgba(255, 176, 32, 0.3)' : '0 2px 8px rgba(131, 119, 160, 0.3)'
+                }}
+              >
+                View Anti-Cheat Log
+              </Button>
+          </div>
             )}
         </div>
       </nav>
@@ -4915,7 +4940,7 @@ const DailyChallengeSubmissionDetail = () => {
                       <Divider style={{ margin: '16px 0' }} />
 
                       {/* Anti-Cheat Summary */}
-                      {antiCheatData && (
+                      {false && antiCheatData && (
                         <div style={{ marginBottom: '16px' }}>
                           <div 
                             onClick={() => setIsAntiCheatCollapsed(!isAntiCheatCollapsed)}
@@ -5412,6 +5437,262 @@ const DailyChallengeSubmissionDetail = () => {
             />
           </div>
         </div>
+      </Modal>
+
+      {/* Anti-Cheat Log Modal */}
+      <Modal
+        title={
+          <div
+            style={{
+              fontSize: '20px',
+              fontWeight: 700,
+              color: 'rgb(24, 144, 255)',
+              textAlign: 'center',
+              padding: '6px 0'
+            }}
+          >
+            Anti-Cheat Log
+          </div>
+        }
+        open={antiCheatModalVisible}
+        centered
+        onCancel={() => setAntiCheatModalVisible(false)}
+        width={860}
+        footer={[
+          <Button key="close" onClick={() => setAntiCheatModalVisible(false)}
+            style={{ height: '36px', borderRadius: '6px', padding: '0 22px' }}
+          >
+            Close
+          </Button>
+        ]}
+      >
+        {(() => {
+          // Prefer logs provided via navigation state; fallback to antiCheatData.events
+          const logsFromState = Array.isArray(location?.state?.logs) ? location.state.logs : null;
+          const events = logsFromState || (Array.isArray(antiCheatData?.events) ? antiCheatData.events : []);
+          // Hide ANSWER_CHANGE from display and counts as requested
+          const visibleEvents = events.filter(e => e.event !== 'ANSWER_CHANGE');
+          // Compute totals from the provided events only
+          const totalTabSwitch = visibleEvents.filter(e => e.event === 'TAB_SWITCH' || e.event === 'TAB_BLUR').length;
+          const totalCopy = visibleEvents.filter(e => e.event === 'COPY' || e.event === 'COPY_ATTEMPT').length;
+          const totalPaste = visibleEvents.filter(e => e.event === 'PASTE' || e.event === 'PASTE_ATTEMPT').length;
+          const totalViolations = visibleEvents.length;
+          const formatTimestamp = (timestamp) => {
+            if (!timestamp) return '';
+            try {
+              const date = new Date(timestamp);
+              const hours = date.getHours().toString().padStart(2, '0');
+              const minutes = date.getMinutes().toString().padStart(2, '0');
+              const seconds = date.getSeconds().toString().padStart(2, '0');
+              const day = date.getDate();
+              const month = date.getMonth() + 1;
+              const year = date.getFullYear();
+              return `${hours}:${minutes}:${seconds} ${day}/${month}/${year}`;
+            } catch {
+              return String(timestamp);
+            }
+          };
+          const getEventMeta = (evt) => {
+            switch (evt) {
+              case 'START':
+                return { icon: <PlayCircleOutlined />, color: '#52c41a', label: 'Started test' };
+              case 'TAB_SWITCH':
+              case 'TAB_BLUR': // unify as Tab switch (data source only uses TAB_SWITCH)
+                return { icon: <SwapOutlined />, color: '#ff9800', label: 'Tab switch' };
+              case 'COPY':
+              case 'COPY_ATTEMPT':
+                return { icon: <CopyOutlined />, color: '#f44336', label: 'Copy attempt' };
+              case 'PASTE':
+              case 'PASTE_ATTEMPT':
+                return { icon: <FileTextOutlined />, color: '#9c27b0', label: 'Paste attempt' };
+              case 'ANSWER_CHANGE':
+                return { icon: <EditOutlined />, color: '#1890ff', label: 'Answer changed' };
+              default:
+                return { icon: <ClockCircleOutlined />, color: '#666', label: evt };
+            }
+          };
+          const getEventTitle = (evt) => {
+            switch (evt) {
+              case 'START':
+                return 'START';
+              case 'TAB_SWITCH':
+              case 'TAB_BLUR':
+                return 'TAB SWITCH';
+              case 'COPY':
+              case 'COPY_ATTEMPT':
+                return 'COPY';
+              case 'PASTE':
+              case 'PASTE_ATTEMPT':
+                return 'PASTE';
+              case 'ANSWER_CHANGE':
+                return 'ANSWER CHANGE';
+              default:
+                return String(evt || '').replace('_', ' ').toUpperCase();
+            }
+          };
+          return (
+            <div style={{
+              background: theme === 'sun' ? 'linear-gradient(135deg, #F8FBFF 0%, #FFFFFF 100%)' : 'transparent',
+              borderRadius: '12px',
+              padding: '8px'
+            }}>
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'minmax(280px, 36%) 1fr',
+                gap: '16px',
+                alignItems: 'start'
+              }}>
+                {/* Left column: summary */}
+                <div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '12px', marginBottom: '16px' }}>
+                    {[{
+                      value: totalViolations,
+                      label: 'Total violations',
+                      color: '#1890ff',
+                      icon: <ClockCircleOutlined />,
+                      bg: 'linear-gradient(135deg, #EAF2FF 0%, #F6FAFF 100%)',
+                      border: 'rgba(24, 144, 255, 0.25)'
+                    },{
+                      value: totalTabSwitch,
+                      label: 'Tab switch',
+                      color: '#FB8C00',
+                      icon: <SwapOutlined />,
+                      bg: 'linear-gradient(135deg, #FFF4E5 0%, #FFF9F0 100%)',
+                      border: 'rgba(251, 140, 0, 0.25)'
+                    },{
+                      value: totalCopy,
+                      label: 'Copy attempts',
+                      color: '#E53935',
+                      icon: <CopyOutlined />,
+                      bg: 'linear-gradient(135deg, #FFEAEA 0%, #FFF6F6 100%)',
+                      border: 'rgba(229, 57, 53, 0.25)'
+                    },{
+                      value: totalPaste,
+                      label: 'Paste attempts',
+                      color: '#8E24AA',
+                      icon: <FileTextOutlined />,
+                      bg: 'linear-gradient(135deg, #F7E9FF 0%, #FBF3FF 100%)',
+                      border: 'rgba(142, 36, 170, 0.25)'
+                    }].map((c, i) => (
+                      <div key={i} style={{
+                        padding: '14px 16px',
+                        background: c.bg,
+                        borderRadius: '12px',
+                        border: `1px solid ${c.border}`,
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '12px'
+                      }}>
+                        <div style={{
+                          width: '38px', height: '38px', borderRadius: '50%',
+                          background: '#fff', border: `2px solid ${c.color}`, color: c.color,
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          boxShadow: '0 2px 6px rgba(0,0,0,0.06)'
+                        }}>
+                          {c.icon}
+                        </div>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontSize: '12px', color: theme === 'sun' ? '#5f6368' : '#bbb' }}>{c.label}</div>
+                          <div style={{ fontSize: '22px', fontWeight: 700, color: c.color, lineHeight: 1, marginTop: '2px' }}>{c.value}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  {/* No time-away summary for this data shape */}
+                </div>
+
+                {/* Right column: activity log */}
+                <div>
+                  <div style={{
+                    maxHeight: '520px', overflowY: 'auto', padding: '10px',
+                    background: theme === 'sun' ? '#FFFFFF' : 'rgba(255, 255, 255, 0.03)',
+                    borderRadius: '12px', border: `1px solid ${theme === 'sun' ? 'rgba(24, 144, 255, 0.15)' : 'rgba(255, 255, 255, 0.1)'}`,
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.05)'
+                  }}>
+                    {visibleEvents.length === 0 ? (
+                      <Typography.Text style={{ fontStyle: 'italic', fontSize: '14px' }}>No anti-cheat events recorded.</Typography.Text>
+                    ) : (
+                      visibleEvents.map((ev, idx) => {
+                        const meta = getEventMeta(ev.event);
+                        const desc = ev.content || meta.label;
+                        const questionSuffix = ev.questionId ? ` (Q${ev.questionId})` : '';
+                        const isCopy = ev.event === 'COPY' || ev.event === 'COPY_ATTEMPT';
+                        const isPaste = ev.event === 'PASTE' || ev.event === 'PASTE_ATTEMPT';
+                        const isTabSwitchEvt = ev.event === 'TAB_SWITCH' || ev.event === 'TAB_BLUR';
+                        const payloadForCopy = (() => {
+                          const raw = Array.isArray(ev.oldValue)
+                            ? ev.oldValue
+                            : (ev.oldValue != null ? [String(ev.oldValue)] : []);
+                          return (raw && raw.length > 0) ? raw : ['Ví dụ: "tả bạn môn"'];
+                        })();
+                        const payloadForPaste = (() => {
+                          const raw = Array.isArray(ev.newValue)
+                            ? ev.newValue
+                            : (ev.newValue != null ? [String(ev.newValue)] : []);
+                          return (raw && raw.length > 0) ? raw : ['Ví dụ: "ANSWER CHANGE (Q3)"'];
+                        })();
+                        return (
+                          <div key={idx} style={{
+                            display: 'flex', gap: '10px', padding: '10px 12px', marginBottom: '10px',
+                            background: theme === 'sun' ? 'linear-gradient(135deg, #FAFDFF 0%, #FFFFFF 100%)' : 'rgba(255, 255, 255, 0.05)',
+                            borderRadius: '10px', border: `1px solid ${theme === 'sun' ? 'rgba(0,0,0,0.06)' : 'rgba(255, 255, 255, 0.1)'}`,
+                            fontSize: '12px', position: 'relative', overflow: 'hidden'
+                          }}>
+                            <div style={{
+                              position: 'absolute', left: 0, top: 0, bottom: 0,
+                              width: '4px', background: meta.color, opacity: 0.7
+                            }} />
+                            <div style={{ color: meta.color, fontSize: '14px', display: 'flex', alignItems: 'center', flexShrink: 0 }}>
+                              {meta.icon}
+                            </div>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: '8px' }}>
+                                <div style={{ fontWeight: 700, color: theme === 'sun' ? '#1f2937' : 'rgb(45, 27, 105)', fontSize: '12px' }}>
+                                  {getEventTitle(ev.event)}{questionSuffix}
+                                </div>
+                                <div style={{ fontSize: '11px', color: theme === 'sun' ? '#64748b' : '#777' }}>
+                                  {formatTimestamp(ev.timestamp)}
+                                </div>
+                              </div>
+                              <div style={{ color: theme === 'sun' ? '#4b5563' : '#999', fontSize: '12px', lineHeight: '1.6', marginTop: '2px' }}>
+                                {desc}
+                              </div>
+                              {isCopy && (
+                                <div style={{ marginTop: '6px', background: theme === 'sun' ? '#F3F8FF' : 'rgba(24,144,255,0.08)', border: `1px dashed ${theme === 'sun' ? 'rgba(24,144,255,0.35)' : 'rgba(24,144,255,0.35)'}`, borderRadius: '8px', padding: '8px' }}>
+                                  <Typography.Text style={{ fontSize: '11px', color: theme === 'sun' ? '#1e40af' : '#aab' }}>Copied:</Typography.Text>
+                                  <div style={{ fontSize: '12px', color: theme === 'sun' ? '#0f172a' : '#ddd', marginTop: '4px', whiteSpace: 'pre-wrap' }}>
+                                    {payloadForCopy.join(' ')}
+                                  </div>
+                                </div>
+                              )}
+                              {isPaste && (
+                                <div style={{ marginTop: '6px', background: theme === 'sun' ? '#F7ECFF' : 'rgba(142,36,170,0.08)', border: `1px dashed ${theme === 'sun' ? 'rgba(142,36,170,0.35)' : 'rgba(142,36,170,0.35)'}`, borderRadius: '8px', padding: '8px' }}>
+                                  <Typography.Text style={{ fontSize: '11px', color: theme === 'sun' ? '#6A1B9A' : '#cbb' }}>Pasted:</Typography.Text>
+                                  <div style={{ fontSize: '12px', color: theme === 'sun' ? '#0f172a' : '#ddd', marginTop: '4px', whiteSpace: 'pre-wrap' }}>
+                                    {payloadForPaste.join(' ')}
+                                  </div>
+                                </div>
+                              )}
+                              {isTabSwitchEvt && ev.content && (
+                                <div style={{ marginTop: '6px', background: theme === 'sun' ? '#FFFBEA' : 'rgba(251,140,0,0.08)', border: `1px dashed ${theme === 'sun' ? 'rgba(251,140,0,0.35)' : 'rgba(251,140,0,0.35)'}`, borderRadius: '8px', padding: '8px' }}>
+                                  <Typography.Text style={{ fontSize: '11px', color: theme === 'sun' ? '#B26A00' : '#f0b' }}>Note:</Typography.Text>
+                                  <div style={{ fontSize: '12px', color: theme === 'sun' ? '#0f172a' : '#ddd', marginTop: '4px', whiteSpace: 'pre-wrap' }}>
+                                    {ev.content}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
       </Modal>
 
       {/* Score Modal */}
