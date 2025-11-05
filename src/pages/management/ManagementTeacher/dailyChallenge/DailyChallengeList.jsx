@@ -216,9 +216,12 @@ const DailyChallengeList = ({ readOnly = false }) => {
     try {
       let response;
       
-      if (classId) {
+      // Get effective classId from URL params or location.state
+      const effectiveClassId = classId || location.state?.classId;
+      
+      if (effectiveClassId) {
         // Lấy daily challenges cho class cụ thể (truy vấn nhanh để nhận diện cấu trúc dữ liệu)
-        response = await dailyChallengeApi.getDailyChallengesByClass(classId, {
+        response = await dailyChallengeApi.getDailyChallengesByClass(effectiveClassId, {
           page: 0,
           size: 10,
           text: searchDebounce || undefined,

@@ -337,7 +337,7 @@ const AIGenerateQuestions = () => {
               title: `Question ${counter}`,
               question: q?.question || q?.questionText || q?.content || '',
               options: normalizedOptions,
-              points: q?.points ?? q?.score ?? 1,
+              points: q?.points ?? q?.weight ?? q?.score ?? 1,
             };
           }
           case 'MULTIPLE_SELECT': {
@@ -359,7 +359,7 @@ const AIGenerateQuestions = () => {
               title: `Question ${counter}`,
               question: q?.question || q?.questionText || q?.content || '',
               options: normalizedOptions,
-              points: q?.points ?? q?.score ?? 1,
+              points: q?.points ?? q?.weight ?? q?.score ?? 1,
             };
           }
           case 'TRUE_OR_FALSE': {
@@ -383,7 +383,7 @@ const AIGenerateQuestions = () => {
               options: hasBackend
                 ? backendOptions.map((o, i) => ({ key: toOptionKey(i), text: o?.text ?? o?.value ?? '', isCorrect: Boolean(o?.isCorrect || o?.correct) }))
                 : options,
-              points: q?.points ?? q?.score ?? 1,
+              points: q?.points ?? q?.weight ?? q?.score ?? 1,
             };
           }
           case 'FILL_IN_THE_BLANK': {
@@ -403,7 +403,7 @@ const AIGenerateQuestions = () => {
               question: text,
               questionText: text,
               content: { data: normalizedContent },
-              points: q?.points ?? q?.score ?? 1,
+              points: q?.points ?? q?.weight ?? q?.score ?? 1,
             };
           }
           case 'DROPDOWN': {
@@ -423,7 +423,7 @@ const AIGenerateQuestions = () => {
               question: q?.question || 'Choose the correct words to complete the sentence:',
               questionText: text,
               content: { data: normalizedContent },
-              points: q?.points ?? q?.score ?? 1,
+              points: q?.points ?? q?.weight ?? q?.score ?? 1,
             };
           }
           case 'DRAG_AND_DROP': {
@@ -454,7 +454,7 @@ const AIGenerateQuestions = () => {
               correctAnswers: correctMap,
               availableWords: available,
               blanks,
-              points: q?.points ?? q?.score ?? 1,
+              points: q?.points ?? q?.weight ?? q?.score ?? 1,
             };
           }
           case 'REARRANGE': {
@@ -481,7 +481,7 @@ const AIGenerateQuestions = () => {
               sourceItems: sortedWords,
               correctOrder: sortedWords,
               content: { data: contentItems },
-              points: q?.points ?? q?.score ?? 1,
+              points: q?.points ?? q?.weight ?? q?.score ?? 1,
             };
           }
           case 'REWRITE': {
@@ -634,7 +634,7 @@ const AIGenerateQuestions = () => {
             return {
               questionText: q.question || q.questionText || '',
               orderNumber,
-              score: q.points || 1,
+              weight: q.points || 1,
               questionType: q.type,
               content: {
                 data: (q.options || []).map((option, idx) => ({
@@ -649,7 +649,7 @@ const AIGenerateQuestions = () => {
             return {
               questionText: q.question || q.questionText || '',
               orderNumber,
-              score: q.points || 1,
+              weight: q.points || 1,
               questionType: 'TRUE_OR_FALSE',
               content: {
                 data: (q.options || []).map((option, idx) => ({
@@ -664,7 +664,7 @@ const AIGenerateQuestions = () => {
             return {
               questionText: q.questionText || q.question || '',
               orderNumber,
-              score: q.points || 1,
+              weight: q.points || 1,
               questionType: 'FILL_IN_THE_BLANK',
               content: { data: toContentData(q.content?.data) },
               toBeDeleted: false,
@@ -673,7 +673,7 @@ const AIGenerateQuestions = () => {
             return {
               questionText: q.questionText || q.question || '',
               orderNumber,
-              score: q.points || 1,
+              weight: q.points || 1,
               questionType: 'DROPDOWN',
               content: { data: toContentData(q.content?.data) },
               toBeDeleted: false,
@@ -682,7 +682,7 @@ const AIGenerateQuestions = () => {
             return {
               questionText: q.questionText || q.question || '',
               orderNumber,
-              score: q.points || 1,
+              weight: q.points || 1,
               questionType: 'DRAG_AND_DROP',
               content: { data: toContentData(q.content?.data) },
               toBeDeleted: false,
@@ -706,7 +706,7 @@ const AIGenerateQuestions = () => {
             return {
               questionText: placeholderText,
               orderNumber,
-              score: q.points || 1,
+              weight: q.points || 1,
               questionType: 'REARRANGE',
               content: { data: items },
               toBeDeleted: false,
@@ -716,7 +716,7 @@ const AIGenerateQuestions = () => {
             return {
               questionText: q.questionText || q.question || '',
               orderNumber,
-              score: q.points || 1,
+              weight: q.points || 1,
               questionType: 'REWRITE',
               content: { data: toContentData(q.content?.data) },
               toBeDeleted: false,
@@ -725,7 +725,7 @@ const AIGenerateQuestions = () => {
             return {
               questionText: q.question || q.questionText || '',
               orderNumber,
-              score: q.points || 1,
+              weight: q.points || 1,
               questionType: q.type || 'MULTIPLE_CHOICE',
               content: { data: [] },
               toBeDeleted: false,

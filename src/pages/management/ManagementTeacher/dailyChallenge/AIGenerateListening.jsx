@@ -93,19 +93,19 @@ const AIGenerateListening = () => {
         case 'MULTIPLE_SELECT': {
           const optionsSource = Array.isArray(q?.options) ? q.options : Array.isArray(q?.content?.data) ? q.content.data : [];
           const opts = optionsSource.map((o, i) => ({ key: toKey(i), text: o?.text ?? o?.value ?? '', isCorrect: Boolean(o?.isCorrect || o?.correct) }));
-          return { id: nextId(), type, title: `Question ${counter}`, question: q?.question || q?.questionText || '', options: opts, points: q?.points ?? q?.score ?? 1 };
+          return { id: nextId(), type, title: `Question ${counter}`, question: q?.question || q?.questionText || '', options: opts, points: q?.points ?? q?.weight ?? q?.score ?? 1 };
         }
         case 'TRUE_OR_FALSE': {
           const optionsSource = Array.isArray(q?.options) ? q.options : Array.isArray(q?.content?.data) ? q.content.data : [];
           const options = optionsSource.length
             ? optionsSource.map((o, i) => ({ key: toKey(i), text: o?.text ?? o?.value ?? '', isCorrect: Boolean(o?.isCorrect || o?.correct) }))
             : [ { key: 'A', text: 'True', isCorrect: String(q?.correctAnswer || '').toLowerCase() === 'true' }, { key: 'B', text: 'False', isCorrect: String(q?.correctAnswer || '').toLowerCase() === 'false' } ];
-          return { id: nextId(), type: 'TRUE_OR_FALSE', title: `Question ${counter}`, question: q?.question || q?.questionText || '', options, points: q?.points ?? q?.score ?? 1 };
+          return { id: nextId(), type: 'TRUE_OR_FALSE', title: `Question ${counter}`, question: q?.question || q?.questionText || '', options, points: q?.points ?? q?.weight ?? q?.score ?? 1 };
         }
         case 'FILL_IN_THE_BLANK':
         case 'DROPDOWN':
         case 'DRAG_AND_DROP':
-          return { id: nextId(), type, title: `Question ${counter}`, question: q?.question || q?.questionText || '', questionText: q?.questionText || q?.question || '', content: { data: Array.isArray(q?.content?.data) ? q.content.data : [] }, points: q?.points ?? q?.score ?? 1 };
+          return { id: nextId(), type, title: `Question ${counter}`, question: q?.question || q?.questionText || '', questionText: q?.questionText || q?.question || '', content: { data: Array.isArray(q?.content?.data) ? q.content.data : [] }, points: q?.points ?? q?.weight ?? q?.score ?? 1 };
         case 'REARRANGE': {
           const contentItems = Array.isArray(q?.content?.data) ? q.content.data : [];
           const posToVal = new Map();
@@ -113,7 +113,7 @@ const AIGenerateListening = () => {
           const text = q?.questionText || q?.question || '';
           const ids = []; const re = /\[\[pos_([a-zA-Z0-9]+)\]\]/g; let m; while ((m = re.exec(text)) !== null) { ids.push(m[1]); }
           const words = ids.map(id => posToVal.get(id)).filter(Boolean);
-          return { id: nextId(), type: 'REARRANGE', title: `Question ${counter}`, question: 'Rearrange the words by dragging them into the correct order:', questionText: text, sourceItems: words, correctOrder: words, content: { data: contentItems }, points: q?.points ?? q?.score ?? 1 };
+          return { id: nextId(), type: 'REARRANGE', title: `Question ${counter}`, question: 'Rearrange the words by dragging them into the correct order:', questionText: text, sourceItems: words, correctOrder: words, content: { data: contentItems }, points: q?.points ?? q?.weight ?? q?.score ?? 1 };
         }
         default:
           return null;
@@ -291,14 +291,14 @@ const AIGenerateListening = () => {
           case 'MULTIPLE_CHOICE':
           case 'MULTIPLE_SELECT':
           case 'TRUE_OR_FALSE':
-            return { questionText: q.question || q.questionText || '', orderNumber, score: q.points || 1, questionType: q.type === 'TRUE_OR_FALSE' ? 'TRUE_OR_FALSE' : q.type, content: { data: toData((q.options || []).map((o, idx) => ({ id: o.key || `opt${idx + 1}`, value: o.text || '', correct: o.isCorrect === true }))) }, toBeDeleted: false };
+            return { questionText: q.question || q.questionText || '', orderNumber, weight: q.points || 1, questionType: q.type === 'TRUE_OR_FALSE' ? 'TRUE_OR_FALSE' : q.type, content: { data: toData((q.options || []).map((o, idx) => ({ id: o.key || `opt${idx + 1}`, value: o.text || '', correct: o.isCorrect === true }))) }, toBeDeleted: false };
           case 'FILL_IN_THE_BLANK':
           case 'DROPDOWN':
           case 'DRAG_AND_DROP':
           case 'REARRANGE':
-            return { questionText: q.questionText || q.question || '', orderNumber, score: q.points || 1, questionType: q.type, content: { data: toData(q.content?.data) }, toBeDeleted: false };
+            return { questionText: q.questionText || q.question || '', orderNumber, weight: q.points || 1, questionType: q.type, content: { data: toData(q.content?.data) }, toBeDeleted: false };
           default:
-            return { questionText: q.question || '', orderNumber, score: 1, questionType: 'MULTIPLE_CHOICE', content: { data: [] }, toBeDeleted: false };
+            return { questionText: q.question || '', orderNumber, weight: 1, questionType: 'MULTIPLE_CHOICE', content: { data: [] }, toBeDeleted: false };
         }
       };
       const apiQuestions = (questions || []).map((q, idx) => toApiQuestion(q, idx + 1));

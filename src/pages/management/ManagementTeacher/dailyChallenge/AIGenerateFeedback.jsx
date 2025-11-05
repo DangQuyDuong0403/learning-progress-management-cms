@@ -23,12 +23,21 @@ const AIGenerateFeedback = () => {
   const { id: challengeId, submissionId: routeSubmissionId, submissionQuestionId: routeSubmissionQuestionId } = useParams();
   const { user } = useSelector((state) => state.auth);
 
-  // From navigation state if provided
+  // From navigation state or query params if provided
+  const params = new URLSearchParams(location.search || '');
   const nav = location.state || {};
   const submissionId = nav.submissionId || routeSubmissionId;
   const submissionQuestionId = nav.prefill?.submissionQuestionId || routeSubmissionQuestionId;
   const sectionId = nav.sectionId || null; // Still used for display, but submissionQuestionId is primary
   const prefill = nav.prefill || {};
+  
+  // Read class context from state or query params
+  const classIdFromState = nav.classId || null;
+  const classNameFromState = nav.className || null;
+  const challengeNameFromState = nav.challengeName || null;
+  const classIdFromQuery = params.get('classId');
+  const classNameFromQuery = params.get('className');
+  const challengeNameFromQuery = params.get('challengeName');
 
   const primaryColor = theme === 'sun' ? '#1890ff' : '#8B5CF6';
   const primaryColorWithAlpha = theme === 'sun' ? 'rgba(24, 144, 255, 0.1)' : 'rgba(139, 92, 246, 0.1)';
@@ -124,19 +133,43 @@ const AIGenerateFeedback = () => {
   const [section, setSection] = useState(prefill.section || null);
   const [studentAnswer, setStudentAnswer] = useState(prefill.studentAnswer || null);
   
-  // Header data
-  const [className, setClassName] = useState(nav.className || null);
-  const [challengeName, setChallengeName] = useState(nav.challengeName || null);
+  // Header data - prioritize state over query params
+  const [classId, setClassId] = useState(classIdFromState || classIdFromQuery || null);
+  const [className, setClassName] = useState(classNameFromState || classNameFromQuery || null);
+  const [challengeName, setChallengeName] = useState(challengeNameFromState || challengeNameFromQuery || null);
   const [studentName, setStudentName] = useState(nav.studentName || null);
 
+  // Update class context when location.search or location.state changes
+  useEffect(() => {
+    const currentParams = new URLSearchParams(location.search || '');
+    const newClassId = location.state?.classId || currentParams.get('classId') || classIdFromState || null;
+    const newClassName = location.state?.className || currentParams.get('className') || classNameFromState || null;
+    const newChallengeName = location.state?.challengeName || currentParams.get('challengeName') || challengeNameFromState || null;
+    const newStudentName = location.state?.studentName || nav.studentName || null;
+
+    setClassId(prev => prev !== newClassId ? newClassId : prev);
+    setClassName(prev => prev !== newClassName ? newClassName : prev);
+    setChallengeName(prev => prev !== newChallengeName ? newChallengeName : prev);
+    setStudentName(prev => prev !== newStudentName ? newStudentName : prev);
+  }, [location.state, location.search, classIdFromState, classNameFromState, challengeNameFromState, nav.studentName]);
+
   // Right side controls
-  const [score, setScore] = useState(typeof prefill.score === 'number' ? prefill.score : '');
+  const [score, setScore] = useState(() => {
+    // Priority: prefill.score (receivedWeight) > prefill từ API
+    if (typeof prefill.score === 'number') return prefill.score;
+    return '';
+  });
   const [feedback, setFeedback] = useState(prefill.feedback || '');
+  const [questionWeight, setQuestionWeight] = useState(() => {
+    // Priority: prefill.questionWeight > default 10
+    return prefill?.questionWeight || 10;
+  });
   const [isGenerating, setIsGenerating] = useState(false);
   const [saving, setSaving] = useState(false);
   const handleClear = useCallback(() => {
     try {
       setScore('');
+      setScoreError(null);
       setFeedback('');
       const secId = section?.id || prefill?.section?.id;
       if (secId) {
@@ -150,12 +183,27 @@ const AIGenerateFeedback = () => {
   // Right panel mode: null (choose), 'manual', 'ai'
   const [rightMode, setRightMode] = useState(null);
   const [hasAIGenerated, setHasAIGenerated] = useState(false);
+  const [hasAutoSetMode, setHasAutoSetMode] = useState(false); // Track if we've auto-set mode on mount
+  const [scoreError, setScoreError] = useState(null); // Track score validation error
   const handleScoreChange = useCallback((e) => {
     const raw = Number(e?.target?.value);
-    if (!Number.isFinite(raw)) { setScore(''); return; }
-    const clamped = Math.max(0, Math.min(10, raw));
-    setScore(clamped);
-  }, []);
+    if (!Number.isFinite(raw)) { 
+      setScore(''); 
+      setScoreError(null);
+      return; 
+    }
+    // Check if input exceeds questionWeight
+    if (raw > questionWeight) {
+      setScoreError(`Points not to exceed ${questionWeight}`);
+      // Still clamp the value but show error
+      const clamped = Math.max(0, Math.min(questionWeight, raw));
+      setScore(clamped);
+    } else {
+      setScoreError(null);
+      const clamped = Math.max(0, Math.min(questionWeight, raw));
+      setScore(clamped);
+    }
+  }, [questionWeight]);
 
   // Map to reuse existing comment/highlight logic structure
   const studentAnswers = useMemo(() => {
@@ -243,8 +291,25 @@ const AIGenerateFeedback = () => {
       }
     }
 
+    // Calculate position relative to leftContainerRef (the main container that holds the floating toolbar)
     const rect = range.getBoundingClientRect();
-    const containerRect = textElement.getBoundingClientRect();
+    const containerRect = leftContainerRef.current?.getBoundingClientRect();
+    if (!containerRect) {
+      // Fallback: use textElement if leftContainerRef is not available
+      const textElementRect = textElement.getBoundingClientRect();
+      const relativeX = rect.right - textElementRect.left + 10;
+      const relativeY = rect.top - textElementRect.top + (rect.height / 2);
+      setTextSelection({
+        visible: true,
+        sectionId: targetSectionId,
+        startIndex,
+        endIndex,
+        position: { x: relativeX, y: relativeY },
+      });
+      return;
+    }
+    
+    // Calculate position relative to leftContainerRef
     const relativeX = rect.right - containerRect.left + 10;
     const relativeY = rect.top - containerRect.top + (rect.height / 2);
 
@@ -544,6 +609,11 @@ const AIGenerateFeedback = () => {
         const questionType = q?.questionType || '';
         const isSpeaking = questionType === 'SPEAKING' || prefill?.type === 'speaking';
         
+        // Set questionWeight from score field in API response (for speaking questions)
+        if (typeof q?.score === 'number' && q.score > 0) {
+          setQuestionWeight(q.score);
+        }
+        
         // Map to local section/studentAnswer so left container can render prompt (top) and student's answer (below)
         setSection(prev => ({
           ...(prev || {}),
@@ -574,6 +644,44 @@ const AIGenerateFeedback = () => {
     return () => { mounted = false; };
   }, [submissionQuestionId, prefill?.submissionQuestionId]);
 
+  // Fetch questionWeight and receivedWeight from grading API
+  useEffect(() => {
+    let mounted = true;
+    const fetchGrading = async () => {
+      const subQid = submissionQuestionId || prefill?.submissionQuestionId;
+      if (!subQid) return;
+      try {
+        const res = await dailyChallengeApi.getSubmissionQuestionGrading(subQid);
+        const gradingData = res?.data?.data || res?.data || {};
+        if (!mounted) return;
+        
+        // Update questionWeight (max score) - always update from API if available
+        if (typeof gradingData.questionWeight === 'number' && gradingData.questionWeight > 0) {
+          setQuestionWeight(gradingData.questionWeight);
+        }
+        
+        // Update receivedWeight (current score) from API
+        // Only update if we don't have a score from prefill or if API value is different
+        if (typeof gradingData.receivedWeight === 'number') {
+          setScore(prev => {
+            // If prefill had score, keep it on first load; otherwise use API value
+            if (prev === '' || prev === null || prev === undefined) {
+              return gradingData.receivedWeight;
+            }
+            // On subsequent fetches, prefer API value
+            return gradingData.receivedWeight;
+          });
+        }
+      } catch (e) {
+        // If grading doesn't exist yet, questionWeight will use default or prefill value
+        // This is fine for new submissions
+      }
+    };
+    fetchGrading();
+    return () => { mounted = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [submissionQuestionId, prefill?.submissionQuestionId]);
+
   // Prefill highlight comments (if navigated from Edit with existing grading)
   useEffect(() => {
     const highlights = Array.isArray(prefill?.highlightComments) ? prefill.highlightComments : [];
@@ -596,21 +704,55 @@ const AIGenerateFeedback = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [section?.id, prefill?.highlightComments]);
 
+  // Auto-set rightMode to 'manual' if there's existing score or feedback (edit mode)
+  // Only auto-set once on mount when there's existing data, not when user manually changes mode
+  useEffect(() => {
+    // Only auto-set if we haven't done it before and there's existing data
+    if (hasAutoSetMode) return;
+    
+    const hasExistingScore = (typeof prefill?.score === 'number' && prefill.score !== '' && prefill.score != null) ||
+                            (typeof prefill?.score === 'string' && prefill.score.trim() !== '');
+    const hasExistingFeedback = prefill?.feedback && String(prefill.feedback).trim().length > 0;
+    const hasExistingHighlightComments = Array.isArray(prefill?.highlightComments) && prefill.highlightComments.length > 0;
+    
+    // If there's existing data (score, feedback, or highlight comments), automatically show manual mode
+    if (hasExistingScore || hasExistingFeedback || hasExistingHighlightComments) {
+      setRightMode('manual');
+      setHasAutoSetMode(true); // Mark that we've auto-set, so we don't auto-set again
+    }
+  }, [prefill?.score, prefill?.feedback, prefill?.highlightComments, hasAutoSetMode]);
+
   const handleBack = useCallback(() => {
     const role = user?.role?.toLowerCase();
     const path = role === 'teaching_assistant'
-      ? `/teaching-assistant/daily-challenges/detail/${challengeId}/submission/${submissionId}`
-      : `/teacher/daily-challenges/detail/${challengeId}/submission/${submissionId}`;
-    navigate(path, { 
+      ? `/teaching-assistant/daily-challenges/detail/${challengeId}/submissions/${submissionId}`
+      : `/teacher/daily-challenges/detail/${challengeId}/submissions/${submissionId}`;
+    
+    // Preserve class context through navigation - read from multiple sources
+    const currentParams = new URLSearchParams(location.search || '');
+    const preservedClassId = classId || location.state?.classId || location.state?.backState?.classId || currentParams.get('classId') || null;
+    const preservedClassName = className || location.state?.className || location.state?.backState?.className || currentParams.get('className') || null;
+    const preservedChallengeName = challengeName || location.state?.challengeName || location.state?.backState?.challengeName || currentParams.get('challengeName') || null;
+    
+    // Build query params to preserve class context
+    const qs = new URLSearchParams();
+    if (preservedClassId) qs.set('classId', preservedClassId);
+    if (preservedClassName) qs.set('className', preservedClassName);
+    if (preservedChallengeName) qs.set('challengeName', preservedChallengeName);
+    const suffix = qs.toString() ? `?${qs.toString()}` : '';
+    
+    navigate(`${path}${suffix}`, { 
       state: {
         ...location.state?.backState,
         // Preserve header information when navigating back
-        className: className || location.state?.className,
-        challengeName: challengeName || location.state?.challengeName,
-        studentName: studentName || location.state?.studentName,
+        classId: preservedClassId,
+        className: preservedClassName,
+        challengeId: challengeId,
+        challengeName: preservedChallengeName,
+        studentName: studentName || location.state?.studentName || location.state?.backState?.studentName,
       }
     });
-  }, [navigate, user, challengeId, submissionId, location.state, className, challengeName, studentName]);
+  }, [navigate, user, challengeId, submissionId, location.state, location.search, classId, className, challengeName, studentName]);
 
   const buildPromptFromContent = useCallback(() => {
     const essay = studentAnswer?.text || studentAnswer?.essay || '';
@@ -690,7 +832,8 @@ const AIGenerateFeedback = () => {
       }
 
       // Build payload (BE updated)
-      const cleanedFeedback = (feedback || '').replace(/<[^>]*>/g, '').trim();
+      // Keep HTML formatting from CKEditor (bold, italic, lists, etc.)
+      const cleanedFeedback = (feedback || '').trim();
       const numericScore = Number(score);
       const sectionKey = section?.id;
       const highlightComments = sectionKey && Array.isArray(writingSectionFeedbacks?.[sectionKey])
@@ -854,31 +997,31 @@ const AIGenerateFeedback = () => {
               <div ref={leftContainerRef} style={{ marginTop: 12, fontSize: 15, lineHeight: 1.8, position: 'relative' }}>
                 {sectionType === 'writing' ? (
                   <>
-                  {/* Prompt (top) */}
+                  {/* Prompt (top) - Pastel blue background to distinguish from student answer */}
                   <div
                     style={{
                       marginBottom: 12,
-                      background: theme === 'sun' ? '#ffffff' : 'rgba(255,255,255,0.04)',
+                      background: theme === 'sun' ? '#E8F4FD' : 'rgba(138, 122, 255, 0.15)',
                       borderRadius: 12,
-                      border: theme === 'sun' ? '1px solid rgba(0,0,0,0.06)' : '1px solid rgba(255,255,255,0.08)',
+                      border: theme === 'sun' ? '1px solid rgba(24, 144, 255, 0.2)' : '1px solid rgba(138, 122, 255, 0.3)',
                       padding: 16,
                     }}
                   >
-                    <Typography.Text strong style={{ display: 'block', marginBottom: 8 }}>Prompt</Typography.Text>
+                  
                     <div
                       className="html-content"
                       style={{ color: theme === 'sun' ? '#0f172a' : '#d1cde8', lineHeight: 1.7 }}
                       dangerouslySetInnerHTML={{ __html: (section?.prompt || section?.sectionsContent || '') }}
                     />
                   </div>
-                  {/* Student's Answer (below) */}
+                  {/* Student's Answer (below) - Pastel yellow/cream background to distinguish from prompt */}
                   <div
                     style={{
                       whiteSpace: 'pre-wrap',
                       color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)',
-                      background: theme === 'sun' ? '#ffffff' : 'rgba(255,255,255,0.04)',
+                      background: theme === 'sun' ? '#FFF4E6' : 'rgba(167, 139, 250, 0.12)',
                       borderRadius: 12,
-                      border: theme === 'sun' ? '1px solid rgba(0,0,0,0.06)' : '1px solid rgba(255,255,255,0.08)',
+                      border: theme === 'sun' ? '1px solid rgba(255, 193, 7, 0.25)' : '1px solid rgba(167, 139, 250, 0.25)',
                       padding: 16,
                       minHeight: 120,
                       maxHeight: 420,
@@ -971,30 +1114,18 @@ const AIGenerateFeedback = () => {
                         padding: 16
                       }}
                     >
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', marginBottom: 8, position: 'relative' }}>
                         <Typography.Text strong>Teacher Comment</Typography.Text>
-                        <Button type="text" icon={<CloseCircleOutlined />} onClick={() => setCommentPopover(prev => ({ ...prev, visible: false }))} />
+                        <Button 
+                          type="text" 
+                          icon={<CloseCircleOutlined />} 
+                          onClick={() => setCommentPopover(prev => ({ ...prev, visible: false }))} 
+                          style={{ position: 'absolute', right: 0 }}
+                        />
                       </div>
                       <div style={{ fontSize: 13, lineHeight: 1.6, color: theme === 'sun' ? '#333' : '#1F2937', whiteSpace: 'pre-wrap' }}>
                         {commentPopover.feedback.comment}
                       </div>
-                      {(() => {
-                        const studentAns = studentAnswers?.[section?.id] || {};
-                        const essayText = studentAns?.text || studentAns?.essay || '';
-                        if (essayText) {
-                          const { startIndex, endIndex } = commentPopover.feedback;
-                          const highlightedText = essayText.substring(startIndex, endIndex);
-                          return (
-                            <div style={{ marginTop: 8, padding: 8, background: theme === 'sun' ? '#fff9c4' : 'rgba(255,235,59,0.2)', borderRadius: 8, border: `1px solid ${theme === 'sun' ? '#ffeb3b' : 'rgba(255,235,59,0.5)'}` }}>
-                              <Typography.Text style={{ fontSize: 12, fontWeight: 600, color: '#666', display: 'block', marginBottom: 4 }}>Highlighted text:</Typography.Text>
-                              <Typography.Text style={{ fontSize: 13, fontStyle: 'italic', color: theme === 'sun' ? '#333' : '#1F2937' }}>
-                                "{highlightedText}"
-                              </Typography.Text>
-                            </div>
-                          );
-                        }
-                        return null;
-                      })()}
                       <div style={{ marginTop: 12, display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
                         <Button danger icon={<DeleteOutlined />} onClick={handleDeleteComment}>Delete</Button>
                         <Button onClick={handleEditCommentFromSidebar}>Edit Comment</Button>
@@ -1009,30 +1140,6 @@ const AIGenerateFeedback = () => {
                       const durationInfo = extractDurationMarker(rawContent);
                       return (
                         <>
-                          {/* Voice Recording Badge - extracted from [[dur_3]] */}
-                          {durationInfo.found && (
-                            <div style={{
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: '8px',
-                              padding: '6px 12px',
-                              marginBottom: '12px',
-                              borderRadius: '10px',
-                              background: theme === 'sun'
-                                ? 'rgba(24, 144, 255, 0.08)'
-                                : 'rgba(139, 92, 246, 0.15)',
-                              border: `2px solid ${theme === 'sun' ? 'rgba(24, 144, 255, 0.4)' : 'rgba(139, 92, 246, 0.4)'}`,
-                              color: theme === 'sun' ? '#1890ff' : '#8B5CF6',
-                              fontSize: '14px',
-                              fontWeight: 600,
-                              boxShadow: theme === 'sun'
-                                ? '0 2px 6px rgba(24, 144, 255, 0.12)'
-                                : '0 2px 6px rgba(139, 92, 246, 0.12)'
-                            }}>
-                              <span style={{ fontSize: '16px' }}>🎤</span>
-                              <span>Voice Recording {durationInfo.minutes} {durationInfo.minutes === 1 ? 'minute' : 'minutes'}</span>
-                            </div>
-                          )}
                           {/* Audio File Player */}
                           {section?.sectionsUrl ? (
                             <div style={{ marginBottom: 16 }}>
@@ -1045,14 +1152,14 @@ const AIGenerateFeedback = () => {
                               <audio controls src={section.sectionsUrl} style={{ width: '100%' }} />
                             </div>
                           ) : null}
-                          {/* Transcript Content (with [[dur_X]] removed) */}
+                          {/* Transcript Content (with [[dur_X]] removed) - Pastel blue background for prompt */}
                           <div
                             style={{
                               whiteSpace: 'pre-wrap',
                               color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)',
-                              background: theme === 'sun' ? '#ffffff' : 'rgba(255,255,255,0.04)',
+                              background: theme === 'sun' ? '#E8F4FD' : 'rgba(138, 122, 255, 0.15)',
                               borderRadius: 12,
-                              border: theme === 'sun' ? '1px solid rgba(0,0,0,0.06)' : '1px solid rgba(255,255,255,0.08)',
+                              border: theme === 'sun' ? '1px solid rgba(24, 144, 255, 0.2)' : '1px solid rgba(138, 122, 255, 0.3)',
                               padding: 16,
                               minHeight: 240,
                               position: 'relative',
@@ -1074,11 +1181,11 @@ const AIGenerateFeedback = () => {
                             {renderHtmlAsOrderedTextAndImages(durationInfo.cleanedContent)}
                           </div>
                           
-                          {/* Student's Audio Recording */}
+                          {/* Student's Audio Recording - Pastel yellow/cream background for student submission */}
                           <div style={{
-                            background: theme === 'sun' ? '#ffffff' : 'rgba(255,255,255,0.03)',
+                            background: theme === 'sun' ? '#FFF4E6' : 'rgba(167, 139, 250, 0.12)',
                             borderRadius: 12,
-                            border: `1px solid ${theme === 'sun' ? '#e8e8e8' : 'rgba(255, 255, 255, 0.1)'}`,
+                            border: theme === 'sun' ? '1px solid rgba(255, 193, 7, 0.25)' : '1px solid rgba(167, 139, 250, 0.25)',
                             padding: 16,
                             marginTop: 16,
                           }}>
@@ -1109,12 +1216,13 @@ const AIGenerateFeedback = () => {
                     {section?.sectionsUrl ? (
                       <audio controls src={section.sectionsUrl} style={{ width: '100%', marginBottom: 16 }} />
                     ) : null}
+                    {/* Listening/Other section content - Pastel blue background for prompt */}
                     <div
                       className="html-content"
                       style={{
-                        background: theme === 'sun' ? '#ffffff' : 'rgba(255,255,255,0.04)',
+                        background: theme === 'sun' ? '#E8F4FD' : 'rgba(138, 122, 255, 0.15)',
                         borderRadius: 12,
-                        border: theme === 'sun' ? '1px solid rgba(0,0,0,0.06)' : '1px solid rgba(255,255,255,0.08)',
+                        border: theme === 'sun' ? '1px solid rgba(24, 144, 255, 0.2)' : '1px solid rgba(138, 122, 255, 0.3)',
                         padding: 16,
                         color: theme === 'sun' ? '#0f172a' : '#d1cde8',
                       }}
@@ -1234,20 +1342,44 @@ const AIGenerateFeedback = () => {
                   </div>
                   <div>
                     <Text strong>Score</Text>
-                    <Input
-                      type="number"
-                      value={score}
-                      onChange={handleScoreChange}
-                      min={0}
-                      max={10}
-                      step={0.1}
-                      style={{
-                        marginTop: 6,
-                        borderRadius: 8,
-                        border: `2px solid ${primaryColor}40`,
-                        background: theme === 'sun' ? '#fff' : 'rgba(255,255,255,0.08)',
-                      }}
-                    />
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 6 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <Input
+                          type="number"
+                          value={score}
+                          onChange={handleScoreChange}
+                          min={0}
+                          max={questionWeight}
+                          step={0.1}
+                          placeholder="0"
+                          status={scoreError ? 'error' : ''}
+                          style={{
+                            width: 120,
+                            borderRadius: 8,
+                            border: scoreError 
+                              ? `2px solid ${theme === 'sun' ? '#ff4d4f' : '#ff7875'}` 
+                              : `2px solid ${primaryColor}40`,
+                            background: theme === 'sun' ? '#fff' : 'rgba(255,255,255,0.08)',
+                          }}
+                        />
+                        <span style={{ fontSize: '16px', color: theme === 'sun' ? '#666' : '#999', fontWeight: 500 }}>
+                          / {questionWeight}
+                        </span>
+                      </div>
+                      {scoreError && (
+                        <div style={{ 
+                          fontSize: '12px', 
+                          color: theme === 'sun' ? '#ff4d4f' : '#ff7875',
+                          marginLeft: 4,
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 4
+                        }}>
+                          <span>⚠️</span>
+                          <span>{scoreError}</span>
+                        </div>
+                      )}
+                    </div>
                   </div>
                   <div>
                     <Text strong>Feedback</Text>
@@ -1293,20 +1425,44 @@ const AIGenerateFeedback = () => {
                     <>
                       <div>
                         <Text strong>Score</Text>
-                        <Input
-                          type="number"
-                          value={score}
-                          onChange={handleScoreChange}
-                          min={0}
-                          max={10}
-                          step={0.1}
-                          style={{
-                            marginTop: 6,
-                            borderRadius: 8,
-                            border: `2px solid ${primaryColor}40`,
-                            background: theme === 'sun' ? '#fff' : 'rgba(255,255,255,0.08)',
-                          }}
-                        />
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 6 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <Input
+                              type="number"
+                              value={score}
+                              onChange={handleScoreChange}
+                              min={0}
+                              max={questionWeight}
+                              step={0.1}
+                              placeholder="0"
+                              status={scoreError ? 'error' : ''}
+                              style={{
+                                width: 120,
+                                borderRadius: 8,
+                                border: scoreError 
+                                  ? `2px solid ${theme === 'sun' ? '#ff4d4f' : '#ff7875'}` 
+                                  : `2px solid ${primaryColor}40`,
+                                background: theme === 'sun' ? '#fff' : 'rgba(255,255,255,0.08)',
+                              }}
+                            />
+                            <span style={{ fontSize: '16px', color: theme === 'sun' ? '#666' : '#999', fontWeight: 500 }}>
+                              / {questionWeight}
+                            </span>
+                          </div>
+                          {scoreError && (
+                            <div style={{ 
+                              fontSize: '12px', 
+                              color: theme === 'sun' ? '#ff4d4f' : '#ff7875',
+                              marginLeft: 4,
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 4
+                            }}>
+                              <span>⚠️</span>
+                              <span>{scoreError}</span>
+                            </div>
+                          )}
+                        </div>
                       </div>
                       <div>
                         <Text strong>Feedback</Text>
@@ -1441,26 +1597,6 @@ const AIGenerateFeedback = () => {
           <div style={{ fontSize: '14px', lineHeight: '1.8', color: theme === 'sun' ? '#333' : '#1F2937', whiteSpace: 'pre-wrap', wordBreak: 'break-word', marginBottom: '16px' }}>
             {selectedComment.comment || 'No comment provided.'}
           </div>
-
-          {(() => {
-            const secId = Object.keys(writingSectionFeedbacks).find(id => writingSectionFeedbacks[id]?.some(fb => fb.id === selectedComment.id));
-            if (secId) {
-              const ans = studentAnswers?.[secId] || {};
-              const essayText = ans?.text || ans?.essay || (section?.transcript || section?.sectionsContent || '');
-              if (essayText && selectedComment.startIndex !== undefined) {
-                const highlightedText = essayText.substring(selectedComment.startIndex, selectedComment.endIndex);
-                return (
-                  <div style={{ marginTop: '16px', padding: '12px', background: theme === 'sun' ? '#fff9c4' : 'rgba(255, 235, 59, 0.2)', borderRadius: '8px', border: `1px solid ${theme === 'sun' ? '#ffeb3b' : 'rgba(255, 235, 59, 0.5)'}` }}>
-                    <Typography.Text style={{ fontSize: '12px', fontWeight: '600', color: theme === 'sun' ? '#666' : '#999', display: 'block', marginBottom: '6px' }}>Highlighted text:</Typography.Text>
-                    <Typography.Text style={{ fontSize: '13px', color: theme === 'sun' ? '#333' : '#1F2937', fontStyle: 'italic' }}>
-                      "{highlightedText}"
-                    </Typography.Text>
-                  </div>
-                );
-              }
-            }
-            return null;
-          })()}
 
           <div style={{ marginTop: '16px', display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
             <Button danger icon={<DeleteOutlined />} onClick={handleDeleteComment} style={{ borderRadius: '8px', fontWeight: 500, fontSize: '14px', height: '36px', display: 'flex', alignItems: 'center', gap: '8px' }}>
