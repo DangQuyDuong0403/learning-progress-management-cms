@@ -63,7 +63,6 @@ export default function App() {
             </Routes>
             <SpaceToastify />
           </Router>
-          <TextTranslator enabled={true} />
           </DailyChallengeMenuProvider>
         </SyllabusMenuProvider>
       </ClassMenuProvider>

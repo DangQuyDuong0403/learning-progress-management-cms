@@ -82,6 +82,9 @@ const transformApiData = (apiData) => {
           submissionChallengeId: (ss.submissionId ?? challenge.submissionChallengeId),
           submissionStatus: (ss.submissionStatus ?? challenge.submissionStatus),
           late: (typeof ss.late !== 'undefined' ? ss.late : challenge.late),
+          hasAntiCheat: dc.hasAntiCheat,
+          shuffleQuestion: dc.shuffleQuestion,
+          translateOnScreen: dc.translateOnScreen,
           isEmptyLesson: false,
         };
 
@@ -138,6 +141,7 @@ const StudentDailyChallengeList = () => {
         // Fetch all data (no pagination) - client-side pagination will handle it
         const response = await dailyChallengeApi.getStudentDailyChallengesByClass(resolvedClassId, {
           text: searchDebounce || undefined,
+          size: 100,
         });
 
         // Handle both possible response structures
@@ -296,6 +300,9 @@ const StudentDailyChallengeList = () => {
         type: challenge.type, // Also pass as 'type' for compatibility
         submissionChallengeId: challenge.submissionChallengeId, // Pass submissionChallengeId for saving/submitting
         submissionStatus: challenge.submissionStatus, // Pass submissionStatus to determine if viewing submitted answer
+        hasAntiCheat: challenge.hasAntiCheat,
+        shuffleQuestion: challenge.shuffleQuestion,
+        translateOnScreen: challenge.translateOnScreen,
       }
     });
   };
