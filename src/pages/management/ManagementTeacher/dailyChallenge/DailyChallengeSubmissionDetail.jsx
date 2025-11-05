@@ -128,12 +128,14 @@ const DailyChallengeSubmissionDetail = () => {
   };
 
   // Check if a section (writing/speaking) already has grading saved
+  // Only consider it as "existing" if there's actual content (score > 0, feedback, or highlights)
   const hasExistingGradingForSection = (sectionId) => {
     const subQId = getSubmissionQuestionIdForSection(sectionId);
     if (!subQId) return false;
     const g = gradingBySubmissionQuestionId[subQId];
     if (!g) return false;
-    const hasScore = Number.isFinite(Number(g.receivedWeight));
+    // Only consider as existing if receivedWeight > 0 (not just 0 or empty)
+    const hasScore = Number.isFinite(Number(g.receivedWeight)) && Number(g.receivedWeight) > 0;
     const hasFb = typeof g.feedback === 'string' && g.feedback.trim() !== '';
     const hasHighlights = Array.isArray(g.highlightComments) && g.highlightComments.length > 0;
     return !!(hasScore || hasFb || hasHighlights);
@@ -161,7 +163,7 @@ const DailyChallengeSubmissionDetail = () => {
       }
       // Use challengeId from submissionData, fallback to id from URL params
       const challengeId = submissionData?.challenge?.id || id;
-      const path = `${base}/daily-challenges/detail/${challengeId}/submission/${submissionId}/feedback/${submissionQuestionId}`;
+      const path = `${base}/daily-challenges/detail/${challengeId}/submissions/${submissionId}/feedback/${submissionQuestionId}`;
       // Only allow writing & speaking
       if (!sec) {
         // Not a writing/speaking section → use existing modal flow
@@ -179,8 +181,14 @@ const DailyChallengeSubmissionDetail = () => {
         return subQId ? (questionScores[subQId] ?? '') : '';
       })();
       
+      // Get questionWeight from existing grading if available, otherwise null (will be fetched in AIGenerateFeedback)
+      const existingGrading = submissionQuestionId ? gradingBySubmissionQuestionId[submissionQuestionId] : null;
+      const prefillQuestionWeight = existingGrading?.questionWeight || null;
+      
       // Extract header data
-      const className = dailyChallengeData?.className || null;
+      const params = new URLSearchParams(location.search || '');
+      const classId = location.state?.classId || params.get('classId') || null;
+      const className = dailyChallengeData?.className || location.state?.className || null;
       const subtitle = dailyChallengeData?.subtitle || '';
       // If className is separate, subtitle might be just challenge name, otherwise split "Class / Challenge"
       const challengeName = className 
@@ -188,12 +196,20 @@ const DailyChallengeSubmissionDetail = () => {
         : (subtitle.includes(' / ') ? subtitle.split(' / ')[1] : (subtitle || null));
       const studentName = submissionData?.student?.name || location?.state?.studentName || null;
       
-      navigate(path, {
+      // Build query params to preserve class context
+      const qs = new URLSearchParams();
+      if (classId) qs.set('classId', classId);
+      if (className) qs.set('className', className);
+      if (challengeName) qs.set('challengeName', challengeName);
+      const suffix = qs.toString() ? `?${qs.toString()}` : '';
+      
+      navigate(`${path}${suffix}`, {
         state: {
           submissionId: submissionId,
           sectionId: sectionId,
-          prefill: { score: prefillScore, section: sectionPayload, studentAnswer: studentAns, type: derivedType, submissionQuestionId },
+          prefill: { score: prefillScore, questionWeight: prefillQuestionWeight, section: sectionPayload, studentAnswer: studentAns, type: derivedType, submissionQuestionId },
           backState: { from: 'submission-detail' },
+          classId: classId,
           className,
           challengeName,
           studentName,
@@ -235,7 +251,7 @@ const DailyChallengeSubmissionDetail = () => {
       }
       // Use challengeId from submissionData, fallback to id from URL params (component-level id from useParams)
       const challengeId = submissionData?.challenge?.id || id;
-      const path = `${base}/daily-challenges/detail/${challengeId}/submission/${submissionId}/feedback/${submissionQuestionId}`;
+      const path = `${base}/daily-challenges/detail/${challengeId}/submissions/${submissionId}/feedback/${submissionQuestionId}`;
       const sectionPayload = sec.__kind === 'writing'
         ? { id: sec.id, sectionTitle: sec.title || 'Writing', sectionsContent: sec.prompt || '' }
         : { id: sec.id, sectionTitle: sec.title || 'Speaking', sectionsContent: sec.transcript || '', sectionsUrl: sec.audioUrl || '' };
@@ -247,6 +263,7 @@ const DailyChallengeSubmissionDetail = () => {
       })();
       const prefill = {
         score: prefillScore,
+        questionWeight: existing?.questionWeight || null, // Pass questionWeight from existing grading
         section: sectionPayload,
         studentAnswer: studentAns,
         type: sec.__kind,
@@ -256,7 +273,9 @@ const DailyChallengeSubmissionDetail = () => {
       };
       
       // Extract header data
-      const className = dailyChallengeData?.className || null;
+      const params = new URLSearchParams(location.search || '');
+      const classId = location.state?.classId || params.get('classId') || null;
+      const className = dailyChallengeData?.className || location.state?.className || null;
       const subtitle = dailyChallengeData?.subtitle || '';
       // If className is separate, subtitle might be just challenge name, otherwise split "Class / Challenge"
       const challengeName = className 
@@ -264,12 +283,20 @@ const DailyChallengeSubmissionDetail = () => {
         : (subtitle.includes(' / ') ? subtitle.split(' / ')[1] : (subtitle || null));
       const studentName = submissionData?.student?.name || location?.state?.studentName || null;
       
-      navigate(path, { 
+      // Build query params to preserve class context
+      const qs = new URLSearchParams();
+      if (classId) qs.set('classId', classId);
+      if (className) qs.set('className', className);
+      if (challengeName) qs.set('challengeName', challengeName);
+      const suffix = qs.toString() ? `?${qs.toString()}` : '';
+      
+      navigate(`${path}${suffix}`, { 
         state: { 
           submissionId, 
           sectionId: sectionIdParam, 
           prefill, 
           backState: { from: 'submission-detail' },
+          classId: classId,
           className,
           challengeName,
           studentName,
@@ -827,108 +854,123 @@ const DailyChallengeSubmissionDetail = () => {
             const submittedKeys = submittedContent?.map(s => s.id).filter(Boolean) || [];
             studentAnswersMap[q.questionId] = submittedKeys;
           } else if (q.questionType === 'FILL_IN_THE_BLANK') {
-            const submitted = submittedContent?.[0];
+            const submittedItems = submittedContent || [];
             const fillBlankAnswers = {};
-            // For fill in the blank, need to match submitted answer with correct positionId
-            if (submitted && submitted.value) {
-              // Method 1: Try to find matching option in questionContent by id (most reliable)
-              const matchingOption = questionContent.find(opt => 
-                opt.id === (submitted.positionId || submitted.id)
-              );
-              
-              // Get positionId from questionContent (used in questionText placeholders like [[pos_m7yytf]])
-              let posId = matchingOption?.positionId;
-              
-              // If positionId found from matching, map it
-              if (posId) {
-                // Map with "pos_" prefix (as used in questionText)
-                fillBlankAnswers[`pos_${posId}`] = submitted.value;
-                // Also map without prefix as fallback
-                fillBlankAnswers[posId] = submitted.value;
+            // For fill in the blank, need to match each submitted answer with correct positionId
+            submittedItems.forEach((submitted) => {
+              if (submitted && submitted.value) {
+                // Use the positionId directly from submittedContent (most reliable)
+                const submittedPosId = submitted.positionId;
+                
+                if (submittedPosId) {
+                  // Map with "pos_" prefix (as used in questionText like [[pos_77vjlh]])
+                  fillBlankAnswers[`pos_${submittedPosId}`] = submitted.value;
+                  // Also map without prefix as fallback
+                  fillBlankAnswers[submittedPosId] = submitted.value;
+                }
+                
+                // Fallback: Try to find matching option in questionContent by positionId
+                if (!submittedPosId) {
+                  const matchingOption = questionContent.find(opt => 
+                    opt.id === submitted.id || opt.positionId === submitted.id
+                  );
+                  
+                  if (matchingOption?.positionId) {
+                    const posId = matchingOption.positionId;
+                    fillBlankAnswers[`pos_${posId}`] = submitted.value;
+                    fillBlankAnswers[posId] = submitted.value;
+                  }
+                }
               }
-              
-              // Method 2: Always map by questionContent[0].positionId if it exists (fallback)
-              if (questionContent.length > 0 && questionContent[0].positionId) {
-                const firstPosId = questionContent[0].positionId;
-                fillBlankAnswers[`pos_${firstPosId}`] = submitted.value;
-                fillBlankAnswers[firstPosId] = submitted.value;
-              }
-              
-              // Method 3: Map by submitted positionId/id as additional fallback
-              const submittedPosId = submitted.positionId || submitted.id;
-              if (submittedPosId) {
-                fillBlankAnswers[submittedPosId] = submitted.value;
-                fillBlankAnswers[`pos_${submittedPosId}`] = submitted.value;
-              }
-            }
+            });
             studentAnswersMap[q.questionId] = fillBlankAnswers;
           } else if (q.questionType === 'DROPDOWN') {
-            const submitted = submittedContent?.[0];
+            const submittedItems = submittedContent || [];
             const dropdownAnswers = {};
-            if (submitted && submitted.id) {
-              // Find the option in questionContent that matches the submitted id
-              const matchedItem = questionContent.find(item => item.id === submitted.id);
-              
-              if (matchedItem) {
-                // Get the value from matchedItem (not the id)
-                const selectedValue = matchedItem.value || '';
+            // For dropdown, need to match each submitted answer with correct positionId
+            submittedItems.forEach((submitted) => {
+              if (submitted && submitted.id) {
+                // Use the positionId directly from submittedContent (most reliable)
+                const submittedPosId = submitted.positionId;
                 
-                // Map by positionId (with and without "pos_" prefix)
-                if (matchedItem.positionId) {
-                  dropdownAnswers[`pos_${matchedItem.positionId}`] = selectedValue;
-                  dropdownAnswers[matchedItem.positionId] = selectedValue;
-                }
-                
-                // Also map by all positionIds in questionContent for this positionId
-                questionContent.forEach(opt => {
-                  if (opt.positionId === matchedItem.positionId && opt.positionId) {
-                    dropdownAnswers[`pos_${opt.positionId}`] = selectedValue;
-                    dropdownAnswers[opt.positionId] = selectedValue;
+                // Try multiple ways to identify the selected option
+                // 1) Match by option id
+                let matchedItem = questionContent.find(item => item.id === submitted.id);
+                // 2) If not found, match by value text (submitted.value or submitted.id might be the text)
+                if (!matchedItem) {
+                  const submittedText = (submitted.value || submitted.id || '').trim();
+                  if (submittedText) {
+                    matchedItem = questionContent.find(item => (item.value || '').trim() === submittedText);
                   }
-                });
-              } else if (submitted.positionId) {
-                // Fallback: if no match by id, try to find by positionId
-                const matchedByPosId = questionContent.find(item => item.positionId === submitted.positionId);
-                if (matchedByPosId && matchedByPosId.value) {
-                  dropdownAnswers[`pos_${submitted.positionId}`] = matchedByPosId.value;
-                  dropdownAnswers[submitted.positionId] = matchedByPosId.value;
+                }
+                
+                if (matchedItem && matchedItem.value) {
+                  const selectedValue = matchedItem.value;
+                  
+                  // Map by positionId from submittedContent if available
+                  if (submittedPosId) {
+                    dropdownAnswers[`pos_${submittedPosId}`] = selectedValue;
+                    dropdownAnswers[submittedPosId] = selectedValue;
+                  }
+                  
+                  // Also map by positionId from matchedItem if different
+                  if (matchedItem.positionId && matchedItem.positionId !== submittedPosId) {
+                    dropdownAnswers[`pos_${matchedItem.positionId}`] = selectedValue;
+                    dropdownAnswers[matchedItem.positionId] = selectedValue;
+                  }
+                  
+                  // Map all options with same positionId
+                  if (matchedItem.positionId) {
+                    questionContent.forEach(opt => {
+                      if (opt.positionId === matchedItem.positionId && opt.positionId) {
+                        dropdownAnswers[`pos_${opt.positionId}`] = selectedValue;
+                        dropdownAnswers[opt.positionId] = selectedValue;
+                      }
+                    });
+                  }
+                } else if (submittedPosId) {
+                  // Fallback: if still not found, try to locate by positionId AND submitted text
+                  const submittedText = (submitted.value || submitted.id || '').trim();
+                  const candidates = questionContent.filter(item => item.positionId === submittedPosId);
+                  let byText = null;
+                  if (submittedText) {
+                    byText = candidates.find(item => (item.value || '').trim() === submittedText);
+                  }
+                  const finalItem = byText || candidates[0] || null;
+                  if (finalItem && finalItem.value) {
+                    dropdownAnswers[`pos_${submittedPosId}`] = finalItem.value;
+                    dropdownAnswers[submittedPosId] = finalItem.value;
+                  }
                 }
               }
-              
-              // Always map by first positionId from questionContent if exists (fallback)
-              if (questionContent.length > 0 && questionContent[0].positionId) {
-                const firstPosId = questionContent[0].positionId;
-                const firstMatched = questionContent.find(item => item.id === submitted.id);
-                if (firstMatched && firstMatched.value) {
-                  dropdownAnswers[`pos_${firstPosId}`] = firstMatched.value;
-                  dropdownAnswers[firstPosId] = firstMatched.value;
-                }
-              }
-            }
+            });
             studentAnswersMap[q.questionId] = dropdownAnswers;
           } else if (q.questionType === 'DRAG_AND_DROP') {
             const dragDropAnswers = {};
             submittedContent?.forEach(submitted => {
-              if (submitted && submitted.id) {
-                // Find the option in questionContent that matches the submitted id
-                const matchedItem = questionContent.find(item => item.id === submitted.id);
+              if (submitted) {
+                // Use positionId directly from submittedContent (most reliable)
+                const submittedPosId = submitted.positionId;
+                const submittedValue = submitted.value || submitted.id || '';
                 
-                // Get the value from matchedItem (not the id)
-                const selectedValue = matchedItem?.value || '';
+                if (submittedPosId && submittedValue) {
+                  // Map with "pos_" prefix (as used in questionText like [[pos_ng4ud2]])
+                  dragDropAnswers[`pos_${submittedPosId}`] = submittedValue;
+                  // Also map without prefix as fallback
+                  dragDropAnswers[submittedPosId] = submittedValue;
+                }
                 
-                if (selectedValue) {
-                  // Get positionId from submitted or matchedItem
-                  const posId = submitted.positionId || matchedItem?.positionId;
+                // Fallback: Try to find matching option in questionContent by value
+                if (!submittedPosId && submittedValue) {
+                  const matchedItem = questionContent.find(item => 
+                    item.value === submittedValue || item.id === submittedValue
+                  );
                   
-                  // Map with and without "pos_" prefix
-                  if (posId) {
-                    const rawPosId = posId.replace(/^pos_/, ''); // Remove "pos_" prefix if exists
-                    dragDropAnswers[posId] = selectedValue;
-                    dragDropAnswers[rawPosId] = selectedValue;
-                    // Also map with "pos_" prefix if rawPosId
-                    if (rawPosId !== posId) {
-                      dragDropAnswers[`pos_${rawPosId}`] = selectedValue;
-                    }
+                  if (matchedItem?.positionId) {
+                    const posId = matchedItem.positionId;
+                    const value = matchedItem.value || submittedValue;
+                    dragDropAnswers[`pos_${posId}`] = value;
+                    dragDropAnswers[posId] = value;
                   }
                 }
               }
@@ -936,22 +978,41 @@ const DailyChallengeSubmissionDetail = () => {
             studentAnswersMap[q.questionId] = dragDropAnswers;
           } else if (q.questionType === 'REARRANGE') {
             // For rearrange, map positionId to item value (not id) in order
+            // submittedContent has positionId like "0", "1", "2" (order index)
+            // and id/value like "hôm nay", "ăn", "gì" (the actual text)
             const submittedOrder = submittedContent
-              ?.filter(s => s.positionId && s.id)
+              ?.filter(s => s.positionId != null && (s.value || s.id))
               .sort((a, b) => {
-                // Sort by positionId
-                const posA = a.positionId.replace(/^pos_/, '');
-                const posB = b.positionId.replace(/^pos_/, '');
+                // Sort by positionId (numeric order: "0", "1", "2" or "pos_xxx")
+                const posA = String(a.positionId || '').replace(/^pos_/, '');
+                const posB = String(b.positionId || '').replace(/^pos_/, '');
+                // Try numeric comparison first
+                const numA = Number(posA);
+                const numB = Number(posB);
+                if (!isNaN(numA) && !isNaN(numB)) {
+                  return numA - numB;
+                }
+                // Fallback to string comparison
                 return posA.localeCompare(posB);
               })
               .map(s => {
-                // Find the option in questionContent that matches the submitted id
-                const matchedItem = questionContent.find(item => item.id === s.id);
-                // Return the value from matchedItem (not the id)
-                return matchedItem?.value || s.id; // Fallback to id if value not found
+                // submittedContent.id or value is the actual text (e.g., "hôm nay", "ăn", "gì")
+                // Find the option in questionContent that matches by value
+                const submittedValue = s.value || s.id || '';
+                const matchedItem = questionContent.find(item => 
+                  item.value === submittedValue || item.id === submittedValue
+                );
+                // Return the value from matchedItem (preferred) or use submitted value
+                return matchedItem?.value || submittedValue;
               })
               .filter(Boolean) || [];
             studentAnswersMap[q.questionId] = submittedOrder;
+          } else if (q.questionType === 'REWRITE') {
+            // For rewrite, store student's answer text
+            const submittedText = (submittedContent?.[0]?.value || submittedContent?.[0]?.id || '').trim();
+            if (submittedText) {
+              studentAnswersMap[q.questionId] = submittedText;
+            }
           } else if (q.questionType === 'WRITING') {
             // For writing, store student's essay per section id to render on the right
             const essayText = (submittedContent?.[0]?.value || '').trim();
@@ -1001,13 +1062,33 @@ const DailyChallengeSubmissionDetail = () => {
         ]);
 
         const looksLikeGV = (() => {
-          const noExplicitTitle = !section.sectionTitle || section.sectionTitle.trim() === '';
+          const sectionTitleLower = (section.sectionTitle || '').toLowerCase();
+          const hasGrammarKeyword = /(grammar|vocabulary|gv|g&v)/i.test(sectionTitleLower);
           const noMedia = !section.sectionsUrl;
-          const noReadingWritingSpeakingKeyword = !/(reading|writing|speaking|listen)/i.test(section.sectionTitle || '');
-          const textLooksInstructional = !section.sectionsContent || /(choose|select|fill|dropdown|drag|drop|rearrange|rewrite)/i.test(section.sectionsContent);
+          const noReadingWritingSpeakingKeyword = !/(reading|writing|speaking|listen)/i.test(sectionTitleLower);
           const onlyGVTypes = questionResults.length > 0 && questionResults.every(qr => allowedGVTypes.has(qr?.questionType));
           const resourceNone = !section.resourceType || section.resourceType === 'NONE';
-          return noExplicitTitle && noMedia && resourceNone && textLooksInstructional && onlyGVTypes && noReadingWritingSpeakingKeyword;
+          
+          // Check if content is short (likely not a real listening/reading transcript)
+          const contentText = (section.sectionsContent || '').replace(/<[^>]*>/g, '').trim();
+          const hasShortContent = !contentText || contentText.length < 100;
+          const hasOnlyTrueFalse = questionResults.length > 0 && questionResults.every(qr => qr?.questionType === 'TRUE_OR_FALSE');
+          
+          // Priority 1: If has grammar/vocabulary keyword, always treat as GV (even if has audio/media)
+          if (hasGrammarKeyword) {
+            return true;
+          }
+          // Priority 2: If title says "listening" but only has TRUE_OR_FALSE and short/no content, likely mislabeled Grammar
+          if (sectionTitleLower.includes('listen') && hasOnlyTrueFalse && hasShortContent && onlyGVTypes) {
+            return true;
+          }
+          // Priority 3: If section has characteristics of Grammar (no media, no resource, only GV types, no reading/writing/speaking/listening keywords)
+          // then it's definitely Grammar, regardless of content
+          if (noMedia && resourceNone && onlyGVTypes && noReadingWritingSpeakingKeyword) {
+            return true;
+          }
+          // Fallback: If no reading/writing/speaking/listening keywords, only GV types, and no media/resource
+          return false;
         })();
 
         if (looksLikeGV) {
@@ -1188,14 +1269,23 @@ const DailyChallengeSubmissionDetail = () => {
               const data = r.value?.data?.data || r.value?.data || null;
               if (data) {
                 const subQId = subQIds[idx];
-                map[subQId] = {
-                  receivedWeight: data.receivedWeight,
-                  feedback: data.feedback,
-                  highlightComments: data.highlightComments || [],
-                  graderId: data.graderId,
-                  graderName: data.graderName,
-                  timestamp: data.timestamp,
-                };
+                // Only store grading if it has actual content (score > 0, feedback, or highlights)
+                // This ensures that after Clear + Save, the button will show "Add" instead of "Edit"
+                const hasScore = Number.isFinite(Number(data.receivedWeight)) && Number(data.receivedWeight) > 0;
+                const hasFb = typeof data.feedback === 'string' && data.feedback.trim() !== '';
+                const hasHighlights = Array.isArray(data.highlightComments) && data.highlightComments.length > 0;
+                
+                if (hasScore || hasFb || hasHighlights) {
+                  map[subQId] = {
+                    receivedWeight: data.receivedWeight,
+                    questionWeight: data.questionWeight, // Add questionWeight from API
+                    feedback: data.feedback,
+                    highlightComments: data.highlightComments || [],
+                    graderId: data.graderId,
+                    graderName: data.graderName,
+                    timestamp: data.timestamp,
+                  };
+                }
               }
             }
           });
@@ -1286,7 +1376,17 @@ const DailyChallengeSubmissionDetail = () => {
 
   // Enter/exit daily challenge menu mode
   useEffect(() => {
-    const backPath = `/teacher/daily-challenges/detail/${id}/submissions`;
+    // Build back path to submissions list and preserve class/challenge info via query params
+    const params = new URLSearchParams(location.search || '');
+    const classId = location.state?.classId || params.get('classId') || null;
+    const className = location.state?.className || params.get('className') || null;
+    const challengeName = location.state?.challengeName || params.get('challengeName') || null;
+    const qs = new URLSearchParams();
+    if (classId) qs.set('classId', classId);
+    if (className) qs.set('className', className);
+    if (challengeName) qs.set('challengeName', challengeName);
+    const suffix = qs.toString() ? `?${qs.toString()}` : '';
+    const backPath = `/teacher/daily-challenges/detail/${id}/submissions${suffix}`;
     // Priority: Use location.state if available (when navigating back from AIGenerateFeedback)
     // Otherwise preserve subtitle/className from dailyChallengeData
     let preservedSubtitle = dailyChallengeData?.subtitle || null;
@@ -1308,7 +1408,7 @@ const DailyChallengeSubmissionDetail = () => {
     return () => {
       // Do not exit here to preserve header info when navigating back to list; list page will re-enter and manage state
     };
-  }, [enterDailyChallengeMenu, id, dailyChallengeData?.subtitle, dailyChallengeData?.className, location?.state?.className, location?.state?.challengeName]);
+  }, [enterDailyChallengeMenu, id, dailyChallengeData?.subtitle, dailyChallengeData?.className, location?.state?.className, location?.state?.challengeName, location?.state?.classId, location.search]);
 
   // Build question navigation list (must be before early return)
   const getQuestionNavigation = useCallback(() => {
@@ -1635,8 +1735,11 @@ const DailyChallengeSubmissionDetail = () => {
           borderRadius: '8px',
           border: `2px solid ${theme === 'sun' ? '#1890ff' : '#8B5CF6'}`
         }}>
-          <div style={{ fontSize: '16px', fontWeight: 600, marginBottom: '8px' }}>
+          <div style={{ fontSize: '16px', fontWeight: 600, marginBottom: '8px', position: 'relative' }}>
             Question {qIndex + 1}:
+            <span style={{ position: 'absolute', right: 0, top: 0, fontSize: '16px', fontWeight: 600, opacity: 0.7 }}>
+              {(q.receivedScore || 0)} / {(q.points || 0)} points
+            </span>
           </div>
           <div className="question-text-content" style={{ marginBottom: '10px' }} dangerouslySetInnerHTML={{ __html: questionText }} />
           <div className="question-options" style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '12px' }}>
@@ -1654,6 +1757,7 @@ const DailyChallengeSubmissionDetail = () => {
               const isSelected = isMulti ? (Array.isArray(studentAnswer) && studentAnswer.includes(key)) : (studentAnswer === key || (q.type === 'TRUE_OR_FALSE' && opt === studentAnswer));
               const isSelectedWrong = isSelected && !isCorrectAnswer;
               const isCorrectMissing = !isSelected && isCorrectAnswer && isMulti;
+              const isUnanswered = isMulti ? (Array.isArray(studentAnswer) && studentAnswer.length === 0) : (!isSelected && studentAnswer == null);
               
               return (
                 <div key={key} style={{
@@ -1661,24 +1765,41 @@ const DailyChallengeSubmissionDetail = () => {
                   alignItems: 'center',
                   gap: '10px',
                   padding: '12px 14px',
-                  background: isCorrectAnswer || isCorrectMissing
-                    ? (theme === 'sun' ? 'rgba(82, 196, 26, 0.15)' : 'rgba(82, 196, 26, 0.2)')
-                    : isSelectedWrong
-                      ? (theme === 'sun' ? 'rgba(255, 77, 79, 0.15)' : 'rgba(255, 77, 79, 0.2)')
-                    : (theme === 'sun' ? '#fff' : 'rgba(255,255,255,0.03)'),
-                  border: `2px solid ${isCorrectAnswer || isCorrectMissing ? 'rgb(82, 196, 26)' : isSelectedWrong ? 'rgb(255, 77, 79)' : (theme === 'sun' ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.1)')}`,
+                  background: (isUnanswered && !isMulti && isCorrectAnswer)
+                    ? (theme === 'sun' ? 'rgba(250, 173, 20, 0.12)' : 'rgba(250, 173, 20, 0.2)')
+                    : isCorrectMissing
+                    ? (theme === 'sun' ? 'rgba(250, 173, 20, 0.12)' : 'rgba(250, 173, 20, 0.2)')
+                    : (isCorrectAnswer
+                      ? (theme === 'sun' ? 'rgba(82, 196, 26, 0.15)' : 'rgba(82, 196, 26, 0.2)')
+                      : isSelectedWrong
+                        ? (theme === 'sun' ? 'rgba(255, 77, 79, 0.15)' : 'rgba(255, 77, 79, 0.2)')
+                        : (theme === 'sun' ? '#fff' : 'rgba(255,255,255,0.03)')),
+                  border: `2px solid ${
+                    (isUnanswered && !isMulti && isCorrectAnswer)
+                      ? '#faad14'
+                      : isCorrectMissing
+                      ? '#faad14'
+                      : (isCorrectAnswer
+                        ? 'rgb(82, 196, 26)'
+                        : (isSelectedWrong ? 'rgb(255, 77, 79)' : (theme === 'sun' ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.1)')))
+                  }`,
                   borderRadius: '12px',
                   cursor: 'default',
                   minHeight: '50px',
                   boxSizing: 'border-box',
                 }}>
-                  <input type={isMulti ? 'checkbox' : 'radio'} checked={isSelected || (!isSelected && isCorrectAnswer)} disabled style={{ width: '18px', height: '18px', accentColor: isCorrectAnswer || isCorrectMissing ? '#52c41a' : (isSelectedWrong ? '#ff4d4f' : (theme === 'sun' ? '#1890ff' : '#8B5CF6')), cursor: 'not-allowed', opacity: 1 }} />
+                  <input type={isMulti ? 'checkbox' : 'radio'} checked={isSelected || isCorrectMissing} disabled style={{ width: '18px', height: '18px', accentColor: isCorrectMissing ? '#faad14' : (isCorrectAnswer ? '#52c41a' : (isSelectedWrong ? '#ff4d4f' : (theme === 'sun' ? '#1890ff' : '#8B5CF6'))), cursor: 'not-allowed', opacity: 1 }} />
                   <span style={{ fontWeight: 600, color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)', fontSize: '16px' }}>
                     {q.type === 'TRUE_OR_FALSE' ? (opt === 'True' ? 'A' : 'B') : key}.
                   </span>
                   <span className="option-text" style={{ flex: 1, lineHeight: '1.6', color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)', fontWeight: '350' }} dangerouslySetInnerHTML={{ __html: q.type === 'TRUE_OR_FALSE' ? opt : text }} />
                   {isSelectedWrong && <CloseCircleOutlined style={{ fontSize: '22px', color: '#ff4d4f', marginLeft: 'auto', fontWeight: 'bold' }} />}
-                  {(isCorrectAnswer || isCorrectMissing) && !isSelectedWrong && <CheckCircleOutlined style={{ fontSize: '20px', color: '#52c41a', marginLeft: 'auto' }} />}
+                  {(isUnanswered && !isMulti && isCorrectAnswer) && !isSelectedWrong && (
+                    <CheckCircleOutlined style={{ fontSize: '20px', color: '#faad14', marginLeft: 'auto' }} />
+                  )}
+                  {(!isUnanswered || isMulti) && (isCorrectMissing || (isCorrectAnswer && !isCorrectMissing)) && !isSelectedWrong && (
+                    <CheckCircleOutlined style={{ fontSize: '20px', color: isCorrectMissing ? '#faad14' : '#52c41a', marginLeft: 'auto' }} />
+                  )}
                 </div>
               );
             })}
@@ -1769,7 +1890,12 @@ const DailyChallengeSubmissionDetail = () => {
 
       return (
         <div key={q.id} style={{ padding: '16px', background: theme === 'sun' ? '#f8f9fa' : 'rgba(255, 255, 255, 0.05)', borderRadius: '8px', border: `2px solid ${theme === 'sun' ? '#1890ff' : '#8B5CF6'}` }}>
-          <div style={{ fontSize: '16px', fontWeight: 600, marginBottom: '8px' }}>Question {qIndex + 1}:</div>
+          <div style={{ fontSize: '16px', fontWeight: 600, marginBottom: '8px', position: 'relative' }}>
+            Question {qIndex + 1}:
+            <span style={{ position: 'absolute', right: 0, top: 0, fontSize: '16px', fontWeight: 600, opacity: 0.7 }}>
+              {(q.receivedScore || 0)} / {(q.points || 0)} points
+            </span>
+          </div>
           <div style={{ fontSize: '15px', fontWeight: 350, lineHeight: '1.8', color: '#000000' }}>{renderFillBlankForSection()}</div>
         </div>
       );
@@ -1848,7 +1974,12 @@ const DailyChallengeSubmissionDetail = () => {
 
       return (
         <div key={q.id} style={{ padding: '16px', background: theme === 'sun' ? '#f8f9fa' : 'rgba(255, 255, 255, 0.05)', borderRadius: '8px', border: `2px solid ${theme === 'sun' ? '#1890ff' : '#8B5CF6'}` }}>
-          <div style={{ fontSize: '16px', fontWeight: 600, marginBottom: '8px' }}>Question {qIndex + 1}:</div>
+          <div style={{ fontSize: '16px', fontWeight: 600, marginBottom: '8px', position: 'relative' }}>
+            Question {qIndex + 1}:
+            <span style={{ position: 'absolute', right: 0, top: 0, fontSize: '16px', fontWeight: 600, opacity: 0.7 }}>
+              {(q.receivedScore || 0)} / {(q.points || 0)} points
+            </span>
+          </div>
           <div style={{ fontSize: '15px', fontWeight: 350, lineHeight: '1.8', color: '#000000' }}>{renderDropdownForSection()}</div>
         </div>
       );
@@ -1875,7 +2006,12 @@ const DailyChallengeSubmissionDetail = () => {
 
       return (
         <div key={q.id} style={{ padding: '16px', background: theme === 'sun' ? '#f8f9fa' : 'rgba(255, 255, 255, 0.05)', borderRadius: '8px', border: `2px solid ${theme === 'sun' ? '#1890ff' : '#8B5CF6'}` }}>
-          <div style={{ fontSize: '16px', fontWeight: 600, marginBottom: '8px' }}>Question {qIndex + 1}:</div>
+          <div style={{ fontSize: '16px', fontWeight: 600, marginBottom: '8px', position: 'relative' }}>
+            Question {qIndex + 1}:
+            <span style={{ position: 'absolute', right: 0, top: 0, fontSize: '16px', fontWeight: 600, opacity: 0.7 }}>
+              {(q.receivedScore || 0)} / {(q.points || 0)} points
+            </span>
+          </div>
           <div style={{ display: 'flex', gap: '24px', minHeight: '300px' }}>
             <div style={{ flex: '1', padding: '20px', background: theme === 'sun' ? '#f9f9f9' : 'rgba(255, 255, 255, 0.02)', borderRadius: '12px', border: `1px solid ${theme === 'sun' ? '#e8e8e8' : 'rgba(255, 255, 255, 0.1)'}` }}>
               <div style={{ fontSize: '15px', fontWeight: 350, lineHeight: '1.8', color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' }}>
@@ -1951,16 +2087,26 @@ const DailyChallengeSubmissionDetail = () => {
       const contentData = q.content?.data || [];
       const studentAnswer = studentAnswers?.[q.id] || [];
       
-      // Get correct order by sorting by positionId (alphabetically, as positionId is string)
-      const correctOrder = contentData
-        .slice()
-        .sort((a, b) => {
-          const posA = (a.positionId || '').replace(/^pos_/, '');
-          const posB = (b.positionId || '').replace(/^pos_/, '');
-          return posA.localeCompare(posB);
-        })
-        .map(item => item.value)
-        .filter(Boolean);
+      // Get correct order by parsing questionText to extract positionIds in order
+      // questionText format: "[[pos_u64lgh]] [[pos_22ylfg]] [[pos_mchmz2]]"
+      const correctOrder = (() => {
+        const positionIdsInOrder = [];
+        const regex = /\[\[pos_(.*?)\]\]/g;
+        let match;
+        while ((match = regex.exec(questionText)) !== null) {
+          positionIdsInOrder.push(match[1]); // Extract positionId without "pos_" prefix
+        }
+        
+        // Map positionIds to values from contentData
+        return positionIdsInOrder.map(posId => {
+          // Try to find item with positionId matching pos_xxx or just xxx
+          const item = contentData.find(item => {
+            const itemPosId = (item.positionId || '').replace(/^pos_/, '');
+            return itemPosId === posId;
+          });
+          return item?.value || '';
+        }).filter(Boolean);
+      })();
       
       // Student answer should be an array of values (not ids) from mapping
       const studentOrder = Array.isArray(studentAnswer) 
@@ -1982,7 +2128,12 @@ const DailyChallengeSubmissionDetail = () => {
 
       return (
         <div key={q.id} style={{ padding: '16px', background: theme === 'sun' ? '#f8f9fa' : 'rgba(255, 255, 255, 0.05)', borderRadius: '8px', border: `2px solid ${theme === 'sun' ? '#1890ff' : '#8B5CF6'}` }}>
-          <div style={{ fontSize: '16px', fontWeight: 600, marginBottom: '8px' }}>Question {qIndex + 1}:</div>
+          <div style={{ fontSize: '16px', fontWeight: 600, marginBottom: '8px', position: 'relative' }}>
+            Question {qIndex + 1}:
+            <span style={{ position: 'absolute', right: 0, top: 0, fontSize: '16px', fontWeight: 600, opacity: 0.7 }}>
+              {(q.receivedScore || 0)} / {(q.points || 0)} points
+            </span>
+          </div>
           <div style={{ fontSize: '15px', fontWeight: 350, marginBottom: '16px', lineHeight: '1.8', color: '#000000' }}>
             <div className="question-text-content" dangerouslySetInnerHTML={{ __html: displayText || 'Rearrange the words to form a correct sentence:' }} />
           </div>
@@ -2049,15 +2200,22 @@ const DailyChallengeSubmissionDetail = () => {
 
   // Render Reading Section
   const renderReadingSection = (section, index) => {
+    const sectionTotals = (() => {
+      const received = (section.questions || []).reduce((sum, q) => sum + (q.receivedScore || 0), 0);
+      const total = (section.questions || []).reduce((sum, q) => sum + (q.points || 0), 0);
+      return { received, total };
+    })();
     return (
       <div key={section.id || index} className={`question-item ${theme}-question-item`} style={{ marginBottom: '24px', borderRadius: '16px', padding: '24px', border: '2px solid', borderColor: theme === 'sun' ? 'rgba(113, 179, 253, 0.25)' : 'rgba(138, 122, 255, 0.2)', background: theme === 'sun' ? 'linear-gradient(135deg, rgba(255, 255, 255, 1) 0%, rgba(240, 249, 255, 0.95) 100%)' : 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(244, 240, 255, 0.95) 100%)', boxShadow: theme === 'sun' ? '0 4px 16px rgba(113, 179, 253, 0.1)' : '0 4px 16px rgba(138, 122, 255, 0.12)' }}>
-        <div className="question-header" style={{ paddingBottom: '14px', marginBottom: '16px', borderBottom: '2px solid', borderBottomColor: theme === 'sun' ? 'rgba(113, 179, 253, 0.25)' : 'rgba(138, 122, 255, 0.2)' }}>
-          <Typography.Text strong style={{ fontSize: '20px', color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' }}>
-            {index + 1}. Reading Section
-          </Typography.Text>
-          <Typography.Text style={{ marginLeft: '12px', fontSize: '14px', opacity: 0.7 }}>
-            ({section.points} {section.points > 1 ? 'points' : 'point'})
-          </Typography.Text>
+        <div className="question-header" style={{ paddingBottom: '14px', marginBottom: '16px', borderBottom: '2px solid', borderBottomColor: theme === 'sun' ? 'rgba(113, 179, 253, 0.25)' : 'rgba(138, 122, 255, 0.2)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div>
+            <Typography.Text strong style={{ fontSize: '20px', color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' }}>
+              {index + 1}. Reading Section
+            </Typography.Text>
+          </div>
+          <div style={{ fontSize: '14px', fontWeight: 600, color: theme === 'sun' ? '#1890ff' : '#8B5CF6' }}>
+            {sectionTotals.received} / {sectionTotals.total} points
+          </div>
         </div>
         <div style={{ display: 'flex', gap: '24px', minHeight: '500px' }}>
           <div className="reading-passage-scrollbar" style={{ flex: '1', padding: '20px', background: theme === 'sun' ? '#f9f9f9' : 'rgba(255, 255, 255, 0.02)', borderRadius: '12px', border: `1px solid ${theme === 'sun' ? '#e8e8e8' : 'rgba(255, 255, 255, 0.1)'}`, overflowY: 'auto', maxHeight: '600px', scrollbarWidth: 'thin', scrollbarColor: theme === 'sun' ? '#1890ff rgba(24, 144, 255, 0.2)' : '#8B5CF6 rgba(138, 122, 255, 0.2)' }}>
@@ -2083,15 +2241,22 @@ const DailyChallengeSubmissionDetail = () => {
 
   // Render Listening Section
   const renderListeningSection = (section, index) => {
+    const sectionTotals = (() => {
+      const received = (section.questions || []).reduce((sum, q) => sum + (q.receivedScore || 0), 0);
+      const total = (section.questions || []).reduce((sum, q) => sum + (q.points || 0), 0);
+      return { received, total };
+    })();
     return (
       <div key={section.id || index} className={`question-item ${theme}-question-item`} style={{ marginBottom: '24px', borderRadius: '16px', padding: '24px', border: '2px solid', borderColor: theme === 'sun' ? 'rgba(113, 179, 253, 0.25)' : 'rgba(138, 122, 255, 0.2)', background: theme === 'sun' ? 'linear-gradient(135deg, rgba(255, 255, 255, 1) 0%, rgba(240, 249, 255, 0.95) 100%)' : 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(244, 240, 255, 0.95) 100%)', boxShadow: theme === 'sun' ? '0 4px 16px rgba(113, 179, 253, 0.1)' : '0 4px 16px rgba(138, 122, 255, 0.12)' }}>
-        <div className="question-header" style={{ paddingBottom: '14px', marginBottom: '16px', borderBottom: '2px solid', borderBottomColor: theme === 'sun' ? 'rgba(113, 179, 253, 0.25)' : 'rgba(138, 122, 255, 0.2)' }}>
-          <Typography.Text strong style={{ fontSize: '20px', color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' }}>
-            {index + 1}. Listening Section
-          </Typography.Text>
-          <Typography.Text style={{ marginLeft: '12px', fontSize: '14px', opacity: 0.7 }}>
-            ({section.points} {section.points > 1 ? 'points' : 'point'})
-          </Typography.Text>
+        <div className="question-header" style={{ paddingBottom: '14px', marginBottom: '16px', borderBottom: '2px solid', borderBottomColor: theme === 'sun' ? 'rgba(113, 179, 253, 0.25)' : 'rgba(138, 122, 255, 0.2)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div>
+            <Typography.Text strong style={{ fontSize: '20px', color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' }}>
+              {index + 1}. Listening Section
+            </Typography.Text>
+          </div>
+          <div style={{ fontSize: '14px', fontWeight: 600, color: theme === 'sun' ? '#1890ff' : '#8B5CF6' }}>
+            {sectionTotals.received} / {sectionTotals.total} points
+          </div>
         </div>
         <div style={{ display: 'flex', gap: '24px', minHeight: '500px' }}>
           <div className="listening-passage-scrollbar" style={{ flex: '1', padding: '20px', background: theme === 'sun' ? '#f9f9f9' : 'rgba(255, 255, 255, 0.02)', borderRadius: '12px', border: `1px solid ${theme === 'sun' ? '#e8e8e8' : 'rgba(255, 255, 255, 0.1)'}`, overflowY: 'auto', maxHeight: '600px', scrollbarWidth: 'thin', scrollbarColor: theme === 'sun' ? '#1890ff rgba(24, 144, 255, 0.2)' : '#8B5CF6 rgba(138, 122, 255, 0.2)' }}>
@@ -2124,6 +2289,11 @@ const DailyChallengeSubmissionDetail = () => {
 
   // Render Writing Section
   const renderWritingSection = (section, index) => {
+    const sectionTotals = (() => {
+      const received = (section.questions || []).reduce((sum, q) => sum + (q.receivedScore || 0), 0);
+      const total = (section.questions || []).reduce((sum, q) => sum + (q.points || 0), 0);
+      return { received, total };
+    })();
     const qIdForScore = (section.questions && (section.questions[0]?.submissionQuestionId || section.questions[0]?.id)) || section.id;
     const studentAnswer = studentAnswers?.[section.id] || {};
     const studentEssayText = studentAnswer?.text || studentAnswer?.essay || '';
@@ -2137,7 +2307,7 @@ const DailyChallengeSubmissionDetail = () => {
               {index + 1}. Writing Section
             </Typography.Text>
             <Typography.Text style={{ marginLeft: '12px', fontSize: '14px', opacity: 0.7 }}>
-              ({section.points} {section.points > 1 ? 'points' : 'point'})
+              ({sectionTotals.received} / {sectionTotals.total} points)
             </Typography.Text>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -2382,6 +2552,11 @@ const DailyChallengeSubmissionDetail = () => {
 
   // Render Speaking Section
   const renderSpeakingSection = (section, index) => {
+    const sectionTotals = (() => {
+      const received = (section.questions || []).reduce((sum, q) => sum + (q.receivedScore || 0), 0);
+      const total = (section.questions || []).reduce((sum, q) => sum + (q.points || 0), 0);
+      return { received, total };
+    })();
     const qIdForScore = (section.questions && (section.questions[0]?.submissionQuestionId || section.questions[0]?.id)) || section.id;
     const studentAnswer = studentAnswers?.[section.id] || {};
     const audioUrl = studentAnswer?.audioUrl || studentAnswer?.audio || null;
@@ -2483,7 +2658,7 @@ const DailyChallengeSubmissionDetail = () => {
               {index + 1}. {hasAudio ? 'Speaking With Audio Section' : 'Speaking Section'}
             </Typography.Text>
             <Typography.Text style={{ marginLeft: '12px', fontSize: '14px', opacity: 0.7 }}>
-              ({section.points} {section.points > 1 ? 'points' : 'point'})
+              ({sectionTotals.received} / {sectionTotals.total} points)
             </Typography.Text>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -2781,6 +2956,14 @@ const DailyChallengeSubmissionDetail = () => {
             }}>
               Question {questionNumber}
             </Typography.Text>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Typography.Text style={{ 
+                fontSize: '14px', 
+                color: theme === 'sun' ? 'rgba(0, 0, 0, 0.7)' : 'rgba(255, 255, 255, 0.7)',
+                fontWeight: 500
+              }}>
+                {(q.receivedScore || 0)} / {(q.points || 0)} points
+              </Typography.Text>
               <Typography.Text style={{ 
                 fontSize: '14px', 
                 color: theme === 'sun' ? 'rgba(0, 0, 0, 0.5)' : 'rgba(255, 255, 255, 0.5)',
@@ -2788,6 +2971,7 @@ const DailyChallengeSubmissionDetail = () => {
               }}>
                 {q.type.replace('_', ' ')}
               </Typography.Text>
+            </div>
           </div>
           <div className="question-content" style={{ paddingLeft: '36px', marginTop: '16px' }}>
             <div 
@@ -2827,6 +3011,7 @@ const DailyChallengeSubmissionDetail = () => {
                 
                 const isSelectedWrong = isSelected && !isCorrectAnswer;
                 const isCorrectMissing = !isSelected && isCorrectAnswer && isMulti;
+                const isUnanswered = isMulti ? (Array.isArray(studentAnswer) && studentAnswer.length === 0) : (!isSelected && (studentAnswer == null));
                 
                 return (
                   <div key={key} style={{
@@ -2834,28 +3019,34 @@ const DailyChallengeSubmissionDetail = () => {
                     alignItems: 'center',
                     gap: '12px',
                     padding: '14px 18px',
-                    background: isCorrectAnswer || isCorrectMissing
-                      ? (theme === 'sun' ? 'rgba(82, 196, 26, 0.15)' : 'rgba(82, 196, 26, 0.2)')
-                      : isSelectedWrong
-                        ? (theme === 'sun' ? 'rgba(255, 77, 79, 0.15)' : 'rgba(255, 77, 79, 0.2)')
-                      : (theme === 'sun' ? '#fff' : 'rgba(255,255,255,0.03)'),
+                    background: (isUnanswered && !isMulti && isCorrectAnswer)
+                      ? (theme === 'sun' ? 'rgba(250, 173, 20, 0.12)' : 'rgba(250, 173, 20, 0.2)')
+                      : (isCorrectMissing
+                        ? (theme === 'sun' ? 'rgba(250, 173, 20, 0.12)' : 'rgba(250, 173, 20, 0.2)')
+                        : (isCorrectAnswer
+                          ? (theme === 'sun' ? 'rgba(82, 196, 26, 0.15)' : 'rgba(82, 196, 26, 0.2)')
+                          : isSelectedWrong
+                            ? (theme === 'sun' ? 'rgba(255, 77, 79, 0.15)' : 'rgba(255, 77, 79, 0.2)')
+                            : (theme === 'sun' ? '#fff' : 'rgba(255,255,255,0.03)'))),
                     border: `2px solid ${
-                      isCorrectAnswer || isCorrectMissing
-                        ? 'rgb(82, 196, 26)'
-                        : isSelectedWrong
-                          ? 'rgb(255, 77, 79)'
-                        : (theme === 'sun' ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.1)')
+                      (isUnanswered && !isMulti && isCorrectAnswer)
+                        ? '#faad14'
+                        : (isCorrectMissing
+                          ? '#faad14'
+                          : (isCorrectAnswer
+                            ? 'rgb(82, 196, 26)'
+                            : (isSelectedWrong ? 'rgb(255, 77, 79)' : (theme === 'sun' ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.1)'))))
                     }`,
                     borderRadius: '12px',
                   }}>
                     <input 
                       type={isMulti ? 'checkbox' : 'radio'}
-                      checked={isSelected || (!isSelected && isCorrectAnswer)}
+                      checked={isSelected || isCorrectMissing}
                       disabled
                       style={{ 
                         width: '18px',
                         height: '18px',
-                        accentColor: theme === 'sun' ? '#1890ff' : '#8B5CF6',
+                        accentColor: isCorrectMissing ? '#faad14' : (isCorrectAnswer ? '#52c41a' : (isSelectedWrong ? '#ff4d4f' : (theme === 'sun' ? '#1890ff' : '#8B5CF6'))),
                       }} 
                     />
                     <span style={{ 
@@ -2880,12 +3071,21 @@ const DailyChallengeSubmissionDetail = () => {
                       <CloseCircleOutlined style={{
                         fontSize: '22px',
                         color: '#ff4d4f',
+                        marginLeft: 'auto',
                       }} />
                     )}
-                    {!isSelected && isCorrectAnswer && (
+                    {(isUnanswered && !isMulti && isCorrectAnswer) && !isSelectedWrong && (
                       <CheckCircleOutlined style={{
-                        fontSize: '22px',
-                        color: '#52c41a',
+                        fontSize: '20px',
+                        color: '#faad14',
+                        marginLeft: 'auto',
+                      }} />
+                    )}
+                    {(!isUnanswered || isMulti) && (isCorrectMissing || (isCorrectAnswer && !isCorrectMissing)) && !isSelectedWrong && (
+                      <CheckCircleOutlined style={{
+                        fontSize: '20px',
+                        color: isCorrectMissing ? '#faad14' : '#52c41a',
+                        marginLeft: 'auto',
                       }} />
                     )}
                   </div>
@@ -3064,13 +3264,22 @@ const DailyChallengeSubmissionDetail = () => {
             }}>
               Question {questionNumber}
             </Typography.Text>
-            <Typography.Text style={{ 
-              fontSize: '14px', 
-              color: theme === 'sun' ? 'rgba(0, 0, 0, 0.5)' : 'rgba(255, 255, 255, 0.5)',
-              fontStyle: 'italic'
-            }}>
-              Fill in the Blank
-            </Typography.Text>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Typography.Text style={{ 
+                fontSize: '14px', 
+                color: theme === 'sun' ? 'rgba(0, 0, 0, 0.7)' : 'rgba(255, 255, 255, 0.7)',
+                fontWeight: 500
+              }}>
+                {(q.receivedScore || 0)} / {(q.points || 0)} points
+              </Typography.Text>
+              <Typography.Text style={{ 
+                fontSize: '14px', 
+                color: theme === 'sun' ? 'rgba(0, 0, 0, 0.5)' : 'rgba(255, 255, 255, 0.5)',
+                fontStyle: 'italic'
+              }}>
+                Fill in the Blank
+              </Typography.Text>
+            </div>
           </div>
           <div className="question-content" style={{ paddingLeft: '36px', marginTop: '16px' }}>
             <div style={{ marginBottom: '16px', fontSize: '15px', fontWeight: 350, lineHeight: '1.8', color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' }}>
@@ -3235,13 +3444,22 @@ const DailyChallengeSubmissionDetail = () => {
             }}>
               Question {questionNumber}
             </Typography.Text>
-            <Typography.Text style={{ 
-              fontSize: '14px', 
-              color: theme === 'sun' ? 'rgba(0, 0, 0, 0.5)' : 'rgba(255, 255, 255, 0.5)',
-              fontStyle: 'italic'
-            }}>
-              Dropdown
-            </Typography.Text>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Typography.Text style={{ 
+                fontSize: '14px', 
+                color: theme === 'sun' ? 'rgba(0, 0, 0, 0.7)' : 'rgba(255, 255, 255, 0.7)',
+                fontWeight: 500
+              }}>
+                {(q.receivedScore || 0)} / {(q.points || 0)} points
+              </Typography.Text>
+              <Typography.Text style={{ 
+                fontSize: '14px', 
+                color: theme === 'sun' ? 'rgba(0, 0, 0, 0.5)' : 'rgba(255, 255, 255, 0.5)',
+                fontStyle: 'italic'
+              }}>
+                Dropdown
+              </Typography.Text>
+            </div>
           </div>
           <div className="question-content" style={{ paddingLeft: '36px', marginTop: '16px' }}>
             <div style={{ 
@@ -3314,13 +3532,22 @@ const DailyChallengeSubmissionDetail = () => {
             }}>
               Question {questionNumber}
             </Typography.Text>
-            <Typography.Text style={{ 
-              fontSize: '14px', 
-              color: theme === 'sun' ? 'rgba(0, 0, 0, 0.5)' : 'rgba(255, 255, 255, 0.5)',
-              fontStyle: 'italic'
-            }}>
-              Drag and Drop
-            </Typography.Text>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Typography.Text style={{ 
+                fontSize: '14px', 
+                color: theme === 'sun' ? 'rgba(0, 0, 0, 0.7)' : 'rgba(255, 255, 255, 0.7)',
+                fontWeight: 500
+              }}>
+                {(q.receivedScore || 0)} / {(q.points || 0)} points
+              </Typography.Text>
+              <Typography.Text style={{ 
+                fontSize: '14px', 
+                color: theme === 'sun' ? 'rgba(0, 0, 0, 0.5)' : 'rgba(255, 255, 255, 0.5)',
+                fontStyle: 'italic'
+              }}>
+                Drag and Drop
+              </Typography.Text>
+            </div>
           </div>
           <div className="question-content" style={{ paddingLeft: '36px', marginTop: '16px' }}>
             <div style={{ display: 'flex', gap: '24px', minHeight: '300px' }}>
@@ -3472,16 +3699,26 @@ const DailyChallengeSubmissionDetail = () => {
       const contentData = q.content?.data || [];
       const studentAnswer = studentAnswers?.[q.id] || [];
       
-      // Get correct order by sorting by positionId (alphabetically, as positionId is string)
-      const correctOrder = contentData
-        .slice()
-        .sort((a, b) => {
-          const posA = (a.positionId || '').replace(/^pos_/, '');
-          const posB = (b.positionId || '').replace(/^pos_/, '');
-          return posA.localeCompare(posB);
-        })
-        .map(item => item.value)
-        .filter(Boolean);
+      // Get correct order by parsing questionText to extract positionIds in order
+      // questionText format: "[[pos_u64lgh]] [[pos_22ylfg]] [[pos_mchmz2]]"
+      const correctOrder = (() => {
+        const positionIdsInOrder = [];
+        const regex = /\[\[pos_(.*?)\]\]/g;
+        let match;
+        while ((match = regex.exec(questionText)) !== null) {
+          positionIdsInOrder.push(match[1]); // Extract positionId without "pos_" prefix
+        }
+        
+        // Map positionIds to values from contentData
+        return positionIdsInOrder.map(posId => {
+          // Try to find item with positionId matching pos_xxx or just xxx
+          const item = contentData.find(item => {
+            const itemPosId = (item.positionId || '').replace(/^pos_/, '');
+            return itemPosId === posId;
+          });
+          return item?.value || '';
+        }).filter(Boolean);
+      })();
       
       // Student answer should be an array of values (not ids) from mapping
       const studentOrder = Array.isArray(studentAnswer) 
@@ -3539,13 +3776,22 @@ const DailyChallengeSubmissionDetail = () => {
             }}>
               Question {questionNumber}
             </Typography.Text>
-            <Typography.Text style={{ 
-              fontSize: '14px', 
-              color: theme === 'sun' ? 'rgba(0, 0, 0, 0.5)' : 'rgba(255, 255, 255, 0.5)',
-              fontStyle: 'italic'
-            }}>
-              Rearrange
-            </Typography.Text>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Typography.Text style={{ 
+                fontSize: '14px', 
+                color: theme === 'sun' ? 'rgba(0, 0, 0, 0.7)' : 'rgba(255, 255, 255, 0.7)',
+                fontWeight: 500
+              }}>
+                {(q.receivedScore || 0)} / {(q.points || 0)} points
+              </Typography.Text>
+              <Typography.Text style={{ 
+                fontSize: '14px', 
+                color: theme === 'sun' ? 'rgba(0, 0, 0, 0.5)' : 'rgba(255, 255, 255, 0.5)',
+                fontStyle: 'italic'
+              }}>
+                Rearrange
+              </Typography.Text>
+            </div>
           </div>
           <div className="question-content" style={{ paddingLeft: '36px', marginTop: '16px' }}>
             <div style={{ fontSize: '15px', fontWeight: 350, marginBottom: '16px', lineHeight: '1.8', color: '#000000' }}>
@@ -3631,12 +3877,29 @@ const DailyChallengeSubmissionDetail = () => {
       const contentData = q.content?.data || [];
       const studentAnswer = studentAnswers?.[q.id] || '';
       
-      const correctAnswers = contentData.map(item => item?.value || '').filter(Boolean);
+      // Helper function to strip HTML tags
+      const stripHtml = (html) => (html || '').replace(/<[^>]*>/g, '').trim();
+      
+      // Get correct answers and strip HTML from them
+      const correctAnswers = contentData.map(item => {
+        const rawValue = item?.value || '';
+        return stripHtml(rawValue);
+      }).filter(Boolean);
+      
+      // Also keep raw HTML values for display (with HTML stripped)
+      const correctAnswersDisplay = contentData.map(item => {
+        const rawValue = item?.value || '';
+        return stripHtml(rawValue);
+      }).filter(Boolean);
+      
+      // Strip HTML from student answer for comparison and display
+      const studentAnswerText = stripHtml(studentAnswer);
+      
       const isCorrect = (() => {
-        if (!studentAnswer || correctAnswers.length === 0) return false;
-        const normalizedStudent = studentAnswer.trim().toLowerCase();
+        if (!studentAnswerText || correctAnswers.length === 0) return false;
+        const normalizedStudent = studentAnswerText.toLowerCase();
         return correctAnswers.some(correct => 
-          correct.trim().toLowerCase() === normalizedStudent
+          correct.toLowerCase() === normalizedStudent
         );
       })();
       
@@ -3679,13 +3942,22 @@ const DailyChallengeSubmissionDetail = () => {
             }}>
               Question {questionNumber}
             </Typography.Text>
-            <Typography.Text style={{ 
-              fontSize: '14px', 
-              color: theme === 'sun' ? 'rgba(0, 0, 0, 0.5)' : 'rgba(255, 255, 255, 0.5)',
-              fontStyle: 'italic'
-            }}>
-              Rewrite
-            </Typography.Text>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Typography.Text style={{ 
+                fontSize: '14px', 
+                color: theme === 'sun' ? 'rgba(0, 0, 0, 0.7)' : 'rgba(255, 255, 255, 0.7)',
+                fontWeight: 500
+              }}>
+                {(q.receivedScore || 0)} / {(q.points || 0)} points
+              </Typography.Text>
+              <Typography.Text style={{ 
+                fontSize: '14px', 
+                color: theme === 'sun' ? 'rgba(0, 0, 0, 0.5)' : 'rgba(255, 255, 255, 0.5)',
+                fontStyle: 'italic'
+              }}>
+                Rewrite
+              </Typography.Text>
+            </div>
           </div>
           <div className="question-content" style={{ paddingLeft: '36px', marginTop: '16px' }}>
             <div 
@@ -3707,12 +3979,12 @@ const DailyChallengeSubmissionDetail = () => {
                 width: '100%',
                 minHeight: '80px',
                 padding: '12px 16px',
-                border: `2px solid ${studentAnswer ? (isCorrect ? '#52c41a' : '#ff4d4f') : (theme === 'sun' ? '#1890ff' : '#8B5CF6')}`,
+                border: `2px solid ${studentAnswerText ? (isCorrect ? '#52c41a' : '#ff4d4f') : (theme === 'sun' ? '#1890ff' : '#8B5CF6')}`,
                 borderRadius: '8px',
-                backgroundColor: studentAnswer
+                backgroundColor: studentAnswerText
                   ? (isCorrect ? (theme === 'sun' ? 'rgba(82, 196, 26, 0.1)' : 'rgba(82, 196, 26, 0.15)') : (theme === 'sun' ? 'rgba(255, 77, 79, 0.1)' : 'rgba(255, 77, 79, 0.15)'))
                   : (theme === 'sun' ? 'rgba(255, 255, 255, 0.9)' : 'rgba(255, 255, 255, 0.85)'),
-                color: studentAnswer ? (isCorrect ? '#52c41a' : '#ff4d4f') : (theme === 'sun' ? '#000000' : '#FFFFFF'),
+                color: studentAnswerText ? (isCorrect ? '#52c41a' : '#ff4d4f') : (theme === 'sun' ? '#000000' : '#FFFFFF'),
                 fontSize: '14px',
                 fontFamily: 'inherit',
                 outline: 'none',
@@ -3720,15 +3992,15 @@ const DailyChallengeSubmissionDetail = () => {
                 wordWrap: 'break-word',
                 cursor: 'not-allowed'
               }}>
-                {studentAnswer || 'No answer provided'}
+                {studentAnswerText || 'No answer provided'}
               </div>
             </div>
-            {correctAnswers.length > 0 && (
+            {correctAnswersDisplay.length > 0 && (
               <div style={{ marginTop: '20px' }}>
                 <Typography.Text style={{ fontSize: '14px', fontWeight: 350, marginBottom: '8px', display: 'block', color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' }}>
-                  Correct answer{correctAnswers.length > 1 ? 's' : ''}:
+                  Correct answer{correctAnswersDisplay.length > 1 ? 's' : ''}:
                 </Typography.Text>
-                {correctAnswers.map((correctAnswer, idx) => (
+                {correctAnswersDisplay.map((correctAnswer, idx) => (
                   <div key={idx} style={{
                     width: '100%',
                     minHeight: '80px',
@@ -3741,7 +4013,7 @@ const DailyChallengeSubmissionDetail = () => {
                     fontFamily: 'inherit',
                     whiteSpace: 'pre-wrap',
                     wordWrap: 'break-word',
-                    marginBottom: idx < correctAnswers.length - 1 ? '8px' : '0',
+                    marginBottom: idx < correctAnswersDisplay.length - 1 ? '8px' : '0',
                     cursor: 'default'
                   }}>
                     {correctAnswer}
@@ -3789,13 +4061,22 @@ const DailyChallengeSubmissionDetail = () => {
           }}>
             Question {questionNumber}
           </Typography.Text>
-          <Typography.Text style={{ 
-            fontSize: '14px', 
-            color: theme === 'sun' ? 'rgba(0, 0, 0, 0.5)' : 'rgba(255, 255, 255, 0.5)',
-            fontStyle: 'italic'
-          }}>
-            {q.type.replace('_', ' ')}
-          </Typography.Text>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Typography.Text style={{ 
+                fontSize: '14px', 
+                color: theme === 'sun' ? 'rgba(0, 0, 0, 0.7)' : 'rgba(255, 255, 255, 0.7)',
+                fontWeight: 500
+              }}>
+                {(q.receivedScore || 0)} / {(q.points || 0)} points
+              </Typography.Text>
+            <Typography.Text style={{ 
+              fontSize: '14px', 
+              color: theme === 'sun' ? 'rgba(0, 0, 0, 0.5)' : 'rgba(255, 255, 255, 0.5)',
+              fontStyle: 'italic'
+            }}>
+              {q.type.replace('_', ' ')}
+            </Typography.Text>
+          </div>
         </div>
         <div className="question-content" style={{ paddingLeft: '36px', marginTop: '16px' }}>
           <div 
@@ -4238,62 +4519,82 @@ const DailyChallengeSubmissionDetail = () => {
                                 border: `3px solid ${theme === 'sun' ? '#C8E6C9' : 'rgba(200, 230, 201, 0.6)'}`
                               }}
                             >
-                              {submission.score != null && submission.score !== undefined ? (
-                                <>
-                                  <Typography.Text
-                                    strong
-                                    style={{
-                                      fontSize: '36px',
-                                      fontWeight: 700,
-                                      color: '#4CAF50',
-                                      lineHeight: '1',
-                                      marginBottom: '4px'
-                                    }}
-                                  >
-                                    {`${submission.score}/10`}
-                                  </Typography.Text>
-                                  <Typography.Text
-                                    style={{
-                                      fontSize: '12px',
-                                      color: theme === 'sun' ? '#666' : '#999',
-                                      fontWeight: 400
-                                    }}
-                                  >
-                                    Score
-                                  </Typography.Text>
-                                </>
-                              ) : (
-                                <>
-                                  <Typography.Text
-                                    strong
-                                    style={{
-                                      fontSize: '36px',
-                                      fontWeight: 700,
-                                      color: theme === 'sun' ? '#999' : '#666',
-                                      lineHeight: '1',
-                                      marginBottom: '4px'
-                                    }}
-                                  >
-                                    -
-                                  </Typography.Text>
-                                  <Typography.Text
-                                    style={{
-                                      fontSize: '12px',
-                                      color: theme === 'sun' ? '#666' : '#999',
-                                      fontWeight: 400
-                                    }}
-                                  >
-                                    Score
-                                  </Typography.Text>
-                                </>
-                              )}
+                              {(() => {
+                                // For auto-graded types (grammar, reading, listening), show score if available
+                                // For writing/speaking, require both score and teacherFeedback
+                                const hasScore = submission.score != null && submission.score !== undefined;
+                                const hasFeedback = teacherFeedback && teacherFeedback.replace(/<[^>]*>/g,'').trim().length > 0;
+                                const shouldShowScore = hasWritingOrSpeaking 
+                                  ? (hasScore && hasFeedback) 
+                                  : hasScore;
+                                
+                                return shouldShowScore ? (
+                                  <>
+                                    <Typography.Text
+                                      strong
+                                      style={{
+                                        fontSize: '36px',
+                                        fontWeight: 700,
+                                        color: '#4CAF50',
+                                        lineHeight: '1',
+                                        marginBottom: '4px'
+                                      }}
+                                    >
+                                      {`${submission.score}/10`}
+                                    </Typography.Text>
+                                    <Typography.Text
+                                      style={{
+                                        fontSize: '12px',
+                                        color: theme === 'sun' ? '#666' : '#999',
+                                        fontWeight: 400
+                                      }}
+                                    >
+                                      Score
+                                    </Typography.Text>
+                                  </>
+                                ) : (
+                                  <>
+                                    <Typography.Text
+                                      strong
+                                      style={{
+                                        fontSize: '36px',
+                                        fontWeight: 700,
+                                        color: theme === 'sun' ? '#999' : '#666',
+                                        lineHeight: '1',
+                                        marginBottom: '4px'
+                                      }}
+                                    >
+                                      -
+                                    </Typography.Text>
+                                    <Typography.Text
+                                      style={{
+                                        fontSize: '12px',
+                                        color: theme === 'sun' ? '#666' : '#999',
+                                        fontWeight: 400
+                                      }}
+                                    >
+                                      Score
+                                    </Typography.Text>
+                                  </>
+                                );
+                              })()}
                             </div>
                             {/* Edit score button removed as requested */}
                           </div>
                         </div>
 
                         {/* Pass/Fail Status */}
-                        {submission.score != null && submission.score !== undefined ? (() => {
+                        {(() => {
+                          // For auto-graded types (grammar, reading, listening), show status if score available
+                          // For writing/speaking, require both score and teacherFeedback
+                          const hasScore = submission.score != null && submission.score !== undefined;
+                          const hasFeedback = teacherFeedback && teacherFeedback.replace(/<[^>]*>/g,'').trim().length > 0;
+                          const shouldShowStatus = hasWritingOrSpeaking 
+                            ? (hasScore && hasFeedback) 
+                            : hasScore;
+                          
+                          if (!shouldShowStatus) return null;
+                          
                           return submission.score >= 5 ? (
                             <div style={{ textAlign: 'center', marginBottom: '20px' }}>
                               <Typography.Text
@@ -4325,7 +4626,7 @@ const DailyChallengeSubmissionDetail = () => {
                               </Typography.Text>
                             </div>
                           );
-                        })() : null}
+                        })()}
 
                         {/* Question Breakdown Grid (hidden for Writing/Speaking submissions) */}
                         {!hasWritingOrSpeaking && (
