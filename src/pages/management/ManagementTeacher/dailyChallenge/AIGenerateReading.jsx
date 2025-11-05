@@ -115,6 +115,16 @@ const AIGenerateReading = () => {
     { value: "REARRANGE", label: 'Rearrange', icon: '🔀', color: primaryColor, bgColor: primaryColorWithAlpha },
   ], [t, primaryColor, primaryColorWithAlpha]);
 
+  // Initialize right panel (settings/upload) from navigation state
+  useEffect(() => {
+    const source = location.state?.aiSource;
+    if (source === 'settings') {
+      setQuestionSettingsMode('manual');
+    } else if (source === 'file') {
+      setQuestionSettingsMode('upload');
+    }
+  }, [location.state?.aiSource]);
+
   // Helpers (match AIGenerateQuestions behaviors) - unused utilities removed
 
   // Normalizer borrowed from AIGenerateQuestions (slightly trimmed to fit)

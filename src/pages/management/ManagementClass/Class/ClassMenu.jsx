@@ -37,8 +37,8 @@ const ClassMenu = () => {
   
   // Determine which layout to use based on user role
   const userRole = user?.role?.toLowerCase();
-  // Use no-sidebar layout for teacher, teaching assistant, and student
-  const ThemedLayout = (userRole === 'teacher' || userRole === 'teaching_assistant' || userRole === 'student')
+  // Use no-sidebar layout for teacher, teaching assistant, student, and test_taker
+  const ThemedLayout = (userRole === 'teacher' || userRole === 'teaching_assistant' || userRole === 'student' || userRole === 'test_taker')
     ? ThemedLayoutNoSidebar
     : ThemedLayoutWithSidebar;
   
@@ -60,6 +60,8 @@ const ClassMenu = () => {
         return '/teaching-assistant/classes';
       case 'student':
         return '/student/classes';
+      case 'test_taker':
+        return '/test-taker/classes';
       default:
         return '/manager/classes';
     }
@@ -113,6 +115,8 @@ const ClassMenu = () => {
             return '/teacher/classes';
           case 'student':
             return '/student/classes';
+          case 'test_taker':
+            return '/test-taker/classes';
           case 'manager':
             return '/manager/classes';
           default:
@@ -179,13 +183,13 @@ const ClassMenu = () => {
     {
       id: "daily-challenge",
       title: t('classMenu.dailyChallenge'),
-      description: userRole === 'student' 
+      description: (userRole === 'student' || userRole === 'test_taker')
         ? t('classMenu.dailyChallengeStudentDescription', 'View and take daily challenges') 
         : t('classMenu.dailyChallengeDescription'),
       icon: <img src="/img/dc-icon.png" alt="daily-challenge" style={{ width: '60px', height: '60px' }} />,
-      path: userRole === 'student' ? `${routePrefix}/daily-challenges/${id}` : `${routePrefix}/daily-challenges/${id}`,
+      path: (userRole === 'student' || userRole === 'test_taker') ? `${routePrefix}/daily-challenges/${id}` : `${routePrefix}/daily-challenges/${id}`,
       color: "#eb2f96",
-      hideForRoles: ['manager'], // Only hide for manager, allow student, teacher, and teaching_assistant to see
+      hideForRoles: ['manager'], // Only hide for manager, allow student, test_taker, teacher, and teaching_assistant to see
     },
     {
       id: "teachers",
@@ -211,8 +215,8 @@ const ClassMenu = () => {
     },
   ];
 
-  // Append student-specific items
-  const studentExtras = userRole === 'student' ? [
+  // Append student-specific items (not for test_taker)
+  const studentExtras = (userRole === 'student') ? [
     {
       id: "performance-report",
       title: t('classMenu.myPerformanceReport', 'My Performance Report'),
@@ -232,7 +236,16 @@ const ClassMenu = () => {
   ] : [];
 
   // Filter menu items based on user role
+  // For test_taker: only show overview and daily challenge
   const menuItems = [...allMenuItems, ...studentExtras].filter(item => {
+    // Hide items for test_taker except overview and daily-challenge
+    if (userRole === 'test_taker') {
+      if (item.id !== 'overview' && item.id !== 'daily-challenge') {
+        return false;
+      }
+    }
+    
+    // Apply hideForRoles filter
     if (item.hideForRoles && item.hideForRoles.includes(userRole)) {
       return false;
     }

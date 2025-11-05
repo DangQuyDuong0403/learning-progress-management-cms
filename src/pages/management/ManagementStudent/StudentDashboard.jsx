@@ -15,15 +15,18 @@ import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useTheme } from "../../../contexts/ThemeContext";
 import usePageTitle from "../../../hooks/usePageTitle";
+import { useSelector } from "react-redux";
 import "./StudentDashboard.css";
 
 const StudentDashboard = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { isSunTheme } = useTheme();
+  const userRole = useSelector((state) => state.auth?.user?.role);
+  const isTestTaker = userRole === 'TEST_TAKER';
   
-  // Set page title
-  usePageTitle('Student Dashboard');
+  // Set page title based on role
+  usePageTitle(isTestTaker ? 'Test Taker Dashboard' : 'Student Dashboard');
 
   // Theme-based colors for cards
   const getCardBackgroundColor = () => {
@@ -36,7 +39,7 @@ const StudentDashboard = () => {
       title: t('studentDashboard.englishCenterOverview'),
       description: t('studentDashboard.englishCenterOverviewDescription'),
       icon: <HomeOutlined style={{ fontSize: '48px', color: '#52c41a' }} />,
-      path: '/student/overview',
+      path: isTestTaker ? '/test-taker/overview' : '/student/overview',
       color: "#52c41a",
     },
     {
@@ -44,17 +47,18 @@ const StudentDashboard = () => {
       title: t('studentDashboard.classList'),
       description: t('studentDashboard.classListDescription'),
       icon: <TeamOutlined style={{ fontSize: '48px', color: '#00d4ff' }} />,
-      path: '/student/classes',
+      path: isTestTaker ? '/test-taker/classes' : '/student/classes',
       color: "#00d4ff",
     },
-    {
+    // Hide learning progress overview for test_taker
+    ...(isTestTaker ? [] : [{
       id: "learning-progress-overview",
       title: t('studentDashboard.learningProgressOverview'),
       description: t('studentDashboard.learningProgressOverviewDescription'),
       icon: <BarChartOutlined style={{ fontSize: '48px', color: '#722ed1' }} />,
       path: '/student/learning-progress',
       color: "#722ed1",
-    },
+    }]),
   ];
 
   const handleCardClick = (path) => {
@@ -70,7 +74,7 @@ const StudentDashboard = () => {
             level={1}
             className="page-title"
           >
-            {t('studentDashboard.title')}
+            {isTestTaker ? t('studentDashboard.testTakerTitle', 'Test Taker Dashboard') : t('studentDashboard.title')}
           </Typography.Title>
         </div>
 
