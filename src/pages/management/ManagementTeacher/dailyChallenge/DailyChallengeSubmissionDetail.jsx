@@ -893,8 +893,16 @@ const DailyChallengeSubmissionDetail = () => {
                 // Use the positionId directly from submittedContent (most reliable)
                 const submittedPosId = submitted.positionId;
                 
-                // Find the option in questionContent that matches the submitted id
-                const matchedItem = questionContent.find(item => item.id === submitted.id);
+                // Try multiple ways to identify the selected option
+                // 1) Match by option id
+                let matchedItem = questionContent.find(item => item.id === submitted.id);
+                // 2) If not found, match by value text (submitted.value or submitted.id might be the text)
+                if (!matchedItem) {
+                  const submittedText = (submitted.value || submitted.id || '').trim();
+                  if (submittedText) {
+                    matchedItem = questionContent.find(item => (item.value || '').trim() === submittedText);
+                  }
+                }
                 
                 if (matchedItem && matchedItem.value) {
                   const selectedValue = matchedItem.value;
@@ -921,11 +929,17 @@ const DailyChallengeSubmissionDetail = () => {
                     });
                   }
                 } else if (submittedPosId) {
-                  // Fallback: if no match by id, try to find by positionId
-                  const matchedByPosId = questionContent.find(item => item.positionId === submittedPosId);
-                  if (matchedByPosId && matchedByPosId.value) {
-                    dropdownAnswers[`pos_${submittedPosId}`] = matchedByPosId.value;
-                    dropdownAnswers[submittedPosId] = matchedByPosId.value;
+                  // Fallback: if still not found, try to locate by positionId AND submitted text
+                  const submittedText = (submitted.value || submitted.id || '').trim();
+                  const candidates = questionContent.filter(item => item.positionId === submittedPosId);
+                  let byText = null;
+                  if (submittedText) {
+                    byText = candidates.find(item => (item.value || '').trim() === submittedText);
+                  }
+                  const finalItem = byText || candidates[0] || null;
+                  if (finalItem && finalItem.value) {
+                    dropdownAnswers[`pos_${submittedPosId}`] = finalItem.value;
+                    dropdownAnswers[submittedPosId] = finalItem.value;
                   }
                 }
               }
@@ -1743,6 +1757,7 @@ const DailyChallengeSubmissionDetail = () => {
               const isSelected = isMulti ? (Array.isArray(studentAnswer) && studentAnswer.includes(key)) : (studentAnswer === key || (q.type === 'TRUE_OR_FALSE' && opt === studentAnswer));
               const isSelectedWrong = isSelected && !isCorrectAnswer;
               const isCorrectMissing = !isSelected && isCorrectAnswer && isMulti;
+              const isUnanswered = isMulti ? (Array.isArray(studentAnswer) && studentAnswer.length === 0) : (!isSelected && studentAnswer == null);
               
               return (
                 <div key={key} style={{
@@ -1750,24 +1765,41 @@ const DailyChallengeSubmissionDetail = () => {
                   alignItems: 'center',
                   gap: '10px',
                   padding: '12px 14px',
-                  background: isCorrectAnswer || isCorrectMissing
-                    ? (theme === 'sun' ? 'rgba(82, 196, 26, 0.15)' : 'rgba(82, 196, 26, 0.2)')
-                    : isSelectedWrong
-                      ? (theme === 'sun' ? 'rgba(255, 77, 79, 0.15)' : 'rgba(255, 77, 79, 0.2)')
-                    : (theme === 'sun' ? '#fff' : 'rgba(255,255,255,0.03)'),
-                  border: `2px solid ${isCorrectAnswer || isCorrectMissing ? 'rgb(82, 196, 26)' : isSelectedWrong ? 'rgb(255, 77, 79)' : (theme === 'sun' ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.1)')}`,
+                  background: (isUnanswered && !isMulti && isCorrectAnswer)
+                    ? (theme === 'sun' ? 'rgba(250, 173, 20, 0.12)' : 'rgba(250, 173, 20, 0.2)')
+                    : isCorrectMissing
+                    ? (theme === 'sun' ? 'rgba(250, 173, 20, 0.12)' : 'rgba(250, 173, 20, 0.2)')
+                    : (isCorrectAnswer
+                      ? (theme === 'sun' ? 'rgba(82, 196, 26, 0.15)' : 'rgba(82, 196, 26, 0.2)')
+                      : isSelectedWrong
+                        ? (theme === 'sun' ? 'rgba(255, 77, 79, 0.15)' : 'rgba(255, 77, 79, 0.2)')
+                        : (theme === 'sun' ? '#fff' : 'rgba(255,255,255,0.03)')),
+                  border: `2px solid ${
+                    (isUnanswered && !isMulti && isCorrectAnswer)
+                      ? '#faad14'
+                      : isCorrectMissing
+                      ? '#faad14'
+                      : (isCorrectAnswer
+                        ? 'rgb(82, 196, 26)'
+                        : (isSelectedWrong ? 'rgb(255, 77, 79)' : (theme === 'sun' ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.1)')))
+                  }`,
                   borderRadius: '12px',
                   cursor: 'default',
                   minHeight: '50px',
                   boxSizing: 'border-box',
                 }}>
-                  <input type={isMulti ? 'checkbox' : 'radio'} checked={isSelected || (!isSelected && isCorrectAnswer)} disabled style={{ width: '18px', height: '18px', accentColor: isCorrectAnswer || isCorrectMissing ? '#52c41a' : (isSelectedWrong ? '#ff4d4f' : (theme === 'sun' ? '#1890ff' : '#8B5CF6')), cursor: 'not-allowed', opacity: 1 }} />
+                  <input type={isMulti ? 'checkbox' : 'radio'} checked={isSelected || isCorrectMissing} disabled style={{ width: '18px', height: '18px', accentColor: isCorrectMissing ? '#faad14' : (isCorrectAnswer ? '#52c41a' : (isSelectedWrong ? '#ff4d4f' : (theme === 'sun' ? '#1890ff' : '#8B5CF6'))), cursor: 'not-allowed', opacity: 1 }} />
                   <span style={{ fontWeight: 600, color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)', fontSize: '16px' }}>
                     {q.type === 'TRUE_OR_FALSE' ? (opt === 'True' ? 'A' : 'B') : key}.
                   </span>
                   <span className="option-text" style={{ flex: 1, lineHeight: '1.6', color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)', fontWeight: '350' }} dangerouslySetInnerHTML={{ __html: q.type === 'TRUE_OR_FALSE' ? opt : text }} />
                   {isSelectedWrong && <CloseCircleOutlined style={{ fontSize: '22px', color: '#ff4d4f', marginLeft: 'auto', fontWeight: 'bold' }} />}
-                  {(isCorrectAnswer || isCorrectMissing) && !isSelectedWrong && <CheckCircleOutlined style={{ fontSize: '20px', color: '#52c41a', marginLeft: 'auto' }} />}
+                  {(isUnanswered && !isMulti && isCorrectAnswer) && !isSelectedWrong && (
+                    <CheckCircleOutlined style={{ fontSize: '20px', color: '#faad14', marginLeft: 'auto' }} />
+                  )}
+                  {(!isUnanswered || isMulti) && (isCorrectMissing || (isCorrectAnswer && !isCorrectMissing)) && !isSelectedWrong && (
+                    <CheckCircleOutlined style={{ fontSize: '20px', color: isCorrectMissing ? '#faad14' : '#52c41a', marginLeft: 'auto' }} />
+                  )}
                 </div>
               );
             })}
@@ -2257,6 +2289,11 @@ const DailyChallengeSubmissionDetail = () => {
 
   // Render Writing Section
   const renderWritingSection = (section, index) => {
+    const sectionTotals = (() => {
+      const received = (section.questions || []).reduce((sum, q) => sum + (q.receivedScore || 0), 0);
+      const total = (section.questions || []).reduce((sum, q) => sum + (q.points || 0), 0);
+      return { received, total };
+    })();
     const qIdForScore = (section.questions && (section.questions[0]?.submissionQuestionId || section.questions[0]?.id)) || section.id;
     const studentAnswer = studentAnswers?.[section.id] || {};
     const studentEssayText = studentAnswer?.text || studentAnswer?.essay || '';
@@ -2270,7 +2307,7 @@ const DailyChallengeSubmissionDetail = () => {
               {index + 1}. Writing Section
             </Typography.Text>
             <Typography.Text style={{ marginLeft: '12px', fontSize: '14px', opacity: 0.7 }}>
-              ({section.points} {section.points > 1 ? 'points' : 'point'})
+              ({sectionTotals.received} / {sectionTotals.total} points)
             </Typography.Text>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -2515,6 +2552,11 @@ const DailyChallengeSubmissionDetail = () => {
 
   // Render Speaking Section
   const renderSpeakingSection = (section, index) => {
+    const sectionTotals = (() => {
+      const received = (section.questions || []).reduce((sum, q) => sum + (q.receivedScore || 0), 0);
+      const total = (section.questions || []).reduce((sum, q) => sum + (q.points || 0), 0);
+      return { received, total };
+    })();
     const qIdForScore = (section.questions && (section.questions[0]?.submissionQuestionId || section.questions[0]?.id)) || section.id;
     const studentAnswer = studentAnswers?.[section.id] || {};
     const audioUrl = studentAnswer?.audioUrl || studentAnswer?.audio || null;
@@ -2616,7 +2658,7 @@ const DailyChallengeSubmissionDetail = () => {
               {index + 1}. {hasAudio ? 'Speaking With Audio Section' : 'Speaking Section'}
             </Typography.Text>
             <Typography.Text style={{ marginLeft: '12px', fontSize: '14px', opacity: 0.7 }}>
-              ({section.points} {section.points > 1 ? 'points' : 'point'})
+              ({sectionTotals.received} / {sectionTotals.total} points)
             </Typography.Text>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -2969,6 +3011,7 @@ const DailyChallengeSubmissionDetail = () => {
                 
                 const isSelectedWrong = isSelected && !isCorrectAnswer;
                 const isCorrectMissing = !isSelected && isCorrectAnswer && isMulti;
+                const isUnanswered = isMulti ? (Array.isArray(studentAnswer) && studentAnswer.length === 0) : (!isSelected && (studentAnswer == null));
                 
                 return (
                   <div key={key} style={{
@@ -2976,28 +3019,34 @@ const DailyChallengeSubmissionDetail = () => {
                     alignItems: 'center',
                     gap: '12px',
                     padding: '14px 18px',
-                    background: isCorrectAnswer || isCorrectMissing
-                      ? (theme === 'sun' ? 'rgba(82, 196, 26, 0.15)' : 'rgba(82, 196, 26, 0.2)')
-                      : isSelectedWrong
-                        ? (theme === 'sun' ? 'rgba(255, 77, 79, 0.15)' : 'rgba(255, 77, 79, 0.2)')
-                      : (theme === 'sun' ? '#fff' : 'rgba(255,255,255,0.03)'),
+                    background: (isUnanswered && !isMulti && isCorrectAnswer)
+                      ? (theme === 'sun' ? 'rgba(250, 173, 20, 0.12)' : 'rgba(250, 173, 20, 0.2)')
+                      : (isCorrectMissing
+                        ? (theme === 'sun' ? 'rgba(250, 173, 20, 0.12)' : 'rgba(250, 173, 20, 0.2)')
+                        : (isCorrectAnswer
+                          ? (theme === 'sun' ? 'rgba(82, 196, 26, 0.15)' : 'rgba(82, 196, 26, 0.2)')
+                          : isSelectedWrong
+                            ? (theme === 'sun' ? 'rgba(255, 77, 79, 0.15)' : 'rgba(255, 77, 79, 0.2)')
+                            : (theme === 'sun' ? '#fff' : 'rgba(255,255,255,0.03)'))),
                     border: `2px solid ${
-                      isCorrectAnswer || isCorrectMissing
-                        ? 'rgb(82, 196, 26)'
-                        : isSelectedWrong
-                          ? 'rgb(255, 77, 79)'
-                        : (theme === 'sun' ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.1)')
+                      (isUnanswered && !isMulti && isCorrectAnswer)
+                        ? '#faad14'
+                        : (isCorrectMissing
+                          ? '#faad14'
+                          : (isCorrectAnswer
+                            ? 'rgb(82, 196, 26)'
+                            : (isSelectedWrong ? 'rgb(255, 77, 79)' : (theme === 'sun' ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.1)'))))
                     }`,
                     borderRadius: '12px',
                   }}>
                     <input 
                       type={isMulti ? 'checkbox' : 'radio'}
-                      checked={isSelected || (!isSelected && isCorrectAnswer)}
+                      checked={isSelected || isCorrectMissing}
                       disabled
                       style={{ 
                         width: '18px',
                         height: '18px',
-                        accentColor: theme === 'sun' ? '#1890ff' : '#8B5CF6',
+                        accentColor: isCorrectMissing ? '#faad14' : (isCorrectAnswer ? '#52c41a' : (isSelectedWrong ? '#ff4d4f' : (theme === 'sun' ? '#1890ff' : '#8B5CF6'))),
                       }} 
                     />
                     <span style={{ 
@@ -3025,10 +3074,17 @@ const DailyChallengeSubmissionDetail = () => {
                         marginLeft: 'auto',
                       }} />
                     )}
-                    {(isCorrectAnswer || isCorrectMissing) && !isSelectedWrong && (
+                    {(isUnanswered && !isMulti && isCorrectAnswer) && !isSelectedWrong && (
                       <CheckCircleOutlined style={{
                         fontSize: '20px',
-                        color: '#52c41a',
+                        color: '#faad14',
+                        marginLeft: 'auto',
+                      }} />
+                    )}
+                    {(!isUnanswered || isMulti) && (isCorrectMissing || (isCorrectAnswer && !isCorrectMissing)) && !isSelectedWrong && (
+                      <CheckCircleOutlined style={{
+                        fontSize: '20px',
+                        color: isCorrectMissing ? '#faad14' : '#52c41a',
                         marginLeft: 'auto',
                       }} />
                     )}
