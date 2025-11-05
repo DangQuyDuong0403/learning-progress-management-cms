@@ -1070,7 +1070,7 @@ const CONFIG_ROUTER = [
 	{
 		show: false,
 		component: AIGenerateFeedback,
-		path: '/teacher/daily-challenges/detail/:id/submission/:submissionId/feedback/:sectionId',
+		path: '/teacher/daily-challenges/detail/:id/submission/:submissionId/feedback/:submissionQuestionId',
 		menuName: 'AI Feedback & Grading',
 		exact: true,
 		key: 'TEACHER_DAILY_CHALLENGE_AI_FEEDBACK',
@@ -1241,7 +1241,7 @@ const CONFIG_ROUTER = [
 	{
 		show: false,
 		component: AIGenerateFeedback,
-		path: '/teaching-assistant/daily-challenges/detail/:id/submission/:submissionId/feedback/:sectionId',
+		path: '/teaching-assistant/daily-challenges/detail/:id/submission/:submissionId/feedback/:submissionQuestionId',
 		menuName: 'AI Feedback & Grading',
 		exact: true,
 		key: 'TEACHING_ASSISTANT_DAILY_CHALLENGE_AI_FEEDBACK',

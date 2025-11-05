@@ -628,10 +628,25 @@ const DailyChallengeList = ({ readOnly = false }) => {
     };
     
     // Enter daily challenge menu mode when component mounts
-    // Pass class name if available
-    const displayName = classData?.name || null;
-    console.log('DailyChallengeList - Display name for header:', displayName);
-    enterDailyChallengeMenu(0, null, getBackPath(), displayName);
+    // Priority: Use location.state if available (when navigating back from Performance)
+    // Otherwise use classData or dailyChallengeData
+    const getSubtitle = () => {
+      // First priority: Use location.state if available (when navigating back from Performance)
+      if (location?.state?.className && location?.state?.challengeName) {
+        return `${location.state.className} / ${location.state.challengeName}`;
+      } else if (location?.state?.challengeName) {
+        return location.state.challengeName;
+      } else if (location?.state?.className) {
+        return location.state.className;
+      }
+      // Fallback: no subtitle for list page (shows class name in header via displayName)
+      return null;
+    };
+    
+    const displayName = location?.state?.className || classData?.name || null;
+    const subtitle = getSubtitle();
+    console.log('DailyChallengeList - Display name for header:', displayName, 'Subtitle:', subtitle);
+    enterDailyChallengeMenu(0, subtitle, getBackPath(), displayName);
     
     // Exit daily challenge menu mode when component unmounts
     return () => {
