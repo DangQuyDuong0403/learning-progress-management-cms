@@ -1515,6 +1515,32 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 			return;
 		}
 
+		// Validate duplicate blank answers
+		const blankAnswers = blanks.map(blank => (blank.answer || '').toLowerCase().trim());
+		const duplicates = blankAnswers.filter((text, index) => text && blankAnswers.indexOf(text) !== index);
+		if (duplicates.length > 0) {
+			spaceToast.warning('Cannot create duplicate answers. Please ensure all blank answers are unique.');
+			return;
+		}
+
+		// Validate duplicate incorrect options
+		const incorrectTexts = incorrectOptions
+			.map(opt => (opt.text || '').toLowerCase().trim())
+			.filter(text => text);
+		const duplicateIncorrect = incorrectTexts.filter((text, index) => incorrectTexts.indexOf(text) !== index);
+		if (duplicateIncorrect.length > 0) {
+			spaceToast.warning('Cannot create duplicate incorrect options. Please ensure all incorrect options are unique.');
+			return;
+		}
+
+		// Validate that blank answers don't duplicate incorrect options
+		const blankAnswersLower = blankAnswers.filter(text => text);
+		const hasDuplicateWithIncorrect = blankAnswersLower.some(blankAnswer => incorrectTexts.includes(blankAnswer));
+		if (hasDuplicateWithIncorrect) {
+			spaceToast.warning('Cannot create duplicate answers. Blank answers cannot be the same as incorrect options.');
+			return;
+		}
+
 		// Build backend format by traversing DOM (preserve HTML)
 		let questionText = '';
 		const contentData = [];

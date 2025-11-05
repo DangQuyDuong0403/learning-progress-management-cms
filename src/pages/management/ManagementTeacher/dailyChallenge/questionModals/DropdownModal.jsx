@@ -1594,6 +1594,27 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 			return;
 		}
 
+		// Validate duplicate answers for each dropdown
+		for (const dropdown of dropdowns) {
+			const correctAnswerText = (dropdown.correctAnswer || '').toLowerCase().trim();
+			const incorrectTexts = (dropdown.incorrectOptions || [])
+				.map(opt => (opt.text || '').toLowerCase().trim())
+				.filter(text => text);
+			
+			// Check if correct answer duplicates any incorrect option
+			if (correctAnswerText && incorrectTexts.includes(correctAnswerText)) {
+				spaceToast.warning('Cannot create duplicate answers in dropdown. The correct answer cannot be the same as any incorrect option.');
+				return;
+			}
+			
+			// Check if there are duplicate incorrect options
+			const duplicateIncorrect = incorrectTexts.filter((text, index) => incorrectTexts.indexOf(text) !== index);
+			if (duplicateIncorrect.length > 0) {
+				spaceToast.warning('Cannot create duplicate incorrect options. Please ensure all options are unique.');
+				return;
+			}
+		}
+
 		// Build backend format by traversing DOM (preserve HTML)
 		let questionText = '';
 		const contentData = [];
