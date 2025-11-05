@@ -207,7 +207,7 @@ const SortablePassageItem = memo(
             <div
               style={{ width: 120, textAlign: 'right', fontWeight: 600 }}
             >
-              {passage.points} {t('dailyChallenge.point') || 'điểm'}
+              {passage.weight} weight
             </div>
             <Space size="small">
               <Tooltip title="Edit">
@@ -601,7 +601,7 @@ const SortablePassageItem = memo(
                     </div>
                     <div className="question-controls">
                       <div style={{ width: 120, textAlign: 'right', fontWeight: 600 }}>
-                        {question.points} {t('dailyChallenge.point') || 'điểm'}
+                        {question.weight} weight
                       </div>
                     </div>
                   </div>
@@ -1005,7 +1005,7 @@ const SortablePassageItem = memo(
     return (
       prevProps.passage.id === nextProps.passage.id &&
       prevProps.passage.content === nextProps.passage.content &&
-      prevProps.passage.points === nextProps.passage.points &&
+      prevProps.passage.weight === nextProps.passage.weight &&
       prevProps.theme === nextProps.theme &&
       prevProps.index === nextProps.index
     );
@@ -1116,10 +1116,10 @@ const renderDragDropQuestionInline = (question, theme) => {
   }
 
   let displayText = question.questionText;
-  // Placeholder should match preview: dashed gray
-  const placeholderBg = '#ffffff';
-  const placeholderBorder = 'rgba(0, 0, 0, 0.5)';
-  const placeholderText = 'rgba(0, 0, 0, 0.5)';
+
+  // Show the correct answers inline inside the blanks
+  const chipBg = 'rgba(82, 196, 26, 0.12)';
+  const chipBorder = 'rgba(82, 196, 26, 0.5)';
 
   // Filter correct options (those with positionId and correct: true)
   const correctOptions = question.content.data.filter(item => 
@@ -1129,10 +1129,17 @@ const renderDragDropQuestionInline = (question, theme) => {
   correctOptions.forEach((item, idx) => {
     const number = idx + 1;
     const pattern = `[[pos_${item.positionId}]]`;
-    
+    const value = String(item.value || '')
+      .replace(/<[^>]*>/g,' ')
+      .replace(/&nbsp;/g,' ')
+      .trim();
+
     displayText = displayText.replace(
       pattern,
-      `<span style="display:inline-flex;align-items:center;justify-content:center;min-width:100px;min-height:28px;padding:4px 12px;margin:0 6px;background:${placeholderBg};border:2px dashed ${placeholderBorder};border-radius:6px;font-size:14px;color:${placeholderText};">Drop here</span>`
+      `<span style="display:inline-flex;align-items:center;gap:6px;padding:4px 12px;background:${chipBg};border:2px solid ${chipBorder};border-radius:8px;color:#000000;margin:0 6px 6px 6px;">
+        <span style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:${chipBorder};color:#ffffff;font-size:11px;">${number}</span>
+        <span style="white-space:normal;word-break:break-word;">${value}</span>
+      </span>`
     );
   });
 
@@ -1146,20 +1153,28 @@ const renderRearrangeQuestionInline = (question, theme) => {
   }
 
   let displayText = question.questionText;
-  // Use dashed gray placeholders like preview
-  const slotBorder = 'rgba(0, 0, 0, 0.5)';
-  const slotText = 'rgba(0, 0, 0, 0.5)';
 
-  // Use data as is
+  // Filled chips with answers inline
+  const chipBg = 'rgba(82, 196, 26, 0.12)';
+  const chipBorder = 'rgba(82, 196, 26, 0.5)';
+
+  // Keep the given order from data
   const sortedData = question.content.data;
   
   sortedData.forEach((item, idx) => {
     const number = idx + 1;
     const pattern = `[[pos_${item.positionId}]]`;
+    const value = String(item.value || '')
+      .replace(/<[^>]*>/g,' ')
+      .replace(/&nbsp;/g,' ')
+      .trim();
     
     displayText = displayText.replace(
       pattern,
-      `<span style="display:inline-flex;align-items:center;justify-content:center;min-width:80px;height:36px;padding:4px 10px;margin:0 6px;background:#ffffff;border:2px dashed ${slotBorder};border-radius:6px;font-size:12px;color:${slotText};">${number}</span>`
+      `<span style="display:inline-flex;align-items:center;gap:6px;padding:6px 12px;margin:0 6px;background:${chipBg};border:2px solid ${chipBorder};border-radius:8px;color:#000000;">
+        <span style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:${chipBorder};color:#ffffff;font-size:11px;">${number}</span>
+        <span style="white-space:normal;word-break:break-word;">${value}</span>
+      </span>`
     );
   });
 
@@ -1852,6 +1867,7 @@ const SortableQuestionItem = memo(
               borderRadius: '12px',
               padding: '16px'
             }}>
+              <style>{`.rewrite-answer p{margin-top:0;margin-bottom:0}`}</style>
               <div style={{ 
                 fontSize: '14px', 
                 fontWeight: 600, 
@@ -1880,7 +1896,7 @@ const SortableQuestionItem = memo(
                       fontWeight: 500,
                       color: textColor,
                       display: 'flex',
-                      alignItems: 'flex-start',
+                      alignItems: 'center',
                       gap: '10px',
                       boxShadow: '0 2px 6px rgba(34, 197, 94, 0.12)'
                     }}
@@ -1888,6 +1904,8 @@ const SortableQuestionItem = memo(
                     <span style={{
                       fontWeight: 700,
                       color: correctColor,
+                      textAlign: 'center',
+                      
                       fontSize: '13px',
                       minWidth: '20px',
                       lineHeight: '1.4'
@@ -1900,6 +1918,7 @@ const SortableQuestionItem = memo(
                         lineHeight: '1.4',
                         fontWeight: 400
                       }}
+                      className="rewrite-answer"
                       dangerouslySetInnerHTML={{ __html: item.value }} 
                     />
                   </div>
@@ -1917,6 +1936,7 @@ const SortableQuestionItem = memo(
               borderRadius: '12px',
               padding: '16px'
             }}>
+              <style>{`.rewrite-answer p{margin-top:0;margin-bottom:0}`}</style>
               <div style={{ 
                 fontSize: '14px', 
                 fontWeight: 600, 
@@ -1945,7 +1965,7 @@ const SortableQuestionItem = memo(
                       fontWeight: 500,
                       color: textColor,
                       display: 'flex',
-                      alignItems: 'flex-start',
+                      alignItems: 'center',
                       gap: '10px',
                       boxShadow: '0 2px 6px rgba(34, 197, 94, 0.12)'
                     }}
@@ -1953,8 +1973,13 @@ const SortableQuestionItem = memo(
                     <span style={{
                       fontWeight: 700,
                       color: correctColor,
+                      textAlign: 'center',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
                       fontSize: '13px',
                       minWidth: '20px',
+                      height: '20px',
                       lineHeight: '1.4'
                     }}>
                       {idx + 1}.
@@ -1966,6 +1991,7 @@ const SortableQuestionItem = memo(
                         marginBottom: '0px',
                         fontWeight: 400,
                       }}
+                      className="rewrite-answer"
                       dangerouslySetInnerHTML={{ __html: ans.answer }} 
                     />
                   </div>
@@ -2023,7 +2049,7 @@ const SortableQuestionItem = memo(
           </div>
           <div className="question-controls">
             <div style={{ width: 120, textAlign: 'right', fontWeight: 600 }}>
-              {question.points} {t('dailyChallenge.point') || 'điểm'}
+              {question.weight} weight
             </div>
             <Space size="small">
               <Tooltip title="Edit">
@@ -2153,7 +2179,6 @@ const SortableQuestionItem = memo(
             (() => {
               if (!question.questionText) return null;
               const borderColor = theme === 'sun' ? '#66AEFF' : '#A78BFA';
-              const dashedColor = theme === 'sun' ? 'rgba(0,0,0,0.45)' : 'rgba(56, 56, 56, 0.75)';
               const textColor = theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)';
               const correctBorderColor = 'rgba(82, 196, 26, 0.7)';
               const correctTextColor = '#000000';
@@ -2170,11 +2195,19 @@ const SortableQuestionItem = memo(
                     const isCorrect = Boolean(item?.correct === true || item?.positionId);
                     allChips.push({ value: item.value, isCorrect });
                   }
-                  if (item && item.positionId) {
+                  if (item && item.positionId && item.correct === true) {
                     const pattern = `[[pos_${item.positionId}]]`;
+                    const value = String(item.value || '')
+                      .replace(/<[^>]*>/g,' ')
+                      .replace(/&nbsp;/g,' ')
+                      .trim();
+                    const indexNum = (allChips.filter(c => c.isCorrect).length) + 1;
                     displayText = displayText.replace(
                       pattern,
-                      `<span style="display:inline-flex;align-items:center;justify-content:center;min-width:140px;height:34px;border-radius:8px;border:2px dashed ${dashedColor};background:transparent;color:${dashedColor};">Drop here</span>`
+                      `<span style="display:inline-flex;align-items:center;gap:6px;padding:4px 12px;background:${correctBgColor};border:2px solid ${correctBorderColor};border-radius:8px;color:${correctTextColor};margin:0 6px 6px 6px;">
+                        <span style=\"display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:${correctBorderColor};color:#ffffff;font-size:11px;\">${indexNum}</span>
+                        <span style=\"white-space:normal;word-break:break-word;\">${value}</span>
+                      </span>`
                     );
                   }
                 });
@@ -2268,7 +2301,6 @@ const SortableQuestionItem = memo(
           ) : (question.type === 'REARRANGE' && challengeType === 'GV') ? (
             (() => {
               const textColor = theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)';
-              const dashedColor = theme === 'sun' ? 'rgba(0,0,0,0.45)' : 'rgba(56, 56, 56, 0.75)';
               const borderColor = theme === 'sun' ? '#66AEFF' : '#A78BFA';
               const values = Array.isArray(question.content?.data)
                 ? question.content.data.map((i) => i?.value).filter(Boolean)
@@ -2291,22 +2323,37 @@ const SortableQuestionItem = memo(
                       Drop the words here in order:
                     </div>
                     <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
-                      {Array.from({ length: count }).map((_, idx) => (
+                      {values.map((val, idx) => (
                         <div
                           key={idx}
                           style={{
-                            width: '160px',
-                            height: '70px',
+                            minWidth: '160px',
+                            minHeight: '70px',
                             borderRadius: '10px',
-                            border: `2px dashed ${dashedColor}`,
+                            border: `2px solid ${correctBorderColor}`,
+                            background: 'rgba(82, 196, 26, 0.12)',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            color: dashedColor,
-                            fontWeight: 700
+                            color: '#000000',
+                            fontWeight: 500,
+                            padding: '10px 16px'
                           }}
                         >
-                          {idx + 1}
+                          <span style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            width: '20px',
+                            height: '20px',
+                            borderRadius: '50%',
+                            background: correctBorderColor,
+                            color: '#ffffff',
+                            fontSize: '12px',
+                            fontWeight: 700,
+                            marginRight: '8px'
+                          }}>{idx + 1}</span>
+                          {val}
                         </div>
                       ))}
                     </div>
@@ -2650,7 +2697,7 @@ const SortableQuestionItem = memo(
       prevProps.question.question === nextProps.question.question &&
       prevProps.question.questionText === nextProps.question.questionText &&
       prevProps.question.correctAnswer === nextProps.question.correctAnswer &&
-      prevProps.question.points === nextProps.question.points &&
+      prevProps.question.weight === nextProps.question.weight &&
       prevProps.question.type === nextProps.question.type &&
       prevProps.theme === nextProps.theme &&
       prevProps.index === nextProps.index &&
@@ -2853,12 +2900,15 @@ const DailyChallengeContent = () => {
             }
             
             // Create passage object
+            const totalWeight = Array.isArray(questionsList)
+              ? questionsList.reduce((sum, q) => sum + (Number(q?.weight ?? q?.score ?? 0) || 0), 0)
+              : 0;
             const passage = {
               id: section.id || `passage_${index}`,
               type: passageType,
               content: section.sectionsContent || '',
               audioUrl: section.resourceType === 'FILE' ? section.sectionsUrl : undefined, // Audio URL for listening passages
-              points: 1, // Default points
+              weight: totalWeight, // Sum of question weights in this section
               questions: questionsList.map((question, qIndex) => {
                 // Get question content - parse from content.data array
                 const contentData = question.content?.data || [];
@@ -2879,7 +2929,7 @@ const DailyChallengeContent = () => {
                     id: opt.key || Date.now(),
                     text: opt.text
                   })),
-                  points: question.score || 1,
+                  weight: question.weight || 1,
                   timeLimit: 1,
                   sectionId: section.id,
                   sectionTitle: section.sectionTitle,
@@ -2935,7 +2985,7 @@ const DailyChallengeContent = () => {
                 options: options,
                 content: question.content, // Preserve original content for FillBlank
                 incorrectOptions: incorrectOptions,
-                points: question.score || 1,
+                weight: question.weight || 1,
                 timeLimit: 1,
                 sectionId: section.id,
                 sectionTitle: section.sectionTitle,
@@ -3194,7 +3244,7 @@ const DailyChallengeContent = () => {
         return {
           questionText: questionData.question,
           orderNumber,
-          score: questionData.points || 0.5,
+          weight: (questionData.weight ?? questionData.points ?? 0.5),
           questionType: questionType === 'MULTIPLE_SELECT' ? 'MULTIPLE_SELECT' : 'MULTIPLE_CHOICE',
           content: {
             data: questionData.options ? questionData.options.map((option, optIndex) => ({
@@ -3209,7 +3259,7 @@ const DailyChallengeContent = () => {
         return {
           questionText: questionData.question,
           orderNumber,
-          score: questionData.points || 0.5,
+          weight: (questionData.weight ?? questionData.points ?? 0.5),
           questionType: 'TRUE_OR_FALSE',
           content: {
             data: questionData.options ? questionData.options.map((option, optIndex) => ({
@@ -3224,7 +3274,7 @@ const DailyChallengeContent = () => {
         return {
           questionText: questionData.questionText || questionData.question,
           orderNumber,
-          score: questionData.points || 0.5,
+          weight: (questionData.weight ?? questionData.points ?? 0.5),
           questionType: 'FILL_IN_THE_BLANK',
           content: {
             data: (questionData.content?.data || [])
@@ -3235,7 +3285,7 @@ const DailyChallengeContent = () => {
         return {
           questionText: questionData.questionText || questionData.question,
           orderNumber,
-          score: questionData.points || 0.5,
+          weight: (questionData.weight ?? questionData.points ?? 0.5),
           questionType: 'DROPDOWN',
           content: {
             data: (questionData.content?.data || [])
@@ -3246,7 +3296,7 @@ const DailyChallengeContent = () => {
         return {
           questionText: questionData.questionText || questionData.question,
           orderNumber,
-          score: questionData.points || 1,
+          weight: (questionData.weight ?? questionData.points ?? 1),
           questionType: 'DRAG_AND_DROP',
           content: {
             data: (questionData.content?.data || [])
@@ -3257,7 +3307,7 @@ const DailyChallengeContent = () => {
         return {
           questionText: questionData.questionText || questionData.question,
           orderNumber,
-          score: questionData.points || 1,
+          weight: (questionData.weight ?? questionData.points ?? 1),
           questionType: 'REARRANGE',
           content: {
             data: (questionData.content?.data || [])
@@ -3268,7 +3318,7 @@ const DailyChallengeContent = () => {
         return {
           questionText: questionData.questionText || questionData.question,
           orderNumber,
-          score: questionData.points || 1,
+          weight: (questionData.weight ?? questionData.points ?? 1),
           questionType: 'REWRITE',
           content: {
             data: (questionData.content?.data || [])
@@ -3279,7 +3329,7 @@ const DailyChallengeContent = () => {
         return {
           questionText: questionData.question,
           orderNumber,
-          score: questionData.points || 0.5,
+          weight: (questionData.weight ?? questionData.points ?? 0.5),
           questionType: questionData.type ? questionData.type.toUpperCase().replace(/-/g, '_') : 'MULTIPLE_CHOICE',
           content: {
             data: questionData.options ? questionData.options.map((option, optIndex) => ({
@@ -3679,29 +3729,45 @@ const DailyChallengeContent = () => {
         sections: bulkUpdateData
       });
 
-      // Step 1: Call bulk update API to save/reorder sections
+      // Step 1: Call bulk update API to save/reorder sections (API trong ảnh: POST /api/v1/sections/bulk/{challengeId})
       const bulkResponse = await dailyChallengeApi.bulkUpdateSections(id, bulkUpdateData);
       console.log('Bulk update response:', bulkResponse);
 
-      // Step 2: Update challenge status if saveAsStatus is provided
-      if (saveAsStatus) {
-        // Convert saveAsStatus to API format (DRAFT or PUBLISHED)
-        const challengeStatus = saveAsStatus === 'published' ? 'PUBLISHED' : 'DRAFT';
+      // Step 2: Update challenge status only when publishing
+      if (saveAsStatus === 'published') {
+        console.log('Updating challenge status to PUBLISHED');
         
-        console.log('Updating challenge status:', challengeStatus);
-        
-        // Call API to update challenge status
-        await dailyChallengeApi.updateDailyChallengeStatus(id, challengeStatus);
+        // Call API to update challenge status to PUBLISHED
+        await dailyChallengeApi.updateDailyChallengeStatus(id, 'PUBLISHED');
         
         // Update local status
-        setStatus(saveAsStatus);
+        setStatus('published');
         
         if (!options?.silent) {
-          spaceToast.success(
-            saveAsStatus === 'published' 
-              ? t('dailyChallenge.savedAsPublished') || 'Saved and published successfully!'
-              : t('dailyChallenge.savedAsDraft') || 'Saved as draft successfully!'
-          );
+          spaceToast.success(t('dailyChallenge.savedAsPublished') || 'Saved and published successfully!');
+          
+          // Navigate back to Daily Challenge list after successful publish
+          const getDailyChallengeListPath = () => {
+            if (challengeInfo.classId) {
+              // If coming from class-specific daily challenges, go back to that list
+              const userRole = user?.role?.toLowerCase();
+              if (userRole === 'teacher') {
+                return `/teacher/classes/daily-challenges/${challengeInfo.classId}`;
+              } 
+            } 
+          };
+          
+          // Navigate after a short delay to show success message
+          setTimeout(() => {
+            navigate(getDailyChallengeListPath());
+          }, 1000);
+        }
+      } else if (saveAsStatus === 'draft') {
+        // Save as Draft: chỉ gọi bulkUpdateSections (đã gọi ở Step 1), không cần update status
+        console.log('Saved as draft (sections updated only)');
+        
+        if (!options?.silent) {
+          spaceToast.success(t('dailyChallenge.savedAsDraft') || 'Saved as draft successfully!');
         }
       } else {
         if (!options?.silent) {
@@ -3722,7 +3788,7 @@ const DailyChallengeContent = () => {
     } finally {
       setLoading(false);
     }
-  }, [id, questions, passages, t, fetchQuestions]);
+  }, [id, questions, passages, t, fetchQuestions, challengeInfo.classId, navigate, user?.role]);
 
   const handlePublishConfirmOk = useCallback(async () => {
     setPublishConfirmModalVisible(false);
@@ -3955,7 +4021,7 @@ const DailyChallengeContent = () => {
 
   const handlePointsChange = useCallback((questionId, value) => {
     setQuestions(prev => prev.map(q => 
-      q.id === questionId ? { ...q, points: value, isModified: true } : q
+      q.id === questionId ? { ...q, weight: value, isModified: true } : q
     ));
   }, []);
 
@@ -4071,7 +4137,7 @@ const DailyChallengeContent = () => {
 
   const handlePassagePointsChange = useCallback((passageId, value) => {
     setPassages(prev => prev.map(p => 
-      p.id === passageId ? { ...p, points: value, isModified: true } : p
+      p.id === passageId ? { ...p, weight: value, isModified: true } : p
     ));
   }, []);
 
@@ -5451,7 +5517,6 @@ const DailyChallengeContent = () => {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <Typography.Text strong>{t('dailyChallenge.mode') || 'Challenge Mode'}</Typography.Text>
                 <span style={{ 
-                  fontWeight: 700, 
                   color: challengeMode === 'exam' ? '#ff4d4f' : '#52c41a',
                   fontSize: '13px'
                 }}>
@@ -5464,7 +5529,7 @@ const DailyChallengeContent = () => {
             <Card size="small" style={{ background: theme === 'sun' ? '#fafafa' : 'rgba(255, 255, 255, 0.05)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <Typography.Text strong>{t('dailyChallenge.duration') || 'Duration'}</Typography.Text>
-                <span style={{ fontWeight: 700, fontSize: '13px', color: theme === 'sun' ? '#333' : '#000000' }}>
+                <span style={{  fontSize: '13px', color: theme === 'sun' ? '#333' : '#000000' }}>
                   {durationMinutes 
                     ? `${durationMinutes} ${t('dailyChallenge.minutes') || 'minutes'}`
                     : t('common.notSet') || 'Not Set'}
@@ -5474,7 +5539,7 @@ const DailyChallengeContent = () => {
             <Card size="small" style={{ background: theme === 'sun' ? '#fafafa' : 'rgba(255, 255, 255, 0.05)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <Typography.Text strong>{t('dailyChallenge.startDate') || 'Start Date'}</Typography.Text>
-                <span style={{ fontWeight: 700, fontSize: '13px', color: theme === 'sun' ? '#333' : '#000000' }}>
+                <span style={{  fontSize: '13px', color: theme === 'sun' ? '#333' : '#000000' }}>
                   {startDate 
                     ? new Date(startDate).toLocaleDateString('vi-VN', { 
                         day: '2-digit', 
@@ -5490,7 +5555,7 @@ const DailyChallengeContent = () => {
             <Card size="small" style={{ background: theme === 'sun' ? '#fafafa' : 'rgba(255, 255, 255, 0.05)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <Typography.Text strong>{t('dailyChallenge.endDate') || 'End Date'}</Typography.Text>
-                <span style={{ fontWeight: 700, fontSize: '13px', color: theme === 'sun' ? '#333' : '#000000' }}>
+                <span style={{ fontSize: '13px', color: theme === 'sun' ? '#333' : '#000000' }}>
                   {endDate 
                     ? new Date(endDate).toLocaleDateString('vi-VN', { 
                         day: '2-digit', 
@@ -5510,7 +5575,7 @@ const DailyChallengeContent = () => {
             <Card size="small" style={{ background: theme === 'sun' ? '#fafafa' : 'rgba(255, 255, 255, 0.05)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <Typography.Text strong>{sentenceCase(t('dailyChallenge.shuffleQuestion') || t('dailyChallenge.shuffleAnswers') || 'Shuffle questions')}</Typography.Text>
-                <span style={{ fontWeight: 700, color: shuffleQuestion ? '#52c41a' : '#ff4d4f' }}>
+                <span style={{color: shuffleQuestion ? '#52c41a' : '#ff4d4f' }}>
                   {shuffleQuestion ? sentenceCase(t('common.on') || 'ON') : sentenceCase(t('common.off') || 'OFF')}
                 </span>
               </div>
@@ -5518,7 +5583,7 @@ const DailyChallengeContent = () => {
             <Card size="small" style={{ background: theme === 'sun' ? '#fafafa' : 'rgba(255, 255, 255, 0.05)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <Typography.Text strong>{sentenceCase(t('dailyChallenge.antiCheatMode') || 'Anti-cheat mode')}</Typography.Text>
-                <span style={{ fontWeight: 700, color: antiCheatModeEnabled ? '#52c41a' : '#ff4d4f' }}>
+                <span style={{color: antiCheatModeEnabled ? '#52c41a' : '#ff4d4f' }}>
                   {antiCheatModeEnabled ? sentenceCase(t('common.on') || 'ON') : sentenceCase(t('common.off') || 'OFF')}
                 </span>
               </div>
@@ -5526,14 +5591,14 @@ const DailyChallengeContent = () => {
             <Card size="small" style={{ gridColumn: '1 / span 2', background: theme === 'sun' ? '#fafafa' : 'rgba(255, 255, 255, 0.05)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <Typography.Text strong>{sentenceCase(t('dailyChallenge.translateOnScreen') || 'Translate on screen')}</Typography.Text>
-                <span style={{ fontWeight: 700, color: translateOnScreen ? '#52c41a' : '#ff4d4f' }}>
+                <span style={{ color: translateOnScreen ? '#52c41a' : '#ff4d4f' }}>
                   {translateOnScreen ? sentenceCase(t('common.on') || 'ON') : sentenceCase(t('common.off') || 'OFF')}
                 </span>
               </div>
             </Card>
           </div>
 
-          <Typography.Paragraph style={{ marginTop: 12, color: '#faad14', fontWeight: 600, textAlign: 'center' }}>
+          <Typography.Paragraph style={{ marginTop: 12, textAlign: 'center', fontStyle: 'italic' }}>
             {t('dailyChallenge.publishWarningMessage') || 'Once published, students will be able to access this challenge. This action cannot be undone.'}
           </Typography.Paragraph>
         </div>

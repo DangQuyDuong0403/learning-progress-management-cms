@@ -94,6 +94,24 @@ const dailyChallengeApi = {
 		});
 	},
 
+	// Generate AI feedback for writing using dedicated grading endpoint
+	// Required payload: { submissionQuestionId }
+	generateAIFeedback: async (payload) => {
+		const base = (typeof axiosClient?.defaults?.baseURL === 'string') ? axiosClient.defaults.baseURL : '';
+		const baseApi = base.includes('/api/v1')
+			? base.replace('/api/v1', '/api')
+			: (base.endsWith('/api') ? base : (base.replace(/\/$/, '') + '/api'));
+		const absoluteUrl = `${baseApi}/openai/grade-writing`;
+		console.log('GenerateAIFeedback API - URL:', absoluteUrl);
+		console.log('GenerateAIFeedback API - Payload:', payload);
+		return axiosClient.post(absoluteUrl, payload, {
+			headers: {
+				'Content-Type': 'application/json',
+				'accept': '*/*',
+			},
+		});
+	},
+
 	// Parse questions from uploaded file with optional description prompt
 	parseQuestionsFromFile: async (file, description = '') => {
 		// Build absolute URL to /api/openai/parse-questions-from-file
@@ -226,6 +244,22 @@ const dailyChallengeApi = {
 		});
 	},
 
+	// Cập nhật status của daily challenge thành PUBLISHED
+	updateDailyChallengeStatus: (id, status) => {
+		if (status === 'PUBLISHED') {
+			// Sử dụng endpoint /publish để publish challenge
+			const url = `/daily-challenges/${id}/publish`;
+			console.log('UpdateDailyChallengeStatus API - URL:', url);
+			return axiosClient.post(url, null, {
+				headers: {
+					'accept': '*/*',
+				}
+			});
+		} else {
+			return Promise.reject(new Error(`Only PUBLISHED status is supported. Got: ${status}`));
+		}
+	},
+
 	// Lấy danh sách submissions của một daily challenge
 	getDailyChallengeSubmissions: (challengeId, params = {}) => {
 		const queryParams = new URLSearchParams();
@@ -293,19 +327,19 @@ const dailyChallengeApi = {
 		});
 	},
 
-  // Lấy grading summary cho submission (dùng cho sidebar Performance)
-  // Endpoint: /grading/challenges/submission/{submissionId}/result
-  getSubmissionGradingResult: (submissionId) => {
-    const url = `/grading/challenges/submission/${submissionId}/result`;
-    console.log('GetSubmissionGradingResult API - URL:', url);
-    console.log('GetSubmissionGradingResult API - SubmissionId:', submissionId);
+	// Lấy grading summary cho submission (dùng cho sidebar Performance)
+	// Endpoint theo thực tế (ảnh swagger): GET /grading/submission-challenges/{submissionId}
+	getSubmissionGradingResult: (submissionId) => {
+		const url = `/grading/submission-challenges/${submissionId}`;
+		console.log('GetSubmissionGradingResult API (new) - URL:', url);
+		console.log('GetSubmissionGradingResult API (new) - SubmissionId:', submissionId);
     
-    return axiosClient.get(url, {
-      headers: {
-        'accept': '*/*',
-      },
-    });
-  },
+		return axiosClient.get(url, {
+			headers: {
+				'accept': '*/*',
+			},
+		});
+	},
 
   // Lưu kết quả chấm điểm cho submission
   // Endpoint: POST /grading/challenges/submission/{submissionId}/grade
@@ -316,6 +350,44 @@ const dailyChallengeApi = {
       headers: {
         'accept': '*/*',
         'Content-Type': 'application/json',
+      },
+    });
+  },
+
+  // Lưu tổng kết chấm điểm/overallFeedback cho submission-challenge
+  // Endpoint (updated): POST /grading/submission-challenges/{submissionId}
+  saveGradingSummary: (submissionId, payload) => {
+    const url = `/grading/submission-challenges/${submissionId}`;
+    console.log('SaveGradingSummary API - URL:', url, 'Payload:', payload);
+    return axiosClient.post(url, payload, {
+      headers: {
+        'accept': '*/*',
+        'Content-Type': 'application/json',
+      },
+    });
+  },
+
+  // Grade a specific submission-question (used for Writing AI/manual grading)
+  // Endpoint: POST /grading/submission-questions/{submissionQuestionId}
+  gradeSubmissionQuestion: (submissionQuestionId, payload) => {
+    const url = `/grading/submission-questions/${submissionQuestionId}`;
+    console.log('GradeSubmissionQuestion API - URL:', url, 'Payload:', payload);
+    return axiosClient.post(url, payload, {
+      headers: {
+        'accept': '*/*',
+        'Content-Type': 'application/json',
+      },
+    });
+  },
+
+  // Get existing grading for a submission-question
+  // Endpoint: GET /grading/submission-questions/{submissionQuestionId}
+  getSubmissionQuestionGrading: (submissionQuestionId) => {
+    const url = `/grading/submission-questions/${submissionQuestionId}`;
+    console.log('GetSubmissionQuestionGrading API - URL:', url);
+    return axiosClient.get(url, {
+      headers: {
+        'accept': '*/*',
       },
     });
   },
@@ -459,10 +531,21 @@ const dailyChallengeApi = {
 		return axiosClient.get(url, {
 			headers: {
 				'accept': '*/*',
-			}
+			},
 		});
 	},
 
+	// Get a single submission question detail (prompt + student's submitted content)
+	// Endpoint: GET /submission/question/{submissionQuestionId}
+	getSubmissionQuestion: (submissionQuestionId) => {
+		const url = `/submission/question/${submissionQuestionId}`;
+		console.log('GetSubmissionQuestion API - URL:', url);
+		return axiosClient.get(url, {
+			headers: {
+				'accept': '*/*',
+			},
+		});
+	},
 	// Get draft submission with questions and saved answers (without correct answers)
 	getDraftSubmission: (submissionChallengeId) => {
 		const url = `/submission/${submissionChallengeId}/draft`;
@@ -471,7 +554,7 @@ const dailyChallengeApi = {
 		return axiosClient.get(url, {
 			headers: {
 				'accept': '*/*',
-			}
+			},
 		});
 	}
 };

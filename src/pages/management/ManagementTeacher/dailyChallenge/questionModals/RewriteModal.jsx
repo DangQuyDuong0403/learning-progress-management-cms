@@ -55,7 +55,7 @@ const RewriteModal = ({ visible, onCancel, onSave, questionData = null }) => {
   const [correctAnswers, setCorrectAnswers] = useState(
     questionData?.correctAnswers || [{ id: 1, answer: "", color: getAnswerColors()[0] }]
   );
-  const [points, setPoints] = useState(1);
+  const [weight, setWeight] = useState(1);
   const [saving, setSaving] = useState(false);
   const [hoveredAnswer, setHoveredAnswer] = useState(null);
   const [editorData, setEditorData] = useState('');
@@ -197,13 +197,8 @@ const RewriteModal = ({ visible, onCancel, onSave, questionData = null }) => {
           }
           
           setCorrectAnswers(answers);
-          setPoints(questionData?.points || 1);
-        } else {
-          // Add mode - reset to defaults
-          setEditorData('');
-          setCorrectAnswers([{ id: 1, answer: "", color: colors[0] }]);
-          setPoints(1);
-        }
+          setWeight((questionData && (questionData.weight ?? questionData.points)) || 1);
+        } 
       }, 0);
     }
   }, [questionData, visible, getAnswerColors]);
@@ -339,7 +334,7 @@ const RewriteModal = ({ visible, onCancel, onSave, questionData = null }) => {
       question: questionTextWithPosition, // For backward compatibility
       correctAnswers: correctAnswers,
       correctAnswer: correctAnswers.map(ans => ans.answer).join(', '),
-      points: points,
+      weight: weight,
       content: {
         data: contentData
       }
@@ -369,14 +364,14 @@ const RewriteModal = ({ visible, onCancel, onSave, questionData = null }) => {
     const colors = getAnswerColors();
     setEditorData('');
     setCorrectAnswers([{ id: 1, answer: "", color: colors[0] }]);
-    setPoints(1);
+    setWeight(1);
     onCancel();
   };
 
   const pointsMenu = (
     <InputNumber
-      value={points}
-      onChange={(v) => setPoints(Number(v) || 0)}
+      value={weight}
+      onChange={(v) => setWeight(Number(v) || 0)}
       min={0}
       max={100}
       style={{ width: 100 }}
@@ -445,7 +440,7 @@ const RewriteModal = ({ visible, onCancel, onSave, questionData = null }) => {
           <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <CheckOutlined style={{ color: '#52c41a', fontSize: '16px' }} />
-            <span style={{ fontSize: '13px', fontWeight: 600, color: '#666' }}>Score</span>
+            <span style={{ fontSize: '13px', fontWeight: 600, color: '#666' }}>Weight</span>
             {pointsMenu}
           </div>
 

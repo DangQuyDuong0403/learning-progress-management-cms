@@ -63,6 +63,7 @@ import StudentPreview from '../pages/management/ManagementTeacher/dailyChallenge
 import CreateGrammarVocabularyChallenge from '../pages/management/ManagementTeacher/dailyChallenge/CreateGrammarVocabularyChallenge.jsx';
 import CreateReadingChallenge from '../pages/management/ManagementTeacher/dailyChallenge/CreateReadingChallenge.jsx';
 import AIGenerateQuestions from '../pages/management/ManagementTeacher/dailyChallenge/AIGenerateQuestions.jsx';
+import AIGenerateFeedback from '../pages/management/ManagementTeacher/dailyChallenge/AIGenerateFeedback.jsx';
 import AIGenerateReading from '../pages/management/ManagementTeacher/dailyChallenge/AIGenerateReading.jsx';
 import AIGenerateListening from '../pages/management/ManagementTeacher/dailyChallenge/AIGenerateListening.jsx';
 import TeacherDashboard from '../pages/management/ManagementTeacher/TeacherDashboard.jsx';
@@ -1068,6 +1069,16 @@ const CONFIG_ROUTER = [
 	},
 	{
 		show: false,
+		component: AIGenerateFeedback,
+		path: '/teacher/daily-challenges/detail/:id/submission/:submissionId/feedback/:submissionQuestionId',
+		menuName: 'AI Feedback & Grading',
+		exact: true,
+		key: 'TEACHER_DAILY_CHALLENGE_AI_FEEDBACK',
+		private: true,
+		role: ['teacher', 'teaching_assistant'],
+	},
+	{
+		show: false,
 		component: DailyChallengeContent,
 		path: '/teacher/daily-challenges/detail/:id/content',
 		menuName: 'Daily Challenge Content',
@@ -1224,6 +1235,16 @@ const CONFIG_ROUTER = [
 		menuName: 'Daily Challenge Submission Detail',
 		exact: true,
 		key: 'TEACHING_ASSISTANT_DAILY_CHALLENGE_SUBMISSION_DETAIL',
+		private: true,
+		role: ['teaching_assistant'],
+	},
+	{
+		show: false,
+		component: AIGenerateFeedback,
+		path: '/teaching-assistant/daily-challenges/detail/:id/submission/:submissionId/feedback/:submissionQuestionId',
+		menuName: 'AI Feedback & Grading',
+		exact: true,
+		key: 'TEACHING_ASSISTANT_DAILY_CHALLENGE_AI_FEEDBACK',
 		private: true,
 		role: ['teaching_assistant'],
 	},

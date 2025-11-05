@@ -296,7 +296,7 @@ const CreateReadingChallenge = () => {
           ...(existingQuestion?.id && { id: existingQuestion.id }),
           questionText: passage.content || '',
           orderNumber: 1,
-          score: 1,
+          weight: 1,
           questionType: 'WRITING', // Custom type for writing
           toBeDeleted: false,
           content: {
@@ -320,7 +320,7 @@ const CreateReadingChallenge = () => {
           ...(existingQuestion?.id && { id: existingQuestion.id }),
           questionText: passage.content || '',
           orderNumber: 1,
-          score: 1,
+          weight: 1,
           questionType: 'SPEAKING', // Custom type for speaking
           toBeDeleted: false,
           content: {
@@ -350,7 +350,7 @@ const CreateReadingChallenge = () => {
           questionText: question.question || question.questionText || '',
           // Assign sequential order only for active questions; deleted ones get 0
           orderNumber: question.toBeDeleted ? 0 : (++activeOrderCounter),
-          score: question.points || 1,
+          weight: (question.weight ?? question.points ?? 1),
           questionType: mapQuestionType(question.type),
           toBeDeleted: question.toBeDeleted === true
         };
@@ -954,7 +954,7 @@ const CreateReadingChallenge = () => {
       question: baseTitle ? `${baseTitle}` : '(Copy)',
       questionText: sourceQuestion.questionText || sourceQuestion.question || '',
       points: sourceQuestion.points || sourceQuestion.score || 1,
-      score: sourceQuestion.points || sourceQuestion.score || 1,
+      // remove legacy score field in UI state
       isFromBackend: false,
       toBeDeleted: false,
       content: clonedContent,

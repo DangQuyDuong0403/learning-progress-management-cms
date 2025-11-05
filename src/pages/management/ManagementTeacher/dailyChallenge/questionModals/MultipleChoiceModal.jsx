@@ -62,7 +62,7 @@ const MultipleChoiceModal = ({
 		]
 	);
 	const [answerType, setAnswerType] = useState('single'); // "single" or "multiple"
-	const [points, setPoints] = useState(1);
+    const [weight, setWeight] = useState(1);
 	const [hoveredOption, setHoveredOption] = useState(null);
 	const [editorData, setEditorData] = useState('');
 	const editorRef = useRef(null);
@@ -210,8 +210,8 @@ const MultipleChoiceModal = ({
 					];
 				}
 				
-				setOptions(loadedOptions);
-				setPoints(questionData.points || 1);
+                setOptions(loadedOptions);
+                setWeight((questionData && (questionData.weight ?? questionData.points)) || 1);
 				setHoveredOption(null); // Reset hover state
 			} else {
 				// Add mode - reset to defaults
@@ -222,7 +222,7 @@ const MultipleChoiceModal = ({
 					{ id: 3, text: '', isCorrect: false, color: colors[2] },
 					{ id: 4, text: '', isCorrect: false, color: colors[3] },
 				]);
-				setPoints(1);
+                setWeight(1);
 				setHoveredOption(null); // Reset hover state
 			}
 		}
@@ -381,7 +381,7 @@ const MultipleChoiceModal = ({
 			type: answerType === 'single' ? 'MULTIPLE_CHOICE' : 'MULTIPLE_SELECT',
 			title: answerType === 'single' ? 'Multiple choice' : 'Multiple select',
 			question: editorData,
-			points: points,
+            weight: weight,
 			options: options.map((opt, index) => ({
 				...opt,
 				key: String.fromCharCode(65 + index), // A, B, C, D, ...
@@ -403,9 +403,9 @@ const MultipleChoiceModal = ({
 			{ id: 3, text: '', isCorrect: false, color: colors[2] },
 			{ id: 4, text: '', isCorrect: false, color: colors[3] },
 		]);
-		setAnswerType('single');
-		setHoveredOption(null);
-		setPoints(1);
+        setAnswerType('single');
+        setHoveredOption(null);
+        setWeight(1);
 	};
 
 	const handleCancel = () => {
@@ -417,16 +417,16 @@ const MultipleChoiceModal = ({
 			{ id: 3, text: '', isCorrect: false, color: colors[2] },
 			{ id: 4, text: '', isCorrect: false, color: colors[3] },
 		]);
-		setAnswerType('single');
-		setHoveredOption(null);
-		setPoints(1);
+        setAnswerType('single');
+        setHoveredOption(null);
+        setWeight(1);
 		onCancel();
 	};
 
-	const pointsMenu = (
+    const pointsMenu = (
 		<InputNumber
-			value={points}
-			onChange={(v) => setPoints(Number(v) || 0)}
+            value={weight}
+            onChange={(v) => setWeight(Number(v) || 0)}
 			min={0}
 			max={100}
 			style={{ width: 100 }}
@@ -484,7 +484,7 @@ const MultipleChoiceModal = ({
 					<div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
 						<div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
 							<CheckOutlined style={{ color: '#52c41a', fontSize: '16px' }} />
-							<span style={{ fontSize: '13px', fontWeight: 600, color: '#666' }}>Score</span>
+                            <span style={{ fontSize: '13px', fontWeight: 600, color: '#666' }}>Weight</span>
 							{pointsMenu}
 					</div>
 
