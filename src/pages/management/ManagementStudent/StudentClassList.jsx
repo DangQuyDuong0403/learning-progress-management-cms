@@ -23,6 +23,7 @@ import "../ManagementClass/Class/ClassList.css";
 import { useTheme } from "../../../contexts/ThemeContext";
 import { spaceToast } from "../../../component/SpaceToastify";
 import classManagementApi from "../../../apis/backend/classManagement";
+import { useSelector } from "react-redux";
 
 // Predefined colors for classes
 const classColors = [
@@ -57,6 +58,9 @@ const StudentClassList = () => {
   const { t } = useTranslation();
   const { theme } = useTheme();
   const navigate = useNavigate();
+  const userRole = useSelector((state) => state.auth?.user?.role);
+  const isTestTaker = userRole === 'test_taker' || userRole === 'TEST_TAKER';
+  const routePrefix = isTestTaker ? '/test-taker' : '/student';
   
   // Set page title
   usePageTitle(t('studentClassList.title'));
@@ -180,9 +184,9 @@ const StudentClassList = () => {
   };
 
   const handleCardClick = (classItem) => {
-    // Navigate to class menu for student
+    // Navigate to class menu for student/test_taker
     console.log('Navigate to class menu:', classItem.id);
-    navigate(`/student/classes/menu/${classItem.id}`);
+    navigate(`${routePrefix}/classes/menu/${classItem.id}`);
   };
 
   const handlePaginationChange = (page, pageSize) => {

@@ -1505,13 +1505,29 @@ const DailyChallengeSubmissionDetail = () => {
             }}>
               <Button
                 icon={<ArrowLeftOutlined />}
-                onClick={() => {
-                  if (dailyChallengeData?.backPath) {
-                    navigate(dailyChallengeData.backPath);
+              onClick={() => {
+                // Check if this is a student or test_taker route by checking URL path
+                const isStudentRoute = location.pathname.includes('/student/daily-challenges');
+                const isTestTakerRoute = location.pathname.includes('/test-taker/daily-challenges');
+                
+                if (isStudentRoute || isTestTakerRoute) {
+                  // For student/test_taker route, navigate back to daily challenge list
+                  // Try to get classId from location state or construct from submission data
+                  const classId = location.state?.classId || location.search?.match(/classId=([^&]+)/)?.[1];
+                  const routePrefix = isTestTakerRoute ? '/test-taker' : '/student';
+                  
+                  if (classId) {
+                    navigate(`${routePrefix}/classes/daily-challenges/${classId}`);
                   } else {
-                    navigate(-1);
+                    // Fallback: navigate to dashboard or daily challenges list
+                    navigate(`${routePrefix}/dashboard`);
                   }
-                }}
+                } else if (dailyChallengeData?.backPath) {
+                  navigate(dailyChallengeData.backPath);
+                } else {
+                  navigate(-1);
+                }
+              }}
                 className={`daily-challenge-menu-back-button ${theme}-daily-challenge-menu-back-button`}
                 style={{
                   height: '32px',
@@ -4121,7 +4137,23 @@ const DailyChallengeSubmissionDetail = () => {
             <Button
               icon={<ArrowLeftOutlined />}
               onClick={() => {
-                if (dailyChallengeData?.backPath) {
+                // Check if this is a student or test_taker route by checking URL path
+                const isStudentRoute = location.pathname.includes('/student/daily-challenges');
+                const isTestTakerRoute = location.pathname.includes('/test-taker/daily-challenges');
+                
+                if (isStudentRoute || isTestTakerRoute) {
+                  // For student/test_taker route, navigate back to daily challenge list
+                  // Try to get classId from location state or construct from submission data
+                  const classId = location.state?.classId || location.search?.match(/classId=([^&]+)/)?.[1];
+                  const routePrefix = isTestTakerRoute ? '/test-taker' : '/student';
+                  
+                  if (classId) {
+                    navigate(`${routePrefix}/classes/daily-challenges/${classId}`);
+                  } else {
+                    // Fallback: navigate to dashboard or daily challenges list
+                    navigate(`${routePrefix}/dashboard`);
+                  }
+                } else if (dailyChallengeData?.backPath) {
                   navigate(dailyChallengeData.backPath);
                 } else {
                   navigate(-1);
