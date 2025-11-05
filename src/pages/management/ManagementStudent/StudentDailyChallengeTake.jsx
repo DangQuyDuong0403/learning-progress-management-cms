@@ -364,7 +364,6 @@ const SectionQuestionItem = ({ question, index, theme, sectionScore }) => {
       [questionId]: optionKey
     }));
   };
-
   return (
     <>
       <style>
@@ -1502,7 +1501,6 @@ const SectionQuestionItem = ({ question, index, theme, sectionScore }) => {
     </>
   );
 };
-
 // Listening Section Component
 const ListeningSectionItem = ({ question, index, theme, sectionScore }) => {
   const registerAnswerCollector = useContext(AnswerCollectionContext);
@@ -1811,7 +1809,6 @@ const ListeningSectionItem = ({ question, index, theme, sectionScore }) => {
           </Typography.Text>
           </div>
         </div>
-
         {/* Two Column Layout */}
         <div style={{ display: 'flex', gap: '24px', minHeight: '500px' }}>
           {/* Left Column - Audio Player and Transcript */}
@@ -2539,7 +2536,6 @@ const ListeningSectionItem = ({ question, index, theme, sectionScore }) => {
     </>
   );
 };
-
 // Writing Section Component
 const WritingSectionItem = ({ question, index, theme }) => {
   const registerAnswerCollector = useContext(AnswerCollectionContext);
@@ -3078,7 +3074,6 @@ const WritingSectionItem = ({ question, index, theme }) => {
     </>
   );
 };
-
 // Speaking Section Component
 const SpeakingSectionItem = ({ question, index, theme, isViewOnly }) => {
   const registerAnswerCollector = useContext(AnswerCollectionContext);
@@ -3602,7 +3597,6 @@ const SpeakingSectionItem = ({ question, index, theme, isViewOnly }) => {
     </>
   );
 };
-
 // Speaking With Audio Section Component
 const SpeakingWithAudioSectionItem = ({ question, index, theme, sectionScore, isViewOnly }) => {
   const registerAnswerCollector = useContext(AnswerCollectionContext);
@@ -4308,7 +4302,6 @@ const SpeakingWithAudioSectionItem = ({ question, index, theme, sectionScore, is
     </>
   );
 };
-
 // Multiple Choice Container Component
 const MultipleChoiceContainer = ({ theme, data }) => {
   const registerAnswerCollector = useContext(AnswerCollectionContext);
@@ -4910,7 +4903,6 @@ const TrueFalseContainer = ({ theme, data }) => {
     </div>
   );
 };
-
 // Dropdown Container Component
 const DropdownContainer = ({ theme, data }) => {
   const registerAnswerCollector = useContext(AnswerCollectionContext);
@@ -5503,7 +5495,6 @@ const DragDropContainer = ({ theme, data }) => {
     </div>
   );
 };
-
 // Reorder Container Component
 const ReorderContainer = ({ theme, data }) => {
   const registerAnswerCollector = useContext(AnswerCollectionContext);
@@ -6243,8 +6234,6 @@ const FillBlankContainer = ({ theme, data }) => {
     </div>
   );
 };
-
-
 // Generate fake data based on challenge type
 // Transform API response data to component format
 const transformApiDataToComponentFormat = (apiResponse, challengeType) => {
@@ -7020,7 +7009,6 @@ const StudentDailyChallengeTake = () => {
     }, 70 * 1000);
     return () => clearInterval(intervalId);
   }, [loading, isViewOnly, submissionId]);
-
   // Upload any blob: or data:audio URLs inside formatted answers and replace with server URLs
   const replaceBlobUrlsInAnswers = async (questionAnswers) => {
     const uploadedCache = new Map();
@@ -7531,10 +7519,11 @@ const StudentDailyChallengeTake = () => {
 
     try {
       const questionAnswers = collectAllAnswers();
+      const processedAnswers = await replaceBlobUrlsInAnswers(questionAnswers);
       
       const submitData = {
         saveAsDraft: true,
-        questionAnswers: questionAnswers
+        questionAnswers: processedAnswers
       };
 
       setLoading(true);
@@ -7616,10 +7605,11 @@ const StudentDailyChallengeTake = () => {
 
     try {
       const questionAnswers = collectAllAnswers();
+      const processedAnswers = await replaceBlobUrlsInAnswers(questionAnswers);
       
       const submitData = {
         saveAsDraft: false,
-        questionAnswers: questionAnswers
+        questionAnswers: processedAnswers
       };
 
       setLoading(true);
@@ -8266,4 +8256,3 @@ const StudentDailyChallengeTake = () => {
 };
 
 export default StudentDailyChallengeTake;
-
