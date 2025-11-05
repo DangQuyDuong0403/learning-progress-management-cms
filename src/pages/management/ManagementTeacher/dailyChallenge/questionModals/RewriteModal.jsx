@@ -309,21 +309,32 @@ const RewriteModal = ({ visible, onCancel, onSave, questionData = null }) => {
       return;
     }
 
+    // Validate duplicate answers
+    const answerTexts = correctAnswers.map(ans => getPlainText(ans.answer).toLowerCase().trim());
+    const duplicates = answerTexts.filter((text, index) => text && answerTexts.indexOf(text) !== index);
+    if (duplicates.length > 0) {
+      spaceToast.warning('Cannot create duplicate answers. Please ensure all answers are unique.');
+      return;
+    }
+
     // Generate unique positionId for REWRITE question
     const positionId = `a1b2c3${Date.now()}`;
     
-    // Create content.data array with correct answers
+    // Convert HTML to plain text
+    const plainTextQuestion = getPlainText(editorData);
+    
+    // Create content.data array with correct answers (using plain text for answers)
     const contentData = correctAnswers.map((ans, index) => ({
       id: `item${index + 1}`,
-      value: ans.answer,
+      value: getPlainText(ans.answer), // Store plain text instead of HTML
       positionId: positionId,
       correct: true
     }));
 
-    // Add positionId marker to questionText if not already present
-    let questionTextWithPosition = editorData;
+    // Add positionId marker to questionText if not already present (using plain text)
+    let questionTextWithPosition = plainTextQuestion;
     if (!questionTextWithPosition.includes(`[[pos_${positionId}]]`)) {
-      questionTextWithPosition += `<br>[[pos_${positionId}]]`;
+      questionTextWithPosition += `\n[[pos_${positionId}]]`;
     }
     
     const newQuestionData = {
@@ -332,17 +343,20 @@ const RewriteModal = ({ visible, onCancel, onSave, questionData = null }) => {
       title: 'Re-write',
       questionText: questionTextWithPosition,
       question: questionTextWithPosition, // For backward compatibility
-      correctAnswers: correctAnswers,
-      correctAnswer: correctAnswers.map(ans => ans.answer).join(', '),
+      correctAnswers: correctAnswers.map(ans => ({
+        ...ans,
+        answer: getPlainText(ans.answer) // Store plain text
+      })),
+      correctAnswer: correctAnswers.map(ans => getPlainText(ans.answer)).join(', '), // Use plain text
       weight: weight,
       content: {
         data: contentData
       }
     };
 
-    console.log('=== REWRITE QUESTION HTML ===');
-    console.log('Question HTML:', questionTextWithPosition);
-    console.log('Correct Answers:', correctAnswers);
+    console.log('=== REWRITE QUESTION TEXT ===');
+    console.log('Question Text:', questionTextWithPosition);
+    console.log('Correct Answers:', correctAnswers.map(ans => getPlainText(ans.answer)));
     console.log('Content Data:', contentData);
     console.log('Full Question Data:', newQuestionData);
     console.log('================================');

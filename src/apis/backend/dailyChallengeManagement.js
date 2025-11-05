@@ -533,6 +533,34 @@ const dailyChallengeApi = {
 				'accept': '*/*',
 			}
 		});
+	},
+
+	// Append anti-cheat logs to submission
+	appendAntiCheatLogs: (submissionChallengeId, logs) => {
+		const url = `/submission/${submissionChallengeId}/logs`;
+		console.log('AppendAntiCheatLogs API - URL:', url);
+		console.log('AppendAntiCheatLogs API - Logs:', logs);
+		
+		return axiosClient.post(url, { logs }, {
+			headers: {
+				'Content-Type': 'application/json',
+				'accept': '*/*',
+			}
+		});
+	},
+
+	// Mark submission as started by student
+	// Endpoint: POST /challenge-submissions/submission/{submissionId}/start
+	startSubmission: (submissionId) => {
+		const url = `/challenge-submissions/submission/${submissionId}/start`;
+		console.log('StartSubmission API - URL:', url);
+		console.log('StartSubmission API - SubmissionId:', submissionId);
+		
+		return axiosClient.post(url, null, {
+			headers: {
+				'accept': '*/*',
+			}
+		});
 	}
 };
 

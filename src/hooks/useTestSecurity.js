@@ -127,12 +127,24 @@ export const useTestSecurity = (enabled = true, onViolation = null) => {
     if (!enabled) return;
 
     const handleCopy = (e) => {
+      // Capture selected text before preventing default
+      let selectedText = '';
+      try {
+        const selection = window.getSelection();
+        if (selection && selection.toString().trim()) {
+          selectedText = selection.toString().trim();
+        }
+      } catch (err) {
+        // Ignore errors
+      }
+
       e.preventDefault();
       e.stopPropagation();
       logViolation('copy', {
         action: 'copy_blocked',
         message: 'Đã chặn hành động copy',
-        method: e.type // 'copy' event
+        method: e.type, // 'copy' event
+        selectedText: selectedText // Include captured text
       });
       return false;
     };
@@ -140,12 +152,24 @@ export const useTestSecurity = (enabled = true, onViolation = null) => {
     const handleKeyDown = (e) => {
       // Chặn Ctrl+C, Ctrl+Insert (copy)
       if ((e.ctrlKey || e.metaKey) && (e.key === 'c' || e.key === 'C' || e.key === 'Insert')) {
+        // Capture selected text before preventing default
+        let selectedText = '';
+        try {
+          const selection = window.getSelection();
+          if (selection && selection.toString().trim()) {
+            selectedText = selection.toString().trim();
+          }
+        } catch (err) {
+          // Ignore errors
+        }
+
         e.preventDefault();
         e.stopPropagation();
         logViolation('copy', {
           action: 'copy_blocked',
           message: 'Đã chặn Ctrl+C / Ctrl+Insert',
-          key: e.key
+          key: e.key,
+          selectedText: selectedText // Include captured text
         });
         return false;
       }
@@ -192,12 +216,29 @@ export const useTestSecurity = (enabled = true, onViolation = null) => {
     if (!enabled) return;
 
     const handlePaste = (e) => {
+      // Try to read clipboard content before preventing default
+      // Note: This requires clipboard permission and may not work in all browsers
+      let clipboardText = '';
+      if (navigator.clipboard && navigator.clipboard.readText) {
+        navigator.clipboard.readText()
+          .then(text => {
+            // Update log entry with clipboard content if available
+            // This is async, so we'll try to get it in the callback
+          })
+          .catch(err => {
+            // Clipboard read failed (permission denied or other error)
+            console.warn('Could not read clipboard:', err);
+          });
+      }
+
       e.preventDefault();
       e.stopPropagation();
       logViolation('paste', {
         action: 'paste_blocked',
         message: 'Đã chặn hành động paste',
-        method: e.type
+        method: e.type,
+        // Note: clipboardText will be empty here as it's async
+        // The actual clipboard reading should be done in the callback
       });
       return false;
     };

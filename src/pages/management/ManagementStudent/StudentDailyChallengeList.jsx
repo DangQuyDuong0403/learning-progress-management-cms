@@ -19,6 +19,8 @@ import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useTheme } from "../../../contexts/ThemeContext";
 import { dailyChallengeApi } from "../../../apis/apis";
+import dailyChallengeApiBackend from "../../../apis/backend/dailyChallengeManagement";
+import { spaceToast } from "../../../component/SpaceToastify";
 
 // Transform API response data to match UI structure
 const transformApiData = (apiData) => {
@@ -267,7 +269,19 @@ const StudentDailyChallengeList = () => {
 
   // Removed filter handlers per request
 
-  const handleViewClick = (challenge) => {
+  const handleViewClick = async (challenge) => {
+    // If status is PENDING and submissionChallengeId exists, call API to mark as started
+    if (challenge.submissionStatus === 'PENDING' && challenge.submissionChallengeId) {
+      try {
+        await dailyChallengeApiBackend.startSubmission(challenge.submissionChallengeId);
+        // Success - continue with navigation
+      } catch (error) {
+        console.error('Error starting submission:', error);
+        spaceToast.error(t('dailyChallenge.errorStartingChallenge', 'Failed to start challenge. Please try again.'));
+        return; // Don't navigate if API call fails
+      }
+    }
+
     // Navigate to challenge take view (student view)
     navigate(`/student/daily-challenges/take/${challenge.id}`, {
       state: {
@@ -375,30 +389,18 @@ const StudentDailyChallengeList = () => {
         if (record.isEmptyLesson) {
           return <span style={{ color: '#999' }}></span>;
         }
-        const isLate = record.late;
-        const subText = isLate === true
-          ? (t('dailyChallenge.late', 'Late'))
-          : (isLate === false ? t('dailyChallenge.onTime', 'On time') : '');
-        const subColor = isLate === true ? 'rgb(255, 77, 79)' : (isLate === false ? 'rgb(20, 150, 26)' : '#999');
         return (
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
-            <Tooltip placement="topLeft" title={text}>
-              <span style={{ 
-                display: 'block',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap',
-                textAlign: 'left',
-              }}>
-                {text}
-              </span>
-            </Tooltip>
-            {subText && (
-              <span style={{ marginTop: 4, fontSize: '12px', color: subColor }}>
-                {subText}
-              </span>
-            )}
-          </div>
+          <Tooltip placement="topLeft" title={text}>
+            <span style={{ 
+              display: 'block',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+              textAlign: 'left',
+            }}>
+              {text}
+            </span>
+          </Tooltip>
         );
       },
     },
@@ -425,23 +427,27 @@ const StudentDailyChallengeList = () => {
       },
     },
     {
-      title: t('dailyChallenge.startDate'),
-      dataIndex: 'startDate',
-      key: 'startDate',
-      width: 120,
-      align: 'center',
-      render: (startDate) => {
-        return startDate ? new Date(startDate).toLocaleDateString() : '';
-      },
-    },
-    {
       title: t('dailyChallenge.endDate'),
       dataIndex: 'endDate',
       key: 'endDate',
       width: 120,
       align: 'center',
       render: (endDate) => {
-        return endDate ? new Date(endDate).toLocaleDateString() : '';
+        if (!endDate) return '';
+        const date = new Date(endDate);
+        const dateStr = date.toLocaleDateString();
+        const timeStr = date.toLocaleTimeString('vi-VN', { 
+          hour: '2-digit', 
+          minute: '2-digit', 
+          second: '2-digit',
+          hour12: false 
+        });
+        return (
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', lineHeight: 1.2 }}>
+            <span style={{ fontSize: '14px' }}>{dateStr}</span>
+            <span style={{ fontSize: '11px', color: '#888', marginTop: 2 }}>{timeStr}</span>
+          </div>
+        );
       },
     },
     {
@@ -454,6 +460,24 @@ const StudentDailyChallengeList = () => {
         // Show empty state for lessons without challenges
         if (record.isEmptyLesson) {
           return <span></span>;
+        }
+
+        // Check if endDate has passed - only show score after endDate
+        const now = new Date();
+        const endDate = record.endDate ? new Date(record.endDate) : null;
+        const hasEndDatePassed = endDate ? now >= endDate : false;
+
+        // If endDate hasn't passed yet, don't show score
+        if (!hasEndDatePassed) {
+          return (
+            <span style={{
+              fontSize: '16px',
+              color: '#999',
+              fontStyle: 'italic',
+            }}>
+             Not available yet
+            </span>
+          );
         }
 
         const computedScore = totalScore;
@@ -507,82 +531,88 @@ const StudentDailyChallengeList = () => {
         }
         
         const status = record.submissionStatus;
+        const isLate = record.late === true;
+        
         const renderStartLikeButton = (label) => (
-          <Button
-            type="primary"
-            icon={<PlayCircleOutlined />}
-            onClick={() => handleViewClick(record)}
-            className="action-btn-start"
-            style={{
-              borderRadius: '6px',
-              fontWeight: 500,
-              height: '36px',
-              padding: '0 16px',
-              fontSize: '14px',
-              background: theme === 'sun' 
-                ? 'rgb(243, 188, 88)'
-                : 'linear-gradient(135deg, #F3BC58 19%, #E8B04D 64%, #DD9F42 75%, #F3BC58 97%, #D89637 100%)',
-              borderColor: theme === 'sun' ? 'rgb(243, 188, 88)' : '#D89637',
-              color: '#000',
-              border: 'none',
-            }}
-            onMouseEnter={(e) => {
-              if (theme === 'sun') {
-                e.currentTarget.style.background = 'rgb(230, 175, 75)';
-              } else {
-                e.currentTarget.style.background = 'linear-gradient(135deg, #E8B04D 19%, #DD9F42 64%, #D28F37 75%, #E8B04D 97%, #C8862D 100%)';
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (theme === 'sun') {
-                e.currentTarget.style.background = 'rgb(243, 188, 88)';
-              } else {
-                e.currentTarget.style.background = 'linear-gradient(135deg, #F3BC58 19%, #E8B04D 64%, #DD9F42 75%, #F3BC58 97%, #D89637 100%)';
-              }
-            }}
-          >
-            {label}
-          </Button>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+            <Button
+              type="primary"
+              icon={<PlayCircleOutlined />}
+              onClick={() => handleViewClick(record)}
+              className="action-btn-start"
+              style={{
+                borderRadius: '6px',
+                fontWeight: 500,
+                height: '36px',
+                padding: '0 16px',
+                fontSize: '14px',
+                background: 'rgb(244,203,127)',
+                borderColor: 'rgb(244,203,127)',
+                color: '#000',
+                border: 'none',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'rgb(224,183,107)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'rgb(244,203,127)';
+              }}
+            >
+              {label}
+            </Button>
+            {isLate && (
+              <span style={{ 
+                marginTop: '4px',
+                fontSize: '12px', 
+                color: 'rgb(255, 77, 79)',
+                fontWeight: 600,
+              }}>
+                {t('dailyChallenge.late', 'Late')}
+              </span>
+            )}
+          </div>
         );
 
         const renderViewResultButton = (label) => (
-          <Button
-            type="primary"
-            icon={<EyeOutlined />}
-            onClick={() => handleViewResult(record)}
-            className="action-btn-view-result"
-            style={{
-              borderRadius: '6px',
-              fontWeight: 500,
-              height: '36px',
-              padding: '0 16px',
-              fontSize: '14px',
-              background: theme === 'sun' 
-                ? 'rgb(113, 179, 253)'
-                : 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)',
-              borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : '#7228d9',
-              color: '#000',
-              border: 'none',
-            }}
-            onMouseEnter={(e) => {
-              if (theme === 'sun') {
-                e.currentTarget.style.background = 'rgb(93, 159, 233)';
-              } else {
-                e.currentTarget.style.background = 'linear-gradient(135deg, #9C8FB0 19%, #9588AB 64%, #726795 75%, #9A95B0 97%, #5D4F7F 100%)';
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (theme === 'sun') {
-                e.currentTarget.style.background = 'rgb(113, 179, 253)';
-              } else {
-                e.currentTarget.style.background = 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)';
-              }
-            }}
-          >
-            {label}
-          </Button>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+            <Button
+              type="primary"
+              icon={<EyeOutlined />}
+              onClick={() => handleViewResult(record)}
+              className="action-btn-view-result"
+              style={{
+                borderRadius: '6px',
+                fontWeight: 500,
+                height: '36px',
+                padding: '0 16px',
+                fontSize: '14px',
+                background: 'rgb(157,207,242)',
+                borderColor: 'rgb(157,207,242)',
+                color: '#000',
+                border: 'none',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'rgb(137,187,222)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'rgb(157,207,242)';
+              }}
+            >
+              {label}
+            </Button>
+            {isLate && (
+              <span style={{ 
+                marginTop: '4px',
+                fontSize: '12px', 
+                color: 'rgb(255, 77, 79)',
+                fontWeight: 600,
+              }}>
+                {t('dailyChallenge.late', 'Late')}
+              </span>
+            )}
+          </div>
         );
-
+        
         return (
           <Space size="small">
             {status === 'PENDING' && renderStartLikeButton('Do challenge')}
