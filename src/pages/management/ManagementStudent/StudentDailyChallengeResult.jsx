@@ -6189,7 +6189,6 @@ const StudentDailyChallengeResult = () => {
   
   // Other sections collapse states (default collapsed)
   const [isTeacherFeedbackCollapsed, setIsTeacherFeedbackCollapsed] = useState(true);
-  const [isAiFeedbackCollapsed, setIsAiFeedbackCollapsed] = useState(true);
   
   // Submission data (calculated from student answers or from API)
   const [submissionData, setSubmissionData] = useState(null);
@@ -6274,12 +6273,11 @@ const StudentDailyChallengeResult = () => {
             incorrectCount: incorrectCount,
             unansweredCount: unansweredCount > 0 ? unansweredCount : null,
             accuracy: accuracy,
-            timeSpent: location.state?.timeSpent || null,
-            submittedAt: location.state?.submittedAt || null,
-            status: location.state?.status || 'completed',
-            method: location.state?.method || location.state?.submissionMethod || 'Manual',
             teacherFeedback: gradingData.teacherFeedback || null,
+            totalWeight: gradingData.totalWeight != null ? gradingData.totalWeight : (gradingData.maxPossibleWeight != null ? gradingData.maxPossibleWeight : null),
+            maxPossibleWeight: gradingData.maxPossibleWeight != null ? gradingData.maxPossibleWeight : (gradingData.maxPossibleScore != null ? gradingData.maxPossibleScore : null)
           });
+          // AI feedback intentionally not shown on student sidebar
         }
       } catch (error) {
         console.warn('Failed to fetch grading data:', error?.response?.data || error?.message);
@@ -6839,85 +6837,60 @@ const StudentDailyChallengeResult = () => {
 
   return (
     <ThemedLayout customHeader={customHeader}>
-      <div className={`sdc-wrapper ${theme}-sdc-wrapper`} style={{ padding: '24px' }}>
+      {/* Sidebar Toggle Button when collapsed - Show button on left edge (match teacher view) */}
+      {isCollapsed && (
+        <button
+          onClick={() => setIsCollapsed(false)}
+          style={{
+            position: 'fixed',
+            left: '0',
+            top: '50%',
+            transform: 'translateY(-50%)',
+            zIndex: 10001,
+            background: theme === 'sun' ? 'rgba(113, 179, 253, 0.9)' : 'rgba(138, 122, 255, 0.9)',
+            border: 'none',
+            borderTopRightRadius: '8px',
+            borderBottomRightRadius: '8px',
+            padding: '10px 8px',
+            cursor: 'pointer',
+            transition: 'all 0.3s ease',
+            color: '#fff',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+            display: 'flex',
+            alignItems: 'center',
+          }}
+        >
+          <MenuOutlined />
+        </button>
+      )}
+      <div className={`sdc-wrapper ${theme}-sdc-wrapper`} style={{ padding: '24px', position: 'relative' }}>
         <Row gutter={24}>
-          {/* Left Section - Info & Performance */}
+        {/* Left Section - Info & Performance (match teacher sidebar) */}
           <Col 
             xs={24} 
-            lg={isCollapsed ? 2 : 6}
+          lg={isCollapsed ? 0 : 6}
             style={{ 
               transition: 'all 0.3s ease'
             }}
           >
-            <div className="settings-scroll-container" style={{ 
-              position: 'sticky', 
-              top: '0px', 
-              height: isCollapsed ? 'calc(100vh - 40px)' : 'auto',
-              maxHeight: 'calc(100vh - 40px)', 
-              overflowY: isCollapsed ? 'hidden' : 'auto', 
-              paddingBottom: isCollapsed ? '0px' : '80px', 
-              paddingLeft: isCollapsed ? '12px' : '24px', 
-              paddingRight: isCollapsed ? '0px' : '24px', 
-              transition: 'all 0.3s ease',
-              display: isCollapsed ? 'flex' : 'block',
-              alignItems: isCollapsed ? 'center' : 'flex-start',
-              justifyContent: isCollapsed ? 'flex-start' : 'flex-start'
-            }}>
-              {/* Collapsed State - Show only toggle button */}
-              {isCollapsed ? (
-                <Tooltip title={t('common.expand') || 'Expand'} placement="right">
-                  <div
-                    onClick={() => setIsCollapsed(false)}
-                    style={{
-                      width: '40px',
-                      height: '40px',
-                      borderRadius: '50%',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      cursor: 'pointer',
-                      transition: 'all 0.3s ease',
-                      flexShrink: 0,
-                      background: theme === 'sun'
-                        ? 'linear-gradient(135deg, rgba(102, 174, 255, 0.2), rgba(60, 153, 255, 0.2))'
-                        : 'linear-gradient(135deg, rgba(181, 176, 192, 0.25), rgba(131, 119, 160, 0.25))',
-                      border: theme === 'sun'
-                        ? '2px solid rgba(102, 174, 255, 0.4)'
-                        : '2px solid rgba(181, 176, 192, 0.4)',
-                      boxShadow: theme === 'sun'
-                        ? '0 2px 8px rgba(60, 153, 255, 0.2)'
-                        : '0 2px 8px rgba(131, 119, 160, 0.25)',
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.transform = 'scale(1.1)';
-                      e.currentTarget.style.background = theme === 'sun'
-                        ? 'linear-gradient(135deg, rgba(102, 174, 255, 0.35), rgba(60, 153, 255, 0.35))'
-                        : 'linear-gradient(135deg, rgba(181, 176, 192, 0.4), rgba(131, 119, 160, 0.4))';
-                      e.currentTarget.style.boxShadow = theme === 'sun'
-                        ? '0 4px 12px rgba(60, 153, 255, 0.35)'
-                        : '0 4px 12px rgba(131, 119, 160, 0.4)';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.transform = 'scale(1)';
-                      e.currentTarget.style.background = theme === 'sun'
-                        ? 'linear-gradient(135deg, rgba(102, 174, 255, 0.2), rgba(60, 153, 255, 0.2))'
-                        : 'linear-gradient(135deg, rgba(181, 176, 192, 0.25), rgba(131, 119, 160, 0.25))';
-                      e.currentTarget.style.boxShadow = theme === 'sun'
-                        ? '0 2px 8px rgba(60, 153, 255, 0.2)'
-                        : '0 2px 8px rgba(131, 119, 160, 0.25)';
-                    }}
-                  >
-                    <MenuUnfoldOutlined
-                      style={{
-                        fontSize: '20px',
-                        color: theme === 'sun' ? '#1890ff' : '#8377A0',
-                      }}
-                    />
-                  </div>
-                </Tooltip>
-              ) : (
-                /* Expanded State - Show full info */
-                <Card
+          <div className="settings-scroll-container" style={{
+            position: 'sticky',
+            top: '0px',
+            height: 'auto',
+            maxHeight: 'calc(100vh - 40px)',
+            overflowY: 'auto',
+            overflowX: 'visible',
+            paddingBottom: '80px',
+            paddingRight: '40px',
+            transition: 'all 0.3s ease',
+            display: 'block',
+            scrollbarWidth: 'none',
+            msOverflowStyle: 'none',
+          }}>
+            <style>{`
+              .settings-scroll-container::-webkit-scrollbar { display: none; }
+            `}</style>
+            <Card
                   className={`settings-container-card ${theme}-settings-container-card`}
                   style={{
                     borderRadius: '16px',
@@ -6930,70 +6903,34 @@ const StudentDailyChallengeResult = () => {
                     background: theme === 'sun'
                       ? 'linear-gradient(135deg, rgba(255, 255, 255, 1) 0%, rgba(240, 249, 255, 0.95) 100%)'
                       : 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(244, 240, 255, 0.95) 100%)',
-                    backdropFilter: 'blur(10px)'
+                backdropFilter: 'blur(10px)',
+                position: 'relative'
                   }}
                 >
-                  {/* Collapse Icon - At the top */}
-                  <div style={{ 
-                    display: 'flex', 
-                    justifyContent: 'flex-end',
-                    alignItems: 'center',
-                    marginBottom: '16px',
-                    paddingBottom: '16px',
-                    borderBottom: theme === 'sun' 
-                      ? '2px solid rgba(113, 179, 253, 0.15)' 
-                      : '2px solid rgba(138, 122, 255, 0.15)'
-                  }}>
-                    <Tooltip title={t('common.collapse') || 'Collapse'} placement="left">
-                      <div
-                        onClick={() => setIsCollapsed(true)}
-                        style={{
-                          width: '40px',
-                          height: '40px',
-                          borderRadius: '50%',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          cursor: 'pointer',
-                          transition: 'all 0.3s ease',
-                          background: theme === 'sun'
-                            ? 'linear-gradient(135deg, rgba(102, 174, 255, 0.15), rgba(60, 153, 255, 0.15))'
-                            : 'linear-gradient(135deg, rgba(181, 176, 192, 0.2), rgba(131, 119, 160, 0.2))',
-                          border: theme === 'sun'
-                            ? '2px solid rgba(102, 174, 255, 0.3)'
-                            : '2px solid rgba(181, 176, 192, 0.3)',
-                          boxShadow: theme === 'sun'
-                            ? '0 2px 8px rgba(60, 153, 255, 0.15)'
-                            : '0 2px 8px rgba(131, 119, 160, 0.2)',
-                        }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.transform = 'scale(1.1)';
-                          e.currentTarget.style.background = theme === 'sun'
-                            ? 'linear-gradient(135deg, rgba(102, 174, 255, 0.25), rgba(60, 153, 255, 0.25))'
-                            : 'linear-gradient(135deg, rgba(181, 176, 192, 0.3), rgba(131, 119, 160, 0.3))';
-                          e.currentTarget.style.boxShadow = theme === 'sun'
-                            ? '0 4px 12px rgba(60, 153, 255, 0.3)'
-                            : '0 4px 12px rgba(131, 119, 160, 0.35)';
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.transform = 'scale(1)';
-                          e.currentTarget.style.background = theme === 'sun'
-                            ? 'linear-gradient(135deg, rgba(102, 174, 255, 0.15), rgba(60, 153, 255, 0.15))'
-                            : 'linear-gradient(135deg, rgba(181, 176, 192, 0.2), rgba(131, 119, 160, 0.2))';
-                          e.currentTarget.style.boxShadow = theme === 'sun'
-                            ? '0 2px 8px rgba(60, 153, 255, 0.15)'
-                            : '0 2px 8px rgba(131, 119, 160, 0.2)';
-                        }}
-                      >
-                        <MenuFoldOutlined
-                          style={{
-                            fontSize: '16px',
-                            color: theme === 'sun' ? '#1890ff' : '#8377A0',
-                          }}
-                        />
-                      </div>
-                    </Tooltip>
-                  </div>
+              {/* Sidebar Toggle Button - Positioned at the right edge of Card (match teacher) */}
+              <button
+                onClick={() => setIsCollapsed(true)}
+                style={{
+                  position: 'absolute',
+                  right: '-32px',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  zIndex: 1001,
+                  background: theme === 'sun' ? 'rgba(113, 179, 253, 0.9)' : 'rgba(138, 122, 255, 0.9)',
+                  border: 'none',
+                  borderTopRightRadius: '8px',
+                  borderBottomRightRadius: '8px',
+                  padding: '10px 8px',
+                  cursor: 'pointer',
+                  transition: 'all 0.3s ease',
+                  color: '#fff',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+                  display: 'flex',
+                  alignItems: 'center',
+                }}
+              >
+                <CloseOutlined />
+              </button>
 
                   {/* Header with Tabs */}
                   <div style={{ 
@@ -7204,7 +7141,7 @@ const StudentDailyChallengeResult = () => {
                                           marginBottom: '4px'
                                         }}
                                       >
-                                        {`${submission.score}/${submission.maxPoints || 10}`}
+                                        {`${submission.score}/10`}
                                       </Typography.Text>
                                       <Typography.Text
                                         style={{
@@ -7440,7 +7377,7 @@ const StudentDailyChallengeResult = () => {
                               </div>
                             )}
 
-                            {/* Submission Details */}
+                            {/* Submission Details (match teacher sidebar) */}
                             <div style={{
                               padding: '12px 0',
                               borderTop: `1px solid ${theme === 'sun' ? '#E0E0E0' : 'rgba(255, 255, 255, 0.1)'}`
@@ -7448,56 +7385,26 @@ const StudentDailyChallengeResult = () => {
                               <Space direction="vertical" size={8} style={{ width: '100%' }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                   <Typography.Text style={{ fontSize: '12px', color: theme === 'sun' ? '#666' : '#999' }}>
-                                    Time Used:
+                                    Total Weight:
                                   </Typography.Text>
                                   <Typography.Text style={{ fontSize: '12px', fontWeight: 500, color: theme === 'sun' ? '#000' : '#fff' }}>
-                                    {submission.timeSpent != null ? `${submission.timeSpent} minutes` : '-'}
+                                    {submission.totalWeight != null ? submission.totalWeight : '-'}
                                   </Typography.Text>
                                 </div>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                   <Typography.Text style={{ fontSize: '12px', color: theme === 'sun' ? '#666' : '#999' }}>
-                                    Time Limit:
+                                    Max Possible Weight:
                                   </Typography.Text>
                                   <Typography.Text style={{ fontSize: '12px', fontWeight: 500, color: theme === 'sun' ? '#000' : '#fff' }}>
-                                    {location.state?.timeLimit ? `${location.state.timeLimit} minutes` : '-'}
+                                    {submission.maxPossibleWeight != null ? submission.maxPossibleWeight : (submission.maxPoints != null ? submission.maxPoints : '-')}
                                   </Typography.Text>
                                 </div>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                   <Typography.Text style={{ fontSize: '12px', color: theme === 'sun' ? '#666' : '#999' }}>
-                                    Submitted:
+                                    Total Questions:
                                   </Typography.Text>
                                   <Typography.Text style={{ fontSize: '12px', fontWeight: 500, color: theme === 'sun' ? '#000' : '#fff' }}>
-                                    {submission.submittedAt ? new Date(submission.submittedAt).toLocaleDateString('en-US', {
-                                      month: 'short',
-                                      day: 'numeric',
-                                      hour: '2-digit',
-                                      minute: '2-digit'
-                                    }) : '-'}
-                                  </Typography.Text>
-                                </div>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                  <Typography.Text style={{ fontSize: '12px', color: theme === 'sun' ? '#666' : '#999' }}>
-                                    Status:
-                                  </Typography.Text>
-                                  {submission.status ? (
-                                    <Space size={4}>
-                                      <CheckCircleOutlined style={{ color: '#52c41a', fontSize: '14px' }} />
-                                      <Typography.Text style={{ fontSize: '12px', fontWeight: 500, color: '#52c41a' }}>
-                                        On Time
-                                      </Typography.Text>
-                                    </Space>
-                                  ) : (
-                                    <Typography.Text style={{ fontSize: '12px', fontWeight: 500, color: theme === 'sun' ? '#000' : '#fff' }}>
-                                      -
-                                    </Typography.Text>
-                                  )}
-                                </div>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                  <Typography.Text style={{ fontSize: '12px', color: theme === 'sun' ? '#666' : '#999' }}>
-                                    Method:
-                                  </Typography.Text>
-                                  <Typography.Text style={{ fontSize: '12px', fontWeight: 500, color: theme === 'sun' ? '#000' : '#fff' }}>
-                                    {submission.method || submission.submissionMethod || 'Manual'}
+                                    {submission.totalQuestions != null ? submission.totalQuestions : '-'}
                                   </Typography.Text>
                                 </div>
                               </Space>
@@ -7567,100 +7474,18 @@ const StudentDailyChallengeResult = () => {
                             <UpOutlined style={{ fontSize: '14px', color: theme === 'sun' ? '#4a5568' : '#e2e8f0' }} />
                           )}
                         </div>
-                        {!isTeacherFeedbackCollapsed && (
-                          <div style={{
-                            padding: '12px',
-                            background: theme === 'sun' ? '#f9f9f9' : 'rgba(255, 255, 255, 0.05)',
-                            borderRadius: '8px',
-                            border: `1px solid ${theme === 'sun' ? '#e8e8e8' : 'rgba(255, 255, 255, 0.1)'}`,
-                            minHeight: '100px',
-                            fontSize: '14px',
-                            lineHeight: '1.6',
-                            color: theme === 'sun' ? '#333' : '#ddd',
-                            whiteSpace: 'pre-wrap'
-                          }}>
-                            No feedback available yet.
-                          </div>
-                        )}
+                        {!isTeacherFeedbackCollapsed && (() => {
+                          const displayFeedback = submission?.teacherFeedback || '';
+                          return (
+                            <div style={{ border: '1px solid #eee', borderRadius: '8px', padding: '16px', background: theme === 'sun' ? '#ffffff' : 'rgba(255,255,255,0.03)' }}>
+                              <div style={{ fontSize: '15px', lineHeight: '1.8', color: theme === 'sun' ? '#333' : '#e2e8f0' }}
+                                dangerouslySetInnerHTML={{ __html: (displayFeedback && displayFeedback.trim().length > 0) ? displayFeedback : '<i>No feedback yet</i>' }} />
+                            </div>
+                          );
+                        })()}
                       </div>
 
-                      <Divider style={{ margin: '16px 0' }} />
-
-                      {/* AI Feedback Section - View Only */}
-                      <div style={{ marginBottom: '16px' }}>
-                        <div 
-                          onClick={() => setIsAiFeedbackCollapsed(!isAiFeedbackCollapsed)}
-                          style={{ 
-                            cursor: 'pointer',
-                            marginBottom: '12px',
-                            padding: '3px 16px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            gap: '8px',
-                            background: theme === 'sun' 
-                              ? 'linear-gradient(135deg, rgba(148, 163, 184, 0.06) 0%, rgba(148, 163, 184, 0.03) 100%)'
-                              : 'linear-gradient(135deg, rgba(226, 232, 240, 0.08) 0%, rgba(226, 232, 240, 0.04) 100%)',
-                            borderRadius: '8px',
-                            border: `1px solid ${theme === 'sun' ? 'rgba(148, 163, 184, 0.15)' : 'rgba(226, 232, 240, 0.2)'}`,
-                            transition: 'all 0.3s ease',
-                            boxShadow: theme === 'sun' 
-                              ? '0 1px 4px rgba(148, 163, 184, 0.05)' 
-                              : '0 1px 4px rgba(226, 232, 240, 0.08)'
-                          }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.background = theme === 'sun' 
-                              ? 'linear-gradient(135deg, rgba(148, 163, 184, 0.1) 0%, rgba(148, 163, 184, 0.06) 100%)'
-                              : 'linear-gradient(135deg, rgba(226, 232, 240, 0.12) 0%, rgba(226, 232, 240, 0.08) 100%)';
-                            e.currentTarget.style.transform = 'translateY(-1px)';
-                            e.currentTarget.style.boxShadow = theme === 'sun' 
-                              ? '0 2px 8px rgba(148, 163, 184, 0.1)' 
-                              : '0 2px 8px rgba(226, 232, 240, 0.15)';
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.background = theme === 'sun' 
-                              ? 'linear-gradient(135deg, rgba(148, 163, 184, 0.06) 0%, rgba(148, 163, 184, 0.03) 100%)'
-                              : 'linear-gradient(135deg, rgba(226, 232, 240, 0.08) 0%, rgba(226, 232, 240, 0.04) 100%)';
-                            e.currentTarget.style.transform = 'translateY(0)';
-                            e.currentTarget.style.boxShadow = theme === 'sun' 
-                              ? '0 1px 4px rgba(148, 163, 184, 0.05)' 
-                              : '0 1px 4px rgba(226, 232, 240, 0.08)';
-                          }}
-                        >
-                          <Typography.Title 
-                            level={5} 
-                            style={{ 
-                              margin: 0,
-                              fontSize: '16px', 
-                              fontWeight: 500, 
-                              color: theme === 'sun' ? '#4a5568' : '#e2e8f0',
-                              userSelect: 'none'
-                            }}
-                          >
-                            AI Feedback
-                          </Typography.Title>
-                          {isAiFeedbackCollapsed ? (
-                            <DownOutlined style={{ fontSize: '14px', color: theme === 'sun' ? '#4a5568' : '#e2e8f0' }} />
-                          ) : (
-                            <UpOutlined style={{ fontSize: '14px', color: theme === 'sun' ? '#4a5568' : '#e2e8f0' }} />
-                          )}
-                        </div>
-                        {!isAiFeedbackCollapsed && (
-                          <div style={{
-                            padding: '12px',
-                            background: theme === 'sun' ? '#f9f9f9' : 'rgba(255, 255, 255, 0.05)',
-                            borderRadius: '8px',
-                            border: `1px solid ${theme === 'sun' ? '#e8e8e8' : 'rgba(255, 255, 255, 0.1)'}`,
-                            minHeight: '100px',
-                            fontSize: '14px',
-                            lineHeight: '1.6',
-                            color: theme === 'sun' ? '#333' : '#ddd',
-                            whiteSpace: 'pre-wrap'
-                          }}>
-                            No AI feedback available yet.
-                          </div>
-                        )}
-                      </div>
+                      {/* AI Feedback removed as requested */}
                     </>
                   ) : (
                     /* Questions Tab */
@@ -7707,14 +7532,13 @@ const StudentDailyChallengeResult = () => {
                     </>
                   )}
                 </Card>
-              )}
-            </div>
+          </div>
           </Col>
 
-          {/* Right Section - Questions Review */}
+        {/* Right Section - Questions Review */}
           <Col 
             xs={24} 
-            lg={isCollapsed ? 22 : 18}
+          lg={isCollapsed ? 24 : 18}
             style={{ 
               transition: 'all 0.3s ease'
             }}
