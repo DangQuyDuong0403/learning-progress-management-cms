@@ -71,9 +71,19 @@ export default function Login() {
 		} else {
 				// Normal login success
 				spaceToast.success(response.message);
-				// Redirect to student dashboard
+				// Redirect based on role
+				const userRole = response.data.role;
+				let redirectPath = '/student/dashboard';
+				
+				// Check if role is TEST_TAKER (uppercase or lowercase)
+				if (userRole === 'TEST_TAKER' || userRole === 'test_taker') {
+					redirectPath = '/test-taker/dashboard';
+				} else if (userRole === 'STUDENT' || userRole === 'student') {
+					redirectPath = '/student/dashboard';
+				}
+				
 				setTimeout(() => {
-					navigate('/student/dashboard');
+					navigate(redirectPath);
 				}, 1000);
 			}
 			

@@ -96,12 +96,13 @@ const DailyChallengeSubmissionList = () => {
 
   // Enter/exit daily challenge menu mode
   useEffect(() => {
-    // Derive info from navigation state (passed from Performance.jsx)
+    // Derive info from navigation state or query params (when coming back from detail via ?classId=...)
+    const params = new URLSearchParams(location.search || '');
     const challengeInfo = {
-      classId: location.state?.classId || null,
-      className: location.state?.className || null,
+      classId: location.state?.classId || params.get('classId') || null,
+      className: location.state?.className || params.get('className') || null,
       challengeId: location.state?.challengeId || id,
-      challengeName: location.state?.challengeName || null,
+      challengeName: location.state?.challengeName || params.get('challengeName') || null,
     };
 
     const getBackPath = () => {
@@ -140,7 +141,7 @@ const DailyChallengeSubmissionList = () => {
     return () => {
       exitDailyChallengeMenu();
     };
-  }, [enterDailyChallengeMenu, exitDailyChallengeMenu, id, location.state, user, dailyChallengeData?.subtitle, dailyChallengeData?.className]);
+  }, [enterDailyChallengeMenu, exitDailyChallengeMenu, id, location.state, location.search, user, dailyChallengeData?.subtitle, dailyChallengeData?.className]);
 
   // Update total count in floating menu
   useEffect(() => {
@@ -153,8 +154,23 @@ const DailyChallengeSubmissionList = () => {
   };
 
   const handleViewClick = (submission) => {
-    navigate(`/teacher/daily-challenges/detail/${id}/submission/${submission.submissionId}`,
-      { state: { studentName: submission?.studentName || null } }
+    // Preserve class/challenge info through navigation so back chain retains context
+    const params = new URLSearchParams(location.search || '');
+    const classId = location.state?.classId || params.get('classId') || null;
+    const className = location.state?.className || params.get('className') || null;
+    const challengeName = location.state?.challengeName || params.get('challengeName') || null;
+
+    navigate(
+      `/teacher/daily-challenges/detail/${id}/submissions/${submission.submissionId}`,
+      {
+        state: {
+          studentName: submission?.studentName || null,
+          classId: classId,
+          className: className,
+          challengeId: id,
+          challengeName: challengeName,
+        },
+      }
     );
   };
 

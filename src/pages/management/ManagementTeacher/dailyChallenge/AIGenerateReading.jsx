@@ -115,6 +115,16 @@ const AIGenerateReading = () => {
     { value: "REARRANGE", label: 'Rearrange', icon: '🔀', color: primaryColor, bgColor: primaryColorWithAlpha },
   ], [t, primaryColor, primaryColorWithAlpha]);
 
+  // Initialize right panel (settings/upload) from navigation state
+  useEffect(() => {
+    const source = location.state?.aiSource;
+    if (source === 'settings') {
+      setQuestionSettingsMode('manual');
+    } else if (source === 'file') {
+      setQuestionSettingsMode('upload');
+    }
+  }, [location.state?.aiSource]);
+
   // Helpers (match AIGenerateQuestions behaviors) - unused utilities removed
 
   // Normalizer borrowed from AIGenerateQuestions (slightly trimmed to fit)
@@ -132,7 +142,7 @@ const AIGenerateReading = () => {
         case 'MULTIPLE_SELECT': {
           const optionsSource = Array.isArray(q?.options) ? q.options : Array.isArray(q?.content?.data) ? q.content.data : [];
           const opts = optionsSource.map((o, i) => ({ key: toKey(i), text: o?.text ?? o?.value ?? '', isCorrect: Boolean(o?.isCorrect || o?.correct) }));
-          return { id: nextId(), type, title: `Question ${counter}`, question: q?.question || q?.questionText || '', options: opts, points: q?.points ?? q?.score ?? 1 };
+          return { id: nextId(), type, title: `Question ${counter}`, question: q?.question || q?.questionText || '', options: opts, points: q?.points ?? q?.weight ?? q?.score ?? 1 };
         }
         case 'TRUE_OR_FALSE': {
           // Prefer backend-provided options if present; otherwise synthesize both True/False
@@ -157,13 +167,13 @@ const AIGenerateReading = () => {
             title: `Question ${counter}`,
             question: sanitizedQuestion,
             options,
-            points: q?.points ?? q?.score ?? 1,
+            points: q?.points ?? q?.weight ?? q?.score ?? 1,
           };
         }
         case 'FILL_IN_THE_BLANK':
         case 'DROPDOWN':
         case 'DRAG_AND_DROP':
-          return { id: nextId(), type, title: `Question ${counter}`, question: q?.question || q?.questionText || '', questionText: q?.questionText || q?.question || '', content: { data: Array.isArray(q?.content?.data) ? q.content.data : [] }, points: q?.points ?? q?.score ?? 1 };
+          return { id: nextId(), type, title: `Question ${counter}`, question: q?.question || q?.questionText || '', questionText: q?.questionText || q?.question || '', content: { data: Array.isArray(q?.content?.data) ? q.content.data : [] }, points: q?.points ?? q?.weight ?? q?.score ?? 1 };
         case 'REARRANGE': {
           const contentItems = Array.isArray(q?.content?.data) ? q.content.data : [];
           // Map positionId -> value
@@ -185,7 +195,7 @@ const AIGenerateReading = () => {
             sourceItems: words,
             correctOrder: words,
             content: { data: contentItems },
-            points: q?.points ?? q?.score ?? 1,
+            points: q?.points ?? q?.weight ?? q?.score ?? 1,
           };
         }
         default:
@@ -343,7 +353,7 @@ const AIGenerateReading = () => {
             return {
               questionText: q.question || q.questionText || '',
               orderNumber,
-              score: q.points || 1,
+              weight: q.points || 1,
               questionType: q.type === 'TRUE_OR_FALSE' ? 'TRUE_OR_FALSE' : q.type,
               content: { data: toData((q.options || []).map((o, idx) => ({ id: o.key || `opt${idx + 1}`, value: o.text || '', correct: o.isCorrect === true }))) },
               toBeDeleted: false,
@@ -356,13 +366,13 @@ const AIGenerateReading = () => {
             return {
               questionText: q.questionText || q.question || '',
               orderNumber,
-              score: q.points || 1,
+              weight: q.points || 1,
               questionType: q.type,
               content: { data: toData(q.content?.data) },
               toBeDeleted: false,
             };
           default:
-            return { questionText: q.question || '', orderNumber, score: 1, questionType: 'MULTIPLE_CHOICE', content: { data: [] }, toBeDeleted: false };
+            return { questionText: q.question || '', orderNumber, weight: 1, questionType: 'MULTIPLE_CHOICE', content: { data: [] }, toBeDeleted: false };
         }
       };
       // For reading: one section contains multiple questions, each question has its own orderNumber

@@ -22,6 +22,7 @@ import usePageTitle from "../../../hooks/usePageTitle";
 import { spaceToast } from "../../../component/SpaceToastify";
 import dailyChallengeApi from "../../../apis/backend/dailyChallengeManagement";
 import { useTestSecurity } from "../../../hooks/useTestSecurity";
+import TextTranslator from "../../../component/TextTranslator/TextTranslator";
 
 // Context for collecting answers from child components
 const AnswerCollectionContext = createContext(null);
@@ -364,7 +365,6 @@ const SectionQuestionItem = ({ question, index, theme, sectionScore }) => {
       [questionId]: optionKey
     }));
   };
-
   return (
     <>
       <style>
@@ -1502,7 +1502,6 @@ const SectionQuestionItem = ({ question, index, theme, sectionScore }) => {
     </>
   );
 };
-
 // Listening Section Component
 const ListeningSectionItem = ({ question, index, theme, sectionScore }) => {
   const registerAnswerCollector = useContext(AnswerCollectionContext);
@@ -1541,11 +1540,25 @@ const ListeningSectionItem = ({ question, index, theme, sectionScore }) => {
     question.questions.forEach(q => {
       const getAnswer = () => {
         let answer = null;
+        let options;
 
         if (q.type === 'MULTIPLE_CHOICE' || q.type === 'TRUE_OR_FALSE') {
           answer = selectedAnswers[q.id] || null;
+          if (q?.options && Array.isArray(q.options) && q.options.length > 0) {
+            options = q.options.map((opt, idx) => ({ key: opt.key || String.fromCharCode(65 + idx), text: opt.text }));
+          } else if (q?.content?.data && Array.isArray(q.content.data)) {
+            options = q.content.data.map((d, idx) => ({
+              key: q.type === 'TRUE_OR_FALSE' ? (String(d.value).toLowerCase() === 'true' ? 'A' : 'B') : (d.id || String.fromCharCode(65 + idx)),
+              text: d.value
+            }));
+          }
         } else if (q.type === 'MULTIPLE_SELECT') {
           answer = selectedAnswers[q.id] || [];
+          if (q?.options && Array.isArray(q.options) && q.options.length > 0) {
+            options = q.options.map((opt, idx) => ({ key: opt.key || String.fromCharCode(65 + idx), text: opt.text }));
+          } else if (q?.content?.data && Array.isArray(q.content.data)) {
+            options = q.content.data.map((d, idx) => ({ key: d.id || String.fromCharCode(65 + idx), text: d.value }));
+          }
         } else if (q.type === 'DROPDOWN') {
           // Collect all dropdown answers for this question
           const dropdownAnswers = {};
@@ -1587,7 +1600,7 @@ const ListeningSectionItem = ({ question, index, theme, sectionScore }) => {
         const normalizedType = (q.type === 'FILL_IN_THE_BLANK') ? 'FILL_BLANK'
           : (q.type === 'REARRANGE') ? 'REORDER'
           : q.type;
-        return answer ? { answer, questionType: normalizedType } : null;
+        return answer ? { answer, questionType: normalizedType, options } : null;
       };
 
       const unregister = registerAnswerCollector(q.id, getAnswer);
@@ -1613,11 +1626,34 @@ const ListeningSectionItem = ({ question, index, theme, sectionScore }) => {
 
         if (q.type === 'MULTIPLE_CHOICE' || q.type === 'TRUE_OR_FALSE') {
           if (typeof answer === 'string') {
-            setSelectedAnswers(prev => ({ ...prev, [q.id]: answer }));
+            // Map restored text/value back to option key (A/B/...)
+            let options = [];
+            if (q?.options && Array.isArray(q.options) && q.options.length > 0) {
+              options = q.options.map((opt, idx) => ({ key: opt.key || String.fromCharCode(65 + idx), text: typeof opt.text === 'string' ? opt.text.replace(/<[^>]*>/g,' ').replace(/&nbsp;/g,' ').replace(/\s+/g,' ').trim() : opt.text }));
+            } else if (q?.content?.data && Array.isArray(q.content.data)) {
+              options = q.content.data.map((d, idx) => ({
+                key: q.type === 'TRUE_OR_FALSE' ? (String(d.value).toLowerCase() === 'true' ? 'A' : 'B') : (d.id || String.fromCharCode(65 + idx)),
+                text: typeof d.value === 'string' ? d.value.replace(/<[^>]*>/g,' ').replace(/&nbsp;/g,' ').replace(/\s+/g,' ').trim() : d.value
+              }));
+            }
+            const normalized = String(answer).replace(/<[^>]*>/g,' ').replace(/&nbsp;/g,' ').replace(/\s+/g,' ').trim();
+            const match = options.find(o => o.text === normalized || o.key === normalized);
+            setSelectedAnswers(prev => ({ ...prev, [q.id]: match ? match.key : normalized }));
           }
         } else if (q.type === 'MULTIPLE_SELECT') {
           if (Array.isArray(answer)) {
-            setSelectedAnswers(prev => ({ ...prev, [q.id]: answer }));
+            let options = [];
+            if (q?.options && Array.isArray(q.options) && q.options.length > 0) {
+              options = q.options.map((opt, idx) => ({ key: opt.key || String.fromCharCode(65 + idx), text: typeof opt.text === 'string' ? opt.text.replace(/<[^>]*>/g,' ').replace(/&nbsp;/g,' ').replace(/\s+/g,' ').trim() : opt.text }));
+            } else if (q?.content?.data && Array.isArray(q.content.data)) {
+              options = q.content.data.map((d, idx) => ({ key: d.id || String.fromCharCode(65 + idx), text: typeof d.value === 'string' ? d.value.replace(/<[^>]*>/g,' ').replace(/&nbsp;/g,' ').replace(/\s+/g,' ').trim() : d.value }));
+            }
+            const keys = answer.map(val => {
+              const normalized = String(val).replace(/<[^>]*>/g,' ').replace(/&nbsp;/g,' ').replace(/\s+/g,' ').trim();
+              const match = options.find(o => o.text === normalized || o.key === normalized);
+              return match ? match.key : normalized;
+            });
+            setSelectedAnswers(prev => ({ ...prev, [q.id]: keys }));
           }
         } else if (q.type === 'DROPDOWN') {
           if (typeof answer === 'object' && answer !== null && !Array.isArray(answer)) {
@@ -1811,7 +1847,6 @@ const ListeningSectionItem = ({ question, index, theme, sectionScore }) => {
           </Typography.Text>
           </div>
         </div>
-
         {/* Two Column Layout */}
         <div style={{ display: 'flex', gap: '24px', minHeight: '500px' }}>
           {/* Left Column - Audio Player and Transcript */}
@@ -2539,7 +2574,6 @@ const ListeningSectionItem = ({ question, index, theme, sectionScore }) => {
     </>
   );
 };
-
 // Writing Section Component
 const WritingSectionItem = ({ question, index, theme }) => {
   const registerAnswerCollector = useContext(AnswerCollectionContext);
@@ -3017,7 +3051,6 @@ const WritingSectionItem = ({ question, index, theme }) => {
                   </div>
                 </div>
               ) : null}
-
               {/* Show uploaded files below options */}
               {uploadedFiles.length > 0 && (
                 <div style={{ marginTop: '20px' }}>
@@ -3078,7 +3111,6 @@ const WritingSectionItem = ({ question, index, theme }) => {
     </>
   );
 };
-
 // Speaking Section Component
 const SpeakingSectionItem = ({ question, index, theme, isViewOnly }) => {
   const registerAnswerCollector = useContext(AnswerCollectionContext);
@@ -3332,7 +3364,6 @@ const SpeakingSectionItem = ({ question, index, theme, isViewOnly }) => {
             ({question.points} {question.points > 1 ? 'points' : 'point'})
           </Typography.Text>
         </div>
-
         {/* Layout: Left - Prompt, Right - Recording */}
         <div style={{ display: 'flex', gap: '24px', alignItems: 'flex-start' }}>
           {/* Left Section - Prompt */}
@@ -3602,7 +3633,6 @@ const SpeakingSectionItem = ({ question, index, theme, isViewOnly }) => {
     </>
   );
 };
-
 // Speaking With Audio Section Component
 const SpeakingWithAudioSectionItem = ({ question, index, theme, sectionScore, isViewOnly }) => {
   const registerAnswerCollector = useContext(AnswerCollectionContext);
@@ -3831,7 +3861,6 @@ const SpeakingWithAudioSectionItem = ({ question, index, theme, sectionScore, is
       setCurrentTime(newTime);
     }
   };
-
   const handleVolumeChange = (e) => {
     const newVolume = parseFloat(e.target.value);
     setVolume(newVolume);
@@ -4308,7 +4337,6 @@ const SpeakingWithAudioSectionItem = ({ question, index, theme, sectionScore, is
     </>
   );
 };
-
 // Multiple Choice Container Component
 const MultipleChoiceContainer = ({ theme, data }) => {
   const registerAnswerCollector = useContext(AnswerCollectionContext);
@@ -4427,7 +4455,13 @@ const MultipleChoiceContainer = ({ theme, data }) => {
           gap: '14px', 
           marginTop: '12px' 
         }}>
-          {(optionsFromApi || ['A','B','C','D'].map((k, i) => ({ key: k, text: ['Ho Chi Minh City', 'Hanoi', 'Da Nang', 'Can Tho'][i] }))).map((opt, idx) => {
+          {(
+            optionsFromApi
+              || (Array.isArray(data?.content?.data) && data.content.data.length > 0
+                    ? data.content.data.map((d, idx) => ({ key: d.id || String.fromCharCode(65 + idx), text: d.value }))
+                    : null)
+              || ['A','B','C','D'].map((k, i) => ({ key: k, text: ['Ho Chi Minh City', 'Hanoi', 'Da Nang', 'Can Tho'][i] }))
+          ).map((opt, idx) => {
             const key = opt.key || String.fromCharCode(65 + idx);
             const isSelected = selectedAnswer === key;
             return (
@@ -4636,7 +4670,13 @@ const MultipleSelectContainer = ({ theme, data }) => {
           gap: '14px', 
           marginTop: '12px' 
         }}>
-          {(optionsFromApi || ['A','B','C','D'].map((k,i)=>({ key:k, text: ['Vietnam','Thailand','Japan','Malaysia'][i] }))).map((opt, idx) => {
+          {(
+            optionsFromApi
+              || (Array.isArray(data?.content?.data) && data.content.data.length > 0
+                    ? data.content.data.map((d, idx) => ({ key: d.id || String.fromCharCode(65 + idx), text: d.value }))
+                    : null)
+              || ['A','B','C','D'].map((k,i)=>({ key:k, text: ['Vietnam','Thailand','Japan','Malaysia'][i] }))
+          ).map((opt, idx) => {
             const key = opt.key || String.fromCharCode(65 + idx);
             const isSelected = selectedAnswers.includes(key);
             return (
@@ -4712,7 +4752,6 @@ const MultipleSelectContainer = ({ theme, data }) => {
     </div>
   );
 };
-
 // True/False Container Component
 const TrueFalseContainer = ({ theme, data }) => {
   const registerAnswerCollector = useContext(AnswerCollectionContext);
@@ -4910,7 +4949,6 @@ const TrueFalseContainer = ({ theme, data }) => {
     </div>
   );
 };
-
 // Dropdown Container Component
 const DropdownContainer = ({ theme, data }) => {
   const registerAnswerCollector = useContext(AnswerCollectionContext);
@@ -5149,7 +5187,6 @@ const DropdownContainer = ({ theme, data }) => {
     </div>
   );
 };
-
 // Drag and Drop Container Component
 const DragDropContainer = ({ theme, data }) => {
   const registerAnswerCollector = useContext(AnswerCollectionContext);
@@ -5503,7 +5540,6 @@ const DragDropContainer = ({ theme, data }) => {
     </div>
   );
 };
-
 // Reorder Container Component
 const ReorderContainer = ({ theme, data }) => {
   const registerAnswerCollector = useContext(AnswerCollectionContext);
@@ -5525,11 +5561,17 @@ const ReorderContainer = ({ theme, data }) => {
     if (!registerAnswerCollector || !data?.id) return;
     
     const getAnswer = () => {
-      // Get items in order from droppedItems
-      const orderedItems = Array.from({ length: Object.keys(droppedItems).length }, (_, i) => {
-        return droppedItems[i] || null;
-      }).filter(Boolean);
-      return orderedItems.length > 0 ? { answer: orderedItems, questionType: 'REORDER' } : null;
+      // Get items in order from droppedItems (support sparse indices)
+      const indexKeys = Object.keys(droppedItems)
+        .map(k => parseInt(k, 10))
+        .filter(i => !Number.isNaN(i))
+        .sort((a, b) => a - b);
+      const orderedItems = indexKeys
+        .map(i => droppedItems[i])
+        .filter(v => v !== undefined && v !== null && String(v).trim() !== '');
+      if (orderedItems.length === 0) return null;
+      const options = (data?.content?.data || []).map((d, idx) => ({ key: d.id || String.fromCharCode(65 + idx), text: d.value }));
+      return { answer: orderedItems, questionType: 'REORDER', options };
     };
     
     const unregister = registerAnswerCollector(data.id, getAnswer);
@@ -5916,7 +5958,6 @@ const ReorderContainer = ({ theme, data }) => {
     </div>
   );
 };
-
 // Rewrite Container Component
 const RewriteContainer = ({ theme, data }) => {
   const registerAnswerCollector = useContext(AnswerCollectionContext);
@@ -6243,8 +6284,6 @@ const FillBlankContainer = ({ theme, data }) => {
     </div>
   );
 };
-
-
 // Generate fake data based on challenge type
 // Transform API response data to component format
 const transformApiDataToComponentFormat = (apiResponse, challengeType) => {
@@ -6401,8 +6440,6 @@ const transformApiDataToComponentFormat = (apiResponse, challengeType) => {
 
   return { questions, readingSections, listeningSections, writingSections, speakingSections };
 };
-
-
 const StudentDailyChallengeTake = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -6424,6 +6461,7 @@ const StudentDailyChallengeTake = () => {
   });
   const questionRefs = useRef({});
   const [submitModalVisible, setSubmitModalVisible] = useState(false);
+  const [submitConfirmLoading, setSubmitConfirmLoading] = useState(false);
   const [submissionId, setSubmissionId] = useState(null);
   
   // Auto-save UI state
@@ -6437,6 +6475,10 @@ const StudentDailyChallengeTake = () => {
   const answerCollectorsRef = useRef(new Map());
   // Answer restoration system: store answer setter functions from child components
   const answerRestorersRef = useRef(new Map());
+  // Map questionId -> original content.data (for id lookup when formatting answers)
+  const contentDataByQuestionIdRef = useRef(new Map());
+  // Map questionId -> array of positionIds in order of appearance in questionText ([[pos_xxx]]...)
+  const positionIdsByQuestionIdRef = useRef(new Map());
   
   // Timer state - countdown from 60 minutes (3600 seconds)
   const [timeRemaining, setTimeRemaining] = useState(60 * 60); // 60 minutes in seconds
@@ -6447,6 +6489,8 @@ const StudentDailyChallengeTake = () => {
   const violationCountRef = useRef(new Map()); // Track violation count per type: { 'tab_switch': 1, 'copy': 0, ... }
   const pendingLogsRef = useRef([]); // Store logs that need to be sent to backend
   const [isAntiCheatEnabled, setIsAntiCheatEnabled] = useState(false);
+  const [allowTranslateOnScreen, setAllowTranslateOnScreen] = useState(false);
+  const [allowShuffleQuestions, setAllowShuffleQuestions] = useState(false);
   
   usePageTitle('Daily Challenge - Take Challenge');
   
@@ -6756,6 +6800,11 @@ const StudentDailyChallengeTake = () => {
     }
 
     setChallengeType(type);
+    // Feature flags from navigation state
+    const translateOnScreen = !!location.state?.translateOnScreen;
+    const shuffleQuestion = !!location.state?.shuffleQuestion;
+    setAllowTranslateOnScreen(translateOnScreen);
+    setAllowShuffleQuestions(shuffleQuestion);
     // Determine initial view-only mode from navigation state
     if (submissionStatus === 'SUBMITTED' || submissionStatus === 'GRADED') {
       setIsViewOnly(true);
@@ -6799,11 +6848,29 @@ const StudentDailyChallengeTake = () => {
             .then((sectionsResponse) => {
               if (sectionsResponse && sectionsResponse.success) {
                 const transformedData = transformApiDataToComponentFormat(sectionsResponse, type);
-                setQuestions(transformedData.questions);
-                setReadingSections(transformedData.readingSections);
-                setListeningSections(transformedData.listeningSections);
-                setWritingSections(transformedData.writingSections);
-                setSpeakingSections(transformedData.speakingSections);
+                // Shuffle question order if allowed and not view-only
+                const shuffle = (arr) => {
+                  const a = Array.isArray(arr) ? [...arr] : [];
+                  for (let i = a.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [a[i], a[j]] = [a[j], a[i]];
+                  }
+                  return a;
+                };
+                const applyShuffle = (data) => {
+                  if (!allowShuffleQuestions || isViewOnly) return data;
+                  const newData = { ...data };
+                  newData.questions = shuffle(data.questions || []);
+                  newData.readingSections = (data.readingSections || []).map(sec => ({ ...sec, questions: shuffle(sec.questions || []) }));
+                  newData.listeningSections = (data.listeningSections || []).map(sec => ({ ...sec, questions: shuffle(sec.questions || []) }));
+                  return newData;
+                };
+                const maybeShuffled = applyShuffle(transformedData);
+                setQuestions(maybeShuffled.questions);
+                setReadingSections(maybeShuffled.readingSections);
+                setListeningSections(maybeShuffled.listeningSections);
+                setWritingSections(maybeShuffled.writingSections);
+                setSpeakingSections(maybeShuffled.speakingSections);
               }
               setLoading(false);
             });
@@ -6832,12 +6899,47 @@ const StudentDailyChallengeTake = () => {
                 try {
                   // Load sections/questions from response
                   const transformedData = transformApiDataToComponentFormat(sectionsResponse, type);
-                  if (transformedData) {
-                    setQuestions(transformedData.questions || []);
-                    setReadingSections(transformedData.readingSections || []);
-                    setListeningSections(transformedData.listeningSections || []);
-                    setWritingSections(transformedData.writingSections || []);
-                    setSpeakingSections(transformedData.speakingSections || []);
+                  const shuffle = (arr) => {
+                    const a = Array.isArray(arr) ? [...arr] : [];
+                    for (let i = a.length - 1; i > 0; i--) {
+                      const j = Math.floor(Math.random() * (i + 1));
+                      [a[i], a[j]] = [a[j], a[i]];
+                    }
+                    return a;
+                  };
+                  const applyShuffle = (data) => {
+                    if (!allowShuffleQuestions || isViewOnly) return data;
+                    const newData = { ...data };
+                    newData.questions = shuffle(data.questions || []);
+                    newData.readingSections = (data.readingSections || []).map(sec => ({ ...sec, questions: shuffle(sec.questions || []) }));
+                    newData.listeningSections = (data.listeningSections || []).map(sec => ({ ...sec, questions: shuffle(sec.questions || []) }));
+                    return newData;
+                  };
+                  const maybeShuffled = applyShuffle(transformedData);
+                  if (maybeShuffled) {
+                    setQuestions(maybeShuffled.questions || []);
+                    setReadingSections(maybeShuffled.readingSections || []);
+                    setListeningSections(maybeShuffled.listeningSections || []);
+                    setWritingSections(maybeShuffled.writingSections || []);
+                    setSpeakingSections(maybeShuffled.speakingSections || []);
+                    // Build content lookup map for all question types
+                    const map = new Map();
+                    const posMap = new Map();
+                    const collect = (q) => {
+                      map.set(q.id, q.content?.data || []);
+                      const txt = q.questionText || q.question || '';
+                      const ids = [];
+                      const re = /\[\[pos_(.*?)\]\]/g; let m;
+                      while ((m = re.exec(txt)) !== null) ids.push(m[1]);
+                      if (ids.length > 0) posMap.set(q.id, ids);
+                    };
+                    (maybeShuffled.readingSections || []).forEach(sec => (sec.questions || []).forEach(collect));
+                    (maybeShuffled.listeningSections || []).forEach(sec => (sec.questions || []).forEach(collect));
+                    (maybeShuffled.questions || []).forEach(collect);
+                    (maybeShuffled.writingSections || []).forEach(sec => { posMap.set(sec.id, []); map.set(sec.id, sec.content?.data || []); });
+                    (maybeShuffled.speakingSections || []).forEach(sec => { posMap.set(sec.id, []); map.set(sec.id, sec.content?.data || []); });
+                    contentDataByQuestionIdRef.current = map;
+                    positionIdsByQuestionIdRef.current = posMap;
                   }
                 } catch (error) {
                   console.error('❌ Error transforming response to sections:', error);
@@ -6874,11 +6976,46 @@ const StudentDailyChallengeTake = () => {
               .then((sectionsResponse) => {
                 if (sectionsResponse && sectionsResponse.success) {
                   const transformedData = transformApiDataToComponentFormat(sectionsResponse, type);
-                  setQuestions(transformedData.questions);
-                  setReadingSections(transformedData.readingSections);
-                  setListeningSections(transformedData.listeningSections);
-                  setWritingSections(transformedData.writingSections);
-                  setSpeakingSections(transformedData.speakingSections);
+                  const shuffle = (arr) => {
+                    const a = Array.isArray(arr) ? [...arr] : [];
+                    for (let i = a.length - 1; i > 0; i--) {
+                      const j = Math.floor(Math.random() * (i + 1));
+                      [a[i], a[j]] = [a[j], a[i]];
+                    }
+                    return a;
+                  };
+                  const applyShuffle = (data) => {
+                    if (!allowShuffleQuestions || isViewOnly) return data;
+                    const newData = { ...data };
+                    newData.questions = shuffle(data.questions || []);
+                    newData.readingSections = (data.readingSections || []).map(sec => ({ ...sec, questions: shuffle(sec.questions || []) }));
+                    newData.listeningSections = (data.listeningSections || []).map(sec => ({ ...sec, questions: shuffle(sec.questions || []) }));
+                    return newData;
+                  };
+                  const maybeShuffled = applyShuffle(transformedData);
+                  setQuestions(maybeShuffled.questions);
+                  setReadingSections(maybeShuffled.readingSections);
+                  setListeningSections(maybeShuffled.listeningSections);
+                  setWritingSections(maybeShuffled.writingSections);
+                  setSpeakingSections(maybeShuffled.speakingSections);
+                  // Build content lookup map + position ids map
+                  const map = new Map();
+                  const posMap = new Map();
+                  const collect = (q) => {
+                    map.set(q.id, q.content?.data || []);
+                    const txt = q.questionText || q.question || '';
+                    const ids = [];
+                    const re = /\[\[pos_(.*?)\]\]/g; let m;
+                    while ((m = re.exec(txt)) !== null) ids.push(m[1]);
+                    if (ids.length > 0) posMap.set(q.id, ids);
+                  };
+                  (maybeShuffled.readingSections || []).forEach(sec => (sec.questions || []).forEach(collect));
+                  (maybeShuffled.listeningSections || []).forEach(sec => (sec.questions || []).forEach(collect));
+                  (maybeShuffled.questions || []).forEach(collect);
+                  (maybeShuffled.writingSections || []).forEach(sec => { posMap.set(sec.id, []); map.set(sec.id, sec.content?.data || []); });
+                  (maybeShuffled.speakingSections || []).forEach(sec => { posMap.set(sec.id, []); map.set(sec.id, sec.content?.data || []); });
+                  contentDataByQuestionIdRef.current = map;
+                  positionIdsByQuestionIdRef.current = posMap;
                 }
               });
           });
@@ -6891,12 +7028,14 @@ const StudentDailyChallengeTake = () => {
       .finally(() => {
         setLoading(false);
         // Enable anti-cheat after data is loaded and not in view-only mode
-        if (!isViewOnly) {
+        const hasAntiCheat = !!location.state?.hasAntiCheat;
+        if (!isViewOnly && hasAntiCheat) {
           setIsAntiCheatEnabled(true);
+        } else {
+          setIsAntiCheatEnabled(false);
         }
       });
   }, [id, location.state, isViewOnly]);
-
   // Start countdown timer when component mounts
   // timer/view-only guard now uses state isViewOnly set during data load
 
@@ -7020,7 +7159,6 @@ const StudentDailyChallengeTake = () => {
     }, 70 * 1000);
     return () => clearInterval(intervalId);
   }, [loading, isViewOnly, submissionId]);
-
   // Upload any blob: or data:audio URLs inside formatted answers and replace with server URLs
   const replaceBlobUrlsInAnswers = async (questionAnswers) => {
     const uploadedCache = new Map();
@@ -7101,8 +7239,25 @@ const StudentDailyChallengeTake = () => {
         return null; // Skip empty answers for other types
       }
     }
-
     const contentData = [];
+
+    // Lookup original content items for this question to preserve IDs
+    const originalItems = contentDataByQuestionIdRef.current.get(questionId) || [];
+    const normalize = (s) => (typeof s === 'string' ? s.trim() : s);
+    const findIdByValue = (val) => {
+      const v = normalize(val);
+      const found = originalItems.find(it => normalize(it?.value) === v);
+      return found?.id || v;
+    };
+    const findIdByPosition = (pos) => {
+      const p = String(pos ?? '').trim();
+      const found = originalItems.find(it => String(it?.positionId ?? '').trim() === p);
+      return found?.id || (originalItems[0]?.id) || p;
+    };
+    const findValueById = (id) => {
+      const found = originalItems.find(it => String(it?.id) === String(id));
+      return found?.value;
+    };
 
     // Helper to map a choice key/text to display text using provided options
     const getTextForKey = (keyOrText) => {
@@ -7118,27 +7273,41 @@ const StudentDailyChallengeTake = () => {
     if (normalizedType === 'MULTIPLE_CHOICE' || normalizedType === 'TRUE_OR_FALSE') {
       // Single answer: can be option key like 'A' or text like 'True'
       if (typeof answer === 'string') {
-        // For TRUE/FALSE, normalize id as 'A' for True and 'B' for False if keys missing
         let id = answer;
         let value = getTextForKey(answer);
+
+        const getOption = (ans) => {
+          const a = String(ans);
+          if (Array.isArray(options)) {
+            return options.find(o => o && (o.key === a || o.id === a || o.text === a || o.value === a));
+          }
+          return originalItems.find(it => String(it?.id) === a || String(it?.value) === a) || null;
+        };
+
         if (normalizedType === 'TRUE_OR_FALSE') {
           const normalized = answer.trim().toLowerCase();
-          if (!Array.isArray(options)) {
-            id = (normalized === 'true') ? 'A' : (normalized === 'false') ? 'B' : answer;
-            value = (normalized === 'true') ? 'True' : (normalized === 'false') ? 'False' : value;
-          } else {
-            const match = options.find(o => o && (o.text?.toLowerCase() === normalized || o.key === answer));
-            if (match) {
-              id = match.key ?? id;
-              value = match.text ?? value;
-            }
+          const opt = getOption(answer);
+          if (opt) {
+            id = opt.key ?? opt.id ?? id;
+            value = opt.text ?? opt.value ?? value;
+          } else if (normalized === 'true' || normalized === 'false') {
+            id = (normalized === 'true') ? 'A' : 'B';
+            value = normalized === 'true' ? 'True' : 'False';
+          } else if (answer === 'A' || answer === 'B') {
+            // Map A/B to True/False when no options provided
+            value = answer === 'A' ? 'True' : 'False';
           }
         } else if (Array.isArray(options)) {
-          const match = options.find(o => o && (o.key === answer || o.text === answer));
+          const match = getOption(answer);
           if (match) {
-            id = match.key ?? id;
-            value = match.text ?? value;
+            id = match.key ?? match.id ?? id;
+            value = match.text ?? match.value ?? value;
           }
+        }
+        // Fallback: if value still equals id, try mapping from original items
+        if (!value || value === id) {
+          const mapped = findValueById(id);
+          if (mapped) value = mapped;
         }
         contentData.push({ id, value: stripHtml(value), positionId: null });
       }
@@ -7154,6 +7323,11 @@ const StudentDailyChallengeTake = () => {
               id = match.key ?? id;
               value = match.text ?? value;
             }
+          }
+          // Fallback map using originalItems when value still equals id
+          if (!value || value === id) {
+            const mapped = findValueById(id);
+            if (mapped) value = mapped;
           }
           contentData.push({ id, value: stripHtml(value), positionId: null });
         });
@@ -7178,7 +7352,7 @@ const StudentDailyChallengeTake = () => {
           const value = answer[key];
           if (value) {
             contentData.push({
-              id: value,
+              id: findIdByPosition(positionId),
               value: value,
               positionId: positionId
             });
@@ -7186,13 +7360,13 @@ const StudentDailyChallengeTake = () => {
         });
       } else if (typeof answer === 'string' && answer) {
         contentData.push({
-          id: answer,
+          id: findIdByPosition(null),
           value: answer,
           positionId: null
         });
       }
     } else if (normalizedType === 'DRAG_AND_DROP') {
-      // Drag and drop: answer is an object with positionId keys like { "pos_1": "value", ... }
+      // Drag and drop: answer is an object with positionId keys like { "pos_xxxxxx": "value", ... }
       if (typeof answer === 'object' && answer !== null && !Array.isArray(answer)) {
         Object.keys(answer).forEach(rawPos => {
           const value = answer[rawPos];
@@ -7205,7 +7379,7 @@ const StudentDailyChallengeTake = () => {
               positionId = rawPos.substring(4);
             }
             contentData.push({
-              id: value,
+              id: findIdByPosition(positionId) || findIdByValue(value),
               value: value,
               positionId: positionId
             });
@@ -7215,12 +7389,15 @@ const StudentDailyChallengeTake = () => {
     } else if (normalizedType === 'REORDER') {
       // Reorder: answer is an array of values in order
       if (Array.isArray(answer) && answer.length > 0) {
+        const posOrder = positionIdsByQuestionIdRef.current.get(questionId) || [];
         answer.forEach((value, index) => {
           if (value) {
             contentData.push({
-              id: value,
+              id: findIdByValue(value),
               value: value,
-              positionId: String(index)
+              positionId: (originalItems.find(it => normalize(it?.value) === normalize(value))?.positionId)
+                ?? posOrder[index]
+                ?? String(index)
             });
           }
         });
@@ -7230,7 +7407,7 @@ const StudentDailyChallengeTake = () => {
       // Formatting fill blank answers
       if (typeof answer === 'string' && answer) {
         contentData.push({
-          id: answer,
+          id: originalItems[0]?.id || 'text',
           value: answer,
           positionId: null
         });
@@ -7247,7 +7424,8 @@ const StudentDailyChallengeTake = () => {
           const value = (raw && typeof raw === 'object' && 'value' in raw) ? raw.value : raw;
           // Include value even if it's an empty string to mirror RE behavior
           if (value !== null && value !== undefined) {
-            contentData.push({ id: String(value), value: String(value), positionId });
+            const chosenId = findIdByPosition(positionId) || findIdByValue(value) || (originalItems[0]?.id) || String(value);
+            contentData.push({ id: chosenId, value: String(value), positionId });
           }
         });
       }
@@ -7291,7 +7469,6 @@ const StudentDailyChallengeTake = () => {
       }
     };
   };
-
   // Restore answers from API result
   const restoreAnswersFromResult = (resultData, retryCount = 0) => {
     if (!resultData) {
@@ -7393,17 +7570,10 @@ const StudentDailyChallengeTake = () => {
             } else if (answerData.some(item => item.positionId)) {
               // Multiple answers with positionId
               if (questionType === 'REORDER' || questionType === 'REARRANGE') {
-                // Build ordered array by index in positionId
-                const temp = [];
-                answerData.forEach(item => {
-                  const idxStr = String(item.positionId || '');
-                  const idx = parseInt(idxStr, 10);
-                  if (!Number.isNaN(idx)) {
-                    temp[idx] = item.value;
-                  }
-                });
-                // Compact to pure array of defined values in order
-                restoredAnswer = temp.filter(v => v !== undefined);
+                // For REARRANGE/REORDER, the array order in submittedContent.data is the correct order
+                // positionId is metadata (for matching question text positions) but not used for slot ordering
+                // Just map the values in the order they appear in the array
+                restoredAnswer = answerData.map(item => item.value).filter(v => v !== undefined && v !== null);
               } else if (questionType === 'DRAG_AND_DROP') {
                 const answerObj = {};
                 answerData.forEach(item => {
@@ -7531,10 +7701,11 @@ const StudentDailyChallengeTake = () => {
 
     try {
       const questionAnswers = collectAllAnswers();
+      const processedAnswers = await replaceBlobUrlsInAnswers(questionAnswers);
       
       const submitData = {
         saveAsDraft: true,
-        questionAnswers: questionAnswers
+        questionAnswers: processedAnswers
       };
 
       setLoading(true);
@@ -7585,6 +7756,7 @@ const StudentDailyChallengeTake = () => {
 
   // Confirm submit - handle actual submission
   const handleConfirmSubmit = async () => {
+    setSubmitConfirmLoading(true);
     // If submissionId is not available, try to get it first
     let currentSubmissionId = submissionId;
     
@@ -7616,10 +7788,11 @@ const StudentDailyChallengeTake = () => {
 
     try {
       const questionAnswers = collectAllAnswers();
+      const processedAnswers = await replaceBlobUrlsInAnswers(questionAnswers);
       
       const submitData = {
         saveAsDraft: false,
-        questionAnswers: questionAnswers
+        questionAnswers: processedAnswers
       };
 
       setLoading(true);
@@ -7650,6 +7823,7 @@ const StudentDailyChallengeTake = () => {
       setSubmitModalVisible(false);
     } finally {
       setLoading(false);
+      setSubmitConfirmLoading(false);
     }
   };
 
@@ -8150,6 +8324,7 @@ const StudentDailyChallengeTake = () => {
       {/* Submit Confirmation Modal */}
       <Modal
         open={submitModalVisible}
+        confirmLoading={submitConfirmLoading}
         onOk={handleConfirmSubmit}
         onCancel={handleCancelSubmit}
         okText="Yes"
@@ -8261,9 +8436,11 @@ const StudentDailyChallengeTake = () => {
           </p>
         </div>
       </Modal>
+      {allowTranslateOnScreen && !isViewOnly && (
+        <TextTranslator enabled={true} />
+      )}
     </ThemedLayout>
   );
 };
 
 export default StudentDailyChallengeTake;
-
