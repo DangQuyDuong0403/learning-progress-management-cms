@@ -59,7 +59,7 @@ const ThemedLayout = ({ children, customHeader, contentMargin = 20, contentPaddi
           className={`themed-content ${theme}-content`}
           style={{
             margin: `${contentMargin}px 0`,
-            padding: `${contentPadding}px 0`,
+            padding: `20px 0px 0px 10px`,
             borderRadius: '8px',
             minHeight: 'calc(100vh - 112px)',
             maxHeight: 'calc(100vh - 112px)',
@@ -67,7 +67,6 @@ const ThemedLayout = ({ children, customHeader, contentMargin = 20, contentPaddi
             width: '100%',
             maxWidth: '100%',
             position: 'relative',
-            paddingLeft: 0,
             zIndex: 1
           }}
         >
@@ -82,7 +81,11 @@ const ThemedLayout = ({ children, customHeader, contentMargin = 20, contentPaddi
               },
               overflow: { x: 'hidden', y: 'scroll' }
             }}
-            style={{ height: 'calc(100vh - 112px)', width: '100%' }}
+            style={{ 
+              height: 'calc(100vh - 112px)', 
+              width: '100%',
+
+            }}
             className={`themed-sidebar-scrollbar themed-content-scrollbar ${theme}-content-scrollbar`}
           >
             {children}

@@ -8,6 +8,19 @@
 	height: 100%;
 }
 
+/* Ensure themed-content padding and borderRadius work correctly */
+.themed-content {
+	padding: 20px 0px 0px 10px;
+	border-radius: 8px;
+	box-sizing: border-box;
+}
+
+/* Ensure OverlayScrollbarsComponent wrapper respects padding */
+.themed-content > .themed-content-scrollbar {
+	padding-bottom: 20px;
+	box-sizing: border-box;
+}
+
 /* Hide native scrollbars for nested scrollables inside content, keep custom page scrollbar */
 .themed-content * {
 	-ms-overflow-style: none; /* IE/Edge */
