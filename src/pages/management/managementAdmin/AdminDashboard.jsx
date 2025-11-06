@@ -1,9 +1,14 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Card, Row, Col, Statistic, Table, Tag, Empty } from 'antd';
-import { 
-  UserOutlined, 
-  TeamOutlined, 
-  BarChartOutlined
+import {
+  UserOutlined,
+  BarChartOutlined,
+  ClockCircleOutlined,
+  CloseCircleOutlined,
+  UserAddOutlined,
+  UsergroupAddOutlined,
+  UserSwitchOutlined,
+  StockOutlined
 } from '@ant-design/icons';
 import { useTheme } from '../../../contexts/ThemeContext';
 import ThemedLayout from '../../../component/ThemedLayout';
@@ -46,11 +51,55 @@ const AdminDashboard = () => {
 
   const summaryCards = useMemo(() => {
     const s = dashboard.summary || {};
+    const total = s.totalAccounts ?? 0;
+    const pct = (v) => {
+      const denominator = total || 0;
+      if (!denominator) return '0% tổng số';
+      const p = ((v ?? 0) / denominator) * 100;
+      return `${p.toFixed(1)}% tổng số`;
+    };
+
     return [
-      { key: 'totalAccounts', title: 'Total accounts', value: s.totalAccounts ?? 0, icon: <UserOutlined style={{ color: '#1890ff' }} />, color: '#1890ff' },
-      { key: 'activeAccounts', title: 'Active', value: s.activeAccounts ?? 0, icon: <TeamOutlined style={{ color: '#52c41a' }} />, color: '#52c41a' },
-      { key: 'pendingAccounts', title: 'Pending activation', value: s.pendingAccounts ?? 0, icon: <UserOutlined style={{ color: '#faad14' }} />, color: '#faad14' },
-      { key: 'newToday', title: 'New today', value: s.newToday ?? 0, icon: <BarChartOutlined style={{ color: '#722ed1' }} />, color: '#722ed1' },
+      {
+        key: 'totalAccounts',
+        title: 'Total accounts',
+        value: s.totalAccounts ?? 0,
+        subtitle: 'All users',
+        icon: <UserOutlined style={{ color: '#2b6cb0' }} />,
+        bg: '#d6e6fb'
+      },
+      {
+        key: 'activeAccounts',
+        title: 'Active',
+        value: s.activeAccounts ?? 0,
+        subtitle: pct(s.activeAccounts),
+        icon: <UsergroupAddOutlined style={{ color: '#1f7a3e' }} />,
+        bg: '#dff7e8'
+      },
+      {
+        key: 'pendingAccounts',
+        title: 'Pending',
+        value: s.pendingAccounts ?? 0,
+        subtitle: pct(s.pendingAccounts),
+        icon: <ClockCircleOutlined style={{ color: '#b28000' }} />,
+        bg: '#fff2b8'
+      },
+      {
+        key: 'inactiveAccounts',
+        title: 'Inactive',
+        value: s.inactiveAccounts ?? 0,
+        subtitle: 'Locked accounts',
+        icon: <CloseCircleOutlined style={{ color: '#a11a2b' }} />,
+        bg: '#ffd9df'
+      },
+      {
+        key: 'newToday',
+        title: 'Today',
+        value: s.newToday ?? 0,
+        subtitle: 'New accounts',
+        icon: <UserAddOutlined style={{ color: '#6b46c1' }} />,
+        bg: '#efe1ff'
+      }
     ];
   }, [dashboard.summary]);
 
@@ -104,33 +153,45 @@ const AdminDashboard = () => {
 
   return (
     <ThemedLayout>
-      <div
-        className="admin-dashboard-container"
-        style={{ padding: '0 24px 24px' }}
-      >
+      <div className={`admin-page ${theme}-theme main-content-panel`}>
         <div className="admin-dashboard" style={{ maxWidth: 1280, margin: '0 auto' }}>
         
 
         {/* Summary */}
-        <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
+        <Row gutter={[16, 16]} justify="space-between" style={{ marginBottom: 24 }}>
           {summaryCards.map((stat) => (
-            <Col xs={24} sm={12} lg={6} key={stat.key}>
+            <Col xs={24} sm={12} md={8} lg={4} xl={4} xxl={4} key={stat.key}>
               <Card
                 hoverable
                 loading={loading && !dashboard.summary}
                 style={{
-                  backgroundColor: theme === 'sun' ? '#ffffff' : undefined,
-                  border: theme === 'sun' ? '1px solid #d9d9d9' : undefined,
-                  borderRadius: 12,
-                  boxShadow: theme === 'sun' ? '0 4px 12px rgba(0,0,0,0.06)' : undefined
+                  backgroundColor: stat.bg,
+                  border: 'none',
+                  borderRadius: 16,
+                  boxShadow: theme === 'sun' ? '0 8px 20px rgba(0,0,0,0.08)' : undefined,
+                  minHeight: 170
                 }}
               >
-                <Statistic
-                  title={stat.title}
-                  value={stat.value}
-                  prefix={stat.icon}
-                  valueStyle={{ color: stat.color, fontSize: '24px', fontWeight: 'bold' }}
-                />
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 }}>
+                  <div style={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: 10,
+                    background: 'rgba(255,255,255,0.9)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}>
+                    {stat.icon}
+                  </div>
+                  <div style={{ fontWeight: 600, fontSize: 18, color: '#5b6b83', lineHeight: 1.1 }}>{stat.title}</div>
+                </div>
+                <div style={{ fontSize: 40, fontWeight: 700, marginBottom: 8, lineHeight: 1, color: '#1f2937' }}>
+                  {stat.value}
+                </div>
+                <div style={{ color: '#6b7280', fontSize: 14 }}>
+                  {stat.subtitle}
+                </div>
               </Card>
             </Col>
           ))}
@@ -140,16 +201,29 @@ const AdminDashboard = () => {
         <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
           <Col xs={24} lg={12}>
               <Card
-              title="Role distribution"
-              headStyle={{ textAlign: 'center' }}
               loading={loading && roleRows.length === 0}
               style={{
                 backgroundColor: theme === 'sun' ? '#ffffff' : undefined,
-                border: theme === 'sun' ? '1px solid #d9d9d9' : undefined,
-                borderRadius: 12,
-                boxShadow: theme === 'sun' ? '0 4px 12px rgba(0,0,0,0.06)' : undefined
+                border: 'none',
+                borderRadius: 16,
+                boxShadow: theme === 'sun' ? '0 10px 24px rgba(0,0,0,0.08)' : undefined,
+                paddingTop: 8
               }}
             >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
+                <div style={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: 12,
+                  background: '#f1eafe',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}>
+                  <UserSwitchOutlined style={{ color: '#8b5cf6', fontSize: 20 }} />
+                </div>
+                <div style={{ fontWeight: 700, fontSize: 20, color: '#111827' }}>Role distribution</div>
+              </div>
               {rolePieData.length === 0 && !loading ? (
                 <Empty description="No data" />
               ) : (
@@ -182,16 +256,29 @@ const AdminDashboard = () => {
           </Col>
           <Col xs={24} lg={12}>
               <Card
-              title="Account status"
-              headStyle={{ textAlign: 'center' }}
               loading={loading && statusRows.length === 0}
               style={{
                 backgroundColor: theme === 'sun' ? '#ffffff' : undefined,
-                border: theme === 'sun' ? '1px solid #d9d9d9' : undefined,
-                borderRadius: 12,
-                boxShadow: theme === 'sun' ? '0 4px 12px rgba(0,0,0,0.06)' : undefined
+                border: 'none',
+                borderRadius: 16,
+                boxShadow: theme === 'sun' ? '0 10px 24px rgba(0,0,0,0.08)' : undefined,
+                paddingTop: 8
               }}
             >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
+                <div style={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: 12,
+                  background: '#e8fff5',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}>
+                  <StockOutlined style={{ color: '#10b981', fontSize: 20 }} />
+                </div>
+                <div style={{ fontWeight: 700, fontSize: 20, color: '#111827' }}>Account status</div>
+              </div>
               {statusPieData.length === 0 && !loading ? (
                 <Empty description="No data" />
               ) : (

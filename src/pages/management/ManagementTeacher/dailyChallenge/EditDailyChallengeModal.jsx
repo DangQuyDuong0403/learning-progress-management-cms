@@ -51,6 +51,17 @@ const EditDailyChallengeModal = ({
 
 
   
+  // Enforce defaults when switching to exam mode
+  useEffect(() => {
+    if (challengeMode === 'exam') {
+      form.setFieldsValue({
+        hasAntiCheat: true,
+        shuffleQuestion: true,
+        translateOnScreen: false,
+      });
+    }
+  }, [challengeMode, form]);
+
   // Fetch latest detail by id when modal opens; fallback to incoming data
   useEffect(() => {
     const loadDetail = async () => {
@@ -495,7 +506,7 @@ const EditDailyChallengeModal = ({
                   </div>
                 </div>
                 <Form.Item name="hasAntiCheat" valuePropName="checked" noStyle>
-                  <Switch />
+                  <Switch disabled={challengeMode === 'exam'} />
                 </Form.Item>
               </div>
             </Col>
@@ -508,7 +519,7 @@ const EditDailyChallengeModal = ({
                   </div>
                 </div>
                 <Form.Item name="shuffleQuestion" valuePropName="checked" noStyle>
-                  <Switch />
+                  <Switch disabled={challengeMode === 'exam'} />
                 </Form.Item>
               </div>
             </Col>
@@ -521,7 +532,7 @@ const EditDailyChallengeModal = ({
                   </div>
                 </div>
                 <Form.Item name="translateOnScreen" valuePropName="checked" noStyle>
-                  <Switch />
+                  <Switch disabled={challengeMode === 'exam'} />
                 </Form.Item>
               </div>
             </Col>

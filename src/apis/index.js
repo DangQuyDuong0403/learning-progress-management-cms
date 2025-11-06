@@ -13,6 +13,15 @@ const axiosClient = axios.create({
 // Interceptor cho request — tự động thêm accessToken nếu có
 axiosClient.interceptors.request.use(
 	(config) => {
+		// Không đính kèm Authorization cho các endpoint không cần token (đặc biệt là refresh-token)
+		const url = config.url || '';
+		if (url.includes('/auth/refresh-token') || url.includes('/auth/login')) {
+			if (config.headers && config.headers.Authorization) {
+				delete config.headers.Authorization;
+			}
+			return config;
+		}
+
 		const accessToken = localStorage.getItem('accessToken');
 		// Kiểm tra accessToken hợp lệ (không phải "undefined" hoặc "null")
 		if (accessToken && accessToken !== 'undefined' && accessToken !== 'null' && accessToken.trim() !== '') {

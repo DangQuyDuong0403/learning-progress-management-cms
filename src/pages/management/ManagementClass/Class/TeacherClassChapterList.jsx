@@ -45,9 +45,10 @@ const TeacherClassChapterList = () => {
 		? ThemedLayoutNoSidebar 
 		: ThemedLayoutWithSidebar;
 	
-	// Check if user is MANAGER or STUDENT (view-only access)
+	// Check if user is MANAGER, STUDENT or TEACHING_ASSISTANT (view-only access for TA)
 	const isManager = userRole === 'manager';
 	const isStudent = userRole === 'student';
+	const isTeachingAssistant = userRole === 'teaching_assistant';
 
 	// Check URL path and redirect if student tries to access manager routes
 	useEffect(() => {
@@ -598,7 +599,7 @@ const TeacherClassChapterList = () => {
 						</Space>
 					</Col>
 					<Col>
-						{!isManager && !isStudent && (
+				{!isManager && !isStudent && !isTeachingAssistant && (
 							<Space>
 								<Button
 									icon={<DownloadOutlined />}

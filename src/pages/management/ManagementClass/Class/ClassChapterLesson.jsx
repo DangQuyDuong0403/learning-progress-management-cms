@@ -53,9 +53,10 @@ const ClassChapterLesson = () => {
 		? ThemedLayoutNoSidebar 
 		: ThemedLayoutWithSidebar;
 	
-	// Check if user is MANAGER or STUDENT (view-only access)
+	// Check if user is MANAGER, STUDENT or TEACHING_ASSISTANT (TA is view-only)
 	const isManager = userRole === 'manager';
 	const isStudent = userRole === 'student';
+	const isTeachingAssistant = userRole === 'teaching_assistant';
 
 	// Check URL path and redirect if student tries to access manager routes
 	useEffect(() => {
@@ -725,8 +726,8 @@ const ClassChapterLesson = () => {
 			title: t('lessonManagement.actions'),
 			key: 'actions',
 			width: '10%',
-			render: (_, record) => (
-				!isManager && !isStudent ? (
+				render: (_, record) => (
+					!isManager && !isStudent && !isTeachingAssistant ? (
 					<Space size="small">
 						<Tooltip title={t('common.edit')}>
 							<Button
@@ -805,7 +806,7 @@ const ClassChapterLesson = () => {
 						</Space>
 						</Col>
 						<Col>
-							{!isManager && !isStudent && (
+					{!isManager && !isStudent && !isTeachingAssistant && (
 								<Space>
 									<Button
 									icon={<DownloadOutlined />}
@@ -833,11 +834,11 @@ const ClassChapterLesson = () => {
 						dataSource={filteredLessons}
 						rowKey="id"
 						loading={loading}
-						rowSelection={!isManager && !isStudent ? {
+					rowSelection={!isManager && !isStudent && !isTeachingAssistant ? {
 							selectedRowKeys,
 							onChange: setSelectedRowKeys,
 							onSelectAll: handleSelectAll,
-						} : null}
+					} : null}
 						pagination={{
 							...pagination,
 							showTotal: (total, range) => {
@@ -850,8 +851,8 @@ const ClassChapterLesson = () => {
 				</div>
 			</div>
 
-			{/* Bottom Action Bar - Only show for non-manager and non-student roles */}
-			{!isManager && !isStudent && (
+			{/* Bottom Action Bar - Only show for non-manager, non-student, non-TA roles */}
+			{!isManager && !isStudent && !isTeachingAssistant && (
 				<BottomActionBar
 					selectedCount={selectedRowKeys.length}
 					onSelectAll={handleSelectAll}
