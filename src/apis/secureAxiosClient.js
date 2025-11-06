@@ -30,6 +30,15 @@ const processQueue = (error, token = null) => {
 // Interceptor cho request — tự động thêm accessToken và kiểm tra bảo mật
 axiosClient.interceptors.request.use(
 	(config) => {
+		// Bỏ qua việc gắn Authorization cho endpoint refresh-token và login
+		const url = config.url || '';
+		if (url.includes('/auth/refresh-token') || url.includes('/auth/login')) {
+			if (config.headers && config.headers.Authorization) {
+				delete config.headers.Authorization;
+			}
+			return config;
+		}
+
 		const accessToken = localStorage.getItem('accessToken');
 		
 		// Kiểm tra accessToken hợp lệ (không phải "undefined" hoặc "null")
