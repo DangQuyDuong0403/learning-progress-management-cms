@@ -40,6 +40,26 @@ const ClassTeachers = () => {
   const { user } = useSelector((state) => state.auth);
   const { enterClassMenu, exitClassMenu } = useClassMenu();
   
+  // Prefer backend error message if provided
+  const getBackendErrorMessage = (error, defaultMessage) => (
+    error?.response?.data?.error ||
+    error?.response?.data?.message ||
+    error?.message ||
+    defaultMessage
+  );
+
+  // Deduplicate identical error toasts within a short window
+  const lastErrorRef = useRef({ message: null, time: 0 });
+  const showErrorToast = useCallback((error, defaultMessage) => {
+    const message = getBackendErrorMessage(error, defaultMessage);
+    const now = Date.now();
+    if (lastErrorRef.current.message === message && (now - lastErrorRef.current.time) < 1500) {
+      return;
+    }
+    lastErrorRef.current = { message, time: now };
+    spaceToast.error(message);
+  }, []);
+
   // Determine which layout to use based on user role
   const userRole = user?.role?.toLowerCase();
   const ThemedLayout = (userRole === 'teacher' || userRole === 'teaching_assistant') 
@@ -174,9 +194,9 @@ const ClassTeachers = () => {
       }
     } catch (error) {
       console.error('Error fetching class data:', error);
-      spaceToast.error(t('classTeachers.loadingClassInfo'));
+    showErrorToast(error, t('classTeachers.loadingClassInfo'));
     }
-  }, [id, t]);
+  }, [id, t, showErrorToast]);
 
   const fetchTeachers = useCallback(async (params = {}) => {
     try {
@@ -208,10 +228,10 @@ const ClassTeachers = () => {
       }
     } catch (error) {
       console.error('Error fetching teachers:', error);
-      spaceToast.error(t('classTeachers.loadingTeachers'));
+    showErrorToast(error, t('classTeachers.loadingTeachers'));
       setTeachers([]);
     }
-  }, [id, t]);
+  }, [id, t, showErrorToast]);
 
   // Fetch available teachers for adding to class
   const fetchAvailableTeachers = useCallback(async () => {
@@ -257,17 +277,16 @@ const ClassTeachers = () => {
       }
     } catch (error) {
       console.error('Error fetching available teachers:', error);
-      spaceToast.error('Failed to load available teachers');
+    showErrorToast(error, t('classTeachers.loadingTeachers'));
     } finally {
       setLoadingTeachers(false);
     }
-  }, []);
+  }, [showErrorToast, t]);
 
   // Initial data loading
   useEffect(() => {
     fetchClassData();
-    fetchTeachers();
-  }, [id]);
+  }, [fetchClassData]);
 
   // Ensure header back button appears immediately while class info loads
   useEffect(() => {
@@ -328,7 +347,7 @@ const ClassTeachers = () => {
         }
       } catch (error) {
         console.error('Error fetching teachers:', error);
-        spaceToast.error(t('classTeachers.loadingTeachers'));
+        showErrorToast(error, t('classTeachers.loadingTeachers'));
         setTeachers([]);
       } finally {
         setLoading(false);
@@ -336,7 +355,7 @@ const ClassTeachers = () => {
     }, searchText ? 1000 : 0);
     
     return () => clearTimeout(timeoutId);
-  }, [searchText, statusFilter, sortConfig.sortBy, sortConfig.sortDir, pagination.pageSize, id, t]);
+  }, [searchText, statusFilter, sortConfig.sortBy, sortConfig.sortDir, pagination.pageSize, id, t, showErrorToast]);
 
   const handleAddTeacher = () => {
     setButtonLoading(prev => ({ ...prev, add: true }));
@@ -372,7 +391,7 @@ const ClassTeachers = () => {
       fetchTeachers();
     } catch (error) {
       console.error('Error importing teachers:', error);
-      spaceToast.error(t('classTeachers.importError'));
+      showErrorToast(error, t('classTeachers.importError'));
     } finally {
       setButtonLoading(prev => ({ ...prev, import: false }));
     }
@@ -420,14 +439,7 @@ const ClassTeachers = () => {
         }
       } catch (error) {
         console.error('Error removing teacher:', error);
-        
-        // Use BE error message if available, otherwise fallback to generic message
-        const errorMessage = error.response?.data?.message || 
-                            error.response?.data?.error || 
-                            error.message || 
-                            t('classTeachers.deleteError');
-        
-        spaceToast.error(errorMessage);
+      showErrorToast(error, t('classTeachers.deleteError'));
       } finally {
         setButtonLoading(prev => ({ ...prev, delete: false }));
         setIsDeleteModalVisible(false);
@@ -497,14 +509,7 @@ const ClassTeachers = () => {
       }
     } catch (error) {
       console.error("Error adding teachers:", error);
-      
-      // Use BE error message if available, otherwise fallback to generic message
-      const errorMessage = error.response?.data?.message || 
-                          error.response?.data?.error || 
-                          error.message || 
-                          t('classTeachers.addError');
-      
-      spaceToast.error(errorMessage);
+      showErrorToast(error, t('classTeachers.addError'));
     } finally {
       setButtonLoading(prev => ({ ...prev, add: false }));
     }
