@@ -2844,8 +2844,13 @@ const DailyChallengeContent = () => {
         const mode = challengeData.challengeMethod === 'TEST' ? 'exam' : 'normal';
         setChallengeMode(mode);
         
-        // Set status based on challengeStatus
-        setStatus(challengeData.challengeStatus === 'PUBLISHED' ? 'published' : 'draft');
+        // Set status based on challengeStatus (normalize to lowercase keywords)
+        const apiStatus = challengeData.challengeStatus;
+        let normalizedStatus = 'draft';
+        if (apiStatus === 'PUBLISHED') normalizedStatus = 'published';
+        else if (apiStatus === 'IN_PROGRESS') normalizedStatus = 'in-progress';
+        else if (apiStatus === 'CLOSED') normalizedStatus = 'closed';
+        setStatus(normalizedStatus);
         
         console.log('Challenge details loaded:', challengeData);
       }
@@ -3366,11 +3371,14 @@ const DailyChallengeContent = () => {
       // Compute next section orderNumber from existing sections:
       // - passages contain DOCUMENT/FILE sections
       // - GV sections come through questions with their own orderNumber
-      const sectionOrderNumbers = [
-        ...passages.map(p => p?.orderNumber).filter(n => typeof n === 'number'),
-        ...questions.map(q => q?.orderNumber).filter(n => typeof n === 'number')
-      ];
-      const nextOrder = (sectionOrderNumbers.length ? Math.max(...sectionOrderNumbers) : 0) + 1;
+      // Use filtered arrays to exclude deleted items
+      const visiblePassages = passages.filter(p => !p.toBeDeleted);
+      const visibleQuestions = questions.filter(q => !q.toBeDeleted);
+      
+      // Calculate nextOrder based on total visible items + 1
+      // This ensures correct ordering even when state hasn't updated yet
+      const totalVisibleItems = visiblePassages.length + visibleQuestions.length;
+      const nextOrder = totalVisibleItems + 1;
 
       // For GV, let question start at order 1 inside its section; section.orderNumber controls placement
       const questionOrder = (challengeDetails?.challengeType === 'GV') ? 1 : nextOrder;
@@ -4002,12 +4010,15 @@ const DailyChallengeContent = () => {
       // Persist duplicate through API for all challenge types to avoid errors
       setLoading(true);
 
-      // Compute next section orderNumber from existing sections (see note above)
-      const sectionOrderNumbers = [
-        ...passages.map(p => p?.orderNumber).filter(n => typeof n === 'number'),
-        ...questions.map(q => q?.orderNumber).filter(n => typeof n === 'number')
-      ];
-      const nextOrder = (sectionOrderNumbers.length ? Math.max(...sectionOrderNumbers) : 0) + 1;
+      // Compute next section orderNumber from existing sections
+      // Use filtered arrays to exclude deleted items
+      const visiblePassages = passages.filter(p => !p.toBeDeleted);
+      const visibleQuestions = questions.filter(q => !q.toBeDeleted);
+      
+      // Calculate nextOrder based on total visible items + 1
+      // This ensures correct ordering even when state hasn't updated yet
+      const totalVisibleItems = visiblePassages.length + visibleQuestions.length;
+      const nextOrder = totalVisibleItems + 1;
 
       const questionOrderDup = (challengeDetails?.challengeType === 'GV') ? 1 : nextOrder;
       const apiQuestion = transformQuestionToApiFormat(
@@ -4387,24 +4398,48 @@ const DailyChallengeContent = () => {
               gap: '8px',
               padding: '8px 20px',
               borderRadius: '8px',
-              background: status === 'published' 
-                ? 'rgba(82, 196, 26, 0.1)' 
+              background: status === 'published'
+                ? 'rgba(82, 196, 26, 0.1)'
+                : status === 'in-progress'
+                ? 'rgba(24, 144, 255, 0.1)'
+                : status === 'closed'
+                ? 'rgba(229, 79, 79, 0.1)'
                 : 'rgba(250, 173, 20, 0.1)',
               border: status === 'published'
                 ? '2px solid rgba(82, 196, 26, 0.3)'
+                : status === 'in-progress'
+                ? '2px solid rgba(24, 144, 255, 0.3)'
+                : status === 'closed'
+                ? '2px solid rgba(229, 79, 79, 0.3)'
                 : '2px solid rgba(250, 173, 20, 0.3)',
             }}>
               {status === 'published' ? (
                 <CheckCircleOutlined style={{ color: '#52c41a', fontSize: '18px' }} />
+              ) : status === 'in-progress' ? (
+                <FileTextOutlined style={{ color: 'rgb(24, 144, 255)', fontSize: '18px' }} />
+              ) : status === 'closed' ? (
+                <FileTextOutlined style={{ color: 'rgb(229, 79, 79)', fontSize: '18px' }} />
               ) : (
                 <FileTextOutlined style={{ color: '#faad14', fontSize: '18px' }} />
               )}
               <span style={{
                 fontWeight: 600,
                 fontSize: '14px',
-                color: status === 'published' ? '#52c41a' : '#faad14'
+                color: status === 'published'
+                  ? '#52c41a'
+                  : status === 'in-progress'
+                  ? 'rgb(24, 144, 255)'
+                  : status === 'closed'
+                  ? 'rgb(229, 79, 79)'
+                  : '#faad14'
               }}>
-                {status === 'published' ? t('dailyChallenge.published') : t('dailyChallenge.draft')}
+                {status === 'published' 
+                  ? t('dailyChallenge.published') 
+                  : status === 'in-progress'
+                  ? t('dailyChallenge.inProgress') || 'In Progress'
+                  : status === 'closed'
+                  ? t('dailyChallenge.closed') || 'Closed'
+                  : t('dailyChallenge.draft')}
               </span>
             </div>
 
@@ -4465,8 +4500,8 @@ const DailyChallengeContent = () => {
               {t('dailyChallenge.preview')}
             </Button>
 
-            {/* Add Question/Passage Button - hidden when published */}
-            {status !== 'published' && (
+            {/* Add Question/Passage Button - only visible in draft */}
+            {status === 'draft' && (
               <Button 
                 icon={<PlusOutlined />}
                 className={`create-button ${theme}-create-button`}
@@ -4488,7 +4523,8 @@ const DailyChallengeContent = () => {
               </Button>
             )}
             
-            {/* Save Dropdown - hide Draft when already published */}
+            {/* Save Dropdown - hidden when IN_PROGRESS or CLOSED */}
+            {status !== 'closed' && status !== 'in-progress' && (
             <Dropdown
               menu={{ 
                 items: (
@@ -4540,6 +4576,7 @@ const DailyChallengeContent = () => {
                 {t('common.save') || 'Lưu'} <DownOutlined />
               </Button>
             </Dropdown>
+            )}
           </div>
         </div>
       </nav>

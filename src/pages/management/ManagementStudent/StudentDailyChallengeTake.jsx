@@ -7964,9 +7964,11 @@ const StudentDailyChallengeTake = () => {
     }
     // Individual questions (GV etc.)
     if (!(challengeType === 'LI' || challengeType === 'SP' || challengeType === 'WR')) {
-      questions.forEach((q) => {
+      [...questions]
+        .sort((a, b) => (a.orderNumber || 0) - (b.orderNumber || 0) || ((a.id || 0) - (b.id || 0)))
+        .forEach((q) => {
         navigation.push({ id: `q-${q.id}`, type: 'question', title: `Question ${questionNumber++}` });
-      });
+        });
     }
     return navigation;
   };

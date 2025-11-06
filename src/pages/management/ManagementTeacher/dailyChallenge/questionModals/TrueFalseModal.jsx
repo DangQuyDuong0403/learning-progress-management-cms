@@ -204,6 +204,25 @@ const TrueFalseModal = ({ visible, onCancel, onSave, questionData = null, saving
 		};
 	}, []);
 
+	// Clear data when modal closes (visible changes from true to false)
+	useEffect(() => {
+		if (!visible) {
+			// Modal is closed, clear all data
+			setEditorData('');
+			editorDataRef.current = '';
+			setCorrectAnswer(null);
+			setWeight(1);
+			// Clear editor content if editor instance exists
+			if (editorRef.current) {
+				try {
+					editorRef.current.setData('');
+				} catch (e) {
+					// Editor might not be ready, ignore error
+				}
+			}
+		}
+	}, [visible]);
+
 const handleSave = async () => {
 		// Validate question content: allow text or image-only
 		if (!hasContent(editorData)) {
@@ -234,9 +253,19 @@ const handleSave = async () => {
 	};
 
 	const handleCancel = () => {
+		// Clear all state and refs
 		setEditorData('');
+		editorDataRef.current = '';
 		setCorrectAnswer(null);
         setWeight(1);
+		// Clear editor content if editor instance exists
+		if (editorRef.current) {
+			try {
+				editorRef.current.setData('');
+			} catch (e) {
+				console.error('Error clearing editor:', e);
+			}
+		}
 		onCancel();
 	};
 
