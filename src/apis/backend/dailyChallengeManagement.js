@@ -594,6 +594,18 @@ const dailyChallengeApi = {
 		});
 	},
 
+	// Get submission info including timing (duration, start/end, etc.)
+	// Endpoint: GET /challenge-submissions/{submissionChallengeId}/info
+	getSubmissionChallengeInfo: (submissionChallengeId) => {
+		const url = `/challenge-submissions/${submissionChallengeId}/info`;
+		console.log('GetSubmissionChallengeInfo API - URL:', url);
+		return axiosClient.get(url, {
+			headers: {
+				'accept': '*/*',
+			},
+		});
+	},
+
 	// Get anti-cheat logs for a submission
 	// Endpoint: GET /challenge-submissions/{submissionChallengeId}/logs
 	getSubmissionLogs: (submissionChallengeId) => {
