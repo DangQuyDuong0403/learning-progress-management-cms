@@ -582,7 +582,7 @@ const dailyChallengeApi = {
 
 	// Append anti-cheat logs to submission
 	appendAntiCheatLogs: (submissionChallengeId, logs) => {
-		const url = `/submission/${submissionChallengeId}/logs`;
+		const url = `/challenge-submissions/${submissionChallengeId}/logs`;
 		console.log('AppendAntiCheatLogs API - URL:', url);
 		console.log('AppendAntiCheatLogs API - Logs:', logs);
 		

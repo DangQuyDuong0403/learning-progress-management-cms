@@ -13,6 +13,8 @@ import {
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import { useSelector } from 'react-redux';
+import ROUTER_PAGE from '../../../../constants/router';
 import usePageTitle from '../../../../hooks/usePageTitle';
 import './ClassList.css';
 import ThemedLayout from '../../../../component/ThemedLayout';
@@ -31,6 +33,8 @@ const ClassListTable = () => {
 	const { theme } = useTheme();
 	const navigate = useNavigate();
 	const { enterClassMenu, exitClassMenu } = useClassMenu();
+	const { user } = useSelector((state) => state.auth);
+	const userRole = (user?.role || '').toLowerCase();
 	
 	// Set page title
 	usePageTitle(t('classManagement.title'));
@@ -566,8 +570,15 @@ const ClassListTable = () => {
 						description: createResponse.data.description || ''
 					});
 					
-					// Navigate to class menu
-					navigate(`/manager/classes/menu/${createResponse.data.id}`);
+					// Navigate to class menu with role-specific path
+					const classId = createResponse.data.id;
+					let path = ROUTER_PAGE.MANAGER_CLASS_MENU.replace(':id', String(classId));
+					if (userRole === 'teacher') {
+						path = ROUTER_PAGE.TEACHER_CLASS_MENU.replace(':id', String(classId));
+					} else if (userRole === 'teaching_assistant') {
+						path = ROUTER_PAGE.TEACHING_ASSISTANT_CLASS_MENU.replace(':id', String(classId));
+					}
+					navigate(path);
 				} else {
 					// Fallback: refresh the list if no ID returned
 					fetchClasses(1, pagination.pageSize, searchText, sortBy, sortDir, appliedFilters);
@@ -643,8 +654,14 @@ const ClassListTable = () => {
 			description: record.description || ''
 		});
 		
-		// Navigate to class menu
-		navigate(`/manager/classes/menu/${record.id}`);
+		// Navigate to class menu with role-specific path
+		let path = ROUTER_PAGE.MANAGER_CLASS_MENU.replace(':id', String(record.id));
+		if (userRole === 'teacher') {
+			path = ROUTER_PAGE.TEACHER_CLASS_MENU.replace(':id', String(record.id));
+		} else if (userRole === 'teaching_assistant') {
+			path = ROUTER_PAGE.TEACHING_ASSISTANT_CLASS_MENU.replace(':id', String(record.id));
+		}
+		navigate(path);
 	};
 
 	// Handle table header checkbox (only current page)

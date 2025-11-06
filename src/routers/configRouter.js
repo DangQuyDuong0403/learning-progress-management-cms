@@ -519,7 +519,7 @@ const CONFIG_ROUTER = [
 		exact: true,
 		key: 'MANAGER_CLASS_MENU',
 		private: true,
-		role: ['manager', 'teacher', 'teaching_assistant'],
+		role: 'manager',
 	},
 	{
 		show: false,
@@ -530,7 +530,7 @@ const CONFIG_ROUTER = [
 		exact: true,
 		key: 'MANAGER_CLASS_DASHBOARD',
 		private: true,
-		role: ['manager', 'teacher', 'teaching_assistant'],
+		role: 'manager',
 	},
 	{
 		show: false,
@@ -541,7 +541,7 @@ const CONFIG_ROUTER = [
 		exact: true,
 		key: 'MANAGER_CLASS_OVERVIEW',
 		private: true,
-		role: ['manager', 'teacher', 'teaching_assistant'],
+		role: 'manager',
 	},
 	// {
 	// 	show: false,
@@ -563,7 +563,7 @@ const CONFIG_ROUTER = [
 		exact: true,
 		key: 'MANAGER_CLASS_STUDENTS',
 		private: true,
-		role: ['manager', 'teacher', 'teaching_assistant'],
+		role: 'manager',
 	},
 	{
 		show: false,
@@ -594,7 +594,7 @@ const CONFIG_ROUTER = [
 		exact: true,
 		key: 'MANAGER_CLASS_TEACHERS',
 		private: true,
-		role: ['manager', 'teacher', 'teaching_assistant'],
+		role: 'manager',
 	},
 	{
 		show: false,
@@ -605,7 +605,7 @@ const CONFIG_ROUTER = [
 		exact: true,
 		key: 'MANAGER_CLASS_ACTIVITIES',
 		private: true,
-		role: ['manager', 'teacher', 'teaching_assistant'],
+		role: 'manager',
 	},
 	{
 		show: false,
@@ -616,7 +616,7 @@ const CONFIG_ROUTER = [
 		exact: true,
 		key: 'MANAGER_CLASS_CHAPTERS_LESSONS',
 		private: true,
-		role: ['manager', 'teacher', 'teaching_assistant'],
+		role: 'manager',
 	},
 	{
 		show: false,
@@ -627,7 +627,7 @@ const CONFIG_ROUTER = [
 		exact: true,
 		key: 'MANAGER_CLASS_CHAPTERS',
 		private: true,
-		role: ['manager', 'teacher', 'teaching_assistant'],
+		role: 'manager',
 	},
 	{
 		show: false,
@@ -638,7 +638,7 @@ const CONFIG_ROUTER = [
 		exact: true,
 		key: 'MANAGER_CLASS_CHAPTERS_EDIT_ORDER',
 		private: true,
-		role: ['manager', 'teacher', 'teaching_assistant'],
+		role: 'manager',
 	},
 	{
 		show: false,
@@ -649,7 +649,7 @@ const CONFIG_ROUTER = [
 		exact: true,
 		key: 'MANAGER_CLASS_CHAPTER_LESSONS',
 		private: true,
-		role: ['manager', 'teacher', 'teaching_assistant'],
+		role: 'manager',
 	},
 	{
 		show: false,
@@ -660,7 +660,7 @@ const CONFIG_ROUTER = [
 		exact: true,
 		key: 'MANAGER_CLASS_CHAPTER_LESSONS_EDIT_ORDER',
 		private: true,
-		role: ['manager', 'teacher', 'teaching_assistant'],
+		role: 'manager',
 	},
 	
 	// Teacher Management Routes
@@ -902,6 +902,26 @@ const CONFIG_ROUTER = [
 	},
 	{
 		show: false,
+		component: StudentProfile,
+		path: ROUTER_PAGE.TEACHER_STUDENT_PROFILE,
+		menuName: 'Student Profile',
+		exact: true,
+		key: 'TEACHER_STUDENT_PROFILE',
+		private: true,
+		role: ['teacher'],
+	},
+	{
+		show: false,
+		component: StudentProfile,
+		path: ROUTER_PAGE.TEACHING_ASSISTANT_STUDENT_PROFILE,
+		menuName: 'Student Profile',
+		exact: true,
+		key: 'TEACHING_ASSISTANT_STUDENT_PROFILE',
+		private: true,
+		role: ['teaching_assistant'],
+	},
+	{
+		show: false,
 		component: StudentLearningProgressOverview,
 		// icon: <UserOutlined />,
 		path: ROUTER_PAGE.MANAGER_STUDENT_PROGRESS,
@@ -910,6 +930,26 @@ const CONFIG_ROUTER = [
 		key: 'MANAGER_STUDENT_PROGRESS',
 		private: true,
 		role: 'manager',
+	},
+	{
+		show: false,
+		component: StudentLearningProgressOverview,
+		path: ROUTER_PAGE.TEACHER_STUDENT_PROGRESS,
+		menuName: 'Student Learning Progress Overview',
+		exact: true,
+		key: 'TEACHER_STUDENT_PROGRESS',
+		private: true,
+		role: ['teacher'],
+	},
+	{
+		show: false,
+		component: StudentLearningProgressOverview,
+		path: ROUTER_PAGE.TEACHING_ASSISTANT_STUDENT_PROGRESS,
+		menuName: 'Student Learning Progress Overview',
+		exact: true,
+		key: 'TEACHING_ASSISTANT_STUDENT_PROGRESS',
+		private: true,
+		role: ['teaching_assistant'],
 	},
 	{
 		show: false,

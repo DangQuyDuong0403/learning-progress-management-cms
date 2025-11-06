@@ -25,6 +25,8 @@ import {
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
+import { useSelector } from 'react-redux';
+import ROUTER_PAGE from '../../../../constants/router';
 import { useTheme } from '../../../../contexts/ThemeContext';
 import { spaceToast } from '../../../../component/SpaceToastify';
 import studentManagementApi from '../../../../apis/backend/StudentManagement';
@@ -41,6 +43,11 @@ const StudentProfile = () => {
 	const navigate = useNavigate();
 	const { id } = useParams();
 	const { theme } = useTheme();
+	const { user } = useSelector((state) => state.auth);
+	const userRole = (user?.role || '').toLowerCase();
+	const isManager = userRole === 'manager';
+	const isTeacher = userRole === 'teacher';
+	const isTeachingAssistant = userRole === 'teaching_assistant';
 	const [editModalVisible, setEditModalVisible] = useState(false);
 	const [editEmailModalVisible, setEditEmailModalVisible] = useState(false);
 	const [resetPasswordModalVisible, setResetPasswordModalVisible] = useState(false);
@@ -87,8 +94,10 @@ const StudentProfile = () => {
 
 	useEffect(() => {
 		fetchStudentProfile();
-		fetchPublishedLevels();
-	}, [id]); // eslint-disable-line react-hooks/exhaustive-deps
+		if (isManager) {
+			fetchPublishedLevels();
+		}
+	}, [id, isManager]); // eslint-disable-line react-hooks/exhaustive-deps
 
 	// Fetch published levels
 	const fetchPublishedLevels = async () => {
@@ -150,7 +159,13 @@ const StudentProfile = () => {
 	};
 
 	const handleBack = () => {
-		navigate('/manager/students');
+		let path = '/manager/students';
+		if (isTeacher) {
+			path = ROUTER_PAGE.TEACHER_CLASSES;
+		} else if (isTeachingAssistant) {
+			path = ROUTER_PAGE.TEACHING_ASSISTANT_CLASSES;
+		}
+		navigate(path);
 	};
 
 	const handleEdit = () => {
@@ -384,10 +399,13 @@ const StudentProfile = () => {
 
 	const handleViewLearningProgress = () => {
 		if (!student) return;
-		
-		navigate(`/manager/student/${student.id}/progress`, { 
-			state: { student: student } 
-		});
+		let path = ROUTER_PAGE.MANAGER_STUDENT_PROGRESS.replace(':id', String(student.id));
+		if (isTeacher) {
+			path = ROUTER_PAGE.TEACHER_STUDENT_PROGRESS.replace(':id', String(student.id));
+		} else if (isTeachingAssistant) {
+			path = ROUTER_PAGE.TEACHING_ASSISTANT_STUDENT_PROGRESS.replace(':id', String(student.id));
+		}
+		navigate(path, { state: { student } });
 	};
 
 	// Handle delete for PENDING students (trash button)
@@ -510,7 +528,7 @@ const StudentProfile = () => {
 							{t('common.back')}
 				</Button>
 				<div className="header-actions">
-					{(student?.requestResetPasswordByTeacher === true) && (
+					{(student?.requestResetPasswordByTeacher === true) && !isTeachingAssistant && (
 						<Button
 							icon={<KeyOutlined />}
 							onClick={handleResetPassword}
@@ -536,6 +554,7 @@ const StudentProfile = () => {
 							{t('studentManagement.deleteStudent')}
 						</Button>
 					)}
+					{isManager && (
 					<Button
 						type='primary'
 						icon={<EditOutlined />}
@@ -543,6 +562,7 @@ const StudentProfile = () => {
 						className={`edit-button ${theme}-edit-button`}>
 						{t('studentManagement.editProfile')}
 					</Button>
+					)}
 				</div>
 			</div>
 
@@ -558,7 +578,7 @@ const StudentProfile = () => {
 					<div className={`avatar-section-new ${theme}-avatar-section-new`}>
 						<div 
 							className="profile-picture-new" 
-							onClick={() => setAvatarModalVisible(true)}
+							onClick={() => { if (isManager) setAvatarModalVisible(true); }}
 						>
 							<Avatar
 								size={120}
@@ -578,13 +598,15 @@ const StudentProfile = () => {
 							<span className={`email-text-new ${theme}-email-text-new`}>
 								{student.email || '-'}
 							</span>
-							<Button
-								type="text"
-								icon={<EditOutlined />}
-								onClick={handleEditEmail}
-								className={`email-edit-icon ${theme}-email-edit-icon`}
-								size="small"
-							/>
+						{isManager && (
+						<Button
+							type="text"
+							icon={<EditOutlined />}
+							onClick={handleEditEmail}
+							className={`email-edit-icon ${theme}-email-edit-icon`}
+							size="small"
+						/>
+						)}
 						</div>
 						
 						{/* Level Badge */}
@@ -718,7 +740,8 @@ const StudentProfile = () => {
 				</div>
 			)}
 
-			{/* Edit Modal */}
+			{/* Edit Modal - managers only */}
+			{isManager && (
 			<Modal
 				title={
 					<div style={{ 
@@ -1008,6 +1031,7 @@ const StudentProfile = () => {
 					</Row>
 				</Form>
 			</Modal>
+			)}
 
 			{/* Reset Password Modal */}
 			<Modal
@@ -1364,7 +1388,8 @@ const StudentProfile = () => {
 				</div>
 			</Modal>
 
-			{/* Avatar Selection Modal */}
+			{/* Avatar Selection Modal - managers only */}
+			{isManager && (
 			<Modal
 				title={
 					<div style={{
@@ -1484,6 +1509,7 @@ const StudentProfile = () => {
 					</div>
 				</div>
 			</Modal>
+			)}
 			</div>
 		</div>
 		</ThemedLayout>
