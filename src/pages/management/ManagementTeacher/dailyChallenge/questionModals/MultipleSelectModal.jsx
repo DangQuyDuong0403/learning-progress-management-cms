@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo, memo } from 'react';
 import { Modal, Button, InputNumber, Tooltip } from 'antd';
 import { spaceToast } from '../../../../../component/SpaceToastify';
 import {
@@ -11,6 +11,84 @@ import {
 import { CKEditor } from '@ckeditor/ckeditor5-react';
 import ClassicEditor from '@ckeditor/ckeditor5-build-classic';
 import './MultipleChoiceModal.css';
+
+// Memoized Option Card to minimize re-renders while typing
+const OptionCard = memo(({ option, index, optionEditorConfig, getPlainText, onRemove, onToggleCorrect, onChange, optionEditorsRef }) => {
+	const [isHovered, setIsHovered] = useState(false);
+	return (
+		<div
+			key={option.id}
+			onMouseEnter={() => setIsHovered(true)}
+			onMouseLeave={() => setIsHovered(false)}
+			style={{
+				background: `linear-gradient(135deg, ${option.color}cc 0%, ${option.color} 100%)`,
+				borderRadius: '16px',
+				padding: '16px',
+				minHeight: '320px',
+				position: 'relative',
+				display: 'flex',
+				flexDirection: 'column',
+				boxShadow: isHovered ? `0 12px 32px ${option.color}80` : '0 4px 16px rgba(0,0,0,0.08)',
+				border: option.isCorrect ? '3px solid #52c41a' : '2px solid rgba(255,255,255,0.5)',
+				transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+				transform: isHovered ? 'translateY(-8px)' : 'translateY(0)',
+				transformOrigin: 'center',
+				cursor: 'pointer',
+				overflow: 'visible',
+				zIndex: isHovered ? 10 : 1
+			}}
+		>
+			<div style={{
+				position: 'absolute', top: '16px', left: '16px', width: '40px', height: '40px', borderRadius: '50%',
+				background: 'rgba(255,255,255,0.95)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+				fontWeight: 700, fontSize: '18px', color: '#333', boxShadow: '0 2px 8px rgba(0,0,0,0.15)', border: `2px solid ${option.color}`
+			}}>
+				{String.fromCharCode(65 + index)}
+			</div>
+
+			<div style={{ position: 'absolute', top: '16px', right: '16px', display: 'flex', gap: '8px', alignItems: 'center' }}>
+				<Tooltip title={option.isCorrect ? 'Correct Answer' : 'Mark as Correct'}>
+					<div
+						onClick={(e) => { e.stopPropagation(); onToggleCorrect(option.id, !option.isCorrect); }}
+						style={{
+							background: option.isCorrect ? '#52c41a' : 'rgba(255,255,255,0.3)', color: 'white', padding: '6px 12px', borderRadius: '20px',
+							fontSize: '13px', fontWeight: 600, cursor: 'pointer', transition: 'all 0.3s ease', display: 'flex', alignItems: 'center', gap: '4px',
+							boxShadow: option.isCorrect ? '0 2px 8px rgba(82, 196, 26, 0.5)' : 'none'
+						}}
+					>
+						<CheckOutlined />
+						{option.isCorrect ? 'Correct' : 'Mark'}
+					</div>
+				</Tooltip>
+				<Tooltip title="Delete Option">
+					<Button
+						size="small"
+						danger
+						icon={<DeleteOutlined />}
+						onClick={(e) => { e.stopPropagation(); onRemove(option.id); }}
+						style={{ background: 'rgba(255, 77, 79, 0.9)', color: 'white', border: 'none', borderRadius: '8px', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px' }}
+					/>
+				</Tooltip>
+			</div>
+
+			<div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', marginTop: '50px', marginBottom: '8px', position: 'relative', zIndex: 1 }}>
+				<div className={`option-editor option-editor-${option.id}`} style={{ borderRadius: '12px', overflow: 'hidden', background: 'rgba(255, 255, 255, 0.98)', border: '2px solid rgba(255,255,255,0.95)', backdropFilter: 'blur(10px)', boxShadow: '0 2px 12px rgba(0, 0, 0, 0.08)' }}>
+					<CKEditor
+						key={`option-editor-${option.id}`}
+						editor={ClassicEditor}
+						data={option.text}
+						config={optionEditorConfig}
+						onChange={(event, editor) => onChange(option.id, event, editor)}
+						onReady={(editor) => { optionEditorsRef.current[option.id] = editor; }}
+					/>
+				</div>
+				<div style={{ marginTop: '6px', textAlign: 'right', fontSize: '12px', fontWeight: 600, color: getPlainText(option.text).length > 200 ? '#ff4d4f' : '#595959' }}>
+					{`${Math.min(getPlainText(option.text).length, 200)}/200`}
+				</div>
+			</div>
+		</div>
+	);
+}, (prev, next) => prev.option === next.option && prev.index === next.index);
 
 const MultipleSelectModal = ({
 	visible,
@@ -62,7 +140,6 @@ const MultipleSelectModal = ({
 		]
 	);
     const [weight, setWeight] = useState(1);
-	const [hoveredOption, setHoveredOption] = useState(null);
 	const [editorData, setEditorData] = useState('');
 	const editorRef = useRef(null);
 	const optionEditorsRef = useRef({});
@@ -204,20 +281,18 @@ const MultipleSelectModal = ({
 					];
 				}
 				
-				setOptions(loadedOptions);
+                setOptions(loadedOptions);
                 setWeight((questionData && (questionData.weight ?? questionData.points)) || 1);
-				setHoveredOption(null); // Reset hover state
 			} else {
 				// Add mode - reset to defaults
-				setEditorData('');
-				setOptions([
+        setEditorData('');
+        setOptions([
 					{ id: 1, text: '', isCorrect: false, color: colors[0] },
 					{ id: 2, text: '', isCorrect: false, color: colors[1] },
 					{ id: 3, text: '', isCorrect: false, color: colors[2] },
 					{ id: 4, text: '', isCorrect: false, color: colors[3] },
 				]);
                 setWeight(1);
-				setHoveredOption(null); // Reset hover state
 			}
 		}
 	}, [questionData?.id, visible, getOptionColors]);
@@ -264,13 +339,7 @@ const MultipleSelectModal = ({
 		});
 	}, []);
 
-	const handleMouseEnter = useCallback((optionId) => {
-		setHoveredOption(optionId);
-	}, []);
-
-	const handleMouseLeave = useCallback(() => {
-		setHoveredOption(null);
-	}, []);
+// Hover is handled locally inside OptionCard to avoid parent re-renders
 
 	// Debounced editor change handler for main question
 	const editorChangeTimeoutRef = useRef(null);
@@ -338,7 +407,7 @@ const MultipleSelectModal = ({
 		};
 	}, []);
 
-	const handleSave = () => {
+    const handleSave = async () => {
 		// Validate question content: allow text or image-only
 		if (!hasContent(editorData)) {
 			spaceToast.warning('Please add question content (text or image)');
@@ -391,19 +460,8 @@ const MultipleSelectModal = ({
 				.join(', '),
 		};
 
-		onSave(newQuestionData);
-		
-		// Reset form after save
-		const colors = getOptionColors();
-		setEditorData('');
-		setOptions([
-			{ id: 1, text: '', isCorrect: false, color: colors[0] },
-			{ id: 2, text: '', isCorrect: false, color: colors[1] },
-			{ id: 3, text: '', isCorrect: false, color: colors[2] },
-			{ id: 4, text: '', isCorrect: false, color: colors[3] },
-		]);
-		setHoveredOption(null);
-        setWeight(1);
+		// Await parent save to keep inputs intact while saving
+		await onSave(newQuestionData);
 	};
 
 	const handleCancel = () => {
@@ -415,7 +473,6 @@ const MultipleSelectModal = ({
 			{ id: 3, text: '', isCorrect: false, color: colors[2] },
 			{ id: 4, text: '', isCorrect: false, color: colors[3] },
 		]);
-		setHoveredOption(null);
         setWeight(1);
 		onCancel();
 	};
@@ -654,166 +711,19 @@ const MultipleSelectModal = ({
 						overflowY: 'auto',
 						padding: '4px'
 				}}>
-				{options.map((option, index) => (
-					<div
-						key={option.id}
-						onMouseEnter={() => handleMouseEnter(option.id)}
-						onMouseLeave={handleMouseLeave}
-						style={{
-									background: `linear-gradient(135deg, ${option.color}cc 0%, ${option.color} 100%)`,
-									borderRadius: '16px',
-									padding: '16px',
-									minHeight: '320px',
-							position: 'relative',
-							display: 'flex',
-							flexDirection: 'column',
-									boxShadow: hoveredOption === option.id
-										? `0 12px 32px ${option.color}80`
-										: '0 4px 16px rgba(0,0,0,0.08)',
-									border: option.isCorrect
-										? '3px solid #52c41a'
-										: '2px solid rgba(255,255,255,0.5)',
-									transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-									transform: hoveredOption === option.id ? 'translateY(-8px)' : 'translateY(0)',
-									transformOrigin: 'center',
-							cursor: 'pointer',
-									overflow: 'visible',
-							zIndex: hoveredOption === option.id ? 10 : 1
-								}}>
-								{/* Option Label */}
-								<div style={{
-									position: 'absolute',
-									top: '16px',
-									left: '16px',
-									width: '40px',
-									height: '40px',
-									borderRadius: '50%',
-									background: 'rgba(255,255,255,0.95)',
-									display: 'flex',
-									alignItems: 'center',
-									justifyContent: 'center',
-									fontWeight: 700,
-									fontSize: '18px',
-									color: '#333',
-									boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
-									border: `2px solid ${option.color}`
-								}}>
-									{String.fromCharCode(65 + index)}
-								</div>
-
-								{/* Action Buttons */}
-								<div style={{
-									position: 'absolute',
-									top: '16px',
-									right: '16px',
-									display: 'flex',
-									gap: '8px',
-									alignItems: 'center'
-								}}>
-									{/* Correct Answer Badge */}
-									<Tooltip title={option.isCorrect ? "Correct Answer" : "Mark as Correct"}>
-										<div
-											onClick={(e) => {
-												e.stopPropagation();
-												handleOptionChange(option.id, 'isCorrect', !option.isCorrect);
-											}}
-											style={{
-												background: option.isCorrect ? '#52c41a' : 'rgba(255,255,255,0.3)',
-												color: 'white',
-												padding: '6px 12px',
-												borderRadius: '20px',
-												fontSize: '13px',
-												fontWeight: 600,
-												cursor: 'pointer',
-												transition: 'all 0.3s ease',
-												display: 'flex',
-												alignItems: 'center',
-												gap: '4px',
-												boxShadow: option.isCorrect ? '0 2px 8px rgba(82, 196, 26, 0.5)' : 'none'
-											}}
-										>
-											<CheckOutlined />
-											{option.isCorrect ? 'Correct' : 'Mark'}
-										</div>
-									</Tooltip>
-									
-									<div style={{
-										display: 'flex',
-										gap: '8px',
-										transition: 'opacity 0.2s ease'
-									}}>
-										<Tooltip title="Delete Option">
-							<Button
-												size="small"
-												danger
-								icon={<DeleteOutlined />}
-								onClick={(e) => {
-									e.stopPropagation();
-									handleRemoveOption(option.id);
-								}}
-								style={{
-													background: 'rgba(255, 77, 79, 0.9)',
-									color: 'white',
-									border: 'none',
-													borderRadius: '8px',
-													width: '32px',
-													height: '32px',
-									display: 'flex',
-									alignItems: 'center',
-									justifyContent: 'center',
-													fontSize: '16px'
-												}}
-											/>
-										</Tooltip>
-									</div>
-						</div>
-
-						{/* Input Field - CKEditor */}
-								<div style={{
-								flex: 1,
-								display: 'flex',
-									flexDirection: 'column',
-									justifyContent: 'center',
-									marginTop: '50px',
-									marginBottom: '8px',
-									position: 'relative',
-									zIndex: 1
-								}}>
-									<div 
-										className={`option-editor option-editor-${option.id}`}
-								style={{
-											borderRadius: '12px',
-											overflow: 'hidden',
-											background: 'rgba(255, 255, 255, 0.98)',
-											border: '2px solid rgba(255,255,255,0.95)',
-									backdropFilter: 'blur(10px)',
-											boxShadow: '0 2px 12px rgba(0, 0, 0, 0.08)'
-										}}
-									>
-						<CKEditor
-											key={`option-editor-${option.id}`}
-											editor={ClassicEditor}
-											data={option.text}
-											config={optionEditorConfig}
-							onChange={(event, editor) => handleOptionEditorChange(option.id, event, editor)}
-							onReady={(editor) => {
-								optionEditorsRef.current[option.id] = editor;
-							}}
-										/>
-									</div>
-					{/* Character Counter */}
-					<div style={{
-						marginTop: '6px',
-						textAlign: 'right',
-						fontSize: '12px',
-						fontWeight: 600,
-						color: getPlainText(option.text).length > 200 ? '#ff4d4f' : '#595959'
-					}}>
-						{`${Math.min(getPlainText(option.text).length, 200)}/200`}
-					</div>
-						</div>
-					</div>
-				))}
+                {options.map((option, index) => (
+                    <OptionCard
+                        key={option.id}
+                        option={option}
+                        index={index}
+                        optionEditorConfig={optionEditorConfig}
+                        getPlainText={getPlainText}
+                        onRemove={handleRemoveOption}
+                        onToggleCorrect={(id, val) => handleOptionChange(id, 'isCorrect', val)}
+                        onChange={handleOptionEditorChange}
+                        optionEditorsRef={optionEditorsRef}
+                    />
+                ))}
 
 					</div>
 				</div>

@@ -28,6 +28,15 @@ const ROUTER_PAGE = {
 	STUDENT_DAILY_CHALLENGE_DETAIL: '/student/daily-challenges/detail/:id',
 	STUDENT_DAILY_CHALLENGE_TAKE: '/student/daily-challenges/take/:id',
 	STUDENT_DAILY_CHALLENGE_RESULT: '/student/daily-challenges/result/:id',
+	STUDENT_DAILY_CHALLENGE_SUBMISSION_DETAIL: '/student/daily-challenges/detail/:id/submissions/:submissionId',
+	// Test Taker Routes
+	TEST_TAKER_DASHBOARD: '/test-taker/dashboard',
+	TEST_TAKER_CLASSES: '/test-taker/classes',
+	TEST_TAKER_CLASS_MENU: '/test-taker/classes/menu/:id',
+	TEST_TAKER_CLASS_DAILY_CHALLENGES: '/test-taker/classes/daily-challenges/:classId',
+	TEST_TAKER_DAILY_CHALLENGE_TAKE: '/test-taker/daily-challenges/take/:id',
+	TEST_TAKER_DAILY_CHALLENGE_RESULT: '/test-taker/daily-challenges/result/:id',
+	TEST_TAKER_DAILY_CHALLENGE_SUBMISSION_DETAIL: '/test-taker/daily-challenges/detail/:id/submissions/:submissionId',
 	// Admin Management Routes
 	ADMIN_DASHBOARD: '/admin/dashboard',
 	ADMIN_ACCOUNTS: '/admin/accounts',

@@ -21,6 +21,7 @@ import { useTheme } from "../../../contexts/ThemeContext";
 import { dailyChallengeApi } from "../../../apis/apis";
 import dailyChallengeApiBackend from "../../../apis/backend/dailyChallengeManagement";
 import { spaceToast } from "../../../component/SpaceToastify";
+import { useSelector } from "react-redux";
 
 // Transform API response data to match UI structure
 const transformApiData = (apiData) => {
@@ -82,6 +83,9 @@ const transformApiData = (apiData) => {
           submissionChallengeId: (ss.submissionId ?? challenge.submissionChallengeId),
           submissionStatus: (ss.submissionStatus ?? challenge.submissionStatus),
           late: (typeof ss.late !== 'undefined' ? ss.late : challenge.late),
+          hasAntiCheat: dc.hasAntiCheat,
+          shuffleQuestion: dc.shuffleQuestion,
+          translateOnScreen: dc.translateOnScreen,
           isEmptyLesson: false,
         };
 
@@ -99,6 +103,9 @@ const StudentDailyChallengeList = () => {
   const { theme } = useTheme();
   const location = useLocation();
   const { classId } = useParams();
+  const userRole = useSelector((state) => state.auth?.user?.role);
+  const isTestTaker = userRole === 'test_taker' || userRole === 'TEST_TAKER';
+  const routePrefix = isTestTaker ? '/test-taker' : '/student';
   
   const [loading, setLoading] = useState(false);
   const [dailyChallenges, setDailyChallenges] = useState([]);
@@ -138,6 +145,7 @@ const StudentDailyChallengeList = () => {
         // Fetch all data (no pagination) - client-side pagination will handle it
         const response = await dailyChallengeApi.getStudentDailyChallengesByClass(resolvedClassId, {
           text: searchDebounce || undefined,
+          size: 100,
         });
 
         // Handle both possible response structures
@@ -287,7 +295,7 @@ const StudentDailyChallengeList = () => {
     }
 
     // Navigate to challenge take view (student view)
-    navigate(`/student/daily-challenges/take/${challenge.id}`, {
+    navigate(`${routePrefix}/daily-challenges/take/${challenge.id}`, {
       state: {
         challengeId: challenge.id,
         challengeName: challenge.title,
@@ -296,15 +304,28 @@ const StudentDailyChallengeList = () => {
         type: challenge.type, // Also pass as 'type' for compatibility
         submissionChallengeId: challenge.submissionChallengeId, // Pass submissionChallengeId for saving/submitting
         submissionStatus: challenge.submissionStatus, // Pass submissionStatus to determine if viewing submitted answer
+        hasAntiCheat: challenge.hasAntiCheat,
+        shuffleQuestion: challenge.shuffleQuestion,
+        translateOnScreen: challenge.translateOnScreen,
       }
     });
   };
 
   const handleViewResult = (challenge) => {
-      // Navigate to result view
-      // Use submissionChallengeId in URL params if available, otherwise use challenge.id
-      const resultId = challenge.submissionChallengeId || challenge.id;
-      navigate(`/student/daily-challenges/result/${resultId}`, {
+      // Navigate to submission detail view (same interface as teacher but for student)
+      // Need challengeId and submissionId (submissionChallengeId)
+      const challengeId = challenge.id;
+      const submissionId = challenge.submissionChallengeId;
+      
+      if (!submissionId) {
+        spaceToast.error(t('dailyChallenge.errorNoSubmission', 'No submission found for this challenge.'));
+        return;
+      }
+      
+      // Get classId from params or location state
+      const resolvedClassId = classId || location.state?.classId;
+      
+      navigate(`${routePrefix}/daily-challenges/detail/${challengeId}/submissions/${submissionId}`, {
       state: {
         challengeId: challenge.id,
         submissionChallengeId: challenge.submissionChallengeId,
@@ -313,6 +334,9 @@ const StudentDailyChallengeList = () => {
         challengeType: challenge.type,
         type: challenge.type,
         viewResult: true, // Flag to indicate viewing result
+        className: challenge.lessonName, // For header display
+        studentName: null, // Student viewing their own submission
+        classId: resolvedClassId, // Pass classId for back navigation
       }
     });
   };

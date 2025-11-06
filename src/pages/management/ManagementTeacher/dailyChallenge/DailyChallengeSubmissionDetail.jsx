@@ -49,6 +49,7 @@ import usePageTitle from "../../../../hooks/usePageTitle";
 import { dailyChallengeApi } from "../../../../apis/apis";
 import { CKEditor } from '@ckeditor/ckeditor5-react';
 import ClassicEditor from '@ckeditor/ckeditor5-build-classic';
+import { useSelector } from 'react-redux';
 
 const DailyChallengeSubmissionDetail = () => {
   const { t } = useTranslation();
@@ -57,6 +58,10 @@ const DailyChallengeSubmissionDetail = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { enterDailyChallengeMenu, exitDailyChallengeMenu, dailyChallengeData } = useDailyChallengeMenu();
+  
+  // Get user role from Redux
+  const userRole = useSelector((state) => state.auth?.user?.role);
+  const isStudent = userRole === 'student' || userRole === 'test_taker';
   
   // Set page title
   usePageTitle('Daily Challenge - Submission Detail');
@@ -1506,13 +1511,29 @@ const DailyChallengeSubmissionDetail = () => {
             }}>
               <Button
                 icon={<ArrowLeftOutlined />}
-                onClick={() => {
-                  if (dailyChallengeData?.backPath) {
-                    navigate(dailyChallengeData.backPath);
+              onClick={() => {
+                // Check if this is a student or test_taker route by checking URL path
+                const isStudentRoute = location.pathname.includes('/student/daily-challenges');
+                const isTestTakerRoute = location.pathname.includes('/test-taker/daily-challenges');
+                
+                if (isStudentRoute || isTestTakerRoute) {
+                  // For student/test_taker route, navigate back to daily challenge list
+                  // Try to get classId from location state or construct from submission data
+                  const classId = location.state?.classId || location.search?.match(/classId=([^&]+)/)?.[1];
+                  const routePrefix = isTestTakerRoute ? '/test-taker' : '/student';
+                  
+                  if (classId) {
+                    navigate(`${routePrefix}/classes/daily-challenges/${classId}`);
                   } else {
-                    navigate(-1);
+                    // Fallback: navigate to dashboard or daily challenges list
+                    navigate(`${routePrefix}/dashboard`);
                   }
-                }}
+                } else if (dailyChallengeData?.backPath) {
+                  navigate(dailyChallengeData.backPath);
+                } else {
+                  navigate(-1);
+                }
+              }}
                 className={`daily-challenge-menu-back-button ${theme}-daily-challenge-menu-back-button`}
                 style={{
                   height: '32px',
@@ -2319,29 +2340,31 @@ const DailyChallengeSubmissionDetail = () => {
               ({sectionTotals.received} / {sectionTotals.total} points)
             </Typography.Text>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            {!hasExistingGradingForSection(section.id) ? (
-              <>
-                <Button
-                  size="small"
-                  onClick={() => handleOpenAddFeedback(section.id, 'section')}
-                  style={{ fontSize: '13px', height: '28px', padding: '0 12px' }}
-                >
-                  Add Score/Feedback
-                </Button>
-              </>
-            ) : (
-              <>
-                <Button
-                  size="small"
-                  onClick={() => handleOpenEditFeedback(section.id, 'section')}
-                  style={{ fontSize: '13px', height: '28px', padding: '0 12px' }}
-                >
-                  Edit Score/Feedback
-                </Button>
-              </>
-            )}
-          </div>
+          {!isStudent && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              {!hasExistingGradingForSection(section.id) ? (
+                <>
+                  <Button
+                    size="small"
+                    onClick={() => handleOpenAddFeedback(section.id, 'section')}
+                    style={{ fontSize: '13px', height: '28px', padding: '0 12px' }}
+                  >
+                    Add Score/Feedback
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Button
+                    size="small"
+                    onClick={() => handleOpenEditFeedback(section.id, 'section')}
+                    style={{ fontSize: '13px', height: '28px', padding: '0 12px' }}
+                  >
+                    Edit Score/Feedback
+                  </Button>
+                </>
+              )}
+            </div>
+          )}
         </div>
         <div style={{ display: 'flex', gap: '24px', minHeight: '600px', position: 'relative' }}>
           <div className="writing-prompt-scrollbar" style={{ flex: '1', padding: '20px', background: theme === 'sun' ? '#f9f9f9' : 'rgba(255, 255, 255, 0.02)', borderRadius: '12px', border: `1px solid ${theme === 'sun' ? '#e8e8e8' : 'rgba(255, 255, 255, 0.1)'}`, overflowY: 'auto', maxHeight: '600px', scrollbarWidth: 'thin', scrollbarColor: theme === 'sun' ? '#1890ff rgba(24, 144, 255, 0.2)' : '#8B5CF6 rgba(138, 122, 255, 0.2)' }}>
@@ -2355,12 +2378,12 @@ const DailyChallengeSubmissionDetail = () => {
                   <div 
                     id={`essay-container-${section.id}`}
                     onMouseUp={(e) => {
-                      if (index === 0) {
+                      if (!isStudent && index === 0) {
                         handleTextSelection(section.id, e.currentTarget);
                       }
                     }}
                     onMouseDown={(e) => {
-                      if (index === 0) {
+                      if (!isStudent && index === 0) {
                         // Clear selection when clicking
                         setTimeout(() => {
                           const selection = window.getSelection();
@@ -2383,8 +2406,8 @@ const DailyChallengeSubmissionDetail = () => {
                       lineHeight: '1.8', 
                       fontSize: '14px', 
                       color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)',
-                      userSelect: index === 0 ? 'text' : 'none',
-                      cursor: index === 0 ? 'text' : 'default',
+                      userSelect: (!isStudent && index === 0) ? 'text' : 'none',
+                      cursor: (!isStudent && index === 0) ? 'text' : 'default',
                       position: 'relative',
                       minHeight: '200px'
                     }}
@@ -2396,7 +2419,7 @@ const DailyChallengeSubmissionDetail = () => {
                     )}
                   </div>
                   {/* Floating Toolbar for text selection */}
-                  {index === 0 && textSelection.visible && textSelection.sectionId === section.id && (
+                  {!isStudent && index === 0 && textSelection.visible && textSelection.sectionId === section.id && (
                     <div
                       style={{
                         position: 'absolute',
@@ -2670,37 +2693,39 @@ const DailyChallengeSubmissionDetail = () => {
               ({sectionTotals.received} / {sectionTotals.total} points)
             </Typography.Text>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            {!hasExistingGradingForSection(section.id) ? (
-              <>
-                <Button
-                  size="small"
-                  onClick={() => handleOpenAddFeedback(section.id, 'section')}
-                  style={{
-                    fontSize: '13px',
-                    height: '28px',
-                    padding: '0 12px'
-                  }}
-                >
-                  Add Score/Feedback
-                </Button>
-              </>
-            ) : (
-              <>
-                <Button
-                  size="small"
-                  onClick={() => handleOpenEditFeedback(section.id, 'section')}
-                  style={{
-                    fontSize: '13px',
-                    height: '28px',
-                    padding: '0 12px'
-                  }}
-                >
-                  Edit Score/Feedback
-                </Button>
-              </>
-            )}
-          </div>
+          {!isStudent && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              {!hasExistingGradingForSection(section.id) ? (
+                <>
+                  <Button
+                    size="small"
+                    onClick={() => handleOpenAddFeedback(section.id, 'section')}
+                    style={{
+                      fontSize: '13px',
+                      height: '28px',
+                      padding: '0 12px'
+                    }}
+                  >
+                    Add Score/Feedback
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Button
+                    size="small"
+                    onClick={() => handleOpenEditFeedback(section.id, 'section')}
+                    style={{
+                      fontSize: '13px',
+                      height: '28px',
+                      padding: '0 12px'
+                    }}
+                  >
+                    Edit Score/Feedback
+                  </Button>
+                </>
+              )}
+            </div>
+          )}
         </div>
         <div style={{ display: 'flex', gap: '24px', alignItems: hasAudio ? 'flex-start' : 'stretch', minHeight: hasAudio ? '500px' : '400px' }}>
           {/* Left Section - Audio Player (if has audio) or Prompt */}
@@ -4118,7 +4143,23 @@ const DailyChallengeSubmissionDetail = () => {
             <Button
               icon={<ArrowLeftOutlined />}
               onClick={() => {
-                if (dailyChallengeData?.backPath) {
+                // Check if this is a student or test_taker route by checking URL path
+                const isStudentRoute = location.pathname.includes('/student/daily-challenges');
+                const isTestTakerRoute = location.pathname.includes('/test-taker/daily-challenges');
+                
+                if (isStudentRoute || isTestTakerRoute) {
+                  // For student/test_taker route, navigate back to daily challenge list
+                  // Try to get classId from location state or construct from submission data
+                  const classId = location.state?.classId || location.search?.match(/classId=([^&]+)/)?.[1];
+                  const routePrefix = isTestTakerRoute ? '/test-taker' : '/student';
+                  
+                  if (classId) {
+                    navigate(`${routePrefix}/classes/daily-challenges/${classId}`);
+                  } else {
+                    // Fallback: navigate to dashboard or daily challenges list
+                    navigate(`${routePrefix}/dashboard`);
+                  }
+                } else if (dailyChallengeData?.backPath) {
                   navigate(dailyChallengeData.backPath);
                 } else {
                   navigate(-1);
@@ -4190,12 +4231,13 @@ const DailyChallengeSubmissionDetail = () => {
             </h2>
           </div>
           {/* Right actions */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginLeft: 'auto' }}>
-              <Button
-                icon={<FileTextOutlined />}
-                loading={savingFeedback}
-                onClick={() => { setOverallFeedbackDraft(teacherFeedback || ''); setOverallFeedbackModalVisible(true); }}
-              className={`create-button ${theme}-create-button`}
+            {!isStudent && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginLeft: 'auto' }}>
+                <Button
+                  icon={<FileTextOutlined />}
+                  loading={savingFeedback}
+                  onClick={() => { setOverallFeedbackDraft(teacherFeedback || ''); setOverallFeedbackModalVisible(true); }}
+                className={`create-button ${theme}-create-button`}
               style={{
                 height: '40px',
                 borderRadius: '8px',
@@ -4214,6 +4256,7 @@ const DailyChallengeSubmissionDetail = () => {
                 {(teacherFeedback && teacherFeedback.replace(/<[^>]*>/g,'').trim().length > 0) ? 'Edit Feedback' : 'Add Feedback'}
             </Button>
           </div>
+            )}
         </div>
       </nav>
     </header>
@@ -6108,44 +6151,46 @@ const DailyChallengeSubmissionDetail = () => {
           })()}
 
           {/* Edit and Delete Buttons */}
-          <div style={{ marginTop: '16px', display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
-            <Button
-              danger
-              icon={<DeleteOutlined />}
-              onClick={handleDeleteComment}
-              style={{
-                borderRadius: '8px',
-                fontWeight: 500,
-                fontSize: '14px',
-                height: '36px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-              }}
-            >
-              Delete
-            </Button>
-            <Button
-              type="default"
-              onClick={handleEditCommentFromSidebar}
-              style={{
-                borderRadius: '8px',
-                fontWeight: 500,
-                fontSize: '14px',
-                height: '36px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                border: `2px solid ${theme === 'sun' ? 'rgba(113, 179, 253, 0.4)' : 'rgba(138, 122, 255, 0.4)'}`,
-                background: theme === 'sun' 
-                  ? 'rgba(113, 179, 253, 0.1)' 
-                  : 'rgba(138, 122, 255, 0.1)',
-                color: theme === 'sun' ? '#1890ff' : '#8B5CF6',
-              }}
-            >
-              Edit Comment
-            </Button>
-      </div>
+          {!isStudent && (
+            <div style={{ marginTop: '16px', display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
+              <Button
+                danger
+                icon={<DeleteOutlined />}
+                onClick={handleDeleteComment}
+                style={{
+                  borderRadius: '8px',
+                  fontWeight: 500,
+                  fontSize: '14px',
+                  height: '36px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                }}
+              >
+                Delete
+              </Button>
+              <Button
+                type="default"
+                onClick={handleEditCommentFromSidebar}
+                style={{
+                  borderRadius: '8px',
+                  fontWeight: 500,
+                  fontSize: '14px',
+                  height: '36px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  border: `2px solid ${theme === 'sun' ? 'rgba(113, 179, 253, 0.4)' : 'rgba(138, 122, 255, 0.4)'}`,
+                  background: theme === 'sun' 
+                    ? 'rgba(113, 179, 253, 0.1)' 
+                    : 'rgba(138, 122, 255, 0.1)',
+                  color: theme === 'sun' ? '#1890ff' : '#8B5CF6',
+                }}
+              >
+                Edit Comment
+              </Button>
+            </div>
+          )}
         </div>
       )}
     </ThemedLayout>

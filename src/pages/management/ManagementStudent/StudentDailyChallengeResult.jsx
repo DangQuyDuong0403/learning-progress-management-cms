@@ -192,7 +192,7 @@ const SectionQuestionItem = ({ question, index, theme, studentAnswers, onViewFee
               color: theme === 'sun' ? '#333' : '#1F2937',
               textAlign: 'justify'
             }}
-            dangerouslySetInnerHTML={{ __html: question.passage || '' }}
+            dangerouslySetInnerHTML={{ __html: question.passage || question.sectionsContent || question.content || '' }}
           />
         </div>
 
@@ -262,7 +262,12 @@ const SectionQuestionItem = ({ question, index, theme, studentAnswers, onViewFee
                           <div 
                             className="question-text-content"
                             style={{ marginBottom: '10px' }}
-                            dangerouslySetInnerHTML={{ __html: q.questionText || q.question || '' }}
+                            dangerouslySetInnerHTML={{ 
+                              __html: (() => {
+                                const text = q.questionText || q.question || '';
+                                return typeof text === 'string' ? text : String(text || '');
+                              })()
+                            }}
                           />
                           <div className="question-options" style={{ 
                             display: 'grid', 
@@ -825,42 +830,57 @@ const SectionQuestionItem = ({ question, index, theme, studentAnswers, onViewFee
                       </div>
                     </div>
                   ) : q.type === 'REARRANGE' ? (
-                    // Reorder Question - align behavior with single GV Rearrange
+                    // Reorder Question - align behavior with teacher view
                     (() => {
                       // Get student answers from prop
                       const studentAnswer = studentAnswers?.[q.id] || [];
                       
-                      // Get correct order from contentData (sorted by positionId)
-                      const contentData = q.content?.data || [];
-                      const correctOrder = contentData
-                        .slice()
-                        .sort((a, b) => {
-                          const posA = parseInt((a.positionId || '').replace('pos_', ''));
-                          const posB = parseInt((b.positionId || '').replace('pos_', ''));
-                          return posA - posB;
-                        })
-                        .map(item => item.value)
-                        .filter(Boolean);
+                      // Get questionText first
+                      const questionText = q.questionText || q.question || 'Rearrange the words to form a correct sentence:';
+                      const questionTextStr = typeof questionText === 'string' ? questionText : String(questionText || '');
                       
-                      // Get student order
+                      // Get correct order by parsing questionText to extract positionIds in order
+                      // questionText format: "[[pos_tnaypd]] [[pos_mcv2lu]] [[pos_9zfnvu]]"
+                      const contentData = q.content?.data || [];
+                      const correctOrder = (() => {
+                        const positionIdsInOrder = [];
+                        const regex = /\[\[pos_(.*?)\]\]/g;
+                        let match;
+                        while ((match = regex.exec(questionTextStr)) !== null) {
+                          positionIdsInOrder.push(match[1]); // Extract positionId without "pos_" prefix
+                        }
+                        
+                        // Map positionIds to values from contentData
+                        return positionIdsInOrder.map(posId => {
+                          // Try to find item with positionId matching pos_xxx or just xxx
+                          const item = contentData.find(item => {
+                            const itemPosId = (item.positionId || '').replace(/^pos_/, '');
+                            return itemPosId === posId;
+                          });
+                          return item?.value || '';
+                        }).filter(Boolean);
+                      })();
+                      
+                      // Student answer should be an array of values (not ids) from mapping
                       const studentOrder = Array.isArray(studentAnswer) 
                         ? studentAnswer 
-                        : (typeof studentAnswer === 'object' && studentAnswer !== null
+                        : (typeof studentAnswer === 'object' && studentAnswer !== null 
                             ? Object.keys(studentAnswer)
-                                .sort((a, b) => parseInt(a) - parseInt(b))
+                                .sort((a, b) => {
+                                  const posA = String(a).replace(/^pos_/, '');
+                                  const posB = String(b).replace(/^pos_/, '');
+                                  return posA.localeCompare(posB);
+                                })
                                 .map(key => studentAnswer[key])
-                                .filter(Boolean)
+                                .filter(Boolean) 
                             : []);
                       
                       // Check if student answer is correct
                       const isCorrect = studentOrder.length === correctOrder.length && 
-                        studentOrder.every((word, idx) => 
-                          word.trim().toLowerCase() === correctOrder[idx].trim().toLowerCase()
-                        );
+                        studentOrder.every((word, idx) => word.trim().toLowerCase() === correctOrder[idx].trim().toLowerCase());
                       
                       // Remove placeholder tokens but keep HTML formatting
-                      const displayText = ((q.questionText || q.question || 'Rearrange the words to form a correct sentence:')
-                        .replace(/\[\[pos_.*?\]\]/g, '')).trim();
+                      const displayText = questionTextStr.replace(/\[\[pos_.*?\]\]/g, '').trim();
                       
                       return (
                         <div style={{ marginBottom: '16px' }}>
@@ -906,17 +926,11 @@ const SectionQuestionItem = ({ question, index, theme, studentAnswers, onViewFee
                                     display: 'flex',
                                     alignItems: 'center',
                                     justifyContent: 'center',
-                                    border: `2px solid ${
-                                      isCorrect 
-                                        ? '#52c41a' 
-                                        : '#ff4d4f'
-                                    }`,
+                                    border: `2px solid ${isCorrect ? '#52c41a' : '#ff4d4f'}`,
                                     borderRadius: '8px',
                                     background: isCorrect
                                       ? (theme === 'sun' ? 'rgba(82, 196, 26, 0.15)' : 'rgba(82, 196, 26, 0.2)')
                                       : (theme === 'sun' ? 'rgba(255, 77, 79, 0.15)' : 'rgba(255, 77, 79, 0.2)'),
-                                    position: 'relative',
-                                    transition: 'all 0.3s ease',
                                     cursor: 'not-allowed'
                                   }}
                                 >
@@ -931,13 +945,32 @@ const SectionQuestionItem = ({ question, index, theme, studentAnswers, onViewFee
                                   </span>
                                 </div>
                               )) : (
-                                <Typography.Text style={{ 
-                                  fontSize: '14px',
-                                  color: 'rgba(0, 0, 0, 0.5)',
-                                  fontStyle: 'italic'
-                                }}>
-                                  No answer provided
-                                </Typography.Text>
+                                correctOrder.map((word, index) => (
+                                  <div
+                                    key={index}
+                                    style={{
+                                      minWidth: '100px',
+                                      height: '60px',
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      border: '2px solid #faad14',
+                                      borderRadius: '8px',
+                                      background: theme === 'sun' ? 'rgba(250, 173, 20, 0.12)' : 'rgba(250, 173, 20, 0.2)',
+                                      cursor: 'not-allowed'
+                                    }}
+                                  >
+                                    <span style={{ 
+                                      fontSize: '14px',
+                                      fontWeight: '600',
+                                      color: '#faad14',
+                                      textAlign: 'center',
+                                      padding: '8px 12px'
+                                    }}>
+                                      {word}
+                                    </span>
+                                  </div>
+                                ))
                               )}
                             </div>
                           </div>
@@ -1226,7 +1259,7 @@ const SectionQuestionItem = ({ question, index, theme, studentAnswers, onViewFee
 };
 
 // Listening Section Component
-const ListeningSectionItem = ({ question, index, theme, onViewFeedback }) => {
+const ListeningSectionItem = ({ question, index, theme, studentAnswers, onViewFeedback }) => {
   const [selectedAnswers, setSelectedAnswers] = useState({});
   const [droppedItems, setDroppedItems] = useState({});
   const [availableItems, setAvailableItems] = useState({});
@@ -1510,6 +1543,32 @@ const ListeningSectionItem = ({ question, index, theme, onViewFeedback }) => {
                 </div>
               </div>
             </div>
+            
+            {/* Audio Transcript */}
+            <div style={{
+              background: theme === 'sun' ? '#ffffff' : 'rgba(255, 255, 255, 0.05)',
+              borderRadius: '12px',
+              padding: '20px',
+              marginBottom: '20px',
+              border: `1px solid ${theme === 'sun' ? '#e8e8e8' : 'rgba(255, 255, 255, 0.1)'}`,
+              boxShadow: theme === 'sun' 
+                ? '0 2px 8px rgba(0, 0, 0, 0.1)' 
+                : '0 2px 8px rgba(0, 0, 0, 0.2)'
+            }}>
+              <Typography.Text style={{ fontSize: '16px', fontWeight: 600, marginBottom: '12px', display: 'block' }}>
+                Audio Transcript
+              </Typography.Text>
+              <div 
+                className="passage-text-content"
+                style={{
+                  fontSize: '15px',
+                  lineHeight: '1.8',
+                  color: theme === 'sun' ? '#333' : '#1F2937',
+                  textAlign: 'justify'
+                }}
+                dangerouslySetInnerHTML={{ __html: question.transcript || question.sectionsContent || '' }}
+              />
+            </div>
           </div>
 
           {/* Right Column - Questions */}
@@ -1532,7 +1591,140 @@ const ListeningSectionItem = ({ question, index, theme, onViewFeedback }) => {
                     border: `2px solid ${theme === 'sun' ? '#1890ff' : '#8B5CF6'}`
                   }}>
                     {/* Question Types - mirrored from Reading */}
-                    {q.type === 'DROPDOWN' ? (
+                    {q.type === 'MULTIPLE_CHOICE' || q.type === 'TRUE_OR_FALSE' || q.type === 'MULTIPLE_SELECT' ? (
+                      (() => {
+                        const options = (q.options && q.options.length ? q.options : (q.content?.data || []).map((d, idx) => ({
+                          key: String.fromCharCode(65 + idx),
+                          text: d.value
+                        })));
+                        const isMulti = q.type === 'MULTIPLE_SELECT';
+                        
+                        // Get student answer from prop
+                        const studentAnswer = studentAnswers?.[q.id];
+                        const selected = studentAnswer !== undefined ? studentAnswer : (isMulti ? [] : null);
+                        
+                        // Find correct answers
+                        let correctKey = null;
+                        let correctKeys = [];
+                        if (isMulti) {
+                          correctKeys = options.filter(opt => opt.isCorrect).map(opt => opt.key);
+                        } else {
+                          const correctOption = options.find(opt => opt.isCorrect);
+                          if (correctOption) {
+                            correctKey = correctOption.key;
+                            // For TRUE_OR_FALSE, check if key is 'True'/'False' or text is 'True'/'False'
+                            if (q.type === 'TRUE_OR_FALSE') {
+                              if (correctOption.key === 'True' || correctOption.key === 'False') {
+                                correctKey = correctOption.key;
+                              } else if (correctOption.text === 'True' || correctOption.text === 'False') {
+                                correctKey = correctOption.text;
+                              }
+                            }
+                          }
+                        }
+                        
+                        return (
+                          <div style={{ 
+                            marginBottom: '16px',
+                            fontSize: '15px', 
+                            fontWeight: 350,
+                            lineHeight: '1.8',
+                            color: '#000000'
+                          }}>
+                            <div style={{ fontSize: '16px', fontWeight: 600, marginBottom: '8px', position: 'relative' }}>
+                              Question {qIndex + 1}:
+                              <span style={{ position: 'absolute', right: 0, top: 0, fontSize: '16px', fontWeight: 600, opacity: 0.7 }}>
+                                {(q.receivedScore || 0)} / {(q.points || 0)} points
+                              </span>
+                            </div>
+                            <div 
+                              className="question-text-content"
+                              style={{ marginBottom: '10px' }}
+                              dangerouslySetInnerHTML={{ 
+                                __html: (() => {
+                                  const text = q.questionText || q.question || '';
+                                  return typeof text === 'string' ? text : String(text || '');
+                                })()
+                              }}
+                            />
+                            <div className="question-options" style={{ 
+                              display: 'grid', 
+                              gridTemplateColumns: '1fr', 
+                              gap: '12px'
+                            }}>
+                              {(q.type === 'TRUE_OR_FALSE' ? ['True', 'False'] : options).map((opt, idx) => {
+                                let key, text;
+                                if (q.type === 'TRUE_OR_FALSE') {
+                                  key = opt;
+                                  text = opt;
+                                } else {
+                                  key = opt.key || String.fromCharCode(65 + idx);
+                                  text = opt.text || opt.value || '';
+                                }
+                                
+                                // Determine if this is correct answer
+                                const isCorrectAnswer = isMulti 
+                                  ? correctKeys.includes(key)
+                                  : (key === correctKey || (q.type === 'TRUE_OR_FALSE' && opt === correctKey));
+                                
+                                // Determine if this is student's selected answer
+                                const isSelected = isMulti 
+                                  ? (Array.isArray(selected) && selected.includes(key))
+                                  : (selected === key || (q.type === 'TRUE_OR_FALSE' && opt === selected));
+                                
+                                const isSelectedWrong = isSelected && !isCorrectAnswer;
+                                const isCorrectMissing = !isSelected && isCorrectAnswer && isMulti;
+                                const isUnanswered = isMulti ? (Array.isArray(selected) && selected.length === 0) : (!isSelected && selected == null);
+                                
+                                return (
+                                  <div key={key} style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '10px',
+                                    padding: '12px 14px',
+                                    background: (isUnanswered && !isMulti && isCorrectAnswer)
+                                      ? (theme === 'sun' ? 'rgba(250, 173, 20, 0.12)' : 'rgba(250, 173, 20, 0.2)')
+                                      : isCorrectMissing
+                                      ? (theme === 'sun' ? 'rgba(250, 173, 20, 0.12)' : 'rgba(250, 173, 20, 0.2)')
+                                      : (isCorrectAnswer
+                                        ? (theme === 'sun' ? 'rgba(82, 196, 26, 0.15)' : 'rgba(82, 196, 26, 0.2)')
+                                        : isSelectedWrong
+                                          ? (theme === 'sun' ? 'rgba(255, 77, 79, 0.15)' : 'rgba(255, 77, 79, 0.2)')
+                                          : (theme === 'sun' ? '#fff' : 'rgba(255,255,255,0.03)')),
+                                    border: `2px solid ${
+                                      (isUnanswered && !isMulti && isCorrectAnswer)
+                                        ? '#faad14'
+                                        : isCorrectMissing
+                                        ? '#faad14'
+                                        : (isCorrectAnswer
+                                          ? 'rgb(82, 196, 26)'
+                                          : (isSelectedWrong ? 'rgb(255, 77, 79)' : (theme === 'sun' ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.1)')))
+                                    }`,
+                                    borderRadius: '12px',
+                                    cursor: 'default',
+                                    minHeight: '50px',
+                                    boxSizing: 'border-box',
+                                  }}>
+                                    <input type={isMulti ? 'checkbox' : 'radio'} checked={isSelected || isCorrectMissing} disabled style={{ width: '18px', height: '18px', accentColor: isCorrectMissing ? '#faad14' : (isCorrectAnswer ? '#52c41a' : (isSelectedWrong ? '#ff4d4f' : (theme === 'sun' ? '#1890ff' : '#8B5CF6'))), cursor: 'not-allowed', opacity: 1 }} />
+                                    <span style={{ fontWeight: 600, color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)', fontSize: '16px' }}>
+                                      {q.type === 'TRUE_OR_FALSE' ? (opt === 'True' ? 'A' : 'B') : key}.
+                                    </span>
+                                    <span className="option-text" style={{ flex: 1, lineHeight: '1.6', color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)', fontWeight: '350' }} dangerouslySetInnerHTML={{ __html: q.type === 'TRUE_OR_FALSE' ? opt : text }} />
+                                    {isSelectedWrong && <CloseCircleOutlined style={{ fontSize: '22px', color: '#ff4d4f', marginLeft: 'auto', fontWeight: 'bold' }} />}
+                                    {(isUnanswered && !isMulti && isCorrectAnswer) && !isSelectedWrong && (
+                                      <CheckCircleOutlined style={{ fontSize: '20px', color: '#faad14', marginLeft: 'auto' }} />
+                                    )}
+                                    {(!isUnanswered || isMulti) && (isCorrectMissing || (isCorrectAnswer && !isCorrectMissing)) && !isSelectedWrong && (
+                                      <CheckCircleOutlined style={{ fontSize: '20px', color: isCorrectMissing ? '#faad14' : '#52c41a', marginLeft: 'auto' }} />
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        );
+                      })()
+                    ) : q.type === 'DROPDOWN' ? (
                       <div style={{ 
                         marginBottom: '16px',
                         fontSize: '15px', 
@@ -1751,98 +1943,94 @@ const ListeningSectionItem = ({ question, index, theme, onViewFeedback }) => {
                         </div>
                       </div>
                     ) : q.type === 'REARRANGE' ? (
+                      // Reorder Question - align behavior with teacher view
                       (() => {
-                        const questionId = `reorder_${q.id}`;
-                        const currentState = reorderStates[questionId] || {
-                          sourceItems: q.content?.data?.map(item => item.value) || [],
-                          droppedItems: {},
-                          dragOverIndex: null,
-                          draggedItem: null,
-                          isDraggingFromSource: false,
-                          wasDropped: false
-                        };
-                        const numSlots = (q.content?.data?.filter(it => it?.value)?.length) || currentState.sourceItems.length || 0;
+                        // Get student answers from prop
+                        const studentAnswer = studentAnswers?.[q.id] || [];
+                        
+                        // Get questionText first
+                        const questionText = q.questionText || q.question || 'Rearrange the words to form a correct sentence:';
+                        const questionTextStr = typeof questionText === 'string' ? questionText : String(questionText || '');
+                        
+                        // Get correct order by parsing questionText to extract positionIds in order
+                        // questionText format: "[[pos_tnaypd]] [[pos_mcv2lu]] [[pos_9zfnvu]]"
+                        const contentData = q.content?.data || [];
+                        const correctOrder = (() => {
+                          const positionIdsInOrder = [];
+                          const regex = /\[\[pos_(.*?)\]\]/g;
+                          let match;
+                          while ((match = regex.exec(questionTextStr)) !== null) {
+                            positionIdsInOrder.push(match[1]); // Extract positionId without "pos_" prefix
+                          }
+                          
+                          // Map positionIds to values from contentData
+                          return positionIdsInOrder.map(posId => {
+                            // Try to find item with positionId matching pos_xxx or just xxx
+                            const item = contentData.find(item => {
+                              const itemPosId = (item.positionId || '').replace(/^pos_/, '');
+                              return itemPosId === posId;
+                            });
+                            return item?.value || '';
+                          }).filter(Boolean);
+                        })();
+                        
+                        // Student answer should be an array of values (not ids) from mapping
+                        const studentOrder = Array.isArray(studentAnswer) 
+                          ? studentAnswer 
+                          : (typeof studentAnswer === 'object' && studentAnswer !== null 
+                              ? Object.keys(studentAnswer)
+                                  .sort((a, b) => {
+                                    const posA = String(a).replace(/^pos_/, '');
+                                    const posB = String(b).replace(/^pos_/, '');
+                                    return posA.localeCompare(posB);
+                                  })
+                                  .map(key => studentAnswer[key])
+                                  .filter(Boolean) 
+                              : []);
+                        
+                        // Check if student answer is correct
+                        const isCorrect = studentOrder.length === correctOrder.length && 
+                          studentOrder.every((word, idx) => word.trim().toLowerCase() === correctOrder[idx].trim().toLowerCase());
+                        
                         // Remove placeholder tokens but keep HTML formatting
-                        const displayText = ((q.questionText || q.question || '').replace(/\[\[pos_.*?\]\]/g,'')).trim();
-
-                        const handleDragStartFromSource = (e, item) => {
-                          setReorderStates(prev => ({ ...prev, [questionId]: { ...currentState, draggedItem: item, isDraggingFromSource: true } }));
-                          e.dataTransfer.effectAllowed = 'move';
-                        };
-                        const handleDragStartFromSlot = (e, index) => {
-                          const item = currentState.droppedItems[index];
-                          setReorderStates(prev => ({ ...prev, [questionId]: { ...currentState, draggedItem: item, isDraggingFromSource: false, wasDropped: false, dragOverIndex: index } }));
-                          e.dataTransfer.effectAllowed = 'move';
-                        };
-                        const handleDropOnSlot = (e, index) => {
-                          e.preventDefault();
-                          const newState = { ...currentState, wasDropped: true, dragOverIndex: null };
-                          if (currentState.draggedItem) {
-                            const currentItem = currentState.droppedItems[index];
-                            if (currentItem) newState.sourceItems = [...currentState.sourceItems, currentItem];
-                            if (!currentState.isDraggingFromSource) {
-                              const oldIndex = Object.keys(currentState.droppedItems).find(i => currentState.droppedItems[i] === currentState.draggedItem && parseInt(i) !== index);
-                              if (oldIndex !== undefined) delete newState.droppedItems[parseInt(oldIndex)];
-                          } else {
-                              // Remove only one occurrence from source to preserve duplicates
-                              const newSource = [...currentState.sourceItems];
-                              const rmIdx = newSource.findIndex(item => item === currentState.draggedItem);
-                              if (rmIdx !== -1) newSource.splice(rmIdx, 1);
-                              newState.sourceItems = newSource;
-                            }
-                            newState.droppedItems = { ...currentState.droppedItems, [index]: currentState.draggedItem };
-                          }
-                          newState.draggedItem = null; newState.isDraggingFromSource = false;
-                          setReorderStates(prev => ({ ...prev, [questionId]: newState }));
-                        };
-                        const handleDragOverSlot = (e, index) => { e.preventDefault(); setReorderStates(prev => ({ ...prev, [questionId]: { ...currentState, dragOverIndex: index } })); e.dataTransfer.dropEffect='move'; };
-                        const handleDragLeaveSlot = () => { setReorderStates(prev => ({ ...prev, [questionId]: { ...currentState, dragOverIndex: null } })); };
-                        const handleDragEnd = () => {
-                          if (currentState.draggedItem && !currentState.isDraggingFromSource && !currentState.wasDropped) {
-                            const newState = { ...currentState };
-                            // Return item back to source without deduping to preserve duplicates
-                            newState.sourceItems = [...newState.sourceItems, currentState.draggedItem];
-                            const oldIndex = Object.keys(currentState.droppedItems).find(i => currentState.droppedItems[i] === currentState.draggedItem);
-                            if (oldIndex !== undefined) delete newState.droppedItems[oldIndex];
-                            newState.draggedItem = null; newState.isDraggingFromSource = false; newState.dragOverIndex = null; newState.wasDropped = false;
-                            setReorderStates(prev => ({ ...prev, [questionId]: newState }));
-                          }
-                        };
-
+                        const displayText = questionTextStr.replace(/\[\[pos_.*?\]\]/g, '').trim();
+                        
                         return (
                           <div style={{ marginBottom: '16px' }}>
-                            <div style={{ fontSize: '16px', fontWeight: 600, marginBottom: '8px' }}>Question {qIndex + 1}:</div>
-                            <div 
-                              className="question-text-content"
-                              style={{ fontSize: '15px', fontWeight: 350, marginBottom: '16px', lineHeight: '1.8', color: '#000000' }}
-                              dangerouslySetInnerHTML={{ __html: displayText || '' }}
-                            />
-                            <div style={{ marginBottom:'16px', padding:'16px', background: theme==='sun'?'#f9f9f9':'rgba(255,255,255,0.02)', borderRadius:'8px', border:`1px solid ${theme==='sun'?'#e8e8e8':'rgba(255,255,255,0.1)'}` }}>
-                              <div style={{ fontSize:'14px', fontWeight:350, marginBottom:'12px', color: theme==='sun'?'rgb(15,23,42)':'rgb(45,27,105)' }}>Drop the words here in order:</div>
-                              <div style={{ display:'flex', flexWrap:'wrap', gap:'8px' }}>
-                                {Array.from({ length: numSlots }).map((_, index) => (
-                                  <div key={index} onDrop={(e)=>handleDropOnSlot(e,index)} onDragOver={(e)=>handleDragOverSlot(e,index)} onDragLeave={handleDragLeaveSlot} onDragEnd={handleDragEnd} style={{ minWidth:'80px', height:'50px', display:'flex', alignItems:'center', justifyContent:'center', border: currentState.droppedItems[index] ? `2px solid ${theme==='sun'?'#1890ff':'#8B5CF6'}` : currentState.dragOverIndex===index ? `3px solid ${theme==='sun'?'#1890ff':'#8B5CF6'}` : `2px dashed rgba(0,0,0,0.5)`, borderRadius:'6px', background: currentState.droppedItems[index] ? (theme==='sun'?'rgba(24,144,255,0.1)':'rgba(138,122,255,0.1)') : currentState.dragOverIndex===index ? (theme==='sun'?'rgba(24,144,255,0.15)':'rgba(138,122,255,0.15)') : '#ffffff', transition:'all 0.3s ease', transform: currentState.dragOverIndex===index ? 'scale(1.05)' : 'scale(1)' }}>
-                                    {currentState.droppedItems[index] ? (
-                                      <div draggable onDragStart={(e)=>handleDragStartFromSlot(e,index)} onDragEnd={handleDragEnd} style={{ width:'100%', height:'100%', display:'flex', alignItems:'center', justifyContent:'center', padding:'6px 8px', background: 'transparent', border:'none', borderRadius:'4px', cursor:'grab', userSelect:'none' }}>
-                                        <span style={{ fontSize:'13px', fontWeight:'700', color: theme==='sun'?'#1890ff':'#8B5CF6', textAlign:'center' }}>{currentState.droppedItems[index]}</span>
-                                      </div>
-                                    ) : (
-                                      <div style={{ display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:'2px' }}>
-                                        <span style={{ fontSize:'10px', fontWeight:'600', color:'rgba(0,0,0,0.5)' }}>{index + 1}</span>
-                                      </div>
-                                    )}
+                            <div style={{ fontSize: '16px', fontWeight: 600, marginBottom: '8px' }}>
+                              Question {qIndex + 1}:
+                            </div>
+                            <div style={{ fontSize: '15px', fontWeight: 350, marginBottom: '16px', lineHeight: '1.8', color: '#000000' }}>
+                              <div className="question-text-content" dangerouslySetInnerHTML={{ __html: displayText || 'Rearrange the words to form a correct sentence:' }} />
+                            </div>
+                            <div style={{ marginBottom: '24px', padding: '20px', background: theme === 'sun' ? '#f9f9f9' : 'rgba(255, 255, 255, 0.02)', borderRadius: '12px', border: `1px solid ${theme === 'sun' ? '#e8e8e8' : 'rgba(255, 255, 255, 0.1)'}` }}>
+                              <Typography.Text style={{ fontSize: '14px', fontWeight: 350, marginBottom: '16px', display: 'block', color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' }}>Your answer:</Typography.Text>
+                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px' }}>
+                                {studentOrder.length > 0 ? studentOrder.map((word, index) => (
+                                  <div key={index} style={{ minWidth: '100px', height: '60px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: `2px solid ${isCorrect ? '#52c41a' : '#ff4d4f'}`, borderRadius: '8px', background: isCorrect ? (theme === 'sun' ? 'rgba(82, 196, 26, 0.15)' : 'rgba(82, 196, 26, 0.2)') : (theme === 'sun' ? 'rgba(255, 77, 79, 0.15)' : 'rgba(255, 77, 79, 0.2)'), cursor: 'not-allowed' }}>
+                                    <span style={{ fontSize: '14px', fontWeight: '600', color: isCorrect ? '#52c41a' : '#ff4d4f', textAlign: 'center', padding: '8px 12px' }}>{word}</span>
                                   </div>
-                        ))}
-                        </div>
-                      </div>
-                            <div onDrop={(e)=>{ e.preventDefault(); const newState={...currentState, wasDropped:true}; if(currentState.draggedItem && !currentState.isDraggingFromSource){ newState.sourceItems=[...newState.sourceItems, currentState.draggedItem]; const oldIndex=Object.keys(currentState.droppedItems).find(i=>currentState.droppedItems[i]===currentState.draggedItem); if(oldIndex){ delete newState.droppedItems[oldIndex]; } newState.draggedItem=null; newState.isDraggingFromSource=false; newState.dragOverIndex=null; setReorderStates(prev=>({ ...prev, [questionId]: newState })); } }} onDragOver={(e)=>{e.preventDefault();}} style={{ padding:'16px', background: theme==='sun'?'#ffffff':'rgba(255,255,255,0.03)', borderRadius:'8px', border:`1px solid ${theme==='sun'?'#e8e8e8':'rgba(255,255,255,0.1)'}` }}>
-                              <div style={{ fontSize:'14px', fontWeight:350, marginBottom:'12px', color: theme==='sun'?'rgb(15,23,42)':'rgb(45,27,105)' }}>Drag these words to the slots above:</div>
-                              <div style={{ display:'flex', flexWrap:'wrap', gap:'8px' }}>
-                                {currentState.sourceItems.map((item, idx) => (
-                                  <div key={`${item}-${idx}`} draggable onDragStart={(e)=>handleDragStartFromSource(e,item)} onDragEnd={handleDragEnd} style={{ display:'inline-flex', alignItems:'center', padding:'8px 12px', background: theme==='sun'?'rgba(24,144,255,0.08)':'rgba(138,122,255,0.12)', border:`2px solid ${theme==='sun'?'#1890ff':'#8B5CF6'}`, borderRadius:'6px', fontSize:'12px', fontWeight:'600', color: theme==='sun'?'#1890ff':'#8B5CF6', cursor:'grab', userSelect:'none' }}>{item}</div>
-                                ))}
+                                )) : (
+                                  correctOrder.map((word, index) => (
+                                    <div key={index} style={{ minWidth: '100px', height: '60px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid #faad14', borderRadius: '8px', background: theme === 'sun' ? 'rgba(250, 173, 20, 0.12)' : 'rgba(250, 173, 20, 0.2)', cursor: 'not-allowed' }}>
+                                      <span style={{ fontSize: '14px', fontWeight: '600', color: '#faad14', textAlign: 'center', padding: '8px 12px' }}>{word}</span>
+                                    </div>
+                                  ))
+                                )}
                               </div>
                             </div>
+                            {!isCorrect && studentOrder.length > 0 && (
+                              <div style={{ marginBottom: '24px', padding: '20px', background: theme === 'sun' ? '#ffffff' : 'rgba(255, 255, 255, 0.03)', borderRadius: '12px', border: `1px solid ${theme === 'sun' ? '#e8e8e8' : 'rgba(255, 255, 255, 0.1)'}` }}>
+                                <Typography.Text style={{ fontSize: '14px', fontWeight: 350, marginBottom: '16px', display: 'block', color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' }}>Correct order:</Typography.Text>
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px' }}>
+                                  {correctOrder.map((word, index) => (
+                                    <div key={index} style={{ minWidth: '100px', height: '60px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid #52c41a', borderRadius: '8px', background: theme === 'sun' ? 'rgba(82, 196, 26, 0.15)' : 'rgba(82, 196, 26, 0.2)', cursor: 'default' }}>
+                                      <span style={{ fontSize: '14px', fontWeight: '600', color: '#52c41a', textAlign: 'center', padding: '8px 12px' }}>{word}</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
                           </div>
                         );
                       })()
@@ -1867,7 +2055,12 @@ const ListeningSectionItem = ({ question, index, theme, onViewFeedback }) => {
                               display: 'block',
                               lineHeight: '1.8'
                             }}
-                            dangerouslySetInnerHTML={{ __html: q.question || q.questionText || '' }}
+                            dangerouslySetInnerHTML={{ 
+                              __html: (() => {
+                                const text = q.question || q.questionText || '';
+                                return typeof text === 'string' ? text : String(text || '');
+                              })()
+                            }}
                           />
                         </div>
 
@@ -4326,7 +4519,8 @@ const SpeakingWithAudioSectionItem = ({ question, index, theme, studentAnswers, 
 
 // Multiple Choice Container Component (Result View)
 const MultipleChoiceContainer = ({ theme, data, studentAnswer, studentAnswers, onViewFeedback }) => {
-  const questionText = data?.question || data?.questionText || 'What is the capital city of Vietnam?';
+  const questionTextRaw = data?.question || data?.questionText || 'What is the capital city of Vietnam?';
+  const questionText = typeof questionTextRaw === 'string' ? questionTextRaw : String(questionTextRaw || '');
   const optionsFromApi = Array.isArray(data?.options) && data.options.length > 0
     ? data.options
     : null;
@@ -4527,7 +4721,8 @@ const MultipleChoiceContainer = ({ theme, data, studentAnswer, studentAnswers, o
 
 // Multiple Select Container Component (Result View)
 const MultipleSelectContainer = ({ theme, data, studentAnswers, onViewFeedback }) => {
-  const questionText = data?.question || data?.questionText || 'Which of the following are Southeast Asian countries? (Select all that apply)';
+  const questionTextRaw = data?.question || data?.questionText || 'Which of the following are Southeast Asian countries? (Select all that apply)';
+  const questionText = typeof questionTextRaw === 'string' ? questionTextRaw : String(questionTextRaw || '');
   const optionsFromApi = Array.isArray(data?.options) && data.options.length > 0 ? data.options : null;
 
   // Get the answers selected by student
@@ -4728,7 +4923,8 @@ const MultipleSelectContainer = ({ theme, data, studentAnswers, onViewFeedback }
 
 // True/False Container Component (Result View)
 const TrueFalseContainer = ({ theme, data, studentAnswer, studentAnswers, onViewFeedback }) => {
-  const questionText = data?.question || data?.questionText || 'The Earth revolves around the Sun.';
+  const questionTextRaw = data?.question || data?.questionText || 'The Earth revolves around the Sun.';
+  const questionText = typeof questionTextRaw === 'string' ? questionTextRaw : String(questionTextRaw || '');
   
   // Get the answer selected by student
   const selectedKey = studentAnswer || studentAnswers?.[data?.id] || null;
@@ -4948,7 +5144,8 @@ const TrueFalseContainer = ({ theme, data, studentAnswer, studentAnswers, onView
 
 // Dropdown Container Component
 const DropdownContainer = ({ theme, data, studentAnswers, onViewFeedback }) => {
-  const questionText = data?.questionText || data?.question || 'Choose the correct words to complete the sentence:';
+  const questionTextRaw = data?.questionText || data?.question || 'Choose the correct words to complete the sentence:';
+  const questionText = typeof questionTextRaw === 'string' ? questionTextRaw : String(questionTextRaw || '');
   const contentData = Array.isArray(data?.content?.data) ? data.content.data : [];
   
   // Get student answers
@@ -5176,7 +5373,8 @@ const DragDropContainer = ({ theme, data, studentAnswers, onViewFeedback }) => {
 
 
   // Parse questionText from API to create dynamic sentence with placeholders
-  const questionText = data?.questionText || data?.question || '';
+  const questionTextRaw = data?.questionText || data?.question || '';
+  const questionText = typeof questionTextRaw === 'string' ? questionTextRaw : String(questionTextRaw || '');
   const parts = React.useMemo(() => {
     const result = [];
     const regex = /\[\[pos_(.*?)\]\]/g;
@@ -5434,18 +5632,30 @@ const ReorderContainer = ({ theme, data, studentAnswers, onViewFeedback }) => {
   // Check if there's feedback
   const hasFeedback = data?.feedback && data.feedback.trim().length > 0;
   
-  // Get correct order from contentData (sorted by positionId)
+  // Get questionText first
+  const questionTextRaw = data?.questionText || data?.question || '';
+  const questionText = typeof questionTextRaw === 'string' ? questionTextRaw : String(questionTextRaw || '');
+  
+  // Get correct order by parsing questionText to extract positionIds in order
+  // questionText format: "[[pos_tnaypd]] [[pos_mcv2lu]] [[pos_9zfnvu]]"
   const correctOrder = React.useMemo(() => {
-    return contentData
-      .slice()
-      .sort((a, b) => {
-        const posA = parseInt((a.positionId || '').replace('pos_', ''));
-        const posB = parseInt((b.positionId || '').replace('pos_', ''));
-        return posA - posB;
-      })
-      .map(item => item.value)
-      .filter(Boolean);
-  }, [contentData]);
+    const positionIdsInOrder = [];
+    const regex = /\[\[pos_(.*?)\]\]/g;
+    let match;
+    while ((match = regex.exec(questionText)) !== null) {
+      positionIdsInOrder.push(match[1]); // Extract positionId without "pos_" prefix
+    }
+    
+    // Map positionIds to values from contentData
+    return positionIdsInOrder.map(posId => {
+      // Try to find item with positionId matching pos_xxx or just xxx
+      const item = contentData.find(item => {
+        const itemPosId = (item.positionId || '').replace(/^pos_/, '');
+        return itemPosId === posId;
+      });
+      return item?.value || '';
+    }).filter(Boolean);
+  }, [contentData, questionText]);
   
   // Get student answer order
   const studentOrder = React.useMemo(() => {
@@ -5453,9 +5663,13 @@ const ReorderContainer = ({ theme, data, studentAnswers, onViewFeedback }) => {
     if (Array.isArray(answer)) {
       return answer;
     } else if (typeof answer === 'object' && answer !== null) {
-      // Convert object with numeric keys to array
+      // Convert object with positionId keys to array
       return Object.keys(answer)
-        .sort((a, b) => parseInt(a) - parseInt(b))
+        .sort((a, b) => {
+          const posA = String(a).replace(/^pos_/, '');
+          const posB = String(b).replace(/^pos_/, '');
+          return posA.localeCompare(posB);
+        })
         .map(key => answer[key])
         .filter(Boolean);
     }
@@ -5469,6 +5683,9 @@ const ReorderContainer = ({ theme, data, studentAnswers, onViewFeedback }) => {
       word.trim().toLowerCase() === correctOrder[idx].trim().toLowerCase()
     );
   }, [studentOrder, correctOrder]);
+  
+  // Remove placeholder tokens but keep HTML formatting
+  const displayText = questionText.replace(/\[\[pos_.*?\]\]/g, '').trim();
 
 
   return (
@@ -5522,16 +5739,9 @@ const ReorderContainer = ({ theme, data, studentAnswers, onViewFeedback }) => {
 
       {/* Content Area */}
       <div className="question-content" style={{ paddingLeft: '36px', marginTop: '16px' }}>
-        <Typography.Text style={{ 
-          fontSize: '15px', 
-          fontWeight: 350,
-          marginBottom: '16px',
-          display: 'block',
-          lineHeight: '1.8',
-          color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)'
-        }}>
-          Rearrange the words to form a correct sentence:
-        </Typography.Text>
+        <div style={{ fontSize: '15px', fontWeight: 350, marginBottom: '16px', lineHeight: '1.8', color: '#000000' }}>
+          <div className="question-text-content" dangerouslySetInnerHTML={{ __html: displayText || 'Rearrange the words to form a correct sentence:' }} />
+        </div>
 
         {/* Student Answer Row */}
         <div style={{
@@ -5565,38 +5775,51 @@ const ReorderContainer = ({ theme, data, studentAnswers, onViewFeedback }) => {
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  border: `2px solid ${
-                    isCorrect 
-                      ? '#52c41a' 
-                      : '#ff4d4f'
-                  }`,
+                  border: `2px solid ${isCorrect ? '#52c41a' : '#ff4d4f'}`,
                   borderRadius: '8px',
                   background: isCorrect
                     ? (theme === 'sun' ? 'rgba(82, 196, 26, 0.15)' : 'rgba(82, 196, 26, 0.2)')
                     : (theme === 'sun' ? 'rgba(255, 77, 79, 0.15)' : 'rgba(255, 77, 79, 0.2)'),
-                  position: 'relative',
-                  transition: 'all 0.3s ease',
                   cursor: 'not-allowed'
-                    }}
-                  >
-                    <span style={{ 
-                      fontSize: '14px',
-                      fontWeight: '600',
+                }}
+              >
+                <span style={{ 
+                  fontSize: '14px',
+                  fontWeight: '600',
                   color: isCorrect ? '#52c41a' : '#ff4d4f',
                   textAlign: 'center',
                   padding: '8px 12px'
-                    }}>
+                }}>
                   {word}
-                    </span>
-                  </div>
+                </span>
+              </div>
             )) : (
-              <Typography.Text style={{ 
-                fontSize: '14px',
-                color: 'rgba(0, 0, 0, 0.5)',
-                fontStyle: 'italic'
-              }}>
-                No answer provided
-              </Typography.Text>
+              correctOrder.map((word, index) => (
+                <div
+                  key={index}
+                  style={{
+                    minWidth: '100px',
+                    height: '60px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    border: '2px solid #faad14',
+                    borderRadius: '8px',
+                    background: theme === 'sun' ? 'rgba(250, 173, 20, 0.12)' : 'rgba(250, 173, 20, 0.2)',
+                    cursor: 'not-allowed'
+                  }}
+                >
+                  <span style={{ 
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    color: '#faad14',
+                    textAlign: 'center',
+                    padding: '8px 12px'
+                  }}>
+                    {word}
+                  </span>
+                </div>
+              ))
             )}
           </div>
         </div>
@@ -5692,7 +5915,8 @@ const RewriteContainer = ({ theme, data, studentAnswers, onViewFeedback }) => {
   }, [studentAnswer, correctAnswers]);
   
   // Remove placeholder tokens but keep HTML formatting
-  const questionText = (data?.questionText || data?.question || 'Rewrite the following sentence using different words:')
+  const questionTextRaw = data?.questionText || data?.question || 'Rewrite the following sentence using different words:';
+  const questionText = (typeof questionTextRaw === 'string' ? questionTextRaw : String(questionTextRaw || ''))
     .replace(/\[\[pos_.*?\]\]/g, '');
 
   return (
@@ -5854,7 +6078,8 @@ const RewriteContainer = ({ theme, data, studentAnswers, onViewFeedback }) => {
 
 // Fill in the Blank Container Component (Result View)
 const FillBlankContainer = ({ theme, data, studentAnswers, onViewFeedback }) => {
-  const questionText = data?.questionText || data?.question || 'Fill in the blanks';
+  const questionTextRaw = data?.questionText || data?.question || 'Fill in the blanks';
+  const questionText = typeof questionTextRaw === 'string' ? questionTextRaw : String(questionTextRaw || '');
   const contentData = Array.isArray(data?.content?.data) ? data.content.data : [];
   
   // Check if there's feedback
@@ -6257,6 +6482,7 @@ const StudentDailyChallengeResult = () => {
           const totalQuestions = gradingData.totalQuestions != null ? gradingData.totalQuestions : null;
           const correctCount = gradingData.correctAnswers != null ? gradingData.correctAnswers : null;
           const incorrectCount = gradingData.wrongAnswers != null ? gradingData.wrongAnswers : null;
+          const emptyCount = gradingData.empty != null ? gradingData.empty : null;
           const unansweredCount = (gradingData.skipped != null ? gradingData.skipped : 0) + (gradingData.empty != null ? gradingData.empty : 0);
           
           // Calculate accuracy percentage if available
@@ -6271,6 +6497,7 @@ const StudentDailyChallengeResult = () => {
             totalQuestions: totalQuestions,
             correctCount: correctCount,
             incorrectCount: incorrectCount,
+            emptyCount: emptyCount,
             unansweredCount: unansweredCount > 0 ? unansweredCount : null,
             accuracy: accuracy,
             teacherFeedback: gradingData.teacherFeedback || null,
@@ -6288,6 +6515,336 @@ const StudentDailyChallengeResult = () => {
     fetchGradingData();
   }, [id, location.state]);
 
+  // Fetch submission result with question content and answers
+  useEffect(() => {
+    const fetchSubmissionResult = async () => {
+      // Get submissionChallengeId from location.state (priority) or params (fallback)
+      const submissionChallengeId = location.state?.submissionChallengeId || id || location.state?.submissionId;
+      
+      if (!submissionChallengeId) {
+        console.warn('No submissionChallengeId found, skipping submission result fetch');
+        return;
+      }
+      
+      console.log('Fetching submission result for submissionChallengeId:', submissionChallengeId);
+
+      try {
+        const resultRes = await dailyChallengeApi.getSubmissionResult(submissionChallengeId);
+        const resultData = resultRes?.data?.data || resultRes?.data || null;
+        
+        if (resultData) {
+          console.log('Submission result data:', resultData);
+          
+          // Parse sectionDetails and questionResults
+          const sectionDetails = resultData.sectionDetails || [];
+          
+          // Collect questionResults from both root level and sectionDetails
+          let questionResults = resultData.questionResults || [];
+          
+          // Also collect questionResults from sectionDetails
+          sectionDetails.forEach(sectionDetail => {
+            if (sectionDetail.questionResults && Array.isArray(sectionDetail.questionResults)) {
+              questionResults = [...questionResults, ...sectionDetail.questionResults];
+            }
+          });
+          
+          // Create a map of questionId -> questionResult for quick lookup
+          const questionResultMap = {};
+          questionResults.forEach(qr => {
+            if (qr.questionId) {
+              questionResultMap[qr.questionId] = qr;
+            }
+          });
+          
+          console.log('Question results map:', questionResultMap);
+          
+          // Update questions with correct answers and selected answers from API
+          const updateQuestionWithAnswers = (question) => {
+            const questionResult = questionResultMap[question.id];
+            if (!questionResult) return question;
+            
+            const updatedQuestion = { ...question };
+            
+            // Update questionText/question if available from API - ensure it's always a string
+            if (questionResult.questionText !== undefined) {
+              const questionTextRaw = questionResult.questionText;
+              updatedQuestion.questionText = typeof questionTextRaw === 'string' 
+                ? questionTextRaw 
+                : (questionTextRaw?.toString ? questionTextRaw.toString() : String(questionTextRaw || ''));
+              updatedQuestion.question = updatedQuestion.questionText;
+            } else if (questionResult.question !== undefined) {
+              const questionRaw = questionResult.question;
+              updatedQuestion.question = typeof questionRaw === 'string' 
+                ? questionRaw 
+                : (questionRaw?.toString ? questionRaw.toString() : String(questionRaw || ''));
+              updatedQuestion.questionText = updatedQuestion.question;
+            }
+            
+            // Ensure existing questionText/question is still a string
+            if (updatedQuestion.questionText && typeof updatedQuestion.questionText !== 'string') {
+              updatedQuestion.questionText = String(updatedQuestion.questionText || '');
+              updatedQuestion.question = updatedQuestion.questionText;
+            }
+            if (updatedQuestion.question && typeof updatedQuestion.question !== 'string') {
+              updatedQuestion.question = String(updatedQuestion.question || '');
+              updatedQuestion.questionText = updatedQuestion.question;
+            }
+            
+            // Store correct answer and selected answer for reference
+            updatedQuestion.correctAnswer = questionResult.correctAnswer;
+            updatedQuestion.selectedAnswer = questionResult.selectedAnswer;
+            
+            // Handle REARRANGE questions - update content.data from questionContent.data
+            if (questionResult.questionType === 'REARRANGE' && questionResult.questionContent?.data) {
+              updatedQuestion.content = {
+                data: Array.isArray(questionResult.questionContent.data) 
+                  ? questionResult.questionContent.data.map(item => ({
+                      id: item.id,
+                      value: item.value,
+                      positionId: item.positionId,
+                      correct: item.correct || false
+                    }))
+                  : []
+              };
+            }
+            // Handle other question types with content.data
+            else if (questionResult.questionContent?.data && questionResult.questionType !== 'REARRANGE') {
+              updatedQuestion.content = {
+                data: questionResult.questionContent.data
+              };
+            }
+            
+            // Update options with correct answer info
+            if (updatedQuestion.options && Array.isArray(updatedQuestion.options)) {
+              updatedQuestion.options = updatedQuestion.options.map(opt => {
+                const correctAnswer = questionResult.correctAnswer;
+                const selectedAnswer = questionResult.selectedAnswer;
+                
+                // Check if this option is the correct answer
+                let isCorrect = false;
+                if (correctAnswer) {
+                  if (correctAnswer.key) {
+                    isCorrect = correctAnswer.key === opt.key;
+                  } else if (correctAnswer.value) {
+                    isCorrect = correctAnswer.value === opt.value || correctAnswer.value === opt.text;
+                  } else if (correctAnswer.text) {
+                    isCorrect = correctAnswer.text === opt.text || correctAnswer.text === opt.value;
+                  } else if (Array.isArray(correctAnswer)) {
+                    // For multiple select questions
+                    isCorrect = correctAnswer.some(ca => 
+                      ca?.key === opt.key || ca?.value === opt.value || ca?.text === opt.text
+                    );
+                  }
+                }
+                
+                // Check if this option was selected by student
+                let isSelected = false;
+                if (selectedAnswer) {
+                  if (selectedAnswer.key) {
+                    isSelected = selectedAnswer.key === opt.key;
+                  } else if (selectedAnswer.value) {
+                    isSelected = selectedAnswer.value === opt.value || selectedAnswer.value === opt.text;
+                  } else if (selectedAnswer.text) {
+                    isSelected = selectedAnswer.text === opt.text || selectedAnswer.text === opt.value;
+                  } else if (Array.isArray(selectedAnswer)) {
+                    // For multiple select questions
+                    isSelected = selectedAnswer.some(sa => 
+                      sa?.key === opt.key || sa?.value === opt.value || sa?.text === opt.text
+                    );
+                  }
+                }
+                
+                return {
+                  ...opt,
+                  isCorrect: isCorrect || opt.isCorrect,
+                  isSelected: isSelected
+                };
+              });
+            }
+            
+            return updatedQuestion;
+          };
+          
+          // Update individual questions
+          setQuestions(prevQuestions => {
+            return prevQuestions.map(q => updateQuestionWithAnswers(q));
+          });
+          
+          // Update reading sections
+          setReadingSections(prevSections => {
+            if (prevSections.length === 0 && sectionDetails.length > 0) {
+              // If no sections loaded yet, create from API data
+              return sectionDetails.map(sectionDetail => {
+                const sectionRaw = sectionDetail.section || {};
+                const questions = (sectionDetail.questionResults || []).map(qr => {
+                  // Ensure question/questionText is a string
+                  const questionTextRaw = qr.questionText || qr.question || '';
+                  const questionText = typeof questionTextRaw === 'string' 
+                    ? questionTextRaw 
+                    : (questionTextRaw?.toString ? questionTextRaw.toString() : String(questionTextRaw || ''));
+                  
+                  // Build question object
+                  const questionObj = {
+                    id: qr.questionId,
+                    type: qr.questionType,
+                    question: questionText,
+                    questionText: questionText,
+                    options: qr.options || [],
+                    correctAnswer: qr.correctAnswer,
+                    selectedAnswer: qr.selectedAnswer,
+                    points: qr.points || qr.score || 1,
+                    orderNumber: qr.orderNumber
+                  };
+                  
+                  // Handle REARRANGE questions - map questionContent.data to content.data
+                  if (qr.questionType === 'REARRANGE' && qr.questionContent?.data) {
+                    questionObj.content = {
+                      data: Array.isArray(qr.questionContent.data) 
+                        ? qr.questionContent.data.map(item => ({
+                            id: item.id,
+                            value: item.value,
+                            positionId: item.positionId,
+                            correct: item.correct || false
+                          }))
+                        : []
+                    };
+                  }
+                  
+                  // Handle other question types with content.data
+                  if (qr.questionContent?.data && qr.questionType !== 'REARRANGE') {
+                    questionObj.content = {
+                      data: qr.questionContent.data
+                    };
+                  }
+                  
+                  return questionObj;
+                });
+                
+                // Map section properties from API
+                const mappedSection = {
+                  ...sectionRaw,
+                  // Map sectionsContent to passage for Reading sections
+                  passage: sectionRaw.sectionsContent || sectionRaw.passage || sectionRaw.content || '',
+                  // Keep other section properties
+                  sectionTitle: sectionRaw.sectionTitle || sectionRaw.title || '',
+                  sectionsUrl: sectionRaw.sectionsUrl || sectionRaw.url || '',
+                  id: sectionRaw.id,
+                  questions: questions
+                };
+                
+                return mappedSection;
+              });
+            }
+            
+            return prevSections.map(section => {
+              // Also update section properties if available from API
+              const sectionDetail = sectionDetails.find(sd => (sd.section?.id === section.id) || (sd.section?.id === section.id));
+              const updatedSection = { ...section };
+              
+              if (sectionDetail?.section) {
+                // Map sectionsContent to passage for Reading sections
+                if (sectionDetail.section.sectionsContent) {
+                  updatedSection.passage = sectionDetail.section.sectionsContent;
+                }
+                // Update other section properties
+                if (sectionDetail.section.sectionTitle) {
+                  updatedSection.sectionTitle = sectionDetail.section.sectionTitle;
+                }
+                if (sectionDetail.section.sectionsUrl !== undefined) {
+                  updatedSection.sectionsUrl = sectionDetail.section.sectionsUrl;
+                }
+              }
+              
+              return {
+                ...updatedSection,
+                questions: (section.questions || []).map(q => updateQuestionWithAnswers(q))
+              };
+            });
+          });
+          
+          // Update listening sections similarly
+          setListeningSections(prevSections => {
+            // Find listening sections from sectionDetails
+            const listeningSectionDetails = sectionDetails.filter(sd => {
+              const section = sd.section || {};
+              return section.resourceType === 'AUDIO' || section.type === 'LISTENING_SECTION';
+            });
+            
+            return prevSections.map(section => {
+              // Also update section properties if available from API
+              const sectionDetail = listeningSectionDetails.find(sd => (sd.section?.id === section.id));
+              const updatedSection = { ...section };
+              
+              if (sectionDetail?.section) {
+                // Map transcript for Listening sections
+                if (sectionDetail.section.sectionsContent) {
+                  updatedSection.transcript = sectionDetail.section.sectionsContent;
+                }
+                if (sectionDetail.section.audioUrl) {
+                  updatedSection.audioUrl = sectionDetail.section.audioUrl;
+                }
+                if (sectionDetail.section.sectionTitle) {
+                  updatedSection.sectionTitle = sectionDetail.section.sectionTitle;
+                }
+              }
+              
+              return {
+                ...updatedSection,
+                questions: (section.questions || []).map(q => updateQuestionWithAnswers(q))
+              };
+            });
+          });
+          
+          // Update student answers from questionResults
+          const newStudentAnswers = {};
+          questionResults.forEach(qr => {
+            if (!qr.questionId) return;
+            
+            // Handle REARRANGE questions - use submittedContent.data
+            if (qr.questionType === 'REARRANGE' && qr.submittedContent?.data) {
+              // Extract values from submittedContent.data in order
+              const submittedValues = qr.submittedContent.data
+                .map(item => item.value)
+                .filter(Boolean);
+              newStudentAnswers[qr.questionId] = submittedValues;
+            }
+            // Handle other question types with selectedAnswer
+            else if (qr.selectedAnswer) {
+              // Map selected answer to studentAnswers format
+              if (qr.selectedAnswer.key) {
+                newStudentAnswers[qr.questionId] = qr.selectedAnswer.key;
+              } else if (qr.selectedAnswer.value) {
+                newStudentAnswers[qr.questionId] = qr.selectedAnswer.value;
+              } else if (qr.selectedAnswer.text) {
+                newStudentAnswers[qr.questionId] = qr.selectedAnswer.text;
+              } else if (Array.isArray(qr.selectedAnswer)) {
+                newStudentAnswers[qr.questionId] = qr.selectedAnswer;
+              } else if (typeof qr.selectedAnswer === 'object') {
+                // For complex answer types (fill blank, drag drop, etc.)
+                newStudentAnswers[qr.questionId] = qr.selectedAnswer;
+              }
+            }
+            // Handle submittedContent for other question types (fill blank, drag drop, etc.)
+            else if (qr.submittedContent?.data) {
+              // For fill blank, drag drop, etc. - use submittedContent.data
+              newStudentAnswers[qr.questionId] = qr.submittedContent.data;
+            }
+          });
+          
+          // Merge with existing student answers
+          setStudentAnswers(prev => ({
+            ...prev,
+            ...newStudentAnswers
+          }));
+        }
+      } catch (error) {
+        console.warn('Failed to fetch submission result:', error?.response?.data || error?.message);
+        // Non-blocking: continue with existing data if API fails
+      }
+    };
+
+    fetchSubmissionResult();
+  }, [id, location.state]);
 
   const handleBack = () => {
     navigate(-1);
@@ -7249,9 +7806,7 @@ const StudentDailyChallengeResult = () => {
                                       lineHeight: '1'
                                     }}
                                   >
-                                    {(submission.correctCount != null && submission.incorrectCount != null && submission.unansweredCount != null) 
-                                      ? (submission.correctCount + submission.incorrectCount + submission.unansweredCount)
-                                      : '-'}
+                                    {submission.totalQuestions != null ? submission.totalQuestions : '-'}
                                   </Typography.Text>
                                   <Typography.Text
                                     style={{
@@ -7362,7 +7917,7 @@ const StudentDailyChallengeResult = () => {
                                       lineHeight: '1'
                                     }}
                                   >
-                                    {submission.unansweredCount != null ? submission.unansweredCount : '-'}
+                                    {submission.emptyCount != null ? submission.emptyCount : '-'}
                                   </Typography.Text>
                                   <Typography.Text
                                     style={{
@@ -7607,7 +8162,7 @@ const StudentDailyChallengeResult = () => {
                 {challengeType === 'LI' && listeningSections.length > 0 && (
                   listeningSections.map((section, index) => (
                     <div key={`listening-wrap-${section.id || index}`} ref={el => (questionRefs.current[`listening-${index + 1}`] = el)}>
-                      <ListeningSectionItem key={section.id || `listening_${index}`} question={section} index={index} theme={theme} onViewFeedback={handleViewFeedback} />
+                      <ListeningSectionItem key={section.id || `listening_${index}`} question={section} index={index} theme={theme} studentAnswers={studentAnswers} onViewFeedback={handleViewFeedback} />
                     </div>
                   ))
                 )}
