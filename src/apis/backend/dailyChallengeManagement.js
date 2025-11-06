@@ -606,6 +606,18 @@ const dailyChallengeApi = {
 		});
 	},
 
+	// Get anti-cheat logs for a submission
+	// Endpoint: GET /challenge-submissions/{submissionChallengeId}/logs
+	getSubmissionLogs: (submissionChallengeId) => {
+		const url = `/challenge-submissions/${submissionChallengeId}/logs`;
+		console.log('GetSubmissionLogs API - URL:', url);
+		return axiosClient.get(url, {
+			headers: {
+				'accept': '*/*',
+			}
+		});
+	},
+
 	// Mark submission as started by student
 	// Endpoint: POST /challenge-submissions/submission/{submissionId}/start
 	startSubmission: (submissionId) => {

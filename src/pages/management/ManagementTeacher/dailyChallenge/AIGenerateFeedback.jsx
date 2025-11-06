@@ -42,6 +42,33 @@ const AIGenerateFeedback = () => {
   const primaryColor = theme === 'sun' ? '#1890ff' : '#8B5CF6';
   const primaryColorWithAlpha = theme === 'sun' ? 'rgba(24, 144, 255, 0.1)' : 'rgba(139, 92, 246, 0.1)';
 
+  // Prefer backend messages for notifications
+  const getBackendMessage = useCallback((resOrErr) => {
+    try {
+      // Error object
+      if (resOrErr?.response?.data) {
+        return (
+          resOrErr.response.data.error ||
+          resOrErr.response.data.message ||
+          resOrErr.response.data.data?.message ||
+          null
+        );
+      }
+      // Axios response
+      if (resOrErr?.data) {
+        return (
+          resOrErr.data.message ||
+          resOrErr.data.data?.message ||
+          resOrErr.data.error ||
+          null
+        );
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  }, []);
+
   // Helper: strip html to plain text for speaking transcripts coming from rich editors
   const stripHtmlToText = React.useCallback((html) => {
     if (!html || typeof html !== 'string') return '';
@@ -170,20 +197,97 @@ const AIGenerateFeedback = () => {
   const [speakingAge, setSpeakingAge] = useState('');
   const [speakingReferenceText, setSpeakingReferenceText] = useState('');
   const [speakingResult, setSpeakingResult] = useState(null);
+  const [writingCriteria, setWritingCriteria] = useState(null);
+  // Determine section type early (used by multiple hooks below and callbacks defined afterwards)
+  const sectionType = useMemo(() => {
+    const title = (section?.sectionTitle || section?.title || '').toLowerCase();
+    if (/writing/.test(title)) return 'writing';
+    if (/listening/.test(title)) return 'listening';
+    if (/speaking/.test(title)) return 'speaking';
+    return prefill.type || 'writing';
+  }, [section, prefill.type]);
+  const criteriaStyles = useMemo(() => {
+    const light = {
+      taskResponse: { bg: '#FFF7ED', border: 'rgba(245, 158, 11, 0.35)' }, // orange pastel
+      cohesionCoherence: { bg: '#ECFEFF', border: 'rgba(6, 182, 212, 0.35)' }, // cyan pastel
+      lexicalResource: { bg: '#F0FDF4', border: 'rgba(34, 197, 94, 0.35)' }, // green pastel
+      grammaticalRangeAccuracy: { bg: '#F5F3FF', border: 'rgba(139, 92, 246, 0.35)' }, // purple pastel
+    };
+    const dark = {
+      taskResponse: { bg: 'rgba(245, 158, 11, 0.10)', border: 'rgba(245, 158, 11, 0.35)' },
+      cohesionCoherence: { bg: 'rgba(6, 182, 212, 0.10)', border: 'rgba(6, 182, 212, 0.35)' },
+      lexicalResource: { bg: 'rgba(34, 197, 94, 0.10)', border: 'rgba(34, 197, 94, 0.35)' },
+      grammaticalRangeAccuracy: { bg: 'rgba(139, 92, 246, 0.10)', border: 'rgba(139, 92, 246, 0.35)' },
+    };
+    return theme === 'sun' ? light : dark;
+  }, [theme]);
+  const speakingStyles = useMemo(() => {
+    const light = {
+      Pronunciation: { bg: '#ECFEFF', border: 'rgba(6, 182, 212, 0.35)' },
+      Accuracy: { bg: '#F0FDF4', border: 'rgba(34, 197, 94, 0.35)' },
+      Fluency: { bg: '#FFF7ED', border: 'rgba(245, 158, 11, 0.35)' },
+      Completeness: { bg: '#FEF2F2', border: 'rgba(239, 68, 68, 0.35)' },
+      Prosody: { bg: '#F5F3FF', border: 'rgba(139, 92, 246, 0.35)' },
+    };
+    const dark = {
+      Pronunciation: { bg: 'rgba(6, 182, 212, 0.10)', border: 'rgba(6, 182, 212, 0.35)' },
+      Accuracy: { bg: 'rgba(34, 197, 94, 0.10)', border: 'rgba(34, 197, 94, 0.35)' },
+      Fluency: { bg: 'rgba(245, 158, 11, 0.10)', border: 'rgba(245, 158, 11, 0.35)' },
+      Completeness: { bg: 'rgba(239, 68, 68, 0.10)', border: 'rgba(239, 68, 68, 0.35)' },
+      Prosody: { bg: 'rgba(139, 92, 246, 0.10)', border: 'rgba(139, 92, 246, 0.35)' },
+    };
+    return theme === 'sun' ? light : dark;
+  }, [theme]);
   const handleClear = useCallback(() => {
     try {
+      // Reset common fields
       setScore('');
       setScoreError(null);
       setFeedback('');
-      const secId = section?.id || prefill?.section?.id;
-      if (secId) {
-        setWritingSectionFeedbacks(prev => ({ ...prev, [secId]: [] }));
+
+      // For Writing: clear criteria, highlights and return panel to initial chooser
+      if (sectionType === 'writing') {
+        setWritingCriteria(null);
+        const secId = section?.id || prefill?.section?.id;
+        if (secId) {
+          setWritingSectionFeedbacks(prev => ({ ...prev, [secId]: [] }));
+        } else {
+          setWritingSectionFeedbacks({});
+        }
+        setHasAIGenerated(false);
+        setRightMode(null);
+      } else if (sectionType === 'speaking') {
+        // Speaking: clear AI metrics and inline form state, reset view
+        setSpeakingResult(null);
+        setSpeakingReferenceText('');
+        setSpeakingAge('');
+        const secId = section?.id || prefill?.section?.id;
+        if (secId) {
+          setWritingSectionFeedbacks(prev => ({ ...prev, [secId]: [] }));
+        } else {
+          setWritingSectionFeedbacks({});
+        }
+        setHasAIGenerated(false);
+        setRightMode(null);
       } else {
-        setWritingSectionFeedbacks({});
+        // Other sections: just clear per-section highlights if any
+        const secId = section?.id || prefill?.section?.id;
+        if (secId) {
+          setWritingSectionFeedbacks(prev => ({ ...prev, [secId]: [] }));
+        } else {
+          setWritingSectionFeedbacks({});
+        }
       }
+
+      // Also reset UI selection/popovers
+      setTextSelection({ visible: false, sectionId: null, startIndex: null, endIndex: null, position: { x: 0, y: 0 } });
+      setSelectedComment(null);
+      setShowCommentSidebar(false);
+      setCommentPopover({ visible: false, x: 0, y: 0, feedback: null });
+
       spaceToast.success('Cleared. Click Save to apply.');
     } catch {}
-  }, [section?.id, prefill?.section?.id]);
+  }, [sectionType, section?.id, prefill?.section?.id]);
   // Right panel mode: null (choose), 'manual', 'ai'
   const [rightMode, setRightMode] = useState(null);
   const [hasAIGenerated, setHasAIGenerated] = useState(false);
@@ -214,6 +318,174 @@ const AIGenerateFeedback = () => {
     if (!section || !section?.id) return {};
     return { [section.id]: studentAnswer || {} };
   }, [section, studentAnswer]);
+
+  
+
+  // Build a single HTML feedback that includes all details (temporary: BE only stores one field)
+  const buildCombinedFeedbackForSave = useCallback(() => {
+    const baseHtml = (feedback || '').trim();
+    if (sectionType === 'writing') {
+      const crit = writingCriteria || {};
+      const blocks = [];
+      const push = (label, obj) => {
+        if (!obj) return;
+        const scoreStr = Number.isFinite(Number(obj?.score)) ? `${Number(obj.score)}/10` : '-';
+        const fb = (obj?.feedback || '').trim();
+        const body = fb ? `${fb}` : '';
+        blocks.push(`<p><b>${label}${scoreStr !== '-' ? ` (${scoreStr})` : ''}:</b> ${body}</p>`);
+      };
+      push('Task Response', crit.taskResponse);
+      push('Cohesion & Coherence', crit.cohesionCoherence);
+      push('Lexical Resource', crit.lexicalResource);
+      push('Grammatical Range & Accuracy', crit.grammaticalRangeAccuracy);
+      if (blocks.length > 0) {
+        const criteriaHtml = `<hr/><div data-kind="criteria">${blocks.join('')}</div>`;
+        return [baseHtml, criteriaHtml].filter(Boolean).join('\n');
+      }
+      return baseHtml;
+    }
+    if (sectionType === 'speaking') {
+      if (!speakingResult) return baseHtml;
+      const sr = speakingResult || {};
+      const rows = [
+        ['Pronunciation', sr.pronunciationScore],
+        ['Accuracy', sr.accuracyScore],
+        ['Fluency', sr.fluencyScore],
+        ['Completeness', sr.completenessScore],
+        ['Prosody', sr.prosodyScore],
+      ]
+        .filter(([label, val]) => val !== undefined && val !== null)
+        .map(([label, val]) => `<li>${label}: <b>${val}</b></li>`)
+        .join('');
+      const details = rows ? `<ul>${rows}</ul>` : '';
+      const speakingHtml = `<hr/><div data-kind="speaking">${details}</div>`;
+      return [baseHtml, speakingHtml].filter(Boolean).join('\n');
+    }
+    return baseHtml;
+  }, [feedback, sectionType, writingCriteria, speakingResult]);
+
+  // Parse combined feedback html to rebuild writing criteria for display
+  const parseCriteriaFromFeedback = useCallback((html) => {
+    try {
+      if (!html || typeof html !== 'string') return null;
+      const plain = html
+        .replace(/<\s*br\s*\/?>/gi, '\n')
+        .replace(/<[^>]*>/g, ' ')
+        .replace(/&nbsp;/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+      const grab = (label) => {
+        const regex = new RegExp(`${label}\\s*(\\((\\d+(?:\\.\\d+)?)\\/10\\))?\:`, 'i');
+        const m = plain.match(regex);
+        if (!m) return null;
+        const after = plain.slice(m.index + m[0].length).trim();
+        // Stop at next known label if exists
+        const stopLabels = ['Task Response', 'Cohesion & Coherence', 'Lexical Resource', 'Grammatical Range & Accuracy'];
+        const rest = stopLabels
+          .filter((l) => l.toLowerCase() !== label.toLowerCase())
+          .map((l) => new RegExp(`\\b${l}\\b`, 'i'));
+        let end = after.length;
+        for (const r of rest) {
+          const mm = after.match(r);
+          if (mm && mm.index < end) end = mm.index;
+        }
+        const chunk = after.substring(0, end).trim();
+        const scoreNum = Number(m?.[2]);
+        return { score: Number.isFinite(scoreNum) ? scoreNum : undefined, feedback: chunk };
+      };
+      const result = {
+        taskResponse: grab('Task Response'),
+        cohesionCoherence: grab('Cohesion & Coherence'),
+        lexicalResource: grab('Lexical Resource'),
+        grammaticalRangeAccuracy: grab('Grammatical Range & Accuracy'),
+      };
+      const hasAny = Object.values(result).some((v) => v && (v.feedback || v.score != null));
+      return hasAny ? result : null;
+    } catch {
+      return null;
+    }
+  }, []);
+
+  // Extract overall feedback (without criteria) if our combined format was used
+  const extractOverallFeedback = useCallback((html) => {
+    if (!html || typeof html !== 'string') return html || '';
+    try {
+      // Prefer our explicit marker first
+      const markerIdx = html.indexOf('<div data-kind="criteria"');
+      if (markerIdx > -1) {
+        return html.substring(0, markerIdx).trim();
+      }
+      const markerSpeaking = html.indexOf('<div data-kind="speaking"');
+      if (markerSpeaking > -1) {
+        return html.substring(0, markerSpeaking).trim();
+      }
+      // Heuristic fallback: first criteria label occurrence
+      const labels = [
+        'Task Response',
+        'Cohesion & Coherence',
+        'Lexical Resource',
+        'Grammatical Range & Accuracy'
+      ];
+      let firstIdx = -1;
+      for (const l of labels) {
+        const i = html.toLowerCase().indexOf(l.toLowerCase());
+        if (i !== -1 && (firstIdx === -1 || i < firstIdx)) firstIdx = i;
+      }
+      let base = firstIdx > -1 ? html.substring(0, firstIdx) : html;
+      // Clean inline speaking bullet lists if present in legacy content
+      try {
+        // Remove any <ul> block that contains any speaking metric label
+        const speakingLabels = ['Pronunciation', 'Accuracy', 'Fluency', 'Completeness', 'Prosody'];
+        speakingLabels.forEach((lbl) => {
+          const regex = new RegExp(`<ul[\s\S]*?<li[\s\S]*?>[\\s\S]*?${lbl}[\s\S]*?<\\/ul>`, 'i');
+          base = base.replace(regex, '');
+        });
+        // Also remove standalone lines like "Pronunciation: 4.2" possibly wrapped in <p> or <li>
+        const lineRegex = /<(p|li)[^>]*>\s*(Pronunciation|Accuracy|Fluency|Completeness|Prosody)[^<]*<\/\1>/gi;
+        base = base.replace(lineRegex, '');
+      } catch {}
+      return base.trim();
+    } catch {
+      return html;
+    }
+  }, []);
+
+  // Parse speaking metrics from a combined feedback html (best-effort)
+  const parseSpeakingFromFeedback = useCallback((html) => {
+    if (!html || typeof html !== 'string') return null;
+    try {
+      const marker = '<div data-kind="speaking"';
+      let speakingHtml = '';
+      const idx = html.indexOf(marker);
+      if (idx > -1) {
+        speakingHtml = html.substring(idx);
+      } else {
+        speakingHtml = html;
+      }
+      const toPlain = speakingHtml
+        .replace(/<\s*br\s*\/?>/gi, '\n')
+        .replace(/<[^>]*>/g, ' ')
+        .replace(/&nbsp;/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+      const pick = (label) => {
+        const r = new RegExp(`${label}[^0-9]*([0-9]+(?:\\.[0-9]+)?)`, 'i');
+        const m = toPlain.match(r);
+        return m ? Number(m[1]) : undefined;
+      };
+      const result = {
+        pronunciationScore: pick('Pronunciation'),
+        accuracyScore: pick('Accuracy'),
+        fluencyScore: pick('Fluency'),
+        completenessScore: pick('Completeness'),
+        prosodyScore: pick('Prosody'),
+      };
+      const hasAny = Object.values(result).some((v) => typeof v === 'number' && Number.isFinite(v));
+      return hasAny ? result : null;
+    } catch {
+      return null;
+    }
+  }, []);
 
   // Comment-on-highlight states (replicated behavior)
   const [writingSectionFeedbacks, setWritingSectionFeedbacks] = useState({});
@@ -538,17 +810,36 @@ const AIGenerateFeedback = () => {
     return () => { document.removeEventListener('mousedown', handleClickOutside); };
   }, [textSelection.visible, commentPopover.visible]);
 
-  const sectionType = useMemo(() => {
-    const title = (section?.sectionTitle || section?.title || '').toLowerCase();
-    if (/writing/.test(title)) return 'writing';
-    if (/listening/.test(title)) return 'listening';
-    return prefill.type || 'writing';
-  }, [section, prefill.type]);
+  
 
   // Do not prefill speaking reference text; let user input manually
   useEffect(() => {
-    // intentionally left blank to avoid auto-filling reference text
-  }, [sectionType]);
+    // On revisit with prefilled combined feedback, split it into overall + details
+    if (typeof prefill?.feedback === 'string' && prefill.feedback) {
+      if (sectionType === 'writing') {
+        const parsed = parseCriteriaFromFeedback(prefill.feedback);
+        if (parsed) {
+          setWritingCriteria(parsed);
+          setHasAIGenerated(true);
+          setFeedback((prev) => {
+            const overall = extractOverallFeedback(prefill.feedback);
+            return prev && prev !== prefill.feedback ? prev : overall;
+          });
+        }
+      } else if (sectionType === 'speaking') {
+        const sp = parseSpeakingFromFeedback(prefill.feedback);
+        if (sp) {
+          setSpeakingResult(sp);
+          setHasAIGenerated(true);
+          setFeedback((prev) => {
+            const overall = extractOverallFeedback(prefill.feedback);
+            return prev && prev !== prefill.feedback ? prev : overall;
+          });
+        }
+      }
+    }
+    // intentionally left blank for speaking reference text
+  }, [sectionType, prefill?.feedback, parseCriteriaFromFeedback, parseSpeakingFromFeedback, extractOverallFeedback]);
 
   // Fetch submission result if not fully provided
   useEffect(() => {
@@ -681,6 +972,24 @@ const AIGenerateFeedback = () => {
             return gradingData.receivedWeight;
           });
         }
+        // Feedback: save is a single field; when fetching, set editor value and try to rebuild criteria
+        if (typeof gradingData.feedback === 'string') {
+          if (sectionType === 'speaking') {
+            const sp = parseSpeakingFromFeedback(gradingData.feedback);
+            if (sp) {
+              setSpeakingResult(sp);
+              setHasAIGenerated(true);
+            }
+            setFeedback(extractOverallFeedback(gradingData.feedback));
+          } else {
+            const parsed = parseCriteriaFromFeedback(gradingData.feedback);
+            if (parsed) {
+              setWritingCriteria(parsed);
+              setHasAIGenerated(true);
+            }
+            setFeedback(extractOverallFeedback(gradingData.feedback));
+          }
+        }
       } catch (e) {
         // If grading doesn't exist yet, questionWeight will use default or prefill value
         // This is fine for new submissions
@@ -780,8 +1089,9 @@ const AIGenerateFeedback = () => {
           spaceToast.error('Không tìm thấy submissionQuestionId của section để chấm AI');
           return;
         }
-        const age = Number.isFinite(Number(speakingAge)) ? Number(speakingAge) : undefined;
-        const payload = { submissionQuestionId: writingSubmissionQuestionId, age };
+        const ageInput = String(speakingAge ?? '').trim();
+        const age = ageInput === '' ? undefined : (Number.isFinite(Number(ageInput)) ? Number(ageInput) : undefined);
+        const payload = { submissionQuestionId: writingSubmissionQuestionId, ...(age !== undefined ? { age } : {}) };
         const res = await dailyChallengeApi.generateAIFeedback(payload);
         const raw = res?.data?.data || res?.data || {};
         const overallFeedback = raw?.overallFeedback || raw?.feedback || '';
@@ -792,39 +1102,9 @@ const AIGenerateFeedback = () => {
         const aiComments = Array.isArray(raw?.comments) ? raw.comments : [];
         // criteria feedback for writing - format and combine with overall feedback
         const criteriaFeedback = raw?.criteriaFeedback || null;
-        
-        // Format criteria feedback into HTML and combine with overall feedback
-        let combinedFeedback = overallFeedback || '';
-        if (criteriaFeedback) {
-          const criteriaItems = [
-            { key: 'taskResponse', label: 'Task Response' },
-            { key: 'cohesionCoherence', label: 'Cohesion & Coherence' },
-            { key: 'lexicalResource', label: 'Lexical Resource' },
-            { key: 'grammaticalRangeAccuracy', label: 'Grammatical Range & Accuracy' }
-          ];
-          
-          let criteriaHtml = '';
-          criteriaItems.forEach((it) => {
-            const data = criteriaFeedback[it.key];
-            if (data) {
-              const score = Number.isFinite(Number(data?.score)) ? data.score : '-';
-              const feedback = (data?.feedback || '').trim();
-              if (feedback) {
-                criteriaHtml += `<p><strong>${it.label} (Score: ${score})</strong><br>${feedback}</p>`;
-              }
-            }
-          });
-          
-          if (criteriaHtml) {
-            if (combinedFeedback) {
-              combinedFeedback += '<hr><h3>Detailed Criteria Feedback:</h3>' + criteriaHtml;
-            } else {
-              combinedFeedback = '<h3>Detailed Criteria Feedback:</h3>' + criteriaHtml;
-            }
-          }
-        }
-        
-        if (combinedFeedback) setFeedback(combinedFeedback);
+        // Store criteria separately for UI rendering
+        setWritingCriteria(criteriaFeedback || null);
+        if (overallFeedback) setFeedback(overallFeedback);
         if (suggestedScore !== '') setScore(suggestedScore);
         if (section?.id && aiComments.length > 0) {
           const mapped = aiComments
@@ -841,7 +1121,7 @@ const AIGenerateFeedback = () => {
           }
         }
         setHasAIGenerated(true);
-        spaceToast.success('AI feedback generated');
+        spaceToast.success(getBackendMessage(res) || 'AI feedback generated');
       } else if (sectionType === 'speaking') {
         // Speaking pronunciation assessment
         const audioUrl = studentAnswer?.audioUrl || studentAnswer?.audio;
@@ -850,20 +1130,22 @@ const AIGenerateFeedback = () => {
           return;
         }
         const refText = (speakingReferenceText && speakingReferenceText.trim()) ? speakingReferenceText.trim() : undefined;
-        const age = Number.isFinite(Number(speakingAge)) ? Number(speakingAge) : undefined;
-        const res = await dailyChallengeApi.assessPronunciation({ audioUrl, referenceText: refText, age });
+        const ageInput = String(speakingAge ?? '').trim();
+        const age = ageInput === '' ? undefined : (Number.isFinite(Number(ageInput)) ? Number(ageInput) : undefined);
+        const res = await dailyChallengeApi.assessPronunciation({ audioUrl, referenceText: refText, ...(age !== undefined ? { age } : {}) });
         const data = res?.data?.data || res?.data || {};
         setSpeakingResult(data || null);
         // Map to right panel
         if (typeof data?.pronunciationScore === 'number') setScore(data.pronunciationScore);
         if (data?.feedback) setFeedback(String(data.feedback));
         setHasAIGenerated(true);
-        spaceToast.success('Pronunciation assessed');
+        spaceToast.success(getBackendMessage(res) || 'Pronunciation assessed');
       } else {
         spaceToast.error('AI grading hiện chỉ hỗ trợ cho Writing và Speaking');
       }
     } catch (e) {
-      spaceToast.error(e?.response?.data?.message || e?.message || 'Failed to generate AI feedback');
+      const beErr = getBackendMessage(e);
+      spaceToast.error(beErr || e?.message || 'Failed to generate AI feedback');
     } finally {
       setIsGenerating(false);
     }
@@ -882,7 +1164,7 @@ const AIGenerateFeedback = () => {
 
       // Build payload (BE updated)
       // Keep HTML formatting from CKEditor (bold, italic, lists, etc.)
-      const cleanedFeedback = (feedback || '').trim();
+      const cleanedFeedback = buildCombinedFeedbackForSave();
       const numericScore = Number(score);
       const sectionKey = section?.id;
       const highlightComments = sectionKey && Array.isArray(writingSectionFeedbacks?.[sectionKey])
@@ -902,15 +1184,15 @@ const AIGenerateFeedback = () => {
       };
 
       const res = await dailyChallengeApi.gradeSubmissionQuestion(writingSubmissionQuestionId, payload);
-      const beMsg = res?.data?.message || res?.data?.data?.message;
+      const beMsg = getBackendMessage(res);
       spaceToast.success(beMsg || 'Saved');
       handleBack();
     } catch (e) {
-      spaceToast.error(e?.response?.data?.message || 'Save failed');
+      spaceToast.error(getBackendMessage(e) || 'Save failed');
     } finally {
       setSaving(false);
     }
-  }, [sectionType, submissionQuestionId, prefill?.submissionQuestionId, submission, sectionId, section, writingSectionFeedbacks, score, feedback, handleBack]);
+  }, [sectionType, submissionQuestionId, prefill?.submissionQuestionId, submission, sectionId, section, writingSectionFeedbacks, score, buildCombinedFeedbackForSave, handleBack]);
 
   return (
     <ThemedLayout
@@ -997,15 +1279,20 @@ const AIGenerateFeedback = () => {
         <style>{`
           .feedback-editor-wrap .ck-editor__editable_inline { 
             min-height: 300px !important; 
-            max-height: 300px !important; 
-            overflow-y: auto !important; 
+            max-height: none !important; 
+            overflow-y: visible !important; 
             color: #000 !important; 
           }
           .feedback-editor-wrap .ck-editor__main .ck-editor__editable { 
             min-height: 300px !important; 
-            max-height: 300px !important; 
-            overflow-y: auto !important; 
+            max-height: none !important; 
+            overflow-y: visible !important; 
             color: #000 !important; 
+          }
+          /* Prevent CKEditor toolbar from becoming sticky/jumping while scrolling */
+          .feedback-editor-wrap .ck-sticky-panel__content { 
+            position: static !important; 
+            top: auto !important; 
           }
           .comment-editor-wrap .ck-editor__editable_inline { 
             min-height: 200px !important; 
@@ -1350,7 +1637,7 @@ const AIGenerateFeedback = () => {
                 backdropFilter: 'blur(10px)',
                 minHeight: 540,
               }}
-              bodyStyle={{ maxHeight: 540, overflowY: 'auto', padding: 16 }}
+              bodyStyle={{ maxHeight: 750, overflowY: 'auto', padding: 16 }}
             >
 
               {/* Mode chooser */}
@@ -1439,6 +1726,57 @@ const AIGenerateFeedback = () => {
                       <span>{scoreError}</span>
                     </div>
                   )}
+                  {sectionType === 'speaking' && speakingResult && (
+                    <div style={{ marginTop: 0 }}>
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 8,
+                        color: theme === 'sun' ? '#1E40AF' : '#8377A0'
+                      }}>
+                        <Text strong>Pronunciation result</Text>
+                      </div>
+                      <div style={{
+                        marginTop: 8,
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+                        gap: 12
+                      }}>
+                        {[{
+                          label: 'Pronunciation',
+                          value: Number.isFinite(Number(speakingResult?.pronunciationScore)) ? speakingResult.pronunciationScore : '-'
+                        },{
+                          label: 'Accuracy',
+                          value: Number.isFinite(Number(speakingResult?.accuracyScore)) ? speakingResult.accuracyScore : '-'
+                        },{
+                          label: 'Fluency',
+                          value: Number.isFinite(Number(speakingResult?.fluencyScore)) ? speakingResult.fluencyScore : '-'
+                        },{
+                          label: 'Completeness',
+                          value: Number.isFinite(Number(speakingResult?.completenessScore)) ? speakingResult.completenessScore : '-'
+                        },{
+                          label: 'Prosody',
+                          value: Number.isFinite(Number(speakingResult?.prosodyScore)) ? speakingResult.prosodyScore : '-'
+                        }].map((item, idx) => {
+                          const ss = speakingStyles[item.label] || { bg: theme === 'sun' ? 'rgba(24,144,255,0.06)' : 'rgba(244,240,255,0.10)', border: theme === 'sun' ? 'rgba(24,144,255,0.25)' : 'rgba(138,122,255,0.25)' };
+                          return (
+                          <div
+                            key={`manual-speaking-top-${item.label}-${idx}`}
+                            style={{
+                              borderRadius: 12,
+                              padding: '12px 14px',
+                              background: ss.bg,
+                              border: `1px solid ${ss.border}`
+                            }}
+                          >
+                            <div style={{ fontSize: 12, color: theme === 'sun' ? '#1E40AF' : '#8377A0', fontWeight: 600 }}>{item.label}</div>
+                            <div style={{ fontSize: 20, fontWeight: 700, color: theme === 'sun' ? '#0f172a' : '#1F2937', marginTop: 2 }}>{item.value}</div>
+                          </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
                   <div>
                     <Text strong>Feedback</Text>
                     <div className="feedback-editor-wrap" style={{ marginTop: 6, borderRadius: 12, border: `2px solid ${primaryColor}80`, background: theme === 'sun' ? primaryColorWithAlpha : 'rgba(244, 240, 255, 0.15)' }}>
@@ -1447,15 +1785,14 @@ const AIGenerateFeedback = () => {
                         data={feedback}
                         onChange={(event, editor) => setFeedback(editor.getData())}
                         config={{
-                          toolbar: { items: ['undo', 'redo', '|', 'paragraph', '|', 'bold', 'italic', '|', 'bulletedList', 'numberedList', '|', 'imageUpload'] }
+                          toolbar: { items: ['undo', 'redo', '|', 'paragraph', '|', 'bold', 'italic', '|', 'bulletedList', 'numberedList', '|', 'imageUpload'] },
+                          removePlugins: ['StickyToolbar']
                         }}
                         onReady={(editor) => {
                           try {
                             const el = editor.ui?.getEditableElement?.();
                             if (el) {
                               el.style.minHeight = '300px';
-                              el.style.maxHeight = '300px';
-                              el.style.overflowY = 'auto';
                               el.style.color = '#000';
                             }
                           } catch {}
@@ -1463,6 +1800,58 @@ const AIGenerateFeedback = () => {
                       />
                     </div>
                   </div>
+                  {/* Criteria feedback cards also visible in Manual mode (no Generate button) */}
+                  {sectionType === 'writing' && writingCriteria && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                      {[
+                        { key: 'taskResponse', label: 'Task Response' },
+                        { key: 'cohesionCoherence', label: 'Cohesion & Coherence' },
+                        { key: 'lexicalResource', label: 'Lexical Resource' },
+                        { key: 'grammaticalRangeAccuracy', label: 'Grammatical Range & Accuracy' }
+                      ].map((it) => {
+                        const data = writingCriteria?.[it.key];
+                        if (!data) return null;
+                        const scoreNum = Number.isFinite(Number(data?.score)) ? Number(data.score) : null;
+                        const scoreVal = scoreNum != null ? `${scoreNum}/10` : '-';
+                        const fb = (data?.feedback || '').trim();
+                        const percent = scoreNum != null ? Math.max(0, Math.min(100, (scoreNum / 10) * 100)) : 0;
+                        const level = scoreNum == null ? 'neutral' : (scoreNum < 4 ? 'low' : (scoreNum < 7 ? 'mid' : 'high'));
+                        const barColor = level === 'low' ? '#EF4444' : level === 'mid' ? '#F59E0B' : '#22C55E';
+                        const badgeBg = level === 'low' ? '#FEE2E2' : level === 'mid' ? '#FEF3C7' : '#DCFCE7';
+                        const badgeText = level === 'low' ? 'Needs Work' : level === 'mid' ? 'Fair' : 'Good';
+                        const cs = criteriaStyles[it.key] || { bg: theme === 'sun' ? 'rgba(113,179,253,0.08)' : 'rgba(167,139,250,0.10)', border: `${primaryColor}40` };
+                        return (
+                          <Card
+                            key={`manual-${it.key}`}
+                            style={{
+                              borderRadius: 12,
+                              border: `2px solid ${cs.border}`,
+                              background: cs.bg
+                            }}
+                          >
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+                              <Typography.Text strong style={{ color: theme === 'sun' ? '#1E40AF' : '#8377A0' }}>{it.label}</Typography.Text>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <div style={{ fontWeight: 700, color: theme === 'sun' ? '#0f172a' : '#1F2937' }}>{scoreVal}</div>
+                                {scoreNum != null && (
+                                  <span style={{ background: badgeBg, color: theme === 'sun' ? '#111827' : '#111827', borderRadius: 999, padding: '2px 8px', fontSize: 12, fontWeight: 600 }}>{badgeText}</span>
+                                )}
+                              </div>
+                            </div>
+                            {/* Progress bar */}
+                            <div style={{ marginTop: 10, height: 8, borderRadius: 8, background: 'rgba(0,0,0,0.08)' }}>
+                              <div style={{ width: `${percent}%`, height: '100%', borderRadius: 8, background: barColor }} />
+                            </div>
+                            {fb && (
+                              <div style={{ marginTop: 12, fontSize: 14, lineHeight: 1.7, color: theme === 'sun' ? '#333' : '#1F2937', whiteSpace: 'pre-wrap' }}>
+                                <b>{it.label.split(' & ').join(' and ')}:</b> {stripHtmlToText(fb)}
+                              </div>
+                            )}
+                          </Card>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -1473,7 +1862,7 @@ const AIGenerateFeedback = () => {
                     <div style={{ display: 'flex' }}>
                       <Button
                         icon={<ArrowLeftOutlined />}
-                        onClick={() => { setRightMode(null); setHasAIGenerated(false); }}
+                        onClick={() => { setRightMode(null); }}
                         className={`class-menu-back-button ${theme}-class-menu-back-button`}
                         style={{ height: 32, borderRadius: 8, fontWeight: 500, fontSize: 14 }}
                       >
@@ -1481,24 +1870,6 @@ const AIGenerateFeedback = () => {
                       </Button>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                      {sectionType === 'writing' && (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <Text strong>Age</Text>
-                          <Input
-                            type="number"
-                            min={1}
-                            max={100}
-                            value={speakingAge}
-                            onChange={(e) => setSpeakingAge(e.target.value)}
-                            style={{
-                              width: 80,
-                              borderRadius: 8,
-                              border: `2px solid ${primaryColor}40`,
-                              background: theme === 'sun' ? '#fff' : 'rgba(255,255,255,0.08)',
-                            }}
-                          />
-                        </div>
-                      )}
                       {hasAIGenerated && (
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                           <Text strong>Score</Text>
@@ -1571,6 +1942,65 @@ const AIGenerateFeedback = () => {
                           </div>
                         </div>
                       )}
+                      {/* Speaking pre-generation hero panel */}
+                      {!hasAIGenerated && (
+                        <div
+                          style={{
+                            marginTop: 8,
+                            padding: 24,
+                            borderRadius: 16,
+                            border: `2px dashed ${primaryColor}40`,
+                            background: theme === 'sun' ? 'rgba(113,179,253,0.06)' : 'rgba(167,139,250,0.08)',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            textAlign: 'center',
+                            gap: 12
+                          }}
+                        >
+                          <div
+                            style={{
+                              width: 72,
+                              height: 72,
+                              borderRadius: '50%',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              background: theme === 'sun'
+                                ? 'linear-gradient(135deg, #66AEFF, #3C99FF)'
+                                : 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)',
+                              boxShadow: theme === 'sun' ? '0 6px 18px rgba(60,153,255,0.25)' : '0 6px 18px rgba(131,119,160,0.25)'
+                            }}
+                          >
+                            <span style={{ fontSize: 28, color: '#fff' }}>✨</span>
+                          </div>
+                          <div style={{ fontSize: 18, fontWeight: 700, color: theme === 'sun' ? '#1E40AF' : '#8377A0' }}>AI Speaking Assistant</div>
+                          <div style={{ maxWidth: 520, fontSize: 15, color: theme === 'sun' ? '#334155' : '#1F2937' }}>
+                            Assess pronunciation accuracy and fluency from the student's recording
+                          </div>
+                          <div>
+                            <Button
+                              type="primary"
+                              icon={<ThunderboltOutlined />}
+                              loading={isGenerating}
+                              onClick={handleGenerateAI}
+                              style={{
+                                height: 40,
+                                borderRadius: 8,
+                                padding: '0 16px',
+                                background: theme === 'sun'
+                                  ? 'linear-gradient(135deg, #66AEFF, #3C99FF)'
+                                  : 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)',
+                                border: 'none',
+                                color: '#000',
+                                boxShadow: theme === 'sun' ? '0 2px 8px rgba(60, 153, 255, 0.3)' : '0 2px 8px rgba(131, 119, 160, 0.3)'
+                              }}
+                            >
+                              Generate with AI
+                            </Button>
+                          </div>
+                        </div>
+                      )}
                       {hasAIGenerated && speakingResult && (
                         <div style={{ marginTop: 0 }}>
                           <div style={{
@@ -1602,20 +2032,23 @@ const AIGenerateFeedback = () => {
                             },{
                               label: 'Prosody',
                               value: Number.isFinite(Number(speakingResult?.prosodyScore)) ? speakingResult.prosodyScore : '-'
-                            }].map((item, idx) => (
+                            }].map((item, idx) => {
+                              const ss = speakingStyles[item.label] || { bg: theme === 'sun' ? 'rgba(24,144,255,0.06)' : 'rgba(244,240,255,0.10)', border: theme === 'sun' ? 'rgba(24,144,255,0.25)' : 'rgba(138,122,255,0.25)' };
+                              return (
                               <div
                                 key={`${item.label}-${idx}`}
                                 style={{
                                   borderRadius: 12,
                                   padding: '12px 14px',
-                                  background: theme === 'sun' ? 'linear-gradient(135deg, rgba(24,144,255,0.06) 0%, rgba(113,179,253,0.08) 100%)' : 'linear-gradient(135deg, rgba(244,240,255,0.10) 0%, rgba(167,139,250,0.12) 100%)',
-                                  border: theme === 'sun' ? '1px solid rgba(24,144,255,0.25)' : '1px solid rgba(138,122,255,0.25)'
+                                  background: ss.bg,
+                                  border: `1px solid ${ss.border}`
                                 }}
                               >
                                 <div style={{ fontSize: 12, color: theme === 'sun' ? '#1E40AF' : '#8377A0', fontWeight: 600 }}>{item.label}</div>
                                 <div style={{ fontSize: 20, fontWeight: 700, color: theme === 'sun' ? '#0f172a' : '#1F2937', marginTop: 2 }}>{item.value}</div>
                               </div>
-                            ))}
+                              );
+                            })}
                           </div>
                           {Array.isArray(speakingResult?.words) && speakingResult.words.length > 0 && (
                             <div style={{ marginTop: 8 }}>
@@ -1641,15 +2074,14 @@ const AIGenerateFeedback = () => {
                                 data={feedback}
                                 onChange={(event, editor) => setFeedback(editor.getData())}
                                 config={{
-                                  toolbar: { items: ['undo', 'redo', '|', 'paragraph', '|', 'bold', 'italic', '|', 'bulletedList', 'numberedList', '|', 'imageUpload'] }
+                                  toolbar: { items: ['undo', 'redo', '|', 'paragraph', '|', 'bold', 'italic', '|', 'bulletedList', 'numberedList', '|', 'imageUpload'] },
+                                  removePlugins: ['StickyToolbar']
                                 }}
                                 onReady={(editor) => {
                                   try {
                                     const el = editor.ui?.getEditableElement?.();
                                     if (el) {
                                       el.style.minHeight = '300px';
-                                      el.style.maxHeight = '300px';
-                                      el.style.overflowY = 'auto';
                                       el.style.color = '#000';
                                     }
                                   } catch {}
@@ -1661,9 +2093,80 @@ const AIGenerateFeedback = () => {
                       )}
                     </div>
                   )}
+                  {/* Writing: pre-generation hero panel */}
+                  {sectionType === 'writing' && !hasAIGenerated && (
+                    <div
+                      style={{
+                        marginTop: 12,
+                        padding: 24,
+                        borderRadius: 16,
+                        border: `2px dashed ${primaryColor}40`,
+                        background: theme === 'sun' ? 'rgba(113,179,253,0.06)' : 'rgba(167,139,250,0.08)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        textAlign: 'center',
+                        gap: 12
+                      }}
+                    >
+                      <div
+                        style={{
+                          width: 72,
+                          height: 72,
+                          borderRadius: '50%',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          background: theme === 'sun'
+                            ? 'linear-gradient(135deg, #66AEFF, #3C99FF)'
+                            : 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)',
+                          boxShadow: theme === 'sun' ? '0 6px 18px rgba(60,153,255,0.25)' : '0 6px 18px rgba(131,119,160,0.25)'
+                        }}
+                      >
+                        <span style={{ fontSize: 28, color: '#fff' }}>✨</span>
+                      </div>
+                      <div style={{ fontSize: 20, fontWeight: 700, color: theme === 'sun' ? '#1E40AF' : '#8377A0' }}>AI Writing Assistant</div>
+                      <div style={{ maxWidth: 520, fontSize: 15, color: theme === 'sun' ? '#334155' : '#1F2937' }}>
+                        Get comprehensive feedback on your writing with detailed analysis and suggestions
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <Text strong>Age</Text>
+                          <Input
+                            type="number"
+                            min={1}
+                            max={100}
+                            value={speakingAge}
+                            onChange={(e) => setSpeakingAge(e.target.value)}
+                            placeholder="e.g. 12"
+                            style={{ width: 100, borderRadius: 8, background: '#fff' }}
+                          />
+                        </div>
+                        <Button
+                          type="primary"
+                          icon={<ThunderboltOutlined />}
+                          loading={isGenerating}
+                          onClick={handleGenerateAI}
+                          style={{
+                            height: 40,
+                            borderRadius: 8,
+                            padding: '0 16px',
+                            background: theme === 'sun'
+                              ? 'linear-gradient(135deg, #66AEFF, #3C99FF)'
+                              : 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)',
+                            border: 'none',
+                            color: '#000',
+                            boxShadow: theme === 'sun' ? '0 2px 8px rgba(60, 153, 255, 0.3)' : '0 2px 8px rgba(131, 119, 160, 0.3)'
+                          }}
+                        >
+                          Generate with AI
+                        </Button>
+                      </div>
+                    </div>
+                  )}
                   {hasAIGenerated && sectionType !== 'speaking' && (
                     <>
-                      {/* Score moved to header row next to Back button */}
+                      {/* Feedback first */}
                       <div>
                         <Text strong>Feedback</Text>
                         <div className="feedback-editor-wrap" style={{ marginTop: 6, borderRadius: 12, border: `2px solid ${primaryColor}80`, background: theme === 'sun' ? primaryColorWithAlpha : 'rgba(244, 240, 255, 0.15)' }}>
@@ -1672,15 +2175,14 @@ const AIGenerateFeedback = () => {
                             data={feedback}
                             onChange={(event, editor) => setFeedback(editor.getData())}
                             config={{
-                              toolbar: { items: ['undo', 'redo', '|', 'paragraph', '|', 'bold', 'italic', '|', 'bulletedList', 'numberedList', '|', 'imageUpload'] }
+                              toolbar: { items: ['undo', 'redo', '|', 'paragraph', '|', 'bold', 'italic', '|', 'bulletedList', 'numberedList', '|', 'imageUpload'] },
+                              removePlugins: ['StickyToolbar']
                             }}
                             onReady={(editor) => {
                               try {
                                 const el = editor.ui?.getEditableElement?.();
                                 if (el) {
                                   el.style.minHeight = '300px';
-                                  el.style.maxHeight = '300px';
-                                  el.style.overflowY = 'auto';
                                   el.style.color = '#000';
                                 }
                               } catch {}
@@ -1688,6 +2190,58 @@ const AIGenerateFeedback = () => {
                           />
                         </div>
                       </div>
+                      {/* Criteria feedback cards (one per row) */}
+                      {writingCriteria && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 10 }}>
+                      {[
+                            { key: 'taskResponse', label: 'Task Response' },
+                            { key: 'cohesionCoherence', label: 'Cohesion & Coherence' },
+                            { key: 'lexicalResource', label: 'Lexical Resource' },
+                            { key: 'grammaticalRangeAccuracy', label: 'Grammatical Range & Accuracy' }
+                          ].map((it) => {
+                            const data = writingCriteria?.[it.key];
+                            if (!data) return null;
+                            const scoreNum = Number.isFinite(Number(data?.score)) ? Number(data.score) : null;
+                            const scoreVal = scoreNum != null ? `${scoreNum}/10` : '-';
+                            const fb = (data?.feedback || '').trim();
+                            const percent = scoreNum != null ? Math.max(0, Math.min(100, (scoreNum / 10) * 100)) : 0;
+                            const level = scoreNum == null ? 'neutral' : (scoreNum < 4 ? 'low' : (scoreNum < 7 ? 'mid' : 'high'));
+                            const barColor = level === 'low' ? '#EF4444' : level === 'mid' ? '#F59E0B' : '#22C55E';
+                            const badgeBg = level === 'low' ? '#FEE2E2' : level === 'mid' ? '#FEF3C7' : '#DCFCE7';
+                            const badgeText = level === 'low' ? 'Needs Work' : level === 'mid' ? 'Fair' : 'Good';
+                            const cs = criteriaStyles[it.key] || { bg: theme === 'sun' ? 'rgba(113,179,253,0.08)' : 'rgba(167,139,250,0.10)', border: `${primaryColor}40` };
+                            return (
+                              <Card
+                                key={it.key}
+                                style={{
+                                  borderRadius: 12,
+                                  border: `2px solid ${cs.border}`,
+                                  background: cs.bg
+                                }}
+                              >
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+                                  <Typography.Text strong style={{ color: theme === 'sun' ? '#1E40AF' : '#8377A0' }}>{it.label}</Typography.Text>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                    <div style={{ fontWeight: 700, color: theme === 'sun' ? '#0f172a' : '#1F2937' }}>{scoreVal}</div>
+                                    {scoreNum != null && (
+                                      <span style={{ background: badgeBg, color: theme === 'sun' ? '#111827' : '#111827', borderRadius: 999, padding: '2px 8px', fontSize: 12, fontWeight: 600 }}>{badgeText}</span>
+                                    )}
+                                  </div>
+                                </div>
+                                {/* Progress bar */}
+                                <div style={{ marginTop: 10, height: 8, borderRadius: 8, background: 'rgba(0,0,0,0.08)' }}>
+                                  <div style={{ width: `${percent}%`, height: '100%', borderRadius: 8, background: barColor }} />
+                                </div>
+                                {fb && (
+                                  <div style={{ marginTop: 12, fontSize: 14, lineHeight: 1.7, color: theme === 'sun' ? '#333' : '#1F2937', whiteSpace: 'pre-wrap' }}>
+                                    <b>{it.label.split(' & ').join(' and ')}:</b> {stripHtmlToText(fb)}
+                                  </div>
+                                )}
+                              </Card>
+                            );
+                          })}
+                        </div>
+                      )}
                     </>
                   )}
 
@@ -1732,28 +2286,161 @@ const AIGenerateFeedback = () => {
                       </div>
                     </div>
                   )}
-                  {/* Button stays at very bottom */}
-                  <div style={{ display: 'flex', justifyContent: 'center', marginTop: 4 }}>
-                    <Button
-                      type="primary"
-                      icon={<ThunderboltOutlined />}
-                      loading={isGenerating}
-                      onClick={handleGenerateAI}
+                  {sectionType === 'speaking' && hasAIGenerated && (
+                    <div
                       style={{
-                        height: 40,
-                        borderRadius: 8,
-                        padding: '0 16px',
-                        background: theme === 'sun'
-                          ? 'linear-gradient(135deg, #66AEFF, #3C99FF)'
-                          : 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)',
-                        border: 'none',
-                        color: '#000',
-                        boxShadow: theme === 'sun' ? '0 2px 8px rgba(60, 153, 255, 0.3)' : '0 2px 8px rgba(131, 119, 160, 0.3)',
+                        marginTop: 12,
+                        padding: 24,
+                        borderRadius: 16,
+                        border: `2px dashed ${primaryColor}40`,
+                        background: theme === 'sun' ? 'rgba(113,179,253,0.06)' : 'rgba(167,139,250,0.08)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        textAlign: 'center',
+                        gap: 12
                       }}
                     >
-                      {hasAIGenerated ? 'Regenerate with AI' : 'Generate with AI'}
-                    </Button>
-                  </div>
+                      <div
+                        style={{
+                          width: 72,
+                          height: 72,
+                          borderRadius: '50%',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          background: theme === 'sun'
+                            ? 'linear-gradient(135deg, #66AEFF, #3C99FF)'
+                            : 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)',
+                          boxShadow: theme === 'sun' ? '0 6px 18px rgba(60,153,255,0.25)' : '0 6px 18px rgba(131,119,160,0.25)'
+                        }}
+                      >
+                        <span style={{ fontSize: 28, color: '#fff' }}>✨</span>
+                      </div>
+                      <div style={{ fontSize: 18, fontWeight: 700, color: theme === 'sun' ? '#1E40AF' : '#8377A0' }}>AI Speaking Assistant</div>
+                      <div style={{ maxWidth: 520, fontSize: 15, color: theme === 'sun' ? '#334155' : '#1F2937' }}>
+                        Regenerate pronunciation analysis for another take
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                       
+                        <Button
+                          type="primary"
+                          icon={<ThunderboltOutlined />}
+                          loading={isGenerating}
+                          onClick={handleGenerateAI}
+                          style={{
+                            height: 40,
+                            borderRadius: 8,
+                            padding: '0 16px',
+                            background: theme === 'sun'
+                              ? 'linear-gradient(135deg, #66AEFF, #3C99FF)'
+                              : 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)',
+                            border: 'none',
+                            color: '#000',
+                            boxShadow: theme === 'sun' ? '0 2px 8px rgba(60, 153, 255, 0.3)' : '0 2px 8px rgba(131, 119, 160, 0.3)'
+                          }}
+                        >
+                          Regenerate with AI
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                  {/* Button stays at very bottom (speaking handled by hero panels) */}
+                  {sectionType === 'writing' ? (
+                    hasAIGenerated ? (
+                    <div
+                      style={{
+                        marginTop: 12,
+                        padding: 24,
+                        borderRadius: 16,
+                        border: `2px dashed ${primaryColor}40`,
+                        background: theme === 'sun' ? 'rgba(113,179,253,0.06)' : 'rgba(167,139,250,0.08)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        textAlign: 'center',
+                        gap: 12
+                      }}
+                    >
+                      <div
+                        style={{
+                          width: 72,
+                          height: 72,
+                          borderRadius: '50%',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          background: theme === 'sun'
+                            ? 'linear-gradient(135deg, #66AEFF, #3C99FF)'
+                            : 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)',
+                          boxShadow: theme === 'sun' ? '0 6px 18px rgba(60,153,255,0.25)' : '0 6px 18px rgba(131,119,160,0.25)'
+                        }}
+                      >
+                        <span style={{ fontSize: 28, color: '#fff' }}>✨</span>
+                      </div>
+                      <div style={{ fontSize: 20, fontWeight: 700, color: theme === 'sun' ? '#1E40AF' : '#8377A0' }}>AI Writing Assistant</div>
+                      <div style={{ maxWidth: 520, fontSize: 15, color: theme === 'sun' ? '#334155' : '#1F2937' }}>
+                        You can regenerate suggestions if you want a different take.
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <Text strong>Age</Text>
+                          <Input
+                            type="number"
+                            min={1}
+                            max={100}
+                            value={speakingAge}
+                            onChange={(e) => setSpeakingAge(e.target.value)}
+                            placeholder="e.g. 12"
+                            style={{ width: 100, borderRadius: 8, background: '#fff' }}
+                          />
+                        </div>
+                        <Button
+                          type="primary"
+                          icon={<ThunderboltOutlined />}
+                          loading={isGenerating}
+                          onClick={handleGenerateAI}
+                          style={{
+                            height: 40,
+                            borderRadius: 8,
+                            padding: '0 16px',
+                            background: theme === 'sun'
+                              ? 'linear-gradient(135deg, #66AEFF, #3C99FF)'
+                              : 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #6D5F8F 100%)',
+                            border: 'none',
+                            color: '#000',
+                            boxShadow: theme === 'sun' ? '0 2px 8px rgba(60, 153, 255, 0.3)' : '0 2px 8px rgba(131, 119, 160, 0.3)'
+                          }}
+                        >
+                          Regenerate with AI
+                        </Button>
+                      </div>
+                    </div>
+                    ) : null
+                  ) : (
+                    sectionType === 'speaking' ? null :
+                    <div style={{ display: 'flex', justifyContent: 'center', marginTop: 4 }}>
+                      <Button
+                        type="primary"
+                        icon={<ThunderboltOutlined />}
+                        loading={isGenerating}
+                        onClick={handleGenerateAI}
+                        style={{
+                          height: 40,
+                          borderRadius: 8,
+                          padding: '0 16px',
+                          background: theme === 'sun'
+                            ? 'linear-gradient(135deg, #66AEFF, #3C99FF)'
+                            : 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)',
+                          border: 'none',
+                          color: '#000',
+                          boxShadow: theme === 'sun' ? '0 2px 8px rgba(60, 153, 255, 0.3)' : '0 2px 8px rgba(131, 119, 160, 0.3)'
+                        }}
+                      >
+                        {hasAIGenerated ? 'Regenerate with AI' : 'Generate with AI'}
+                      </Button>
+                    </div>
+                  )}
                 </div>
               )}
             </Card>
@@ -1811,7 +2498,8 @@ const AIGenerateFeedback = () => {
               data={commentModal.comment}
               onChange={handleCommentInputChange}
               config={{
-                toolbar: { items: ['undo', 'redo', '|', 'paragraph', '|', 'bold', 'italic', '|', 'bulletedList', 'numberedList'] }
+                              toolbar: { items: ['undo', 'redo', '|', 'paragraph', '|', 'bold', 'italic', '|', 'bulletedList', 'numberedList'] },
+                              removePlugins: ['StickyToolbar']
               }}
               onReady={(editor) => {
                 try {
