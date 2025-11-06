@@ -772,7 +772,7 @@ const CONFIG_ROUTER = [
 		exact: true,
 		key: 'TEACHING_ASSISTANT_CLASS_CHAPTERS_EDIT_ORDER',
 		private: true,
-		role: 'teaching_assistant',
+		role: ['teacher'],
 	},
 	{
 		show: false,
@@ -794,7 +794,7 @@ const CONFIG_ROUTER = [
 		exact: true,
 		key: 'TEACHING_ASSISTANT_CLASS_CHAPTER_LESSONS_EDIT_ORDER',
 		private: true,
-		role: 'teaching_assistant',
+		role: ['teacher'],
 	},
 	{
 		show: false,
@@ -805,7 +805,7 @@ const CONFIG_ROUTER = [
 		exact: true,
 		key: 'TEACHING_ASSISTANT_CLASS_LESSON_FORM',
 		private: true,
-		role: 'teaching_assistant',
+		role: ['teacher'],
 	},
 	{
 		show: false,
@@ -816,7 +816,7 @@ const CONFIG_ROUTER = [
 		exact: true,
 		key: 'TEACHING_ASSISTANT_CLASS_LESSON_EDIT',
 		private: true,
-		role: 'teaching_assistant',
+		role: ['teacher'],
 	},
 	{
 		show: false,
@@ -1091,7 +1091,7 @@ const CONFIG_ROUTER = [
 		exact: true,
 		key: 'TEACHER_CLASS_CHAPTERS_EDIT_ORDER',
 		private: true,
-		role: ['teacher', 'teaching_assistant'],
+		role: ['teacher'],
 	},
 	{
 		show: false,
@@ -1113,7 +1113,7 @@ const CONFIG_ROUTER = [
 		exact: true,
 		key: 'TEACHER_CLASS_CHAPTER_LESSONS_EDIT_ORDER',
 		private: true,
-		role: ['manager', 'teacher', 'teaching_assistant'],
+		role: ['teacher'],
 	},
 	{
 		show: false,
@@ -1124,7 +1124,7 @@ const CONFIG_ROUTER = [
 		exact: true,
 		key: 'TEACHER_CLASS_LESSONS_EDIT_ORDER',
 		private: true,
-		role: ['manager', 'teacher', 'teaching_assistant'],
+		role: ['teacher'],
 	},
 	{
 		show: false,
@@ -1135,7 +1135,7 @@ const CONFIG_ROUTER = [
 		exact: true,
 		key: 'TEACHER_CLASS_LESSON_FORM',
 		private: true,
-		role: ['teacher', 'teaching_assistant'],
+		role: ['teacher'],
 	},
 	{
 		show: false,
@@ -1146,7 +1146,7 @@ const CONFIG_ROUTER = [
 		exact: true,
 		key: 'TEACHER_CLASS_LESSON_EDIT',
 		private: true,
-		role: ['teacher', 'teaching_assistant'],
+		role: ['teacher'],
 	},
 	// Daily Challenge Routes for Teacher
 	{
