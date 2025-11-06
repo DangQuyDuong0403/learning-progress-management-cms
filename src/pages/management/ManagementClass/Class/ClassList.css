@@ -6,14 +6,8 @@
   overflow-x: hidden;
 }
 
-/* Remove panel background so page background is visible on Class List */
-.class-page.main-content-panel,
-.class-page.sun-theme .main-content-panel,
-.class-page.space-theme .main-content-panel {
-  background: transparent !important;
-  box-shadow: none !important;
-  border: none !important;
-}
+/* Keep panel background like StudentList */
+/* Removed transparent background to match StudentList styling */
 
 /* ===== PANEL HEADER ===== */
 .class-page .panel-header {
