@@ -604,7 +604,7 @@ export default function ThemedHeader({ hideThemeToggle = false, hideLanguageTogg
                   {user?.role === 'ADMIN' ? 'Admin' : 
                    user?.role === 'MANAGER' ? 'Manager' : 
                    user?.role === 'TEACHER' ? 'Teacher' :
-                   user?.role === 'TEACHING_ASSISTANTS' ? 'Teaching Assistant' :
+                   user?.role === 'TEACHING_ASSISTANT' ? 'Teaching Assistant' :
                    user?.role === 'STUDENT' ? 'Student' :
                    user?.role === 'TEST_TAKER' ? 'Test Taker' :  
                    'User'}

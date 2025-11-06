@@ -20,6 +20,7 @@ const DailyChallengePerformance = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useSelector((state) => state.auth);
+  const userRole = user?.role?.toLowerCase();
   const { enterDailyChallengeMenu, exitDailyChallengeMenu, dailyChallengeData } = useDailyChallengeMenu();
   
   // Get data from navigation state or fetch from API
@@ -300,14 +301,16 @@ const DailyChallengePerformance = () => {
       <div className="daily-challenge-performance-wrapper">
         {/* Action Section */}
         <div className="search-action-section" style={{ display: 'flex', gap: '12px', alignItems: 'center', justifyContent: 'flex-end', marginBottom: '24px', padding: '24px 24px 0 24px' }}>
-          <Button
-            className={`tab-button ${theme}-tab-button`}
-            onClick={() => navigate(`/teacher/daily-challenges/detail/${id}/content`, {
-              state: challengeInfo
-            })}
-          >
-            {t('dailyChallenge.content')}
-          </Button>
+          {userRole !== 'teaching_assistant' && (
+            <Button
+              className={`tab-button ${theme}-tab-button`}
+              onClick={() => navigate(`/teacher/daily-challenges/detail/${id}/content`, {
+                state: challengeInfo
+              })}
+            >
+              {t('dailyChallenge.content')}
+            </Button>
+          )}
           <Button
             className={`tab-button ${theme}-tab-button`}
             onClick={() => navigate(`/teacher/daily-challenges/detail/${id}/submissions`, {

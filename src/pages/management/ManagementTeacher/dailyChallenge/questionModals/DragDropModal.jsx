@@ -75,6 +75,7 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 
 	// Limit for incorrect options
 	const MAX_INCORRECT_OPTIONS = 10;
+	const MAX_BLANKS = 10;
 
 	// Colors for blanks - matching ReorderModal color palette (avoid red as first color)
 	const blankColors = useMemo(
@@ -235,7 +236,7 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 			}
 
 			setEditorContent(parsed);
-			setBlanks(blanksData);
+			setBlanks(blanksData.slice(0, MAX_BLANKS));
 		},
 		[blankColors]
 	);
@@ -1169,6 +1170,11 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 	// Find and replace pattern in text nodes without affecting existing blanks
 	const findAndReplacePattern = useCallback(
 		(element) => {
+			// Enforce maximum blanks
+			if (blanks.length >= MAX_BLANKS) {
+				spaceToast.warning(`Maximum ${MAX_BLANKS} blanks allowed`);
+				return;
+			}
 			// Walk through all child nodes
 			const walker = document.createTreeWalker(
 				element,
@@ -1350,6 +1356,11 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 
 	// Insert blank at saved cursor position
 	const insertBlankAtCursor = useCallback(() => {
+		if (blanks.length >= MAX_BLANKS) {
+			spaceToast.warning(`Maximum ${MAX_BLANKS} blanks allowed`);
+			setShowBlankPopup(false);
+			return;
+		}
 		if (!editorRef.current || !savedRangeRef.current) return;
 
 		// Don't insert blank if cursor is inside another blank

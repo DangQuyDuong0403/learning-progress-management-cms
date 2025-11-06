@@ -68,6 +68,17 @@ const ChallengeSettingsModal = ({
     }
   }, [visible, initialValues, form]);
 
+  // Enforce defaults when switching to exam mode
+  useEffect(() => {
+    if (challengeMode === 'exam') {
+      form.setFieldsValue({
+        antiCheatModeEnabled: true,
+        shuffleQuestion: true,
+        translateOnScreen: false,
+      });
+    }
+  }, [challengeMode, form]);
+
   const performSave = async (values) => {
     setIsButtonDisabled(true);
     setIsSaving(true);
@@ -470,13 +481,13 @@ const ChallengeSettingsModal = ({
                      {t('dailyChallenge.shuffleQuestionDesc') || t('dailyChallenge.shuffleAnswersDesc')}
                    </div>
                  </div>
-                 <Form.Item 
+                <Form.Item 
                    name="shuffleQuestion" 
                    valuePropName="checked" 
                    noStyle
                    rules={challengeMode === 'exam' ? [{ required: true, message: t('dailyChallenge.shuffleAnswersRequired') || 'Shuffle Questions is required for exam mode' }] : []}
                  >
-                   <Switch />
+                  <Switch disabled={challengeMode === 'exam'} />
                  </Form.Item>
                </div>
              </Col>
@@ -488,8 +499,8 @@ const ChallengeSettingsModal = ({
                      {t('dailyChallenge.translateOnScreenDesc')}
                    </div>
                  </div>
-                 <Form.Item name="translateOnScreen" valuePropName="checked" noStyle>
-                   <Switch />
+                <Form.Item name="translateOnScreen" valuePropName="checked" noStyle>
+                  <Switch disabled={challengeMode === 'exam'} />
                  </Form.Item>
                </div>
              </Col>
@@ -506,13 +517,13 @@ const ChallengeSettingsModal = ({
                      {t('dailyChallenge.antiCheatModeDesc')}
                    </div>
                  </div>
-                 <Form.Item 
+                <Form.Item 
                    name="antiCheatModeEnabled" 
                    valuePropName="checked" 
                    noStyle
                    rules={challengeMode === 'exam' ? [{ required: true, message: t('dailyChallenge.antiCheatModeRequired') || 'Anti-Cheat Mode is required for exam mode' }] : []}
                  >
-                   <Switch />
+                  <Switch disabled={challengeMode === 'exam'} />
                  </Form.Item>
                </div>
              </Col>

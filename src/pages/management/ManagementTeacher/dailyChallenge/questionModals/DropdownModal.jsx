@@ -203,8 +203,22 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 			}
 
 			console.log('DropdownModal - Final parsed data:', { parsed, dropsData });
-			setEditorContent(parsed);
-			setDropdowns(dropsData);
+			// Cap to maximum 10 dropdowns
+			const MAX_DROPDOWNS = 10;
+			const limitedParsed = [];
+			let dropdownCount = 0;
+			for (const item of parsed) {
+				if (item.type === 'dropdown') {
+					if (dropdownCount < MAX_DROPDOWNS) {
+						limitedParsed.push(item);
+						dropdownCount++;
+					}
+				} else {
+					limitedParsed.push(item);
+				}
+			}
+			setEditorContent(limitedParsed);
+			setDropdowns(dropsData.slice(0, MAX_DROPDOWNS));
 			console.log(
 				'DropdownModal - State updated with parsed data, editorContent length:',
 				parsed.length,
@@ -649,6 +663,12 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 	// Find and replace pattern in text nodes without affecting existing dropdowns
 	const findAndReplacePattern = useCallback(
 		(element) => {
+			// Enforce maximum dropdowns
+			const MAX_DROPDOWNS = 10;
+			if (dropdowns.length >= MAX_DROPDOWNS) {
+				spaceToast.warning(`Maximum ${MAX_DROPDOWNS} dropdowns allowed`);
+				return;
+			}
 			// Walk through all child nodes
 			const walker = document.createTreeWalker(
 				element,
@@ -1445,6 +1465,12 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 
 	// Insert dropdown at saved cursor position
 	const insertDropdownAtCursor = useCallback(() => {
+		const MAX_DROPDOWNS = 10;
+		if (dropdowns.length >= MAX_DROPDOWNS) {
+			spaceToast.warning(`Maximum ${MAX_DROPDOWNS} dropdowns allowed`);
+			setShowDropdownPopup(false);
+			return;
+		}
 		if (!editorRef.current || !savedRangeRef.current) return;
 
 		// Don't insert dropdown if cursor is inside another dropdown

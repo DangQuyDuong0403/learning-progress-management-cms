@@ -159,7 +159,14 @@ const ClassOverview = () => {
               <div className={`personal-info-grid-new ${theme}-personal-info-grid-new`}>
                 <div className={`info-item-new ${theme}-info-item-new`}>
                   <span className={`info-label-new ${theme}-info-label-new`}>{t('classOverview.teacher')}</span>
-                  <span className={`info-value-new ${theme}-info-value-new`}>{classData?.teachers ? 'Available' : '-'}</span>
+                  <span className={`info-value-new ${theme}-info-value-new`}>
+                    {(() => {
+                      const teachers = classData?.teachers;
+                      const count = Array.isArray(teachers) ? teachers.length : (teachers ? 1 : 0);
+                      if (!count) return '-';
+                      return `${count} teacher${count > 1 ? 's' : ''}`;
+                    })()}
+                  </span>
                 </div>
                 <div className={`info-item-new ${theme}-info-item-new`}>
                   <span className={`info-label-new ${theme}-info-label-new`}>{t('classOverview.teachingAssistants')}</span>
