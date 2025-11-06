@@ -10,7 +10,6 @@ import {
   Card,
   Tooltip,
   Divider,
-  DatePicker,
   Pagination,
 } from "antd";
 import {
@@ -34,7 +33,6 @@ import {
   UpOutlined,
   DownOutlined,
   PlusCircleOutlined,
-  StarOutlined,
   SaveOutlined,
 } from "@ant-design/icons";
 import ThemedLayout from "../../../../component/teacherlayout/ThemedLayout";
@@ -120,7 +118,7 @@ const DailyChallengeSubmissionDetail = () => {
   const [isPerformanceCollapsed, setIsPerformanceCollapsed] = useState(false);
   
   // Other sections collapse states (default collapsed)
-  const [isTeacherFeedbackCollapsed, setIsTeacherFeedbackCollapsed] = useState(true);
+  const [isTeacherFeedbackCollapsed, setIsTeacherFeedbackCollapsed] = useState(false);
   
   const [isAntiCheatCollapsed, setIsAntiCheatCollapsed] = useState(false);
   // Anti-cheat modal controls
@@ -1309,72 +1307,37 @@ const DailyChallengeSubmissionDetail = () => {
         // ignore grading prefetch errors
       }
 
-      // Set anti-cheat data (mock data for now, can be replaced with API data later)
-      // TODO: Replace with actual anti-cheat data from API when available
-      const mockAntiCheatData = {
-        totalViolations: 4,
-        tabBlurCount: 2,
-        copyCount: 1,
-        pasteCount: 1,
-        totalTabBlurDuration: 120000, // milliseconds
-        events: [
-          {
-            event: 'START',
-            timestamp: new Date().toISOString(),
-            questionId: null,
-            oldValue: null,
-            newValue: null,
-            durationMs: null,
-            content: null,
-          },
-          {
-            event: 'TAB_BLUR',
-            timestamp: new Date(Date.now() - 600000).toISOString(),
-            durationMs: 45000,
-            questionId: null,
-            oldValue: null,
-            newValue: null,
-            content: null,
-          },
-          {
-            event: 'COPY',
-            timestamp: new Date(Date.now() - 540000).toISOString(),
-            content: 'Đã chặn Ctrl+C / Ctrl+Insert',
-            questionId: 1,
-            oldValue: null,
-            newValue: null,
-            durationMs: null,
-          },
-          {
-            event: 'TAB_BLUR',
-            timestamp: new Date(Date.now() - 480000).toISOString(),
-            durationMs: 75000,
-            questionId: null,
-            oldValue: null,
-            newValue: null,
-            content: null,
-          },
-          {
-            event: 'PASTE',
-            timestamp: new Date(Date.now() - 420000).toISOString(),
-            content: 'Đã chặn Ctrl+V / Shift+Insert',
-            questionId: 2,
-            oldValue: null,
-            newValue: null,
-            durationMs: null,
-          },
-          {
-            event: 'ANSWER_CHANGE',
-            timestamp: new Date(Date.now() - 360000).toISOString(),
-            questionId: 3,
-            oldValue: ['A'],
-            newValue: ['B'],
-            durationMs: null,
-            content: null,
-          },
-        ],
-      };
-      setAntiCheatData(mockAntiCheatData);
+      // Fetch anti-cheat logs for this submission and map to UI structure
+      try {
+        const logsRes = await dailyChallengeApi.getSubmissionLogs(submissionChallengeId);
+        const logsData = logsRes?.data?.data || logsRes?.data || {};
+        const logs = Array.isArray(logsData.logs) ? logsData.logs : [];
+        const eventCounts = logsData.eventCounts || {};
+
+        const mappedEvents = logs.map((l) => ({
+          event: l.event,
+          timestamp: l.timestamp,
+          questionId: l.questionId || null,
+          oldValue: Array.isArray(l.oldValue) ? l.oldValue : (l.oldValue != null ? [l.oldValue] : []),
+          newValue: Array.isArray(l.newValue) ? l.newValue : (l.newValue != null ? [l.newValue] : []),
+          durationMs: typeof l.durationMs === 'number' ? l.durationMs : null,
+          content: l.content || null,
+        }));
+
+        const visibleViolationCount = mappedEvents.filter(e => e.event !== 'ANSWER_CHANGE').length;
+
+        setAntiCheatData({
+          totalViolations: visibleViolationCount,
+          tabBlurCount: (eventCounts.TAB_SWITCH || eventCounts.TAB_BLUR || 0),
+          copyCount: (eventCounts.COPY_ATTEMPT || eventCounts.COPY || 0),
+          pasteCount: (eventCounts.PASTE_ATTEMPT || eventCounts.PASTE || 0),
+          totalTabBlurDuration: 0,
+          events: mappedEvents,
+        });
+      } catch (e) {
+        console.warn('Failed to load anti-cheat logs. Sidebar will hide logs summary.', e);
+        setAntiCheatData({ totalViolations: 0, tabBlurCount: 0, copyCount: 0, pasteCount: 0, totalTabBlurDuration: 0, events: [] });
+      }
 
       setLoading(false);
     } catch (error) {
@@ -4544,18 +4507,6 @@ const DailyChallengeSubmissionDetail = () => {
                         {/* Score Circle */}
                         <div style={{ marginBottom: '20px', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
                           <div style={{ position: 'relative', display: 'inline-block' }}>
-                            {/* Star icon at top-right */}
-                            <StarOutlined
-                              style={{
-                                position: 'absolute',
-                                top: '-8px',
-                                right: '-8px',
-                                fontSize: '24px',
-                                color: '#FFD700',
-                                zIndex: 2,
-                                filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.2))'
-                              }}
-                            />
                             {/* Circular Score Display */}
                             <div
                               style={{
@@ -4579,20 +4530,23 @@ const DailyChallengeSubmissionDetail = () => {
                                 const shouldShowScore = hasWritingOrSpeaking 
                                   ? (hasScore && hasFeedback) 
                                   : hasScore;
+                                const scoreDisplay = hasScore ? `${submission.score}/10` : '-';
+                                const dynamicFontSize = scoreDisplay.length > 5 ? 28 : 36; // prevent wrapping for long scores
                                 
                                 return shouldShowScore ? (
                                   <>
                                     <Typography.Text
                                       strong
                                       style={{
-                                        fontSize: '36px',
+                                        fontSize: `${dynamicFontSize}px`,
                                         fontWeight: 700,
                                         color: '#4CAF50',
                                         lineHeight: '1',
-                                        marginBottom: '4px'
+                                        marginBottom: '4px',
+                                        whiteSpace: 'nowrap'
                                       }}
                                     >
-                                      {`${submission.score}/10`}
+                                      {scoreDisplay}
                                     </Typography.Text>
                                     <Typography.Text
                                       style={{
@@ -4613,7 +4567,8 @@ const DailyChallengeSubmissionDetail = () => {
                                         fontWeight: 700,
                                         color: theme === 'sun' ? '#999' : '#666',
                                         lineHeight: '1',
-                                        marginBottom: '4px'
+                                        marginBottom: '4px',
+                                        whiteSpace: 'nowrap'
                                       }}
                                     >
                                       -
@@ -4635,50 +4590,6 @@ const DailyChallengeSubmissionDetail = () => {
                           </div>
                         </div>
 
-                        {/* Pass/Fail Status */}
-                        {(() => {
-                          // For auto-graded types (grammar, reading, listening), show status if score available
-                          // For writing/speaking, require both score and teacherFeedback
-                          const hasScore = submission.score != null && submission.score !== undefined;
-                          const hasFeedback = teacherFeedback && teacherFeedback.replace(/<[^>]*>/g,'').trim().length > 0;
-                          const shouldShowStatus = hasWritingOrSpeaking 
-                            ? (hasScore && hasFeedback) 
-                            : hasScore;
-                          
-                          if (!shouldShowStatus) return null;
-                          
-                          return submission.score >= 5 ? (
-                            <div style={{ textAlign: 'center', marginBottom: '20px' }}>
-                              <Typography.Text
-                                strong
-                                style={{
-                                  fontSize: '18px',
-                                  fontWeight: 700,
-                                  color: '#4CAF50',
-                                  textTransform: 'uppercase',
-                                  letterSpacing: '1px'
-                                }}
-                              >
-                                PASSED
-                              </Typography.Text>
-                            </div>
-                          ) : (
-                            <div style={{ textAlign: 'center', marginBottom: '20px' }}>
-                              <Typography.Text
-                                strong
-                                style={{
-                                  fontSize: '18px',
-                                  fontWeight: 700,
-                                  color: '#f44336',
-                                  textTransform: 'uppercase',
-                                  letterSpacing: '1px'
-                                }}
-                              >
-                                FAILED
-                              </Typography.Text>
-                            </div>
-                          );
-                        })()}
 
                         {/* Question Breakdown Grid (hidden for Writing/Speaking submissions) */}
                         {!hasWritingOrSpeaking && (
@@ -5020,46 +4931,66 @@ const DailyChallengeSubmissionDetail = () => {
                               {/* Violation Cards */}
                               <div style={{ marginBottom: '12px' }}>
                         <div style={{ display: 'flex', gap: '16px', marginBottom: '12px' }}>
-                          {/* Tab Blur Card */}
-                          <div style={{ flex: 1, paddingBottom: '12px', borderBottom: '1px solid #f0f0f0' }}>
-                            <Typography.Text style={{ fontSize: '12px', fontWeight: 400, color: theme === 'sun' ? '#666' : '#999', display: 'block', marginBottom: '4px' }}>
-                              Tab switch
-                            </Typography.Text>
-                            <Typography.Text style={{ fontSize: '14px', color: theme === 'sun' ? '#000' : '#fff' }}>
-                              {antiCheatData.tabBlurCount}
-                            </Typography.Text>
+                          {/* Tab Switch Card */}
+                          <div style={{
+                            flex: 1,
+                            padding: '10px',
+                            borderRadius: '8px',
+                            background: theme === 'sun' ? '#FFFBEA' : 'rgba(251,140,0,0.08)',
+                            border: `1px solid ${theme === 'sun' ? 'rgba(251,140,0,0.25)' : 'rgba(251,140,0,0.25)'}`
+                          }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#ff9800', marginBottom: '4px' }}>
+                              <SwapOutlined />
+                              <span style={{ fontSize: '12px' }}>Tab switch</span>
+                            </div>
+                            <div style={{ fontSize: '16px', fontWeight: 700, color: '#000' }}>{antiCheatData.tabBlurCount}</div>
                           </div>
 
                           {/* Copy Card */}
-                          <div style={{ flex: 1, paddingBottom: '12px', borderBottom: '1px solid #f0f0f0' }}>
-                            <Typography.Text style={{ fontSize: '12px', fontWeight: 400, color: theme === 'sun' ? '#666' : '#999', display: 'block', marginBottom: '4px' }}>
-                              Copy
-                            </Typography.Text>
-                            <Typography.Text style={{ fontSize: '14px', color: theme === 'sun' ? '#000' : '#fff' }}>
-                              {antiCheatData.copyCount}
-                            </Typography.Text>
+                          <div style={{
+                            flex: 1,
+                            padding: '10px',
+                            borderRadius: '8px',
+                            background: theme === 'sun' ? '#F3F8FF' : 'rgba(24,144,255,0.08)',
+                            border: `1px solid ${theme === 'sun' ? 'rgba(24,144,255,0.25)' : 'rgba(24,144,255,0.25)'}`
+                          }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: theme === 'sun' ? '#1e40af' : '#aab', marginBottom: '4px' }}>
+                              <CopyOutlined />
+                              <span style={{ fontSize: '12px' }}>Copy</span>
+                            </div>
+                            <div style={{ fontSize: '16px', fontWeight: 700, color: '#000' }}>{antiCheatData.copyCount}</div>
                           </div>
                         </div>
 
                         <div style={{ display: 'flex', gap: '16px', marginBottom: '12px' }}>
                           {/* Paste Card */}
-                          <div style={{ flex: 1, paddingBottom: '12px', borderBottom: '1px solid #f0f0f0' }}>
-                            <Typography.Text style={{ fontSize: '12px', fontWeight: 400, color: theme === 'sun' ? '#666' : '#999', display: 'block', marginBottom: '4px' }}>
-                              Paste
-                            </Typography.Text>
-                            <Typography.Text style={{ fontSize: '14px', color: theme === 'sun' ? '#000' : '#fff' }}>
-                              {antiCheatData.pasteCount}
-                            </Typography.Text>
+                          <div style={{
+                            flex: 1,
+                            padding: '10px',
+                            borderRadius: '8px',
+                            background: theme === 'sun' ? '#F7ECFF' : 'rgba(142,36,170,0.08)',
+                            border: `1px solid ${theme === 'sun' ? 'rgba(142,36,170,0.25)' : 'rgba(142,36,170,0.25)'}`
+                          }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: theme === 'sun' ? '#6A1B9A' : '#cbb', marginBottom: '4px' }}>
+                              <FileTextOutlined />
+                              <span style={{ fontSize: '12px' }}>Paste</span>
+                            </div>
+                            <div style={{ fontSize: '16px', fontWeight: 700, color: '#000' }}>{antiCheatData.pasteCount}</div>
                           </div>
 
                           {/* Total Violations Card */}
-                          <div style={{ flex: 1, paddingBottom: '12px', borderBottom: '1px solid #f0f0f0' }}>
-                            <Typography.Text style={{ fontSize: '12px', fontWeight: 400, color: theme === 'sun' ? '#666' : '#999', display: 'block', marginBottom: '4px' }}>
-                              Total violations
-                            </Typography.Text>
-                            <Typography.Text style={{ fontSize: '14px', color: theme === 'sun' ? '#000' : '#fff' }}>
-                              {antiCheatData.totalViolations}
-                            </Typography.Text>
+                          <div style={{
+                            flex: 1,
+                            padding: '10px',
+                            borderRadius: '8px',
+                            background: theme === 'sun' ? '#F5F9FF' : 'rgba(24,144,255,0.08)',
+                            border: `1px solid ${theme === 'sun' ? 'rgba(24,144,255,0.2)' : 'rgba(24,144,255,0.2)'}`
+                          }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: theme === 'sun' ? '#1e40af' : '#aab', marginBottom: '4px' }}>
+                              <ClockCircleOutlined />
+                              <span style={{ fontSize: '12px' }}>Total violations</span>
+                            </div>
+                            <div style={{ fontSize: '16px', fontWeight: 700, color: '#000' }}>{antiCheatData.totalViolations}</div>
                           </div>
                         </div>
 
@@ -5500,6 +5431,8 @@ const DailyChallengeSubmissionDetail = () => {
         centered
         onCancel={() => setAntiCheatModalVisible(false)}
         width={860}
+        style={{ maxWidth: '92vw' }}
+        bodyStyle={{ maxHeight: '70vh', overflowY: 'hidden', overflowX: 'hidden' }}
         footer={[
           <Button key="close" onClick={() => setAntiCheatModalVisible(false)}
             style={{ height: '36px', borderRadius: '6px', padding: '0 22px' }}
@@ -5515,22 +5448,8 @@ const DailyChallengeSubmissionDetail = () => {
           // Hide ANSWER_CHANGE from display and counts as requested
           const baseVisibleEvents = events.filter(e => e.event !== 'ANSWER_CHANGE');
 
-          // Optional: filter by selected day
-          const isSameDay = (a, b) => {
-            if (!a || !b) return false;
-            try {
-              const da = new Date(a);
-              return (
-                da.getFullYear() === b.getFullYear() &&
-                da.getMonth() === b.getMonth() &&
-                da.getDate() === b.getDate()
-              );
-            } catch { return false; }
-          };
-
-          const filteredEvents = antiCheatSelectedDate
-            ? baseVisibleEvents.filter(ev => isSameDay(ev.timestamp, antiCheatSelectedDate))
-            : baseVisibleEvents;
+          // No filtering – show all visible events
+          const filteredEvents = baseVisibleEvents;
 
           // Compute totals from filtered events only
           const totalTabSwitch = filteredEvents.filter(e => e.event === 'TAB_SWITCH' || e.event === 'TAB_BLUR').length;
@@ -5603,28 +5522,53 @@ const DailyChallengeSubmissionDetail = () => {
             }}>
               <div style={{
                 display: 'grid',
-                gridTemplateColumns: '1fr',
+                gridTemplateColumns: '260px 1fr',
                 gap: '12px',
                 alignItems: 'start'
               }}>
-                {/* Filters on top */}
-                <div>
-                  {/* Filters */}
-                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '12px' }}>
-                    <div style={{ fontSize: '12px', color: theme === 'sun' ? '#5f6368' : '#bbb' }}>Filter by day:</div>
-                    <DatePicker
-                      allowClear
-                      onChange={(d) => { setAntiCheatSelectedDate(d ? d.toDate() : null); setAntiCheatPage(1); }}
-                      style={{ width: 220 }}
-                    />
+                {/* Left: Stats */}
+                <div style={{
+                  background: theme === 'sun' ? '#FFFFFF' : 'rgba(255,255,255,0.03)',
+                  borderRadius: '12px',
+                  border: `1px solid ${theme === 'sun' ? 'rgba(24,144,255,0.15)' : 'rgba(255,255,255,0.1)'}`,
+                  padding: '12px'
+                }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '10px' }}>
+                    <div style={{ padding: '10px', borderRadius: '8px', background: theme === 'sun' ? '#F5F9FF' : 'rgba(24,144,255,0.08)', border: `1px solid ${theme === 'sun' ? 'rgba(24,144,255,0.2)' : 'rgba(24,144,255,0.2)'}` }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: theme === 'sun' ? '#1e40af' : '#aab' }}>
+                        <ClockCircleOutlined />
+                        <span style={{ fontSize: '12px' }}>Total events</span>
+                      </div>
+                      <div style={{ fontSize: '20px', fontWeight: 700 }}>{totalViolations}</div>
+                    </div>
+                    <div style={{ padding: '10px', borderRadius: '8px', background: theme === 'sun' ? '#FFFBEA' : 'rgba(251,140,0,0.08)', border: `1px solid ${theme === 'sun' ? 'rgba(251,140,0,0.25)' : 'rgba(251,140,0,0.25)'}` }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#ff9800' }}>
+                        <SwapOutlined />
+                        <span style={{ fontSize: '12px' }}>Tab switches</span>
+                      </div>
+                      <div style={{ fontSize: '20px', fontWeight: 700 }}>{totalTabSwitch}</div>
+                    </div>
+                    <div style={{ padding: '10px', borderRadius: '8px', background: theme === 'sun' ? '#F3F8FF' : 'rgba(24,144,255,0.08)', border: `1px solid ${theme === 'sun' ? 'rgba(24,144,255,0.25)' : 'rgba(24,144,255,0.25)'}` }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: theme === 'sun' ? '#1e40af' : '#aab' }}>
+                        <CopyOutlined />
+                        <span style={{ fontSize: '12px' }}>Copy attempts</span>
+                      </div>
+                      <div style={{ fontSize: '20px', fontWeight: 700 }}>{totalCopy}</div>
+                    </div>
+                    <div style={{ padding: '10px', borderRadius: '8px', background: theme === 'sun' ? '#F7ECFF' : 'rgba(142,36,170,0.08)', border: `1px solid ${theme === 'sun' ? 'rgba(142,36,170,0.25)' : 'rgba(142,36,170,0.25)'}` }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: theme === 'sun' ? '#6A1B9A' : '#cbb' }}>
+                        <FileTextOutlined />
+                        <span style={{ fontSize: '12px' }}>Paste attempts</span>
+                      </div>
+                      <div style={{ fontSize: '20px', fontWeight: 700 }}>{totalPaste}</div>
+                    </div>
                   </div>
-                  {/* Summary removed; sidebar already shows metrics */}
                 </div>
 
-                {/* Activity log full-width with pagination */}
+                {/* Right: Activity log with pagination */}
                 <div>
                   <div style={{
-                    maxHeight: '520px', overflowY: 'auto', padding: '10px',
+                    maxHeight: 'calc(70vh - 140px)', overflowY: 'auto', overflowX: 'hidden', padding: '10px', paddingBottom: '24px', boxSizing: 'border-box',
                     background: theme === 'sun' ? '#FFFFFF' : 'rgba(255, 255, 255, 0.03)',
                     borderRadius: '12px', border: `1px solid ${theme === 'sun' ? 'rgba(24, 144, 255, 0.15)' : 'rgba(255, 255, 255, 0.1)'}`,
                     boxShadow: '0 2px 8px rgba(0,0,0,0.05)'
@@ -5670,37 +5614,14 @@ const DailyChallengeSubmissionDetail = () => {
                                 <div style={{ fontWeight: 700, color: theme === 'sun' ? '#1f2937' : 'rgb(45, 27, 105)', fontSize: '12px' }}>
                                   {getEventTitle(ev.event)}{questionSuffix}
                                 </div>
-                                <div style={{ fontSize: '11px', color: theme === 'sun' ? '#64748b' : '#777' }}>
+                                <div style={{ fontSize: '12px', fontWeight: 700, color: '#000' }}>
                                   {formatTimestamp(ev.timestamp)}
                                 </div>
                               </div>
                               <div style={{ color: theme === 'sun' ? '#4b5563' : '#999', fontSize: '12px', lineHeight: '1.6', marginTop: '2px' }}>
                                 {desc}
                               </div>
-                              {isCopy && (
-                                <div style={{ marginTop: '6px', background: theme === 'sun' ? '#F3F8FF' : 'rgba(24,144,255,0.08)', border: `1px dashed ${theme === 'sun' ? 'rgba(24,144,255,0.35)' : 'rgba(24,144,255,0.35)'}`, borderRadius: '8px', padding: '8px' }}>
-                                  <Typography.Text style={{ fontSize: '11px', color: theme === 'sun' ? '#1e40af' : '#aab' }}>Copied:</Typography.Text>
-                                  <div style={{ fontSize: '12px', color: theme === 'sun' ? '#0f172a' : '#ddd', marginTop: '4px', whiteSpace: 'pre-wrap' }}>
-                                    {payloadForCopy.join(' ')}
-                                  </div>
-                                </div>
-                              )}
-                              {isPaste && (
-                                <div style={{ marginTop: '6px', background: theme === 'sun' ? '#F7ECFF' : 'rgba(142,36,170,0.08)', border: `1px dashed ${theme === 'sun' ? 'rgba(142,36,170,0.35)' : 'rgba(142,36,170,0.35)'}`, borderRadius: '8px', padding: '8px' }}>
-                                  <Typography.Text style={{ fontSize: '11px', color: theme === 'sun' ? '#6A1B9A' : '#cbb' }}>Pasted:</Typography.Text>
-                                  <div style={{ fontSize: '12px', color: theme === 'sun' ? '#0f172a' : '#ddd', marginTop: '4px', whiteSpace: 'pre-wrap' }}>
-                                    {payloadForPaste.join(' ')}
-                                  </div>
-                                </div>
-                              )}
-                              {isTabSwitchEvt && ev.content && (
-                                <div style={{ marginTop: '6px', background: theme === 'sun' ? '#FFFBEA' : 'rgba(251,140,0,0.08)', border: `1px dashed ${theme === 'sun' ? 'rgba(251,140,0,0.35)' : 'rgba(251,140,0,0.35)'}`, borderRadius: '8px', padding: '8px' }}>
-                                  <Typography.Text style={{ fontSize: '11px', color: theme === 'sun' ? '#B26A00' : '#f0b' }}>Note:</Typography.Text>
-                                  <div style={{ fontSize: '12px', color: theme === 'sun' ? '#0f172a' : '#ddd', marginTop: '4px', whiteSpace: 'pre-wrap' }}>
-                                    {ev.content}
-                                  </div>
-                                </div>
-                              )}
+                              {/* Notes removed per request */}
                             </div>
                           </div>
                         );
