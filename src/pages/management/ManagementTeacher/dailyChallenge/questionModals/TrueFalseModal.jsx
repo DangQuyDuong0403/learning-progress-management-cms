@@ -35,8 +35,9 @@ const TrueFalseModal = ({ visible, onCancel, onSave, questionData = null, saving
 		questionData?.correctAnswer || null
 	);
     const [weight, setWeight] = useState(1);
-	const [editorData, setEditorData] = useState('');
-	const editorRef = useRef(null);
+    const [editorData, setEditorData] = useState('');
+    const editorRef = useRef(null);
+    const editorDataRef = useRef('');
 
 	// Helper to strip HTML and normalize text for comparison
 	const stripHtml = useCallback((html) => {
@@ -113,12 +114,14 @@ const TrueFalseModal = ({ visible, onCancel, onSave, questionData = null, saving
 
 	// Load question data when editing
 	useEffect(() => {
-		if (visible) {
+    if (visible) {
 			setTimeout(() => {
 				if (questionData) {
 					// Edit mode - load existing data
 					console.log('TrueFalseModal - Loading question data:', questionData);
-					setEditorData(questionData.question || '');
+                    const q = questionData.question || '';
+                    setEditorData(q);
+                    editorDataRef.current = q;
 					// Determine correct answer from various possible shapes
 					let derivedAnswer = null;
 					const correctAnswerValue = questionData.correctAnswer;
@@ -154,7 +157,8 @@ const TrueFalseModal = ({ visible, onCancel, onSave, questionData = null, saving
                     setWeight((questionData && (questionData.weight ?? questionData.points)) || 1);
 				} else {
 					// Add mode - reset to defaults
-					setEditorData('');
+                    setEditorData('');
+                    editorDataRef.current = '';
 					setCorrectAnswer(null);
                     setWeight(1);
 				}
@@ -164,7 +168,7 @@ const TrueFalseModal = ({ visible, onCancel, onSave, questionData = null, saving
 
 	// Debounced editor change handler for main question
 	const editorChangeTimeoutRef = useRef(null);
-	const handleEditorChange = useCallback((event, editor) => {
+    const handleEditorChange = useCallback((event, editor) => {
 		if (editorChangeTimeoutRef.current) {
 			clearTimeout(editorChangeTimeoutRef.current);
 		}
@@ -182,7 +186,8 @@ const TrueFalseModal = ({ visible, onCancel, onSave, questionData = null, saving
 				}
 				// Only update if data actually changed
 				if (prevData !== data) {
-					return data;
+                    editorDataRef.current = data;
+                    return data;
 				}
 				return prevData;
 			});
@@ -389,16 +394,17 @@ const handleSave = async () => {
 								display: 'flex',
 								flexDirection: 'column'
 							}}>
-								<CKEditor
-									key="main-question-editor"
-									editor={ClassicEditor}
-									data={editorData}
-									config={questionEditorConfig}
-									onChange={handleEditorChange}
-									onReady={(editor) => {
-										editorRef.current = editor;
-									}}
-								/>
+                            <CKEditor
+                                key="main-question-editor"
+                                editor={ClassicEditor}
+                                /* Do not pass data on each render to avoid caret jumps */
+                                config={questionEditorConfig}
+                                onChange={handleEditorChange}
+                                onReady={(editor) => {
+                                    editorRef.current = editor;
+                                    try { editor.setData(editorDataRef.current || ''); } catch (e) {}
+                                }}
+                            />
 							{/* Character Counter for Question */}
 							<div style={{
 								marginTop: '6px',

@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback, useEffect, useMemo } from "react";
+import React, { useState, useRef, useCallback, useEffect, useMemo, memo } from "react";
 import {
   Modal,
   Button,
@@ -16,6 +16,78 @@ import {
 import { CKEditor } from '@ckeditor/ckeditor5-react';
 import ClassicEditor from '@ckeditor/ckeditor5-build-classic';
 import './MultipleChoiceModal.css';
+
+// Memoized Answer Card to minimize re-renders while typing
+const AnswerCard = memo(({ answer, index, answerEditorConfig, getPlainText, onRemove, onChange, answerEditorsRef, canDelete, onHover }) => {
+  const [isHovered, setIsHovered] = useState(false);
+  return (
+    <div
+      key={answer.id}
+      onMouseEnter={() => { setIsHovered(true); onHover && onHover(answer.id); }}
+      onMouseLeave={() => { setIsHovered(false); onHover && onHover(null); }}
+      style={{
+        background: `linear-gradient(135deg, ${answer.color}cc 0%, ${answer.color} 100%)`,
+        borderRadius: '16px',
+        padding: '24px',
+        minHeight: '320px',
+        position: 'relative',
+        display: 'flex',
+        flexDirection: 'column',
+        boxShadow: isHovered ? `0 12px 32px ${answer.color}80` : '0 4px 16px rgba(0,0,0,0.08)',
+        border: '2px solid rgba(255,255,255,0.5)',
+        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+        transform: isHovered ? 'translateY(-4px) scale(1.02)' : 'translateY(0) scale(1)',
+        cursor: 'pointer',
+        overflow: 'visible'
+      }}
+    >
+      {/* Answer Label */}
+      <div style={{
+        position: 'absolute', top: '16px', left: '16px', width: '40px', height: '40px', borderRadius: '50%',
+        background: 'rgba(255,255,255,0.95)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+        fontWeight: 700, fontSize: '18px', color: '#333', boxShadow: '0 2px 8px rgba(0,0,0,0.15)', border: `2px solid ${answer.color}`
+      }}>
+        {index + 1}
+      </div>
+
+      {/* Delete Button */}
+      <div style={{ position: 'absolute', top: '16px', right: '16px', display: 'flex', gap: '8px', alignItems: 'center' }}>
+        {canDelete && (
+          <Tooltip title="Delete Answer">
+            <Button
+              size="small"
+              danger
+              icon={<DeleteOutlined />}
+              onClick={(e) => { e.stopPropagation(); onRemove(answer.id); }}
+              style={{
+                background: 'rgba(255, 77, 79, 0.9)', color: 'white', border: 'none', borderRadius: '8px',
+                width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px'
+              }}
+            />
+          </Tooltip>
+        )}
+      </div>
+
+      {/* Answer Editor */}
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', marginTop: '60px', position: 'relative', zIndex: 1 }}>
+        <div className={`option-editor option-editor-${answer.id}`} style={{ borderRadius: '12px', overflow: 'hidden', background: 'rgba(255, 255, 255, 0.98)', border: '2px solid rgba(255,255,255,0.95)', backdropFilter: 'blur(10px)', boxShadow: '0 2px 12px rgba(0, 0, 0, 0.08)' }}>
+          <CKEditor
+            key={`answer-editor-${answer.id}`}
+            editor={ClassicEditor}
+            data={answer.answer}
+            config={answerEditorConfig}
+            onChange={(event, editor) => onChange(answer.id, event, editor)}
+            onReady={(editor) => { answerEditorsRef.current[answer.id] = editor; }}
+          />
+        </div>
+        {/* Character Counter */}
+        <div style={{ marginTop: '6px', textAlign: 'right', fontSize: '12px', fontWeight: 600, color: getPlainText(answer.answer).length > 200 ? '#ff4d4f' : '#595959' }}>
+          {`${Math.min(getPlainText(answer.answer).length, 200)}/200`}
+        </div>
+      </div>
+    </div>
+  );
+}, (prev, next) => prev.answer === next.answer && prev.index === next.index);
 
 const RewriteModal = ({ visible, onCancel, onSave, questionData = null }) => {
   
@@ -604,141 +676,24 @@ const RewriteModal = ({ visible, onCancel, onSave, questionData = null }) => {
 
         {/* Answers Grid Container - 2x2 Layout */}
         <div style={{ 
-          display: 'grid',
-          gridTemplateColumns: 'repeat(2, 1fr)',
-          gridAutoRows: 'min-content',
-          gap: '16px',
-          flex: 1,
-          overflowY: 'auto',
-          padding: '4px',
-          alignContent: 'start'
+          display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gridAutoRows: 'min-content', gap: '16px',
+          flex: 1, overflowY: 'auto', padding: '4px', alignContent: 'start'
         }}>
           {correctAnswers.map((answer, index) => (
-            <div
+            <AnswerCard
               key={answer.id}
-              onMouseEnter={() => setHoveredAnswer(answer.id)}
-              onMouseLeave={() => setHoveredAnswer(null)}
-              style={{
-                background: `linear-gradient(135deg, ${answer.color}cc 0%, ${answer.color} 100%)`,
-                borderRadius: '16px',
-                padding: '24px',
-                minHeight: '320px',
-                position: 'relative',
-                display: 'flex',
-                flexDirection: 'column',
-                boxShadow: hoveredAnswer === answer.id
-                  ? `0 12px 32px ${answer.color}80`
-                  : '0 4px 16px rgba(0,0,0,0.08)',
-                border: '2px solid rgba(255,255,255,0.5)',
-                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                transform: hoveredAnswer === answer.id ? 'translateY(-4px) scale(1.02)' : 'translateY(0) scale(1)',
-                cursor: 'pointer',
-                overflow: 'visible'
-              }}
-            >
-              {/* Answer Label */}
-              <div style={{
-                position: 'absolute',
-                top: '16px',
-                left: '16px',
-                width: '40px',
-                height: '40px',
-                borderRadius: '50%',
-                background: 'rgba(255,255,255,0.95)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontWeight: 700,
-                fontSize: '18px',
-                color: '#333',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
-                border: `2px solid ${answer.color}`
-              }}>
-                {index + 1}
-              </div>
-
-              {/* Delete Button */}
-              <div style={{
-                position: 'absolute',
-                top: '16px',
-                right: '16px',
-                display: 'flex',
-                gap: '8px',
-                alignItems: 'center'
-              }}>
-                {correctAnswers.length > 1 && (
-                  <Tooltip title="Delete Answer">
-                  <Button
-                    size="small"
-                      danger
-                      icon={<DeleteOutlined />}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleRemoveAnswer(answer.id);
-                      }}
-                    style={{
-                        background: 'rgba(255, 77, 79, 0.9)',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '8px',
-                        width: '32px',
-                        height: '32px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontSize: '16px'
-                    }}
-                  />
-                </Tooltip>
-                )}
-              </div>
-
-              {/* Answer Editor */}
-              <div style={{
-                flex: 1,
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'center',
-                marginTop: '60px',
-                position: 'relative',
-                zIndex: 1
-              }}>
-                <div 
-                  className={`option-editor option-editor-${answer.id}`}
-                style={{
-                    borderRadius: '12px',
-                    overflow: 'hidden',
-                    background: 'rgba(255, 255, 255, 0.98)',
-                    border: '2px solid rgba(255,255,255,0.95)',
-                    backdropFilter: 'blur(10px)',
-                    boxShadow: '0 2px 12px rgba(0, 0, 0, 0.08)'
-                  }}
-                >
-                  <CKEditor
-                    key={`answer-editor-${answer.id}`}
-                    editor={ClassicEditor}
-                    data={answer.answer}
-                    config={answerEditorConfig}
-                    onChange={(event, editor) => handleAnswerEditorChange(answer.id, event, editor)}
-                    onReady={(editor) => {
-                      answerEditorsRef.current[answer.id] = editor;
-                    }}
-              />
-            </div>
-            {/* Character Counter */}
-            <div style={{
-              marginTop: '6px',
-              textAlign: 'right',
-              fontSize: '12px',
-              fontWeight: 600,
-              color: getPlainText(answer.answer).length > 200 ? '#ff4d4f' : '#595959'
-            }}>
-              {`${Math.min(getPlainText(answer.answer).length, 200)}/200`}
-            </div>
-        </div>
-      </div>
+              answer={answer}
+              index={index}
+              answerEditorConfig={answerEditorConfig}
+              getPlainText={getPlainText}
+              onRemove={handleRemoveAnswer}
+              onChange={handleAnswerEditorChange}
+              answerEditorsRef={answerEditorsRef}
+              canDelete={correctAnswers.length > 1}
+              onHover={(id) => setHoveredAnswer(id)}
+            />
           ))}
-          </div>
+        </div>
         </div>
       </div>
     </Modal>
