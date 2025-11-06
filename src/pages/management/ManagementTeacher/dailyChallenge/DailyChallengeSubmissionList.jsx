@@ -76,7 +76,7 @@ const DailyChallengeSubmissionList = () => {
         totalWeight: it?.totalWeight ?? it?.weight ?? null,
         actualDuration: it?.actualDuration ?? it?.duration ?? null,
         submittedAt: it?.submittedAt ?? it?.createdAt ?? null,
-        totalScore: it?.totalScore ?? null,
+        finalScore: it?.finalScore ?? null,
       }));
 
       setRows(mapped);
@@ -261,18 +261,10 @@ const DailyChallengeSubmissionList = () => {
       ),
     },
     {
-      title: t('dailyChallenge.status'),
-      dataIndex: 'submissionStatus',
-      key: 'submissionStatus',
-      width: 150,
-      align: 'center',
-      render: (status) => status || '-',
-    },
-    {
-      title: 'Total Weight',
-      dataIndex: 'totalWeight',
-      key: 'totalWeight',
-      width: 140,
+      title: 'Final Score',
+      dataIndex: 'finalScore',
+      key: 'finalScore',
+      width: 130,
       align: 'center',
       render: (v) => (v === null || v === undefined ? '-' : v),
     },
@@ -293,30 +285,89 @@ const DailyChallengeSubmissionList = () => {
       render: (v) => formatDateTimeVi(v),
     },
     {
-      title: 'Total Score',
-      dataIndex: 'totalScore',
-      key: 'totalScore',
-      width: 130,
+      title: t('dailyChallenge.status'),
+      dataIndex: 'submissionStatus',
+      key: 'submissionStatus',
+      width: 150,
       align: 'center',
-      render: (v) => (v === null || v === undefined ? '-' : v),
+      render: (status) => {
+        if (!status || typeof status !== 'string') return '-';
+        const s = status.trim();
+        if (s.length === 0) return '-';
+        return s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
+      },
     },
     {
       title: t('dailyChallenge.actions'),
       key: 'actions',
       width: 100,
       align: 'center',
-      render: (_, record) => (
-        <Space size="small">
-          <Button
-            type="text"
-            icon={<EyeOutlined style={{ fontSize: '18px' }} />}
-            onClick={() => handleViewClick(record)}
-            title={t('dailyChallenge.viewDetails')}
-            className="action-btn-view"
-            disabled={!record?.submissionId}
-          />
-        </Space>
-      ),
+      render: (_, record) => {
+        const status = (record?.submissionStatus || '').toString().toUpperCase();
+        if (status === 'SUBMITTED') {
+          return (
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', width: '100%' }}>
+              <Button
+                type="primary"
+                icon={<EyeOutlined />}
+                onClick={() => handleViewClick(record)}
+                className="action-btn-grade"
+                style={{
+                  borderRadius: '6px',
+                  fontWeight: 500,
+                  height: '36px',
+                  padding: '0 16px',
+                  fontSize: '14px',
+                  background: 'rgb(244,203,127)',
+                  borderColor: 'rgb(244,203,127)',
+                  color: '#000',
+                  border: 'none',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = 'rgb(224,183,107)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'rgb(244,203,127)';
+                }}
+              >
+                Grade
+              </Button>
+            </div>
+          );
+        }
+        if (status === 'GRADED') {
+          return (
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', width: '100%' }}>
+              <Button
+                type="primary"
+                icon={<EyeOutlined />}
+                onClick={() => handleViewClick(record)}
+                className="action-btn-view-result"
+                style={{
+                  borderRadius: '6px',
+                  fontWeight: 500,
+                  height: '36px',
+                  padding: '0 16px',
+                  fontSize: '14px',
+                  background: 'rgb(157,207,242)',
+                  borderColor: 'rgb(157,207,242)',
+                  color: '#000',
+                  border: 'none',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = 'rgb(137,187,222)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'rgb(157,207,242)';
+                }}
+              >
+                View result
+              </Button>
+            </div>
+          );
+        }
+        return null;
+      },
     },
   ];
 

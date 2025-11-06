@@ -206,6 +206,38 @@ const AIGenerateFeedback = () => {
     if (/speaking/.test(title)) return 'speaking';
     return prefill.type || 'writing';
   }, [section, prefill.type]);
+  const criteriaStyles = useMemo(() => {
+    const light = {
+      taskResponse: { bg: '#FFF7ED', border: 'rgba(245, 158, 11, 0.35)' }, // orange pastel
+      cohesionCoherence: { bg: '#ECFEFF', border: 'rgba(6, 182, 212, 0.35)' }, // cyan pastel
+      lexicalResource: { bg: '#F0FDF4', border: 'rgba(34, 197, 94, 0.35)' }, // green pastel
+      grammaticalRangeAccuracy: { bg: '#F5F3FF', border: 'rgba(139, 92, 246, 0.35)' }, // purple pastel
+    };
+    const dark = {
+      taskResponse: { bg: 'rgba(245, 158, 11, 0.10)', border: 'rgba(245, 158, 11, 0.35)' },
+      cohesionCoherence: { bg: 'rgba(6, 182, 212, 0.10)', border: 'rgba(6, 182, 212, 0.35)' },
+      lexicalResource: { bg: 'rgba(34, 197, 94, 0.10)', border: 'rgba(34, 197, 94, 0.35)' },
+      grammaticalRangeAccuracy: { bg: 'rgba(139, 92, 246, 0.10)', border: 'rgba(139, 92, 246, 0.35)' },
+    };
+    return theme === 'sun' ? light : dark;
+  }, [theme]);
+  const speakingStyles = useMemo(() => {
+    const light = {
+      Pronunciation: { bg: '#ECFEFF', border: 'rgba(6, 182, 212, 0.35)' },
+      Accuracy: { bg: '#F0FDF4', border: 'rgba(34, 197, 94, 0.35)' },
+      Fluency: { bg: '#FFF7ED', border: 'rgba(245, 158, 11, 0.35)' },
+      Completeness: { bg: '#FEF2F2', border: 'rgba(239, 68, 68, 0.35)' },
+      Prosody: { bg: '#F5F3FF', border: 'rgba(139, 92, 246, 0.35)' },
+    };
+    const dark = {
+      Pronunciation: { bg: 'rgba(6, 182, 212, 0.10)', border: 'rgba(6, 182, 212, 0.35)' },
+      Accuracy: { bg: 'rgba(34, 197, 94, 0.10)', border: 'rgba(34, 197, 94, 0.35)' },
+      Fluency: { bg: 'rgba(245, 158, 11, 0.10)', border: 'rgba(245, 158, 11, 0.35)' },
+      Completeness: { bg: 'rgba(239, 68, 68, 0.10)', border: 'rgba(239, 68, 68, 0.35)' },
+      Prosody: { bg: 'rgba(139, 92, 246, 0.10)', border: 'rgba(139, 92, 246, 0.35)' },
+    };
+    return theme === 'sun' ? light : dark;
+  }, [theme]);
   const handleClear = useCallback(() => {
     try {
       // Reset common fields
@@ -1725,20 +1757,23 @@ const AIGenerateFeedback = () => {
                         },{
                           label: 'Prosody',
                           value: Number.isFinite(Number(speakingResult?.prosodyScore)) ? speakingResult.prosodyScore : '-'
-                        }].map((item, idx) => (
+                        }].map((item, idx) => {
+                          const ss = speakingStyles[item.label] || { bg: theme === 'sun' ? 'rgba(24,144,255,0.06)' : 'rgba(244,240,255,0.10)', border: theme === 'sun' ? 'rgba(24,144,255,0.25)' : 'rgba(138,122,255,0.25)' };
+                          return (
                           <div
                             key={`manual-speaking-top-${item.label}-${idx}`}
                             style={{
                               borderRadius: 12,
                               padding: '12px 14px',
-                              background: theme === 'sun' ? 'linear-gradient(135deg, rgba(24,144,255,0.06) 0%, rgba(113,179,253,0.08) 100%)' : 'linear-gradient(135deg, rgba(244,240,255,0.10) 0%, rgba(167,139,250,0.12) 100%)',
-                              border: theme === 'sun' ? '1px solid rgba(24,144,255,0.25)' : '1px solid rgba(138,122,255,0.25)'
+                              background: ss.bg,
+                              border: `1px solid ${ss.border}`
                             }}
                           >
                             <div style={{ fontSize: 12, color: theme === 'sun' ? '#1E40AF' : '#8377A0', fontWeight: 600 }}>{item.label}</div>
                             <div style={{ fontSize: 20, fontWeight: 700, color: theme === 'sun' ? '#0f172a' : '#1F2937', marginTop: 2 }}>{item.value}</div>
                           </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     </div>
                   )}
@@ -1784,13 +1819,14 @@ const AIGenerateFeedback = () => {
                         const barColor = level === 'low' ? '#EF4444' : level === 'mid' ? '#F59E0B' : '#22C55E';
                         const badgeBg = level === 'low' ? '#FEE2E2' : level === 'mid' ? '#FEF3C7' : '#DCFCE7';
                         const badgeText = level === 'low' ? 'Needs Work' : level === 'mid' ? 'Fair' : 'Good';
+                        const cs = criteriaStyles[it.key] || { bg: theme === 'sun' ? 'rgba(113,179,253,0.08)' : 'rgba(167,139,250,0.10)', border: `${primaryColor}40` };
                         return (
                           <Card
                             key={`manual-${it.key}`}
                             style={{
                               borderRadius: 12,
-                              border: `2px solid ${primaryColor}40`,
-                              background: theme === 'sun' ? 'rgba(113,179,253,0.08)' : 'rgba(167,139,250,0.10)'
+                              border: `2px solid ${cs.border}`,
+                              background: cs.bg
                             }}
                           >
                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
@@ -1834,24 +1870,6 @@ const AIGenerateFeedback = () => {
                       </Button>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                      {sectionType === 'writing' && (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <Text strong>Age</Text>
-                          <Input
-                            type="number"
-                            min={1}
-                            max={100}
-                            value={speakingAge}
-                            onChange={(e) => setSpeakingAge(e.target.value)}
-                            style={{
-                              width: 80,
-                              borderRadius: 8,
-                              border: `2px solid ${primaryColor}40`,
-                              background: theme === 'sun' ? '#fff' : 'rgba(255,255,255,0.08)',
-                            }}
-                          />
-                        </div>
-                      )}
                       {hasAIGenerated && (
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                           <Text strong>Score</Text>
@@ -2014,20 +2032,23 @@ const AIGenerateFeedback = () => {
                             },{
                               label: 'Prosody',
                               value: Number.isFinite(Number(speakingResult?.prosodyScore)) ? speakingResult.prosodyScore : '-'
-                            }].map((item, idx) => (
+                            }].map((item, idx) => {
+                              const ss = speakingStyles[item.label] || { bg: theme === 'sun' ? 'rgba(24,144,255,0.06)' : 'rgba(244,240,255,0.10)', border: theme === 'sun' ? 'rgba(24,144,255,0.25)' : 'rgba(138,122,255,0.25)' };
+                              return (
                               <div
                                 key={`${item.label}-${idx}`}
                                 style={{
                                   borderRadius: 12,
                                   padding: '12px 14px',
-                                  background: theme === 'sun' ? 'linear-gradient(135deg, rgba(24,144,255,0.06) 0%, rgba(113,179,253,0.08) 100%)' : 'linear-gradient(135deg, rgba(244,240,255,0.10) 0%, rgba(167,139,250,0.12) 100%)',
-                                  border: theme === 'sun' ? '1px solid rgba(24,144,255,0.25)' : '1px solid rgba(138,122,255,0.25)'
+                                  background: ss.bg,
+                                  border: `1px solid ${ss.border}`
                                 }}
                               >
                                 <div style={{ fontSize: 12, color: theme === 'sun' ? '#1E40AF' : '#8377A0', fontWeight: 600 }}>{item.label}</div>
                                 <div style={{ fontSize: 20, fontWeight: 700, color: theme === 'sun' ? '#0f172a' : '#1F2937', marginTop: 2 }}>{item.value}</div>
                               </div>
-                            ))}
+                              );
+                            })}
                           </div>
                           {Array.isArray(speakingResult?.words) && speakingResult.words.length > 0 && (
                             <div style={{ marginTop: 8 }}>
@@ -2108,7 +2129,19 @@ const AIGenerateFeedback = () => {
                       <div style={{ maxWidth: 520, fontSize: 15, color: theme === 'sun' ? '#334155' : '#1F2937' }}>
                         Get comprehensive feedback on your writing with detailed analysis and suggestions
                       </div>
-                      <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <Text strong>Age</Text>
+                          <Input
+                            type="number"
+                            min={1}
+                            max={100}
+                            value={speakingAge}
+                            onChange={(e) => setSpeakingAge(e.target.value)}
+                            placeholder="e.g. 12"
+                            style={{ width: 100, borderRadius: 8, background: '#fff' }}
+                          />
+                        </div>
                         <Button
                           type="primary"
                           icon={<ThunderboltOutlined />}
@@ -2160,7 +2193,7 @@ const AIGenerateFeedback = () => {
                       {/* Criteria feedback cards (one per row) */}
                       {writingCriteria && (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 10 }}>
-                          {[
+                      {[
                             { key: 'taskResponse', label: 'Task Response' },
                             { key: 'cohesionCoherence', label: 'Cohesion & Coherence' },
                             { key: 'lexicalResource', label: 'Lexical Resource' },
@@ -2176,13 +2209,14 @@ const AIGenerateFeedback = () => {
                             const barColor = level === 'low' ? '#EF4444' : level === 'mid' ? '#F59E0B' : '#22C55E';
                             const badgeBg = level === 'low' ? '#FEE2E2' : level === 'mid' ? '#FEF3C7' : '#DCFCE7';
                             const badgeText = level === 'low' ? 'Needs Work' : level === 'mid' ? 'Fair' : 'Good';
+                            const cs = criteriaStyles[it.key] || { bg: theme === 'sun' ? 'rgba(113,179,253,0.08)' : 'rgba(167,139,250,0.10)', border: `${primaryColor}40` };
                             return (
                               <Card
                                 key={it.key}
                                 style={{
                                   borderRadius: 12,
-                                  border: `2px solid ${primaryColor}40`,
-                                  background: theme === 'sun' ? 'rgba(113,179,253,0.08)' : 'rgba(167,139,250,0.10)'
+                                  border: `2px solid ${cs.border}`,
+                                  background: cs.bg
                                 }}
                               >
                                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
@@ -2287,7 +2321,8 @@ const AIGenerateFeedback = () => {
                       <div style={{ maxWidth: 520, fontSize: 15, color: theme === 'sun' ? '#334155' : '#1F2937' }}>
                         Regenerate pronunciation analysis for another take
                       </div>
-                      <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                       
                         <Button
                           type="primary"
                           icon={<ThunderboltOutlined />}
@@ -2347,7 +2382,19 @@ const AIGenerateFeedback = () => {
                       <div style={{ maxWidth: 520, fontSize: 15, color: theme === 'sun' ? '#334155' : '#1F2937' }}>
                         You can regenerate suggestions if you want a different take.
                       </div>
-                      <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <Text strong>Age</Text>
+                          <Input
+                            type="number"
+                            min={1}
+                            max={100}
+                            value={speakingAge}
+                            onChange={(e) => setSpeakingAge(e.target.value)}
+                            placeholder="e.g. 12"
+                            style={{ width: 100, borderRadius: 8, background: '#fff' }}
+                          />
+                        </div>
                         <Button
                           type="primary"
                           icon={<ThunderboltOutlined />}
@@ -2359,7 +2406,7 @@ const AIGenerateFeedback = () => {
                             padding: '0 16px',
                             background: theme === 'sun'
                               ? 'linear-gradient(135deg, #66AEFF, #3C99FF)'
-                              : 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)',
+                              : 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #6D5F8F 100%)',
                             border: 'none',
                             color: '#000',
                             boxShadow: theme === 'sun' ? '0 2px 8px rgba(60, 153, 255, 0.3)' : '0 2px 8px rgba(131, 119, 160, 0.3)'
