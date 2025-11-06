@@ -1154,46 +1154,36 @@ const AIGenerateReading = () => {
         </div>
         </Card>
 
-          {/* Loading Animation - identical visual to AIGenerateQuestions */}
+          {/* Full-screen loading overlay */}
           {isGenerating && (
-            <Card
-              className={`loading-card allow-motion ${theme}-loading-card`}
+            <div
               style={{
-                borderRadius: '16px',
-                border: theme === 'sun' 
-                  ? '2px solid rgba(113, 179, 253, 0.25)' 
-                  : '2px solid rgba(138, 122, 255, 0.2)',
-                boxShadow: theme === 'sun' 
-                  ? '0 4px 16px rgba(113, 179, 253, 0.1)' 
-                  : '0 4px 16px rgba(138, 122, 255, 0.12)',
+                position: 'fixed',
+                inset: 0,
+                zIndex: 2000,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
                 background: theme === 'sun'
-                  ? 'linear-gradient(135deg, rgba(255, 255, 255, 1) 0%, rgba(240, 249, 255, 0.95) 100%)'
-                  : 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(244, 240, 255, 0.95) 100%)',
-              marginTop: '24px',
-              marginBottom: '24px',
-                backdropFilter: 'blur(10px)',
-                animation: 'fadeInUp 0.5s ease-out'
+                  ? 'linear-gradient(135deg, rgba(255,255,255,0.85), rgba(240,249,255,0.85))'
+                  : 'linear-gradient(135deg, rgba(18, 18, 27, 0.85), rgba(34, 27, 60, 0.85))',
+                backdropFilter: 'blur(6px)'
               }}
             >
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '40px 20px', textAlign: 'center' }}>
-                <div style={{ position: 'relative', width: '120px', height: '120px', marginBottom: '24px' }}>
-                  <div style={{ position: 'absolute', top: 0, left: 0, width: '120px', height: '120px', border: `3px solid ${primaryColor}20`, borderRadius: '50%', borderTop: `3px solid ${primaryColor}`, animation: 'spin 2s linear infinite' }} />
-                  <div style={{ position: 'absolute', top: '20px', left: '20px', width: '80px', height: '80px', background: `radial-gradient(circle, ${primaryColor}30, ${primaryColor}10)`, borderRadius: '50%', animation: 'pulse 1.5s ease-in-out infinite' }} />
-                  <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', fontSize: '32px', color: primaryColor, animation: 'bounce 1s ease-in-out infinite' }}>🤖</div>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
+                <div style={{ position: 'relative', width: '140px', height: '140px', marginBottom: '24px' }}>
+                  <div style={{ position: 'absolute', top: 0, left: 0, width: '140px', height: '140px', border: `4px solid ${primaryColor}20`, borderRadius: '50%', borderTop: `4px solid ${primaryColor}`, animation: 'spin 1.8s linear infinite' }} />
+                  <div style={{ position: 'absolute', top: '26px', left: '26px', width: '88px', height: '88px', background: `radial-gradient(circle, ${primaryColor}30, ${primaryColor}10)`, borderRadius: '50%', animation: 'pulse 1.6s ease-in-out infinite' }} />
+                  <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', fontSize: '36px', color: primaryColor, animation: 'bounce 1.1s ease-in-out infinite' }}>🤖</div>
                 </div>
-                <Title level={3} style={{ marginTop: 0, marginBottom: '12px', fontSize: '24px', fontWeight: 700, color: primaryColor, animation: 'fadeInOut 2s ease-in-out infinite' }}>
+                <Title level={3} style={{ marginTop: 0, marginBottom: '12px', fontSize: '26px', fontWeight: 700, color: primaryColor }}>
                   {t('dailyChallenge.aiThinking') || 'AI is thinking...'}
                 </Title>
-                <div style={{ fontSize: '16px', color: theme === 'sun' ? '#666' : '#999', fontWeight: 500, marginBottom: '20px' }}>
+                <div style={{ fontSize: '16px', color: theme === 'sun' ? '#334155' : '#cbd5e1', fontWeight: 500 }}>
                   {t('dailyChallenge.generatingQuestions') || 'Generating questions based on your prompt'}
                 </div>
-                <div style={{ display: 'flex', gap: '8px' }}>
-                  {[0, 1, 2].map((i) => (
-                    <div key={i} style={{ width: '12px', height: '12px', borderRadius: '50%', background: primaryColor, animation: `wave 1.4s ease-in-out infinite`, animationDelay: `${i * 0.2}s` }} />
-                  ))}
-                </div>
               </div>
-            </Card>
+            </div>
           )}
 
           {/* Preview (exact UI reused from AIGenerateQuestions) */}
