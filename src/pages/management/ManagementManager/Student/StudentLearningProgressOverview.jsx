@@ -30,6 +30,8 @@ import { Pie, Column, Line, Bar } from '@ant-design/charts';
 import ThemedLayout from "../../../../component/ThemedLayout";
 import LoadingWithEffect from "../../../../component/spinner/LoadingWithEffect";
 import { useTheme } from "../../../../contexts/ThemeContext";
+import { useSelector } from 'react-redux';
+import ROUTER_PAGE from "../../../../constants/router";
 import "./StudentLearningProgressOverview.css";
 
 const { Title, Text } = Typography;
@@ -192,6 +194,10 @@ const StudentLearningProgressOverview = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
+  const { user } = useSelector((state) => state.auth);
+  const userRole = (user?.role || '').toLowerCase();
+  const isTeacher = userRole === 'teacher';
+  const isTeachingAssistant = userRole === 'teaching_assistant';
   const [loading, setLoading] = useState(true);
   const [sessions, setSessions] = useState([]);
   const [student, setStudent] = useState(null);
@@ -278,7 +284,13 @@ const StudentLearningProgressOverview = () => {
   const studyStreak = 5; // Mock streak data
 
   const handleBack = () => {
-    navigate(`/manager/student/${id}/profile`, { state: { student: student } });
+    let path = ROUTER_PAGE.MANAGER_STUDENT_PROFILE.replace(':id', String(id));
+    if (isTeacher) {
+      path = ROUTER_PAGE.TEACHER_STUDENT_PROFILE.replace(':id', String(id));
+    } else if (isTeachingAssistant) {
+      path = ROUTER_PAGE.TEACHING_ASSISTANT_STUDENT_PROFILE.replace(':id', String(id));
+    }
+    navigate(path, { state: { student } });
   };
 
   const getStatusIcon = (status) => {
