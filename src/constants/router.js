@@ -64,7 +64,11 @@ const ROUTER_PAGE = {
 	MANAGER_COURSES: '/manager/courses',
 	MANAGER_STUDENTS: '/manager/students',
 	MANAGER_STUDENT_PROFILE: '/manager/student/:id/profile',
+	TEACHER_STUDENT_PROFILE: '/teacher/student/:id/profile',
+	TEACHING_ASSISTANT_STUDENT_PROFILE: '/teaching-assistant/student/:id/profile',
 	MANAGER_STUDENT_PROGRESS: '/manager/student/:id/progress',
+	TEACHER_STUDENT_PROGRESS: '/teacher/student/:id/progress',
+	TEACHING_ASSISTANT_STUDENT_PROGRESS: '/teaching-assistant/student/:id/progress',
 	// Spinner Demo
 	SPINNER_DEMO: '/spinner-demo',
 	// Test Security Demo

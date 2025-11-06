@@ -23,6 +23,8 @@ import LoadingWithEffect from "../../../../component/spinner/LoadingWithEffect";
 import "./ClassList.css";
 import { spaceToast } from "../../../../component/SpaceToastify";
 import { useNavigate } from "react-router-dom";
+import { useSelector } from "react-redux";
+import ROUTER_PAGE from "../../../../constants/router";
 import { useTranslation } from "react-i18next";
 import { useTheme } from "../../../../contexts/ThemeContext";
 import { classManagementApi, syllabusManagementApi } from "../../../../apis/apis";
@@ -60,6 +62,8 @@ const ClassList = () => {
   const { t } = useTranslation();
   const { theme } = useTheme();
   const navigate = useNavigate();
+  const { user } = useSelector((state) => state.auth);
+  const userRole = (user?.role || '').toLowerCase();
   
   // Set page title
   usePageTitle('Class Management');
@@ -293,7 +297,13 @@ const ClassList = () => {
   };
 
   const handleCardClick = (classItem) => {
-    navigate(`/manager/classes/menu/${classItem.id}`);
+    let path = ROUTER_PAGE.MANAGER_CLASS_MENU.replace(':id', String(classItem.id));
+    if (userRole === 'teacher') {
+      path = ROUTER_PAGE.TEACHER_CLASS_MENU.replace(':id', String(classItem.id));
+    } else if (userRole === 'teaching_assistant') {
+      path = ROUTER_PAGE.TEACHING_ASSISTANT_CLASS_MENU.replace(':id', String(classItem.id));
+    }
+    navigate(path);
   };
 
   // Handle click outside to close filter dropdown

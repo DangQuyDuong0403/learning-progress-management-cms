@@ -294,7 +294,10 @@ const StudentDailyChallengeList = () => {
       }
     }
 
-    // Navigate to challenge take view (student view)
+    // Resolve classId for return navigation
+    const resolvedClassId = classId || location.state?.classId;
+
+    // Navigate to challenge take view (student/test_taker view)
     navigate(`${routePrefix}/daily-challenges/take/${challenge.id}`, {
       state: {
         challengeId: challenge.id,
@@ -307,6 +310,7 @@ const StudentDailyChallengeList = () => {
         hasAntiCheat: challenge.hasAntiCheat,
         shuffleQuestion: challenge.shuffleQuestion,
         translateOnScreen: challenge.translateOnScreen,
+        classId: resolvedClassId, // For redirecting back to the class DC list
       }
     });
   };
