@@ -59,7 +59,8 @@ const DailyChallengeSubmissionDetail = () => {
   
   // Get user role from Redux
   const userRole = useSelector((state) => state.auth?.user?.role);
-  const isStudent = userRole === 'student' || userRole === 'test_taker';
+  const normalizedRole = (userRole || '').toString().toLowerCase();
+  const isStudent = normalizedRole === 'student' || normalizedRole === 'test_taker';
   
   // Set page title
   usePageTitle('Daily Challenge - Submission Detail');
@@ -4994,7 +4995,8 @@ const DailyChallengeSubmissionDetail = () => {
                           </div>
                         </div>
 
-                        {/* View Detail Button */}
+                        {/* View Detail Button (hidden for students/test takers) */}
+                        {!isStudent && (
                         <div style={{ display: 'flex', justifyContent: 'center', marginTop: '8px' }}>
                           <Button
                             icon={<EyeOutlined />}
@@ -5019,6 +5021,7 @@ const DailyChallengeSubmissionDetail = () => {
                             View detail
                           </Button>
                         </div>
+                        )}
                       </div>
 
                       {/* Total Tab Blur Duration (hidden per new UI) */}
@@ -5413,6 +5416,7 @@ const DailyChallengeSubmissionDetail = () => {
       </Modal>
 
       {/* Anti-Cheat Log Modal */}
+      {!isStudent && (
       <Modal
         title={
           <div
@@ -5427,7 +5431,7 @@ const DailyChallengeSubmissionDetail = () => {
             Anti-Cheat Log
           </div>
         }
-        open={antiCheatModalVisible}
+        open={antiCheatModalVisible && !isStudent}
         centered
         onCancel={() => setAntiCheatModalVisible(false)}
         width={860}
@@ -5646,6 +5650,7 @@ const DailyChallengeSubmissionDetail = () => {
           );
         })()}
       </Modal>
+      )}
 
       {/* Score Modal */}
       <Modal
