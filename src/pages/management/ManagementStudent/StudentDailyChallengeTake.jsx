@@ -6484,8 +6484,12 @@ const StudentDailyChallengeTake = () => {
   // Map questionId -> array of positionIds in order of appearance in questionText ([[pos_xxx]]...)
   const positionIdsByQuestionIdRef = useRef(new Map());
   
-  // Timer state - countdown from 60 minutes (3600 seconds)
-  const [timeRemaining, setTimeRemaining] = useState(60 * 60); // 60 minutes in seconds
+  // Timer state (only enabled if backend provides challengeDuration)
+  const [isTimedChallenge, setIsTimedChallenge] = useState(false);
+  const [timeRemaining, setTimeRemaining] = useState(0);
+  const deadlineTsRef = useRef(null); // absolute deadline timestamp (ms)
+  const autoSubmitTriggeredRef = useRef(false);
+  const [timeUpModalVisible, setTimeUpModalVisible] = useState(false);
 
   // Anti-cheat security state
   const [violationWarningModalVisible, setViolationWarningModalVisible] = useState(false);
@@ -6874,6 +6878,41 @@ const StudentDailyChallengeTake = () => {
 
         // Update submissionId state
         setSubmissionId(finalSubmissionId);
+
+        // Fetch timing info and initialize countdown if applicable
+        if (finalSubmissionId && !isViewOnly) {
+          dailyChallengeApi.getSubmissionChallengeInfo(finalSubmissionId)
+            .then((infoResp) => {
+              const info = infoResp?.data || infoResp?.data?.data || infoResp?.data; // support different wrappers
+              const payload = infoResp?.data?.data ? infoResp.data.data : info;
+              const challengeDurationSec = payload?.challengeDuration;
+              if (challengeDurationSec && Number(challengeDurationSec) > 0) {
+                // Determine start time: use actualStartAt if present; otherwise mark start now
+                let startTs = payload?.actualStartAt ? Date.parse(payload.actualStartAt) : null;
+                const ensureStart = () => {
+                  if (!startTs) {
+                    return dailyChallengeApi.startSubmission(finalSubmissionId)
+                      .catch(() => {})
+                      .finally(() => { startTs = Date.now(); });
+                  }
+                  return Promise.resolve();
+                };
+                return ensureStart().then(() => {
+                  const deadlineTs = startTs + Number(challengeDurationSec) * 1000;
+                  deadlineTsRef.current = deadlineTs;
+                  setIsTimedChallenge(true);
+                  setTimeRemaining(Math.max(0, Math.floor((deadlineTs - Date.now()) / 1000)));
+                });
+              } else {
+                setIsTimedChallenge(false);
+                return null;
+              }
+            })
+            .catch(() => {
+              // If timing info fails, do not enable timer
+              setIsTimedChallenge(false);
+            });
+        }
         
         // Determine which API to use based on submission status and challenge type
         // For WR and SP types with SUBMITTED status, use result API instead of draft API
@@ -7032,26 +7071,23 @@ const StudentDailyChallengeTake = () => {
         }
       });
   }, [id, location.state, isViewOnly]);
-  // Start countdown timer when component mounts
-  // timer/view-only guard now uses state isViewOnly set during data load
-
+  // Start or update countdown based on absolute deadline
   useEffect(() => {
-    if (!loading && !isViewOnly) {
-      const interval = setInterval(() => {
-        setTimeRemaining(prev => {
-          if (prev <= 1) {
-            clearInterval(interval);
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
-      
-      return () => {
-        clearInterval(interval);
-      };
-    }
-  }, [loading, isViewOnly]);
+    if (loading || isViewOnly || !isTimedChallenge || !deadlineTsRef.current) return;
+    const tick = () => {
+      const now = Date.now();
+      const remaining = Math.max(0, Math.floor((deadlineTsRef.current - now) / 1000));
+      setTimeRemaining(remaining);
+      if (remaining === 0 && !autoSubmitTriggeredRef.current) {
+        autoSubmitTriggeredRef.current = true;
+        // Auto submit once when time is up
+        handleAutoSubmitOnTimeout();
+      }
+    };
+    tick();
+    const interval = setInterval(tick, 1000);
+    return () => clearInterval(interval);
+  }, [loading, isViewOnly, isTimedChallenge]);
 
 
 
@@ -7828,6 +7864,42 @@ const StudentDailyChallengeTake = () => {
     }
   };
 
+  // Auto submit when time is up: submit without navigation, then show time-up modal
+  const handleAutoSubmitOnTimeout = async () => {
+    try {
+      // Ensure we have a submissionId
+      let currentSubmissionId = submissionId;
+      if (!currentSubmissionId) {
+        try {
+          const submissionsResponse = await dailyChallengeApi.getChallengeSubmissions(id, { page: 0, size: 1 });
+          if (submissionsResponse && submissionsResponse.success) {
+            const submissions = submissionsResponse.data?.content || submissionsResponse.data || [];
+            if (Array.isArray(submissions) && submissions.length > 0) {
+              const currentSubmission = submissions.find(sub => sub.challengeId === parseInt(id)) || submissions[0];
+              if (currentSubmission && currentSubmission.id) {
+                currentSubmissionId = currentSubmission.id;
+                setSubmissionId(currentSubmissionId);
+              }
+            }
+          }
+        } catch {}
+      }
+      if (!currentSubmissionId) {
+        setTimeUpModalVisible(true);
+        return;
+      }
+
+      const questionAnswers = collectAllAnswers();
+      const processedAnswers = await replaceBlobUrlsInAnswers(questionAnswers);
+      const submitData = { saveAsDraft: false, questionAnswers: processedAnswers };
+      await dailyChallengeApi.submitDailyChallenge(currentSubmissionId, submitData);
+    } catch (e) {
+      // Even if submit fails, still show time up modal
+    } finally {
+      setTimeUpModalVisible(true);
+    }
+  };
+
   // Cancel submit
   const handleCancelSubmit = () => {
     setSubmitModalVisible(false);
@@ -7835,6 +7907,15 @@ const StudentDailyChallengeTake = () => {
 
   const handleBack = () => {
     navigate(-1);
+  };
+
+  const handleTimeUpOk = () => {
+    const resolvedClassId = location.state?.classId;
+    if (resolvedClassId) {
+      navigate(`${routePrefix}/classes/daily-challenges/${resolvedClassId}`);
+    } else {
+      navigate(`${routePrefix}/classes`);
+    }
   };
 
   // Navigate to question
@@ -7883,9 +7964,11 @@ const StudentDailyChallengeTake = () => {
     }
     // Individual questions (GV etc.)
     if (!(challengeType === 'LI' || challengeType === 'SP' || challengeType === 'WR')) {
-      questions.forEach((q) => {
+      [...questions]
+        .sort((a, b) => (a.orderNumber || 0) - (b.orderNumber || 0) || ((a.id || 0) - (b.id || 0)))
+        .forEach((q) => {
         navigation.push({ id: `q-${q.id}`, type: 'question', title: `Question ${questionNumber++}` });
-      });
+        });
     }
     return navigation;
   };
@@ -7941,14 +8024,15 @@ const StudentDailyChallengeTake = () => {
           {/* Timer and Save Button */}
           {!isViewOnly && (
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-            {/* Timer */}
+            {/* Timer (show only if duration exists) */}
+            {isTimedChallenge && (
             <div style={{
               display: 'flex',
               alignItems: 'center',
               gap: '10px',
             }}>
-               {/* Auto-save status */}
-               <span style={{
+             {/* Auto-save status */}
+             <span style={{
                 fontSize: '12px',
                 color: autoSaveStatus === 'saving' ? '#555' : '#2b8a3e',
                 fontStyle: 'italic',
@@ -7971,6 +8055,7 @@ const StudentDailyChallengeTake = () => {
                 {formatTime(timeRemaining)}
               </span>
             </div>
+            )}
             
             {/* Save Button */}
             <Button
@@ -8319,6 +8404,51 @@ const StudentDailyChallengeTake = () => {
               hệ thống sẽ ghi lại và báo cáo lên giáo viên.
             </p>
           </div>
+        </div>
+      </Modal>
+
+      {/* Time Up Modal */}
+      <Modal
+        open={timeUpModalVisible}
+        closable={false}
+        maskClosable={false}
+        footer={[
+          <Button
+            key="ok"
+            type="primary"
+            onClick={handleTimeUpOk}
+            style={{
+              background: theme === 'sun' 
+                ? 'rgb(113, 179, 253)' 
+                : 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)',
+              borderColor: theme === 'sun' 
+                ? 'rgb(113, 179, 253)' 
+                : '#7228d9',
+              color: '#000',
+              border: 'none',
+              fontWeight: 600,
+              height: '40px',
+              padding: '0 24px',
+              fontSize: '15px',
+              borderRadius: '8px',
+            }}
+          >
+            OK
+          </Button>
+        ]}
+        title={
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+            <span style={{ fontSize: '24px' }}>Bạn đã hết giờ</span>
+          </div>
+        }
+        styles={{
+          body: {
+            padding: '24px',
+          }
+        }}
+      >
+        <div style={{ marginBottom: '8px', fontSize: '16px', lineHeight: 1.6 }}>
+          Bài làm của bạn đã được tự động nộp. Nhấn OK để quay lại danh sách Daily Challenge.
         </div>
       </Modal>
 
