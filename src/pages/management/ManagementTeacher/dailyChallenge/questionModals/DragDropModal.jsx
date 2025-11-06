@@ -1027,7 +1027,7 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 				}
 				// Update answer text in real-time (instant visual feedback)
 				answerText.textContent = newValue || '';
-				counter.textContent = `${newValue.length}/50`;
+				counter.textContent = `${newValue.length}/200`;
 
 				// Debounce state update to reduce re-renders
 				clearTimeout(inputTimeout);
@@ -1534,10 +1534,16 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 			return;
 		}
 
-		// Validate duplicate incorrect options
+		// Validate that at least one incorrect option is required
 		const incorrectTexts = incorrectOptions
 			.map(opt => (opt.text || '').toLowerCase().trim())
 			.filter(text => text);
+		if (incorrectTexts.length === 0) {
+			spaceToast.warning('Please add at least one incorrect option');
+			return;
+		}
+
+		// Validate duplicate incorrect options
 		const duplicateIncorrect = incorrectTexts.filter((text, index) => incorrectTexts.indexOf(text) !== index);
 		if (duplicateIncorrect.length > 0) {
 			spaceToast.warning('Cannot create duplicate incorrect options. Please ensure all incorrect options are unique.');
