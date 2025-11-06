@@ -10,6 +10,8 @@ import {
   Card,
   Tooltip,
   Divider,
+  DatePicker,
+  Pagination,
 } from "antd";
 import {
   ClockCircleOutlined,
@@ -115,7 +117,11 @@ const DailyChallengeSubmissionDetail = () => {
   // Other sections collapse states (default collapsed)
   const [isTeacherFeedbackCollapsed, setIsTeacherFeedbackCollapsed] = useState(true);
   
-  const [isAntiCheatCollapsed, setIsAntiCheatCollapsed] = useState(true);
+  const [isAntiCheatCollapsed, setIsAntiCheatCollapsed] = useState(false);
+  // Anti-cheat modal controls
+  const [antiCheatSelectedDate, setAntiCheatSelectedDate] = useState(null); // JS Date or null
+  const [antiCheatPage, setAntiCheatPage] = useState(1);
+  const [antiCheatPageSize, setAntiCheatPageSize] = useState(20);
   
   // Cache existing grading per submissionQuestionId
   const [gradingBySubmissionQuestionId, setGradingBySubmissionQuestionId] = useState({});
@@ -4207,28 +4213,6 @@ const DailyChallengeSubmissionDetail = () => {
               >
                 {(teacherFeedback && teacherFeedback.replace(/<[^>]*>/g,'').trim().length > 0) ? 'Edit Feedback' : 'Add Feedback'}
             </Button>
-              <Button
-                icon={<EyeOutlined />}
-                onClick={() => setAntiCheatModalVisible(true)}
-                disabled={!antiCheatData || !Array.isArray(antiCheatData.events) || antiCheatData.events.length === 0}
-                className={`create-button ${theme}-create-button`}
-                style={{
-                  height: '40px',
-                  borderRadius: '8px',
-                  fontWeight: 500,
-                  fontSize: '16px',
-                  padding: '0 24px',
-                  border: 'none',
-                  transition: 'all 0.3s ease',
-                  background: theme === 'sun'
-                    ? 'linear-gradient(135deg, #FFD36E, #FFB020)'
-                    : 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)',
-                  color: '#000000',
-                  boxShadow: theme === 'sun' ? '0 2px 8px rgba(255, 176, 32, 0.3)' : '0 2px 8px rgba(131, 119, 160, 0.3)'
-                }}
-              >
-                View Anti-Cheat Log
-              </Button>
           </div>
         </div>
       </nav>
@@ -4929,7 +4913,7 @@ const DailyChallengeSubmissionDetail = () => {
                       <Divider style={{ margin: '16px 0' }} />
 
                       {/* Anti-Cheat Summary */}
-                      {false && antiCheatData && (
+                      {antiCheatData && (
                         <div style={{ marginBottom: '16px' }}>
                           <div 
                             onClick={() => setIsAntiCheatCollapsed(!isAntiCheatCollapsed)}
@@ -5035,10 +5019,36 @@ const DailyChallengeSubmissionDetail = () => {
                             </Typography.Text>
                           </div>
                         </div>
+
+                        {/* View Detail Button */}
+                        <div style={{ display: 'flex', justifyContent: 'center', marginTop: '8px' }}>
+                          <Button
+                            icon={<EyeOutlined />}
+                            onClick={() => setAntiCheatModalVisible(true)}
+                            disabled={!antiCheatData || !Array.isArray(antiCheatData.events) || antiCheatData.events.length === 0}
+                            className={`create-button ${theme}-create-button`}
+                            style={{
+                              height: '36px',
+                              borderRadius: '8px',
+                              fontWeight: 500,
+                              fontSize: '14px',
+                              padding: '0 18px',
+                              border: 'none',
+                              transition: 'all 0.3s ease',
+                              background: theme === 'sun'
+                                ? 'linear-gradient(135deg, #FFD36E, #FFB020)'
+                                : 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)',
+                              color: '#000000',
+                              boxShadow: theme === 'sun' ? '0 2px 8px rgba(255, 176, 32, 0.3)' : '0 2px 8px rgba(131, 119, 160, 0.3)'
+                            }}
+                          >
+                            View detail
+                          </Button>
+                        </div>
                       </div>
 
-                      {/* Total Tab Blur Duration */}
-                      {antiCheatData.totalTabBlurDuration > 0 && (
+                      {/* Total Tab Blur Duration (hidden per new UI) */}
+                      {false && antiCheatData.totalTabBlurDuration > 0 && (
                         <div style={{ marginBottom: '12px', paddingBottom: '12px', borderBottom: '1px solid #f0f0f0' }}>
                           <Typography.Text style={{ fontSize: '12px', fontWeight: 400, color: theme === 'sun' ? '#666' : '#999', display: 'block', marginBottom: '4px' }}>
                             Total time away from tab
@@ -5050,8 +5060,8 @@ const DailyChallengeSubmissionDetail = () => {
                         </div>
                       )}
 
-                      {/* Activity Log */}
-                      {antiCheatData.events && antiCheatData.events.length > 0 && (
+                      {/* Activity Log (hidden in sidebar; open via modal) */}
+                      {false && antiCheatData.events && antiCheatData.events.length > 0 && (
                         <div style={{ marginTop: '12px' }}>
                           <Typography.Title level={5} style={{ marginTop: 0, marginBottom: '10px', fontSize: '14px', fontWeight: 600, textAlign: 'center', color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' }}>
                             ACTIVITY LOG
@@ -5460,12 +5470,35 @@ const DailyChallengeSubmissionDetail = () => {
           const logsFromState = Array.isArray(location?.state?.logs) ? location.state.logs : null;
           const events = logsFromState || (Array.isArray(antiCheatData?.events) ? antiCheatData.events : []);
           // Hide ANSWER_CHANGE from display and counts as requested
-          const visibleEvents = events.filter(e => e.event !== 'ANSWER_CHANGE');
-          // Compute totals from the provided events only
-          const totalTabSwitch = visibleEvents.filter(e => e.event === 'TAB_SWITCH' || e.event === 'TAB_BLUR').length;
-          const totalCopy = visibleEvents.filter(e => e.event === 'COPY' || e.event === 'COPY_ATTEMPT').length;
-          const totalPaste = visibleEvents.filter(e => e.event === 'PASTE' || e.event === 'PASTE_ATTEMPT').length;
-          const totalViolations = visibleEvents.length;
+          const baseVisibleEvents = events.filter(e => e.event !== 'ANSWER_CHANGE');
+
+          // Optional: filter by selected day
+          const isSameDay = (a, b) => {
+            if (!a || !b) return false;
+            try {
+              const da = new Date(a);
+              return (
+                da.getFullYear() === b.getFullYear() &&
+                da.getMonth() === b.getMonth() &&
+                da.getDate() === b.getDate()
+              );
+            } catch { return false; }
+          };
+
+          const filteredEvents = antiCheatSelectedDate
+            ? baseVisibleEvents.filter(ev => isSameDay(ev.timestamp, antiCheatSelectedDate))
+            : baseVisibleEvents;
+
+          // Compute totals from filtered events only
+          const totalTabSwitch = filteredEvents.filter(e => e.event === 'TAB_SWITCH' || e.event === 'TAB_BLUR').length;
+          const totalCopy = filteredEvents.filter(e => e.event === 'COPY' || e.event === 'COPY_ATTEMPT').length;
+          const totalPaste = filteredEvents.filter(e => e.event === 'PASTE' || e.event === 'PASTE_ATTEMPT').length;
+          const totalViolations = filteredEvents.length;
+
+          // Pagination
+          const startIdx = (antiCheatPage - 1) * antiCheatPageSize;
+          const endIdx = startIdx + antiCheatPageSize;
+          const pagedEvents = filteredEvents.slice(startIdx, endIdx);
           const formatTimestamp = (timestamp) => {
             if (!timestamp) return '';
             try {
@@ -5527,71 +5560,25 @@ const DailyChallengeSubmissionDetail = () => {
             }}>
               <div style={{
                 display: 'grid',
-                gridTemplateColumns: 'minmax(280px, 36%) 1fr',
-                gap: '16px',
+                gridTemplateColumns: '1fr',
+                gap: '12px',
                 alignItems: 'start'
               }}>
-                {/* Left column: summary */}
+                {/* Filters on top */}
                 <div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '12px', marginBottom: '16px' }}>
-                    {[{
-                      value: totalViolations,
-                      label: 'Total violations',
-                      color: '#1890ff',
-                      icon: <ClockCircleOutlined />,
-                      bg: 'linear-gradient(135deg, #EAF2FF 0%, #F6FAFF 100%)',
-                      border: 'rgba(24, 144, 255, 0.25)'
-                    },{
-                      value: totalTabSwitch,
-                      label: 'Tab switch',
-                      color: '#FB8C00',
-                      icon: <SwapOutlined />,
-                      bg: 'linear-gradient(135deg, #FFF4E5 0%, #FFF9F0 100%)',
-                      border: 'rgba(251, 140, 0, 0.25)'
-                    },{
-                      value: totalCopy,
-                      label: 'Copy attempts',
-                      color: '#E53935',
-                      icon: <CopyOutlined />,
-                      bg: 'linear-gradient(135deg, #FFEAEA 0%, #FFF6F6 100%)',
-                      border: 'rgba(229, 57, 53, 0.25)'
-                    },{
-                      value: totalPaste,
-                      label: 'Paste attempts',
-                      color: '#8E24AA',
-                      icon: <FileTextOutlined />,
-                      bg: 'linear-gradient(135deg, #F7E9FF 0%, #FBF3FF 100%)',
-                      border: 'rgba(142, 36, 170, 0.25)'
-                    }].map((c, i) => (
-                      <div key={i} style={{
-                        padding: '14px 16px',
-                        background: c.bg,
-                        borderRadius: '12px',
-                        border: `1px solid ${c.border}`,
-                        boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '12px'
-                      }}>
-                        <div style={{
-                          width: '38px', height: '38px', borderRadius: '50%',
-                          background: '#fff', border: `2px solid ${c.color}`, color: c.color,
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          boxShadow: '0 2px 6px rgba(0,0,0,0.06)'
-                        }}>
-                          {c.icon}
-                        </div>
-                        <div style={{ flex: 1 }}>
-                          <div style={{ fontSize: '12px', color: theme === 'sun' ? '#5f6368' : '#bbb' }}>{c.label}</div>
-                          <div style={{ fontSize: '22px', fontWeight: 700, color: c.color, lineHeight: 1, marginTop: '2px' }}>{c.value}</div>
-                        </div>
-                      </div>
-                    ))}
+                  {/* Filters */}
+                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '12px' }}>
+                    <div style={{ fontSize: '12px', color: theme === 'sun' ? '#5f6368' : '#bbb' }}>Filter by day:</div>
+                    <DatePicker
+                      allowClear
+                      onChange={(d) => { setAntiCheatSelectedDate(d ? d.toDate() : null); setAntiCheatPage(1); }}
+                      style={{ width: 220 }}
+                    />
                   </div>
-                  {/* No time-away summary for this data shape */}
+                  {/* Summary removed; sidebar already shows metrics */}
                 </div>
 
-                {/* Right column: activity log */}
+                {/* Activity log full-width with pagination */}
                 <div>
                   <div style={{
                     maxHeight: '520px', overflowY: 'auto', padding: '10px',
@@ -5599,10 +5586,10 @@ const DailyChallengeSubmissionDetail = () => {
                     borderRadius: '12px', border: `1px solid ${theme === 'sun' ? 'rgba(24, 144, 255, 0.15)' : 'rgba(255, 255, 255, 0.1)'}`,
                     boxShadow: '0 2px 8px rgba(0,0,0,0.05)'
                   }}>
-                    {visibleEvents.length === 0 ? (
+                    {pagedEvents.length === 0 ? (
                       <Typography.Text style={{ fontStyle: 'italic', fontSize: '14px' }}>No anti-cheat events recorded.</Typography.Text>
                     ) : (
-                      visibleEvents.map((ev, idx) => {
+                      pagedEvents.map((ev, idx) => {
                         const meta = getEventMeta(ev.event);
                         const desc = ev.content || meta.label;
                         const questionSuffix = ev.questionId ? ` (Q${ev.questionId})` : '';
@@ -5676,6 +5663,18 @@ const DailyChallengeSubmissionDetail = () => {
                         );
                       })
                     )}
+                  </div>
+                  {/* Pagination */}
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '10px' }}>
+                    <Pagination
+                      total={filteredEvents.length}
+                      current={antiCheatPage}
+                      pageSize={antiCheatPageSize}
+                      showSizeChanger
+                      pageSizeOptions={[10,20,50,100]}
+                      onChange={(page, size) => { setAntiCheatPage(page); setAntiCheatPageSize(size); }}
+                      showTotal={(total) => `${total} events`}
+                    />
                   </div>
                 </div>
               </div>
