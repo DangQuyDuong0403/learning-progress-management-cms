@@ -1800,6 +1800,8 @@
     "challengeTitle": "Challenge Title",
     "type": "Type",
     "completion": "Completion",
+    "closed": "Closed",
+    "inProgress": "In Progress",
     "startDateRequired": "Start date is required",
     "endDateRequired": "End date is required",
     "endDateMustBeAfterStartDate": "End date must be after start date",
