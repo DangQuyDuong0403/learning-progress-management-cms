@@ -16,12 +16,13 @@ import {
   DownloadOutlined,
   UploadOutlined,
   FilterOutlined,
+  EyeOutlined,
 } from "@ant-design/icons";
 import ThemedLayoutWithSidebar from "../../../../component/ThemedLayout";
 import ThemedLayoutNoSidebar from "../../../../component/teacherlayout/ThemedLayout";
 import LoadingWithEffect from "../../../../component/spinner/LoadingWithEffect";
 import "./ClassStudent.css";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useSelector } from "react-redux";
 import { spaceToast } from "../../../../component/SpaceToastify";
@@ -30,6 +31,7 @@ import { useClassMenu } from "../../../../contexts/ClassMenuContext";
 import classManagementApi from "../../../../apis/backend/classManagement";
 import studentManagementApi from "../../../../apis/backend/StudentManagement";
 import usePageTitle from "../../../../hooks/usePageTitle";
+import ROUTER_PAGE from "../../../../constants/router";
 
 const { Title } = Typography;
 const { Option } = Select;
@@ -38,6 +40,7 @@ const { Option } = Select;
 
 const ClassStudent = () => {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   // State for available students from API
   const [availableStudents, setAvailableStudents] = useState([]);
   const [searchLoading, setSearchLoading] = useState(false);
@@ -274,7 +277,7 @@ const ClassStudent = () => {
     } catch (error) {
       console.error('Error fetching available students:', error);
       setAvailableStudents([]);
-      spaceToast.error(error.response?.data?.error || error.message);
+      spaceToast.error(error.response?.data?.error);
     } finally {
       setSearchLoading(false);
     }
@@ -517,7 +520,7 @@ const ClassStudent = () => {
         status: error.response?.status,
         data: error.response?.data
       });
-      spaceToast.error(error.response?.data?.error || error.message || 'Validation failed');
+      spaceToast.error(error.response?.data?.error);
       setImportModal(prev => ({ ...prev, validating: false }));
     }
   };
@@ -568,7 +571,7 @@ const ClassStudent = () => {
       }
     } catch (error) {
       console.error('Error importing class students:', error);
-      spaceToast.error(error.response?.data?.error || error.message || t('classDetail.importError'));
+      spaceToast.error(error.response?.data?.error);
     } finally {
       setImportModal(prev => ({ ...prev, uploading: false }));
     }
@@ -676,7 +679,7 @@ const ClassStudent = () => {
       
     } catch (error) {
    
-      spaceToast.error(error.response?.data?.error || error.message || 'Failed to download template');
+      spaceToast.error(error.response?.data?.error);
       setTemplateLoading(false);
     }
   };
@@ -733,7 +736,7 @@ const ClassStudent = () => {
       setIsExportModalVisible(false);
     } catch (error) {
       console.error('Error exporting class students:', error);
-      spaceToast.error(error.response?.data?.error || error.response?.data?.message || error.message || t('classDetail.exportError'));
+      spaceToast.error(error.response?.data?.error);
     } finally {
       setExportLoading(false);
     }
@@ -875,6 +878,19 @@ const ClassStudent = () => {
     }
   };
 
+  const handleViewProfile = (student) => {
+    const studentId = student?.userId || student?.id;
+    if (!studentId) return;
+    // Route based on role
+    let path = ROUTER_PAGE.MANAGER_STUDENT_PROFILE.replace(':id', String(studentId));
+    if (userRole === 'teacher') {
+      path = ROUTER_PAGE.TEACHER_STUDENT_PROFILE.replace(':id', String(studentId));
+    } else if (userRole === 'teaching_assistant') {
+      path = ROUTER_PAGE.TEACHING_ASSISTANT_STUDENT_PROFILE.replace(':id', String(studentId));
+    }
+    navigate(path);
+  };
+
   const columns = [
     {
       title: t('classDetail.no'),
@@ -889,8 +905,12 @@ const ClassStudent = () => {
       title: t('classDetail.fullName'),
       dataIndex: "fullName",
       key: "fullName",
-      render: (text) => (
-        <div className="student-name-text" style={{ fontSize: "20px" }}>
+      render: (text, record) => (
+        <div
+          className="student-name-text"
+          style={{ fontSize: "20px"}}
+          title={t('classDetail.viewProfile')}
+        >
           {text || '-'}
         </div>
       ),
@@ -917,25 +937,31 @@ const ClassStudent = () => {
         </span>
       ),
     },
-    ...(isReadOnly ? [] : [
-      {
-        title: t('classDetail.actions'),
-        key: "actions",
-        width: 100,
-        render: (_, record) => (
-          <Space>
+    {
+      title: t('classDetail.actions'),
+      key: "actions",
+      width: 140, 
+      render: (_, record) => (
+        <Space>
+          <Button
+            type="text"
+            icon={<EyeOutlined style={{ fontSize: '24px' }} />}
+            onClick={() => handleViewProfile(record)}
+            title={t('classDetail.viewProfile')}
+          />
+          {!isReadOnly && (
             <Button
               type="text"
-              icon={<DeleteOutlined style={{ fontSize: '18px' }} />}
+              icon={<DeleteOutlined style={{ fontSize: '24px' }} />}
               onClick={() => handleDeleteStudent(record)}
               style={{ color: "#ff4d4f" }}
               title={t('classDetail.removeFromClass')}
               loading={buttonLoading.delete}
             />
-          </Space>
-        ),
-      },
-    ]),
+          )}
+        </Space>
+      ),
+    },
   ];
 
   if (loading) {

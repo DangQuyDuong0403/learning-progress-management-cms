@@ -13,6 +13,7 @@ import {
   CheckOutlined,
 } from "@ant-design/icons";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
+import { useSelector } from "react-redux";
 import ThemedLayout from "../../../component/teacherlayout/ThemedLayout";
 import LoadingWithEffect from "../../../component/spinner/LoadingWithEffect";
 import "../ManagementTeacher/dailyChallenge/DailyChallengeContent.css";
@@ -6446,6 +6447,9 @@ const StudentDailyChallengeTake = () => {
   const location = useLocation();
   const { id } = useParams();
   const { theme } = useTheme();
+  const userRole = useSelector((state) => state.auth?.user?.role);
+  const isTestTaker = userRole === 'test_taker' || userRole === 'TEST_TAKER';
+  const routePrefix = isTestTaker ? '/test-taker' : '/student';
   
   const [loading, setLoading] = useState(false);
   const [questions, setQuestions] = useState([]);
@@ -6687,10 +6691,6 @@ const StudentDailyChallengeTake = () => {
 
     const event = eventMap[logEntry.type] || logEntry.type?.toUpperCase() || 'UNKNOWN';
     const timestamp = logEntry.timestamp || new Date().toISOString();
-    // Only get questionId for copy/paste events, tab_switch uses 0
-    const questionId = (logEntry.type === 'tab_switch') 
-      ? 0 
-      : (logEntry.questionId || getCurrentQuestionId());
 
     let oldValue = [];
     let newValue = [];
@@ -6711,16 +6711,18 @@ const StudentDailyChallengeTake = () => {
       }
     }
 
+    // Ensure we never include questionId inside content either
+    const { questionId: _omitQuestionId, ...sanitizedLog } = logEntry || {};
+
     return {
       event,
       timestamp,
-      questionId,
       oldValue,
       newValue,
       durationMs: logEntry.durationMs || 0,
-      content: logEntry.message || JSON.stringify(logEntry)
+      content: logEntry.message || JSON.stringify(sanitizedLog)
     };
-  }, [getCurrentQuestionId, getSelectedText, getClipboardContent]);
+  }, [getSelectedText, getClipboardContent]);
 
   // Handle violation callback - first time show warning, second time onwards log and send
   const handleViolation = useCallback(async (logEntry) => {
@@ -6733,11 +6735,6 @@ const StudentDailyChallengeTake = () => {
     // Capture additional data for copy/paste
     let selectedText = '';
     let clipboardText = '';
-    // Only get questionId for copy/paste, not for tab_switch
-    const questionId = (violationType === 'copy' || violationType === 'paste') 
-      ? getCurrentQuestionId() 
-      : 0;
-
     if (violationType === 'copy') {
       // Use selectedText from logEntry if available (captured in useTestSecurity)
       // Otherwise try to get it again
@@ -6751,9 +6748,9 @@ const StudentDailyChallengeTake = () => {
     }
 
     // Enhance logEntry with captured data
+    const { questionId: _dropQId, ...restLog } = logEntry || {};
     const enhancedLogEntry = {
-      ...logEntry,
-      questionId,
+      ...restLog,
       selectedText,
       clipboardText
     };
@@ -6767,7 +6764,6 @@ const StudentDailyChallengeTake = () => {
         type: violationType,
         message: logEntry.message || 'Hành động không được phép đã được phát hiện',
         timestamp: logEntry.timestampDisplay || new Date().toLocaleString('vi-VN'),
-        questionId,
         oldValue: violationType === 'copy' ? (selectedText ? [selectedText] : []) : [],
         newValue: violationType === 'paste' ? (clipboardText ? [clipboardText] : []) : []
       });
@@ -6779,7 +6775,7 @@ const StudentDailyChallengeTake = () => {
         pendingLogsRef.current.push(apiLog);
       }
     }
-  }, [getCurrentQuestionId, getSelectedText, getClipboardContent, convertLogToApiFormat]);
+  }, [getSelectedText, getClipboardContent, convertLogToApiFormat]);
 
   // Initialize useTestSecurity hook
   useTestSecurity(
@@ -7811,9 +7807,14 @@ const StudentDailyChallengeTake = () => {
           currentSubmissionId = responseSubmissionId;
         }
     
-    // Navigate to class daily challenge page after short delay
+    // Navigate to class daily challenge list after short delay
     setTimeout(() => {
-      navigate('/student/classes/daily-challenges/81');
+      const resolvedClassId = location.state?.classId;
+      if (resolvedClassId) {
+        navigate(`${routePrefix}/classes/daily-challenges/${resolvedClassId}`);
+      } else {
+        navigate(`${routePrefix}/classes`);
+      }
     }, 1500);
       } 
     } catch (error) {
