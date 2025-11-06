@@ -338,7 +338,7 @@ const MultipleSelectModal = ({
 		};
 	}, []);
 
-	const handleSave = () => {
+    const handleSave = async () => {
 		// Validate question content: allow text or image-only
 		if (!hasContent(editorData)) {
 			spaceToast.warning('Please add question content (text or image)');
@@ -391,19 +391,8 @@ const MultipleSelectModal = ({
 				.join(', '),
 		};
 
-		onSave(newQuestionData);
-		
-		// Reset form after save
-		const colors = getOptionColors();
-		setEditorData('');
-		setOptions([
-			{ id: 1, text: '', isCorrect: false, color: colors[0] },
-			{ id: 2, text: '', isCorrect: false, color: colors[1] },
-			{ id: 3, text: '', isCorrect: false, color: colors[2] },
-			{ id: 4, text: '', isCorrect: false, color: colors[3] },
-		]);
-		setHoveredOption(null);
-        setWeight(1);
+		// Await parent save to keep inputs intact while saving
+		await onSave(newQuestionData);
 	};
 
 	const handleCancel = () => {

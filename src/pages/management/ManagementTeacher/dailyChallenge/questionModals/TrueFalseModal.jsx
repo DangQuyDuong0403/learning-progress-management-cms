@@ -199,7 +199,7 @@ const TrueFalseModal = ({ visible, onCancel, onSave, questionData = null, saving
 		};
 	}, []);
 
-	const handleSave = () => {
+const handleSave = async () => {
 		// Validate question content: allow text or image-only
 		if (!hasContent(editorData)) {
 			spaceToast.warning('Please add question content (text or image)');
@@ -224,10 +224,8 @@ const TrueFalseModal = ({ visible, onCancel, onSave, questionData = null, saving
 			correctAnswer: correctAnswer,
 		};
 
-		onSave(newQuestionData);
-		setEditorData('');
-		setCorrectAnswer(null);
-        setWeight(1);
+		// Await parent save to keep inputs intact while saving
+		await onSave(newQuestionData);
 	};
 
 	const handleCancel = () => {
