@@ -193,7 +193,7 @@ const AIGenerateListening = () => {
         description: prompt,
       };
       // Note: backend API for generation currently accepts description only; audio is required by UI but not sent
-      const res = await dailyChallengeApi.generateAIQuestions(payload);
+      const res = await dailyChallengeApi.generateContentBasedQuestions(payload);
       let rawList = [];
       if (Array.isArray(res)) rawList = res;
       else if (Array.isArray(res?.questions)) rawList = res.questions;

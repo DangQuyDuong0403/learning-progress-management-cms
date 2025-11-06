@@ -233,7 +233,7 @@ const AIGenerateReading = () => {
         numberOfParagraphs: Number(numParagraphs) || 1,
         description: passagePrompt,
       };
-      const res = await dailyChallengeApi.generateReadingPassage(payload);
+      const res = await dailyChallengeApi.generateContentBasedQuestions(payload);
       // Flexible extraction
       const data = res?.data?.data || res?.data || res;
       const text = data?.passage || data?.content || data?.sectionsContent || '';
