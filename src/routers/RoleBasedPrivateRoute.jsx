@@ -14,6 +14,8 @@ const RoleBasedPrivateRoute = ({ children, requiredRoles = [], allowedPaths = []
   const [isValidating, setIsValidating] = useState(true);
   const [isAuthorized, setIsAuthorized] = useState(false);
   const hasNotifiedRef = useRef(false);
+  const [isRefreshingToken, setIsRefreshingToken] = useState(false);
+  const refreshTimerRef = useRef(null);
 
   const notifyOnce = (message, storageKey = 'rbpr_last_toast') => {
     try {
@@ -47,6 +49,32 @@ const RoleBasedPrivateRoute = ({ children, requiredRoles = [], allowedPaths = []
         // 2. Lấy token từ localStorage
         const accessToken = localStorage.getItem('accessToken');
         if (!accessToken || accessToken === 'undefined' || accessToken === 'null') {
+          const refreshToken = localStorage.getItem('refreshToken');
+          if (sessionStorage.getItem('auth_refresh_in_progress') || (refreshToken && refreshToken !== 'undefined' && refreshToken !== 'null')) {
+            setIsRefreshingToken(true);
+            if (!refreshTimerRef.current) {
+              refreshTimerRef.current = setInterval(() => {
+                const newToken = localStorage.getItem('accessToken');
+                if (newToken && newToken !== 'undefined' && newToken !== 'null') {
+                  clearInterval(refreshTimerRef.current);
+                  refreshTimerRef.current = null;
+                  setIsRefreshingToken(false);
+                  setIsValidating(true);
+                } else {
+                  const stillRefreshing = sessionStorage.getItem('auth_refresh_in_progress');
+                  const stillHasRefresh = localStorage.getItem('refreshToken');
+                  if (!stillRefreshing && (!stillHasRefresh || stillHasRefresh === 'undefined' || stillHasRefresh === 'null')) {
+                    clearInterval(refreshTimerRef.current);
+                    refreshTimerRef.current = null;
+                    setIsRefreshingToken(false);
+                    setIsAuthorized(false);
+                    setIsValidating(false);
+                  }
+                }
+              }, 200);
+            }
+            return;
+          }
           setIsAuthorized(false);
           setIsValidating(false);
           return;
@@ -55,6 +83,33 @@ const RoleBasedPrivateRoute = ({ children, requiredRoles = [], allowedPaths = []
         // 3. Decode JWT token để kiểm tra thông tin
         const tokenPayload = decodeJWT(accessToken);
         if (!tokenPayload) {
+          const refreshToken = localStorage.getItem('refreshToken');
+          if (sessionStorage.getItem('auth_refresh_in_progress') || (refreshToken && refreshToken !== 'undefined' && refreshToken !== 'null')) {
+            setIsRefreshingToken(true);
+            if (!refreshTimerRef.current) {
+              refreshTimerRef.current = setInterval(() => {
+                const newToken = localStorage.getItem('accessToken');
+                const refreshedPayload = newToken ? decodeJWT(newToken) : null;
+                if (refreshedPayload) {
+                  clearInterval(refreshTimerRef.current);
+                  refreshTimerRef.current = null;
+                  setIsRefreshingToken(false);
+                  setIsValidating(true);
+                } else {
+                  const stillRefreshing = sessionStorage.getItem('auth_refresh_in_progress');
+                  const stillHasRefresh = localStorage.getItem('refreshToken');
+                  if (!stillRefreshing && (!stillHasRefresh || stillHasRefresh === 'undefined' || stillHasRefresh === 'null')) {
+                    clearInterval(refreshTimerRef.current);
+                    refreshTimerRef.current = null;
+                    setIsRefreshingToken(false);
+                    setIsAuthorized(false);
+                    setIsValidating(false);
+                  }
+                }
+              }, 200);
+            }
+            return;
+          }
           console.error('Invalid JWT token');
           setIsAuthorized(false);
           setIsValidating(false);
@@ -132,7 +187,16 @@ const RoleBasedPrivateRoute = ({ children, requiredRoles = [], allowedPaths = []
   }, [location.pathname]);
 
   // Hiển thị loading trong khi validate
-  if (isValidating) {
+  useEffect(() => {
+    return () => {
+      if (refreshTimerRef.current) {
+        clearInterval(refreshTimerRef.current);
+        refreshTimerRef.current = null;
+      }
+    };
+  }, []);
+
+  if (isValidating || isRefreshingToken) {
     return (
       <div style={{ 
         display: 'flex', 
