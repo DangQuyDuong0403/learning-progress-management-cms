@@ -1,12 +1,19 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTheme } from '../../contexts/ThemeContext';
 import TestSecurityMonitor from '../../component/TestSecurityMonitor';
+import {
+  getDeviceFingerprint,
+  saveFingerprintHash,
+  getSavedFingerprintHash,
+  compareFingerprints,
+} from '../../utils/fingerprintUtils';
 import './TestDemo.css';
 
 /**
  * Trang demo để test tính năng giám sát test của học sinh
  * - Test tab switching detection
  * - Test copy/paste blocking
+ * - Test device fingerprinting để phát hiện thi hộ
  * - Xem log và thống kê
  */
 const TestDemo = () => {
@@ -14,6 +21,14 @@ const TestDemo = () => {
   const [testStarted, setTestStarted] = useState(false);
   const [testAnswer, setTestAnswer] = useState('');
   const [monitoringEnabled, setMonitoringEnabled] = useState(false);
+  
+  // Fingerprint states
+  const [fingerprint, setFingerprint] = useState(null);
+  const [fingerprintHash, setFingerprintHash] = useState('');
+  const [savedFingerprint, setSavedFingerprint] = useState(null);
+  const [fingerprintMatch, setFingerprintMatch] = useState(null);
+  const [fingerprintLoading, setFingerprintLoading] = useState(false);
+  const [fingerprintDetails, setFingerprintDetails] = useState(false);
 
   const handleStartTest = () => {
     setTestStarted(true);
@@ -31,6 +46,60 @@ const TestDemo = () => {
     // Có thể gửi log này lên server nếu cần
   };
 
+  // Load fingerprint khi component mount
+  useEffect(() => {
+    loadFingerprint();
+  }, []);
+
+  // Load và so sánh fingerprint
+  const loadFingerprint = async () => {
+    setFingerprintLoading(true);
+    try {
+      const saved = getSavedFingerprintHash();
+      setSavedFingerprint(saved);
+
+      const deviceData = await getDeviceFingerprint();
+      setFingerprint(deviceData.fingerprint);
+      setFingerprintHash(deviceData.hash);
+
+      if (saved) {
+        const match = compareFingerprints(deviceData.hash, saved.hash);
+        setFingerprintMatch(match);
+        
+        if (!match) {
+          console.warn('⚠️ Fingerprint không khớp! Có thể có người khác đang sử dụng tài khoản này.');
+        }
+      }
+    } catch (error) {
+      console.error('Lỗi khi load fingerprint:', error);
+    } finally {
+      setFingerprintLoading(false);
+    }
+  };
+
+  // Lưu fingerprint hiện tại
+  const handleSaveFingerprint = () => {
+    if (fingerprintHash) {
+      const success = saveFingerprintHash(fingerprintHash);
+      if (success) {
+        alert('✅ Đã lưu fingerprint thành công!');
+        loadFingerprint();
+      } else {
+        alert('❌ Lỗi khi lưu fingerprint!');
+      }
+    }
+  };
+
+  // Xóa fingerprint đã lưu
+  const handleClearFingerprint = () => {
+    if (window.confirm('Bạn có chắc muốn xóa fingerprint đã lưu?')) {
+      localStorage.removeItem('deviceFingerprint');
+      setSavedFingerprint(null);
+      setFingerprintMatch(null);
+      alert('✅ Đã xóa fingerprint!');
+    }
+  };
+
   return (
     <div className={`test-demo-page ${!isSunTheme ? 'dark-theme' : ''}`}>
       <div className="test-demo-container">
@@ -42,11 +111,201 @@ const TestDemo = () => {
         </div>
 
         <div className="test-demo-content">
+          {/* Fingerprint Panel */}
+          <div className="fingerprint-panel">
+            <h2>🔐 Device Fingerprint (Chống thi hộ)</h2>
+            <div className="fingerprint-content">
+              {fingerprintLoading ? (
+                <div className="fingerprint-loading">Đang thu thập fingerprint...</div>
+              ) : (
+                <>
+                  <div className="fingerprint-status">
+                    {fingerprint && (
+                      <div className="fingerprint-ip-section">
+                        <label>IP Address:</label>
+                        <div className="ip-display">
+                          <span className={fingerprint.ipAddress === 'unknown' ? 'ip-unknown' : 'ip-address'}>
+                            {fingerprint.ipAddress}
+                          </span>
+                          {fingerprint.ipAddress !== 'unknown' && (
+                            <button 
+                              className="btn-copy-ip"
+                              onClick={() => {
+                                navigator.clipboard.writeText(fingerprint.ipAddress);
+                                alert('✅ Đã copy IP!');
+                              }}
+                              title="Copy IP"
+                            >
+                              📋
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                    <div className="fingerprint-hash-section">
+                      <label>Fingerprint Hash:</label>
+                      <div className="hash-display">
+                        <code>{fingerprintHash || 'Chưa có'}</code>
+                        <button 
+                          className="btn-copy-hash"
+                          onClick={() => {
+                            navigator.clipboard.writeText(fingerprintHash);
+                            alert('✅ Đã copy hash!');
+                          }}
+                          title="Copy hash"
+                        >
+                          📋
+                        </button>
+                      </div>
+                    </div>
+
+                    {savedFingerprint && (
+                      <div className="fingerprint-comparison">
+                        <div className={`match-status ${fingerprintMatch ? 'match' : 'mismatch'}`}>
+                          {fingerprintMatch ? (
+                            <>
+                              <span className="status-icon">✅</span>
+                              <span>Fingerprint khớp với thiết bị đã lưu</span>
+                            </>
+                          ) : (
+                            <>
+                              <span className="status-icon">⚠️</span>
+                              <span>Fingerprint KHÔNG khớp! Có thể có người khác đang dùng tài khoản này</span>
+                            </>
+                          )}
+                        </div>
+                        <div className="saved-info">
+                          <small>
+                            Đã lưu lúc: {new Date(savedFingerprint.timestamp).toLocaleString('vi-VN')}
+                          </small>
+                        </div>
+                      </div>
+                    )}
+
+                    {!savedFingerprint && (
+                      <div className="fingerprint-save-prompt">
+                        <p>Chưa có fingerprint được lưu. Nhấn nút bên dưới để lưu fingerprint của thiết bị này.</p>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="fingerprint-actions">
+                    <button 
+                      className="btn-save-fingerprint"
+                      onClick={handleSaveFingerprint}
+                      disabled={!fingerprintHash}
+                    >
+                      💾 Lưu Fingerprint
+                    </button>
+                    <button 
+                      className="btn-refresh-fingerprint"
+                      onClick={loadFingerprint}
+                    >
+                      🔄 Làm mới
+                    </button>
+                    {savedFingerprint && (
+                      <button 
+                        className="btn-clear-fingerprint"
+                        onClick={handleClearFingerprint}
+                      >
+                        🗑️ Xóa Fingerprint đã lưu
+                      </button>
+                    )}
+                    <button 
+                      className="btn-toggle-details"
+                      onClick={() => setFingerprintDetails(!fingerprintDetails)}
+                    >
+                      {fingerprintDetails ? '👁️‍🗨️ Ẩn chi tiết' : '🔍 Xem chi tiết'}
+                    </button>
+                  </div>
+
+                  {fingerprintDetails && fingerprint && (
+                    <div className="fingerprint-details">
+                      <h3>Chi tiết Fingerprint:</h3>
+                      <div className="details-grid">
+                        <div className="detail-item">
+                          <strong>IP Address:</strong>
+                          <span className={fingerprint.ipAddress === 'unknown' ? 'ip-unknown' : 'ip-address'}>
+                            {fingerprint.ipAddress}
+                            {fingerprint.ipAddress !== 'unknown' && (
+                              <button 
+                                className="btn-copy-ip"
+                                onClick={() => {
+                                  navigator.clipboard.writeText(fingerprint.ipAddress);
+                                  alert('✅ Đã copy IP!');
+                                }}
+                                title="Copy IP"
+                              >
+                                📋
+                              </button>
+                            )}
+                          </span>
+                        </div>
+                        <div className="detail-item">
+                          <strong>User Agent:</strong>
+                          <span>{fingerprint.userAgent}</span>
+                        </div>
+                        <div className="detail-item">
+                          <strong>Platform:</strong>
+                          <span>{fingerprint.platform}</span>
+                        </div>
+                        <div className="detail-item">
+                          <strong>Language:</strong>
+                          <span>{fingerprint.language}</span>
+                        </div>
+                        <div className="detail-item">
+                          <strong>Screen:</strong>
+                          <span>{fingerprint.screenWidth}x{fingerprint.screenHeight} ({fingerprint.screenColorDepth}bit)</span>
+                        </div>
+                        <div className="detail-item">
+                          <strong>Device Pixel Ratio:</strong>
+                          <span>{fingerprint.devicePixelRatio}</span>
+                        </div>
+                        <div className="detail-item">
+                          <strong>Timezone:</strong>
+                          <span>{fingerprint.timezone} (UTC{fingerprint.timezoneOffset > 0 ? '-' : '+'}{Math.abs(fingerprint.timezoneOffset / 60)})</span>
+                        </div>
+                        <div className="detail-item">
+                          <strong>Hardware:</strong>
+                          <span>CPU cores: {fingerprint.hardwareConcurrency}, Memory: {fingerprint.deviceMemory || 'N/A'}GB</span>
+                        </div>
+                        <div className="detail-item">
+                          <strong>WebGL Vendor:</strong>
+                          <span>{fingerprint.webglVendor || 'N/A'}</span>
+                        </div>
+                        <div className="detail-item">
+                          <strong>WebGL Renderer:</strong>
+                          <span>{fingerprint.webglRenderer || 'N/A'}</span>
+                        </div>
+                        <div className="detail-item">
+                          <strong>Canvas Hash:</strong>
+                          <span className="hash-preview">{fingerprint.canvasHash ? fingerprint.canvasHash.substring(0, 50) + '...' : 'N/A'}</span>
+                        </div>
+                        <div className="detail-item">
+                          <strong>Audio Hash:</strong>
+                          <span>{fingerprint.audioHash || 'N/A'}</span>
+                        </div>
+                        <div className="detail-item">
+                          <strong>Storage Support:</strong>
+                          <span>LocalStorage: {fingerprint.localStorage ? '✅' : '❌'}, SessionStorage: {fingerprint.sessionStorage ? '✅' : '❌'}, IndexedDB: {fingerprint.indexedDB ? '✅' : '❌'}</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+
           <div className="test-info-panel">
             <h2>Hướng dẫn Test</h2>
             <div className="instructions">
               <p><strong>Để test các tính năng giám sát:</strong></p>
               <ol>
+                <li>
+                  <strong>Test Fingerprint:</strong> Xem fingerprint của thiết bị, lưu và so sánh. 
+                  Thử mở trên thiết bị/browser khác để xem sự khác biệt.
+                </li>
                 <li>Nhấn nút "Bắt đầu Test" để bắt đầu giám sát</li>
                 <li>
                   <strong>Test chuyển tab:</strong> Chuyển sang tab khác hoặc ứng dụng khác, 
@@ -169,6 +428,11 @@ const TestDemo = () => {
                   <div className="feature-icon">📊</div>
                   <h3>Thống kê & Log</h3>
                   <p>Hiển thị thống kê real-time và log chi tiết tất cả các vi phạm</p>
+                </div>
+                <div className="feature-card">
+                  <div className="feature-icon">🔐</div>
+                  <h3>Device Fingerprint</h3>
+                  <p>Thu thập và hash thông tin thiết bị để phát hiện và ngăn chặn việc thi hộ</p>
                 </div>
               </div>
             </div>

@@ -61,6 +61,15 @@ const DailyChallengeSubmissionDetail = () => {
   const userRole = useSelector((state) => state.auth?.user?.role);
   const normalizedRole = (userRole || '').toString().toLowerCase();
   const isStudent = normalizedRole === 'student' || normalizedRole === 'test_taker';
+  const getFeedbackRouteBase = useCallback(() => {
+    if (isStudent) {
+      return normalizedRole === 'test_taker' ? '/test-taker' : '/student';
+    }
+    if (normalizedRole === 'teaching_assistant') {
+      return '/teaching-assistant';
+    }
+    return '/teacher';
+  }, [isStudent, normalizedRole]);
   
   // Set page title
   usePageTitle('Daily Challenge - Submission Detail');
@@ -157,8 +166,7 @@ const DailyChallengeSubmissionDetail = () => {
   const handleOpenAddFeedback = (sectionId, type = 'question') => {
     // Navigate to AI feedback grading page for section type
     if (type === 'section') {
-      const isTA = typeof window !== 'undefined' && window.location && /teaching-assistant/.test(window.location.pathname);
-      const base = isTA ? '/teaching-assistant' : '/teacher';
+      const base = getFeedbackRouteBase();
       // Build prefill data from the already loaded submission (to show immediately on the left panel)
       const locateSection = (sid) => {
         const findIn = (arr) => (arr || []).find((s) => s.id === sid);
@@ -214,6 +222,7 @@ const DailyChallengeSubmissionDetail = () => {
       if (classId) qs.set('classId', classId);
       if (className) qs.set('className', className);
       if (challengeName) qs.set('challengeName', challengeName);
+      if (isStudent) qs.set('viewOnly', 'true');
       const suffix = qs.toString() ? `?${qs.toString()}` : '';
       
       navigate(`${path}${suffix}`, {
@@ -226,6 +235,7 @@ const DailyChallengeSubmissionDetail = () => {
           className,
           challengeName,
           studentName,
+          viewOnly: isStudent,
         },
       });
       return;
@@ -241,8 +251,7 @@ const DailyChallengeSubmissionDetail = () => {
   const handleOpenEditFeedback = (sectionIdParam, type = 'question') => {
     // For section (writing/speaking), navigate to grading page with existing data
     if (type === 'section') {
-      const isTA = typeof window !== 'undefined' && window.location && /teaching-assistant/.test(window.location.pathname);
-      const base = isTA ? '/teaching-assistant' : '/teacher';
+      const base = getFeedbackRouteBase();
       const findIn = (arr) => (arr || []).find((s) => s.id === sectionIdParam);
       const w = findIn(fakeData?.writingSections);
       const s = findIn(fakeData?.speakingSections);
@@ -301,6 +310,7 @@ const DailyChallengeSubmissionDetail = () => {
       if (classId) qs.set('classId', classId);
       if (className) qs.set('className', className);
       if (challengeName) qs.set('challengeName', challengeName);
+      if (isStudent) qs.set('viewOnly', 'true');
       const suffix = qs.toString() ? `?${qs.toString()}` : '';
       
       navigate(`${path}${suffix}`, { 
@@ -313,6 +323,7 @@ const DailyChallengeSubmissionDetail = () => {
           className,
           challengeName,
           studentName,
+          viewOnly: isStudent,
         } 
       });
       return;
@@ -990,35 +1001,32 @@ const DailyChallengeSubmissionDetail = () => {
             });
             studentAnswersMap[q.questionId] = dragDropAnswers;
           } else if (q.questionType === 'REARRANGE') {
-            // For rearrange, map positionId to item value (not id) in order
-            // submittedContent has positionId like "0", "1", "2" (order index)
-            // and id/value like "hôm nay", "ăn", "gì" (the actual text)
-            const submittedOrder = submittedContent
-              ?.filter(s => s.positionId != null && (s.value || s.id))
-              .sort((a, b) => {
-                // Sort by positionId (numeric order: "0", "1", "2" or "pos_xxx")
-                const posA = String(a.positionId || '').replace(/^pos_/, '');
-                const posB = String(b.positionId || '').replace(/^pos_/, '');
-                // Try numeric comparison first
-                const numA = Number(posA);
-                const numB = Number(posB);
-                if (!isNaN(numA) && !isNaN(numB)) {
-                  return numA - numB;
-                }
-                // Fallback to string comparison
-                return posA.localeCompare(posB);
-              })
-              .map(s => {
-                // submittedContent.id or value is the actual text (e.g., "hôm nay", "ăn", "gì")
-                // Find the option in questionContent that matches by value
-                const submittedValue = s.value || s.id || '';
-                const matchedItem = questionContent.find(item => 
-                  item.value === submittedValue || item.id === submittedValue
-                );
-                // Return the value from matchedItem (preferred) or use submitted value
-                return matchedItem?.value || submittedValue;
-              })
-              .filter(Boolean) || [];
+            // Build lookup: positionId (without prefix) -> value from student's submission
+            const byPosId = {};
+            (submittedContent || []).forEach(s => {
+              const submittedValue = s?.value || s?.id || '';
+              const rawPos = String(s?.positionId || '').replace(/^pos_/, '');
+              if (!rawPos) return;
+              // Normalize to the option's value using questionContent when possible
+              const matchedItem = questionContent.find(item => 
+                item.positionId?.replace(/^pos_/, '') === rawPos ||
+                item.value === submittedValue || item.id === submittedValue
+              );
+              const finalValue = matchedItem?.value || submittedValue;
+              if (finalValue) byPosId[rawPos] = finalValue;
+            });
+
+            // Respect the order of placeholders as they appear in the question text
+            const positionIdsInOrder = [];
+            const regex = /\[\[pos_(.*?)\]\]/g; let match;
+            const qText = (q && q.questionText) ? q.questionText : '';
+            while ((match = regex.exec(qText)) !== null) {
+              positionIdsInOrder.push(match[1]);
+            }
+            const submittedOrder = positionIdsInOrder
+              .map(pid => byPosId[pid])
+              .filter(Boolean);
+
             studentAnswersMap[q.questionId] = submittedOrder;
           } else if (q.questionType === 'REWRITE') {
             // For rewrite, store student's answer text
@@ -2304,7 +2312,7 @@ const DailyChallengeSubmissionDetail = () => {
               ({sectionTotals.received} / {sectionTotals.total} points)
             </Typography.Text>
           </div>
-          {!isStudent && (
+          {!isStudent ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
               {!hasExistingGradingForSection(section.id) ? (
                 <>
@@ -2328,6 +2336,16 @@ const DailyChallengeSubmissionDetail = () => {
                 </>
               )}
             </div>
+          ) : (
+            hasExistingGradingForSection(section.id) && (
+              <Button
+                size="small"
+                onClick={() => handleOpenEditFeedback(section.id, 'section')}
+                style={{ fontSize: '13px', height: '28px', padding: '0 12px' }}
+              >
+                View Feedback
+              </Button>
+            )
           )}
         </div>
         <div style={{ display: 'flex', gap: '24px', minHeight: '600px', position: 'relative' }}>
@@ -2657,7 +2675,7 @@ const DailyChallengeSubmissionDetail = () => {
               ({sectionTotals.received} / {sectionTotals.total} points)
             </Typography.Text>
           </div>
-          {!isStudent && (
+          {!isStudent ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
               {!hasExistingGradingForSection(section.id) ? (
                 <>
@@ -2689,6 +2707,20 @@ const DailyChallengeSubmissionDetail = () => {
                 </>
               )}
             </div>
+          ) : (
+            hasExistingGradingForSection(section.id) && (
+              <Button
+                size="small"
+                onClick={() => handleOpenEditFeedback(section.id, 'section')}
+                style={{
+                  fontSize: '13px',
+                  height: '28px',
+                  padding: '0 12px'
+                }}
+              >
+                View Feedback
+              </Button>
+            )
           )}
         </div>
         <div style={{ display: 'flex', gap: '24px', alignItems: hasAudio ? 'flex-start' : 'stretch', minHeight: hasAudio ? '500px' : '400px' }}>
@@ -4995,8 +5027,7 @@ const DailyChallengeSubmissionDetail = () => {
                           </div>
                         </div>
 
-                        {/* View Detail Button (hidden for students/test takers) */}
-                        {!isStudent && (
+                        {/* View Detail Button */}
                         <div style={{ display: 'flex', justifyContent: 'center', marginTop: '8px' }}>
                           <Button
                             icon={<EyeOutlined />}
@@ -5021,7 +5052,6 @@ const DailyChallengeSubmissionDetail = () => {
                             View detail
                           </Button>
                         </div>
-                        )}
                       </div>
 
                       {/* Total Tab Blur Duration (hidden per new UI) */}
@@ -5416,7 +5446,6 @@ const DailyChallengeSubmissionDetail = () => {
       </Modal>
 
       {/* Anti-Cheat Log Modal */}
-      {!isStudent && (
       <Modal
         title={
           <div
@@ -5431,7 +5460,7 @@ const DailyChallengeSubmissionDetail = () => {
             Anti-Cheat Log
           </div>
         }
-        open={antiCheatModalVisible && !isStudent}
+        open={antiCheatModalVisible}
         centered
         onCancel={() => setAntiCheatModalVisible(false)}
         width={860}
@@ -5650,7 +5679,6 @@ const DailyChallengeSubmissionDetail = () => {
           );
         })()}
       </Modal>
-      )}
 
       {/* Score Modal */}
       <Modal

@@ -65,6 +65,7 @@ export default function Login() {
 		if (response.data.mustChangePassword) {
 			// Show security message for password change
 			// Redirect to reset password page
+			spaceToast.info("You must change your password before accessing this area");
 			setTimeout(() => {
 				navigate('/reset-password');
 			}, 2000);

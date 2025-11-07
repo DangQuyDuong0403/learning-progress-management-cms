@@ -651,7 +651,6 @@ const StudentDailyChallengeList = () => {
             {status === 'DRAFT' && renderStartLikeButton('Edit answer')}
             {status === 'SUBMITTED' && renderStartLikeButton('View answer')}
             {status === 'GRADED' && renderViewResultButton('View result')}
-            {!status && renderStartLikeButton(t('dailyChallenge.startChallenge', 'Start Challenge'))}
           </Space>
         );
       },

@@ -42,12 +42,19 @@ axiosClient.interceptors.request.use(
 
 // Biến để tránh vòng lặp vô hạn khi refresh token
 let isRefreshing = false;
+let refreshPromise = null;
 let failedQueue = [];
 
 // Hàm để reset trạng thái refresh token
 const resetRefreshState = () => {
 	isRefreshing = false;
+	refreshPromise = null;
 	failedQueue = [];
+	try {
+		sessionStorage.removeItem('auth_refresh_in_progress');
+	} catch (err) {
+		console.warn('Unable to clear refresh marker:', err);
+	}
 	console.log('🔄 Reset refresh state');
 };
 
@@ -115,21 +122,27 @@ axiosClient.interceptors.response.use(
 				return Promise.reject(error);
 			}
 			
-			if (isRefreshing) {
+		if (isRefreshing) {
 				console.log('⏳ Token refresh already in progress, queuing request');
-				// Nếu đang refresh token, thêm request vào queue
-				return new Promise((resolve, reject) => {
-					failedQueue.push({ resolve, reject });
-				}).then(accessToken => {
-					originalRequest.headers.Authorization = `Bearer ${accessToken}`;
-					return axiosClient(originalRequest);
-				}).catch(err => {
-					return Promise.reject(err);
-				});
+			// Nếu đang refresh token, thêm request vào queue
+			return new Promise((resolve, reject) => {
+				failedQueue.push({ resolve, reject });
+			}).then(accessToken => {
+				originalRequest._retry = true;
+				originalRequest.headers.Authorization = `Bearer ${accessToken}`;
+				return axiosClient(originalRequest);
+			}).catch(err => {
+				return Promise.reject(err);
+			});
 			}
 
 			originalRequest._retry = true;
 			isRefreshing = true;
+			try {
+				sessionStorage.setItem('auth_refresh_in_progress', '1');
+			} catch (markerError) {
+				console.warn('Unable to set refresh marker:', markerError);
+			}
 
 			const refreshTokenValue = localStorage.getItem('refreshToken');
 			
@@ -137,10 +150,21 @@ axiosClient.interceptors.response.use(
 				try {
 					console.log('🔄 Attempting to refresh token...');
 					console.log('🔄 RefreshToken value:', refreshTokenValue);
-					const response = await authApi.refreshToken(refreshTokenValue);
+
+					if (!refreshPromise) {
+						refreshPromise = authApi.refreshToken(refreshTokenValue);
+					}
+
+					const response = await refreshPromise;
 					console.log('✅ Token refresh successful:', response);
 					
-					const { accessToken, refreshToken: newRefreshToken } = response;
+					const payload = response?.data ?? response;
+					const tokenBundle = payload?.data ?? payload;
+					const { accessToken, refreshToken: newRefreshToken } = tokenBundle || {};
+					
+					if (!accessToken) {
+						throw new Error('Refresh token response missing accessToken');
+					}
 					
 					// Cập nhật cả accessToken và refreshToken mới
 					localStorage.setItem('accessToken', accessToken);
@@ -177,7 +201,6 @@ axiosClient.interceptors.response.use(
 					}
 					return Promise.reject(refreshError);
 				} finally {
-					isRefreshing = false;
 					// Reset trạng thái để tránh stuck
 					resetRefreshState();
 				}
