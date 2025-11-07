@@ -122,7 +122,9 @@ const SectionQuestionItem = ({ question, index, theme, sectionScore }) => {
   };
 
   // Initialize availableItems for drag and drop questions
-  useEffect(() => {
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+// eslint-disable-next-line react-hooks/exhaustive-deps
+useEffect(() => {
     if (question.questions) {
       setAvailableItems(prev => {
         const newItems = { ...prev };
@@ -577,6 +579,10 @@ const SectionQuestionItem = ({ question, index, theme, sectionScore }) => {
                     })()
                   ) : q.type === 'DROPDOWN' ? (
                     // Dropdown
+                    (() => {
+                      console.log('🟠 SectionQuestionItem - DROPDOWN detected - q.id:', q.id, 'q.type:', q.type, 'q.questionType:', q.questionType);
+                      return null;
+                    })() ||
                     <div style={{ 
                       marginBottom: '16px',
                       fontSize: '15px', 
@@ -593,6 +599,50 @@ const SectionQuestionItem = ({ question, index, theme, sectionScore }) => {
                           const parts = [];
                           const regex = /\[\[pos_(.*?)\]\]/g;
                           let last = 0; let match; let idx = 0;
+                          const contentData = q.content?.data || [];
+                          const hasPositionIds = contentData.some(opt => opt.positionId);
+                          
+                          // Pre-calculate group keys if no positionId
+                          let groupKeysInOrder = [];
+                          if (!hasPositionIds) {
+                            const groupKeyFromId = (id) => {
+                              if (!id || typeof id !== 'string') return id;
+                              const m = id.match(/^([^_]+?\d+)/);
+                              return (m && m[1]) || id.split('_')[0] || id;
+                            };
+                            const extractNumber = (groupKey) => {
+                              if (!groupKey) return 0;
+                              const match = groupKey.match(/(\d+)$/);
+                              return match ? parseInt(match[1], 10) : 0;
+                            };
+                            const seen = new Set();
+                            const groupKeyMap = new Map();
+                            for (let i = 0; i < contentData.length; i++) {
+                              const item = contentData[i];
+                              if (!item || !item.id) continue;
+                              const gk = groupKeyFromId(item.id);
+                              if (gk && !seen.has(gk)) {
+                                seen.add(gk);
+                                groupKeyMap.set(gk, i);
+                                groupKeysInOrder.push(gk);
+                              }
+                            }
+                            groupKeysInOrder.sort((a, b) => {
+                              const numA = extractNumber(a);
+                              const numB = extractNumber(b);
+                              if (numA !== numB) return numA - numB;
+                              return (groupKeyMap.get(a) || 0) - (groupKeyMap.get(b) || 0);
+                            });
+                          }
+                          
+                          // Collect all placeholders first
+                          const allMatches = [];
+                          let tempMatch;
+                          const tempRegex = /\[\[pos_(.*?)\]\]/g;
+                          while ((tempMatch = tempRegex.exec(text)) !== null) {
+                            allMatches.push(tempMatch[1]);
+                          }
+                          
                           while ((match = regex.exec(text)) !== null) {
                             if (match.index > last) {
                             parts.push(
@@ -604,17 +654,33 @@ const SectionQuestionItem = ({ question, index, theme, sectionScore }) => {
                               );
                             }
                             const positionId = match[1];
-                            const contentData = q.content?.data || [];
-                            // Check if any options have positionId
-                            const hasPositionIds = contentData.some(opt => opt.positionId);
-                            // If options have positionId, filter by positionId; otherwise use all options
-                            const optionsForPosition = hasPositionIds
-                              ? contentData.filter(opt => {
-                                  const optPosId = String(opt.positionId || '');
-                                  const matchPosId = String(positionId);
-                                  return optPosId === matchPosId;
-                                })
-                              : contentData;
+                            const currentPlaceholderIndex = allMatches.indexOf(positionId);
+                            
+                            // Filter options
+                            let optionsForPosition = [];
+                            if (hasPositionIds) {
+                              optionsForPosition = contentData.filter(opt => {
+                                const optPosId = String(opt.positionId || '');
+                                const matchPosId = String(positionId);
+                                return optPosId === matchPosId;
+                              });
+                            } else {
+                              const groupKeyFromId = (id) => {
+                                if (!id || typeof id !== 'string') return id;
+                                const m = id.match(/^([^_]+?\d+)/);
+                                return (m && m[1]) || id.split('_')[0] || id;
+                              };
+                              const groupKeyForThisPos = groupKeysInOrder[currentPlaceholderIndex];
+                              if (groupKeyForThisPos) {
+                                optionsForPosition = contentData.filter(item => {
+                                  if (!item || !item.id) return false;
+                                  const itemGroupKey = groupKeyFromId(item.id);
+                                  return itemGroupKey === groupKeyForThisPos;
+                                });
+                              } else {
+                                optionsForPosition = contentData;
+                              }
+                            }
                             parts.push(
                             <select
                                 key={`dd_${q.id}_${idx++}`}
@@ -2002,6 +2068,10 @@ const ListeningSectionItem = ({ question, index, theme, sectionScore }) => {
                     border: `2px solid ${theme === 'sun' ? '#1890ff' : '#8B5CF6'}`
                   }}>
                     {/* Question Types - mirrored from Reading */}
+                    {(() => {
+                      console.log('🟣 ListeningSectionItem - Checking DROPDOWN - q.id:', q.id, 'q.type:', q.type, 'q.questionType:', q.questionType);
+                      return null;
+                    })()}
                     {q.type === 'DROPDOWN' ? (
                       <div style={{ 
                         marginBottom: '16px',
@@ -2019,30 +2089,71 @@ const ListeningSectionItem = ({ question, index, theme, sectionScore }) => {
                             const parts = [];
                             const regex = /\[\[pos_(.*?)\]\]/g;
                             let last = 0; let match; let idx = 0;
+                            const contentData = q.content?.data || [];
+                            const hasPositionIds = contentData.some(opt => opt.positionId);
+                            
+                            // Pre-calculate group keys if no positionId
+                            let groupKeysInOrder = [];
+                            if (!hasPositionIds) {
+                              const groupKeyFromId = (id) => {
+                                if (!id || typeof id !== 'string') return id;
+                                const m = id.match(/^([^_]+?\d+)/);
+                                return (m && m[1]) || id.split('_')[0] || id;
+                              };
+                              const extractNumber = (groupKey) => {
+                                if (!groupKey) return 0;
+                                const match = groupKey.match(/(\d+)$/);
+                                return match ? parseInt(match[1], 10) : 0;
+                              };
+                              const seen = new Set();
+                              const groupKeyMap = new Map();
+                              for (let i = 0; i < contentData.length; i++) {
+                                const item = contentData[i];
+                                if (!item || !item.id) continue;
+                                const gk = groupKeyFromId(item.id);
+                                if (gk && !seen.has(gk)) {
+                                  seen.add(gk);
+                                  groupKeyMap.set(gk, i);
+                                  groupKeysInOrder.push(gk);
+                                }
+                              }
+                              groupKeysInOrder.sort((a, b) => {
+                                const numA = extractNumber(a);
+                                const numB = extractNumber(b);
+                                if (numA !== numB) return numA - numB;
+                                return (groupKeyMap.get(a) || 0) - (groupKeyMap.get(b) || 0);
+                              });
+                            }
+                            
+                            // Collect all placeholders first
+                            const allMatches = [];
+                            let tempMatch;
+                            const tempRegex = /\[\[pos_(.*?)\]\]/g;
+                            while ((tempMatch = tempRegex.exec(text)) !== null) {
+                              allMatches.push(tempMatch[1]);
+                            }
+                            
                             while ((match = regex.exec(text)) !== null) {
                               if (match.index > last) parts.push(text.slice(last, match.index));
                               const positionId = match[1];
-                              const contentData = q.content?.data || [];
-                              // Prefer explicit mapping when provided
-                              const hasPositionIds = contentData.some(opt => opt.positionId);
-                              let optionsForPosition;
+                              const currentPlaceholderIndex = allMatches.indexOf(positionId);
+                              
+                              // Filter options
+                              let optionsForPosition = [];
                               if (hasPositionIds) {
                                 optionsForPosition = contentData.filter(opt => String(opt.positionId || '') === String(positionId));
                               } else {
-                                // Fallback: infer groups by option id prefix (e.g., opt1, opt1_1 belong to group 'opt1')
                                 const groupKeyFromId = (id) => {
                                   if (!id || typeof id !== 'string') return id;
-                                  const m = id.match(/^([^_]+?\d+)/); // take prefix with first number, before underscore
+                                  const m = id.match(/^([^_]+?\d+)/);
                                   return (m && m[1]) || id.split('_')[0] || id;
                                 };
-                                const groupKeysInOrder = [];
-                                const seen = new Set();
-                                for (const item of contentData) {
-                                  const gk = groupKeyFromId(item.id);
-                                  if (!seen.has(gk)) { seen.add(gk); groupKeysInOrder.push(gk); }
+                                const groupKeyForThisPos = groupKeysInOrder[currentPlaceholderIndex];
+                                if (groupKeyForThisPos) {
+                                  optionsForPosition = contentData.filter(item => groupKeyFromId(item.id) === groupKeyForThisPos);
+                                } else {
+                                  optionsForPosition = contentData;
                                 }
-                                const groupKeyForThisPos = groupKeysInOrder[idx] || groupKeysInOrder[0];
-                                optionsForPosition = contentData.filter(item => groupKeyFromId(item.id) === groupKeyForThisPos);
                               }
                               parts.push(
                               <select
@@ -4952,11 +5063,16 @@ const TrueFalseContainer = ({ theme, data }) => {
 };
 // Dropdown Container Component
 const DropdownContainer = ({ theme, data }) => {
+  console.log('🔵 DropdownContainer RENDERED - Question ID:', data?.id, 'Type:', data?.type);
+  
   const registerAnswerCollector = useContext(AnswerCollectionContext);
   const registerAnswerRestorer = useContext(AnswerRestorationContext);
   const [selectedAnswers, setSelectedAnswers] = React.useState({});
   const questionText = data?.questionText || data?.question || 'Choose the correct words to complete the sentence:';
   const contentData = Array.isArray(data?.content?.data) ? data.content.data : [];
+  
+  console.log('🔵 DropdownContainer - Content Data:', contentData);
+  console.log('🔵 DropdownContainer - Question Text:', questionText);
   
   // Register answer collector
   React.useEffect(() => {
@@ -5071,12 +5187,72 @@ const DropdownContainer = ({ theme, data }) => {
           }}
         >
           {(() => {
+            console.log('🟢 IIFE STARTED - Question ID:', data?.id);
             const text = questionText || data?.questionText || data?.question || '';
             const parts = [];
             const regex = /\[\[pos_(.*?)\]\]/g;
             let lastIndex = 0;
             let match;
             let partIndex = 0;
+            console.log('🟢 IIFE - Text:', text);
+
+            // Check if options have positionId field
+            const hasPositionIds = contentData.some(it => it.positionId);
+            
+            // Pre-calculate group keys in order if options don't have positionId
+            let groupKeysInOrder = [];
+            if (!hasPositionIds) {
+              const groupKeyFromId = (id) => {
+                if (!id || typeof id !== 'string') return id;
+                // Extract prefix with number (e.g., "opt1" from "opt1_1" or "opt1")
+                const m = id.match(/^([^_]+?\d+)/);
+                return (m && m[1]) || id.split('_')[0] || id;
+              };
+              const extractNumber = (groupKey) => {
+                if (!groupKey) return 0;
+                const match = groupKey.match(/(\d+)$/);
+                return match ? parseInt(match[1], 10) : 0;
+              };
+              
+              const seen = new Set();
+              const groupKeyMap = new Map();
+              
+              // Process contentData in order to preserve group order
+              for (let i = 0; i < contentData.length; i++) {
+                const item = contentData[i];
+                if (!item || !item.id) continue;
+                const gk = groupKeyFromId(item.id);
+                if (gk && !seen.has(gk)) {
+                  seen.add(gk);
+                  groupKeyMap.set(gk, i);
+                  groupKeysInOrder.push(gk);
+                }
+              }
+              
+              // Sort groupKeysInOrder by the number in the key (opt1, opt2, opt3...) to ensure correct order
+              groupKeysInOrder.sort((a, b) => {
+                const numA = extractNumber(a);
+                const numB = extractNumber(b);
+                if (numA !== numB) return numA - numB;
+                return (groupKeyMap.get(a) || 0) - (groupKeyMap.get(b) || 0);
+              });
+            }
+
+            // First, collect all placeholders to know how many we have
+            const allMatches = [];
+            let tempMatch;
+            const tempRegex = /\[\[pos_(.*?)\]\]/g;
+            while ((tempMatch = tempRegex.exec(text)) !== null) {
+              allMatches.push(tempMatch[1]); 
+            }
+            
+            console.log('=== DropdownContainer DEBUG ===');
+            console.log('Question ID:', data?.id);
+            console.log('Question Text:', text);
+            console.log('All placeholders found:', allMatches);
+            console.log('Content Data IDs:', contentData.map(i => i?.id));
+            console.log('Group Keys In Order:', groupKeysInOrder);
+            console.log('Has Position IDs:', hasPositionIds);
 
             while ((match = regex.exec(text)) !== null) {
               // Add text before the placeholder
@@ -5090,29 +5266,79 @@ const DropdownContainer = ({ theme, data }) => {
               }
 
               // Add dropdown for this position
-              const positionIdNum = match[1]; // Extract number from [[pos_1]] -> "1"
-              const positionId = `pos_${positionIdNum}`; // Convert to "pos_1" to match data format
+              const positionIdNum = match[1]; 
+              const positionId = `pos_${positionIdNum}`;
               
-              // Check if any options have positionId
-              const hasPositionIds = contentData.some(it => it.positionId);
+              // Find the index of this placeholder in allMatches
+              const currentPlaceholderIndex = allMatches.indexOf(positionIdNum);
               
-              // If options have positionId, filter by positionId; otherwise use all options
-              const opts = hasPositionIds
-                ? contentData
-                    .filter(it => {
-                      const itPosId = String(it.positionId || '');
-                      const matchPosId = String(positionId);
-                      return itPosId === matchPosId;
+              console.log(`\n--- Processing Placeholder ${currentPlaceholderIndex} ---`);
+              console.log('Position ID Num:', positionIdNum);
+              console.log('Current Placeholder Index:', currentPlaceholderIndex);
+              console.log('All Matches Array:', allMatches);
+              
+              // Filter options based on positionId or ID pattern
+              let opts = [];
+              if (hasPositionIds) {
+                opts = contentData
+                  .filter(it => {
+                    const itPosId = String(it.positionId || '');
+                    const matchPosId = String(positionIdNum);
+                    return itPosId === matchPosId;
+                  })
+                  .map(it => it.value || it.text || '')
+                  .filter(Boolean);
+              } else {
+                // Map placeholder index with option groups by order
+                const groupKeyFromId = (id) => {
+                  if (!id || typeof id !== 'string') return id;
+                  const m = id.match(/^([^_]+?\d+)/);
+                  return (m && m[1]) || id.split('_')[0] || id;
+                };
+                
+                // Use currentPlaceholderIndex to get the corresponding group key
+                const groupKeyForThisPos = groupKeysInOrder[currentPlaceholderIndex];
+                
+                console.log('Group Key For This Pos:', groupKeyForThisPos);
+                console.log('Group Keys In Order Length:', groupKeysInOrder.length);
+                console.log('Available Group Keys:', groupKeysInOrder);
+                
+                if (groupKeyForThisPos) {
+                  const allItemGroupKeys = contentData.map(item => ({
+                    id: item.id,
+                    groupKey: groupKeyFromId(item.id)
+                  }));
+                  console.log('All Items with Group Keys:', allItemGroupKeys);
+                  
+                  opts = contentData
+                    .filter(item => {
+                      if (!item || !item.id) return false;
+                      const itemGroupKey = groupKeyFromId(item.id);
+                      const matches = itemGroupKey === groupKeyForThisPos;
+                      if (matches) {
+                        console.log(`  ✓ MATCH: ${item.id} -> groupKey: ${itemGroupKey} === ${groupKeyForThisPos}`);
+                      }
+                      return matches;
                     })
                     .map(it => it.value || it.text || '')
-                    .filter(Boolean)
-                : contentData
+                    .filter(Boolean);
+                  
+                  console.log('Filtered Options:', opts);
+                } else {
+                  console.warn('⚠️ NO GROUP KEY FOUND! Using all options');
+                  opts = contentData
                     .map(it => it.value || it.text || '')
                     .filter(Boolean);
+                }
+              }
+              
+              console.log('Final Options Count:', opts.length);
+              console.log('--- End Placeholder ---\n');
 
               parts.push(
                 <select
-                  key={`select-${partIndex++}`}
+                  key={`select-${data?.id || 'q'}-${positionId}-${partIndex}`}
+                  id={`select-${data?.id || 'q'}-${positionId}-${partIndex}`}
                   value={selectedAnswers[positionId] || ''}
                   onChange={(e) => handleDropdownChange(positionId, e.target.value)}
                   style={{
@@ -5146,13 +5372,14 @@ const DropdownContainer = ({ theme, data }) => {
                     Select
                   </option>
                   {opts.map((opt, idx) => (
-                    <option key={idx} value={opt}>
+                    <option key={`opt-${positionId}-${idx}-${opt}`} value={opt}>
                       {opt}
                     </option>
                   ))}
                 </select>
               );
 
+              partIndex++;
               lastIndex = match.index + match[0].length;
             }
 
@@ -6498,6 +6725,74 @@ const StudentDailyChallengeTake = () => {
   const violationCountRef = useRef(new Map()); // Track violation count per type: { 'tab_switch': 1, 'copy': 0, ... }
   const pendingLogsRef = useRef([]); // Store logs that need to be sent to backend
   const [isAntiCheatEnabled, setIsAntiCheatEnabled] = useState(false);
+
+  const extractSubmissionList = useCallback((response) => {
+    if (!response) return [];
+    if (Array.isArray(response)) return response;
+    const dataLayer = response.data !== undefined ? response.data : response;
+    if (Array.isArray(dataLayer)) return dataLayer;
+    if (Array.isArray(dataLayer?.content)) return dataLayer.content;
+    if (Array.isArray(dataLayer?.data?.content)) return dataLayer.data.content;
+    if (Array.isArray(dataLayer?.data)) return dataLayer.data;
+    if (Array.isArray(response?.content)) return response.content;
+    return [];
+  }, []);
+
+  const pickSubmissionMeta = useCallback((submissions, challengeIdParam) => {
+    if (!Array.isArray(submissions) || submissions.length === 0) return null;
+
+    const parsedChallengeId = challengeIdParam != null ? parseInt(challengeIdParam, 10) : NaN;
+    const hasValidChallengeId = !Number.isNaN(parsedChallengeId);
+
+    const targetSubmission = hasValidChallengeId
+      ? submissions.find((entry) => {
+          const entryChallengeId =
+            entry.challengeId ??
+            entry.dailyChallengeId ??
+            entry.challenge?.id ??
+            entry.challengeID ??
+            entry.challenge_id;
+
+          if (entryChallengeId === null || entryChallengeId === undefined) return false;
+          const numericChallengeId = parseInt(entryChallengeId, 10);
+          if (Number.isNaN(numericChallengeId)) return false;
+          return numericChallengeId === parsedChallengeId;
+        }) || submissions[0]
+      : submissions[0];
+
+    if (!targetSubmission) return null;
+
+    const submissionId =
+      targetSubmission.submissionId ??
+      targetSubmission.submissionChallengeId ??
+      targetSubmission.id ??
+      targetSubmission.submission_id ??
+      null;
+
+    if (!submissionId) return null;
+
+    const status =
+      targetSubmission.status ??
+      targetSubmission.submissionStatus ??
+      targetSubmission.state ??
+      null;
+
+    return { id: submissionId, status };
+  }, []);
+
+  const fetchSubmissionMeta = useCallback(
+    async (challengeIdParam) => {
+      try {
+        const response = await dailyChallengeApi.getChallengeSubmissions(challengeIdParam, { page: 0, size: 1 });
+        const submissions = extractSubmissionList(response);
+        return pickSubmissionMeta(submissions, challengeIdParam) || null;
+      } catch (error) {
+        console.error('Error fetching submission metadata:', error);
+        return null;
+      }
+    },
+    [extractSubmissionList, pickSubmissionMeta]
+  );
   const [allowTranslateOnScreen, setAllowTranslateOnScreen] = useState(false);
   const [allowShuffleQuestions, setAllowShuffleQuestions] = useState(false);
   
@@ -6792,7 +7087,7 @@ const StudentDailyChallengeTake = () => {
     // Get challenge type from location state
     const type = location.state?.challengeType || location.state?.type || 'GV';
     const challengeId = id; // Get challengeId from URL params
-    const submissionStatus = location.state?.submissionStatus; // Get submission status
+    const submissionStatusFromState = location.state?.submissionStatus || null; // Get submission status
     
     if (!challengeId) {
       spaceToast.error('Challenge ID is missing');
@@ -6806,10 +7101,6 @@ const StudentDailyChallengeTake = () => {
     const shuffleQuestion = !!location.state?.shuffleQuestion;
     setAllowTranslateOnScreen(translateOnScreen);
     setAllowShuffleQuestions(shuffleQuestion);
-    // Determine initial view-only mode from navigation state
-    if (submissionStatus === 'SUBMITTED' || submissionStatus === 'GRADED') {
-      setIsViewOnly(true);
-    }
     setChallengeInfo({
       challengeName: location.state?.challengeName || 'Daily Challenge',
       className: location.state?.lessonName || null,
@@ -6824,27 +7115,27 @@ const StudentDailyChallengeTake = () => {
     // Load data from API
     setLoading(true);
     
-    // First, try to get submissionId if not provided
-    const getSubmissionIdPromise = initialSubmissionId 
-      ? Promise.resolve({ data: { id: initialSubmissionId } })
-      : dailyChallengeApi.getChallengeSubmissions(challengeId, { page: 0, size: 1 })
-        .then((submissionsResponse) => {
-          if (submissionsResponse && submissionsResponse.success) {
-            const submissions = submissionsResponse.data?.content || submissionsResponse.data || [];
-            if (Array.isArray(submissions) && submissions.length > 0) {
-              const currentSubmission = submissions.find(sub => sub.challengeId === parseInt(challengeId)) || submissions[0];
-              return currentSubmission && currentSubmission.id ? { data: { id: currentSubmission.id } } : null;
-            }
-          }
-          return null;
-        });
+    // First, try to get submission metadata if not provided via navigation
+    const getSubmissionMetaPromise = initialSubmissionId
+      ? Promise.resolve({ id: initialSubmissionId, status: submissionStatusFromState || null })
+      : fetchSubmissionMeta(challengeId);
 
-    getSubmissionIdPromise
-      .then((submissionData) => {
-        const finalSubmissionId = submissionData?.data?.id || initialSubmissionId;
+    getSubmissionMetaPromise
+      .then((submissionMeta) => {
+        let finalSubmissionId = submissionMeta?.id || initialSubmissionId;
+        const resolvedStatusRaw = submissionMeta?.status || submissionStatusFromState || '';
+        const resolvedStatus = typeof resolvedStatusRaw === 'string' ? resolvedStatusRaw.toUpperCase() : '';
+        const statusRequiresViewOnly = resolvedStatus === 'SUBMITTED' || resolvedStatus === 'GRADED';
+        const effectiveViewOnly = statusRequiresViewOnly || !!isViewOnly;
+
+        if (statusRequiresViewOnly && !isViewOnly) {
+          setIsViewOnly(true);
+        }
         
         if (!finalSubmissionId) {
-          // If no submission exists yet, fall back to public sections API
+          // If no submission exists yet, load questions from public API
+          // Submission will be created automatically when user saves draft for the first time
+          // (Backend will create submission when submitDailyChallenge is called with challengeId)
           return dailyChallengeApi.getPublicSectionsByChallenge(challengeId, { page: 0, size: 100 })
             .then((sectionsResponse) => {
               if (sectionsResponse && sectionsResponse.success) {
@@ -6859,7 +7150,7 @@ const StudentDailyChallengeTake = () => {
                   return a;
                 };
                 const applyShuffle = (data) => {
-                  if (!allowShuffleQuestions || isViewOnly) return data;
+                  if (!allowShuffleQuestions || effectiveViewOnly) return data;
                   const newData = { ...data };
                   newData.questions = shuffle(data.questions || []);
                   newData.readingSections = (data.readingSections || []).map(sec => ({ ...sec, questions: shuffle(sec.questions || []) }));
@@ -6872,6 +7163,25 @@ const StudentDailyChallengeTake = () => {
                 setListeningSections(maybeShuffled.listeningSections);
                 setWritingSections(maybeShuffled.writingSections);
                 setSpeakingSections(maybeShuffled.speakingSections);
+                
+                // Build content lookup maps
+                const map = new Map();
+                const posMap = new Map();
+                const collect = (q) => {
+                  map.set(q.id, q.content?.data || []);
+                  const txt = q.questionText || q.question || '';
+                  const ids = [];
+                  const re = /\[\[pos_(.*?)\]\]/g; let m;
+                  while ((m = re.exec(txt)) !== null) ids.push(m[1]);
+                  if (ids.length > 0) posMap.set(q.id, ids);
+                };
+                (maybeShuffled.readingSections || []).forEach(sec => (sec.questions || []).forEach(collect));
+                (maybeShuffled.listeningSections || []).forEach(sec => (sec.questions || []).forEach(collect));
+                (maybeShuffled.questions || []).forEach(collect);
+                (maybeShuffled.writingSections || []).forEach(sec => { posMap.set(sec.id, []); map.set(sec.id, sec.content?.data || []); });
+                (maybeShuffled.speakingSections || []).forEach(sec => { posMap.set(sec.id, []); map.set(sec.id, sec.content?.data || []); });
+                contentDataByQuestionIdRef.current = map;
+                positionIdsByQuestionIdRef.current = posMap;
               }
               setLoading(false);
             });
@@ -6881,7 +7191,7 @@ const StudentDailyChallengeTake = () => {
         setSubmissionId(finalSubmissionId);
 
         // Fetch timing info and initialize countdown if applicable
-        if (finalSubmissionId && !isViewOnly) {
+        if (finalSubmissionId && !effectiveViewOnly) {
           dailyChallengeApi.getSubmissionChallengeInfo(finalSubmissionId)
             .then((infoResp) => {
               const info = infoResp?.data || infoResp?.data?.data || infoResp?.data; // support different wrappers
@@ -6917,8 +7227,8 @@ const StudentDailyChallengeTake = () => {
         
         // Determine which API to use based on submission status and challenge type
         // For WR and SP types with SUBMITTED status, use result API instead of draft API
-        const shouldUseResultAPI = (submissionStatus === 'SUBMITTED' || submissionStatus === 'GRADED') && (type === 'WR' || type === 'SP');
-        if (shouldUseResultAPI) setIsViewOnly(true);
+        const shouldUseResultAPI = (resolvedStatus === 'SUBMITTED' || resolvedStatus === 'GRADED') && (type === 'WR' || type === 'SP');
+        if (shouldUseResultAPI && !isViewOnly) setIsViewOnly(true);
         
         const apiCall = shouldUseResultAPI 
           ? dailyChallengeApi.getSubmissionResult(finalSubmissionId)
@@ -6944,7 +7254,7 @@ const StudentDailyChallengeTake = () => {
                     return a;
                   };
                   const applyShuffle = (data) => {
-                    if (!allowShuffleQuestions || isViewOnly) return data;
+                    if (!allowShuffleQuestions || effectiveViewOnly) return data;
                     const newData = { ...data };
                     newData.questions = shuffle(data.questions || []);
                     newData.readingSections = (data.readingSections || []).map(sec => ({ ...sec, questions: shuffle(sec.questions || []) }));
@@ -7021,7 +7331,7 @@ const StudentDailyChallengeTake = () => {
                     return a;
                   };
                   const applyShuffle = (data) => {
-                    if (!allowShuffleQuestions || isViewOnly) return data;
+                    if (!allowShuffleQuestions || effectiveViewOnly) return data;
                     const newData = { ...data };
                     newData.questions = shuffle(data.questions || []);
                     newData.readingSections = (data.readingSections || []).map(sec => ({ ...sec, questions: shuffle(sec.questions || []) }));
@@ -7130,19 +7440,13 @@ const StudentDailyChallengeTake = () => {
       let currentSubmissionId = submissionId;
       if (!currentSubmissionId) {
         try {
-          const submissionsResponse = await dailyChallengeApi.getChallengeSubmissions(id, { page: 0, size: 1 });
-          if (submissionsResponse && submissionsResponse.success) {
-            const submissions = submissionsResponse.data?.content || submissionsResponse.data || [];
-            if (Array.isArray(submissions) && submissions.length > 0) {
-              const currentSubmission = submissions.find(sub => sub.challengeId === parseInt(id)) || submissions[0];
-              if (currentSubmission && currentSubmission.id) {
-                currentSubmissionId = currentSubmission.id;
-                setSubmissionId(currentSubmissionId);
-              }
-            }
+          const submissionMeta = await fetchSubmissionMeta(id);
+          if (submissionMeta?.id) {
+            currentSubmissionId = submissionMeta.id;
+            setSubmissionId(currentSubmissionId);
           }
         } catch (e) {
-          // Silent fail – keep localStorage only
+          // Silent fail – keep local draft only
         }
       }
 
@@ -7710,25 +8014,19 @@ const StudentDailyChallengeTake = () => {
     
     if (!currentSubmissionId) {
       try {
-        // Try to get submission from API
-        const submissionsResponse = await dailyChallengeApi.getChallengeSubmissions(id, { page: 0, size: 1 });
-        if (submissionsResponse && submissionsResponse.success) {
-          const submissions = submissionsResponse.data?.content || submissionsResponse.data || [];
-          if (Array.isArray(submissions) && submissions.length > 0) {
-            const currentSubmission = submissions.find(sub => sub.challengeId === parseInt(id)) || submissions[0];
-            if (currentSubmission && currentSubmission.id) {
-              currentSubmissionId = currentSubmission.id;
-              setSubmissionId(currentSubmissionId);
-            }
-          }
+        const submissionMeta = await fetchSubmissionMeta(id);
+        if (submissionMeta?.id) {
+          currentSubmissionId = submissionMeta.id;
+          setSubmissionId(currentSubmissionId);
         }
       } catch (error) {
         console.error('Error fetching submission:', error);
       }
       
-      // If still no submission ID, show error
+      // If still no submission ID, show error with more context
       if (!currentSubmissionId) {
-        spaceToast.error('Submission ID is missing. Please refresh and try again.');
+        spaceToast.error('Không tìm thấy submission. Vui lòng refresh trang hoặc liên hệ admin nếu vấn đề vẫn tiếp tục.');
+        console.error('No submissionId found after retry. ChallengeId:', id);
         return;
       }
     }
@@ -7796,17 +8094,10 @@ const StudentDailyChallengeTake = () => {
     
     if (!currentSubmissionId) {
       try {
-        // Try to get submission from API
-        const submissionsResponse = await dailyChallengeApi.getChallengeSubmissions(id, { page: 0, size: 1 });
-        if (submissionsResponse && submissionsResponse.success) {
-          const submissions = submissionsResponse.data?.content || submissionsResponse.data || [];
-          if (Array.isArray(submissions) && submissions.length > 0) {
-            const currentSubmission = submissions.find(sub => sub.challengeId === parseInt(id)) || submissions[0];
-            if (currentSubmission && currentSubmission.id) {
-              currentSubmissionId = currentSubmission.id;
-              setSubmissionId(currentSubmissionId);
-            }
-          }
+        const submissionMeta = await fetchSubmissionMeta(id);
+        if (submissionMeta?.id) {
+          currentSubmissionId = submissionMeta.id;
+          setSubmissionId(currentSubmissionId);
         }
       } catch (error) {
         console.error('Error fetching submission:', error);
@@ -7873,17 +8164,11 @@ const StudentDailyChallengeTake = () => {
       let currentSubmissionId = submissionId;
       if (!currentSubmissionId) {
         try {
-          const submissionsResponse = await dailyChallengeApi.getChallengeSubmissions(id, { page: 0, size: 1 });
-          if (submissionsResponse && submissionsResponse.success) {
-            const submissions = submissionsResponse.data?.content || submissionsResponse.data || [];
-            if (Array.isArray(submissions) && submissions.length > 0) {
-              const currentSubmission = submissions.find(sub => sub.challengeId === parseInt(id)) || submissions[0];
-              if (currentSubmission && currentSubmission.id) {
-                currentSubmissionId = currentSubmission.id;
-                setSubmissionId(currentSubmissionId);
-              }
-            }
-          }
+        const submissionMeta = await fetchSubmissionMeta(id);
+        if (submissionMeta?.id) {
+          currentSubmissionId = submissionMeta.id;
+          setSubmissionId(currentSubmissionId);
+        }
         } catch {}
       }
       if (!currentSubmissionId) {
@@ -8269,9 +8554,15 @@ const StudentDailyChallengeTake = () => {
                     {(q.type === 'FILL_IN_THE_BLANK' || q.type === 'FILL_BLANK' || q.questionType === 'FILL_BLANK' || q.questionType === 'FILL_IN_THE_BLANK') && (
                       <FillBlankContainer theme={theme} data={q} />
                     )}
-                    {q.type === 'DROPDOWN' && (
-                      <DropdownContainer theme={theme} data={q} />
-                    )}
+                    {(() => {
+                      const isDropdown = q.type === 'DROPDOWN' || q.questionType === 'DROPDOWN';
+                      console.log('🟡 CHECKING DROPDOWN - q.id:', q.id, 'q.type:', q.type, 'q.questionType:', q.questionType, 'isDropdown:', isDropdown);
+                      if (isDropdown) {
+                        console.log('🟡 RENDERING DropdownContainer - q.id:', q.id);
+                        return <DropdownContainer theme={theme} data={q} />;
+                      }
+                      return null;
+                    })()}
                     {q.type === 'DRAG_AND_DROP' && (
                       <DragDropContainer theme={theme} data={q} />
                     )}
