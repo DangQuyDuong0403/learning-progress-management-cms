@@ -170,7 +170,7 @@ const AIGenerateListening = () => {
       spaceToast.success(`Audio file "${file.name}" uploaded successfully!`);
     } catch (e) {
       console.error('Audio upload error:', e);
-      spaceToast.error(e?.response?.data?.message || e.message || 'Audio upload failed');
+      spaceToast.error(e?.response?.data?.error || e?.response?.data?.message || e.message || 'Audio upload failed');
     } finally {
       setIsProcessingAudio(false);
     }
@@ -228,7 +228,7 @@ const AIGenerateListening = () => {
       }
     } catch (err) {
       console.error('Generate listening AI questions error:', err);
-      spaceToast.error(err?.response?.data?.message || err?.message || 'Failed to generate questions');
+      spaceToast.error(err?.response?.data?.error || err?.response?.data?.message || err?.message || 'Failed to generate questions');
     } finally {
       setIsGenerating(false);
     }
@@ -257,7 +257,7 @@ const AIGenerateListening = () => {
       }
     } catch (err) {
       console.error('Generate listening from file error:', err);
-      spaceToast.error(err?.response?.data?.message || err?.message || 'Failed to generate from file');
+      spaceToast.error(err?.response?.data?.error || err?.response?.data?.message || err?.message || 'Failed to generate from file');
     } finally {
       setIsGenerating(false);
     }
