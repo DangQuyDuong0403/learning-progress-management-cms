@@ -1,9 +1,9 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useSelector, useDispatch } from 'react-redux';
 import { Switch, Tooltip, Button } from 'antd';
-import { SunOutlined, MoonOutlined, ArrowLeftOutlined, SettingOutlined } from '@ant-design/icons';
+import { SunOutlined, MoonOutlined, ArrowLeftOutlined, SettingOutlined, CloseOutlined } from '@ant-design/icons';
 import { logoutApi, logout, getUserProfile } from '../redux/auth';
 import { useTheme } from '../contexts/ThemeContext';
 import { useClassMenu } from '../contexts/ClassMenuContext';
@@ -11,6 +11,7 @@ import { useSyllabusMenu } from '../contexts/SyllabusMenuContext';
 import { useDailyChallengeMenu } from '../contexts/DailyChallengeMenuContext';
 import LanguageToggle from './LanguageToggle';
 import { spaceToast } from './SpaceToastify';
+import { notificationApi } from '../apis/apis';
 import './ThemedHeader.css';
 
 export default function ThemedHeader({ hideThemeToggle = false, hideLanguageToggle = false }) {
@@ -24,10 +25,398 @@ export default function ThemedHeader({ hideThemeToggle = false, hideLanguageTogg
   const { isInSyllabusMenu, syllabusData } = useSyllabusMenu();
   const { isInDailyChallengeMenu, dailyChallengeData } = useDailyChallengeMenu();
 
+  // Notification state
+  const [notifications, setNotifications] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [activeTab, setActiveTab] = useState('all'); // 'all' or 'unread'
+  const [loading, setLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [currentPage, setCurrentPage] = useState(0);
+  const [hasMore, setHasMore] = useState(true);
+  const sseConnectionRef = useRef(null);
+  const dropdownRef = useRef(null);
+  const [isNotificationDropdownOpen, setIsNotificationDropdownOpen] = useState(false);
+
   // Fetch user profile data on component mount
   useEffect(() => {
     dispatch(getUserProfile());
   }, [dispatch]);
+
+  // Format time ago
+  const formatTimeAgo = (dateString) => {
+    if (!dateString) return '';
+    
+    const now = new Date();
+    const date = new Date(dateString);
+    const diffInSeconds = Math.floor((now - date) / 1000);
+    
+    if (diffInSeconds < 60) {
+      return t('header.justNow') || 'Just now';
+    }
+    
+    const diffInMinutes = Math.floor(diffInSeconds / 60);
+    if (diffInMinutes < 60) {
+      return `${diffInMinutes} ${t('header.minutesAgo') || 'minutes ago'}`;
+    }
+    
+    const diffInHours = Math.floor(diffInMinutes / 60);
+    if (diffInHours < 24) {
+      return `${diffInHours} ${t('header.hoursAgo') || 'hours ago'}`;
+    }
+    
+    const diffInDays = Math.floor(diffInHours / 24);
+    if (diffInDays < 7) {
+      return `${diffInDays} ${t('header.daysAgo') || 'days ago'}`;
+    }
+    
+    const diffInWeeks = Math.floor(diffInDays / 7);
+    if (diffInWeeks < 4) {
+      return `${diffInWeeks} ${t('header.weeksAgo') || 'weeks ago'}`;
+    }
+    
+    const diffInMonths = Math.floor(diffInDays / 30);
+    return `${diffInMonths} ${t('header.monthsAgo') || 'months ago'}`;
+  };
+
+  // Group notifications by date
+  const groupNotificationsByDate = (notifs) => {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+
+    const groups = {
+      today: [],
+      earlier: []
+    };
+
+    notifs.forEach(notif => {
+      const notifDate = new Date(notif.createdAt);
+      if (notifDate >= today) {
+        groups.today.push(notif);
+      } else {
+        groups.earlier.push(notif);
+      }
+    });
+
+    return groups;
+  };
+
+  // Fetch unread count via API
+  const fetchUnreadCount = async () => {
+    try {
+      const response = await notificationApi.getUnreadCount();
+      if (response.data && response.data.success) {
+        const count = typeof response.data.data === 'number' ? response.data.data : 0;
+        setUnreadCount(count);
+      }
+    } catch (error) {
+      console.error('Failed to fetch unread count:', error);
+    }
+  };
+
+  // Fetch initial notifications (first page)
+  const fetchInitialNotifications = async (unreadOnly = false) => {
+    const pageSize = 10;
+    
+    try {
+      setLoading(true);
+      setCurrentPage(0);
+      setHasMore(true);
+      
+      const response = await notificationApi.getNotifications({
+        page: 0,
+        size: pageSize,
+        unreadOnly,
+        sortBy: 'createdAt',
+        sortDir: 'desc'
+      });
+
+      if (response.data && response.data.success) {
+        const notifs = response.data.data || [];
+        setNotifications(notifs);
+        
+        // Check if there are more pages
+        const totalElements = response.data.totalElements || 0;
+        const totalPages = response.data.totalPages || 0;
+        setHasMore(notifs.length < totalElements && totalPages > 1);
+
+        // Always get accurate unread count from backend
+        fetchUnreadCount();
+      }
+    } catch (error) {
+      console.error('Failed to fetch notifications:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Load more notifications (infinite scroll)
+  const loadMoreNotifications = async () => {
+    if (loadingMore || !hasMore) return;
+    
+    const pageSize = 10;
+    const nextPage = currentPage + 1;
+    
+    try {
+      setLoadingMore(true);
+      
+      // Delay 1 second before loading
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      const response = await notificationApi.getNotifications({
+        page: nextPage,
+        size: pageSize,
+        unreadOnly: activeTab === 'unread',
+        sortBy: 'createdAt',
+        sortDir: 'desc'
+      });
+
+      if (response.data && response.data.success) {
+        const newNotifs = response.data.data || [];
+        
+        if (newNotifs.length > 0) {
+          setNotifications(prev => {
+            const updated = [...prev, ...newNotifs];
+            // Check if there are more pages
+            const totalElements = response.data.totalElements || 0;
+            const totalPages = response.data.totalPages || 0;
+            setHasMore(updated.length < totalElements && nextPage + 1 < totalPages);
+            return updated;
+          });
+          setCurrentPage(nextPage);
+        } else {
+          setHasMore(false);
+        }
+      } else {
+        setHasMore(false);
+      }
+    } catch (error) {
+      console.error('Failed to load more notifications:', error);
+      setHasMore(false);
+    } finally {
+      setLoadingMore(false);
+    }
+  };
+
+  // Handle scroll for infinite loading
+  const handleScroll = (e) => {
+    const element = e.target;
+    const scrollTop = element.scrollTop;
+    const scrollHeight = element.scrollHeight;
+    const clientHeight = element.clientHeight;
+    
+    // Load more when user scrolls to within 100px of the bottom
+    if (scrollHeight - scrollTop - clientHeight < 100 && hasMore && !loadingMore) {
+      loadMoreNotifications();
+    }
+  };
+
+  // Handle click outside to close dropdown
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        // Check if click is not on the button
+        const button = document.getElementById('notificationDropdown');
+        if (button && !button.contains(event.target)) {
+          setIsNotificationDropdownOpen(false);
+          // Remove Bootstrap dropdown show class
+          if (dropdownRef.current) {
+            dropdownRef.current.classList.remove('show');
+          }
+          if (button) {
+            button.setAttribute('aria-expanded', 'false');
+          }
+        }
+      }
+    };
+
+    if (isNotificationDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isNotificationDropdownOpen]);
+
+  // Handle dropdown toggle
+  const handleDropdownToggle = (e) => {
+    e.stopPropagation();
+    const isOpen = !isNotificationDropdownOpen;
+    setIsNotificationDropdownOpen(isOpen);
+    
+    const button = document.getElementById('notificationDropdown');
+    const menu = dropdownRef.current;
+    
+    if (isOpen) {
+      if (menu) menu.classList.add('show');
+      if (button) button.setAttribute('aria-expanded', 'true');
+    } else {
+      if (menu) menu.classList.remove('show');
+      if (button) button.setAttribute('aria-expanded', 'false');
+    }
+  };
+
+  // Prevent dropdown from closing when clicking inside
+  const handleDropdownClick = (e) => {
+    e.stopPropagation();
+  };
+
+  // Connect to SSE stream
+  useEffect(() => {
+    if (!user) return;
+
+    const connectSSE = () => {
+      const connection = notificationApi.connectSSE(
+        // onMessage
+        (message) => {
+          if (message.type === 'notification') {
+            // Add new notification to the list
+            setNotifications(prev => {
+              const newNotif = message.data;
+              // Check if notification already exists
+              const exists = prev.some(n => n.id === newNotif.id);
+              if (!exists) {
+                // Add to beginning of list
+                const updated = [newNotif, ...prev];
+                // Increment unread counter immediately
+                setUnreadCount(prevUnread => prevUnread + (newNotif.isRead ? 0 : 1));
+                return updated;
+              }
+              return prev;
+            });
+          } else if (message.type === 'connect') {
+            console.log('SSE Connected:', message.data);
+            // Refresh notifications and unread count after connection
+            fetchInitialNotifications(false);
+            fetchUnreadCount();
+          }
+        },
+        // onError
+        (error) => {
+          console.error('SSE Error:', error);
+          // Retry connection after 5 seconds
+          setTimeout(() => {
+            if (user) {
+              connectSSE();
+            }
+          }, 5000);
+        },
+        // onConnect
+        () => {
+          console.log('SSE connection established');
+        }
+      );
+
+      sseConnectionRef.current = connection;
+    };
+
+    connectSSE();
+
+    // Initial fetch: load first page and unread count
+    fetchInitialNotifications(false);
+    fetchUnreadCount();
+
+    // Cleanup on unmount
+    return () => {
+      if (sseConnectionRef.current) {
+        sseConnectionRef.current.disconnect();
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
+
+  // Handle tab change
+  const handleTabChange = (tab) => {
+    setActiveTab(tab);
+    fetchInitialNotifications(tab === 'unread');
+    // Refresh unread count whenever switching tabs
+    fetchUnreadCount();
+  };
+
+  // Handle mark as read
+  const handleMarkAsRead = async (notificationId, e) => {
+    e.stopPropagation();
+    try {
+      await notificationApi.markAsRead(notificationId);
+      setNotifications(prev => 
+        prev.map(n => 
+          n.id === notificationId ? { ...n, isRead: true } : n
+        )
+      );
+      setUnreadCount(prev => Math.max(0, prev - 1));
+      // Ensure accuracy with backend
+      fetchUnreadCount();
+    } catch (error) {
+      console.error('Failed to mark notification as read:', error);
+    }
+  };
+
+  // Handle mark all as read
+  const handleMarkAllAsRead = async () => {
+    try {
+      await notificationApi.markAllAsRead();
+      // Update all notifications to read
+      setNotifications(prev => 
+        prev.map(n => ({ ...n, isRead: true }))
+      );
+      // Reset unread count
+      setUnreadCount(0);
+      // Refresh to ensure accuracy
+      fetchUnreadCount();
+    } catch (error) {
+      console.error('Failed to mark all notifications as read:', error);
+    }
+  };
+
+  // Handle delete notification
+  const handleDeleteNotification = async (notificationId, e) => {
+    e.stopPropagation();
+    try {
+      const response = await notificationApi.deleteNotification(notificationId);
+      // Remove notification from list
+      setNotifications(prev => {
+        const updated = prev.filter(n => n.id !== notificationId);
+        // Update unread count if deleted notification was unread
+        const deletedNotif = prev.find(n => n.id === notificationId);
+        if (deletedNotif && !deletedNotif.isRead) {
+          setUnreadCount(prevCount => Math.max(0, prevCount - 1));
+        }
+        return updated;
+      });
+      // Refresh unread count to ensure accuracy
+      fetchUnreadCount();
+      // Use message from backend, fallback to translation
+      const message = response?.data?.message || t('header.notificationDeleted') || 'Notification deleted';
+      spaceToast.success(message);
+    } catch (error) {
+      console.error('Failed to delete notification:', error);
+      // Try to get error message from backend response
+      const errorMessage = error?.response?.data?.message || t('header.failedToDeleteNotification') || 'Failed to delete notification';
+      spaceToast.error(errorMessage);
+    }
+  };
+
+  // Handle notification click
+  const handleNotificationClick = (notification) => {
+    // Mark as read if unread
+    if (!notification.isRead) {
+      handleMarkAsRead(notification.id, { stopPropagation: () => {} });
+    }
+    
+    // Navigate to target URL if available
+    if (notification.targetUrl) {
+      navigate(notification.targetUrl);
+    }
+  };
+
+  // Filter notifications based on active tab
+  const filteredNotifications = activeTab === 'unread' 
+    ? notifications.filter(n => !n.isRead)
+    : notifications;
+
+  const groupedNotifications = groupNotificationsByDate(filteredNotifications);
 
   const handleLogout = async () => {
     try {
@@ -519,10 +908,10 @@ export default function ThemedHeader({ hideThemeToggle = false, hideLanguageTogg
               {/* Notifications */}
               <li className="themed-nav-item dropdown">
                 <button
-                  className="themed-nav-link"
+                  className="themed-nav-link notification-button"
                   id="notificationDropdown"
-                  data-bs-toggle="dropdown"
-                  aria-expanded="false"
+                  onClick={handleDropdownToggle}
+                  aria-expanded={isNotificationDropdownOpen}
                   type="button"
                 >
                   <img 
@@ -530,71 +919,308 @@ export default function ThemedHeader({ hideThemeToggle = false, hideLanguageTogg
                     alt="Notifications" 
                     className={`notification-icon ${theme}-notification-icon`}
                   />
-                  <div className={`notification-dot ${theme}-notification-dot`}></div>
+                  {unreadCount > 0 && (
+                    <div className={`notification-dot notification-badge ${theme}-notification-dot`}></div>
+                  )}
                 </button>
                 <div 
-                  className={`dropdown-menu dropdown-menu-end ${theme}-dropdown-menu`}
+                  ref={dropdownRef}
+                  className={`dropdown-menu dropdown-menu-end ${theme}-dropdown-menu ${isNotificationDropdownOpen ? 'show' : ''}`}
                   aria-labelledby="notificationDropdown"
+                  onScroll={handleScroll}
+                  onClick={handleDropdownClick}
+                  style={{ padding: '12px 16px', boxSizing: 'border-box' }}
                 >
                   <div className="notification-header">
-                    <h5>{t('header.notifications')}</h5>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                      <h5 style={{ margin: 0 }}>{t('header.notifications')}</h5>
+                      {unreadCount > 0 && (
+                        <button
+                          onClick={handleMarkAllAsRead}
+                          style={{
+                            padding: '6px 12px',
+                            fontSize: '12px',
+                            fontWeight: '500',
+                            border: 'none',
+                            borderRadius: '6px',
+                            cursor: 'pointer',
+                            background: theme === 'sun' 
+                              ? '#fef3c7' 
+                              : '#a5b4fc',
+                            color: theme === 'sun' 
+                              ? '#92400e' 
+                              : '#ffffff',
+                            transition: 'all 0.2s ease',
+                            boxShadow: theme === 'sun' 
+                              ? '0 2px 6px rgba(251, 191, 36, 0.2)' 
+                              : '0 2px 6px rgba(129, 140, 248, 0.3)'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.target.style.background = theme === 'sun' 
+                              ? '#fde68a' 
+                              : '#8b9aff';
+                            e.target.style.transform = 'translateY(-1px)';
+                            e.target.style.boxShadow = theme === 'sun' 
+                              ? '0 4px 10px rgba(251, 191, 36, 0.3)' 
+                              : '0 4px 10px rgba(129, 140, 248, 0.4)';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.target.style.background = theme === 'sun' 
+                              ? '#fef3c7' 
+                              : '#a5b4fc';
+                            e.target.style.transform = 'translateY(0)';
+                            e.target.style.boxShadow = theme === 'sun' 
+                              ? '0 2px 6px rgba(251, 191, 36, 0.2)' 
+                              : '0 2px 6px rgba(129, 140, 248, 0.3)';
+                          }}
+                        >
+                          {t('header.markAllAsRead') || 'Mark all as read'}
+                        </button>
+                      )}
+                    </div>
                     <div className="notification-tabs">
-                      <span className="tab active">{t('header.allNotifications')}</span>
-                      <span className="tab">{t('header.unreadNotifications')}</span>
-                    </div>
-                  </div>
-                  <div className="notification-section">
-                    <div className="section-header">
-                      <span>{t('header.today')}</span>
-                      <button className="see-all">{t('header.viewAll')}</button>
-                    </div>
-                    <div className="notification-list">
-                      <div className="notification-item">
-                        <div className="notification-content">
-                          <p className="notification-text">
-                            <strong>{t('header.systemRole')}</strong> {t('header.systemPostedEvent')} "{t('header.systemMaintenanceEvent')}"
-                          </p>
-                          <span className="notification-time">2 {t('header.hoursAgo')}</span>
-                        </div>
-                        <div className="notification-dot"></div>
-                      </div>
-                      
-                      <div className="notification-item">
-                        <div className="notification-content">
-                          <p className="notification-text">
-                            <strong>{t('header.adminRole')}</strong> {t('header.adminSentMessage')} "{t('header.welcomeMessage')}"
-                          </p>
-                          <span className="notification-time">4 {t('header.hoursAgo')}</span>
-                        </div>
-                        <div className="notification-dot"></div>
-                      </div>
+                      <span 
+                        className={`tab ${activeTab === 'all' ? 'active' : ''}`}
+                        onClick={() => handleTabChange('all')}
+                        style={{ cursor: 'pointer' }}
+                      >
+                        {t('header.allNotifications')}
+                      </span>
+                      <span 
+                        className={`tab ${activeTab === 'unread' ? 'active' : ''}`}
+                        onClick={() => handleTabChange('unread')}
+                        style={{ cursor: 'pointer' }}
+                      >
+                        {t('header.unreadNotifications')}
+                        {unreadCount > 0 && (
+                          <span style={{ 
+                            marginLeft: '4px',
+                            background: '#ff4757',
+                            color: '#fff',
+                            borderRadius: '10px',
+                            padding: '2px 6px',
+                            fontSize: '11px'
+                          }}>
+                            {unreadCount}
+                          </span>
+                        )}
+                      </span>
                     </div>
                   </div>
                   
-                  <div className="notification-section">
-                    <div className="section-header">
-                      <span>{t('header.earlier')}</span>
+                  {loading ? (
+                    <div style={{ padding: '20px', textAlign: 'center' }}>
+                      {t('common.loading') || 'Loading...'}
                     </div>
-                    <div className="notification-list">
-                      <div className="notification-item">
-                        <div className="notification-content">
-                          <p className="notification-text">
-                            <strong>{t('header.systemRole')}</strong> {t('header.systemUpdated')} "{t('header.newVersionReleased')}"
-                          </p>
-                          <span className="notification-time">1 {t('header.daysAgo')}</span>
+                  ) : (
+                    <>
+                      {groupedNotifications.today.length > 0 && (
+                        <div className="notification-section">
+                          <div className="section-header">
+                            <span>{t('header.today')}</span>
+                          </div>
+                          <div className="notification-list">
+                            {groupedNotifications.today.map((notification) => (
+                              <div 
+                                key={notification.id || Math.random()}
+                                className={`notification-item ${!notification.isRead ? 'unread' : ''}`}
+                                onClick={() => handleNotificationClick(notification)}
+                                style={{ cursor: notification.targetUrl ? 'pointer' : 'default' }}
+                              >
+                                <div className="notification-content">
+                                  {notification.avatarUrl && (
+                                    <img 
+                                      src={notification.avatarUrl} 
+                                      alt=""
+                                      style={{
+                                        width: '32px',
+                                        height: '32px',
+                                        borderRadius: '50%',
+                                        marginRight: '12px',
+                                        objectFit: 'cover'
+                                      }}
+                                    />
+                                  )}
+                                  <div style={{ flex: 1 }}>
+                                    <div className="notification-text">
+                                      {notification.title && (
+                                        <div className="notification-title"><strong>{notification.title}</strong></div>
+                                      )}
+                                      {notification.message && (
+                                        <div className="notification-message">{notification.message}</div>
+                                      )}
+                                    </div>
+                                    <span className="notification-time">
+                                      {formatTimeAgo(notification.createdAt)}
+                                    </span>
+                                  </div>
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                  {!notification.isRead && (
+                                    <div 
+                                      className="notification-dot"
+                                      onClick={(e) => handleMarkAsRead(notification.id, e)}
+                                      style={{ cursor: 'pointer' }}
+                                    ></div>
+                                  )}
+                                  <button
+                                    onClick={(e) => handleDeleteNotification(notification.id, e)}
+                                    style={{
+                                      background: 'transparent',
+                                      border: 'none',
+                                      cursor: 'pointer',
+                                      padding: '4px',
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      borderRadius: '4px',
+                                      color: theme === 'sun' ? '#94a3b8' : 'rgba(255, 255, 255, 0.5)',
+                                      transition: 'all 0.2s ease'
+                                    }}
+                                    onMouseEnter={(e) => {
+                                      e.target.style.color = theme === 'sun' ? '#ef4444' : '#ff6b6b';
+                                      e.target.style.background = theme === 'sun' ? '#fee2e2' : 'rgba(255, 107, 107, 0.1)';
+                                    }}
+                                    onMouseLeave={(e) => {
+                                      e.target.style.color = theme === 'sun' ? '#94a3b8' : 'rgba(255, 255, 255, 0.5)';
+                                      e.target.style.background = 'transparent';
+                                    }}
+                                    title={t('header.deleteNotification') || 'Delete notification'}
+                                  >
+                                    <CloseOutlined style={{ fontSize: '14px' }} />
+                                  </button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
                         </div>
-                      </div>
+                      )}
                       
-                      <div className="notification-item">
-                        <div className="notification-content">
-                          <p className="notification-text">
-                            <strong>{t('header.supportRole')}</strong> {t('header.supportReplied')} "{t('header.issueResolved')}"
-                          </p>
-                          <span className="notification-time">2 {t('header.daysAgo')}</span>
+                      {groupedNotifications.earlier.length > 0 && (
+                        <div className="notification-section">
+                          <div className="section-header">
+                            <span>{t('header.earlier')}</span>
+                          </div>
+                          <div className="notification-list">
+                            {groupedNotifications.earlier.map((notification) => (
+                              <div 
+                                key={notification.id || Math.random()}
+                                className={`notification-item ${!notification.isRead ? 'unread' : ''}`}
+                                onClick={() => handleNotificationClick(notification)}
+                                style={{ cursor: notification.targetUrl ? 'pointer' : 'default' }}
+                              >
+                                <div className="notification-content">
+                                  {notification.avatarUrl && (
+                                    <img 
+                                      src={notification.avatarUrl} 
+                                      alt=""
+                                      style={{
+                                        width: '32px',
+                                        height: '32px',
+                                        borderRadius: '50%',
+                                        marginRight: '12px',
+                                        objectFit: 'cover'
+                                      }}
+                                    />
+                                  )}
+                                  <div style={{ flex: 1 }}>
+                                    <div className="notification-text">
+                                      {notification.title && (
+                                        <div className="notification-title"><strong>{notification.title}</strong></div>
+                                      )}
+                                      {notification.message && (
+                                        <div className="notification-message">{notification.message}</div>
+                                      )}
+                                    </div>
+                                    <span className="notification-time">
+                                      {formatTimeAgo(notification.createdAt)}
+                                    </span>
+                                  </div>
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                  {!notification.isRead && (
+                                    <div 
+                                      className="notification-dot"
+                                      onClick={(e) => handleMarkAsRead(notification.id, e)}
+                                      style={{ cursor: 'pointer' }}
+                                    ></div>
+                                  )}
+                                  <button
+                                    onClick={(e) => handleDeleteNotification(notification.id, e)}
+                                    style={{
+                                      background: 'transparent',
+                                      border: 'none',
+                                      cursor: 'pointer',
+                                      padding: '4px',
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      borderRadius: '4px',
+                                      color: theme === 'sun' ? '#94a3b8' : 'rgba(255, 255, 255, 0.5)',
+                                      transition: 'all 0.2s ease'
+                                    }}
+                                    onMouseEnter={(e) => {
+                                      e.target.style.color = theme === 'sun' ? '#ef4444' : '#ff6b6b';
+                                      e.target.style.background = theme === 'sun' ? '#fee2e2' : 'rgba(255, 107, 107, 0.1)';
+                                    }}
+                                    onMouseLeave={(e) => {
+                                      e.target.style.color = theme === 'sun' ? '#94a3b8' : 'rgba(255, 255, 255, 0.5)';
+                                      e.target.style.background = 'transparent';
+                                    }}
+                                    title={t('header.deleteNotification') || 'Delete notification'}
+                                  >
+                                    <CloseOutlined style={{ fontSize: '14px' }} />
+                                  </button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
                         </div>
-                      </div>
-                    </div>
-                  </div>
+                      )}
+                      
+                      {filteredNotifications.length === 0 && !loading && (
+                        <div style={{ padding: '40px 20px', textAlign: 'center', color: theme === 'sun' ? '#64748b' : 'rgba(255, 255, 255, 0.7)' }}>
+                          {activeTab === 'unread' 
+                            ? (t('header.noUnreadNotifications') || 'No unread notifications')
+                            : (t('header.noNotifications') || 'No notifications')
+                          }
+                        </div>
+                      )}
+                      
+                      {/* Loading more indicator */}
+                      {loadingMore && (
+                        <div style={{ 
+                          padding: '20px', 
+                          textAlign: 'center',
+                          color: theme === 'sun' ? '#64748b' : 'rgba(255, 255, 255, 0.7)'
+                        }}>
+                          <div style={{ 
+                            display: 'inline-block',
+                            width: '20px',
+                            height: '20px',
+                            border: `3px solid ${theme === 'sun' ? '#e3e8ff' : 'rgba(114, 137, 218, 0.3)'}`,
+                            borderTop: `3px solid ${theme === 'sun' ? '#3b82f6' : '#7289da'}`,
+                            borderRadius: '50%',
+                            animation: 'spin 1s linear infinite',
+                            marginRight: '8px'
+                          }}></div>
+                          {t('common.loading') || 'Loading...'}
+                        </div>
+                      )}
+                      
+                      {/* End of list indicator */}
+                      {!hasMore && filteredNotifications.length > 0 && (
+                        <div style={{ 
+                          padding: '20px', 
+                          textAlign: 'center',
+                          color: theme === 'sun' ? '#94a3b8' : 'rgba(255, 255, 255, 0.5)',
+                          fontSize: '12px'
+                        }}>
+                          {t('header.noMoreNotifications') || 'No more notifications'}
+                        </div>
+                      )}
+                    </>
+                  )}
                 </div>
               </li>
 
