@@ -1162,7 +1162,7 @@ const CONFIG_ROUTER = [
 	{
 		show: false,
 		component: DailyChallengePerformance,
-		path: '/teacher/daily-challenges/detail/:id',
+		path: ROUTER_PAGE.TEACHER_DAILY_CHALLENGE_DETAIL,
 		menuName: 'Daily Challenge Performance',
 		exact: true,
 		key: 'TEACHER_DAILY_CHALLENGE_PERFORMANCE',
@@ -1172,7 +1172,7 @@ const CONFIG_ROUTER = [
 	{
 		show: false,
 		component: DailyChallengeSubmissionList,
-		path: '/teacher/daily-challenges/detail/:id/submissions',
+		path: ROUTER_PAGE.TEACHER_DAILY_CHALLENGE_SUBMISSIONS,
 		menuName: 'Daily Challenge Submissions',
 		exact: true,
 		key: 'TEACHER_DAILY_CHALLENGE_SUBMISSIONS',
@@ -1182,7 +1182,7 @@ const CONFIG_ROUTER = [
 	{
 		show: false,
 		component: DailyChallengeSubmissionDetail,
-		path: '/teacher/daily-challenges/detail/:id/submissions/:submissionId',
+		path: ROUTER_PAGE.TEACHER_DAILY_CHALLENGE_SUBMISSION_DETAIL,
 		menuName: 'Daily Challenge Submission Detail',
 		exact: true,
 		key: 'TEACHER_DAILY_CHALLENGE_SUBMISSION_DETAIL',
@@ -1192,7 +1192,7 @@ const CONFIG_ROUTER = [
 	{
 		show: false,
 		component: AIGenerateFeedback,
-		path: '/teacher/daily-challenges/detail/:id/submissions/:submissionId/feedback/:submissionQuestionId',
+		path: ROUTER_PAGE.TEACHER_DAILY_CHALLENGE_AI_FEEDBACK,
 		menuName: 'AI Feedback & Grading',
 		exact: true,
 		key: 'TEACHER_DAILY_CHALLENGE_AI_FEEDBACK',
@@ -1202,7 +1202,7 @@ const CONFIG_ROUTER = [
 	{
 		show: false,
 		component: DailyChallengeContent,
-		path: '/teacher/daily-challenges/detail/:id/content',
+		path: ROUTER_PAGE.TEACHER_DAILY_CHALLENGE_CONTENT,
 		menuName: 'Daily Challenge Content',
 		exact: true,
 		key: 'TEACHER_DAILY_CHALLENGE_CONTENT',
@@ -1212,7 +1212,7 @@ const CONFIG_ROUTER = [
 	{
 		show: false,
 		component: StudentPreview,
-		path: '/teacher/daily-challenges/detail/:id/preview',
+		path: ROUTER_PAGE.TEACHER_DAILY_CHALLENGE_PREVIEW,
 		menuName: 'Daily Challenge Preview',
 		exact: true,
 		key: 'TEACHER_DAILY_CHALLENGE_PREVIEW',
@@ -1343,7 +1343,7 @@ const CONFIG_ROUTER = [
 	{
 		show: false,
 		component: DailyChallengeSubmissionList,
-		path: '/teaching-assistant/daily-challenges/detail/:id/submissions',
+		path: ROUTER_PAGE.TEACHING_ASSISTANT_DAILY_CHALLENGE_SUBMISSIONS,
 		menuName: 'Daily Challenge Submissions',
 		exact: true,
 		key: 'TEACHING_ASSISTANT_DAILY_CHALLENGE_SUBMISSIONS',
@@ -1353,7 +1353,7 @@ const CONFIG_ROUTER = [
 	{
 		show: false,
 		component: DailyChallengeSubmissionDetail,
-		path: '/teaching-assistant/daily-challenges/detail/:id/submissions/:submissionId',
+		path: ROUTER_PAGE.TEACHING_ASSISTANT_DAILY_CHALLENGE_SUBMISSION_DETAIL,
 		menuName: 'Daily Challenge Submission Detail',
 		exact: true,
 		key: 'TEACHING_ASSISTANT_DAILY_CHALLENGE_SUBMISSION_DETAIL',
@@ -1363,7 +1363,7 @@ const CONFIG_ROUTER = [
 	{
 		show: false,
 		component: AIGenerateFeedback,
-		path: '/teaching-assistant/daily-challenges/detail/:id/submissions/:submissionId/feedback/:submissionQuestionId',
+		path: ROUTER_PAGE.TEACHING_ASSISTANT_DAILY_CHALLENGE_AI_FEEDBACK,
 		menuName: 'AI Feedback & Grading',
 		exact: true,
 		key: 'TEACHING_ASSISTANT_DAILY_CHALLENGE_AI_FEEDBACK',
@@ -1374,7 +1374,7 @@ const CONFIG_ROUTER = [
 	{
 		show: false,
 		component: StudentPreview,
-		path: '/teaching-assistant/daily-challenges/detail/:id/preview',
+		path: ROUTER_PAGE.TEACHING_ASSISTANT_DAILY_CHALLENGE_PREVIEW,
 		menuName: 'Daily Challenge Preview',
 		exact: true,
 		key: 'TEACHING_ASSISTANT_DAILY_CHALLENGE_PREVIEW',

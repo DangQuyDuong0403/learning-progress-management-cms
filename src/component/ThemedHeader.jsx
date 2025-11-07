@@ -418,6 +418,14 @@ export default function ThemedHeader({ hideThemeToggle = false, hideLanguageTogg
 
   const groupedNotifications = groupNotificationsByDate(filteredNotifications);
 
+  const getShortLabel = (key, defaultText) => {
+    const value = t(key);
+    if (value && value !== key) {
+      return value;
+    }
+    return defaultText;
+  };
+
   const handleLogout = async () => {
     try {
       if (refreshToken) {
@@ -932,7 +940,7 @@ export default function ThemedHeader({ hideThemeToggle = false, hideLanguageTogg
                   style={{ padding: '12px 16px', boxSizing: 'border-box' }}
                 >
                   <div className="notification-header">
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                       <h5 style={{ margin: 0 }}>{t('header.notifications')}</h5>
                       {unreadCount > 0 && (
                         <button
@@ -982,25 +990,16 @@ export default function ThemedHeader({ hideThemeToggle = false, hideLanguageTogg
                       <span 
                         className={`tab ${activeTab === 'all' ? 'active' : ''}`}
                         onClick={() => handleTabChange('all')}
-                        style={{ cursor: 'pointer' }}
                       >
-                        {t('header.allNotifications')}
+                        <span className="tab-label">{getShortLabel('header.allShort', 'All')}</span>
                       </span>
                       <span 
                         className={`tab ${activeTab === 'unread' ? 'active' : ''}`}
                         onClick={() => handleTabChange('unread')}
-                        style={{ cursor: 'pointer' }}
                       >
-                        {t('header.unreadNotifications')}
+                        <span className="tab-label">{getShortLabel('header.unreadShort', 'Unread')}</span>
                         {unreadCount > 0 && (
-                          <span style={{ 
-                            marginLeft: '4px',
-                            background: '#ff4757',
-                            color: '#fff',
-                            borderRadius: '10px',
-                            padding: '2px 6px',
-                            fontSize: '11px'
-                          }}>
+                          <span className="tab-count">
                             {unreadCount}
                           </span>
                         )}
