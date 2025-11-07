@@ -1392,9 +1392,9 @@ const DailyChallengeSubmissionDetail = () => {
     enterDailyChallengeMenu(0, preservedSubtitle, backPath, preservedClassName);
     
     return () => {
-      // Do not exit here to preserve header info when navigating back to list; list page will re-enter and manage state
+      exitDailyChallengeMenu();
     };
-  }, [enterDailyChallengeMenu, id, dailyChallengeData?.subtitle, dailyChallengeData?.className, location?.state?.className, location?.state?.challengeName, location?.state?.classId, location.search]);
+  }, [enterDailyChallengeMenu, exitDailyChallengeMenu, id, dailyChallengeData?.subtitle, dailyChallengeData?.className, location?.state?.className, location?.state?.challengeName, location?.state?.classId, location.search]);
 
   // Build question navigation list (must be before early return)
   const getQuestionNavigation = useCallback(() => {
