@@ -2730,11 +2730,19 @@ const WritingSectionItem = ({ question, index, theme }) => {
         return { answer: text, questionType: 'WRITING' };
       }
       if (Array.isArray(uploadedFiles) && uploadedFiles.length > 0) {
-        const files = uploadedFiles
-          .map(f => (typeof f === 'string' ? f : (f?.value || f?.name)))
+        // Extract URLs from uploaded files (prefer server URL)
+        const fileUrls = uploadedFiles
+          .map(f => {
+            // If file has url property (server URL), use it
+            if (f?.url && typeof f.url === 'string') {
+              return f.url;
+            }
+            // Otherwise fallback to name or value
+            return typeof f === 'string' ? f : (f?.value || f?.name);
+          })
           .filter(Boolean);
-        if (files.length > 0) {
-          return { answer: files, questionType: 'WRITING' };
+        if (fileUrls.length > 0) {
+          return { answer: fileUrls, questionType: 'WRITING' };
         }
       }
       return null;
@@ -2755,11 +2763,61 @@ const WritingSectionItem = ({ question, index, theme }) => {
         return;
       }
       if (Array.isArray(answer) && answer.length > 0) {
-        // Treat array answers as uploaded files (filenames/urls)
+        // Handle array of file URLs or objects with URL
         const files = answer
           .filter(Boolean)
-          .map((name) => ({ id: Date.now() + Math.random(), name: String(name), size: 0, type: 'application/octet-stream', url: null }));
-        setUploadedFiles(files);
+          .map((item, index) => {
+            let fileUrl = null;
+            let fileName = null;
+            
+            // Check if item is an object with id/value (from submittedContent.data format)
+            if (typeof item === 'object' && item !== null) {
+              // Prefer id, then value, then name
+              fileUrl = item.id || item.value || item.url || item.name;
+              fileName = item.name || item.fileName || item.filename;
+            } else if (typeof item === 'string') {
+              // Item is directly a URL string
+              fileUrl = item;
+            }
+            
+            // Extract filename from URL if not provided
+            if (!fileName && fileUrl && typeof fileUrl === 'string') {
+              try {
+                // Try to extract filename from URL
+                const urlObj = new URL(fileUrl);
+                const pathParts = urlObj.pathname.split('/');
+                fileName = pathParts[pathParts.length - 1] || `image_${index + 1}`;
+                // Remove query parameters from filename if any
+                fileName = fileName.split('?')[0];
+              } catch (e) {
+                // If URL parsing fails, use default name
+                fileName = `image_${index + 1}.png`;
+              }
+            }
+            
+            // Default filename if still not found
+            if (!fileName) {
+              fileName = `image_${index + 1}.png`;
+            }
+            
+            return {
+              id: Date.now() + Math.random() + index,
+              name: fileName,
+              size: 0,
+              type: 'image/png', // Default to image type
+              url: fileUrl // Use the URL from id/value/url property
+            };
+          })
+          .filter(file => file.url); // Only keep files with valid URLs
+        
+        if (files.length > 0) {
+          console.log(`✅ WRITING: Restored ${files.length} file(s) for question ${question?.id}:`, files);
+          setUploadedFiles(files);
+          // Don't set writingMode to 'handwriting' - keep default mode to show upload section
+          // Files will be displayed in the "Uploaded Files" section below options
+        } else {
+          console.warn(`⚠️ WRITING: No valid files extracted from answer for question ${question?.id}:`, answer);
+        }
         return;
       }
       if (answer && typeof answer === 'object' && answer.text) {
@@ -2778,17 +2836,45 @@ const WritingSectionItem = ({ question, index, theme }) => {
   }, [triggerAutoSave, essayText, uploadedFiles, writingMode]);
 
 
-  const handleFileUpload = (event) => {
+  const handleFileUpload = async (event) => {
     const files = Array.from(event.target.files);
     
-    const newFiles = files.map(file => ({
-      id: Date.now() + Math.random(),
-      name: file.name,
-      size: file.size,
-      type: file.type,
-      url: URL.createObjectURL(file)
-    }));
-    setUploadedFiles(prev => [...prev, ...newFiles]);
+    // Upload each file to server and get server URLs
+    const uploadedFilesData = await Promise.all(
+      files.map(async (file) => {
+        try {
+          // Upload file to backend
+          const uploadRes = await dailyChallengeApi.uploadFile(file);
+          // Get URL from response (handle different response structures)
+          const serverUrl = uploadRes?.data?.url || uploadRes?.data?.data?.url || uploadRes?.data || uploadRes;
+          
+          if (serverUrl && typeof serverUrl === 'string') {
+            console.log('✅ File uploaded to server:', serverUrl);
+            return {
+              id: Date.now() + Math.random(),
+              name: file.name,
+              size: file.size,
+              type: file.type,
+              url: serverUrl // Use server URL instead of blob URL
+            };
+          } else {
+            throw new Error('Server did not return valid URL');
+          }
+        } catch (error) {
+          console.error('❌ Failed to upload file:', file.name, error);
+          // Fallback to blob URL if upload fails
+          return {
+            id: Date.now() + Math.random(),
+            name: file.name,
+            size: file.size,
+            type: file.type,
+            url: URL.createObjectURL(file)
+          };
+        }
+      })
+    );
+    
+    setUploadedFiles(prev => [...prev, ...uploadedFilesData]);
   };
 
   const removeFile = (fileId) => {
@@ -3169,48 +3255,93 @@ const WritingSectionItem = ({ question, index, theme }) => {
                   <div style={{
                     fontSize: '14px',
                     fontWeight: '600',
-                    marginBottom: '8px',
+                    marginBottom: '12px',
                     color: theme === 'sun' ? '#333' : '#1F2937'
                   }}>
                     Uploaded Files:
                   </div>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px' }}>
                     {uploadedFiles.map((file) => (
                       <div
                         key={file.id}
                         style={{
+                          position: 'relative',
                           display: 'flex',
-                          alignItems: 'center',
+                          flexDirection: 'column',
                           gap: '8px',
-                          padding: '8px 12px',
+                          padding: '8px',
                           background: theme === 'sun' 
                             ? 'linear-gradient(135deg, rgba(24, 144, 255, 0.08) 0%, rgba(64, 169, 255, 0.05) 100%)'
                             : 'linear-gradient(135deg, rgba(138, 122, 255, 0.12) 0%, rgba(167, 139, 250, 0.08) 100%)',
                           border: `1px solid ${theme === 'sun' 
                             ? 'rgba(24, 144, 255, 0.2)' 
                             : 'rgba(138, 122, 255, 0.25)'}`,
-                          borderRadius: '6px',
-                          fontSize: '12px',
+                          borderRadius: '8px',
                           transition: 'all 0.3s ease'
                         }}
                       >
-                        <span>📄</span>
-                        <span style={{ color: theme === 'sun' ? '#333' : '#1F2937' }}>
-                          {file.name}
-                        </span>
-                        <button
-                          onClick={() => removeFile(file.id)}
-                          style={{
-                            background: 'none',
-                            border: 'none',
-                            color: '#ff4d4f',
-                            cursor: 'pointer',
-                            fontSize: '14px',
-                            padding: '2px'
-                          }}
-                        >
-                          ✕
-                        </button>
+                        {/* Display image if URL is available */}
+                        {file.url && (
+                          <img
+                            src={file.url}
+                            alt={file.name}
+                            style={{
+                              width: '500px',
+                              height: '500px',
+                              objectFit: 'contain',
+                              borderRadius: '6px',
+                              border: `1px solid ${theme === 'sun' 
+                                ? 'rgba(24, 144, 255, 0.1)' 
+                                : 'rgba(138, 122, 255, 0.15)'}`,
+                              background: theme === 'sun' ? '#f5f5f5' : 'rgba(0, 0, 0, 0.05)'
+                            }}
+                            onError={(e) => {
+                              // Hide image if it fails to load
+                              e.target.style.display = 'none';
+                            }}
+                          />
+                        )}
+                        {/* File name */}
+                        <div style={{ 
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          justifyContent: 'space-between',
+                          gap: '8px',
+                          fontSize: '12px'
+                        }}>
+                          <span style={{ 
+                            color: theme === 'sun' ? '#333' : '#1F2937',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                            maxWidth: '400px'
+                          }}>
+                            {file.name}
+                          </span>
+                          <button
+                            onClick={() => removeFile(file.id)}
+                            style={{
+                              background: 'none',
+                              border: 'none',
+                              color: '#ff4d4f',
+                              cursor: 'pointer',
+                              fontSize: '16px',
+                              padding: '2px 4px',
+                              borderRadius: '4px',
+                              transition: 'all 0.2s ease',
+                              flexShrink: 0
+                            }}
+                            onMouseEnter={(e) => {
+                              e.target.style.background = 'rgba(255, 77, 79, 0.1)';
+                            }}
+                            onMouseLeave={(e) => {
+                              e.target.style.background = 'none';
+                            }}
+                            title="Remove file"
+                          >
+                            ✕
+                          </button>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -7873,7 +8004,8 @@ const StudentDailyChallengeTake = () => {
         // Handle both formats:
         // Draft API: {question: {id, ...}, submittedContent: {...}}
         // Result API: {questionId, question: {...}, submittedContent: {...}}
-        const questionId = qr.questionId || qr.question?.id || qr.id;
+        // Also try submissionQuestionId as fallback
+        const questionId = qr.questionId || qr.question?.id || qr.id || qr.submissionQuestionId;
         const submittedContent = qr.submittedContent;
         const receivedScore = qr.receivedScore;
         const questionType = qr.questionType || qr.question?.type || qr.type;
@@ -7883,14 +8015,21 @@ const StudentDailyChallengeTake = () => {
         
         // Debug logging
         if (submittedContent && submittedContent.data && submittedContent.data.length > 0) {
-          console.log(`📝 Found saved answer for question ${questionId}:`, submittedContent.data);
+          console.log(`📝 Found saved answer for question ${questionId} (type: ${questionType}):`, submittedContent.data);
         }
         
         // Restore answer from submittedContent
-        const setAnswerFn = answerRestorersRef.current.get(questionId);
+        // Try both questionId and submissionQuestionId if available
+        let setAnswerFn = answerRestorersRef.current.get(questionId);
+        if (!setAnswerFn && qr.submissionQuestionId) {
+          setAnswerFn = answerRestorersRef.current.get(qr.submissionQuestionId);
+          if (setAnswerFn) {
+            console.log(`✅ Found restorer using submissionQuestionId ${qr.submissionQuestionId} instead of questionId ${questionId}`);
+          }
+        }
         
         if (!setAnswerFn) {
-          console.log(`❌ No restorer function found for question ${questionId}. Available restorers:`, Array.from(answerRestorersRef.current.keys()));
+          console.log(`❌ No restorer function found for question ${questionId}${qr.submissionQuestionId ? ` or submissionQuestionId ${qr.submissionQuestionId}` : ''}. Available restorers:`, Array.from(answerRestorersRef.current.keys()));
         }
         
         if (setAnswerFn && submittedContent) {
@@ -7901,8 +8040,13 @@ const StudentDailyChallengeTake = () => {
             
             if (answerData.length === 0) return;
             
-            // Determine question type from answer data structure
-            if (answerData.length === 1 && !answerData[0].positionId) {
+            // Special handling for WRITING type - pass array of objects/URLs directly
+            if (questionType === 'WRITING') {
+              // For WRITING, pass the entire answerData array (contains objects with id/value/url)
+              // This allows setAnswer to extract URLs from id/value properties
+              console.log(`📝 WRITING: Restoring answerData for question ${questionId}:`, answerData);
+              restoredAnswer = answerData;
+            } else if (answerData.length === 1 && !answerData[0].positionId) {
               // Single answer (MULTIPLE_CHOICE, TRUE_OR_FALSE, etc.)
               restoredAnswer = answerData[0].value;
             } else if (answerData.some(item => item.positionId)) {
