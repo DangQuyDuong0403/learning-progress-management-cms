@@ -243,7 +243,7 @@ const AIGenerateReading = () => {
       spaceToast.success('Passage generated');
     } catch (err) {
       console.error('Generate passage error:', err);
-      spaceToast.error(err?.response?.data?.message || err?.message || 'Failed to generate passage');
+      spaceToast.error(err?.response?.data?.error || err?.response?.data?.message || err?.message || 'Failed to generate passage');
     } finally {
       setGeneratingPassage(false);
     }
@@ -269,6 +269,16 @@ const AIGenerateReading = () => {
       spaceToast.error(t('dailyChallenge.max100Questions') || 'You can request at most 100 questions in total');
       return;
     }
+    const selectedConfigs = (questionTypeConfigs || [])
+      .filter((c) => Number(c.numberOfQuestions) > 0)
+      .map((c) => ({
+        questionType: c.questionType,
+        numberOfQuestions: Math.max(0, Number(c.numberOfQuestions) || 0),
+      }));
+    if (!selectedConfigs.length) {
+      spaceToast.error('Please select at least one question type to generate questions');
+      return;
+    }
     try {
       setIsGenerating(true);
       setShowPreview(false);
@@ -284,12 +294,7 @@ const AIGenerateReading = () => {
               orderNumber: 1,
               resourceType: 'DOCUMENT',
             },
-            questionTypeConfigs: questionTypeConfigs
-              .filter((c) => Number(c.numberOfQuestions) > 0)
-              .map((c) => ({
-                questionType: c.questionType,
-                numberOfQuestions: Math.max(0, Number(c.numberOfQuestions) || 0),
-              })),
+            questionTypeConfigs: selectedConfigs,
           },
         ],
         description: '',
@@ -313,7 +318,7 @@ const AIGenerateReading = () => {
       }
     } catch (err) {
       console.error('Generate content-based questions error:', err);
-      spaceToast.error(err?.response?.data?.message || err?.message || 'Failed to generate questions');
+      spaceToast.error(err?.response?.data?.error || err?.response?.data?.message || err?.message || 'Failed to generate questions');
     } finally {
       setIsGenerating(false);
     }
@@ -466,7 +471,7 @@ const AIGenerateReading = () => {
       }
     } catch (err) {
       console.error('Generate from file error:', err);
-      spaceToast.error(err?.response?.data?.message || err?.message || 'Failed to generate from file');
+      spaceToast.error(err?.response?.data?.error || err?.response?.data?.message || err?.message || 'Failed to generate from file');
     } finally {
       setIsGenerating(false);
     }
