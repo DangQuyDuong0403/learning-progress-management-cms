@@ -185,12 +185,28 @@ const AIGenerateListening = () => {
     try {
       setIsGenerating(true);
       setShowPreview(false);
+      // Backend requires sections array. Align with Reading generator payload structure
       const payload = {
         challengeId: challengeInfo.challengeId,
-        questionTypeConfigs: questionTypeConfigs
-          .filter((c) => Number(c.numberOfQuestions) > 0)
-          .map((c) => ({ questionType: c.questionType, numberOfQuestions: Math.max(0, Number(c.numberOfQuestions) || 0) })),
-        description: prompt,
+        sections: [
+          {
+            section: {
+              id: 0,
+              sectionTitle: 'Listening Section',
+              sectionsUrl: audioUrl || '',
+              sectionsContent: prompt,
+              orderNumber: 1,
+              resourceType: 'FILE',
+            },
+            questionTypeConfigs: questionTypeConfigs
+              .filter((c) => Number(c.numberOfQuestions) > 0)
+              .map((c) => ({
+                questionType: c.questionType,
+                numberOfQuestions: Math.max(0, Number(c.numberOfQuestions) || 0),
+              })),
+          },
+        ],
+        description: '',
       };
       // Note: backend API for generation currently accepts description only; audio is required by UI but not sent
       const res = await dailyChallengeApi.generateContentBasedQuestions(payload);

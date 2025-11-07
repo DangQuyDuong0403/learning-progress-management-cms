@@ -333,6 +333,16 @@ const CONFIG_ROUTER = [
 		private: true,
 		role: 'student',
 	},
+	{
+		show: false,
+		component: AIGenerateFeedback,
+		path: ROUTER_PAGE.STUDENT_DAILY_CHALLENGE_SECTION_FEEDBACK,
+		menuName: 'Daily Challenge Section Feedback',
+		exact: true,
+		key: 'STUDENT_DAILY_CHALLENGE_SECTION_FEEDBACK',
+		private: true,
+		role: 'student',
+	},
 	
 	// Test Taker Routes
 	{
@@ -402,6 +412,16 @@ const CONFIG_ROUTER = [
 		menuName: 'Daily Challenge Submission Detail',
 		exact: true,
 		key: 'TEST_TAKER_DAILY_CHALLENGE_SUBMISSION_DETAIL',
+		private: true,
+		role: 'test_taker',
+	},
+	{
+		show: false,
+		component: AIGenerateFeedback,
+		path: ROUTER_PAGE.TEST_TAKER_DAILY_CHALLENGE_SECTION_FEEDBACK,
+		menuName: 'Daily Challenge Section Feedback',
+		exact: true,
+		key: 'TEST_TAKER_DAILY_CHALLENGE_SECTION_FEEDBACK',
 		private: true,
 		role: 'test_taker',
 	},

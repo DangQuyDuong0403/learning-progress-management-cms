@@ -127,7 +127,6 @@ export default function ForgotPasswordTeacher() {
                                                     onChange={(e) => setUsername(e.target.value)}
                                                     prefix={<UserOutlined />}
                                                     size='large'
-                                                    placeholder={t('login.usernamePlaceholder') || 'Enter your username'}
                                                     style={getInputStyle(isSunTheme)}
                                                 />
                                             </div>

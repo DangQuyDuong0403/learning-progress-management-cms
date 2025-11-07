@@ -6489,6 +6489,7 @@ const StudentDailyChallengeTake = () => {
   const [timeRemaining, setTimeRemaining] = useState(0);
   const deadlineTsRef = useRef(null); // absolute deadline timestamp (ms)
   const autoSubmitTriggeredRef = useRef(false);
+  const autoSubmitRetryCountRef = useRef(0);
   const [timeUpModalVisible, setTimeUpModalVisible] = useState(false);
 
   // Anti-cheat security state
@@ -7078,7 +7079,8 @@ const StudentDailyChallengeTake = () => {
       const now = Date.now();
       const remaining = Math.max(0, Math.floor((deadlineTsRef.current - now) / 1000));
       setTimeRemaining(remaining);
-      if (remaining === 0 && !autoSubmitTriggeredRef.current) {
+      // Only trigger auto-submit when answers have registered
+      if (remaining === 0 && !autoSubmitTriggeredRef.current && answerCollectorsRef.current.size > 0) {
         autoSubmitTriggeredRef.current = true;
         // Auto submit once when time is up
         handleAutoSubmitOnTimeout();
@@ -7886,6 +7888,13 @@ const StudentDailyChallengeTake = () => {
       }
       if (!currentSubmissionId) {
         setTimeUpModalVisible(true);
+        return;
+      }
+
+      // Avoid empty payloads if child collectors haven't registered yet
+      if (answerCollectorsRef.current.size === 0 && autoSubmitRetryCountRef.current < 5) {
+        autoSubmitRetryCountRef.current += 1;
+        setTimeout(handleAutoSubmitOnTimeout, 500);
         return;
       }
 
