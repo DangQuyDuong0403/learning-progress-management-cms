@@ -63,6 +63,7 @@ export default function LoginTeacher() {
             // Check if user must change password
             if (response.data.mustChangePassword) {
                 // Redirect to change password page
+                spaceToast.info("You must change your password before accessing this area");
                 setTimeout(() => {
                     navigate('/reset-password');
                 }, 2000);

@@ -30,6 +30,26 @@ const AIGenerateFeedback = () => {
   const submissionQuestionId = nav.prefill?.submissionQuestionId || routeSubmissionQuestionId;
   const sectionId = nav.sectionId || null; // Still used for display, but submissionQuestionId is primary
   const prefill = nav.prefill || {};
+  const normalizedRole = (user?.role || '').toString().toLowerCase();
+  const isStudentRole = normalizedRole === 'student' || normalizedRole === 'test_taker';
+  const coerceBoolean = (value) => {
+    if (value === undefined || value === null) return null;
+    if (typeof value === 'boolean') return value;
+    if (typeof value === 'string') {
+      const normalized = value.trim().toLowerCase();
+      if (['true', '1', 'yes', 'y'].includes(normalized)) return true;
+      if (['false', '0', 'no', 'n'].includes(normalized)) return false;
+    }
+    if (typeof value === 'number') {
+      if (value === 1) return true;
+      if (value === 0) return false;
+    }
+    return null;
+  };
+  const viewOnlyFromState = coerceBoolean(nav.viewOnly);
+  const viewOnlyFromPrefill = coerceBoolean(prefill.viewOnly);
+  const viewOnlyFromQuery = coerceBoolean(params.get('viewOnly'));
+  const isViewOnly = (viewOnlyFromState ?? viewOnlyFromPrefill ?? viewOnlyFromQuery) ?? isStudentRole;
   
   // Read class context from state or query params
   const classIdFromState = nav.classId || null;
@@ -186,6 +206,10 @@ const AIGenerateFeedback = () => {
     if (typeof prefill.score === 'number') return prefill.score;
     return '';
   });
+  const displayedScore = useMemo(() => {
+    if (score === '' || score === null || score === undefined) return '-';
+    return score;
+  }, [score]);
   const [feedback, setFeedback] = useState(prefill.feedback || '');
   const [questionWeight, setQuestionWeight] = useState(() => {
     // Priority: prefill.questionWeight > default 10
@@ -239,6 +263,9 @@ const AIGenerateFeedback = () => {
     return theme === 'sun' ? light : dark;
   }, [theme]);
   const handleClear = useCallback(() => {
+    if (isViewOnly) {
+      return;
+    }
     try {
       // Reset common fields
       setScore('');
@@ -284,16 +311,27 @@ const AIGenerateFeedback = () => {
       setSelectedComment(null);
       setShowCommentSidebar(false);
       setCommentPopover({ visible: false, x: 0, y: 0, feedback: null });
-
       spaceToast.success('Cleared. Click Save to apply.');
     } catch {}
-  }, [sectionType, section?.id, prefill?.section?.id]);
+  }, [sectionType, section?.id, prefill?.section?.id, isViewOnly]);
   // Right panel mode: null (choose), 'manual', 'ai'
   const [rightMode, setRightMode] = useState(null);
   const [hasAIGenerated, setHasAIGenerated] = useState(false);
   const [hasAutoSetMode, setHasAutoSetMode] = useState(false); // Track if we've auto-set mode on mount
+  const effectiveRightMode = isViewOnly ? 'manual' : rightMode;
+  useEffect(() => {
+    if (isViewOnly) {
+      if (rightMode !== 'manual') {
+        setRightMode('manual');
+      }
+      if (!hasAutoSetMode) {
+        setHasAutoSetMode(true);
+      }
+    }
+  }, [isViewOnly, rightMode, hasAutoSetMode]);
   const [scoreError, setScoreError] = useState(null); // Track score validation error
   const handleScoreChange = useCallback((e) => {
+    if (isViewOnly) return;
     const raw = Number(e?.target?.value);
     if (!Number.isFinite(raw)) { 
       setScore(''); 
@@ -311,7 +349,7 @@ const AIGenerateFeedback = () => {
       const clamped = Math.max(0, Math.min(questionWeight, raw));
       setScore(clamped);
     }
-  }, [questionWeight]);
+  }, [questionWeight, isViewOnly]);
 
   // Map to reuse existing comment/highlight logic structure
   const studentAnswers = useMemo(() => {
@@ -520,6 +558,9 @@ const AIGenerateFeedback = () => {
 
   // Handle text selection in Writing/Speaking text
   const handleTextSelection = useCallback((targetSectionId, textElement) => {
+    if (isViewOnly) {
+      return;
+    }
     const selection = window.getSelection();
     if (!selection || selection.rangeCount === 0) {
       setTextSelection({ visible: false, sectionId: null, startIndex: null, endIndex: null, position: { x: 0, y: 0 } });
@@ -596,9 +637,10 @@ const AIGenerateFeedback = () => {
       endIndex,
       position: { x: relativeX, y: relativeY },
     });
-  }, [studentAnswers]);
+  }, [studentAnswers, isViewOnly]);
 
   const handleAddComment = useCallback(() => {
+    if (isViewOnly) return;
     if (textSelection.sectionId !== null && textSelection.startIndex !== null && textSelection.endIndex !== null) {
       setCommentModal({
         visible: true,
@@ -612,9 +654,10 @@ const AIGenerateFeedback = () => {
       setTextSelection({ visible: false, sectionId: null, startIndex: null, endIndex: null, position: { x: 0, y: 0 } });
       window.getSelection()?.removeAllRanges();
     }
-  }, [textSelection]);
+  }, [textSelection, isViewOnly]);
 
   const handleSaveComment = useCallback(() => {
+    if (isViewOnly) return;
     if (commentModal.sectionId && commentModal.startIndex !== null && commentModal.endIndex !== null) {
       const sectionIdToUse = commentModal.sectionId;
       const feedbackId = commentModal.feedbackId || `feedback-${Date.now()}-${Math.random()}`;
@@ -647,9 +690,10 @@ const AIGenerateFeedback = () => {
         feedbackId: null,
       });
     }
-  }, [commentModal]);
+  }, [commentModal, isViewOnly]);
 
   const handleDeleteComment = useCallback(() => {
+    if (isViewOnly) return;
     const targetId = selectedComment?.id || commentPopover?.feedback?.id;
     if (!targetId) return;
 
@@ -674,7 +718,7 @@ const AIGenerateFeedback = () => {
       setHoveredHighlightId(null);
       setSelectedComment(null);
     }
-  }, [selectedComment, commentPopover?.feedback, writingSectionFeedbacks, section?.id]);
+  }, [selectedComment, commentPopover?.feedback, writingSectionFeedbacks, section?.id, isViewOnly]);
 
   const handleHighlightClick = useCallback((feedbackObj, event) => {
     try {
@@ -694,6 +738,7 @@ const AIGenerateFeedback = () => {
   }, []);
 
   const handleEditCommentFromSidebar = useCallback(() => {
+    if (isViewOnly) return;
     if (selectedComment) {
       const sectionKey = Object.keys(writingSectionFeedbacks).find(id =>
         writingSectionFeedbacks[id]?.some(fb => fb.id === selectedComment.id)
@@ -712,7 +757,7 @@ const AIGenerateFeedback = () => {
         setSelectedComment(null);
       }
     }
-  }, [selectedComment, writingSectionFeedbacks]);
+  }, [selectedComment, writingSectionFeedbacks, isViewOnly]);
 
   // Render essay with highlights (replicated)
   const renderEssayWithHighlights = useCallback((text, sectionKey) => {
@@ -1042,9 +1087,15 @@ const AIGenerateFeedback = () => {
 
   const handleBack = useCallback(() => {
     const role = user?.role?.toLowerCase();
-    const path = role === 'teaching_assistant'
-      ? `/teaching-assistant/daily-challenges/detail/${challengeId}/submissions/${submissionId}`
-      : `/teacher/daily-challenges/detail/${challengeId}/submissions/${submissionId}`;
+    let basePrefix = '/teacher';
+    if (role === 'teaching_assistant') {
+      basePrefix = '/teaching-assistant';
+    } else if (role === 'student') {
+      basePrefix = '/student';
+    } else if (role === 'test_taker') {
+      basePrefix = '/test-taker';
+    }
+    const path = `${basePrefix}/daily-challenges/detail/${challengeId}/submissions/${submissionId}`;
     
     // Preserve class context through navigation - read from multiple sources
     const currentParams = new URLSearchParams(location.search || '');
@@ -1080,6 +1131,10 @@ const AIGenerateFeedback = () => {
   }, [sectionType, studentAnswer, section]);
 
   const handleGenerateAI = useCallback(async () => {
+    if (isViewOnly) {
+      spaceToast.warning('View only mode: AI generation is disabled.');
+      return;
+    }
     try {
       setIsGenerating(true);
       if (sectionType === 'writing') {
@@ -1149,9 +1204,13 @@ const AIGenerateFeedback = () => {
     } finally {
       setIsGenerating(false);
     }
-  }, [submissionId, submissionQuestionId, sectionId, sectionType, studentAnswer, section, prefill?.submissionQuestionId, prefill?.rubric, speakingReferenceText, speakingAge, stripHtmlToText]);
+  }, [submissionId, submissionQuestionId, sectionId, sectionType, studentAnswer, section, prefill?.submissionQuestionId, prefill?.rubric, speakingReferenceText, speakingAge, stripHtmlToText, isViewOnly]);
 
   const handleSave = useCallback(async () => {
+    if (isViewOnly) {
+      spaceToast.warning('View only mode: You cannot save changes here.');
+      return;
+    }
     try {
       setSaving(true);
       // Use submissionQuestionId from URL or prefill (works for both writing and speaking)
@@ -1192,7 +1251,7 @@ const AIGenerateFeedback = () => {
     } finally {
       setSaving(false);
     }
-  }, [sectionType, submissionQuestionId, prefill?.submissionQuestionId, submission, sectionId, section, writingSectionFeedbacks, score, buildCombinedFeedbackForSave, handleBack]);
+  }, [sectionType, submissionQuestionId, prefill?.submissionQuestionId, submission, sectionId, section, writingSectionFeedbacks, score, buildCombinedFeedbackForSave, handleBack, isViewOnly]);
 
   return (
     <ThemedLayout
@@ -1262,12 +1321,20 @@ const AIGenerateFeedback = () => {
               </div>
               {/* Right actions */}
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginLeft: 'auto' }}>
-                <Button onClick={handleClear} icon={<CloseCircleOutlined />} style={{ height: 40, borderRadius: 8 }}>
-                  Clear
-                </Button>
-                <Button icon={<SaveOutlined />} onClick={handleSave} loading={saving} style={{ height: 40, borderRadius: 8, padding: '0 24px', border: 'none', background: theme === 'sun' ? 'linear-gradient(135deg, #66AEFF, #3C99FF)' : 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)', color: '#000' }}>
-                  {t('common.save')}
-                </Button>
+                {isViewOnly ? (
+                  <Text style={{ fontStyle: 'italic', opacity: 0.75 }}>
+                    Viewing feedback
+                  </Text>
+                ) : (
+                  <>
+                    <Button onClick={handleClear} icon={<CloseCircleOutlined />} style={{ height: 40, borderRadius: 8 }}>
+                      Clear
+                    </Button>
+                    <Button icon={<SaveOutlined />} onClick={handleSave} loading={saving} style={{ height: 40, borderRadius: 8, padding: '0 24px', border: 'none', background: theme === 'sun' ? 'linear-gradient(135deg, #66AEFF, #3C99FF)' : 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)', color: '#000' }}>
+                      {t('common.save')}
+                    </Button>
+                  </>
+                )}
               </div>
             </div>
           </nav>
@@ -1400,7 +1467,7 @@ const AIGenerateFeedback = () => {
                   </div>
                   
                   {/* Floating Toolbar for text selection (same as DailyChallengeSubmissionDetail) */}
-                  {textSelection.visible && textSelection.sectionId === section?.id && (
+                  {!isViewOnly && textSelection.visible && textSelection.sectionId === section?.id && (
                     <div
                       style={{
                         position: 'absolute',
@@ -1474,10 +1541,12 @@ const AIGenerateFeedback = () => {
                       <div style={{ fontSize: 13, lineHeight: 1.6, color: theme === 'sun' ? '#333' : '#1F2937', whiteSpace: 'pre-wrap' }}>
                         {stripHtmlToText(commentPopover.feedback.comment)}
                       </div>
-                      <div style={{ marginTop: 12, display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-                        <Button danger icon={<DeleteOutlined />} onClick={handleDeleteComment}>Delete</Button>
-                        <Button onClick={handleEditCommentFromSidebar}>Edit Comment</Button>
-                      </div>
+                      {!isViewOnly && (
+                        <div style={{ marginTop: 12, display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+                          <Button danger icon={<DeleteOutlined />} onClick={handleDeleteComment}>Delete</Button>
+                          <Button onClick={handleEditCommentFromSidebar}>Edit Comment</Button>
+                        </div>
+                      )}
                     </div>
                   )}
                   </>
@@ -1577,7 +1646,7 @@ const AIGenerateFeedback = () => {
                       dangerouslySetInnerHTML={{ __html: section?.transcript || section?.sectionsContent || '' }}
                     />
                     {/* Floating Toolbar for text selection */}
-                    {textSelection.visible && textSelection.sectionId === section?.id && (
+                    {!isViewOnly && textSelection.visible && textSelection.sectionId === section?.id && (
                       <div
                         style={{
                           position: 'absolute',
@@ -1641,7 +1710,7 @@ const AIGenerateFeedback = () => {
             >
 
               {/* Mode chooser */}
-              {rightMode === null && (
+              {!isViewOnly && rightMode === null && (
                 <div style={{ padding: 16, display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 420 }}>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 12, width: '100%', maxWidth: 520 }}>
                     <Card
@@ -1677,43 +1746,60 @@ const AIGenerateFeedback = () => {
               )}
 
               {/* Manual mode: show fields only */}
-              {rightMode === 'manual' && (
+              {effectiveRightMode === 'manual' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-                    <Button
-                      icon={<ArrowLeftOutlined />}
-                      onClick={() => setRightMode(null)}
-                      className={`class-menu-back-button ${theme}-class-menu-back-button`}
-                      style={{ height: 32, borderRadius: 8, fontWeight: 500, fontSize: 14 }}
-                    >
-                      {t('common.back') || 'Back'}
-                    </Button>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: isViewOnly ? 'flex-start' : 'space-between', gap: 12, flexWrap: 'wrap' }}>
+                    {!isViewOnly && (
+                      <Button
+                        icon={<ArrowLeftOutlined />}
+                        onClick={() => setRightMode(null)}
+                        className={`class-menu-back-button ${theme}-class-menu-back-button`}
+                        style={{ height: 32, borderRadius: 8, fontWeight: 500, fontSize: 14 }}
+                      >
+                        {t('common.back') || 'Back'}
+                      </Button>
+                    )}
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                       <Text strong>Score</Text>
-                      <Input
-                        type="number"
-                        value={score}
-                        onChange={handleScoreChange}
-                        min={0}
-                        max={questionWeight}
-                        step={0.1}
-                        placeholder="0"
-                        status={scoreError ? 'error' : ''}
-                        style={{
-                          width: 120,
+                      {isViewOnly ? (
+                        <span style={{
+                          minWidth: 80,
+                          padding: '6px 16px',
                           borderRadius: 8,
-                          border: scoreError 
-                            ? `2px solid ${theme === 'sun' ? '#ff4d4f' : '#ff7875'}` 
-                            : `2px solid ${primaryColor}40`,
-                          background: theme === 'sun' ? '#fff' : 'rgba(255,255,255,0.08)',
-                        }}
-                      />
+                          background: theme === 'sun' ? 'rgba(24, 144, 255, 0.08)' : 'rgba(139, 92, 246, 0.15)',
+                          border: `1px solid ${theme === 'sun' ? 'rgba(24, 144, 255, 0.25)' : 'rgba(139, 92, 246, 0.25)'}`,
+                          fontWeight: 600,
+                          color: theme === 'sun' ? '#1E40AF' : '#8377A0',
+                          textAlign: 'center'
+                        }}>
+                          {displayedScore}
+                        </span>
+                      ) : (
+                        <Input
+                          type="number"
+                          value={score}
+                          onChange={handleScoreChange}
+                          min={0}
+                          max={questionWeight}
+                          step={0.1}
+                          placeholder="0"
+                          status={scoreError ? 'error' : ''}
+                          style={{
+                            width: 120,
+                            borderRadius: 8,
+                            border: scoreError 
+                              ? `2px solid ${theme === 'sun' ? '#ff4d4f' : '#ff7875'}` 
+                              : `2px solid ${primaryColor}40`,
+                            background: theme === 'sun' ? '#fff' : 'rgba(255,255,255,0.08)',
+                          }}
+                        />
+                      )}
                       <span style={{ fontSize: '16px', color: theme === 'sun' ? '#666' : '#999', fontWeight: 500 }}>
                         / {questionWeight}
                       </span>
                     </div>
                   </div>
-                  {scoreError && (
+                  {!isViewOnly && scoreError && (
                     <div style={{ 
                       fontSize: '12px', 
                       color: theme === 'sun' ? '#ff4d4f' : '#ff7875',
@@ -1780,24 +1866,35 @@ const AIGenerateFeedback = () => {
                   <div>
                     <Text strong>Feedback</Text>
                     <div className="feedback-editor-wrap" style={{ marginTop: 6, borderRadius: 12, border: `2px solid ${primaryColor}80`, background: theme === 'sun' ? primaryColorWithAlpha : 'rgba(244, 240, 255, 0.15)' }}>
-                      <CKEditor
-                        editor={ClassicEditor}
-                        data={feedback}
-                        onChange={(event, editor) => setFeedback(editor.getData())}
-                        config={{
-                          toolbar: { items: ['undo', 'redo', '|', 'paragraph', '|', 'bold', 'italic', '|', 'bulletedList', 'numberedList', '|', 'imageUpload'] },
-                          removePlugins: ['StickyToolbar']
+                      {isViewOnly ? (
+                        <div style={{
+                          padding: 12,
+                          minHeight: 300,
+                          color: '#000',
+                          background: theme === 'sun' ? '#fff' : 'rgba(255,255,255,0.95)',
+                          borderRadius: 8
                         }}
-                        onReady={(editor) => {
-                          try {
-                            const el = editor.ui?.getEditableElement?.();
-                            if (el) {
-                              el.style.minHeight = '300px';
-                              el.style.color = '#000';
-                            }
-                          } catch {}
-                        }}
-                      />
+                        dangerouslySetInnerHTML={{ __html: feedback || '<i>No feedback</i>' }} />
+                      ) : (
+                        <CKEditor
+                          editor={ClassicEditor}
+                          data={feedback}
+                          onChange={(event, editor) => setFeedback(editor.getData())}
+                          config={{
+                            toolbar: { items: ['undo', 'redo', '|', 'paragraph', '|', 'bold', 'italic', '|', 'bulletedList', 'numberedList', '|', 'imageUpload'] },
+                            removePlugins: ['StickyToolbar']
+                          }}
+                          onReady={(editor) => {
+                            try {
+                              const el = editor.ui?.getEditableElement?.();
+                              if (el) {
+                                el.style.minHeight = '300px';
+                                el.style.color = '#000';
+                              }
+                            } catch {}
+                          }}
+                        />
+                      )}
                     </div>
                   </div>
                   {/* Criteria feedback cards also visible in Manual mode (no Generate button) */}
@@ -1856,7 +1953,7 @@ const AIGenerateFeedback = () => {
               )}
 
               {/* AI mode: show button first; after success show fields */}
-              {rightMode === 'ai' && (
+              {!isViewOnly && rightMode === 'ai' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
                     <div style={{ display: 'flex' }}>
@@ -1901,7 +1998,7 @@ const AIGenerateFeedback = () => {
                   {sectionType === 'speaking' && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                       {/* Inline form row (top before generation) */}
-                      {!hasAIGenerated && (
+                      {!isViewOnly && !hasAIGenerated && (
                         <div
                           style={{
                             display: 'grid',
@@ -1943,7 +2040,7 @@ const AIGenerateFeedback = () => {
                         </div>
                       )}
                       {/* Speaking pre-generation hero panel */}
-                      {!hasAIGenerated && (
+                      {!isViewOnly && !hasAIGenerated && (
                         <div
                           style={{
                             marginTop: 8,
@@ -2069,24 +2166,29 @@ const AIGenerateFeedback = () => {
                           <div style={{ marginTop: 4 }}>
                             <Text strong>Feedback</Text>
                             <div className="feedback-editor-wrap" style={{ marginTop: 6, borderRadius: 12, border: `2px solid ${primaryColor}80`, background: theme === 'sun' ? primaryColorWithAlpha : 'rgba(244, 240, 255, 0.15)' }}>
-                              <CKEditor
-                                editor={ClassicEditor}
-                                data={feedback}
-                                onChange={(event, editor) => setFeedback(editor.getData())}
-                                config={{
-                                  toolbar: { items: ['undo', 'redo', '|', 'paragraph', '|', 'bold', 'italic', '|', 'bulletedList', 'numberedList', '|', 'imageUpload'] },
-                                  removePlugins: ['StickyToolbar']
-                                }}
-                                onReady={(editor) => {
-                                  try {
-                                    const el = editor.ui?.getEditableElement?.();
-                                    if (el) {
-                                      el.style.minHeight = '300px';
-                                      el.style.color = '#000';
-                                    }
-                                  } catch {}
-                                }}
-                              />
+                              {isViewOnly ? (
+                                <div style={{ padding: 12, minHeight: 300, color: '#000', background: theme === 'sun' ? '#fff' : 'rgba(255,255,255,0.95)', borderRadius: 8 }}
+                                  dangerouslySetInnerHTML={{ __html: feedback || '<i>No feedback</i>' }} />
+                              ) : (
+                                <CKEditor
+                                  editor={ClassicEditor}
+                                  data={feedback}
+                                  onChange={(event, editor) => setFeedback(editor.getData())}
+                                  config={{
+                                    toolbar: { items: ['undo', 'redo', '|', 'paragraph', '|', 'bold', 'italic', '|', 'bulletedList', 'numberedList', '|', 'imageUpload'] },
+                                    removePlugins: ['StickyToolbar']
+                                  }}
+                                  onReady={(editor) => {
+                                    try {
+                                      const el = editor.ui?.getEditableElement?.();
+                                      if (el) {
+                                        el.style.minHeight = '300px';
+                                        el.style.color = '#000';
+                                      }
+                                    } catch {}
+                                  }}
+                                />
+                              )}
                             </div>
                           </div>
                         </div>
@@ -2094,7 +2196,7 @@ const AIGenerateFeedback = () => {
                     </div>
                   )}
                   {/* Writing: pre-generation hero panel */}
-                  {sectionType === 'writing' && !hasAIGenerated && (
+                  {sectionType === 'writing' && !isViewOnly && !hasAIGenerated && (
                     <div
                       style={{
                         marginTop: 12,
@@ -2170,24 +2272,29 @@ const AIGenerateFeedback = () => {
                       <div>
                         <Text strong>Feedback</Text>
                         <div className="feedback-editor-wrap" style={{ marginTop: 6, borderRadius: 12, border: `2px solid ${primaryColor}80`, background: theme === 'sun' ? primaryColorWithAlpha : 'rgba(244, 240, 255, 0.15)' }}>
-                          <CKEditor
-                            editor={ClassicEditor}
-                            data={feedback}
-                            onChange={(event, editor) => setFeedback(editor.getData())}
-                            config={{
-                              toolbar: { items: ['undo', 'redo', '|', 'paragraph', '|', 'bold', 'italic', '|', 'bulletedList', 'numberedList', '|', 'imageUpload'] },
-                              removePlugins: ['StickyToolbar']
-                            }}
-                            onReady={(editor) => {
-                              try {
-                                const el = editor.ui?.getEditableElement?.();
-                                if (el) {
-                                  el.style.minHeight = '300px';
-                                  el.style.color = '#000';
-                                }
-                              } catch {}
-                            }}
-                          />
+                          {isViewOnly ? (
+                            <div style={{ padding: 12, minHeight: 300, color: '#000', background: theme === 'sun' ? '#fff' : 'rgba(255,255,255,0.95)', borderRadius: 8 }}
+                              dangerouslySetInnerHTML={{ __html: feedback || '<i>No feedback</i>' }} />
+                          ) : (
+                            <CKEditor
+                              editor={ClassicEditor}
+                              data={feedback}
+                              onChange={(event, editor) => setFeedback(editor.getData())}
+                              config={{
+                                toolbar: { items: ['undo', 'redo', '|', 'paragraph', '|', 'bold', 'italic', '|', 'bulletedList', 'numberedList', '|', 'imageUpload'] },
+                                removePlugins: ['StickyToolbar']
+                              }}
+                              onReady={(editor) => {
+                                try {
+                                  const el = editor.ui?.getEditableElement?.();
+                                  if (el) {
+                                    el.style.minHeight = '300px';
+                                    el.style.color = '#000';
+                                  }
+                                } catch {}
+                              }}
+                            />
+                          )}
                         </div>
                       </div>
                       {/* Criteria feedback cards (one per row) */}
@@ -2246,7 +2353,7 @@ const AIGenerateFeedback = () => {
                   )}
 
                   {/* Bottom area: after generation, move inputs above the button */}
-                  {sectionType === 'speaking' && hasAIGenerated && (
+                  {sectionType === 'speaking' && hasAIGenerated && !isViewOnly && (
                     <div
                       style={{
                         display: 'grid',
@@ -2286,7 +2393,7 @@ const AIGenerateFeedback = () => {
                       </div>
                     </div>
                   )}
-                  {sectionType === 'speaking' && hasAIGenerated && (
+                  {sectionType === 'speaking' && hasAIGenerated && !isViewOnly && (
                     <div
                       style={{
                         marginTop: 12,
@@ -2418,7 +2525,7 @@ const AIGenerateFeedback = () => {
                     </div>
                     ) : null
                   ) : (
-                    sectionType === 'speaking' ? null :
+                    (sectionType === 'speaking' || isViewOnly) ? null :
                     <div style={{ display: 'flex', justifyContent: 'center', marginTop: 4 }}>
                       <Button
                         type="primary"
@@ -2447,106 +2554,110 @@ const AIGenerateFeedback = () => {
           </div>
         </Card>
       </div>
-      {/* Comment Modal for Writing/Speaking */}
-      <Modal
-        title={
-          <div style={{ fontSize: '28px', fontWeight: '600', color: 'rgb(24, 144, 255)', textAlign: 'center', padding: '10px 0' }}>
-            {commentModal.isEdit ? 'Edit Comment' : 'Add Comment'}
-          </div>
-        }
-        open={commentModal.visible}
-        onCancel={() => setCommentModal({ visible: false, sectionId: null, startIndex: null, endIndex: null, comment: '', isEdit: false, feedbackId: null })}
-        width={700}
-        footer={[
-          <Button key="cancel" onClick={() => setCommentModal({ visible: false, sectionId: null, startIndex: null, endIndex: null, comment: '', isEdit: false, feedbackId: null })} style={{ height: '32px', fontWeight: '500', fontSize: '16px', padding: '4px 15px', width: '100px' }}>
-            Cancel
-          </Button>,
-          <Button
-            key="save"
-            type="primary"
-            onClick={handleSaveComment}
-            style={{
-              background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)',
-              borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : '#7228d9',
-              color: '#000',
-              borderRadius: '6px',
-              height: '32px',
-              fontWeight: '500',
-              fontSize: '16px',
-              padding: '4px 15px',
-              width: '100px',
-              transition: 'all 0.3s ease',
-              border: 'none',
-            }}
-            onMouseEnter={(e) => {
-              if (theme === 'sun') { e.currentTarget.style.background = 'rgb(93, 159, 233)'; }
-              else { e.currentTarget.style.background = 'linear-gradient(135deg, #9C8FB0 19%, #9588AB 64%, #726795 75%, #9A95B0 97%, #5D4F7F 100%)'; }
-            }}
-            onMouseLeave={(e) => {
-              if (theme === 'sun') { e.currentTarget.style.background = 'rgb(113, 179, 253)'; }
-              else { e.currentTarget.style.background = 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)'; }
-            }}
+      {!isViewOnly && (
+        <>
+          {/* Comment Modal for Writing/Speaking */}
+          <Modal
+            title={
+              <div style={{ fontSize: '28px', fontWeight: '600', color: 'rgb(24, 144, 255)', textAlign: 'center', padding: '10px 0' }}>
+                {commentModal.isEdit ? 'Edit Comment' : 'Add Comment'}
+              </div>
+            }
+            open={commentModal.visible}
+            onCancel={() => setCommentModal({ visible: false, sectionId: null, startIndex: null, endIndex: null, comment: '', isEdit: false, feedbackId: null })}
+            width={700}
+            footer={[
+              <Button key="cancel" onClick={() => setCommentModal({ visible: false, sectionId: null, startIndex: null, endIndex: null, comment: '', isEdit: false, feedbackId: null })} style={{ height: '32px', fontWeight: '500', fontSize: '16px', padding: '4px 15px', width: '100px' }}>
+                Cancel
+              </Button>,
+              <Button
+                key="save"
+                type="primary"
+                onClick={handleSaveComment}
+                style={{
+                  background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)',
+                  borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : '#7228d9',
+                  color: '#000',
+                  borderRadius: '6px',
+                  height: '32px',
+                  fontWeight: '500',
+                  fontSize: '16px',
+                  padding: '4px 15px',
+                  width: '100px',
+                  transition: 'all 0.3s ease',
+                  border: 'none',
+                }}
+                onMouseEnter={(e) => {
+                  if (theme === 'sun') { e.currentTarget.style.background = 'rgb(93, 159, 233)'; }
+                  else { e.currentTarget.style.background = 'linear-gradient(135deg, #9C8FB0 19%, #9588AB 64%, #726795 75%, #9A95B0 97%, #5D4F7F 100%)'; }
+                }}
+                onMouseLeave={(e) => {
+                  if (theme === 'sun') { e.currentTarget.style.background = 'rgb(113, 179, 253)'; }
+                  else { e.currentTarget.style.background = 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)'; }
+                }}
+              >
+                {commentModal.isEdit ? 'Update' : 'Add'}
+              </Button>
+            ]}
           >
-            {commentModal.isEdit ? 'Update' : 'Add'}
-          </Button>
-        ]}
-      >
-        <div style={{ padding: '20px 0' }}>
-          <div className="comment-editor-wrap" style={{ borderRadius: 12, border: `2px solid ${primaryColor}80`, background: theme === 'sun' ? primaryColorWithAlpha : 'rgba(244, 240, 255, 0.15)' }}>
-            <CKEditor
-              editor={ClassicEditor}
-              data={commentModal.comment}
-              onChange={handleCommentInputChange}
-              config={{
-                              toolbar: { items: ['undo', 'redo', '|', 'paragraph', '|', 'bold', 'italic', '|', 'bulletedList', 'numberedList'] },
-                              removePlugins: ['StickyToolbar']
-              }}
-              onReady={(editor) => {
-                try {
-                  const el = editor.ui?.getEditableElement?.();
-                  if (el) {
-                    el.style.minHeight = '200px';
-                    el.style.maxHeight = '200px';
-                    el.style.overflowY = 'auto';
-                    el.style.color = '#000';
-                  }
-                } catch {}
-              }}
-            />
-          </div>
-        </div>
-      </Modal>
-
-      {/* Comment Sidebar */}
-      {showCommentSidebar && selectedComment && (
-        <div style={{
-          position: 'fixed', right: '24px', top: '50%', transform: 'translateY(-50%)', width: '350px', maxWidth: 'calc(100vw - 48px)', maxHeight: '80vh',
-          background: theme === 'sun' ? '#ffffff' : 'rgba(255, 255, 255, 0.95)', borderRadius: '12px', border: `1px solid ${theme === 'sun' ? '#e8e8e8' : 'rgba(255, 255, 255, 0.2)'}`,
-          padding: '20px', overflowY: 'auto', boxShadow: theme === 'sun' ? '0 4px 16px rgba(0, 0, 0, 0.15)' : '0 4px 16px rgba(0, 0, 0, 0.3)', zIndex: 1000,
-        }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', paddingBottom: '12px', borderBottom: `1px solid ${theme === 'sun' ? '#e8e8e8' : 'rgba(0, 0, 0, 0.1)'}` }}>
-            <div>
-              <Typography.Text strong style={{ fontSize: '16px', color: theme === 'sun' ? '#333' : '#1F2937' }}>Teacher Comment</Typography.Text>
-              <div style={{ fontSize: '12px', color: theme === 'sun' ? '#999' : '#777', marginTop: '4px' }}>
-                {selectedComment.timestamp ? new Date(selectedComment.timestamp).toLocaleDateString() : new Date().toLocaleDateString()} {new Date(selectedComment.timestamp || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            <div style={{ padding: '20px 0' }}>
+              <div className="comment-editor-wrap" style={{ borderRadius: 12, border: `2px solid ${primaryColor}80`, background: theme === 'sun' ? primaryColorWithAlpha : 'rgba(244, 240, 255, 0.15)' }}>
+                <CKEditor
+                  editor={ClassicEditor}
+                  data={commentModal.comment}
+                  onChange={handleCommentInputChange}
+                  config={{
+                                  toolbar: { items: ['undo', 'redo', '|', 'paragraph', '|', 'bold', 'italic', '|', 'bulletedList', 'numberedList'] },
+                                  removePlugins: ['StickyToolbar']
+                  }}
+                  onReady={(editor) => {
+                    try {
+                      const el = editor.ui?.getEditableElement?.();
+                      if (el) {
+                        el.style.minHeight = '200px';
+                        el.style.maxHeight = '200px';
+                        el.style.overflowY = 'auto';
+                        el.style.color = '#000';
+                      }
+                    } catch {}
+                  }}
+                />
               </div>
             </div>
-            <Button type="text" icon={<CloseCircleOutlined />} onClick={() => { setShowCommentSidebar(false); setSelectedComment(null); }} style={{ minWidth: 'auto', width: '32px', height: '32px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }} />
-          </div>
+          </Modal>
 
-          <div style={{ fontSize: '14px', lineHeight: '1.8', color: theme === 'sun' ? '#333' : '#1F2937', whiteSpace: 'pre-wrap', wordBreak: 'break-word', marginBottom: '16px' }}>
-            {stripHtmlToText(selectedComment.comment) || 'No comment provided.'}
-          </div>
+          {/* Comment Sidebar */}
+          {showCommentSidebar && selectedComment && (
+            <div style={{
+              position: 'fixed', right: '24px', top: '50%', transform: 'translateY(-50%)', width: '350px', maxWidth: 'calc(100vw - 48px)', maxHeight: '80vh',
+              background: theme === 'sun' ? '#ffffff' : 'rgba(255, 255, 255, 0.95)', borderRadius: '12px', border: `1px solid ${theme === 'sun' ? '#e8e8e8' : 'rgba(255, 255, 255, 0.2)'}`,
+              padding: '20px', overflowY: 'auto', boxShadow: theme === 'sun' ? '0 4px 16px rgba(0, 0, 0, 0.15)' : '0 4px 16px rgba(0, 0, 0, 0.3)', zIndex: 1000,
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', paddingBottom: '12px', borderBottom: `1px solid ${theme === 'sun' ? '#e8e8e8' : 'rgba(0, 0, 0, 0.1)'}` }}>
+                <div>
+                  <Typography.Text strong style={{ fontSize: '16px', color: theme === 'sun' ? '#333' : '#1F2937' }}>Teacher Comment</Typography.Text>
+                  <div style={{ fontSize: '12px', color: theme === 'sun' ? '#999' : '#777', marginTop: '4px' }}>
+                    {selectedComment.timestamp ? new Date(selectedComment.timestamp).toLocaleDateString() : new Date().toLocaleDateString()} {new Date(selectedComment.timestamp || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </div>
+                </div>
+                <Button type="text" icon={<CloseCircleOutlined />} onClick={() => { setShowCommentSidebar(false); setSelectedComment(null); }} style={{ minWidth: 'auto', width: '32px', height: '32px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }} />
+              </div>
 
-          <div style={{ marginTop: '16px', display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
-            <Button danger icon={<DeleteOutlined />} onClick={handleDeleteComment} style={{ borderRadius: '8px', fontWeight: 500, fontSize: '14px', height: '36px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              Delete
-            </Button>
-            <Button type="default" onClick={handleEditCommentFromSidebar} style={{ borderRadius: '8px', fontWeight: 500, fontSize: '14px', height: '36px', display: 'flex', alignItems: 'center', gap: '8px', border: `2px solid ${theme === 'sun' ? 'rgba(113, 179, 253, 0.4)' : 'rgba(138, 122, 255, 0.4)'}`, background: theme === 'sun' ? 'rgba(113, 179, 253, 0.1)' : 'rgba(138, 122, 255, 0.1)', color: theme === 'sun' ? '#1890ff' : '#8B5CF6' }}>
-              Edit Comment
-            </Button>
-          </div>
-        </div>
+              <div style={{ fontSize: '14px', lineHeight: '1.8', color: theme === 'sun' ? '#333' : '#1F2937', whiteSpace: 'pre-wrap', wordBreak: 'break-word', marginBottom: '16px' }}>
+                {stripHtmlToText(selectedComment.comment) || 'No comment provided.'}
+              </div>
+
+              <div style={{ marginTop: '16px', display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
+                <Button danger icon={<DeleteOutlined />} onClick={handleDeleteComment} style={{ borderRadius: '8px', fontWeight: 500, fontSize: '14px', height: '36px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  Delete
+                </Button>
+                <Button type="default" onClick={handleEditCommentFromSidebar} style={{ borderRadius: '8px', fontWeight: 500, fontSize: '14px', height: '36px', display: 'flex', alignItems: 'center', gap: '8px', border: `2px solid ${theme === 'sun' ? 'rgba(113, 179, 253, 0.4)' : 'rgba(138, 122, 255, 0.4)'}`, background: theme === 'sun' ? 'rgba(113, 179, 253, 0.1)' : 'rgba(138, 122, 255, 0.1)', color: theme === 'sun' ? '#1890ff' : '#8B5CF6' }}>
+                  Edit Comment
+                </Button>
+              </div>
+            </div>
+          )}
+        </>
       )}
     </ThemedLayout>
   );
