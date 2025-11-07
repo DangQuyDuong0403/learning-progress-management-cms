@@ -172,6 +172,8 @@ const EditDailyChallengeModal = ({
       await performSave(form.getFieldsValue());
     } catch (error) {
       console.error('Error in handleModalOk:', error);
+      setIsButtonDisabled(false);
+      setIsUpdating(false);
       if (error.errorFields) {
         spaceToast.error(t('common.pleaseFillAllRequiredFields'));
       } else {
@@ -559,7 +561,7 @@ const EditDailyChallengeModal = ({
                 name='startDate'
                 rules={[
                   {
-                    required: true,
+                    required: !isInProgress && !isClosed,
                     message: t('dailyChallenge.startDateRequired'),
                   },
                 ]}>
@@ -584,11 +586,14 @@ const EditDailyChallengeModal = ({
                 dependencies={['startDate']}
                 rules={[
                   {
-                    required: true,
+                    required: !isClosed,
                     message: t('dailyChallenge.endDateRequired'),
                   },
                   ({ getFieldValue }) => ({
                     validator(_, value) {
+                      if (isClosed) {
+                        return Promise.resolve();
+                      }
                       const startDate = getFieldValue('startDate');
                       if (!value || !startDate || !value.isBefore(startDate)) {
                         return Promise.resolve();

@@ -133,7 +133,13 @@ const ChallengeSettingsModal = ({
     if (isButtonDisabled || isSaving) return;
     try {
       // Validate required fields based on mode
-      const fieldsToValidate = ['startDate', 'endDate'];
+      const fieldsToValidate = [];
+      if (!isInProgress && !isClosed) {
+        fieldsToValidate.push('startDate');
+      }
+      if (!isClosed) {
+        fieldsToValidate.push('endDate');
+      }
       if (challengeMode === 'exam') {
         fieldsToValidate.push('durationMinutes', 'shuffleQuestion', 'antiCheatModeEnabled');
       }
@@ -433,6 +439,9 @@ const ChallengeSettingsModal = ({
                 rules={[
                   ({ getFieldValue }) => ({
                     validator(_, value) {
+                      if (isClosed) {
+                        return Promise.resolve();
+                      }
                       const startDate = getFieldValue('startDate');
                       // Valid when endDate is same or after startDate
                       if (!value || !startDate || !value.isBefore(startDate)) {

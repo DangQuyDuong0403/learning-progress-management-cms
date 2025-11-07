@@ -11,6 +11,7 @@ import {
   SearchOutlined,
   PlayCircleOutlined,
   EyeOutlined,
+  EditOutlined,
 } from "@ant-design/icons";
 import ThemedLayout from "../../../component/teacherlayout/ThemedLayout";
 import LoadingWithEffect from "../../../component/spinner/LoadingWithEffect";
@@ -562,14 +563,13 @@ const StudentDailyChallengeList = () => {
           return <span style={{ color: '#999' }}></span>;
         }
         
-        const status = record.submissionStatus;
         const isLate = record.late === true;
         
-        const renderStartLikeButton = (label) => (
+        const renderStartLikeButton = (label, icon = <PlayCircleOutlined />) => (
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
             <Button
               type="primary"
-              icon={<PlayCircleOutlined />}
+              icon={icon}
               onClick={() => handleViewClick(record)}
               className="action-btn-start"
               style={{
@@ -645,13 +645,20 @@ const StudentDailyChallengeList = () => {
           </div>
         );
         
+        const challengeTypeCode = (record.type || '').toUpperCase();
+        const isViewAnswerType = challengeTypeCode === 'WR' || challengeTypeCode === 'LI';
+        const effectiveStatus = (record.submissionStatus || 'PENDING').toUpperCase();
+
         return (
           <Space size="small">
-            {status === 'PENDING' && renderStartLikeButton('Do challenge')}
-            {status === 'DRAFT' && renderStartLikeButton('Edit answer')}
-            {status === 'SUBMITTED' && renderStartLikeButton('View answer')}
-            {status === 'GRADED' && renderViewResultButton('View result')}
-            {!status && renderStartLikeButton(t('dailyChallenge.startChallenge', 'Start Challenge'))}
+            {effectiveStatus === 'PENDING' && renderStartLikeButton('Do challenge')}
+            {effectiveStatus === 'DRAFT' && renderStartLikeButton('Edit answer', <EditOutlined />)}
+            {effectiveStatus === 'SUBMITTED' && (
+              isViewAnswerType
+                ? renderStartLikeButton('View answer', <EyeOutlined />)
+                : renderViewResultButton('View result')
+            )}
+            {effectiveStatus === 'GRADED' && renderViewResultButton('View result')}
           </Space>
         );
       },

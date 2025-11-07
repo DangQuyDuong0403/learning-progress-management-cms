@@ -170,7 +170,7 @@ const AIGenerateListening = () => {
       spaceToast.success(`Audio file "${file.name}" uploaded successfully!`);
     } catch (e) {
       console.error('Audio upload error:', e);
-      spaceToast.error(e?.response?.data?.message || e.message || 'Audio upload failed');
+      spaceToast.error(e?.response?.data?.error || e?.response?.data?.message || e.message || 'Audio upload failed');
     } finally {
       setIsProcessingAudio(false);
     }
@@ -185,12 +185,28 @@ const AIGenerateListening = () => {
     try {
       setIsGenerating(true);
       setShowPreview(false);
+      // Backend requires sections array. Align with Reading generator payload structure
       const payload = {
         challengeId: challengeInfo.challengeId,
-        questionTypeConfigs: questionTypeConfigs
-          .filter((c) => Number(c.numberOfQuestions) > 0)
-          .map((c) => ({ questionType: c.questionType, numberOfQuestions: Math.max(0, Number(c.numberOfQuestions) || 0) })),
-        description: prompt,
+        sections: [
+          {
+            section: {
+              id: 0,
+              sectionTitle: 'Listening Section',
+              sectionsUrl: audioUrl || '',
+              sectionsContent: prompt,
+              orderNumber: 1,
+              resourceType: 'FILE',
+            },
+            questionTypeConfigs: questionTypeConfigs
+              .filter((c) => Number(c.numberOfQuestions) > 0)
+              .map((c) => ({
+                questionType: c.questionType,
+                numberOfQuestions: Math.max(0, Number(c.numberOfQuestions) || 0),
+              })),
+          },
+        ],
+        description: '',
       };
       // Note: backend API for generation currently accepts description only; audio is required by UI but not sent
       const res = await dailyChallengeApi.generateContentBasedQuestions(payload);
@@ -212,7 +228,7 @@ const AIGenerateListening = () => {
       }
     } catch (err) {
       console.error('Generate listening AI questions error:', err);
-      spaceToast.error(err?.response?.data?.message || err?.message || 'Failed to generate questions');
+      spaceToast.error(err?.response?.data?.error || err?.response?.data?.message || err?.message || 'Failed to generate questions');
     } finally {
       setIsGenerating(false);
     }
@@ -241,7 +257,7 @@ const AIGenerateListening = () => {
       }
     } catch (err) {
       console.error('Generate listening from file error:', err);
-      spaceToast.error(err?.response?.data?.message || err?.message || 'Failed to generate from file');
+      spaceToast.error(err?.response?.data?.error || err?.response?.data?.message || err?.message || 'Failed to generate from file');
     } finally {
       setIsGenerating(false);
     }

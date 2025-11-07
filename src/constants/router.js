@@ -29,6 +29,7 @@ const ROUTER_PAGE = {
 	STUDENT_DAILY_CHALLENGE_TAKE: '/student/daily-challenges/take/:id',
 	STUDENT_DAILY_CHALLENGE_RESULT: '/student/daily-challenges/result/:id',
 	STUDENT_DAILY_CHALLENGE_SUBMISSION_DETAIL: '/student/daily-challenges/detail/:id/submissions/:submissionId',
+	STUDENT_DAILY_CHALLENGE_SECTION_FEEDBACK: '/student/daily-challenges/detail/:id/submissions/:submissionId/feedback/:submissionQuestionId',
 	// Test Taker Routes
 	TEST_TAKER_DASHBOARD: '/test-taker/dashboard',
 	TEST_TAKER_CLASSES: '/test-taker/classes',
@@ -37,13 +38,11 @@ const ROUTER_PAGE = {
 	TEST_TAKER_DAILY_CHALLENGE_TAKE: '/test-taker/daily-challenges/take/:id',
 	TEST_TAKER_DAILY_CHALLENGE_RESULT: '/test-taker/daily-challenges/result/:id',
 	TEST_TAKER_DAILY_CHALLENGE_SUBMISSION_DETAIL: '/test-taker/daily-challenges/detail/:id/submissions/:submissionId',
+	TEST_TAKER_DAILY_CHALLENGE_SECTION_FEEDBACK: '/test-taker/daily-challenges/detail/:id/submissions/:submissionId/feedback/:submissionQuestionId',
 	// Admin Management Routes
 	ADMIN_DASHBOARD: '/admin/dashboard',
 	ADMIN_ACCOUNTS: '/admin/accounts',
 	ADMIN_ROLES: '/admin/roles', 
-	ADMIN_COURSES: '/admin/courses',
-	ADMIN_STUDENTS: '/admin/students',
-	ADMIN_TEACHERS: '/admin/teachers',
 	ADMIN_REPORTS: '/admin/reports',
 	// Manager Management Routes
 	MANAGER_DASHBOARD: '/manager/dashboard',
