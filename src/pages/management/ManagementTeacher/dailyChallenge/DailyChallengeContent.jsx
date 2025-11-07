@@ -3371,11 +3371,14 @@ const DailyChallengeContent = () => {
       // Compute next section orderNumber from existing sections:
       // - passages contain DOCUMENT/FILE sections
       // - GV sections come through questions with their own orderNumber
-      const sectionOrderNumbers = [
-        ...passages.map(p => p?.orderNumber).filter(n => typeof n === 'number'),
-        ...questions.map(q => q?.orderNumber).filter(n => typeof n === 'number')
-      ];
-      const nextOrder = (sectionOrderNumbers.length ? Math.max(...sectionOrderNumbers) : 0) + 1;
+      // Use filtered arrays to exclude deleted items
+      const visiblePassages = passages.filter(p => !p.toBeDeleted);
+      const visibleQuestions = questions.filter(q => !q.toBeDeleted);
+      
+      // Calculate nextOrder based on total visible items + 1
+      // This ensures correct ordering even when state hasn't updated yet
+      const totalVisibleItems = visiblePassages.length + visibleQuestions.length;
+      const nextOrder = totalVisibleItems + 1;
 
       // For GV, let question start at order 1 inside its section; section.orderNumber controls placement
       const questionOrder = (challengeDetails?.challengeType === 'GV') ? 1 : nextOrder;
@@ -4007,12 +4010,15 @@ const DailyChallengeContent = () => {
       // Persist duplicate through API for all challenge types to avoid errors
       setLoading(true);
 
-      // Compute next section orderNumber from existing sections (see note above)
-      const sectionOrderNumbers = [
-        ...passages.map(p => p?.orderNumber).filter(n => typeof n === 'number'),
-        ...questions.map(q => q?.orderNumber).filter(n => typeof n === 'number')
-      ];
-      const nextOrder = (sectionOrderNumbers.length ? Math.max(...sectionOrderNumbers) : 0) + 1;
+      // Compute next section orderNumber from existing sections
+      // Use filtered arrays to exclude deleted items
+      const visiblePassages = passages.filter(p => !p.toBeDeleted);
+      const visibleQuestions = questions.filter(q => !q.toBeDeleted);
+      
+      // Calculate nextOrder based on total visible items + 1
+      // This ensures correct ordering even when state hasn't updated yet
+      const totalVisibleItems = visiblePassages.length + visibleQuestions.length;
+      const nextOrder = totalVisibleItems + 1;
 
       const questionOrderDup = (challengeDetails?.challengeType === 'GV') ? 1 : nextOrder;
       const apiQuestion = transformQuestionToApiFormat(
