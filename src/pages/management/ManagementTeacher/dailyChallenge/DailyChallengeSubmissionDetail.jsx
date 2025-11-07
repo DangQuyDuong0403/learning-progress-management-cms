@@ -158,7 +158,33 @@ const DailyChallengeSubmissionDetail = () => {
     if (!g) return false;
     // Only consider as existing if receivedWeight > 0 (not just 0 or empty)
     const hasScore = Number.isFinite(Number(g.receivedWeight)) && Number(g.receivedWeight) > 0;
-    const hasFb = typeof g.feedback === 'string' && g.feedback.trim() !== '';
+    // Check feedback: can be string or object (with overallFeedback, criteriaFeedback, etc.)
+    let hasFb = false;
+    if (typeof g.feedback === 'string') {
+      hasFb = g.feedback.trim() !== '';
+    } else if (typeof g.feedback === 'object' && g.feedback !== null) {
+      // Check if object has overallFeedback or criteriaFeedback with actual content
+      const overallFb = g.feedback.overallFeedback;
+      const criteriaFb = g.feedback.criteriaFeedback;
+      
+      // Check overallFeedback
+      const hasOverallFb = typeof overallFb === 'string' && overallFb.trim() !== '';
+      
+      // Check criteriaFeedback: must have at least one field with score or feedback
+      let hasCriteriaFb = false;
+      if (typeof criteriaFb === 'object' && criteriaFb !== null) {
+        const criteriaKeys = Object.keys(criteriaFb);
+        hasCriteriaFb = criteriaKeys.some(key => {
+          const item = criteriaFb[key];
+          if (!item || typeof item !== 'object') return false;
+          const hasScore = item.score !== null && item.score !== undefined && Number.isFinite(Number(item.score));
+          const hasFeedback = typeof item.feedback === 'string' && item.feedback.trim() !== '';
+          return hasScore || hasFeedback;
+        });
+      }
+      
+      hasFb = hasOverallFb || hasCriteriaFb;
+    }
     const hasHighlights = Array.isArray(g.highlightComments) && g.highlightComments.length > 0;
     return !!(hasScore || hasFb || hasHighlights);
   };
@@ -1293,7 +1319,33 @@ const DailyChallengeSubmissionDetail = () => {
                 // Only store grading if it has actual content (score > 0, feedback, or highlights)
                 // This ensures that after Clear + Save, the button will show "Add" instead of "Edit"
                 const hasScore = Number.isFinite(Number(data.receivedWeight)) && Number(data.receivedWeight) > 0;
-                const hasFb = typeof data.feedback === 'string' && data.feedback.trim() !== '';
+                // Check feedback: can be string or object (with overallFeedback, criteriaFeedback, etc.)
+                let hasFb = false;
+                if (typeof data.feedback === 'string') {
+                  hasFb = data.feedback.trim() !== '';
+                } else if (typeof data.feedback === 'object' && data.feedback !== null) {
+                  // Check if object has overallFeedback or criteriaFeedback with actual content
+                  const overallFb = data.feedback.overallFeedback;
+                  const criteriaFb = data.feedback.criteriaFeedback;
+                  
+                  // Check overallFeedback
+                  const hasOverallFb = typeof overallFb === 'string' && overallFb.trim() !== '';
+                  
+                  // Check criteriaFeedback: must have at least one field with score or feedback
+                  let hasCriteriaFb = false;
+                  if (typeof criteriaFb === 'object' && criteriaFb !== null) {
+                    const criteriaKeys = Object.keys(criteriaFb);
+                    hasCriteriaFb = criteriaKeys.some(key => {
+                      const item = criteriaFb[key];
+                      if (!item || typeof item !== 'object') return false;
+                      const hasScore = item.score !== null && item.score !== undefined && Number.isFinite(Number(item.score));
+                      const hasFeedback = typeof item.feedback === 'string' && item.feedback.trim() !== '';
+                      return hasScore || hasFeedback;
+                    });
+                  }
+                  
+                  hasFb = hasOverallFb || hasCriteriaFb;
+                }
                 const hasHighlights = Array.isArray(data.highlightComments) && data.highlightComments.length > 0;
                 
                 if (hasScore || hasFb || hasHighlights) {

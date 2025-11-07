@@ -314,10 +314,11 @@
 .dropdown-menu {
   position: absolute;
   top: 100%;
-  right: 50%;
-  transform: translateX(50%);
+  right: 0;
+  left: auto;
+  transform: none;
   margin-top: 8px;
-  margin-right: -12px;
+  margin-right: 0;
   z-index: 1000;
   display: none;
   opacity: 0;
@@ -330,7 +331,9 @@
 }
 
 .dropdown-menu-end {
-  transform: translateX(50%);
+  right: 0;
+  left: auto;
+  transform: none;
 }
 
 .sun-theme .sun-dropdown-menu {
@@ -347,10 +350,11 @@
   overflow-x: hidden;
   position: absolute;
   top: 100%;
-  right: 50%;
-  transform: translateX(50%);
+  right: 0;
+  left: auto;
+  transform: none;
   margin-top: 8px;
-  margin-right: -12px;
+  margin-right: 0;
   z-index: 1000;
 }
 
@@ -368,10 +372,11 @@
   overflow-x: hidden;
   position: absolute;
   top: 100%;
-  right: 50%;
-  transform: translateX(50%);
+  right: 0;
+  left: auto;
+  transform: none;
   margin-top: 8px;
-  margin-right: -12px;
+  margin-right: 0;
   z-index: 1000;
 }
 
@@ -567,23 +572,26 @@
 
 /* ===== NOTIFICATION DROPDOWN CONTENT ===== */
 .notification-header {
-  padding: 16px 20px;
-  border-bottom: 1px solid rgba(77, 208, 255, 0.18);
+  padding: 16px 20px 8px;
+  border-bottom: 1px solid rgba(77, 208, 255, 0.1);
   background: transparent;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .sun-theme .notification-header {
-  border-bottom: 1px solid rgba(30, 64, 175, 0.2);
+  border-bottom: 1px solid rgba(30, 64, 175, 0.1);
   background: rgba(30, 64, 175, 0.05);
 }
 
 .space-theme .notification-header {
-  border-bottom: 1px solid rgba(77, 208, 255, 0.2);
+  border-bottom: 1px solid rgba(26, 26, 46, 0.1);
   background: rgba(26, 26, 46, 0.4);
 }
 
 .notification-header h5 {
-  margin: 0 0 16px 0;
+  margin: 0;
   font-size: 18px;
   font-weight: 600;
   text-align: center;
@@ -601,49 +609,96 @@
 
 .notification-tabs {
   display: flex;
-  gap: 8px;
-  justify-content: center;
+  gap: 16px;
+  justify-content: flex-start;
   flex-wrap: nowrap;
+  padding: 0 4px;
+  flex: 1;
+  align-items: flex-end;
 }
 
 .notification-tabs .tab {
-  padding: 8px 14px;
-  border-radius: 20px;
-  font-size: 13px;
+  padding: 0 0 4px;
+  border-radius: 0;
+  font-size: 12px;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.3s ease;
-  border: 1px solid transparent;
+  transition: color 0.2s ease;
+  border: none;
   white-space: nowrap;
   display: inline-flex;
   align-items: center;
+  position: relative;
+  color: inherit;
+}
+
+.notification-tabs .tab-label {
+  font-size: 12px;
+  line-height: 1;
+  letter-spacing: 0.2px;
+}
+
+.notification-tabs .tab-count {
+  margin-left: 8px;
+  background: #ef4444;
+  color: #fff;
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.notification-tabs .tab::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: -5px;
+  width: 100%;
+  height: 2px;
+  background: transparent;
+  transition: background 0.2s ease;
+}
+
+.notification-tabs .tab:hover::after {
+  background: rgba(59, 130, 246, 0.3);
 }
 
 .sun-theme .notification-tabs .tab {
-  color: #1e3a8a;
-  background: #eef2ff;
-  border: 1px solid #bfd1ff;
+  color: #475569;
 }
 
 .sun-theme .notification-tabs .tab.active {
-  background: #3b82f6;
-  color: #ffffff;
-  border-color: #2563eb;
-  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.35);
+  color: #1d4ed8;
   font-weight: 600;
 }
 
+.sun-theme .notification-tabs .tab.active::after {
+  background: #2563eb;
+}
+
+.sun-theme .notification-tabs .tab:hover::after {
+  background: rgba(37, 99, 235, 0.3);
+}
+
 .space-theme .notification-tabs .tab {
-  color: #c7d2fe;
-  background: rgba(114, 137, 218, 0.15);
-  border: 1px solid rgba(114, 137, 218, 0.25);
+  color: rgba(255, 255, 255, 0.65);
 }
 
 .space-theme .notification-tabs .tab.active {
-  background: #7289da;
-  color: #ffffff;
-  border-color: rgba(114, 137, 218, 0.6);
-  box-shadow: 0 2px 10px rgba(114, 137, 218, 0.35);
+  color: #a5b4fc;
+  font-weight: 600;
+}
+
+.space-theme .notification-tabs .tab.active::after {
+  background: rgba(114, 137, 218, 0.8);
+}
+
+.space-theme .notification-tabs .tab:hover::after {
+  background: rgba(114, 137, 218, 0.45);
 }
 
 .notification-section {
@@ -928,6 +983,7 @@
 .notification-message {
   margin: 0;
   display: -webkit-box;
+  line-clamp: 2;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
@@ -936,6 +992,7 @@
 
 /* Expand full message on hover */
 .notification-item:hover .notification-message {
+  line-clamp: unset;
   -webkit-line-clamp: unset;
   display: block;
   overflow: visible;
