@@ -6,6 +6,23 @@
   overflow-x: hidden;
 }
 
+/* Remove blue background from main content panel to show background - only for ClassList.jsx */
+.class-page.class-list-view.main-content-panel,
+.class-page.class-list-view.sun-main-panel,
+.class-page.class-list-view.space-main-panel {
+  background: transparent !important;
+  backdrop-filter: none !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 24px !important;
+  margin: 24px !important;
+}
+
+/* Page title container spacing */
+.class-page .page-title-container {
+  margin-bottom: 24px;
+}
+
 /* Keep panel background like StudentList */
 /* Removed transparent background to match StudentList styling */
 

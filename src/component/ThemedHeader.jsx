@@ -339,7 +339,7 @@ export default function ThemedHeader({ hideThemeToggle = false, hideLanguageTogg
   const handleMarkAsRead = async (notificationId, e) => {
     e.stopPropagation();
     try {
-      const response = await notificationApi.markAsRead(notificationId);
+      await notificationApi.markAsRead(notificationId);
       setNotifications(prev => 
         prev.map(n => 
           n.id === notificationId ? { ...n, isRead: true } : n
@@ -348,21 +348,15 @@ export default function ThemedHeader({ hideThemeToggle = false, hideLanguageTogg
       setUnreadCount(prev => Math.max(0, prev - 1));
       // Ensure accuracy with backend
       fetchUnreadCount();
-      // Show message from backend if available
-      if (response?.data?.message) {
-        spaceToast.success(response.data.message);
-      }
     } catch (error) {
       console.error('Failed to mark notification as read:', error);
-      const errorMessage = error?.response?.data?.message || 'Failed to mark as read';
-      spaceToast.error(errorMessage);
     }
   };
 
   // Handle mark all as read
   const handleMarkAllAsRead = async () => {
     try {
-      const response = await notificationApi.markAllAsRead();
+      await notificationApi.markAllAsRead();
       // Update all notifications to read
       setNotifications(prev => 
         prev.map(n => ({ ...n, isRead: true }))
@@ -371,14 +365,8 @@ export default function ThemedHeader({ hideThemeToggle = false, hideLanguageTogg
       setUnreadCount(0);
       // Refresh to ensure accuracy
       fetchUnreadCount();
-      // Use message from backend, fallback to translation
-      const message = response?.data?.message || t('header.allMarkedAsRead') || 'All notifications marked as read';
-      spaceToast.success(message);
     } catch (error) {
       console.error('Failed to mark all notifications as read:', error);
-      // Try to get error message from backend response
-      const errorMessage = error?.response?.data?.message || t('header.failedToMarkAllAsRead') || 'Failed to mark all as read';
-      spaceToast.error(errorMessage);
     }
   };
 
@@ -941,6 +929,7 @@ export default function ThemedHeader({ hideThemeToggle = false, hideLanguageTogg
                   aria-labelledby="notificationDropdown"
                   onScroll={handleScroll}
                   onClick={handleDropdownClick}
+                  style={{ padding: '12px 16px', boxSizing: 'border-box' }}
                 >
                   <div className="notification-header">
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>

@@ -74,7 +74,7 @@ export default function LoginTeacher() {
                 console.log('LoginTeacher - Response role:', response.data.role);
                 
                 if (response.data.role === 'ADMIN') {
-                    redirectPath = '/admin/accounts';
+                    redirectPath = '/admin/dashboard';
                 } else if (response.data.role === 'MANAGER') {
                     redirectPath = '/manager/levels';
                 } else if (response.data.role === 'TEACHER') {
