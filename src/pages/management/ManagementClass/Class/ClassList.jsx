@@ -329,7 +329,7 @@ const ClassList = () => {
 
   return (
     <ThemedLayout>
-      <div className={`class-page main-content-panel ${theme}-main-panel`}>
+      <div className={`class-page class-list-view main-content-panel ${theme}-main-panel`}>
         {/* Page Title */}
         <div className="page-title-container">
           <Typography.Title 

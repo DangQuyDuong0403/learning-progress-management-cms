@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Card, Row, Col, Statistic, Table, Tag, Empty } from 'antd';
+import { Card, Row, Col, Empty } from 'antd';
 import {
   UserOutlined,
   BarChartOutlined,
@@ -15,15 +15,36 @@ import ThemedLayout from '../../../component/ThemedLayout';
 import { adminDashboardApi } from '../../../apis/apis';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
-import { PieChart, Pie, Cell, Legend, Tooltip as ReTooltip, ResponsiveContainer } from 'recharts';
+import {
+  PieChart,
+  Pie,
+  Cell,
+  Legend,
+  Tooltip as ReTooltip,
+  ResponsiveContainer,
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid
+} from 'recharts';
 import './AdminDashboard.css';
 dayjs.extend(relativeTime);
+
+const ROLE_COLORS = ['#c0aaff', '#80b9ff', '#7dd3b8', '#ffc98a', '#f79ac0', '#9aa7ff'];
+const STATUS_COLORS = {
+  ACTIVE: '#7fe2b3',
+  PENDING: '#ffdf8b',
+  INACTIVE: '#f7b7cf'
+};
 
 const AdminDashboard = () => {
   const { theme } = useTheme();
 
   const [loading, setLoading] = useState(false);
   const [dashboard, setDashboard] = useState({ summary: null, roleBreakdown: [], statusBreakdown: [], recentAccounts: [] });
+  const [growthLoading, setGrowthLoading] = useState(false);
+  const [accountGrowth, setAccountGrowth] = useState({ labels: [], series: [] });
 
 
   useEffect(() => {
@@ -47,6 +68,25 @@ const AdminDashboard = () => {
       }
     };
     fetchDashboard();
+  }, []);
+
+  useEffect(() => {
+    const fetchGrowth = async () => {
+      setGrowthLoading(true);
+      try {
+        const res = await adminDashboardApi.getAccountGrowthByRole({ range: 30, unit: 'daily' });
+        const payload = res?.data ? res.data : res;
+        setAccountGrowth({
+          labels: payload?.labels || [],
+          series: payload?.series || []
+        });
+      } catch (e) {
+        // Optional: surface error
+      } finally {
+        setGrowthLoading(false);
+      }
+    };
+    fetchGrowth();
   }, []);
 
   const summaryCards = useMemo(() => {
@@ -123,13 +163,32 @@ const AdminDashboard = () => {
 
   const rolePieData = useMemo(() => roleRows.map(r => ({ name: r.role, value: r.count, percentage: r.percentage })), [roleRows]);
   const statusPieData = useMemo(() => statusRows.map(s => ({ name: s.status, value: s.count, percentage: s.percentage })), [statusRows]);
+  const growthSeries = useMemo(() => accountGrowth?.series || [], [accountGrowth]);
+  const growthLabels = useMemo(() => accountGrowth?.labels || [], [accountGrowth]);
 
-  const ROLE_COLORS = ['#1890ff', '#52c41a', '#faad14', '#722ed1', '#13c2c2', '#eb2f96'];
-  const STATUS_COLORS = {
-    ACTIVE: '#52c41a',
-    PENDING: '#faad14',
-    INACTIVE: '#bfbfbf'
-  };
+  const roleColorMap = useMemo(() => {
+    const map = {};
+    (dashboard.roleBreakdown || []).forEach((r, idx) => {
+      map[r.role] = ROLE_COLORS[idx % ROLE_COLORS.length];
+    });
+    growthSeries.forEach((series, idx) => {
+      if (!map[series.role]) {
+        map[series.role] = ROLE_COLORS[idx % ROLE_COLORS.length];
+      }
+    });
+    return map;
+  }, [dashboard.roleBreakdown, growthSeries]);
+
+  const lineChartData = useMemo(() => {
+    if (!growthLabels.length || !growthSeries.length) return [];
+    return growthLabels.map((label, index) => {
+      const entry = { label };
+      growthSeries.forEach((series) => {
+        entry[series.role] = Array.isArray(series.data) ? series.data[index] ?? 0 : 0;
+      });
+      return entry;
+    });
+  }, [growthLabels, growthSeries]);
 
   const formatEnumLabel = (text = '') => {
     const safe = String(text || '');
@@ -140,27 +199,24 @@ const AdminDashboard = () => {
       .join(' ');
   };
 
-  const recentColumns = [
-    { title: 'Email', dataIndex: 'email', key: 'email' },
-    { title: 'Role', dataIndex: 'role', key: 'role', render: (v) => <Tag color="blue">{formatEnumLabel(v)}</Tag> },
-    { title: 'Status', dataIndex: 'status', key: 'status', render: (v) => (
-      <Tag color={v === 'ACTIVE' ? 'green' : v === 'PENDING' ? 'orange' : 'default'}>{formatEnumLabel(v)}</Tag>
-    ) },
-    { title: 'Created at', dataIndex: 'createdAt', key: 'createdAt', render: (v) => (
-      <span title={dayjs(v).format('YYYY-MM-DD HH:mm')}>{dayjs(v).fromNow()}</span>
-    ) },
-  ];
+  
 
   return (
     <ThemedLayout>
-      <div className={`admin-page ${theme}-theme main-content-panel`}>
+      <div className={`admin-page ${theme}-theme main-content-panel`} style={{ background: 'transparent', border: 'none', boxShadow: 'none' }}>
         <div className="admin-dashboard" style={{ maxWidth: 1280, margin: '0 auto' }}>
         
-
         {/* Summary */}
-        <Row gutter={[16, 16]} justify="space-between" style={{ marginBottom: 24 }}>
+        <Row gutter={[12, 16]} style={{ marginBottom: 24 }}>
           {summaryCards.map((stat) => (
-            <Col xs={24} sm={12} md={8} lg={4} xl={4} xxl={4} key={stat.key}>
+            <Col
+              key={stat.key}
+              xs={24}
+              sm={12}
+              md={8}
+              flex="1 1 220px"
+              style={{ display: 'flex' }}
+            >
               <Card
                 hoverable
                 loading={loading && !dashboard.summary}
@@ -169,7 +225,8 @@ const AdminDashboard = () => {
                   border: 'none',
                   borderRadius: 16,
                   boxShadow: theme === 'sun' ? '0 8px 20px rgba(0,0,0,0.08)' : undefined,
-                  minHeight: 170
+                  minHeight: 170,
+                  width: '100%'
                 }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 }}>
@@ -227,23 +284,29 @@ const AdminDashboard = () => {
               {rolePieData.length === 0 && !loading ? (
                 <Empty description="No data" />
               ) : (
-                <div style={{ width: '100%', height: 320 }}>
+                <div style={{ width: '100%', height: 380, overflow: 'visible' }}>
                   <ResponsiveContainer>
-                    <PieChart>
+                    <PieChart margin={{ top: 24, right: 24, bottom: 48, left: 24 }}>
                       <Pie
                         data={rolePieData}
                         dataKey="value"
                         nameKey="name"
                         cx="50%"
-                        cy="50%"
-                        outerRadius={110}
+                        cy="46%"
+                        outerRadius={105}
                         label={({ name, percentage }) => `${formatEnumLabel(name)} (${(percentage ?? 0).toFixed(1)}%)`}
                       >
                         {rolePieData.map((entry, index) => (
                           <Cell key={`cell-role-${index}`} fill={ROLE_COLORS[index % ROLE_COLORS.length]} />
                         ))}
                       </Pie>
-                      <Legend formatter={(value) => formatEnumLabel(value)} />
+                      <Legend
+                        verticalAlign="bottom"
+                        align="center"
+                        layout="horizontal"
+                        wrapperStyle={{ marginTop: 12 }}
+                        formatter={(value) => formatEnumLabel(value)}
+                      />
                       <ReTooltip formatter={(value, name, props) => {
                         const pct = props?.payload?.percentage;
                         return [`${value} (${(pct ?? 0).toFixed(1)}%)`, formatEnumLabel(name)];
@@ -282,23 +345,29 @@ const AdminDashboard = () => {
               {statusPieData.length === 0 && !loading ? (
                 <Empty description="No data" />
               ) : (
-                <div style={{ width: '100%', height: 320 }}>
+                <div style={{ width: '100%', height: 380, overflow: 'visible' }}>
                   <ResponsiveContainer>
-                    <PieChart>
+                    <PieChart margin={{ top: 24, right: 24, bottom: 48, left: 24 }}>
                       <Pie
                         data={statusPieData}
                         dataKey="value"
                         nameKey="name"
                         cx="50%"
-                        cy="50%"
-                        outerRadius={110}
+                        cy="46%"
+                        outerRadius={105}
                         label={({ name, percentage }) => `${formatEnumLabel(name)} (${(percentage ?? 0).toFixed(1)}%)`}
                       >
                         {statusPieData.map((entry, index) => (
                           <Cell key={`cell-status-${index}`} fill={STATUS_COLORS[entry.name] || '#bfbfbf'} />
                         ))}
                       </Pie>
-                      <Legend formatter={(value) => formatEnumLabel(value)} />
+                      <Legend
+                        verticalAlign="bottom"
+                        align="center"
+                        layout="horizontal"
+                        wrapperStyle={{ marginTop: 12 }}
+                        formatter={(value) => formatEnumLabel(value)}
+                      />
                       <ReTooltip formatter={(value, name, props) => {
                         const pct = props?.payload?.percentage;
                         return [`${value} (${(pct ?? 0).toFixed(1)}%)`, formatEnumLabel(name)];
@@ -311,25 +380,148 @@ const AdminDashboard = () => {
           </Col>
         </Row>
 
-        {/* Recent Accounts */}
-        <Card 
-          title="Recent accounts"
-          style={{
-            backgroundColor: theme === 'sun' ? '#ffffff' : undefined,
-            border: theme === 'sun' ? '1px solid #d9d9d9' : undefined,
-            borderRadius: 12,
-            boxShadow: theme === 'sun' ? '0 4px 12px rgba(0,0,0,0.06)' : undefined
-          }}
-        >
-          <Table
-            rowKey={(r) => r.userId}
-            loading={loading && dashboard.recentAccounts.length === 0}
-            dataSource={dashboard.recentAccounts}
-            columns={recentColumns}
-            pagination={{ pageSize: 5, hideOnSinglePage: true }}
-            locale={{ emptyText: <Empty description="No recent accounts" /> }}
-          />
-        </Card>
+        <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
+          <Col xs={24} lg={16}>
+            <Card
+              style={{
+                backgroundColor: theme === 'sun' ? '#ffffff' : undefined,
+                border: 'none',
+                borderRadius: 16,
+                boxShadow: theme === 'sun' ? '0 10px 24px rgba(0,0,0,0.08)' : undefined,
+                paddingTop: 8,
+                height: '100%'
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
+                <div style={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: 12,
+                  background: '#eef2ff',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}>
+                  <BarChartOutlined style={{ color: '#6366f1', fontSize: 20 }} />
+                </div>
+                <div style={{ fontWeight: 700, fontSize: 20, color: '#111827' }}>Account growth (30 days)</div>
+              </div>
+              {lineChartData.length === 0 && !growthLoading ? (
+                <Empty description="No data" />
+              ) : (
+                <div style={{ width: '100%', height: 360 }}>
+                  <ResponsiveContainer>
+                    <LineChart data={lineChartData}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                      <XAxis dataKey="label" tick={{ fontSize: 12 }} angle={-30} textAnchor="end" height={60} />
+                      <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
+                      <ReTooltip formatter={(value, name) => [value, formatEnumLabel(name)]} />
+                      <Legend formatter={(value) => formatEnumLabel(value)} />
+                      {growthSeries.map((series) => (
+                        <Line
+                          key={series.role}
+                          type="monotone"
+                          dataKey={series.role}
+                          stroke={roleColorMap[series.role] || '#8884d8'}
+                          strokeWidth={2.2}
+                          dot={{ r: 3 }}
+                          activeDot={{ r: 5 }}
+                        />
+                      ))}
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
+            </Card>
+          </Col>
+          <Col xs={24} lg={8}>
+            {/* Recent Accounts */}
+            <Card 
+              style={{
+                backgroundColor: theme === 'sun' ? '#ffffff' : undefined,
+                border: 'none',
+                borderRadius: 16,
+                boxShadow: theme === 'sun' ? '0 10px 24px rgba(0,0,0,0.08)' : undefined,
+                paddingTop: 8,
+                height: '100%'
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
+                <div style={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: 12,
+                  background: '#fff3e0',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}>
+                  <UserAddOutlined style={{ color: '#fb923c', fontSize: 20 }} />
+                </div>
+                <div style={{ fontWeight: 700, fontSize: 20, color: '#111827' }}>Recent accounts</div>
+              </div>
+
+              {(!dashboard.recentAccounts || dashboard.recentAccounts.length === 0) && !loading ? (
+                <Empty description="No recent accounts" />
+              ) : (
+                <div style={{ maxHeight: 420, overflow: 'auto', paddingRight: 4 }}>
+                  {(dashboard.recentAccounts || []).map((acc, idx) => {
+                    const statusColor = acc.status === 'ACTIVE' ? '#22c55e' : acc.status === 'PENDING' ? '#f59e0b' : '#9ca3af';
+                    const statusBg = acc.status === 'ACTIVE' ? 'rgba(34,197,94,0.12)' : acc.status === 'PENDING' ? 'rgba(245,158,11,0.15)' : 'rgba(156,163,175,0.2)';
+                    const roleColor = roleColorMap[acc.role] || '#60a5fa';
+                    const roleBg = `${roleColor}30`;
+                    return (
+                      <div key={acc.userId || idx} style={{
+                        border: theme === 'sun' ? '1px solid #eef2f7' : '1px solid transparent',
+                        background: theme === 'sun' ? '#fbfdff' : undefined,
+                        borderRadius: 14,
+                        padding: 16,
+                        marginBottom: 12
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
+                            <div style={{
+                              width: 36,
+                              height: 36,
+                              borderRadius: 10,
+                              background: '#f3f6ff',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center'
+                            }}>
+                              <UserOutlined style={{ color: '#4f46e5' }} />
+                            </div>
+                            <div style={{ fontWeight: 600, color: '#111827', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={acc.email}>
+                              {acc.email}
+                            </div>
+                          </div>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginTop: 10 }}>
+                          <span style={{
+                            display: 'inline-flex', alignItems: 'center', gap: 6,
+                            padding: '6px 10px', borderRadius: 10,
+                            background: roleBg, color: roleColor, fontWeight: 700, fontSize: 12
+                          }}>
+                            {formatEnumLabel(acc.role)}
+                          </span>
+                          <span style={{
+                            padding: '6px 10px', borderRadius: 10,
+                            background: statusBg, color: statusColor, fontWeight: 700, fontSize: 12
+                          }}>
+                            {formatEnumLabel(acc.status)}
+                          </span>
+                        </div>
+                        <div style={{ marginTop: 8, color: '#6b7280', fontSize: 13 }}>
+                          <span title={dayjs(acc.createdAt).format('YYYY-MM-DD HH:mm')}>{dayjs(acc.createdAt).format('HH:mm DD/MM/YYYY')}</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </Card>
+          </Col>
+        </Row>
         </div>
       </div>
     </ThemedLayout>

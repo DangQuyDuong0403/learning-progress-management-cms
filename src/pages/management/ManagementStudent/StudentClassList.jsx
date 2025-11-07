@@ -196,7 +196,12 @@ const StudentClassList = () => {
 
   return (
     <ThemedLayout>
-      <div className={`class-page main-content-panel ${theme}-main-panel`}>
+      <div
+        className={`class-page main-content-panel ${theme}-main-panel`}
+        style={theme === 'sun'
+          ? { background: 'none', border: 'none', boxShadow: 'none', backdropFilter: 'none' }
+          : { border: 'none', boxShadow: 'none', backdropFilter: 'none' }}
+      >
         {/* Page Title */}
         <div className="page-title-container" style={{ textAlign: 'center', marginBottom: '24px' }}>
           <Typography.Title 
