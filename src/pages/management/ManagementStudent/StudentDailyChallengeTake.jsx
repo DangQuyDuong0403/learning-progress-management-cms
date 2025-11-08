@@ -9626,23 +9626,6 @@ const StudentDailyChallengeTake = () => {
                   <strong>Thời gian:</strong> {new Date(violationWarningData.timestamp).toLocaleString('vi-VN')}
                 </p>
               )}
-              {violationWarningData.type === 'device_mismatch' && violationWarningData.deviceFingerprint && (
-                <p style={{ marginBottom: '8px', fontSize: '14px'}}>
-                  <strong>Device Fingerprint:</strong> 
-                  <span style={{ 
-                    fontFamily: 'monospace',
-                    fontSize: '12px',
-                    wordBreak: 'break-all'
-                  }}>
-                    {violationWarningData.deviceFingerprint}
-                  </span>
-                </p>
-              )}
-              {violationWarningData.type === 'device_mismatch' && violationWarningData.ipAddress && (
-                <p style={{ marginBottom: '8px', fontSize: '14px'}}>
-                  <strong>IP Address:</strong> {violationWarningData.ipAddress}
-                </p>
-              )}
               {violationWarningData.type === 'copy' && violationWarningData.oldValue && violationWarningData.oldValue.length > 0 && (
                 <p style={{ marginBottom: '8px', fontSize: '14px'}}>
                   <strong>Nội dung đã copy:</strong> 
