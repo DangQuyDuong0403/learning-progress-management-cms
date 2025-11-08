@@ -3418,7 +3418,8 @@ const SpeakingSectionItem = ({ question, index, theme, isViewOnly }) => {
             });
             
             const uploadRes = await dailyChallengeApi.uploadFile(file);
-            const serverUrl = uploadRes?.data?.url || uploadRes?.data || uploadRes;
+            // Get URL from response (handle different response structures)
+            const serverUrl = uploadRes?.data?.url || uploadRes?.data?.data?.url || uploadRes?.data || uploadRes;
             
             if (serverUrl && typeof serverUrl === 'string') {
               // Replace temp blob URL with server URL
@@ -3460,8 +3461,10 @@ const SpeakingSectionItem = ({ question, index, theme, isViewOnly }) => {
     const uploadedFilesData = await Promise.all(
       files.map(async (file) => {
         try {
+          // Upload file to backend
           const uploadRes = await dailyChallengeApi.uploadFile(file);
-          const serverUrl = uploadRes?.data?.url || uploadRes?.data || uploadRes;
+          // Get URL from response (handle different response structures)
+          const serverUrl = uploadRes?.data?.url || uploadRes?.data?.data?.url || uploadRes?.data || uploadRes;
           
           if (serverUrl && typeof serverUrl === 'string') {
             console.log('✅ File uploaded to server:', serverUrl);
@@ -3513,10 +3516,20 @@ const SpeakingSectionItem = ({ question, index, theme, isViewOnly }) => {
         return { answer: audioUrl, questionType: 'SPEAKING' };
       }
       if (Array.isArray(uploadedFiles) && uploadedFiles.length > 0) {
-        const files = uploadedFiles
-          .map(f => (typeof f === 'string' ? f : (f?.url || f?.name)))
+        // Extract URLs from uploaded files (prefer server URL)
+        const fileUrls = uploadedFiles
+          .map(f => {
+            // If file has url property (server URL), use it
+            if (f?.url && typeof f.url === 'string') {
+              return f.url;
+            }
+            // Otherwise fallback to name or value
+            return typeof f === 'string' ? f : (f?.value || f?.name);
+          })
           .filter(Boolean);
-        if (files.length > 0) return { answer: files, questionType: 'SPEAKING' };
+        if (fileUrls.length > 0) {
+          return { answer: fileUrls, questionType: 'SPEAKING' };
+        }
       }
       return null;
     };
@@ -3531,16 +3544,81 @@ const SpeakingSectionItem = ({ question, index, theme, isViewOnly }) => {
 
     const setAnswer = (answer) => {
       if (typeof answer === 'string') {
-        // Just set the URL directly (should be server URL now)
+        // String URL - could be recorded audio
         setAudioUrl(answer);
         return;
       }
       if (Array.isArray(answer) && answer.length > 0) {
-        const first = answer.find(Boolean);
-        if (first && typeof first === 'string') {
-          // Just set the URL directly (should be server URL now)
-          setAudioUrl(String(first));
+        // Handle array of file URLs or objects with URL (from submittedContent.data format)
+        const files = answer
+          .filter(Boolean)
+          .map((item, index) => {
+            let fileUrl = null;
+            let fileName = null;
+            
+            // Check if item is an object with id/value (from submittedContent.data format)
+            if (typeof item === 'object' && item !== null) {
+              // Prefer id, then value, then url, then name
+              fileUrl = item.id || item.value || item.url || item.name;
+              fileName = item.name || item.fileName || item.filename;
+            } else if (typeof item === 'string') {
+              // Item is directly a URL string
+              fileUrl = item;
+            }
+            
+            // Extract filename from URL if not provided
+            if (!fileName && fileUrl && typeof fileUrl === 'string') {
+              try {
+                // Try to extract filename from URL
+                const urlObj = new URL(fileUrl);
+                const pathParts = urlObj.pathname.split('/');
+                fileName = pathParts[pathParts.length - 1] || `audio_${index + 1}`;
+                // Remove query parameters from filename if any
+                fileName = fileName.split('?')[0];
+              } catch (e) {
+                // If URL parsing fails, use default name
+                fileName = `audio_${index + 1}.mp3`;
+              }
+            }
+            
+            // Default filename if still not found
+            if (!fileName) {
+              fileName = `audio_${index + 1}.mp3`;
+            }
+            
+            return {
+              id: Date.now() + Math.random() + index,
+              name: fileName,
+              size: 0,
+              type: 'audio/mpeg', // Default to audio type
+              url: fileUrl // Use the URL from id/value/url property
+            };
+          })
+          .filter(file => file.url); // Only keep files with valid URLs
+        
+        if (files.length > 0) {
+          console.log(`✅ SPEAKING: Restored ${files.length} file(s) for question ${question?.id}:`, files);
+          // Check if first item is a simple string (recorded audio) or object (uploaded file)
+          const firstItem = answer[0];
+          if (typeof firstItem === 'string') {
+            // Simple string URL - likely recorded audio
+            setAudioUrl(firstItem);
+            // If there are more files, add them to uploadedFiles
+            if (files.length > 1) {
+              setUploadedFiles(files.slice(1));
+            }
+          } else if (typeof firstItem === 'object' && firstItem !== null) {
+            // Object with id/value - uploaded files from submittedContent.data format
+            // All are uploaded files, set to uploadedFiles
+            setUploadedFiles(files);
+          } else {
+            // Fallback: set all to uploadedFiles
+            setUploadedFiles(files);
+          }
+        } else {
+          console.warn(`⚠️ SPEAKING: No valid files extracted from answer for question ${question?.id}:`, answer);
         }
+        return;
       }
     };
 
@@ -3835,43 +3913,73 @@ const SpeakingSectionItem = ({ question, index, theme, isViewOnly }) => {
             {/* Uploaded Files */}
             {!isViewOnly && uploadedFiles.length > 0 && (
               <div style={{ marginTop: '16px' }}>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', justifyContent: 'center' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                   {uploadedFiles.map((file) => (
                     <div
                       key={file.id}
                       style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '8px',
-                        padding: '8px 12px',
+                        padding: '12px',
                         background: theme === 'sun' 
                           ? 'linear-gradient(135deg, rgba(24, 144, 255, 0.08) 0%, rgba(64, 169, 255, 0.05) 100%)'
                           : 'linear-gradient(135deg, rgba(138, 122, 255, 0.12) 0%, rgba(167, 139, 250, 0.08) 100%)',
                         border: `1px solid ${theme === 'sun' 
                           ? 'rgba(24, 144, 255, 0.2)' 
                           : 'rgba(138, 122, 255, 0.25)'}`,
-                        borderRadius: '6px',
-                        fontSize: '12px',
+                        borderRadius: '8px',
                         transition: 'all 0.3s ease'
                       }}
                     >
-                      <span>🎵</span>
-                      <span style={{ color: theme === 'sun' ? '#333' : '#1F2937' }}>
-                        {file.name}
-                      </span>
-                      <button
-                        onClick={() => removeFile(file.id)}
-                        style={{
-                          background: 'none',
-                          border: 'none',
-                          color: '#ff4d4f',
-                          cursor: 'pointer',
-                          fontSize: '14px',
-                          padding: '2px'
-                        }}
-                      >
-                        ✕
-                      </button>
+                      <div style={{ 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        justifyContent: 'space-between',
+                        marginBottom: '8px'
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span>🎵</span>
+                          <span style={{ 
+                            color: theme === 'sun' ? '#333' : '#1F2937',
+                            fontSize: '13px',
+                            fontWeight: '500'
+                          }}>
+                            {file.name}
+                          </span>
+                        </div>
+                        <button
+                          onClick={() => removeFile(file.id)}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            color: '#ff4d4f',
+                            cursor: 'pointer',
+                            fontSize: '16px',
+                            padding: '2px 6px',
+                            borderRadius: '4px',
+                            transition: 'all 0.2s ease'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.background = 'rgba(255, 77, 79, 0.1)';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.background = 'none';
+                          }}
+                        >
+                          ✕
+                        </button>
+                      </div>
+                      {file.url && (
+                        <audio 
+                          controls 
+                          style={{ 
+                            width: '100%', 
+                            height: '40px',
+                            borderRadius: '4px'
+                          }} 
+                          src={file.url}
+                        >
+                          Your browser does not support the audio element.
+                        </audio>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -3945,7 +4053,8 @@ const SpeakingWithAudioSectionItem = ({ question, index, theme, sectionScore, is
             });
             
             const uploadRes = await dailyChallengeApi.uploadFile(file);
-            const serverUrl = uploadRes?.data?.url || uploadRes?.data || uploadRes;
+            // Get URL from response (handle different response structures)
+            const serverUrl = uploadRes?.data?.url || uploadRes?.data?.data?.url || uploadRes?.data || uploadRes;
             
             if (serverUrl && typeof serverUrl === 'string') {
               // Replace temp blob URL with server URL
@@ -3987,8 +4096,10 @@ const SpeakingWithAudioSectionItem = ({ question, index, theme, sectionScore, is
     const uploadedFilesData = await Promise.all(
       files.map(async (file) => {
         try {
+          // Upload file to backend
           const uploadRes = await dailyChallengeApi.uploadFile(file);
-          const serverUrl = uploadRes?.data?.url || uploadRes?.data || uploadRes;
+          // Get URL from response (handle different response structures)
+          const serverUrl = uploadRes?.data?.url || uploadRes?.data?.data?.url || uploadRes?.data || uploadRes;
           
           if (serverUrl && typeof serverUrl === 'string') {
             console.log('✅ File uploaded to server:', serverUrl);
@@ -4034,10 +4145,20 @@ const SpeakingWithAudioSectionItem = ({ question, index, theme, sectionScore, is
         return { answer: audioUrl, questionType: 'SPEAKING' };
       }
       if (Array.isArray(uploadedFiles) && uploadedFiles.length > 0) {
-        const files = uploadedFiles
-          .map(f => (typeof f === 'string' ? f : (f?.url || f?.name)))
+        // Extract URLs from uploaded files (prefer server URL)
+        const fileUrls = uploadedFiles
+          .map(f => {
+            // If file has url property (server URL), use it
+            if (f?.url && typeof f.url === 'string') {
+              return f.url;
+            }
+            // Otherwise fallback to name or value
+            return typeof f === 'string' ? f : (f?.value || f?.name);
+          })
           .filter(Boolean);
-        if (files.length > 0) return { answer: files, questionType: 'SPEAKING' };
+        if (fileUrls.length > 0) {
+          return { answer: fileUrls, questionType: 'SPEAKING' };
+        }
       }
       return null;
     };
@@ -4052,16 +4173,81 @@ const SpeakingWithAudioSectionItem = ({ question, index, theme, sectionScore, is
 
     const setAnswer = (answer) => {
       if (typeof answer === 'string') {
-        // Just set the URL directly (should be server URL now)
+        // String URL - could be recorded audio
         setAudioUrl(answer);
         return;
       }
       if (Array.isArray(answer) && answer.length > 0) {
-        const first = answer.find(Boolean);
-        if (first && typeof first === 'string') {
-          // Just set the URL directly (should be server URL now)
-          setAudioUrl(String(first));
+        // Handle array of file URLs or objects with URL (from submittedContent.data format)
+        const files = answer
+          .filter(Boolean)
+          .map((item, index) => {
+            let fileUrl = null;
+            let fileName = null;
+            
+            // Check if item is an object with id/value (from submittedContent.data format)
+            if (typeof item === 'object' && item !== null) {
+              // Prefer id, then value, then url, then name
+              fileUrl = item.id || item.value || item.url || item.name;
+              fileName = item.name || item.fileName || item.filename;
+            } else if (typeof item === 'string') {
+              // Item is directly a URL string
+              fileUrl = item;
+            }
+            
+            // Extract filename from URL if not provided
+            if (!fileName && fileUrl && typeof fileUrl === 'string') {
+              try {
+                // Try to extract filename from URL
+                const urlObj = new URL(fileUrl);
+                const pathParts = urlObj.pathname.split('/');
+                fileName = pathParts[pathParts.length - 1] || `audio_${index + 1}`;
+                // Remove query parameters from filename if any
+                fileName = fileName.split('?')[0];
+              } catch (e) {
+                // If URL parsing fails, use default name
+                fileName = `audio_${index + 1}.mp3`;
+              }
+            }
+            
+            // Default filename if still not found
+            if (!fileName) {
+              fileName = `audio_${index + 1}.mp3`;
+            }
+            
+            return {
+              id: Date.now() + Math.random() + index,
+              name: fileName,
+              size: 0,
+              type: 'audio/mpeg', // Default to audio type
+              url: fileUrl // Use the URL from id/value/url property
+            };
+          })
+          .filter(file => file.url); // Only keep files with valid URLs
+        
+        if (files.length > 0) {
+          console.log(`✅ SPEAKING: Restored ${files.length} file(s) for question ${question?.id}:`, files);
+          // Check if first item is a simple string (recorded audio) or object (uploaded file)
+          const firstItem = answer[0];
+          if (typeof firstItem === 'string') {
+            // Simple string URL - likely recorded audio
+            setAudioUrl(firstItem);
+            // If there are more files, add them to uploadedFiles
+            if (files.length > 1) {
+              setUploadedFiles(files.slice(1));
+            }
+          } else if (typeof firstItem === 'object' && firstItem !== null) {
+            // Object with id/value - uploaded files from submittedContent.data format
+            // All are uploaded files, set to uploadedFiles
+            setUploadedFiles(files);
+          } else {
+            // Fallback: set all to uploadedFiles
+            setUploadedFiles(files);
+          }
+        } else {
+          console.warn(`⚠️ SPEAKING: No valid files extracted from answer for question ${question?.id}:`, answer);
         }
+        return;
       }
     };
 
@@ -4539,43 +4725,73 @@ const SpeakingWithAudioSectionItem = ({ question, index, theme, sectionScore, is
             {/* Uploaded Files */}
             {!isViewOnly && uploadedFiles.length > 0 && (
               <div style={{ marginTop: '16px' }}>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', justifyContent: 'center' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                   {uploadedFiles.map((file) => (
                     <div
                       key={file.id}
                       style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '8px',
-                        padding: '8px 12px',
+                        padding: '12px',
                         background: theme === 'sun' 
                           ? 'linear-gradient(135deg, rgba(24, 144, 255, 0.08) 0%, rgba(64, 169, 255, 0.05) 100%)'
                           : 'linear-gradient(135deg, rgba(138, 122, 255, 0.12) 0%, rgba(167, 139, 250, 0.08) 100%)',
                         border: `1px solid ${theme === 'sun' 
                           ? 'rgba(24, 144, 255, 0.2)' 
                           : 'rgba(138, 122, 255, 0.25)'}`,
-                        borderRadius: '6px',
-                        fontSize: '12px',
+                        borderRadius: '8px',
                         transition: 'all 0.3s ease'
                       }}
                     >
-                      <span>🎵</span>
-                      <span style={{ color: theme === 'sun' ? '#333' : '#1F2937' }}>
-                        {file.name}
-                      </span>
-                      <button
-                        onClick={() => removeFile(file.id)}
-                        style={{
-                          background: 'none',
-                          border: 'none',
-                          color: '#ff4d4f',
-                          cursor: 'pointer',
-                          fontSize: '14px',
-                          padding: '2px'
-                        }}
-                      >
-                        ✕
-                      </button>
+                      <div style={{ 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        justifyContent: 'space-between',
+                        marginBottom: '8px'
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span>🎵</span>
+                          <span style={{ 
+                            color: theme === 'sun' ? '#333' : '#1F2937',
+                            fontSize: '13px',
+                            fontWeight: '500'
+                          }}>
+                            {file.name}
+                          </span>
+                        </div>
+                        <button
+                          onClick={() => removeFile(file.id)}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            color: '#ff4d4f',
+                            cursor: 'pointer',
+                            fontSize: '16px',
+                            padding: '2px 6px',
+                            borderRadius: '4px',
+                            transition: 'all 0.2s ease'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.background = 'rgba(255, 77, 79, 0.1)';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.background = 'none';
+                          }}
+                        >
+                          ✕
+                        </button>
+                      </div>
+                      {file.url && (
+                        <audio 
+                          controls 
+                          style={{ 
+                            width: '100%', 
+                            height: '40px',
+                            borderRadius: '4px'
+                          }} 
+                          src={file.url}
+                        >
+                          Your browser does not support the audio element.
+                        </audio>
+                      )}
                     </div>
                   ))}
                 </div>
