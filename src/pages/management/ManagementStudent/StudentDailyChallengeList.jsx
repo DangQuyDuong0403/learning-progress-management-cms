@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import {
   Button,
   Input,
@@ -19,7 +19,8 @@ import "../ManagementTeacher/dailyChallenge/DailyChallengeList.css";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useTheme } from "../../../contexts/ThemeContext";
-import { dailyChallengeApi } from "../../../apis/apis";
+import { useClassMenu } from "../../../contexts/ClassMenuContext";
+import { dailyChallengeApi, classManagementApi } from "../../../apis/apis";
 import dailyChallengeApiBackend from "../../../apis/backend/dailyChallengeManagement";
 import { spaceToast } from "../../../component/SpaceToastify";
 import { useSelector } from "react-redux";
@@ -107,8 +108,11 @@ const StudentDailyChallengeList = () => {
   const userRole = useSelector((state) => state.auth?.user?.role);
   const isTestTaker = userRole === 'test_taker' || userRole === 'TEST_TAKER';
   const routePrefix = isTestTaker ? '/test-taker' : '/student';
+  const { enterClassMenu, exitClassMenu } = useClassMenu();
+  const hasEnteredClassMenu = useRef(false);
   
   const [loading, setLoading] = useState(false);
+  const [classData, setClassData] = useState(null);
   const [dailyChallenges, setDailyChallenges] = useState([]);
   const [searchText, setSearchText] = useState("");
   // Removed type filter per request
@@ -130,6 +134,20 @@ const StudentDailyChallengeList = () => {
       case 'SP': return t('dailyChallenge.typeNames.SP') || 'Speaking';
       default: return typeCode;
     }
+  }, [t]);
+
+  // Helper to extract error message from backend response
+  const getErrorMessage = useCallback((error, defaultMessage) => {
+    if (error?.response?.data?.error) {
+      return error.response.data.error;
+    }
+    if (error?.response?.data?.message) {
+      return error.response.data.message;
+    }
+    if (error?.message) {
+      return error.message;
+    }
+    return defaultMessage || t('common.errorOccurred', 'An error occurred');
   }, [t]);
 
   // Load data from API
@@ -172,6 +190,9 @@ const StudentDailyChallengeList = () => {
           setTotalItems(0);
         }
       } catch (error) {
+        console.error('Error fetching daily challenges:', error);
+        const errorMessage = getErrorMessage(error, 'Failed to load daily challenges');
+        spaceToast.error(errorMessage);
         setAllChallenges([]);
         setTotalItems(0);
       } finally {
@@ -180,7 +201,66 @@ const StudentDailyChallengeList = () => {
     };
 
     fetchData();
-  }, [classId, location.state?.classId, searchDebounce]);
+  }, [classId, location.state?.classId, searchDebounce, getErrorMessage, t]);
+
+  // Fetch class data for header display
+  useEffect(() => {
+    const resolvedClassId = classId || location.state?.classId;
+    
+    if (!resolvedClassId) return;
+
+    const fetchClassData = async () => {
+      try {
+        const response = await classManagementApi.getClassDetail(resolvedClassId);
+        if (response.success && response.data) {
+          setClassData({
+            id: response.data.id,
+            name: response.data.className,
+            description: response.data.className,
+          });
+        }
+      } catch (error) {
+        console.error('Error fetching class data:', error);
+        const errorMessage = getErrorMessage(error, t('common.errorLoadingClassData', 'Failed to load class data'));
+        spaceToast.error(errorMessage);
+      }
+    };
+
+    fetchClassData();
+  }, [classId, location.state?.classId, getErrorMessage, t]);
+
+  // Reset ref when classId changes
+  useEffect(() => {
+    hasEnteredClassMenu.current = false;
+  }, [classId, location.state?.classId]);
+
+  // Enter class menu mode when component mounts to show back button in header
+  useEffect(() => {
+    const resolvedClassId = classId || location.state?.classId;
+    
+    if (!resolvedClassId || !classData) return;
+    
+    // Check if we already entered class menu with the same classId to avoid infinite loop
+    if (hasEnteredClassMenu.current) {
+      return; // Already entered
+    }
+    
+    // Mark as entered and call enterClassMenu
+    hasEnteredClassMenu.current = true;
+    enterClassMenu({
+      id: classData.id,
+      name: classData.name,
+      description: classData.description,
+      backUrl: `${routePrefix}/classes/menu/${resolvedClassId}`
+    });
+    
+    // Cleanup function to exit class menu mode when leaving
+    return () => {
+      hasEnteredClassMenu.current = false;
+      exitClassMenu();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [classData?.id, classId, location.state?.classId, routePrefix]);
 
   // Compute lesson-aware pagination: recalculate rowSpan and first-in-lesson within the current page window
   const computePagedRows = useCallback((fullList, page, size) => {
@@ -231,20 +311,25 @@ const StudentDailyChallengeList = () => {
 
   // Build filtered full list (type/search) - only PUBLISHED challenges shown
   const filteredAllChallenges = useMemo(() => {
+    // If no search text, return all challenges immediately
+    if (!searchDebounce || searchDebounce.trim() === "") {
+      return allChallenges;
+    }
+
+    // Pre-compute lowercase search text for better performance
+    const searchLower = searchDebounce.toLowerCase();
+
     return allChallenges.filter((challenge) => {
       // Empty lessons (lessons without challenges) should always be shown
       if (challenge.isEmptyLesson) {
-        if (searchDebounce) {
-          const matchesSearch = challenge.lessonName?.toLowerCase().includes(searchDebounce.toLowerCase());
-          return matchesSearch;
-        }
-        return true;
+        const matchesSearch = challenge.lessonName?.toLowerCase().includes(searchLower);
+        return matchesSearch;
       }
 
       // Only apply search filter now (type filter removed)
-      const matchesSearch = searchDebounce === "" ||
-        challenge.title?.toLowerCase().includes(searchDebounce.toLowerCase()) ||
-        challenge.lessonName?.toLowerCase().includes(searchDebounce.toLowerCase());
+      const matchesSearch = 
+        challenge.title?.toLowerCase().includes(searchLower) ||
+        challenge.lessonName?.toLowerCase().includes(searchLower);
       return matchesSearch;
     });
   }, [allChallenges, searchDebounce]);
@@ -265,17 +350,22 @@ const StudentDailyChallengeList = () => {
     }
   }, [filteredAllChallenges, pageSize, currentPage]);
 
-  // Debounce search text
+  // Debounce search text - reduced delay for better responsiveness
   useEffect(() => {
     const timer = setTimeout(() => {
-      setSearchDebounce(searchText);
+      // Trim spaces at the beginning and end before setting debounced value
+      // This allows users to type spaces normally, but trims when they stop typing
+      const trimmedValue = searchText.trim();
+      setSearchDebounce(trimmedValue);
       setCurrentPage(1);
-    }, 500);
+    }, 400); // Reduced from 500ms to 300ms for better responsiveness
 
     return () => clearTimeout(timer);
   }, [searchText]);
 
   const handleSearch = (value) => {
+    // Don't trim here - allow users to type spaces normally
+    // Trimming will happen in the debounce useEffect
     setSearchText(value);
     setCurrentPage(1);
   };
@@ -290,7 +380,8 @@ const StudentDailyChallengeList = () => {
         // Success - continue with navigation
       } catch (error) {
         console.error('Error starting submission:', error);
-        spaceToast.error(t('dailyChallenge.errorStartingChallenge', 'Failed to start challenge. Please try again.'));
+        const errorMessage = getErrorMessage(error, t('dailyChallenge.errorStartingChallenge', 'Failed to start challenge. Please try again.'));
+        spaceToast.error(errorMessage);
         return; // Don't navigate if API call fails
       }
     }

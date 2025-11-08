@@ -139,7 +139,7 @@ const DailyChallengeList = ({ readOnly = false }) => {
     "LI",
     "SP",
   ];
-  const statusOptions = ["DRAFT", "PUBLISHED", "IN_PROGRESS", "CLOSED"];
+  const statusOptions = ["DRAFT", "PUBLISHED", "IN_PROGRESS", "FINISHED"];
   const getStatusLabel = (statusKey) => {
     switch (statusKey) {
       case 'DRAFT':
@@ -148,8 +148,8 @@ const DailyChallengeList = ({ readOnly = false }) => {
         return 'Published';
       case 'IN_PROGRESS':
         return 'In Progress';
-      case 'CLOSED':
-        return 'Closed';
+      case 'FINISHED':
+        return 'Finished';
       default:
         return statusKey;
     }
@@ -219,12 +219,15 @@ const DailyChallengeList = ({ readOnly = false }) => {
       // Get effective classId from URL params or location.state
       const effectiveClassId = classId || location.state?.classId;
       
+      // Ensure searchDebounce is properly trimmed and converted to undefined if empty
+      const searchTextParam = searchDebounce && searchDebounce.trim() !== '' ? searchDebounce.trim() : undefined;
+      
       if (effectiveClassId) {
         // Lấy daily challenges cho class cụ thể (truy vấn nhanh để nhận diện cấu trúc dữ liệu)
         response = await dailyChallengeApi.getDailyChallengesByClass(effectiveClassId, {
           page: 0,
           size: 10,
-          text: searchDebounce || undefined,
+          text: searchTextParam,
           sortBy: 'createdAt',
           sortDir: 'desc'
         });
@@ -233,7 +236,7 @@ const DailyChallengeList = ({ readOnly = false }) => {
         response = await dailyChallengeApi.getAllDailyChallenges({
           page: 0,
           size: 10,
-          text: searchDebounce || undefined,
+          text: searchTextParam,
           sortBy: 'createdAt',
           sortDir: 'desc'
         });
@@ -338,7 +341,7 @@ const DailyChallengeList = ({ readOnly = false }) => {
           const fullParams = {
             page: 0,
             size: 100,
-            text: searchDebounce || undefined,
+            text: searchTextParam,
             sortBy: 'createdAt',
             sortDir: 'desc',
           };
@@ -370,7 +373,7 @@ const DailyChallengeList = ({ readOnly = false }) => {
         const fullParams = {
           page: 0,
           size: 100,
-          text: searchDebounce || undefined,
+          text: searchTextParam,
           sortBy: 'createdAt',
           sortDir: 'desc',
         };
@@ -591,12 +594,15 @@ const DailyChallengeList = ({ readOnly = false }) => {
     }
   }, [dailyChallenges]);
 
-  // Debounce search text
+  // Debounce search text - trim spaces at beginning and end
   useEffect(() => {
     const timer = setTimeout(() => {
-      setSearchDebounce(searchText);
+      // Trim spaces at the beginning and end before setting debounced value
+      // This allows users to type spaces normally, but trims when they stop typing
+      const trimmedValue = searchText.trim();
+      setSearchDebounce(trimmedValue);
       setCurrentPage(1);
-    }, 500);
+    }, 400); // Reduced delay for better responsiveness
 
     return () => clearTimeout(timer);
   }, [searchText]);
@@ -1165,7 +1171,7 @@ const DailyChallengeList = ({ readOnly = false }) => {
               return 'rgb(20, 150, 26)';
             case 'IN_PROGRESS':
               return '#1890ff';
-            case 'CLOSED':
+            case 'FINISHED':
               return 'rgb(229,79,79)';
             default:
               return '#000000';
