@@ -8018,6 +8018,76 @@ const StudentDailyChallengeTake = () => {
     };
   }, [submissionId, isViewOnly]);
 
+  // Check submission logs for DEVICE_MISMATCH events
+  useEffect(() => {
+    if (!submissionId || isViewOnly || loading) return;
+
+    const checkDeviceMismatchLogs = async () => {
+      try {
+        console.log('🔍 [Device Monitoring] Checking logs for DEVICE_MISMATCH events, submissionId:', submissionId);
+        const response = await dailyChallengeApi.getSubmissionLogs(submissionId);
+        
+        // Extract logs from response
+        const logs = response?.data?.logs || response?.data || response || [];
+        
+        if (!Array.isArray(logs)) {
+          console.warn('⚠️ [Device Monitoring] Logs is not an array:', logs);
+          return;
+        }
+
+        console.log(`📋 [Device Monitoring] Found ${logs.length} log(s)`);
+
+        // Check for DEVICE_MISMATCH events
+        const deviceMismatchEvents = logs.filter(log => 
+          log.event === 'DEVICE_MISMATCH' || log.event === 'device_mismatch'
+        );
+
+        if (deviceMismatchEvents.length > 0) {
+          console.warn(`⚠️ [Device Monitoring] Found ${deviceMismatchEvents.length} DEVICE_MISMATCH event(s)`);
+          
+          // Get the most recent DEVICE_MISMATCH event
+          const latestEvent = deviceMismatchEvents[deviceMismatchEvents.length - 1];
+          
+          // Extract message from content
+          const warningMessage = latestEvent.content || latestEvent.message || 
+            'Đã phát hiện sử dụng thiết bị khác. Cảnh báo gian lận.';
+          
+          console.log('✅ [Device Monitoring] Setting violation warning data from logs:', {
+            type: 'device_mismatch',
+            message: warningMessage,
+            timestamp: latestEvent.timestamp || new Date().toISOString(),
+            deviceFingerprint: latestEvent.deviceFingerprint,
+            ipAddress: latestEvent.ipAddress,
+          });
+          
+          setViolationWarningData({
+            type: 'device_mismatch',
+            message: warningMessage,
+            timestamp: latestEvent.timestamp || new Date().toISOString(),
+            deviceFingerprint: latestEvent.deviceFingerprint,
+            ipAddress: latestEvent.ipAddress,
+          });
+          setViolationWarningModalVisible(true);
+          console.log('✅ [Device Monitoring] Modal visibility set to true from logs');
+        } else {
+          console.log('✅ [Device Monitoring] No DEVICE_MISMATCH events found in logs');
+        }
+      } catch (error) {
+        console.error('❌ [Device Monitoring] Error checking logs:', error);
+        // Don't show error to user, just log it
+      }
+    };
+
+    // Check logs after a short delay to ensure submission is ready
+    const timeoutId = setTimeout(() => {
+      checkDeviceMismatchLogs();
+    }, 1000);
+
+    return () => {
+      clearTimeout(timeoutId);
+    };
+  }, [submissionId, isViewOnly, loading]);
+
   // Start or update countdown based on absolute deadline
   useEffect(() => {
     if (loading || isViewOnly || !isTimedChallenge || !deadlineTsRef.current) return;
@@ -9341,9 +9411,24 @@ const StudentDailyChallengeTake = () => {
         }}
       >
         <div style={{ marginBottom: '16px' }}>
-          <p style={{ marginBottom: '12px', fontSize: '16px', lineHeight: '1.6' }}>
-            <strong>Lần đầu cảnh báo:</strong> Hệ thống đã phát hiện hành động không được phép.
-          </p>
+          {violationWarningData && violationWarningData.type === 'device_mismatch' ? (
+            <>
+              <p style={{ marginBottom: '12px', fontSize: '18px', lineHeight: '1.6', color: '#ff4d4f', fontWeight: 'bold' }}>
+                ⚠️ Cảnh báo gian lận: Phát hiện sử dụng thiết bị khác
+              </p>
+              <p style={{ marginBottom: '12px', fontSize: '16px', lineHeight: '1.6' }}>
+                Hệ thống đã phát hiện bạn đang sử dụng thiết bị khác với thiết bị đã đăng ký. 
+                Đây là hành vi gian lận và có thể dẫn đến việc bài thi của bạn bị hủy.
+              </p>
+              <p style={{ marginBottom: '12px', fontSize: '16px', lineHeight: '1.6', fontWeight: '600' }}>
+                Vui lòng sử dụng đúng thiết bị đã đăng ký để tiếp tục làm bài.
+              </p>
+            </>
+          ) : (
+            <p style={{ marginBottom: '12px', fontSize: '16px', lineHeight: '1.6' }}>
+              <strong>Lần đầu cảnh báo:</strong> Hệ thống đã phát hiện hành động không được phép.
+            </p>
+          )}
           {violationWarningData && (
             <>
               <p style={{ marginBottom: '8px', fontSize: '14px' }}>
@@ -9357,7 +9442,24 @@ const StudentDailyChallengeTake = () => {
               </p>
               {violationWarningData.timestamp && (
                 <p style={{ marginBottom: '8px', fontSize: '14px'}}>
-                  <strong>Thời gian:</strong> {violationWarningData.timestamp}
+                  <strong>Thời gian:</strong> {new Date(violationWarningData.timestamp).toLocaleString('vi-VN')}
+                </p>
+              )}
+              {violationWarningData.type === 'device_mismatch' && violationWarningData.deviceFingerprint && (
+                <p style={{ marginBottom: '8px', fontSize: '14px'}}>
+                  <strong>Device Fingerprint:</strong> 
+                  <span style={{ 
+                    fontFamily: 'monospace',
+                    fontSize: '12px',
+                    wordBreak: 'break-all'
+                  }}>
+                    {violationWarningData.deviceFingerprint}
+                  </span>
+                </p>
+              )}
+              {violationWarningData.type === 'device_mismatch' && violationWarningData.ipAddress && (
+                <p style={{ marginBottom: '8px', fontSize: '14px'}}>
+                  <strong>IP Address:</strong> {violationWarningData.ipAddress}
                 </p>
               )}
               {violationWarningData.type === 'copy' && violationWarningData.oldValue && violationWarningData.oldValue.length > 0 && (
@@ -9394,9 +9496,12 @@ const StudentDailyChallengeTake = () => {
                   </div>
                 </p>
               )}
-              <p style={{ marginBottom: '8px', fontSize: '14px'}}>
-                <strong>Chi tiết:</strong> {violationWarningData.message}
-              </p>
+              {violationWarningData.message && (
+                <p style={{ marginBottom: '8px', fontSize: '14px'}}>
+                  <strong>Chi tiết:</strong> 
+                  <span dangerouslySetInnerHTML={{ __html: violationWarningData.message }} />
+                </p>
+              )}
             </>
           )}
           <div style={{ 
