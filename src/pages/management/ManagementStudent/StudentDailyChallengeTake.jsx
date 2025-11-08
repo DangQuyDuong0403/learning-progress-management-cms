@@ -438,7 +438,7 @@ useEffect(() => {
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           
           <Typography.Text style={{ fontSize: '14px', opacity: 0.7 }}>
-            ({question.points || sectionScore?.totalScore || 0} {question.points !== 1 ? 'points' : 'point'})
+            ({question.score || sectionScore?.totalScore || 0} {(question.score || sectionScore?.totalScore || 0) !== 1 ? 'weights' : 'weight'})
         </Typography.Text>
         </div>
       </div>
@@ -1917,7 +1917,7 @@ const ListeningSectionItem = ({ question, index, theme, sectionScore, globalQues
           </Typography.Text>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <Typography.Text style={{ marginLeft: '12px', fontSize: '14px', opacity: 0.7 }}>
-              ({question.points || sectionScore?.totalScore || 0} {question.points !== 1 ? 'points' : 'point'})
+              ({question.score || sectionScore?.totalScore || 0} {(question.score || sectionScore?.totalScore || 0) !== 1 ? 'weights' : 'weight'})
           </Typography.Text>
           </div>
         </div>
@@ -2947,7 +2947,7 @@ const WritingSectionItem = ({ question, index, theme }) => {
             {index + 1}. Writing Section
           </Typography.Text>
           <Typography.Text style={{ marginLeft: '12px', fontSize: '14px', opacity: 0.7 }}>
-            ({question.points} {question.points > 1 ? 'points' : 'point'})
+            ({question.score || 0} {(question.score || 0) > 1 ? 'weights' : 'weight'})
           </Typography.Text>
         </div>
 
@@ -3060,49 +3060,51 @@ const WritingSectionItem = ({ question, index, theme }) => {
               {writingMode === null ? (
                 /* Show 2 options initially */
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                  {/* Handwriting Option */}
-                  <div
-                    onClick={() => setWritingMode('handwriting')}
-                    style={{
-                      padding: '24px',
-                      background: theme === 'sun' 
-                        ? 'linear-gradient(135deg, rgba(230, 245, 255, 0.5) 0%, rgba(186, 231, 255, 0.4) 100%)'
-                        : 'linear-gradient(135deg, rgba(255, 255, 255, 0.5) 0%, rgba(244, 240, 255, 0.5) 100%)',
-                      border: `2px solid ${theme === 'sun' 
-                        ? 'rgba(24, 144, 255, 0.3)' 
-                        : 'rgba(138, 122, 255, 0.3)'}`,
-                      borderRadius: '12px',
-                      cursor: 'pointer',
-                      textAlign: 'center',
-                      transition: 'all 0.3s ease'
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.transform = 'translateY(-2px)';
-                      e.currentTarget.style.boxShadow = theme === 'sun' 
-                        ? '0 4px 12px rgba(24, 144, 255, 0.2)'
-                        : '0 4px 12px rgba(138, 122, 255, 0.25)';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.transform = 'translateY(0)';
-                      e.currentTarget.style.boxShadow = 'none';
-                    }}
-                  >
-                    <div style={{ fontSize: '32px', marginBottom: '8px' }}>✍️</div>
-                    <div style={{ 
-                      fontSize: '16px', 
-                      fontWeight: '600',
-                      color: theme === 'sun' ? '#1E40AF' : '#8377A0',
-                      marginBottom: '4px'
-                    }}>
-                      Write Essay Here
+                  {/* Handwriting Option - Hide when files are uploaded */}
+                  {uploadedFiles.length === 0 && (
+                    <div
+                      onClick={() => setWritingMode('handwriting')}
+                      style={{
+                        padding: '24px',
+                        background: theme === 'sun' 
+                          ? 'linear-gradient(135deg, rgba(230, 245, 255, 0.5) 0%, rgba(186, 231, 255, 0.4) 100%)'
+                          : 'linear-gradient(135deg, rgba(255, 255, 255, 0.5) 0%, rgba(244, 240, 255, 0.5) 100%)',
+                        border: `2px solid ${theme === 'sun' 
+                          ? 'rgba(24, 144, 255, 0.3)' 
+                          : 'rgba(138, 122, 255, 0.3)'}`,
+                        borderRadius: '12px',
+                        cursor: 'pointer',
+                        textAlign: 'center',
+                        transition: 'all 0.3s ease'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.transform = 'translateY(-2px)';
+                        e.currentTarget.style.boxShadow = theme === 'sun' 
+                          ? '0 4px 12px rgba(24, 144, 255, 0.2)'
+                          : '0 4px 12px rgba(138, 122, 255, 0.25)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.transform = 'translateY(0)';
+                        e.currentTarget.style.boxShadow = 'none';
+                      }}
+                    >
+                      <div style={{ fontSize: '32px', marginBottom: '8px' }}>✍️</div>
+                      <div style={{ 
+                        fontSize: '16px', 
+                        fontWeight: '600',
+                        color: theme === 'sun' ? '#1E40AF' : '#8377A0',
+                        marginBottom: '4px'
+                      }}>
+                        Write Essay Here
+                      </div>
+                      <div style={{ 
+                        fontSize: '13px',
+                        color: theme === 'sun' ? '#666' : '#999'
+                      }}>
+                        Type your essay directly in the text area
+                      </div>
                     </div>
-                    <div style={{ 
-                      fontSize: '13px',
-                      color: theme === 'sun' ? '#666' : '#999'
-                    }}>
-                      Type your essay directly in the text area
-                    </div>
-                  </div>
+                  )}
 
                   {/* Upload File Option */}
                   <div style={{
@@ -3112,6 +3114,7 @@ const WritingSectionItem = ({ question, index, theme }) => {
                       type="file"
                       id="upload-option"
                       accept="image/*"
+                      multiple
                       onChange={handleFileUpload}
                       style={{ display: 'none' }}
                     />
@@ -3155,7 +3158,7 @@ const WritingSectionItem = ({ question, index, theme }) => {
                         fontSize: '13px',
                         color: theme === 'sun' ? '#666' : '#999'
                       }}>
-                        Upload image of your handwritten essay (Max 5MB)
+                        Upload image(s) of your handwritten essay (Max 5MB per image)
                       </div>
                     </label>
                   </div>
@@ -3370,6 +3373,33 @@ const SpeakingSectionItem = ({ question, index, theme, isViewOnly }) => {
   const [audioUrl, setAudioUrl] = useState(null);
   const [uploadedFiles, setUploadedFiles] = useState([]);
 
+  // Helper function to extract URL from upload response
+  const extractUrlFromResponse = (uploadRes) => {
+    // Try multiple possible paths in order of likelihood
+    if (uploadRes?.data?.url) {
+      return uploadRes.data.url;
+    }
+    if (uploadRes?.data?.data?.url) {
+      return uploadRes.data.data.url;
+    }
+    if (typeof uploadRes?.data === 'string') {
+      return uploadRes.data;
+    }
+    if (typeof uploadRes === 'string') {
+      return uploadRes;
+    }
+    if (uploadRes?.url) {
+      return uploadRes.url;
+    }
+    if (uploadRes?.data?.fileUrl) {
+      return uploadRes.data.fileUrl;
+    }
+    if (uploadRes?.fileUrl) {
+      return uploadRes.fileUrl;
+    }
+    return null;
+  };
+
   const toPlainText = (html) => {
     if (!html) return '';
     return String(html)
@@ -3418,19 +3448,19 @@ const SpeakingSectionItem = ({ question, index, theme, isViewOnly }) => {
             });
             
             const uploadRes = await dailyChallengeApi.uploadFile(file);
-            // Get URL from response (handle different response structures)
-            const serverUrl = uploadRes?.data?.url || uploadRes?.data?.data?.url || uploadRes?.data || uploadRes;
+            
+            // Extract URL from response using helper function
+            const serverUrl = extractUrlFromResponse(uploadRes);
             
             if (serverUrl && typeof serverUrl === 'string') {
               // Replace temp blob URL with server URL
               URL.revokeObjectURL(tempUrl);
               setAudioUrl(serverUrl);
-              console.log('✅ Audio uploaded to server:', serverUrl);
             } else {
-              console.warn('⚠️ Server did not return valid URL, keeping blob URL');
+              console.warn('⚠️ [Speaking] Server did not return valid URL, keeping blob URL. Response:', uploadRes);
             }
           } catch (error) {
-            console.error('❌ Failed to upload audio:', error);
+            console.error('❌ [Speaking] Failed to upload recorded audio:', error);
             // Keep blob URL as fallback
           }
         };
@@ -3463,24 +3493,25 @@ const SpeakingSectionItem = ({ question, index, theme, isViewOnly }) => {
         try {
           // Upload file to backend
           const uploadRes = await dailyChallengeApi.uploadFile(file);
-          // Get URL from response (handle different response structures)
-          const serverUrl = uploadRes?.data?.url || uploadRes?.data?.data?.url || uploadRes?.data || uploadRes;
+          
+          // Extract URL from response using helper function
+          const serverUrl = extractUrlFromResponse(uploadRes);
           
           if (serverUrl && typeof serverUrl === 'string') {
-            console.log('✅ File uploaded to server:', serverUrl);
             return {
               id: Date.now() + Math.random(),
               name: file.name,
               size: file.size,
               type: file.type,
-              url: serverUrl // Use server URL instead of blob URL
+              url: serverUrl // Use server URL from backend
             };
           } else {
+            console.error('❌ [Speaking] Server did not return valid URL. Response:', uploadRes);
             throw new Error('Server did not return valid URL');
           }
         } catch (error) {
-          console.error('❌ Failed to upload file:', file.name, error);
-          // Fallback to blob URL if upload fails
+          console.error('❌ [Speaking] Failed to upload file:', file.name, error);
+          // Fallback to blob URL if upload fails (but this won't persist)
           return {
             id: Date.now() + Math.random(),
             name: file.name,
@@ -3511,6 +3542,7 @@ const SpeakingSectionItem = ({ question, index, theme, isViewOnly }) => {
 
     const getAnswer = () => {
       if (isViewOnly) return null;
+      
       // Prefer recorded audio URL, else any uploaded file URLs/names
       if (audioUrl) {
         return { answer: audioUrl, questionType: 'SPEAKING' };
@@ -3529,7 +3561,7 @@ const SpeakingSectionItem = ({ question, index, theme, isViewOnly }) => {
           .filter(Boolean);
         if (fileUrls.length > 0) {
           return { answer: fileUrls, questionType: 'SPEAKING' };
-        }
+      }
       }
       return null;
     };
@@ -3559,11 +3591,18 @@ const SpeakingSectionItem = ({ question, index, theme, isViewOnly }) => {
             // Check if item is an object with id/value (from submittedContent.data format)
             if (typeof item === 'object' && item !== null) {
               // Prefer id, then value, then url, then name
+              // Ensure we get the full URL string, not truncated
               fileUrl = item.id || item.value || item.url || item.name;
+              // Ensure fileUrl is a complete string
+              if (fileUrl && typeof fileUrl === 'string') {
+                fileUrl = String(fileUrl).trim(); // Ensure it's a full string
+              }
               fileName = item.name || item.fileName || item.filename;
+              console.log(`🔄 [Speaking Restore] Question ${question?.id} - Extracted from object - fileUrl length:`, fileUrl?.length, 'fileUrl preview:', fileUrl?.substring(0, 100), '...', 'fileName:', fileName);
             } else if (typeof item === 'string') {
               // Item is directly a URL string
-              fileUrl = item;
+              fileUrl = String(item).trim(); // Ensure it's a full string
+              console.log(`🔄 [Speaking Restore] Question ${question?.id} - Extracted from string - fileUrl length:`, fileUrl?.length, 'fileUrl preview:', fileUrl?.substring(0, 100), '...');
             }
             
             // Extract filename from URL if not provided
@@ -3689,7 +3728,7 @@ const SpeakingSectionItem = ({ question, index, theme, isViewOnly }) => {
             {index + 1}. Speaking Section
           </Typography.Text>
           <Typography.Text style={{ marginLeft: '12px', fontSize: '14px', opacity: 0.7 }}>
-            ({question.points} {question.points > 1 ? 'points' : 'point'})
+            ({question.score || 0} {(question.score || 0) > 1 ? 'weights' : 'weight'})
           </Typography.Text>
         </div>
         {/* Layout: Left - Prompt, Right - Recording */}
@@ -3744,7 +3783,19 @@ const SpeakingSectionItem = ({ question, index, theme, isViewOnly }) => {
             {/* Recorded Audio Display */}
             {audioUrl && (
               <div style={{ marginBottom: '20px' }}>
-                <audio controls style={{ width: '100%', height: '40px' }} src={audioUrl}>
+                <audio 
+                  controls 
+                  preload="metadata"
+                  type="audio/mpeg"
+                  style={{ width: '100%', height: '40px' }} 
+                  src={audioUrl}
+                  onError={(e) => {
+                    console.error('❌ [Audio Player] Error loading recorded audio:', audioUrl, e);
+                    console.error('❌ [Audio Player] Error details:', e.target.error);
+                    console.error('❌ [Audio Player] Error code:', e.target.error?.code);
+                    console.error('❌ [Audio Player] Error message:', e.target.error?.message);
+                  }}
+                >
                   Your browser does not support the audio element.
                 </audio>
                 {!isViewOnly && (
@@ -3936,22 +3987,22 @@ const SpeakingSectionItem = ({ question, index, theme, isViewOnly }) => {
                         marginBottom: '8px'
                       }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <span>🎵</span>
+                      <span>🎵</span>
                           <span style={{ 
                             color: theme === 'sun' ? '#333' : '#1F2937',
                             fontSize: '13px',
                             fontWeight: '500'
                           }}>
-                            {file.name}
-                          </span>
+                        {file.name}
+                      </span>
                         </div>
-                        <button
-                          onClick={() => removeFile(file.id)}
-                          style={{
-                            background: 'none',
-                            border: 'none',
-                            color: '#ff4d4f',
-                            cursor: 'pointer',
+                      <button
+                        onClick={() => removeFile(file.id)}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          color: '#ff4d4f',
+                          cursor: 'pointer',
                             fontSize: '16px',
                             padding: '2px 6px',
                             borderRadius: '4px',
@@ -3962,20 +4013,28 @@ const SpeakingSectionItem = ({ question, index, theme, isViewOnly }) => {
                           }}
                           onMouseLeave={(e) => {
                             e.currentTarget.style.background = 'none';
-                          }}
-                        >
-                          ✕
-                        </button>
+                        }}
+                      >
+                        ✕
+                      </button>
                       </div>
                       {file.url && (
                         <audio 
                           controls 
+                          preload="metadata"
+                          type="audio/mpeg"
                           style={{ 
                             width: '100%', 
                             height: '40px',
                             borderRadius: '4px'
                           }} 
                           src={file.url}
+                          onError={(e) => {
+                            console.error('❌ [Audio Player] Error loading audio:', file.url, e);
+                            console.error('❌ [Audio Player] Error details:', e.target.error);
+                            console.error('❌ [Audio Player] Error code:', e.target.error?.code);
+                            console.error('❌ [Audio Player] Error message:', e.target.error?.message);
+                          }}
                         >
                           Your browser does not support the audio element.
                         </audio>
@@ -4003,6 +4062,33 @@ const SpeakingWithAudioSectionItem = ({ question, index, theme, sectionScore, is
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [volume, setVolume] = useState(1);
+
+  // Helper function to extract URL from upload response
+  const extractUrlFromResponse = (uploadRes) => {
+    // Try multiple possible paths in order of likelihood
+    if (uploadRes?.data?.url) {
+      return uploadRes.data.url;
+    }
+    if (uploadRes?.data?.data?.url) {
+      return uploadRes.data.data.url;
+    }
+    if (typeof uploadRes?.data === 'string') {
+      return uploadRes.data;
+    }
+    if (typeof uploadRes === 'string') {
+      return uploadRes;
+    }
+    if (uploadRes?.url) {
+      return uploadRes.url;
+    }
+    if (uploadRes?.data?.fileUrl) {
+      return uploadRes.data.fileUrl;
+    }
+    if (uploadRes?.fileUrl) {
+      return uploadRes.fileUrl;
+    }
+    return null;
+  };
 
   const toPlainText = (html) => {
     if (!html) return '';
@@ -4053,19 +4139,19 @@ const SpeakingWithAudioSectionItem = ({ question, index, theme, sectionScore, is
             });
             
             const uploadRes = await dailyChallengeApi.uploadFile(file);
-            // Get URL from response (handle different response structures)
-            const serverUrl = uploadRes?.data?.url || uploadRes?.data?.data?.url || uploadRes?.data || uploadRes;
+            
+            // Extract URL from response using helper function
+            const serverUrl = extractUrlFromResponse(uploadRes);
             
             if (serverUrl && typeof serverUrl === 'string') {
               // Replace temp blob URL with server URL
               URL.revokeObjectURL(tempUrl);
               setAudioUrl(serverUrl);
-              console.log('✅ Audio uploaded to server:', serverUrl);
             } else {
-              console.warn('⚠️ Server did not return valid URL, keeping blob URL');
+              console.warn('⚠️ [Speaking] Server did not return valid URL, keeping blob URL. Response:', uploadRes);
             }
           } catch (error) {
-            console.error('❌ Failed to upload audio:', error);
+            console.error('❌ [Speaking] Failed to upload recorded audio:', error);
             // Keep blob URL as fallback
           }
         };
@@ -4098,24 +4184,25 @@ const SpeakingWithAudioSectionItem = ({ question, index, theme, sectionScore, is
         try {
           // Upload file to backend
           const uploadRes = await dailyChallengeApi.uploadFile(file);
-          // Get URL from response (handle different response structures)
-          const serverUrl = uploadRes?.data?.url || uploadRes?.data?.data?.url || uploadRes?.data || uploadRes;
+          
+          // Extract URL from response using helper function
+          const serverUrl = extractUrlFromResponse(uploadRes);
           
           if (serverUrl && typeof serverUrl === 'string') {
-            console.log('✅ File uploaded to server:', serverUrl);
             return {
               id: Date.now() + Math.random(),
               name: file.name,
               size: file.size,
               type: file.type,
-              url: serverUrl // Use server URL instead of blob URL
+              url: serverUrl // Use server URL from backend
             };
           } else {
+            console.error('❌ [Speaking] Server did not return valid URL. Response:', uploadRes);
             throw new Error('Server did not return valid URL');
           }
         } catch (error) {
-          console.error('❌ Failed to upload file:', file.name, error);
-          // Fallback to blob URL if upload fails
+          console.error('❌ [Speaking] Failed to upload file:', file.name, error);
+          // Fallback to blob URL if upload fails (but this won't persist)
           return {
             id: Date.now() + Math.random(),
             name: file.name,
@@ -4141,7 +4228,11 @@ const SpeakingWithAudioSectionItem = ({ question, index, theme, sectionScore, is
 
     const getAnswer = () => {
       if (isViewOnly) return null;
+      
+      console.log(`🎤 [Speaking] Collecting answer for question ${question?.id} - audioUrl:`, audioUrl, 'uploadedFiles:', uploadedFiles);
+      
       if (audioUrl) {
+        console.log(`🎤 [Speaking] Question ${question?.id} - returning audioUrl:`, audioUrl);
         return { answer: audioUrl, questionType: 'SPEAKING' };
       }
       if (Array.isArray(uploadedFiles) && uploadedFiles.length > 0) {
@@ -4157,9 +4248,11 @@ const SpeakingWithAudioSectionItem = ({ question, index, theme, sectionScore, is
           })
           .filter(Boolean);
         if (fileUrls.length > 0) {
+          console.log(`🎤 [Speaking] Question ${question?.id} - returning fileUrls:`, fileUrls);
           return { answer: fileUrls, questionType: 'SPEAKING' };
-        }
       }
+      }
+      console.log(`⚠️ [Speaking] Question ${question?.id} - no answer found, returning null`);
       return null;
     };
 
@@ -4188,11 +4281,16 @@ const SpeakingWithAudioSectionItem = ({ question, index, theme, sectionScore, is
             // Check if item is an object with id/value (from submittedContent.data format)
             if (typeof item === 'object' && item !== null) {
               // Prefer id, then value, then url, then name
+              // Ensure we get the full URL string, not truncated
               fileUrl = item.id || item.value || item.url || item.name;
+              // Ensure fileUrl is a complete string
+              if (fileUrl && typeof fileUrl === 'string') {
+                fileUrl = String(fileUrl).trim(); // Ensure it's a full string
+              }
               fileName = item.name || item.fileName || item.filename;
             } else if (typeof item === 'string') {
               // Item is directly a URL string
-              fileUrl = item;
+              fileUrl = String(item).trim(); // Ensure it's a full string
             }
             
             // Extract filename from URL if not provided
@@ -4220,15 +4318,15 @@ const SpeakingWithAudioSectionItem = ({ question, index, theme, sectionScore, is
               name: fileName,
               size: 0,
               type: 'audio/mpeg', // Default to audio type
-              url: fileUrl // Use the URL from id/value/url property
+              url: fileUrl // Use the URL from id/value/url property (full URL, not truncated)
             };
           })
           .filter(file => file.url); // Only keep files with valid URLs
         
         if (files.length > 0) {
-          console.log(`✅ SPEAKING: Restored ${files.length} file(s) for question ${question?.id}:`, files);
           // Check if first item is a simple string (recorded audio) or object (uploaded file)
           const firstItem = answer[0];
+          
           if (typeof firstItem === 'string') {
             // Simple string URL - likely recorded audio
             setAudioUrl(firstItem);
@@ -4249,6 +4347,8 @@ const SpeakingWithAudioSectionItem = ({ question, index, theme, sectionScore, is
         }
         return;
       }
+      
+      console.warn(`⚠️ [Speaking Restore] Question ${question?.id} - Unexpected answer format:`, answer);
     };
 
     const unregister = registerAnswerRestorer(question.id, setAnswer);
@@ -4370,7 +4470,7 @@ const SpeakingWithAudioSectionItem = ({ question, index, theme, sectionScore, is
           </Typography.Text>
         <div style={{ display: 'inline-flex', alignItems: 'center', gap: '12px', marginLeft: '12px' }}>
           <Typography.Text style={{ fontSize: '14px', opacity: 0.7 }}>
-            ({question.points || sectionScore?.totalScore || 0} {(question.points || sectionScore?.totalScore || 0) !== 1 ? 'points' : 'point'})
+            ({question.score || sectionScore?.totalScore || 0} {(question.score || sectionScore?.totalScore || 0) !== 1 ? 'weights' : 'weight'})
           </Typography.Text>
         </div>
         </div>
@@ -4556,7 +4656,19 @@ const SpeakingWithAudioSectionItem = ({ question, index, theme, sectionScore, is
             {/* Recorded Audio Display */}
             {audioUrl && (
               <div style={{ marginBottom: '20px' }}>
-                <audio controls style={{ width: '100%', height: '40px' }} src={audioUrl}>
+                <audio 
+                  controls 
+                  preload="metadata"
+                  type="audio/mpeg"
+                  style={{ width: '100%', height: '40px' }} 
+                  src={audioUrl}
+                  onError={(e) => {
+                    console.error('❌ [Audio Player] Error loading recorded audio:', audioUrl, e);
+                    console.error('❌ [Audio Player] Error details:', e.target.error);
+                    console.error('❌ [Audio Player] Error code:', e.target.error?.code);
+                    console.error('❌ [Audio Player] Error message:', e.target.error?.message);
+                  }}
+                >
                   Your browser does not support the audio element.
                 </audio>
                 {!isViewOnly && (
@@ -4748,22 +4860,22 @@ const SpeakingWithAudioSectionItem = ({ question, index, theme, sectionScore, is
                         marginBottom: '8px'
                       }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <span>🎵</span>
+                      <span>🎵</span>
                           <span style={{ 
                             color: theme === 'sun' ? '#333' : '#1F2937',
                             fontSize: '13px',
                             fontWeight: '500'
                           }}>
-                            {file.name}
-                          </span>
+                        {file.name}
+                      </span>
                         </div>
-                        <button
-                          onClick={() => removeFile(file.id)}
-                          style={{
-                            background: 'none',
-                            border: 'none',
-                            color: '#ff4d4f',
-                            cursor: 'pointer',
+                      <button
+                        onClick={() => removeFile(file.id)}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          color: '#ff4d4f',
+                          cursor: 'pointer',
                             fontSize: '16px',
                             padding: '2px 6px',
                             borderRadius: '4px',
@@ -4774,20 +4886,28 @@ const SpeakingWithAudioSectionItem = ({ question, index, theme, sectionScore, is
                           }}
                           onMouseLeave={(e) => {
                             e.currentTarget.style.background = 'none';
-                          }}
-                        >
-                          ✕
-                        </button>
+                        }}
+                      >
+                        ✕
+                      </button>
                       </div>
                       {file.url && (
                         <audio 
                           controls 
+                          preload="metadata"
+                          type="audio/mpeg"
                           style={{ 
                             width: '100%', 
                             height: '40px',
                             borderRadius: '4px'
                           }} 
                           src={file.url}
+                          onError={(e) => {
+                            console.error('❌ [Audio Player] Error loading audio:', file.url, e);
+                            console.error('❌ [Audio Player] Error details:', e.target.error);
+                            console.error('❌ [Audio Player] Error code:', e.target.error?.code);
+                            console.error('❌ [Audio Player] Error message:', e.target.error?.message);
+                          }}
                         >
                           Your browser does not support the audio element.
                         </audio>
@@ -6935,6 +7055,7 @@ const transformApiDataToComponentFormat = (apiResponse, challengeType) => {
           wordLimit: null,
           timeLimit: null,
           points: null,
+          score: q.score || null,
           orderNumber: q.orderNumber || section.orderNumber || 0,
         });
       });
@@ -6948,6 +7069,7 @@ const transformApiDataToComponentFormat = (apiResponse, challengeType) => {
           title: section.sectionTitle || 'Speaking Section',
           prompt: q.questionText || section.sectionsContent || '',
           points: null,
+          score: q.score || null,
           audioUrl: hasAudio ? section.sectionsUrl : null,
           transcript: section.sectionsContent || '',
           orderNumber: q.orderNumber || section.orderNumber || 0,
@@ -7079,6 +7201,10 @@ const StudentDailyChallengeTake = () => {
   const violationCountRef = useRef(new Map()); // Track violation count per type: { 'tab_switch': 1, 'copy': 0, ... }
   const pendingLogsRef = useRef([]); // Store logs that need to be sent to backend
   const [isAntiCheatEnabled, setIsAntiCheatEnabled] = useState(false);
+  
+  // Prevent auto-save immediately after manual save
+  const isManualSavingRef = useRef(false);
+  const lastManualSaveTimeRef = useRef(0);
 
   // Device fingerprint state
   const deviceFingerprintHashRef = useRef(null);
@@ -8136,9 +8262,45 @@ const StudentDailyChallengeTake = () => {
   // Silently save draft (no global loading/toast)
   const autoSaveDraftSilently = async () => {
     if (isViewOnly) return;
+    
+    // Prevent auto-save if manual save was just executed (within last 3 seconds)
+    const now = Date.now();
+    if (isManualSavingRef.current || (now - lastManualSaveTimeRef.current < 3000)) {
+      return;
+    }
+    
     try {
       setAutoSaveStatus('saving');
       const questionAnswers = collectAllAnswers();
+
+      // Check if we have any answers with actual data
+      const hasAnswers = questionAnswers.some(qa => 
+        qa?.content?.data && Array.isArray(qa.content.data) && qa.content.data.length > 0
+      );
+
+      if (!hasAnswers) {
+        setAutoSaveStatus('idle');
+        return;
+      }
+
+      // Check if there are any blob URLs that need to be uploaded
+      const hasBlobUrls = questionAnswers.some(qa => 
+        qa?.content?.data?.some(item => {
+          const value = item?.value;
+          return typeof value === 'string' && (value.startsWith('blob:') || value.startsWith('data:audio'));
+        })
+      );
+
+      // If there are blob URLs, upload them first (but don't block if upload fails)
+      let processedAnswers = questionAnswers;
+      if (hasBlobUrls) {
+        try {
+          processedAnswers = await replaceBlobUrlsInAnswers(questionAnswers);
+        } catch (e) {
+          console.warn('⚠️ [Auto-save] Failed to upload blob URLs, saving with original URLs:', e);
+          // Continue with original answers if upload fails
+        }
+      }
 
       // LocalStorage persistence removed
 
@@ -8158,8 +8320,9 @@ const StudentDailyChallengeTake = () => {
 
       if (currentSubmissionId) {
         try {
-          const submitData = { saveAsDraft: true, questionAnswers };
+          const submitData = { saveAsDraft: true, questionAnswers: processedAnswers };
           const resp = await dailyChallengeApi.submitDailyChallenge(currentSubmissionId, submitData);
+          
           if (resp && resp.success) {
             const responseSubmissionId = resp.data?.submissionId || resp.data?.id || currentSubmissionId;
             if (responseSubmissionId && responseSubmissionId !== currentSubmissionId) {
@@ -8168,6 +8331,7 @@ const StudentDailyChallengeTake = () => {
           }
         } catch (e) {
           // Silent network/API failure – localStorage still has the draft
+          console.error('❌ [Auto-save] Failed to save draft:', e);
         }
 
         // Send anti-cheat logs if there are any pending logs
@@ -8192,6 +8356,7 @@ const StudentDailyChallengeTake = () => {
       // (do not auto-hide)
     } catch (e) {
       setAutoSaveStatus('idle');
+      console.error('❌ [Auto-save] Error in autoSaveDraftSilently:', e);
     }
   };
 
@@ -8478,17 +8643,17 @@ const StudentDailyChallengeTake = () => {
       // Writing/Speaking: answer can be text string or file references
       if (typeof answer === 'string' && answer) {
         contentData.push({
-          id: 'text',
+          id: answer, // Use the URL as both id and value
           value: answer,
-          positionId: null
+          positionId: '0'
         });
       } else if (Array.isArray(answer)) {
         // File uploads or multiple parts
         answer.forEach((item, index) => {
           if (typeof item === 'string') {
             contentData.push({
-              id: item,
-              value: item,
+              id: item, // Use URL as id
+              value: item, // Use URL as value
               positionId: String(index)
             });
           } else if (item && item.value) {
@@ -8588,10 +8753,6 @@ const StudentDailyChallengeTake = () => {
         totalScore += score || 0;
         totalReceivedScore += receivedScore || 0;
         
-        // Debug logging
-        if (submittedContent && submittedContent.data && submittedContent.data.length > 0) {
-          console.log(`📝 Found saved answer for question ${questionId} (type: ${questionType}):`, submittedContent.data);
-        }
         
         // Restore answer from submittedContent
         // Try both questionId and submissionQuestionId if available
@@ -8615,11 +8776,10 @@ const StudentDailyChallengeTake = () => {
             
             if (answerData.length === 0) return;
             
-            // Special handling for WRITING type - pass array of objects/URLs directly
-            if (questionType === 'WRITING') {
-              // For WRITING, pass the entire answerData array (contains objects with id/value/url)
+            // Special handling for WRITING and SPEAKING types - pass array of objects/URLs directly
+            if (questionType === 'WRITING' || questionType === 'SPEAKING') {
+              // For WRITING/SPEAKING, pass the entire answerData array (contains objects with id/value/url)
               // This allows setAnswer to extract URLs from id/value properties
-              console.log(`📝 WRITING: Restoring answerData for question ${questionId}:`, answerData);
               restoredAnswer = answerData;
             } else if (answerData.length === 1 && !answerData[0].positionId) {
               // Single answer (MULTIPLE_CHOICE, TRUE_OR_FALSE, etc.)
@@ -8702,31 +8862,33 @@ const StudentDailyChallengeTake = () => {
     answerCollectorsRef.current.forEach((getAnswerFn, questionId) => {
       try {
         const answerData = getAnswerFn();
+        
         if (answerData && typeof answerData === 'object') {
           const { answer, questionType, options } = answerData;
-          const formattedAnswer = formatAnswerForAPI(questionId, answer, questionType, options);
-          if (formattedAnswer) {
-            questionAnswers.push(formattedAnswer);
-          } else {
-            // Include unanswered question explicitly with empty content
-            questionAnswers.push({ questionId, content: { data: [] } });
+          
+          // Only format if answer is not null/undefined/empty
+          if (answer !== null && answer !== undefined && answer !== '') {
+            const formattedAnswer = formatAnswerForAPI(questionId, answer, questionType, options);
+            
+            if (formattedAnswer && formattedAnswer.content && formattedAnswer.content.data && formattedAnswer.content.data.length > 0) {
+              questionAnswers.push(formattedAnswer);
+            }
           }
-        } else {
-          // No answer returned – still include the question with empty content
-          questionAnswers.push({ questionId, content: { data: [] } });
         }
       } catch (error) {
-        console.error(`❌ Error collecting answer for question ${questionId}:`, error);
-        // On error, still include the question with empty content to ensure completeness
-        questionAnswers.push({ questionId, content: { data: [] } });
+        console.error(`❌ [Collect Answers] Error collecting answer for question ${questionId}:`, error);
+        // On error, skip this question (don't add empty content)
       }
     });
-
     return questionAnswers;
   };
 
   // Handle save (save as draft)
   const handleSave = async () => {
+    // Set flag to prevent auto-save during manual save
+    isManualSavingRef.current = true;
+    lastManualSaveTimeRef.current = Date.now();
+    
     setAutoSaveStatus('saving');
     // If submissionId is not available, try to get it first
     let currentSubmissionId = submissionId;
@@ -8744,6 +8906,7 @@ const StudentDailyChallengeTake = () => {
       
       // If still no submission ID, show error with more context
       if (!currentSubmissionId) {
+        isManualSavingRef.current = false;
         spaceToast.error('Không tìm thấy submission. Vui lòng refresh trang hoặc liên hệ admin nếu vấn đề vẫn tiếp tục.');
         console.error('No submissionId found after retry. ChallengeId:', id);
         return;
@@ -8782,21 +8945,39 @@ const StudentDailyChallengeTake = () => {
               // Restore answers from fresh draft data
               setTimeout(() => {
                 restoreAnswersFromResult(draftResponse.data);
+                // Clear manual saving flag after restore completes
+                setTimeout(() => {
+                  isManualSavingRef.current = false;
+                }, 500);
               }, 300);
               console.log('✅ Draft data reloaded after save');
+            } else {
+              // Clear flag if reload fails
+              isManualSavingRef.current = false;
             }
           } catch (error) {
             console.error('Error reloading draft data after save:', error);
+            // Clear flag on error
+            isManualSavingRef.current = false;
             // Don't show error to user - save was successful
           }
+        } else {
+          isManualSavingRef.current = false;
         }
+      } else {
+        isManualSavingRef.current = false;
       }
     } catch (error) {
       console.error('Error saving progress:', error);
+      isManualSavingRef.current = false;
       const errorMessage = error.response?.data?.error || error.response?.data?.message || 'Failed to save progress';
       spaceToast.error(errorMessage);
     } finally {
       setLoading(false);
+      // Clear flag after a delay to ensure restore completes
+      setTimeout(() => {
+        isManualSavingRef.current = false;
+      }, 2000);
     }
   };
 
@@ -9425,9 +9606,9 @@ const StudentDailyChallengeTake = () => {
               </p>
             </>
           ) : (
-            <p style={{ marginBottom: '12px', fontSize: '16px', lineHeight: '1.6' }}>
-              <strong>Lần đầu cảnh báo:</strong> Hệ thống đã phát hiện hành động không được phép.
-            </p>
+          <p style={{ marginBottom: '12px', fontSize: '16px', lineHeight: '1.6' }}>
+            <strong>Lần đầu cảnh báo:</strong> Hệ thống đã phát hiện hành động không được phép.
+          </p>
           )}
           {violationWarningData && (
             <>
@@ -9497,10 +9678,10 @@ const StudentDailyChallengeTake = () => {
                 </p>
               )}
               {violationWarningData.message && (
-                <p style={{ marginBottom: '8px', fontSize: '14px'}}>
+              <p style={{ marginBottom: '8px', fontSize: '14px'}}>
                   <strong>Chi tiết:</strong> 
                   <span dangerouslySetInnerHTML={{ __html: violationWarningData.message }} />
-                </p>
+              </p>
               )}
             </>
           )}

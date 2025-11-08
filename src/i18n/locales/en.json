@@ -1813,7 +1813,7 @@
     "challengeTitle": "Challenge Title",
     "type": "Type",
     "completion": "Completion",
-    "closed": "Closed",
+    "finished": "Finished",
     "inProgress": "In Progress",
     "startDateRequired": "Start date is required",
     "endDateRequired": "End date is required",
