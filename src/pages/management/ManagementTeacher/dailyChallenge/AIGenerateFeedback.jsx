@@ -247,7 +247,6 @@ const AIGenerateFeedback = () => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [saving, setSaving] = useState(false);
   // Speaking-specific controls
-  const [speakingAge, setSpeakingAge] = useState('');
   const [speakingReferenceText, setSpeakingReferenceText] = useState('');
   const [speakingResult, setSpeakingResult] = useState(null);
   const [writingCriteria, setWritingCriteria] = useState(null);
@@ -318,7 +317,6 @@ const AIGenerateFeedback = () => {
         // Speaking: clear AI metrics and inline form state, reset view
         setSpeakingResult(null);
         setSpeakingReferenceText('');
-        setSpeakingAge('');
         const secId = section?.id || prefill?.section?.id;
         if (secId) {
           setWritingSectionFeedbacks(prev => ({ ...prev, [secId]: [] }));
@@ -538,25 +536,16 @@ const AIGenerateFeedback = () => {
     }
 
     if (sectionType === 'speaking') {
-      if (!speakingResult) return baseHtml;
-      const sr = speakingResult || {};
-      const rows = [
-        ['Pronunciation', sr.pronunciationScore],
-        ['Accuracy', sr.accuracyScore],
-        ['Fluency', sr.fluencyScore],
-        ['Completeness', sr.completenessScore],
-        ['Prosody', sr.prosodyScore],
-      ]
-        .filter(([label, val]) => val !== undefined && val !== null)
-        .map(([label, val]) => `<li>${label}: <b>${val}</b></li>`)
-        .join('');
-      const details = rows ? `<ul>${rows}</ul>` : '';
-      const speakingHtml = `<hr/><div data-kind="speaking">${details}</div>`;
-      return [baseHtml, speakingHtml].filter(Boolean).join('\n');
+      // Return object format for speaking feedback
+      return {
+        overallFeedback: baseHtml,
+        suggestedScore: Number.isFinite(Number(suggestedScore)) ? Number(suggestedScore) : null,
+        criteriaFeedback: null,
+      };
     }
 
     return baseHtml;
-  }, [feedback, sectionType, writingCriteria, speakingResult, suggestedScore]);
+  }, [feedback, sectionType, writingCriteria, suggestedScore]);
 
   // Parse combined feedback html (legacy) or object to rebuild writing criteria for display
   const parseCriteriaFromFeedback = useCallback((data) => {
@@ -939,11 +928,80 @@ const AIGenerateFeedback = () => {
     }
   }, [selectedComment, writingSectionFeedbacks]);
 
+  // Helper function to parse text and display images from URLs
+  const parseTextWithImages = useCallback((text) => {
+    if (!text) return text;
+    
+    // Regex to match URLs (including image URLs)
+    const urlRegex = /(https?:\/\/[^\s]+)/g;
+    const imageExtensions = /\.(jpg|jpeg|png|gif|bmp|webp|svg)(\?|$)/i;
+    
+    const parts = [];
+    let lastIndex = 0;
+    let match;
+    
+    while ((match = urlRegex.exec(text)) !== null) {
+      // Add text before the URL
+      if (match.index > lastIndex) {
+        parts.push(text.substring(lastIndex, match.index));
+      }
+      
+      const url = match[0];
+      // Check if it's an image URL (check if URL contains image extension before query params or at end)
+      if (imageExtensions.test(url)) {
+        parts.push(
+          <img 
+            key={`img-${match.index}`}
+            src={url} 
+            alt="Student uploaded"
+            style={{
+              maxWidth: '100%',
+              height: 'auto',
+              display: 'block',
+              margin: '12px 0',
+              borderRadius: '8px',
+              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)'
+            }}
+            onError={(e) => {
+              // If image fails to load, show the URL as text
+              e.target.style.display = 'none';
+              const urlText = document.createTextNode(url);
+              e.target.parentNode.appendChild(urlText);
+            }}
+          />
+        );
+      } else {
+        // Regular URL - keep as text or make it a link
+        parts.push(
+          <a 
+            key={`url-${match.index}`}
+            href={url} 
+            target="_blank" 
+            rel="noopener noreferrer"
+            style={{ color: theme === 'sun' ? '#1890ff' : '#8B5CF6', wordBreak: 'break-all' }}
+          >
+            {url}
+          </a>
+        );
+      }
+      
+      lastIndex = match.index + url.length;
+    }
+    
+    // Add remaining text
+    if (lastIndex < text.length) {
+      parts.push(text.substring(lastIndex));
+    }
+    
+    // If no URLs found, return original text
+    return parts.length > 0 ? parts : text;
+  }, [theme]);
+
   // Render essay with highlights (replicated)
   const renderEssayWithHighlights = useCallback((text, sectionKey) => {
     if (!text) return text;
     const sectionFeedbacks = writingSectionFeedbacks[sectionKey] || [];
-    if (sectionFeedbacks.length === 0) return text;
+    if (sectionFeedbacks.length === 0) return parseTextWithImages(text);
 
     const sortedFeedbacks = [...sectionFeedbacks].sort((a, b) => a.startIndex - b.startIndex);
     const isActiveHighlight = selectedComment && selectedComment.id;
@@ -969,7 +1027,14 @@ const AIGenerateFeedback = () => {
     intervals.forEach((interval, idx) => {
       if (interval.start > currentIndex) {
         const plainText = text.substring(currentIndex, interval.start);
-        if (plainText) parts.push(<span key={`text-${currentIndex}-${interval.start}`}>{plainText}</span>);
+        if (plainText) {
+          const parsedPlainText = parseTextWithImages(plainText);
+          parts.push(
+            <span key={`text-${currentIndex}-${interval.start}`}>
+              {parsedPlainText}
+            </span>
+          );
+        }
       }
       const intervalText = text.substring(interval.start, interval.end);
       const activeFeedback = interval.feedbacks.find(fb => fb.id === isActiveHighlight);
@@ -984,34 +1049,82 @@ const AIGenerateFeedback = () => {
       const handleMouseEnter = () => { if (interval.feedbacks.length > 0) setHoveredHighlightId(displayFeedback.id); };
       const handleMouseLeave = () => { setHoveredHighlightId(null); };
 
-      parts.push(
-        <span
-          key={`highlight-${interval.start}-${interval.end}-${idx}`}
-          onClick={handleClick}
-          onMouseEnter={handleMouseEnter}
-          onMouseLeave={handleMouseLeave}
-          style={{
-            backgroundColor,
-            cursor: 'pointer',
-            padding: '2px 0',
-            borderRadius: '3px',
-            fontWeight,
-            transition: 'all 0.2s ease',
-            display: 'inline',
-            boxShadow,
-          }}
-        >
-          {intervalText}
-        </span>
-      );
+      // Parse interval text for images
+      const parsedIntervalText = parseTextWithImages(intervalText);
+      
+      // If parsedIntervalText is an array, check if it contains images
+      if (Array.isArray(parsedIntervalText)) {
+        parsedIntervalText.forEach((part, partIdx) => {
+          // Check if part is a React element and is an img tag
+          if (React.isValidElement(part) && typeof part.type === 'string' && part.type === 'img') {
+            // Render image outside highlight span (images need block display)
+            parts.push(
+              <React.Fragment key={`img-${interval.start}-${interval.end}-${idx}-${partIdx}`}>
+                {part}
+              </React.Fragment>
+            );
+          } else {
+            // Render text parts inside highlight span
+            parts.push(
+              <span
+                key={`highlight-${interval.start}-${interval.end}-${idx}-${partIdx}`}
+                onClick={handleClick}
+                onMouseEnter={handleMouseEnter}
+                onMouseLeave={handleMouseLeave}
+                style={{
+                  backgroundColor,
+                  cursor: 'pointer',
+                  padding: '2px 0',
+                  borderRadius: '3px',
+                  fontWeight,
+                  transition: 'all 0.2s ease',
+                  display: 'inline',
+                  boxShadow,
+                }}
+              >
+                {part}
+              </span>
+            );
+          }
+        });
+      } else {
+        // Fallback: render as normal highlight (no images found)
+        parts.push(
+          <span
+            key={`highlight-${interval.start}-${interval.end}-${idx}`}
+            onClick={handleClick}
+            onMouseEnter={handleMouseEnter}
+            onMouseLeave={handleMouseLeave}
+            style={{
+              backgroundColor,
+              cursor: 'pointer',
+              padding: '2px 0',
+              borderRadius: '3px',
+              fontWeight,
+              transition: 'all 0.2s ease',
+              display: 'inline',
+              boxShadow,
+            }}
+          >
+            {parsedIntervalText}
+          </span>
+        );
+      }
       currentIndex = interval.end;
     });
     if (currentIndex < text.length) {
       const remainingText = text.substring(currentIndex);
-      if (remainingText) parts.push(<span key={`text-final-${currentIndex}`}>{remainingText}</span>);
+      if (remainingText) {
+        const parsedRemainingText = parseTextWithImages(remainingText);
+        parts.push(
+          <span key={`text-final-${currentIndex}`}>
+            {parsedRemainingText}
+          </span>
+        );
+      }
     }
     return parts;
-  }, [hoveredHighlightId, selectedComment, writingSectionFeedbacks, handleHighlightClick]);
+  }, [hoveredHighlightId, selectedComment, writingSectionFeedbacks, handleHighlightClick, parseTextWithImages]);
 
   // Hide floating toolbar when clicking outside
   useEffect(() => {
@@ -1486,9 +1599,7 @@ const AIGenerateFeedback = () => {
           spaceToast.error('Không tìm thấy submissionQuestionId của section để chấm AI');
           return;
         }
-        const ageInput = String(speakingAge ?? '').trim();
-        const age = ageInput === '' ? undefined : (Number.isFinite(Number(ageInput)) ? Number(ageInput) : undefined);
-        const payload = { submissionQuestionId: writingSubmissionQuestionId, ...(age !== undefined ? { age } : {}) };
+        const payload = { submissionQuestionId: writingSubmissionQuestionId };
         const res = await dailyChallengeApi.generateAIFeedback(payload);
         const raw = res?.data?.data || res?.data || {};
         const overallFeedback = raw?.overallFeedback || raw?.feedback || '';
@@ -1538,16 +1649,13 @@ const AIGenerateFeedback = () => {
           return;
         }
         const refText = (speakingReferenceText && speakingReferenceText.trim()) ? speakingReferenceText.trim() : undefined;
-        const ageInput = String(speakingAge ?? '').trim();
-        const age = ageInput === '' ? undefined : (Number.isFinite(Number(ageInput)) ? Number(ageInput) : undefined);
         
         // Log request payload
-        const requestPayload = { audioUrl, referenceText: refText, ...(age !== undefined ? { age } : {}) };
+        const requestPayload = { audioUrl, referenceText: refText };
         console.log('=== SPEAKING AI GENERATE - REQUEST ===');
         console.log('Request Payload:', requestPayload);
         console.log('Audio URL:', audioUrl);
         console.log('Reference Text:', refText);
-        console.log('Age:', age);
         
         const res = await dailyChallengeApi.assessPronunciation(requestPayload);
         
@@ -1659,7 +1767,7 @@ const AIGenerateFeedback = () => {
     } finally {
       setIsGenerating(false);
     }
-  }, [sectionType, submissionQuestionId, prefill?.submissionQuestionId, studentAnswer, section, speakingReferenceText, speakingAge, getBackendMessage]);
+  }, [sectionType, submissionQuestionId, prefill?.submissionQuestionId, studentAnswer, section, speakingReferenceText, getBackendMessage]);
 
   const handleSave = useCallback(async () => {
     try {
@@ -1932,7 +2040,7 @@ const AIGenerateFeedback = () => {
                         section.id
                       )
                     ) : (
-                      (studentAnswer?.text || studentAnswer?.essay || buildPromptFromContent() || '').trim() || '—'
+                      parseTextWithImages((studentAnswer?.text || studentAnswer?.essay || buildPromptFromContent() || '').trim() || '—')
                     )}
                   </div>
                   
@@ -2614,9 +2722,6 @@ const AIGenerateFeedback = () => {
                       {!hasAIGenerated && (
                         <div
                           style={{
-                            display: 'grid',
-                            gridTemplateColumns: '1fr 180px',
-                            gap: 12,
                             background: theme === 'sun' ? 'rgba(24,144,255,0.06)' : 'rgba(167,139,250,0.10)',
                             border: `2px solid ${primaryColor}40`,
                             borderRadius: 12,
@@ -2633,20 +2738,6 @@ const AIGenerateFeedback = () => {
                                 onChange={(e) => setSpeakingReferenceText(e.target.value)}
                                 placeholder="Enter text if students were asked to read a passage"
                                 style={{ borderRadius: 8, background: '#fff' }}
-                              />
-                            </div>
-                          </div>
-                          {/* Age */}
-                          <div>
-                            <Text strong>Age</Text>
-                            <div style={{ marginTop: 6 }}>
-                              <Input
-                                type="number"
-                                min={1}
-                                max={100}
-                                value={speakingAge}
-                                onChange={(e) => setSpeakingAge(e.target.value)}
-                                style={{ width: '100%', borderRadius: 8, background: '#fff' }}
                               />
                             </div>
                           </div>
@@ -2984,19 +3075,7 @@ const AIGenerateFeedback = () => {
                       <div style={{ maxWidth: 520, fontSize: 15, color: theme === 'sun' ? '#334155' : '#1F2937' }}>
                         Get comprehensive feedback on your writing with detailed analysis and suggestions
                       </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <Text strong>Age</Text>
-                          <Input
-                            type="number"
-                            min={1}
-                            max={100}
-                            value={speakingAge}
-                            onChange={(e) => setSpeakingAge(e.target.value)}
-                            placeholder="e.g. 12"
-                            style={{ width: 100, borderRadius: 8, background: '#fff' }}
-                          />
-                        </div>
+                      <div>
                         <Button
                           type="primary"
                           icon={<ThunderboltOutlined />}
@@ -3177,9 +3256,6 @@ const AIGenerateFeedback = () => {
                   {sectionType === 'speaking' && hasAIGenerated && (
                     <div
                       style={{
-                        display: 'grid',
-                        gridTemplateColumns: '1fr 180px',
-                        gap: 12,
                         background: theme === 'sun' ? 'rgba(24,144,255,0.06)' : 'rgba(167,139,250,0.10)',
                         border: `2px solid ${primaryColor}40`,
                         borderRadius: 12,
@@ -3196,19 +3272,6 @@ const AIGenerateFeedback = () => {
                             onChange={(e) => setSpeakingReferenceText(e.target.value)}
                             placeholder="Enter text if students were asked to read a passage"
                             style={{ borderRadius: 8, background: '#fff' }}
-                          />
-                        </div>
-                      </div>
-                      <div>
-                        <Text strong>Age</Text>
-                        <div style={{ marginTop: 6 }}>
-                          <Input
-                            type="number"
-                            min={1}
-                            max={100}
-                            value={speakingAge}
-                            onChange={(e) => setSpeakingAge(e.target.value)}
-                            style={{ width: '100%', borderRadius: 8, background: '#fff' }}
                           />
                         </div>
                       </div>
@@ -3310,19 +3373,7 @@ const AIGenerateFeedback = () => {
                       <div style={{ maxWidth: 520, fontSize: 15, color: theme === 'sun' ? '#334155' : '#1F2937' }}>
                         You can regenerate suggestions if you want a different take.
                       </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <Text strong>Age</Text>
-                          <Input
-                            type="number"
-                            min={1}
-                            max={100}
-                            value={speakingAge}
-                            onChange={(e) => setSpeakingAge(e.target.value)}
-                            placeholder="e.g. 12"
-                            style={{ width: 100, borderRadius: 8, background: '#fff' }}
-                          />
-                        </div>
+                      <div>
                         <Button
                           type="primary"
                           icon={<ThunderboltOutlined />}

@@ -24,6 +24,13 @@ import { spaceToast } from "../../../component/SpaceToastify";
 import dailyChallengeApi from "../../../apis/backend/dailyChallengeManagement";
 import { useTestSecurity } from "../../../hooks/useTestSecurity";
 import TextTranslator from "../../../component/TextTranslator/TextTranslator";
+import { 
+  getDeviceFingerprint, 
+  getSavedFingerprintHash,
+  saveFingerprintHash,
+  compareFingerprints 
+} from '../../../utils/fingerprintUtils';
+import { notificationApi } from '../../../apis/apis';
 
 // Context for collecting answers from child components
 const AnswerCollectionContext = createContext(null);
@@ -99,7 +106,7 @@ const processPassageContent = (content, theme, challengeType) => {
 
 
 // Section Question Component for Reading/Listening sections
-const SectionQuestionItem = ({ question, index, theme, sectionScore }) => {
+const SectionQuestionItem = ({ question, index, theme, sectionScore, globalQuestionNumbers }) => {
   const registerAnswerCollector = useContext(AnswerCollectionContext);
   const registerAnswerRestorer = useContext(AnswerRestorationContext);
   const triggerAutoSave = useContext(AutoSaveTriggerContext);
@@ -431,7 +438,7 @@ useEffect(() => {
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           
           <Typography.Text style={{ fontSize: '14px', opacity: 0.7 }}>
-            ({question.points || sectionScore?.totalScore || 0} {question.points !== 1 ? 'points' : 'point'})
+            ({question.score || sectionScore?.totalScore || 0} {(question.score || sectionScore?.totalScore || 0) !== 1 ? 'weights' : 'weight'})
         </Typography.Text>
         </div>
       </div>
@@ -527,7 +534,7 @@ useEffect(() => {
                           color: '#000000'
                         }}>
                           <div style={{ fontSize: '16px', fontWeight: 600, marginBottom: '8px' }}>
-                            Question {qIndex + 1}:
+                            Question {globalQuestionNumbers?.get(q.id) || (qIndex + 1)}:
                           </div>
                           <MemoizedHTML 
                             className="question-text-content"
@@ -591,7 +598,7 @@ useEffect(() => {
                       color: '#000000'
                     }}>
                       <div style={{ fontSize: '16px', fontWeight: 600, marginBottom: '8px' }}>
-                        Question {qIndex + 1}:
+                        Question {globalQuestionNumbers?.get(q.id) || (qIndex + 1)}:
                       </div>
                       <div>
                         {(() => {
@@ -877,7 +884,7 @@ useEffect(() => {
                                 marginBottom: '12px'
                               }}>
                                 <div style={{ fontSize: '16px', fontWeight: 600, marginBottom: '8px' }}>
-                                  Question {qIndex + 1}:
+                                  Question {globalQuestionNumbers?.get(q.id) || (qIndex + 1)}:
                                 </div>
                                 <div>
                                   {parts.map((part, pIdx) => (
@@ -1043,7 +1050,7 @@ useEffect(() => {
                       color: '#000000'
                     }}>
                       <div style={{ fontSize: '16px', fontWeight: 600, marginBottom: '8px' }}>
-                        Question {qIndex + 1}:
+                        Question {globalQuestionNumbers?.get(q.id) || (qIndex + 1)}:
                       </div>
                       <div>
                         {(() => {
@@ -1219,7 +1226,7 @@ useEffect(() => {
                       return (
                         <div style={{ marginBottom: '16px' }}>
                           <div style={{ fontSize: '16px', fontWeight: 600, marginBottom: '8px' }}>
-                            Question {qIndex + 1}:
+                            Question {globalQuestionNumbers?.get(q.id) || (qIndex + 1)}:
                           </div>
                           <div style={{ fontSize: '15px', fontWeight: 350, marginBottom: '16px', lineHeight: '1.8', color: '#000000' }}>
                             <div 
@@ -1382,7 +1389,7 @@ useEffect(() => {
                           display: 'block',
                           marginBottom: '8px'
                         }}>
-                          Question {qIndex + 1}:
+                          Question {globalQuestionNumbers?.get(q.id) || (qIndex + 1)}:
                         </Typography.Text>
                         <Typography.Text style={{ 
                           fontSize: '15px', 
@@ -1570,7 +1577,7 @@ useEffect(() => {
   );
 };
 // Listening Section Component
-const ListeningSectionItem = ({ question, index, theme, sectionScore }) => {
+const ListeningSectionItem = ({ question, index, theme, sectionScore, globalQuestionNumbers }) => {
   const registerAnswerCollector = useContext(AnswerCollectionContext);
   const registerAnswerRestorer = useContext(AnswerRestorationContext);
   const triggerAutoSave = useContext(AutoSaveTriggerContext);
@@ -1910,7 +1917,7 @@ const ListeningSectionItem = ({ question, index, theme, sectionScore }) => {
           </Typography.Text>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <Typography.Text style={{ marginLeft: '12px', fontSize: '14px', opacity: 0.7 }}>
-              ({question.points || sectionScore?.totalScore || 0} {question.points !== 1 ? 'points' : 'point'})
+              ({question.score || sectionScore?.totalScore || 0} {(question.score || sectionScore?.totalScore || 0) !== 1 ? 'weights' : 'weight'})
           </Typography.Text>
           </div>
         </div>
@@ -2081,7 +2088,7 @@ const ListeningSectionItem = ({ question, index, theme, sectionScore }) => {
                         color: '#000000'
                       }}>
                         <div style={{ fontSize: '16px', fontWeight: 600, marginBottom: '8px' }}>
-                          Question {qIndex + 1}:
+                          Question {globalQuestionNumbers?.get(q.id) || (qIndex + 1)}:
                         </div>
                         <div>
                           {(() => {
@@ -2277,7 +2284,7 @@ const ListeningSectionItem = ({ question, index, theme, sectionScore }) => {
                           <div style={{ marginBottom: '16px' }}>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', minHeight: '200px' }}>
                               <div style={{ padding: '16px', background: theme === 'sun' ? '#f9f9f9' : 'rgba(255,255,255,0.02)', borderRadius: '8px', border: `1px solid ${theme === 'sun' ? '#e8e8e8' : 'rgba(255,255,255,0.1)'}` }}>
-                                <div style={{ fontSize: '16px', fontWeight: 600, marginBottom: '8px' }}>Question {qIndex + 1}:</div>
+                                <div style={{ fontSize: '16px', fontWeight: 600, marginBottom: '8px' }}>Question {globalQuestionNumbers?.get(q.id) || (qIndex + 1)}:</div>
                                 <div style={{ fontSize: '15px', fontWeight: 350, lineHeight: '1.8', color: '#000000' }}>
                                   {parts.map((part, pIdx) => (
                                     <React.Fragment key={pIdx}>
@@ -2332,7 +2339,7 @@ const ListeningSectionItem = ({ question, index, theme, sectionScore }) => {
                         color: '#000000'
                       }}>
                         <div style={{ fontSize: '16px', fontWeight: 600, marginBottom: '8px' }}>
-                          Question {qIndex + 1}:
+                          Question {globalQuestionNumbers?.get(q.id) || (qIndex + 1)}:
                         </div>
                         <div>
                           {(() => {
@@ -2442,7 +2449,7 @@ const ListeningSectionItem = ({ question, index, theme, sectionScore }) => {
 
                         return (
                           <div style={{ marginBottom: '16px' }}>
-                            <div style={{ fontSize: '16px', fontWeight: 600, marginBottom: '8px' }}>Question {qIndex + 1}:</div>
+                            <div style={{ fontSize: '16px', fontWeight: 600, marginBottom: '8px' }}>Question {globalQuestionNumbers?.get(q.id) || (qIndex + 1)}:</div>
                             <div 
                               className="question-text-content"
                               style={{ fontSize: '15px', fontWeight: 350, marginBottom: '16px', lineHeight: '1.8', color: '#000000' }}
@@ -2487,7 +2494,7 @@ const ListeningSectionItem = ({ question, index, theme, sectionScore }) => {
                             display: 'block',
                             marginBottom: '8px'
                           }}>
-                            Question {qIndex + 1}:
+                            Question {globalQuestionNumbers?.get(q.id) || (qIndex + 1)}:
                           </Typography.Text>
                           <div 
                             className="question-text-content"
@@ -2940,7 +2947,7 @@ const WritingSectionItem = ({ question, index, theme }) => {
             {index + 1}. Writing Section
           </Typography.Text>
           <Typography.Text style={{ marginLeft: '12px', fontSize: '14px', opacity: 0.7 }}>
-            ({question.points} {question.points > 1 ? 'points' : 'point'})
+            ({question.score || 0} {(question.score || 0) > 1 ? 'weights' : 'weight'})
           </Typography.Text>
         </div>
 
@@ -3053,49 +3060,51 @@ const WritingSectionItem = ({ question, index, theme }) => {
               {writingMode === null ? (
                 /* Show 2 options initially */
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                  {/* Handwriting Option */}
-                  <div
-                    onClick={() => setWritingMode('handwriting')}
-                    style={{
-                      padding: '24px',
-                      background: theme === 'sun' 
-                        ? 'linear-gradient(135deg, rgba(230, 245, 255, 0.5) 0%, rgba(186, 231, 255, 0.4) 100%)'
-                        : 'linear-gradient(135deg, rgba(255, 255, 255, 0.5) 0%, rgba(244, 240, 255, 0.5) 100%)',
-                      border: `2px solid ${theme === 'sun' 
-                        ? 'rgba(24, 144, 255, 0.3)' 
-                        : 'rgba(138, 122, 255, 0.3)'}`,
-                      borderRadius: '12px',
-                      cursor: 'pointer',
-                      textAlign: 'center',
-                      transition: 'all 0.3s ease'
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.transform = 'translateY(-2px)';
-                      e.currentTarget.style.boxShadow = theme === 'sun' 
-                        ? '0 4px 12px rgba(24, 144, 255, 0.2)'
-                        : '0 4px 12px rgba(138, 122, 255, 0.25)';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.transform = 'translateY(0)';
-                      e.currentTarget.style.boxShadow = 'none';
-                    }}
-                  >
-                    <div style={{ fontSize: '32px', marginBottom: '8px' }}>✍️</div>
-                    <div style={{ 
-                      fontSize: '16px', 
-                      fontWeight: '600',
-                      color: theme === 'sun' ? '#1E40AF' : '#8377A0',
-                      marginBottom: '4px'
-                    }}>
-                      Write Essay Here
+                  {/* Handwriting Option - Hide when files are uploaded */}
+                  {uploadedFiles.length === 0 && (
+                    <div
+                      onClick={() => setWritingMode('handwriting')}
+                      style={{
+                        padding: '24px',
+                        background: theme === 'sun' 
+                          ? 'linear-gradient(135deg, rgba(230, 245, 255, 0.5) 0%, rgba(186, 231, 255, 0.4) 100%)'
+                          : 'linear-gradient(135deg, rgba(255, 255, 255, 0.5) 0%, rgba(244, 240, 255, 0.5) 100%)',
+                        border: `2px solid ${theme === 'sun' 
+                          ? 'rgba(24, 144, 255, 0.3)' 
+                          : 'rgba(138, 122, 255, 0.3)'}`,
+                        borderRadius: '12px',
+                        cursor: 'pointer',
+                        textAlign: 'center',
+                        transition: 'all 0.3s ease'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.transform = 'translateY(-2px)';
+                        e.currentTarget.style.boxShadow = theme === 'sun' 
+                          ? '0 4px 12px rgba(24, 144, 255, 0.2)'
+                          : '0 4px 12px rgba(138, 122, 255, 0.25)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.transform = 'translateY(0)';
+                        e.currentTarget.style.boxShadow = 'none';
+                      }}
+                    >
+                      <div style={{ fontSize: '32px', marginBottom: '8px' }}>✍️</div>
+                      <div style={{ 
+                        fontSize: '16px', 
+                        fontWeight: '600',
+                        color: theme === 'sun' ? '#1E40AF' : '#8377A0',
+                        marginBottom: '4px'
+                      }}>
+                        Write Essay Here
+                      </div>
+                      <div style={{ 
+                        fontSize: '13px',
+                        color: theme === 'sun' ? '#666' : '#999'
+                      }}>
+                        Type your essay directly in the text area
+                      </div>
                     </div>
-                    <div style={{ 
-                      fontSize: '13px',
-                      color: theme === 'sun' ? '#666' : '#999'
-                    }}>
-                      Type your essay directly in the text area
-                    </div>
-                  </div>
+                  )}
 
                   {/* Upload File Option */}
                   <div style={{
@@ -3105,6 +3114,7 @@ const WritingSectionItem = ({ question, index, theme }) => {
                       type="file"
                       id="upload-option"
                       accept="image/*"
+                      multiple
                       onChange={handleFileUpload}
                       style={{ display: 'none' }}
                     />
@@ -3148,7 +3158,7 @@ const WritingSectionItem = ({ question, index, theme }) => {
                         fontSize: '13px',
                         color: theme === 'sun' ? '#666' : '#999'
                       }}>
-                        Upload image of your handwritten essay (Max 5MB)
+                        Upload image(s) of your handwritten essay (Max 5MB per image)
                       </div>
                     </label>
                   </div>
@@ -3363,6 +3373,33 @@ const SpeakingSectionItem = ({ question, index, theme, isViewOnly }) => {
   const [audioUrl, setAudioUrl] = useState(null);
   const [uploadedFiles, setUploadedFiles] = useState([]);
 
+  // Helper function to extract URL from upload response
+  const extractUrlFromResponse = (uploadRes) => {
+    // Try multiple possible paths in order of likelihood
+    if (uploadRes?.data?.url) {
+      return uploadRes.data.url;
+    }
+    if (uploadRes?.data?.data?.url) {
+      return uploadRes.data.data.url;
+    }
+    if (typeof uploadRes?.data === 'string') {
+      return uploadRes.data;
+    }
+    if (typeof uploadRes === 'string') {
+      return uploadRes;
+    }
+    if (uploadRes?.url) {
+      return uploadRes.url;
+    }
+    if (uploadRes?.data?.fileUrl) {
+      return uploadRes.data.fileUrl;
+    }
+    if (uploadRes?.fileUrl) {
+      return uploadRes.fileUrl;
+    }
+    return null;
+  };
+
   const toPlainText = (html) => {
     if (!html) return '';
     return String(html)
@@ -3411,18 +3448,19 @@ const SpeakingSectionItem = ({ question, index, theme, isViewOnly }) => {
             });
             
             const uploadRes = await dailyChallengeApi.uploadFile(file);
-            const serverUrl = uploadRes?.data?.url || uploadRes?.data || uploadRes;
+            
+            // Extract URL from response using helper function
+            const serverUrl = extractUrlFromResponse(uploadRes);
             
             if (serverUrl && typeof serverUrl === 'string') {
               // Replace temp blob URL with server URL
               URL.revokeObjectURL(tempUrl);
               setAudioUrl(serverUrl);
-              console.log('✅ Audio uploaded to server:', serverUrl);
             } else {
-              console.warn('⚠️ Server did not return valid URL, keeping blob URL');
+              console.warn('⚠️ [Speaking] Server did not return valid URL, keeping blob URL. Response:', uploadRes);
             }
           } catch (error) {
-            console.error('❌ Failed to upload audio:', error);
+            console.error('❌ [Speaking] Failed to upload recorded audio:', error);
             // Keep blob URL as fallback
           }
         };
@@ -3453,24 +3491,27 @@ const SpeakingSectionItem = ({ question, index, theme, isViewOnly }) => {
     const uploadedFilesData = await Promise.all(
       files.map(async (file) => {
         try {
+          // Upload file to backend
           const uploadRes = await dailyChallengeApi.uploadFile(file);
-          const serverUrl = uploadRes?.data?.url || uploadRes?.data || uploadRes;
+          
+          // Extract URL from response using helper function
+          const serverUrl = extractUrlFromResponse(uploadRes);
           
           if (serverUrl && typeof serverUrl === 'string') {
-            console.log('✅ File uploaded to server:', serverUrl);
             return {
               id: Date.now() + Math.random(),
               name: file.name,
               size: file.size,
               type: file.type,
-              url: serverUrl // Use server URL instead of blob URL
+              url: serverUrl // Use server URL from backend
             };
           } else {
+            console.error('❌ [Speaking] Server did not return valid URL. Response:', uploadRes);
             throw new Error('Server did not return valid URL');
           }
         } catch (error) {
-          console.error('❌ Failed to upload file:', file.name, error);
-          // Fallback to blob URL if upload fails
+          console.error('❌ [Speaking] Failed to upload file:', file.name, error);
+          // Fallback to blob URL if upload fails (but this won't persist)
           return {
             id: Date.now() + Math.random(),
             name: file.name,
@@ -3501,15 +3542,26 @@ const SpeakingSectionItem = ({ question, index, theme, isViewOnly }) => {
 
     const getAnswer = () => {
       if (isViewOnly) return null;
+      
       // Prefer recorded audio URL, else any uploaded file URLs/names
       if (audioUrl) {
         return { answer: audioUrl, questionType: 'SPEAKING' };
       }
       if (Array.isArray(uploadedFiles) && uploadedFiles.length > 0) {
-        const files = uploadedFiles
-          .map(f => (typeof f === 'string' ? f : (f?.url || f?.name)))
+        // Extract URLs from uploaded files (prefer server URL)
+        const fileUrls = uploadedFiles
+          .map(f => {
+            // If file has url property (server URL), use it
+            if (f?.url && typeof f.url === 'string') {
+              return f.url;
+            }
+            // Otherwise fallback to name or value
+            return typeof f === 'string' ? f : (f?.value || f?.name);
+          })
           .filter(Boolean);
-        if (files.length > 0) return { answer: files, questionType: 'SPEAKING' };
+        if (fileUrls.length > 0) {
+          return { answer: fileUrls, questionType: 'SPEAKING' };
+      }
       }
       return null;
     };
@@ -3524,16 +3576,88 @@ const SpeakingSectionItem = ({ question, index, theme, isViewOnly }) => {
 
     const setAnswer = (answer) => {
       if (typeof answer === 'string') {
-        // Just set the URL directly (should be server URL now)
+        // String URL - could be recorded audio
         setAudioUrl(answer);
         return;
       }
       if (Array.isArray(answer) && answer.length > 0) {
-        const first = answer.find(Boolean);
-        if (first && typeof first === 'string') {
-          // Just set the URL directly (should be server URL now)
-          setAudioUrl(String(first));
+        // Handle array of file URLs or objects with URL (from submittedContent.data format)
+        const files = answer
+          .filter(Boolean)
+          .map((item, index) => {
+            let fileUrl = null;
+            let fileName = null;
+            
+            // Check if item is an object with id/value (from submittedContent.data format)
+            if (typeof item === 'object' && item !== null) {
+              // Prefer id, then value, then url, then name
+              // Ensure we get the full URL string, not truncated
+              fileUrl = item.id || item.value || item.url || item.name;
+              // Ensure fileUrl is a complete string
+              if (fileUrl && typeof fileUrl === 'string') {
+                fileUrl = String(fileUrl).trim(); // Ensure it's a full string
+              }
+              fileName = item.name || item.fileName || item.filename;
+              console.log(`🔄 [Speaking Restore] Question ${question?.id} - Extracted from object - fileUrl length:`, fileUrl?.length, 'fileUrl preview:', fileUrl?.substring(0, 100), '...', 'fileName:', fileName);
+            } else if (typeof item === 'string') {
+              // Item is directly a URL string
+              fileUrl = String(item).trim(); // Ensure it's a full string
+              console.log(`🔄 [Speaking Restore] Question ${question?.id} - Extracted from string - fileUrl length:`, fileUrl?.length, 'fileUrl preview:', fileUrl?.substring(0, 100), '...');
+            }
+            
+            // Extract filename from URL if not provided
+            if (!fileName && fileUrl && typeof fileUrl === 'string') {
+              try {
+                // Try to extract filename from URL
+                const urlObj = new URL(fileUrl);
+                const pathParts = urlObj.pathname.split('/');
+                fileName = pathParts[pathParts.length - 1] || `audio_${index + 1}`;
+                // Remove query parameters from filename if any
+                fileName = fileName.split('?')[0];
+              } catch (e) {
+                // If URL parsing fails, use default name
+                fileName = `audio_${index + 1}.mp3`;
+              }
+            }
+            
+            // Default filename if still not found
+            if (!fileName) {
+              fileName = `audio_${index + 1}.mp3`;
+            }
+            
+            return {
+              id: Date.now() + Math.random() + index,
+              name: fileName,
+              size: 0,
+              type: 'audio/mpeg', // Default to audio type
+              url: fileUrl // Use the URL from id/value/url property
+            };
+          })
+          .filter(file => file.url); // Only keep files with valid URLs
+        
+        if (files.length > 0) {
+          console.log(`✅ SPEAKING: Restored ${files.length} file(s) for question ${question?.id}:`, files);
+          // Check if first item is a simple string (recorded audio) or object (uploaded file)
+          const firstItem = answer[0];
+          if (typeof firstItem === 'string') {
+            // Simple string URL - likely recorded audio
+            setAudioUrl(firstItem);
+            // If there are more files, add them to uploadedFiles
+            if (files.length > 1) {
+              setUploadedFiles(files.slice(1));
+            }
+          } else if (typeof firstItem === 'object' && firstItem !== null) {
+            // Object with id/value - uploaded files from submittedContent.data format
+            // All are uploaded files, set to uploadedFiles
+            setUploadedFiles(files);
+          } else {
+            // Fallback: set all to uploadedFiles
+            setUploadedFiles(files);
+          }
+        } else {
+          console.warn(`⚠️ SPEAKING: No valid files extracted from answer for question ${question?.id}:`, answer);
         }
+        return;
       }
     };
 
@@ -3604,7 +3728,7 @@ const SpeakingSectionItem = ({ question, index, theme, isViewOnly }) => {
             {index + 1}. Speaking Section
           </Typography.Text>
           <Typography.Text style={{ marginLeft: '12px', fontSize: '14px', opacity: 0.7 }}>
-            ({question.points} {question.points > 1 ? 'points' : 'point'})
+            ({question.score || 0} {(question.score || 0) > 1 ? 'weights' : 'weight'})
           </Typography.Text>
         </div>
         {/* Layout: Left - Prompt, Right - Recording */}
@@ -3659,7 +3783,19 @@ const SpeakingSectionItem = ({ question, index, theme, isViewOnly }) => {
             {/* Recorded Audio Display */}
             {audioUrl && (
               <div style={{ marginBottom: '20px' }}>
-                <audio controls style={{ width: '100%', height: '40px' }} src={audioUrl}>
+                <audio 
+                  controls 
+                  preload="metadata"
+                  type="audio/mpeg"
+                  style={{ width: '100%', height: '40px' }} 
+                  src={audioUrl}
+                  onError={(e) => {
+                    console.error('❌ [Audio Player] Error loading recorded audio:', audioUrl, e);
+                    console.error('❌ [Audio Player] Error details:', e.target.error);
+                    console.error('❌ [Audio Player] Error code:', e.target.error?.code);
+                    console.error('❌ [Audio Player] Error message:', e.target.error?.message);
+                  }}
+                >
                   Your browser does not support the audio element.
                 </audio>
                 {!isViewOnly && (
@@ -3828,30 +3964,38 @@ const SpeakingSectionItem = ({ question, index, theme, isViewOnly }) => {
             {/* Uploaded Files */}
             {!isViewOnly && uploadedFiles.length > 0 && (
               <div style={{ marginTop: '16px' }}>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', justifyContent: 'center' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                   {uploadedFiles.map((file) => (
                     <div
                       key={file.id}
                       style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '8px',
-                        padding: '8px 12px',
+                        padding: '12px',
                         background: theme === 'sun' 
                           ? 'linear-gradient(135deg, rgba(24, 144, 255, 0.08) 0%, rgba(64, 169, 255, 0.05) 100%)'
                           : 'linear-gradient(135deg, rgba(138, 122, 255, 0.12) 0%, rgba(167, 139, 250, 0.08) 100%)',
                         border: `1px solid ${theme === 'sun' 
                           ? 'rgba(24, 144, 255, 0.2)' 
                           : 'rgba(138, 122, 255, 0.25)'}`,
-                        borderRadius: '6px',
-                        fontSize: '12px',
+                        borderRadius: '8px',
                         transition: 'all 0.3s ease'
                       }}
                     >
+                      <div style={{ 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        justifyContent: 'space-between',
+                        marginBottom: '8px'
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                       <span>🎵</span>
-                      <span style={{ color: theme === 'sun' ? '#333' : '#1F2937' }}>
+                          <span style={{ 
+                            color: theme === 'sun' ? '#333' : '#1F2937',
+                            fontSize: '13px',
+                            fontWeight: '500'
+                          }}>
                         {file.name}
                       </span>
+                        </div>
                       <button
                         onClick={() => removeFile(file.id)}
                         style={{
@@ -3859,12 +4003,42 @@ const SpeakingSectionItem = ({ question, index, theme, isViewOnly }) => {
                           border: 'none',
                           color: '#ff4d4f',
                           cursor: 'pointer',
-                          fontSize: '14px',
-                          padding: '2px'
+                            fontSize: '16px',
+                            padding: '2px 6px',
+                            borderRadius: '4px',
+                            transition: 'all 0.2s ease'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.background = 'rgba(255, 77, 79, 0.1)';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.background = 'none';
                         }}
                       >
                         ✕
                       </button>
+                      </div>
+                      {file.url && (
+                        <audio 
+                          controls 
+                          preload="metadata"
+                          type="audio/mpeg"
+                          style={{ 
+                            width: '100%', 
+                            height: '40px',
+                            borderRadius: '4px'
+                          }} 
+                          src={file.url}
+                          onError={(e) => {
+                            console.error('❌ [Audio Player] Error loading audio:', file.url, e);
+                            console.error('❌ [Audio Player] Error details:', e.target.error);
+                            console.error('❌ [Audio Player] Error code:', e.target.error?.code);
+                            console.error('❌ [Audio Player] Error message:', e.target.error?.message);
+                          }}
+                        >
+                          Your browser does not support the audio element.
+                        </audio>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -3888,6 +4062,33 @@ const SpeakingWithAudioSectionItem = ({ question, index, theme, sectionScore, is
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [volume, setVolume] = useState(1);
+
+  // Helper function to extract URL from upload response
+  const extractUrlFromResponse = (uploadRes) => {
+    // Try multiple possible paths in order of likelihood
+    if (uploadRes?.data?.url) {
+      return uploadRes.data.url;
+    }
+    if (uploadRes?.data?.data?.url) {
+      return uploadRes.data.data.url;
+    }
+    if (typeof uploadRes?.data === 'string') {
+      return uploadRes.data;
+    }
+    if (typeof uploadRes === 'string') {
+      return uploadRes;
+    }
+    if (uploadRes?.url) {
+      return uploadRes.url;
+    }
+    if (uploadRes?.data?.fileUrl) {
+      return uploadRes.data.fileUrl;
+    }
+    if (uploadRes?.fileUrl) {
+      return uploadRes.fileUrl;
+    }
+    return null;
+  };
 
   const toPlainText = (html) => {
     if (!html) return '';
@@ -3938,18 +4139,19 @@ const SpeakingWithAudioSectionItem = ({ question, index, theme, sectionScore, is
             });
             
             const uploadRes = await dailyChallengeApi.uploadFile(file);
-            const serverUrl = uploadRes?.data?.url || uploadRes?.data || uploadRes;
+            
+            // Extract URL from response using helper function
+            const serverUrl = extractUrlFromResponse(uploadRes);
             
             if (serverUrl && typeof serverUrl === 'string') {
               // Replace temp blob URL with server URL
               URL.revokeObjectURL(tempUrl);
               setAudioUrl(serverUrl);
-              console.log('✅ Audio uploaded to server:', serverUrl);
             } else {
-              console.warn('⚠️ Server did not return valid URL, keeping blob URL');
+              console.warn('⚠️ [Speaking] Server did not return valid URL, keeping blob URL. Response:', uploadRes);
             }
           } catch (error) {
-            console.error('❌ Failed to upload audio:', error);
+            console.error('❌ [Speaking] Failed to upload recorded audio:', error);
             // Keep blob URL as fallback
           }
         };
@@ -3980,24 +4182,27 @@ const SpeakingWithAudioSectionItem = ({ question, index, theme, sectionScore, is
     const uploadedFilesData = await Promise.all(
       files.map(async (file) => {
         try {
+          // Upload file to backend
           const uploadRes = await dailyChallengeApi.uploadFile(file);
-          const serverUrl = uploadRes?.data?.url || uploadRes?.data || uploadRes;
+          
+          // Extract URL from response using helper function
+          const serverUrl = extractUrlFromResponse(uploadRes);
           
           if (serverUrl && typeof serverUrl === 'string') {
-            console.log('✅ File uploaded to server:', serverUrl);
             return {
               id: Date.now() + Math.random(),
               name: file.name,
               size: file.size,
               type: file.type,
-              url: serverUrl // Use server URL instead of blob URL
+              url: serverUrl // Use server URL from backend
             };
           } else {
+            console.error('❌ [Speaking] Server did not return valid URL. Response:', uploadRes);
             throw new Error('Server did not return valid URL');
           }
         } catch (error) {
-          console.error('❌ Failed to upload file:', file.name, error);
-          // Fallback to blob URL if upload fails
+          console.error('❌ [Speaking] Failed to upload file:', file.name, error);
+          // Fallback to blob URL if upload fails (but this won't persist)
           return {
             id: Date.now() + Math.random(),
             name: file.name,
@@ -4023,15 +4228,31 @@ const SpeakingWithAudioSectionItem = ({ question, index, theme, sectionScore, is
 
     const getAnswer = () => {
       if (isViewOnly) return null;
+      
+      console.log(`🎤 [Speaking] Collecting answer for question ${question?.id} - audioUrl:`, audioUrl, 'uploadedFiles:', uploadedFiles);
+      
       if (audioUrl) {
+        console.log(`🎤 [Speaking] Question ${question?.id} - returning audioUrl:`, audioUrl);
         return { answer: audioUrl, questionType: 'SPEAKING' };
       }
       if (Array.isArray(uploadedFiles) && uploadedFiles.length > 0) {
-        const files = uploadedFiles
-          .map(f => (typeof f === 'string' ? f : (f?.url || f?.name)))
+        // Extract URLs from uploaded files (prefer server URL)
+        const fileUrls = uploadedFiles
+          .map(f => {
+            // If file has url property (server URL), use it
+            if (f?.url && typeof f.url === 'string') {
+              return f.url;
+            }
+            // Otherwise fallback to name or value
+            return typeof f === 'string' ? f : (f?.value || f?.name);
+          })
           .filter(Boolean);
-        if (files.length > 0) return { answer: files, questionType: 'SPEAKING' };
+        if (fileUrls.length > 0) {
+          console.log(`🎤 [Speaking] Question ${question?.id} - returning fileUrls:`, fileUrls);
+          return { answer: fileUrls, questionType: 'SPEAKING' };
       }
+      }
+      console.log(`⚠️ [Speaking] Question ${question?.id} - no answer found, returning null`);
       return null;
     };
 
@@ -4045,17 +4266,89 @@ const SpeakingWithAudioSectionItem = ({ question, index, theme, sectionScore, is
 
     const setAnswer = (answer) => {
       if (typeof answer === 'string') {
-        // Just set the URL directly (should be server URL now)
+        // String URL - could be recorded audio
         setAudioUrl(answer);
         return;
       }
       if (Array.isArray(answer) && answer.length > 0) {
-        const first = answer.find(Boolean);
-        if (first && typeof first === 'string') {
-          // Just set the URL directly (should be server URL now)
-          setAudioUrl(String(first));
+        // Handle array of file URLs or objects with URL (from submittedContent.data format)
+        const files = answer
+          .filter(Boolean)
+          .map((item, index) => {
+            let fileUrl = null;
+            let fileName = null;
+            
+            // Check if item is an object with id/value (from submittedContent.data format)
+            if (typeof item === 'object' && item !== null) {
+              // Prefer id, then value, then url, then name
+              // Ensure we get the full URL string, not truncated
+              fileUrl = item.id || item.value || item.url || item.name;
+              // Ensure fileUrl is a complete string
+              if (fileUrl && typeof fileUrl === 'string') {
+                fileUrl = String(fileUrl).trim(); // Ensure it's a full string
+              }
+              fileName = item.name || item.fileName || item.filename;
+            } else if (typeof item === 'string') {
+              // Item is directly a URL string
+              fileUrl = String(item).trim(); // Ensure it's a full string
+            }
+            
+            // Extract filename from URL if not provided
+            if (!fileName && fileUrl && typeof fileUrl === 'string') {
+              try {
+                // Try to extract filename from URL
+                const urlObj = new URL(fileUrl);
+                const pathParts = urlObj.pathname.split('/');
+                fileName = pathParts[pathParts.length - 1] || `audio_${index + 1}`;
+                // Remove query parameters from filename if any
+                fileName = fileName.split('?')[0];
+              } catch (e) {
+                // If URL parsing fails, use default name
+                fileName = `audio_${index + 1}.mp3`;
+              }
+            }
+            
+            // Default filename if still not found
+            if (!fileName) {
+              fileName = `audio_${index + 1}.mp3`;
+            }
+            
+            return {
+              id: Date.now() + Math.random() + index,
+              name: fileName,
+              size: 0,
+              type: 'audio/mpeg', // Default to audio type
+              url: fileUrl // Use the URL from id/value/url property (full URL, not truncated)
+            };
+          })
+          .filter(file => file.url); // Only keep files with valid URLs
+        
+        if (files.length > 0) {
+          // Check if first item is a simple string (recorded audio) or object (uploaded file)
+          const firstItem = answer[0];
+          
+          if (typeof firstItem === 'string') {
+            // Simple string URL - likely recorded audio
+            setAudioUrl(firstItem);
+            // If there are more files, add them to uploadedFiles
+            if (files.length > 1) {
+              setUploadedFiles(files.slice(1));
+            }
+          } else if (typeof firstItem === 'object' && firstItem !== null) {
+            // Object with id/value - uploaded files from submittedContent.data format
+            // All are uploaded files, set to uploadedFiles
+            setUploadedFiles(files);
+          } else {
+            // Fallback: set all to uploadedFiles
+            setUploadedFiles(files);
+          }
+        } else {
+          console.warn(`⚠️ SPEAKING: No valid files extracted from answer for question ${question?.id}:`, answer);
         }
+        return;
       }
+      
+      console.warn(`⚠️ [Speaking Restore] Question ${question?.id} - Unexpected answer format:`, answer);
     };
 
     const unregister = registerAnswerRestorer(question.id, setAnswer);
@@ -4177,7 +4470,7 @@ const SpeakingWithAudioSectionItem = ({ question, index, theme, sectionScore, is
           </Typography.Text>
         <div style={{ display: 'inline-flex', alignItems: 'center', gap: '12px', marginLeft: '12px' }}>
           <Typography.Text style={{ fontSize: '14px', opacity: 0.7 }}>
-            ({question.points || sectionScore?.totalScore || 0} {(question.points || sectionScore?.totalScore || 0) !== 1 ? 'points' : 'point'})
+            ({question.score || sectionScore?.totalScore || 0} {(question.score || sectionScore?.totalScore || 0) !== 1 ? 'weights' : 'weight'})
           </Typography.Text>
         </div>
         </div>
@@ -4363,7 +4656,19 @@ const SpeakingWithAudioSectionItem = ({ question, index, theme, sectionScore, is
             {/* Recorded Audio Display */}
             {audioUrl && (
               <div style={{ marginBottom: '20px' }}>
-                <audio controls style={{ width: '100%', height: '40px' }} src={audioUrl}>
+                <audio 
+                  controls 
+                  preload="metadata"
+                  type="audio/mpeg"
+                  style={{ width: '100%', height: '40px' }} 
+                  src={audioUrl}
+                  onError={(e) => {
+                    console.error('❌ [Audio Player] Error loading recorded audio:', audioUrl, e);
+                    console.error('❌ [Audio Player] Error details:', e.target.error);
+                    console.error('❌ [Audio Player] Error code:', e.target.error?.code);
+                    console.error('❌ [Audio Player] Error message:', e.target.error?.message);
+                  }}
+                >
                   Your browser does not support the audio element.
                 </audio>
                 {!isViewOnly && (
@@ -4532,30 +4837,38 @@ const SpeakingWithAudioSectionItem = ({ question, index, theme, sectionScore, is
             {/* Uploaded Files */}
             {!isViewOnly && uploadedFiles.length > 0 && (
               <div style={{ marginTop: '16px' }}>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', justifyContent: 'center' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                   {uploadedFiles.map((file) => (
                     <div
                       key={file.id}
                       style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '8px',
-                        padding: '8px 12px',
+                        padding: '12px',
                         background: theme === 'sun' 
                           ? 'linear-gradient(135deg, rgba(24, 144, 255, 0.08) 0%, rgba(64, 169, 255, 0.05) 100%)'
                           : 'linear-gradient(135deg, rgba(138, 122, 255, 0.12) 0%, rgba(167, 139, 250, 0.08) 100%)',
                         border: `1px solid ${theme === 'sun' 
                           ? 'rgba(24, 144, 255, 0.2)' 
                           : 'rgba(138, 122, 255, 0.25)'}`,
-                        borderRadius: '6px',
-                        fontSize: '12px',
+                        borderRadius: '8px',
                         transition: 'all 0.3s ease'
                       }}
                     >
+                      <div style={{ 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        justifyContent: 'space-between',
+                        marginBottom: '8px'
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                       <span>🎵</span>
-                      <span style={{ color: theme === 'sun' ? '#333' : '#1F2937' }}>
+                          <span style={{ 
+                            color: theme === 'sun' ? '#333' : '#1F2937',
+                            fontSize: '13px',
+                            fontWeight: '500'
+                          }}>
                         {file.name}
                       </span>
+                        </div>
                       <button
                         onClick={() => removeFile(file.id)}
                         style={{
@@ -4563,12 +4876,42 @@ const SpeakingWithAudioSectionItem = ({ question, index, theme, sectionScore, is
                           border: 'none',
                           color: '#ff4d4f',
                           cursor: 'pointer',
-                          fontSize: '14px',
-                          padding: '2px'
+                            fontSize: '16px',
+                            padding: '2px 6px',
+                            borderRadius: '4px',
+                            transition: 'all 0.2s ease'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.background = 'rgba(255, 77, 79, 0.1)';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.background = 'none';
                         }}
                       >
                         ✕
                       </button>
+                      </div>
+                      {file.url && (
+                        <audio 
+                          controls 
+                          preload="metadata"
+                          type="audio/mpeg"
+                          style={{ 
+                            width: '100%', 
+                            height: '40px',
+                            borderRadius: '4px'
+                          }} 
+                          src={file.url}
+                          onError={(e) => {
+                            console.error('❌ [Audio Player] Error loading audio:', file.url, e);
+                            console.error('❌ [Audio Player] Error details:', e.target.error);
+                            console.error('❌ [Audio Player] Error code:', e.target.error?.code);
+                            console.error('❌ [Audio Player] Error message:', e.target.error?.message);
+                          }}
+                        >
+                          Your browser does not support the audio element.
+                        </audio>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -4581,7 +4924,7 @@ const SpeakingWithAudioSectionItem = ({ question, index, theme, sectionScore, is
   );
 };
 // Multiple Choice Container Component
-const MultipleChoiceContainer = ({ theme, data }) => {
+const MultipleChoiceContainer = ({ theme, data, globalQuestionNumber }) => {
   const registerAnswerCollector = useContext(AnswerCollectionContext);
   const registerAnswerRestorer = useContext(AnswerRestorationContext);
   const [selectedAnswer, setSelectedAnswer] = React.useState(null);
@@ -4665,7 +5008,7 @@ const MultipleChoiceContainer = ({ theme, data }) => {
           fontSize: '16px', 
           color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' 
         }}>
-          Question 1
+          Question {globalQuestionNumber || data?.orderNumber || '?'}
         </Typography.Text>
         <Typography.Text style={{ 
           fontSize: '14px', 
@@ -4783,7 +5126,7 @@ const MultipleChoiceContainer = ({ theme, data }) => {
 };
 
 // Multiple Select Container Component
-const MultipleSelectContainer = ({ theme, data }) => {
+const MultipleSelectContainer = ({ theme, data, globalQuestionNumber }) => {
   const registerAnswerCollector = useContext(AnswerCollectionContext);
   const registerAnswerRestorer = useContext(AnswerRestorationContext);
   const [selectedAnswers, setSelectedAnswers] = React.useState([]);
@@ -4880,7 +5223,7 @@ const MultipleSelectContainer = ({ theme, data }) => {
           fontSize: '16px', 
           color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' 
         }}>
-          Question 2
+          Question {globalQuestionNumber || data?.orderNumber || '?'}
         </Typography.Text>
         <Typography.Text style={{ 
           fontSize: '14px', 
@@ -4996,7 +5339,7 @@ const MultipleSelectContainer = ({ theme, data }) => {
   );
 };
 // True/False Container Component
-const TrueFalseContainer = ({ theme, data }) => {
+const TrueFalseContainer = ({ theme, data, globalQuestionNumber }) => {
   const registerAnswerCollector = useContext(AnswerCollectionContext);
   const registerAnswerRestorer = useContext(AnswerRestorationContext);
   const [selectedAnswer, setSelectedAnswer] = React.useState(null);
@@ -5086,7 +5429,7 @@ const TrueFalseContainer = ({ theme, data }) => {
             fontSize: '16px', 
           color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' 
         }}>
-          Question 3
+          Question {globalQuestionNumber || data?.orderNumber || '?'}
         </Typography.Text>
         <Typography.Text style={{ 
           fontSize: '14px', 
@@ -5193,7 +5536,7 @@ const TrueFalseContainer = ({ theme, data }) => {
   );
 };
 // Dropdown Container Component
-const DropdownContainer = ({ theme, data }) => {
+const DropdownContainer = ({ theme, data, globalQuestionNumber }) => {
   console.log('🔵 DropdownContainer RENDERED - Question ID:', data?.id, 'Type:', data?.type);
   
   const registerAnswerCollector = useContext(AnswerCollectionContext);
@@ -5293,7 +5636,7 @@ const DropdownContainer = ({ theme, data }) => {
           fontSize: '16px', 
           color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' 
         }}>
-          Question {data?.orderNumber || '?'}
+          Question {globalQuestionNumber || data?.orderNumber || '?'}
         </Typography.Text>
         <Typography.Text style={{ 
           fontSize: '14px', 
@@ -5547,7 +5890,7 @@ const DropdownContainer = ({ theme, data }) => {
   );
 };
 // Drag and Drop Container Component
-const DragDropContainer = ({ theme, data }) => {
+const DragDropContainer = ({ theme, data, globalQuestionNumber }) => {
   const registerAnswerCollector = useContext(AnswerCollectionContext);
   const registerAnswerRestorer = useContext(AnswerRestorationContext);
   const [droppedItems, setDroppedItems] = React.useState({});
@@ -5711,7 +6054,7 @@ const DragDropContainer = ({ theme, data }) => {
           fontSize: '16px', 
           color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' 
         }}>
-          Question 6
+          Question {globalQuestionNumber || data?.orderNumber || '?'}
         </Typography.Text>
         <Typography.Text style={{ 
           fontSize: '14px', 
@@ -5900,7 +6243,7 @@ const DragDropContainer = ({ theme, data }) => {
   );
 };
 // Reorder Container Component
-const ReorderContainer = ({ theme, data }) => {
+const ReorderContainer = ({ theme, data, globalQuestionNumber }) => {
   const registerAnswerCollector = useContext(AnswerCollectionContext);
   const registerAnswerRestorer = useContext(AnswerRestorationContext);
   const [sourceItems, setSourceItems] = React.useState(() => {
@@ -6095,7 +6438,7 @@ const ReorderContainer = ({ theme, data }) => {
           fontSize: '16px', 
           color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' 
         }}>
-          Question 7
+          Question {globalQuestionNumber || data?.orderNumber || '?'}
         </Typography.Text>
         <Typography.Text style={{ 
           fontSize: '14px', 
@@ -6318,7 +6661,7 @@ const ReorderContainer = ({ theme, data }) => {
   );
 };
 // Rewrite Container Component
-const RewriteContainer = ({ theme, data }) => {
+const RewriteContainer = ({ theme, data, globalQuestionNumber }) => {
   const registerAnswerCollector = useContext(AnswerCollectionContext);
   const registerAnswerRestorer = useContext(AnswerRestorationContext);
   const [answer, setAnswer] = React.useState('');
@@ -6400,7 +6743,7 @@ const RewriteContainer = ({ theme, data }) => {
           fontSize: '16px', 
           color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' 
         }}>
-          Question 8
+          Question {globalQuestionNumber || data?.orderNumber || '?'}
         </Typography.Text>
         <Typography.Text style={{ 
           fontSize: '14px', 
@@ -6457,7 +6800,7 @@ const RewriteContainer = ({ theme, data }) => {
 
 
 // Fill in the Blank Container Component
-const FillBlankContainer = ({ theme, data }) => {
+const FillBlankContainer = ({ theme, data, globalQuestionNumber }) => {
   const registerAnswerCollector = useContext(AnswerCollectionContext);
   const registerAnswerRestorer = useContext(AnswerRestorationContext);
   const [blankAnswers, setBlankAnswers] = React.useState({});
@@ -6622,7 +6965,7 @@ const FillBlankContainer = ({ theme, data }) => {
           fontSize: '16px', 
           color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' 
         }}>
-          Question 4
+          Question {globalQuestionNumber || data?.orderNumber || '?'}
         </Typography.Text>
         <Typography.Text style={{ 
           fontSize: '14px', 
@@ -6712,6 +7055,7 @@ const transformApiDataToComponentFormat = (apiResponse, challengeType) => {
           wordLimit: null,
           timeLimit: null,
           points: null,
+          score: q.score || null,
           orderNumber: q.orderNumber || section.orderNumber || 0,
         });
       });
@@ -6725,6 +7069,7 @@ const transformApiDataToComponentFormat = (apiResponse, challengeType) => {
           title: section.sectionTitle || 'Speaking Section',
           prompt: q.questionText || section.sectionsContent || '',
           points: null,
+          score: q.score || null,
           audioUrl: hasAudio ? section.sectionsUrl : null,
           transcript: section.sectionsContent || '',
           orderNumber: q.orderNumber || section.orderNumber || 0,
@@ -6856,6 +7201,15 @@ const StudentDailyChallengeTake = () => {
   const violationCountRef = useRef(new Map()); // Track violation count per type: { 'tab_switch': 1, 'copy': 0, ... }
   const pendingLogsRef = useRef([]); // Store logs that need to be sent to backend
   const [isAntiCheatEnabled, setIsAntiCheatEnabled] = useState(false);
+  
+  // Prevent auto-save immediately after manual save
+  const isManualSavingRef = useRef(false);
+  const lastManualSaveTimeRef = useRef(0);
+
+  // Device fingerprint state
+  const deviceFingerprintHashRef = useRef(null);
+  const sseConnectionRef = useRef(null);
+  const sessionStartSentRef = useRef(false); // Track if session start has been sent
 
   const extractSubmissionList = useCallback((response) => {
     if (!response) return [];
@@ -7095,6 +7449,60 @@ const StudentDailyChallengeTake = () => {
     }
   }, []);
 
+  // Send session start event with device fingerprint
+  const sendSessionStartEvent = useCallback(async (submissionChallengeId) => {
+    // Chỉ gửi 1 lần mỗi session
+    if (sessionStartSentRef.current) {
+      return;
+    }
+
+    try {
+      // Lấy device fingerprint và hash
+      const deviceData = await getDeviceFingerprint();
+      const currentHash = deviceData.hash;
+      deviceFingerprintHashRef.current = currentHash;
+
+      // Lấy fingerprint đã lưu (nếu có)
+      const savedFingerprint = getSavedFingerprintHash('dailyChallengeDeviceFingerprint');
+      
+      // So sánh fingerprint
+      let isDeviceMismatch = false;
+      if (savedFingerprint && savedFingerprint.hash) {
+        isDeviceMismatch = !compareFingerprints(currentHash, savedFingerprint.hash);
+        
+        // Nếu device khác, backend sẽ gửi device_mismatch qua SSE
+        if (isDeviceMismatch) {
+          console.warn('⚠️ Device fingerprint mismatch detected!');
+        }
+      } else {
+        // Lần đầu tiên, lưu fingerprint
+        saveFingerprintHash(currentHash, 'dailyChallengeDeviceFingerprint');
+      }
+
+      // Tạo session start log
+      const sessionStartLog = {
+        eventId: 0,
+        event: "SESSION_START",
+        timestamp: new Date().toISOString(),
+        oldValue: savedFingerprint ? [savedFingerprint.hash] : [],
+        newValue: [currentHash],
+        durationMs: 0,
+        content: isDeviceMismatch ? "Device fingerprint mismatch detected" : "Session started",
+        deviceFingerprint: currentHash,
+        // ipAddress không cần truyền theo note
+      };
+
+      // Gửi log qua API
+      if (submissionChallengeId) {
+        await dailyChallengeApi.appendAntiCheatLogs(submissionChallengeId, [sessionStartLog]);
+        sessionStartSentRef.current = true;
+        console.log('✅ Session start event sent with device fingerprint');
+      }
+    } catch (error) {
+      console.error('❌ Error sending session start event:', error);
+    }
+  }, []);
+
   // Helper function to get clipboard content (for paste) - async
   const getClipboardContent = useCallback(async () => {
     try {
@@ -7280,12 +7688,61 @@ const StudentDailyChallengeTake = () => {
                   }
                   return a;
                 };
+                // Renumber questions sequentially after shuffling
+                const renumberQuestions = (questions) => {
+                  return questions.map((q, index) => ({
+                    ...q,
+                    orderNumber: index + 1
+                  }));
+                };
+                // Shuffle options for a question (exclude FILL_IN_THE_BLANK, DROPDOWN, REWRITE)
+                const shuffleQuestionOptions = (question) => {
+                  const excludedTypes = ['FILL_IN_THE_BLANK', 'FILL_BLANK', 'DROPDOWN', 'REWRITE'];
+                  const questionType = question.type || question.questionType || '';
+                  
+                  // Skip shuffling for excluded types
+                  if (excludedTypes.includes(questionType)) {
+                    return question;
+                  }
+                  
+                  const shuffledQuestion = { ...question };
+                  
+                  // Shuffle options array if it exists and reassign keys A, B, C, D...
+                  if (shuffledQuestion.options && Array.isArray(shuffledQuestion.options)) {
+                    const shuffled = shuffle([...shuffledQuestion.options]);
+                    // Reassign keys A, B, C, D... to maintain alphabetical order
+                    shuffledQuestion.options = shuffled.map((opt, idx) => ({
+                      ...opt,
+                      key: String.fromCharCode(65 + idx) // A, B, C, D...
+                    }));
+                  }
+                  
+                  // Shuffle content.data array if it exists (used for options in some question types)
+                  // Note: content.data will be mapped to options with A, B, C, D keys during rendering
+                  if (shuffledQuestion.content?.data && Array.isArray(shuffledQuestion.content.data)) {
+                    shuffledQuestion.content = {
+                      ...shuffledQuestion.content,
+                      data: shuffle([...shuffledQuestion.content.data])
+                    };
+                  }
+                  
+                  return shuffledQuestion;
+                };
                 const applyShuffle = (data) => {
                   if (!allowShuffleQuestions || effectiveViewOnly) return data;
                   const newData = { ...data };
-                  newData.questions = shuffle(data.questions || []);
-                  newData.readingSections = (data.readingSections || []).map(sec => ({ ...sec, questions: shuffle(sec.questions || []) }));
-                  newData.listeningSections = (data.listeningSections || []).map(sec => ({ ...sec, questions: shuffle(sec.questions || []) }));
+                  // Shuffle and renumber individual questions, then shuffle their options
+                  newData.questions = renumberQuestions(shuffle(data.questions || [])).map(shuffleQuestionOptions);
+                  // Shuffle and renumber questions within reading sections, then shuffle their options
+                  newData.readingSections = (data.readingSections || []).map(sec => ({
+                    ...sec,
+                    questions: renumberQuestions(shuffle(sec.questions || [])).map(shuffleQuestionOptions)
+                  }));
+                  // Shuffle and renumber questions within listening sections, then shuffle their options
+                  newData.listeningSections = (data.listeningSections || []).map(sec => ({
+                    ...sec,
+                    questions: renumberQuestions(shuffle(sec.questions || [])).map(shuffleQuestionOptions)
+                  }));
                   return newData;
                 };
                 const maybeShuffled = applyShuffle(transformedData);
@@ -7320,6 +7777,11 @@ const StudentDailyChallengeTake = () => {
 
         // Update submissionId state
         setSubmissionId(finalSubmissionId);
+
+        // Gửi session start event khi bắt đầu làm bài (chỉ 1 lần)
+        if (finalSubmissionId && !effectiveViewOnly) {
+          sendSessionStartEvent(finalSubmissionId);
+        }
 
         // Fetch timing info and initialize countdown if applicable
         if (finalSubmissionId && !effectiveViewOnly) {
@@ -7384,12 +7846,61 @@ const StudentDailyChallengeTake = () => {
                     }
                     return a;
                   };
+                  // Renumber questions sequentially after shuffling
+                  const renumberQuestions = (questions) => {
+                    return questions.map((q, index) => ({
+                      ...q,
+                      orderNumber: index + 1
+                    }));
+                  };
+                  // Shuffle options for a question (exclude FILL_IN_THE_BLANK, DROPDOWN, REWRITE)
+                  const shuffleQuestionOptions = (question) => {
+                    const excludedTypes = ['FILL_IN_THE_BLANK', 'FILL_BLANK', 'DROPDOWN', 'REWRITE'];
+                    const questionType = question.type || question.questionType || '';
+                    
+                    // Skip shuffling for excluded types
+                    if (excludedTypes.includes(questionType)) {
+                      return question;
+                    }
+                    
+                    const shuffledQuestion = { ...question };
+                    
+                    // Shuffle options array if it exists and reassign keys A, B, C, D...
+                    if (shuffledQuestion.options && Array.isArray(shuffledQuestion.options)) {
+                      const shuffled = shuffle([...shuffledQuestion.options]);
+                      // Reassign keys A, B, C, D... to maintain alphabetical order
+                      shuffledQuestion.options = shuffled.map((opt, idx) => ({
+                        ...opt,
+                        key: String.fromCharCode(65 + idx) // A, B, C, D...
+                      }));
+                    }
+                    
+                    // Shuffle content.data array if it exists (used for options in some question types)
+                    // Note: content.data will be mapped to options with A, B, C, D keys during rendering
+                    if (shuffledQuestion.content?.data && Array.isArray(shuffledQuestion.content.data)) {
+                      shuffledQuestion.content = {
+                        ...shuffledQuestion.content,
+                        data: shuffle([...shuffledQuestion.content.data])
+                      };
+                    }
+                    
+                    return shuffledQuestion;
+                  };
                   const applyShuffle = (data) => {
                     if (!allowShuffleQuestions || effectiveViewOnly) return data;
                     const newData = { ...data };
-                    newData.questions = shuffle(data.questions || []);
-                    newData.readingSections = (data.readingSections || []).map(sec => ({ ...sec, questions: shuffle(sec.questions || []) }));
-                    newData.listeningSections = (data.listeningSections || []).map(sec => ({ ...sec, questions: shuffle(sec.questions || []) }));
+                    // Shuffle and renumber individual questions, then shuffle their options
+                    newData.questions = renumberQuestions(shuffle(data.questions || [])).map(shuffleQuestionOptions);
+                    // Shuffle and renumber questions within reading sections, then shuffle their options
+                    newData.readingSections = (data.readingSections || []).map(sec => ({
+                      ...sec,
+                      questions: renumberQuestions(shuffle(sec.questions || [])).map(shuffleQuestionOptions)
+                    }));
+                    // Shuffle and renumber questions within listening sections, then shuffle their options
+                    newData.listeningSections = (data.listeningSections || []).map(sec => ({
+                      ...sec,
+                      questions: renumberQuestions(shuffle(sec.questions || [])).map(shuffleQuestionOptions)
+                    }));
                     return newData;
                   };
                   const maybeShuffled = applyShuffle(transformedData);
@@ -7461,12 +7972,61 @@ const StudentDailyChallengeTake = () => {
                     }
                     return a;
                   };
+                  // Renumber questions sequentially after shuffling
+                  const renumberQuestions = (questions) => {
+                    return questions.map((q, index) => ({
+                      ...q,
+                      orderNumber: index + 1
+                    }));
+                  };
+                  // Shuffle options for a question (exclude FILL_IN_THE_BLANK, DROPDOWN, REWRITE)
+                  const shuffleQuestionOptions = (question) => {
+                    const excludedTypes = ['FILL_IN_THE_BLANK', 'FILL_BLANK', 'DROPDOWN', 'REWRITE'];
+                    const questionType = question.type || question.questionType || '';
+                    
+                    // Skip shuffling for excluded types
+                    if (excludedTypes.includes(questionType)) {
+                      return question;
+                    }
+                    
+                    const shuffledQuestion = { ...question };
+                    
+                    // Shuffle options array if it exists and reassign keys A, B, C, D...
+                    if (shuffledQuestion.options && Array.isArray(shuffledQuestion.options)) {
+                      const shuffled = shuffle([...shuffledQuestion.options]);
+                      // Reassign keys A, B, C, D... to maintain alphabetical order
+                      shuffledQuestion.options = shuffled.map((opt, idx) => ({
+                        ...opt,
+                        key: String.fromCharCode(65 + idx) // A, B, C, D...
+                      }));
+                    }
+                    
+                    // Shuffle content.data array if it exists (used for options in some question types)
+                    // Note: content.data will be mapped to options with A, B, C, D keys during rendering
+                    if (shuffledQuestion.content?.data && Array.isArray(shuffledQuestion.content.data)) {
+                      shuffledQuestion.content = {
+                        ...shuffledQuestion.content,
+                        data: shuffle([...shuffledQuestion.content.data])
+                      };
+                    }
+                    
+                    return shuffledQuestion;
+                  };
                   const applyShuffle = (data) => {
                     if (!allowShuffleQuestions || effectiveViewOnly) return data;
                     const newData = { ...data };
-                    newData.questions = shuffle(data.questions || []);
-                    newData.readingSections = (data.readingSections || []).map(sec => ({ ...sec, questions: shuffle(sec.questions || []) }));
-                    newData.listeningSections = (data.listeningSections || []).map(sec => ({ ...sec, questions: shuffle(sec.questions || []) }));
+                    // Shuffle and renumber individual questions, then shuffle their options
+                    newData.questions = renumberQuestions(shuffle(data.questions || [])).map(shuffleQuestionOptions);
+                    // Shuffle and renumber questions within reading sections, then shuffle their options
+                    newData.readingSections = (data.readingSections || []).map(sec => ({
+                      ...sec,
+                      questions: renumberQuestions(shuffle(sec.questions || [])).map(shuffleQuestionOptions)
+                    }));
+                    // Shuffle and renumber questions within listening sections, then shuffle their options
+                    newData.listeningSections = (data.listeningSections || []).map(sec => ({
+                      ...sec,
+                      questions: renumberQuestions(shuffle(sec.questions || [])).map(shuffleQuestionOptions)
+                    }));
                     return newData;
                   };
                   const maybeShuffled = applyShuffle(transformedData);
@@ -7512,7 +8072,148 @@ const StudentDailyChallengeTake = () => {
           setIsAntiCheatEnabled(false);
         }
       });
-  }, [id, location.state, isViewOnly]);
+  }, [id, location.state, isViewOnly, sendSessionStartEvent]);
+
+  // Kết nối SSE để nhận device_mismatch event
+  useEffect(() => {
+    // Reset session start sent flag khi submissionId thay đổi
+    sessionStartSentRef.current = false;
+
+    if (!submissionId || isViewOnly) return;
+
+    const connectSSE = () => {
+      const connection = notificationApi.connectSSE(
+        // onMessage
+        (message) => {
+          // Log tất cả messages để debug
+          console.log('📨 [Device Monitoring] Nhận message:', message);
+          
+          if (message.type === 'device_mismatch') {
+            console.warn('⚠️ [Device Monitoring] Device mismatch detected via SSE:', message.data);
+            // Hiển thị warning modal cho user
+            // Format SSE: data chứa {content, timestamp, deviceFingerprint, ipAddress}
+            const warningData = message.data || {};
+            const warningMessage = warningData.content || warningData.message || 'Phát hiện thiết bị khác. Vui lòng sử dụng thiết bị đã đăng ký.';
+            
+            console.log('✅ [Device Monitoring] Setting violation warning data:', {
+              type: 'device_mismatch',
+              message: warningMessage,
+              timestamp: warningData.timestamp || new Date().toISOString(),
+            });
+            
+            setViolationWarningData({
+              type: 'device_mismatch',
+              message: warningMessage,
+              timestamp: warningData.timestamp || new Date().toISOString(),
+              deviceFingerprint: warningData.deviceFingerprint,
+              ipAddress: warningData.ipAddress,
+            });
+            setViolationWarningModalVisible(true);
+            console.log('✅ [Device Monitoring] Modal visibility set to true');
+          } else {
+            console.log(`ℹ️ [Device Monitoring] Nhận event khác: ${message.type}`);
+          }
+        },
+        // onError
+        (error) => {
+          console.error('SSE Error:', error);
+          // Retry connection after 5 seconds
+          setTimeout(() => {
+            if (submissionId && !isViewOnly) {
+              connectSSE();
+            }
+          }, 5000);
+        },
+        // onConnect
+        () => {
+          console.log('SSE connection established for device monitoring');
+        }
+      );
+
+      sseConnectionRef.current = connection;
+    };
+
+    connectSSE();
+
+    // Cleanup
+    return () => {
+      if (sseConnectionRef.current) {
+        sseConnectionRef.current.disconnect();
+        sseConnectionRef.current = null;
+      }
+    };
+  }, [submissionId, isViewOnly]);
+
+  // Check submission logs for DEVICE_MISMATCH events
+  useEffect(() => {
+    if (!submissionId || isViewOnly || loading) return;
+
+    const checkDeviceMismatchLogs = async () => {
+      try {
+        console.log('🔍 [Device Monitoring] Checking logs for DEVICE_MISMATCH events, submissionId:', submissionId);
+        const response = await dailyChallengeApi.getSubmissionLogs(submissionId);
+        
+        // Extract logs from response
+        const logs = response?.data?.logs || response?.data || response || [];
+        
+        if (!Array.isArray(logs)) {
+          console.warn('⚠️ [Device Monitoring] Logs is not an array:', logs);
+          return;
+        }
+
+        console.log(`📋 [Device Monitoring] Found ${logs.length} log(s)`);
+
+        // Check for DEVICE_MISMATCH events
+        const deviceMismatchEvents = logs.filter(log => 
+          log.event === 'DEVICE_MISMATCH' || log.event === 'device_mismatch'
+        );
+
+        if (deviceMismatchEvents.length > 0) {
+          console.warn(`⚠️ [Device Monitoring] Found ${deviceMismatchEvents.length} DEVICE_MISMATCH event(s)`);
+          
+          // Get the most recent DEVICE_MISMATCH event
+          const latestEvent = deviceMismatchEvents[deviceMismatchEvents.length - 1];
+          
+          // Extract message from content
+          const warningMessage = latestEvent.content || latestEvent.message || 
+            'Đã phát hiện sử dụng thiết bị khác. Cảnh báo gian lận.';
+          
+          console.log('✅ [Device Monitoring] Setting violation warning data from logs:', {
+            type: 'device_mismatch',
+            message: warningMessage,
+            timestamp: latestEvent.timestamp || new Date().toISOString(),
+            deviceFingerprint: latestEvent.deviceFingerprint,
+            ipAddress: latestEvent.ipAddress,
+          });
+          
+          setViolationWarningData({
+            type: 'device_mismatch',
+            message: warningMessage,
+            timestamp: latestEvent.timestamp || new Date().toISOString(),
+            deviceFingerprint: latestEvent.deviceFingerprint,
+            ipAddress: latestEvent.ipAddress,
+          });
+          setViolationWarningModalVisible(true);
+          console.log('✅ [Device Monitoring] Modal visibility set to true from logs');
+        } else {
+          console.log('✅ [Device Monitoring] No DEVICE_MISMATCH events found in logs');
+        }
+      } catch (error) {
+        console.error('❌ [Device Monitoring] Error checking logs:', error);
+        // Don't show error to user, just log it
+      }
+    };
+
+    // Check logs after a short delay to ensure submission is ready
+    const timeoutId = setTimeout(() => {
+      checkDeviceMismatchLogs();
+    }, 1000);
+
+    return () => {
+      clearTimeout(timeoutId);
+    };
+  }, [submissionId, isViewOnly, loading]);
+
   // Start or update countdown based on absolute deadline
   useEffect(() => {
     if (loading || isViewOnly || !isTimedChallenge || !deadlineTsRef.current) return;
@@ -7561,9 +8262,45 @@ const StudentDailyChallengeTake = () => {
   // Silently save draft (no global loading/toast)
   const autoSaveDraftSilently = async () => {
     if (isViewOnly) return;
+    
+    // Prevent auto-save if manual save was just executed (within last 3 seconds)
+    const now = Date.now();
+    if (isManualSavingRef.current || (now - lastManualSaveTimeRef.current < 3000)) {
+      return;
+    }
+    
     try {
       setAutoSaveStatus('saving');
       const questionAnswers = collectAllAnswers();
+
+      // Check if we have any answers with actual data
+      const hasAnswers = questionAnswers.some(qa => 
+        qa?.content?.data && Array.isArray(qa.content.data) && qa.content.data.length > 0
+      );
+
+      if (!hasAnswers) {
+        setAutoSaveStatus('idle');
+        return;
+      }
+
+      // Check if there are any blob URLs that need to be uploaded
+      const hasBlobUrls = questionAnswers.some(qa => 
+        qa?.content?.data?.some(item => {
+          const value = item?.value;
+          return typeof value === 'string' && (value.startsWith('blob:') || value.startsWith('data:audio'));
+        })
+      );
+
+      // If there are blob URLs, upload them first (but don't block if upload fails)
+      let processedAnswers = questionAnswers;
+      if (hasBlobUrls) {
+        try {
+          processedAnswers = await replaceBlobUrlsInAnswers(questionAnswers);
+        } catch (e) {
+          console.warn('⚠️ [Auto-save] Failed to upload blob URLs, saving with original URLs:', e);
+          // Continue with original answers if upload fails
+        }
+      }
 
       // LocalStorage persistence removed
 
@@ -7583,8 +8320,9 @@ const StudentDailyChallengeTake = () => {
 
       if (currentSubmissionId) {
         try {
-          const submitData = { saveAsDraft: true, questionAnswers };
+          const submitData = { saveAsDraft: true, questionAnswers: processedAnswers };
           const resp = await dailyChallengeApi.submitDailyChallenge(currentSubmissionId, submitData);
+          
           if (resp && resp.success) {
             const responseSubmissionId = resp.data?.submissionId || resp.data?.id || currentSubmissionId;
             if (responseSubmissionId && responseSubmissionId !== currentSubmissionId) {
@@ -7593,6 +8331,7 @@ const StudentDailyChallengeTake = () => {
           }
         } catch (e) {
           // Silent network/API failure – localStorage still has the draft
+          console.error('❌ [Auto-save] Failed to save draft:', e);
         }
 
         // Send anti-cheat logs if there are any pending logs
@@ -7617,6 +8356,7 @@ const StudentDailyChallengeTake = () => {
       // (do not auto-hide)
     } catch (e) {
       setAutoSaveStatus('idle');
+      console.error('❌ [Auto-save] Error in autoSaveDraftSilently:', e);
     }
   };
 
@@ -7903,17 +8643,17 @@ const StudentDailyChallengeTake = () => {
       // Writing/Speaking: answer can be text string or file references
       if (typeof answer === 'string' && answer) {
         contentData.push({
-          id: 'text',
+          id: answer, // Use the URL as both id and value
           value: answer,
-          positionId: null
+          positionId: '0'
         });
       } else if (Array.isArray(answer)) {
         // File uploads or multiple parts
         answer.forEach((item, index) => {
           if (typeof item === 'string') {
             contentData.push({
-              id: item,
-              value: item,
+              id: item, // Use URL as id
+              value: item, // Use URL as value
               positionId: String(index)
             });
           } else if (item && item.value) {
@@ -8013,10 +8753,6 @@ const StudentDailyChallengeTake = () => {
         totalScore += score || 0;
         totalReceivedScore += receivedScore || 0;
         
-        // Debug logging
-        if (submittedContent && submittedContent.data && submittedContent.data.length > 0) {
-          console.log(`📝 Found saved answer for question ${questionId} (type: ${questionType}):`, submittedContent.data);
-        }
         
         // Restore answer from submittedContent
         // Try both questionId and submissionQuestionId if available
@@ -8040,11 +8776,10 @@ const StudentDailyChallengeTake = () => {
             
             if (answerData.length === 0) return;
             
-            // Special handling for WRITING type - pass array of objects/URLs directly
-            if (questionType === 'WRITING') {
-              // For WRITING, pass the entire answerData array (contains objects with id/value/url)
+            // Special handling for WRITING and SPEAKING types - pass array of objects/URLs directly
+            if (questionType === 'WRITING' || questionType === 'SPEAKING') {
+              // For WRITING/SPEAKING, pass the entire answerData array (contains objects with id/value/url)
               // This allows setAnswer to extract URLs from id/value properties
-              console.log(`📝 WRITING: Restoring answerData for question ${questionId}:`, answerData);
               restoredAnswer = answerData;
             } else if (answerData.length === 1 && !answerData[0].positionId) {
               // Single answer (MULTIPLE_CHOICE, TRUE_OR_FALSE, etc.)
@@ -8127,31 +8862,33 @@ const StudentDailyChallengeTake = () => {
     answerCollectorsRef.current.forEach((getAnswerFn, questionId) => {
       try {
         const answerData = getAnswerFn();
+        
         if (answerData && typeof answerData === 'object') {
           const { answer, questionType, options } = answerData;
-          const formattedAnswer = formatAnswerForAPI(questionId, answer, questionType, options);
-          if (formattedAnswer) {
-            questionAnswers.push(formattedAnswer);
-          } else {
-            // Include unanswered question explicitly with empty content
-            questionAnswers.push({ questionId, content: { data: [] } });
+          
+          // Only format if answer is not null/undefined/empty
+          if (answer !== null && answer !== undefined && answer !== '') {
+            const formattedAnswer = formatAnswerForAPI(questionId, answer, questionType, options);
+            
+            if (formattedAnswer && formattedAnswer.content && formattedAnswer.content.data && formattedAnswer.content.data.length > 0) {
+              questionAnswers.push(formattedAnswer);
+            }
           }
-        } else {
-          // No answer returned – still include the question with empty content
-          questionAnswers.push({ questionId, content: { data: [] } });
         }
       } catch (error) {
-        console.error(`❌ Error collecting answer for question ${questionId}:`, error);
-        // On error, still include the question with empty content to ensure completeness
-        questionAnswers.push({ questionId, content: { data: [] } });
+        console.error(`❌ [Collect Answers] Error collecting answer for question ${questionId}:`, error);
+        // On error, skip this question (don't add empty content)
       }
     });
-
     return questionAnswers;
   };
 
   // Handle save (save as draft)
   const handleSave = async () => {
+    // Set flag to prevent auto-save during manual save
+    isManualSavingRef.current = true;
+    lastManualSaveTimeRef.current = Date.now();
+    
     setAutoSaveStatus('saving');
     // If submissionId is not available, try to get it first
     let currentSubmissionId = submissionId;
@@ -8169,6 +8906,7 @@ const StudentDailyChallengeTake = () => {
       
       // If still no submission ID, show error with more context
       if (!currentSubmissionId) {
+        isManualSavingRef.current = false;
         spaceToast.error('Không tìm thấy submission. Vui lòng refresh trang hoặc liên hệ admin nếu vấn đề vẫn tiếp tục.');
         console.error('No submissionId found after retry. ChallengeId:', id);
         return;
@@ -8207,21 +8945,39 @@ const StudentDailyChallengeTake = () => {
               // Restore answers from fresh draft data
               setTimeout(() => {
                 restoreAnswersFromResult(draftResponse.data);
+                // Clear manual saving flag after restore completes
+                setTimeout(() => {
+                  isManualSavingRef.current = false;
+                }, 500);
               }, 300);
               console.log('✅ Draft data reloaded after save');
+            } else {
+              // Clear flag if reload fails
+              isManualSavingRef.current = false;
             }
           } catch (error) {
             console.error('Error reloading draft data after save:', error);
+            // Clear flag on error
+            isManualSavingRef.current = false;
             // Don't show error to user - save was successful
           }
+        } else {
+          isManualSavingRef.current = false;
         }
+      } else {
+        isManualSavingRef.current = false;
       }
     } catch (error) {
       console.error('Error saving progress:', error);
+      isManualSavingRef.current = false;
       const errorMessage = error.response?.data?.error || error.response?.data?.message || 'Failed to save progress';
       spaceToast.error(errorMessage);
     } finally {
       setLoading(false);
+      // Clear flag after a delay to ensure restore completes
+      setTimeout(() => {
+        isManualSavingRef.current = false;
+      }, 2000);
     }
   };
 
@@ -8587,6 +9343,59 @@ const StudentDailyChallengeTake = () => {
   }, [questions]);
   const questionNav = getQuestionNavigation();
 
+  // Calculate global question numbers based on display order
+  const globalQuestionNumbers = React.useMemo(() => {
+    const questionMap = new Map();
+    let currentNumber = 1;
+    
+    // Reading sections
+    if (challengeType === 'RE' && readingSections.length > 0) {
+      readingSections.forEach((section) => {
+        if (section.questions && section.questions.length > 0) {
+          const sortedQuestions = [...section.questions].sort((a, b) => (a.orderNumber || 0) - (b.orderNumber || 0) || ((a.id || 0) - (b.id || 0)));
+          sortedQuestions.forEach((q) => {
+            questionMap.set(q.id, currentNumber++);
+          });
+        }
+      });
+    }
+    
+    // Writing sections
+    if (challengeType === 'WR' && writingSections.length > 0) {
+      writingSections.forEach((section) => {
+        questionMap.set(section.id, currentNumber++);
+      });
+    }
+    
+    // Speaking sections
+    if (challengeType === 'SP' && speakingSections.length > 0) {
+      speakingSections.forEach((section) => {
+        questionMap.set(section.id, currentNumber++);
+      });
+    }
+    
+    // Individual questions (GV etc.)
+    if (!(challengeType === 'LI' || challengeType === 'SP' || challengeType === 'WR')) {
+      sortedQuestions.forEach((q) => {
+        questionMap.set(q.id, currentNumber++);
+      });
+    }
+    
+    // Listening sections
+    if (challengeType === 'LI' && listeningSections.length > 0) {
+      listeningSections.forEach((section) => {
+        if (section.questions && section.questions.length > 0) {
+          const sortedQuestions = [...section.questions].sort((a, b) => (a.orderNumber || 0) - (b.orderNumber || 0) || ((a.id || 0) - (b.id || 0)));
+          sortedQuestions.forEach((q) => {
+            questionMap.set(q.id, currentNumber++);
+          });
+        }
+      });
+    }
+    
+    return questionMap;
+  }, [challengeType, readingSections, writingSections, speakingSections, listeningSections, sortedQuestions]);
+
   return (
     <ThemedLayout customHeader={customHeader}>
       <div className={`daily-challenge-content-wrapper ${theme}-daily-challenge-content-wrapper`}>
@@ -8652,6 +9461,7 @@ const StudentDailyChallengeTake = () => {
                         index={index} 
                         theme={theme} 
                         sectionScore={sectionScores[section.id]}
+                        globalQuestionNumbers={globalQuestionNumbers}
                       />
                 </div>
                   ))
@@ -8687,34 +9497,34 @@ const StudentDailyChallengeTake = () => {
                 {sortedQuestions.map((q, idx) => (
                   <div key={q.id} ref={el => (questionRefs.current[`q-${q.id}`] = el)}>
                     {q.type === 'MULTIPLE_CHOICE' && (
-                      <MultipleChoiceContainer theme={theme} data={q} />
+                      <MultipleChoiceContainer theme={theme} data={q} globalQuestionNumber={globalQuestionNumbers?.get(q.id)} />
                     )}
                     {q.type === 'MULTIPLE_SELECT' && (
-                      <MultipleSelectContainer theme={theme} data={q} />
+                      <MultipleSelectContainer theme={theme} data={q} globalQuestionNumber={globalQuestionNumbers?.get(q.id)} />
                     )}
                     {q.type === 'TRUE_OR_FALSE' && (
-                      <TrueFalseContainer theme={theme} data={q} />
+                      <TrueFalseContainer theme={theme} data={q} globalQuestionNumber={globalQuestionNumbers?.get(q.id)} />
                     )}
                     {(q.type === 'FILL_IN_THE_BLANK' || q.type === 'FILL_BLANK' || q.questionType === 'FILL_BLANK' || q.questionType === 'FILL_IN_THE_BLANK') && (
-                      <FillBlankContainer theme={theme} data={q} />
+                      <FillBlankContainer theme={theme} data={q} globalQuestionNumber={globalQuestionNumbers?.get(q.id)} />
                     )}
                     {(() => {
                       const isDropdown = q.type === 'DROPDOWN' || q.questionType === 'DROPDOWN';
-                      console.log('🟡 CHECKING DROPDOWN - q.id:', q.id, 'q.type:', q.type, 'q.questionType:', q.questionType, 'isDropdown:', isDropdown);
+                    
                       if (isDropdown) {
                         console.log('🟡 RENDERING DropdownContainer - q.id:', q.id);
-                        return <DropdownContainer theme={theme} data={q} />;
+                        return <DropdownContainer theme={theme} data={q} globalQuestionNumber={globalQuestionNumbers?.get(q.id)} />;
                       }
                       return null;
                     })()}
                     {q.type === 'DRAG_AND_DROP' && (
-                      <DragDropContainer theme={theme} data={q} />
+                      <DragDropContainer theme={theme} data={q} globalQuestionNumber={globalQuestionNumbers?.get(q.id)} />
                     )}
                     {q.type === 'REARRANGE' && (
-                      <ReorderContainer theme={theme} data={q} />
+                      <ReorderContainer theme={theme} data={q} globalQuestionNumber={globalQuestionNumbers?.get(q.id)} />
                     )}
                     {q.type === 'REWRITE' && (
-                      <RewriteContainer theme={theme} data={q} />
+                      <RewriteContainer theme={theme} data={q} globalQuestionNumber={globalQuestionNumbers?.get(q.id)} />
                     )}
                 </div>
                 ))}
@@ -8727,6 +9537,7 @@ const StudentDailyChallengeTake = () => {
                         index={index} 
                         theme={theme} 
                         sectionScore={sectionScores[section.id]}
+                        globalQuestionNumbers={globalQuestionNumbers}
                       />
                     </div>
                   ))
@@ -8781,9 +9592,24 @@ const StudentDailyChallengeTake = () => {
         }}
       >
         <div style={{ marginBottom: '16px' }}>
+          {violationWarningData && violationWarningData.type === 'device_mismatch' ? (
+            <>
+              <p style={{ marginBottom: '12px', fontSize: '18px', lineHeight: '1.6', color: '#ff4d4f', fontWeight: 'bold' }}>
+                ⚠️ Cảnh báo gian lận: Phát hiện sử dụng thiết bị khác
+              </p>
+              <p style={{ marginBottom: '12px', fontSize: '16px', lineHeight: '1.6' }}>
+                Hệ thống đã phát hiện bạn đang sử dụng thiết bị khác với thiết bị đã đăng ký. 
+                Đây là hành vi gian lận và có thể dẫn đến việc bài thi của bạn bị hủy.
+              </p>
+              <p style={{ marginBottom: '12px', fontSize: '16px', lineHeight: '1.6', fontWeight: '600' }}>
+                Vui lòng sử dụng đúng thiết bị đã đăng ký để tiếp tục làm bài.
+              </p>
+            </>
+          ) : (
           <p style={{ marginBottom: '12px', fontSize: '16px', lineHeight: '1.6' }}>
             <strong>Lần đầu cảnh báo:</strong> Hệ thống đã phát hiện hành động không được phép.
           </p>
+          )}
           {violationWarningData && (
             <>
               <p style={{ marginBottom: '8px', fontSize: '14px' }}>
@@ -8791,12 +9617,32 @@ const StudentDailyChallengeTake = () => {
                   violationWarningData.type === 'tab_switch' ? '🔄 Chuyển tab' :
                   violationWarningData.type === 'copy' ? '📋 Copy' :
                   violationWarningData.type === 'paste' ? '📥 Paste' :
+                  violationWarningData.type === 'device_mismatch' ? '🔐 Thiết bị khác' :
                   violationWarningData.type
                 }
               </p>
-              <p style={{ marginBottom: '8px', fontSize: '14px'}}>
-                <strong>Thời gian:</strong> {violationWarningData.timestamp}
-              </p>
+              {violationWarningData.timestamp && (
+                <p style={{ marginBottom: '8px', fontSize: '14px'}}>
+                  <strong>Thời gian:</strong> {new Date(violationWarningData.timestamp).toLocaleString('vi-VN')}
+                </p>
+              )}
+              {violationWarningData.type === 'device_mismatch' && violationWarningData.deviceFingerprint && (
+                <p style={{ marginBottom: '8px', fontSize: '14px'}}>
+                  <strong>Device Fingerprint:</strong> 
+                  <span style={{ 
+                    fontFamily: 'monospace',
+                    fontSize: '12px',
+                    wordBreak: 'break-all'
+                  }}>
+                    {violationWarningData.deviceFingerprint}
+                  </span>
+                </p>
+              )}
+              {violationWarningData.type === 'device_mismatch' && violationWarningData.ipAddress && (
+                <p style={{ marginBottom: '8px', fontSize: '14px'}}>
+                  <strong>IP Address:</strong> {violationWarningData.ipAddress}
+                </p>
+              )}
               {violationWarningData.type === 'copy' && violationWarningData.oldValue && violationWarningData.oldValue.length > 0 && (
                 <p style={{ marginBottom: '8px', fontSize: '14px'}}>
                   <strong>Nội dung đã copy:</strong> 
@@ -8831,9 +9677,12 @@ const StudentDailyChallengeTake = () => {
                   </div>
                 </p>
               )}
+              {violationWarningData.message && (
               <p style={{ marginBottom: '8px', fontSize: '14px'}}>
-                <strong>Chi tiết:</strong> {violationWarningData.message}
+                  <strong>Chi tiết:</strong> 
+                  <span dangerouslySetInnerHTML={{ __html: violationWarningData.message }} />
               </p>
+              )}
             </>
           )}
           <div style={{ 
