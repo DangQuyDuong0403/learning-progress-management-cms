@@ -536,25 +536,16 @@ const AIGenerateFeedback = () => {
     }
 
     if (sectionType === 'speaking') {
-      if (!speakingResult) return baseHtml;
-      const sr = speakingResult || {};
-      const rows = [
-        ['Pronunciation', sr.pronunciationScore],
-        ['Accuracy', sr.accuracyScore],
-        ['Fluency', sr.fluencyScore],
-        ['Completeness', sr.completenessScore],
-        ['Prosody', sr.prosodyScore],
-      ]
-        .filter(([label, val]) => val !== undefined && val !== null)
-        .map(([label, val]) => `<li>${label}: <b>${val}</b></li>`)
-        .join('');
-      const details = rows ? `<ul>${rows}</ul>` : '';
-      const speakingHtml = `<hr/><div data-kind="speaking">${details}</div>`;
-      return [baseHtml, speakingHtml].filter(Boolean).join('\n');
+      // Return object format for speaking feedback
+      return {
+        overallFeedback: baseHtml,
+        suggestedScore: Number.isFinite(Number(suggestedScore)) ? Number(suggestedScore) : null,
+        criteriaFeedback: null,
+      };
     }
 
     return baseHtml;
-  }, [feedback, sectionType, writingCriteria, speakingResult, suggestedScore]);
+  }, [feedback, sectionType, writingCriteria, suggestedScore]);
 
   // Parse combined feedback html (legacy) or object to rebuild writing criteria for display
   const parseCriteriaFromFeedback = useCallback((data) => {
