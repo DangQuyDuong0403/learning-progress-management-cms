@@ -2849,7 +2849,7 @@ const DailyChallengeContent = () => {
         let normalizedStatus = 'draft';
         if (apiStatus === 'PUBLISHED') normalizedStatus = 'published';
         else if (apiStatus === 'IN_PROGRESS') normalizedStatus = 'in-progress';
-        else if (apiStatus === 'CLOSED') normalizedStatus = 'closed';
+        else if (apiStatus === 'FINISHED') normalizedStatus = 'finished';
         setStatus(normalizedStatus);
         
         console.log('Challenge details loaded:', challengeData);
@@ -4402,14 +4402,14 @@ const DailyChallengeContent = () => {
                 ? 'rgba(82, 196, 26, 0.1)'
                 : status === 'in-progress'
                 ? 'rgba(24, 144, 255, 0.1)'
-                : status === 'closed'
+                : status === 'finished'
                 ? 'rgba(229, 79, 79, 0.1)'
                 : 'rgba(250, 173, 20, 0.1)',
               border: status === 'published'
                 ? '2px solid rgba(82, 196, 26, 0.3)'
                 : status === 'in-progress'
                 ? '2px solid rgba(24, 144, 255, 0.3)'
-                : status === 'closed'
+                : status === 'finished'
                 ? '2px solid rgba(229, 79, 79, 0.3)'
                 : '2px solid rgba(250, 173, 20, 0.3)',
             }}>
@@ -4417,7 +4417,7 @@ const DailyChallengeContent = () => {
                 <CheckCircleOutlined style={{ color: '#52c41a', fontSize: '18px' }} />
               ) : status === 'in-progress' ? (
                 <FileTextOutlined style={{ color: 'rgb(24, 144, 255)', fontSize: '18px' }} />
-              ) : status === 'closed' ? (
+              ) : status === 'finished' ? (
                 <FileTextOutlined style={{ color: 'rgb(229, 79, 79)', fontSize: '18px' }} />
               ) : (
                 <FileTextOutlined style={{ color: '#faad14', fontSize: '18px' }} />
@@ -4429,7 +4429,7 @@ const DailyChallengeContent = () => {
                   ? '#52c41a'
                   : status === 'in-progress'
                   ? 'rgb(24, 144, 255)'
-                  : status === 'closed'
+                  : status === 'finished'
                   ? 'rgb(229, 79, 79)'
                   : '#faad14'
               }}>
@@ -4437,8 +4437,8 @@ const DailyChallengeContent = () => {
                   ? t('dailyChallenge.published') 
                   : status === 'in-progress'
                   ? t('dailyChallenge.inProgress') || 'In Progress'
-                  : status === 'closed'
-                  ? t('dailyChallenge.closed') || 'Closed'
+                  : status === 'finished'
+                  ? t('dailyChallenge.finished') || 'Finished'
                   : t('dailyChallenge.draft')}
               </span>
             </div>
@@ -4523,8 +4523,8 @@ const DailyChallengeContent = () => {
               </Button>
             )}
             
-            {/* Save Dropdown - hidden when IN_PROGRESS or CLOSED */}
-            {status !== 'closed' && status !== 'in-progress' && (
+            {/* Save Dropdown - hidden when IN_PROGRESS or FINISHED */}
+            {status !== 'finished' && status !== 'in-progress' && (
             <Dropdown
               menu={{ 
                 items: (
