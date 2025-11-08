@@ -131,8 +131,10 @@ const RewriteModal = ({ visible, onCancel, onSave, questionData = null }) => {
   const [saving, setSaving] = useState(false);
   const [hoveredAnswer, setHoveredAnswer] = useState(null);
   const [editorData, setEditorData] = useState('');
+  const [questionCharCount, setQuestionCharCount] = useState(0);
   const editorRef = useRef(null);
   const answerEditorsRef = useRef({});
+  const lastValidQuestionDataRef = useRef('');
 
   const getPlainText = useCallback((html) => {
     const tempDiv = document.createElement('div');
@@ -248,6 +250,8 @@ const RewriteModal = ({ visible, onCancel, onSave, questionData = null }) => {
           }
           
           setEditorData(questionText);
+          setQuestionCharCount(getPlainText(questionText).length);
+          lastValidQuestionDataRef.current = questionText;
           
           // Load answers from content.data if available, otherwise from correctAnswers
           let answers = [];
@@ -270,10 +274,14 @@ const RewriteModal = ({ visible, onCancel, onSave, questionData = null }) => {
           
           setCorrectAnswers(answers);
           setWeight((questionData && (questionData.weight ?? questionData.points)) || 1);
-        } 
+        } else {
+          // New question - reset character count
+          setQuestionCharCount(0);
+          lastValidQuestionDataRef.current = '';
+        }
       }, 0);
     }
-  }, [questionData, visible, getAnswerColors]);
+  }, [questionData, visible, getAnswerColors, getPlainText]);
 
   // Debounced editor change handler for main question
   const editorChangeTimeoutRef = useRef(null);
@@ -283,6 +291,23 @@ const RewriteModal = ({ visible, onCancel, onSave, questionData = null }) => {
     }
     editorChangeTimeoutRef.current = setTimeout(() => {
       const data = editor.getData();
+      const plainText = getPlainText(data);
+      
+      // Enforce max 600 characters (plain text length)
+      if (plainText.length > 600) {
+        spaceToast.warning('Maximum 600 characters allowed for the question');
+        // Revert to last valid HTML snapshot
+        if (lastValidQuestionDataRef.current !== '' && editorRef.current) {
+          editorRef.current.setData(lastValidQuestionDataRef.current);
+        }
+        setQuestionCharCount(Math.min(plainText.length, 600));
+        return;
+      }
+      
+      // Update last valid HTML snapshot and counter
+      lastValidQuestionDataRef.current = data;
+      setQuestionCharCount(plainText.length);
+      
       setEditorData(prevData => {
         // Only update if data actually changed
         if (prevData !== data) {
@@ -291,7 +316,7 @@ const RewriteModal = ({ visible, onCancel, onSave, questionData = null }) => {
         return prevData;
       });
     }, 150);
-  }, []);
+  }, [getPlainText]);
 
   // Debounced answer change handler  
   const answerChangeTimeoutRef = useRef({});
@@ -362,8 +387,15 @@ const RewriteModal = ({ visible, onCancel, onSave, questionData = null }) => {
 
   const handleSave = async () => {
     // Validate editor data
-    if (!editorData || !editorData.trim()) {
+    const questionPlainText = getPlainText(editorData);
+    if (!questionPlainText || !questionPlainText.trim()) {
       spaceToast.warning('Please enter the question text');
+      return;
+    }
+
+    // Validate question length (plain text <= 600)
+    if (questionPlainText.length > 600) {
+      spaceToast.warning('Maximum 600 characters allowed for the question');
       return;
     }
 
@@ -449,6 +481,8 @@ const RewriteModal = ({ visible, onCancel, onSave, questionData = null }) => {
   const handleCancel = () => {
     const colors = getAnswerColors();
     setEditorData('');
+    setQuestionCharCount(0);
+    lastValidQuestionDataRef.current = '';
     setCorrectAnswers([{ id: 1, answer: "", color: colors[0] }]);
     setWeight(1);
     onCancel();
@@ -624,8 +658,24 @@ const RewriteModal = ({ visible, onCancel, onSave, questionData = null }) => {
                 onChange={handleEditorChange}
                 onReady={(editor) => {
                   editorRef.current = editor;
+                  // Initialize character count on ready
+                  const initialPlainText = getPlainText(editorData);
+                  setQuestionCharCount(initialPlainText.length);
+                  lastValidQuestionDataRef.current = editorData;
                 }}
               />
+            </div>
+            {/* Character Counter for Question (600 max) */}
+            <div
+              style={{
+                marginTop: '6px',
+                marginRight: '16px',
+                textAlign: 'right',
+                fontSize: '12px',
+                fontWeight: 600,
+                color: questionCharCount >= 600 ? '#ff4d4f' : '#595959',
+              }}>
+              {`${Math.min(questionCharCount, 600)}/600`}
             </div>
           </div>
           </div>
