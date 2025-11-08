@@ -136,6 +136,39 @@ const StudentDailyChallengeList = () => {
     }
   }, [t]);
 
+  // Helper to get status label and color
+  const getStatusInfo = useCallback((submissionStatus) => {
+    const status = (submissionStatus || 'PENDING').toUpperCase();
+    switch(status) {
+      case 'PENDING':
+        return {
+          label: 'Not attempted',
+          color: '#999',
+        };
+      case 'DRAFT':
+        return {
+          label: 'Draft',
+          color: '#1890ff',
+        };
+      case 'SUBMITTED':
+        return {
+          label: 'Submitted',
+          color: '#52c41a',
+        };
+      case 'GRADED':
+        return {
+          label: "Graded",
+          color: 'black',
+        };
+      default:
+        return {
+          label: status,
+          color: '#999',
+          bgColor: '#f5f5f5',
+        };
+    }
+  }, [t]);
+
   // Helper to extract error message from backend response
   const getErrorMessage = useCallback((error, defaultMessage) => {
     if (error?.response?.data?.error) {
@@ -542,7 +575,7 @@ const StudentDailyChallengeList = () => {
           <span style={{
             padding: '4px 8px',
             borderRadius: '4px',
-            fontSize: '18px',
+            fontSize: '17px',
             color: '#000000'
           }}>
             {getTypeLabelByCode(type)}
@@ -568,9 +601,39 @@ const StudentDailyChallengeList = () => {
         });
         return (
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', lineHeight: 1.2 }}>
-            <span style={{ fontSize: '14px' }}>{dateStr}</span>
-            <span style={{ fontSize: '11px', color: '#888', marginTop: 2 }}>{timeStr}</span>
+            <span style={{ fontSize: '17px' }}>{dateStr}</span>
+            <span style={{ fontSize: '12px', color: '#888', marginTop: 2 }}>{timeStr}</span>
           </div>
+        );
+      },
+    },
+    {
+      title: t('dailyChallenge.status', 'Status'),
+      dataIndex: 'submissionStatus',
+      key: 'status',
+      width: 180,
+      align: 'center',
+      ellipsis: false,
+      render: (submissionStatus, record) => {
+        // Show empty state for lessons without challenges
+        if (record.isEmptyLesson) {
+          return <span></span>;
+        }
+
+        const statusInfo = getStatusInfo(submissionStatus);
+        return (
+          <span style={{
+            padding: '4px 12px',
+            borderRadius: '4px',
+            fontSize: '16px',
+            color: statusInfo.color,
+            fontWeight: 400,
+            backgroundColor: statusInfo.bgColor,
+            display: 'inline-block',
+            whiteSpace: 'nowrap',
+          }}>
+            {statusInfo.label}
+          </span>
         );
       },
     },
@@ -597,9 +660,8 @@ const StudentDailyChallengeList = () => {
             <span style={{
               fontSize: '16px',
               color: '#999',
-              fontStyle: 'italic',
             }}>
-             Not available yet
+             Not available
             </span>
           );
         }
@@ -611,9 +673,8 @@ const StudentDailyChallengeList = () => {
             <span style={{
               fontSize: '16px',
               color: '#999',
-              fontStyle: 'italic',
             }}>
-              {t('dailyChallenge.notAttempted', 'Not attempted')}
+              {t('dailyChallenge.notAttempted', 'Not yet')}
             </span>
           );
         }
@@ -735,9 +796,29 @@ const StudentDailyChallengeList = () => {
             )}
           </div>
         );
+
+        const renderSubmittedText = () => (
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+            <span style={{
+              fontSize: '16px',
+              color: '#666',
+              padding: '8px 16px',
+            }}>
+              {t('dailyChallenge.submitted', 'Submitted')}
+            </span>
+            {isLate && (
+              <span style={{ 
+                marginTop: '4px',
+                fontSize: '12px', 
+                color: 'rgb(255, 77, 79)',
+                fontWeight: 600,
+              }}>
+                {t('dailyChallenge.late', 'Late')}
+              </span>
+            )}
+          </div>
+        );
         
-        const challengeTypeCode = (record.type || '').toUpperCase();
-        const isViewAnswerType = challengeTypeCode === 'WR' || challengeTypeCode === 'LI';
         const effectiveStatus = (record.submissionStatus || 'PENDING').toUpperCase();
 
         return (
@@ -745,9 +826,8 @@ const StudentDailyChallengeList = () => {
             {effectiveStatus === 'PENDING' && renderStartLikeButton('Do challenge')}
             {effectiveStatus === 'DRAFT' && renderStartLikeButton('Edit answer', <EditOutlined />)}
             {effectiveStatus === 'SUBMITTED' && (
-              isViewAnswerType
-                ? renderStartLikeButton('View answer', <EyeOutlined />)
-                : renderViewResultButton('View result')
+              // When status is SUBMITTED, always show "Đã nộp bài" text for all challenge types
+              renderSubmittedText()
             )}
             {effectiveStatus === 'GRADED' && renderViewResultButton('View result')}
           </Space>
