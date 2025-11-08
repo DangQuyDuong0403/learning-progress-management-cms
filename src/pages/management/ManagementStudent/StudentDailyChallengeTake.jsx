@@ -7107,6 +7107,60 @@ const StudentDailyChallengeTake = () => {
     }
   }, []);
 
+  // Send session start event with device fingerprint
+  const sendSessionStartEvent = useCallback(async (submissionChallengeId) => {
+    // Chỉ gửi 1 lần mỗi session
+    if (sessionStartSentRef.current) {
+      return;
+    }
+
+    try {
+      // Lấy device fingerprint và hash
+      const deviceData = await getDeviceFingerprint();
+      const currentHash = deviceData.hash;
+      deviceFingerprintHashRef.current = currentHash;
+
+      // Lấy fingerprint đã lưu (nếu có)
+      const savedFingerprint = getSavedFingerprintHash('dailyChallengeDeviceFingerprint');
+      
+      // So sánh fingerprint
+      let isDeviceMismatch = false;
+      if (savedFingerprint && savedFingerprint.hash) {
+        isDeviceMismatch = !compareFingerprints(currentHash, savedFingerprint.hash);
+        
+        // Nếu device khác, backend sẽ gửi device_mismatch qua SSE
+        if (isDeviceMismatch) {
+          console.warn('⚠️ Device fingerprint mismatch detected!');
+        }
+      } else {
+        // Lần đầu tiên, lưu fingerprint
+        saveFingerprintHash(currentHash, 'dailyChallengeDeviceFingerprint');
+      }
+
+      // Tạo session start log
+      const sessionStartLog = {
+        eventId: 0,
+        event: "session_start",
+        timestamp: new Date().toISOString(),
+        oldValue: savedFingerprint ? [savedFingerprint.hash] : [],
+        newValue: [currentHash],
+        durationMs: 0,
+        content: isDeviceMismatch ? "Device fingerprint mismatch detected" : "Session started",
+        deviceFingerprint: currentHash,
+        // ipAddress không cần truyền theo note
+      };
+
+      // Gửi log qua API
+      if (submissionChallengeId) {
+        await dailyChallengeApi.appendAntiCheatLogs(submissionChallengeId, [sessionStartLog]);
+        sessionStartSentRef.current = true;
+        console.log('✅ Session start event sent with device fingerprint');
+      }
+    } catch (error) {
+      console.error('❌ Error sending session start event:', error);
+    }
+  }, []);
+
   // Helper function to get clipboard content (for paste) - async
   const getClipboardContent = useCallback(async () => {
     try {
@@ -7609,60 +7663,6 @@ const StudentDailyChallengeTake = () => {
     const secs = seconds % 60;
     return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
   };
-
-  // Send session start event with device fingerprint
-  const sendSessionStartEvent = useCallback(async (submissionChallengeId) => {
-    // Chỉ gửi 1 lần mỗi session
-    if (sessionStartSentRef.current) {
-      return;
-    }
-
-    try {
-      // Lấy device fingerprint và hash
-      const deviceData = await getDeviceFingerprint();
-      const currentHash = deviceData.hash;
-      deviceFingerprintHashRef.current = currentHash;
-
-      // Lấy fingerprint đã lưu (nếu có)
-      const savedFingerprint = getSavedFingerprintHash('dailyChallengeDeviceFingerprint');
-      
-      // So sánh fingerprint
-      let isDeviceMismatch = false;
-      if (savedFingerprint && savedFingerprint.hash) {
-        isDeviceMismatch = !compareFingerprints(currentHash, savedFingerprint.hash);
-        
-        // Nếu device khác, backend sẽ gửi device_mismatch qua SSE
-        if (isDeviceMismatch) {
-          console.warn('⚠️ Device fingerprint mismatch detected!');
-        }
-      } else {
-        // Lần đầu tiên, lưu fingerprint
-        saveFingerprintHash(currentHash, 'dailyChallengeDeviceFingerprint');
-      }
-
-      // Tạo session start log
-      const sessionStartLog = {
-        eventId: 0,
-        event: "session_start",
-        timestamp: new Date().toISOString(),
-        oldValue: savedFingerprint ? [savedFingerprint.hash] : [],
-        newValue: [currentHash],
-        durationMs: 0,
-        content: isDeviceMismatch ? "Device fingerprint mismatch detected" : "Session started",
-        deviceFingerprint: currentHash,
-        // ipAddress không cần truyền theo note
-      };
-
-      // Gửi log qua API
-      if (submissionChallengeId) {
-        await dailyChallengeApi.appendAntiCheatLogs(submissionChallengeId, [sessionStartLog]);
-        sessionStartSentRef.current = true;
-        console.log('✅ Session start event sent with device fingerprint');
-      }
-    } catch (error) {
-      console.error('❌ Error sending session start event:', error);
-    }
-  }, []);
 
   // Removed localStorage persistence to avoid breaking inputs
 
@@ -8914,12 +8914,15 @@ const StudentDailyChallengeTake = () => {
                   violationWarningData.type === 'tab_switch' ? '🔄 Chuyển tab' :
                   violationWarningData.type === 'copy' ? '📋 Copy' :
                   violationWarningData.type === 'paste' ? '📥 Paste' :
+                  violationWarningData.type === 'device_mismatch' ? '🔐 Thiết bị khác' :
                   violationWarningData.type
                 }
               </p>
-              <p style={{ marginBottom: '8px', fontSize: '14px'}}>
-                <strong>Thời gian:</strong> {violationWarningData.timestamp}
-              </p>
+              {violationWarningData.timestamp && (
+                <p style={{ marginBottom: '8px', fontSize: '14px'}}>
+                  <strong>Thời gian:</strong> {violationWarningData.timestamp}
+                </p>
+              )}
               {violationWarningData.type === 'copy' && violationWarningData.oldValue && violationWarningData.oldValue.length > 0 && (
                 <p style={{ marginBottom: '8px', fontSize: '14px'}}>
                   <strong>Nội dung đã copy:</strong> 
