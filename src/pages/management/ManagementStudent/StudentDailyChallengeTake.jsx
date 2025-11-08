@@ -7140,7 +7140,7 @@ const StudentDailyChallengeTake = () => {
       // Tạo session start log
       const sessionStartLog = {
         eventId: 0,
-        event: "session_start",
+        event: "SESSION_START",
         timestamp: new Date().toISOString(),
         oldValue: savedFingerprint ? [savedFingerprint.hash] : [],
         newValue: [currentHash],
@@ -7743,14 +7743,33 @@ const StudentDailyChallengeTake = () => {
       const connection = notificationApi.connectSSE(
         // onMessage
         (message) => {
+          // Log tất cả messages để debug
+          console.log('📨 [Device Monitoring] Nhận message:', message);
+          
           if (message.type === 'device_mismatch') {
-            console.warn('⚠️ Device mismatch detected via SSE:', message.data);
+            console.warn('⚠️ [Device Monitoring] Device mismatch detected via SSE:', message.data);
             // Hiển thị warning modal cho user
+            // Format SSE: data chứa {content, timestamp, deviceFingerprint, ipAddress}
+            const warningData = message.data || {};
+            const warningMessage = warningData.content || warningData.message || 'Phát hiện thiết bị khác. Vui lòng sử dụng thiết bị đã đăng ký.';
+            
+            console.log('✅ [Device Monitoring] Setting violation warning data:', {
+              type: 'device_mismatch',
+              message: warningMessage,
+              timestamp: warningData.timestamp || new Date().toISOString(),
+            });
+            
             setViolationWarningData({
               type: 'device_mismatch',
-              message: 'Phát hiện thiết bị khác. Vui lòng sử dụng thiết bị đã đăng ký.',
+              message: warningMessage,
+              timestamp: warningData.timestamp || new Date().toISOString(),
+              deviceFingerprint: warningData.deviceFingerprint,
+              ipAddress: warningData.ipAddress,
             });
             setViolationWarningModalVisible(true);
+            console.log('✅ [Device Monitoring] Modal visibility set to true');
+          } else {
+            console.log(`ℹ️ [Device Monitoring] Nhận event khác: ${message.type}`);
           }
         },
         // onError
@@ -9024,7 +9043,7 @@ const StudentDailyChallengeTake = () => {
                     )}
                     {(() => {
                       const isDropdown = q.type === 'DROPDOWN' || q.questionType === 'DROPDOWN';
-                      console.log('🟡 CHECKING DROPDOWN - q.id:', q.id, 'q.type:', q.type, 'q.questionType:', q.questionType, 'isDropdown:', isDropdown);
+                    
                       if (isDropdown) {
                         console.log('🟡 RENDERING DropdownContainer - q.id:', q.id);
                         return <DropdownContainer theme={theme} data={q} globalQuestionNumber={globalQuestionNumbers?.get(q.id)} />;
