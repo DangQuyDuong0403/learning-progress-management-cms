@@ -438,7 +438,7 @@ useEffect(() => {
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           
           <Typography.Text style={{ fontSize: '14px', opacity: 0.7 }}>
-            ({question.points || sectionScore?.totalScore || 0} {question.points !== 1 ? 'points' : 'point'})
+            ({question.score || sectionScore?.totalScore || 0} {(question.score || sectionScore?.totalScore || 0) !== 1 ? 'weights' : 'weight'})
         </Typography.Text>
         </div>
       </div>
@@ -1917,7 +1917,7 @@ const ListeningSectionItem = ({ question, index, theme, sectionScore, globalQues
           </Typography.Text>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <Typography.Text style={{ marginLeft: '12px', fontSize: '14px', opacity: 0.7 }}>
-              ({question.points || sectionScore?.totalScore || 0} {question.points !== 1 ? 'points' : 'point'})
+              ({question.score || sectionScore?.totalScore || 0} {(question.score || sectionScore?.totalScore || 0) !== 1 ? 'weights' : 'weight'})
           </Typography.Text>
           </div>
         </div>
@@ -2947,7 +2947,7 @@ const WritingSectionItem = ({ question, index, theme }) => {
             {index + 1}. Writing Section
           </Typography.Text>
           <Typography.Text style={{ marginLeft: '12px', fontSize: '14px', opacity: 0.7 }}>
-            ({question.points} {question.points > 1 ? 'points' : 'point'})
+            ({question.score || 0} {(question.score || 0) > 1 ? 'weights' : 'weight'})
           </Typography.Text>
         </div>
 
@@ -3060,49 +3060,51 @@ const WritingSectionItem = ({ question, index, theme }) => {
               {writingMode === null ? (
                 /* Show 2 options initially */
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                  {/* Handwriting Option */}
-                  <div
-                    onClick={() => setWritingMode('handwriting')}
-                    style={{
-                      padding: '24px',
-                      background: theme === 'sun' 
-                        ? 'linear-gradient(135deg, rgba(230, 245, 255, 0.5) 0%, rgba(186, 231, 255, 0.4) 100%)'
-                        : 'linear-gradient(135deg, rgba(255, 255, 255, 0.5) 0%, rgba(244, 240, 255, 0.5) 100%)',
-                      border: `2px solid ${theme === 'sun' 
-                        ? 'rgba(24, 144, 255, 0.3)' 
-                        : 'rgba(138, 122, 255, 0.3)'}`,
-                      borderRadius: '12px',
-                      cursor: 'pointer',
-                      textAlign: 'center',
-                      transition: 'all 0.3s ease'
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.transform = 'translateY(-2px)';
-                      e.currentTarget.style.boxShadow = theme === 'sun' 
-                        ? '0 4px 12px rgba(24, 144, 255, 0.2)'
-                        : '0 4px 12px rgba(138, 122, 255, 0.25)';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.transform = 'translateY(0)';
-                      e.currentTarget.style.boxShadow = 'none';
-                    }}
-                  >
-                    <div style={{ fontSize: '32px', marginBottom: '8px' }}>✍️</div>
-                    <div style={{ 
-                      fontSize: '16px', 
-                      fontWeight: '600',
-                      color: theme === 'sun' ? '#1E40AF' : '#8377A0',
-                      marginBottom: '4px'
-                    }}>
-                      Write Essay Here
+                  {/* Handwriting Option - Hide when files are uploaded */}
+                  {uploadedFiles.length === 0 && (
+                    <div
+                      onClick={() => setWritingMode('handwriting')}
+                      style={{
+                        padding: '24px',
+                        background: theme === 'sun' 
+                          ? 'linear-gradient(135deg, rgba(230, 245, 255, 0.5) 0%, rgba(186, 231, 255, 0.4) 100%)'
+                          : 'linear-gradient(135deg, rgba(255, 255, 255, 0.5) 0%, rgba(244, 240, 255, 0.5) 100%)',
+                        border: `2px solid ${theme === 'sun' 
+                          ? 'rgba(24, 144, 255, 0.3)' 
+                          : 'rgba(138, 122, 255, 0.3)'}`,
+                        borderRadius: '12px',
+                        cursor: 'pointer',
+                        textAlign: 'center',
+                        transition: 'all 0.3s ease'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.transform = 'translateY(-2px)';
+                        e.currentTarget.style.boxShadow = theme === 'sun' 
+                          ? '0 4px 12px rgba(24, 144, 255, 0.2)'
+                          : '0 4px 12px rgba(138, 122, 255, 0.25)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.transform = 'translateY(0)';
+                        e.currentTarget.style.boxShadow = 'none';
+                      }}
+                    >
+                      <div style={{ fontSize: '32px', marginBottom: '8px' }}>✍️</div>
+                      <div style={{ 
+                        fontSize: '16px', 
+                        fontWeight: '600',
+                        color: theme === 'sun' ? '#1E40AF' : '#8377A0',
+                        marginBottom: '4px'
+                      }}>
+                        Write Essay Here
+                      </div>
+                      <div style={{ 
+                        fontSize: '13px',
+                        color: theme === 'sun' ? '#666' : '#999'
+                      }}>
+                        Type your essay directly in the text area
+                      </div>
                     </div>
-                    <div style={{ 
-                      fontSize: '13px',
-                      color: theme === 'sun' ? '#666' : '#999'
-                    }}>
-                      Type your essay directly in the text area
-                    </div>
-                  </div>
+                  )}
 
                   {/* Upload File Option */}
                   <div style={{
@@ -3112,6 +3114,7 @@ const WritingSectionItem = ({ question, index, theme }) => {
                       type="file"
                       id="upload-option"
                       accept="image/*"
+                      multiple
                       onChange={handleFileUpload}
                       style={{ display: 'none' }}
                     />
@@ -3155,7 +3158,7 @@ const WritingSectionItem = ({ question, index, theme }) => {
                         fontSize: '13px',
                         color: theme === 'sun' ? '#666' : '#999'
                       }}>
-                        Upload image of your handwritten essay (Max 5MB)
+                        Upload image(s) of your handwritten essay (Max 5MB per image)
                       </div>
                     </label>
                   </div>
@@ -3725,7 +3728,7 @@ const SpeakingSectionItem = ({ question, index, theme, isViewOnly }) => {
             {index + 1}. Speaking Section
           </Typography.Text>
           <Typography.Text style={{ marginLeft: '12px', fontSize: '14px', opacity: 0.7 }}>
-            ({question.points} {question.points > 1 ? 'points' : 'point'})
+            ({question.score || 0} {(question.score || 0) > 1 ? 'weights' : 'weight'})
           </Typography.Text>
         </div>
         {/* Layout: Left - Prompt, Right - Recording */}
@@ -4467,7 +4470,7 @@ const SpeakingWithAudioSectionItem = ({ question, index, theme, sectionScore, is
           </Typography.Text>
         <div style={{ display: 'inline-flex', alignItems: 'center', gap: '12px', marginLeft: '12px' }}>
           <Typography.Text style={{ fontSize: '14px', opacity: 0.7 }}>
-            ({question.points || sectionScore?.totalScore || 0} {(question.points || sectionScore?.totalScore || 0) !== 1 ? 'points' : 'point'})
+            ({question.score || sectionScore?.totalScore || 0} {(question.score || sectionScore?.totalScore || 0) !== 1 ? 'weights' : 'weight'})
           </Typography.Text>
         </div>
         </div>
@@ -7052,6 +7055,7 @@ const transformApiDataToComponentFormat = (apiResponse, challengeType) => {
           wordLimit: null,
           timeLimit: null,
           points: null,
+          score: q.score || null,
           orderNumber: q.orderNumber || section.orderNumber || 0,
         });
       });
@@ -7065,6 +7069,7 @@ const transformApiDataToComponentFormat = (apiResponse, challengeType) => {
           title: section.sectionTitle || 'Speaking Section',
           prompt: q.questionText || section.sectionsContent || '',
           points: null,
+          score: q.score || null,
           audioUrl: hasAudio ? section.sectionsUrl : null,
           transcript: section.sectionsContent || '',
           orderNumber: q.orderNumber || section.orderNumber || 0,
