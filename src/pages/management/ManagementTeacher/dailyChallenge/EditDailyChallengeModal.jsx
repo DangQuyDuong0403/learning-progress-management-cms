@@ -113,7 +113,7 @@ const EditDailyChallengeModal = ({
   }, [visible, challengeData, form]);
 
   const isInProgress = (challengeStatus || '').toUpperCase() === 'IN_PROGRESS';
-  const isClosed = (challengeStatus || '').toUpperCase() === 'CLOSED';
+  const isClosed = (challengeStatus || '').toUpperCase() === 'FINISHED';
 
   const performSave = async (values) => {
     try {

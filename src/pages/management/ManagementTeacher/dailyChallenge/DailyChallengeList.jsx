@@ -139,7 +139,7 @@ const DailyChallengeList = ({ readOnly = false }) => {
     "LI",
     "SP",
   ];
-  const statusOptions = ["DRAFT", "PUBLISHED", "IN_PROGRESS", "CLOSED"];
+  const statusOptions = ["DRAFT", "PUBLISHED", "IN_PROGRESS", "FINISHED"];
   const getStatusLabel = (statusKey) => {
     switch (statusKey) {
       case 'DRAFT':
@@ -148,8 +148,8 @@ const DailyChallengeList = ({ readOnly = false }) => {
         return 'Published';
       case 'IN_PROGRESS':
         return 'In Progress';
-      case 'CLOSED':
-        return 'Closed';
+      case 'FINISHED':
+        return 'Finished';
       default:
         return statusKey;
     }
@@ -1171,7 +1171,7 @@ const DailyChallengeList = ({ readOnly = false }) => {
               return 'rgb(20, 150, 26)';
             case 'IN_PROGRESS':
               return '#1890ff';
-            case 'CLOSED':
+            case 'FINISHED':
               return 'rgb(229,79,79)';
             default:
               return '#000000';

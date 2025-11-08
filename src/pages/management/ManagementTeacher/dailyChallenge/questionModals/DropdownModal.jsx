@@ -1607,28 +1607,25 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 			return;
 		}
 
-		// Validate: each dropdown must have at least 1 incorrect option (non-empty)
-		const missingIncorrectOption = dropdowns.some((dropdown) => {
-			const validIncorrect = (dropdown.incorrectOptions || []).filter(
-				(opt) => opt.text && opt.text.trim()
-			);
-			return validIncorrect.length === 0;
-		});
-
-		if (missingIncorrectOption) {
-			spaceToast.warning('incorrect option must be filled');
-			return;
-		}
-
-		// Validate duplicate answers for each dropdown
+		// Validate duplicate answers for each dropdown FIRST (before checking if incorrect options are filled)
+		// This ensures we show duplicate error instead of "must be filled" error when duplicates exist
 		for (const dropdown of dropdowns) {
 			const correctAnswerText = (dropdown.correctAnswer || '').toLowerCase().trim();
+			
+			// Process incorrect options: convert to string, trim, and filter out empty ones
 			const incorrectTexts = (dropdown.incorrectOptions || [])
-				.map(opt => (opt.text || '').toLowerCase().trim())
-				.filter(text => text);
+				.map(opt => {
+					// Ensure opt exists and has text property
+					if (!opt || opt.text === null || opt.text === undefined) {
+						return '';
+					}
+					// Convert to string and trim
+					return String(opt.text).toLowerCase().trim();
+				})
+				.filter(text => text.length > 0); // Only check non-empty texts for duplicates
 			
 			// Check if correct answer duplicates any incorrect option
-			if (correctAnswerText && incorrectTexts.includes(correctAnswerText)) {
+			if (correctAnswerText && correctAnswerText.length > 0 && incorrectTexts.includes(correctAnswerText)) {
 				spaceToast.warning('Cannot create duplicate answers in dropdown. The correct answer cannot be the same as any incorrect option.');
 				return;
 			}
@@ -1639,6 +1636,41 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 				spaceToast.warning('Cannot create duplicate incorrect options. Please ensure all options are unique.');
 				return;
 			}
+		}
+
+		// Validate: each dropdown must have at least 1 incorrect option (non-empty)
+		// This check comes AFTER duplicate check, so duplicates are reported first
+		const missingIncorrectOption = dropdowns.some((dropdown) => {
+			// Debug log to see what's in incorrectOptions
+			console.log('=== VALIDATING INCORRECT OPTIONS ===');
+			console.log('Dropdown ID:', dropdown.id);
+			console.log('Incorrect options:', dropdown.incorrectOptions);
+			
+			const validIncorrect = (dropdown.incorrectOptions || []).filter((opt) => {
+				// Check if option exists and has text property
+				if (!opt || !opt.text) {
+					console.log('Option missing or no text property:', opt);
+					return false;
+				}
+				
+				// Trim and check if there's actual content (not just whitespace)
+				const trimmedText = String(opt.text).trim();
+				const isValid = trimmedText.length > 0;
+				
+				console.log('Option text:', `"${opt.text}"`, 'Trimmed:', `"${trimmedText}"`, 'Valid:', isValid);
+				
+				return isValid;
+			});
+			
+			console.log('Valid incorrect options count:', validIncorrect.length);
+			console.log('Has missing incorrect option:', validIncorrect.length === 0);
+			
+			return validIncorrect.length === 0;
+		});
+
+		if (missingIncorrectOption) {
+			spaceToast.warning('Incorrect option must be filled');
+			return;
 		}
 
 		// Build backend format by traversing DOM (preserve HTML)
