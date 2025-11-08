@@ -51,7 +51,7 @@ const ChallengeSettingsModal = ({
   });
   const status = (initialValues?.challengeStatus || initialValues?.status || '').toUpperCase();
   const isInProgress = status === 'IN_PROGRESS';
-  const isClosed = status === 'CLOSED';
+  const isClosed = status === 'FINISHED';
 
   useEffect(() => {
     if (visible) {
