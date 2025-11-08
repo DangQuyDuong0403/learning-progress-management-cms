@@ -16,7 +16,7 @@ import {
   CheckOutlined,
   CloudUploadOutlined,
   FileTextOutlined,
-  CopyOutlined,
+  CloseOutlined,
 } from "@ant-design/icons";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import ThemedLayout from "../../../../component/teacherlayout/ThemedLayout";
@@ -25,6 +25,7 @@ import { useTranslation } from "react-i18next";
 import { useSelector } from "react-redux";
 import { spaceToast } from "../../../../component/SpaceToastify";
 import dailyChallengeApi from "../../../../apis/backend/dailyChallengeManagement";
+import levelManagementApi from "../../../../apis/backend/levelManagement";
 import usePageTitle from "../../../../hooks/usePageTitle";
 import MultipleChoiceModal from "./questionModals/MultipleChoiceModal";
 import MultipleSelectModal from "./questionModals/MultipleSelectModal";
@@ -101,6 +102,24 @@ const AIGenerateReading = () => {
   const [editingQuestion, setEditingQuestion] = useState(null);
   const [hierarchy, setHierarchy] = useState(null);
 
+  // State for new API fields
+  const [levelType, setLevelType] = useState(null); // 'system', 'academic', 'cefr'
+  const [selectedLevel, setSelectedLevel] = useState(null); // Selected level value/id
+  const [lessonFocus, setLessonFocus] = useState([]); // Array of selected lesson focus values
+  const [customLessonFocus, setCustomLessonFocus] = useState([]); // Array of custom lesson focus texts
+  const [customLessonFocusInput, setCustomLessonFocusInput] = useState(""); // Current input value for custom lesson focus
+  const [vocabularyList, setVocabularyList] = useState(""); // Vocabulary list text
+  const [description, setDescription] = useState(""); // Description field
+  const [systemLevels, setSystemLevels] = useState([]); // Fetched Camkey levels (published levels)
+  
+  // Dropdown menu states
+  const [isLevelDropdownOpen, setIsLevelDropdownOpen] = useState(false);
+  const [hoveredLevelType, setHoveredLevelType] = useState(null);
+  
+  // Lesson Focus dropdown states
+  const [isLessonFocusDropdownOpen, setIsLessonFocusDropdownOpen] = useState(false);
+  const [isCustomFocusInputOpen, setIsCustomFocusInputOpen] = useState(false); // Track if Custom Focus input field is open (checkbox checked)
+
   const primaryColor = theme === 'sun' ? '#1890ff' : '#8B5CF6';
   const primaryColorWithAlpha = theme === 'sun' ? 'rgba(24, 144, 255, 0.1)' : 'rgba(139, 92, 246, 0.1)';
   const MAX_FILE_MB = 10; // max upload size shown and validated on client
@@ -114,6 +133,86 @@ const AIGenerateReading = () => {
     { value: "DRAG_AND_DROP", label: 'Drag and Drop', icon: '🔄', color: primaryColor, bgColor: primaryColorWithAlpha },
     { value: "REARRANGE", label: 'Rearrange', icon: '🔀', color: primaryColor, bgColor: primaryColorWithAlpha },
   ], [t, primaryColor, primaryColorWithAlpha]);
+
+  // Level options constants
+  const academicLevels = [
+    { value: 'L1', label: 'L1 - Level 1 - Elementary Grade 1' },
+    { value: 'L2', label: 'L2 - Level 2 - Elementary Grade 2' },
+    { value: 'L3', label: 'L3 - Level 3 - Elementary Grade 3' },
+    { value: 'L4', label: 'L4 - Level 4 - Elementary Grade 4' },
+    { value: 'L5', label: 'L5 - Level 5 - Elementary Grade 5' },
+    { value: 'L6', label: 'L6 - Level 6 - Middle School Grade 6' },
+    { value: 'L7', label: 'L7 - Level 7 - Middle School Grade 7' },
+    { value: 'L8', label: 'L8 - Level 8 - Middle School Grade 8' },
+    { value: 'L9', label: 'L9 - Level 9 - High School Grade 9' },
+    { value: 'L10', label: 'L10 - Level 10 - High School Grade 10' },
+    { value: 'L11', label: 'L11 - Level 11 - High School Grade 11' },
+    { value: 'L12', label: 'L12 - Level 12 - High School Grade 12' },
+    { value: 'UNIVERSITY', label: 'University Level - Academic English for higher education' },
+  ];
+
+  const cefrLevels = [
+    { value: 'A1', label: 'A1 - Beginner' },
+    { value: 'A2', label: 'A2 - Elementary' },
+    { value: 'B1', label: 'B1 - Intermediate' },
+    { value: 'B2', label: 'B2 - Upper Intermediate' },
+    { value: 'C1', label: 'C1 - Advanced' },
+    { value: 'C2', label: 'C2 - Proficiency' },
+  ];
+
+  // Lesson Focus options constants
+  const lessonFocusOptions = [
+    // Grammar Tenses
+    { value: 'PRESENT_SIMPLE', label: 'Present Simple' },
+    { value: 'PRESENT_CONTINUOUS', label: 'Present Continuous' },
+    { value: 'PRESENT_PERFECT', label: 'Present Perfect' },
+    { value: 'PRESENT_PERFECT_CONTINUOUS', label: 'Present Perfect Continuous' },
+    { value: 'PAST_SIMPLE', label: 'Past Simple' },
+    { value: 'PAST_CONTINUOUS', label: 'Past Continuous' },
+    { value: 'PAST_PERFECT', label: 'Past Perfect' },
+    { value: 'PAST_PERFECT_CONTINUOUS', label: 'Past Perfect Continuous' },
+    { value: 'FUTURE_SIMPLE', label: 'Future Simple (will)' },
+    { value: 'FUTURE_BE_GOING_TO', label: 'Future (be going to)' },
+    { value: 'FUTURE_CONTINUOUS', label: 'Future Continuous' },
+    { value: 'FUTURE_PERFECT', label: 'Future Perfect' },
+    { value: 'MIXED_TENSES', label: 'Mixed Tenses' },
+    // Grammar Structures
+    { value: 'CONDITIONALS_ZERO_FIRST', label: 'Conditionals: Zero & First' },
+    { value: 'CONDITIONALS_SECOND', label: 'Conditionals: Second' },
+    { value: 'CONDITIONALS_THIRD', label: 'Conditionals: Third' },
+    { value: 'MIXED_CONDITIONALS', label: 'Mixed Conditionals' },
+    { value: 'PASSIVE_VOICE_PRESENT', label: 'Passive Voice: Present' },
+    { value: 'PASSIVE_VOICE_PAST', label: 'Passive Voice: Past' },
+    { value: 'PASSIVE_VOICE_PERFECT', label: 'Passive Voice: Perfect' },
+    { value: 'PASSIVE_VOICE_MODAL', label: 'Passive Voice: Modal' },
+    { value: 'REPORTED_SPEECH_STATEMENTS', label: 'Reported Speech: Statements' },
+    { value: 'REPORTED_SPEECH_QUESTIONS', label: 'Reported Speech: Questions' },
+    { value: 'REPORTED_SPEECH_COMMANDS', label: 'Reported Speech: Commands' },
+    { value: 'RELATIVE_CLAUSES_DEFINING', label: 'Relative Clauses: Defining' },
+    { value: 'RELATIVE_CLAUSES_NON_DEFINING', label: 'Relative Clauses: Non-defining' },
+    { value: 'QUESTIONS_FORMATION', label: 'Question Formation' },
+    { value: 'QUESTIONS_SUBJECT_OBJECT', label: 'Subject vs Object Questions' },
+    { value: 'MODAL_VERBS_ABILITY', label: 'Modal Verbs: Ability' },
+    { value: 'MODAL_VERBS_POSSIBILITY', label: 'Modal Verbs: Possibility' },
+    { value: 'MODAL_VERBS_OBLIGATION', label: 'Modal Verbs: Obligation' },
+    { value: 'MODAL_VERBS_ADVICE', label: 'Modal Verbs: Advice' },
+    { value: 'GERUNDS_INFINITIVES', label: 'Gerunds and Infinitives' },
+    { value: 'ARTICLES_A_AN_THE', label: 'Articles: A, An, The' },
+    { value: 'PREPOSITIONS_TIME', label: 'Prepositions: Time' },
+    { value: 'PREPOSITIONS_PLACE', label: 'Prepositions: Place' },
+    { value: 'PREPOSITIONS_MOVEMENT', label: 'Prepositions: Movement' },
+    { value: 'COUNTABLE_UNCOUNTABLE', label: 'Countable and Uncountable Nouns' },
+    { value: 'QUANTIFIERS', label: 'Quantifiers' },
+    { value: 'COMPARATIVES_SUPERLATIVES', label: 'Comparatives and Superlatives' },
+    { value: 'ADVERBS_FREQUENCY', label: 'Adverbs of Frequency' },
+    { value: 'ADVERBS_MANNER', label: 'Adverbs of Manner' },
+    { value: 'PHRASAL_VERBS', label: 'Phrasal Verbs' },
+    { value: 'IDIOMS', label: 'Idioms' },
+    { value: 'COLLOCATIONS', label: 'Collocations' },
+    { value: 'WORD_FORMATION', label: 'Word Formation' },
+    { value: 'SYNONYMS_ANTONYMS', label: 'Synonyms and Antonyms' },
+    { value: 'CUSTOM', label: 'Custom Focus' },
+  ];
 
   // Initialize right panel (settings/upload) from navigation state
   useEffect(() => {
@@ -220,10 +319,37 @@ const AIGenerateReading = () => {
     return () => { mounted = false; };
   }, [id]);
 
+  // Fetch Camkey levels (system levels)
+  useEffect(() => {
+    let mounted = true;
+    const fetchSystemLevels = async () => {
+      try {
+        const res = await levelManagementApi.getPublishedLevels({ params: { page: 0, size: 1000 } });
+        const data = res?.data?.data || res?.data || res;
+        const levels = Array.isArray(data?.content) ? data.content : (Array.isArray(data) ? data : []);
+        if (mounted) {
+          setSystemLevels(levels.map(level => ({
+            value: String(level.id || level.levelId || ''),
+            label: level.levelName || level.name || `Level ${level.id || level.levelId || ''}`
+          })));
+        }
+      } catch (e) {
+        console.error('Error fetching Camkey levels:', e);
+        if (mounted) setSystemLevels([]);
+      }
+    };
+    fetchSystemLevels();
+    return () => { mounted = false; };
+  }, []);
+
   // Step 1: call passage generation
   const handleGeneratePassage = useCallback(async () => {
-    if (!passagePrompt.trim()) {
-      spaceToast.error(t('dailyChallenge.pleaseEnterPrompt') || 'Please enter a prompt');
+    if (!selectedLevel) {
+      spaceToast.error('Please select a level');
+      return;
+    }
+    if (lessonFocus.length === 0 && customLessonFocus.length === 0) {
+      spaceToast.error('Please select at least one lesson focus');
       return;
     }
     try {
@@ -231,9 +357,13 @@ const AIGenerateReading = () => {
       const payload = {
         challengeId: challengeInfo.challengeId,
         numberOfParagraphs: Number(numParagraphs) || 1,
-        description: passagePrompt,
+        description: description || passagePrompt,
+        level: selectedLevel,
+        lessonFocus: lessonFocus.filter(f => f !== 'CUSTOM'), // Remove CUSTOM from array, only send actual lesson focus values
+        customLessonFocus: customLessonFocus.length > 0 ? customLessonFocus.join(', ') : '',
+        vocabularyList: vocabularyList || '',
       };
-      const res = await dailyChallengeApi.generateContentBasedQuestions(payload);
+      const res = await dailyChallengeApi.generateReadingPassage(payload);
       // Flexible extraction
       const data = res?.data?.data || res?.data || res;
       const text = data?.passage || data?.content || data?.sectionsContent || '';
@@ -247,7 +377,7 @@ const AIGenerateReading = () => {
     } finally {
       setGeneratingPassage(false);
     }
-  }, [challengeInfo.challengeId, passagePrompt, numParagraphs, t]);
+  }, [challengeInfo.challengeId, description, passagePrompt, numParagraphs, selectedLevel, lessonFocus, customLessonFocus, vocabularyList]);
 
   // Quantity change handler
 
@@ -282,6 +412,8 @@ const AIGenerateReading = () => {
     try {
       setIsGenerating(true);
       setShowPreview(false);
+      // Prepare level value: for Camkey levels, send ID as string; for others, send the value directly
+      const levelValue = selectedLevel ? String(selectedLevel) : '';
       const payload = {
         challengeId: challengeInfo.challengeId,
         sections: [
@@ -297,7 +429,13 @@ const AIGenerateReading = () => {
             questionTypeConfigs: selectedConfigs,
           },
         ],
-        description: '',
+        description: description || '',
+        level: levelValue,
+        ...(lessonFocus.length > 0 && { lessonFocus }),
+        customLessonFocus: Array.isArray(customLessonFocus) && customLessonFocus.length > 0 
+          ? customLessonFocus.join(', ') 
+          : '',
+        vocabularyList: vocabularyList || '',
       };
       const res = await dailyChallengeApi.generateContentBasedQuestions(payload);
       let rawList = [];
@@ -322,7 +460,7 @@ const AIGenerateReading = () => {
     } finally {
       setIsGenerating(false);
     }
-  }, [challengeInfo.challengeId, passage, passagePrompt, questionTypeConfigs, t, normalizeQuestionsFromAI]);
+  }, [challengeInfo.challengeId, passage, passagePrompt, questionTypeConfigs, t, normalizeQuestionsFromAI, selectedLevel, lessonFocus, customLessonFocus, vocabularyList, description]);
 
   // Save generated questions into a section
   const handleSave = useCallback(async () => {
@@ -603,53 +741,11 @@ const AIGenerateReading = () => {
             boxShadow: theme === 'sun'
               ? '0 8px 24px rgba(24, 144, 255, 0.12)'
               : '0 8px 24px rgba(139, 92, 246, 0.12)',
-            padding: 16
+            padding: 16,
+            animation: 'none'
           }}
           bodyStyle={{ padding: 16 }}
         >
-        {/* Hierarchy chips inside container with white background (from API) */}
-        {hierarchy && (
-          <div
-            style={{
-              display: 'flex',
-              gap: 12,
-              flexWrap: 'wrap',
-              alignItems: 'center',
-              marginBottom: 12,
-            }}
-          >
-            <div style={{
-              padding: '8px 12px',
-              borderRadius: 12,
-              border: '1px solid rgba(0,0,0,0.1)',
-              background: '#ffffff',
-              color: '#000000',
-              fontWeight: 600,
-            }}>
-              Level: {hierarchy?.level?.levelName || hierarchy?.level?.name || '—'}
-            </div>
-            <div style={{
-              padding: '8px 12px',
-              borderRadius: 12,
-              border: '1px solid rgba(0,0,0,0.1)',
-              background: '#ffffff',
-              color: '#000000',
-              fontWeight: 600,
-            }}>
-              Chapter: {hierarchy?.chapter?.chapterName || hierarchy?.chapter?.name || '—'}
-            </div>
-            <div style={{
-              padding: '8px 12px',
-              borderRadius: 12,
-              border: '1px solid rgba(0,0,0,0.1)',
-              background: '#ffffff',
-              color: '#000000',
-              fontWeight: 600,
-            }}>
-              Lesson: {hierarchy?.lesson?.lessonName || hierarchy?.lesson?.name || '—'}
-            </div>
-          </div>
-        )}
         {/* Two-column layout: left = Generate with AI (2/3), right = Question Type Configuration (1/3) */}
         <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '20px', alignItems: 'stretch' }}>
           {/* Left: Generate with AI */}
@@ -666,21 +762,23 @@ const AIGenerateReading = () => {
               background: theme === 'sun'
                 ? 'linear-gradient(135deg, rgba(255, 255, 255, 1) 0%, rgba(240, 249, 255, 0.95) 100%)'
                 : 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(244, 240, 255, 0.95) 100%)',
-              backdropFilter: 'blur(10px)'
+              backdropFilter: 'blur(10px)',
+              animation: 'none'
             }}
           >
-            <Title level={3} style={{ textAlign: 'center', color: theme === 'sun' ? '#1890ff' : '#8B5CF6', marginTop: 0, fontSize: '26px' }}>
-              Add Passage
+            <Title level={3} style={{ textAlign: 'center', color: theme === 'sun' ? '#1890ff' : '#8B5CF6', marginTop: 0, fontSize: '26px', marginBottom: '20px' }}>
+              AI Generation Settings
             </Title>
 
             {/* Initial mode selector centered */}
             {passageMode === null && (
-              <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', width: '100%', marginTop: 12, minHeight: '460px' }}>
-                <div style={{ width: '100%' }}>
+              <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', width: '100%', marginTop: 12, minHeight: '460px', overflow: 'hidden', position: 'relative' }}>
+                <div style={{ width: '100%', overflow: 'hidden', position: 'relative' }}>
                   {/* Option: Add text & media manually */}
                   <Card
                     hoverable
                     onClick={() => { setPassageMode('manual'); setPassage(''); }}
+                    bodyStyle={{ padding: '16px' }}
                     style={{
                       borderRadius: '12px',
                       border: theme === 'sun'
@@ -690,7 +788,10 @@ const AIGenerateReading = () => {
                         ? 'linear-gradient(135deg, rgba(230, 245, 255, 0.5) 0%, rgba(186, 231, 255, 0.4) 100%)'
                         : 'rgba(255, 255, 255, 0.5)',
                       cursor: 'pointer',
-                      marginBottom: 16
+                      marginBottom: 16,
+                      position: 'relative',
+                      willChange: 'auto',
+                      animation: 'none'
                     }}
                   >
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -705,6 +806,7 @@ const AIGenerateReading = () => {
                   <Card
                     hoverable
                     onClick={() => setPassageMode('generate')}
+                    bodyStyle={{ padding: '16px' }}
                     style={{
                       borderRadius: '12px',
                       border: theme === 'sun'
@@ -713,7 +815,10 @@ const AIGenerateReading = () => {
                       background: theme === 'sun'
                         ? 'linear-gradient(135deg, rgba(255, 251, 230, 0.5) 0%, rgba(255, 236, 179, 0.4) 100%)'
                         : 'rgba(255, 255, 255, 0.5)',
-                      cursor: 'pointer'
+                      cursor: 'pointer',
+                      position: 'relative',
+                      willChange: 'auto',
+                      animation: 'none'
                     }}
                   >
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -728,6 +833,7 @@ const AIGenerateReading = () => {
             )}
 
             {passageMode !== null && (
+              <>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
               <Button
                 icon={<ArrowLeftOutlined />}
@@ -751,17 +857,860 @@ const AIGenerateReading = () => {
                 {t('common.back')}
               </Button>
             </div>
-            )}
 
-            {passageMode !== null && (
+                {/* Level and Lesson Focus - Side by Side */}
+                <div style={{ display: 'flex', gap: '16px', marginBottom: '16px' }}>
+                  {/* Level Selection - Custom 2-Level Dropdown */}
+                  <div style={{ flex: 1, position: 'relative' }}>
+                    <Typography.Text style={{ display: 'block', marginBottom: '8px', color: theme === 'sun' ? '#1E40AF' : '#8377A0', fontSize: '16px', fontWeight: 400 }}>
+                      Level <span style={{ color: 'red' }}>*</span>
+                    </Typography.Text>
+                
+                {/* Input Field */}
+                <div
+                  onClick={() => setIsLevelDropdownOpen(!isLevelDropdownOpen)}
+                  style={{
+                    width: '100%',
+                    minHeight: '36px',
+                    padding: '6px 12px',
+                    borderRadius: '8px',
+                    border: `2px solid ${primaryColor}60`,
+                    background: theme === 'sun' ? '#fff' : 'rgba(255, 255, 255, 0.1)',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    transition: 'all 0.3s ease',
+                    position: 'relative',
+                    zIndex: 10
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.borderColor = primaryColor;
+                    e.currentTarget.style.boxShadow = `0 0 0 2px ${primaryColor}20`;
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.borderColor = `${primaryColor}60`;
+                    e.currentTarget.style.boxShadow = 'none';
+                  }}
+                >
+                  <span style={{ 
+                    color: selectedLevel 
+                      ? (theme === 'sun' ? '#000' : '#fff') 
+                      : (theme === 'sun' ? '#999' : '#999'),
+                    fontSize: '14px',
+                    fontWeight: 400
+                  }}>
+                    {selectedLevel 
+                      ? (() => {
+                          const allOptions = [
+                            ...systemLevels.map(l => ({ ...l, type: 'system' })),
+                            ...academicLevels.map(l => ({ ...l, type: 'academic' })),
+                            ...cefrLevels.map(l => ({ ...l, type: 'cefr' }))
+                          ];
+                          const found = allOptions.find(o => o.value === selectedLevel);
+                          return found ? found.label : 'Selected';
+                        })()
+                      : 'Select level type and level'}
+                  </span>
+                  <span style={{ 
+                    transform: isLevelDropdownOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+                    transition: 'transform 0.3s ease',
+                    fontSize: '12px',
+                    color: primaryColor
+                  }}>▼</span>
+                </div>
+
+                {/* Dropdown Menu */}
+                {isLevelDropdownOpen && (
+                  <>
+                    {/* Backdrop */}
+                    <div
+                      onClick={() => {
+                        setIsLevelDropdownOpen(false);
+                        setHoveredLevelType(null);
+                      }}
+                      style={{
+                        position: 'fixed',
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        zIndex: 998
+                      }}
+                    />
+                    
+                    {/* Dropdown Panel */}
+                    <div
+                      style={{
+                        position: 'absolute',
+                        top: '100%',
+                        left: 0,
+                        marginTop: '8px',
+                        display: 'flex',
+                        width: '100%',
+                        maxHeight: '300px',
+                        background: theme === 'sun' 
+                          ? 'linear-gradient(135deg, rgba(255, 255, 255, 0.98) 0%, rgba(240, 249, 255, 0.98) 100%)'
+                          : 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(244, 240, 255, 0.95) 100%)',
+                        backdropFilter: 'blur(10px)',
+                        borderRadius: '16px',
+                        border: `2px solid ${primaryColor}40`,
+                        boxShadow: theme === 'sun'
+                          ? '0 8px 32px rgba(24, 144, 255, 0.2)'
+                          : '0 8px 32px rgba(139, 92, 246, 0.2)',
+                        zIndex: 999,
+                        overflow: 'hidden'
+                      }}
+                      onMouseLeave={(e) => {
+                        const relatedTarget = e.relatedTarget;
+                        if (!relatedTarget || (relatedTarget instanceof Node && !e.currentTarget.contains(relatedTarget))) {
+                          if (!levelType) {
+                            setHoveredLevelType(null);
+                          }
+                        }
+                      }}
+                    >
+                      {/* Left Panel - Level Types */}
+                      <div
+                        style={{
+                          width: '180px',
+                          borderRight: `2px solid ${primaryColor}20`,
+                          background: theme === 'sun' 
+                            ? 'rgba(240, 249, 255, 0.5)'
+                            : 'rgba(244, 240, 255, 0.5)',
+                          overflowY: 'auto',
+                          maxHeight: '300px',
+                          scrollbarWidth: 'thin',
+                          scrollbarColor: `${primaryColor}40 transparent`
+                        }}
+                      >
+                        {[
+                          { value: 'system', label: 'Camkey Level' },
+                          { value: 'academic', label: 'Academic Level' },
+                          { value: 'cefr', label: 'CEFR Level (A1-C2)' },
+                        ].map((type) => (
+                          <div
+                            key={type.value}
+                            onMouseEnter={() => {
+                              setHoveredLevelType(type.value);
+                              setLevelType(type.value);
+                              setSelectedLevel(null);
+                            }}
+                            style={{
+                              padding: '12px 8px',
+                              cursor: 'pointer',
+                              borderBottom: `1px solid ${primaryColor}10`,
+                              background: levelType === type.value
+                                ? primaryColorWithAlpha
+                                : hoveredLevelType === type.value
+                                ? (theme === 'sun' ? 'rgba(24, 144, 255, 0.08)' : 'rgba(139, 92, 246, 0.12)')
+                                : 'transparent',
+                              borderLeft: levelType === type.value
+                                ? `4px solid ${primaryColor}`
+                                : hoveredLevelType === type.value
+                                ? `4px solid ${primaryColor}80`
+                                : '4px solid transparent',
+                              transition: 'all 0.2s ease',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '8px'
+                            }}
+                          >
+                            <span style={{
+                              fontSize: '13px',
+                              fontWeight: 400,
+                              color: levelType === type.value
+                                ? primaryColor
+                                : (theme === 'sun' ? '#000' : '#000')
+                            }}>
+                              {type.label}
+                            </span>
+                            {levelType === type.value && (
+                              <span style={{ marginLeft: 'auto', color: primaryColor, fontSize: '14px' }}>✓</span>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Right Panel - Level Options */}
+                      <div
+                        style={{
+                          flex: 1,
+                          padding: '16px',
+                          overflowY: 'auto',
+                          maxHeight: '300px',
+                          background: theme === 'sun' ? '#fff' : 'rgba(255, 255, 255, 0.5)',
+                          scrollbarWidth: 'thin',
+                          scrollbarColor: `${primaryColor}40 transparent`
+                        }}
+                      >
+                        {(hoveredLevelType || levelType) ? (
+                          <>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                              {(() => {
+                                const activeType = hoveredLevelType || levelType;
+                                const options = 
+                                  activeType === 'system' ? systemLevels :
+                                  activeType === 'academic' ? academicLevels :
+                                  activeType === 'cefr' ? cefrLevels :
+                                  [];
+                                
+                                if (!options || options.length === 0) {
+                                  return (
+                                    <div style={{
+                                      padding: '20px',
+                                      textAlign: 'center',
+                                      color: theme === 'sun' ? '#999' : '#999',
+                                      fontSize: '14px'
+                                    }}>
+                                      {levelType === 'system' ? 'Loading Camkey levels...' : 'No levels available'}
+                                    </div>
+                                  );
+                                }
+                                
+                                return options.map((option) => (
+                                  <div
+                                    key={option.value}
+                                    onMouseEnter={(e) => {
+                                      if (selectedLevel !== option.value) {
+                                        e.currentTarget.style.background = theme === 'sun'
+                                          ? 'rgba(24, 144, 255, 0.1)'
+                                          : 'rgba(139, 92, 246, 0.15)';
+                                        e.currentTarget.style.borderColor = `${primaryColor}60`;
+                                      }
+                                    }}
+                                    onClick={() => {
+                                      setSelectedLevel(option.value);
+                                      setLevelType(hoveredLevelType || levelType);
+                                      setIsLevelDropdownOpen(false);
+                                      setHoveredLevelType(null);
+                                    }}
+                                    style={{
+                                      padding: '12px 16px',
+                                      borderRadius: '8px',
+                                      cursor: 'pointer',
+                                      background: selectedLevel === option.value
+                                        ? primaryColorWithAlpha
+                                        : (theme === 'sun' ? 'rgba(240, 249, 255, 0.5)' : 'rgba(244, 240, 255, 0.3)'),
+                                      border: `2px solid ${
+                                        selectedLevel === option.value
+                                          ? primaryColor
+                                          : `${primaryColor}30`
+                                      }`,
+                                      transition: 'all 0.2s ease',
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'space-between'
+                                    }}
+                                    onMouseLeave={(e) => {
+                                      if (selectedLevel !== option.value) {
+                                        e.currentTarget.style.background = theme === 'sun'
+                                          ? 'rgba(240, 249, 255, 0.5)'
+                                          : 'rgba(244, 240, 255, 0.3)';
+                                        e.currentTarget.style.borderColor = `${primaryColor}30`;
+                                      }
+                                    }}
+                                  >
+                                    <span style={{
+                                      fontSize: '14px',
+                                      fontWeight: 400,
+                                      color: selectedLevel === option.value
+                                        ? primaryColor
+                                        : (theme === 'sun' ? '#000' : '#000')
+                                    }}>
+                                      {option.label}
+                                    </span>
+                                    {selectedLevel === option.value && (
+                                      <span style={{ color: primaryColor, fontSize: '16px', fontWeight: 400 }}>✓</span>
+                                    )}
+                                  </div>
+                                ));
+                              })()}
+                            </div>
+                          </>
+                        ) : (
+                          <div style={{
+                            padding: '40px 20px',
+                            textAlign: 'center',
+                            color: theme === 'sun' ? '#999' : '#999',
+                            fontSize: '14px'
+                          }}>
+                            Hover over a level type to see options
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {/* Lesson Focus - Custom Dropdown with Input */}
+              <div style={{ flex: 1, position: 'relative' }}>
+                <Typography.Text style={{ display: 'block', marginBottom: '8px', color: theme === 'sun' ? '#1E40AF' : '#8377A0', fontSize: '16px', fontWeight: 400 }}>
+                  Lesson Focus <span style={{ color: 'red' }}>*</span>
+                </Typography.Text>
+                
+                {/* Input Field */}
+                <div
+                  onClick={(e) => {
+                    if (e.target.closest('span[data-tag]')) {
+                      return;
+                    }
+                    const willOpen = !isLessonFocusDropdownOpen;
+                    setIsLessonFocusDropdownOpen(willOpen);
+                    if (willOpen && customLessonFocus.length > 0 && !isCustomFocusInputOpen) {
+                      setIsCustomFocusInputOpen(true);
+                    }
+                  }}
+                  style={{
+                    width: '100%',
+                    minHeight: '36px',
+                    padding: '6px 12px',
+                    borderRadius: '8px',
+                    border: `2px solid ${primaryColor}60`,
+                    background: theme === 'sun' ? '#fff' : 'rgba(255, 255, 255, 0.1)',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    flexWrap: 'wrap',
+                    gap: '6px',
+                    transition: 'all 0.3s ease',
+                    position: 'relative',
+                    zIndex: isLessonFocusDropdownOpen ? 1000 : 10
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.borderColor = primaryColor;
+                    e.currentTarget.style.boxShadow = `0 0 0 2px ${primaryColor}20`;
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.borderColor = `${primaryColor}60`;
+                    e.currentTarget.style.boxShadow = 'none';
+                  }}
+                >
+                  {lessonFocus.length === 0 && customLessonFocus.length === 0 ? (
+                    <span style={{ 
+                      color: theme === 'sun' ? '#999' : '#999',
+                      fontSize: '14px',
+                      fontWeight: 400
+                    }}>
+                      Select lesson focus
+                    </span>
+                  ) : (() => {
+                    const allTags = [
+                      ...lessonFocus
+                        .filter(focus => {
+                          if (focus === 'CUSTOM' && customLessonFocus.length > 0) {
+                            return false;
+                          }
+                          return true;
+                        })
+                        .map((focus) => {
+                          const option = lessonFocusOptions.find(opt => opt.value === focus);
+                          return option ? { type: 'option', value: focus, label: option.label } : null;
+                        })
+                        .filter(Boolean),
+                      ...customLessonFocus.map((customFocus, index) => ({ 
+                        type: 'custom', 
+                        value: `custom-${index}`, 
+                        label: customFocus,
+                        index 
+                      }))
+                    ];
+
+                    const maxVisibleTags = isLessonFocusDropdownOpen ? allTags.length : 3;
+                    const visibleTags = allTags.slice(0, maxVisibleTags);
+                    const remainingCount = allTags.length - maxVisibleTags;
+
+                    return (
+                      <div style={{ 
+                        display: 'flex', 
+                        flexWrap: isLessonFocusDropdownOpen ? 'wrap' : 'nowrap',
+                        gap: '4px', 
+                        flex: 1,
+                        overflow: isLessonFocusDropdownOpen ? 'visible' : 'hidden',
+                        maxHeight: isLessonFocusDropdownOpen ? 'none' : '26px',
+                      }}>
+                        {visibleTags.map((tag) => (
+                          tag.type === 'option' ? (
+                            <span
+                              key={tag.value}
+                              data-tag="true"
+                              style={{
+                                padding: '3px 8px',
+                                borderRadius: '6px',
+                                background: theme === 'sun' ? '#fff' : 'rgba(255, 255, 255, 0.1)',
+                                border: `1px solid ${primaryColor}60`,
+                                fontSize: '13px',
+                                color: theme === 'sun' ? '#000' : '#000',
+                                fontWeight: 400,
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '4px',
+                                flexShrink: 0,
+                                position: 'relative',
+                                zIndex: 1001
+                              }}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                              }}
+                            >
+                              {tag.label}
+                              <CloseOutlined 
+                                style={{ fontSize: '10px', cursor: 'pointer', pointerEvents: 'auto' }}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  e.preventDefault();
+                                  setLessonFocus(prev => prev.filter(f => f !== tag.value));
+                                }}
+                              />
+                            </span>
+                          ) : (
+                            <span
+                              key={tag.value}
+                              data-tag="true"
+                              style={{
+                                padding: '3px 8px',
+                                borderRadius: '6px',
+                                background: theme === 'sun' ? '#fff' : 'rgba(255, 255, 255, 0.1)',
+                                border: `1px solid ${primaryColor}60`,
+                                fontSize: '13px',
+                                color: theme === 'sun' ? '#000' : '#000',
+                                fontWeight: 400,
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '4px',
+                                flexShrink: 0,
+                                position: 'relative',
+                                zIndex: 1001
+                              }}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                              }}
+                            >
+                              {tag.label}
+                              <CloseOutlined 
+                                style={{ fontSize: '10px', cursor: 'pointer', pointerEvents: 'auto' }}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  e.preventDefault();
+                                  setCustomLessonFocus(prev => prev.filter((_, i) => i !== tag.index));
+                                  if (customLessonFocus.length === 1) {
+                                    setLessonFocus(prev => prev.filter(f => f !== 'CUSTOM'));
+                                    setIsCustomFocusInputOpen(false);
+                                  }
+                                }}
+                              />
+                            </span>
+                          )
+                        ))}
+                        {!isLessonFocusDropdownOpen && remainingCount > 0 && (
+                          <span style={{
+                            padding: '3px 8px',
+                            fontSize: '13px',
+                            color: theme === 'sun' ? '#666' : '#999',
+                            fontWeight: 400,
+                            flexShrink: 0
+                          }}>
+                            +{remainingCount}...
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })()}
+                  <span style={{ 
+                    transform: isLessonFocusDropdownOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+                    transition: 'transform 0.3s ease',
+                    fontSize: '12px',
+                    color: primaryColor,
+                    flexShrink: 0
+                  }}>▼</span>
+                </div>
+
+                {/* Dropdown Menu */}
+                {isLessonFocusDropdownOpen && (
+                  <>
+                    <div
+                      onClick={() => setIsLessonFocusDropdownOpen(false)}
+                      style={{
+                        position: 'fixed',
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        zIndex: 998
+                      }}
+                    />
+                    
+                    <div
+                      style={{
+                        position: 'absolute',
+                        top: '100%',
+                        left: 0,
+                        marginTop: '8px',
+                        width: '100%',
+                        maxHeight: '300px',
+                        background: theme === 'sun' 
+                          ? 'linear-gradient(135deg, rgba(255, 255, 255, 0.98) 0%, rgba(240, 249, 255, 0.98) 100%)'
+                          : 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(244, 240, 255, 0.95) 100%)',
+                        backdropFilter: 'blur(10px)',
+                        borderRadius: '16px',
+                        border: `2px solid ${primaryColor}40`,
+                        boxShadow: theme === 'sun'
+                          ? '0 8px 32px rgba(24, 144, 255, 0.2)'
+                          : '0 8px 32px rgba(139, 92, 246, 0.2)',
+                        zIndex: 999,
+                        overflow: 'hidden',
+                        display: 'flex',
+                        flexDirection: 'column'
+                      }}
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <div style={{
+                        flex: 1,
+                        overflowY: 'auto',
+                        maxHeight: '250px',
+                        padding: '8px',
+                        scrollbarWidth: 'thin',
+                        scrollbarColor: `${primaryColor}40 transparent`
+                      }}>
+                        {lessonFocusOptions.map((option) => {
+                            const isSelected = lessonFocus.includes(option.value);
+                            const isCustom = option.value === 'CUSTOM';
+                            const isCustomChecked = isCustom ? (isCustomFocusInputOpen || customLessonFocus.length > 0) : isSelected;
+                            
+                            return (
+                              <div key={option.value} style={{ marginBottom: '8px' }}>
+                                <div
+                                  onClick={() => {
+                                    if (isCustom) {
+                                      if (isCustomFocusInputOpen) {
+                                        setIsCustomFocusInputOpen(false);
+                                        if (customLessonFocus.length === 0) {
+                                          setLessonFocus(prev => prev.filter(f => f !== 'CUSTOM'));
+                                        }
+                                      } else {
+                                        setIsCustomFocusInputOpen(true);
+                                        setTimeout(() => {
+                                          const input = document.getElementById('custom-focus-input');
+                                          if (input) input.focus();
+                                        }, 100);
+                                      }
+                                    } else {
+                                      if (isSelected) {
+                                        setLessonFocus(prev => prev.filter(f => f !== option.value));
+                                      } else {
+                                        setLessonFocus(prev => [...prev, option.value]);
+                                      }
+                                    }
+                                  }}
+                                  style={{
+                                    padding: isCustom && isCustomChecked ? '12px 16px 8px 16px' : '12px 16px',
+                                    borderRadius: isCustom && isCustomChecked ? '8px 8px 0 0' : '8px',
+                                    cursor: 'pointer',
+                                    background: isCustomChecked
+                                      ? primaryColorWithAlpha
+                                      : 'transparent',
+                                    border: `2px solid ${
+                                      isCustomChecked
+                                        ? primaryColor
+                                        : `${primaryColor}20`
+                                    }`,
+                                    borderBottom: isCustom && isCustomChecked ? 'none' : `2px solid ${
+                                      isCustomChecked
+                                        ? primaryColor
+                                        : `${primaryColor}20`
+                                    }`,
+                                    transition: 'all 0.2s ease',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '12px'
+                                  }}
+                                  onMouseEnter={(e) => {
+                                    if (!isCustomChecked) {
+                                      e.currentTarget.style.background = theme === 'sun'
+                                        ? 'rgba(24, 144, 255, 0.08)'
+                                        : 'rgba(139, 92, 246, 0.12)';
+                                      e.currentTarget.style.borderColor = `${primaryColor}60`;
+                                    }
+                                  }}
+                                  onMouseLeave={(e) => {
+                                    if (!isCustomChecked) {
+                                      e.currentTarget.style.background = 'transparent';
+                                      e.currentTarget.style.borderColor = `${primaryColor}20`;
+                                    }
+                                  }}
+                                >
+                                  <input
+                                    type="checkbox"
+                                    checked={isCustomChecked}
+                                    readOnly
+                                    style={{
+                                      width: '18px',
+                                      height: '18px',
+                                      accentColor: primaryColor,
+                                      cursor: 'pointer',
+                                      flexShrink: 0
+                                    }}
+                                  />
+                                  <span style={{
+                                    fontSize: '14px',
+                                    fontWeight: 400,
+                                    color: isCustomChecked
+                                      ? primaryColor
+                                      : (theme === 'sun' ? '#000' : '#000'),
+                                    flex: 1
+                                  }}>
+                                    {option.label}
+                                  </span>
+                                  {isCustomChecked && !isCustom && (
+                                    <CheckOutlined style={{ 
+                                      color: primaryColor, 
+                                      fontSize: '16px',
+                                      flexShrink: 0
+                                    }} />
+                                  )}
+                                  {isCustom && (
+                                    <span style={{ 
+                                      color: primaryColor, 
+                                      fontSize: '12px',
+                                      flexShrink: 0,
+                                      transform: isCustomChecked ? 'rotate(180deg)' : 'rotate(0deg)',
+                                      transition: 'transform 0.3s ease'
+                                    }}>▼</span>
+                                  )}
+                                </div>
+
+                                {isCustom && isCustomChecked && (
+                                  <div
+                                    style={{
+                                      padding: '12px 16px',
+                                      background: theme === 'sun'
+                                        ? `linear-gradient(135deg, ${primaryColorWithAlpha}, rgba(240, 249, 255, 0.95))`
+                                        : `linear-gradient(135deg, ${primaryColorWithAlpha}, rgba(244, 240, 255, 0.95))`,
+                                      border: `2px solid ${primaryColor}`,
+                                      borderTop: 'none',
+                                      borderRadius: '0 0 8px 8px',
+                                      animation: 'fadeIn 0.3s ease'
+                                    }}
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    <Input
+                                      id="custom-focus-input"
+                                      value={customLessonFocusInput}
+                                      onChange={(e) => {
+                                        const value = e.target.value;
+                                        setCustomLessonFocusInput(value);
+                                      }}
+                                      onKeyDown={(e) => {
+                                        if (e.key === 'Enter' && customLessonFocusInput.trim()) {
+                                          e.preventDefault();
+                                          setCustomLessonFocus(prev => [...prev, customLessonFocusInput.trim()]);
+                                          if (!lessonFocus.includes('CUSTOM')) {
+                                            setLessonFocus(prev => [...prev, 'CUSTOM']);
+                                          }
+                                          setCustomLessonFocusInput('');
+                                        }
+                                      }}
+                                      onBlur={(e) => {
+                                        if (customLessonFocusInput.trim()) {
+                                          setCustomLessonFocus(prev => [...prev, customLessonFocusInput.trim()]);
+                                          if (!lessonFocus.includes('CUSTOM')) {
+                                            setLessonFocus(prev => [...prev, 'CUSTOM']);
+                                          }
+                                          setCustomLessonFocusInput('');
+                                        }
+                                      }}
+                                      style={{
+                                        width: '100%',
+                                        borderRadius: '8px',
+                                        border: `2px solid ${customLessonFocus.length > 0 ? primaryColor : `${primaryColor}70`}`,
+                                        background: theme === 'sun' ? '#fff' : 'rgba(255, 255, 255, 0.98)',
+                                        fontSize: '14px',
+                                        padding: '10px 14px',
+                                        fontWeight: 400,
+                                        transition: 'all 0.3s ease',
+                                        outline: 'none'
+                                      }}
+                                      onClick={(e) => e.stopPropagation()}
+                                      onFocus={(e) => {
+                                        e.stopPropagation();
+                                        e.currentTarget.style.borderColor = primaryColor;
+                                        e.currentTarget.style.boxShadow = `0 0 0 3px ${primaryColor}20`;
+                                      }}
+                                      placeholder="Please enter a prompt description (Press Enter to add)"
+                                    />
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+
+                {/* Chapter and Lesson - Side by Side (Read-only) */}
+                <div style={{ display: 'flex', gap: '16px', marginBottom: '16px' }}>
+                  {/* Chapter - Read-only */}
+                  <div style={{ flex: 1, position: 'relative' }}>
+                    <Typography.Text style={{ display: 'block', marginBottom: '8px', color: theme === 'sun' ? '#1E40AF' : '#8377A0', fontSize: '16px', fontWeight: 400 }}>
+                      Chapter
+                    </Typography.Text>
+                    <div
+                      style={{
+                        width: '100%',
+                        minHeight: '36px',
+                        padding: '6px 12px',
+                        borderRadius: '8px',
+                        border: `2px solid ${primaryColor}60`,
+                        background: theme === 'sun' ? '#fff' : 'rgba(255, 255, 255, 0.1)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        transition: 'all 0.3s ease',
+                        position: 'relative',
+                        zIndex: 10,
+                        cursor: 'default',
+                        opacity: 0.7
+                      }}
+                    >
+                      <span style={{ 
+                        color: hierarchy?.chapter?.chapterName || hierarchy?.chapter?.name
+                          ? (theme === 'sun' ? '#000' : '#fff') 
+                          : (theme === 'sun' ? '#999' : '#999'),
+                        fontSize: '14px',
+                        fontWeight: 400
+                      }}>
+                        {hierarchy?.chapter?.chapterName || hierarchy?.chapter?.name || '—'}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Lesson - Read-only */}
+                  <div style={{ flex: 1, position: 'relative' }}>
+                    <Typography.Text style={{ display: 'block', marginBottom: '8px', color: theme === 'sun' ? '#1E40AF' : '#8377A0', fontSize: '16px', fontWeight: 400 }}>
+                      Lesson
+                    </Typography.Text>
+                    <div
+                      style={{
+                        width: '100%',
+                        minHeight: '36px',
+                        padding: '6px 12px',
+                        borderRadius: '8px',
+                        border: `2px solid ${primaryColor}60`,
+                        background: theme === 'sun' ? '#fff' : 'rgba(255, 255, 255, 0.1)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        transition: 'all 0.3s ease',
+                        position: 'relative',
+                        zIndex: 10,
+                        cursor: 'default',
+                        opacity: 0.7
+                      }}
+                    >
+                      <span style={{ 
+                        color: hierarchy?.lesson?.lessonName || hierarchy?.lesson?.name
+                          ? (theme === 'sun' ? '#000' : '#fff') 
+                          : (theme === 'sun' ? '#999' : '#999'),
+                        fontSize: '14px',
+                        fontWeight: 400
+                      }}>
+                        {hierarchy?.lesson?.lessonName || hierarchy?.lesson?.name || '—'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Vocabulary List and Description - Side by Side */}
+                <div style={{ display: 'flex', gap: '16px', marginBottom: '16px' }}>
+                  {/* Vocabulary List */}
+                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+                    <Typography.Text style={{ display: 'block', marginBottom: '8px', color: theme === 'sun' ? '#1E40AF' : '#8377A0', fontSize: '16px', fontWeight: 400 }}>
+                      Vocabulary List
+                    </Typography.Text>
+                    <TextArea
+                      value={vocabularyList}
+                      onChange={(e) => setVocabularyList(e.target.value)}
+                      autoSize={{ minRows: 4, maxRows: 8 }}
+                      style={{
+                        width: '100%',
+                        borderRadius: '8px',
+                        border: `2px solid ${primaryColor}60`,
+                        background: theme === 'sun' ? '#fff' : 'rgba(255, 255, 255, 0.1)',
+                        fontSize: '14px',
+                        outline: 'none',
+                      }}
+                    />
+                  </div>
+
+                  {/* Description */}
+                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+                    <Typography.Text style={{ display: 'block', marginBottom: '8px', color: theme === 'sun' ? '#1E40AF' : '#8377A0', fontSize: '16px', fontWeight: 400 }}>
+                      Description
+                    </Typography.Text>
+                    <TextArea
+                      value={description}
+                      onChange={(e) => setDescription(e.target.value)}
+                      autoSize={{ minRows: 4, maxRows: 8 }}
+                      style={{
+                        width: '100%',
+                        fontSize: '14px',
+                        borderRadius: '8px',
+                        border: `2px solid ${primaryColor}99`,
+                        background: theme === 'sun'
+                          ? 'rgba(240, 249, 255, 0.5)'
+                          : 'rgba(244, 240, 255, 0.3)',
+                        outline: 'none',
+                        boxShadow: 'none',
+                      }}
+                    />
+                  </div>
+                </div>
+
+                {/* Generated passage display (replaces promptDescription) - Editable */}
+                {passageMode === 'generate' && (
+                  <TextArea
+                    value={passage}
+                    onChange={(e) => setPassage(e.target.value)}
+                    placeholder="Generated passage will appear here"
+                    style={{
+                      marginTop: 23,
+                      fontSize: '15px',
+                      fontWeight: 'normal',
+                      borderRadius: '12px',
+                      border: passage
+                        ? (theme === 'sun'
+                            ? '2px solid rgba(113, 179, 253, 0.25)'
+                            : '2px solid rgba(138, 122, 255, 0.2)')
+                        : `2px solid ${primaryColor}60`,
+                      background: passage
+                        ? (theme === 'sun'
+                            ? 'linear-gradient(135deg, rgba(255, 255, 255, 1) 0%, rgba(240, 249, 255, 0.95) 100%)'
+                            : 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(244, 240, 255, 0.95) 100%)')
+                        : (theme === 'sun'
+                            ? 'rgba(240, 249, 255, 0.3)'
+                            : 'rgba(244, 240, 255, 0.2)'),
+                      outline: 'none',
+                      boxShadow: 'none',
+                      height: '300px',
+                      overflowY: 'auto',
+                      resize: 'none',
+                      color: theme === 'sun' ? '#000000' : (passage ? 'rgb(45, 27, 105)' : '#999')
+                    }}
+                  />
+                )}
+
+                {/* Manual mode: show TextArea for manual input */}
+                {passageMode === 'manual' && (
             <TextArea
               value={passagePrompt}
               onChange={(e) => { const v = e.target.value; setPassagePrompt(v); }}
-              autoSize={{ minRows: (passageMode === 'generate' && passage) ? 4 : 16, maxRows: 22 }}
               placeholder={
-                passageMode === 'manual'
-                  ? ((t('dailyChallenge.pleaseEnterPassage') !== 'dailyChallenge.pleaseEnterPassage' && t('dailyChallenge.pleaseEnterPassage')) || 'Please enter a passage')
-                  : ((t('dailyChallenge.pleaseEnterPrompt') !== 'dailyChallenge.pleaseEnterPrompt' && t('dailyChallenge.pleaseEnterPrompt')) || 'Enter prompt or paste passage here')
+                      (t('dailyChallenge.pleaseEnterPassage') !== 'dailyChallenge.pleaseEnterPassage' && t('dailyChallenge.pleaseEnterPassage')) || 'Please enter a passage'
               }
               style={{
                 marginTop: 23,
@@ -773,11 +1722,13 @@ const AIGenerateReading = () => {
                   : 'rgba(244, 240, 255, 0.3)',
                 outline: 'none',
                 boxShadow: 'none',
-                minHeight: (passageMode === 'generate' && passage) ? '120px' : '360px'
+                      height: '300px',
+                      overflowY: 'auto',
+                      resize: 'none'
               }}
-            />)}
+                  />
+                )}
 
-            {passageMode !== null && (
             <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginTop: 16, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
               {passageMode === 'generate' && (
                 <>
@@ -830,47 +1781,7 @@ const AIGenerateReading = () => {
                 </>
               )}
             </div>
-            )}
-
-            {/* Generated passage preview inside the left container (only for Generate with AI mode) */}
-            {passageMode === 'generate' && passage && (
-              <div
-                style={{
-                  marginTop: 16,
-                  padding: 16,
-                  borderRadius: 12,
-                  border: theme === 'sun'
-                    ? '2px solid rgba(113, 179, 253, 0.25)'
-                    : '2px solid rgba(138, 122, 255, 0.2)',
-                  background: theme === 'sun'
-                    ? 'linear-gradient(135deg, rgba(255, 255, 255, 1) 0%, rgba(240, 249, 255, 0.95) 100%)'
-                    : 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(244, 240, 255, 0.95) 100%)',
-                  maxHeight: 320,
-                  overflowY: 'auto',
-                  position: 'relative'
-                }}
-              >
-                <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', height: 36, marginBottom: 8 }}>
-                  <Tooltip title={t('common.copy') || 'Copy'}>
-                    <Button
-                      type="text"
-                      icon={<CopyOutlined />}
-                      onClick={async () => {
-                        try {
-                          await navigator.clipboard.writeText(passage || '');
-                          spaceToast.success(t('common.copied') || 'Copied');
-                        } catch (e) {
-                          spaceToast.error(t('common.copyFailed') || 'Copy failed');
-                        }
-                      }}
-                      style={{ color: theme === 'sun' ? '#1890ff' : '#8B5CF6' }}
-                    />
-                  </Tooltip>
-                </div>
-                <div style={{ whiteSpace: 'pre-wrap', lineHeight: 1.8, fontSize: 15, color: theme === 'sun' ? '#000000' : 'rgb(45, 27, 105)' }}>
-                  {passage}
-                </div>
-              </div>
+              </>
             )}
           </Card>
 
@@ -888,7 +1799,8 @@ const AIGenerateReading = () => {
               background: theme === 'sun'
                 ? 'linear-gradient(135deg, rgba(255, 255, 255, 1) 0%, rgba(240, 249, 255, 0.95) 100%)'
                 : 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(244, 240, 255, 0.95) 100%)',
-              backdropFilter: 'blur(10px)'
+              backdropFilter: 'blur(10px)',
+              animation: 'none'
             }}
           >
             {/* Title on its own line to align with left card title */}

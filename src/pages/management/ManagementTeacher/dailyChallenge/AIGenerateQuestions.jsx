@@ -5,7 +5,6 @@ import {
   Typography,
   Card,
   Tooltip,
-  Select,
 } from "antd";
 import {
   ArrowLeftOutlined,
@@ -15,6 +14,7 @@ import {
   CheckOutlined,
   EditOutlined,
   CloudUploadOutlined,
+  CloseOutlined,
 } from "@ant-design/icons";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import ThemedLayout from "../../../../component/teacherlayout/ThemedLayout";
@@ -64,16 +64,21 @@ const AIGenerateQuestions = () => {
   const [promptDescription, setPromptDescription] = useState("");
   
   // State for new API fields
-  const [levelType, setLevelType] = useState(null); // 'system', 'class', 'cefr', 'university'
+  const [levelType, setLevelType] = useState(null); // 'system', 'academic', 'cefr'
   const [selectedLevel, setSelectedLevel] = useState(null); // Selected level value/id
   const [lessonFocus, setLessonFocus] = useState([]); // Array of selected lesson focus values
-  const [customLessonFocus, setCustomLessonFocus] = useState(""); // Custom lesson focus text
+  const [customLessonFocus, setCustomLessonFocus] = useState([]); // Array of custom lesson focus texts
+  const [customLessonFocusInput, setCustomLessonFocusInput] = useState(""); // Current input value for custom lesson focus
   const [vocabularyList, setVocabularyList] = useState(""); // Vocabulary list text
-  const [systemLevels, setSystemLevels] = useState([]); // Fetched system levels
+  const [systemLevels, setSystemLevels] = useState([]); // Fetched Camkey levels (published levels)
   
   // Dropdown menu states
   const [isLevelDropdownOpen, setIsLevelDropdownOpen] = useState(false);
   const [hoveredLevelType, setHoveredLevelType] = useState(null);
+  
+  // Lesson Focus dropdown states
+  const [isLessonFocusDropdownOpen, setIsLessonFocusDropdownOpen] = useState(false);
+  const [isCustomFocusInputOpen, setIsCustomFocusInputOpen] = useState(false); // Track if Custom Focus input field is open (checkbox checked)
   
   // Question settings mode on the right: null (choose), 'manual', 'upload'
   // Auto-set based on aiSource from navigation state
@@ -275,7 +280,7 @@ const AIGenerateQuestions = () => {
   ], [t, primaryColor, primaryColorWithAlpha]);
 
   // Level options constants
-  const classLevels = [
+  const academicLevels = [
     { value: 'L1', label: 'L1 - Level 1 - Elementary Grade 1' },
     { value: 'L2', label: 'L2 - Level 2 - Elementary Grade 2' },
     { value: 'L3', label: 'L3 - Level 3 - Elementary Grade 3' },
@@ -288,6 +293,7 @@ const AIGenerateQuestions = () => {
     { value: 'L10', label: 'L10 - Level 10 - High School Grade 10' },
     { value: 'L11', label: 'L11 - Level 11 - High School Grade 11' },
     { value: 'L12', label: 'L12 - Level 12 - High School Grade 12' },
+    { value: 'UNIVERSITY', label: 'University Level - Academic English for higher education' },
   ];
 
   const cefrLevels = [
@@ -297,10 +303,6 @@ const AIGenerateQuestions = () => {
     { value: 'B2', label: 'B2 - Upper Intermediate' },
     { value: 'C1', label: 'C1 - Advanced' },
     { value: 'C2', label: 'C2 - Proficiency' },
-  ];
-
-  const universityLevel = [
-    { value: 'UNIVERSITY', label: 'University Level - Academic English for higher education' },
   ];
 
   // Lesson Focus options constants
@@ -375,18 +377,6 @@ const AIGenerateQuestions = () => {
     { value: 'VOCABULARY_TECHNOLOGY', label: 'Vocabulary: Technology' },
     { value: 'VOCABULARY_FOOD', label: 'Vocabulary: Food & Cooking' },
     { value: 'VOCABULARY_ENTERTAINMENT', label: 'Vocabulary: Entertainment' },
-    // Reading Comprehension
-    { value: 'READING_MAIN_IDEA', label: 'Reading: Main Idea' },
-    { value: 'READING_DETAILS', label: 'Reading: Specific Details' },
-    { value: 'READING_INFERENCE', label: 'Reading: Inference' },
-    { value: 'READING_VOCABULARY_CONTEXT', label: 'Reading: Vocabulary in Context' },
-    { value: 'READING_TEXT_ORGANIZATION', label: 'Reading: Text Organization' },
-    { value: 'READING_AUTHOR_OPINION', label: 'Reading: Author\'s Opinion' },
-    // Listening Comprehension
-    { value: 'LISTENING_MAIN_IDEA', label: 'Listening: Main Idea' },
-    { value: 'LISTENING_DETAILS', label: 'Listening: Specific Details' },
-    { value: 'LISTENING_INFERENCE', label: 'Listening: Inference' },
-    { value: 'LISTENING_ATTITUDE', label: 'Listening: Speaker\'s Attitude' },
     // Exam-Specific
     { value: 'ERROR_CORRECTION', label: 'Error Correction' },
     { value: 'SENTENCE_TRANSFORMATION', label: 'Sentence Transformation' },
@@ -412,27 +402,48 @@ const AIGenerateQuestions = () => {
     return () => { mounted = false; };
   }, [id]);
 
-  // Fetch system levels for level dropdown
+  // Fetch Camkey levels (published levels) for level dropdown
   useEffect(() => {
     let mounted = true;
-    const fetchSystemLevels = async () => {
+    const fetchCamkeyLevels = async () => {
       try {
-        const res = await levelManagementApi.getPublishedLevels({ page: 0, size: 1000 });
-        const levels = Array.isArray(res?.data?.data) 
-          ? res.data.data 
-          : (Array.isArray(res?.data) ? res.data : []);
+        const params = {
+          page: 0,
+          size: 1000, // Get all published levels
+        };
+        
+        const res = await levelManagementApi.getPublishedLevels({ params });
+        
+        // Handle different response structures
+        let levelsData = [];
+        if (res && res.data) {
+          // Check if it's a paginated response with content array
+          if (res.data.content && Array.isArray(res.data.content)) {
+            levelsData = res.data.content;
+          } else if (Array.isArray(res.data)) {
+            levelsData = res.data;
+          } else if (res.data.data && Array.isArray(res.data.data)) {
+            levelsData = res.data.data;
+          }
+        }
+        
+        // Filter only PUBLISHED levels (though API should already return only published)
+        const publishedLevels = levelsData.filter(level => 
+          level.status === 'PUBLISHED' || !level.status // Include if status is PUBLISHED or undefined
+        );
+        
         if (mounted) {
-          setSystemLevels(levels.map(level => ({
-            value: level.id || level.levelId,
+          setSystemLevels(publishedLevels.map(level => ({
+            value: String(level.id || level.levelId),
             label: level.levelName || level.name || `Level ${level.id || level.levelId}`,
           })));
         }
       } catch (e) {
-        console.error('Error fetching system levels:', e);
+        console.error('Error fetching Camkey levels:', e);
         if (mounted) setSystemLevels([]);
       }
     };
-    fetchSystemLevels();
+    fetchCamkeyLevels();
     return () => { mounted = false; };
   }, []);
 
@@ -677,7 +688,7 @@ const AIGenerateQuestions = () => {
     try {
       setIsGenerating(true);
       setShowPreview(false);
-      // Prepare level value: for system levels, send ID as string; for others, send the value directly
+      // Prepare level value: for Camkey levels, send ID as string; for others, send the value directly
       const levelValue = selectedLevel ? String(selectedLevel) : '';
       
       const payload = {
@@ -691,7 +702,9 @@ const AIGenerateQuestions = () => {
         description: promptDescription || '',
         level: levelValue,
         ...(lessonFocus.length > 0 && { lessonFocus }),
-        customLessonFocus: customLessonFocus || '',
+        customLessonFocus: Array.isArray(customLessonFocus) && customLessonFocus.length > 0 
+          ? customLessonFocus.join(', ') 
+          : '',
         vocabularyList: vocabularyList || '',
       };
       const res = await dailyChallengeApi.generateAIQuestions(payload);
@@ -1376,28 +1389,6 @@ const AIGenerateQuestions = () => {
             }}
             bodyStyle={{ padding: 16 }}
           >
-            {/* White chips for Level/Chapter/Lesson inside container (from API) */}
-            {hierarchy && (
-              <div
-                style={{
-                  display: 'flex',
-                  gap: 12,
-                  flexWrap: 'wrap',
-                  alignItems: 'center',
-                  marginBottom: 12,
-                }}
-              >
-                <div style={{ padding: '8px 12px', borderRadius: 12, border: '1px solid rgba(0,0,0,0.1)', background: '#ffffff', color: '#000000', fontWeight: 600 }}>
-                  Level: {hierarchy?.level?.levelName || hierarchy?.level?.name || '—'}
-                </div>
-                <div style={{ padding: '8px 12px', borderRadius: 12, border: '1px solid rgba(0,0,0,0.1)', background: '#ffffff', color: '#000000', fontWeight: 600 }}>
-                  Chapter: {hierarchy?.chapter?.chapterName || hierarchy?.chapter?.name || '—'}
-                </div>
-                <div style={{ padding: '8px 12px', borderRadius: 12, border: '1px solid rgba(0,0,0,0.1)', background: '#ffffff', color: '#000000', fontWeight: 600 }}>
-                  Lesson: {hierarchy?.lesson?.lessonName || hierarchy?.lesson?.name || '—'}
-                </div>
-              </div>
-            )}
             {/* Two-column layout: left = Text Prompt (2/3), right = Question Settings (1/3) */}
             <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '20px', alignItems: 'stretch' }}>
               {/* Left: Text Prompt (no passage) */}
@@ -1423,10 +1414,12 @@ const AIGenerateQuestions = () => {
                   AI Generation Settings
                 </Title>
             
-                {/* Level Selection - Custom 2-Level Dropdown */}
-                <div style={{ marginBottom: '16px', position: 'relative' }}>
-                  <Typography.Text strong style={{ display: 'block', marginBottom: '8px', color: theme === 'sun' ? '#1E40AF' : '#8377A0', fontSize: '14px' }}>
-                    Level <span style={{ color: 'red' }}>*</span>
+                {/* Level and Lesson Focus - Side by Side */}
+                <div style={{ display: 'flex', gap: '16px', marginBottom: '16px' }}>
+                  {/* Level Selection - Custom 2-Level Dropdown */}
+                  <div style={{ flex: 1, position: 'relative' }}>
+                    <Typography.Text style={{ display: 'block', marginBottom: '8px', color: theme === 'sun' ? '#1E40AF' : '#8377A0', fontSize: '16px', fontWeight: 400 }}>
+                      Level <span style={{ color: 'red' }}>*</span>
                   </Typography.Text>
                   
                   {/* Input Field */}
@@ -1434,8 +1427,8 @@ const AIGenerateQuestions = () => {
                     onClick={() => setIsLevelDropdownOpen(!isLevelDropdownOpen)}
                     style={{
                       width: '100%',
-                      minHeight: '40px',
-                      padding: '8px 16px',
+                      minHeight: '36px',
+                      padding: '6px 12px',
                       borderRadius: '8px',
                       border: `2px solid ${primaryColor}60`,
                       background: theme === 'sun' ? '#fff' : 'rgba(255, 255, 255, 0.1)',
@@ -1460,15 +1453,15 @@ const AIGenerateQuestions = () => {
                       color: selectedLevel 
                         ? (theme === 'sun' ? '#000' : '#fff') 
                         : (theme === 'sun' ? '#999' : '#999'),
-                      fontSize: '14px'
+                      fontSize: '14px',
+                      fontWeight: 400
                     }}>
                       {selectedLevel 
                         ? (() => {
                             const allOptions = [
                               ...systemLevels.map(l => ({ ...l, type: 'system' })),
-                              ...classLevels.map(l => ({ ...l, type: 'class' })),
-                              ...cefrLevels.map(l => ({ ...l, type: 'cefr' })),
-                              ...universityLevel.map(l => ({ ...l, type: 'university' }))
+                              ...academicLevels.map(l => ({ ...l, type: 'academic' })),
+                              ...cefrLevels.map(l => ({ ...l, type: 'cefr' }))
                             ];
                             const found = allOptions.find(o => o.value === selectedLevel);
                             return found ? found.label : 'Selected';
@@ -1488,7 +1481,10 @@ const AIGenerateQuestions = () => {
                     <>
                       {/* Backdrop */}
                       <div
-                        onClick={() => setIsLevelDropdownOpen(false)}
+                        onClick={() => {
+                          setIsLevelDropdownOpen(false);
+                          setHoveredLevelType(null);
+                        }}
                         style={{
                           position: 'fixed',
                           top: 0,
@@ -1507,10 +1503,8 @@ const AIGenerateQuestions = () => {
                           left: 0,
                           marginTop: '8px',
                           display: 'flex',
-                          width: '600px',
-                          maxWidth: 'calc(100vw - 48px)',
-                          minHeight: '400px',
-                          maxHeight: '500px',
+                          width: '100%',
+                          maxHeight: '300px',
                           background: theme === 'sun' 
                             ? 'linear-gradient(135deg, rgba(255, 255, 255, 0.98) 0%, rgba(240, 249, 255, 0.98) 100%)'
                             : 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(244, 240, 255, 0.95) 100%)',
@@ -1526,7 +1520,8 @@ const AIGenerateQuestions = () => {
                         onMouseLeave={(e) => {
                           // Only clear if mouse is leaving the entire dropdown (not moving to child)
                           const relatedTarget = e.relatedTarget;
-                          if (!relatedTarget || !e.currentTarget.contains(relatedTarget)) {
+                          // Check if relatedTarget is a valid Node before calling contains
+                          if (!relatedTarget || (relatedTarget instanceof Node && !e.currentTarget.contains(relatedTarget))) {
                             // Keep hoveredLevelType if levelType is set, otherwise clear it
                             if (!levelType) {
                               setHoveredLevelType(null);
@@ -1537,32 +1532,31 @@ const AIGenerateQuestions = () => {
                         {/* Left Panel - Level Types */}
                         <div
                           style={{
-                            width: '240px',
+                            width: '180px',
                             borderRight: `2px solid ${primaryColor}20`,
                             background: theme === 'sun' 
                               ? 'rgba(240, 249, 255, 0.5)'
                               : 'rgba(244, 240, 255, 0.5)',
                             overflowY: 'auto',
-                            maxHeight: '500px',
+                            maxHeight: '300px',
                             scrollbarWidth: 'thin',
                             scrollbarColor: `${primaryColor}40 transparent`
                           }}
                         >
                           {[
-                            { value: 'system', label: 'System Level', icon: '🔧' },
-                            { value: 'class', label: 'Class Level (L1-L12)', icon: '📚' },
-                            { value: 'cefr', label: 'CEFR Level (A1-C2)', icon: '🌍' },
-                            { value: 'university', label: 'University Level', icon: '🎓' },
+                            { value: 'system', label: 'Camkey Level' },
+                      { value: 'academic', label: 'Academic Level' },
+                      { value: 'cefr', label: 'CEFR Level (A1-C2)' },
                           ].map((type) => (
                             <div
                               key={type.value}
-                              onMouseEnter={() => setHoveredLevelType(type.value)}
-                              onClick={() => {
+                              onMouseEnter={() => {
+                                setHoveredLevelType(type.value);
                                 setLevelType(type.value);
                                 setSelectedLevel(null);
                               }}
                               style={{
-                                padding: '14px 16px',
+                                padding: '12px 8px',
                                 cursor: 'pointer',
                                 borderBottom: `1px solid ${primaryColor}10`,
                                 background: levelType === type.value
@@ -1578,13 +1572,12 @@ const AIGenerateQuestions = () => {
                                 transition: 'all 0.2s ease',
                                 display: 'flex',
                                 alignItems: 'center',
-                                gap: '12px'
+                                gap: '8px'
                               }}
                             >
-                              <span style={{ fontSize: '20px' }}>{type.icon}</span>
                               <span style={{
-                                fontSize: '14px',
-                                fontWeight: levelType === type.value ? 600 : 500,
+                                fontSize: '13px',
+                                fontWeight: 400,
                                 color: levelType === type.value
                                   ? primaryColor
                                   : (theme === 'sun' ? '#000' : '#000')
@@ -1592,7 +1585,7 @@ const AIGenerateQuestions = () => {
                                 {type.label}
                               </span>
                               {levelType === type.value && (
-                                <span style={{ marginLeft: 'auto', color: primaryColor }}>✓</span>
+                                <span style={{ marginLeft: 'auto', color: primaryColor, fontSize: '14px' }}>✓</span>
                               )}
                             </div>
                           ))}
@@ -1604,7 +1597,7 @@ const AIGenerateQuestions = () => {
                             flex: 1,
                             padding: '16px',
                             overflowY: 'auto',
-                            maxHeight: '500px',
+                            maxHeight: '300px',
                             background: theme === 'sun' ? '#fff' : 'rgba(255, 255, 255, 0.5)',
                             scrollbarWidth: 'thin',
                             scrollbarColor: `${primaryColor}40 transparent`
@@ -1612,78 +1605,14 @@ const AIGenerateQuestions = () => {
                         >
                           {(hoveredLevelType || levelType) ? (
                             <>
-                              <div style={{
-                                fontSize: '16px',
-                                fontWeight: 600,
-                                color: primaryColor,
-                                marginBottom: '16px',
-                                paddingBottom: '12px',
-                                borderBottom: `2px solid ${primaryColor}30`,
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '8px'
-                              }}>
-                                <span style={{ fontSize: '18px' }}>
-                                  {hoveredLevelType === 'system' || levelType === 'system' ? '🔧' :
-                                   hoveredLevelType === 'class' || levelType === 'class' ? '📚' :
-                                   hoveredLevelType === 'cefr' || levelType === 'cefr' ? '🌍' :
-                                   '🎓'}
-                                </span>
-                                <span>
-                                  {hoveredLevelType === 'system' || levelType === 'system' ? 'System Level' :
-                                   hoveredLevelType === 'class' || levelType === 'class' ? 'Class Level' :
-                                   hoveredLevelType === 'cefr' || levelType === 'cefr' ? 'CEFR Level' :
-                                   'University Level'}
-                                </span>
-                                {(hoveredLevelType === 'system' || levelType === 'system') && systemLevels.length > 0 && (
-                                  <span style={{ 
-                                    fontSize: '12px', 
-                                    color: theme === 'sun' ? '#666' : '#999',
-                                    fontWeight: 400,
-                                    marginLeft: 'auto'
-                                  }}>
-                                    {systemLevels.length} level{systemLevels.length !== 1 ? 's' : ''}
-                                  </span>
-                                )}
-                                {(hoveredLevelType === 'class' || levelType === 'class') && (
-                                  <span style={{ 
-                                    fontSize: '12px', 
-                                    color: theme === 'sun' ? '#666' : '#999',
-                                    fontWeight: 400,
-                                    marginLeft: 'auto'
-                                  }}>
-                                    {classLevels.length} level{classLevels.length !== 1 ? 's' : ''}
-                                  </span>
-                                )}
-                                {(hoveredLevelType === 'cefr' || levelType === 'cefr') && (
-                                  <span style={{ 
-                                    fontSize: '12px', 
-                                    color: theme === 'sun' ? '#666' : '#999',
-                                    fontWeight: 400,
-                                    marginLeft: 'auto'
-                                  }}>
-                                    {cefrLevels.length} level{cefrLevels.length !== 1 ? 's' : ''}
-                                  </span>
-                                )}
-                                {(hoveredLevelType === 'university' || levelType === 'university') && (
-                                  <span style={{ 
-                                    fontSize: '12px', 
-                                    color: theme === 'sun' ? '#666' : '#999',
-                                    fontWeight: 400,
-                                    marginLeft: 'auto'
-                                  }}>
-                                    {universityLevel.length} level{universityLevel.length !== 1 ? 's' : ''}
-                                  </span>
-                                )}
-                              </div>
                               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                                 {(() => {
                                   const activeType = hoveredLevelType || levelType;
                                   const options = 
                                     activeType === 'system' ? systemLevels :
-                                    activeType === 'class' ? classLevels :
+                                    activeType === 'academic' ? academicLevels :
                                     activeType === 'cefr' ? cefrLevels :
-                                    universityLevel;
+                                    [];
                                   
                                   if (!options || options.length === 0) {
                                     return (
@@ -1693,7 +1622,7 @@ const AIGenerateQuestions = () => {
                                         color: theme === 'sun' ? '#999' : '#999',
                                         fontSize: '14px'
                                       }}>
-                                        {levelType === 'system' ? 'Loading system levels...' : 'No levels available'}
+                                        {levelType === 'system' ? 'Loading Camkey levels...' : 'No levels available'}
                                       </div>
                                     );
                                   }
@@ -1701,6 +1630,15 @@ const AIGenerateQuestions = () => {
                                   return options.map((option) => (
                                     <div
                                       key={option.value}
+                                      onMouseEnter={(e) => {
+                                        // Preview on hover
+                                        if (selectedLevel !== option.value) {
+                                          e.currentTarget.style.background = theme === 'sun'
+                                            ? 'rgba(24, 144, 255, 0.1)'
+                                            : 'rgba(139, 92, 246, 0.15)';
+                                          e.currentTarget.style.borderColor = `${primaryColor}60`;
+                                        }
+                                      }}
                                       onClick={() => {
                                         setSelectedLevel(option.value);
                                         setLevelType(hoveredLevelType || levelType);
@@ -1724,15 +1662,8 @@ const AIGenerateQuestions = () => {
                                         alignItems: 'center',
                                         justifyContent: 'space-between'
                                       }}
-                                      onMouseEnter={(e) => {
-                                        if (selectedLevel !== option.value) {
-                                          e.currentTarget.style.background = theme === 'sun'
-                                            ? 'rgba(24, 144, 255, 0.1)'
-                                            : 'rgba(139, 92, 246, 0.15)';
-                                          e.currentTarget.style.borderColor = `${primaryColor}60`;
-                                        }
-                                      }}
                                       onMouseLeave={(e) => {
+                                        // Reset visual style on mouse leave if not selected
                                         if (selectedLevel !== option.value) {
                                           e.currentTarget.style.background = theme === 'sun'
                                             ? 'rgba(240, 249, 255, 0.5)'
@@ -1743,7 +1674,7 @@ const AIGenerateQuestions = () => {
                                     >
                                       <span style={{
                                         fontSize: '14px',
-                                        fontWeight: selectedLevel === option.value ? 600 : 500,
+                                        fontWeight: 400,
                                         color: selectedLevel === option.value
                                           ? primaryColor
                                           : (theme === 'sun' ? '#000' : '#000')
@@ -1751,7 +1682,7 @@ const AIGenerateQuestions = () => {
                                         {option.label}
                                       </span>
                                       {selectedLevel === option.value && (
-                                        <span style={{ color: primaryColor, fontSize: '16px', fontWeight: 'bold' }}>✓</span>
+                                        <span style={{ color: primaryColor, fontSize: '16px', fontWeight: 400 }}>✓</span>
                                       )}
                                     </div>
                                   ));
@@ -1772,71 +1703,551 @@ const AIGenerateQuestions = () => {
                       </div>
                     </>
                   )}
-                </div>
+                  </div>
 
-                {/* Lesson Focus (Multi-select) */}
-                <div style={{ marginBottom: '16px' }}>
-                  <Typography.Text strong style={{ display: 'block', marginBottom: '8px', color: theme === 'sun' ? '#1E40AF' : '#8377A0', fontSize: '14px' }}>
-                    Lesson Focus
-                  </Typography.Text>
-                  <Select
-                    mode="multiple"
-                    placeholder="Select lesson focus (optional)"
-                    value={lessonFocus}
-                    onChange={setLessonFocus}
-                    style={{ width: '100%' }}
-                    options={lessonFocusOptions}
-                    maxTagCount="responsive"
-                  />
-                </div>
-
-                {/* Custom Lesson Focus */}
-                <div style={{ marginBottom: '16px' }}>
-                  <Typography.Text strong style={{ display: 'block', marginBottom: '8px', color: theme === 'sun' ? '#1E40AF' : '#8377A0', fontSize: '14px' }}>
-                    Custom Lesson Focus
-                  </Typography.Text>
-                  <Input
-                    value={customLessonFocus}
-                    onChange={(e) => setCustomLessonFocus(e.target.value)}
-                    placeholder="Enter custom lesson focus (optional)"
+                  {/* Lesson Focus - Custom Dropdown with Input */}
+                  <div style={{ flex: 1, position: 'relative' }}>
+                    <Typography.Text style={{ display: 'block', marginBottom: '8px', color: theme === 'sun' ? '#1E40AF' : '#8377A0', fontSize: '16px', fontWeight: 400 }}>
+                    Lesson Focus <span style={{ color: 'red' }}>*</span>
+                    </Typography.Text>
+                  
+                  {/* Input Field */}
+                  <div
+                    onClick={(e) => {
+                      // Don't toggle if clicking on a tag
+                      if (e.target.closest('span[data-tag]')) {
+                        return;
+                      }
+                      const willOpen = !isLessonFocusDropdownOpen;
+                      setIsLessonFocusDropdownOpen(willOpen);
+                      // Auto-open Custom Focus input if there are custom focus items when opening dropdown
+                      if (willOpen && customLessonFocus.length > 0 && !isCustomFocusInputOpen) {
+                        setIsCustomFocusInputOpen(true);
+                      }
+                    }}
                     style={{
+                      width: '100%',
+                      minHeight: '36px',
+                      padding: '6px 12px',
                       borderRadius: '8px',
                       border: `2px solid ${primaryColor}60`,
                       background: theme === 'sun' ? '#fff' : 'rgba(255, 255, 255, 0.1)',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      flexWrap: 'wrap',
+                      gap: '6px',
+                      transition: 'all 0.3s ease',
+                      position: 'relative',
+                      zIndex: isLessonFocusDropdownOpen ? 1000 : 10
                     }}
-                  />
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.borderColor = primaryColor;
+                      e.currentTarget.style.boxShadow = `0 0 0 2px ${primaryColor}20`;
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.borderColor = `${primaryColor}60`;
+                      e.currentTarget.style.boxShadow = 'none';
+                    }}
+                  >
+                    {lessonFocus.length === 0 && customLessonFocus.length === 0 ? (
+                      <span style={{ 
+                        color: theme === 'sun' ? '#999' : '#999',
+                        fontSize: '14px',
+                        fontWeight: 400
+                      }}>
+                        Select lesson focus
+                      </span>
+                    ) : (() => {
+                      // Get all tags to display
+                      const allTags = [
+                        ...lessonFocus
+                          .filter(focus => {
+                            // Don't show "Custom Focus" tag if there are customLessonFocus items
+                            if (focus === 'CUSTOM' && customLessonFocus.length > 0) {
+                              return false;
+                            }
+                            return true;
+                          })
+                          .map((focus) => {
+                            const option = lessonFocusOptions.find(opt => opt.value === focus);
+                            return option ? { type: 'option', value: focus, label: option.label } : null;
+                          })
+                          .filter(Boolean),
+                        ...customLessonFocus.map((customFocus, index) => ({ 
+                          type: 'custom', 
+                          value: `custom-${index}`, 
+                          label: customFocus,
+                          index 
+                        }))
+                      ];
+
+                      // When dropdown is closed, limit to showing only a few tags
+                      const maxVisibleTags = isLessonFocusDropdownOpen ? allTags.length : 3;
+                      const visibleTags = allTags.slice(0, maxVisibleTags);
+                      const remainingCount = allTags.length - maxVisibleTags;
+
+                      return (
+                        <div style={{ 
+                          display: 'flex', 
+                          flexWrap: isLessonFocusDropdownOpen ? 'wrap' : 'nowrap',
+                          gap: '4px', 
+                          flex: 1,
+                          overflow: isLessonFocusDropdownOpen ? 'visible' : 'hidden',
+                          maxHeight: isLessonFocusDropdownOpen ? 'none' : '26px',
+                          
+                        }}>
+                          {visibleTags.map((tag) => (
+                            tag.type === 'option' ? (
+                              <span
+                                key={tag.value}
+                                data-tag="true"
+                                style={{
+                                  padding: '3px 8px',
+                                  borderRadius: '6px',
+                                  background: theme === 'sun' ? '#fff' : 'rgba(255, 255, 255, 0.1)',
+                                  border: `1px solid ${primaryColor}60`,
+                                  fontSize: '13px',
+                                  color: theme === 'sun' ? '#000' : '#000',
+                                  fontWeight: 400,
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '4px',
+                                  flexShrink: 0,
+                                  position: 'relative',
+                                  zIndex: 1001
+                                }}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                }}
+                              >
+                                {tag.label}
+                                <CloseOutlined 
+                                  style={{ fontSize: '10px', cursor: 'pointer', pointerEvents: 'auto' }}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    e.preventDefault();
+                                    setLessonFocus(prev => prev.filter(f => f !== tag.value));
+                                  }}
+                                />
+                              </span>
+                            ) : (
+                              <span
+                                key={tag.value}
+                                data-tag="true"
+                                style={{
+                                  padding: '3px 8px',
+                                  borderRadius: '6px',
+                                  background: theme === 'sun' ? '#fff' : 'rgba(255, 255, 255, 0.1)',
+                                  border: `1px solid ${primaryColor}60`,
+                                  fontSize: '13px',
+                                  color: theme === 'sun' ? '#000' : '#000',
+                                  fontWeight: 400,
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '4px',
+                                  flexShrink: 0,
+                                  position: 'relative',
+                                  zIndex: 1001
+                                }}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                }}
+                              >
+                                {tag.label}
+                                <CloseOutlined 
+                                  style={{ fontSize: '10px', cursor: 'pointer', pointerEvents: 'auto' }}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    e.preventDefault();
+                                    setCustomLessonFocus(prev => prev.filter((_, i) => i !== tag.index));
+                                    if (customLessonFocus.length === 1) {
+                                      setLessonFocus(prev => prev.filter(f => f !== 'CUSTOM'));
+                                      setIsCustomFocusInputOpen(false);
+                                    }
+                                  }}
+                                />
+                              </span>
+                            )
+                          ))}
+                          {!isLessonFocusDropdownOpen && remainingCount > 0 && (
+                            <span style={{
+                              padding: '3px 8px',
+                              fontSize: '13px',
+                              color: theme === 'sun' ? '#666' : '#999',
+                              fontWeight: 400,
+                              flexShrink: 0
+                            }}>
+                              +{remainingCount}...
+                            </span>
+                          )}
+                  </div>
+                      );
+                    })()}
+                    <span style={{ 
+                      transform: isLessonFocusDropdownOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+                      transition: 'transform 0.3s ease',
+                      fontSize: '12px',
+                      color: primaryColor,
+                      flexShrink: 0
+                    }}>▼</span>
                 </div>
 
+                  {/* Dropdown Menu */}
+                  {isLessonFocusDropdownOpen && (
+                    <>
+                      {/* Backdrop */}
+                      <div
+                        onClick={() => setIsLessonFocusDropdownOpen(false)}
+                        style={{
+                          position: 'fixed',
+                          top: 0,
+                          left: 0,
+                          right: 0,
+                          bottom: 0,
+                          zIndex: 998
+                        }}
+                      />
+                      
+                      {/* Dropdown Panel */}
+                      <div
+                        style={{
+                          position: 'absolute',
+                          top: '100%',
+                          left: 0,
+                          marginTop: '8px',
+                          width: '100%',
+                          maxHeight: '300px',
+                          background: theme === 'sun' 
+                            ? 'linear-gradient(135deg, rgba(255, 255, 255, 0.98) 0%, rgba(240, 249, 255, 0.98) 100%)'
+                            : 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(244, 240, 255, 0.95) 100%)',
+                          backdropFilter: 'blur(10px)',
+                          borderRadius: '16px',
+                          border: `2px solid ${primaryColor}40`,
+                          boxShadow: theme === 'sun'
+                            ? '0 8px 32px rgba(24, 144, 255, 0.2)'
+                            : '0 8px 32px rgba(139, 92, 246, 0.2)',
+                          zIndex: 999,
+                          overflow: 'hidden',
+                          display: 'flex',
+                          flexDirection: 'column'
+                        }}
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {/* Options List */}
+                        <div style={{
+                          flex: 1,
+                          overflowY: 'auto',
+                          maxHeight: '250px',
+                          padding: '8px',
+                          scrollbarWidth: 'thin',
+                          scrollbarColor: `${primaryColor}40 transparent`
+                        }}>
+                          {lessonFocusOptions.map((option) => {
+                              const isSelected = lessonFocus.includes(option.value);
+                              const isCustom = option.value === 'CUSTOM';
+                              // For Custom Focus, checkbox is checked if input is open OR if there are custom focus items
+                              const isCustomChecked = isCustom ? (isCustomFocusInputOpen || customLessonFocus.length > 0) : isSelected;
+                              
+                              return (
+                                <div key={option.value} style={{ marginBottom: '8px' }}>
+                                  <div
+                                    onClick={() => {
+                                      if (isCustom) {
+                                        // Toggle Custom Focus input field (don't add to selection until text is entered)
+                                        if (isCustomFocusInputOpen) {
+                                          setIsCustomFocusInputOpen(false);
+                                          // Only remove from selection if there are no custom focus items
+                                          if (customLessonFocus.length === 0) {
+                                            setLessonFocus(prev => prev.filter(f => f !== 'CUSTOM'));
+                                          }
+                                        } else {
+                                          setIsCustomFocusInputOpen(true);
+                                          // Focus on custom input if it exists
+                                          setTimeout(() => {
+                                            const input = document.getElementById('custom-focus-input');
+                                            if (input) input.focus();
+                                          }, 100);
+                                        }
+                                      } else {
+                                        // Toggle regular option
+                                        if (isSelected) {
+                                          setLessonFocus(prev => prev.filter(f => f !== option.value));
+                                        } else {
+                                          setLessonFocus(prev => [...prev, option.value]);
+                                        }
+                                      }
+                                    }}
+                                    style={{
+                                      padding: isCustom && isCustomChecked ? '12px 16px 8px 16px' : '12px 16px',
+                                      borderRadius: isCustom && isCustomChecked ? '8px 8px 0 0' : '8px',
+                                      cursor: 'pointer',
+                                      background: isCustomChecked
+                                        ? primaryColorWithAlpha
+                                        : 'transparent',
+                                      border: `2px solid ${
+                                        isCustomChecked
+                                          ? primaryColor
+                                          : `${primaryColor}20`
+                                      }`,
+                                      borderBottom: isCustom && isCustomChecked ? 'none' : `2px solid ${
+                                        isCustomChecked
+                                          ? primaryColor
+                                          : `${primaryColor}20`
+                                      }`,
+                                      transition: 'all 0.2s ease',
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      gap: '12px'
+                                    }}
+                                    onMouseEnter={(e) => {
+                                      if (!isCustomChecked) {
+                                        e.currentTarget.style.background = theme === 'sun'
+                                          ? 'rgba(24, 144, 255, 0.08)'
+                                          : 'rgba(139, 92, 246, 0.12)';
+                                        e.currentTarget.style.borderColor = `${primaryColor}60`;
+                                      }
+                                    }}
+                                    onMouseLeave={(e) => {
+                                      if (!isCustomChecked) {
+                                        e.currentTarget.style.background = 'transparent';
+                                        e.currentTarget.style.borderColor = `${primaryColor}20`;
+                                      }
+                                    }}
+                                  >
+                                    <input
+                                      type="checkbox"
+                                      checked={isCustomChecked}
+                                      readOnly
+                                      style={{
+                                        width: '18px',
+                                        height: '18px',
+                                        accentColor: primaryColor,
+                                        cursor: 'pointer',
+                                        flexShrink: 0
+                                      }}
+                                    />
+                                    <span style={{
+                                      fontSize: '14px',
+                                      fontWeight: 400,
+                                      color: isCustomChecked
+                                        ? primaryColor
+                                        : (theme === 'sun' ? '#000' : '#000'),
+                                      flex: 1
+                                    }}>
+                                      {option.label}
+                                    </span>
+                                    {isCustomChecked && !isCustom && (
+                                      <CheckOutlined style={{ 
+                                        color: primaryColor, 
+                                        fontSize: '16px',
+                                        flexShrink: 0
+                                      }} />
+                                    )}
+                                    {isCustom && (
+                                      <span style={{ 
+                                        color: primaryColor, 
+                                        fontSize: '12px',
+                                        flexShrink: 0,
+                                        transform: isCustomChecked ? 'rotate(180deg)' : 'rotate(0deg)',
+                                        transition: 'transform 0.3s ease'
+                                      }}>▼</span>
+                                    )}
+                </div>
+
+                                  {/* Custom Focus Input - Show when checkbox is checked, inside the same container */}
+                                  {isCustom && isCustomChecked && (
+                                    <div
+                                      style={{
+                                        padding: '12px 16px',
+                                        background: theme === 'sun'
+                                          ? `linear-gradient(135deg, ${primaryColorWithAlpha}, rgba(240, 249, 255, 0.95))`
+                                          : `linear-gradient(135deg, ${primaryColorWithAlpha}, rgba(244, 240, 255, 0.95))`,
+                                        border: `2px solid ${primaryColor}`,
+                                        borderTop: 'none',
+                                        borderRadius: '0 0 8px 8px',
+                                        animation: 'fadeIn 0.3s ease'
+                                      }}
+                                      onClick={(e) => e.stopPropagation()}
+                                    >
+                  <Input
+                                        id="custom-focus-input"
+                    value={customLessonFocusInput}
+                                        onChange={(e) => {
+                                          const value = e.target.value;
+                                          setCustomLessonFocusInput(value);
+                                        }}
+                                        onKeyDown={(e) => {
+                                          if (e.key === 'Enter' && customLessonFocusInput.trim()) {
+                                            e.preventDefault();
+                                            // Add to custom focus array
+                                            setCustomLessonFocus(prev => [...prev, customLessonFocusInput.trim()]);
+                                            // Add CUSTOM to lessonFocus if not already present
+                                            if (!lessonFocus.includes('CUSTOM')) {
+                                              setLessonFocus(prev => [...prev, 'CUSTOM']);
+                                            }
+                                            // Clear input
+                                            setCustomLessonFocusInput('');
+                                          }
+                                        }}
+                                        onBlur={(e) => {
+                                          // Add to custom focus array when blur if there's text
+                                          if (customLessonFocusInput.trim()) {
+                                            setCustomLessonFocus(prev => [...prev, customLessonFocusInput.trim()]);
+                                            // Add CUSTOM to lessonFocus if not already present
+                                            if (!lessonFocus.includes('CUSTOM')) {
+                                              setLessonFocus(prev => [...prev, 'CUSTOM']);
+                                            }
+                                            // Clear input
+                                            setCustomLessonFocusInput('');
+                                          }
+                                          // Update border style
+                                          e.currentTarget.style.borderColor = customLessonFocus.length > 0 
+                                            ? primaryColor 
+                                            : `${primaryColor}70`;
+                                          e.currentTarget.style.boxShadow = customLessonFocus.length > 0 
+                                            ? `0 0 0 2px ${primaryColor}15`
+                                            : 'none';
+                                        }}
+                                     
+                    style={{
+                                          width: '100%',
+                      borderRadius: '8px',
+                                          border: `2px solid ${customLessonFocus.length > 0 ? primaryColor : `${primaryColor}70`}`,
+                                          background: theme === 'sun' ? '#fff' : 'rgba(255, 255, 255, 0.98)',
+                                          fontSize: '14px',
+                                          padding: '10px 14px',
+                                          fontWeight: 400,
+                                          transition: 'all 0.3s ease',
+                                          outline: 'none'
+                                        }}
+                                        onClick={(e) => e.stopPropagation()}
+                                        onFocus={(e) => {
+                                          e.stopPropagation();
+                                          e.currentTarget.style.borderColor = primaryColor;
+                                          e.currentTarget.style.boxShadow = `0 0 0 3px ${primaryColor}20`;
+                    }}
+                  />
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
+                        </div>
+                      </div>
+                    </>
+                  )}
+                  </div>
+                </div>
+
+                {/* Chapter and Lesson - Side by Side (Read-only) */}
+                <div style={{ display: 'flex', gap: '16px', marginBottom: '16px' }}>
+                  {/* Chapter - Read-only */}
+                  <div style={{ flex: 1, position: 'relative' }}>
+                    <Typography.Text style={{ display: 'block', marginBottom: '8px', color: theme === 'sun' ? '#1E40AF' : '#8377A0', fontSize: '16px', fontWeight: 400 }}>
+                      Chapter
+                  </Typography.Text>
+                    <div
+                    style={{
+                        width: '100%',
+                        minHeight: '36px',
+                        padding: '6px 12px',
+                      borderRadius: '8px',
+                      border: `2px solid ${primaryColor}60`,
+                      background: theme === 'sun' ? '#fff' : 'rgba(255, 255, 255, 0.1)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        transition: 'all 0.3s ease',
+                        position: 'relative',
+                        zIndex: 10,
+                        cursor: 'default',
+                        opacity: 0.7
+                      }}
+                    >
+                      <span style={{ 
+                        color: hierarchy?.chapter?.chapterName || hierarchy?.chapter?.name
+                          ? (theme === 'sun' ? '#000' : '#fff') 
+                          : (theme === 'sun' ? '#999' : '#999'),
+                        fontSize: '14px',
+                        fontWeight: 400
+                      }}>
+                        {hierarchy?.chapter?.chapterName || hierarchy?.chapter?.name || '—'}
+                      </span>
+                    </div>
+                </div>
+
+                  {/* Lesson - Read-only */}
+                  <div style={{ flex: 1, position: 'relative' }}>
+                    <Typography.Text style={{ display: 'block', marginBottom: '8px', color: theme === 'sun' ? '#1E40AF' : '#8377A0', fontSize: '16px', fontWeight: 400 }}>
+                      Lesson
+                    </Typography.Text>
+                    <div
+                      style={{
+                        width: '100%',
+                        minHeight: '36px',
+                        padding: '6px 12px',
+                        borderRadius: '8px',
+                        border: `2px solid ${primaryColor}60`,
+                        background: theme === 'sun' ? '#fff' : 'rgba(255, 255, 255, 0.1)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        transition: 'all 0.3s ease',
+                        position: 'relative',
+                        zIndex: 10,
+                        cursor: 'default',
+                        opacity: 0.7
+                      }}
+                    >
+                      <span style={{ 
+                        color: hierarchy?.lesson?.lessonName || hierarchy?.lesson?.name
+                          ? (theme === 'sun' ? '#000' : '#fff') 
+                          : (theme === 'sun' ? '#999' : '#999'),
+                        fontSize: '14px',
+                        fontWeight: 400
+                      }}>
+                        {hierarchy?.lesson?.lessonName || hierarchy?.lesson?.name || '—'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Vocabulary List and Description/Prompt - Side by Side */}
+                <div style={{ display: 'flex', gap: '16px', marginBottom: '16px' }}>
                 {/* Vocabulary List */}
-                <div style={{ marginBottom: '16px' }}>
-                  <Typography.Text strong style={{ display: 'block', marginBottom: '8px', color: theme === 'sun' ? '#1E40AF' : '#8377A0', fontSize: '14px' }}>
+                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+                    <Typography.Text style={{ display: 'block', marginBottom: '8px', color: theme === 'sun' ? '#1E40AF' : '#8377A0', fontSize: '16px', fontWeight: 400 }}>
                     Vocabulary List
                   </Typography.Text>
                   <TextArea
                     value={vocabularyList}
                     onChange={(e) => setVocabularyList(e.target.value)}
-                    placeholder="Enter vocabulary list (optional)"
-                    autoSize={{ minRows: 3, maxRows: 6 }}
+                      autoSize={{ minRows: 4, maxRows: 8 }}
                     style={{
+                        width: '100%',
                       borderRadius: '8px',
                       border: `2px solid ${primaryColor}60`,
                       background: theme === 'sun' ? '#fff' : 'rgba(255, 255, 255, 0.1)',
+                        fontSize: '14px',
+                        outline: 'none',
                     }}
                   />
                 </div>
 
                 {/* Description/Prompt */}
-                <div style={{ marginBottom: '16px' }}>
-                  <Typography.Text strong style={{ display: 'block', marginBottom: '8px', color: theme === 'sun' ? '#1E40AF' : '#8377A0', fontSize: '14px' }}>
-                    Description/Prompt <span style={{ color: 'red' }}>*</span>
+                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+                    <Typography.Text style={{ display: 'block', marginBottom: '8px', color: theme === 'sun' ? '#1E40AF' : '#8377A0', fontSize: '16px', fontWeight: 400 }}>
+                      Description
                   </Typography.Text>
                   <TextArea
                     value={promptDescription}
                     onChange={(e) => setPromptDescription(e.target.value)}
-                    autoSize={{ minRows: 6, maxRows: 10 }}
-                    placeholder={t('dailyChallenge.pleaseEnterPrompt') || 'Enter prompt here'}
+                      autoSize={{ minRows: 4, maxRows: 8 }}
                     style={{
-                      fontSize: '15px',
+                        width: '100%',
+                      fontSize: '14px',
                       borderRadius: '8px',
                       border: `2px solid ${primaryColor}99`,
                       background: theme === 'sun'
@@ -1846,6 +2257,7 @@ const AIGenerateQuestions = () => {
                       boxShadow: 'none',
                     }}
                   />
+                  </div>
                 </div>
               </Card>
 
@@ -1916,7 +2328,7 @@ const AIGenerateQuestions = () => {
                       >
                         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                           <CloudUploadOutlined style={{ fontSize: 24, color: '#000000' }} />
-                          <Typography.Text strong style={{ color: theme === 'sun' ? '#1E40AF' : '#8377A0' }}>
+                          <Typography.Text style={{ color: theme === 'sun' ? '#1E40AF' : '#8377A0', fontWeight: 400 }}>
                             Generate question from file
                           </Typography.Text>
                         </div>
@@ -1942,7 +2354,7 @@ const AIGenerateQuestions = () => {
                       >
                         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                           <EditOutlined style={{ fontSize: 24, color: '#000000' }} />
-                          <Typography.Text strong style={{ color: theme === 'sun' ? '#1E40AF' : '#8377A0' }}>
+                          <Typography.Text style={{ color: theme === 'sun' ? '#1E40AF' : '#8377A0', fontWeight: 400 }}>
                             Generate question from settings 
                           </Typography.Text>
                         </div>
@@ -2256,9 +2668,10 @@ const AIGenerateQuestions = () => {
                     alignItems: 'center'
                   }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                      <Typography.Text strong style={{ 
+                      <Typography.Text style={{ 
                         fontSize: '16px', 
-                        color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' 
+                        color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)',
+                        fontWeight: 400
                       }}>
                         {question.title}
                       </Typography.Text>
