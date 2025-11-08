@@ -131,6 +131,9 @@ const notificationApi = {
 		};
 
 		const handleEvent = (eventName, dataStr) => {
+			// Log tất cả events để debug
+			console.log(`🔍 [SSE] handleEvent - eventName: "${eventName}", dataStr length: ${dataStr?.length || 0}`);
+			
 			if (eventName === 'connect') {
 				// Event connect - có thể chứa thông tin userId
 				try {
@@ -184,20 +187,28 @@ const notificationApi = {
 				return;
 			}
 
-			if (eventName === 'device_mismatch') {
-				// Device mismatch event từ backend
+			if (eventName === 'device_mismatch' || eventName === 'DEVICE_MISMATCH') {
+				// Device mismatch event từ backend (hỗ trợ cả lowercase và uppercase)
+				// Format SSE data: {"content": "...", "timestamp": "...", "deviceFingerprint": "...", "ipAddress": "..."}
+				console.log(`✅ [SSE] DEVICE_MISMATCH detected! eventName: "${eventName}"`);
+				console.log(`✅ [SSE] dataStr:`, dataStr);
 				try {
 					const data = JSON.parse(dataStr);
+					console.log(`✅ [SSE] Parsed device_mismatch data:`, data);
 					if (onMessage) {
 						onMessage({
-							type: 'device_mismatch',
+							type: 'device_mismatch', // Normalize về lowercase cho consistency
 							data: data
 						});
+						console.log(`✅ [SSE] onMessage called with device_mismatch`);
+					} else {
+						console.warn(`⚠️ [SSE] onMessage is null!`);
 					}
 				} catch (e) {
+					console.error(`❌ [SSE] Error parsing device_mismatch data:`, e);
 					if (onMessage) {
 						onMessage({
-							type: 'device_mismatch',
+							type: 'device_mismatch', // Normalize về lowercase cho consistency
 							data: { raw: dataStr }
 						});
 					}
@@ -206,6 +217,7 @@ const notificationApi = {
 			}
 
 			// Các event khác
+			console.log(`ℹ️ [SSE] Unknown/unhandled event: "${eventName}"`);
 			if (onMessage) {
 				onMessage({
 					type: eventName,
