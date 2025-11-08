@@ -24,6 +24,13 @@ import { spaceToast } from "../../../component/SpaceToastify";
 import dailyChallengeApi from "../../../apis/backend/dailyChallengeManagement";
 import { useTestSecurity } from "../../../hooks/useTestSecurity";
 import TextTranslator from "../../../component/TextTranslator/TextTranslator";
+import { 
+  getDeviceFingerprint, 
+  getSavedFingerprintHash,
+  saveFingerprintHash,
+  compareFingerprints 
+} from '../../../utils/fingerprintUtils';
+import { notificationApi } from '../../../apis/apis';
 
 // Context for collecting answers from child components
 const AnswerCollectionContext = createContext(null);
@@ -6857,6 +6864,11 @@ const StudentDailyChallengeTake = () => {
   const pendingLogsRef = useRef([]); // Store logs that need to be sent to backend
   const [isAntiCheatEnabled, setIsAntiCheatEnabled] = useState(false);
 
+  // Device fingerprint state
+  const deviceFingerprintHashRef = useRef(null);
+  const sseConnectionRef = useRef(null);
+  const sessionStartSentRef = useRef(false); // Track if session start has been sent
+
   const extractSubmissionList = useCallback((response) => {
     if (!response) return [];
     if (Array.isArray(response)) return response;
@@ -7095,6 +7107,60 @@ const StudentDailyChallengeTake = () => {
     }
   }, []);
 
+  // Send session start event with device fingerprint
+  const sendSessionStartEvent = useCallback(async (submissionChallengeId) => {
+    // Chỉ gửi 1 lần mỗi session
+    if (sessionStartSentRef.current) {
+      return;
+    }
+
+    try {
+      // Lấy device fingerprint và hash
+      const deviceData = await getDeviceFingerprint();
+      const currentHash = deviceData.hash;
+      deviceFingerprintHashRef.current = currentHash;
+
+      // Lấy fingerprint đã lưu (nếu có)
+      const savedFingerprint = getSavedFingerprintHash('dailyChallengeDeviceFingerprint');
+      
+      // So sánh fingerprint
+      let isDeviceMismatch = false;
+      if (savedFingerprint && savedFingerprint.hash) {
+        isDeviceMismatch = !compareFingerprints(currentHash, savedFingerprint.hash);
+        
+        // Nếu device khác, backend sẽ gửi device_mismatch qua SSE
+        if (isDeviceMismatch) {
+          console.warn('⚠️ Device fingerprint mismatch detected!');
+        }
+      } else {
+        // Lần đầu tiên, lưu fingerprint
+        saveFingerprintHash(currentHash, 'dailyChallengeDeviceFingerprint');
+      }
+
+      // Tạo session start log
+      const sessionStartLog = {
+        eventId: 0,
+        event: "session_start",
+        timestamp: new Date().toISOString(),
+        oldValue: savedFingerprint ? [savedFingerprint.hash] : [],
+        newValue: [currentHash],
+        durationMs: 0,
+        content: isDeviceMismatch ? "Device fingerprint mismatch detected" : "Session started",
+        deviceFingerprint: currentHash,
+        // ipAddress không cần truyền theo note
+      };
+
+      // Gửi log qua API
+      if (submissionChallengeId) {
+        await dailyChallengeApi.appendAntiCheatLogs(submissionChallengeId, [sessionStartLog]);
+        sessionStartSentRef.current = true;
+        console.log('✅ Session start event sent with device fingerprint');
+      }
+    } catch (error) {
+      console.error('❌ Error sending session start event:', error);
+    }
+  }, []);
+
   // Helper function to get clipboard content (for paste) - async
   const getClipboardContent = useCallback(async () => {
     try {
@@ -7321,6 +7387,11 @@ const StudentDailyChallengeTake = () => {
         // Update submissionId state
         setSubmissionId(finalSubmissionId);
 
+        // Gửi session start event khi bắt đầu làm bài (chỉ 1 lần)
+        if (finalSubmissionId && !effectiveViewOnly) {
+          sendSessionStartEvent(finalSubmissionId);
+        }
+
         // Fetch timing info and initialize countdown if applicable
         if (finalSubmissionId && !effectiveViewOnly) {
           dailyChallengeApi.getSubmissionChallengeInfo(finalSubmissionId)
@@ -7512,7 +7583,59 @@ const StudentDailyChallengeTake = () => {
           setIsAntiCheatEnabled(false);
         }
       });
-  }, [id, location.state, isViewOnly]);
+  }, [id, location.state, isViewOnly, sendSessionStartEvent]);
+
+  // Kết nối SSE để nhận device_mismatch event
+  useEffect(() => {
+    // Reset session start sent flag khi submissionId thay đổi
+    sessionStartSentRef.current = false;
+
+    if (!submissionId || isViewOnly) return;
+
+    const connectSSE = () => {
+      const connection = notificationApi.connectSSE(
+        // onMessage
+        (message) => {
+          if (message.type === 'device_mismatch') {
+            console.warn('⚠️ Device mismatch detected via SSE:', message.data);
+            // Hiển thị warning modal cho user
+            setViolationWarningData({
+              type: 'device_mismatch',
+              message: 'Phát hiện thiết bị khác. Vui lòng sử dụng thiết bị đã đăng ký.',
+            });
+            setViolationWarningModalVisible(true);
+          }
+        },
+        // onError
+        (error) => {
+          console.error('SSE Error:', error);
+          // Retry connection after 5 seconds
+          setTimeout(() => {
+            if (submissionId && !isViewOnly) {
+              connectSSE();
+            }
+          }, 5000);
+        },
+        // onConnect
+        () => {
+          console.log('SSE connection established for device monitoring');
+        }
+      );
+
+      sseConnectionRef.current = connection;
+    };
+
+    connectSSE();
+
+    // Cleanup
+    return () => {
+      if (sseConnectionRef.current) {
+        sseConnectionRef.current.disconnect();
+        sseConnectionRef.current = null;
+      }
+    };
+  }, [submissionId, isViewOnly]);
+
   // Start or update countdown based on absolute deadline
   useEffect(() => {
     if (loading || isViewOnly || !isTimedChallenge || !deadlineTsRef.current) return;
@@ -8791,12 +8914,15 @@ const StudentDailyChallengeTake = () => {
                   violationWarningData.type === 'tab_switch' ? '🔄 Chuyển tab' :
                   violationWarningData.type === 'copy' ? '📋 Copy' :
                   violationWarningData.type === 'paste' ? '📥 Paste' :
+                  violationWarningData.type === 'device_mismatch' ? '🔐 Thiết bị khác' :
                   violationWarningData.type
                 }
               </p>
-              <p style={{ marginBottom: '8px', fontSize: '14px'}}>
-                <strong>Thời gian:</strong> {violationWarningData.timestamp}
-              </p>
+              {violationWarningData.timestamp && (
+                <p style={{ marginBottom: '8px', fontSize: '14px'}}>
+                  <strong>Thời gian:</strong> {violationWarningData.timestamp}
+                </p>
+              )}
               {violationWarningData.type === 'copy' && violationWarningData.oldValue && violationWarningData.oldValue.length > 0 && (
                 <p style={{ marginBottom: '8px', fontSize: '14px'}}>
                   <strong>Nội dung đã copy:</strong> 
