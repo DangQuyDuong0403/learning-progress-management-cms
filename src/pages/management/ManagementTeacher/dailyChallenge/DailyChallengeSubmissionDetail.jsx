@@ -119,6 +119,7 @@ const DailyChallengeSubmissionDetail = () => {
   const [savingFeedback, setSavingFeedback] = useState(false);
   const [overallFeedbackModalVisible, setOverallFeedbackModalVisible] = useState(false);
   const [overallFeedbackDraft, setOverallFeedbackDraft] = useState('');
+  const [finalScoreDraft, setFinalScoreDraft] = useState('');
   const [savingGrading, setSavingGrading] = useState(false);
   const [antiCheatModalVisible, setAntiCheatModalVisible] = useState(false);
   const [antiCheatExpanded, setAntiCheatExpanded] = useState({});
@@ -648,13 +649,82 @@ const DailyChallengeSubmissionDetail = () => {
     }
   };
   
+  // Helper function to parse text and convert image URLs to images
+  const parseTextWithImages = (text) => {
+    if (!text) return text;
+    
+    // Regex to match URLs (including image URLs)
+    const urlRegex = /(https?:\/\/[^\s]+)/g;
+    const imageExtensions = /\.(jpg|jpeg|png|gif|bmp|webp|svg)(\?|$)/i;
+    
+    const parts = [];
+    let lastIndex = 0;
+    let match;
+    
+    while ((match = urlRegex.exec(text)) !== null) {
+      // Add text before the URL
+      if (match.index > lastIndex) {
+        parts.push(text.substring(lastIndex, match.index));
+      }
+      
+      const url = match[0];
+      // Check if it's an image URL (check if URL contains image extension before query params or at end)
+      if (imageExtensions.test(url)) {
+        parts.push(
+          <img 
+            key={`img-${match.index}`}
+            src={url} 
+            alt="Student uploaded image"
+            style={{
+              maxWidth: '100%',
+              height: 'auto',
+              display: 'block',
+              margin: '12px 0',
+              borderRadius: '8px',
+              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)'
+            }}
+            onError={(e) => {
+              // If image fails to load, show the URL as text
+              e.target.style.display = 'none';
+              const urlText = document.createTextNode(url);
+              e.target.parentNode.appendChild(urlText);
+            }}
+          />
+        );
+      } else {
+        // Regular URL - keep as text or make it a link
+        parts.push(
+          <a 
+            key={`url-${match.index}`}
+            href={url} 
+            target="_blank" 
+            rel="noopener noreferrer"
+            style={{ color: theme === 'sun' ? '#1890ff' : '#8B5CF6', wordBreak: 'break-all' }}
+          >
+            {url}
+          </a>
+        );
+      }
+      
+      lastIndex = match.index + url.length;
+    }
+    
+    // Add remaining text
+    if (lastIndex < text.length) {
+      parts.push(text.substring(lastIndex));
+    }
+    
+    // If no URLs found, return original text
+    return parts.length > 0 ? parts : text;
+  };
+
   // Render essay with highlights
   const renderEssayWithHighlights = (text, sectionId) => {
     if (!text) return text;
     
     const sectionFeedbacks = writingSectionFeedbacks[sectionId] || [];
     if (sectionFeedbacks.length === 0) {
-      return text;
+      return parseTextWithImages(text);
     }
     
     // Sort feedbacks by start position
@@ -705,9 +775,10 @@ const DailyChallengeSubmissionDetail = () => {
       if (interval.start > currentIndex) {
         const plainText = text.substring(currentIndex, interval.start);
         if (plainText) {
+          const parsedPlainText = parseTextWithImages(plainText);
           parts.push(
             <span key={`text-${currentIndex}-${interval.start}`}>
-              {plainText}
+              {parsedPlainText}
             </span>
           );
         }
@@ -749,6 +820,8 @@ const DailyChallengeSubmissionDetail = () => {
         setHoveredHighlightId(null);
       };
       
+      // Parse interval text for images (but keep highlighting for non-image parts)
+      const parsedIntervalText = parseTextWithImages(intervalText);
       parts.push(
         <span
           key={`highlight-${interval.start}-${interval.end}-${idx}`}
@@ -766,7 +839,7 @@ const DailyChallengeSubmissionDetail = () => {
             boxShadow,
           }}
         >
-          {intervalText}
+          {parsedIntervalText}
         </span>
       );
       
@@ -777,9 +850,10 @@ const DailyChallengeSubmissionDetail = () => {
     if (currentIndex < text.length) {
       const remainingText = text.substring(currentIndex);
       if (remainingText) {
+        const parsedRemainingText = parseTextWithImages(remainingText);
         parts.push(
           <span key={`text-final-${currentIndex}`}>
-            {remainingText}
+            {parsedRemainingText}
           </span>
         );
       }
@@ -1743,7 +1817,10 @@ const DailyChallengeSubmissionDetail = () => {
     try {
       setSavingFeedback(true);
       const stripHtml = (html) => (html || '').replace(/<[^>]*>/g, '').trim();
-      const payload = { overallFeedback: stripHtml(overallFeedbackDraft) };
+      const payload = {
+        finalScore: finalScoreDraft ? Number(finalScoreDraft) : 0,
+        overallFeedback: stripHtml(overallFeedbackDraft)
+      };
       const res = await dailyChallengeApi.saveGradingSummary(subId, payload);
       const beMsg = res?.message || res?.msg || res?.data?.message || res?.data?.msg || 'Saved';
       // Update local view (sidebar)
@@ -2449,7 +2526,7 @@ const DailyChallengeSubmissionDetail = () => {
                     {index === 0 && writingSectionFeedbacks[section.id]?.length > 0 ? (
                       renderEssayWithHighlights(studentEssayText, section.id)
                     ) : (
-                      studentEssayText
+                      parseTextWithImages(studentEssayText)
                     )}
                   </div>
                   {/* Floating Toolbar for text selection */}
@@ -4284,7 +4361,11 @@ const DailyChallengeSubmissionDetail = () => {
                 <Button
                   icon={<FileTextOutlined />}
                   loading={savingFeedback}
-                  onClick={() => { setOverallFeedbackDraft(teacherFeedback || ''); setOverallFeedbackModalVisible(true); }}
+                  onClick={() => { 
+                    setOverallFeedbackDraft(teacherFeedback || ''); 
+                    setFinalScoreDraft(submissionData?.submission?.score?.toString() || '');
+                    setOverallFeedbackModalVisible(true); 
+                  }}
                 className={`create-button ${theme}-create-button`}
               style={{
                 height: '40px',
@@ -4301,7 +4382,7 @@ const DailyChallengeSubmissionDetail = () => {
                 boxShadow: theme === 'sun' ? '0 2px 8px rgba(60, 153, 255, 0.3)' : '0 2px 8px rgba(131, 119, 160, 0.3)'
                 }}
               >
-                {(teacherFeedback && teacherFeedback.replace(/<[^>]*>/g,'').trim().length > 0) ? 'Edit Feedback' : 'Add Feedback'}
+                {(teacherFeedback && teacherFeedback.replace(/<[^>]*>/g,'').trim().length > 0) ? 'Edit Grading' : 'Finalize Grading'}
             </Button>
           </div>
             )}
@@ -5835,7 +5916,7 @@ const DailyChallengeSubmissionDetail = () => {
               padding: '6px 0'
             }}
           >
-            {teacherFeedback && teacherFeedback.replace(/<[^>]*>/g,'').trim().length > 0 ? 'Edit Feedback' : 'Add Feedback'}
+            {teacherFeedback && teacherFeedback.replace(/<[^>]*>/g,'').trim().length > 0 ? 'Edit Grading' : 'Add Grading'}
           </div>
         }
         open={overallFeedbackModalVisible}
@@ -5848,7 +5929,7 @@ const DailyChallengeSubmissionDetail = () => {
           >
             Cancel
           </Button>,
-          <Button key="clear" onClick={() => setOverallFeedbackDraft('')}
+          <Button key="clear" onClick={() => { setOverallFeedbackDraft(''); setFinalScoreDraft(''); }}
             style={{ height: '36px', borderRadius: '6px', padding: '0 22px' }}
           >
             Clear
@@ -5885,6 +5966,26 @@ const DailyChallengeSubmissionDetail = () => {
             color: #000 !important; 
           }
         `}</style>
+        <div style={{ marginBottom: 16 }}>
+          <label style={{ display: 'block', marginBottom: 8, fontWeight: 500, color: theme === 'sun' ? '#1E40AF' : '#8377A0' }}>
+            Final Score
+          </label>
+          <Input
+            type="number"
+            value={finalScoreDraft}
+            onChange={(e) => setFinalScoreDraft(e.target.value)}
+            placeholder="Enter final score"
+            min={0}
+            style={{
+              width: '100%',
+              height: '40px',
+              borderRadius: '8px',
+              border: `2px solid ${theme === 'sun' ? 'rgba(24, 144, 255, 0.3)' : 'rgba(139, 92, 246, 0.3)'}`,
+              padding: '0 12px',
+              fontSize: '16px'
+            }}
+          />
+        </div>
         <div className="feedback-editor-wrap" style={{ marginTop: 6, borderRadius: 12, border: `2px solid ${theme === 'sun' ? 'rgba(24, 144, 255, 0.5)' : 'rgba(139, 92, 246, 0.5)'}`, background: theme === 'sun' ? 'rgba(24,144,255,0.08)' : 'rgba(139,92,246,0.12)' }}>
           <CKEditor
             editor={ClassicEditor}
