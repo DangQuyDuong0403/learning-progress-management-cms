@@ -184,6 +184,27 @@ const notificationApi = {
 				return;
 			}
 
+			if (eventName === 'device_mismatch') {
+				// Device mismatch event từ backend
+				try {
+					const data = JSON.parse(dataStr);
+					if (onMessage) {
+						onMessage({
+							type: 'device_mismatch',
+							data: data
+						});
+					}
+				} catch (e) {
+					if (onMessage) {
+						onMessage({
+							type: 'device_mismatch',
+							data: { raw: dataStr }
+						});
+					}
+				}
+				return;
+			}
+
 			// Các event khác
 			if (onMessage) {
 				onMessage({
