@@ -136,6 +136,20 @@ const StudentDailyChallengeList = () => {
     }
   }, [t]);
 
+  // Helper to extract error message from backend response
+  const getErrorMessage = useCallback((error, defaultMessage) => {
+    if (error?.response?.data?.error) {
+      return error.response.data.error;
+    }
+    if (error?.response?.data?.message) {
+      return error.response.data.message;
+    }
+    if (error?.message) {
+      return error.message;
+    }
+    return defaultMessage || t('common.errorOccurred', 'An error occurred');
+  }, [t]);
+
   // Load data from API
   useEffect(() => {
     const resolvedClassId = classId || location.state?.classId;
@@ -176,6 +190,9 @@ const StudentDailyChallengeList = () => {
           setTotalItems(0);
         }
       } catch (error) {
+        console.error('Error fetching daily challenges:', error);
+        const errorMessage = getErrorMessage(error, 'Failed to load daily challenges');
+        spaceToast.error(errorMessage);
         setAllChallenges([]);
         setTotalItems(0);
       } finally {
@@ -184,7 +201,7 @@ const StudentDailyChallengeList = () => {
     };
 
     fetchData();
-  }, [classId, location.state?.classId, searchDebounce]);
+  }, [classId, location.state?.classId, searchDebounce, getErrorMessage, t]);
 
   // Fetch class data for header display
   useEffect(() => {
@@ -204,11 +221,13 @@ const StudentDailyChallengeList = () => {
         }
       } catch (error) {
         console.error('Error fetching class data:', error);
+        const errorMessage = getErrorMessage(error, t('common.errorLoadingClassData', 'Failed to load class data'));
+        spaceToast.error(errorMessage);
       }
     };
 
     fetchClassData();
-  }, [classId, location.state?.classId]);
+  }, [classId, location.state?.classId, getErrorMessage, t]);
 
   // Reset ref when classId changes
   useEffect(() => {
@@ -361,7 +380,8 @@ const StudentDailyChallengeList = () => {
         // Success - continue with navigation
       } catch (error) {
         console.error('Error starting submission:', error);
-        spaceToast.error(t('dailyChallenge.errorStartingChallenge', 'Failed to start challenge. Please try again.'));
+        const errorMessage = getErrorMessage(error, t('dailyChallenge.errorStartingChallenge', 'Failed to start challenge. Please try again.'));
+        spaceToast.error(errorMessage);
         return; // Don't navigate if API call fails
       }
     }
