@@ -106,7 +106,7 @@ const processPassageContent = (content, theme, challengeType) => {
 
 
 // Section Question Component for Reading/Listening sections
-const SectionQuestionItem = ({ question, index, theme, sectionScore }) => {
+const SectionQuestionItem = ({ question, index, theme, sectionScore, globalQuestionNumbers }) => {
   const registerAnswerCollector = useContext(AnswerCollectionContext);
   const registerAnswerRestorer = useContext(AnswerRestorationContext);
   const triggerAutoSave = useContext(AutoSaveTriggerContext);
@@ -534,7 +534,7 @@ useEffect(() => {
                           color: '#000000'
                         }}>
                           <div style={{ fontSize: '16px', fontWeight: 600, marginBottom: '8px' }}>
-                            Question {qIndex + 1}:
+                            Question {globalQuestionNumbers?.get(q.id) || (qIndex + 1)}:
                           </div>
                           <MemoizedHTML 
                             className="question-text-content"
@@ -598,7 +598,7 @@ useEffect(() => {
                       color: '#000000'
                     }}>
                       <div style={{ fontSize: '16px', fontWeight: 600, marginBottom: '8px' }}>
-                        Question {qIndex + 1}:
+                        Question {globalQuestionNumbers?.get(q.id) || (qIndex + 1)}:
                       </div>
                       <div>
                         {(() => {
@@ -884,7 +884,7 @@ useEffect(() => {
                                 marginBottom: '12px'
                               }}>
                                 <div style={{ fontSize: '16px', fontWeight: 600, marginBottom: '8px' }}>
-                                  Question {qIndex + 1}:
+                                  Question {globalQuestionNumbers?.get(q.id) || (qIndex + 1)}:
                                 </div>
                                 <div>
                                   {parts.map((part, pIdx) => (
@@ -1050,7 +1050,7 @@ useEffect(() => {
                       color: '#000000'
                     }}>
                       <div style={{ fontSize: '16px', fontWeight: 600, marginBottom: '8px' }}>
-                        Question {qIndex + 1}:
+                        Question {globalQuestionNumbers?.get(q.id) || (qIndex + 1)}:
                       </div>
                       <div>
                         {(() => {
@@ -1226,7 +1226,7 @@ useEffect(() => {
                       return (
                         <div style={{ marginBottom: '16px' }}>
                           <div style={{ fontSize: '16px', fontWeight: 600, marginBottom: '8px' }}>
-                            Question {qIndex + 1}:
+                            Question {globalQuestionNumbers?.get(q.id) || (qIndex + 1)}:
                           </div>
                           <div style={{ fontSize: '15px', fontWeight: 350, marginBottom: '16px', lineHeight: '1.8', color: '#000000' }}>
                             <div 
@@ -1389,7 +1389,7 @@ useEffect(() => {
                           display: 'block',
                           marginBottom: '8px'
                         }}>
-                          Question {qIndex + 1}:
+                          Question {globalQuestionNumbers?.get(q.id) || (qIndex + 1)}:
                         </Typography.Text>
                         <Typography.Text style={{ 
                           fontSize: '15px', 
@@ -1577,7 +1577,7 @@ useEffect(() => {
   );
 };
 // Listening Section Component
-const ListeningSectionItem = ({ question, index, theme, sectionScore }) => {
+const ListeningSectionItem = ({ question, index, theme, sectionScore, globalQuestionNumbers }) => {
   const registerAnswerCollector = useContext(AnswerCollectionContext);
   const registerAnswerRestorer = useContext(AnswerRestorationContext);
   const triggerAutoSave = useContext(AutoSaveTriggerContext);
@@ -2088,7 +2088,7 @@ const ListeningSectionItem = ({ question, index, theme, sectionScore }) => {
                         color: '#000000'
                       }}>
                         <div style={{ fontSize: '16px', fontWeight: 600, marginBottom: '8px' }}>
-                          Question {qIndex + 1}:
+                          Question {globalQuestionNumbers?.get(q.id) || (qIndex + 1)}:
                         </div>
                         <div>
                           {(() => {
@@ -2284,7 +2284,7 @@ const ListeningSectionItem = ({ question, index, theme, sectionScore }) => {
                           <div style={{ marginBottom: '16px' }}>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', minHeight: '200px' }}>
                               <div style={{ padding: '16px', background: theme === 'sun' ? '#f9f9f9' : 'rgba(255,255,255,0.02)', borderRadius: '8px', border: `1px solid ${theme === 'sun' ? '#e8e8e8' : 'rgba(255,255,255,0.1)'}` }}>
-                                <div style={{ fontSize: '16px', fontWeight: 600, marginBottom: '8px' }}>Question {qIndex + 1}:</div>
+                                <div style={{ fontSize: '16px', fontWeight: 600, marginBottom: '8px' }}>Question {globalQuestionNumbers?.get(q.id) || (qIndex + 1)}:</div>
                                 <div style={{ fontSize: '15px', fontWeight: 350, lineHeight: '1.8', color: '#000000' }}>
                                   {parts.map((part, pIdx) => (
                                     <React.Fragment key={pIdx}>
@@ -2339,7 +2339,7 @@ const ListeningSectionItem = ({ question, index, theme, sectionScore }) => {
                         color: '#000000'
                       }}>
                         <div style={{ fontSize: '16px', fontWeight: 600, marginBottom: '8px' }}>
-                          Question {qIndex + 1}:
+                          Question {globalQuestionNumbers?.get(q.id) || (qIndex + 1)}:
                         </div>
                         <div>
                           {(() => {
@@ -2449,7 +2449,7 @@ const ListeningSectionItem = ({ question, index, theme, sectionScore }) => {
 
                         return (
                           <div style={{ marginBottom: '16px' }}>
-                            <div style={{ fontSize: '16px', fontWeight: 600, marginBottom: '8px' }}>Question {qIndex + 1}:</div>
+                            <div style={{ fontSize: '16px', fontWeight: 600, marginBottom: '8px' }}>Question {globalQuestionNumbers?.get(q.id) || (qIndex + 1)}:</div>
                             <div 
                               className="question-text-content"
                               style={{ fontSize: '15px', fontWeight: 350, marginBottom: '16px', lineHeight: '1.8', color: '#000000' }}
@@ -2494,7 +2494,7 @@ const ListeningSectionItem = ({ question, index, theme, sectionScore }) => {
                             display: 'block',
                             marginBottom: '8px'
                           }}>
-                            Question {qIndex + 1}:
+                            Question {globalQuestionNumbers?.get(q.id) || (qIndex + 1)}:
                           </Typography.Text>
                           <div 
                             className="question-text-content"
@@ -4588,7 +4588,7 @@ const SpeakingWithAudioSectionItem = ({ question, index, theme, sectionScore, is
   );
 };
 // Multiple Choice Container Component
-const MultipleChoiceContainer = ({ theme, data }) => {
+const MultipleChoiceContainer = ({ theme, data, globalQuestionNumber }) => {
   const registerAnswerCollector = useContext(AnswerCollectionContext);
   const registerAnswerRestorer = useContext(AnswerRestorationContext);
   const [selectedAnswer, setSelectedAnswer] = React.useState(null);
@@ -4672,7 +4672,7 @@ const MultipleChoiceContainer = ({ theme, data }) => {
           fontSize: '16px', 
           color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' 
         }}>
-          Question 1
+          Question {globalQuestionNumber || data?.orderNumber || '?'}
         </Typography.Text>
         <Typography.Text style={{ 
           fontSize: '14px', 
@@ -4790,7 +4790,7 @@ const MultipleChoiceContainer = ({ theme, data }) => {
 };
 
 // Multiple Select Container Component
-const MultipleSelectContainer = ({ theme, data }) => {
+const MultipleSelectContainer = ({ theme, data, globalQuestionNumber }) => {
   const registerAnswerCollector = useContext(AnswerCollectionContext);
   const registerAnswerRestorer = useContext(AnswerRestorationContext);
   const [selectedAnswers, setSelectedAnswers] = React.useState([]);
@@ -4887,7 +4887,7 @@ const MultipleSelectContainer = ({ theme, data }) => {
           fontSize: '16px', 
           color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' 
         }}>
-          Question 2
+          Question {globalQuestionNumber || data?.orderNumber || '?'}
         </Typography.Text>
         <Typography.Text style={{ 
           fontSize: '14px', 
@@ -5003,7 +5003,7 @@ const MultipleSelectContainer = ({ theme, data }) => {
   );
 };
 // True/False Container Component
-const TrueFalseContainer = ({ theme, data }) => {
+const TrueFalseContainer = ({ theme, data, globalQuestionNumber }) => {
   const registerAnswerCollector = useContext(AnswerCollectionContext);
   const registerAnswerRestorer = useContext(AnswerRestorationContext);
   const [selectedAnswer, setSelectedAnswer] = React.useState(null);
@@ -5093,7 +5093,7 @@ const TrueFalseContainer = ({ theme, data }) => {
             fontSize: '16px', 
           color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' 
         }}>
-          Question 3
+          Question {globalQuestionNumber || data?.orderNumber || '?'}
         </Typography.Text>
         <Typography.Text style={{ 
           fontSize: '14px', 
@@ -5200,7 +5200,7 @@ const TrueFalseContainer = ({ theme, data }) => {
   );
 };
 // Dropdown Container Component
-const DropdownContainer = ({ theme, data }) => {
+const DropdownContainer = ({ theme, data, globalQuestionNumber }) => {
   console.log('🔵 DropdownContainer RENDERED - Question ID:', data?.id, 'Type:', data?.type);
   
   const registerAnswerCollector = useContext(AnswerCollectionContext);
@@ -5300,7 +5300,7 @@ const DropdownContainer = ({ theme, data }) => {
           fontSize: '16px', 
           color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' 
         }}>
-          Question {data?.orderNumber || '?'}
+          Question {globalQuestionNumber || data?.orderNumber || '?'}
         </Typography.Text>
         <Typography.Text style={{ 
           fontSize: '14px', 
@@ -5554,7 +5554,7 @@ const DropdownContainer = ({ theme, data }) => {
   );
 };
 // Drag and Drop Container Component
-const DragDropContainer = ({ theme, data }) => {
+const DragDropContainer = ({ theme, data, globalQuestionNumber }) => {
   const registerAnswerCollector = useContext(AnswerCollectionContext);
   const registerAnswerRestorer = useContext(AnswerRestorationContext);
   const [droppedItems, setDroppedItems] = React.useState({});
@@ -5718,7 +5718,7 @@ const DragDropContainer = ({ theme, data }) => {
           fontSize: '16px', 
           color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' 
         }}>
-          Question 6
+          Question {globalQuestionNumber || data?.orderNumber || '?'}
         </Typography.Text>
         <Typography.Text style={{ 
           fontSize: '14px', 
@@ -5907,7 +5907,7 @@ const DragDropContainer = ({ theme, data }) => {
   );
 };
 // Reorder Container Component
-const ReorderContainer = ({ theme, data }) => {
+const ReorderContainer = ({ theme, data, globalQuestionNumber }) => {
   const registerAnswerCollector = useContext(AnswerCollectionContext);
   const registerAnswerRestorer = useContext(AnswerRestorationContext);
   const [sourceItems, setSourceItems] = React.useState(() => {
@@ -6102,7 +6102,7 @@ const ReorderContainer = ({ theme, data }) => {
           fontSize: '16px', 
           color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' 
         }}>
-          Question 7
+          Question {globalQuestionNumber || data?.orderNumber || '?'}
         </Typography.Text>
         <Typography.Text style={{ 
           fontSize: '14px', 
@@ -6325,7 +6325,7 @@ const ReorderContainer = ({ theme, data }) => {
   );
 };
 // Rewrite Container Component
-const RewriteContainer = ({ theme, data }) => {
+const RewriteContainer = ({ theme, data, globalQuestionNumber }) => {
   const registerAnswerCollector = useContext(AnswerCollectionContext);
   const registerAnswerRestorer = useContext(AnswerRestorationContext);
   const [answer, setAnswer] = React.useState('');
@@ -6407,7 +6407,7 @@ const RewriteContainer = ({ theme, data }) => {
           fontSize: '16px', 
           color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' 
         }}>
-          Question 8
+          Question {globalQuestionNumber || data?.orderNumber || '?'}
         </Typography.Text>
         <Typography.Text style={{ 
           fontSize: '14px', 
@@ -6464,7 +6464,7 @@ const RewriteContainer = ({ theme, data }) => {
 
 
 // Fill in the Blank Container Component
-const FillBlankContainer = ({ theme, data }) => {
+const FillBlankContainer = ({ theme, data, globalQuestionNumber }) => {
   const registerAnswerCollector = useContext(AnswerCollectionContext);
   const registerAnswerRestorer = useContext(AnswerRestorationContext);
   const [blankAnswers, setBlankAnswers] = React.useState({});
@@ -6629,7 +6629,7 @@ const FillBlankContainer = ({ theme, data }) => {
           fontSize: '16px', 
           color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' 
         }}>
-          Question 4
+          Question {globalQuestionNumber || data?.orderNumber || '?'}
         </Typography.Text>
         <Typography.Text style={{ 
           fontSize: '14px', 
@@ -7346,12 +7346,61 @@ const StudentDailyChallengeTake = () => {
                   }
                   return a;
                 };
+                // Renumber questions sequentially after shuffling
+                const renumberQuestions = (questions) => {
+                  return questions.map((q, index) => ({
+                    ...q,
+                    orderNumber: index + 1
+                  }));
+                };
+                // Shuffle options for a question (exclude FILL_IN_THE_BLANK, DROPDOWN, REWRITE)
+                const shuffleQuestionOptions = (question) => {
+                  const excludedTypes = ['FILL_IN_THE_BLANK', 'FILL_BLANK', 'DROPDOWN', 'REWRITE'];
+                  const questionType = question.type || question.questionType || '';
+                  
+                  // Skip shuffling for excluded types
+                  if (excludedTypes.includes(questionType)) {
+                    return question;
+                  }
+                  
+                  const shuffledQuestion = { ...question };
+                  
+                  // Shuffle options array if it exists and reassign keys A, B, C, D...
+                  if (shuffledQuestion.options && Array.isArray(shuffledQuestion.options)) {
+                    const shuffled = shuffle([...shuffledQuestion.options]);
+                    // Reassign keys A, B, C, D... to maintain alphabetical order
+                    shuffledQuestion.options = shuffled.map((opt, idx) => ({
+                      ...opt,
+                      key: String.fromCharCode(65 + idx) // A, B, C, D...
+                    }));
+                  }
+                  
+                  // Shuffle content.data array if it exists (used for options in some question types)
+                  // Note: content.data will be mapped to options with A, B, C, D keys during rendering
+                  if (shuffledQuestion.content?.data && Array.isArray(shuffledQuestion.content.data)) {
+                    shuffledQuestion.content = {
+                      ...shuffledQuestion.content,
+                      data: shuffle([...shuffledQuestion.content.data])
+                    };
+                  }
+                  
+                  return shuffledQuestion;
+                };
                 const applyShuffle = (data) => {
                   if (!allowShuffleQuestions || effectiveViewOnly) return data;
                   const newData = { ...data };
-                  newData.questions = shuffle(data.questions || []);
-                  newData.readingSections = (data.readingSections || []).map(sec => ({ ...sec, questions: shuffle(sec.questions || []) }));
-                  newData.listeningSections = (data.listeningSections || []).map(sec => ({ ...sec, questions: shuffle(sec.questions || []) }));
+                  // Shuffle and renumber individual questions, then shuffle their options
+                  newData.questions = renumberQuestions(shuffle(data.questions || [])).map(shuffleQuestionOptions);
+                  // Shuffle and renumber questions within reading sections, then shuffle their options
+                  newData.readingSections = (data.readingSections || []).map(sec => ({
+                    ...sec,
+                    questions: renumberQuestions(shuffle(sec.questions || [])).map(shuffleQuestionOptions)
+                  }));
+                  // Shuffle and renumber questions within listening sections, then shuffle their options
+                  newData.listeningSections = (data.listeningSections || []).map(sec => ({
+                    ...sec,
+                    questions: renumberQuestions(shuffle(sec.questions || [])).map(shuffleQuestionOptions)
+                  }));
                   return newData;
                 };
                 const maybeShuffled = applyShuffle(transformedData);
@@ -7455,12 +7504,61 @@ const StudentDailyChallengeTake = () => {
                     }
                     return a;
                   };
+                  // Renumber questions sequentially after shuffling
+                  const renumberQuestions = (questions) => {
+                    return questions.map((q, index) => ({
+                      ...q,
+                      orderNumber: index + 1
+                    }));
+                  };
+                  // Shuffle options for a question (exclude FILL_IN_THE_BLANK, DROPDOWN, REWRITE)
+                  const shuffleQuestionOptions = (question) => {
+                    const excludedTypes = ['FILL_IN_THE_BLANK', 'FILL_BLANK', 'DROPDOWN', 'REWRITE'];
+                    const questionType = question.type || question.questionType || '';
+                    
+                    // Skip shuffling for excluded types
+                    if (excludedTypes.includes(questionType)) {
+                      return question;
+                    }
+                    
+                    const shuffledQuestion = { ...question };
+                    
+                    // Shuffle options array if it exists and reassign keys A, B, C, D...
+                    if (shuffledQuestion.options && Array.isArray(shuffledQuestion.options)) {
+                      const shuffled = shuffle([...shuffledQuestion.options]);
+                      // Reassign keys A, B, C, D... to maintain alphabetical order
+                      shuffledQuestion.options = shuffled.map((opt, idx) => ({
+                        ...opt,
+                        key: String.fromCharCode(65 + idx) // A, B, C, D...
+                      }));
+                    }
+                    
+                    // Shuffle content.data array if it exists (used for options in some question types)
+                    // Note: content.data will be mapped to options with A, B, C, D keys during rendering
+                    if (shuffledQuestion.content?.data && Array.isArray(shuffledQuestion.content.data)) {
+                      shuffledQuestion.content = {
+                        ...shuffledQuestion.content,
+                        data: shuffle([...shuffledQuestion.content.data])
+                      };
+                    }
+                    
+                    return shuffledQuestion;
+                  };
                   const applyShuffle = (data) => {
                     if (!allowShuffleQuestions || effectiveViewOnly) return data;
                     const newData = { ...data };
-                    newData.questions = shuffle(data.questions || []);
-                    newData.readingSections = (data.readingSections || []).map(sec => ({ ...sec, questions: shuffle(sec.questions || []) }));
-                    newData.listeningSections = (data.listeningSections || []).map(sec => ({ ...sec, questions: shuffle(sec.questions || []) }));
+                    // Shuffle and renumber individual questions, then shuffle their options
+                    newData.questions = renumberQuestions(shuffle(data.questions || [])).map(shuffleQuestionOptions);
+                    // Shuffle and renumber questions within reading sections, then shuffle their options
+                    newData.readingSections = (data.readingSections || []).map(sec => ({
+                      ...sec,
+                      questions: renumberQuestions(shuffle(sec.questions || [])).map(shuffleQuestionOptions)
+                    }));
+                    // Shuffle and renumber questions within listening sections, then shuffle their options
+                    newData.listeningSections = (data.listeningSections || []).map(sec => ({
+                      ...sec,
+                      questions: renumberQuestions(shuffle(sec.questions || [])).map(shuffleQuestionOptions)
+                    }));
                     return newData;
                   };
                   const maybeShuffled = applyShuffle(transformedData);
@@ -7532,12 +7630,61 @@ const StudentDailyChallengeTake = () => {
                     }
                     return a;
                   };
+                  // Renumber questions sequentially after shuffling
+                  const renumberQuestions = (questions) => {
+                    return questions.map((q, index) => ({
+                      ...q,
+                      orderNumber: index + 1
+                    }));
+                  };
+                  // Shuffle options for a question (exclude FILL_IN_THE_BLANK, DROPDOWN, REWRITE)
+                  const shuffleQuestionOptions = (question) => {
+                    const excludedTypes = ['FILL_IN_THE_BLANK', 'FILL_BLANK', 'DROPDOWN', 'REWRITE'];
+                    const questionType = question.type || question.questionType || '';
+                    
+                    // Skip shuffling for excluded types
+                    if (excludedTypes.includes(questionType)) {
+                      return question;
+                    }
+                    
+                    const shuffledQuestion = { ...question };
+                    
+                    // Shuffle options array if it exists and reassign keys A, B, C, D...
+                    if (shuffledQuestion.options && Array.isArray(shuffledQuestion.options)) {
+                      const shuffled = shuffle([...shuffledQuestion.options]);
+                      // Reassign keys A, B, C, D... to maintain alphabetical order
+                      shuffledQuestion.options = shuffled.map((opt, idx) => ({
+                        ...opt,
+                        key: String.fromCharCode(65 + idx) // A, B, C, D...
+                      }));
+                    }
+                    
+                    // Shuffle content.data array if it exists (used for options in some question types)
+                    // Note: content.data will be mapped to options with A, B, C, D keys during rendering
+                    if (shuffledQuestion.content?.data && Array.isArray(shuffledQuestion.content.data)) {
+                      shuffledQuestion.content = {
+                        ...shuffledQuestion.content,
+                        data: shuffle([...shuffledQuestion.content.data])
+                      };
+                    }
+                    
+                    return shuffledQuestion;
+                  };
                   const applyShuffle = (data) => {
                     if (!allowShuffleQuestions || effectiveViewOnly) return data;
                     const newData = { ...data };
-                    newData.questions = shuffle(data.questions || []);
-                    newData.readingSections = (data.readingSections || []).map(sec => ({ ...sec, questions: shuffle(sec.questions || []) }));
-                    newData.listeningSections = (data.listeningSections || []).map(sec => ({ ...sec, questions: shuffle(sec.questions || []) }));
+                    // Shuffle and renumber individual questions, then shuffle their options
+                    newData.questions = renumberQuestions(shuffle(data.questions || [])).map(shuffleQuestionOptions);
+                    // Shuffle and renumber questions within reading sections, then shuffle their options
+                    newData.readingSections = (data.readingSections || []).map(sec => ({
+                      ...sec,
+                      questions: renumberQuestions(shuffle(sec.questions || [])).map(shuffleQuestionOptions)
+                    }));
+                    // Shuffle and renumber questions within listening sections, then shuffle their options
+                    newData.listeningSections = (data.listeningSections || []).map(sec => ({
+                      ...sec,
+                      questions: renumberQuestions(shuffle(sec.questions || [])).map(shuffleQuestionOptions)
+                    }));
                     return newData;
                   };
                   const maybeShuffled = applyShuffle(transformedData);
@@ -8729,6 +8876,59 @@ const StudentDailyChallengeTake = () => {
   }, [questions]);
   const questionNav = getQuestionNavigation();
 
+  // Calculate global question numbers based on display order
+  const globalQuestionNumbers = React.useMemo(() => {
+    const questionMap = new Map();
+    let currentNumber = 1;
+    
+    // Reading sections
+    if (challengeType === 'RE' && readingSections.length > 0) {
+      readingSections.forEach((section) => {
+        if (section.questions && section.questions.length > 0) {
+          const sortedQuestions = [...section.questions].sort((a, b) => (a.orderNumber || 0) - (b.orderNumber || 0) || ((a.id || 0) - (b.id || 0)));
+          sortedQuestions.forEach((q) => {
+            questionMap.set(q.id, currentNumber++);
+          });
+        }
+      });
+    }
+    
+    // Writing sections
+    if (challengeType === 'WR' && writingSections.length > 0) {
+      writingSections.forEach((section) => {
+        questionMap.set(section.id, currentNumber++);
+      });
+    }
+    
+    // Speaking sections
+    if (challengeType === 'SP' && speakingSections.length > 0) {
+      speakingSections.forEach((section) => {
+        questionMap.set(section.id, currentNumber++);
+      });
+    }
+    
+    // Individual questions (GV etc.)
+    if (!(challengeType === 'LI' || challengeType === 'SP' || challengeType === 'WR')) {
+      sortedQuestions.forEach((q) => {
+        questionMap.set(q.id, currentNumber++);
+      });
+    }
+    
+    // Listening sections
+    if (challengeType === 'LI' && listeningSections.length > 0) {
+      listeningSections.forEach((section) => {
+        if (section.questions && section.questions.length > 0) {
+          const sortedQuestions = [...section.questions].sort((a, b) => (a.orderNumber || 0) - (b.orderNumber || 0) || ((a.id || 0) - (b.id || 0)));
+          sortedQuestions.forEach((q) => {
+            questionMap.set(q.id, currentNumber++);
+          });
+        }
+      });
+    }
+    
+    return questionMap;
+  }, [challengeType, readingSections, writingSections, speakingSections, listeningSections, sortedQuestions]);
+
   return (
     <ThemedLayout customHeader={customHeader}>
       <div className={`daily-challenge-content-wrapper ${theme}-daily-challenge-content-wrapper`}>
@@ -8794,6 +8994,7 @@ const StudentDailyChallengeTake = () => {
                         index={index} 
                         theme={theme} 
                         sectionScore={sectionScores[section.id]}
+                        globalQuestionNumbers={globalQuestionNumbers}
                       />
                 </div>
                   ))
@@ -8829,34 +9030,34 @@ const StudentDailyChallengeTake = () => {
                 {sortedQuestions.map((q, idx) => (
                   <div key={q.id} ref={el => (questionRefs.current[`q-${q.id}`] = el)}>
                     {q.type === 'MULTIPLE_CHOICE' && (
-                      <MultipleChoiceContainer theme={theme} data={q} />
+                      <MultipleChoiceContainer theme={theme} data={q} globalQuestionNumber={globalQuestionNumbers?.get(q.id)} />
                     )}
                     {q.type === 'MULTIPLE_SELECT' && (
-                      <MultipleSelectContainer theme={theme} data={q} />
+                      <MultipleSelectContainer theme={theme} data={q} globalQuestionNumber={globalQuestionNumbers?.get(q.id)} />
                     )}
                     {q.type === 'TRUE_OR_FALSE' && (
-                      <TrueFalseContainer theme={theme} data={q} />
+                      <TrueFalseContainer theme={theme} data={q} globalQuestionNumber={globalQuestionNumbers?.get(q.id)} />
                     )}
                     {(q.type === 'FILL_IN_THE_BLANK' || q.type === 'FILL_BLANK' || q.questionType === 'FILL_BLANK' || q.questionType === 'FILL_IN_THE_BLANK') && (
-                      <FillBlankContainer theme={theme} data={q} />
+                      <FillBlankContainer theme={theme} data={q} globalQuestionNumber={globalQuestionNumbers?.get(q.id)} />
                     )}
                     {(() => {
                       const isDropdown = q.type === 'DROPDOWN' || q.questionType === 'DROPDOWN';
                     
                       if (isDropdown) {
                         console.log('🟡 RENDERING DropdownContainer - q.id:', q.id);
-                        return <DropdownContainer theme={theme} data={q} />;
+                        return <DropdownContainer theme={theme} data={q} globalQuestionNumber={globalQuestionNumbers?.get(q.id)} />;
                       }
                       return null;
                     })()}
                     {q.type === 'DRAG_AND_DROP' && (
-                      <DragDropContainer theme={theme} data={q} />
+                      <DragDropContainer theme={theme} data={q} globalQuestionNumber={globalQuestionNumbers?.get(q.id)} />
                     )}
                     {q.type === 'REARRANGE' && (
-                      <ReorderContainer theme={theme} data={q} />
+                      <ReorderContainer theme={theme} data={q} globalQuestionNumber={globalQuestionNumbers?.get(q.id)} />
                     )}
                     {q.type === 'REWRITE' && (
-                      <RewriteContainer theme={theme} data={q} />
+                      <RewriteContainer theme={theme} data={q} globalQuestionNumber={globalQuestionNumbers?.get(q.id)} />
                     )}
                 </div>
                 ))}
@@ -8869,6 +9070,7 @@ const StudentDailyChallengeTake = () => {
                         index={index} 
                         theme={theme} 
                         sectionScore={sectionScores[section.id]}
+                        globalQuestionNumbers={globalQuestionNumbers}
                       />
                     </div>
                   ))
