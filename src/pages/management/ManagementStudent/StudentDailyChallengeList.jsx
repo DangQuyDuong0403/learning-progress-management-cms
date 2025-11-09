@@ -712,45 +712,52 @@ const StudentDailyChallengeList = () => {
         
         const isLate = record.late === true;
         
-        const renderStartLikeButton = (label, icon = <PlayCircleOutlined />) => (
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-            <Button
-              type="primary"
-              icon={icon}
-              onClick={() => handleViewClick(record)}
-              className="action-btn-start"
-              style={{
-                borderRadius: '6px',
-                fontWeight: 500,
-                height: '36px',
-                padding: '0 16px',
-                fontSize: '14px',
-                background: 'rgb(244,203,127)',
-                borderColor: 'rgb(244,203,127)',
-                color: '#000',
-                border: 'none',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = 'rgb(224,183,107)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = 'rgb(244,203,127)';
-              }}
-            >
-              {label}
-            </Button>
-            {isLate && (
-              <span style={{ 
-                marginTop: '4px',
-                fontSize: '12px', 
-                color: 'rgb(255, 77, 79)',
-                fontWeight: 600,
-              }}>
-                {t('dailyChallenge.late', 'Late')}
-              </span>
-            )}
-          </div>
-        );
+        const renderStartLikeButton = (label, icon = <PlayCircleOutlined />) => {
+          // Use different color for "Do challenge" button
+          const isDoChallenge = label === 'Do challenge';
+          const buttonColor = isDoChallenge ? 'rgb(244,127,127)' : 'rgb(244,203,127)';
+          const hoverColor = isDoChallenge ? 'rgb(224,107,107)' : 'rgb(224,183,107)';
+          
+          return (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+              <Button
+                type="primary"
+                icon={icon}
+                onClick={() => handleViewClick(record)}
+                className="action-btn-start"
+                style={{
+                  borderRadius: '6px',
+                  fontWeight: 500,
+                  height: '36px',
+                  padding: '0 16px',
+                  fontSize: '14px',
+                  background: buttonColor,
+                  borderColor: buttonColor,
+                  color: '#000',
+                  border: 'none',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = hoverColor;
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = buttonColor;
+                }}
+              >
+                {label}
+              </Button>
+              {isLate && (
+                <span style={{ 
+                  marginTop: '4px',
+                  fontSize: '12px', 
+                  color: 'rgb(255, 77, 79)',
+                  fontWeight: 600,
+                }}>
+                  {t('dailyChallenge.late', 'Late')}
+                </span>
+              )}
+            </div>
+          );
+        };
 
         const renderViewResultButton = (label) => (
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
