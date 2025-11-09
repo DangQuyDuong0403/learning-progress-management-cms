@@ -586,3 +586,78 @@
   transform: none !important;
   box-shadow: none !important;
 }
+
+/* Ensure Level dropdown is not clipped by Card body overflow */
+.prompt-description-card .ant-card-body {
+  overflow-x: visible !important;
+  position: relative !important;
+}
+
+/* Allow Level dropdown container to overflow Card body */
+.level-dropdown-container {
+  overflow: visible !important;
+  z-index: 1000 !important;
+}
+
+.level-dropdown-container > div[style*="position: absolute"] {
+  position: absolute !important;
+  z-index: 1001 !important;
+  overflow: visible !important;
+}
+
+/* Allow Lesson Focus dropdown container to overflow Card body */
+.lesson-focus-dropdown-container {
+  overflow: visible !important;
+  z-index: 1000 !important;
+}
+
+.lesson-focus-dropdown-container > div[style*="position: absolute"] {
+  position: absolute !important;
+  z-index: 1001 !important;
+  overflow: visible !important;
+}
+
+/* CKEditor styles for generated passage - Override other CSS */
+.passage-ckeditor-wrapper {
+  min-height: 400px !important;
+}
+
+.passage-ckeditor-wrapper .ck.ck-editor {
+  min-height: 400px !important;
+}
+
+.passage-ckeditor-wrapper .ck.ck-editor__main {
+  min-height: 400px !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+.passage-ckeditor-wrapper .ck.ck-editor__main > .ck-editor__editable {
+  color: #000000 !important;
+  background: #ffffff !important;
+  min-height: 400px !important;
+  max-height: none !important;
+  height: auto !important;
+  padding: 16px !important;
+  font-size: 15px !important;
+  line-height: 1.6 !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+}
+
+.passage-ckeditor-wrapper .ck-editor__editable p,
+.passage-ckeditor-wrapper .ck-editor__editable div,
+.passage-ckeditor-wrapper .ck-editor__editable span,
+.passage-ckeditor-wrapper .ck-editor__editable li,
+.passage-ckeditor-wrapper .ck-editor__editable h1,
+.passage-ckeditor-wrapper .ck-editor__editable h2,
+.passage-ckeditor-wrapper .ck-editor__editable h3,
+.passage-ckeditor-wrapper .ck-editor__editable h4,
+.passage-ckeditor-wrapper .ck-editor__editable h5,
+.passage-ckeditor-wrapper .ck-editor__editable h6 {
+  color: #000000 !important;
+}
+
+.passage-ckeditor-wrapper .ck-editor__editable.ck-focused {
+  color: #000000 !important;
+}

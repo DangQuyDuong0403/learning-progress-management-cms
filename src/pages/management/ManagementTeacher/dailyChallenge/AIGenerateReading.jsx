@@ -7,6 +7,8 @@ import {
   Tooltip,
   Typography,
 } from "antd";
+import { CKEditor } from '@ckeditor/ckeditor5-react';
+import ClassicEditor from '@ckeditor/ckeditor5-build-classic';
 import {
   ArrowLeftOutlined,
   DeleteOutlined,
@@ -17,6 +19,7 @@ import {
   CloudUploadOutlined,
   FileTextOutlined,
   CloseOutlined,
+  SearchOutlined,
 } from "@ant-design/icons";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import ThemedLayout from "../../../../component/teacherlayout/ThemedLayout";
@@ -119,10 +122,48 @@ const AIGenerateReading = () => {
   // Lesson Focus dropdown states
   const [isLessonFocusDropdownOpen, setIsLessonFocusDropdownOpen] = useState(false);
   const [isCustomFocusInputOpen, setIsCustomFocusInputOpen] = useState(false); // Track if Custom Focus input field is open (checkbox checked)
+  const [lessonFocusSearchTerm, setLessonFocusSearchTerm] = useState(""); // Search term for lesson focus
 
   const primaryColor = theme === 'sun' ? '#1890ff' : '#8B5CF6';
   const primaryColorWithAlpha = theme === 'sun' ? 'rgba(24, 144, 255, 0.1)' : 'rgba(139, 92, 246, 0.1)';
   const MAX_FILE_MB = 10; // max upload size shown and validated on client
+
+  // Custom upload adapter for CKEditor to convert images to base64
+  function CustomUploadAdapterPlugin(editor) {
+    editor.plugins.get('FileRepository').createUploadAdapter = (loader) => {
+      return {
+        upload: () => {
+          return loader.file.then(file => new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => {
+              resolve({ default: reader.result });
+            };
+            reader.onerror = error => reject(error);
+            reader.readAsDataURL(file);
+          }));
+        },
+        abort: () => {}
+      };
+    };
+  }
+
+  // CKEditor config for passage editor
+  const passageEditorConfig = useMemo(() => ({
+    toolbar: {
+      items: [
+        'undo', 'redo', '|',
+        'heading', '|',
+        'bold', 'italic', 'underline', '|',
+        'bulletedList', 'numberedList', '|',
+        'link', 'imageUpload', '|',
+        'blockQuote', 'insertTable', '|',
+        'alignment', '|',
+        'fontSize', 'fontColor', 'fontBackgroundColor'
+      ]
+    },
+    removePlugins: ['StickyToolbar'],
+    extraPlugins: [CustomUploadAdapterPlugin]
+  }), []);
 
   const availableQuestionTypes = useMemo(() => [
     { value: "MULTIPLE_CHOICE", label: t('dailyChallenge.multipleChoice') || 'Multiple Choice', icon: '📝', color: primaryColor, bgColor: primaryColorWithAlpha },
@@ -765,6 +806,13 @@ const AIGenerateReading = () => {
               backdropFilter: 'blur(10px)',
               animation: 'none'
             }}
+            bodyStyle={{ 
+              padding: '20px', 
+              maxHeight: '600px', 
+              overflowY: (isLevelDropdownOpen || isLessonFocusDropdownOpen) ? 'visible' : 'auto', 
+              overflowX: 'visible', 
+              position: 'relative' 
+            }}
           >
             <Title level={3} style={{ textAlign: 'center', color: theme === 'sun' ? '#1890ff' : '#8B5CF6', marginTop: 0, fontSize: '26px', marginBottom: '20px' }}>
               AI Generation Settings
@@ -858,10 +906,83 @@ const AIGenerateReading = () => {
               </Button>
             </div>
 
+                {/* Chapter and Lesson - Side by Side (Read-only) - Moved to top */}
+                <div style={{ display: 'flex', gap: '16px', marginBottom: '16px' }}>
+                  {/* Chapter - Read-only */}
+                  <div style={{ flex: 1, position: 'relative' }}>
+                    <Typography.Text style={{ display: 'block', marginBottom: '8px', color: theme === 'sun' ? '#999' : '#999', fontSize: '16px', fontWeight: 400 }}>
+                      Chapter
+                    </Typography.Text>
+                    <div
+                      style={{
+                        width: '100%',
+                        minHeight: '36px',
+                        padding: '6px 12px',
+                        borderRadius: '8px',
+                        border: `2px solid ${theme === 'sun' ? '#d9d9d9' : '#666'}`,
+                        background: theme === 'sun' ? '#f5f5f5' : 'rgba(100, 100, 100, 0.1)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        transition: 'all 0.3s ease',
+                        position: 'relative',
+                        zIndex: 10,
+                        cursor: 'default',
+                        opacity: 0.6
+                      }}
+                    >
+                      <span style={{ 
+                        color: hierarchy?.chapter?.chapterName || hierarchy?.chapter?.name
+                          ? (theme === 'sun' ? '#666' : '#999') 
+                          : (theme === 'sun' ? '#999' : '#999'),
+                        fontSize: '14px',
+                        fontWeight: 400
+                      }}>
+                        {hierarchy?.chapter?.chapterName || hierarchy?.chapter?.name || '—'}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Lesson - Read-only */}
+                  <div style={{ flex: 1, position: 'relative' }}>
+                    <Typography.Text style={{ display: 'block', marginBottom: '8px', color: theme === 'sun' ? '#999' : '#999', fontSize: '16px', fontWeight: 400 }}>
+                      Lesson
+                    </Typography.Text>
+                    <div
+                      style={{
+                        width: '100%',
+                        minHeight: '36px',
+                        padding: '6px 12px',
+                        borderRadius: '8px',
+                        border: `2px solid ${theme === 'sun' ? '#d9d9d9' : '#666'}`,
+                        background: theme === 'sun' ? '#f5f5f5' : 'rgba(100, 100, 100, 0.1)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        transition: 'all 0.3s ease',
+                        position: 'relative',
+                        zIndex: 10,
+                        cursor: 'default',
+                        opacity: 0.6
+                      }}
+                    >
+                      <span style={{ 
+                        color: hierarchy?.lesson?.lessonName || hierarchy?.lesson?.name
+                          ? (theme === 'sun' ? '#666' : '#999') 
+                          : (theme === 'sun' ? '#999' : '#999'),
+                        fontSize: '14px',
+                        fontWeight: 400
+                      }}>
+                        {hierarchy?.lesson?.lessonName || hierarchy?.lesson?.name || '—'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
                 {/* Level and Lesson Focus - Side by Side */}
                 <div style={{ display: 'flex', gap: '16px', marginBottom: '16px' }}>
                   {/* Level Selection - Custom 2-Level Dropdown */}
-                  <div style={{ flex: 1, position: 'relative' }}>
+                  <div className="level-dropdown-container" style={{ flex: 1, position: 'relative', zIndex: 1000, overflow: 'visible' }}>
                     <Typography.Text style={{ display: 'block', marginBottom: '8px', color: theme === 'sun' ? '#1E40AF' : '#8377A0', fontSize: '16px', fontWeight: 400 }}>
                       Level <span style={{ color: 'red' }}>*</span>
                     </Typography.Text>
@@ -898,7 +1019,7 @@ const AIGenerateReading = () => {
                       ? (theme === 'sun' ? '#000' : '#fff') 
                       : (theme === 'sun' ? '#999' : '#999'),
                     fontSize: '14px',
-                    fontWeight: 400
+                    fontWeight: selectedLevel ? 600 : 400
                   }}>
                     {selectedLevel 
                       ? (() => {
@@ -1018,7 +1139,7 @@ const AIGenerateReading = () => {
                           >
                             <span style={{
                               fontSize: '13px',
-                              fontWeight: 400,
+                              fontWeight: 600,
                               color: levelType === type.value
                                 ? primaryColor
                                 : (theme === 'sun' ? '#000' : '#000')
@@ -1145,7 +1266,7 @@ const AIGenerateReading = () => {
               </div>
 
               {/* Lesson Focus - Custom Dropdown with Input */}
-              <div style={{ flex: 1, position: 'relative' }}>
+              <div className="lesson-focus-dropdown-container" style={{ flex: 1, position: 'relative', zIndex: 1000, overflow: 'visible' }}>
                 <Typography.Text style={{ display: 'block', marginBottom: '8px', color: theme === 'sun' ? '#1E40AF' : '#8377A0', fontSize: '16px', fontWeight: 400 }}>
                   Lesson Focus <span style={{ color: 'red' }}>*</span>
                 </Typography.Text>
@@ -1158,6 +1279,10 @@ const AIGenerateReading = () => {
                     }
                     const willOpen = !isLessonFocusDropdownOpen;
                     setIsLessonFocusDropdownOpen(willOpen);
+                    // Reset search term when closing dropdown
+                    if (!willOpen) {
+                      setLessonFocusSearchTerm("");
+                    }
                     if (willOpen && customLessonFocus.length > 0 && !isCustomFocusInputOpen) {
                       setIsCustomFocusInputOpen(true);
                     }
@@ -1331,7 +1456,10 @@ const AIGenerateReading = () => {
                 {isLessonFocusDropdownOpen && (
                   <>
                     <div
-                      onClick={() => setIsLessonFocusDropdownOpen(false)}
+                      onClick={() => {
+                        setIsLessonFocusDropdownOpen(false);
+                        setLessonFocusSearchTerm("");
+                      }}
                       style={{
                         position: 'fixed',
                         top: 0,
@@ -1366,6 +1494,22 @@ const AIGenerateReading = () => {
                       }}
                       onClick={(e) => e.stopPropagation()}
                     >
+                      {/* Search Bar */}
+                      <div style={{ padding: '12px', borderBottom: `1px solid ${primaryColor}20` }}>
+                        <Input
+                          prefix={<SearchOutlined style={{ color: primaryColor }} />}
+                          placeholder="Search lesson focus..."
+                          value={lessonFocusSearchTerm}
+                          onChange={(e) => setLessonFocusSearchTerm(e.target.value)}
+                          onClick={(e) => e.stopPropagation()}
+                          style={{
+                            borderRadius: '8px',
+                            border: `2px solid ${primaryColor}40`,
+                            background: theme === 'sun' ? '#fff' : 'rgba(255, 255, 255, 0.95)',
+                          }}
+                        />
+                      </div>
+
                       <div style={{
                         flex: 1,
                         overflowY: 'auto',
@@ -1374,7 +1518,14 @@ const AIGenerateReading = () => {
                         scrollbarWidth: 'thin',
                         scrollbarColor: `${primaryColor}40 transparent`
                       }}>
-                        {lessonFocusOptions.map((option) => {
+                        {lessonFocusOptions
+                          .filter((option) => {
+                            if (!lessonFocusSearchTerm) return true;
+                            const searchLower = lessonFocusSearchTerm.toLowerCase();
+                            return option.label.toLowerCase().includes(searchLower) ||
+                                   option.value.toLowerCase().includes(searchLower);
+                          })
+                          .map((option) => {
                             const isSelected = lessonFocus.includes(option.value);
                             const isCustom = option.value === 'CUSTOM';
                             const isCustomChecked = isCustom ? (isCustomFocusInputOpen || customLessonFocus.length > 0) : isSelected;
@@ -1552,78 +1703,6 @@ const AIGenerateReading = () => {
               </div>
             </div>
 
-                {/* Chapter and Lesson - Side by Side (Read-only) */}
-                <div style={{ display: 'flex', gap: '16px', marginBottom: '16px' }}>
-                  {/* Chapter - Read-only */}
-                  <div style={{ flex: 1, position: 'relative' }}>
-                    <Typography.Text style={{ display: 'block', marginBottom: '8px', color: theme === 'sun' ? '#1E40AF' : '#8377A0', fontSize: '16px', fontWeight: 400 }}>
-                      Chapter
-                    </Typography.Text>
-                    <div
-                      style={{
-                        width: '100%',
-                        minHeight: '36px',
-                        padding: '6px 12px',
-                        borderRadius: '8px',
-                        border: `2px solid ${primaryColor}60`,
-                        background: theme === 'sun' ? '#fff' : 'rgba(255, 255, 255, 0.1)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        transition: 'all 0.3s ease',
-                        position: 'relative',
-                        zIndex: 10,
-                        cursor: 'default',
-                        opacity: 0.7
-                      }}
-                    >
-                      <span style={{ 
-                        color: hierarchy?.chapter?.chapterName || hierarchy?.chapter?.name
-                          ? (theme === 'sun' ? '#000' : '#fff') 
-                          : (theme === 'sun' ? '#999' : '#999'),
-                        fontSize: '14px',
-                        fontWeight: 400
-                      }}>
-                        {hierarchy?.chapter?.chapterName || hierarchy?.chapter?.name || '—'}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Lesson - Read-only */}
-                  <div style={{ flex: 1, position: 'relative' }}>
-                    <Typography.Text style={{ display: 'block', marginBottom: '8px', color: theme === 'sun' ? '#1E40AF' : '#8377A0', fontSize: '16px', fontWeight: 400 }}>
-                      Lesson
-                    </Typography.Text>
-                    <div
-                      style={{
-                        width: '100%',
-                        minHeight: '36px',
-                        padding: '6px 12px',
-                        borderRadius: '8px',
-                        border: `2px solid ${primaryColor}60`,
-                        background: theme === 'sun' ? '#fff' : 'rgba(255, 255, 255, 0.1)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        transition: 'all 0.3s ease',
-                        position: 'relative',
-                        zIndex: 10,
-                        cursor: 'default',
-                        opacity: 0.7
-                      }}
-                    >
-                      <span style={{ 
-                        color: hierarchy?.lesson?.lessonName || hierarchy?.lesson?.name
-                          ? (theme === 'sun' ? '#000' : '#fff') 
-                          : (theme === 'sun' ? '#999' : '#999'),
-                        fontSize: '14px',
-                        fontWeight: 400
-                      }}>
-                        {hierarchy?.lesson?.lessonName || hierarchy?.lesson?.name || '—'}
-                      </span>
-                    </div>
-                  </div>
-                </div>
 
                 {/* Vocabulary List and Description - Side by Side */}
                 <div style={{ display: 'flex', gap: '16px', marginBottom: '16px' }}>
@@ -1636,6 +1715,7 @@ const AIGenerateReading = () => {
                       value={vocabularyList}
                       onChange={(e) => setVocabularyList(e.target.value)}
                       autoSize={{ minRows: 4, maxRows: 8 }}
+                      placeholder="newword, new word..."
                       style={{
                         width: '100%',
                         borderRadius: '8px',
@@ -1647,15 +1727,16 @@ const AIGenerateReading = () => {
                     />
                   </div>
 
-                  {/* Description */}
+                  {/* Additional Description */}
                   <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
                     <Typography.Text style={{ display: 'block', marginBottom: '8px', color: theme === 'sun' ? '#1E40AF' : '#8377A0', fontSize: '16px', fontWeight: 400 }}>
-                      Description
+                      Additional Description
                     </Typography.Text>
                     <TextArea
                       value={description}
                       onChange={(e) => setDescription(e.target.value)}
                       autoSize={{ minRows: 4, maxRows: 8 }}
+                      placeholder="Optional: Add any additional instructions or context..."
                       style={{
                         width: '100%',
                         fontSize: '14px',
@@ -1671,62 +1752,43 @@ const AIGenerateReading = () => {
                   </div>
                 </div>
 
-                {/* Generated passage display (replaces promptDescription) - Editable */}
-                {passageMode === 'generate' && (
-                  <TextArea
-                    value={passage}
-                    onChange={(e) => setPassage(e.target.value)}
-                    placeholder="Generated passage will appear here"
-                    style={{
-                      marginTop: 23,
-                      fontSize: '15px',
-                      fontWeight: 'normal',
-                      borderRadius: '12px',
-                      border: passage
-                        ? (theme === 'sun'
-                            ? '2px solid rgba(113, 179, 253, 0.25)'
-                            : '2px solid rgba(138, 122, 255, 0.2)')
-                        : `2px solid ${primaryColor}60`,
-                      background: passage
-                        ? (theme === 'sun'
-                            ? 'linear-gradient(135deg, rgba(255, 255, 255, 1) 0%, rgba(240, 249, 255, 0.95) 100%)'
-                            : 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(244, 240, 255, 0.95) 100%)')
-                        : (theme === 'sun'
-                            ? 'rgba(240, 249, 255, 0.3)'
-                            : 'rgba(244, 240, 255, 0.2)'),
-                      outline: 'none',
-                      boxShadow: 'none',
-                      height: '300px',
-                      overflowY: 'auto',
-                      resize: 'none',
-                      color: theme === 'sun' ? '#000000' : (passage ? 'rgb(45, 27, 105)' : '#999')
-                    }}
-                  />
-                )}
-
-                {/* Manual mode: show TextArea for manual input */}
+                {/* Manual mode: show CKEditor for manual input */}
                 {passageMode === 'manual' && (
-            <TextArea
-              value={passagePrompt}
-              onChange={(e) => { const v = e.target.value; setPassagePrompt(v); }}
-              placeholder={
-                      (t('dailyChallenge.pleaseEnterPassage') !== 'dailyChallenge.pleaseEnterPassage' && t('dailyChallenge.pleaseEnterPassage')) || 'Please enter a passage'
-              }
-              style={{
-                marginTop: 23,
-                fontSize: '15px',
-                borderRadius: '12px',
-                border: `2px solid ${primaryColor}99`,
-                background: theme === 'sun'
-                  ? 'rgba(240, 249, 255, 0.5)'
-                  : 'rgba(244, 240, 255, 0.3)',
-                outline: 'none',
-                boxShadow: 'none',
-                      height: '300px',
-                      overflowY: 'auto',
-                      resize: 'none'
-              }}
-                  />
+                  <div className={`passage-ckeditor-wrapper ${theme}-passage-ckeditor-wrapper`} style={{
+                    marginTop: 23,
+                    borderRadius: '12px',
+                    border: `2px solid ${primaryColor}99`,
+                    background: theme === 'sun'
+                      ? 'rgba(240, 249, 255, 0.5)'
+                      : 'rgba(244, 240, 255, 0.3)',
+                    padding: '12px',
+                    overflow: 'hidden'
+                  }}>
+                    <CKEditor
+                      editor={ClassicEditor}
+                      data={passagePrompt}
+                      onChange={(event, editor) => {
+                        const data = editor.getData();
+                        setPassagePrompt(data);
+                      }}
+                      config={{
+                        ...passageEditorConfig,
+                        placeholder: (t('dailyChallenge.pleaseEnterPassage') !== 'dailyChallenge.pleaseEnterPassage' && t('dailyChallenge.pleaseEnterPassage')) || 'Please enter a passage'
+                      }}
+                      onReady={(editor) => {
+                        try {
+                          const el = editor.ui?.getEditableElement?.();
+                          if (el) {
+                            el.style.minHeight = '300px';
+                            el.style.color = '#000000';
+                            el.style.fontSize = '15px';
+                          }
+                        } catch (e) {
+                          console.error('CKEditor onReady error:', e);
+                        }
+                      }}
+                    />
+                  </div>
                 )}
 
             <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginTop: 16, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
@@ -1781,6 +1843,51 @@ const AIGenerateReading = () => {
                 </>
               )}
             </div>
+
+            {/* Generated passage display - Only show after generation, below Generate Passage button */}
+            {passageMode === 'generate' && passage && passage.trim() && (
+              <div className={`passage-ckeditor-wrapper ${theme}-passage-ckeditor-wrapper`} style={{
+                marginTop: 16,
+                borderRadius: '12px',
+                border: theme === 'sun'
+                  ? '2px solid rgba(113, 179, 253, 0.25)'
+                  : '2px solid rgba(138, 122, 255, 0.2)',
+                background: theme === 'sun'
+                  ? 'linear-gradient(135deg, rgba(255, 255, 255, 1) 0%, rgba(240, 249, 255, 0.95) 100%)'
+                  : 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(244, 240, 255, 0.95) 100%)',
+                padding: '12px',
+                overflow: 'hidden'
+              }}>
+                <CKEditor
+                  editor={ClassicEditor}
+                  data={passage}
+                  onChange={(event, editor) => {
+                    const data = editor.getData();
+                    setPassage(data);
+                  }}
+                  config={passageEditorConfig}
+                  onReady={(editor) => {
+                    try {
+                      const el = editor.ui?.getEditableElement?.();
+                      if (el) {
+                        el.style.minHeight = '400px';
+                        el.style.height = 'auto';
+                        el.style.color = '#000000';
+                        el.style.fontSize = '15px';
+                        el.style.lineHeight = '1.6';
+                      }
+                      // Also set for the main container
+                      const mainEl = editor.ui?.getEditableElement?.()?.closest('.ck-editor__main');
+                      if (mainEl) {
+                        mainEl.style.minHeight = '400px';
+                      }
+                    } catch (e) {
+                      console.error('CKEditor onReady error:', e);
+                    }
+                  }}
+                />
+              </div>
+            )}
               </>
             )}
           </Card>
@@ -2072,7 +2179,7 @@ const AIGenerateReading = () => {
         </Card>
 
           {/* Full-screen loading overlay */}
-          {isGenerating && (
+          {(isGenerating || generatingPassage) && (
             <div
               style={{
                 position: 'fixed',
@@ -2097,7 +2204,9 @@ const AIGenerateReading = () => {
                   {t('dailyChallenge.aiThinking') || 'AI is thinking...'}
                 </Title>
                 <div style={{ fontSize: '16px', color: theme === 'sun' ? '#334155' : '#cbd5e1', fontWeight: 500 }}>
-                  {t('dailyChallenge.generatingQuestions') || 'Generating questions based on your prompt'}
+                  {generatingPassage 
+                    ? (t('dailyChallenge.generatingPassage') || 'Generating passage based on your settings')
+                    : (t('dailyChallenge.generatingQuestions') || 'Generating questions based on your prompt')}
                 </div>
               </div>
             </div>

@@ -120,6 +120,7 @@ const DailyChallengeSubmissionDetail = () => {
   const [overallFeedbackModalVisible, setOverallFeedbackModalVisible] = useState(false);
   const [overallFeedbackDraft, setOverallFeedbackDraft] = useState('');
   const [finalScoreDraft, setFinalScoreDraft] = useState('');
+  const [penaltyAppliedDraft, setPenaltyAppliedDraft] = useState('');
   const [savingGrading, setSavingGrading] = useState(false);
   const [antiCheatModalVisible, setAntiCheatModalVisible] = useState(false);
   const [antiCheatExpanded, setAntiCheatExpanded] = useState({});
@@ -1337,6 +1338,8 @@ const DailyChallengeSubmissionDetail = () => {
           const correct = gradingData.correctAnswers;
           const incorrect = gradingData.wrongAnswers;
           const unanswered = (gradingData.skipped || 0) + (gradingData.empty || 0);
+          const penaltyApplied = gradingData.penaltyApplied ?? 0;
+          const rawScore = gradingData.rawScore ?? score;
 
           setSubmissionData(prev => ({
             ...prev,
@@ -1356,6 +1359,8 @@ const DailyChallengeSubmissionDetail = () => {
               incorrectCount: incorrect ?? prev.submission?.incorrectCount,
               unansweredCount: unanswered ?? prev.submission?.unansweredCount,
               accuracy: accuracyPct ?? prev.submission?.accuracy,
+              penaltyApplied: penaltyApplied,
+              rawScore: rawScore,
             },
           }));
 
@@ -1817,8 +1822,14 @@ const DailyChallengeSubmissionDetail = () => {
     try {
       setSavingFeedback(true);
       const stripHtml = (html) => (html || '').replace(/<[^>]*>/g, '').trim();
+      const penaltyValue = penaltyAppliedDraft ? parseFloat(penaltyAppliedDraft) : 0;
+      if (penaltyValue < 0 || penaltyValue > 1) {
+        spaceToast.error('Penalty must be between 0 and 1');
+        return;
+      }
       const payload = {
-        finalScore: finalScoreDraft ? Number(finalScoreDraft) : 0,
+        rawScore: finalScoreDraft ? Number(finalScoreDraft) : 0,
+        penaltyApplied: penaltyValue,
         overallFeedback: stripHtml(overallFeedbackDraft)
       };
       const res = await dailyChallengeApi.saveGradingSummary(subId, payload);
@@ -4364,6 +4375,7 @@ const DailyChallengeSubmissionDetail = () => {
                   onClick={() => { 
                     setOverallFeedbackDraft(teacherFeedback || ''); 
                     setFinalScoreDraft(submissionData?.submission?.score?.toString() || '');
+                    setPenaltyAppliedDraft(submissionData?.submission?.penaltyApplied?.toString() || '0');
                     setOverallFeedbackModalVisible(true); 
                   }}
                 className={`create-button ${theme}-create-button`}
@@ -4696,8 +4708,21 @@ const DailyChallengeSubmissionDetail = () => {
                                 const shouldShowScore = hasWritingOrSpeaking 
                                   ? (hasScore && hasFeedback) 
                                   : hasScore;
-                                const scoreDisplay = hasScore ? `${submission.score}/10` : '-';
-                                const dynamicFontSize = scoreDisplay.length > 5 ? 28 : 36; // prevent wrapping for long scores
+                                
+                                // Format score display with penalty
+                                let scoreDisplay = '-';
+                                if (hasScore) {
+                                  const finalScore = submission.score;
+                                  const penaltyApplied = submission.penaltyApplied ?? 0;
+                                  if (penaltyApplied > 0) {
+                                    const penaltyPercent = Math.round(penaltyApplied * 100);
+                                    scoreDisplay = `${finalScore}d(-${penaltyPercent}%)`;
+                                  } else {
+                                    scoreDisplay = `${finalScore}d`;
+                                  }
+                                }
+                                
+                                const dynamicFontSize = scoreDisplay.length > 8 ? 24 : scoreDisplay.length > 5 ? 28 : 36; // prevent wrapping for long scores
                                 
                                 return shouldShowScore ? (
                                   <>
@@ -4756,6 +4781,60 @@ const DailyChallengeSubmissionDetail = () => {
                           </div>
                         </div>
 
+                        {/* Raw Score and Penalty Info */}
+                        {(() => {
+                          const hasScore = submission.score != null && submission.score !== undefined;
+                          const rawScore = submission.rawScore;
+                          const penaltyApplied = submission.penaltyApplied ?? 0;
+                          
+                          if (hasScore && rawScore != null) {
+                            return (
+                              <div style={{ 
+                                marginBottom: '20px', 
+                                padding: '12px',
+                                background: theme === 'sun' ? '#FFF9E6' : 'rgba(255, 249, 230, 0.1)',
+                                borderRadius: '8px',
+                                border: `1px solid ${theme === 'sun' ? '#FFE58F' : 'rgba(255, 229, 143, 0.3)'}`
+                              }}>
+                                <div style={{ marginBottom: penaltyApplied > 0 ? '8px' : '0' }}>
+                                  <Typography.Text style={{ 
+                                    fontSize: '13px', 
+                                    color: theme === 'sun' ? '#666' : '#999',
+                                    display: 'block',
+                                    marginBottom: '4px'
+                                  }}>
+                                    Raw Score (Điểm gốc):
+                                  </Typography.Text>
+                                  <Typography.Text strong style={{ 
+                                    fontSize: '16px', 
+                                    color: theme === 'sun' ? '#333' : '#fff'
+                                  }}>
+                                    {rawScore}d
+                                  </Typography.Text>
+                                </div>
+                                {penaltyApplied > 0 && (
+                                  <div>
+                                    <Typography.Text style={{ 
+                                      fontSize: '13px', 
+                                      color: theme === 'sun' ? '#666' : '#999',
+                                      display: 'block',
+                                      marginBottom: '4px'
+                                    }}>
+                                      Penalty Applied (Tỷ lệ phạt):
+                                    </Typography.Text>
+                                    <Typography.Text strong style={{ 
+                                      fontSize: '16px', 
+                                      color: '#ff4d4f'
+                                    }}>
+                                      {Math.round(penaltyApplied * 100)}%
+                                    </Typography.Text>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          }
+                          return null;
+                        })()}
 
                         {/* Question Breakdown Grid (hidden for Writing/Speaking submissions) */}
                         {!hasWritingOrSpeaking && (
@@ -5929,7 +6008,7 @@ const DailyChallengeSubmissionDetail = () => {
           >
             Cancel
           </Button>,
-          <Button key="clear" onClick={() => { setOverallFeedbackDraft(''); setFinalScoreDraft(''); }}
+          <Button key="clear" onClick={() => { setOverallFeedbackDraft(''); setFinalScoreDraft(''); setPenaltyAppliedDraft('0'); }}
             style={{ height: '36px', borderRadius: '6px', padding: '0 22px' }}
           >
             Clear
@@ -5968,14 +6047,36 @@ const DailyChallengeSubmissionDetail = () => {
         `}</style>
         <div style={{ marginBottom: 16 }}>
           <label style={{ display: 'block', marginBottom: 8, fontWeight: 500, color: theme === 'sun' ? '#1E40AF' : '#8377A0' }}>
-            Final Score
+            Raw Score (Điểm gốc)
           </label>
           <Input
             type="number"
             value={finalScoreDraft}
             onChange={(e) => setFinalScoreDraft(e.target.value)}
-            placeholder="Enter final score"
+            placeholder="Enter raw score"
             min={0}
+            style={{
+              width: '100%',
+              height: '40px',
+              borderRadius: '8px',
+              border: `2px solid ${theme === 'sun' ? 'rgba(24, 144, 255, 0.3)' : 'rgba(139, 92, 246, 0.3)'}`,
+              padding: '0 12px',
+              fontSize: '16px'
+            }}
+          />
+        </div>
+        <div style={{ marginBottom: 16 }}>
+          <label style={{ display: 'block', marginBottom: 8, fontWeight: 500, color: theme === 'sun' ? '#1E40AF' : '#8377A0' }}>
+            Penalty Applied (Tỷ lệ phạt, 0-1)
+          </label>
+          <Input
+            type="number"
+            value={penaltyAppliedDraft}
+            onChange={(e) => setPenaltyAppliedDraft(e.target.value)}
+            placeholder="Enter penalty (0 to 1, e.g., 0.5 for 50%)"
+            min={0}
+            max={1}
+            step={0.01}
             style={{
               width: '100%',
               height: '40px',
