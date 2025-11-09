@@ -1324,8 +1324,27 @@ body.is-dragging .ant-btn {
   isolation: isolate;
 }
 
-[data-dnd-kit-drag-overlay] .question-item {
+/* Fix overlay stretching - preserve original dimensions */
+[data-dnd-kit-drag-overlay] {
+  width: auto !important;
+  max-width: none !important;
+  min-width: 0 !important;
+  box-sizing: border-box !important;
+  transform-origin: center center !important;
+}
+
+[data-dnd-kit-drag-overlay] .question-item,
+[data-dnd-kit-drag-overlay] .passage-item {
   pointer-events: none;
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  box-sizing: border-box !important;
+  transform: none !important;
+  /* Prevent stretching */
+  overflow: hidden !important;
+  white-space: normal !important;
+  word-wrap: break-word !important;
 }
 
 /* ===== RESPONSIVE DESIGN ===== */
