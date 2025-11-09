@@ -24,6 +24,7 @@ import { dailyChallengeApi, classManagementApi } from "../../../apis/apis";
 import dailyChallengeApiBackend from "../../../apis/backend/dailyChallengeManagement";
 import { spaceToast } from "../../../component/SpaceToastify";
 import { useSelector } from "react-redux";
+import CustomCursor from "../../../component/cursor/CustomCursor";
 
 // Transform API response data to match UI structure
 const transformApiData = (apiData) => {
@@ -848,6 +849,7 @@ const StudentDailyChallengeList = () => {
 
   return (
     <ThemedLayout>
+      <CustomCursor />
       <style>
         {`
           .daily-challenge-list-wrapper .lesson-cell-container:hover .lesson-text {

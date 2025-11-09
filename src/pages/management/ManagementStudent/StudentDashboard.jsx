@@ -16,6 +16,7 @@ import { useTranslation } from "react-i18next";
 import { useTheme } from "../../../contexts/ThemeContext";
 import usePageTitle from "../../../hooks/usePageTitle";
 import { useSelector } from "react-redux";
+import CustomCursor from "../../../component/cursor/CustomCursor";
 import "./StudentDashboard.css";
 
 const StudentDashboard = () => {
@@ -67,6 +68,7 @@ const StudentDashboard = () => {
 
   return (
     <ThemedLayout>
+      <CustomCursor />
       <div className={`student-dashboard-container ${isSunTheme ? 'light-theme' : 'dark-theme'}`}>
         {/* Page Title */}
         <div className="page-title-container" style={{ marginBottom: '24px' }}>
