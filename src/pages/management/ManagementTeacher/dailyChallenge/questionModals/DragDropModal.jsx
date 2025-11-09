@@ -815,7 +815,7 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 
 	// Handle blank answer change
 	const handleBlankAnswerChange = useCallback((blankId, value) => {
-		const limitedValue = (value ?? '').slice(0, 200);
+		const limitedValue = (value ?? '').slice(0, 50);
 		setBlanks((prev) =>
 			prev.map((blank) =>
 				blank.id === blankId ? { ...blank, answer: limitedValue } : blank
@@ -828,13 +828,13 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 		if (!editorRef.current) return;
 		try {
 			blanks.forEach(b => {
-				const chipAnswer = editorRef.current.querySelector(
-					`[data-blank-id="${b.id}"] .blank-answer-text`
-				);
-				const limited = (b.answer || '').slice(0, 200);
-				if (chipAnswer && chipAnswer.textContent !== limited) {
-					chipAnswer.textContent = limited;
-				}
+			const chipAnswer = editorRef.current.querySelector(
+				`[data-blank-id="${b.id}"] .blank-answer-text`
+			);
+			const limited = (b.answer || '').slice(0, 50);
+			if (chipAnswer && chipAnswer.textContent !== limited) {
+				chipAnswer.textContent = limited;
+			}
 				const chipInput = editorRef.current.querySelector(
 					`[data-blank-id="${b.id}"] .blank-input`
 				);
@@ -845,7 +845,7 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 					`[data-blank-id="${b.id}"] .blank-char-counter`
 				);
 				if (chipCounter) {
-					chipCounter.textContent = `${limited.length}/200`;
+					chipCounter.textContent = `${limited.length}/50`;
 				}
 			});
 		} catch (e) {
@@ -978,14 +978,14 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 		white-space: nowrap;
 		vertical-align: middle;
 	`;
-			answerText.textContent = (blank.answer || '').slice(0, 200);
+			answerText.textContent = (blank.answer || '').slice(0, 50);
 
 			// Input field (hidden by default in compact mode)
 			const input = document.createElement('input');
 			input.type = 'text';
 			input.placeholder = 'type answer...';
-			input.value = (blank.answer || '').slice(0, 200);
-			input.maxLength = 200;
+			input.value = (blank.answer || '').slice(0, 50);
+			input.maxLength = 50;
 			input.className = 'blank-input';
 			input.style.cssText = `
 			border: none;
@@ -1006,7 +1006,7 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 			// Character counter (hidden by default in compact mode)
 			const counter = document.createElement('span');
 			counter.className = 'blank-char-counter';
-			counter.textContent = `${input.value.length}/200`;
+			counter.textContent = `${input.value.length}/50`;
 			counter.style.cssText = `
 			font-size: 12px;
 			color: #999;
@@ -1021,13 +1021,13 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 			// Optimize input handling with debounce for state update
 			let inputTimeout;
 			input.addEventListener('input', (e) => {
-				const newValue = (e.target.value || '').slice(0, 200);
+				const newValue = (e.target.value || '').slice(0, 50);
 				if (e.target.value !== newValue) {
 					e.target.value = newValue;
 				}
 				// Update answer text in real-time (instant visual feedback)
 				answerText.textContent = newValue || '';
-				counter.textContent = `${newValue.length}/200`;
+				counter.textContent = `${newValue.length}/50`;
 
 				// Debounce state update to reduce re-renders
 				clearTimeout(inputTimeout);
@@ -1496,7 +1496,7 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 
 	// Change incorrect option text
 	const handleIncorrectOptionChange = (id, value) => {
-		const limited = (value ?? '').slice(0, 200);
+		const limited = (value ?? '').slice(0, 50);
 		setIncorrectOptions((prev) =>
 			prev.map((opt) => (opt.id === id ? { ...opt, text: limited } : opt))
 		);
@@ -2574,12 +2574,12 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 													{index + 1}
 												</span>
 										<Input
-																value={(blank.answer || '').slice(0, 200)}
+																value={(blank.answer || '').slice(0, 50)}
 																onChange={(e) => {
-																	const v = (e.target.value || '').slice(0, 200);
+																	const v = (e.target.value || '').slice(0, 50);
 												handleBlankAnswerChange(blank.id, v);
 											}}
-																maxLength={200}
+																maxLength={50}
 											placeholder={'Type correct option'}
 											style={{
 												flex: 1,
@@ -2596,7 +2596,7 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 												whiteSpace: 'nowrap',
 											}}
 										>
-																{`${(blank.answer || '').slice(0, 200).length}/200`}
+																{`${(blank.answer || '').slice(0, 50).length}/50`}
 										</span>
 											</div>
 										))
@@ -2662,11 +2662,11 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 											gap: '8px',
 										}}>
 											<Input
-																value={(option.text || '').slice(0, 200)}
+																value={(option.text || '').slice(0, 50)}
 												onChange={(e) =>
 													handleIncorrectOptionChange(option.id, e.target.value)
 												}
-																maxLength={200}
+																maxLength={50}
 												placeholder={`Incorrect option ${index + 1}`}
 												style={{
 													flex: 1,
@@ -2683,7 +2683,7 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 													whiteSpace: 'nowrap',
 												}}
 											>
-																{`${(option.text || '').slice(0, 200).length}/200`}
+																{`${(option.text || '').slice(0, 50).length}/50`}
 											</span>
 										<Button
 											type='text'
