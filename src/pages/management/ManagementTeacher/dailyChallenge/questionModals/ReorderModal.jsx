@@ -98,7 +98,7 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
       }
       
       // Enforce 50-character limit like DragDropModal
-      blankAnswer = (blankAnswer || '').slice(0, 100);
+      blankAnswer = (blankAnswer || '').slice(0, 50);
 
       console.log('ReorderModal - Processing blank:', {
         positionId,
@@ -164,7 +164,7 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
     if (backendOptions && backendOptions.length > 0) {
       const words = backendOptions.map((option, index) => ({
         id: `word-${option.key || index}`,
-        text: (option.text || '').slice(0, 100),
+        text: (option.text || '').slice(0, 50),
         originalIndex: option.isCorrect ? sortedBlanks.findIndex(b => b.answer === option.text) : -1,
         currentIndex: index,
         color: option.isCorrect ? blankColors[index % blankColors.length] : '#999999',
@@ -191,7 +191,7 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
       .filter(blank => blank.answer && blank.answer.trim())
       .map((blank, index) => ({
         id: blank.id,
-        text: (blank.answer || '').slice(0, 100),
+        text: (blank.answer || '').slice(0, 50),
         originalIndex: index, // Correct original position in sentence
         currentIndex: index,  // Will be updated after shuffle
         color: blank.color,
@@ -228,7 +228,7 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
 
   // Handle blank answer change (moved earlier so creators can use it)
   const handleBlankAnswerChange = useCallback((blankId, value) => {
-    const limitedValue = (value || '').slice(0, 100);
+    const limitedValue = (value || '').slice(0, 50);
     setBlanks(prev => {
       const newBlanks = prev.map(blank => 
         blank.id === blankId ? { ...blank, answer: limitedValue } : blank
@@ -420,7 +420,7 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
     const input = document.createElement('input');
     input.type = 'text';
     input.placeholder = 'type answer...';
-    input.value = (blank.answer || '').slice(0, 100);
+    input.value = (blank.answer || '').slice(0, 50);
     input.className = 'blank-input';
     input.style.cssText = `
       border: none;
@@ -437,12 +437,12 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
       flex: 1;
       margin-right: 8px;
     `;
-    input.maxLength = 100;
+    input.maxLength = 50;
 
     // Character counter (hidden by default in compact mode)
     const counter = document.createElement('span');
     counter.className = 'blank-char-counter';
-    counter.textContent = `${input.value.length}/100`;
+    counter.textContent = `${input.value.length}/50`;
     counter.style.cssText = `
       font-size: 12px;
       color: #999;
@@ -452,13 +452,13 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
     // Optimize input handling with debounce for state update
     let inputTimeout;
     input.addEventListener('input', (e) => {
-      const newValue = (e.target.value || '').slice(0, 100);
+      const newValue = (e.target.value || '').slice(0, 50);
       if (e.target.value !== newValue) {
         e.target.value = newValue;
       }
       // Update answer text in real-time (instant visual feedback)
       answerText.textContent = newValue || '';
-      counter.textContent = `${newValue.length}/100`;
+      counter.textContent = `${newValue.length}/50`;
       
       // Debounce state update to reduce re-renders
       clearTimeout(inputTimeout);
