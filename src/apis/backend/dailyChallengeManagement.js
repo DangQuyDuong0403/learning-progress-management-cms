@@ -114,8 +114,8 @@ const dailyChallengeApi = {
 
 	// Assess pronunciation for speaking using OpenAI service proxy
 	// Endpoint (swagger image): POST /api/openai/pronunciation-assessment with query params
-	// Params: { audioUrl, referenceText?, age? }
-	assessPronunciation: async ({ audioUrl, referenceText, age } = {}) => {
+	// Params: { audioUrl, questionText?, referenceText?, age? }
+	assessPronunciation: async ({ audioUrl, questionText, referenceText, age } = {}) => {
 		const base = (typeof axiosClient?.defaults?.baseURL === 'string') ? axiosClient.defaults.baseURL : '';
 		const baseApi = base.includes('/api/v1')
 			? base.replace('/api/v1', '/api')
@@ -123,6 +123,7 @@ const dailyChallengeApi = {
 		const url = `${baseApi}/openai/pronunciation-assessment`;
 		const params = new URLSearchParams();
 		if (audioUrl) params.append('audioUrl', audioUrl);
+		if (questionText) params.append('questionText', questionText);
 		if (referenceText) params.append('referenceText', referenceText);
 		if (age !== undefined && age !== null && age !== '') params.append('age', age);
 		const absoluteUrl = params.toString() ? `${url}?${params.toString()}` : url;
