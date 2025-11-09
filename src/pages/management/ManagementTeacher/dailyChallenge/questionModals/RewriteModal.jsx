@@ -286,27 +286,34 @@ const RewriteModal = ({ visible, onCancel, onSave, questionData = null }) => {
   // Debounced editor change handler for main question
   const editorChangeTimeoutRef = useRef(null);
   const handleEditorChange = useCallback((event, editor) => {
+    const data = editor.getData();
+    const plainText = getPlainText(data);
+    
+    // Update counter immediately for real-time feedback
+    setQuestionCharCount(plainText.length);
+    
+    // Debounce the actual data update and validation
     if (editorChangeTimeoutRef.current) {
       clearTimeout(editorChangeTimeoutRef.current);
     }
     editorChangeTimeoutRef.current = setTimeout(() => {
-      const data = editor.getData();
-      const plainText = getPlainText(data);
-      
       // Enforce max 600 characters (plain text length)
       if (plainText.length > 600) {
         spaceToast.warning('Maximum 600 characters allowed for the question');
         // Revert to last valid HTML snapshot
         if (lastValidQuestionDataRef.current !== '' && editorRef.current) {
           editorRef.current.setData(lastValidQuestionDataRef.current);
+          // Reset counter to last valid count
+          const lastValidPlainText = getPlainText(lastValidQuestionDataRef.current);
+          setQuestionCharCount(lastValidPlainText.length);
+        } else {
+          setQuestionCharCount(600);
         }
-        setQuestionCharCount(Math.min(plainText.length, 600));
         return;
       }
       
-      // Update last valid HTML snapshot and counter
+      // Update last valid HTML snapshot
       lastValidQuestionDataRef.current = data;
-      setQuestionCharCount(plainText.length);
       
       setEditorData(prevData => {
         // Only update if data actually changed
@@ -673,7 +680,7 @@ const RewriteModal = ({ visible, onCancel, onSave, questionData = null }) => {
                 textAlign: 'right',
                 fontSize: '12px',
                 fontWeight: 600,
-                color: questionCharCount >= 600 ? '#ff4d4f' : '#595959',
+                color: questionCharCount > 600 ? '#ff4d4f' : '#595959',
               }}>
               {`${Math.min(questionCharCount, 600)}/600`}
             </div>

@@ -2189,27 +2189,40 @@ const SortableQuestionItem = memo(
               // Build placeholders in question text for each correct item having positionId
               let displayText = question.questionText;
               const allChips = [];
+              
+              // First, collect all correct items with their order
+              const correctItems = [];
               if (question.content && Array.isArray(question.content.data)) {
                 question.content.data.forEach((item) => {
                   if (item && item.value) {
                     const isCorrect = Boolean(item?.correct === true || item?.positionId);
                     allChips.push({ value: item.value, isCorrect });
+                    
+                    // Track correct items for numbering
+                    if (item.positionId && item.correct === true) {
+                      correctItems.push({
+                        positionId: item.positionId,
+                        value: item.value,
+                        index: correctItems.length + 1 // Number starts from 1
+                      });
+                    }
                   }
-                  if (item && item.positionId && item.correct === true) {
-                    const pattern = `[[pos_${item.positionId}]]`;
-                    const value = String(item.value || '')
-                      .replace(/<[^>]*>/g,' ')
-                      .replace(/&nbsp;/g,' ')
-                      .trim();
-                    const indexNum = (allChips.filter(c => c.isCorrect).length) + 1;
-                    displayText = displayText.replace(
-                      pattern,
-                      `<span style="display:inline-flex;align-items:center;gap:6px;padding:4px 12px;background:${correctBgColor};border:2px solid ${correctBorderColor};border-radius:8px;color:${correctTextColor};margin:0 6px 6px 6px;">
-                        <span style=\"display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:${correctBorderColor};color:#ffffff;font-size:11px;\">${indexNum}</span>
-                        <span style=\"white-space:normal;word-break:break-word;\">${value}</span>
-                      </span>`
-                    );
-                  }
+                });
+                
+                // Now replace placeholders with correct numbering
+                correctItems.forEach((correctItem) => {
+                  const pattern = `[[pos_${correctItem.positionId}]]`;
+                  const value = String(correctItem.value || '')
+                    .replace(/<[^>]*>/g,' ')
+                    .replace(/&nbsp;/g,' ')
+                    .trim();
+                  displayText = displayText.replace(
+                    pattern,
+                    `<span style="display:inline-flex;align-items:center;gap:6px;padding:4px 12px;background:${correctBgColor};border:2px solid ${correctBorderColor};border-radius:8px;color:${correctTextColor};margin:0 6px 6px 6px;">
+                      <span style=\"display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:${correctBorderColor};color:#ffffff;font-size:11px;\">${correctItem.index}</span>
+                      <span style=\"white-space:normal;word-break:break-word;\">${value}</span>
+                    </span>`
+                  );
                 });
               }
               return (
