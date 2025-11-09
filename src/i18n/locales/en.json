@@ -2203,6 +2203,8 @@
     "cursor": "Cursor",
     "woodCursor": "Wood Cursor",
     "spaceCursor": "Space Cursor",
+    "cosmicCursor": "Cosmic Cursor",
+    "celestialCursor": "Celestial Cursor",
     "cursorChanged": "Cursor changed successfully",
     "selectPreferredCursor": "Select preferred cursor",
     "username": "Username",
