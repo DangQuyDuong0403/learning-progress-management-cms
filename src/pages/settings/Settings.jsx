@@ -24,6 +24,7 @@ import { useTheme } from '../../contexts/ThemeContext';
 import { spaceToast } from '../../component/SpaceToastify';
 import { logout } from '../../redux/auth';
 import authApi from '../../apis/backend/auth';
+import CustomCursor from '../../component/cursor/CustomCursor';
 import './Settings.css';
 
 const { Text } = Typography;
@@ -54,6 +55,22 @@ const Settings = () => {
 	// Helper function để lấy ngôn ngữ hiện tại
 	const getCurrentLanguage = () => {
 		return localStorage.getItem('i18nextLng') || i18n.language || 'en';
+	};
+
+	// Cursor selection state
+	const getCurrentCursor = () => {
+		return localStorage.getItem('customCursorType') || 'space'; // 'space' or 'wood'
+	};
+
+	const [selectedCursor, setSelectedCursor] = useState(getCurrentCursor());
+
+	// Handle cursor change
+	const handleCursorChange = (cursorType) => {
+		setSelectedCursor(cursorType);
+		localStorage.setItem('customCursorType', cursorType);
+		spaceToast.success(t('settings.cursorChanged') || 'Cursor changed successfully!');
+		// Dispatch custom event to notify CustomCursor component
+		window.dispatchEvent(new CustomEvent('cursorTypeChanged', { detail: { cursorType } }));
 	};
 
 
@@ -170,9 +187,13 @@ const Settings = () => {
 	const userRole = user?.role;
 	const shouldUseTeacherLayout = ['TEACHER', 'TEACHING_ASSISTANT', 'STUDENT', 'TEST_TAKER'].includes(userRole);
 	const ThemedLayout = shouldUseTeacherLayout ? ThemedLayoutNoSidebar : ThemedLayoutWithSidebar;
+	
+	// Check if should show custom cursor for STUDENT and TEST_TAKER roles
+	const shouldShowCustomCursor = userRole === 'STUDENT' || userRole === 'TEST_TAKER';
 
 	return (
 		<ThemedLayout>
+			{shouldShowCustomCursor && <CustomCursor />}
 			<div className={`settings-container ${theme}-settings-container`}>
 				{/* Page Title */}
 				<div className="page-title-container">
@@ -272,6 +293,57 @@ const Settings = () => {
 							</div>
 						</div>
 					</Card>
+
+					{/* Cursor Selection Section - Only for STUDENT and TEST_TAKER */}
+					{shouldShowCustomCursor && (
+						<Card className={`settings-card ${theme}-settings-card`}>
+							<div className="settings-card-header">
+								<div className="settings-card-title">
+									<SettingOutlined className="settings-card-icon" />
+									<span>{t('settings.cursor') || 'Custom Cursor'}</span>
+								</div>
+							</div>
+							<div className="settings-card-content">
+								<div className="settings-field">
+									<Text className={`settings-field-label ${theme}-settings-field-label`}>
+										{t('settings.selectPreferredCursor') || 'Select your preferred cursor style'}
+									</Text>
+									<div className="cursor-selection-container">
+										<div 
+											className={`cursor-option ${selectedCursor === 'space' ? 'selected' : ''} ${theme}-cursor-option`}
+											onClick={() => handleCursorChange('space')}
+										>
+											<div className="cursor-preview">
+												<img 
+													src="/img/helmet-cursor.png" 
+													alt="Space Cursor" 
+													className="cursor-preview-image"
+												/>
+											</div>
+											<Text className={`cursor-option-label ${theme}-cursor-option-label`}>
+												 {t('settings.spaceCursor') || 'Space Cursor'}
+											</Text>
+										</div>
+										<div 
+											className={`cursor-option ${selectedCursor === 'wood' ? 'selected' : ''} ${theme}-cursor-option`}
+											onClick={() => handleCursorChange('wood')}
+										>
+											<div className="cursor-preview">
+												<img 
+													src="/img/wood_pointer.png" 
+													alt="Wood Cursor" 
+													className="cursor-preview-image"
+												/>
+											</div>
+											<Text className={`cursor-option-label ${theme}-cursor-option-label`}>
+												 {t('settings.woodCursor') || 'Wood Cursor'}
+											</Text>
+										</div>
+									</div>
+								</div>
+							</div>
+						</Card>
+					)}
 
 					
 
