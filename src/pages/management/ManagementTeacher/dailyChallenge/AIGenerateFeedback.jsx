@@ -1594,6 +1594,13 @@ const AIGenerateFeedback = () => {
     return () => { mounted = false; };
   }, [submissionQuestionId, prefill?.submissionQuestionId, prefill?.type]);
 
+  const buildPromptFromContent = useCallback(() => {
+    const essay = studentAnswer?.text || studentAnswer?.essay || '';
+    const transcript = section?.transcript || section?.sectionsContent || '';
+    const base = sectionType === 'writing' ? essay : transcript;
+    return base;
+  }, [sectionType, studentAnswer, section]);
+
   // Fetch questionWeight and receivedWeight from grading API
   useEffect(() => {
     let mounted = true;
@@ -1742,22 +1749,26 @@ const AIGenerateFeedback = () => {
             }
           }
           if (sectionType === 'writing') {
-            const highlights = Array.isArray(gradingData.highlightComments) ? gradingData.highlightComments : [];
-            const secKey = section?.id || prefill?.section?.id || String(gradingData.submissionQuestionId || subQid || '');
-            if (secKey) {
-              const mappedHighlights = highlights
-                .map((c) => ({
-                  id: String(c?.id || `feedback-${Date.now()}-${Math.random()}`),
-                  startIndex: Number(c?.startIndex ?? 0),
-                  endIndex: Number(c?.endIndex ?? 0),
-                  comment: typeof c?.comment === 'string' ? c.comment : '',
-                  timestamp: c?.timestamp || new Date().toISOString(),
-                }))
-                .filter((fbItem) => fbItem.endIndex > fbItem.startIndex && fbItem.comment);
-              setWritingSectionFeedbacks((prev) => ({
-                ...prev,
-                [secKey]: mappedHighlights,
-              }));
+            // Check if answer is image-only - don't load highlights for images
+            const answerText = (studentAnswer?.text || studentAnswer?.essay || buildPromptFromContent() || '').trim();
+            if (!isOnlyImageUrl(answerText)) {
+              const highlights = Array.isArray(gradingData.highlightComments) ? gradingData.highlightComments : [];
+              const secKey = section?.id || prefill?.section?.id || String(gradingData.submissionQuestionId || subQid || '');
+              if (secKey) {
+                const mappedHighlights = highlights
+                  .map((c) => ({
+                    id: String(c?.id || `feedback-${Date.now()}-${Math.random()}`),
+                    startIndex: Number(c?.startIndex ?? 0),
+                    endIndex: Number(c?.endIndex ?? 0),
+                    comment: typeof c?.comment === 'string' ? c.comment : '',
+                    timestamp: c?.timestamp || new Date().toISOString(),
+                  }))
+                  .filter((fbItem) => fbItem.endIndex > fbItem.startIndex && fbItem.comment);
+                setWritingSectionFeedbacks((prev) => ({
+                  ...prev,
+                  [secKey]: mappedHighlights,
+                }));
+              }
             }
           }
         }
@@ -1769,10 +1780,17 @@ const AIGenerateFeedback = () => {
     fetchGrading();
     return () => { mounted = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [submissionQuestionId, prefill?.submissionQuestionId, rightMode, hasClearedData, isEditMode, sectionType, parseSpeakingFromOverallFeedback]);
+  }, [submissionQuestionId, prefill?.submissionQuestionId, rightMode, hasClearedData, isEditMode, sectionType, parseSpeakingFromOverallFeedback, buildPromptFromContent, isOnlyImageUrl, studentAnswer]);
 
   // Prefill highlight comments (if navigated from Edit with existing grading)
   useEffect(() => {
+    // Check if answer is image-only - don't load highlights for images
+    const answerText = (studentAnswer?.text || studentAnswer?.essay || buildPromptFromContent() || '').trim();
+    if (isOnlyImageUrl(answerText)) {
+      // Don't load highlights for image-only answers
+      return;
+    }
+    
     const highlights = Array.isArray(prefill?.highlightComments) ? prefill.highlightComments : [];
     const secId = (section && section.id) || (prefill?.section && prefill.section.id);
     if (secId && highlights.length > 0) {
@@ -1791,7 +1809,7 @@ const AIGenerateFeedback = () => {
     }
     // run once when section id becomes available or prefill changes
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [section?.id, prefill?.highlightComments]);
+  }, [section?.id, prefill?.highlightComments, studentAnswer, isOnlyImageUrl, buildPromptFromContent]);
 
   // Auto-set rightMode to 'ai' if there's AI generated data (for writing), otherwise 'manual' if there's existing score or feedback (edit mode)
   // Only auto-set once on mount when there's existing data, not when user manually changes mode
@@ -1959,13 +1977,6 @@ const AIGenerateFeedback = () => {
     });
   }, [navigate, user, challengeId, submissionId, location.state, location.search, classId, className, challengeName, studentName]);
 
-  const buildPromptFromContent = useCallback(() => {
-    const essay = studentAnswer?.text || studentAnswer?.essay || '';
-    const transcript = section?.transcript || section?.sectionsContent || '';
-    const base = sectionType === 'writing' ? essay : transcript;
-    return base;
-  }, [sectionType, studentAnswer, section]);
-
   const handleGenerateAI = useCallback(async () => {
     try {
       setIsGenerating(true);
@@ -1992,8 +2003,10 @@ const AIGenerateFeedback = () => {
         if (overallFeedback) setFeedback(overallFeedback);
         const normalizedSuggested = clampSuggestedScoreValue(suggestedScoreValue);
         setSuggestedScore(normalizedSuggested);
+        // Check if answer is image-only - don't save highlights for images
+        const answerText = (studentAnswer?.text || studentAnswer?.essay || buildPromptFromContent() || '').trim();
         let mappedComments = [];
-        if (section?.id && aiComments.length > 0) {
+        if (section?.id && aiComments.length > 0 && !isOnlyImageUrl(answerText)) {
           mappedComments = aiComments
             .map((c) => ({
               id: c?.id || `feedback-${Date.now()}-${Math.random()}`,
@@ -2150,7 +2163,7 @@ const AIGenerateFeedback = () => {
     } finally {
       setIsGenerating(false);
     }
-  }, [sectionType, submissionQuestionId, prefill?.submissionQuestionId, studentAnswer, section, speakingReferenceText, getBackendMessage, stripHtmlToText, parseFeedbackFromResponse]);
+  }, [sectionType, submissionQuestionId, prefill?.submissionQuestionId, studentAnswer, section, speakingReferenceText, getBackendMessage, stripHtmlToText, parseFeedbackFromResponse, buildPromptFromContent, isOnlyImageUrl]);
 
   const handleSave = useCallback(async () => {
     try {
@@ -2423,14 +2436,21 @@ const AIGenerateFeedback = () => {
                           }
                         }}
                       >
-                        {section?.id && (writingSectionFeedbacks[section.id]?.length > 0) ? (
-                          renderEssayWithHighlights(
-                            (studentAnswer?.text || studentAnswer?.essay || buildPromptFromContent() || ''),
-                            section.id
-                          )
-                        ) : (
-                          parseTextWithImages(answerText || '—', isImageOnly)
-                        )}
+                        {(() => {
+                          // If image-only answer, never render highlights, only render image
+                          if (isImageOnly) {
+                            return parseTextWithImages(answerText || '—', true);
+                          }
+                          // Otherwise, render with highlights if available
+                          return section?.id && (writingSectionFeedbacks[section.id]?.length > 0) ? (
+                            renderEssayWithHighlights(
+                              (studentAnswer?.text || studentAnswer?.essay || buildPromptFromContent() || ''),
+                              section.id
+                            )
+                          ) : (
+                            parseTextWithImages(answerText || '—', false)
+                          );
+                        })()}
                       </div>
                     );
                   })()}
