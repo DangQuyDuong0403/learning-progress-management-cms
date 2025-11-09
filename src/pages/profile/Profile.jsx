@@ -14,6 +14,7 @@ import TableSpinner from '../../component/spinner/TableSpinner';
 import EditEmailModal from './EditEmailModal';
 import EditPersonalInfoModal from './EditPersonalInfoModal';
 import { spaceToast } from '../../component/SpaceToastify';
+import CustomCursor from '../../component/cursor/CustomCursor';
 
 export default function Profile() {
   const { t } = useTranslation();
@@ -25,6 +26,9 @@ export default function Profile() {
   const userRole = user?.role;
   const shouldUseTeacherLayout = ['TEACHER', 'TEACHING_ASSISTANT', 'STUDENT', 'TEST_TAKER'].includes(userRole);
   const ThemedLayout = shouldUseTeacherLayout ? ThemedLayoutNoSidebar : ThemedLayoutWithSidebar;
+  
+  // Check if should show custom cursor for STUDENT and TEST_TAKER roles
+  const shouldShowCustomCursor = userRole === 'STUDENT' || userRole === 'TEST_TAKER';
   
   // Set page title
   usePageTitle('Profile');
@@ -135,6 +139,7 @@ export default function Profile() {
   if (showSpinner) {
     return (
       <ThemedLayout>
+        {shouldShowCustomCursor && <CustomCursor />}
         <div className={`profile-container profile-page ${theme}-profile-container`} style={{
           display: 'flex',
           justifyContent: 'center',
@@ -152,6 +157,7 @@ export default function Profile() {
 
   return (
     <ThemedLayout>
+      {shouldShowCustomCursor && <CustomCursor />}
       <div className={`profile-container ${theme}-profile-container`}>
         {/* Page Title */}
         <div className="page-title-container">

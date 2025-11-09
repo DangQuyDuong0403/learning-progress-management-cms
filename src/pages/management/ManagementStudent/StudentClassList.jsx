@@ -24,6 +24,7 @@ import { useTheme } from "../../../contexts/ThemeContext";
 import { spaceToast } from "../../../component/SpaceToastify";
 import classManagementApi from "../../../apis/backend/classManagement";
 import { useSelector } from "react-redux";
+import CustomCursor from "../../../component/cursor/CustomCursor";
 
 // Predefined colors for classes
 const classColors = [
@@ -196,6 +197,7 @@ const StudentClassList = () => {
 
   return (
     <ThemedLayout>
+      <CustomCursor />
       <div
         className={`class-page main-content-panel ${theme}-main-panel`}
         style={theme === 'sun'

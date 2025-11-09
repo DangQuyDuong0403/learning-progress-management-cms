@@ -24,6 +24,7 @@ import { spaceToast } from "../../../component/SpaceToastify";
 import dailyChallengeApi from "../../../apis/backend/dailyChallengeManagement";
 import { useTestSecurity } from "../../../hooks/useTestSecurity";
 import TextTranslator from "../../../component/TextTranslator/TextTranslator";
+import CustomCursor from "../../../component/cursor/CustomCursor";
 import { 
   getDeviceFingerprint, 
   getSavedFingerprintHash,
@@ -9551,6 +9552,7 @@ const StudentDailyChallengeTake = () => {
 
   return (
     <ThemedLayout customHeader={customHeader}>
+      <CustomCursor />
       <div className={`daily-challenge-content-wrapper ${theme}-daily-challenge-content-wrapper`}>
         {/* Sidebar Toggle Button */}
         <button
