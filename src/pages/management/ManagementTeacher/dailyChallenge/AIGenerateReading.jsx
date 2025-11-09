@@ -2205,7 +2205,7 @@ const AIGenerateReading = () => {
                 </Title>
                 <div style={{ fontSize: '16px', color: theme === 'sun' ? '#334155' : '#cbd5e1', fontWeight: 500 }}>
                   {generatingPassage 
-                    ? (t('dailyChallenge.generatingPassage') || 'Generating passage based on your settings')
+                    ? 'Generating passage based on your settings'
                     : (t('dailyChallenge.generatingQuestions') || 'Generating questions based on your prompt')}
                 </div>
               </div>
