@@ -72,6 +72,7 @@ const transformApiData = (apiData) => {
           status: dc.challengeStatus,
           startDate: dc.startDate,
           endDate: dc.endDate,
+          durationMinutes: dc.durationMinutes,
           lessonId: lesson.classLessonId,
           lessonName: lesson.classLessonName,
           lessonOrder: lesson.orderNumber,
@@ -133,39 +134,6 @@ const StudentDailyChallengeList = () => {
       case 'WR': return t('dailyChallenge.typeNames.WR') || 'Writing';
       case 'SP': return t('dailyChallenge.typeNames.SP') || 'Speaking';
       default: return typeCode;
-    }
-  }, [t]);
-
-  // Helper to get status label and color
-  const getStatusInfo = useCallback((submissionStatus) => {
-    const status = (submissionStatus || 'PENDING').toUpperCase();
-    switch(status) {
-      case 'PENDING':
-        return {
-          label: 'Not attempted',
-          color: '#999',
-        };
-      case 'DRAFT':
-        return {
-          label: 'Draft',
-          color: '#1890ff',
-        };
-      case 'SUBMITTED':
-        return {
-          label: 'Submitted',
-          color: '#52c41a',
-        };
-      case 'GRADED':
-        return {
-          label: "Graded",
-          color: 'black',
-        };
-      default:
-        return {
-          label: status,
-          color: '#999',
-          bgColor: '#f5f5f5',
-        };
     }
   }, [t]);
 
@@ -440,6 +408,28 @@ const StudentDailyChallengeList = () => {
     });
   };
 
+  const handleViewAnswer = (challenge) => {
+    // Navigate to challenge take view in view-only mode to see submitted answer
+    const resolvedClassId = classId || location.state?.classId;
+    
+    navigate(`${routePrefix}/daily-challenges/take/${challenge.id}`, {
+      state: {
+        challengeId: challenge.id,
+        challengeName: challenge.title,
+        lessonName: challenge.lessonName,
+        challengeType: challenge.type,
+        type: challenge.type,
+        submissionChallengeId: challenge.submissionChallengeId,
+        submissionStatus: challenge.submissionStatus, // SUBMITTED status will make it view-only
+        hasAntiCheat: challenge.hasAntiCheat,
+        shuffleQuestion: challenge.shuffleQuestion,
+        translateOnScreen: challenge.translateOnScreen,
+        classId: resolvedClassId,
+        viewAnswer: true, // Flag to indicate viewing submitted answer
+      }
+    });
+  };
+
   const handleViewResult = (challenge) => {
       // Navigate to submission detail view (same interface as teacher but for student)
       // Need challengeId and submissionId (submissionChallengeId)
@@ -608,31 +598,36 @@ const StudentDailyChallengeList = () => {
       },
     },
     {
-      title: t('dailyChallenge.status', 'Status'),
-      dataIndex: 'submissionStatus',
-      key: 'status',
+      title: t('dailyChallenge.duration', 'Duration'),
+      dataIndex: 'durationMinutes',
+      key: 'duration',
       width: 180,
       align: 'center',
       ellipsis: false,
-      render: (submissionStatus, record) => {
+      render: (durationMinutes, record) => {
         // Show empty state for lessons without challenges
         if (record.isEmptyLesson) {
           return <span></span>;
         }
 
-        const statusInfo = getStatusInfo(submissionStatus);
+        if (!durationMinutes || durationMinutes === 0) {
+          return (
+            <span style={{
+              fontSize: '16px',
+              color: '#999',
+            }}>
+              {t('common.notSet', 'Not set')}
+            </span>
+          );
+        }
+
         return (
           <span style={{
-            padding: '4px 12px',
-            borderRadius: '4px',
             fontSize: '16px',
-            color: statusInfo.color,
-            fontWeight: 400,
-            backgroundColor: statusInfo.bgColor,
-            display: 'inline-block',
-            whiteSpace: 'nowrap',
+            color: '#333',
+            fontWeight: 500,
           }}>
-            {statusInfo.label}
+            {durationMinutes} {t('dailyChallenge.minutes', 'minutes')}
           </span>
         );
       },
@@ -797,15 +792,33 @@ const StudentDailyChallengeList = () => {
           </div>
         );
 
-        const renderSubmittedText = () => (
+        const renderViewAnswerButton = (label) => (
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-            <span style={{
-              fontSize: '16px',
-              color: '#666',
-              padding: '8px 16px',
-            }}>
-              {t('dailyChallenge.submitted', 'Submitted')}
-            </span>
+            <Button
+              type="primary"
+              icon={<EyeOutlined />}
+              onClick={() => handleViewAnswer(record)}
+              className="action-btn-view-answer"
+              style={{
+                borderRadius: '6px',
+                fontWeight: 500,
+                height: '36px',
+                padding: '0 16px',
+                fontSize: '14px',
+                background: 'rgb(157,207,242)',
+                borderColor: 'rgb(157,207,242)',
+                color: '#000',
+                border: 'none',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'rgb(137,187,222)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'rgb(157,207,242)';
+              }}
+            >
+              {label}
+            </Button>
             {isLate && (
               <span style={{ 
                 marginTop: '4px',
@@ -825,10 +838,7 @@ const StudentDailyChallengeList = () => {
           <Space size="small">
             {effectiveStatus === 'PENDING' && renderStartLikeButton('Do challenge')}
             {effectiveStatus === 'DRAFT' && renderStartLikeButton('Edit answer', <EditOutlined />)}
-            {effectiveStatus === 'SUBMITTED' && (
-              // When status is SUBMITTED, always show "Đã nộp bài" text for all challenge types
-              renderSubmittedText()
-            )}
+            {effectiveStatus === 'SUBMITTED' && renderViewAnswerButton('View answer')}
             {effectiveStatus === 'GRADED' && renderViewResultButton('View result')}
           </Space>
         );
